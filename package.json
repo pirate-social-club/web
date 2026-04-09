@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "license": "AGPL-3.0-or-later",
+  "packageManager": "bun@1.2.21",
   "type": "module",
   "scripts": {
     "dev": "vite",

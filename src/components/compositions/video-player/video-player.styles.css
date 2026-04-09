@@ -1,0 +1,79 @@
+/*
+ * Vidstack player overrides to match the pirate design system.
+ * Import alongside the component: import "./video-player.styles.css";
+ */
+
+/* ---------------------------------------------------------------------------
+ * Root container
+ * --------------------------------------------------------------------------- */
+
+.vp-player {
+  --media-brand: var(--primary);
+  --media-focus-ring-color: var(--ring);
+  --media-focus-ring: 0 0 0 3px var(--ring);
+  --media-focus-visible-ring: 0 0 0 3px var(--ring);
+
+  --media-font-family: var(--font-sans);
+
+  /* Controls tray */
+  --media-controls-bg: rgba(0, 0, 0, 0.7);
+  --media-controls-color: white;
+  --media-controls-border-radius: var(--radius-lg);
+
+  /* Time slider / scrubber */
+  --media-slider-bg: rgba(255, 255, 255, 0.25);
+  --media-slider-height: 3px;
+  --media-slider-track-height: 3px;
+  --media-slider-thumb-size: 12px;
+
+  /* Volume slider */
+  --media-volume-slider-height: 3px;
+
+  /* Tooltips */
+  --media-tooltip-bg: rgba(0, 0, 0, 0.85);
+  --media-tooltip-color: white;
+
+  /* Menu */
+  --media-menu-bg: rgba(20, 20, 20, 0.95);
+  --media-menu-color: white;
+  --media-menu-border-radius: var(--radius-lg);
+
+  /* Spacing */
+  --media-controls-padding: 10px;
+  --media-controls-gap: 8px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Rounded corners on the player
+ * --------------------------------------------------------------------------- */
+
+.vp-player [data-media-provider] {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+ * Poster: no zoom animation, keep it simple
+ * --------------------------------------------------------------------------- */
+
+.vp-poster {
+  transition: opacity 0.25s ease;
+}
+
+/* ---------------------------------------------------------------------------
+ * Captions: pirate-styled
+ * --------------------------------------------------------------------------- */
+
+.vp-player [data-media-captions] {
+  font-size: 16px;
+  font-family: var(--font-sans);
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode tweaks – slightly lighter controls tray
+ * --------------------------------------------------------------------------- */
+
+.dark .vp-player {
+  --media-controls-bg: rgba(0, 0, 0, 0.6);
+  --media-menu-bg: rgba(28, 28, 28, 0.95);
+}

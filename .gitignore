@@ -1,0 +1,8 @@
+node_modules/
+dist/
+build/
+storybook-static/
+.cache/
+coverage/
+*.log
+debug-storybook.log

@@ -1,0 +1,217 @@
+import * as React from "react";
+import { Check } from "@phosphor-icons/react";
+import { Lock as FilledLockIcon, Play as PlayIcon } from "@phosphor-icons/react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/primitives/button";
+import { MediaControlButton } from "@/components/primitives/media-control-button";
+import { VideoPlayer } from "@/components/compositions/video-player";
+import { postCardType } from "./post-card.styles";
+import type { UpstreamAttribution, VideoContentSpec } from "./post-card.types";
+
+export interface VideoPostContentProps {
+  content: VideoContentSpec;
+  className?: string;
+}
+
+interface DerivedVideoUI {
+  isAgeGated: boolean;
+  ageGateRequiresProof: boolean;
+  showLockedThumbnail: boolean;
+  showAgeGatedThumbnail: boolean;
+  showOwned: boolean;
+  showAttribution: boolean;
+  canPlay: boolean;
+}
+
+function deriveVideoUI(content: VideoContentSpec): DerivedVideoUI {
+  const {
+    accessMode,
+    contentSafetyState,
+    ageGatePolicy,
+    ageGateViewerState,
+    hasEntitlement,
+    videoMode,
+    upstreamAttributions,
+  } = content;
+
+  const isAgeGated = ageGatePolicy === "18_plus" && contentSafetyState === "adult";
+  const ageGateRequiresProof = isAgeGated && ageGateViewerState !== "verified_blocked";
+  const isLocked = accessMode === "locked";
+
+  const showLockedThumbnail = isLocked && !hasEntitlement;
+  const showAgeGatedThumbnail = isAgeGated;
+  const showOwned = hasEntitlement === true;
+
+  const showAttribution = !!(
+    videoMode &&
+    videoMode !== "original" &&
+    upstreamAttributions &&
+    upstreamAttributions.length > 0
+  );
+
+  const canPlay = !ageGateRequiresProof;
+
+  return {
+    isAgeGated,
+    ageGateRequiresProof,
+    showLockedThumbnail,
+    showAgeGatedThumbnail,
+    showOwned,
+    showAttribution,
+    canPlay,
+  };
+}
+
+function getDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): string | null {
+  if (!upstreamAttributions || upstreamAttributions.length === 0) {
+    return null;
+  }
+
+  if (upstreamAttributions.length === 1) {
+    const src = upstreamAttributions[0];
+    return src.artist
+      ? `Derived from ${src.title} by ${src.artist}`
+      : `Derived from ${src.title}`;
+  }
+
+  return `Derived from ${upstreamAttributions[0].title} +${upstreamAttributions.length - 1}`;
+}
+
+export function VideoPostContent({ content, className }: VideoPostContentProps) {
+  const [expanded, setExpanded] = React.useState(false);
+  const ui = deriveVideoUI(content);
+  const {
+    durationLabel,
+    upstreamAttributions,
+    onPlay,
+    onVerifyAge,
+  } = content;
+
+  const derivativeSummary = ui.showAttribution ? getDerivativeSummary(upstreamAttributions) : null;
+
+  const handlePlay = () => {
+    if (ui.canPlay) {
+      setExpanded(true);
+      onPlay?.();
+    }
+  };
+
+  if (expanded && ui.canPlay) {
+    return (
+      <div className={cn("flex flex-col gap-2", className)}>
+        <VideoPlayer
+          src={content.src}
+          poster={content.posterSrc}
+          title={content.title}
+          playsinline
+        />
+        {derivativeSummary && (
+          <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
+            {derivativeSummary}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("flex flex-col gap-2", className)}>
+      <button
+        className={cn(
+          "group relative block w-full overflow-hidden rounded-lg bg-muted",
+          ui.canPlay && "cursor-pointer",
+        )}
+        type="button"
+        onClick={handlePlay}
+        disabled={!ui.canPlay}
+        aria-label={content.title ? `Play ${content.title}` : "Play video"}
+      >
+        {content.posterSrc ? (
+          <img
+            alt={content.title ?? "Video thumbnail"}
+            className={cn(
+              "aspect-video w-full object-cover transition-[filter,transform]",
+              ui.canPlay && "group-hover:scale-[1.02]",
+              ui.showLockedThumbnail && "scale-[1.02] blur-[3px]",
+              ui.showAgeGatedThumbnail && "blur-md saturate-0",
+            )}
+            src={content.posterSrc}
+          />
+        ) : (
+          <div className="flex aspect-video w-full items-center justify-center bg-muted">
+            <PlayIcon className="size-8 text-muted-foreground" weight="fill" />
+          </div>
+        )}
+
+        {ui.showLockedThumbnail && (
+          <div className="absolute inset-0 bg-black/22" />
+        )}
+
+        {ui.showAgeGatedThumbnail && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <FilledLockIcon className="size-6 text-white" weight="fill" />
+          </div>
+        )}
+
+        {ui.canPlay && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <MediaControlButton aria-label="Play" size="md">
+              <PlayIcon className="size-[18px]" weight="fill" />
+            </MediaControlButton>
+          </div>
+        )}
+
+        {durationLabel && !ui.isAgeGated && (
+          <div className="absolute bottom-2 right-2">
+            <span
+              className={cn(
+                "rounded bg-black/70 px-1.5 py-0.5 text-white",
+                postCardType.caption,
+              )}
+            >
+              {durationLabel}
+            </span>
+          </div>
+        )}
+      </button>
+
+      {derivativeSummary && (
+        <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
+          {derivativeSummary}
+        </p>
+      )}
+
+      {ui.showOwned && (
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 font-medium text-green-600",
+            postCardType.label,
+          )}
+        >
+          <Check className="size-4" weight="bold" />
+          <span>Unlocked</span>
+        </span>
+      )}
+
+      {ui.isAgeGated && ui.ageGateRequiresProof && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
+          <div className="flex min-w-0 flex-1 items-center text-muted-foreground">
+            <span className={cn("truncate", postCardType.label)}>
+              Prove you're 18+ to watch
+            </span>
+          </div>
+          <div className="flex shrink-0 items-center">
+            <Button
+              size="sm"
+              className="h-8 px-4 font-medium"
+              onClick={onVerifyAge}
+              disabled={!onVerifyAge}
+            >
+              Verify Age
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,5 +1,5 @@
-export type ClubMembershipMode = "open" | "gated";
-export type ClubDefaultAgeGatePolicy = "none" | "18_plus";
+export type CommunityMembershipMode = "open" | "gated";
+export type CommunityDefaultAgeGatePolicy = "none" | "18_plus";
 
 export type NamespaceFamily = "hns" | "spaces";
 
@@ -17,7 +17,7 @@ export type SpacesHandleMode = "owner_managed" | "operator_brokered" | "attach_c
 
 export type HandlePolicyTemplate = "standard" | "premium" | "membership_gated" | "custom";
 export type HandlePricingModel = "free" | "flat_by_length" | "custom_curve" | "gated_then_flat";
-export type AnonymousIdentityScope = "club_stable" | "thread_stable" | "post_ephemeral";
+export type AnonymousIdentityScope = "community_stable" | "thread_stable" | "post_ephemeral";
 
 export type GateFamily = "token_holding" | "identity_proof";
 export type GateType =
@@ -62,11 +62,11 @@ export interface CreatorVerificationState {
   ageOver18Verified: boolean;
 }
 
-export interface CreateClubComposerProps {
+export interface CreateCommunityComposerProps {
   displayName?: string;
   description?: string;
-  membershipMode?: ClubMembershipMode;
-  defaultAgeGatePolicy?: ClubDefaultAgeGatePolicy;
+  membershipMode?: CommunityMembershipMode;
+  defaultAgeGatePolicy?: CommunityDefaultAgeGatePolicy;
   allowAnonymousIdentity?: boolean;
   anonymousIdentityScope?: AnonymousIdentityScope;
   namespace?: NamespaceImportState;

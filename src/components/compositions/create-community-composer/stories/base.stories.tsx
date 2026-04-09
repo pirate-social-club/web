@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
-import { CreateClubComposer } from "../create-club-composer";
-import type { CreateClubComposerProps } from "../create-club-composer.types";
+import { CreateCommunityComposer } from "../create-community-composer";
+import type { CreateCommunityComposerProps } from "../create-community-composer.types";
 
-const baseComposer: CreateClubComposerProps = {
+const baseComposer: CreateCommunityComposerProps = {
   displayName: "American Voices",
   description:
-    "A national-interest club where verified context matters, but moderation still needs a safe anonymous layer.",
+    "A national-interest community where verified context matters, but moderation still needs a safe anonymous layer.",
   membershipMode: "open",
   defaultAgeGatePolicy: "none",
   allowAnonymousIdentity: true,
@@ -31,7 +31,7 @@ const baseComposer: CreateClubComposerProps = {
   },
 };
 
-const emptyNamespace: CreateClubComposerProps["namespace"] = {
+const emptyNamespace: CreateCommunityComposerProps["namespace"] = {
   family: "hns",
   externalRoot: "",
   importStatus: "not_imported",
@@ -41,8 +41,8 @@ const emptyNamespace: CreateClubComposerProps["namespace"] = {
 };
 
 const meta = {
-  title: "Compositions/CreateClubComposer",
-  component: CreateClubComposer,
+  title: "Compositions/CreateCommunityComposer",
+  component: CreateCommunityComposer,
   args: baseComposer,
   decorators: [
     (Story: () => React.ReactNode) => (
@@ -51,7 +51,7 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof CreateClubComposer>;
+} satisfies Meta<typeof CreateCommunityComposer>;
 
 export default meta;
 
@@ -59,20 +59,20 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   name: "Flow / Default",
-  render: () => <CreateClubComposer {...baseComposer} namespace={emptyNamespace} />,
+  render: () => <CreateCommunityComposer {...baseComposer} namespace={emptyNamespace} />,
 };
 
 export const PublicOnly: Story = {
   name: "Flow / Public Only",
   render: () => (
-    <CreateClubComposer {...baseComposer} allowAnonymousIdentity={false} namespace={emptyNamespace} />
+    <CreateCommunityComposer {...baseComposer} allowAnonymousIdentity={false} namespace={emptyNamespace} />
   ),
 };
 
 export const SpacesInspected: Story = {
   name: "Coming Soon / Spaces Root",
   render: () => (
-    <CreateClubComposer
+    <CreateCommunityComposer
       {...baseComposer}
       namespace={{
         family: "spaces",
@@ -88,7 +88,7 @@ export const SpacesInspected: Story = {
 export const SpacesVerificationPending: Story = {
   name: "Coming Soon / Spaces Handles",
   render: () => (
-    <CreateClubComposer
+    <CreateCommunityComposer
       {...baseComposer}
       namespace={{
         family: "spaces",
@@ -104,7 +104,7 @@ export const SpacesVerificationPending: Story = {
 export const HnsTxtChallenge: Story = {
   name: "Flow / HNS Record",
   render: () => (
-    <CreateClubComposer
+    <CreateCommunityComposer
       {...baseComposer}
       namespace={{
         family: "hns",
@@ -121,7 +121,7 @@ export const HnsTxtChallenge: Story = {
 export const HnsNearExpiry: Story = {
   name: "Flow / HNS Near Expiry",
   render: () => (
-    <CreateClubComposer
+    <CreateCommunityComposer
       {...baseComposer}
       namespace={{
         family: "hns",
@@ -137,23 +137,23 @@ export const HnsNearExpiry: Story = {
 
 export const AdultOnly: Story = {
   name: "Flow / Adult Only",
-  render: () => <CreateClubComposer {...baseComposer} defaultAgeGatePolicy="18_plus" initialStep={4} />,
+  render: () => <CreateCommunityComposer {...baseComposer} defaultAgeGatePolicy="18_plus" initialStep={4} />,
 };
 
 export const HandlePolicyStep: Story = {
   name: "Flow / Handle Policy Step",
-  render: () => <CreateClubComposer {...baseComposer} initialStep={3} />,
+  render: () => <CreateCommunityComposer {...baseComposer} initialStep={3} />,
 };
 
 export const ReviewStep: Story = {
   name: "Flow / Review",
-  render: () => <CreateClubComposer {...baseComposer} initialStep={5} />,
+  render: () => <CreateCommunityComposer {...baseComposer} initialStep={5} />,
 };
 
 export const CreatorNotEligible: Story = {
   name: "Flow / Creator Not Eligible",
   render: () => (
-    <CreateClubComposer
+    <CreateCommunityComposer
       {...baseComposer}
       creatorVerificationState={{
         uniqueHumanVerified: false,
@@ -167,7 +167,7 @@ export const CreatorNotEligible: Story = {
 export const AdultOnlyMissingAgeProof: Story = {
   name: "Flow / Adult Only Missing Age Proof",
   render: () => (
-    <CreateClubComposer
+    <CreateCommunityComposer
       {...baseComposer}
       defaultAgeGatePolicy="18_plus"
       creatorVerificationState={{

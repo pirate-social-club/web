@@ -54,8 +54,8 @@ const nestedRowClassName = "h-12 rounded-xl px-4 text-base font-medium";
 
 const DEFAULT_PRIMARY_ITEMS: readonly AppSidebarPrimaryItem[] = [
   { id: "home", icon: House, label: "Home" },
-  { id: "your-clubs", icon: Flag, label: "Your Clubs" },
-  { id: "create-club", icon: Plus, label: "Create Club" },
+  { id: "your-communities", icon: Flag, label: "Your Communities" },
+  { id: "create-community", icon: Plus, label: "Create Community" },
 ];
 
 const DEFAULT_SECTIONS: readonly AppSidebarSection[] = [
@@ -70,8 +70,8 @@ const DEFAULT_SECTIONS: readonly AppSidebarSection[] = [
     ],
   },
   {
-    id: "clubs",
-    label: "Clubs",
+    id: "communities",
+    label: "Communities",
     defaultOpen: true,
     items: [
       { id: "c/pirates", label: "c/pirates" },

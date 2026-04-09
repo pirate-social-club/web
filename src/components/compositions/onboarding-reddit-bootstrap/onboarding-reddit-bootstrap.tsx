@@ -19,20 +19,20 @@ import type {
   OnboardingPhase,
   OnboardingRedditBootstrapProps,
   RedditVerificationState,
-  SuggestedClub,
+  SuggestedCommunity,
 } from "./onboarding-reddit-bootstrap.types";
 
 const STEPS = [
   { label: "Import karma" },
   { label: "Choose name" },
-  { label: "Suggested clubs" },
+  { label: "Suggested communities" },
 ];
 
 function phaseToStep(phase: OnboardingPhase): number {
   switch (phase) {
     case "import_karma": return 1;
     case "choose_name": return 2;
-    case "suggested_clubs": return 3;
+    case "suggested_communities": return 3;
   }
 }
 
@@ -212,14 +212,14 @@ function ChooseNamePhase({
   );
 }
 
-function SuggestedClubsPhase({
-  clubs,
+function SuggestedCommunitiesPhase({
+  communities,
   nextLabel,
   skipLabel,
   onContinue,
   onSkip,
 }: {
-  clubs: SuggestedClub[];
+  communities: SuggestedCommunity[];
   nextLabel?: string;
   skipLabel?: string;
   onContinue: () => void;
@@ -227,20 +227,20 @@ function SuggestedClubsPhase({
 }) {
   return (
     <div className="space-y-6">
-      {clubs.length > 0 ? (
+      {communities.length > 0 ? (
         <div className="space-y-3">
-          {clubs.map((club) => (
+          {communities.map((community) => (
             <div
-              key={club.clubId}
+              key={community.communityId}
               className="flex items-center justify-between rounded-full border border-border-soft bg-card px-4 py-3"
             >
-              <span className="font-medium text-foreground">{club.name}</span>
-              <span className="text-base text-muted-foreground">{club.reason}</span>
+              <span className="font-medium text-foreground">{community.name}</span>
+              <span className="text-base text-muted-foreground">{community.reason}</span>
             </div>
           ))}
         </div>
       ) : (
-        <FormNote>No club suggestions yet. Join some from your feed later.</FormNote>
+        <FormNote>No community suggestions yet. Join some from your feed later.</FormNote>
       )}
 
       <Footer
@@ -297,9 +297,9 @@ export function OnboardingRedditBootstrap({
               onHandleChange={() => {}}
             />
           ) : null}
-          {phase === "suggested_clubs" ? (
-            <SuggestedClubsPhase
-              clubs={snapshot?.suggestedClubs ?? []}
+          {phase === "suggested_communities" ? (
+            <SuggestedCommunitiesPhase
+              communities={snapshot?.suggestedCommunities ?? []}
               nextLabel={actions.primaryLabel}
               onContinue={() => {}}
               onSkip={() => {}}

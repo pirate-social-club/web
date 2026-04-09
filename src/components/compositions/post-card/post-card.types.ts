@@ -119,19 +119,19 @@ export type PostCardContent =
 export type PostCardMenuItem = ActionMenuItem;
 
 export type PostCardIdentity = {
-  kind: "club" | "user";
+  kind: "community" | "user";
   label: string;
   href?: string;
   avatarSrc?: string;
 };
 
 export type PostCardByline = {
-  club?: PostCardIdentity;
+  community?: PostCardIdentity;
   author?: PostCardIdentity;
   timestampLabel: string;
 };
 
-export type PostCardViewContext = "home" | "club" | "profile";
+export type PostCardViewContext = "home" | "community" | "profile";
 
 export type PostCardEngagement = {
   score: number;

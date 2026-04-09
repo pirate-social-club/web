@@ -37,8 +37,8 @@ const storySections = [
     ],
   },
   {
-    id: "clubs",
-    label: "Clubs",
+    id: "communities",
+    label: "Communities",
     defaultOpen: true,
     items: [
       { id: "c/builders", label: "c/builders" },

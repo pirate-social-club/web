@@ -5,9 +5,9 @@ import { PostCard } from "../../post-card";
 import type { PostCardProps, SongContentSpec } from "../../post-card.types";
 
 const basePost: Omit<PostCardProps, "content"> = {
-  viewContext: "club",
+  viewContext: "community",
   byline: {
-    club: { kind: "club", label: "c/tameimpala", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=10" },
+    community: { kind: "community", label: "c/tameimpala", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=10" },
     author: { kind: "user", label: "u/kevin.tameimpala", href: "#" },
     timestampLabel: "5h",
   },

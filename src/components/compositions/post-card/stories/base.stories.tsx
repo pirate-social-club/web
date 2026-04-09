@@ -8,7 +8,7 @@ import type { PostCardProps } from "../post-card.types";
 const basePost: PostCardProps = {
   viewContext: "home",
   byline: {
-    club: { kind: "club", label: "c/tameimpala", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=10" },
+    community: { kind: "community", label: "c/tameimpala", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=10" },
     author: { kind: "user", label: "u/kevin.tameimpala", href: "#" },
     timestampLabel: "9d",
   },
@@ -93,7 +93,7 @@ export const LinkPost: Story = {
       content={{
         type: "link",
         href: "https://pirate.sc/blog/feed-ranking",
-        linkTitle: "How We Think About Ranking Music Clubs",
+        linkTitle: "How We Think About Ranking Music Communities",
         linkLabel: "pirate.sc/blog/feed-ranking",
         previewImageSrc: "https://picsum.photos/seed/pirate-link/240/240",
       }}
@@ -172,7 +172,7 @@ export const LongTitle: Story = {
 };
 
 export const NoClubContext: Story = {
-  name: "Layout: No Club",
+  name: "Layout: No Community",
   render: () => (
     <PostCard
       viewContext="profile"
@@ -195,7 +195,7 @@ export const AvatarPlaceholder: Story = {
       byline={{
         ...basePost.byline,
         author: { kind: "user", label: "u/newuser", href: "#" },
-        club: { kind: "club", label: "c/music", href: "#" },
+        community: { kind: "community", label: "c/music", href: "#" },
       }}
       title="Post with placeholder avatar"
       content={{ type: "text", body: "This shows the avatar fallback when no image is provided." }}
@@ -203,14 +203,14 @@ export const AvatarPlaceholder: Story = {
   ),
 };
 
-export const ClubFeedPost: Story = {
-  name: "Layout: Club Feed",
+export const CommunityFeedPost: Story = {
+  name: "Layout: Community Feed",
   render: () => (
     <PostCard
       {...basePost}
-      viewContext="club"
+      viewContext="community"
       byline={{
-        club: { kind: "club", label: "c/tameimpala", href: "#" },
+        community: { kind: "community", label: "c/tameimpala", href: "#" },
         author: { kind: "user", label: "u/kevin.tameimpala", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=11" },
         timestampLabel: "3h",
       }}

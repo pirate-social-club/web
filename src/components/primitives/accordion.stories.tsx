@@ -22,19 +22,19 @@ export const Default: Story = {
       <AccordionItem value="item-1">
         <AccordionTrigger>What is Pirate?</AccordionTrigger>
         <AccordionContent>
-          Pirate is a club-first social product for discovering communities, posts, and shared resources.
+          Pirate is a community-first social product for discovering communities, posts, and shared resources.
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="item-2">
-        <AccordionTrigger>How do clubs work?</AccordionTrigger>
+        <AccordionTrigger>How do communities work?</AccordionTrigger>
         <AccordionContent>
-          Clubs organize people around a topic or identity, making discovery and participation easier than flat feeds.
+          Communities organize people around a topic or identity, making discovery and participation easier than flat feeds.
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="item-3">
-        <AccordionTrigger>Can I start my own club?</AccordionTrigger>
+        <AccordionTrigger>Can I start my own community?</AccordionTrigger>
         <AccordionContent>
-          Yes. Starting a club creates a new space for posts, members, and shared resources around your community.
+          Yes. Starting a community creates a new space for posts, members, and shared resources around your focus.
         </AccordionContent>
       </AccordionItem>
     </Accordion>
@@ -55,7 +55,7 @@ export const Multiple: Story = {
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="item-2">
-        <AccordionTrigger>Clubs</AccordionTrigger>
+        <AccordionTrigger>Communities</AccordionTrigger>
         <AccordionContent>
           c/usersjoinedclub1
           <br />

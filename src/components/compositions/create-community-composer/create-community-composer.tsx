@@ -15,7 +15,9 @@ import {
 } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
-import { Pill } from "@/components/primitives/pill";
+import { OptionCard } from "@/components/primitives/option-card";
+import { PrefixInput } from "@/components/primitives/prefix-input";
+import { Chip } from "@/components/primitives/chip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/primitives/tabs";
 import { Stepper } from "@/components/primitives/stepper";
 import { Textarea } from "@/components/primitives/textarea";
@@ -25,19 +27,19 @@ import type {
   AnonymousIdentityScope,
   ComposerStep,
   CreatorVerificationState,
-  CreateClubComposerProps,
+  CreateCommunityComposerProps,
   GateFamily,
   GateType,
-  ClubDefaultAgeGatePolicy,
-  ClubMembershipMode,
+  CommunityDefaultAgeGatePolicy,
+  CommunityMembershipMode,
   HandlePolicyState,
   HandlePolicyTemplate,
   HandlePricingModel,
   NamespaceFamily,
   NamespaceImportState,
-} from "./create-club-composer.types";
+} from "./create-community-composer.types";
 
-const membershipMeta: Record<ClubMembershipMode, { label: string; detail: string }> = {
+const membershipMeta: Record<CommunityMembershipMode, { label: string; detail: string }> = {
   open: {
     label: "Open",
     detail: "Anyone can join immediately.",
@@ -61,7 +63,7 @@ const namespaceFamilyMeta: Record<
   hns: {
     label: "Handshake",
     externalExample: "kanye",
-    detail: "Live now for club creation.",
+    detail: "Live now for community creation.",
     icon: <Handshake className="size-5" />,
   },
   spaces: {
@@ -69,14 +71,14 @@ const namespaceFamilyMeta: Record<
     externalExample: "kanye",
     detail: "Subspaces are stabilizing before launch.",
     icon: <At className="size-5" />,
-    disabledHint: "Coming soon. Pirate is launching namespace-backed clubs on HNS first.",
+    disabledHint: "Coming soon. Pirate is launching namespace-backed communities on HNS first.",
   },
 };
 
 const handlePolicyTemplateMeta: Record<HandlePolicyTemplate, { label: string; detail: string; pricingModel: HandlePricingModel; disabledHint?: string }> = {
   standard: {
     label: "Standard",
-    detail: "Standard is the default launch template. Club-local claims stay off at launch, then 8+ character handles can open first once claims are enabled.",
+    detail: "Standard is the default launch template. Community-local claims stay off at launch, then 8+ character handles can open first once claims are enabled.",
     pricingModel: "free",
   },
   premium: {
@@ -98,9 +100,9 @@ const handlePolicyTemplateMeta: Record<HandlePolicyTemplate, { label: string; de
 };
 
 const anonymousScopeMeta: Record<AnonymousIdentityScope, { label: string; detail: string }> = {
-  club_stable: {
-    label: "Club-stable",
-    detail: "One persistent anonymous label per user across the entire club. Best for moderation continuity.",
+  community_stable: {
+    label: "Community-stable",
+    detail: "One persistent anonymous label per user across the entire community. Best for moderation continuity.",
   },
   thread_stable: {
     label: "Thread-stable",
@@ -237,90 +239,9 @@ function CheckboxRow({
   );
 }
 
-function RootField({
-  prefix,
-  placeholder,
-  value,
-  onChange,
-}: {
-  prefix: "." | "@";
-  placeholder: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="flex h-12 items-center overflow-hidden rounded-full border border-input bg-background shadow-sm transition-[color,box-shadow,border-color] focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
-      <div className="grid h-full w-12 shrink-0 place-items-center border-r border-border-soft bg-muted/40 text-base font-semibold text-foreground">
-        {prefix}
-      </div>
-      <Input
-        className="h-full rounded-none border-0 bg-transparent px-4 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        value={value}
-      />
-    </div>
-  );
-}
-
-function RadioCard<T extends string>({
-  options,
-  value,
-  onChange,
-  disabledKeys,
-}: {
-  options: Record<T, { label: string; detail?: string; icon?: React.ReactNode; disabledHint?: string }>;
-  value: T | null;
-  onChange: (next: T) => void;
-  disabledKeys?: Set<T>;
-}) {
-  return (
-    <div className="space-y-2">
-      {(Object.keys(options) as T[]).map((key) => {
-        const option = options[key];
-        const active = key === value;
-        const disabled = disabledKeys?.has(key) ?? false;
-
-        return (
-          <button
-            key={key}
-            className={cn(
-              "w-full rounded-[var(--radius-lg)] border px-4 py-3.5 text-left transition-[border-color,background-color]",
-              disabled
-                ? "cursor-not-allowed border-border-soft bg-muted/30 opacity-60"
-                : active
-                  ? "border-primary/60 bg-primary/6"
-                  : "border-border-soft bg-background hover:border-foreground/15 hover:bg-muted/15",
-            )}
-            disabled={disabled}
-            onClick={() => !disabled && onChange(key)}
-            type="button"
-          >
-            <div
-              className={cn(
-                "flex items-center gap-2 text-base font-semibold leading-tight",
-                disabled ? "text-muted-foreground" : "text-foreground",
-              )}
-            >
-              {option.icon}
-              {option.label}
-            </div>
-            {option.detail ? (
-              <FormNote className="mt-1">{option.detail}</FormNote>
-            ) : null}
-            {disabled && option.disabledHint ? (
-              <FormNote className="mt-1" tone="warning">{option.disabledHint}</FormNote>
-            ) : null}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 const composerSteps = [
   { label: "Namespace" },
-  { label: "Club" },
+  { label: "Community" },
   { label: "Handles" },
   { label: "Access" },
   { label: "Review" },
@@ -398,14 +319,14 @@ function SpacesComingSoonState() {
     <div className="space-y-2 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4">
       <p className="text-base font-medium text-foreground">Spaces are coming soon.</p>
       <FormNote>
-        Pirate is launching club creation on HNS first while Spaces subspace issuance and
+        Pirate is launching community creation on HNS first while Spaces subspace issuance and
         resolution settle a bit further.
       </FormNote>
     </div>
   );
 }
 
-export function CreateClubComposer({
+export function CreateCommunityComposer({
   displayName = "American Voices",
   description = "National discourse, local moderation, verified context when it matters.",
   membershipMode = "open",
@@ -419,7 +340,7 @@ export function CreateClubComposer({
     ageOver18Verified: true,
   },
   initialStep,
-}: CreateClubComposerProps) {
+}: CreateCommunityComposerProps) {
   const initialNamespace = namespace ?? {
     family: "hns",
     externalRoot: "",
@@ -428,13 +349,13 @@ export function CreateClubComposer({
   };
   const [activeStep, setActiveStep] = React.useState<ComposerStep>(initialStep ?? 1);
   const [activeMembershipMode, setActiveMembershipMode] =
-    React.useState<ClubMembershipMode>(membershipMode);
+    React.useState<CommunityMembershipMode>(membershipMode);
   const [activeDefaultAgeGatePolicy, setActiveDefaultAgeGatePolicy] =
-    React.useState<ClubDefaultAgeGatePolicy>(defaultAgeGatePolicy);
+    React.useState<CommunityDefaultAgeGatePolicy>(defaultAgeGatePolicy);
   const [activeAllowAnonymousIdentity, setActiveAllowAnonymousIdentity] =
     React.useState<boolean>(allowAnonymousIdentity);
   const [activeAnonymousScope, setActiveAnonymousScope] =
-    React.useState<AnonymousIdentityScope>(anonymousIdentityScopeProp ?? "club_stable");
+    React.useState<AnonymousIdentityScope>(anonymousIdentityScopeProp ?? "community_stable");
   const [activeNamespaceFamily, setActiveNamespaceFamily] = React.useState<NamespaceFamily>(
     initialNamespace.family ?? "hns",
   );
@@ -653,14 +574,14 @@ export function CreateClubComposer({
 
   const membershipLabel = membershipMeta[activeMembershipMode].label;
   const creatorVerificationMessage = !creatorUniqueHumanVerified
-    ? "Complete unique human verification before creating a namespace-backed club."
+    ? "Complete unique human verification before creating a namespace-backed community."
     : !creatorAgeRequirementMet
-      ? "This club is marked 18+, so the creator must also pass age verification before launch."
+      ? "This community is marked 18+, so the creator must also pass age verification before launch."
       : null;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4">
-      <h2 className="text-3xl font-semibold tracking-tight">Create club</h2>
+      <h2 className="text-3xl font-semibold tracking-tight">Create community</h2>
       {creatorVerificationMessage ? (
         <div className="rounded-[var(--radius-lg)] border border-amber-500/20 bg-amber-500/5 px-4 py-3">
           <p className="text-base font-semibold text-foreground">Verification required</p>
@@ -674,20 +595,34 @@ export function CreateClubComposer({
         <CardContent className="space-y-8 p-6 md:p-7">
           {activeStep === 1 ? (
             <>
-              <RadioCard
-                disabledKeys={new Set<NamespaceFamily>(["spaces"])}
-                onChange={(family) => handleFamilyChange(family as NamespaceFamily)}
-                options={namespaceFamilyMeta}
-                value={activeNamespaceFamily}
-              />
+              <div className="space-y-2">
+                {(Object.keys(namespaceFamilyMeta) as NamespaceFamily[]).map((family) => {
+                  const option = namespaceFamilyMeta[family];
+                  const disabled = family === "spaces";
+
+                  return (
+                    <OptionCard
+                      key={family}
+                      description={option.detail}
+                      disabled={disabled}
+                      disabledHint={option.disabledHint}
+                      icon={option.icon}
+                      selected={family === activeNamespaceFamily}
+                      title={option.label}
+                      onClick={() => !disabled && handleFamilyChange(family)}
+                    />
+                  );
+                })}
+              </div>
 
               {activeNamespaceFamily === "hns" ? (
                 <>
                   <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
                     <div>
                       <FieldLabel label="Handshake root" />
-                      <RootField
-                        onChange={(value) => {
+                      <PrefixInput
+                        onChange={(e) => {
+                          const value = e.target.value;
                           clearNamespaceTimer();
                           setRootInput(value);
                           setTxtChallenge(undefined);
@@ -719,10 +654,8 @@ export function CreateClubComposer({
                 <>
                   <div>
                     <FieldLabel label="Space" />
-                    <RootField
-                      onChange={(value) => {
-                        setRootInput(value);
-                      }}
+                    <PrefixInput
+                      onChange={(e) => setRootInput(e.target.value)}
                       placeholder={namespaceMeta.externalExample}
                       prefix="@"
                       value={rootInput}
@@ -735,14 +668,14 @@ export function CreateClubComposer({
           ) : null}
 
           {activeStep === 2 ? (
-            <Section title="Club details">
+            <Section title="Community details">
               <div className="grid gap-4">
                 <div>
                   <FieldLabel label="Display name" />
                   <Input
                     className="h-12 rounded-[var(--radius-lg)]"
                     onChange={(e) => setActiveDisplayName(e.target.value)}
-                    placeholder="Club name"
+                    placeholder="Community name"
                     value={activeDisplayName}
                   />
                 </div>
@@ -752,7 +685,7 @@ export function CreateClubComposer({
                   <Textarea
                     className="min-h-24"
                     onChange={(e) => setActiveDescription(e.target.value)}
-                    placeholder="What is this club for?"
+                    placeholder="What is this community for?"
                     value={activeDescription}
                   />
                 </div>
@@ -762,12 +695,24 @@ export function CreateClubComposer({
 
           {activeStep === 3 ? (
             <Section title="Handle policy">
-              <RadioCard
-                disabledKeys={new Set<HandlePolicyTemplate>(["custom"])}
-                onChange={(template) => setActiveHandlePolicy(resolveHandlePolicy(template))}
-                options={handlePolicyTemplateMeta}
-                value={activeHandlePolicy?.policyTemplate ?? null}
-              />
+              <div className="space-y-2">
+                {(Object.keys(handlePolicyTemplateMeta) as HandlePolicyTemplate[]).map((template) => {
+                  const option = handlePolicyTemplateMeta[template];
+                  const disabled = template === "custom";
+
+                  return (
+                    <OptionCard
+                      key={template}
+                      description={option.detail}
+                      disabled={disabled}
+                      disabledHint={option.disabledHint}
+                      selected={template === (activeHandlePolicy?.policyTemplate ?? null)}
+                      title={option.label}
+                      onClick={() => !disabled && setActiveHandlePolicy(resolveHandlePolicy(template))}
+                    />
+                  );
+                })}
+              </div>
 
               {activeHandlePolicy != null && activeHandlePolicy.policyTemplate !== "custom" ? (
                 <div className="grid gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5 text-base md:grid-cols-2">
@@ -792,7 +737,7 @@ export function CreateClubComposer({
             <>
               <Section title="Membership">
                 <SegmentedControl
-                  onChange={(value) => setActiveMembershipMode(value as ClubMembershipMode)}
+                  onChange={(value) => setActiveMembershipMode(value as CommunityMembershipMode)}
                   options={membershipMeta}
                   value={activeMembershipMode}
                 />
@@ -808,13 +753,13 @@ export function CreateClubComposer({
                       <p className="text-base font-medium text-foreground">Identity proof</p>
                       <div className="flex flex-wrap gap-2">
                         {identityGateTypes.map((type) => (
-                          <Pill
+                          <Chip
                             key={type}
                             variant={activeGateTypes.has(type) ? "active" : "outline"}
                             onClick={() => toggleGateType(type)}
                           >
                             {gateTypeMeta[type].label}
-                          </Pill>
+                          </Chip>
                         ))}
                       </div>
                     </div>
@@ -833,7 +778,7 @@ export function CreateClubComposer({
                 <div className="space-y-5">
                   <CheckboxRow
                     checked={activeAllowAnonymousIdentity}
-                    id="club-allow-anonymous-posting"
+                    id="community-allow-anonymous-posting"
                     label="Allow anonymous posting"
                     onCheckedChange={setActiveAllowAnonymousIdentity}
                   />
@@ -841,11 +786,21 @@ export function CreateClubComposer({
                   {activeAllowAnonymousIdentity ? (
                     <div className="space-y-3 border-l border-border-soft pl-4">
                       <p className="text-base font-medium text-foreground">Anonymous scope</p>
-                      <RadioCard
-                        onChange={setActiveAnonymousScope}
-                        options={anonymousScopeMeta}
-                        value={activeAnonymousScope}
-                      />
+                      <div className="space-y-2">
+                        {(Object.keys(anonymousScopeMeta) as AnonymousIdentityScope[]).map((scope) => {
+                          const option = anonymousScopeMeta[scope];
+
+                          return (
+                            <OptionCard
+                              key={scope}
+                              description={option.detail}
+                              selected={scope === activeAnonymousScope}
+                              title={option.label}
+                              onClick={() => setActiveAnonymousScope(scope)}
+                            />
+                          );
+                        })}
+                      </div>
                       {activeAnonymousScope === "post_ephemeral" ? (
                         <div className="rounded-[var(--radius-lg)] border border-amber-500/20 bg-amber-500/5 px-4 py-3">
                           <FormNote tone="default">
@@ -859,7 +814,7 @@ export function CreateClubComposer({
 
                   <CheckboxRow
                     checked={activeDefaultAgeGatePolicy === "18_plus"}
-                    id="club-18-plus-community"
+                    id="community-18-plus"
                     label="18+ community"
                     onCheckedChange={(checked) =>
                       setActiveDefaultAgeGatePolicy(checked ? "18_plus" : "none")
@@ -867,7 +822,7 @@ export function CreateClubComposer({
                   />
                   {activeDefaultAgeGatePolicy === "18_plus" && !creatorAgeOver18Verified ? (
                     <FormNote tone="warning">
-                      The creator must complete age verification before launching an 18+ club.
+                      The creator must complete age verification before launching an 18+ community.
                     </FormNote>
                   ) : null}
                 </div>
@@ -892,7 +847,7 @@ export function CreateClubComposer({
                 />
               </ReviewSection>
 
-              <ReviewSection title="Club identity">
+              <ReviewSection title="Community identity">
                 <ReviewField label="Display name" value={activeDisplayName} />
                 <div className="md:col-span-2">
                   <ReviewField label="Description" value={activeDescription || "\u2014"} />
@@ -961,7 +916,7 @@ export function CreateClubComposer({
                 Next
               </Button>
             ) : (
-              <Button disabled={!canCreateClub}>Create Club</Button>
+              <Button disabled={!canCreateClub}>Create Community</Button>
             )}
           </div>
         </CardFooter>

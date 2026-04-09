@@ -77,7 +77,7 @@ const topLevelItems: TopLevelItem[] = [
   },
   {
     icon: Users,
-    label: "Your Clubs",
+    label: "Your Communities",
   },
   {
     icon: FilmSlate,
@@ -85,13 +85,13 @@ const topLevelItems: TopLevelItem[] = [
   },
   {
     icon: Plus,
-    label: "Start a Club",
+    label: "Start a Community",
   },
 ];
 
-const recentClubs = ["c/club1", "c/club2", "c/club3"];
+const recentCommunities = ["c/club1", "c/club2", "c/club3"];
 
-const joinedClubs = [
+const joinedCommunities = [
   "c/usersjoinedclub1",
   "c/usersjoinedclub2",
 ];
@@ -195,8 +195,8 @@ function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarSection defaultOpen items={recentClubs} title="Recent" />
-        <SidebarSection items={joinedClubs} title="Clubs" />
+        <SidebarSection defaultOpen items={recentCommunities} title="Recent" />
+        <SidebarSection items={joinedCommunities} title="Communities" />
         <SidebarGroup className="gap-0 px-4 py-0">
           <SidebarGroupLabel className={sectionLabelClassName}>
             Resources

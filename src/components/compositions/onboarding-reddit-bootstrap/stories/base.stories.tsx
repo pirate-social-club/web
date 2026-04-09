@@ -33,10 +33,10 @@ const richSnapshot = {
   ],
   moderatorOf: [],
   inferredInterests: ["hip-hop", "left-field electronic", "design"],
-  suggestedClubs: [
-    { clubId: "club_hhh", name: "c/hiphopheads", reason: "Active in r/hiphopheads with 4.8k karma" },
-    { clubId: "club_electronic", name: "c/electronic", reason: "Regular in r/electronicmusic" },
-    { clubId: "club_design", name: "c/design", reason: "23 posts in r/design" },
+  suggestedCommunities: [
+    { communityId: "club_hhh", name: "c/hiphopheads", reason: "Active in r/hiphopheads with 4.8k karma" },
+    { communityId: "club_electronic", name: "c/electronic", reason: "Regular in r/electronicmusic" },
+    { communityId: "club_design", name: "c/design", reason: "23 posts in r/design" },
   ],
 };
 
@@ -194,23 +194,23 @@ export const ChooseNameSuggestionTaken: Story = {
   ),
 };
 
-export const SuggestedClubsWithClubs: Story = {
-  name: "Suggested Clubs / With Clubs",
+export const SuggestedCommunitiesWithCommunities: Story = {
+  name: "Suggested Communities / With Communities",
   render: () => (
     <OnboardingRedditBootstrap
       {...base}
-      phase="suggested_clubs"
+      phase="suggested_communities"
       snapshot={richSnapshot}
     />
   ),
 };
 
-export const SuggestedClubsEmpty: Story = {
-  name: "Suggested Clubs / Empty",
+export const SuggestedCommunitiesEmpty: Story = {
+  name: "Suggested Communities / Empty",
   render: () => (
     <OnboardingRedditBootstrap
       {...base}
-      phase="suggested_clubs"
+      phase="suggested_communities"
     />
   ),
 };

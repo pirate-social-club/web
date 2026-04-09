@@ -1,4 +1,4 @@
-export type OnboardingPhase = "import_karma" | "choose_name" | "suggested_clubs";
+export type OnboardingPhase = "import_karma" | "choose_name" | "suggested_communities";
 
 export type VerificationState =
   | "not_started"
@@ -50,8 +50,8 @@ export interface SubredditEntry {
   rankSource?: "karma" | "posts" | "source_order";
 }
 
-export interface SuggestedClub {
-  clubId: string;
+export interface SuggestedCommunity {
+  communityId: string;
   name: string;
   reason: string;
 }
@@ -62,7 +62,7 @@ export interface SnapshotState {
   topSubreddits: SubredditEntry[];
   moderatorOf: string[];
   inferredInterests: string[];
-  suggestedClubs: SuggestedClub[];
+  suggestedCommunities: SuggestedCommunity[];
   coverageNote?: string;
 }
 

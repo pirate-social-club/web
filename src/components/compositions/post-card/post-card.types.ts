@@ -132,6 +132,11 @@ export type PostCardByline = {
 };
 
 export type PostCardViewContext = "home" | "community" | "profile";
+export type PostCardIdentityPresentation =
+  | "author_primary"
+  | "author_with_community"
+  | "community_primary"
+  | "anonymous_primary";
 
 export type PostCardEngagement = {
   score: number;
@@ -146,7 +151,9 @@ export type PostCardEngagement = {
 
 export interface PostCardProps {
   viewContext?: PostCardViewContext;
+  identityPresentation?: PostCardIdentityPresentation;
   byline: PostCardByline;
+  qualifierLabels?: string[];
   title?: string;
   titleHref?: string;
   postHref?: string;
@@ -155,7 +162,6 @@ export interface PostCardProps {
   menuItems?: PostCardMenuItem[];
   onVote?: (direction: "up" | "down" | null) => void;
   onComment?: () => void;
-  onSave?: () => void;
   onShare?: () => void;
   onMenuAction?: (key: string) => void;
   className?: string;

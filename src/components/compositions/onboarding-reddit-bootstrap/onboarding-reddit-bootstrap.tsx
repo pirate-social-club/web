@@ -255,9 +255,7 @@ function SuggestedCommunitiesPhase({
 
 export function OnboardingRedditBootstrap({
   generatedHandle,
-  cleanupRenameAvailable,
   canSkip,
-  canContinue,
   phase,
   reddit,
   importJob,
@@ -265,9 +263,6 @@ export function OnboardingRedditBootstrap({
   handleSuggestion,
   actions,
 }: OnboardingRedditBootstrapProps) {
-  void cleanupRenameAvailable;
-  void canContinue;
-
   const currentStep = phaseToStep(phase);
 
   return (

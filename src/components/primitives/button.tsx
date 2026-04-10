@@ -35,7 +35,7 @@ const buttonVariants = cva(
         active: true,
         size: "icon",
         className:
-          "border border-primary/45 bg-primary/12 text-primary hover:bg-primary/16",
+          "border border-primary bg-primary text-primary-foreground hover:bg-primary/90",
       },
     ],
     defaultVariants: {

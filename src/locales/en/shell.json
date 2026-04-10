@@ -1,0 +1,62 @@
+{
+  "appHeader": {
+    "createLabel": "Create",
+    "homeAriaLabel": "Go to home",
+    "notificationsAriaLabel": "Notifications",
+    "openNavigationAriaLabel": "Open navigation",
+    "profileAriaLabel": "Open profile",
+    "searchAriaLabel": "Search Pirate",
+    "searchPlaceholder": "Search Pirate",
+    "searchUnavailableToast": "Search is not scaffolded yet."
+  },
+  "appSidebar": {
+    "brandLabel": "Pirate",
+    "createCommunityLabel": "Create Community",
+    "homeAriaLabel": "Go to home",
+    "homeLabel": "Home",
+    "resourcesLabel": "Resources",
+    "sections": [
+      {
+        "id": "recent",
+        "label": "Recent",
+        "items": [
+          { "id": "c/club1", "label": "c/club1" },
+          { "id": "c/pirate-radio", "label": "c/pirate-radio" }
+        ]
+      },
+      {
+        "id": "communities",
+        "label": "Communities",
+        "items": [
+          { "id": "c/builders", "label": "c/builders" },
+          { "id": "c/mixes", "label": "c/mixes" },
+          { "id": "c/samples", "label": "c/samples" }
+        ]
+      }
+    ],
+    "resourceItems": [
+      { "id": "blog", "label": "Blog" },
+      { "id": "terms-of-service", "label": "Terms of Service" },
+      { "id": "privacy-policy", "label": "Privacy Policy" }
+    ],
+    "yourCommunitiesLabel": "Your Communities"
+  },
+  "mobileFooter": {
+    "createLabel": "Create",
+    "homeLabel": "Home",
+    "inboxAriaLabel": "Inbox",
+    "inboxLabel": "Inbox",
+    "primaryNavAriaLabel": "Primary",
+    "profileAriaLabel": "Profile",
+    "profileLabel": "Profile"
+  },
+  "storybook": {
+    "contentAreaLabel": "Content area",
+    "desktopHeaderBody": "Header is standalone. Compose it into the real app shell, not into onboarding cards.",
+    "mobileHeaderBody": "Mobile header only.",
+    "mobileFooterBody": "Mobile footer only.",
+    "mobileChromeLead": "Standalone shell chrome preview.",
+    "mobileChromeFollow": "Header and footer stay reusable and separate from onboarding.",
+    "standaloneDesktopSearchPlaceholder": "Find anything"
+  }
+}

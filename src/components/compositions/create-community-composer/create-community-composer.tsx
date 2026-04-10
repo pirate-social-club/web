@@ -125,13 +125,7 @@ const gateTypeMeta: Record<GateType, { label: string; family: GateFamily }> = {
   wallet_score: { label: "Wallet score", family: "identity_proof" },
 };
 
-const tokenGateTypes: GateType[] = ["erc721_holding", "erc1155_holding", "erc20_balance", "solana_nft_holding"];
 const identityGateTypes: GateType[] = ["unique_human", "age_over_18", "nationality", "wallet_score"];
-
-function getGateFamily(type: GateType): GateFamily {
-  if (tokenGateTypes.includes(type)) return "token_holding";
-  return "identity_proof";
-}
 
 function resolveHandlePolicy(template: HandlePolicyTemplate): HandlePolicyState {
   return {
@@ -425,7 +419,7 @@ export function CreateCommunityComposer({
       ? `.${rootLabel}`
       : `@${rootLabel}`
     : "";
-  const clubRoute = rootLabel
+  const communityRoute = rootLabel
     ? activeNamespaceFamily === "hns"
       ? `/c/${rootLabel}`
       : `/c/@${rootLabel}`
@@ -496,36 +490,7 @@ export function CreateCommunityComposer({
   const expirySafe = expiryDaysRemaining == null || expiryDaysRemaining >= 90;
   const hasRootInput = rootInput.trim().length > 0;
 
-  const canProceed = React.useMemo(() => {
-    switch (activeStep) {
-      case 1:
-        if (activeNamespaceFamily !== "hns") return false;
-        return namespaceImportStatus === "verified" && expirySafe;
-      case 2:
-        return activeDisplayName.trim().length > 0;
-      case 3:
-        return activeHandlePolicy != null;
-      case 4:
-        if (!creatorAgeRequirementMet) return false;
-        if (activeMembershipMode === "gated") return activeGateTypes.size > 0;
-        return true;
-      case 5:
-        return canCreateClub;
-      default:
-        return false;
-    }
-  }, [
-    activeStep,
-    activeNamespaceFamily,
-    namespaceImportStatus,
-    expirySafe,
-    activeDisplayName,
-    activeHandlePolicy,
-    activeMembershipMode,
-    activeGateTypes,
-  ]);
-
-  const canCreateClub = React.useMemo(
+  const canCreateCommunity = React.useMemo(
     () =>
       creatorCanCreate &&
       activeNamespaceFamily === "hns" &&
@@ -545,6 +510,37 @@ export function CreateCommunityComposer({
       activeGateTypes,
     ],
   );
+
+  const canProceed = React.useMemo(() => {
+    switch (activeStep) {
+      case 1:
+        if (activeNamespaceFamily !== "hns") return false;
+        return namespaceImportStatus === "verified" && expirySafe;
+      case 2:
+        return activeDisplayName.trim().length > 0;
+      case 3:
+        return activeHandlePolicy != null;
+      case 4:
+        if (!creatorAgeRequirementMet) return false;
+        if (activeMembershipMode === "gated") return activeGateTypes.size > 0;
+        return true;
+      case 5:
+        return canCreateCommunity;
+      default:
+        return false;
+    }
+  }, [
+    activeStep,
+    activeNamespaceFamily,
+    namespaceImportStatus,
+    expirySafe,
+    activeDisplayName,
+    activeHandlePolicy,
+    activeMembershipMode,
+    activeGateTypes,
+    canCreateCommunity,
+    creatorAgeRequirementMet,
+  ]);
 
   const namespaceState: NamespaceImportState = {
     ...initialNamespace,
@@ -835,7 +831,7 @@ export function CreateCommunityComposer({
               <ReviewSection title="Namespace">
                 <ReviewField label="Family" value={namespaceFamilyMeta[activeNamespaceFamily].label} />
                 <ReviewField label="Root" value={displayRoot} />
-                <ReviewField label="Route" value={<span className="font-mono">{clubRoute}</span>} />
+                <ReviewField label="Route" value={<span className="font-mono">{communityRoute}</span>} />
                 <ReviewField label="Handle format" value={<span className="font-mono">{handleFormat}</span>} />
                 <ReviewField
                   label="Verification"
@@ -916,7 +912,7 @@ export function CreateCommunityComposer({
                 Next
               </Button>
             ) : (
-              <Button disabled={!canCreateClub}>Create Community</Button>
+              <Button disabled={!canCreateCommunity}>Create Community</Button>
             )}
           </div>
         </CardFooter>

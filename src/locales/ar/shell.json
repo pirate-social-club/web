@@ -1,0 +1,62 @@
+{
+  "appHeader": {
+    "createLabel": "أنشئ",
+    "homeAriaLabel": "اذهب إلى الصفحة الرئيسية",
+    "notificationsAriaLabel": "الإشعارات",
+    "openNavigationAriaLabel": "افتح التنقل",
+    "profileAriaLabel": "افتح الملف الشخصي",
+    "searchAriaLabel": "ابحث في بايرت",
+    "searchPlaceholder": "ابحث في Pirate",
+    "searchUnavailableToast": "البحث غير متاح بعد."
+  },
+  "appSidebar": {
+    "brandLabel": "Pirate",
+    "createCommunityLabel": "أنشئ مجتمعًا",
+    "homeAriaLabel": "اذهب إلى الصفحة الرئيسية",
+    "homeLabel": "الرئيسية",
+    "resourcesLabel": "الموارد",
+    "sections": [
+      {
+        "id": "recent",
+        "label": "الأخيرة",
+        "items": [
+          { "id": "c/club1", "label": "c/النادي-١" },
+          { "id": "c/pirate-radio", "label": "c/راديو-بايرت" }
+        ]
+      },
+      {
+        "id": "communities",
+        "label": "المجتمعات",
+        "items": [
+          { "id": "c/builders", "label": "c/البناؤون" },
+          { "id": "c/mixes", "label": "c/الميكسات" },
+          { "id": "c/samples", "label": "c/السامبلز" }
+        ]
+      }
+    ],
+    "resourceItems": [
+      { "id": "blog", "label": "المدونة" },
+      { "id": "terms-of-service", "label": "شروط الخدمة" },
+      { "id": "privacy-policy", "label": "سياسة الخصوصية" }
+    ],
+    "yourCommunitiesLabel": "مجتمعاتك"
+  },
+  "mobileFooter": {
+    "createLabel": "أنشئ",
+    "homeLabel": "الرئيسية",
+    "inboxAriaLabel": "الوارد",
+    "inboxLabel": "الوارد",
+    "primaryNavAriaLabel": "التنقل الرئيسي",
+    "profileAriaLabel": "الملف الشخصي",
+    "profileLabel": "الملف الشخصي"
+  },
+  "storybook": {
+    "contentAreaLabel": "منطقة المحتوى",
+    "desktopHeaderBody": "الهيدر مستقل. كوّنه داخل غلاف التطبيق الحقيقي، وليس داخل بطاقات الإعداد.",
+    "mobileHeaderBody": "الهيدر المحمول فقط.",
+    "mobileFooterBody": "التذييل المحمول فقط.",
+    "mobileChromeLead": "معاينة مستقلة لكروم التطبيق.",
+    "mobileChromeFollow": "يبقى الهيدر والتذييل قابلين لإعادة الاستخدام ومنفصلين عن بطاقات الإعداد.",
+    "standaloneDesktopSearchPlaceholder": "ابحث عن أي شيء"
+  }
+}

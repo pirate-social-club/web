@@ -9,8 +9,8 @@ type AvatarSize = "xs" | "sm" | "md" | "lg";
 
 const sizeClasses: Record<AvatarSize, string> = {
   xs: "h-5 w-5 text-[11px]",
-  sm: "h-9 w-9 text-sm",
-  md: "h-12 w-12 text-sm",
+  sm: "h-9 w-9 text-base",
+  md: "h-12 w-12 text-base",
   lg: "h-14 w-14 text-base",
 };
 

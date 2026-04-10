@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-const pillVariants = cva(
+const chipVariants = cva(
   "inline-flex items-center justify-center rounded-full text-base font-medium transition-colors",
   {
     variants: {
@@ -16,8 +16,8 @@ const pillVariants = cva(
         active: "border border-primary bg-primary/5 text-foreground",
       },
       size: {
-        sm: "px-3 py-1 text-base",
-        md: "px-3 py-1.5 text-base",
+        sm: "px-3 py-1",
+        md: "px-3 py-1.5",
       },
     },
     defaultVariants: {
@@ -27,16 +27,16 @@ const pillVariants = cva(
   },
 );
 
-export interface PillProps
+export interface ChipProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof pillVariants> {
+    VariantProps<typeof chipVariants> {
   leadingIcon?: React.ReactNode;
 }
 
-const Pill = React.forwardRef<HTMLButtonElement, PillProps>(
+const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(
   ({ className, variant, size, leadingIcon, children, ...props }, ref) => (
     <button
-      className={cn(pillVariants({ variant, size, className }))}
+      className={cn(chipVariants({ variant, size }), className)}
       ref={ref}
       type="button"
       {...props}
@@ -46,6 +46,6 @@ const Pill = React.forwardRef<HTMLButtonElement, PillProps>(
     </button>
   ),
 );
-Pill.displayName = "Pill";
+Chip.displayName = "Chip";
 
-export { Pill, pillVariants };
+export { Chip, chipVariants };

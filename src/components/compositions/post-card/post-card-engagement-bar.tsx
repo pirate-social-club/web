@@ -31,18 +31,19 @@ export function PostCardEngagementBar({
   const { score, viewerVote, commentCount } = engagement;
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("flex items-center gap-1.5 pt-0.5", className)}>
       <VotePill score={score} viewerVote={viewerVote} onVote={onVote} />
       <CommentPill count={commentCount} onComment={onComment} />
       {onShare && (
         <button
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border border-border/50 bg-secondary/80 px-3 py-1.5 text-[15px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
+            "inline-flex h-9 items-center gap-1.5 rounded-xl border border-border-soft bg-background px-3 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground",
           )}
           onClick={onShare}
           type="button"
+          data-post-card-interactive="true"
         >
-          <Share className="size-[18px]" />
+          <Share className="size-[17px]" />
           Share
         </button>
       )}
@@ -50,12 +51,13 @@ export function PostCardEngagementBar({
       {unlock && (
         <button
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-[15px] font-medium text-primary transition-colors hover:bg-primary/20",
+            "inline-flex h-9 items-center gap-1.5 rounded-xl border border-primary/25 bg-primary/8 px-3 text-base font-medium text-primary transition-colors hover:bg-primary/14",
           )}
           onClick={unlock.onClick}
           type="button"
+          data-post-card-interactive="true"
         >
-          <Lock className="size-[18px]" />
+          <Lock className="size-[17px]" />
           {unlock.label}
         </button>
       )}

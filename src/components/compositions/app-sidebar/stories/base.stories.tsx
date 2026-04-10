@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
+import { Flag, House, Plus } from "@phosphor-icons/react";
 
 import { AppHeader } from "@/components/compositions/app-shell-chrome/app-header";
 import { MobileFooterNav } from "@/components/compositions/app-shell-chrome/mobile-footer-nav";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { SidebarInset, SidebarProvider } from "@/components/primitives/sidebar";
 
 import { AppSidebar } from "../app-sidebar";
@@ -26,40 +29,102 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const storySections = [
-  {
-    id: "recent",
-    label: "Recent",
+function ShellChrome({ mobile = false }: { mobile?: boolean }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "shell");
+  const sections = copy.appSidebar.sections.map((section) => ({
+    ...section,
     defaultOpen: true,
-    items: [
-      { id: "c/club1", label: "c/club1" },
-      { id: "c/pirate-radio", label: "c/pirate-radio" },
-    ],
-  },
-  {
-    id: "communities",
-    label: "Communities",
-    defaultOpen: true,
-    items: [
-      { id: "c/builders", label: "c/builders" },
-      { id: "c/mixes", label: "c/mixes" },
-      { id: "c/samples", label: "c/samples" },
-    ],
-  },
-] as const;
+  }));
+  const primaryItems = [
+    { id: "home", icon: House, label: copy.appSidebar.homeLabel },
+    {
+      id: "your-communities",
+      icon: Flag,
+      label: copy.appSidebar.yourCommunitiesLabel,
+    },
+    {
+      id: "create-community",
+      icon: Plus,
+      label: copy.appSidebar.createCommunityLabel,
+    },
+  ] as const;
 
-const resourceItems = [
-  { id: "blog", label: "Blog" },
-  { id: "terms-of-service", label: "Terms of Service" },
-  { id: "privacy-policy", label: "Privacy Policy" },
-] as const;
+  if (mobile) {
+    return (
+      <SidebarProvider defaultOpen={false}>
+        <AppSidebar
+          brandLabel={copy.appSidebar.brandLabel}
+          homeAriaLabel={copy.appSidebar.homeAriaLabel}
+          primaryItems={primaryItems}
+          resourceItems={copy.appSidebar.resourceItems}
+          resourcesLabel={copy.appSidebar.resourcesLabel}
+          sections={sections}
+        />
+        <SidebarInset className="min-h-screen">
+          <AppHeader
+            labels={{
+              createLabel: copy.appHeader.createLabel,
+              homeAriaLabel: copy.appHeader.homeAriaLabel,
+              notificationsAriaLabel: copy.appHeader.notificationsAriaLabel,
+              openNavigationAriaLabel: copy.appHeader.openNavigationAriaLabel,
+              profileAriaLabel: copy.appHeader.profileAriaLabel,
+              searchAriaLabel: copy.appHeader.searchAriaLabel,
+              searchPlaceholder: copy.appHeader.searchPlaceholder,
+            }}
+            useSidebarTrigger
+          />
+          <main className="space-y-3 px-3 pb-28 pt-[calc(env(safe-area-inset-top)+5rem)]">
+            <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5">
+              <div className="space-y-3">
+                <div className="h-5 w-24 rounded-full bg-muted" />
+                <div className="h-32 rounded-[calc(var(--radius-xl)-0.5rem)] bg-muted/70" />
+              </div>
+            </div>
+            <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5">
+              <div className="space-y-3">
+                <div className="h-5 w-36 rounded-full bg-muted" />
+                <div className="h-24 rounded-[calc(var(--radius-xl)-0.5rem)] bg-muted/70" />
+              </div>
+            </div>
+          </main>
+          <MobileFooterNav
+            activeItem="home"
+            labels={{
+              create: copy.mobileFooter.createLabel,
+              home: copy.mobileFooter.homeLabel,
+              inbox: copy.mobileFooter.inboxLabel,
+              primaryNavAriaLabel: copy.mobileFooter.primaryNavAriaLabel,
+              profile: copy.mobileFooter.profileLabel,
+            }}
+          />
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
 
-export const DesktopShell: Story = {
-  render: () => (
+  return (
     <SidebarProvider>
-      <AppSidebar resourceItems={resourceItems} sections={storySections} />
+      <AppSidebar
+        brandLabel={copy.appSidebar.brandLabel}
+        homeAriaLabel={copy.appSidebar.homeAriaLabel}
+        primaryItems={primaryItems}
+        resourceItems={copy.appSidebar.resourceItems}
+        resourcesLabel={copy.appSidebar.resourcesLabel}
+        sections={sections}
+      />
       <SidebarInset className="min-h-screen">
-        <AppHeader searchPlaceholder="Search Pirate" />
+        <AppHeader
+          labels={{
+            createLabel: copy.appHeader.createLabel,
+            homeAriaLabel: copy.appHeader.homeAriaLabel,
+            notificationsAriaLabel: copy.appHeader.notificationsAriaLabel,
+            openNavigationAriaLabel: copy.appHeader.openNavigationAriaLabel,
+            profileAriaLabel: copy.appHeader.profileAriaLabel,
+            searchAriaLabel: copy.appHeader.searchAriaLabel,
+            searchPlaceholder: copy.appHeader.searchPlaceholder,
+          }}
+        />
         <main className="mx-auto w-full max-w-5xl px-6 py-8">
           <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-8">
             <div className="space-y-4">
@@ -71,34 +136,43 @@ export const DesktopShell: Story = {
         </main>
       </SidebarInset>
     </SidebarProvider>
-  ),
+  );
+}
+
+export const DesktopShell: Story = {
+  render: () => <ShellChrome />,
+};
+
+export const DesktopShellArabic: Story = {
+  globals: {
+    direction: "auto",
+    locale: "ar",
+  },
+  render: () => <ShellChrome />,
+};
+
+export const DesktopShellPseudo: Story = {
+  globals: {
+    direction: "auto",
+    locale: "pseudo",
+  },
+  render: () => <ShellChrome />,
 };
 
 export const MobileShell: Story = {
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
-  render: () => (
-    <SidebarProvider defaultOpen={false}>
-      <AppSidebar resourceItems={resourceItems} sections={storySections} />
-      <SidebarInset className="min-h-screen">
-        <AppHeader searchPlaceholder="Search Pirate" useSidebarTrigger />
-        <main className="space-y-3 px-3 pb-28 pt-[calc(env(safe-area-inset-top)+5rem)]">
-          <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5">
-            <div className="space-y-3">
-              <div className="h-5 w-24 rounded-full bg-muted" />
-              <div className="h-32 rounded-[calc(var(--radius-xl)-0.5rem)] bg-muted/70" />
-            </div>
-          </div>
-          <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5">
-            <div className="space-y-3">
-              <div className="h-5 w-36 rounded-full bg-muted" />
-              <div className="h-24 rounded-[calc(var(--radius-xl)-0.5rem)] bg-muted/70" />
-            </div>
-          </div>
-        </main>
-        <MobileFooterNav activeItem="home" />
-      </SidebarInset>
-    </SidebarProvider>
-  ),
+  render: () => <ShellChrome mobile />,
+};
+
+export const MobileShellArabic: Story = {
+  globals: {
+    direction: "auto",
+    locale: "ar",
+  },
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => <ShellChrome mobile />,
 };

@@ -1,4 +1,6 @@
-export type CommunityMembershipMode = "open" | "gated";
+import type { CommunityMembershipMode } from "@/lib/community-membership";
+
+export type { CommunityMembershipMode };
 export type CommunityDefaultAgeGatePolicy = "none" | "18_plus";
 
 export type NamespaceFamily = "hns" | "spaces";
@@ -36,12 +38,6 @@ export interface HandlePolicyState {
   policyTemplate: HandlePolicyTemplate;
   pricingModel: HandlePricingModel;
   membershipRequiredForClaim: boolean;
-}
-
-export interface GateRuleDraft {
-  scope: "membership";
-  gateFamily: GateFamily;
-  gateType: GateType;
 }
 
 export interface NamespaceImportState {

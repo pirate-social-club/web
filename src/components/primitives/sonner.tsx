@@ -11,7 +11,7 @@ function useDocumentTheme(): ToasterTheme {
   React.useEffect(() => {
     const root = document.documentElement;
     const readTheme = () => {
-      setTheme(root.classList.contains("dark") ? "dark" : "light");
+      setTheme(root.classList.contains("light") ? "light" : "dark");
     };
 
     readTheme();
@@ -54,7 +54,7 @@ export function Toaster() {
             "!border-emerald-500/20 !bg-surface-toast-success !text-foreground",
           toast:
             "!rounded-[var(--radius-xl)] !border !shadow-[var(--shadow-lg)] !backdrop-blur-md",
-          title: "!text-sm !font-semibold !text-foreground",
+          title: "!text-base !font-semibold !text-foreground",
           warning:
             "!border-amber-500/20 !bg-surface-toast-warning !text-foreground",
         },

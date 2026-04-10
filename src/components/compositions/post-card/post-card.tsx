@@ -5,7 +5,17 @@ import { PostCardHeader } from "./post-card-header";
 import { PostCardMedia } from "./post-card-media";
 import { PostCardEngagementBar } from "./post-card-engagement-bar";
 import { postCardType } from "./post-card.styles";
-import type { PostCardProps, SongContentSpec, VideoContentSpec } from "./post-card.types";
+import type { PostCardProps } from "./post-card.types";
+
+function isInteractiveTarget(target: EventTarget | null, currentTarget: HTMLElement): boolean {
+  if (!(target instanceof Element)) return false;
+
+  const interactiveElement = target.closest(
+    'a, button, input, textarea, select, summary, [role="button"], [role="link"], [data-post-card-interactive="true"]',
+  );
+
+  return interactiveElement != null && currentTarget.contains(interactiveElement);
+}
 
 function deriveUnlockFromContent(
   content: PostCardProps["content"],
@@ -41,7 +51,9 @@ function deriveUnlockFromContent(
 
 export function PostCard({
   viewContext = "home",
+  identityPresentation,
   byline,
+  qualifierLabels,
   title,
   titleHref,
   postHref,
@@ -50,18 +62,18 @@ export function PostCard({
   menuItems,
   onVote,
   onComment,
-  onSave,
   onShare,
   onMenuAction,
   className,
 }: PostCardProps) {
-  const wrapBodyWithPostLink = Boolean(postHref) && content.type !== "link";
+  const effectiveTitleHref = titleHref ?? (content.type !== "link" ? postHref : undefined);
 
   const titleElement = title ? (
-    titleHref ? (
+    effectiveTitleHref ? (
       <a
         className={cn(postCardType.title, "font-semibold text-foreground hover:underline")}
-        href={titleHref}
+        href={effectiveTitleHref}
+        data-post-card-interactive="true"
       >
         {title}
       </a>
@@ -74,36 +86,45 @@ export function PostCard({
 
   const unlockFromContent = deriveUnlockFromContent(content);
   const unlock = engagement.unlock ?? unlockFromContent;
+  const isClickable = Boolean(postHref);
+
+  const navigateToPost = React.useCallback(() => {
+    if (!postHref || typeof window === "undefined") return;
+    window.location.assign(postHref);
+  }, [postHref]);
 
   return (
     <article
       className={cn(
-        "flex w-full flex-col gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-muted/30",
+        "flex w-full flex-col gap-2.5 border-b border-border px-4 py-2.5 transition-colors",
+        isClickable && "cursor-pointer hover:bg-muted/20 focus-visible:bg-muted/20",
         className,
       )}
+      onClick={(event) => {
+        if (!isClickable || isInteractiveTarget(event.target, event.currentTarget)) return;
+        navigateToPost();
+      }}
+      onKeyDown={(event) => {
+        if (!isClickable || isInteractiveTarget(event.target, event.currentTarget)) return;
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        navigateToPost();
+      }}
+      role={isClickable ? "link" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
     >
       <PostCardHeader
         byline={byline}
+        identityPresentation={identityPresentation}
         menuItems={menuItems}
-        onMenuAction={(key) => {
-          if (key === "save") onSave?.();
-          else onMenuAction?.(key);
-        }}
+        onMenuAction={onMenuAction}
+        qualifierLabels={qualifierLabels}
         saved={engagement.saved}
         viewContext={viewContext}
       />
 
-      {wrapBodyWithPostLink ? (
-        <a className="flex flex-col gap-3" href={postHref}>
-          {titleElement}
-          <PostCardMedia content={content} />
-        </a>
-      ) : (
-        <>
-          {titleElement}
-          <PostCardMedia content={content} />
-        </>
-      )}
+      {titleElement}
+      <PostCardMedia content={content} />
 
       <PostCardEngagementBar
         engagement={engagement}

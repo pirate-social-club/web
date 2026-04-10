@@ -3,7 +3,7 @@ import { Check } from "@phosphor-icons/react";
 import { Lock as FilledLockIcon, Play as PlayIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
-import { MediaControlButton } from "@/components/primitives/media-control-button";
+import { mediaControlButtonVariants } from "@/components/primitives/media-control-button";
 import { VideoPlayer } from "@/components/compositions/video-player";
 import { postCardType } from "./post-card.styles";
 import type { UpstreamAttribution, VideoContentSpec } from "./post-card.types";
@@ -118,7 +118,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
     <div className={cn("flex flex-col gap-2", className)}>
       <button
         className={cn(
-          "group relative block w-full overflow-hidden rounded-lg bg-muted",
+          "relative block w-full overflow-hidden rounded-lg bg-muted",
           ui.canPlay && "cursor-pointer",
         )}
         type="button"
@@ -131,7 +131,6 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
             alt={content.title ?? "Video thumbnail"}
             className={cn(
               "aspect-video w-full object-cover transition-[filter,transform]",
-              ui.canPlay && "group-hover:scale-[1.02]",
               ui.showLockedThumbnail && "scale-[1.02] blur-[3px]",
               ui.showAgeGatedThumbnail && "blur-md saturate-0",
             )}
@@ -155,9 +154,12 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
 
         {ui.canPlay && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <MediaControlButton aria-label="Play" size="md">
+            <span
+              aria-hidden="true"
+              className={mediaControlButtonVariants({ size: "md" })}
+            >
               <PlayIcon className="size-[18px]" weight="fill" />
-            </MediaControlButton>
+            </span>
           </div>
         )}
 

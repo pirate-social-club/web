@@ -219,6 +219,66 @@ export const CommunityFeedPost: Story = {
   ),
 };
 
+export const AuthorPrimary: Story = {
+  name: "Presentation: Author Primary",
+  render: () => (
+    <PostCard
+      {...basePost}
+      identityPresentation="author_primary"
+      title="Mixed feed author-first row"
+    />
+  ),
+};
+
+export const AuthorWithCommunity: Story = {
+  name: "Presentation: Author With Community",
+  render: () => (
+    <PostCard
+      {...basePost}
+      identityPresentation="author_with_community"
+      title="Mixed feed row with supporting community context"
+    />
+  ),
+};
+
+export const AnonymousWithQualifiers: Story = {
+  name: "Presentation: Anonymous With Qualifiers",
+  render: () => (
+    <PostCard
+      {...basePost}
+      identityPresentation="anonymous_primary"
+      byline={{
+        community: { kind: "community", label: "c/producers-only", href: "#" },
+        author: { kind: "user", label: "Anonymous Producer 14", href: "#" },
+        timestampLabel: "48m",
+      }}
+      qualifierLabels={["Verified adult", "Translated"]}
+      title="Need feedback on this locked preview"
+      content={{
+        type: "song",
+        title: "Night Window",
+        artworkSrc: "https://picsum.photos/seed/pirate-anon-song/120/120",
+        durationLabel: "2:41",
+        accessMode: "locked",
+        listingMode: "listed",
+        listingStatus: "active",
+        priceLabel: "$2.99",
+      }}
+    />
+  ),
+};
+
+export const ClickableCard: Story = {
+  name: "Interaction: Clickable Card",
+  render: () => (
+    <PostCard
+      {...basePost}
+      postHref="/p/pst_01_weekly_listening"
+      title="Clicking the card should open the post"
+    />
+  ),
+};
+
 // ============================================================================
 // LOADING STATES
 // ============================================================================

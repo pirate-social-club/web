@@ -46,6 +46,7 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
             className,
           )}
           href={content.href}
+          data-post-card-interactive="true"
         >
           <div className="min-w-0 flex-1">
             <p className={cn(postCardType.label, "line-clamp-2 font-semibold text-foreground")}>

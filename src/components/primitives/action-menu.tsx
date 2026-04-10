@@ -5,6 +5,7 @@ import { DotsThree } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { IconButton } from "./icon-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,20 +56,18 @@ export function ActionMenu({
     return (
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetTrigger asChild>
-          <button
+          <IconButton
             aria-label={label}
-            className={cn(
-              "inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground",
-              triggerClassName,
-            )}
-            type="button"
+            size="sm"
+            variant="ghost"
+            className={triggerClassName}
           >
             <DotsThree className="size-5" />
-          </button>
+          </IconButton>
         </SheetTrigger>
         <SheetContent side="bottom" className="rounded-t-[var(--radius-xl)] px-0 pb-6 pt-4">
           <SheetHeader className="px-4 text-left">
-            <SheetTitle className="text-[16px] leading-[1.3]">Actions</SheetTitle>
+            <SheetTitle className="text-base leading-[1.3]">Actions</SheetTitle>
           </SheetHeader>
           <div className="mt-4">
             {items.map((item) => (
@@ -76,7 +75,7 @@ export function ActionMenu({
                 {item.separatorBefore ? <div className="my-2 h-px bg-border" /> : null}
                 <button
                   className={cn(
-                    "grid w-full grid-cols-[1.25rem_1fr] items-center gap-3 px-4 py-3 text-left text-[15px] leading-[1.35] text-foreground",
+                    "grid w-full grid-cols-[1.25rem_1fr] items-center gap-3 px-4 py-3 text-left text-base leading-[1.35] text-foreground",
                     !item.icon && "grid-cols-[1fr]",
                     item.destructive && "text-destructive",
                     item.disabled && "pointer-events-none opacity-50",
@@ -106,16 +105,14 @@ export function ActionMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
+        <IconButton
           aria-label={label}
-          className={cn(
-            "inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground",
-            triggerClassName,
-          )}
-          type="button"
+          size="sm"
+          variant="ghost"
+          className={triggerClassName}
         >
-            <DotsThree className="size-5" />
-          </button>
+          <DotsThree className="size-5" />
+        </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align={align}
@@ -126,7 +123,7 @@ export function ActionMenu({
             {item.separatorBefore ? <DropdownMenuSeparator /> : null}
             <DropdownMenuItem
               className={cn(
-                "w-full rounded-none py-2.5 pl-3 pr-3 text-sm text-popover-foreground hover:text-foreground focus:bg-muted focus:text-foreground",
+                "w-full rounded-none py-2.5 pl-3 pr-3 text-base text-popover-foreground hover:text-foreground focus:bg-muted focus:text-foreground",
                 item.icon ? "grid grid-cols-[1.25rem_1fr] items-center gap-2" : "block",
                 item.destructive && "text-destructive focus:text-destructive",
               )}

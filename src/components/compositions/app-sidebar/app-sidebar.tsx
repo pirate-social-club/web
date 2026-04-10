@@ -22,6 +22,11 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@/components/primitives/sidebar";
+import {
+  resolveDirectionalSide,
+  useUiLocale,
+  type UiPlacement,
+} from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 
 type SidebarIcon = React.ComponentType<React.ComponentProps<typeof House>>;
@@ -142,13 +147,15 @@ function SidebarSectionBlock({
 function SidebarResources({
   activeItemId,
   items,
+  label = "Resources",
 }: {
   activeItemId?: string;
   items: readonly AppSidebarSectionItem[];
+  label?: string;
 }) {
   return (
     <SidebarGroup className="gap-0 px-4 py-0 group-data-[collapsible=icon]:hidden">
-      <div className={sectionLabelClassName}>Resources</div>
+      <div className={sectionLabelClassName}>{label}</div>
       <SidebarGroupContent>
         <SidebarMenu className="gap-1">
           {items.map((item) => (
@@ -169,48 +176,58 @@ function SidebarResources({
   );
 }
 
-export interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+export interface AppSidebarProps
+  extends Omit<React.ComponentProps<typeof Sidebar>, "side"> {
   activeItemId?: string;
+  brandLabel?: string;
   className?: string;
+  homeAriaLabel?: string;
   onHomeClick?: () => void;
   primaryItems?: readonly AppSidebarPrimaryItem[];
   resourceItems?: readonly AppSidebarSectionItem[];
+  resourcesLabel?: string;
   sections?: readonly AppSidebarSection[];
+  side?: UiPlacement;
 }
 
 export function AppSidebar({
   activeItemId = "home",
+  brandLabel = "Pirate",
   className,
+  homeAriaLabel = "Go to home",
   onHomeClick,
   primaryItems = DEFAULT_PRIMARY_ITEMS,
   resourceItems = DEFAULT_RESOURCE_ITEMS,
+  resourcesLabel = "Resources",
   sections = DEFAULT_SECTIONS,
-  side = "left",
+  side = "start",
   ...props
 }: AppSidebarProps) {
+  const { dir } = useUiLocale();
   const resolvedPrimaryItems = primaryItems.map((item) =>
     item.id === "home" && onHomeClick && item.onSelect === undefined
       ? { ...item, onSelect: onHomeClick }
       : item,
   );
+  const resolvedSide = resolveDirectionalSide(side, dir);
 
   return (
     <Sidebar
       className={cn("w-[18rem] pt-0", className)}
       collapsible="icon"
-      side={side}
+      side={resolvedSide}
       {...props}
     >
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <button
-          aria-label="Go to home"
-          className="flex w-full items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          aria-label={homeAriaLabel}
+          className="flex w-full items-center gap-3 rounded-lg text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           onClick={onHomeClick}
           type="button"
         >
           <PirateBrandMark className="h-10 w-10 shrink-0" decorative={false} />
           <span className="truncate text-lg font-semibold group-data-[collapsible=icon]:hidden">
-            Pirate
+            {brandLabel}
           </span>
         </button>
       </SidebarHeader>
@@ -245,7 +262,11 @@ export function AppSidebar({
 
         <SidebarSeparator className="mx-4 group-data-[collapsible=icon]:hidden" />
 
-        <SidebarResources activeItemId={activeItemId} items={resourceItems} />
+        <SidebarResources
+          activeItemId={activeItemId}
+          items={resourceItems}
+          label={resourcesLabel}
+        />
       </SidebarContent>
 
       <SidebarRail />

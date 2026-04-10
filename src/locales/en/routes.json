@@ -1,0 +1,61 @@
+{
+  "common": {
+    "backHome": "Back Home",
+    "bestTab": "Best",
+    "commentsHeading": "Comments",
+    "createAction": "Create",
+    "joinedStatLabel": "Joined",
+    "newTab": "New",
+    "topAll": "All time",
+    "topDay": "Today",
+    "topHour": "This hour",
+    "topMonth": "This month",
+    "topTab": "Top",
+    "topWeek": "This week",
+    "topYear": "This year"
+  },
+  "home": {
+    "membersLabel": "{count} members",
+    "railTitle": "Recent posts",
+    "subtitle": "",
+    "title": "Home"
+  },
+  "yourCommunities": {
+    "gatedLabel": "Gated",
+    "openLabel": "Open",
+    "railTitle": "Your Spaces",
+    "subtitle": "A member-scoped feed shell. Keep it tight on mobile and let the sidebar carry the heavier navigation.",
+    "title": "Your Communities"
+  },
+  "post": {
+    "commentsBody": "Thread replies are not scaffolded yet. This route exists to pin the URL contract and page chrome for `post_id` reads.",
+    "description": "Single-thread route shell for the future `GET /posts/{post_id}` read.",
+    "fallbackTitle": "Post"
+  },
+  "onboarding": {
+    "chooseNameAction": "Choose Name",
+    "description": "Single onboarding route with client-managed phases. No nested onboarding URLs are locked yet.",
+    "importKarmaAction": "Import Karma",
+    "suggestedCommunitiesAction": "Suggested Communities",
+    "title": "Finish setting up your Pirate identity"
+  },
+  "auth": {
+    "body": "Keep `/auth` as the landing placeholder for now. Do not treat callback paths or provider contracts as stable until the web auth flow is specified.",
+    "description": "The app route exists, but provider-specific browser auth wiring is intentionally not locked yet.",
+    "title": "Auth placeholder"
+  },
+  "inbox": {
+    "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",
+    "description": "This route is scaffolded so the mobile nav can point somewhere truthful while inbox behavior is still undefined.",
+    "title": "Inbox placeholder"
+  },
+  "createCommunity": {
+    "description": "Scaffolded shell around the existing community composer composition. Submission is not wired yet.",
+    "title": "Create a community"
+  },
+  "notFound": {
+    "body": "The first scaffold only locks a small set of routes: home, feeds, communities, posts, profiles, onboarding, auth placeholder, inbox placeholder, and community create.",
+    "description": "No scaffolded page exists for {path}.",
+    "title": "Route not found"
+  }
+}

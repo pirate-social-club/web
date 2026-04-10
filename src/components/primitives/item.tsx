@@ -95,7 +95,7 @@ export function ItemDescription({
   return (
     <p
       className={cn(
-        "m-0 overflow-hidden text-sm font-normal leading-[1.35] text-muted-foreground [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]",
+        "m-0 overflow-hidden text-base font-normal leading-[1.35] text-muted-foreground [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]",
         className,
       )}
       {...props}

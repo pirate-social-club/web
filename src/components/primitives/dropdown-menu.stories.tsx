@@ -11,7 +11,7 @@ import {
 } from "./dropdown-menu";
 import { Button } from "./button";
 import { cn } from "@/lib/utils";
-import { Pill } from "./pill";
+import { Chip } from "./chip";
 
 const meta = {
   title: "Primitives/DropdownMenu",
@@ -88,9 +88,9 @@ function MultiSelectDemo() {
         {selected.map((id) => {
           const q = qualifiers.find((x) => x.id === id)!;
           return (
-            <Pill key={id} onClick={() => toggle(id)}>
+            <Chip key={id} onClick={() => toggle(id)}>
               {q.label}
-            </Pill>
+            </Chip>
           );
         })}
       </div>

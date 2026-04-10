@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
-import { Pill } from "./pill";
+import { Chip } from "./chip";
 import { cn } from "@/lib/utils";
 
 const meta = {
-  title: "Primitives/Pill",
-  component: Pill,
-} satisfies Meta<typeof Pill>;
+  title: "Primitives/Chip",
+  component: Chip,
+} satisfies Meta<typeof Chip>;
 
 export default meta;
 
@@ -16,10 +16,10 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   render: () => (
     <div className="flex flex-wrap gap-2">
-      <Pill>Default</Pill>
-      <Pill variant="selected">Selected</Pill>
-      <Pill variant="outline">Outline</Pill>
-      <Pill variant="active">Active</Pill>
+      <Chip>Default</Chip>
+      <Chip variant="selected">Selected</Chip>
+      <Chip variant="outline">Outline</Chip>
+      <Chip variant="active">Active</Chip>
     </div>
   ),
 };
@@ -27,10 +27,10 @@ export const Default: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="flex flex-wrap items-center gap-2">
-      <Pill size="sm">Small</Pill>
-      <Pill size="md">Medium</Pill>
-      <Pill variant="selected" size="sm">Small selected</Pill>
-      <Pill variant="selected" size="md">Medium selected</Pill>
+      <Chip size="sm">Small</Chip>
+      <Chip size="md">Medium</Chip>
+      <Chip variant="selected" size="sm">Small selected</Chip>
+      <Chip variant="selected" size="md">Medium selected</Chip>
     </div>
   ),
 };
@@ -47,13 +47,13 @@ function SelectableGroupDemo() {
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((opt) => (
-        <Pill
+        <Chip
           key={opt.value}
           variant={value === opt.value ? "selected" : "default"}
           onClick={() => setValue(opt.value)}
         >
           {opt.label}
-        </Pill>
+        </Chip>
       ))}
     </div>
   );
@@ -72,9 +72,9 @@ function RemovableDemo() {
   return (
     <div className="flex flex-wrap gap-2">
       {items.map((item) => (
-        <Pill key={item} onClick={() => remove(item)}>
+        <Chip key={item} onClick={() => remove(item)}>
           {item}
-        </Pill>
+        </Chip>
       ))}
     </div>
   );

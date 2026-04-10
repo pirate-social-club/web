@@ -24,15 +24,16 @@ export function VotePill({ score, viewerVote, onVote, className }: VotePillProps
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-0 rounded-full border border-border/50 bg-secondary/80 px-0.5 py-0.5 transition-colors",
-        viewerVote === "up" && "border-primary/20 bg-primary/5",
-        viewerVote === "down" && "border-destructive/20 bg-destructive/5",
+        "inline-flex h-9 items-center gap-0 rounded-xl border border-border-soft bg-background px-0.5 transition-colors",
+        viewerVote === "up" && "border-primary/18 bg-primary/6",
+        viewerVote === "down" && "border-destructive/18 bg-destructive/6",
         className,
       )}
+      data-post-card-interactive="true"
     >
       <button
         className={cn(
-          "inline-flex size-7 items-center justify-center rounded-full transition-colors",
+          "inline-flex size-8 items-center justify-center rounded-[10px] transition-colors",
           viewerVote === "up"
             ? "text-primary hover:bg-primary/10"
             : "text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground",
@@ -46,7 +47,7 @@ export function VotePill({ score, viewerVote, onVote, className }: VotePillProps
 
       <span
         className={cn(
-          "min-w-[1.5rem] text-center text-[14px] font-semibold tabular-nums",
+          "min-w-[1.75rem] text-center text-base font-semibold tabular-nums",
           viewerVote === "up" && "text-primary",
           viewerVote === "down" && "text-destructive",
           !viewerVote && "text-muted-foreground",
@@ -57,7 +58,7 @@ export function VotePill({ score, viewerVote, onVote, className }: VotePillProps
 
       <button
         className={cn(
-          "inline-flex size-7 items-center justify-center rounded-full transition-colors",
+          "inline-flex size-8 items-center justify-center rounded-[10px] transition-colors",
           viewerVote === "down"
             ? "text-destructive hover:bg-destructive/10"
             : "text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground",

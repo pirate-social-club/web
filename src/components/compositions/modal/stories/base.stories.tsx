@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
-import { Badge } from "@/components/primitives/badge";
 import {
   Modal,
   ModalContent,
@@ -45,9 +44,9 @@ function ModalShell({
     && (mobileSide === undefined || mobileSide === "bottom");
 
   return (
-    <div className="flex min-h-[720px] items-center justify-center bg-[radial-gradient(circle_at_top,_hsl(var(--muted))_0%,_transparent_58%),linear-gradient(180deg,_hsl(var(--background))_0%,_hsl(var(--muted)/0.45)_100%)] p-6">
+    <div className="flex min-h-[720px] items-center justify-center bg-background p-6">
       {!open ? <Button onClick={() => setOpen(true)}>Reopen modal</Button> : null}
-      <Modal forceMobile={forceMobile} open={open} onOpenChange={setOpen}>
+      <Modal forceMobile={forceMobile} onOpenChange={setOpen} open={open}>
         <ModalContent
           className={
             isBottomSheet
@@ -63,7 +62,7 @@ function ModalShell({
             <ModalTitle className="text-balance text-[1.6rem] leading-tight tracking-tight sm:text-[1.85rem]">
               {title}
             </ModalTitle>
-            <ModalDescription className="max-w-[34ch] text-[15px] leading-6 sm:text-base sm:leading-7">
+            <ModalDescription className="max-w-[34ch] text-base leading-7">
               {description}
             </ModalDescription>
           </ModalHeader>
@@ -86,36 +85,36 @@ export const DesktopDialog: Story = {
   },
   render: () => (
     <ModalShell
-      forceMobile={false}
-      title="Unlock this content"
       description="Add a small amount to your wallet to unlock the full track and keep it in your library."
+      forceMobile={false}
       footer={(
         <>
           <Button size="lg" variant="outline">Maybe later</Button>
           <Button size="lg">Add funds</Button>
         </>
       )}
+      title="Unlock this content"
     />
   ),
 };
 
 export const MobileSheetBottom: Story = {
-  name: "Mobile (Sheet — bottom)",
+  name: "Mobile (Sheet - bottom)",
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
   render: () => (
     <ModalShell
-      forceMobile
-      mobileSide="bottom"
-      title="Unlock this content"
       description="Add a small amount to your wallet to unlock the full track and keep it in your library."
+      forceMobile
       footer={(
         <>
           <Button className="w-full" size="lg" variant="outline">Maybe later</Button>
           <Button className="w-full" size="lg">Add funds</Button>
         </>
       )}
+      mobileSide="bottom"
+      title="Unlock this content"
     />
   ),
 };
@@ -127,15 +126,15 @@ export const MobileSheetRight: Story = {
   },
   render: () => (
     <ModalShell
-      forceMobile={false}
-      title="Unlock this content"
       description="Add funds to continue."
+      forceMobile={false}
       footer={(
         <>
           <Button size="lg" variant="outline">Cancel</Button>
           <Button size="lg">Add funds</Button>
         </>
       )}
+      title="Unlock this content"
     />
   ),
 };
@@ -147,32 +146,29 @@ export const PurchaseFlow: Story = {
   },
   render: () => (
     <ModalShell
-      forceMobile={false}
-      title="Add funds to unlock"
-      description="Add funds to continue."
       body={(
         <div className="mt-6 grid gap-4">
           <div className="rounded-[1.25rem] border border-border bg-muted/35 p-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                <p className="text-base font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   Needed now
                 </p>
                 <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">$0.50</p>
               </div>
-              <Badge variant="secondary" className="font-medium">Instant unlock</Badge>
+              <span className="text-base font-medium text-muted-foreground">Instant unlock</span>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="text-base font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 Track price
               </p>
               <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.50</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="text-base font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 Wallet balance
               </p>
               <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.00</p>
@@ -180,12 +176,15 @@ export const PurchaseFlow: Story = {
           </div>
         </div>
       )}
+      description="Add funds to continue."
+      forceMobile={false}
       footer={(
         <>
           <Button size="lg" variant="outline">View wallet</Button>
           <Button size="lg">Add test funds</Button>
         </>
       )}
+      title="Add funds to unlock"
     />
   ),
 };
@@ -197,13 +196,10 @@ export const PurchaseFlowMobile: Story = {
   },
   render: () => (
     <ModalShell
-      forceMobile
-      title="Add funds to unlock"
-      description="Add funds to continue."
       body={(
         <div className="mt-6 grid gap-3.5">
           <div className="rounded-[1.25rem] border border-border bg-muted/35 p-4">
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            <p className="text-base font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Needed now
             </p>
             <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">$0.50</p>
@@ -211,13 +207,13 @@ export const PurchaseFlowMobile: Story = {
 
           <div className="grid gap-3">
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="text-base font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 Track price
               </p>
               <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.50</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="text-base font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 Wallet balance
               </p>
               <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.00</p>
@@ -225,12 +221,15 @@ export const PurchaseFlowMobile: Story = {
           </div>
         </div>
       )}
+      description="Add funds to continue."
+      forceMobile
       footer={(
         <>
           <Button className="w-full" size="lg" variant="outline">View wallet</Button>
           <Button className="w-full" size="lg">Add test funds</Button>
         </>
       )}
+      title="Add funds to unlock"
     />
   ),
 };

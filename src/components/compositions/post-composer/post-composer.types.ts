@@ -58,6 +58,7 @@ export interface LiveComposerState {
   guestUserId?: string;
   coverUpload?: File | null;
   coverLabel?: string;
+  trackOptions?: ComposerReference[];
   setlistItems: LiveSetlistItemInput[];
   setlistStatus: "draft" | "active";
   performerAllocations: LivePerformerAllocation[];
@@ -69,6 +70,7 @@ export interface DerivativeStepState {
   trigger: DerivativeTrigger;
   query?: string;
   references?: ComposerReference[];
+  searchResults?: ComposerReference[];
   requirementLabel?: string;
 }
 
@@ -81,12 +83,6 @@ export interface LinkPreviewState {
   domain: string;
   description?: string;
   imageSrc?: string;
-}
-
-export interface DonationPartnerOption {
-  id: string;
-  name: string;
-  logoSrc?: string;
 }
 
 export interface SongComposerState {
@@ -109,7 +105,6 @@ export interface MonetizationState {
   donationOptIn?: boolean;
   donationPartnerId?: string;
   donationPartnerName?: string;
-  donationPartnerOptions?: DonationPartnerOption[];
   donationSharePct?: number;
   rightsAttested?: boolean;
 }

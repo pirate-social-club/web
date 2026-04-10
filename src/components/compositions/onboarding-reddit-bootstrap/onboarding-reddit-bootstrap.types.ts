@@ -81,9 +81,7 @@ export interface OnboardingActions {
 
 export interface OnboardingRedditBootstrapProps {
   generatedHandle: string;
-  cleanupRenameAvailable: boolean;
   canSkip: boolean;
-  canContinue: boolean;
   phase: OnboardingPhase;
   reddit: RedditVerificationState;
   importJob: ImportJobState;

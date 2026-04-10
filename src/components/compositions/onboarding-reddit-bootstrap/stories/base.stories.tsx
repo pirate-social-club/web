@@ -6,9 +6,7 @@ import type { OnboardingRedditBootstrapProps } from "../onboarding-reddit-bootst
 
 const base: OnboardingRedditBootstrapProps = {
   generatedHandle: "suspicious-code-7234.pirate",
-  cleanupRenameAvailable: true,
   canSkip: true,
-  canContinue: false,
   phase: "import_karma",
   reddit: {
     usernameValue: "",

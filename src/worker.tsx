@@ -42,6 +42,8 @@ export default defineApp<AppRequestInfo>([
   render(Document, [
     route("/", AppRoutePage),
     route("/your-communities", AppRoutePage),
+    route("/verify", AppRoutePage),
+    route("/submit", AppRoutePage),
     route("/communities/new", AppRoutePage),
     route("/c/:communityId", AppRoutePage),
     route("/p/:postId", AppRoutePage),
@@ -50,5 +52,6 @@ export default defineApp<AppRequestInfo>([
     route("/u/:userId", AppRoutePage),
     route("/onboarding", AppRoutePage),
     route("/auth", AppRoutePage),
+    route("/auth/device", AppRoutePage),
   ]),
 ]);

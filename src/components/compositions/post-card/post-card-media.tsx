@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ArrowSquareOut } from "@phosphor-icons/react";
 
+import { MarkdownContent } from "@/components/primitives/markdown-content";
 import { cn } from "@/lib/utils";
 import { postCardType } from "./post-card.styles";
 import { SongPostContent } from "./post-card-song-content";
@@ -16,9 +17,10 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
   switch (content.type) {
     case "text":
       return (
-        <p className={cn(postCardType.body, "text-foreground", className)}>
-          {content.body}
-        </p>
+        <MarkdownContent
+          className={cn(postCardType.body, className)}
+          markdown={content.body}
+        />
       );
     case "image":
       return (
@@ -40,24 +42,42 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
       return <VideoPostContent content={content} className={className} />;
     case "link":
       return (
-        <a
+        <div
           className={cn(
             "flex w-full items-stretch gap-3 transition-colors hover:opacity-90",
             className,
           )}
-          href={content.href}
-          data-post-card-interactive="true"
         >
           <div className="min-w-0 flex-1">
-            <p className={cn(postCardType.label, "line-clamp-2 font-semibold text-foreground")}>
-              {content.linkTitle}
-            </p>
-            <div className={cn("mt-1.5 flex items-center gap-1.5 text-muted-foreground", postCardType.meta)}>
+            <a
+              className="block"
+              href={content.href}
+              data-post-card-interactive="true"
+            >
+              <p className={cn(postCardType.label, "line-clamp-2 font-semibold text-foreground")}>
+                {content.linkTitle}
+              </p>
+            </a>
+            {content.body ? (
+              <MarkdownContent
+                className={cn("mt-2 text-muted-foreground", postCardType.body)}
+                markdown={content.body}
+              />
+            ) : null}
+            <a
+              className={cn("mt-1.5 flex items-center gap-1.5 text-muted-foreground", postCardType.meta)}
+              href={content.href}
+              data-post-card-interactive="true"
+            >
               <span className="truncate">{content.linkLabel ?? content.href}</span>
               <ArrowSquareOut className="size-4 shrink-0" />
-            </div>
+            </a>
           </div>
-          <div className="size-20 shrink-0 overflow-hidden rounded-lg bg-muted sm:size-24">
+          <a
+            className="size-20 shrink-0 overflow-hidden rounded-lg bg-muted sm:size-24"
+            href={content.href}
+            data-post-card-interactive="true"
+          >
             {content.previewImageSrc ? (
               <img
                 alt={content.linkTitle}
@@ -65,8 +85,8 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
                 src={content.previewImageSrc}
               />
             ) : null}
-          </div>
-        </a>
+          </a>
+        </div>
       );
     case "song":
       return <SongPostContent content={content} className={className} />;

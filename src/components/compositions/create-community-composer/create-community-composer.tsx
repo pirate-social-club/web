@@ -21,11 +21,18 @@ import { Chip } from "@/components/primitives/chip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/primitives/tabs";
 import { Stepper } from "@/components/primitives/stepper";
 import { Textarea } from "@/components/primitives/textarea";
+import { toast } from "@/components/primitives/sonner";
+import {
+  mapNamespaceCompletionToUiState,
+  mapNamespaceInspectionToUiState,
+  readSpacesChallengeState,
+} from "@/lib/create-community-flow";
 import { cn } from "@/lib/utils";
 
 import type {
   AnonymousIdentityScope,
   ComposerStep,
+  CreateCommunityCallbacks,
   CreatorVerificationState,
   CreateCommunityComposerProps,
   GateFamily,
@@ -37,6 +44,8 @@ import type {
   HandlePricingModel,
   NamespaceFamily,
   NamespaceImportState,
+  NamespaceChallengeKind,
+  NamespaceVerificationCallbacks,
 } from "./create-community-composer.types";
 
 const membershipMeta: Record<CommunityMembershipMode, { label: string; detail: string }> = {
@@ -69,9 +78,8 @@ const namespaceFamilyMeta: Record<
   spaces: {
     label: "Spaces",
     externalExample: "kanye",
-    detail: "Subspaces are stabilizing before launch.",
+    detail: "Operator preview. Pirate can verify an existing root if the operator can produce a raw signature for the Pirate challenge digest.",
     icon: <At className="size-5" />,
-    disabledHint: "Coming soon. Pirate is launching namespace-backed communities on HNS first.",
   },
 };
 
@@ -85,11 +93,13 @@ const handlePolicyTemplateMeta: Record<HandlePolicyTemplate, { label: string; de
     label: "Premium",
     detail: "Short and high-signal names explicitly monetized. Reserved names individually priced or auctioned.",
     pricingModel: "flat_by_length",
+    disabledHint: "Premium handle policy is not available in v0.",
   },
   membership_gated: {
     label: "Membership-gated",
     detail: "Gate or NFT check comes first. Names then free or cheap once eligible.",
     pricingModel: "gated_then_flat",
+    disabledHint: "Membership-gated handle policy is not available in v0.",
   },
   custom: {
     label: "Custom",
@@ -99,7 +109,7 @@ const handlePolicyTemplateMeta: Record<HandlePolicyTemplate, { label: string; de
   },
 };
 
-const anonymousScopeMeta: Record<AnonymousIdentityScope, { label: string; detail: string }> = {
+const anonymousScopeMeta: Record<AnonymousIdentityScope, { label: string; detail: string; disabledHint?: string }> = {
   community_stable: {
     label: "Community-stable",
     detail: "One persistent anonymous label per user across the entire community. Best for moderation continuity.",
@@ -111,6 +121,7 @@ const anonymousScopeMeta: Record<AnonymousIdentityScope, { label: string; detail
   post_ephemeral: {
     label: "Post-ephemeral",
     detail: "Random label per post. No cross-post correlation. Limits moderation and strike capability.",
+    disabledHint: "Post-ephemeral scope is not available in v0.",
   },
 };
 
@@ -272,8 +283,21 @@ function HnsNamespaceStatus({
   const verified = importStatus === "verified";
   const pending = importStatus === "pending";
   const challengeReady = importStatus === "txt_challenge_ready";
+  const dnsSetupRequired = importStatus === "dns_setup_required";
   const expired = namespace.expiryDaysRemaining != null && namespace.expiryDaysRemaining < 90;
   const showProof = challengeReady || pending || verified;
+
+  if (dnsSetupRequired) {
+    return (
+      <div className="space-y-2 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4">
+        <p className="text-base font-medium text-foreground">Authoritative DNS required</p>
+        <FormNote tone="default">
+          The root exists but does not yet have authoritative DNS configured. Set up authoritative
+          DNS for this name, then inspect again.
+        </FormNote>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4">
@@ -308,21 +332,99 @@ function HnsNamespaceStatus({
   );
 }
 
-function SpacesComingSoonState() {
+function formatFailureReason(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  return value.replace(/_/g, " ");
+}
+
+function SpacesNamespaceStatus({
+  challengeDigest,
+  namespace,
+  onSignatureChange,
+  onSignerPubkeyChange,
+  onVerify,
+  signatureValue,
+  signerPubkeyValue,
+}: {
+  challengeDigest?: string;
+  namespace: NamespaceImportState;
+  onSignatureChange: (value: string) => void;
+  onSignerPubkeyChange: (value: string) => void;
+  onVerify: () => void;
+  signatureValue: string;
+  signerPubkeyValue: string;
+}) {
+  const { importStatus } = namespace;
+  if (!importStatus || importStatus === "not_imported" || importStatus === "checking") return null;
+
+  const verified = importStatus === "verified";
+  const pending = importStatus === "pending";
+  const challengeReady = importStatus === "inspected";
+  const showChallenge = challengeReady || pending;
+
   return (
     <div className="space-y-2 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4">
-      <p className="text-base font-medium text-foreground">Spaces are coming soon.</p>
-      <FormNote>
-        Pirate is launching community creation on HNS first while Spaces subspace issuance and
-        resolution settle a bit further.
-      </FormNote>
+      {verified ? <p className="text-base font-medium text-foreground">Verified.</p> : null}
+      {showChallenge ? (
+        <div className="space-y-4">
+          <FormNote tone="warning">
+            Operator preview. Current Spaces tooling does not expose a standard raw digest signing
+            command. Use this only if you already have a signer for the root key.
+          </FormNote>
+          {namespace.signatureChallenge ? (
+            <div className="space-y-2">
+              <FormNote tone="default">Sign this Pirate challenge with the current root key.</FormNote>
+              <CopyField value={namespace.signatureChallenge} />
+            </div>
+          ) : null}
+          {challengeDigest ? (
+            <div className="space-y-2">
+              <FormNote tone="default">Digest</FormNote>
+              <CopyField value={challengeDigest} />
+            </div>
+          ) : null}
+          <div className="space-y-2">
+            <FieldLabel label="Root signature" />
+            <Textarea
+              className="min-h-24 font-mono"
+              onChange={(event) => onSignatureChange(event.target.value)}
+              placeholder="Paste the raw Schnorr signature"
+              value={signatureValue}
+            />
+          </div>
+          <div className="space-y-2">
+            <FieldLabel label="Signer pubkey" />
+            <Input
+              className="h-12 font-mono"
+              onChange={(event) => onSignerPubkeyChange(event.target.value)}
+              placeholder="Optional"
+              value={signerPubkeyValue}
+            />
+          </div>
+          <Button
+            className="h-12 px-5"
+            disabled={!signatureValue.trim()}
+            loading={pending}
+            onClick={onVerify}
+            variant="secondary"
+          >
+            Verify
+          </Button>
+        </div>
+      ) : null}
+      {namespace.ownerLabel ? (
+        <FormNote tone="default">{namespace.ownerLabel}</FormNote>
+      ) : null}
     </div>
   );
 }
 
 export function CreateCommunityComposer({
-  displayName = "American Voices",
-  description = "National discourse, local moderation, verified context when it matters.",
+  displayName = "",
+  description = "",
   membershipMode = "open",
   defaultAgeGatePolicy = "none",
   allowAnonymousIdentity = true,
@@ -330,10 +432,12 @@ export function CreateCommunityComposer({
   namespace,
   handlePolicy,
   creatorVerificationState = {
-    uniqueHumanVerified: true,
-    ageOver18Verified: true,
+    uniqueHumanVerified: false,
+    ageOver18Verified: false,
   },
   initialStep,
+  namespaceVerification,
+  onCreate,
 }: CreateCommunityComposerProps) {
   const initialNamespace = namespace ?? {
     family: "hns",
@@ -362,14 +466,27 @@ export function CreateCommunityComposer({
   const [txtChallenge, setTxtChallenge] = React.useState<string | undefined>(
     initialNamespace.txtChallenge,
   );
+  const [challengeKind, setChallengeKind] = React.useState<NamespaceChallengeKind | undefined>(
+    initialNamespace.challengeKind,
+  );
   const [signatureChallenge, setSignatureChallenge] = React.useState<string | undefined>(
     initialNamespace.signatureChallenge,
   );
+  const [challengeDigest, setChallengeDigest] = React.useState<string | undefined>(
+    initialNamespace.challengeDigest,
+  );
+  const [challengeAlgorithm, setChallengeAlgorithm] = React.useState<string | undefined>(undefined);
   const [activeDisplayName, setActiveDisplayName] = React.useState(displayName ?? "");
   const [activeDescription, setActiveDescription] = React.useState(description ?? "");
   const [activeHandlePolicy, setActiveHandlePolicy] =
     React.useState<HandlePolicyState | null>(getInitialHandlePolicy(handlePolicy) ?? resolveHandlePolicy("standard"));
   const [activeGateTypes, setActiveGateTypes] = React.useState<Set<GateType>>(new Set());
+  const [namespaceVerificationSessionId, setNamespaceVerificationSessionId] = React.useState<string | null>(null);
+  const [namespaceVerificationId, setNamespaceVerificationId] = React.useState<string | null>(null);
+  const [spacesSignatureInput, setSpacesSignatureInput] = React.useState("");
+  const [spacesSignerPubkeyInput, setSpacesSignerPubkeyInput] = React.useState("");
+  const [namespaceFailureReason, setNamespaceFailureReason] = React.useState<string | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
   const namespaceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const creatorUniqueHumanVerified = creatorVerificationState.uniqueHumanVerified;
@@ -390,14 +507,22 @@ export function CreateCommunityComposer({
     setNamespaceImportStatus(initialNamespace.importStatus ?? "not_imported");
     setExpiryDaysRemaining(initialNamespace.expiryDaysRemaining);
     setTxtChallenge(initialNamespace.txtChallenge);
+    setChallengeKind(initialNamespace.challengeKind);
     setSignatureChallenge(initialNamespace.signatureChallenge);
+    setChallengeDigest(initialNamespace.challengeDigest);
+    setChallengeAlgorithm(undefined);
+    setSpacesSignatureInput("");
+    setSpacesSignerPubkeyInput("");
+    setNamespaceFailureReason(null);
   }, [
     initialNamespace.family,
     initialNamespace.externalRoot,
     initialNamespace.importStatus,
     initialNamespace.expiryDaysRemaining,
+    initialNamespace.challengeKind,
     initialNamespace.txtChallenge,
     initialNamespace.signatureChallenge,
+    initialNamespace.challengeDigest,
   ]);
   React.useEffect(() => {
     setActiveHandlePolicy(getInitialHandlePolicy(handlePolicy) ?? resolveHandlePolicy("standard"));
@@ -411,6 +536,31 @@ export function CreateCommunityComposer({
   }, []);
 
   React.useEffect(() => clearNamespaceTimer, [clearNamespaceTimer]);
+
+  const applySpacesChallengeState = React.useCallback((
+    nextChallengeKind: NamespaceChallengeKind | null | undefined,
+    challengePayload: Record<string, unknown> | null | undefined,
+  ) => {
+    const next = readSpacesChallengeState(nextChallengeKind, challengePayload);
+    setChallengeKind(nextChallengeKind ?? undefined);
+    setSignatureChallenge(next.challengeMessage);
+    setChallengeDigest(next.challengeDigest);
+    setChallengeAlgorithm(next.challengeAlgorithm);
+  }, []);
+
+  const resetNamespaceProofState = React.useCallback(() => {
+    setExpiryDaysRemaining(undefined);
+    setTxtChallenge(undefined);
+    setChallengeKind(undefined);
+    setSignatureChallenge(undefined);
+    setChallengeDigest(undefined);
+    setChallengeAlgorithm(undefined);
+    setNamespaceVerificationSessionId(null);
+    setNamespaceVerificationId(null);
+    setNamespaceFailureReason(null);
+    setSpacesSignatureInput("");
+    setSpacesSignerPubkeyInput("");
+  }, []);
 
   const namespaceMeta = namespaceFamilyMeta[activeNamespaceFamily];
   const rootLabel = rootInput.trim().replace(/^[@.]/, "");
@@ -430,38 +580,176 @@ export function CreateCommunityComposer({
       : `name@${rootLabel}`
     : "";
 
-  const handleHnsInspect = React.useCallback(() => {
+  const handleInspect = React.useCallback(() => {
+    const normalizedRootLabel = rootInput.trim().replace(/^[@.]/, "");
+    console.info("[create-community] inspect click", {
+      family: activeNamespaceFamily,
+      rootInput,
+      normalizedRootLabel,
+      namespaceImportStatus,
+      hasNamespaceVerification: namespaceVerification != null,
+    });
+
     clearNamespaceTimer();
     setNamespaceImportStatus("checking");
-    setExpiryDaysRemaining(undefined);
-    setTxtChallenge(undefined);
-    setSignatureChallenge(undefined);
-    namespaceTimerRef.current = setTimeout(() => {
-      setExpiryDaysRemaining(247);
-      setNamespaceImportStatus("txt_challenge_ready");
-      setTxtChallenge("pirate-verify=a3f7c9e2");
-      namespaceTimerRef.current = null;
-    }, 800);
-  }, [clearNamespaceTimer]);
+    resetNamespaceProofState();
+
+    if (!namespaceVerification) {
+      console.info("[create-community] inspect using mock flow", {
+        family: activeNamespaceFamily,
+        normalizedRootLabel,
+      });
+      namespaceTimerRef.current = setTimeout(() => {
+        if (activeNamespaceFamily === "spaces") {
+          setNamespaceImportStatus("inspected");
+          setChallengeKind("schnorr_sign");
+          setSignatureChallenge(`pirate-spaces-verification:${normalizedRootLabel}:stub-session:nonce`);
+          setChallengeDigest("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+          setChallengeAlgorithm("bip340_schnorr");
+        } else {
+          setExpiryDaysRemaining(247);
+          setNamespaceImportStatus("txt_challenge_ready");
+          setTxtChallenge("pirate-verify=a3f7c9e2");
+        }
+        namespaceTimerRef.current = null;
+      }, 800);
+      return;
+    }
+
+    void namespaceVerification
+      .onInspect({
+        family: activeNamespaceFamily,
+        rootLabel: normalizedRootLabel,
+      })
+      .then((result) => {
+        console.info("[create-community] inspect response", {
+          family: activeNamespaceFamily,
+          normalizedRootLabel,
+          result,
+        });
+        const next = mapNamespaceInspectionToUiState({
+          status: result.status,
+          challenge_kind: result.challengeKind,
+          challenge_payload: result.challengePayload,
+          challenge_txt_value: result.challengeTxtValue,
+          namespace_verification_id: null,
+          expires_at: result.expiresAt,
+          failure_reason: result.failureReason,
+        });
+        applySpacesChallengeState(result.challengeKind, result.challengePayload);
+        setNamespaceVerificationSessionId(result.namespaceVerificationSessionId);
+        setTxtChallenge(next.txtChallenge);
+        setExpiryDaysRemaining(next.expiryDaysRemaining);
+        setNamespaceVerificationId(next.namespaceVerificationId);
+        setNamespaceImportStatus(next.importStatus);
+        setNamespaceFailureReason(next.failureReason);
+      })
+      .catch((error: unknown) => {
+        console.error("[create-community] inspect failed", {
+          family: activeNamespaceFamily,
+          normalizedRootLabel,
+          error,
+        });
+        setNamespaceImportStatus("not_imported");
+        setNamespaceFailureReason(null);
+        toast.error(error instanceof Error ? error.message : "Could not inspect namespace");
+      });
+  }, [
+    activeNamespaceFamily,
+    applySpacesChallengeState,
+    clearNamespaceTimer,
+    namespaceImportStatus,
+    namespaceVerification,
+    resetNamespaceProofState,
+    rootInput,
+  ]);
 
   const handleVerify = React.useCallback(() => {
+    if (activeNamespaceFamily === "spaces" && !spacesSignatureInput.trim()) {
+      toast.error("Paste the root signature before verifying.");
+      return;
+    }
+
+    console.info("[create-community] verify click", {
+      family: activeNamespaceFamily,
+      namespaceVerificationSessionId,
+      hasNamespaceVerification: namespaceVerification != null,
+    });
+
     clearNamespaceTimer();
     setNamespaceImportStatus("pending");
-    namespaceTimerRef.current = setTimeout(() => {
-      setNamespaceImportStatus("verified");
-      namespaceTimerRef.current = null;
-    }, 1500);
-  }, [clearNamespaceTimer]);
+    setNamespaceFailureReason(null);
+
+    if (!namespaceVerification || !namespaceVerificationSessionId) {
+      console.info("[create-community] verify using mock flow", {
+        family: activeNamespaceFamily,
+        namespaceVerificationSessionId,
+      });
+      namespaceTimerRef.current = setTimeout(() => {
+        setNamespaceImportStatus("verified");
+        namespaceTimerRef.current = null;
+      }, 1500);
+      return;
+    }
+
+    void namespaceVerification
+      .onCompleteVerification({
+        family: activeNamespaceFamily,
+        namespaceVerificationSessionId,
+        signaturePayload: activeNamespaceFamily === "spaces"
+          ? {
+              signature: spacesSignatureInput.trim(),
+              algorithm: challengeAlgorithm ?? "bip340_schnorr",
+              signerPubkey: spacesSignerPubkeyInput.trim() || null,
+              digest: challengeDigest ?? null,
+            }
+          : undefined,
+      })
+      .then((result) => {
+        console.info("[create-community] verify response", {
+          family: activeNamespaceFamily,
+          namespaceVerificationSessionId,
+          result,
+        });
+        const next = mapNamespaceCompletionToUiState({
+          status: result.status,
+          challenge_kind: result.challengeKind,
+          namespace_verification_id: result.namespaceVerificationId,
+          failure_reason: result.failureReason,
+        });
+        applySpacesChallengeState(result.challengeKind, result.challengePayload);
+        setNamespaceVerificationId(next.namespaceVerificationId);
+        setNamespaceImportStatus(next.importStatus);
+        setNamespaceFailureReason(next.failureReason);
+      })
+      .catch((error: unknown) => {
+        console.error("[create-community] verify failed", {
+          family: activeNamespaceFamily,
+          namespaceVerificationSessionId,
+          error,
+        });
+        setNamespaceImportStatus(activeNamespaceFamily === "spaces" ? "inspected" : "txt_challenge_ready");
+        toast.error(error instanceof Error ? error.message : "Could not verify namespace");
+      });
+  }, [
+    activeNamespaceFamily,
+    applySpacesChallengeState,
+    challengeAlgorithm,
+    challengeDigest,
+    clearNamespaceTimer,
+    namespaceVerification,
+    namespaceVerificationSessionId,
+    spacesSignatureInput,
+    spacesSignerPubkeyInput,
+  ]);
 
   const handleFamilyChange = React.useCallback((family: NamespaceFamily) => {
     clearNamespaceTimer();
     setActiveNamespaceFamily(family);
     setNamespaceImportStatus("not_imported");
     setRootInput("");
-    setExpiryDaysRemaining(undefined);
-    setTxtChallenge(undefined);
-    setSignatureChallenge(undefined);
-  }, [clearNamespaceTimer]);
+    resetNamespaceProofState();
+  }, [clearNamespaceTimer, resetNamespaceProofState]);
 
   const handleStepClick = React.useCallback((step: number) => {
     if (step >= 1 && step <= 5) setActiveStep(step as ComposerStep);
@@ -487,18 +775,52 @@ export function CreateCommunityComposer({
     });
   }, []);
 
-  const expirySafe = expiryDaysRemaining == null || expiryDaysRemaining >= 90;
+  const expirySafe = activeNamespaceFamily === "spaces" || expiryDaysRemaining == null || expiryDaysRemaining >= 90;
   const hasRootInput = rootInput.trim().length > 0;
+
+  const handleCreate = React.useCallback(() => {
+    if (!onCreate || !namespaceVerificationId) return;
+
+    setSubmitting(true);
+    void onCreate({
+      displayName: activeDisplayName.trim(),
+      description: activeDescription.trim() || null,
+      membershipMode: activeMembershipMode,
+      defaultAgeGatePolicy: activeDefaultAgeGatePolicy,
+      allowAnonymousIdentity: activeAllowAnonymousIdentity,
+      anonymousIdentityScope: activeAnonymousScope,
+      namespaceVerificationId,
+      handlePolicyTemplate: activeHandlePolicy?.policyTemplate ?? "standard",
+      gateTypes: activeGateTypes,
+    })
+      .catch((error: unknown) => {
+        toast.error(error instanceof Error ? error.message : "Could not create community");
+      })
+      .finally(() => {
+        setSubmitting(false);
+      });
+  }, [
+    onCreate,
+    namespaceVerificationId,
+    activeDisplayName,
+    activeDescription,
+    activeMembershipMode,
+    activeDefaultAgeGatePolicy,
+    activeAllowAnonymousIdentity,
+    activeAnonymousScope,
+    activeHandlePolicy,
+    activeGateTypes,
+  ]);
 
   const canCreateCommunity = React.useMemo(
     () =>
       creatorCanCreate &&
-      activeNamespaceFamily === "hns" &&
       namespaceImportStatus === "verified" &&
       expirySafe &&
       activeHandlePolicy != null &&
       activeDisplayName.trim().length > 0 &&
-      (activeMembershipMode !== "gated" || activeGateTypes.size > 0),
+      (activeMembershipMode !== "gated" || activeGateTypes.size > 0) &&
+      (!onCreate || namespaceVerificationId != null),
     [
       creatorCanCreate,
       activeNamespaceFamily,
@@ -508,13 +830,14 @@ export function CreateCommunityComposer({
       activeDisplayName,
       activeMembershipMode,
       activeGateTypes,
+      onCreate,
+      namespaceVerificationId,
     ],
   );
 
   const canProceed = React.useMemo(() => {
     switch (activeStep) {
       case 1:
-        if (activeNamespaceFamily !== "hns") return false;
         return namespaceImportStatus === "verified" && expirySafe;
       case 2:
         return activeDisplayName.trim().length > 0;
@@ -549,7 +872,9 @@ export function CreateCommunityComposer({
     importStatus: namespaceImportStatus,
     expiryDaysRemaining,
     txtChallenge,
+    challengeKind,
     signatureChallenge,
+    challengeDigest,
   };
 
   const resolvedHandlePolicyLabel =
@@ -594,18 +919,16 @@ export function CreateCommunityComposer({
               <div className="space-y-2">
                 {(Object.keys(namespaceFamilyMeta) as NamespaceFamily[]).map((family) => {
                   const option = namespaceFamilyMeta[family];
-                  const disabled = family === "spaces";
 
                   return (
                     <OptionCard
                       key={family}
                       description={option.detail}
-                      disabled={disabled}
                       disabledHint={option.disabledHint}
                       icon={option.icon}
                       selected={family === activeNamespaceFamily}
                       title={option.label}
-                      onClick={() => !disabled && handleFamilyChange(family)}
+                      onClick={() => handleFamilyChange(family)}
                     />
                   );
                 })}
@@ -621,11 +944,9 @@ export function CreateCommunityComposer({
                           const value = e.target.value;
                           clearNamespaceTimer();
                           setRootInput(value);
-                          setTxtChallenge(undefined);
-                          setSignatureChallenge(undefined);
+                          resetNamespaceProofState();
                           if (namespaceImportStatus !== "not_imported") {
                             setNamespaceImportStatus("not_imported");
-                            setExpiryDaysRemaining(undefined);
                           }
                         }}
                         placeholder={namespaceMeta.externalExample}
@@ -637,7 +958,7 @@ export function CreateCommunityComposer({
                       className="h-12 px-5"
                       disabled={!hasRootInput || namespaceImportStatus !== "not_imported"}
                       loading={namespaceImportStatus === "checking"}
-                      onClick={handleHnsInspect}
+                      onClick={handleInspect}
                       variant="secondary"
                     >
                       Get record
@@ -645,19 +966,51 @@ export function CreateCommunityComposer({
                   </div>
 
                   <HnsNamespaceStatus namespace={namespaceState} onVerify={handleVerify} />
+                  {namespaceFailureReason ? (
+                    <FormNote tone="warning">{formatFailureReason(namespaceFailureReason)}</FormNote>
+                  ) : null}
                 </>
               ) : (
                 <>
-                  <div>
-                    <FieldLabel label="Space" />
-                    <PrefixInput
-                      onChange={(e) => setRootInput(e.target.value)}
-                      placeholder={namespaceMeta.externalExample}
-                      prefix="@"
-                      value={rootInput}
-                    />
+                  <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                    <div>
+                      <FieldLabel label="Space" />
+                      <PrefixInput
+                        onChange={(e) => {
+                          clearNamespaceTimer();
+                          setRootInput(e.target.value);
+                          resetNamespaceProofState();
+                          if (namespaceImportStatus !== "not_imported") {
+                            setNamespaceImportStatus("not_imported");
+                          }
+                        }}
+                        placeholder={namespaceMeta.externalExample}
+                        prefix="@"
+                        value={rootInput}
+                      />
+                    </div>
+                    <Button
+                      className="h-12 px-5"
+                      disabled={!hasRootInput || namespaceImportStatus !== "not_imported"}
+                      loading={namespaceImportStatus === "checking"}
+                      onClick={handleInspect}
+                      variant="secondary"
+                    >
+                      Get challenge
+                    </Button>
                   </div>
-                  <SpacesComingSoonState />
+                  <SpacesNamespaceStatus
+                    challengeDigest={challengeDigest}
+                    namespace={namespaceState}
+                    onSignatureChange={setSpacesSignatureInput}
+                    onSignerPubkeyChange={setSpacesSignerPubkeyInput}
+                    onVerify={handleVerify}
+                    signatureValue={spacesSignatureInput}
+                    signerPubkeyValue={spacesSignerPubkeyInput}
+                  />
+                  {namespaceFailureReason ? (
+                    <FormNote tone="warning">{formatFailureReason(namespaceFailureReason)}</FormNote>
+                  ) : null}
                 </>
               )}
             </>
@@ -694,7 +1047,7 @@ export function CreateCommunityComposer({
               <div className="space-y-2">
                 {(Object.keys(handlePolicyTemplateMeta) as HandlePolicyTemplate[]).map((template) => {
                   const option = handlePolicyTemplateMeta[template];
-                  const disabled = template === "custom";
+                  const disabled = template !== "standard";
 
                   return (
                     <OptionCard
@@ -785,26 +1138,21 @@ export function CreateCommunityComposer({
                       <div className="space-y-2">
                         {(Object.keys(anonymousScopeMeta) as AnonymousIdentityScope[]).map((scope) => {
                           const option = anonymousScopeMeta[scope];
+                          const disabled = scope === "post_ephemeral";
 
                           return (
                             <OptionCard
                               key={scope}
                               description={option.detail}
+                              disabled={disabled}
+                              disabledHint={option.disabledHint}
                               selected={scope === activeAnonymousScope}
                               title={option.label}
-                              onClick={() => setActiveAnonymousScope(scope)}
+                              onClick={() => !disabled && setActiveAnonymousScope(scope)}
                             />
                           );
                         })}
                       </div>
-                      {activeAnonymousScope === "post_ephemeral" ? (
-                        <div className="rounded-[var(--radius-lg)] border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-                          <FormNote tone="default">
-                            Post-ephemeral scope prevents cross-post tracking and strike carryover.
-                            Content safety classification and at least one active moderator are required.
-                          </FormNote>
-                        </div>
-                      ) : null}
                     </div>
                   ) : null}
 
@@ -912,7 +1260,7 @@ export function CreateCommunityComposer({
                 Next
               </Button>
             ) : (
-              <Button disabled={!canCreateCommunity}>Create Community</Button>
+              <Button disabled={!canCreateCommunity} loading={submitting} onClick={handleCreate}>Create Community</Button>
             )}
           </div>
         </CardFooter>

@@ -86,6 +86,8 @@ export interface LinkPreviewState {
 }
 
 export interface SongComposerState {
+  primaryAudioUpload?: File | null;
+  primaryAudioLabel?: string;
   genre?: string;
   primaryLanguage?: string;
   secondaryLanguage?: string;
@@ -121,9 +123,31 @@ export interface ComposerIdentityState {
   helpText?: string;
 }
 
+export interface PostComposerSubmitPayload {
+  mode: ComposerTab;
+  title: string;
+  body: string;
+  caption: string;
+  lyrics: string;
+  linkUrl: string;
+  songMode: SongMode;
+  song: SongComposerState;
+  derivativeStep?: DerivativeStepState;
+  monetization: MonetizationState;
+  identityMode: IdentityMode;
+  selectedQualifierIds: string[];
+  live: LiveComposerState;
+}
+
 export interface PostComposerProps {
   clubName: string;
   clubAvatarSrc?: string;
+  mobileChrome?: {
+    destinationLabel: string;
+    onClose?: () => void;
+    onDestinationClick?: () => void;
+    postLabel?: string;
+  };
   mode: ComposerTab;
   availableTabs?: ComposerTab[];
   canCreateSongPost?: boolean;
@@ -141,4 +165,5 @@ export interface PostComposerProps {
   monetization?: MonetizationState;
   identity?: ComposerIdentityState;
   live?: LiveComposerState;
+  onSubmit?: (payload: PostComposerSubmitPayload) => void;
 }

@@ -70,7 +70,7 @@ export const PublicOnly: Story = {
 };
 
 export const SpacesInspected: Story = {
-  name: "Coming Soon / Spaces Root",
+  name: "Flow / Spaces Challenge",
   render: () => (
     <CreateCommunityComposer
       {...baseComposer}
@@ -79,14 +79,16 @@ export const SpacesInspected: Story = {
         externalRoot: "@american",
         importStatus: "inspected",
         ownerLabel: "anchor proof found",
-        signatureChallenge: "pirate-verify-space @american 7f3c21",
+        challengeKind: "schnorr_sign",
+        signatureChallenge: "pirate-spaces-verification:american:nsv_stub:7f3c21",
+        challengeDigest: "stub-spaces-digest-american",
       }}
     />
   ),
 };
 
 export const SpacesVerificationPending: Story = {
-  name: "Coming Soon / Spaces Handles",
+  name: "Flow / Spaces Pending",
   render: () => (
     <CreateCommunityComposer
       {...baseComposer}
@@ -95,7 +97,9 @@ export const SpacesVerificationPending: Story = {
         externalRoot: "@american",
         importStatus: "pending",
         ownerLabel: "live signature pending",
-        signatureChallenge: "pirate-verify-space @american 7f3c21",
+        challengeKind: "schnorr_sign",
+        signatureChallenge: "pirate-spaces-verification:american:nsv_stub:7f3c21",
+        challengeDigest: "stub-spaces-digest-american",
       }}
     />
   ),

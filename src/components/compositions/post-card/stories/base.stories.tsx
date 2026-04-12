@@ -13,7 +13,7 @@ const basePost: PostCardProps = {
     timestampLabel: "9d",
   },
   title: "What's everyone listening to this week?",
-  content: { type: "text", body: "Drop your top tracks below. Looking for new stuff across all genres." },
+  content: { type: "text", body: "Drop your top tracks below.\n\n- One new release\n- One old favorite\n- One wild card" },
   engagement: { score: 342, commentCount: 47 },
   menuItems: [
     { key: "save", label: "Save post" },
@@ -95,6 +95,7 @@ export const LinkPost: Story = {
         href: "https://pirate.sc/blog/feed-ranking",
         linkTitle: "How We Think About Ranking Music Communities",
         linkLabel: "pirate.sc/blog/feed-ranking",
+        body: "Worth reading for the section on **cold start ranking** and the tradeoff between recency and trust.",
         previewImageSrc: "https://picsum.photos/seed/pirate-link/240/240",
       }}
       engagement={{ ...basePost.engagement, score: 731, commentCount: 52 }}

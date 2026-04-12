@@ -1,6 +1,7 @@
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/primitives/tabs";
+import { ContentWithRail } from "@/components/primitives/content-with-rail";
 import { cn } from "@/lib/utils";
 import type { ProfilePageProps } from "./profile-page.types";
 import { CommentsPanel, OverviewPanel, PostsPanel, ScrobblesPanel } from "./profile-activity-panels";
@@ -18,8 +19,8 @@ export function ProfilePage({
   scrobbles = [],
 }: ProfilePageProps) {
   return (
-    <div className={cn("min-h-screen bg-background text-foreground", className)}>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pb-10 pt-6 md:px-6 xl:px-8">
+    <div className={cn("min-h-0 w-full bg-background text-foreground", className)}>
+      <div className="flex w-full min-w-0 flex-col gap-6 pb-10 pt-2">
         <ProfileHero profile={profile} />
 
         <Tabs className="flex flex-col gap-6" defaultValue={defaultTab}>
@@ -30,28 +31,28 @@ export function ProfilePage({
             <TabsTrigger className="min-w-fit" value="scrobbles">Scrobbles</TabsTrigger>
           </TabsList>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
-            <div className="min-w-0">
-              <TabsContent className="mt-0" value="overview">
-                <OverviewPanel items={overviewItems} />
-              </TabsContent>
-              <TabsContent className="mt-0" value="posts">
-                <PostsPanel posts={posts} />
-              </TabsContent>
-              <TabsContent className="mt-0" value="comments">
-                <CommentsPanel comments={comments} />
-              </TabsContent>
-              <TabsContent className="mt-0" value="scrobbles">
-                <ScrobblesPanel scrobbles={scrobbles} />
-              </TabsContent>
-            </div>
-
-            <ProfileRightRail
-              className="xl:sticky xl:top-6 xl:self-start"
-              profile={profile}
-              rightRail={rightRail}
-            />
-          </div>
+          <ContentWithRail
+            rail={
+              <ProfileRightRail
+                profile={profile}
+                rightRail={rightRail}
+              />
+            }
+            railSticky
+          >
+            <TabsContent className="mt-0" value="overview">
+              <OverviewPanel items={overviewItems} />
+            </TabsContent>
+            <TabsContent className="mt-0" value="posts">
+              <PostsPanel posts={posts} />
+            </TabsContent>
+            <TabsContent className="mt-0" value="comments">
+              <CommentsPanel comments={comments} />
+            </TabsContent>
+            <TabsContent className="mt-0" value="scrobbles">
+              <ScrobblesPanel scrobbles={scrobbles} />
+            </TabsContent>
+          </ContentWithRail>
         </Tabs>
       </div>
     </div>

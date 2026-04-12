@@ -3,7 +3,6 @@
 import * as React from "react";
 import {
   ArrowRight,
-  ArrowsClockwise,
   Spinner,
 } from "@phosphor-icons/react";
 
@@ -12,29 +11,14 @@ import { Card, CardContent } from "@/components/primitives/card";
 import { CopyField } from "@/components/primitives/copy-field";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
-import { Stepper } from "@/components/primitives/stepper";
+import { describeHandleAvailability } from "@/lib/onboarding-flow";
 
 import type {
   ImportJobState,
-  OnboardingPhase,
-  OnboardingRedditBootstrapProps,
-  RedditVerificationState,
-  SuggestedCommunity,
+  OnboardingRedditOptionalProps,
+  OnboardingChoosePirateUsernameProps,
+  OnboardingCommunitySuggestionsProps,
 } from "./onboarding-reddit-bootstrap.types";
-
-const STEPS = [
-  { label: "Import karma" },
-  { label: "Choose name" },
-  { label: "Suggested communities" },
-];
-
-function phaseToStep(phase: OnboardingPhase): number {
-  switch (phase) {
-    case "import_karma": return 1;
-    case "choose_name": return 2;
-    case "suggested_communities": return 3;
-  }
-}
 
 function Footer({
   nextLabel,
@@ -72,26 +56,18 @@ function Footer({
   );
 }
 
-function ImportKarmaPhase({
+export function OnboardingRedditOptional({
+  canSkip,
   reddit,
   importJob,
-  canSkip,
-  nextLabel,
-  skipLabel,
+  actions,
+  nextLoading,
   onNext,
   onSkip,
-}: {
-  reddit: RedditVerificationState;
-  importJob: ImportJobState;
-  canSkip: boolean;
-  nextLabel?: string;
-  skipLabel?: string;
-  onNext: () => void;
-  onSkip: () => void;
-}) {
+  onUsernameChange,
+}: OnboardingRedditOptionalProps) {
   const isVerified = reddit.verificationState === "verified";
   const isChecking = reddit.verificationState === "checking";
-  const isFailed = reddit.verificationState === "failed" || reddit.verificationState === "rate_limited";
   const isCodeReady = reddit.verificationState === "code_ready" && reddit.verificationHint;
   const isImporting = importJob.status === "running" || importJob.status === "queued";
   const isImportDone = importJob.status === "succeeded" || importJob.status === "partial_success";
@@ -99,7 +75,8 @@ function ImportKarmaPhase({
   const canNext =
     (reddit.verificationState === "not_started" && reddit.usernameValue.trim().length > 0)
     || isCodeReady
-    || isImportDone;
+    || isImportDone
+    || (isVerified && !isImporting);
 
   return (
     <div className="space-y-6">
@@ -111,7 +88,7 @@ function ImportKarmaPhase({
             <Input
               className="pl-8"
               disabled={!!isCodeReady || isChecking}
-              onChange={() => {}}
+              onChange={(event) => onUsernameChange?.(event.target.value)}
               placeholder="technohippie"
               size="lg"
               value={reddit.usernameValue}
@@ -127,7 +104,7 @@ function ImportKarmaPhase({
         </div>
       ) : null}
 
-      {isFailed && reddit.errorTitle ? (
+      {reddit.errorTitle ? (
         <FormNote>{reddit.errorTitle}</FormNote>
       ) : null}
 
@@ -142,89 +119,84 @@ function ImportKarmaPhase({
       )}
 
       <Footer
-        nextDisabled={!canNext}
-        nextLabel={nextLabel}
-        nextLoading={isChecking}
-        onNext={onNext}
-        onSkip={canSkip ? onSkip : undefined}
-        skipLabel={skipLabel}
+        nextDisabled={!canNext || nextLoading || isImporting}
+        nextLabel={actions.primaryLabel}
+        nextLoading={nextLoading ?? (isChecking || isImporting)}
+        onNext={onNext ?? (() => {})}
+        onSkip={canSkip ? (onSkip ?? (() => {})) : undefined}
+        skipLabel={actions.tertiaryLabel}
       />
     </div>
   );
 }
 
-function ChooseNamePhase({
-  handleSuggestion,
-  nextLabel,
-  onGenerateHandle,
+export function OnboardingChoosePirateUsername({
   handleValue,
+  handleSuggestion,
+  actions,
+  nextLoading,
   onHandleChange,
-  onContinue,
-}: {
-  handleSuggestion?: { suggestedLabel: string; availability: string };
-  nextLabel?: string;
-  onGenerateHandle: () => void;
-  handleValue: string;
-  onHandleChange: (value: string) => void;
-  onContinue: () => void;
-}) {
-  const displayValue = handleValue.endsWith(".pirate")
-    ? handleValue.slice(0, -7)
-    : handleValue;
+  onNext,
+}: OnboardingChoosePirateUsernameProps) {
+  const initialLabel = handleSuggestion?.suggestedLabel ?? "";
+  const [uncontrolledHandleValue, setUncontrolledHandleValue] = React.useState(initialLabel);
+  const resolvedHandleValue = handleValue ?? uncontrolledHandleValue;
+
+  React.useEffect(() => {
+    if (handleValue == null) {
+      setUncontrolledHandleValue(initialLabel);
+    }
+  }, [handleValue, initialLabel]);
+
+  const displayValue = resolvedHandleValue.endsWith(".pirate")
+    ? resolvedHandleValue.slice(0, -7)
+    : resolvedHandleValue;
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <FormFieldLabel label="Handle" />
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Input
-              className="pr-12 font-mono text-lg"
-              onChange={(e) => onHandleChange(e.target.value)}
-              placeholder="Choose your handle"
-              size="lg"
-              value={displayValue}
-            />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono text-lg text-muted-foreground">.pirate</span>
-          </div>
-          <Button
-            aria-label="Generate a new handle"
-            className="size-16 shrink-0"
-            onClick={onGenerateHandle}
-            size="icon"
-            variant="secondary"
-          >
-            <ArrowsClockwise className="size-5" />
-          </Button>
+        <FormFieldLabel label="Username" />
+        <div className="relative">
+          <Input
+            className="pr-12 font-mono text-lg"
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              onHandleChange?.(nextValue);
+              if (handleValue == null) {
+                setUncontrolledHandleValue(nextValue);
+              }
+            }}
+            placeholder="your-name"
+            size="lg"
+            value={displayValue}
+          />
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono text-lg text-muted-foreground">.pirate</span>
         </div>
       </div>
 
       {handleSuggestion ? (
         <FormNote>
-          {handleSuggestion.availability === "available"
-            ? `${handleSuggestion.suggestedLabel}.pirate is available`
-            : `${handleSuggestion.suggestedLabel}.pirate is taken`}
+          {handleSuggestion.suggestedLabel}.pirate {describeHandleAvailability(handleSuggestion.availability)}
         </FormNote>
       ) : null}
 
-      <Footer nextLabel={nextLabel} onNext={onContinue} />
+      <Footer nextLabel={actions.primaryLabel} nextLoading={nextLoading} onNext={onNext ?? (() => {})} />
     </div>
   );
 }
 
-function SuggestedCommunitiesPhase({
+export function OnboardingCommunitySuggestions({
   communities,
-  nextLabel,
-  skipLabel,
-  onContinue,
+  actions,
+  joinedCommunityIds,
+  joiningCommunityId,
+  nextLoading,
+  onJoinCommunity,
+  onNext,
   onSkip,
-}: {
-  communities: SuggestedCommunity[];
-  nextLabel?: string;
-  skipLabel?: string;
-  onContinue: () => void;
-  onSkip: () => void;
-}) {
+}: OnboardingCommunitySuggestionsProps) {
+  const joinedIds = new Set(joinedCommunityIds ?? []);
+
   return (
     <div className="space-y-6">
       {communities.length > 0 ? (
@@ -234,8 +206,20 @@ function SuggestedCommunitiesPhase({
               key={community.communityId}
               className="flex items-center justify-between rounded-full border border-border-soft bg-card px-4 py-3"
             >
-              <span className="font-medium text-foreground">{community.name}</span>
-              <span className="text-base text-muted-foreground">{community.reason}</span>
+              <div className="min-w-0">
+                <span className="font-medium text-foreground">{community.name}</span>
+                <p className="text-base text-muted-foreground">{community.reason}</p>
+              </div>
+              {onJoinCommunity ? (
+                <Button
+                  disabled={joinedIds.has(community.communityId)}
+                  loading={joiningCommunityId === community.communityId}
+                  onClick={() => onJoinCommunity(community.communityId)}
+                  variant={joinedIds.has(community.communityId) ? "outline" : "secondary"}
+                >
+                  {joinedIds.has(community.communityId) ? "Joined" : "Join"}
+                </Button>
+              ) : null}
             </div>
           ))}
         </div>
@@ -244,65 +228,18 @@ function SuggestedCommunitiesPhase({
       )}
 
       <Footer
-        nextLabel={nextLabel}
-        onNext={onContinue}
-        onSkip={onSkip}
-        skipLabel={skipLabel}
+        nextLabel={actions.primaryLabel}
+        nextLoading={nextLoading}
+        onNext={onNext ?? (() => {})}
+        onSkip={onSkip ?? (() => {})}
+        skipLabel={actions.tertiaryLabel}
       />
     </div>
   );
 }
 
-export function OnboardingRedditBootstrap({
-  generatedHandle,
-  canSkip,
-  phase,
-  reddit,
-  importJob,
-  snapshot,
-  handleSuggestion,
-  actions,
-}: OnboardingRedditBootstrapProps) {
-  const currentStep = phaseToStep(phase);
-
-  return (
-    <div className="mx-auto w-full max-w-2xl space-y-6">
-      <Stepper currentStep={currentStep} steps={STEPS} />
-
-      <Card className="overflow-hidden border-border shadow-none">
-        <CardContent className="p-5">
-          {phase === "import_karma" ? (
-            <ImportKarmaPhase
-              canSkip={canSkip}
-              importJob={importJob}
-              nextLabel={actions.primaryLabel}
-              onNext={() => {}}
-              onSkip={() => {}}
-              reddit={reddit}
-              skipLabel={actions.tertiaryLabel}
-            />
-          ) : null}
-          {phase === "choose_name" ? (
-            <ChooseNamePhase
-              handleSuggestion={handleSuggestion}
-              handleValue={generatedHandle}
-              nextLabel={actions.primaryLabel}
-              onContinue={() => {}}
-              onGenerateHandle={() => {}}
-              onHandleChange={() => {}}
-            />
-          ) : null}
-          {phase === "suggested_communities" ? (
-            <SuggestedCommunitiesPhase
-              communities={snapshot?.suggestedCommunities ?? []}
-              nextLabel={actions.primaryLabel}
-              onContinue={() => {}}
-              onSkip={() => {}}
-              skipLabel={actions.tertiaryLabel}
-            />
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
-  );
+export function OnboardingRedditBootstrap(
+  props: OnboardingRedditOptionalProps,
+) {
+  return <OnboardingRedditOptional {...props} />;
 }

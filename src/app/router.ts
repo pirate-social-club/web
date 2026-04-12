@@ -3,7 +3,17 @@ import * as React from "react";
 export type AppRoute =
   | { kind: "home"; path: "/" }
   | { kind: "your-communities"; path: "/your-communities" }
+  | { kind: "verify"; path: "/verify" }
+  | { kind: "create-post"; path: "/submit" }
   | { kind: "community"; path: string; communityId: string }
+  | { kind: "community-settings"; path: string; communityId: string }
+  | { kind: "community-moderation"; path: string; communityId: string }
+  | {
+      kind: "community-moderation-case";
+      path: string;
+      communityId: string;
+      moderationCaseId: string;
+    }
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
   | { kind: "inbox"; path: "/inbox" }
@@ -11,6 +21,7 @@ export type AppRoute =
   | { kind: "user"; path: string; userId: string }
   | { kind: "onboarding"; path: "/onboarding" }
   | { kind: "auth"; path: "/auth" }
+  | { kind: "auth-device"; path: "/auth/device" }
   | { kind: "not-found"; path: string };
 
 const NAVIGATION_EVENT = "pirate:navigate";
@@ -18,6 +29,7 @@ const HOME_ROUTE: AppRoute = { kind: "home", path: "/" };
 
 let cachedPathname = "/";
 let cachedRoute: AppRoute = HOME_ROUTE;
+let virtualPathname: string | null = null;
 
 function normalizePathname(pathname: string): string {
   if (!pathname || pathname === "/") return "/";
@@ -33,6 +45,14 @@ export function matchRoute(pathname: string): AppRoute {
 
   if (normalized === "/your-communities") {
     return { kind: "your-communities", path: normalized };
+  }
+
+  if (normalized === "/verify") {
+    return { kind: "verify", path: normalized };
+  }
+
+  if (normalized === "/submit") {
+    return { kind: "create-post", path: normalized };
   }
 
   if (normalized === "/communities/new") {
@@ -55,6 +75,10 @@ export function matchRoute(pathname: string): AppRoute {
     return { kind: "auth", path: normalized };
   }
 
+  if (normalized === "/auth/device") {
+    return { kind: "auth-device", path: normalized };
+  }
+
   const segments = normalized.split("/").filter(Boolean);
 
   if (segments.length === 2 && segments[0] === "c") {
@@ -62,6 +86,31 @@ export function matchRoute(pathname: string): AppRoute {
       kind: "community",
       path: normalized,
       communityId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "c" && segments[2] === "settings") {
+    return {
+      kind: "community-settings",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "c" && segments[2] === "moderation") {
+    return {
+      kind: "community-moderation",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 4 && segments[0] === "c" && segments[2] === "moderation") {
+    return {
+      kind: "community-moderation-case",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+      moderationCaseId: decodeURIComponent(segments[3]),
     };
   }
 
@@ -84,8 +133,12 @@ export function matchRoute(pathname: string): AppRoute {
   return { kind: "not-found", path: normalized };
 }
 
+function getEffectivePathname(): string {
+  return virtualPathname ?? normalizePathname(window.location.pathname);
+}
+
 function getCurrentRoute(): AppRoute {
-  const pathname = normalizePathname(window.location.pathname);
+  const pathname = getEffectivePathname();
 
   if (pathname === cachedPathname) {
     return cachedRoute;
@@ -110,12 +163,13 @@ function subscribeToNavigation(onStoreChange: () => void): () => void {
 }
 
 export function navigate(path: string): void {
-  const nextPath = normalizePathname(path);
-  const currentPath = normalizePathname(window.location.pathname);
+  const nextPath = normalizePathname(path.split("?")[0]);
 
-  if (currentPath === nextPath) return;
+  if (virtualPathname != null) {
+    virtualPathname = nextPath;
+  }
+  window.history.pushState({}, "", path);
 
-  window.history.pushState({}, "", nextPath);
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   window.dispatchEvent(new Event(NAVIGATION_EVENT));
 }
@@ -126,11 +180,22 @@ export function useRoute(initialPathname?: string): AppRoute {
     [initialPathname],
   );
 
-  const liveRoute = React.useSyncExternalStore(
+  React.useEffect(() => {
+    if (initialPathname) {
+      virtualPathname = normalizePathname(initialPathname);
+      cachedPathname = virtualPathname;
+      cachedRoute = matchRoute(virtualPathname);
+    }
+    return () => {
+      if (initialPathname) {
+        virtualPathname = null;
+      }
+    };
+  }, [initialPathname]);
+
+  return React.useSyncExternalStore(
     subscribeToNavigation,
     getCurrentRoute,
     () => initialRoute,
   );
-
-  return initialPathname ? initialRoute : liveRoute;
 }

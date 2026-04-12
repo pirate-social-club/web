@@ -5,5 +5,12 @@ build/
 storybook-static/
 .cache/
 coverage/
+.env
+.env.local
+.env.*.local
+.env.local-sqlite
+.env.dev
+.env.staging
+.env.production
 *.log
 debug-storybook.log

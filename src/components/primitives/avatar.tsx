@@ -3,7 +3,6 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
-import { Skeleton } from "./skeleton";
 
 type AvatarSize = "xs" | "sm" | "md" | "lg";
 
@@ -13,6 +12,23 @@ const sizeClasses: Record<AvatarSize, string> = {
   md: "h-12 w-12 text-base",
   lg: "h-14 w-14 text-base",
 };
+
+function getAvatarFallbackLabel(input: string) {
+  const parts = input
+    .trim()
+    .split(/\s+/u)
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return "?";
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+}
 
 export function Avatar({
   className,
@@ -54,7 +70,8 @@ export function Avatar({
       {canRenderImage ? (
         <img
           alt={fallback}
-          className="h-full w-full object-cover"
+          className="pointer-events-none h-full w-full object-cover"
+          draggable={false}
           onError={() => {
             if (normalizedPrimarySrc && currentSrc === normalizedPrimarySrc) {
               if (normalizedFallbackSrc && normalizedFallbackSrc !== currentSrc) {
@@ -69,7 +86,9 @@ export function Avatar({
       ) : fallbackIcon ? (
         fallbackIcon
       ) : (
-        <Skeleton aria-hidden className="h-full w-full rounded-full bg-[var(--color-surface-skeleton)]" />
+        <span aria-hidden className="leading-none">
+          {getAvatarFallbackLabel(fallback)}
+        </span>
       )}
     </div>
   );

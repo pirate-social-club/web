@@ -1,4 +1,4 @@
-export type OnboardingPhase = "import_karma" | "choose_name" | "suggested_communities";
+export type OnboardingPhase = "reddit" | "username" | "communities";
 
 export type VerificationState =
   | "not_started"
@@ -20,7 +20,9 @@ export type ImportJobStatus =
   | "failed"
   | "source_unavailable";
 
-export type HandleAvailability = "available" | "taken" | "manual_review";
+export type HandleAvailability = "available" | "taken" | "manual_review" | "reserved" | "invalid";
+
+export type HandleSuggestionSource = "verified_reddit_username" | "generated";
 
 export interface RedditVerificationState {
   usernameValue: string;
@@ -68,7 +70,7 @@ export interface SnapshotState {
 
 export interface HandleSuggestion {
   suggestedLabel: string;
-  source: "verified_reddit_username";
+  source: HandleSuggestionSource;
   availability: HandleAvailability;
   reason?: string;
 }
@@ -79,13 +81,39 @@ export interface OnboardingActions {
   tertiaryLabel?: string;
 }
 
-export interface OnboardingRedditBootstrapProps {
-  generatedHandle: string;
+export interface OnboardingRedditOptionalProps {
   canSkip: boolean;
-  phase: OnboardingPhase;
+  canContinue: boolean;
   reddit: RedditVerificationState;
   importJob: ImportJobState;
   snapshot?: SnapshotState;
-  handleSuggestion?: HandleSuggestion;
   actions: OnboardingActions;
+  nextLoading?: boolean;
+  onNext?: () => void;
+  onSkip?: () => void;
+  onUsernameChange?: (value: string) => void;
 }
+
+export interface OnboardingChoosePirateUsernameProps {
+  handleValue?: string;
+  handleSuggestion?: HandleSuggestion;
+  actions: {
+    primaryLabel: string;
+  };
+  nextLoading?: boolean;
+  onHandleChange?: (value: string) => void;
+  onNext?: () => void;
+}
+
+export interface OnboardingCommunitySuggestionsProps {
+  communities: SuggestedCommunity[];
+  actions: OnboardingActions;
+  joinedCommunityIds?: string[];
+  joiningCommunityId?: string | null;
+  nextLoading?: boolean;
+  onJoinCommunity?: (communityId: string) => void;
+  onNext?: () => void;
+  onSkip?: () => void;
+}
+
+export type OnboardingRedditBootstrapProps = OnboardingRedditOptionalProps;

@@ -51,42 +51,29 @@ export function ProfileHero({
     : undefined;
 
   return (
-    <section className="overflow-hidden rounded-[var(--radius-4xl)] border border-border-soft bg-card shadow-[var(--shadow-lg)]">
+    <section className="overflow-hidden md:rounded-[var(--radius-4xl)] md:border md:border-border-soft md:bg-card md:shadow-[var(--shadow-lg)]">
       <div
-        className={cn("h-40 bg-muted", profile.bannerSrc && "bg-none")}
+        className={cn("h-28 bg-muted md:h-40", profile.bannerSrc && "bg-none")}
         style={bannerStyle}
       />
-      <div className="flex flex-col gap-5 px-5 pb-6 pt-5 lg:px-8 lg:pb-8">
+      <div className="flex flex-col gap-5 px-0 pb-2 pt-4 md:px-5 md:pb-6 md:pt-5 lg:px-8 lg:pb-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div className="flex items-end gap-4">
             <Avatar
-              className="-mt-16 size-24 border-background bg-card shadow-[var(--shadow-lg)]"
+              className="-mt-10 size-20 border-4 border-background bg-card shadow-[var(--shadow-lg)] md:-mt-16 md:size-24"
               fallback={profile.displayName}
               size="lg"
               src={profile.avatarSrc}
             />
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2 pb-1">
               <div className="space-y-1">
-                <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+                <h1 className="truncate text-3xl font-semibold tracking-tight text-foreground">
                   {profile.displayName}
                 </h1>
-                <div className="text-base text-muted-foreground">
+                <div className="truncate text-base text-muted-foreground">
                   {profile.tagline ?? profile.handle}
                 </div>
               </div>
-              {profile.bio ? (
-                <p className="max-w-3xl text-base leading-7 text-muted-foreground">{profile.bio}</p>
-              ) : null}
-              {profile.meta?.length ? (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-base text-muted-foreground">
-                  {profile.meta.map((item) => (
-                    <div className="flex items-center gap-2" key={item.label}>
-                      <span className="font-medium text-foreground">{item.value}</span>
-                      <span>{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
             </div>
           </div>
 
@@ -96,6 +83,20 @@ export function ProfileHero({
             </div>
           ) : null}
         </div>
+
+        {profile.bio ? (
+          <p className="max-w-3xl text-base leading-7 text-muted-foreground">{profile.bio}</p>
+        ) : null}
+        {profile.meta?.length ? (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-base text-muted-foreground">
+            {profile.meta.map((item) => (
+              <div className="flex items-center gap-2" key={item.label}>
+                <span className="font-medium text-foreground">{item.value}</span>
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         <div
           className={cn(

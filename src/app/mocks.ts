@@ -1,5 +1,6 @@
 import { toast } from "@/components/primitives/sonner";
 import type { CommunityMembershipMode } from "@/lib/community-membership";
+import type { PirateApiCommunityGateRule } from "@/lib/pirate-api";
 import type { CreateCommunityComposerProps } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import type { OnboardingRedditBootstrapProps } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type { PostCardProps } from "@/components/compositions/post-card/post-card.types";
@@ -20,12 +21,15 @@ export type RoutePost = PostCardProps & {
 
 export interface CommunitySummary {
   id: string;
+  communityId?: string;
   label: string;
   displayName: string;
   description: string;
   createdAt: string;
   memberCount: number;
   membershipMode: CommunityMembershipMode;
+  ownerUserId?: string | null;
+  gateRules?: PirateApiCommunityGateRule[] | null;
   moderator: CommunitySidebarModerator;
   referenceLinks: CommunitySidebarReferenceLink[];
   rules: CommunitySidebarRule[];
@@ -735,9 +739,8 @@ export const PROFILES: Record<string, ProfileSummary> = {
 };
 
 export const ONBOARDING_SAMPLE: OnboardingRedditBootstrapProps = {
-  generatedHandle: "suspicious-code-7234.pirate",
   canSkip: true,
-  phase: "import_karma",
+  canContinue: true,
   reddit: {
     usernameValue: "technohippie",
     verifiedUsername: "technohippie",
@@ -769,11 +772,6 @@ export const ONBOARDING_SAMPLE: OnboardingRedditBootstrapProps = {
         reason: "You spend time in music-heavy discussion communities.",
       },
     ],
-  },
-  handleSuggestion: {
-    suggestedLabel: "technohippie",
-    source: "verified_reddit_username",
-    availability: "available",
   },
   actions: {
     primaryLabel: "Continue",

@@ -2,14 +2,15 @@
 
 import * as React from "react";
 import {
+  X,
   CaretDown,
-  DotsThree,
   Image as ImageIcon,
   Link,
   List,
   Microphone,
   MusicNote,
   Plus,
+  Quotes,
   SquaresFour,
   Tag,
   Trash,
@@ -32,9 +33,11 @@ import {
   ComboboxValue,
 } from "@/components/primitives/combobox";
 import { FormFieldLabel, FormNote, FormSectionHeading } from "@/components/primitives/form-layout";
+import { IconButton } from "@/components/primitives/icon-button";
 import { OptionCard } from "@/components/primitives/option-card";
 import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
+import { MarkdownContent } from "@/components/primitives/markdown-content";
 import { Chip } from "@/components/primitives/chip";
 import {
   Select,
@@ -61,6 +64,8 @@ import type {
   LiveVisibility,
   MonetizationState,
   PostComposerProps,
+  PostComposerSubmitPayload,
+  QualifierOption,
   SongComposerState,
   SongLicense,
 } from "./post-composer.types";
@@ -76,6 +81,10 @@ const tabMeta: Record<ComposerTab, { label: string; icon: React.ReactNode }> = {
 
 const defaultTabs: ComposerTab[] = ["text", "image", "video", "link", "song", "live"];
 const anonymousEligibleTabs: ComposerTab[] = ["text", "image", "video", "link"];
+
+type MobileDockMode = "attachments" | "formatting";
+
+type MobileAttachmentKey = "link" | "image" | "video" | "song";
 
 const roomKindOptions: { value: LiveRoomKind; label: string }[] = [
   { value: "solo", label: "Solo" },
@@ -167,6 +176,8 @@ function formatLicenseLabel(license?: SongLicense) {
 
 function defaultSongState(song?: SongComposerState): SongComposerState {
   return {
+    primaryAudioUpload: song?.primaryAudioUpload ?? null,
+    primaryAudioLabel: song?.primaryAudioLabel,
     genre: song?.genre ?? "Electronic",
     primaryLanguage: song?.primaryLanguage ?? "English",
     secondaryLanguage: song?.secondaryLanguage ?? "",
@@ -203,11 +214,13 @@ function resolveDonationPartnerName(state: MonetizationState) {
 function ShellPill({
   avatarSrc,
   children,
+  onClick,
 }: {
   avatarSrc?: string;
   children: React.ReactNode;
+  onClick?: () => void;
 }) {
-  return (
+  const content = (
     <div className="inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground">
       {avatarSrc ? (
         <img alt="" className="size-8 rounded-full object-cover" src={avatarSrc} />
@@ -219,6 +232,16 @@ function ShellPill({
       <span>{children}</span>
       <CaretDown className="size-5 text-muted-foreground" />
     </div>
+  );
+
+  if (!onClick) {
+    return content;
+  }
+
+  return (
+    <button className="inline-flex text-left" onClick={onClick} type="button">
+      {content}
+    </button>
   );
 }
 
@@ -306,49 +329,406 @@ function UploadField({
 function LabeledTextarea({
   label,
   placeholder,
-  defaultValue,
+  value,
+  onChange,
   className,
+  onFocusChange,
 }: {
   label: string;
   placeholder: string;
-  defaultValue?: string;
+  value: string;
+  onChange: (value: string) => void;
   className?: string;
+  onFocusChange?: (focused: boolean) => void;
 }) {
   return (
     <div>
       <FieldLabel label={label} />
-      <Textarea className={className} defaultValue={defaultValue} placeholder={placeholder} />
-    </div>
-  );
-}
-
-function EditorChrome({
-  value,
-}: {
-  value: string;
-}) {
-  const toolbar = ["B", "i", "S", "x2", "T", "link", "list", "ordered", "more"];
-
-  return (
-    <div className="rounded-full border border-border-soft bg-background">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border-soft px-4 py-3 text-muted-foreground">
-        {toolbar.map((item) => (
-          <span key={item} className="text-base font-medium">
-            {item === "link" ? <Link className="size-5" /> : null}
-            {item === "list" ? <List className="size-5" /> : null}
-            {item === "ordered" ? <List className="size-5" /> : null}
-            {item === "more" ? <DotsThree className="size-5" /> : null}
-            {!["link", "list", "ordered", "more"].includes(item) ? item : null}
-          </span>
-        ))}
-      </div>
       <Textarea
-        className="min-h-44 rounded-none border-0 shadow-none focus-visible:ring-0"
-        defaultValue={value}
+        className={className}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={() => onFocusChange?.(false)}
+        onFocus={() => onFocusChange?.(true)}
+        placeholder={placeholder}
+        value={value}
       />
     </div>
   );
 }
+
+function MobileInlineUpload({
+  icon,
+  label,
+  accept,
+  file,
+  onChange,
+  onDismiss,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  accept: string;
+  file: File | null;
+  onChange: (file: File | null) => void;
+  onDismiss: () => void;
+}) {
+  const inputId = React.useId();
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        {icon}
+        <span className="text-base font-semibold text-foreground">{label}</span>
+        <button
+          className="ml-auto text-muted-foreground transition-colors hover:text-foreground"
+          onClick={onDismiss}
+          type="button"
+        >
+          <X className="size-5" />
+        </button>
+      </div>
+      <input
+        id={inputId}
+        accept={accept}
+        className="sr-only"
+        onChange={(event) => onChange(event.target.files?.[0] ?? null)}
+        type="file"
+      />
+      <label
+        className="flex cursor-pointer items-center justify-between rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-3.5 transition-colors hover:border-primary/40"
+        htmlFor={inputId}
+      >
+        <span className="truncate text-base font-semibold text-foreground">
+          {file ? file.name : "Choose file"}
+        </span>
+        <span className="shrink-0 inline-flex items-center rounded-full bg-muted px-3.5 py-2 text-base font-semibold text-foreground">
+          {file ? "Replace" : "Browse"}
+        </span>
+      </label>
+    </div>
+  );
+}
+
+type MarkdownSelectionUpdate = {
+  nextValue: string;
+  selectionStart: number;
+  selectionEnd: number;
+};
+
+export interface EditorChromeHandle {
+  applyBold: () => void;
+  applyItalic: () => void;
+  applyLink: () => void;
+  applyList: () => void;
+  applyQuote: () => void;
+  applyStrikethrough: () => void;
+  applyUppercase: () => void;
+}
+
+function wrapMarkdownSelection(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+  before: string,
+  after: string,
+  placeholder: string,
+): MarkdownSelectionUpdate {
+  const selected = value.slice(selectionStart, selectionEnd) || placeholder;
+  const replacement = `${before}${selected}${after}`;
+
+  return {
+    nextValue:
+      value.slice(0, selectionStart) +
+      replacement +
+      value.slice(selectionEnd),
+    selectionStart: selectionStart + before.length,
+    selectionEnd: selectionStart + before.length + selected.length,
+  };
+}
+
+function prefixMarkdownLines(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+  prefix: string,
+): MarkdownSelectionUpdate {
+  const blockStart = value.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
+  const nextBreak = value.indexOf("\n", selectionEnd);
+  const blockEnd = nextBreak === -1 ? value.length : nextBreak;
+  const lines = value.slice(blockStart, blockEnd).split("\n");
+  const replacement = lines
+    .map((line) => (line.startsWith(prefix) ? line : `${prefix}${line}`))
+    .join("\n");
+
+  return {
+    nextValue: value.slice(0, blockStart) + replacement + value.slice(blockEnd),
+    selectionStart: blockStart,
+    selectionEnd: blockStart + replacement.length,
+  };
+}
+
+function insertMarkdownLink(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+): MarkdownSelectionUpdate {
+  const label = value.slice(selectionStart, selectionEnd) || "link text";
+  const replacement = `[${label}](https://)`;
+  const urlStart = selectionStart + label.length + 3;
+
+  return {
+    nextValue:
+      value.slice(0, selectionStart) +
+      replacement +
+      value.slice(selectionEnd),
+    selectionStart: urlStart,
+    selectionEnd: urlStart + "https://".length,
+  };
+}
+
+function uppercaseMarkdownSelection(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+): MarkdownSelectionUpdate {
+  const selected = value.slice(selectionStart, selectionEnd) || "heading";
+  const replacement = selected.toUpperCase();
+
+  return {
+    nextValue:
+      value.slice(0, selectionStart) +
+      replacement +
+      value.slice(selectionEnd),
+    selectionStart,
+    selectionEnd: selectionStart + replacement.length,
+  };
+}
+
+const EditorChrome = React.forwardRef<EditorChromeHandle, {
+  value: string;
+  onChange: (value: string) => void;
+  mobile?: boolean;
+  onFocusChange?: (focused: boolean) => void;
+}>(({
+  value,
+  onChange,
+  mobile = false,
+  onFocusChange,
+}, ref) => {
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const [preview, setPreview] = React.useState(false);
+
+  const applyUpdate = React.useCallback(
+    (
+      transform: (
+        currentValue: string,
+        selectionStart: number,
+        selectionEnd: number,
+      ) => MarkdownSelectionUpdate,
+    ) => {
+      const textarea = textareaRef.current;
+
+      if (!textarea) {
+        return;
+      }
+
+      const next = transform(value, textarea.selectionStart, textarea.selectionEnd);
+      onChange(next.nextValue);
+
+      requestAnimationFrame(() => {
+        const input = textareaRef.current;
+
+        if (!input) {
+          return;
+        }
+
+        input.focus();
+        input.setSelectionRange(next.selectionStart, next.selectionEnd);
+      });
+    },
+    [onChange, value],
+  );
+
+  const applyBold = React.useCallback(
+    () =>
+      applyUpdate((currentValue, selectionStart, selectionEnd) =>
+        wrapMarkdownSelection(
+          currentValue,
+          selectionStart,
+          selectionEnd,
+          "**",
+          "**",
+          "bold text",
+        ),
+      ),
+    [applyUpdate],
+  );
+
+  const applyItalic = React.useCallback(
+    () =>
+      applyUpdate((currentValue, selectionStart, selectionEnd) =>
+        wrapMarkdownSelection(
+          currentValue,
+          selectionStart,
+          selectionEnd,
+          "*",
+          "*",
+          "italic text",
+        ),
+      ),
+    [applyUpdate],
+  );
+
+  const applyStrikethrough = React.useCallback(
+    () =>
+      applyUpdate((currentValue, selectionStart, selectionEnd) =>
+        wrapMarkdownSelection(
+          currentValue,
+          selectionStart,
+          selectionEnd,
+          "~~",
+          "~~",
+          "strikethrough",
+        ),
+      ),
+    [applyUpdate],
+  );
+
+  const applyUppercase = React.useCallback(
+    () =>
+      applyUpdate((currentValue, selectionStart, selectionEnd) =>
+        uppercaseMarkdownSelection(currentValue, selectionStart, selectionEnd),
+      ),
+    [applyUpdate],
+  );
+
+  const applyLink = React.useCallback(
+    () =>
+      applyUpdate((currentValue, selectionStart, selectionEnd) =>
+        insertMarkdownLink(currentValue, selectionStart, selectionEnd),
+      ),
+    [applyUpdate],
+  );
+
+  const applyList = React.useCallback(
+    () =>
+      applyUpdate((currentValue, selectionStart, selectionEnd) =>
+        prefixMarkdownLines(currentValue, selectionStart, selectionEnd, "- "),
+      ),
+    [applyUpdate],
+  );
+
+  const applyQuote = React.useCallback(
+    () =>
+      applyUpdate((currentValue, selectionStart, selectionEnd) =>
+        prefixMarkdownLines(currentValue, selectionStart, selectionEnd, "> "),
+      ),
+    [applyUpdate],
+  );
+
+  React.useImperativeHandle(ref, () => ({
+    applyBold,
+    applyItalic,
+    applyLink,
+    applyList,
+    applyQuote,
+    applyStrikethrough,
+    applyUppercase,
+  }), [applyBold, applyItalic, applyLink, applyList, applyQuote, applyStrikethrough, applyUppercase]);
+
+  const toolbarActions = [
+    {
+      label: "Bold",
+      onClick: applyBold,
+    },
+    {
+      label: "Italic",
+      onClick: applyItalic,
+    },
+    {
+      label: "Code",
+      onClick: () =>
+        applyUpdate((currentValue, selectionStart, selectionEnd) =>
+          wrapMarkdownSelection(
+            currentValue,
+            selectionStart,
+            selectionEnd,
+            "`",
+            "`",
+            "code",
+          ),
+        ),
+    },
+    {
+      label: "Link",
+      onClick: applyLink,
+    },
+    {
+      label: "List",
+      onClick: applyList,
+    },
+    {
+      label: "Quote",
+      onClick: applyQuote,
+    },
+  ];
+
+  if (mobile) {
+    return (
+      <Textarea
+        ref={textareaRef}
+        className="min-h-[40dvh] rounded-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0"
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={() => onFocusChange?.(false)}
+        onFocus={() => onFocusChange?.(true)}
+        placeholder="Share your thoughts"
+        value={value}
+      />
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-background">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border-soft px-4 py-3">
+        {toolbarActions.map((action) => (
+          <Button
+            key={action.label}
+            onClick={action.onClick}
+            size="sm"
+            variant="ghost"
+          >
+            {action.label}
+          </Button>
+        ))}
+        <Button
+          className="ml-auto"
+          onClick={() => setPreview((current) => !current)}
+          size="sm"
+          variant={preview ? "secondary" : "ghost"}
+        >
+          {preview ? "Write" : "Preview"}
+        </Button>
+      </div>
+      {preview ? (
+        <div className="min-h-44 px-4 py-3">
+          {value.trim() ? (
+            <MarkdownContent markdown={value} />
+          ) : (
+            <p className="text-base text-muted-foreground">Nothing to preview yet.</p>
+          )}
+        </div>
+      ) : (
+        <Textarea
+          ref={textareaRef}
+          className="min-h-44 rounded-none border-0 shadow-none focus-visible:ring-0"
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Write in markdown"
+          value={value}
+        />
+      )}
+    </div>
+  );
+});
+EditorChrome.displayName = "EditorChrome";
 
 function References({
   items,
@@ -442,16 +822,20 @@ function SearchReferencePicker({
       <ComboboxInput aria-label={ariaLabel} placeholder={placeholder} />
       <ComboboxContent>
         <ComboboxEmpty>{emptyLabel}</ComboboxEmpty>
-        <ComboboxList>
-          {(item) => (
-            <ComboboxItem key={item.id} value={item}>
-              <p className="truncate text-base font-semibold text-foreground">{item.title}</p>
-              {item.subtitle ? (
-                <p className="truncate text-base text-muted-foreground">{item.subtitle}</p>
-              ) : null}
-            </ComboboxItem>
-          )}
-        </ComboboxList>
+        <ComboboxList
+          renderItem={(item) => {
+            const reference = item as ComposerReference;
+
+            return (
+              <ComboboxItem key={reference.id} value={reference}>
+                <p className="truncate text-base font-semibold text-foreground">{reference.title}</p>
+                {reference.subtitle ? (
+                  <p className="truncate text-base text-muted-foreground">{reference.subtitle}</p>
+                ) : null}
+              </ComboboxItem>
+            );
+          }}
+        />
       </ComboboxContent>
     </Combobox>
   );
@@ -931,9 +1315,15 @@ function QualifierSection({
               <ComboboxValue>
                 {(values) => (
                   <>
-                    {values.map((qualifier: (typeof availableQualifiers)[number]) => (
-                      <ComboboxChip key={qualifier.qualifierId}>{qualifier.label}</ComboboxChip>
-                    ))}
+                    {values.map((qualifier) => {
+                      const option = qualifier as QualifierOption;
+
+                      return (
+                        <ComboboxChip key={option.qualifierId} value={option}>
+                          {option.label}
+                        </ComboboxChip>
+                      );
+                    })}
                     <ComboboxChipsInput
                       aria-label="Search qualifiers"
                       placeholder={activeQualifiers.length > 0 ? "Search qualifiers" : "Add qualifiers"}
@@ -944,16 +1334,20 @@ function QualifierSection({
             </ComboboxChips>
             <ComboboxContent>
               <ComboboxEmpty>No qualifiers found.</ComboboxEmpty>
-              <ComboboxList>
-                {(qualifier) => (
-                  <ComboboxItem key={qualifier.qualifierId} value={qualifier}>
-                    <p className="text-base font-medium text-foreground">{qualifier.label}</p>
-                    {qualifier.description ? (
-                      <p className="text-base text-muted-foreground">{qualifier.description}</p>
-                    ) : null}
-                  </ComboboxItem>
-                )}
-              </ComboboxList>
+              <ComboboxList
+                renderItem={(qualifier) => {
+                  const option = qualifier as QualifierOption;
+
+                  return (
+                    <ComboboxItem key={option.qualifierId} value={option}>
+                      <p className="text-base font-medium text-foreground">{option.label}</p>
+                      {option.description ? (
+                        <p className="text-base text-muted-foreground">{option.description}</p>
+                      ) : null}
+                    </ComboboxItem>
+                  );
+                }}
+              />
             </ComboboxContent>
           </Combobox>
         </div>
@@ -971,6 +1365,7 @@ function QualifierSection({
 export function PostComposer({
   clubName,
   clubAvatarSrc,
+  mobileChrome,
   mode,
   availableTabs = defaultTabs,
   canCreateSongPost = false,
@@ -987,6 +1382,7 @@ export function PostComposer({
   monetization,
   identity,
   live,
+  onSubmit,
 }: PostComposerProps) {
   const visibleTabs = React.useMemo(
     () => availableTabs.filter((tab) => tab !== "song" || canCreateSongPost),
@@ -994,6 +1390,11 @@ export function PostComposer({
   );
   const [activeTab, setActiveTab] = React.useState<ComposerTab>(visibleTabs[0] ?? "text");
   const [activeSongMode, setActiveSongMode] = React.useState(songMode);
+  const [draftTitle, setDraftTitle] = React.useState(titleValue);
+  const [draftTextBody, setDraftTextBody] = React.useState(textBodyValue);
+  const [draftCaption, setDraftCaption] = React.useState(captionValue);
+  const [draftLyrics, setDraftLyrics] = React.useState(lyricsValue);
+  const [draftLinkUrl, setDraftLinkUrl] = React.useState(linkUrlValue);
   const [songState, setSongState] = React.useState<SongComposerState>(defaultSongState(song));
   const [identityMode, setIdentityMode] = React.useState<IdentityMode>(
     identity?.identityMode ?? "public",
@@ -1056,6 +1457,26 @@ export function PostComposer({
   }, [songMode]);
 
   React.useEffect(() => {
+    setDraftTitle(titleValue);
+  }, [titleValue]);
+
+  React.useEffect(() => {
+    setDraftTextBody(textBodyValue);
+  }, [textBodyValue]);
+
+  React.useEffect(() => {
+    setDraftCaption(captionValue);
+  }, [captionValue]);
+
+  React.useEffect(() => {
+    setDraftLyrics(lyricsValue);
+  }, [lyricsValue]);
+
+  React.useEffect(() => {
+    setDraftLinkUrl(linkUrlValue);
+  }, [linkUrlValue]);
+
+  React.useEffect(() => {
     setSongState(defaultSongState(song));
   }, [song]);
 
@@ -1114,10 +1535,24 @@ export function PostComposer({
     [derivativeState?.references, derivativeState?.searchResults],
   );
   const donationPartnerName = resolveDonationPartnerName(monetizationState);
+  const effectiveTitleCountLabel =
+    titleCountLabel === "0/300" ? `${draftTitle.length}/300` : titleCountLabel;
   const liveAllocationsValid =
     liveState.performerAllocations.reduce((sum, allocation) => sum + allocation.sharePct, 0) ===
     100;
+  const textPostInvalid = activeTab === "text" &&
+    draftTitle.trim().length === 0 &&
+    draftTextBody.trim().length === 0;
+  const linkPostInvalid = activeTab === "link" && draftLinkUrl.trim().length === 0;
+  const songPostInvalid = activeTab === "song" &&
+    (
+      draftLyrics.trim().length === 0
+      || !songState.primaryAudioUpload
+    );
   const postDisabled =
+    textPostInvalid ||
+    linkPostInvalid ||
+    songPostInvalid ||
     (activeTab === "song" &&
       monetizationState.visible &&
       !Boolean(monetizationState.rightsAttested)) ||
@@ -1129,14 +1564,90 @@ export function PostComposer({
     Boolean(identity?.availableQualifiers?.some((qualifier) => !qualifier.suppressedByClubGate)) &&
     identityMode === "anonymous" &&
     identity?.allowQualifiersOnAnonymousPosts !== false;
+  const usesMobileChrome = Boolean(mobileChrome);
+  const [mobileDockOffset, setMobileDockOffset] = React.useState(0);
+  const [mobileDockMode, setMobileDockMode] = React.useState<MobileDockMode>("attachments");
+  const [mobileActiveAttachment, setMobileActiveAttachment] = React.useState<MobileAttachmentKey | null>(null);
+  const [mobileDraftLinkUrl, setMobileDraftLinkUrl] = React.useState("");
+  const [mobileImageFile, setMobileImageFile] = React.useState<File | null>(null);
+  const [mobileVideoFile, setMobileVideoFile] = React.useState<File | null>(null);
+  const [mobileAudioFile, setMobileAudioFile] = React.useState<File | null>(null);
+  const [mobileCoverFile, setMobileCoverFile] = React.useState<File | null>(null);
+  const [mobileDraftLyrics, setMobileDraftLyrics] = React.useState("");
+  const [mobileSongGenre, setMobileSongGenre] = React.useState<string>(songGenreOptions[0]);
+  const editorRef = React.useRef<EditorChromeHandle>(null);
+  const mobileBlurTimeoutRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (mobileBlurTimeoutRef.current != null) {
+        window.clearTimeout(mobileBlurTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!usesMobileChrome || typeof window === "undefined" || !window.visualViewport) {
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    const updateOffset = () => {
+      const nextOffset = Math.max(
+        0,
+        window.innerHeight - viewport.height - viewport.offsetTop,
+      );
+      setMobileDockOffset(nextOffset);
+    };
+
+    updateOffset();
+    viewport.addEventListener("resize", updateOffset);
+    viewport.addEventListener("scroll", updateOffset);
+
+    return () => {
+      viewport.removeEventListener("resize", updateOffset);
+      viewport.removeEventListener("scroll", updateOffset);
+    };
+  }, [usesMobileChrome]);
+
+  const handleMobileFieldFocusChange = React.useCallback((focused: boolean) => {
+    if (!usesMobileChrome) {
+      return;
+    }
+
+    if (mobileBlurTimeoutRef.current != null) {
+      window.clearTimeout(mobileBlurTimeoutRef.current);
+      mobileBlurTimeoutRef.current = null;
+    }
+
+    if (focused) {
+      setMobileDockMode("formatting");
+      return;
+    }
+
+    mobileBlurTimeoutRef.current = window.setTimeout(() => {
+      setMobileDockMode("attachments");
+      mobileBlurTimeoutRef.current = null;
+    }, 120);
+  }, [usesMobileChrome]);
+
+  const handleMobileAttachmentTap = React.useCallback((key: MobileAttachmentKey) => {
+    setMobileActiveAttachment((current) => (current === key ? null : key));
+  }, []);
 
   const renderPrimaryArea = () => {
     switch (activeTab) {
       case "text":
         return (
           <div>
-            <FieldLabel label="Body" />
-            <EditorChrome value={textBodyValue} />
+            {usesMobileChrome ? null : <FieldLabel label="Body" />}
+            <EditorChrome
+              mobile={usesMobileChrome}
+              onChange={setDraftTextBody}
+              onFocusChange={handleMobileFieldFocusChange}
+              ref={editorRef}
+              value={draftTextBody}
+            />
           </div>
         );
       case "image":
@@ -1145,9 +1656,10 @@ export function PostComposer({
             <UploadField accept="image/*" label="Image" />
             <LabeledTextarea
               className="min-h-28"
-              defaultValue={captionValue}
               label="Caption"
+              onChange={setDraftCaption}
               placeholder="Add a caption"
+              value={draftCaption}
             />
           </div>
         );
@@ -1157,9 +1669,10 @@ export function PostComposer({
             <UploadField accept="video/*" label="Video" />
             <LabeledTextarea
               className="min-h-28"
-              defaultValue={captionValue}
               label="Caption"
+              onChange={setDraftCaption}
               placeholder="Add a caption"
+              value={draftCaption}
             />
           </div>
         );
@@ -1170,15 +1683,17 @@ export function PostComposer({
               <FieldLabel label="URL" />
               <Input
                 className="h-14"
-                defaultValue={linkUrlValue}
+                onChange={(event) => setDraftLinkUrl(event.target.value)}
                 placeholder="https://"
+                value={draftLinkUrl}
               />
             </div>
             <LabeledTextarea
               className="min-h-28"
-              defaultValue={captionValue}
               label="Commentary"
+              onChange={setDraftCaption}
               placeholder="Add commentary"
+              value={draftCaption}
             />
             {linkPreview ? <LinkPreviewCard {...linkPreview} /> : null}
           </div>
@@ -1205,7 +1720,18 @@ export function PostComposer({
             </div>
 
             <div className="space-y-4">
-              <UploadField accept="audio/*" label="Audio" />
+              <UploadField
+                accept="audio/*"
+                label="Audio"
+                onChange={(files) =>
+                  setSongState((current) => ({
+                    ...current,
+                    primaryAudioUpload: files?.[0] ?? null,
+                    primaryAudioLabel: files?.[0]?.name ?? current.primaryAudioLabel,
+                  }))
+                }
+                selectedLabel={songState.primaryAudioUpload?.name ?? songState.primaryAudioLabel}
+              />
               <UploadField
                 accept="image/*"
                 label="Cover art"
@@ -1294,9 +1820,10 @@ export function PostComposer({
 
             <LabeledTextarea
               className="min-h-36"
-              defaultValue={lyricsValue}
               label="Lyrics"
+              onChange={setDraftLyrics}
               placeholder="Paste lyrics"
+              value={draftLyrics}
             />
 
           </div>
@@ -1308,44 +1835,62 @@ export function PostComposer({
     }
   };
 
-  return (
-    <div className="mx-auto w-full max-w-5xl space-y-4">
-      <CardTitle className="text-3xl">Create post</CardTitle>
+  const handleSubmit = (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <ShellPill avatarSrc={clubAvatarSrc}>{clubName}</ShellPill>
-      </div>
+    if (!onSubmit || postDisabled) {
+      return;
+    }
 
-      <Card className="overflow-hidden bg-background shadow-none">
-        <CardHeader className="border-b border-border-soft px-0 pb-0 pt-0">
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ComposerTab)}>
-            <TabsList className="h-auto w-full justify-start rounded-none border-b border-border-soft bg-transparent p-0">
-              {visibleTabs.map((tab) => (
-                <TabsTrigger
-                  key={tab}
-                  value={tab}
-                  className={cn(
-                    "rounded-none border-b-2 border-transparent px-5 py-4 text-base font-semibold data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                  )}
-                >
-                  <span className="inline-flex items-center gap-2">
-                    {tabMeta[tab].icon}
-                    {tabMeta[tab].label}
-                  </span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </CardHeader>
+    const resolvedMode = usesMobileChrome
+      ? (mobileActiveAttachment === "link" ? "link" as ComposerTab
+        : mobileActiveAttachment === "image" ? "image" as ComposerTab
+        : mobileActiveAttachment === "video" ? "video" as ComposerTab
+        : mobileActiveAttachment === "song" ? "song" as ComposerTab
+        : "text" as ComposerTab)
+      : activeTab;
+    const resolvedLyrics = usesMobileChrome && resolvedMode === "song"
+      ? mobileDraftLyrics.trim()
+      : draftLyrics.trim();
+    const resolvedSongState = usesMobileChrome && resolvedMode === "song"
+      ? {
+          ...songState,
+          primaryAudioUpload: mobileAudioFile,
+          primaryAudioLabel: mobileAudioFile?.name ?? songState.primaryAudioLabel,
+          coverUpload: mobileCoverFile,
+          coverLabel: mobileCoverFile?.name ?? songState.coverLabel,
+          genre: mobileSongGenre,
+        }
+      : songState;
 
-        <CardContent className="space-y-5 p-5">
-          <>
+    const payload: PostComposerSubmitPayload = {
+      mode: resolvedMode,
+      title: draftTitle.trim(),
+      body: draftTextBody.trim(),
+      caption: draftCaption.trim(),
+      lyrics: resolvedLyrics,
+      linkUrl: draftLinkUrl.trim(),
+      songMode: activeSongMode,
+      song: resolvedSongState,
+      derivativeStep: derivativeState,
+      monetization: monetizationState,
+      identityMode,
+      selectedQualifierIds,
+      live: liveState,
+    };
+
+    onSubmit(payload);
+  };
+
+  const formBody = (
+    <>
           <div>
-            <FieldLabel counter={titleCountLabel} label="Title" />
+            <FieldLabel counter={effectiveTitleCountLabel} label="Title" />
             <Input
               className="h-14"
+              onChange={(event) => setDraftTitle(event.target.value)}
               placeholder="Title"
-              defaultValue={titleValue}
+              value={draftTitle}
             />
           </div>
 
@@ -1573,7 +2118,7 @@ export function PostComposer({
                     title="Review"
                   />
                   <div className="grid gap-3 md:grid-cols-2">
-                    <SummaryRow label="Title" value={titleValue || "Untitled"} />
+                    <SummaryRow label="Title" value={draftTitle || "Untitled"} />
                     <SummaryRow label="Genre" value={songState.genre ?? "Unconfigured"} />
                     <SummaryRow
                       label="Languages"
@@ -1639,13 +2184,298 @@ export function PostComposer({
               ) : null}
             </section>
           ) : null}
-          </>
+    </>
+  );
+
+  if (usesMobileChrome) {
+    const mobileAttachmentActions: Array<{
+      key: MobileAttachmentKey;
+      icon: React.ReactNode;
+      label: string;
+    }> = [
+      { key: "link", icon: <Link className="size-5" />, label: "Link" },
+      { key: "image", icon: <ImageIcon className="size-5" />, label: "Image" },
+      { key: "video", icon: <VideoCamera className="size-5" />, label: "Video" },
+      { key: "song", icon: <MusicNote className="size-5" />, label: "Song" },
+    ];
+
+    const formattingActions: Array<{
+      key: string;
+      label?: string;
+      icon?: React.ReactNode;
+      className?: string;
+      onClick?: () => void;
+    }> = [
+      { key: "aa", label: "Aa", className: "font-medium" },
+      { key: "bold", label: "B", onClick: () => editorRef.current?.applyBold(), className: "font-semibold" },
+      { key: "italic", label: "i", onClick: () => editorRef.current?.applyItalic(), className: "italic" },
+      { key: "strike", label: "S", onClick: () => editorRef.current?.applyStrikethrough(), className: "line-through" },
+      { key: "caps", label: "Tt", onClick: () => editorRef.current?.applyUppercase(), className: "font-semibold tracking-tight" },
+      { key: "link", icon: <Link className="size-5" />, onClick: () => editorRef.current?.applyLink() },
+      { key: "list", icon: <List className="size-5" />, onClick: () => editorRef.current?.applyList() },
+      { key: "quote", icon: <Quotes className="size-5" />, onClick: () => editorRef.current?.applyQuote() },
+    ];
+
+    const mobilePostDisabled = (() => {
+      if (mobileActiveAttachment === "link") return draftLinkUrl.trim().length === 0;
+      if (mobileActiveAttachment === "song") {
+        return !mobileAudioFile || mobileDraftLyrics.trim().length === 0;
+      }
+      return draftTitle.trim().length === 0 && draftTextBody.trim().length === 0;
+    })();
+
+    return (
+      <form
+        className="mx-auto flex min-h-[calc(100dvh-env(safe-area-inset-top))] w-full max-w-none flex-col"
+        onSubmit={handleSubmit}
+      >
+        <div className="flex items-center justify-between gap-3 pb-1">
+          <IconButton
+            aria-label="Close composer"
+            onClick={mobileChrome?.onClose}
+            variant="ghost"
+          >
+            <X className="size-6" weight="bold" />
+          </IconButton>
+          <Button disabled={mobilePostDisabled} type="submit">
+            {mobileChrome?.postLabel ?? "Post"}
+          </Button>
+        </div>
+
+        <div className="pt-2">
+          <ShellPill avatarSrc={clubAvatarSrc} onClick={mobileChrome?.onDestinationClick}>
+            {mobileChrome?.destinationLabel ?? clubName}
+          </ShellPill>
+        </div>
+
+        <div className="flex-1 px-0 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-4">
+          <div className="space-y-5">
+            <div>
+              <FieldLabel counter={effectiveTitleCountLabel} label="Title" />
+              <Input
+                className="h-14"
+                onChange={(event) => setDraftTitle(event.target.value)}
+                onFocus={() => handleMobileFieldFocusChange(true)}
+                onBlur={() => handleMobileFieldFocusChange(false)}
+                placeholder="Title"
+                value={draftTitle}
+              />
+            </div>
+
+            {shouldShowIdentity ? (
+              <IdentitySection
+                identity={identity!}
+                identityMode={identityMode}
+                onIdentityModeChange={setIdentityMode}
+              />
+            ) : null}
+
+            {mobileActiveAttachment === "link" ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Link className="size-5 text-primary" />
+                  <span className="text-base font-semibold text-foreground">Enter link</span>
+                  <button
+                    className="ml-auto text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={() => setMobileActiveAttachment(null)}
+                    type="button"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+                <Input
+                  className="h-12"
+                  onChange={(event) => {
+                    setMobileDraftLinkUrl(event.target.value);
+                    setDraftLinkUrl(event.target.value);
+                  }}
+                  onFocus={() => handleMobileFieldFocusChange(false)}
+                  placeholder="https://"
+                  value={mobileDraftLinkUrl}
+                />
+              </div>
+            ) : null}
+
+            {mobileActiveAttachment === "image" ? (
+              <MobileInlineUpload
+                accept="image/*"
+                file={mobileImageFile}
+                icon={<ImageIcon className="size-5 text-primary" />}
+                label="Add image"
+                onChange={setMobileImageFile}
+                onDismiss={() => setMobileActiveAttachment(null)}
+              />
+            ) : null}
+
+            {mobileActiveAttachment === "video" ? (
+              <MobileInlineUpload
+                accept="video/*"
+                file={mobileVideoFile}
+                icon={<VideoCamera className="size-5 text-primary" />}
+                label="Add video"
+                onChange={setMobileVideoFile}
+                onDismiss={() => setMobileActiveAttachment(null)}
+              />
+            ) : null}
+
+            {mobileActiveAttachment === "song" ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <MusicNote className="size-5 text-primary" />
+                  <span className="text-base font-semibold text-foreground">Song</span>
+                  <button
+                    className="ml-auto text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={() => setMobileActiveAttachment(null)}
+                    type="button"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+
+                <MobileInlineUpload
+                  accept="audio/*"
+                  file={mobileAudioFile}
+                  icon={<Microphone className="size-4 text-muted-foreground" />}
+                  label="Audio"
+                  onChange={setMobileAudioFile}
+                  onDismiss={() => setMobileAudioFile(null)}
+                />
+
+                <MobileInlineUpload
+                  accept="image/*"
+                  file={mobileCoverFile}
+                  icon={<ImageIcon className="size-4 text-muted-foreground" />}
+                  label="Cover art"
+                  onChange={setMobileCoverFile}
+                  onDismiss={() => setMobileCoverFile(null)}
+                />
+
+                <div>
+                  <FieldLabel label="Genre" />
+                  <Select
+                    onValueChange={(value) => setMobileSongGenre(value)}
+                    value={mobileSongGenre}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select genre" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {songGenreOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <FieldLabel label="Lyrics" />
+                  <Textarea
+                    className="min-h-28"
+                    onChange={(event) => setMobileDraftLyrics(event.target.value)}
+                    onFocus={() => handleMobileFieldFocusChange(true)}
+                    onBlur={() => handleMobileFieldFocusChange(false)}
+                    placeholder="Paste lyrics"
+                    value={mobileDraftLyrics}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            <EditorChrome
+              mobile
+              onChange={setDraftTextBody}
+              onFocusChange={handleMobileFieldFocusChange}
+              ref={editorRef}
+              value={draftTextBody}
+            />
+          </div>
+        </div>
+
+        <div
+          className="fixed inset-x-0 z-40 border-t border-border-soft bg-background/98 backdrop-blur-md"
+          style={{
+            bottom: `${mobileDockOffset}px`,
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
+        >
+          {mobileDockMode === "formatting" ? (
+            <div className="flex items-center gap-1 overflow-x-auto px-3 py-2">
+              {formattingActions.map((action) => (
+                <button
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  key={action.key}
+                  onClick={action.onClick}
+                  type="button"
+                >
+                  {action.icon ? action.icon : <span className={cn("text-base", action.className)}>{action.label}</span>}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 overflow-x-auto px-3 py-2">
+              {mobileAttachmentActions.map((action) => (
+                <button
+                  aria-label={action.label}
+                  className={cn(
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                    mobileActiveAttachment === action.key && "bg-muted text-foreground",
+                  )}
+                  key={action.key}
+                  onClick={() => handleMobileAttachmentTap(action.key)}
+                  type="button"
+                >
+                  {action.icon}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </form>
+    );
+  }
+
+  return (
+    <form className="mx-auto w-full max-w-5xl space-y-4" onSubmit={handleSubmit}>
+      <CardTitle className="text-3xl">Create post</CardTitle>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ShellPill avatarSrc={clubAvatarSrc}>{clubName}</ShellPill>
+      </div>
+
+      <Card className="overflow-hidden bg-background shadow-none">
+        <CardHeader className="border-b border-border-soft px-0 pb-0 pt-0">
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ComposerTab)}>
+            <TabsList className="h-auto w-full justify-start rounded-none border-b border-border-soft bg-transparent p-0">
+              {visibleTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab}
+                  value={tab}
+                  className={cn(
+                    "rounded-none border-b-2 border-transparent px-5 py-4 text-base font-semibold data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                  )}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    {tabMeta[tab].icon}
+                    {tabMeta[tab].label}
+                  </span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </CardHeader>
+
+        <CardContent className="space-y-5 p-5">
+          {formBody}
         </CardContent>
 
         <CardFooter className="justify-end gap-3 border-t border-border-soft p-5">
-          <Button disabled={postDisabled}>Post</Button>
+          <Button disabled={postDisabled} type="submit">
+            Post
+          </Button>
         </CardFooter>
       </Card>
-    </div>
+    </form>
   );
 }

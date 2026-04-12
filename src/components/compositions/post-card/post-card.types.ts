@@ -112,6 +112,7 @@ export type PostCardContent =
       href: string;
       linkTitle: string;
       linkLabel?: string;
+      body?: string;
       previewImageSrc?: string;
     }
   | SongContentSpec;
@@ -159,6 +160,7 @@ export interface PostCardProps {
   postHref?: string;
   content: PostCardContent;
   engagement: PostCardEngagement;
+  hideEngagement?: boolean;
   menuItems?: PostCardMenuItem[];
   onVote?: (direction: "up" | "down" | null) => void;
   onComment?: () => void;

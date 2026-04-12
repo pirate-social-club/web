@@ -28,17 +28,16 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   render: () => (
     <div className="w-[320px]">
-      <Combobox items={frameworks}>
+      <Combobox items={[...frameworks]}>
         <ComboboxInput placeholder="Select a framework" />
         <ComboboxContent>
           <ComboboxEmpty>No items found.</ComboboxEmpty>
-          <ComboboxList>
-            {(item) => (
-              <ComboboxItem key={item} value={item}>
-                {item}
-              </ComboboxItem>
+          <ComboboxList renderItem={(item) => (
+            <ComboboxItem key={item as string} value={item}>
+              {item as string}
+            </ComboboxItem>
             )}
-          </ComboboxList>
+          />
         </ComboboxContent>
       </Combobox>
     </div>
@@ -51,14 +50,18 @@ export const Multiple: Story = {
 
     return (
       <div className="w-[360px]">
-        <Combobox multiple items={frameworks} value={value} onValueChange={setValue}>
+        <Combobox multiple items={[...frameworks]} value={value} onValueChange={setValue}>
           <ComboboxChips>
             <ComboboxValue>
               {(values) => (
                 <>
-                  {values.map((item: string) => (
-                    <ComboboxChip key={item}>{item}</ComboboxChip>
-                  ))}
+                  {values.map((item) => {
+                    const framework = item as string;
+
+                    return (
+                      <ComboboxChip key={framework} value={framework}>{framework}</ComboboxChip>
+                    );
+                  })}
                   <ComboboxChipsInput placeholder="Add framework" />
                 </>
               )}
@@ -66,13 +69,12 @@ export const Multiple: Story = {
           </ComboboxChips>
           <ComboboxContent>
             <ComboboxEmpty>No items found.</ComboboxEmpty>
-            <ComboboxList>
-              {(item) => (
-                <ComboboxItem key={item} value={item}>
-                  {item}
-                </ComboboxItem>
+            <ComboboxList renderItem={(item) => (
+              <ComboboxItem key={item as string} value={item}>
+                {item as string}
+              </ComboboxItem>
               )}
-            </ComboboxList>
+            />
           </ComboboxContent>
         </Combobox>
       </div>

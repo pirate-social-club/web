@@ -59,6 +59,7 @@ export function PostCard({
   postHref,
   content,
   engagement,
+  hideEngagement = false,
   menuItems,
   onVote,
   onComment,
@@ -126,13 +127,15 @@ export function PostCard({
       {titleElement}
       <PostCardMedia content={content} />
 
-      <PostCardEngagementBar
-        engagement={engagement}
-        unlock={unlock ? { label: unlock.label, onClick: unlock.onBuy } : undefined}
-        onVote={onVote}
-        onComment={onComment}
-        onShare={onShare}
-      />
+      {!hideEngagement ? (
+        <PostCardEngagementBar
+          engagement={engagement}
+          unlock={unlock ? { label: unlock.label, onClick: unlock.onBuy } : undefined}
+          onVote={onVote}
+          onComment={onComment}
+          onShare={onShare}
+        />
+      ) : null}
     </article>
   );
 }

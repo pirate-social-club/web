@@ -1,13 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
-import { OnboardingRedditBootstrap } from "../onboarding-reddit-bootstrap";
-import type { OnboardingRedditBootstrapProps } from "../onboarding-reddit-bootstrap.types";
+import {
+  OnboardingRedditOptional,
+  OnboardingChoosePirateUsername,
+  OnboardingCommunitySuggestions,
+} from "../onboarding-reddit-bootstrap";
+import type {
+  OnboardingRedditOptionalProps,
+  OnboardingChoosePirateUsernameProps,
+  OnboardingCommunitySuggestionsProps,
+} from "../onboarding-reddit-bootstrap.types";
 
-const base: OnboardingRedditBootstrapProps = {
-  generatedHandle: "suspicious-code-7234.pirate",
+const redditBase: OnboardingRedditOptionalProps = {
   canSkip: true,
-  phase: "import_karma",
+  canContinue: true,
   reddit: {
     usernameValue: "",
     verificationState: "not_started",
@@ -38,33 +45,33 @@ const richSnapshot = {
   ],
 };
 
-const meta = {
-  title: "Compositions/OnboardingRedditBootstrap",
-  component: OnboardingRedditBootstrap,
-  args: base,
-  decorators: [
-    (Story: () => React.ReactNode) => (
-      <div style={{ width: "min(100vw - 32px, 980px)" }}>
-        <Story />
-      </div>
-    ),
-  ],
-} satisfies Meta<typeof OnboardingRedditBootstrap>;
+const decorator = (Story: () => React.ReactNode) => (
+  <div style={{ width: "min(100vw - 32px, 980px)" }}>
+    <Story />
+  </div>
+);
 
-export default meta;
+const RedditMeta = {
+  title: "Compositions/OnboardingRedditOptional",
+  component: OnboardingRedditOptional,
+  args: redditBase,
+  decorators: [decorator],
+} satisfies Meta<typeof OnboardingRedditOptional>;
 
-type Story = StoryObj<typeof meta>;
+export default RedditMeta;
 
-export const ImportKarmaEmpty: Story = {
-  name: "Import Karma / Empty",
-  render: () => <OnboardingRedditBootstrap {...base} />,
+type RedditStory = StoryObj<typeof RedditMeta>;
+
+export const RedditEmpty: RedditStory = {
+  name: "Reddit / Empty",
+  render: () => <OnboardingRedditOptional {...redditBase} />,
 };
 
-export const ImportKarmaUsernameEntered: Story = {
-  name: "Import Karma / Username Entered",
+export const RedditUsernameEntered: RedditStory = {
+  name: "Reddit / Username Entered",
   render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
+    <OnboardingRedditOptional
+      {...redditBase}
       reddit={{
         usernameValue: "technohippie",
         verificationState: "not_started",
@@ -73,11 +80,11 @@ export const ImportKarmaUsernameEntered: Story = {
   ),
 };
 
-export const ImportKarmaCodeReady: Story = {
-  name: "Import Karma / Code Ready",
+export const RedditCodeReady: RedditStory = {
+  name: "Reddit / Code Ready",
   render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
+    <OnboardingRedditOptional
+      {...redditBase}
       reddit={{
         usernameValue: "technohippie",
         verificationState: "code_ready",
@@ -88,11 +95,11 @@ export const ImportKarmaCodeReady: Story = {
   ),
 };
 
-export const ImportKarmaChecking: Story = {
-  name: "Import Karma / Checking",
+export const RedditChecking: RedditStory = {
+  name: "Reddit / Checking",
   render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
+    <OnboardingRedditOptional
+      {...redditBase}
       reddit={{
         usernameValue: "technohippie",
         verificationState: "checking",
@@ -103,11 +110,11 @@ export const ImportKarmaChecking: Story = {
   ),
 };
 
-export const ImportKarmaImporting: Story = {
-  name: "Import Karma / Importing",
+export const RedditImporting: RedditStory = {
+  name: "Reddit / Importing",
   render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
+    <OnboardingRedditOptional
+      {...redditBase}
       reddit={{
         usernameValue: "technohippie",
         verifiedUsername: "technohippie",
@@ -120,11 +127,11 @@ export const ImportKarmaImporting: Story = {
   ),
 };
 
-export const ImportKarmaDone: Story = {
-  name: "Import Karma / Done",
+export const RedditDone: RedditStory = {
+  name: "Reddit / Done",
   render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
+    <OnboardingRedditOptional
+      {...redditBase}
       reddit={{
         usernameValue: "technohippie",
         verifiedUsername: "technohippie",
@@ -138,11 +145,11 @@ export const ImportKarmaDone: Story = {
   ),
 };
 
-export const ImportKarmaFailed: Story = {
-  name: "Import Karma / Verification Failed",
+export const RedditFailed: RedditStory = {
+  name: "Reddit / Verification Failed",
   render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
+    <OnboardingRedditOptional
+      {...redditBase}
       reddit={{
         usernameValue: "technohippie",
         verificationState: "failed",
@@ -152,75 +159,14 @@ export const ImportKarmaFailed: Story = {
   ),
 };
 
-export const ChooseNameDefault: Story = {
-  name: "Choose Name / Default",
-  render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
-      phase="choose_name"
-    />
-  ),
-};
-
-export const ChooseNameWithSuggestion: Story = {
-  name: "Choose Name / With Reddit Suggestion",
-  render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
-      phase="choose_name"
-      handleSuggestion={{
-        suggestedLabel: "technohippie",
-        source: "verified_reddit_username",
-        availability: "available",
-      }}
-    />
-  ),
-};
-
-export const ChooseNameSuggestionTaken: Story = {
-  name: "Choose Name / Suggestion Taken",
-  render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
-      phase="choose_name"
-      handleSuggestion={{
-        suggestedLabel: "technohippie",
-        source: "verified_reddit_username",
-        availability: "taken",
-      }}
-    />
-  ),
-};
-
-export const SuggestedCommunitiesWithCommunities: Story = {
-  name: "Suggested Communities / With Communities",
-  render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
-      phase="suggested_communities"
-      snapshot={richSnapshot}
-    />
-  ),
-};
-
-export const SuggestedCommunitiesEmpty: Story = {
-  name: "Suggested Communities / Empty",
-  render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
-      phase="suggested_communities"
-    />
-  ),
-};
-
-export const MobileCodeReady: Story = {
-  name: "Mobile / Code Ready",
+export const RedditMobileCodeReady: RedditStory = {
+  name: "Reddit / Mobile / Code Ready",
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
   render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
+    <OnboardingRedditOptional
+      {...redditBase}
       reddit={{
         usernameValue: "technohippie",
         verificationState: "code_ready",
@@ -231,19 +177,107 @@ export const MobileCodeReady: Story = {
   ),
 };
 
-export const MobileChooseName: Story = {
-  name: "Mobile / Choose Name",
-  parameters: {
-    viewport: { defaultViewport: "mobile1" },
+// Username stories
+
+const UsernameMeta = {
+  title: "Compositions/OnboardingChoosePirateUsername",
+  component: OnboardingChoosePirateUsername,
+  args: {
+    actions: { primaryLabel: "Continue" },
   },
+  decorators: [decorator],
+} satisfies Meta<typeof OnboardingChoosePirateUsername>;
+
+type UsernameStory = StoryObj<typeof UsernameMeta>;
+
+export const UsernameEmpty: UsernameStory = {
+  name: "Username / Empty (Reddit skipped)",
+  render: () => <OnboardingChoosePirateUsername actions={{ primaryLabel: "Continue" }} />,
+};
+
+export const UsernamePrefilledFromReddit: UsernameStory = {
+  name: "Username / Prefilled From Reddit",
   render: () => (
-    <OnboardingRedditBootstrap
-      {...base}
-      phase="choose_name"
+    <OnboardingChoosePirateUsername
       handleSuggestion={{
         suggestedLabel: "technohippie",
         source: "verified_reddit_username",
         availability: "available",
+      }}
+      actions={{ primaryLabel: "Continue" }}
+    />
+  ),
+};
+
+export const UsernameSuggestionTaken: UsernameStory = {
+  name: "Username / Suggested Handle Taken",
+  render: () => (
+    <OnboardingChoosePirateUsername
+      handleSuggestion={{
+        suggestedLabel: "technohippie",
+        source: "verified_reddit_username",
+        availability: "taken",
+      }}
+      actions={{ primaryLabel: "Continue" }}
+    />
+  ),
+};
+
+export const UsernameMobile: UsernameStory = {
+  name: "Username / Mobile",
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <OnboardingChoosePirateUsername
+      handleSuggestion={{
+        suggestedLabel: "technohippie",
+        source: "verified_reddit_username",
+        availability: "available",
+      }}
+      actions={{ primaryLabel: "Continue" }}
+    />
+  ),
+};
+
+// Communities stories
+
+const CommunitiesMeta = {
+  title: "Compositions/OnboardingCommunitySuggestions",
+  component: OnboardingCommunitySuggestions,
+  args: {
+    communities: [],
+    actions: {
+      primaryLabel: "Continue",
+      tertiaryLabel: "Skip",
+    },
+  },
+  decorators: [decorator],
+} satisfies Meta<typeof OnboardingCommunitySuggestions>;
+
+type CommunitiesStory = StoryObj<typeof CommunitiesMeta>;
+
+export const CommunitiesWithSuggestions: CommunitiesStory = {
+  name: "Communities / With Suggestions",
+  render: () => (
+    <OnboardingCommunitySuggestions
+      communities={richSnapshot.suggestedCommunities}
+      actions={{
+        primaryLabel: "Continue",
+        tertiaryLabel: "Skip",
+      }}
+    />
+  ),
+};
+
+export const CommunitiesEmpty: CommunitiesStory = {
+  name: "Communities / Empty",
+  render: () => (
+    <OnboardingCommunitySuggestions
+      communities={[]}
+      actions={{
+        primaryLabel: "Continue",
+        tertiaryLabel: "Skip",
       }}
     />
   ),

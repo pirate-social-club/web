@@ -8,6 +8,7 @@ export type NamespaceFamily = "hns" | "spaces";
 export type NamespaceImportStatus =
   | "not_imported"
   | "checking"
+  | "dns_setup_required"
   | "inspected"
   | "txt_challenge_ready"
   | "pending"
@@ -16,6 +17,7 @@ export type NamespaceImportStatus =
 export type HnsDelegationMode = "owner_managed" | "pirate_managed";
 
 export type SpacesHandleMode = "owner_managed" | "operator_brokered" | "attach_certificate";
+export type NamespaceChallengeKind = "dns_txt" | "schnorr_sign";
 
 export type HandlePolicyTemplate = "standard" | "premium" | "membership_gated" | "custom";
 export type HandlePricingModel = "free" | "flat_by_length" | "custom_curve" | "gated_then_flat";
@@ -49,14 +51,89 @@ export interface NamespaceImportState {
   spacesHandleMode?: SpacesHandleMode;
   expiryDaysRemaining?: number;
   pirateDnsDetected?: boolean;
+  challengeKind?: NamespaceChallengeKind;
   txtChallenge?: string;
   signatureChallenge?: string;
+  challengeDigest?: string;
 }
 
 export interface CreatorVerificationState {
   uniqueHumanVerified: boolean;
   ageOver18Verified: boolean;
 }
+
+export type NamespaceVerificationCallbacks = {
+  onInspect: (input: {
+    family: NamespaceFamily;
+    rootLabel: string;
+  }) => Promise<{
+    namespaceVerificationSessionId: string;
+    status: NamespaceVerificationSessionResponse["status"];
+    challengeKind: NamespaceChallengeKind | null;
+    challengePayload: Record<string, unknown> | null;
+    challengeTxtValue: string | null;
+    challengeHost: string | null;
+    expiryHorizonSufficient: boolean | null;
+    expiresAt: string | null;
+    failureReason: string | null;
+  }>;
+  onCompleteVerification: (input: {
+    family: NamespaceFamily;
+    namespaceVerificationSessionId: string;
+    restartChallenge?: boolean;
+    signaturePayload?: {
+      signature: string;
+      algorithm?: string | null;
+      signerPubkey?: string | null;
+      digest?: string | null;
+    };
+  }) => Promise<{
+    status: NamespaceVerificationSessionResponse["status"];
+    challengeKind: NamespaceChallengeKind | null;
+    challengePayload: Record<string, unknown> | null;
+    namespaceVerificationId: string | null;
+    failureReason: string | null;
+  }>;
+};
+
+export type NamespaceVerificationSessionResponse = {
+  status:
+    | "draft"
+    | "inspecting"
+    | "dns_setup_required"
+    | "challenge_required"
+    | "challenge_pending"
+    | "verified"
+    | "failed"
+    | "expired";
+  challenge_txt_value: string | null;
+  challenge_host: string | null;
+  challenge_kind: NamespaceChallengeKind | null;
+  challenge_payload: Record<string, unknown> | null;
+  namespace_verification_id: string | null;
+  namespace_verification_session_id: string;
+  assertions: {
+    expiry_horizon_sufficient: boolean | null;
+  };
+  failure_reason: string | null;
+  expires_at?: string | null;
+};
+
+export type CreateCommunityCallbacks = {
+  onCreate: (input: {
+    displayName: string;
+    description: string | null;
+    membershipMode: CommunityMembershipMode;
+    defaultAgeGatePolicy: CommunityDefaultAgeGatePolicy;
+    allowAnonymousIdentity: boolean;
+    anonymousIdentityScope: AnonymousIdentityScope;
+    namespaceVerificationId: string;
+    handlePolicyTemplate: HandlePolicyTemplate;
+    gateTypes: Set<GateType>;
+  }) => Promise<{
+    communityId: string;
+  }>;
+};
 
 export interface CreateCommunityComposerProps {
   displayName?: string;
@@ -69,4 +146,6 @@ export interface CreateCommunityComposerProps {
   handlePolicy?: HandlePolicyState;
   creatorVerificationState?: CreatorVerificationState;
   initialStep?: ComposerStep;
+  namespaceVerification?: NamespaceVerificationCallbacks;
+  onCreate?: CreateCommunityCallbacks["onCreate"];
 }

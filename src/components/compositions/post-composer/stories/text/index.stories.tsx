@@ -2,7 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { PostComposer } from "../../post-composer";
-import { baseComposer, composerDecorator } from "../story-helpers";
+import {
+  baseComposer,
+  ComposerWithSubmitPreview,
+  composerDecorator,
+} from "../story-helpers";
 
 const meta = {
   title: "Compositions/PostComposer/Text",
@@ -17,7 +21,21 @@ type Story = StoryObj<typeof meta>;
 
 export const Compose: Story = {
   name: "Default",
-  render: () => <PostComposer {...baseComposer} />,
+  render: () => <ComposerWithSubmitPreview {...baseComposer} />,
+};
+
+export const SubmitPayload: Story = {
+  name: "Submit Payload",
+  render: () => (
+    <ComposerWithSubmitPreview
+      {...baseComposer}
+      titleValue="Markdown-first posting still feels right"
+      titleCountLabel="39/300"
+      textBodyValue={
+        "A small toolbar is enough.\n\n- Bold\n- Italic\n- Lists\n- Preview"
+      }
+    />
+  ),
 };
 
 export const PublicHandleOnly: Story = {

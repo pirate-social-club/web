@@ -35,39 +35,44 @@ export const GENERATED_LOCALE_CATALOGS = {
         "title": "Your Communities"
       },
       "post": {
-        "commentsBody": "Thread replies are not scaffolded yet. This route exists to pin the URL contract and page chrome for `post_id` reads.",
-        "description": "Single-thread route shell for the future `GET /posts/{post_id}` read.",
+        "commentsBody": "Replies are not loaded in this web build yet.",
+        "description": "Live post view for `GET /posts/{post_id}` records.",
         "fallbackTitle": "Post"
       },
       "onboarding": {
-        "chooseNameAction": "Choose Name",
-        "description": "Single onboarding route with client-managed phases. No nested onboarding URLs are locked yet.",
-        "importKarmaAction": "Import Karma",
-        "suggestedCommunitiesAction": "Suggested Communities",
+        "chooseNameAction": "Username",
+        "description": "Three-step onboarding route for Reddit verification, handle selection, and community suggestions.",
+        "importKarmaAction": "Reddit",
+        "suggestedCommunitiesAction": "Communities",
         "title": "Finish setting up your Pirate identity"
       },
       "auth": {
-        "body": "Keep `/auth` as the landing placeholder for now. Do not treat callback paths or provider contracts as stable until the web auth flow is specified.",
-        "description": "The app route exists, but provider-specific browser auth wiring is intentionally not locked yet.",
-        "title": "Auth placeholder"
+        "body": "Sign in to create or resume a Pirate browser session. Once connected, this page shows your current account and onboarding status.",
+        "description": "Account entry point for browser sign-in, session state, and verification routing.",
+        "title": "Account"
+      },
+      "authDevice": {
+        "description": "Browser handoff route for terminal or device login. The page signs in with Privy, checks onboarding, and authorizes the waiting device session.",
+        "title": "Device auth"
       },
       "inbox": {
-        "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",
-        "description": "This route is scaffolded so the mobile nav can point somewhere truthful while inbox behavior is still undefined.",
-        "title": "Inbox placeholder"
+        "body": "Use this page to inspect your current browser session, verification state, and onboarding readiness.",
+        "description": "Account-scoped status surface for verification, onboarding, and system events.",
+        "title": "Inbox"
       },
       "createCommunity": {
-        "description": "Scaffolded shell around the existing community composer composition. Submission is not wired yet.",
+        "description": "Namespace-backed community creation flow with live account verification and submission wiring.",
         "title": "Create a community"
       },
       "notFound": {
-        "body": "The first scaffold only locks a small set of routes: home, feeds, communities, posts, profiles, onboarding, auth placeholder, inbox placeholder, and community create.",
+        "body": "The current web shell covers home, feeds, communities, posts, profiles, onboarding, account, inbox, and community creation.",
         "description": "No scaffolded page exists for {path}.",
         "title": "Route not found"
       }
     },
     "shell": {
       "appHeader": {
+        "connectLabel": "Connect",
         "createLabel": "Create",
         "homeAriaLabel": "Go to home",
         "notificationsAriaLabel": "Notifications",
@@ -75,7 +80,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "profileAriaLabel": "Open profile",
         "searchAriaLabel": "Search Pirate",
         "searchPlaceholder": "Search Pirate",
-        "searchUnavailableToast": "Search is not scaffolded yet."
+        "searchUnavailableToast": "Search is not scaffolded yet.",
+        "verifyLabel": "Verify"
       },
       "appSidebar": {
         "brandLabel": "Pirate",
@@ -134,6 +140,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "yourCommunitiesLabel": "Your Communities"
       },
       "mobileFooter": {
+        "connectLabel": "Connect",
         "createLabel": "Create",
         "homeLabel": "Home",
         "inboxAriaLabel": "Inbox",
@@ -184,39 +191,44 @@ export const GENERATED_LOCALE_CATALOGS = {
         "title": "مجتمعاتك"
       },
       "post": {
-        "commentsBody": "ردود السلسلة غير مهيأة بعد. هذا المسار موجود لتثبيت عقد عنوان URL وهيكل الصفحة لقراءات `post_id`.",
-        "description": "هيكل مسار لسلسلة مفردة لقراءة `GET /posts/{post_id}` مستقبلًا.",
+        "commentsBody": "الردود لا يتم تحميلها في نسخة الويب هذه بعد.",
+        "description": "عرض حي للمنشور لسجلات `GET /posts/{post_id}`.",
         "fallbackTitle": "منشور"
       },
       "onboarding": {
-        "chooseNameAction": "اختر الاسم",
-        "description": "مسار إعداد واحد بمراحل تُدار من العميل. لم يتم تثبيت عناوين URL المتداخلة للإعداد بعد.",
-        "importKarmaAction": "استورد الكارما",
-        "suggestedCommunitiesAction": "مجتمعات مقترحة",
+        "chooseNameAction": "اسم المستخدم",
+        "description": "مسار إعداد من ثلاث خطوات للتحقق من Reddit واختيار الاسم واقتراح المجتمعات.",
+        "importKarmaAction": "Reddit",
+        "suggestedCommunitiesAction": "المجتمعات",
         "title": "أكمل إعداد هوية Pirate الخاصة بك"
       },
       "auth": {
-        "body": "أبقِ `/auth` كصفحة هبوط مؤقتة الآن. لا تتعامل مع مسارات الاستدعاء أو عقود المزود على أنها ثابتة حتى يتم تحديد تدفق المصادقة على الويب.",
-        "description": "هذا المسار موجود، لكن ربط مصادقة المتصفح الخاصة بالمزوّد لم يتم تثبيته عمدًا بعد.",
-        "title": "عنصر نائب للمصادقة"
+        "body": "سجّل الدخول لإنشاء أو استئناف جلسة Pirate في المتصفح. بعد الاتصال ستعرض هذه الصفحة حالة الحساب والإعداد الحالية.",
+        "description": "نقطة دخول الحساب لتسجيل الدخول من المتصفح، وحالة الجلسة، ومسارات التحقق.",
+        "title": "الحساب"
+      },
+      "authDevice": {
+        "description": "مسار تسليم المتصفح لتسجيل الدخول من الطرفية أو الجهاز. تسجل الصفحة الدخول عبر Privy، وتفحص حالة الإعداد، ثم تفوض جلسة الجهاز المنتظرة.",
+        "title": "مصادقة الجهاز"
       },
       "inbox": {
-        "body": "أبقِ `/inbox` كعنصر نائب محايد حتى يتم تحديد الإشعارات أو المراسلة كسطوح منتج حقيقية.",
-        "description": "تم تجهيز هذا المسار حتى يشير إليه تنقل الهاتف بصدق بينما لا يزال سلوك الوارد غير محدد.",
-        "title": "عنصر نائب للوارد"
+        "body": "استخدم هذه الصفحة لفحص جلسة المتصفح الحالية، وحالة التحقق، وجاهزية الإعداد.",
+        "description": "سطح حالة خاص بالحساب للتحقق، والإعداد، وأحداث النظام.",
+        "title": "الوارد"
       },
       "createCommunity": {
-        "description": "هيكل جاهز حول مكوّن إنشاء المجتمع الحالي. الإرسال غير موصول بعد.",
+        "description": "تدفق إنشاء مجتمع معتمد على النطاق مع تحقق حي من الحساب وربط فعلي للإرسال.",
         "title": "أنشئ مجتمعًا"
       },
       "notFound": {
-        "body": "النسخة الأولى من الهيكل تثبّت فقط مجموعة صغيرة من المسارات: الرئيسية، الخلاصات، المجتمعات، المنشورات، الملفات الشخصية، الإعداد، عنصر نائب للمصادقة، عنصر نائب للوارد، وإنشاء مجتمع.",
+        "body": "يغطي هيكل الويب الحالي الرئيسية، والخلاصات، والمجتمعات، والمنشورات، والملفات الشخصية، والإعداد، والحساب، والوارد، وإنشاء المجتمع.",
         "description": "لا توجد صفحة مجهزة للمسار {path}.",
         "title": "المسار غير موجود"
       }
     },
     "shell": {
       "appHeader": {
+        "connectLabel": "اتصل",
         "createLabel": "أنشئ",
         "homeAriaLabel": "اذهب إلى الصفحة الرئيسية",
         "notificationsAriaLabel": "الإشعارات",
@@ -224,7 +236,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "profileAriaLabel": "افتح الملف الشخصي",
         "searchAriaLabel": "ابحث في بايرت",
         "searchPlaceholder": "ابحث في Pirate",
-        "searchUnavailableToast": "البحث غير متاح بعد."
+        "searchUnavailableToast": "البحث غير متاح بعد.",
+        "verifyLabel": "تحقّق"
       },
       "appSidebar": {
         "brandLabel": "Pirate",
@@ -283,6 +296,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "yourCommunitiesLabel": "مجتمعاتك"
       },
       "mobileFooter": {
+        "connectLabel": "اتصل",
         "createLabel": "أنشئ",
         "homeLabel": "الرئيسية",
         "inboxAriaLabel": "الوارد",

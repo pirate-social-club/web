@@ -1,6 +1,6 @@
 import type { RequestInfo } from "rwsdk/worker";
-import { requestInfo } from "rwsdk/worker";
 
+import { readPublicRuntimeEnv } from "@/lib/public-runtime-env";
 import { UiLocaleProvider } from "@/lib/ui-locale";
 import {
   resolveLocaleDirection,
@@ -14,20 +14,26 @@ import stylesUrl from "@/styles/tokens.css?url";
 type ThemeMode = "dark" | "light" | "system";
 
 type AppContext = {
-  dir?: UiDirection;
-  locale?: UiLocaleCode;
-  theme?: ThemeMode;
+  dir: UiDirection;
+  locale: UiLocaleCode;
+  theme: ThemeMode;
 };
 
-export const Document: React.FC<{ children: React.ReactNode }> = ({
+type DocumentProps = RequestInfo<any, AppContext> & {
+  children: React.ReactNode;
+};
+
+export const Document: React.FC<DocumentProps> = ({
   children,
+  ctx,
+  rw,
 }) => {
   const isDev = import.meta.env.DEV;
-  const currentRequestInfo = requestInfo as RequestInfo<any, AppContext>;
-  const locale = currentRequestInfo.ctx.locale ?? "en";
-  const dir = currentRequestInfo.ctx.dir ?? resolveLocaleDirection(locale);
-  const theme = currentRequestInfo.ctx.theme ?? "dark";
-  const nonce = currentRequestInfo.rw.nonce;
+  const publicEnv = readPublicRuntimeEnv();
+  const locale = ctx.locale ?? "en";
+  const dir = ctx.dir ?? resolveLocaleDirection(locale);
+  const theme = ctx.theme ?? "dark";
+  const nonce = rw.nonce;
   const clientModuleUrl = isDev
     ? "/src/client.tsx"
     : "rwsdk_asset:/src/client.tsx";
@@ -57,6 +63,12 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
             }}
           />
         ) : null}
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{
+            __html: `globalThis.__PIRATE_ENV__=${JSON.stringify(publicEnv)};globalThis.process=globalThis.process||{};globalThis.process.env=Object.assign(globalThis.process.env||{},${JSON.stringify(publicEnv)},{PRIVY_APP_ID:${JSON.stringify(publicEnv.VITE_PRIVY_APP_ID)}});`,
+          }}
+        />
         <script
           nonce={nonce}
           dangerouslySetInnerHTML={{

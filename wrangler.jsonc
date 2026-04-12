@@ -11,5 +11,13 @@
   },
   "observability": {
     "enabled": true
+  },
+  "env": {
+    "dev": {
+      "name": "pirate-web-dev"
+    },
+    "staging": {
+      "name": "pirate-web-staging"
+    }
   }
 }

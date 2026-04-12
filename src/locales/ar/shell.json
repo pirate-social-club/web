@@ -1,5 +1,6 @@
 {
   "appHeader": {
+    "connectLabel": "اتصل",
     "createLabel": "أنشئ",
     "homeAriaLabel": "اذهب إلى الصفحة الرئيسية",
     "notificationsAriaLabel": "الإشعارات",
@@ -7,7 +8,8 @@
     "profileAriaLabel": "افتح الملف الشخصي",
     "searchAriaLabel": "ابحث في بايرت",
     "searchPlaceholder": "ابحث في Pirate",
-    "searchUnavailableToast": "البحث غير متاح بعد."
+    "searchUnavailableToast": "البحث غير متاح بعد.",
+    "verifyLabel": "تحقّق"
   },
   "appSidebar": {
     "brandLabel": "Pirate",
@@ -42,6 +44,7 @@
     "yourCommunitiesLabel": "مجتمعاتك"
   },
   "mobileFooter": {
+    "connectLabel": "اتصل",
     "createLabel": "أنشئ",
     "homeLabel": "الرئيسية",
     "inboxAriaLabel": "الوارد",

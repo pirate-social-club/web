@@ -3,6 +3,7 @@ import * as React from "react";
 import { PostCard } from "@/components/compositions/post-card/post-card";
 import { PostCardSkeleton } from "@/components/compositions/post-card/post-card-skeleton";
 import { PillButton } from "@/components/primitives/pill-button";
+import { ContentWithRail } from "@/components/primitives/content-with-rail";
 import type { PostCardProps } from "@/components/compositions/post-card/post-card.types";
 import { cn } from "@/lib/utils";
 
@@ -91,7 +92,7 @@ export function Feed({
   const showLoadingTail = loading && hasItems;
 
   return (
-    <div className={cn("grid min-w-0 flex-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]", className)}>
+    <ContentWithRail className={className} rail={aside}>
       <section className="min-w-0">
         <div className={cn("flex flex-col", showHeadingBlock || showHeaderControls ? "mb-4 gap-4 md:mb-5" : undefined)}>
           {showHeadingBlock ? (
@@ -162,8 +163,6 @@ export function Feed({
           ) : null}
         </div>
       </section>
-
-      {aside ? <aside className="hidden xl:block">{aside}</aside> : null}
-    </div>
+    </ContentWithRail>
   );
 }

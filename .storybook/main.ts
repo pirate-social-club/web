@@ -9,8 +9,8 @@ const __dirname = dirname(__filename);
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.stories.@(js|jsx|ts|tsx)"],
-  features: {
-    componentsManifest: true,
+  typescript: {
+    reactDocgen: false,
   },
   framework: {
     name: "@storybook/react-vite",

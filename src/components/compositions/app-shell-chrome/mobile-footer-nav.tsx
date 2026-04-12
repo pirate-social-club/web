@@ -5,6 +5,7 @@ import {
   Bell,
   House,
   Plus,
+  UserCircle,
 } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
@@ -34,6 +35,8 @@ export interface MobileFooterNavProps {
   avatarFallback?: string;
   className?: string;
   forceMobile?: boolean;
+  hasBrowserAuth?: boolean;
+  isAuthenticated?: boolean;
   labels?: MobileFooterNavLabels;
   onCreateClick?: () => void;
   onHomeClick?: () => void;
@@ -48,6 +51,8 @@ export function MobileFooterNav({
   avatarFallback = "Pirate User",
   className,
   forceMobile,
+  hasBrowserAuth = false,
+  isAuthenticated = true,
   labels,
   onCreateClick,
   onHomeClick,
@@ -94,12 +99,12 @@ export function MobileFooterNav({
           return (
             <button
               aria-current={active ? "page" : undefined}
-              aria-label={item.id === "inbox" ? inboxAriaLabel : labelById[item.id]}
+              aria-label={labelById[item.id]}
               className={cn(
                 "relative mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors",
                 active
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  ? "text-white"
+                  : "text-muted-foreground hover:text-foreground",
               )}
               key={item.id}
               onClick={clickById[item.id]}
@@ -120,17 +125,21 @@ export function MobileFooterNav({
           className={cn(
             "mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors",
             activeItem === "profile"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              ? "text-white"
+              : "text-muted-foreground hover:text-foreground",
           )}
           onClick={onProfileClick}
           type="button"
-          >
+        >
           <Avatar
-            className="h-9 w-9 bg-card text-base"
+            className={cn(
+              "h-9 w-9 border-transparent bg-card text-base",
+              activeItem === "profile" && "ring-[3px] ring-white ring-offset-2 ring-offset-background",
+            )}
             fallback={avatarFallback}
+            fallbackIcon={<UserCircle aria-hidden className="size-5 text-muted-foreground" weight="fill" />}
             size="sm"
-            src={userAvatarSrc ?? undefined}
+            src={hasBrowserAuth ? userAvatarSrc ?? undefined : undefined}
           />
           <span className="sr-only">{profile}</span>
         </button>

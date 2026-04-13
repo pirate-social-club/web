@@ -16,6 +16,7 @@ import {
 import { Toaster, toast } from "@/components/primitives/sonner";
 import { SidebarInset, SidebarProvider } from "@/components/compositions/sidebar/sidebar";
 import { ApiProvider, useSessionRevalidation } from "@/lib/api";
+import { PirateAuthProvider } from "@/lib/auth/privy-provider";
 import { useSession } from "@/lib/api/session-store";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
@@ -171,36 +172,38 @@ export function PirateApp({ initialPath }: { initialPath?: string }) {
   const sections = buildSidebarSections(copy.appSidebar);
 
   return (
-    <ApiProvider>
-      <SessionRevalidator>
-        <SidebarProvider defaultOpen>
-          <AppSidebar
-            activeItemId={activeSidebarItem(route)}
-            brandLabel={copy.appSidebar.brandLabel}
-            homeAriaLabel={copy.appSidebar.homeAriaLabel}
-            onHomeClick={() => navigate("/")}
-            primaryItems={primaryItems}
-            resourceItems={copy.appSidebar.resourceItems}
-            resourcesLabel={copy.appSidebar.resourcesLabel}
-            sections={sections}
-          />
-          <SidebarInset className="min-h-dvh">
-            <AppShellHeader copy={copy} />
-            <main
-              className={cn(
-                "flex w-full flex-1 pb-24 pt-[calc(env(safe-area-inset-top)+5rem)] md:pb-8 md:pt-6",
-                usesFullBleedLayout(route)
-                  ? "max-w-none"
-                  : "mx-auto max-w-[96rem] px-3 md:px-5 lg:px-8",
-              )}
-            >
-              {renderRoute(route)}
-            </main>
-            <AppShellMobileNav copy={copy} route={route} />
-          </SidebarInset>
-          <Toaster />
-        </SidebarProvider>
-      </SessionRevalidator>
-    </ApiProvider>
+    <PirateAuthProvider>
+      <ApiProvider>
+        <SessionRevalidator>
+          <SidebarProvider defaultOpen>
+            <AppSidebar
+              activeItemId={activeSidebarItem(route)}
+              brandLabel={copy.appSidebar.brandLabel}
+              homeAriaLabel={copy.appSidebar.homeAriaLabel}
+              onHomeClick={() => navigate("/")}
+              primaryItems={primaryItems}
+              resourceItems={copy.appSidebar.resourceItems}
+              resourcesLabel={copy.appSidebar.resourcesLabel}
+              sections={sections}
+            />
+            <SidebarInset className="min-h-dvh">
+              <AppShellHeader copy={copy} />
+              <main
+                className={cn(
+                  "flex w-full flex-1 pb-24 pt-[calc(env(safe-area-inset-top)+5rem)] md:pb-8 md:pt-6",
+                  usesFullBleedLayout(route)
+                    ? "max-w-none"
+                    : "mx-auto max-w-[96rem] px-3 md:px-5 lg:px-8",
+                )}
+              >
+                {renderRoute(route)}
+              </main>
+              <AppShellMobileNav copy={copy} route={route} />
+            </SidebarInset>
+            <Toaster />
+          </SidebarProvider>
+        </SessionRevalidator>
+      </ApiProvider>
+    </PirateAuthProvider>
   );
 }

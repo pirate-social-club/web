@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { AppRoute, navigate } from "@/app/router";
-import { useApi, useSessionRevalidation } from "@/lib/api";
+import { useApi } from "@/lib/api";
 import {
   setSession,
   updateSessionOnboarding,
@@ -17,6 +17,7 @@ import type { RedditVerification as ApiRedditVerification } from "@pirate/api-co
 import type { RedditImportSummary as ApiRedditImportSummary } from "@pirate/api-contracts";
 import type { NamespaceVerificationSession as ApiNamespaceSession } from "@pirate/api-contracts";
 import type { ApiError } from "@/lib/api/client";
+import type { PrivyLoginCard as PrivyLoginCardComponent } from "@/components/auth/privy-login-card";
 import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
 import type { OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
@@ -32,6 +33,7 @@ import { Button } from "@/components/primitives/button";
 import { Input } from "@/components/primitives/input";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
 import { Spinner } from "@/components/primitives/spinner";
+import { getPrivyAppId, usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { useUiLocale } from "@/lib/ui-locale";
 import { resolveLocaleLanguageTag } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
@@ -91,6 +93,36 @@ function EmptyFeedState({ message }: { message: string }) {
   return (
     <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-5">
       <p className="text-base leading-7 text-muted-foreground">{message}</p>
+    </div>
+  );
+}
+
+function StatusCard({
+  title,
+  description,
+  actions,
+  tone = "default",
+}: {
+  title: string;
+  description: string;
+  actions?: React.ReactNode;
+  tone?: "default" | "success" | "warning";
+}) {
+  const toneClassName = tone === "success"
+    ? "border-emerald-500/20 bg-emerald-500/5"
+    : tone === "warning"
+      ? "border-amber-500/20 bg-amber-500/5"
+      : "border-border-soft bg-card";
+
+  return (
+    <div className={`rounded-[var(--radius-3xl)] border px-5 py-5 ${toneClassName}`}>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-1.5">
+          <p className="text-base font-semibold text-foreground">{title}</p>
+          <p className="max-w-3xl text-base leading-7 text-muted-foreground">{description}</p>
+        </div>
+        {actions ? <div className="flex shrink-0 flex-wrap gap-3">{actions}</div> : null}
+      </div>
     </div>
   );
 }
@@ -645,6 +677,7 @@ function OnboardingPage() {
 function AuthPage() {
   const { copy } = useRouteMessages();
   const api = useApi();
+  const session = useSession();
   const [jwt, setJwt] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -666,12 +699,20 @@ function AuthPage() {
       .finally(() => setLoading(false));
   }, [jwt, api]);
 
+  React.useEffect(() => {
+    if (session) {
+      navigate("/onboarding");
+    }
+  }, [session]);
+
   return (
     <StackPageShell
       title={copy.auth.title}
-      description="Paste a dev JWT to sign in."
+      description="Use Privy when it is configured for this environment. The dev JWT path stays available for local backend testing."
     >
       <div className="mx-auto w-full max-w-2xl space-y-6">
+        {getPrivyAppId() ? <PrivyLoginCard /> : null}
+
         <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-5 space-y-4">
           <div className="space-y-2">
             <FormFieldLabel label="Dev JWT" />
@@ -702,6 +743,45 @@ function AuthPage() {
   );
 }
 
+function PrivyLoginCard() {
+  const { loaded } = usePiratePrivyRuntime();
+  const [CardComponent, setCardComponent] =
+    React.useState<React.ComponentType | null>(null);
+
+  React.useEffect(() => {
+    if (!loaded) return;
+
+    let cancelled = false;
+    void import("@/components/auth/privy-login-card").then((mod) => {
+      if (!cancelled) {
+        setCardComponent(() => mod.PrivyLoginCard as typeof PrivyLoginCardComponent);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loaded]);
+
+  if (!loaded || !CardComponent) {
+    return (
+      <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-5 space-y-4">
+        <div className="space-y-2">
+          <p className="text-lg font-semibold text-foreground">Sign in with Privy</p>
+          <p className="text-base leading-7 text-muted-foreground">
+            Loading the Privy client for this browser session.
+          </p>
+        </div>
+        <div className="flex justify-end">
+          <Button disabled>Continue with Privy</Button>
+        </div>
+      </div>
+    );
+  }
+
+  return <CardComponent />;
+}
+
 function InboxPlaceholderPage() {
   const { copy } = useRouteMessages();
 
@@ -721,6 +801,9 @@ function CreateCommunityPage() {
   const session = useSession();
   const [namespaceModalOpen, setNamespaceModalOpen] = React.useState(false);
   const [namespaceVerificationId, setNamespaceVerificationId] = React.useState<string | null>(null);
+  const [verificationSessionId, setVerificationSessionId] = React.useState<string | null>(null);
+  const [verificationLoading, setVerificationLoading] = React.useState(false);
+  const [verificationError, setVerificationError] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   const namespaceCallbacks: NamespaceVerificationCallbacks = React.useMemo(() => ({
@@ -759,7 +842,49 @@ function CreateCommunityPage() {
 
   const handleVerified = React.useCallback((nsId: string) => {
     setNamespaceVerificationId(nsId);
+    setNamespaceModalOpen(false);
   }, []);
+
+  const refreshOnboardingStatus = React.useCallback(async () => {
+    const status = await api.onboarding.getStatus();
+    updateSessionOnboarding(status);
+    return status;
+  }, [api]);
+
+  const handleStartVeryVerification = React.useCallback(async () => {
+    setVerificationLoading(true);
+    setVerificationError(null);
+
+    try {
+      const result = await api.verification.startSession({ provider: "very" });
+      setVerificationSessionId(result.verification_session_id);
+    } catch (e: unknown) {
+      const apiError = e as ApiError;
+      setVerificationError(apiError?.message ?? "Could not start Very verification");
+    } finally {
+      setVerificationLoading(false);
+    }
+  }, [api]);
+
+  const handleCompleteVeryVerification = React.useCallback(async () => {
+    if (!verificationSessionId) return;
+
+    setVerificationLoading(true);
+    setVerificationError(null);
+
+    try {
+      await api.verification.completeSession(verificationSessionId, {
+        proof_hash: `very-local-${Date.now()}`,
+      });
+      await refreshOnboardingStatus();
+      setVerificationSessionId(null);
+    } catch (e: unknown) {
+      const apiError = e as ApiError;
+      setVerificationError(apiError?.message ?? "Could not complete Very verification");
+    } finally {
+      setVerificationLoading(false);
+    }
+  }, [api, refreshOnboardingStatus, verificationSessionId]);
 
   const handleCreate = React.useCallback(async (input: {
     displayName: string;
@@ -788,6 +913,7 @@ function CreateCommunityPage() {
         governance_mode: "centralized",
       });
 
+      navigate(`/c/${result.community.community_id}`);
       return { communityId: result.community.community_id };
     } catch (e: unknown) {
       const apiError = e as ApiError;
@@ -803,12 +929,77 @@ function CreateCommunityPage() {
       }
     : { uniqueHumanVerified: false, ageOver18Verified: false };
 
+  const veryVerificationState = creatorVerificationState.uniqueHumanVerified
+    ? "verified"
+    : verificationSessionId
+      ? "pending"
+      : "not_started";
+
   return (
     <StackPageShell
       title={copy.createCommunity.title}
       description={copy.createCommunity.description}
+      actions={(
+        <Button onClick={() => setNamespaceModalOpen(true)} variant="secondary">
+          {namespaceVerificationId ? "Namespace Verified" : "Verify Namespace"}
+        </Button>
+      )}
     >
       {error ? <FormNote tone="warning">{error}</FormNote> : null}
+      {verificationError ? <FormNote tone="warning">{verificationError}</FormNote> : null}
+      <div className="space-y-4">
+        <StatusCard
+          title={
+            veryVerificationState === "verified"
+              ? "Unique-human verification complete"
+              : veryVerificationState === "pending"
+                ? "Finish your Very verification"
+                : "Verify with Very"
+          }
+          description={
+            veryVerificationState === "verified"
+              ? "Your Pirate session now has the unique-human capability required to create a community."
+              : veryVerificationState === "pending"
+                ? "Open Very in another tab if needed, complete the palm scan, then confirm here."
+                : "Start the unique-human verification step first. The local API accepts the completion call once the session exists."
+          }
+          tone={veryVerificationState === "verified" ? "success" : "warning"}
+          actions={(
+            <>
+              {veryVerificationState === "not_started" ? (
+                <Button loading={verificationLoading} onClick={handleStartVeryVerification}>
+                  Start Very Verification
+                </Button>
+              ) : null}
+              {veryVerificationState === "pending" ? (
+                <>
+                  <Button asChild variant="secondary">
+                    <a href="https://very.org" rel="noreferrer" target="_blank">Open Very</a>
+                  </Button>
+                  <Button loading={verificationLoading} onClick={handleCompleteVeryVerification}>
+                    I Completed the Palm Scan
+                  </Button>
+                </>
+              ) : null}
+            </>
+          )}
+        />
+
+        <StatusCard
+          title={namespaceVerificationId ? "Namespace attached" : "Verify a namespace"}
+          description={
+            namespaceVerificationId
+              ? "This community can now be created with the verified namespace attached."
+              : "Create-community was blocked because there was no UI entrypoint for namespace verification. This button opens that flow."
+          }
+          tone={namespaceVerificationId ? "success" : "default"}
+          actions={(
+            <Button onClick={() => setNamespaceModalOpen(true)} variant="secondary">
+              {namespaceVerificationId ? "Verify Another Namespace" : "Open Namespace Verification"}
+            </Button>
+          )}
+        />
+      </div>
       <div className="mx-auto w-full max-w-5xl">
         <CreateCommunityComposer
           creatorVerificationState={creatorVerificationState}

@@ -20,7 +20,7 @@ export const Default: Story = {
         <CardDescription>Card description goes here.</CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-sm">This is the card content area. Place any content you like here.</p>
+        <p className="text-base">This is the card content area. Place any content you like here.</p>
       </CardContent>
       <CardFooter>
         <Button>Action</Button>
@@ -39,15 +39,15 @@ export const Simple: Story = {
       <CardContent className="space-y-2">
         <div className="flex items-center gap-3 rounded-lg bg-muted p-3">
           <div className="size-2 rounded-full bg-primary" />
-          <span className="text-sm">New message from Alice</span>
+          <span className="text-base">New message from Alice</span>
         </div>
         <div className="flex items-center gap-3 rounded-lg bg-muted p-3">
           <div className="size-2 rounded-full bg-primary" />
-          <span className="text-sm">New message from Bob</span>
+          <span className="text-base">New message from Bob</span>
         </div>
         <div className="flex items-center gap-3 rounded-lg bg-muted p-3">
           <div className="size-2 rounded-full bg-primary" />
-          <span className="text-sm">New message from Charlie</span>
+          <span className="text-base">New message from Charlie</span>
         </div>
       </CardContent>
     </Card>

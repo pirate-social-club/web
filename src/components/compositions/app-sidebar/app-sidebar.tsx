@@ -21,7 +21,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
-} from "@/components/primitives/sidebar";
+} from "@/components/compositions/sidebar/sidebar";
 import {
   resolveDirectionalSide,
   useUiLocale,

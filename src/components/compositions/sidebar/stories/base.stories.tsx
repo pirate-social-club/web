@@ -11,12 +11,6 @@ import {
   useUiLocale,
 } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "./accordion";
 
 import {
   Sidebar,
@@ -29,16 +23,13 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
-} from "./sidebar";
+} from "../sidebar";
 
 const meta = {
-  title: "Primitives/Sidebar",
+  title: "Compositions/Sidebar",
   component: Sidebar,
   decorators: [
     (Story: () => React.ReactNode) => (
@@ -58,7 +49,7 @@ const sectionLabelClassName =
 
 const navRowClassName = "h-12 rounded-xl px-4 text-base font-medium";
 
-type DemoTopLevelItem = {
+type DemoNavItem = {
   active?: boolean;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -67,51 +58,34 @@ type DemoTopLevelItem = {
 function SidebarSection({
   title,
   items,
-  defaultOpen = true,
 }: {
   title: string;
   items: string[];
-  defaultOpen?: boolean;
 }) {
   return (
-    <Accordion
-      className="px-4 group-data-[collapsible=icon]:hidden"
-      collapsible
-      defaultValue={defaultOpen ? title : undefined}
-      type="single"
-    >
-      <AccordionItem className="border-b-0" value={title}>
-        <AccordionTrigger className={sectionLabelClassName}>
-          {title}
-        </AccordionTrigger>
-        <AccordionContent>
-          <SidebarGroup className="gap-0 px-0 py-0">
-            <SidebarGroupContent>
-              <SidebarMenuSub className="mx-0 translate-x-0 border-s-0 px-0 py-0">
-                {items.map((item) => (
-                  <SidebarMenuSubItem key={item}>
-                    <SidebarMenuSubButton
-                      className="h-12 rounded-xl px-4 text-base font-medium"
-                      href="#"
-                      size="md"
-                    >
-                      <span className="truncate">{item}</span>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                ))}
-              </SidebarMenuSub>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+    <SidebarGroup className="gap-0 px-4 py-0 group-data-[collapsible=icon]:hidden">
+      <SidebarGroupLabel className={sectionLabelClassName}>
+        {title}
+      </SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu className="gap-1">
+          {items.map((item) => (
+            <SidebarMenuItem key={item}>
+              <SidebarMenuButton className={navRowClassName} tooltip={item}>
+                <span className="truncate">{item}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
   );
 }
 
 function DemoSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { dir, locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "shell");
-  const topLevelItems: DemoTopLevelItem[] = [
+  const topLevelItems: DemoNavItem[] = [
     {
       icon: House,
       label: copy.appSidebar.homeLabel,
@@ -170,7 +144,6 @@ function DemoSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         {copy.appSidebar.sections.map((section) => (
           <SidebarSection
-            defaultOpen
             items={section.items.map((item) => item.label)}
             key={section.id}
             title={section.label}

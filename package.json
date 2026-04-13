@@ -16,6 +16,8 @@
     "worker:run": "bun run locales:generate && rw-scripts worker-run",
     "generate": "bun run locales:generate && wrangler types --include-runtime false",
     "test": "bun test",
+    "ui:audit": "node ./scripts/ui-audit.mjs",
+    "validate": "bun run locales:generate && bun run types && bun test && bun run ui:audit",
     "types": "bun run locales:generate && tsc --noEmit"
   },
   "dependencies": {
@@ -34,7 +36,6 @@
     "@vidstack/react": "^1.12.13",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.8.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-server-dom-webpack": "19.2.4",

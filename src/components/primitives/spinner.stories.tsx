@@ -38,7 +38,7 @@ export const InButton: Story = {
 export const OnMuted: Story = {
   name: "On muted background",
   render: () => (
-    <div className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-2 text-sm font-medium">
+    <div className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-2 text-base font-medium">
       <Spinner className="size-4" />
       <span>Syncing...</span>
     </div>

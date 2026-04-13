@@ -14,7 +14,7 @@ import {
   type AppSidebarSection,
 } from "@/components/compositions/app-sidebar/app-sidebar";
 import { Toaster, toast } from "@/components/primitives/sonner";
-import { SidebarInset, SidebarProvider } from "@/components/primitives/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/compositions/sidebar/sidebar";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
 import { cn } from "@/lib/utils";

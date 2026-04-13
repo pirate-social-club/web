@@ -12,7 +12,7 @@ import { Button } from "@/components/primitives/button";
 import { IconButton } from "@/components/primitives/icon-button";
 import { PirateBrandMark } from "@/components/primitives/pirate-brand-mark";
 import { SearchTrigger } from "@/components/primitives/search-trigger";
-import { useSidebar } from "@/components/primitives/sidebar";
+import { useSidebar } from "@/components/compositions/sidebar/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 

@@ -23,9 +23,9 @@ export const Disabled: Story = {
 export const WithLabel: Story = {
   render: () => (
     <div className="grid w-full max-w-sm gap-2">
-      <label className="text-sm font-medium leading-none">Message</label>
+      <label className="text-base font-medium leading-none">Message</label>
       <Textarea placeholder="Type your message here." />
-      <p className="text-sm text-muted-foreground">Your message will be copied to the support team.</p>
+      <p className="text-base text-muted-foreground">Your message will be copied to the support team.</p>
     </div>
   ),
 };

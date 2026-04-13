@@ -1,28 +1,32 @@
 # Pirate Social Club Web
 
-Active web UI workspace for Pirate Social Club.
+Active web UI for Pirate Social Club.
 
-This repository currently centers on the Storybook-driven component and composition work that runs on port `6006`, alongside the supporting source files that will grow into the production web app.
-
-Use Bun for installs and scripts in this repo.
+React 19 + Vite + Cloudflare Workers (rwsdk). Tailwind CSS v4 + Radix UI. Bun for installs and scripts.
 
 ## Commands
 
 ```bash
 bun install
-bun run dev
-bun run build
-bun run storybook
-bun run build-storybook
+bun run types          # typecheck (run first)
+bun run locales:generate
+bun run dev            # dev server on :5173
 bun run test
-bun run types
+bun run storybook      # component workspace on :6006
+bun run build          # full production build (heavy, avoid by default)
 ```
 
-## Notes
+See [AGENTS.md](./AGENTS.md) for validation escalation order and style rules.
+See [docs/ui-structure.md](./docs/ui-structure.md), [docs/ui-best-practices.md](./docs/ui-best-practices.md), and [docs/ui-maintenance.md](./docs/ui-maintenance.md) for the component structure and maintenance rules.
 
-- `bun run storybook` runs the active UI workspace on `http://localhost:6006`
-- `storybook-static/` is generated output from `build-storybook` and is ignored
-- `debug-storybook.log` is local debug output and is ignored
+## Source Layout
+
+- `src/app/` — pages, router, document shell
+- `src/components/` — shared UI components
+- `src/hooks/` — React hooks
+- `src/lib/` — shared utilities
+- `src/locales/` — i18n translation files
+- `src/styles/` — global CSS
 
 ## License
 

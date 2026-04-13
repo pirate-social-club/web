@@ -6,7 +6,7 @@ import { AppHeader } from "@/components/compositions/app-shell-chrome/app-header
 import { MobileFooterNav } from "@/components/compositions/app-shell-chrome/mobile-footer-nav";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
-import { SidebarInset, SidebarProvider } from "@/components/primitives/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/compositions/sidebar/sidebar";
 
 import { AppSidebar } from "../app-sidebar";
 

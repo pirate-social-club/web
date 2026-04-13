@@ -3,22 +3,6 @@ import type { CommunityMembershipMode } from "@/lib/community-membership";
 export type { CommunityMembershipMode };
 export type CommunityDefaultAgeGatePolicy = "none" | "18_plus";
 
-export type NamespaceFamily = "hns" | "spaces";
-
-export type NamespaceImportStatus =
-  | "not_imported"
-  | "checking"
-  | "inspected"
-  | "txt_challenge_ready"
-  | "pending"
-  | "verified";
-
-export type HnsDelegationMode = "owner_managed" | "pirate_managed";
-
-export type SpacesHandleMode = "owner_managed" | "operator_brokered" | "attach_certificate";
-
-export type HandlePolicyTemplate = "standard" | "premium" | "membership_gated" | "custom";
-export type HandlePricingModel = "free" | "flat_by_length" | "custom_curve" | "gated_then_flat";
 export type AnonymousIdentityScope = "community_stable" | "thread_stable" | "post_ephemeral";
 
 export type GateFamily = "token_holding" | "identity_proof";
@@ -32,26 +16,7 @@ export type GateType =
   | "nationality"
   | "wallet_score";
 
-export type ComposerStep = 1 | 2 | 3 | 4 | 5;
-
-export interface HandlePolicyState {
-  policyTemplate: HandlePolicyTemplate;
-  pricingModel: HandlePricingModel;
-  membershipRequiredForClaim: boolean;
-}
-
-export interface NamespaceImportState {
-  family?: NamespaceFamily;
-  externalRoot?: string;
-  importStatus?: NamespaceImportStatus;
-  ownerLabel?: string;
-  hnsDelegationMode?: HnsDelegationMode;
-  spacesHandleMode?: SpacesHandleMode;
-  expiryDaysRemaining?: number;
-  pirateDnsDetected?: boolean;
-  txtChallenge?: string;
-  signatureChallenge?: string;
-}
+export type ComposerStep = 1 | 2 | 3;
 
 export interface CreatorVerificationState {
   uniqueHumanVerified: boolean;
@@ -65,8 +30,17 @@ export interface CreateCommunityComposerProps {
   defaultAgeGatePolicy?: CommunityDefaultAgeGatePolicy;
   allowAnonymousIdentity?: boolean;
   anonymousIdentityScope?: AnonymousIdentityScope;
-  namespace?: NamespaceImportState;
-  handlePolicy?: HandlePolicyState;
   creatorVerificationState?: CreatorVerificationState;
   initialStep?: ComposerStep;
+  onCreate?: (input: {
+    displayName: string;
+    description: string | null;
+    membershipMode: CommunityMembershipMode;
+    defaultAgeGatePolicy: CommunityDefaultAgeGatePolicy;
+    allowAnonymousIdentity: boolean;
+    anonymousIdentityScope: AnonymousIdentityScope;
+    gateTypes: Set<GateType>;
+  }) => Promise<{
+    communityId: string;
+  }>;
 }

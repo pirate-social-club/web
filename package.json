@@ -16,7 +16,8 @@
     "worker:run": "bun run locales:generate && rw-scripts worker-run",
     "generate": "bun run locales:generate && wrangler types --include-runtime false",
     "test": "bun test",
-    "types": "bun run locales:generate && tsc --noEmit"
+    "types": "bun run locales:generate && tsc --noEmit",
+    "build:desktop-shell": "bun run locales:generate && vite build --config vite.desktop.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

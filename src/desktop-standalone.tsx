@@ -1,21 +1,27 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 
-import "@pirate-web/styles/tokens.css";
+import { PirateApp } from "@/app";
+import { UiLocaleProvider } from "@/lib/ui-locale";
+import "@/styles/tokens.css";
 
-import { PirateApp } from "./app";
+const rootElement = document.getElementById("root");
 
-export function bootstrapDesktopStandalone(): void {
-  const container = document.getElementById("root");
-  if (!container) {
-    throw new Error("Missing #root container");
-  }
-
-  createRoot(container).render(
-    <React.StrictMode>
-      <PirateApp />
-    </React.StrictMode>,
-  );
+if (!rootElement) {
+  throw new Error("Desktop root element was not found");
 }
 
-bootstrapDesktopStandalone();
+function resolveInitialPath(): string {
+  if (typeof window === "undefined") return "/";
+  if (window.location.protocol === "file:") return "/";
+  if (window.location.pathname === "/desktop.html") return "/";
+  return window.location.pathname || "/";
+}
+
+createRoot(rootElement).render(
+  <React.StrictMode>
+    <UiLocaleProvider dir="ltr" locale="en">
+      <PirateApp initialPath={resolveInitialPath()} />
+    </UiLocaleProvider>
+  </React.StrictMode>,
+);

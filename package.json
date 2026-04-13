@@ -8,6 +8,7 @@
   "scripts": {
     "locales:generate": "node ./scripts/generate-locales.mjs",
     "dev": "bun run locales:generate && vite --port 5173 --strictPort",
+    "dev:desktop-shell": "bun run locales:generate && vite --config vite.desktop.config.ts",
     "dev:init": "rw-scripts dev-init",
     "build": "bun run locales:generate && vite build",
     "preview": "bun run locales:generate && vite preview",

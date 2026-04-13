@@ -79,6 +79,23 @@ export interface OnboardingActions {
   tertiaryLabel?: string;
 }
 
+export interface OnboardingActions {
+  primaryLabel: string;
+  secondaryLabel?: string;
+  tertiaryLabel?: string;
+}
+
+export interface OnboardingCallbacks {
+  onUsernameChange: (value: string) => void;
+  onImportKarmaNext: () => void;
+  onImportKarmaSkip: () => void;
+  onHandleChange: (value: string) => void;
+  onGenerateHandle: () => void;
+  onChooseNameContinue: () => void;
+  onSuggestedCommunitiesContinue: () => void;
+  onSuggestedCommunitiesSkip: () => void;
+}
+
 export interface OnboardingRedditBootstrapProps {
   generatedHandle: string;
   canSkip: boolean;
@@ -88,4 +105,5 @@ export interface OnboardingRedditBootstrapProps {
   snapshot?: SnapshotState;
   handleSuggestion?: HandleSuggestion;
   actions: OnboardingActions;
+  callbacks?: OnboardingCallbacks;
 }

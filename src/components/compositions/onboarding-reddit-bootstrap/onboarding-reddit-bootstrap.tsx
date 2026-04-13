@@ -80,6 +80,7 @@ function ImportKarmaPhase({
   skipLabel,
   onNext,
   onSkip,
+  onUsernameChange,
 }: {
   reddit: RedditVerificationState;
   importJob: ImportJobState;
@@ -88,6 +89,7 @@ function ImportKarmaPhase({
   skipLabel?: string;
   onNext: () => void;
   onSkip: () => void;
+  onUsernameChange?: (value: string) => void;
 }) {
   const isVerified = reddit.verificationState === "verified";
   const isChecking = reddit.verificationState === "checking";
@@ -111,7 +113,7 @@ function ImportKarmaPhase({
             <Input
               className="pl-8"
               disabled={!!isCodeReady || isChecking}
-              onChange={() => {}}
+              onChange={(e) => onUsernameChange?.(e.target.value)}
               placeholder="technohippie"
               size="lg"
               value={reddit.usernameValue}
@@ -262,6 +264,7 @@ export function OnboardingRedditBootstrap({
   snapshot,
   handleSuggestion,
   actions,
+  callbacks,
 }: OnboardingRedditBootstrapProps) {
   const currentStep = phaseToStep(phase);
 
@@ -276,8 +279,9 @@ export function OnboardingRedditBootstrap({
               canSkip={canSkip}
               importJob={importJob}
               nextLabel={actions.primaryLabel}
-              onNext={() => {}}
-              onSkip={() => {}}
+              onNext={callbacks?.onImportKarmaNext ?? (() => {})}
+              onSkip={callbacks?.onImportKarmaSkip ?? (() => {})}
+              onUsernameChange={callbacks?.onUsernameChange}
               reddit={reddit}
               skipLabel={actions.tertiaryLabel}
             />
@@ -287,17 +291,17 @@ export function OnboardingRedditBootstrap({
               handleSuggestion={handleSuggestion}
               handleValue={generatedHandle}
               nextLabel={actions.primaryLabel}
-              onContinue={() => {}}
-              onGenerateHandle={() => {}}
-              onHandleChange={() => {}}
+              onContinue={callbacks?.onChooseNameContinue ?? (() => {})}
+              onGenerateHandle={callbacks?.onGenerateHandle ?? (() => {})}
+              onHandleChange={callbacks?.onHandleChange ?? (() => {})}
             />
           ) : null}
           {phase === "suggested_communities" ? (
             <SuggestedCommunitiesPhase
               communities={snapshot?.suggestedCommunities ?? []}
               nextLabel={actions.primaryLabel}
-              onContinue={() => {}}
-              onSkip={() => {}}
+              onContinue={callbacks?.onSuggestedCommunitiesContinue ?? (() => {})}
+              onSkip={callbacks?.onSuggestedCommunitiesSkip ?? (() => {})}
               skipLabel={actions.tertiaryLabel}
             />
           ) : null}

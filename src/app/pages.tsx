@@ -5,11 +5,8 @@ import * as React from "react";
 import { AppRoute, navigate } from "@/app/router";
 import { useApi, useSessionRevalidation } from "@/lib/api";
 import {
-  clearSession,
-  getStoredSession,
   setSession,
   updateSessionOnboarding,
-  updateSessionProfile,
   useSession,
 } from "@/lib/api/session-store";
 import type { OnboardingStatus } from "@pirate/api-contracts";
@@ -22,36 +19,24 @@ import type { NamespaceVerificationSession as ApiNamespaceSession } from "@pirat
 import type { ApiError } from "@/lib/api/client";
 import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
-import { Feed, type FeedSort, type FeedSortOption } from "@/components/compositions/feed/feed";
 import type { OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type {
   ImportJobState,
-  OnboardingRedditBootstrapProps,
   RedditVerificationState,
   SnapshotState,
 } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap";
-import { PostThread } from "@/components/compositions/post-thread/post-thread";
 import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profile-page/profile-page";
 import { VerifyNamespaceModal } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal";
 import { Button } from "@/components/primitives/button";
 import { Input } from "@/components/primitives/input";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
 import { Spinner } from "@/components/primitives/spinner";
-import { pillButtonVariants } from "@/components/primitives/pill-button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/primitives/select";
 import { useUiLocale } from "@/lib/ui-locale";
 import { resolveLocaleLanguageTag } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
-import { cn } from "@/lib/utils";
 import type { NamespaceVerificationCallbacks } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
-import type { CreateCommunityComposerProps } from "@/components/compositions/create-community-composer/create-community-composer.types";
+import type { GateType } from "@/components/compositions/create-community-composer/create-community-composer.types";
 
 function interpolateMessage(
   template: string,
@@ -67,68 +52,6 @@ function useRouteMessages() {
     copy: getLocaleMessages(locale, "routes"),
     localeTag: resolveLocaleLanguageTag(locale),
   };
-}
-
-type FeedTopTimeRange = "hour" | "day" | "week" | "month" | "year" | "all";
-
-function getFeedSortOptions(copy: {
-  bestTab: string;
-  newTab: string;
-  topTab: string;
-}): FeedSortOption[] {
-  return [
-    { value: "best", label: copy.bestTab },
-    { value: "new", label: copy.newTab },
-    { value: "top", label: copy.topTab },
-  ];
-}
-
-function getTopTimeRangeOptions(copy: {
-  topHour: string;
-  topDay: string;
-  topWeek: string;
-  topMonth: string;
-  topYear: string;
-  topAll: string;
-}) {
-  return [
-    { value: "hour" as const, label: copy.topHour },
-    { value: "day" as const, label: copy.topDay },
-    { value: "week" as const, label: copy.topWeek },
-    { value: "month" as const, label: copy.topMonth },
-    { value: "year" as const, label: copy.topYear },
-    { value: "all" as const, label: copy.topAll },
-  ];
-}
-
-function FeedTopTimeRangeSelect({
-  activeRange,
-  options,
-  onRangeChange,
-}: {
-  activeRange: FeedTopTimeRange;
-  options: Array<{ value: FeedTopTimeRange; label: string }>;
-  onRangeChange: (value: FeedTopTimeRange) => void;
-}) {
-  return (
-    <Select onValueChange={(value) => onRangeChange(value as FeedTopTimeRange)} value={activeRange}>
-      <SelectTrigger
-        className={cn(
-          pillButtonVariants({ tone: "default" }),
-          "w-full min-w-[10rem] justify-between bg-card py-0 pl-4 pr-3 shadow-none md:w-[11rem]",
-        )}
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
 }
 
 function StackPageShell({

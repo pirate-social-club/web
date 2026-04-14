@@ -152,6 +152,40 @@ export const ImportKarmaFailed: Story = {
   ),
 };
 
+export const ImportKarmaRateLimited: Story = {
+  name: "Import Karma / Rate Limited",
+  render: () => (
+    <OnboardingRedditBootstrap
+      {...base}
+      phaseError="Too many verification checks. Wait a minute before trying again."
+      reddit={{
+        usernameValue: "technohippie",
+        verificationState: "code_ready",
+        verificationHint: "pirate-verification=a3f7c9e2",
+        codePlacementSurface: "profile",
+        lastCheckedAt: new Date().toISOString(),
+      }}
+    />
+  ),
+};
+
+export const ImportKarmaSourceError: Story = {
+  name: "Import Karma / Source Error",
+  render: () => (
+    <OnboardingRedditBootstrap
+      {...base}
+      phaseError="Reddit could not be checked right now. Try again in a moment."
+      reddit={{
+        usernameValue: "technohippie",
+        verificationState: "code_ready",
+        verificationHint: "pirate-verification=a3f7c9e2",
+        codePlacementSurface: "profile",
+        lastCheckedAt: new Date().toISOString(),
+      }}
+    />
+  ),
+};
+
 export const ChooseNameDefault: Story = {
   name: "Choose Name / Default",
   render: () => (
@@ -192,6 +226,30 @@ export const ChooseNameSuggestionTaken: Story = {
   ),
 };
 
+export const ChooseNameShortHandle: Story = {
+  name: "Choose Name / Short Handle Error",
+  render: () => (
+    <OnboardingRedditBootstrap
+      {...base}
+      generatedHandle="ab"
+      phase="choose_name"
+      phaseError="Handle must be at least 3 characters."
+    />
+  ),
+};
+
+export const ChooseNameRenameFailed: Story = {
+  name: "Choose Name / Rename Failed",
+  render: () => (
+    <OnboardingRedditBootstrap
+      {...base}
+      generatedHandle="brisk-anchor-2330"
+      phase="choose_name"
+      phaseError="Desired label is unavailable."
+    />
+  ),
+};
+
 export const SuggestedCommunitiesWithCommunities: Story = {
   name: "Suggested Communities / With Communities",
   render: () => (
@@ -209,6 +267,17 @@ export const SuggestedCommunitiesEmpty: Story = {
     <OnboardingRedditBootstrap
       {...base}
       phase="suggested_communities"
+    />
+  ),
+};
+
+export const SuggestedCommunitiesError: Story = {
+  name: "Suggested Communities / Error",
+  render: () => (
+    <OnboardingRedditBootstrap
+      {...base}
+      phase="suggested_communities"
+      phaseError="Could not finish onboarding. Try again."
     />
   ),
 };

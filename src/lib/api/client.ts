@@ -72,10 +72,15 @@ export class ApiClient {
       }
     }
 
+    const method = init?.method ?? "GET";
+    console.info("[api-client] request", { method, path, tokenRequired });
+
     const res = await fetch(`${this.baseUrl}${path}`, {
       ...init,
       headers: { ...headers, ...(init?.headers as Record<string, string>) },
     });
+
+    console.info("[api-client] response", { method, path, status: res.status, ok: res.ok });
 
     if (!res.ok) {
       let code = "internal_error";
@@ -89,6 +94,7 @@ export class ApiClient {
         if (body.retryable) retryable = body.retryable;
       } catch {}
 
+      console.error("[api-client] request failed", { method, path, status: res.status, code, message, retryable });
       throw new ApiError(code, message, res.status, retryable);
     }
 
@@ -214,13 +220,14 @@ export class ApiClient {
 
   communities = {
     create: (
-      body: CreateCommunityRequest & {
+      body: Omit<CreateCommunityRequest, "namespace"> & {
         description?: string | null;
         membership_mode?: "open" | "request" | "gated";
         allow_anonymous_identity?: boolean;
         anonymous_identity_scope?: string | null;
         default_age_gate_policy?: "none" | "18_plus";
         gate_rules?: unknown[] | null;
+        namespace?: { namespace_verification_id: string } | null;
       },
     ): Promise<CommunityCreateAcceptedResponse> => {
       return this.request<CommunityCreateAcceptedResponse>("/communities", {

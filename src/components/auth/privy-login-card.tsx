@@ -18,14 +18,11 @@ export function PrivyLoginCard() {
   const [error, setError] = React.useState<string | null>(null);
   const [exchanged, setExchanged] = React.useState(false);
 
-  React.useEffect(() => {
-    if (!ready || !authenticated || session || exchanged) return;
-
-    let cancelled = false;
+  const exchangePrivySession = React.useCallback(() => {
     setLoading(true);
     setError(null);
 
-    void getAccessToken()
+    return getAccessToken()
       .then(async (accessToken) => {
         if (!accessToken) {
           throw new Error("Privy did not return an access token.");
@@ -36,10 +33,19 @@ export function PrivyLoginCard() {
         });
       })
       .then((response) => {
-        if (cancelled) return;
         setSession(response);
         setExchanged(true);
         navigate("/onboarding");
+      });
+  }, [api, getAccessToken]);
+
+  React.useEffect(() => {
+    if (!ready || !authenticated || session || exchanged) return;
+
+    let cancelled = false;
+    void exchangePrivySession()
+      .then((response) => {
+        if (cancelled) return;
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -53,7 +59,23 @@ export function PrivyLoginCard() {
     return () => {
       cancelled = true;
     };
-  }, [api, authenticated, exchanged, getAccessToken, ready, session]);
+  }, [authenticated, exchangePrivySession, exchanged, ready, session]);
+
+  const handleContinue = React.useCallback(() => {
+    if (!ready || loading) return;
+
+    if (authenticated && !session && !exchanged) {
+      void exchangePrivySession().catch((e: unknown) => {
+        const apiError = e as ApiError;
+        setError(apiError?.message ?? "Privy authentication failed");
+      }).finally(() => {
+        setLoading(false);
+      });
+      return;
+    }
+
+    login();
+  }, [authenticated, exchangePrivySession, exchanged, loading, login, ready, session]);
 
   return (
     <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-5 space-y-4">
@@ -67,7 +89,7 @@ export function PrivyLoginCard() {
       {error ? <FormNote tone="warning">{error}</FormNote> : null}
 
       <div className="flex justify-end">
-        <Button disabled={!ready || loading} loading={loading} onClick={() => login()}>
+        <Button disabled={!ready || loading} loading={loading} onClick={handleContinue}>
           Continue with Privy
         </Button>
       </div>

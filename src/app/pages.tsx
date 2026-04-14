@@ -15,7 +15,6 @@ import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { RedditVerification as ApiRedditVerification } from "@pirate/api-contracts";
 import type { RedditImportSummary as ApiRedditImportSummary } from "@pirate/api-contracts";
-import type { NamespaceVerificationSession as ApiNamespaceSession } from "@pirate/api-contracts";
 import type { ApiError } from "@/lib/api/client";
 import type { PrivyLoginCard as PrivyLoginCardComponent } from "@/components/auth/privy-login-card";
 import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
@@ -28,7 +27,6 @@ import type {
 } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap";
 import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profile-page/profile-page";
-import { VerifyNamespaceModal } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal";
 import { Button } from "@/components/primitives/button";
 import { Input } from "@/components/primitives/input";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
@@ -37,7 +35,6 @@ import { getPrivyAppId, usePiratePrivyRuntime } from "@/lib/auth/privy-provider"
 import { useUiLocale } from "@/lib/ui-locale";
 import { resolveLocaleLanguageTag } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
-import type { NamespaceVerificationCallbacks } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
 import type { GateType } from "@/components/compositions/create-community-composer/create-community-composer.types";
 
 function interpolateMessage(
@@ -301,8 +298,9 @@ function apiProfileToProps(
   ownProfile: boolean,
   joinedStatLabel: string,
 ) {
+  const normalizedLabel = profile.global_handle?.label.replace(/\.pirate$/i, "") ?? "";
   const handle = profile.global_handle
-    ? `${profile.global_handle.label}.pirate`
+    ? `${normalizedLabel}.pirate`
     : "";
 
   return {
@@ -426,6 +424,16 @@ function mapImportJobStatus(
   };
 }
 
+function markImportQueued(
+  status: OnboardingStatus | null,
+  setOnboardingStatus: React.Dispatch<React.SetStateAction<OnboardingStatus | null>>,
+): void {
+  setOnboardingStatus(status ? {
+    ...status,
+    reddit_import_status: "queued",
+  } : status);
+}
+
 function OnboardingPage() {
   const { copy } = useRouteMessages();
   const api = useApi();
@@ -455,13 +463,13 @@ function OnboardingPage() {
       .then((status) => {
         if (cancelled) return;
         setOnboardingStatus(status);
+        setImportJob(mapImportJobStatus(status.reddit_import_status));
         setPhase(resolveOnboardingPhase(status));
 
         if (status.reddit_verification_status === "verified") {
           setRedditVerification({
             usernameValue: "",
             verificationState: "verified",
-            verifiedUsername: "verified",
           });
         }
 
@@ -523,6 +531,12 @@ function OnboardingPage() {
 
   const handleImportKarmaNext = React.useCallback(() => {
     if (actionLoading) return;
+    console.info("[onboarding] continue clicked", {
+      phase,
+      redditVerificationState: redditVerification.verificationState,
+      importJobStatus: importJob.status,
+      redditUsername,
+    });
     setActionLoading(true);
     setError(null);
 
@@ -532,6 +546,7 @@ function OnboardingPage() {
     const isImportDone = importJob.status === "succeeded";
 
     if (isImportDone) {
+      console.info("[onboarding] import already complete, advancing to choose_name");
       setPhase("choose_name");
       setActionLoading(false);
       return;
@@ -539,11 +554,15 @@ function OnboardingPage() {
 
     if (isVerified && !isImportDone) {
       const username = redditVerification.verifiedUsername ?? redditUsername;
+      console.info("[onboarding] starting reddit import", { username });
       void api.onboarding.startRedditImport(username)
         .then(() => {
+          console.info("[onboarding] reddit import queued");
+          markImportQueued(onboardingStatus, setOnboardingStatus);
           setImportJob({ status: "queued" });
         })
         .catch((e: unknown) => {
+          console.error("[onboarding] reddit import failed", e);
           setError(e instanceof Error ? e.message : "Failed to start import");
         })
         .finally(() => setActionLoading(false));
@@ -551,8 +570,10 @@ function OnboardingPage() {
     }
 
     if (isCodeReady) {
+      console.info("[onboarding] checking existing reddit verification code", { redditUsername });
       void api.onboarding.startRedditVerification(redditUsername)
         .then((result) => {
+          console.info("[onboarding] reddit verification result", result);
           setRedditVerification(mapRedditVerification(result, redditUsername));
 
           if (result.status === "verified") {
@@ -562,10 +583,12 @@ function OnboardingPage() {
         })
         .then((importResult) => {
           if (importResult) {
+            markImportQueued(onboardingStatus, setOnboardingStatus);
             setImportJob({ status: "queued" });
           }
         })
         .catch((e: unknown) => {
+          console.error("[onboarding] reddit verification check failed", e);
           setError(e instanceof Error ? e.message : "Verification check failed");
         })
         .finally(() => setActionLoading(false));
@@ -573,9 +596,11 @@ function OnboardingPage() {
     }
 
     if (isNotStarted && redditUsername.trim().length > 0) {
+      console.info("[onboarding] creating reddit verification", { redditUsername });
       setRedditVerification((prev) => ({ ...prev, verificationState: "checking" }));
       void api.onboarding.startRedditVerification(redditUsername)
         .then((result) => {
+          console.info("[onboarding] reddit verification created/result", result);
           setRedditVerification(mapRedditVerification(result, redditUsername));
 
           if (result.status === "verified") {
@@ -585,22 +610,34 @@ function OnboardingPage() {
         })
         .then((importResult) => {
           if (importResult) {
+            markImportQueued(onboardingStatus, setOnboardingStatus);
             setImportJob({ status: "queued" });
           }
         })
         .catch((e: unknown) => {
+          console.error("[onboarding] reddit verification failed", e);
           setRedditVerification((prev) => ({ ...prev, verificationState: "failed", errorTitle: e instanceof Error ? e.message : "Verification failed" }));
         })
         .finally(() => setActionLoading(false));
       return;
     }
 
+    console.warn("[onboarding] continue click had no eligible action", {
+      redditVerificationState: redditVerification.verificationState,
+      importJobStatus: importJob.status,
+      redditUsername,
+    });
     setActionLoading(false);
-  }, [actionLoading, redditVerification, importJob, redditUsername, api]);
+  }, [actionLoading, redditVerification, importJob, redditUsername, api, phase, onboardingStatus]);
 
   const handleChooseNameContinue = React.useCallback(() => {
     if (actionLoading) return;
+    if (generatedHandle.trim().length === 0) {
+      setError("Choose a handle before continuing");
+      return;
+    }
     setActionLoading(true);
+    setError(null);
 
     void api.profiles.renameHandle(generatedHandle.replace(/\.pirate$/, ""))
       .then(() => {
@@ -635,15 +672,15 @@ function OnboardingPage() {
       title={copy.onboarding.title}
       description={copy.onboarding.description}
     >
-      {error ? (
+      {!onboardingStatus && error ? (
         <FormNote tone="warning">{error}</FormNote>
       ) : null}
       <div className="mx-auto w-full max-w-5xl">
         <OnboardingRedditBootstrap
           actions={{
-            primaryLabel: "Continue",
             tertiaryLabel: "Skip",
           }}
+          busy={actionLoading}
           callbacks={{
             onUsernameChange: (value) => {
               setRedditUsername(value);
@@ -666,6 +703,7 @@ function OnboardingPage() {
           }
           importJob={importJob}
           phase={phase}
+          phaseError={onboardingStatus ? error : null}
           reddit={redditVerification}
           snapshot={snapshot}
         />
@@ -799,51 +837,9 @@ function CreateCommunityPage() {
   const { copy } = useRouteMessages();
   const api = useApi();
   const session = useSession();
-  const [namespaceModalOpen, setNamespaceModalOpen] = React.useState(false);
-  const [namespaceVerificationId, setNamespaceVerificationId] = React.useState<string | null>(null);
   const [verificationSessionId, setVerificationSessionId] = React.useState<string | null>(null);
   const [verificationLoading, setVerificationLoading] = React.useState(false);
   const [verificationError, setVerificationError] = React.useState<string | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const namespaceCallbacks: NamespaceVerificationCallbacks = React.useMemo(() => ({
-    onStartSession: async ({ rootLabel }) => {
-      const result = await api.verification.startNamespaceSession({
-        family: "hns",
-        root_label: rootLabel,
-      }) as ApiNamespaceSession & {
-        challenge_host?: string | null;
-        challenge_txt_value?: string | null;
-        challenge_expires_at?: string | null;
-      };
-
-      return {
-        namespaceVerificationSessionId: result.namespace_verification_session_id,
-        challengeHost: result.challenge_host ?? "",
-        challengeTxtValue: result.challenge_txt_value ?? "",
-        challengeExpiresAt: result.challenge_expires_at ?? null,
-        status: result.status,
-      };
-    },
-
-    onCompleteSession: async ({ namespaceVerificationSessionId: sessionId, restartChallenge }) => {
-      const result = await api.verification.completeNamespaceSession(
-        sessionId,
-        { restart_challenge: restartChallenge ?? null },
-      );
-
-      return {
-        status: result.status,
-        namespaceVerificationId: result.namespace_verification_id ?? null,
-        failureReason: result.failure_reason ?? null,
-      };
-    },
-  }), [api]);
-
-  const handleVerified = React.useCallback((nsId: string) => {
-    setNamespaceVerificationId(nsId);
-    setNamespaceModalOpen(false);
-  }, []);
 
   const refreshOnboardingStatus = React.useCallback(async () => {
     const status = await api.onboarding.getStatus();
@@ -886,42 +882,6 @@ function CreateCommunityPage() {
     }
   }, [api, refreshOnboardingStatus, verificationSessionId]);
 
-  const handleCreate = React.useCallback(async (input: {
-    displayName: string;
-    description: string | null;
-    membershipMode: "open" | "gated";
-    defaultAgeGatePolicy: "none" | "18_plus";
-    allowAnonymousIdentity: boolean;
-    anonymousIdentityScope: "community_stable" | "thread_stable" | "post_ephemeral";
-    gateTypes: Set<GateType>;
-  }) => {
-    if (!namespaceVerificationId) {
-      setError("Verify a namespace before creating a community.");
-      return { communityId: "" };
-    }
-
-    try {
-      const result = await api.communities.create({
-        display_name: input.displayName,
-        description: input.description,
-        membership_mode: input.membershipMode,
-        default_age_gate_policy: input.defaultAgeGatePolicy,
-        allow_anonymous_identity: input.allowAnonymousIdentity,
-        anonymous_identity_scope: input.anonymousIdentityScope,
-        namespace: { namespace_verification_id: namespaceVerificationId },
-        handle_policy: { policy_template: "standard" },
-        governance_mode: "centralized",
-      });
-
-      navigate(`/c/${result.community.community_id}`);
-      return { communityId: result.community.community_id };
-    } catch (e: unknown) {
-      const apiError = e as ApiError;
-      setError(apiError?.message ?? "Community creation failed");
-      return { communityId: "" };
-    }
-  }, [api, namespaceVerificationId]);
-
   const creatorVerificationState = session?.onboarding
     ? {
         uniqueHumanVerified: session.onboarding.unique_human_verification_status === "verified",
@@ -935,40 +895,59 @@ function CreateCommunityPage() {
       ? "pending"
       : "not_started";
 
-  return (
-    <StackPageShell
-      title={copy.createCommunity.title}
-      description={copy.createCommunity.description}
-      actions={(
-        <Button onClick={() => setNamespaceModalOpen(true)} variant="secondary">
-          {namespaceVerificationId ? "Namespace Verified" : "Verify Namespace"}
-        </Button>
-      )}
-    >
-      {error ? <FormNote tone="warning">{error}</FormNote> : null}
-      {verificationError ? <FormNote tone="warning">{verificationError}</FormNote> : null}
-      <div className="space-y-4">
+  const handleCreate = React.useCallback(async (input: {
+    displayName: string;
+    description: string | null;
+    membershipMode: "open" | "gated";
+    defaultAgeGatePolicy: "none" | "18_plus";
+    allowAnonymousIdentity: boolean;
+    anonymousIdentityScope: "community_stable" | "thread_stable" | "post_ephemeral";
+    gateTypes: Set<GateType>;
+  }) => {
+    try {
+      const result = await api.communities.create({
+        display_name: input.displayName,
+        description: input.description,
+        membership_mode: input.membershipMode,
+        default_age_gate_policy: input.defaultAgeGatePolicy,
+        allow_anonymous_identity: input.allowAnonymousIdentity,
+        anonymous_identity_scope: input.anonymousIdentityScope,
+        handle_policy: { policy_template: "standard" },
+        governance_mode: "centralized",
+      });
+
+      navigate(`/c/${result.community.community_id}`);
+      return { communityId: result.community.community_id };
+    } catch (e: unknown) {
+      const apiError = e as ApiError;
+      throw new Error(apiError?.message ?? "Community creation failed");
+    }
+  }, [api]);
+
+  if (!creatorVerificationState.uniqueHumanVerified) {
+    return (
+      <StackPageShell
+        title={copy.createCommunity.title}
+        description="Verify your identity before creating a community."
+      >
+        {verificationError ? <FormNote tone="warning">{verificationError}</FormNote> : null}
         <StatusCard
           title={
-            veryVerificationState === "verified"
-              ? "Unique-human verification complete"
-              : veryVerificationState === "pending"
-                ? "Finish your Very verification"
-                : "Verify with Very"
+            veryVerificationState === "pending"
+              ? "Finish your Very verification"
+              : "Verify with Very"
           }
           description={
-            veryVerificationState === "verified"
-              ? "Your Pirate session now has the unique-human capability required to create a community."
-              : veryVerificationState === "pending"
-                ? "Open Very in another tab if needed, complete the palm scan, then confirm here."
-                : "Start the unique-human verification step first. The local API accepts the completion call once the session exists."
+            veryVerificationState === "pending"
+              ? "Open Very in another tab if needed, complete the palm scan, then confirm here."
+              : "You must complete unique-human verification before creating a community."
           }
-          tone={veryVerificationState === "verified" ? "success" : "warning"}
+          tone="warning"
           actions={(
             <>
               {veryVerificationState === "not_started" ? (
                 <Button loading={verificationLoading} onClick={handleStartVeryVerification}>
-                  Start Very Verification
+                  Start Verification
                 </Button>
               ) : null}
               {veryVerificationState === "pending" ? (
@@ -984,35 +963,21 @@ function CreateCommunityPage() {
             </>
           )}
         />
+      </StackPageShell>
+    );
+  }
 
-        <StatusCard
-          title={namespaceVerificationId ? "Namespace attached" : "Verify a namespace"}
-          description={
-            namespaceVerificationId
-              ? "This community can now be created with the verified namespace attached."
-              : "Create-community was blocked because there was no UI entrypoint for namespace verification. This button opens that flow."
-          }
-          tone={namespaceVerificationId ? "success" : "default"}
-          actions={(
-            <Button onClick={() => setNamespaceModalOpen(true)} variant="secondary">
-              {namespaceVerificationId ? "Verify Another Namespace" : "Open Namespace Verification"}
-            </Button>
-          )}
-        />
-      </div>
+  return (
+    <StackPageShell
+      title={copy.createCommunity.title}
+      description={copy.createCommunity.description}
+    >
       <div className="mx-auto w-full max-w-5xl">
         <CreateCommunityComposer
           creatorVerificationState={creatorVerificationState}
           onCreate={handleCreate}
         />
       </div>
-
-      <VerifyNamespaceModal
-        callbacks={namespaceCallbacks}
-        onOpenChange={setNamespaceModalOpen}
-        onVerified={handleVerified}
-        open={namespaceModalOpen}
-      />
     </StackPageShell>
   );
 }

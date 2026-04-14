@@ -74,13 +74,13 @@ export interface HandleSuggestion {
 }
 
 export interface OnboardingActions {
-  primaryLabel: string;
+  primaryLabel?: string;
   secondaryLabel?: string;
   tertiaryLabel?: string;
 }
 
 export interface OnboardingActions {
-  primaryLabel: string;
+  primaryLabel?: string;
   secondaryLabel?: string;
   tertiaryLabel?: string;
 }
@@ -99,6 +99,8 @@ export interface OnboardingCallbacks {
 export interface OnboardingRedditBootstrapProps {
   generatedHandle: string;
   canSkip: boolean;
+  busy?: boolean;
+  phaseError?: string | null;
   phase: OnboardingPhase;
   reddit: RedditVerificationState;
   importJob: ImportJobState;

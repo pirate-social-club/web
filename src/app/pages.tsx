@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createVeryWidget } from "@veryai/widget";
 
 import { AppRoute, navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
@@ -15,6 +16,7 @@ import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { RedditVerification as ApiRedditVerification } from "@pirate/api-contracts";
 import type { RedditImportSummary as ApiRedditImportSummary } from "@pirate/api-contracts";
+import type { VerificationSession } from "@pirate/api-contracts";
 import type { ApiError } from "@/lib/api/client";
 import type { PrivyLoginCard as PrivyLoginCardComponent } from "@/components/auth/privy-login-card";
 import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
@@ -840,6 +842,18 @@ function CreateCommunityPage() {
   const [verificationSessionId, setVerificationSessionId] = React.useState<string | null>(null);
   const [verificationLoading, setVerificationLoading] = React.useState(false);
   const [verificationError, setVerificationError] = React.useState<string | null>(null);
+  const widgetRef = React.useRef<{ destroy?: () => void; open?: () => void } | null>(null);
+
+  const cleanupWidget = React.useCallback(() => {
+    widgetRef.current?.destroy?.();
+    widgetRef.current = null;
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      cleanupWidget();
+    };
+  }, [cleanupWidget]);
 
   const refreshOnboardingStatus = React.useCallback(async () => {
     const status = await api.onboarding.getStatus();
@@ -847,40 +861,68 @@ function CreateCommunityPage() {
     return status;
   }, [api]);
 
+  const openVeryWidget = React.useCallback(async (result: VerificationSession) => {
+    const launch = result.launch?.very_widget;
+    if (!launch) {
+      throw new Error("Very launch data was not returned");
+    }
+
+    cleanupWidget();
+
+    widgetRef.current = createVeryWidget({
+      appId: launch.app_id,
+      context: launch.context,
+      typeId: launch.type_id,
+      query: JSON.stringify(launch.query),
+      ...(launch.verify_url ? { verifyUrl: launch.verify_url } : {}),
+      onSuccess: async (proof: string) => {
+        try {
+          await api.verification.completeSession(result.verification_session_id, {
+            provider_payload_ref: proof,
+          });
+          await refreshOnboardingStatus();
+          setVerificationSessionId(null);
+          setVerificationError(null);
+        } catch (e: unknown) {
+          const apiError = e as ApiError;
+          setVerificationError(apiError?.message ?? "Could not complete Very verification");
+        } finally {
+          setVerificationLoading(false);
+          cleanupWidget();
+        }
+      },
+      onError: (error: string) => {
+        setVerificationError(error || "Very verification failed");
+        setVerificationLoading(false);
+        cleanupWidget();
+      },
+      theme: "dark",
+    });
+
+    widgetRef.current.open?.();
+  }, [api, cleanupWidget, refreshOnboardingStatus]);
+
   const handleStartVeryVerification = React.useCallback(async () => {
     setVerificationLoading(true);
     setVerificationError(null);
 
     try {
-      const result = await api.verification.startSession({ provider: "very" });
-      setVerificationSessionId(result.verification_session_id);
-    } catch (e: unknown) {
-      const apiError = e as ApiError;
-      setVerificationError(apiError?.message ?? "Could not start Very verification");
-    } finally {
-      setVerificationLoading(false);
-    }
-  }, [api]);
-
-  const handleCompleteVeryVerification = React.useCallback(async () => {
-    if (!verificationSessionId) return;
-
-    setVerificationLoading(true);
-    setVerificationError(null);
-
-    try {
-      await api.verification.completeSession(verificationSessionId, {
-        proof_hash: `very-local-${Date.now()}`,
+      const result = await api.verification.startSession({
+        provider: "very",
+        verification_intent: "community_creation",
       });
-      await refreshOnboardingStatus();
-      setVerificationSessionId(null);
+      setVerificationSessionId(result.verification_session_id);
+      await openVeryWidget(result);
     } catch (e: unknown) {
       const apiError = e as ApiError;
-      setVerificationError(apiError?.message ?? "Could not complete Very verification");
-    } finally {
+      setVerificationError(apiError?.message ?? (e instanceof Error ? e.message : "Could not start Very verification"));
       setVerificationLoading(false);
+    } finally {
+      if (!widgetRef.current) {
+        setVerificationLoading(false);
+      }
     }
-  }, [api, refreshOnboardingStatus, verificationSessionId]);
+  }, [api, openVeryWidget]);
 
   const creatorVerificationState = session?.onboarding
     ? {
@@ -939,7 +981,7 @@ function CreateCommunityPage() {
           }
           description={
             veryVerificationState === "pending"
-              ? "Open Very in another tab if needed, complete the palm scan, then confirm here."
+              ? "Complete the palm scan in Very."
               : "You must complete unique-human verification before creating a community."
           }
           tone="warning"
@@ -952,11 +994,8 @@ function CreateCommunityPage() {
               ) : null}
               {veryVerificationState === "pending" ? (
                 <>
-                  <Button asChild variant="secondary">
-                    <a href="https://very.org" rel="noreferrer" target="_blank">Open Very</a>
-                  </Button>
-                  <Button loading={verificationLoading} onClick={handleCompleteVeryVerification}>
-                    I Completed the Palm Scan
+                  <Button loading={verificationLoading} onClick={handleStartVeryVerification}>
+                    Reopen Very
                   </Button>
                 </>
               ) : null}

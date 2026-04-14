@@ -168,7 +168,11 @@ export class ApiClient {
 
     completeSession: (
       verificationSessionId: string,
-      input?: { attestation_id?: string | null; proof_hash?: string | null },
+      input?: {
+        attestation_id?: string | null;
+        proof_hash?: string | null;
+        provider_payload_ref?: string | null;
+      },
     ): Promise<VerificationSession> => {
       return this.request<VerificationSession>(
         `/verification-sessions/${encodeURIComponent(verificationSessionId)}/complete`,

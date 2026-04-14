@@ -95,7 +95,7 @@ function SegmentedTrackDemo() {
         <button
           key={opt}
           className={cn(
-            "rounded-full px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+            "rounded-full px-3 py-1.5 text-base font-medium capitalize transition-colors",
             value === opt
               ? "bg-card text-foreground shadow-sm"
               : "text-muted-foreground",

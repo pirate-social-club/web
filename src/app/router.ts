@@ -125,6 +125,13 @@ export function useRoute(initialPathname?: string): AppRoute {
     () => (initialPathname ? matchRoute(initialPathname) : HOME_ROUTE),
     [initialPathname],
   );
+  const [hydrated, setHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    cachedPathname = normalizePathname(window.location.pathname);
+    cachedRoute = cachedPathname === "/" ? HOME_ROUTE : matchRoute(cachedPathname);
+    setHydrated(true);
+  }, []);
 
   const liveRoute = React.useSyncExternalStore(
     subscribeToNavigation,
@@ -132,5 +139,5 @@ export function useRoute(initialPathname?: string): AppRoute {
     () => initialRoute,
   );
 
-  return initialPathname ? initialRoute : liveRoute;
+  return hydrated ? liveRoute : initialRoute;
 }

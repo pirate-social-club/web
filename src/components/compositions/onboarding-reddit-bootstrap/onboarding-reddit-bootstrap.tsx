@@ -28,6 +28,26 @@ const STEPS = [
   { label: "Suggested communities" },
 ];
 
+function extractVerificationCode(hint: string | undefined): string | null {
+  if (!hint) return null;
+  const match = hint.match(/`([^`]+)`/);
+  if (match?.[1]) {
+    return match[1];
+  }
+  return hint.trim() || null;
+}
+
+function formatLastChecked(value: string | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}
+
 function phaseToStep(phase: OnboardingPhase): number {
   switch (phase) {
     case "import_karma": return 1;
@@ -73,6 +93,8 @@ function Footer({
 }
 
 function ImportKarmaPhase({
+  busy = false,
+  phaseError,
   reddit,
   importJob,
   canSkip,
@@ -80,7 +102,10 @@ function ImportKarmaPhase({
   skipLabel,
   onNext,
   onSkip,
+  onUsernameChange,
 }: {
+  busy?: boolean;
+  phaseError?: string | null;
   reddit: RedditVerificationState;
   importJob: ImportJobState;
   canSkip: boolean;
@@ -88,6 +113,7 @@ function ImportKarmaPhase({
   skipLabel?: string;
   onNext: () => void;
   onSkip: () => void;
+  onUsernameChange?: (value: string) => void;
 }) {
   const isVerified = reddit.verificationState === "verified";
   const isChecking = reddit.verificationState === "checking";
@@ -95,11 +121,22 @@ function ImportKarmaPhase({
   const isCodeReady = reddit.verificationState === "code_ready" && reddit.verificationHint;
   const isImporting = importJob.status === "running" || importJob.status === "queued";
   const isImportDone = importJob.status === "succeeded" || importJob.status === "partial_success";
+  const verificationCode = extractVerificationCode(reddit.verificationHint);
+  const lastCheckedLabel = formatLastChecked(reddit.lastCheckedAt);
+  const resolvedNextLabel = isImportDone
+    ? "Continue"
+    : isVerified
+      ? "Import karma"
+      : isCodeReady
+        ? "Check again"
+        : "Get code";
 
   const canNext =
-    (reddit.verificationState === "not_started" && reddit.usernameValue.trim().length > 0)
-    || isCodeReady
-    || isImportDone;
+    !busy && (
+      (reddit.verificationState === "not_started" && reddit.usernameValue.trim().length > 0)
+      || isCodeReady
+      || isImportDone
+    )
 
   return (
     <div className="space-y-6">
@@ -110,8 +147,8 @@ function ImportKarmaPhase({
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base text-muted-foreground">u/</span>
             <Input
               className="pl-8"
-              disabled={!!isCodeReady || isChecking}
-              onChange={() => {}}
+              disabled={busy || !!isCodeReady || isChecking}
+              onChange={(e) => onUsernameChange?.(e.target.value)}
               placeholder="technohippie"
               size="lg"
               value={reddit.usernameValue}
@@ -123,12 +160,35 @@ function ImportKarmaPhase({
       {isCodeReady && reddit.verificationHint ? (
         <div className="space-y-2">
           <FormFieldLabel label={`Reddit ${reddit.codePlacementSurface ?? "profile"} code`} />
-          <CopyField value={reddit.verificationHint} />
+          <FormNote>
+            Add this code to your Reddit profile Description:
+            {" "}
+            <a
+              className="underline underline-offset-4"
+              href="https://www.reddit.com/settings/profile"
+              rel="noreferrer"
+              target="_blank"
+            >
+              reddit.com/settings/profile
+            </a>
+          </FormNote>
+          <CopyField value={verificationCode ?? reddit.verificationHint} />
+          <FormNote tone="default">
+            {busy
+              ? "Checking Reddit now..."
+              : lastCheckedLabel
+                ? `Checked Reddit at ${lastCheckedLabel}. The code is not visible yet. Save your profile, wait a few seconds, then click Check again.`
+                : "After saving your Reddit profile Description, wait a few seconds and click Check again."}
+          </FormNote>
         </div>
       ) : null}
 
       {isFailed && reddit.errorTitle ? (
-        <FormNote>{reddit.errorTitle}</FormNote>
+        <FormNote tone="warning">{reddit.errorTitle}</FormNote>
+      ) : null}
+
+      {phaseError ? (
+        <FormNote tone="warning">{phaseError}</FormNote>
       ) : null}
 
       {isVerified && !isImportDone && (
@@ -143,10 +203,10 @@ function ImportKarmaPhase({
 
       <Footer
         nextDisabled={!canNext}
-        nextLabel={nextLabel}
-        nextLoading={isChecking}
+        nextLabel={nextLabel ?? resolvedNextLabel}
+        nextLoading={busy || isChecking}
         onNext={onNext}
-        onSkip={canSkip ? onSkip : undefined}
+        onSkip={!busy && canSkip ? onSkip : undefined}
         skipLabel={skipLabel}
       />
     </div>
@@ -154,6 +214,8 @@ function ImportKarmaPhase({
 }
 
 function ChooseNamePhase({
+  busy = false,
+  phaseError,
   handleSuggestion,
   nextLabel,
   onGenerateHandle,
@@ -161,6 +223,8 @@ function ChooseNamePhase({
   onHandleChange,
   onContinue,
 }: {
+  busy?: boolean;
+  phaseError?: string | null;
   handleSuggestion?: { suggestedLabel: string; availability: string };
   nextLabel?: string;
   onGenerateHandle: () => void;
@@ -171,6 +235,7 @@ function ChooseNamePhase({
   const displayValue = handleValue.endsWith(".pirate")
     ? handleValue.slice(0, -7)
     : handleValue;
+  const canContinue = displayValue.trim().length > 0;
 
   return (
     <div className="space-y-6">
@@ -190,6 +255,7 @@ function ChooseNamePhase({
           <Button
             aria-label="Generate a new handle"
             className="size-16 shrink-0"
+            disabled={busy}
             onClick={onGenerateHandle}
             size="icon"
             variant="secondary"
@@ -207,18 +273,26 @@ function ChooseNamePhase({
         </FormNote>
       ) : null}
 
-      <Footer nextLabel={nextLabel} onNext={onContinue} />
+      {phaseError ? (
+        <FormNote tone="warning">{phaseError}</FormNote>
+      ) : null}
+
+      <Footer nextDisabled={!canContinue} nextLabel={nextLabel} nextLoading={busy} onNext={onContinue} />
     </div>
   );
 }
 
 function SuggestedCommunitiesPhase({
+  busy = false,
+  phaseError,
   communities,
   nextLabel,
   skipLabel,
   onContinue,
   onSkip,
 }: {
+  busy?: boolean;
+  phaseError?: string | null;
   communities: SuggestedCommunity[];
   nextLabel?: string;
   skipLabel?: string;
@@ -243,8 +317,13 @@ function SuggestedCommunitiesPhase({
         <FormNote>No community suggestions yet. Join some from your feed later.</FormNote>
       )}
 
+      {phaseError ? (
+        <FormNote tone="warning">{phaseError}</FormNote>
+      ) : null}
+
       <Footer
         nextLabel={nextLabel}
+        nextLoading={busy}
         onNext={onContinue}
         onSkip={onSkip}
         skipLabel={skipLabel}
@@ -256,12 +335,15 @@ function SuggestedCommunitiesPhase({
 export function OnboardingRedditBootstrap({
   generatedHandle,
   canSkip,
+  busy = false,
+  phaseError = null,
   phase,
   reddit,
   importJob,
   snapshot,
   handleSuggestion,
   actions,
+  callbacks,
 }: OnboardingRedditBootstrapProps) {
   const currentStep = phaseToStep(phase);
 
@@ -273,31 +355,38 @@ export function OnboardingRedditBootstrap({
         <CardContent className="p-5">
           {phase === "import_karma" ? (
             <ImportKarmaPhase
+              busy={busy}
               canSkip={canSkip}
               importJob={importJob}
               nextLabel={actions.primaryLabel}
-              onNext={() => {}}
-              onSkip={() => {}}
+              onNext={callbacks?.onImportKarmaNext ?? (() => {})}
+              onSkip={callbacks?.onImportKarmaSkip ?? (() => {})}
+              onUsernameChange={callbacks?.onUsernameChange}
+              phaseError={phaseError}
               reddit={reddit}
               skipLabel={actions.tertiaryLabel}
             />
           ) : null}
           {phase === "choose_name" ? (
             <ChooseNamePhase
+              busy={busy}
               handleSuggestion={handleSuggestion}
               handleValue={generatedHandle}
               nextLabel={actions.primaryLabel}
-              onContinue={() => {}}
-              onGenerateHandle={() => {}}
-              onHandleChange={() => {}}
+              onContinue={callbacks?.onChooseNameContinue ?? (() => {})}
+              onGenerateHandle={callbacks?.onGenerateHandle ?? (() => {})}
+              onHandleChange={callbacks?.onHandleChange ?? (() => {})}
+              phaseError={phaseError}
             />
           ) : null}
           {phase === "suggested_communities" ? (
             <SuggestedCommunitiesPhase
+              busy={busy}
               communities={snapshot?.suggestedCommunities ?? []}
               nextLabel={actions.primaryLabel}
-              onContinue={() => {}}
-              onSkip={() => {}}
+              onContinue={callbacks?.onSuggestedCommunitiesContinue ?? (() => {})}
+              onSkip={callbacks?.onSuggestedCommunitiesSkip ?? (() => {})}
+              phaseError={phaseError}
               skipLabel={actions.tertiaryLabel}
             />
           ) : null}

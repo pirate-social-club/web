@@ -9,7 +9,7 @@ import {
   ModalFooter,
   ModalHeader,
   ModalTitle,
-} from "@/components/compositions/modal";
+} from "@/components/compositions/modal/modal";
 
 const meta = {
   title: "Compositions/Modal",

@@ -50,36 +50,3 @@ export function Scrubber({
     </SliderPrimitive.Root>
   );
 }
-
-// Simpler progress-only variant (non-interactive)
-interface ProgressBarProps {
-  value: number;
-  className?: string;
-  showThumb?: boolean;
-}
-
-export function ProgressBar({ value, className, showThumb = true }: ProgressBarProps) {
-  return (
-    <div className={cn("group relative flex items-center", className)}>
-      <div className="relative h-1 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-primary transition-all duration-100"
-          style={{ width: `${value}%` }}
-        />
-      </div>
-      {showThumb && (
-        <div
-          className={cn(
-            "absolute size-3.5 rounded-full border-2 border-primary bg-background shadow-sm",
-            "transition-all duration-150",
-            // Position thumb at progress point
-            "translate-x-[-50%]",
-            // Show on hover
-            "opacity-0 group-hover:opacity-100"
-          )}
-          style={{ left: `${value}%` }}
-        />
-      )}
-    </div>
-  );
-}

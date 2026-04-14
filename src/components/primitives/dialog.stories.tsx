@@ -35,7 +35,7 @@ export const Default: Story = {
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
-          <p className="text-sm text-muted-foreground">Dialog body content goes here.</p>
+          <p className="text-base text-muted-foreground">Dialog body content goes here.</p>
         </div>
         <DialogFooter>
           <DialogClose asChild>
@@ -61,7 +61,7 @@ export const Simple: Story = {
             Manage your account settings and preferences.
           </DialogDescription>
         </DialogHeader>
-        <p className="text-sm">No additional settings available right now.</p>
+        <p className="text-base">No additional settings available right now.</p>
       </DialogContent>
     </Dialog>
   ),

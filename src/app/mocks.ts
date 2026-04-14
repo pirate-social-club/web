@@ -789,18 +789,6 @@ export const CREATE_COMMUNITY_SAMPLE: CreateCommunityComposerProps = {
   membershipMode: "open",
   defaultAgeGatePolicy: "none",
   allowAnonymousIdentity: true,
-  namespace: {
-    family: "hns",
-    externalRoot: "",
-    importStatus: "not_imported",
-    ownerLabel: "",
-    hnsDelegationMode: "owner_managed",
-  },
-  handlePolicy: {
-    policyTemplate: "standard",
-    pricingModel: "free",
-    membershipRequiredForClaim: true,
-  },
   creatorVerificationState: {
     uniqueHumanVerified: true,
     ageOver18Verified: true,

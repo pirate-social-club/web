@@ -32,7 +32,7 @@ const Template = (args: { side: "top" | "bottom" | "left" | "right" }) => (
         <SheetDescription>This is a sheet sliding in from the {args.side}.</SheetDescription>
       </SheetHeader>
       <div className="py-4">
-        <p className="text-sm text-muted-foreground">Sheet body content goes here.</p>
+        <p className="text-base text-muted-foreground">Sheet body content goes here.</p>
       </div>
       <SheetFooter>
         <SheetClose asChild>

@@ -19,10 +19,10 @@ export const Default: Story = {
         <TabsTrigger value="password">Password</TabsTrigger>
       </TabsList>
       <TabsContent value="account">
-        <p className="text-sm text-muted-foreground">Make changes to your account here.</p>
+        <p className="text-base text-muted-foreground">Make changes to your account here.</p>
       </TabsContent>
       <TabsContent value="password">
-        <p className="text-sm text-muted-foreground">Change your password here.</p>
+        <p className="text-base text-muted-foreground">Change your password here.</p>
       </TabsContent>
     </Tabs>
   ),
@@ -37,10 +37,10 @@ export const ManyTabs: Story = {
         <TabsTrigger value="tab3">Reports</TabsTrigger>
         <TabsTrigger value="tab4">Settings</TabsTrigger>
       </TabsList>
-      <TabsContent value="tab1"><p className="text-sm">Overview content</p></TabsContent>
-      <TabsContent value="tab2"><p className="text-sm">Analytics content</p></TabsContent>
-      <TabsContent value="tab3"><p className="text-sm">Reports content</p></TabsContent>
-      <TabsContent value="tab4"><p className="text-sm">Settings content</p></TabsContent>
+      <TabsContent value="tab1"><p className="text-base">Overview content</p></TabsContent>
+      <TabsContent value="tab2"><p className="text-base">Analytics content</p></TabsContent>
+      <TabsContent value="tab3"><p className="text-base">Reports content</p></TabsContent>
+      <TabsContent value="tab4"><p className="text-base">Settings content</p></TabsContent>
     </Tabs>
   ),
 };

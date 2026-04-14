@@ -1,18 +1,12 @@
 "use client";
 
 import * as React from "react";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { DotsThree } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { IconButton } from "./icon-button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -33,7 +27,7 @@ export interface ActionMenuItem {
 export interface ActionMenuProps {
   items: ActionMenuItem[];
   label?: string;
-  align?: React.ComponentProps<typeof DropdownMenuContent>["align"];
+  align?: React.ComponentProps<typeof DropdownMenuPrimitive.Content>["align"];
   contentClassName?: string;
   triggerClassName?: string;
   onAction?: (key: string) => void;
@@ -103,8 +97,8 @@ export function ActionMenu({
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <DropdownMenuPrimitive.Root>
+      <DropdownMenuPrimitive.Trigger asChild>
         <IconButton
           aria-label={label}
           size="sm"
@@ -113,33 +107,42 @@ export function ActionMenu({
         >
           <DotsThree className="size-5" />
         </IconButton>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align={align}
-        className={cn("rounded-[var(--radius-lg)] p-0", contentClassName)}
-      >
-        {items.map((item) => (
-          <React.Fragment key={item.key}>
-            {item.separatorBefore ? <DropdownMenuSeparator /> : null}
-            <DropdownMenuItem
-              className={cn(
-                "w-full rounded-none py-2.5 pl-3 pr-3 text-base text-popover-foreground hover:text-foreground focus:bg-muted focus:text-foreground",
-                item.icon ? "grid grid-cols-[1.25rem_1fr] items-center gap-2" : "block",
-                item.destructive && "text-destructive focus:text-destructive",
-              )}
-              disabled={item.disabled}
-              onClick={() => onAction?.(item.key)}
-            >
-              {item.icon ? (
-                <span className="inline-flex size-5 items-center justify-center">
-                  {item.icon}
-                </span>
+      </DropdownMenuPrimitive.Trigger>
+      <DropdownMenuPrimitive.Portal>
+        <DropdownMenuPrimitive.Content
+          align={align}
+          sideOffset={4}
+          className={cn(
+            "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-[var(--radius-lg)] border border-border bg-popover p-0 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+            contentClassName,
+          )}
+        >
+          {items.map((item) => (
+            <React.Fragment key={item.key}>
+              {item.separatorBefore ? (
+                <DropdownMenuPrimitive.Separator className="-mx-1 my-1 h-px bg-border" />
               ) : null}
-              <span>{item.label}</span>
-            </DropdownMenuItem>
-          </React.Fragment>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+              <DropdownMenuPrimitive.Item
+                className={cn(
+                  "relative w-full cursor-pointer select-none rounded-none py-2.5 pl-3 pr-3 text-base text-popover-foreground outline-none transition-colors hover:text-foreground focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                  item.icon ? "grid grid-cols-[1.25rem_1fr] items-center gap-2" : "block",
+                  item.destructive && "text-destructive focus:text-destructive",
+                )}
+                disabled={item.disabled}
+                onClick={() => onAction?.(item.key)}
+              >
+                {item.icon ? (
+                  <span className="inline-flex size-5 items-center justify-center">
+                    {item.icon}
+                  </span>
+                ) : null}
+                <span>{item.label}</span>
+              </DropdownMenuPrimitive.Item>
+            </React.Fragment>
+          ))}
+        </DropdownMenuPrimitive.Content>
+      </DropdownMenuPrimitive.Portal>
+    </DropdownMenuPrimitive.Root>
   );
 }

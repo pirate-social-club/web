@@ -9,7 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/primitives/accordion";
-import { SidebarProvider } from "@/components/primitives/sidebar";
+import { SidebarProvider } from "@/components/compositions/sidebar/sidebar";
 import { cn } from "@/lib/utils";
 import { CommunitySidebarCharity } from "./community-sidebar-charity";
 import { CommunitySidebarFlairs } from "./community-sidebar-flairs";

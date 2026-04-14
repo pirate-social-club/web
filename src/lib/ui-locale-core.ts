@@ -4,8 +4,6 @@ export type UiLocaleCode = (typeof SUPPORTED_UI_LOCALES)[number];
 export type UiDirection = "ltr" | "rtl";
 export type UiPlacement = "left" | "right" | "start" | "end";
 
-const REQUESTABLE_LOCALES = ["en", "ar"] as const;
-
 export function resolveLocaleDirection(locale: UiLocaleCode): UiDirection {
   return locale === "ar" ? "rtl" : "ltr";
 }
@@ -41,12 +39,4 @@ export function resolveRequestLocale(
   }
 
   return "en";
-}
-
-export function isSupportedRequestLocale(
-  locale: string,
-): locale is (typeof REQUESTABLE_LOCALES)[number] {
-  return REQUESTABLE_LOCALES.includes(
-    locale as (typeof REQUESTABLE_LOCALES)[number],
-  );
 }

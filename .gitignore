@@ -7,3 +7,5 @@ storybook-static/
 coverage/
 *.log
 debug-storybook.log
+.env.local
+.env.*.local

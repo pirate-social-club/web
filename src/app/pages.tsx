@@ -17,10 +17,13 @@ import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { RedditVerification as ApiRedditVerification } from "@pirate/api-contracts";
 import type { RedditImportSummary as ApiRedditImportSummary } from "@pirate/api-contracts";
 import type { VerificationSession } from "@pirate/api-contracts";
-import type { ApiError } from "@/lib/api/client";
+import { DEFAULT_BASE_URL, type ApiError } from "@/lib/api/client";
 import type { PrivyLoginCard as PrivyLoginCardComponent } from "@/components/auth/privy-login-card";
 import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
+import { Feed, type FeedSort, type FeedSortOption, type FeedItem } from "@/components/compositions/feed/feed";
+import { YourSpacesRail, type YourSpacesRailItem } from "@/components/compositions/feed/your-spaces-rail";
+import { COMMUNITY_RECORDS, YOUR_COMMUNITIES_POSTS, type RoutePost } from "@/app/mocks";
 import type { OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type {
   ImportJobState,
@@ -874,9 +877,16 @@ function CreateCommunityPage() {
       context: launch.context,
       typeId: launch.type_id,
       query: JSON.stringify(launch.query),
-      ...(launch.verify_url ? { verifyUrl: launch.verify_url } : {}),
+      verifyUrl: launch.verify_url ?? `${DEFAULT_BASE_URL}/very/verify`,
       onSuccess: async (proof: string) => {
+        console.info("[very-widget] proof received", {
+          verificationSessionId: result.verification_session_id,
+          proofLength: proof.length,
+        });
         try {
+          console.info("[very-widget] completing verification session", {
+            verificationSessionId: result.verification_session_id,
+          });
           await api.verification.completeSession(result.verification_session_id, {
             provider_payload_ref: proof,
           });
@@ -892,6 +902,10 @@ function CreateCommunityPage() {
         }
       },
       onError: (error: string) => {
+        console.error("[very-widget] verification failed", {
+          verificationSessionId: result.verification_session_id,
+          error,
+        });
         setVerificationError(error || "Very verification failed");
         setVerificationLoading(false);
         cleanupWidget();

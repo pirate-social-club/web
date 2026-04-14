@@ -21,6 +21,7 @@ import { DEFAULT_BASE_URL, type ApiError } from "@/lib/api/client";
 import type { PrivyLoginCard as PrivyLoginCardComponent } from "@/components/auth/privy-login-card";
 import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
+import type { NamespaceAttachmentState } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import { Feed, type FeedSort, type FeedSortOption } from "@/components/compositions/feed/feed";
 import type { OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type {
@@ -30,6 +31,11 @@ import type {
 } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap";
 import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profile-page/profile-page";
+import { VerifyNamespaceModal } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal";
+import type {
+  NamespaceVerificationCallbacks,
+  SpacesChallengePayload,
+} from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
 import { Button } from "@/components/primitives/button";
 import { Input } from "@/components/primitives/input";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
@@ -357,7 +363,15 @@ function CurrentUserProfilePage() {
   const session = useSession();
   const profile = session?.profile ?? null;
 
+  console.info("[/me] CurrentUserProfilePage rendered", {
+    hasSession: !!session,
+    hasProfile: !!profile,
+    onboarding: session?.onboarding,
+    profileDisplayName: profile?.display_name,
+  });
+
   if (!profile) {
+    console.warn("[/me] No profile in session — showing sign-in prompt");
     return (
       <StackPageShell title={copy.common.joinedStatLabel}>
         <EmptyFeedState message="Sign in to view your profile." />
@@ -396,16 +410,20 @@ function UserProfilePage({ userId }: { userId: string }) {
 }
 
 function resolveOnboardingPhase(status: OnboardingStatus): OnboardingPhase {
-  if (status.reddit_verification_status !== "verified") {
-    return "import_karma";
-  }
-  if (status.reddit_import_status !== "succeeded") {
-    return "import_karma";
-  }
-  if (status.cleanup_rename_available) {
-    return "choose_name";
-  }
-  return "suggested_communities";
+  const phase = (() => {
+    if (status.reddit_verification_status !== "verified") {
+      return "import_karma";
+    }
+    if (status.reddit_import_status !== "succeeded") {
+      return "import_karma";
+    }
+    if (status.cleanup_rename_available) {
+      return "choose_name";
+    }
+    return "suggested_communities";
+  })();
+  console.info("[resolveOnboardingPhase]", { phase, status });
+  return phase;
 }
 
 function mapRedditVerification(
@@ -763,7 +781,9 @@ function AuthPage() {
   }, [jwt, api]);
 
   React.useEffect(() => {
+    console.info("[AuthPage] session effect", { hasSession: !!session, onboarding: session?.onboarding });
     if (session) {
+      console.info("[AuthPage] redirecting to /onboarding because session exists");
       navigate("/onboarding");
     }
   }, [session]);
@@ -858,6 +878,40 @@ function InboxPlaceholderPage() {
   );
 }
 
+function toSpacesChallengePayload(
+  value: Record<string, unknown> | null | undefined,
+): SpacesChallengePayload | null {
+  if (!value) {
+    return null;
+  }
+
+  if (
+    value.kind !== "schnorr_sign" ||
+    typeof value.domain !== "string" ||
+    typeof value.root_label !== "string" ||
+    typeof value.root_pubkey !== "string" ||
+    typeof value.nonce !== "string" ||
+    typeof value.issued_at !== "string" ||
+    typeof value.expires_at !== "string" ||
+    typeof value.message !== "string" ||
+    typeof value.digest !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    kind: "schnorr_sign",
+    domain: value.domain,
+    root_label: value.root_label,
+    root_pubkey: value.root_pubkey,
+    nonce: value.nonce,
+    issued_at: value.issued_at,
+    expires_at: value.expires_at,
+    message: value.message,
+    digest: value.digest,
+  };
+}
+
 function CreateCommunityPage() {
   const { copy } = useRouteMessages();
   const api = useApi();
@@ -865,6 +919,10 @@ function CreateCommunityPage() {
   const [verificationSessionId, setVerificationSessionId] = React.useState<string | null>(null);
   const [verificationLoading, setVerificationLoading] = React.useState(false);
   const [verificationError, setVerificationError] = React.useState<string | null>(null);
+  const [namespaceModalOpen, setNamespaceModalOpen] = React.useState(false);
+  const [activeNamespaceSessionId, setActiveNamespaceSessionId] = React.useState<string | null>(null);
+  const [namespaceAttachment, setNamespaceAttachment] =
+    React.useState<NamespaceAttachmentState | null>(null);
   const widgetRef = React.useRef<{ destroy?: () => void; open?: () => void } | null>(null);
 
   const cleanupWidget = React.useCallback(() => {
@@ -971,6 +1029,72 @@ function CreateCommunityPage() {
       ? "pending"
       : "not_started";
 
+  const namespaceVerificationCallbacks = React.useMemo<NamespaceVerificationCallbacks>(() => ({
+    onStartSession: async ({ family, rootLabel }) => {
+      const result = await api.verification.startNamespaceSession({
+        family,
+        root_label: rootLabel,
+      });
+
+      return {
+        namespaceVerificationSessionId: result.namespace_verification_session_id,
+        family: result.family,
+        rootLabel: result.submitted_root_label,
+        challengeHost: result.challenge_host ?? null,
+        challengeTxtValue: result.challenge_txt_value ?? null,
+        challengePayload: toSpacesChallengePayload(result.challenge_payload),
+        challengeExpiresAt: result.challenge_expires_at ?? null,
+        status: result.status,
+      };
+    },
+    onCompleteSession: async ({
+      namespaceVerificationSessionId,
+      restartChallenge,
+      signaturePayload,
+    }) => {
+      const result = await api.verification.completeNamespaceSession(
+        namespaceVerificationSessionId,
+        {
+          restart_challenge: restartChallenge ?? null,
+          signature_payload: signaturePayload ?? null,
+        },
+      );
+
+      if (result.status === "verified" && result.namespace_verification_id) {
+        const verification = await api.verification.getNamespaceVerification(
+          result.namespace_verification_id,
+        );
+        setNamespaceAttachment({
+          namespaceVerificationId: verification.namespace_verification_id,
+          family: verification.family,
+          normalizedRootLabel: verification.normalized_root_label,
+        });
+        setNamespaceModalOpen(false);
+        setActiveNamespaceSessionId(null);
+      }
+
+      return {
+        status: result.status,
+        namespaceVerificationId: result.namespace_verification_id ?? null,
+        failureReason: result.failure_reason ?? null,
+      };
+    },
+    onGetSession: async ({ namespaceVerificationSessionId }) => {
+      const result = await api.verification.getNamespaceSession(namespaceVerificationSessionId);
+
+      return {
+        namespaceVerificationSessionId: result.namespace_verification_session_id,
+        family: result.family,
+        rootLabel: result.submitted_root_label,
+        challengeHost: result.challenge_host ?? null,
+        challengeTxtValue: result.challenge_txt_value ?? null,
+        challengePayload: toSpacesChallengePayload(result.challenge_payload),
+        challengeExpiresAt: result.challenge_expires_at ?? null,
+        status: result.status,
+      };
+    },
+  }), [api]);
+
   const handleCreate = React.useCallback(async (input: {
     displayName: string;
     description: string | null;
@@ -979,6 +1103,7 @@ function CreateCommunityPage() {
     allowAnonymousIdentity: boolean;
     anonymousIdentityScope: "community_stable" | "thread_stable" | "post_ephemeral";
     gateTypes: Set<GateType>;
+    namespaceVerificationId: string | null;
   }) => {
     try {
       const result = await api.communities.create({
@@ -990,6 +1115,9 @@ function CreateCommunityPage() {
         anonymous_identity_scope: input.anonymousIdentityScope,
         handle_policy: { policy_template: "standard" },
         governance_mode: "centralized",
+        namespace: input.namespaceVerificationId
+          ? { namespace_verification_id: input.namespaceVerificationId }
+          : null,
       });
 
       navigate(`/c/${result.community.community_id}`);
@@ -1048,9 +1176,21 @@ function CreateCommunityPage() {
       <div className="mx-auto w-full max-w-5xl">
         <CreateCommunityComposer
           creatorVerificationState={creatorVerificationState}
+          namespaceAttachment={namespaceAttachment}
+          onClearNamespaceVerification={() => setNamespaceAttachment(null)}
           onCreate={handleCreate}
+          onOpenNamespaceVerification={() => setNamespaceModalOpen(true)}
         />
       </div>
+      <VerifyNamespaceModal
+        activeSessionId={activeNamespaceSessionId}
+        callbacks={namespaceVerificationCallbacks}
+        onOpenChange={setNamespaceModalOpen}
+        onSessionCleared={() => setActiveNamespaceSessionId(null)}
+        onSessionStarted={setActiveNamespaceSessionId}
+        onVerified={() => setNamespaceModalOpen(false)}
+        open={namespaceModalOpen}
+      />
     </StackPageShell>
   );
 }
@@ -1074,6 +1214,7 @@ function NotFoundPage({ path }: { path: string }) {
 }
 
 export function renderRoute(route: AppRoute): React.ReactNode {
+  console.info("[renderRoute]", route.kind, route);
   switch (route.kind) {
     case "home":
       return <HomePage />;

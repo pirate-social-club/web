@@ -21,9 +21,7 @@ import { DEFAULT_BASE_URL, type ApiError } from "@/lib/api/client";
 import type { PrivyLoginCard as PrivyLoginCardComponent } from "@/components/auth/privy-login-card";
 import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
-import { Feed, type FeedSort, type FeedSortOption, type FeedItem } from "@/components/compositions/feed/feed";
-import { YourSpacesRail, type YourSpacesRailItem } from "@/components/compositions/feed/your-spaces-rail";
-import { COMMUNITY_RECORDS, YOUR_COMMUNITIES_POSTS, type RoutePost } from "@/app/mocks";
+import { Feed, type FeedSort, type FeedSortOption } from "@/components/compositions/feed/feed";
 import type { OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type {
   ImportJobState,
@@ -137,11 +135,33 @@ function HomePage() {
   );
 }
 
+const YOUR_COMMUNITIES_SORT_OPTIONS: FeedSortOption[] = [
+  { value: "best", label: "Best" },
+  { value: "new", label: "New" },
+  { value: "top", label: "Top" },
+];
+
 function YourCommunitiesPage() {
   const { copy } = useRouteMessages();
+  const [activeSort, setActiveSort] = React.useState<FeedSort>("new");
 
   return (
-    <EmptyFeedState message={copy.yourCommunities.railTitle} />
+    <Feed
+      activeSort={activeSort}
+      availableSorts={YOUR_COMMUNITIES_SORT_OPTIONS}
+      emptyState={{
+        action: (
+          <Button variant="secondary" onClick={() => navigate("/communities/new")}>
+            Create community
+          </Button>
+        ),
+        body: "Join a few communities or start one to make this feed useful.",
+        title: "No posts yet.",
+      }}
+      items={[]}
+      onSortChange={setActiveSort}
+      title={copy.yourCommunities.title}
+    />
   );
 }
 

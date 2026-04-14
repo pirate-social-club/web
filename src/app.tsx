@@ -20,7 +20,7 @@ import { PirateAuthProvider } from "@/lib/auth/privy-provider";
 import { useSession } from "@/lib/api/session-store";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
-import { cn } from "@/lib/utils";
+
 
 function buildSidebarSections(messages: ShellMessages["appSidebar"]): AppSidebarSection[] {
   return [
@@ -80,10 +80,6 @@ function activeMobileNav(
   if (route.kind === "create-community") return "create";
   if (route.kind === "me" || route.kind === "user") return "profile";
   return "home";
-}
-
-function usesFullBleedLayout(route: AppRoute): boolean {
-  return route.kind === "me" || route.kind === "user";
 }
 
 function showSearchUnavailable(message: string) {
@@ -189,12 +185,7 @@ export function PirateApp({ initialPath }: { initialPath?: string }) {
             <SidebarInset className="min-h-dvh">
               <AppShellHeader copy={copy} />
               <main
-                className={cn(
-                  "flex w-full flex-1 pb-24 pt-[calc(env(safe-area-inset-top)+5rem)] md:pb-8 md:pt-6",
-                  usesFullBleedLayout(route)
-                    ? "max-w-none"
-                    : "mx-auto max-w-[96rem] px-3 md:px-5 lg:px-8",
-                )}
+                className="mx-auto flex w-full max-w-[96rem] flex-1 px-3 pb-24 pt-[calc(env(safe-area-inset-top)+5rem)] md:pb-8 md:px-5 md:pt-6 lg:px-8"
               >
                 {renderRoute(route)}
               </main>

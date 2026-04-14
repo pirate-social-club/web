@@ -203,7 +203,7 @@ const meta = {
   },
   decorators: [
     (Story: () => React.ReactNode) => (
-      <div style={{ minHeight: "100vh", width: "100%" }}>
+      <div style={{ minHeight: "100vh", maxWidth: "96rem", margin: "0 auto", padding: "0 1.25rem" }}>
         <Story />
       </div>
     ),

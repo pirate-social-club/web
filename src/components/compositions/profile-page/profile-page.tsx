@@ -19,7 +19,7 @@ export function ProfilePage({
 }: ProfilePageProps) {
   return (
     <div className={cn("min-h-screen bg-background text-foreground", className)}>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pb-10 pt-6 md:px-6 xl:px-8">
+      <div className="flex w-full flex-col gap-6 pb-10">
         <ProfileHero profile={profile} />
 
         <Tabs className="flex flex-col gap-6" defaultValue={defaultTab}>

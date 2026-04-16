@@ -4,6 +4,7 @@ export type NamespaceVerificationModalState =
   | "idle"
   | "starting"
   | "challenge_ready"
+  | "challenge_pending"
   | "verifying"
   | "verified"
   | "failed"

@@ -126,6 +126,8 @@ export function VerifyNamespaceModal({
       onSessionClearedRef.current?.();
     } else if (result.status === "expired") {
       setState("expired");
+    } else if (result.status === "challenge_pending") {
+      setState("challenge_pending");
     } else {
       setState("challenge_ready");
     }
@@ -208,6 +210,9 @@ export function VerifyNamespaceModal({
           setNamespaceVerificationId(result.namespaceVerificationId);
           onVerified?.(result.namespaceVerificationId);
           onSessionClearedRef.current?.();
+        } else if (result.status === "challenge_pending") {
+          setState("challenge_pending");
+          setFailureReason(null);
         } else if (result.status === "expired") {
           setState("expired");
         } else {
@@ -222,33 +227,64 @@ export function VerifyNamespaceModal({
   }, [callbacks, sessionId, activeFamily, challengePayload, signature, onVerified]);
 
   const handleRestart = React.useCallback(() => {
-    const trimmed = rootLabelRef.current.trim().replace(/^[@.]/, "");
-    if (!trimmed) {
-      setState("idle");
-      resetChallengeState();
+    if (!sessionId) {
+      const trimmed = rootLabelRef.current.trim().replace(/^[@.]/, "");
+      if (!trimmed) {
+        setState("idle");
+        resetChallengeState();
+        return;
+      }
+
+      setState("starting");
+      setFailureReason(null);
+
+      void callbacks.onStartSession({ family: activeFamily, rootLabel: trimmed })
+        .then((result) => {
+          setSessionId(result.namespaceVerificationSessionId);
+          setChallengeHost(result.challengeHost);
+          setChallengeTxtValue(result.challengeTxtValue);
+          setChallengePayload(result.challengePayload);
+          setRootLabel(result.rootLabel);
+          setSignature("");
+          setState("challenge_ready");
+          onSessionStartedRef.current?.(result.namespaceVerificationSessionId);
+        })
+        .catch((error: unknown) => {
+          setState("idle");
+          resetChallengeState();
+          toast.error(error instanceof Error ? error.message : "Could not start verification");
+        });
       return;
     }
 
     setState("starting");
     setFailureReason(null);
 
-    void callbacks.onStartSession({ family: activeFamily, rootLabel: trimmed })
+    void callbacks.onCompleteSession({
+      namespaceVerificationSessionId: sessionId,
+      family: activeFamily,
+      restartChallenge: true,
+    })
       .then((result) => {
-        setSessionId(result.namespaceVerificationSessionId);
-        setChallengeHost(result.challengeHost);
-        setChallengeTxtValue(result.challengeTxtValue);
-        setChallengePayload(result.challengePayload);
-        setRootLabel(result.rootLabel);
-        setSignature("");
-        setState("challenge_ready");
-        onSessionStartedRef.current?.(result.namespaceVerificationSessionId);
+        if (result.status === "expired") {
+          setState("expired");
+          return;
+        }
+        void callbacks.onGetSession({ namespaceVerificationSessionId: sessionId })
+          .then((sessionResult) => {
+            restoreSession(sessionResult);
+          })
+          .catch((error: unknown) => {
+            setState("idle");
+            resetChallengeState();
+            toast.error(error instanceof Error ? error.message : "Could not refresh verification");
+          });
       })
       .catch((error: unknown) => {
-        setState("idle");
-        resetChallengeState();
-        toast.error(error instanceof Error ? error.message : "Could not start verification");
+        setState("failed");
+        toast.error(error instanceof Error ? error.message : "Could not refresh verification");
       });
-  }, [callbacks, activeFamily, resetChallengeState]);
+  }, [callbacks, activeFamily, challengeHost, resetChallengeState, restoreSession, sessionId]);
 
   const handleAbandon = React.useCallback(() => {
     onSessionClearedRef.current?.();
@@ -261,6 +297,7 @@ export function VerifyNamespaceModal({
   const isIdle = state === "idle";
   const isStarting = state === "starting";
   const isChallengeReady = state === "challenge_ready";
+  const isChallengePending = state === "challenge_pending";
   const isVerifying = state === "verifying";
   const isVerified = state === "verified";
   const isFailed = state === "failed";
@@ -325,9 +362,13 @@ export function VerifyNamespaceModal({
             </div>
           ) : null}
 
-          {(isChallengeReady || isVerifying) && isHns && challengeHost && challengeTxtValue ? (
+          {(isChallengeReady || isChallengePending || isVerifying) && isHns && challengeHost && challengeTxtValue ? (
             <div className="space-y-4">
-              <FormNote>Add this TXT record, then verify.</FormNote>
+              <FormNote>
+                {isChallengePending
+                  ? "TXT propagation is still pending. You can close this and check again later."
+                  : "Add this TXT record, then verify."}
+              </FormNote>
               <div className="space-y-3">
                 <div>
                   <p className="mb-1.5 text-base text-muted-foreground">Host</p>
@@ -414,9 +455,18 @@ export function VerifyNamespaceModal({
             {isVerified ? (
               <Button onClick={() => onOpenChange(false)}>Done</Button>
             ) : null}
+            {isChallengePending ? (
+              <>
+                <Button onClick={() => onOpenChange(false)} variant="outline">Close</Button>
+                <Button loading={isVerifying} onClick={handleVerify}>Check again</Button>
+              </>
+            ) : null}
             {(isFailed || isExpired) ? (
               <>
                 <Button onClick={() => onOpenChange(false)} variant="outline">Cancel</Button>
+                {isFailed && isHns ? (
+                  <Button loading={isVerifying} onClick={handleVerify}>Check again</Button>
+                ) : null}
                 <Button onClick={handleRestart}>{isHns ? "Get new record" : "New challenge"}</Button>
               </>
             ) : null}

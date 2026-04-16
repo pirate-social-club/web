@@ -12,7 +12,9 @@ import {
 } from "@/lib/api/session-store";
 import type { OnboardingStatus } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
-import type { Community as ApiCommunity } from "@pirate/api-contracts";
+import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contracts";
+import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
+import type { GateFailureDetails as ApiGateFailureDetails } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { RedditVerification as ApiRedditVerification } from "@pirate/api-contracts";
 import type { RedditImportSummary as ApiRedditImportSummary } from "@pirate/api-contracts";
@@ -21,7 +23,7 @@ import { DEFAULT_BASE_URL, type ApiError } from "@/lib/api/client";
 import type { PrivyLoginCard as PrivyLoginCardComponent } from "@/components/auth/privy-login-card";
 import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
-import type { NamespaceAttachmentState } from "@/components/compositions/create-community-composer/create-community-composer.types";
+import type { NamespaceAttachmentState, NationalityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import { Feed, type FeedSort, type FeedSortOption } from "@/components/compositions/feed/feed";
 import type { OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type {
@@ -44,7 +46,9 @@ import { getPrivyAppId, usePiratePrivyRuntime } from "@/lib/auth/privy-provider"
 import { useUiLocale } from "@/lib/ui-locale";
 import { resolveLocaleLanguageTag } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
-import type { GateType } from "@/components/compositions/create-community-composer/create-community-composer.types";
+import { formatGateRequirement, getJoinCtaLabel, isJoinCtaActionable } from "@/lib/nationality-gate";
+import { parseSelfCallback } from "@/lib/self-verification";
+import { toast } from "@/components/primitives/sonner";
 
 function interpolateMessage(
   template: string,
@@ -171,10 +175,10 @@ function YourCommunitiesPage() {
   );
 }
 
-function useCommunity(communityId: string) {
+function useCommunityPreview(communityId: string) {
   const api = useApi();
-  const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
-  const [posts, setPosts] = React.useState<ApiPost[]>([]);
+  const [preview, setPreview] = React.useState<ApiCommunityPreview | null>(null);
+  const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -184,13 +188,13 @@ function useCommunity(communityId: string) {
     setError(null);
 
     void Promise.all([
-      api.communities.get(communityId),
-      api.communities.listPosts(communityId),
+      api.communities.preview(communityId),
+      api.communities.getJoinEligibility(communityId),
     ])
-      .then(([c, p]) => {
+      .then(([p, e]) => {
         if (cancelled) return;
-        setCommunity(c);
-        setPosts(p.items ?? []);
+        setPreview(p);
+        setEligibility(e);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -203,12 +207,170 @@ function useCommunity(communityId: string) {
     return () => { cancelled = true; };
   }, [api, communityId]);
 
-  return { community, posts, error, loading };
+  const refetchEligibility = React.useCallback(async () => {
+    const e = await api.communities.getJoinEligibility(communityId);
+    setEligibility(e);
+    return e;
+  }, [api, communityId]);
+
+  return { preview, eligibility, error, loading, refetchEligibility };
+}
+
+function JoinCta({
+  eligibility,
+  onJoin,
+  loading,
+}: {
+  eligibility: ApiJoinEligibility;
+  onJoin: () => void;
+  loading?: boolean;
+}) {
+  const label = getJoinCtaLabel(eligibility);
+  const actionable = isJoinCtaActionable(eligibility);
+  return (
+    <Button disabled={!actionable} loading={loading} onClick={actionable ? onJoin : undefined}>
+      {label}
+    </Button>
+  );
 }
 
 function CommunityPage({ communityId }: { communityId: string }) {
+  const api = useApi();
+  const session = useSession();
   const { copy } = useRouteMessages();
-  const { community, posts, error, loading } = useCommunity(communityId);
+  const { preview, eligibility, error, loading, refetchEligibility } = useCommunityPreview(communityId);
+  const [joinLoading, setJoinLoading] = React.useState(false);
+  const [joinError, setJoinError] = React.useState<string | null>(null);
+  const [joinRequested, setJoinRequested] = React.useState(false);
+  const [selfSession, setSelfSession] = React.useState<VerificationSession | null>(null);
+  const [selfLoading, setSelfLoading] = React.useState(false);
+  const [selfError, setSelfError] = React.useState<string | null>(null);
+
+  const startSelfVerification = React.useCallback(async () => {
+    setSelfLoading(true);
+    setSelfError(null);
+    setJoinError(null);
+    try {
+      const result = await api.verification.startSession({
+        provider: "self",
+        requested_capabilities: ["nationality"],
+        verification_intent: "community_join",
+      });
+      setSelfSession(result);
+    } catch (e: unknown) {
+      const apiError = e as ApiError;
+      setSelfError(apiError?.message ?? "Could not start self verification");
+    } finally {
+      setSelfLoading(false);
+    }
+  }, [api]);
+
+  const completeSelfAndRetryJoin = React.useCallback(async (proof: string) => {
+    if (!selfSession) return;
+    setSelfLoading(true);
+    setSelfError(null);
+    try {
+      await api.verification.completeSession(selfSession.verification_session_id, { proof });
+      setSelfSession(null);
+      const updatedEligibility = await refetchEligibility();
+
+      if (updatedEligibility.status === "joinable") {
+        const joinResult = await api.communities.join(communityId);
+        if (joinResult.status === "joined") {
+          await refetchEligibility();
+        }
+      } else if (updatedEligibility.status === "requestable") {
+        const joinResult = await api.communities.join(communityId);
+        if (joinResult.status === "requested") {
+          setJoinRequested(true);
+          await refetchEligibility();
+        }
+      } else if (updatedEligibility.status === "gate_failed") {
+        setJoinError("Verification succeeded but you still do not meet this community's requirements.");
+      }
+    } catch (e: unknown) {
+      const apiError = e as ApiError;
+      setSelfError(apiError?.message ?? "Verification completion failed");
+    } finally {
+      setSelfLoading(false);
+    }
+  }, [api, selfSession, communityId, refetchEligibility]);
+
+  const handleJoin = React.useCallback(async () => {
+    setJoinLoading(true);
+    setJoinError(null);
+
+    if (eligibility?.status === "verification_required") {
+      setJoinLoading(false);
+      await startSelfVerification();
+      return;
+    }
+
+    try {
+      const result = await api.communities.join(communityId);
+
+      if (result.status === "joined") {
+        await refetchEligibility();
+      } else if (result.status === "requested") {
+        setJoinRequested(true);
+        await refetchEligibility();
+      }
+    } catch (e: unknown) {
+      const apiError = e as ApiError;
+      if (apiError?.code === "gate_failed" && apiError.details) {
+        const details = apiError.details as ApiGateFailureDetails;
+        switch (details.failure_reason) {
+          case "missing_verification":
+            setJoinLoading(false);
+            await startSelfVerification();
+            return;
+          case "nationality_mismatch":
+            setJoinError("Your verified nationality does not match this community's requirement.");
+            break;
+          case "banned":
+            setJoinError("You are not eligible to join this community.");
+            break;
+          default:
+            toast.error(apiError.message);
+        }
+      } else {
+        toast.error(apiError?.message ?? "Join failed");
+      }
+    } finally {
+      setJoinLoading(false);
+    }
+  }, [api, communityId, eligibility, refetchEligibility, startSelfVerification]);
+
+  React.useEffect(() => {
+    if (!selfSession?.launch?.self_app) return;
+
+    const selfApp = selfSession.launch.self_app;
+    const deeplinkCallback = selfApp.deeplink_callback;
+    if (!deeplinkCallback) return;
+
+    function handlePopState() {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has("proof") && !url.searchParams.has("error")) return;
+
+      const result = parseSelfCallback(url);
+      if (result.status === "completed") {
+        void completeSelfAndRetryJoin(result.proof);
+      } else if (result.status === "expired") {
+        setSelfError("Verification session expired. Please try again.");
+        setSelfSession(null);
+      } else {
+        setSelfError(result.reason);
+        setSelfSession(null);
+      }
+
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    handlePopState();
+
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [selfSession, completeSelfAndRetryJoin]);
 
   if (loading) {
     return (
@@ -218,18 +380,77 @@ function CommunityPage({ communityId }: { communityId: string }) {
     );
   }
 
-  if (error || !community) {
+  if (error || !preview) {
     return <NotFoundPage path={`/c/${communityId}`} />;
   }
 
+  const selfLaunch = selfSession?.launch?.self_app;
+  const selfDeeplinkUrl = selfLaunch
+    ? `${selfLaunch.endpoint}?session_id=${encodeURIComponent(selfLaunch.session_id)}&scope=${encodeURIComponent(selfLaunch.scope)}`
+    : null;
+
   return (
-    <StackPageShell title={community.display_name} description={community.description ?? undefined}>
+    <StackPageShell title={preview.display_name} description={preview.description ?? undefined}>
+      {preview.membership_gate_summaries.length > 0 ? (
+        <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              {preview.membership_gate_summaries.map((gate, i) => (
+                <p key={i} className="text-base text-muted-foreground">{formatGateRequirement(gate)}</p>
+              ))}
+            </div>
+            {eligibility && !selfSession ? (
+              <JoinCta eligibility={eligibility} onJoin={handleJoin} loading={joinLoading} />
+            ) : null}
+          </div>
+          {selfSession ? (
+            <div className="mt-4 space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4">
+              <p className="text-base font-semibold text-foreground">Complete nationality verification</p>
+              <p className="text-base text-muted-foreground">
+                Open the self app to verify your nationality, then return here.
+              </p>
+              {selfDeeplinkUrl ? (
+                <a
+                  className="inline-block text-base font-medium text-orange-500 underline decoration-orange-500/30 underline-offset-4 hover:decoration-orange-500"
+                  href={selfDeeplinkUrl}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Open self verification
+                </a>
+              ) : null}
+              {selfLoading ? (
+                <div className="flex items-center gap-2">
+                  <Spinner className="size-4" />
+                  <span className="text-base text-muted-foreground">Processing verification...</span>
+                </div>
+              ) : null}
+              <div>
+                <Button
+                  variant="ghost"
+                  onClick={() => { setSelfSession(null); setSelfError(null); }}
+                >
+                  Cancel
+                </Button>
+              </div>
+              {selfError ? <FormNote tone="warning">{selfError}</FormNote> : null}
+            </div>
+          ) : null}
+          {joinError ? <FormNote className="mt-2" tone="warning">{joinError}</FormNote> : null}
+          {joinRequested ? <FormNote className="mt-2">Your join request has been submitted.</FormNote> : null}
+        </div>
+      ) : null}
+      {eligibility && preview.membership_gate_summaries.length === 0 ? (
+        <div className="flex justify-end">
+          <JoinCta eligibility={eligibility} onJoin={handleJoin} loading={joinLoading} />
+        </div>
+      ) : null}
       <CommunitySidebar
-        createdAt={community.created_at}
-        description={community.description ?? ""}
-        displayName={community.display_name}
-        membershipMode={community.membership_mode === "request" ? "open" : community.membership_mode}
-        memberCount={community.member_count ?? 0}
+        createdAt={preview.created_at}
+        description={preview.description ?? ""}
+        displayName={preview.display_name}
+        membershipMode={preview.membership_mode}
+        memberCount={0}
       />
     </StackPageShell>
   );
@@ -912,6 +1133,28 @@ function toSpacesChallengePayload(
   };
 }
 
+function toNamespaceSessionResult(result: {
+  namespace_verification_session_id: string;
+  family: "hns" | "spaces";
+  submitted_root_label: string;
+  challenge_host?: string | null;
+  challenge_txt_value?: string | null;
+  challenge_payload?: Record<string, unknown> | null;
+  challenge_expires_at?: string | null;
+  status: string;
+}) {
+  return {
+    namespaceVerificationSessionId: result.namespace_verification_session_id,
+    family: result.family,
+    rootLabel: result.submitted_root_label,
+    challengeHost: result.challenge_host ?? null,
+    challengeTxtValue: result.challenge_txt_value ?? null,
+    challengePayload: toSpacesChallengePayload(result.challenge_payload),
+    challengeExpiresAt: result.challenge_expires_at ?? null,
+    status: result.status,
+  };
+}
+
 function CreateCommunityPage() {
   const { copy } = useRouteMessages();
   const api = useApi();
@@ -1098,14 +1341,27 @@ function CreateCommunityPage() {
   const handleCreate = React.useCallback(async (input: {
     displayName: string;
     description: string | null;
-    membershipMode: "open" | "gated";
+    membershipMode: "open" | "request" | "gated";
     defaultAgeGatePolicy: "none" | "18_plus";
     allowAnonymousIdentity: boolean;
     anonymousIdentityScope: "community_stable" | "thread_stable" | "post_ephemeral";
-    gateTypes: Set<GateType>;
+    gateDrafts: NationalityGateDraft[];
     namespaceVerificationId: string | null;
   }) => {
     try {
+      const gateRules = input.gateDrafts.map((draft) => ({
+        scope: "membership" as const,
+        gate_family: "identity_proof" as const,
+        gate_type: "nationality" as const,
+        proof_requirements: [
+          {
+            proof_type: "nationality" as const,
+            accepted_providers: ["self"] as ("self" | "very" | "passport")[],
+            config: { required_value: draft.requiredValue },
+          },
+        ],
+      }));
+
       const result = await api.communities.create({
         display_name: input.displayName,
         description: input.description,
@@ -1115,6 +1371,7 @@ function CreateCommunityPage() {
         anonymous_identity_scope: input.anonymousIdentityScope,
         handle_policy: { policy_template: "standard" },
         governance_mode: "centralized",
+        gate_rules: gateRules.length > 0 ? gateRules : undefined,
         namespace: input.namespaceVerificationId
           ? { namespace_verification_id: input.namespaceVerificationId }
           : null,

@@ -66,7 +66,11 @@ export function CommunitySidebar({
 
   const AccessIcon = membershipMode === "open" ? Globe : Lock;
 
-  const accessLabel = membershipMode === "open" ? "Open" : "Gated";
+  const accessLabel = membershipMode === "open"
+    ? "Open"
+    : membershipMode === "request"
+      ? "Request to join"
+      : "Gated";
 
   const content = (
     <div className="flex flex-col gap-5">

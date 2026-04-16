@@ -1,7 +1,11 @@
 import type {
+  CommunityPreview,
+  CreateCommunityRequest,
+  GateFailureDetails,
+  JoinEligibility,
+  // keep all existing imports
   Community,
   CommunityCreateAcceptedResponse,
-  CreateCommunityRequest,
   Job,
   LocalizedPostResponse,
   NamespaceVerification,
@@ -22,13 +26,21 @@ export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
   readonly retryable: boolean;
+  readonly details: Record<string, unknown> | null;
 
-  constructor(code: string, message: string, status: number, retryable = false) {
+  constructor(
+    code: string,
+    message: string,
+    status: number,
+    retryable = false,
+    details: Record<string, unknown> | null = null,
+  ) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
     this.retryable = retryable;
+    this.details = details;
   }
 }
 
@@ -88,14 +100,20 @@ export class ApiClient {
       let retryable = false;
 
       try {
-        const body: JsonErrorResponse = await res.json();
+        const body: JsonErrorResponse & { details?: unknown } = await res.json();
         if (body.code) code = body.code;
         if (body.message) message = body.message;
         if (body.retryable) retryable = body.retryable;
-      } catch {}
-
-      console.error("[api-client] request failed", { method, path, status: res.status, code, message, retryable });
-      throw new ApiError(code, message, res.status, retryable);
+        const parsedDetails = body.details && typeof body.details === "object"
+          ? body.details as Record<string, unknown>
+          : null;
+        console.error("[api-client] request failed", { method, path, status: res.status, code, message, retryable });
+        throw new ApiError(code, message, res.status, retryable, parsedDetails);
+      } catch (e) {
+        if (e instanceof ApiError) throw e;
+        console.error("[api-client] request failed", { method, path, status: res.status, code, message, retryable });
+        throw new ApiError(code, message, res.status, retryable);
+      }
     }
 
     if (res.status === 204) return undefined as T;
@@ -170,6 +188,7 @@ export class ApiClient {
       verificationSessionId: string,
       input?: {
         attestation_id?: string | null;
+        proof?: string | null;
         proof_hash?: string | null;
         provider_payload_ref?: string | null;
       },
@@ -202,7 +221,7 @@ export class ApiClient {
 
     completeNamespaceSession: (
       namespaceVerificationSessionId: string,
-      input?: { restart_challenge?: boolean | null },
+      input?: { restart_challenge?: boolean | null; signature_payload?: Record<string, unknown> | null },
     ): Promise<NamespaceVerificationSession> => {
       return this.request<NamespaceVerificationSession>(
         `/namespace-verification-sessions/${encodeURIComponent(namespaceVerificationSessionId)}/complete`,
@@ -224,15 +243,7 @@ export class ApiClient {
 
   communities = {
     create: (
-      body: Omit<CreateCommunityRequest, "namespace"> & {
-        description?: string | null;
-        membership_mode?: "open" | "request" | "gated";
-        allow_anonymous_identity?: boolean;
-        anonymous_identity_scope?: string | null;
-        default_age_gate_policy?: "none" | "18_plus";
-        gate_rules?: unknown[] | null;
-        namespace?: { namespace_verification_id: string } | null;
-      },
+      body: CreateCommunityRequest,
     ): Promise<CommunityCreateAcceptedResponse> => {
       return this.request<CommunityCreateAcceptedResponse>("/communities", {
         method: "POST",
@@ -246,12 +257,54 @@ export class ApiClient {
       );
     },
 
+    attachNamespace: (
+      communityId: string,
+      namespaceVerificationId: string,
+    ): Promise<Community> => {
+      return this.request<Community>(
+        `/communities/${encodeURIComponent(communityId)}/namespace`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            namespace_verification_id: namespaceVerificationId,
+          }),
+        },
+      );
+    },
+
+    setPendingNamespaceSession: (
+      communityId: string,
+      namespaceVerificationSessionId: string | null,
+    ): Promise<Community> => {
+      return this.request<Community>(
+        `/communities/${encodeURIComponent(communityId)}/pending-namespace-session`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            namespace_verification_session_id: namespaceVerificationSessionId,
+          }),
+        },
+      );
+    },
+
     join: (
       communityId: string,
     ): Promise<{ community_id: string; status: string }> => {
       return this.request<{ community_id: string; status: string }>(
         `/communities/${encodeURIComponent(communityId)}/join`,
         { method: "POST", body: JSON.stringify({}) },
+      );
+    },
+
+    preview: (communityId: string): Promise<CommunityPreview> => {
+      return this.request<CommunityPreview>(
+        `/communities/${encodeURIComponent(communityId)}/preview`,
+      );
+    },
+
+    getJoinEligibility: (communityId: string): Promise<JoinEligibility> => {
+      return this.request<JoinEligibility>(
+        `/communities/${encodeURIComponent(communityId)}/join-eligibility`,
       );
     },
 

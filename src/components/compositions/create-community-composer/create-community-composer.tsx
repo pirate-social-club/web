@@ -13,28 +13,33 @@ import {
 import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
 import { OptionCard } from "@/components/primitives/option-card";
-import { Chip } from "@/components/primitives/chip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/primitives/tabs";
 import { Stepper } from "@/components/primitives/stepper";
 import { Textarea } from "@/components/primitives/textarea";
 import { toast } from "@/components/primitives/sonner";
 import { cn } from "@/lib/utils";
+import { formatGateRequirement } from "@/lib/nationality-gate";
 
 import type {
   AnonymousIdentityScope,
   ComposerStep,
   CreatorVerificationState,
   CreateCommunityComposerProps,
-  GateFamily,
-  GateType,
   CommunityDefaultAgeGatePolicy,
   CommunityMembershipMode,
+  NationalityGateDraft,
 } from "./create-community-composer.types";
+
+const ISO_ALPHA_2 = /^[A-Z]{2}$/;
 
 const membershipMeta: Record<CommunityMembershipMode, { label: string; detail: string }> = {
   open: {
     label: "Open",
     detail: "Anyone can join immediately.",
+  },
+  request: {
+    label: "Request",
+    detail: "Users request to join. Membership is pending until approved.",
   },
   gated: {
     label: "Gated",
@@ -57,19 +62,6 @@ const anonymousScopeMeta: Record<AnonymousIdentityScope, { label: string; detail
     disabledHint: "Post-ephemeral scope is not available in v0.",
   },
 };
-
-const gateTypeMeta: Record<GateType, { label: string; family: GateFamily }> = {
-  erc721_holding: { label: "ERC-721 NFT", family: "token_holding" },
-  erc1155_holding: { label: "ERC-1155 NFT", family: "token_holding" },
-  erc20_balance: { label: "ERC-20 token", family: "token_holding" },
-  solana_nft_holding: { label: "Solana NFT", family: "token_holding" },
-  unique_human: { label: "Unique human", family: "identity_proof" },
-  age_over_18: { label: "Age 18+", family: "identity_proof" },
-  nationality: { label: "Nationality", family: "identity_proof" },
-  wallet_score: { label: "Wallet score", family: "identity_proof" },
-};
-
-const identityGateTypes: GateType[] = ["unique_human", "age_over_18", "nationality", "wallet_score"];
 
 function Section({
   title,
@@ -190,6 +182,9 @@ export function CreateCommunityComposer({
   anonymousIdentityScope: anonymousIdentityScopeProp,
   creatorVerificationState,
   initialStep,
+  namespaceAttachment,
+  onOpenNamespaceVerification,
+  onClearNamespaceVerification,
   onCreate,
 }: CreateCommunityComposerProps) {
   const [activeStep, setActiveStep] = React.useState<ComposerStep>(initialStep ?? 1);
@@ -203,7 +198,8 @@ export function CreateCommunityComposer({
     React.useState<AnonymousIdentityScope>(anonymousIdentityScopeProp ?? "community_stable");
   const [activeDisplayName, setActiveDisplayName] = React.useState(displayName ?? "");
   const [activeDescription, setActiveDescription] = React.useState(description ?? "");
-  const [activeGateTypes, setActiveGateTypes] = React.useState<Set<GateType>>(new Set());
+  const [nationalityEnabled, setNationalityEnabled] = React.useState(false);
+  const [nationalityRequiredValue, setNationalityRequiredValue] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
 
   const creatorUniqueHumanVerified = creatorVerificationState?.uniqueHumanVerified ?? false;
@@ -211,6 +207,10 @@ export function CreateCommunityComposer({
   const creatorAgeRequirementMet =
     activeDefaultAgeGatePolicy !== "18_plus" || creatorAgeOver18Verified;
   const creatorCanCreate = creatorUniqueHumanVerified && creatorAgeRequirementMet;
+
+  const activeGateDrafts: NationalityGateDraft[] = nationalityEnabled && ISO_ALPHA_2.test(nationalityRequiredValue)
+    ? [{ gateType: "nationality", provider: "self", requiredValue: nationalityRequiredValue }]
+    : [];
 
   React.useEffect(() => { setActiveMembershipMode(membershipMode); }, [membershipMode]);
   React.useEffect(() => { setActiveDefaultAgeGatePolicy(defaultAgeGatePolicy); }, [defaultAgeGatePolicy]);
@@ -231,18 +231,6 @@ export function CreateCommunityComposer({
     setActiveStep((s) => Math.max(s - 1, 1) as ComposerStep);
   }, []);
 
-  const toggleGateType = React.useCallback((type: GateType) => {
-    setActiveGateTypes((prev) => {
-      const next = new Set(prev);
-      if (next.has(type)) {
-        next.delete(type);
-      } else {
-        next.add(type);
-      }
-      return next;
-    });
-  }, []);
-
   const handleCreate = React.useCallback(() => {
     if (!onCreate) return;
 
@@ -254,7 +242,8 @@ export function CreateCommunityComposer({
       defaultAgeGatePolicy: activeDefaultAgeGatePolicy,
       allowAnonymousIdentity: activeAllowAnonymousIdentity,
       anonymousIdentityScope: activeAnonymousScope,
-      gateTypes: activeGateTypes,
+      gateDrafts: activeGateDrafts,
+      namespaceVerificationId: namespaceAttachment?.namespaceVerificationId ?? null,
     })
       .catch((error: unknown) => {
         toast.error(error instanceof Error ? error.message : "Could not create community");
@@ -270,21 +259,23 @@ export function CreateCommunityComposer({
     activeDefaultAgeGatePolicy,
     activeAllowAnonymousIdentity,
     activeAnonymousScope,
-    activeGateTypes,
+    activeGateDrafts,
+    namespaceAttachment,
   ]);
+
+  const gateDraftsValid = activeMembershipMode !== "gated" || activeGateDrafts.length > 0;
 
   const canCreateCommunity = React.useMemo(
     () =>
       !!onCreate &&
       creatorCanCreate &&
       activeDisplayName.trim().length > 0 &&
-      (activeMembershipMode !== "gated" || activeGateTypes.size > 0),
+      gateDraftsValid,
     [
       onCreate,
       creatorCanCreate,
       activeDisplayName,
-      activeMembershipMode,
-      activeGateTypes,
+      gateDraftsValid,
     ],
   );
 
@@ -294,8 +285,7 @@ export function CreateCommunityComposer({
         return activeDisplayName.trim().length > 0;
       case 2:
         if (!creatorAgeRequirementMet) return false;
-        if (activeMembershipMode === "gated") return activeGateTypes.size > 0;
-        return true;
+        return gateDraftsValid;
       case 3:
         return canCreateCommunity;
       default:
@@ -304,8 +294,7 @@ export function CreateCommunityComposer({
   }, [
     activeStep,
     activeDisplayName,
-    activeMembershipMode,
-    activeGateTypes,
+    gateDraftsValid,
     canCreateCommunity,
     creatorAgeRequirementMet,
   ]);
@@ -353,6 +342,38 @@ export function CreateCommunityComposer({
                     value={activeDescription}
                   />
                 </div>
+
+                <div>
+                  <FieldLabel label="Namespace" />
+                  <FormNote className="mb-2">Optional now. Attach one later to claim your canonical slug.</FormNote>
+                  {namespaceAttachment ? (
+                    <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-base font-medium text-foreground">Verified namespace attached</p>
+                          <FormNote className="mt-1">
+                            {namespaceAttachment.family === "spaces" ? "@" : "."}
+                            {namespaceAttachment.normalizedRootLabel}
+                          </FormNote>
+                        </div>
+                        <div className="shrink-0">
+                          <Button onClick={onOpenNamespaceVerification} size="sm" type="button" variant="outline">
+                            Change
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Button onClick={onClearNamespaceVerification} size="sm" type="button" variant="ghost">
+                          Remove namespace
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button className="h-12 w-full rounded-[var(--radius-lg)]" onClick={onOpenNamespaceVerification} type="button" variant="outline">
+                      Verify namespace now
+                    </Button>
+                  )}
+                </div>
               </div>
             </Section>
           ) : null}
@@ -373,26 +394,27 @@ export function CreateCommunityComposer({
                       title="Gate checks"
                     />
 
-                    <div className="space-y-2">
-                      <p className="text-base font-medium text-foreground">Identity proof</p>
-                      <div className="flex flex-wrap gap-2">
-                        {identityGateTypes.map((type) => (
-                          <Chip
-                            key={type}
-                            variant={activeGateTypes.has(type) ? "active" : "outline"}
-                            onClick={() => toggleGateType(type)}
-                          >
-                            {gateTypeMeta[type].label}
-                          </Chip>
-                        ))}
-                      </div>
-                    </div>
+                    <OptionCard
+                      description="Require members to verify their nationality through self before joining."
+                      selected={nationalityEnabled}
+                      title="Nationality verification"
+                      onClick={() => setNationalityEnabled((prev) => !prev)}
+                    />
 
-                    {activeGateTypes.size > 0 ? (
-                      <FormNote>
-                        {activeGateTypes.size} identity check
-                        {activeGateTypes.size > 1 ? "s" : ""} selected.
-                      </FormNote>
+                    {nationalityEnabled ? (
+                      <div className="space-y-2">
+                        <FormFieldLabel label="Country code (ISO 3166-1 alpha-2)" />
+                        <Input
+                          className="h-12 w-24 rounded-[var(--radius-lg)]"
+                          maxLength={2}
+                          onChange={(e) => setNationalityRequiredValue(e.target.value.toUpperCase())}
+                          placeholder="US"
+                          value={nationalityRequiredValue}
+                        />
+                        {nationalityRequiredValue.length > 0 && !ISO_ALPHA_2.test(nationalityRequiredValue) ? (
+                          <FormNote tone="warning">Enter a valid 2-letter country code.</FormNote>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                 ) : null}
@@ -456,15 +478,21 @@ export function CreateCommunityComposer({
                 <div className="md:col-span-2">
                   <ReviewField label="Description" value={activeDescription || "\u2014"} />
                 </div>
+                <ReviewField
+                  label="Namespace"
+                  value={namespaceAttachment
+                    ? `${namespaceAttachment.family === "spaces" ? "@" : "."}${namespaceAttachment.normalizedRootLabel}`
+                    : "Uses community ID URL until verified"}
+                />
               </ReviewSection>
 
               <ReviewSection title="Access policy">
                 <ReviewField label="Join flow" value={membershipLabel} />
-                {activeMembershipMode === "gated" && activeGateTypes.size > 0 ? (
+                {activeGateDrafts.length > 0 ? (
                   <div className="md:col-span-2">
                     <ReviewField
                       label="Membership gates"
-                      value={Array.from(activeGateTypes).map((t) => gateTypeMeta[t].label).join(", ")}
+                      value={activeGateDrafts.map((d) => formatGateRequirement({ gate_type: d.gateType, required_value: d.requiredValue })).join(", ")}
                     />
                   </div>
                 ) : null}

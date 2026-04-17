@@ -18,10 +18,16 @@ function resolveInitialPath(): string {
   return window.location.pathname || "/";
 }
 
+function resolveInitialHost(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  if (window.location.protocol === "file:") return undefined;
+  return window.location.hostname || undefined;
+}
+
 createRoot(rootElement).render(
   <React.StrictMode>
     <UiLocaleProvider dir="ltr" locale="en">
-      <PirateApp initialPath={resolveInitialPath()} />
+      <PirateApp initialHost={resolveInitialHost()} initialPath={resolveInitialPath()} />
     </UiLocaleProvider>
   </React.StrictMode>,
 );

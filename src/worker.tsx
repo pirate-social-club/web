@@ -28,7 +28,7 @@ function parseThemeCookie(cookieHeader: string | null): ThemeMode {
 function AppRoutePage(requestInfo: AppRequestInfo) {
   const url = new URL(requestInfo.request.url);
 
-  return <PirateApp initialPath={url.pathname} />;
+  return <PirateApp initialHost={url.hostname} initialPath={url.pathname} />;
 }
 
 export default defineApp<AppRequestInfo>([
@@ -43,12 +43,20 @@ export default defineApp<AppRequestInfo>([
     route("/", AppRoutePage),
     route("/your-communities", AppRoutePage),
     route("/communities/new", AppRoutePage),
+    route("/c/:communityId/submit", AppRoutePage),
+    route("/c/:communityId/mod/rules", AppRoutePage),
+    route("/c/:communityId/mod/gates", AppRoutePage),
+    route("/c/:communityId/mod/safety", AppRoutePage),
+    route("/c/:communityId/mod/namespace", AppRoutePage),
     route("/c/:communityId", AppRoutePage),
     route("/p/:postId", AppRoutePage),
     route("/inbox", AppRoutePage),
     route("/me", AppRoutePage),
+    route("/settings", AppRoutePage),
+    route("/settings/profile", AppRoutePage),
+    route("/settings/wallet", AppRoutePage),
+    route("/settings/preferences", AppRoutePage),
     route("/u/:userId", AppRoutePage),
     route("/onboarding", AppRoutePage),
-    route("/auth", AppRoutePage),
   ]),
 ]);

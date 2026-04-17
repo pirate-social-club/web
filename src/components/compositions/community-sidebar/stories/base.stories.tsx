@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { CommunitySidebar } from "../community-sidebar";
-import type { CommunitySidebarProps } from "../community-sidebar.types";
+import type { CommunitySidebarProps, CommunitySidebarRule } from "../community-sidebar.types";
 
 const fullCommunity: CommunitySidebarProps = {
   displayName: "Tame Impala",
@@ -284,6 +284,32 @@ const noFlairsCommunity: CommunitySidebarProps = {
   flairPolicy: null,
 };
 
+const namespaceReadyCommunity: CommunitySidebarProps = {
+  ...minimalCommunity,
+  namespacePanel: {
+    routeLabel: "c/cmt_7ad4fad6214240c486fb320c0b8c247e",
+    status: "available",
+    onOpen: () => {},
+  },
+};
+
+const namespacePendingCommunity: CommunitySidebarProps = {
+  ...minimalCommunity,
+  namespacePanel: {
+    routeLabel: "c/cmt_7ad4fad6214240c486fb320c0b8c247e",
+    status: "pending",
+    onOpen: () => {},
+  },
+};
+
+const namespaceVerifiedCommunity: CommunitySidebarProps = {
+  ...minimalCommunity,
+  namespacePanel: {
+    routeLabel: "c/argentina",
+    status: "verified",
+  },
+};
+
 const meta = {
   title: "Compositions/CommunitySidebar",
   component: CommunitySidebar,
@@ -343,6 +369,21 @@ export const ManyFlairs: Story = {
 export const NoFlairs: Story = {
   name: "No tags",
   render: () => <CommunitySidebar {...noFlairsCommunity} />,
+};
+
+export const NamespaceReady: Story = {
+  name: "Namespace ready",
+  render: () => <CommunitySidebar {...namespaceReadyCommunity} />,
+};
+
+export const NamespacePending: Story = {
+  name: "Namespace pending",
+  render: () => <CommunitySidebar {...namespacePendingCommunity} />,
+};
+
+export const NamespaceVerified: Story = {
+  name: "Namespace verified",
+  render: () => <CommunitySidebar {...namespaceVerifiedCommunity} />,
 };
 
 export const CommerceDonationOff: Story = {

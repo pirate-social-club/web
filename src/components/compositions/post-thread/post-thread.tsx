@@ -18,7 +18,7 @@ function ReplyRow({
   timestampLabel: string;
 }) {
   return (
-    <article className="rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-3">
+    <article className="border-s border-border-soft ps-4">
       <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-base leading-[1.25] text-muted-foreground">
         {authorHref ? (
           <a className="font-semibold text-foreground hover:underline" href={authorHref}>
@@ -54,24 +54,29 @@ export function PostThread({
         <PostCard {...post} className="border-b-0" />
       </div>
 
-      <section className="space-y-3">
-        <div className="rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-3">
+      <section className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
+        <div className="border-b border-border-soft px-4 py-3">
           <div className="text-base font-medium text-foreground">{commentsHeading}</div>
           {commentsBody ? (
             <p className="mt-2 text-base leading-[1.4] text-muted-foreground">{commentsBody}</p>
           ) : null}
         </div>
 
-        {replies.map((reply) => (
-          <ReplyRow
-            authorHref={reply.authorHref}
-            authorLabel={reply.authorLabel}
-            body={reply.body}
-            key={reply.replyId}
-            scoreLabel={reply.scoreLabel}
-            timestampLabel={reply.timestampLabel}
-          />
-        ))}
+        {replies.length > 0 ? (
+          <div className="divide-y divide-border-soft">
+            {replies.map((reply) => (
+              <div className="px-4 py-3" key={reply.replyId}>
+                <ReplyRow
+                  authorHref={reply.authorHref}
+                  authorLabel={reply.authorLabel}
+                  body={reply.body}
+                  scoreLabel={reply.scoreLabel}
+                  timestampLabel={reply.timestampLabel}
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
     </div>
   );

@@ -33,6 +33,8 @@ export interface MobileFooterNavProps {
   activeItem?: FooterNavItemId;
   avatarFallback?: string;
   className?: string;
+  createActionTitle?: string;
+  disableCreateAction?: boolean;
   forceMobile?: boolean;
   labels?: MobileFooterNavLabels;
   onCreateClick?: () => void;
@@ -47,6 +49,8 @@ export function MobileFooterNav({
   activeItem = "home",
   avatarFallback = "Pirate User",
   className,
+  createActionTitle,
+  disableCreateAction = false,
   forceMobile,
   labels,
   onCreateClick,
@@ -97,12 +101,15 @@ export function MobileFooterNav({
               aria-label={item.id === "inbox" ? inboxAriaLabel : labelById[item.id]}
               className={cn(
                 "relative mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors",
+                item.id === "create" && disableCreateAction ? "cursor-not-allowed opacity-50" : null,
                 active
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
+              disabled={item.id === "create" && disableCreateAction}
               key={item.id}
               onClick={clickById[item.id]}
+              title={item.id === "create" ? createActionTitle : undefined}
               type="button"
             >
               <Icon className="size-6" weight={active ? "fill" : "regular"} />

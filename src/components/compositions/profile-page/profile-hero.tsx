@@ -6,14 +6,16 @@ import { cn } from "@/lib/utils";
 import type { ProfileData } from "./profile-page.types";
 
 function ProfileHeroActions({
+  onEditProfile,
   profile,
 }: {
+  onEditProfile?: () => void;
   profile: ProfileData;
 }) {
   if (profile.viewerContext === "self") {
     return (
       <>
-        <Button className="flex-1 sm:flex-none">Edit profile</Button>
+        <Button className="flex-1 sm:flex-none" onClick={onEditProfile}>Edit profile</Button>
         <Button className="flex-1 sm:flex-none" variant="secondary">
           Share profile
         </Button>
@@ -23,7 +25,13 @@ function ProfileHeroActions({
 
   return (
     <>
-      <Button className="flex-1 sm:flex-none" variant={profile.viewerFollows ? "secondary" : "default"}>
+      <Button
+        className="flex-1 sm:flex-none"
+        disabled={profile.followDisabled}
+        loading={profile.followBusy}
+        onClick={profile.onToggleFollow}
+        variant={profile.viewerFollows ? "secondary" : "default"}
+      >
         {profile.viewerFollows ? "Following" : "Follow"}
       </Button>
       <Button
@@ -38,8 +46,10 @@ function ProfileHeroActions({
 }
 
 export function ProfileHero({
+  onEditProfile,
   profile,
 }: {
+  onEditProfile?: () => void;
   profile: ProfileData;
 }) {
   const bannerStyle = profile.bannerSrc
@@ -92,7 +102,7 @@ export function ProfileHero({
 
           {profile.viewerContext === "self" ? (
             <div className="hidden flex-wrap gap-3 lg:flex">
-              <ProfileHeroActions profile={profile} />
+              <ProfileHeroActions onEditProfile={onEditProfile} profile={profile} />
             </div>
           ) : null}
         </div>
@@ -103,7 +113,7 @@ export function ProfileHero({
             profile.viewerContext === "self" ? "lg:hidden" : "xl:hidden",
           )}
         >
-          <ProfileHeroActions profile={profile} />
+          <ProfileHeroActions onEditProfile={onEditProfile} profile={profile} />
         </div>
       </div>
     </section>

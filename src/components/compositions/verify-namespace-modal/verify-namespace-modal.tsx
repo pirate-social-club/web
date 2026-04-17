@@ -28,11 +28,20 @@ import {
 import { OptionCard } from "@/components/primitives/option-card";
 import { PrefixInput } from "@/components/primitives/prefix-input";
 import { toast } from "@/components/primitives/sonner";
+import {
+  getHnsVerificationMode,
+  NamespaceVerificationHnsPanel,
+} from "@/components/compositions/namespace-verification/namespace-verification-hns-ui";
+import {
+  applyNamespaceSessionResult,
+  NamespaceVerificationChallengeMessage,
+} from "@/components/compositions/namespace-verification/namespace-verification-shared";
 
 import type {
   NamespaceFamily,
   NamespaceVerificationModalState,
   NamespaceVerificationCallbacks,
+  NamespaceVerificationStartResult,
   SpacesChallengePayload,
   VerifyNamespaceModalProps,
 } from "./verify-namespace-modal.types";
@@ -48,7 +57,7 @@ const namespaceFamilyMeta: Record<NamespaceFamily, {
   hns: {
     label: "Handshake",
     externalExample: "kanye",
-    detail: "Verify root ownership via TXT record.",
+    detail: "Set up DNS first, then verify root ownership.",
     rootInputLabel: "Handshake root",
     rootInputPrefix: ".",
     icon: <Handshake className="size-5" />,
@@ -87,6 +96,12 @@ export function VerifyNamespaceModal({
   const [signature, setSignature] = React.useState("");
   const [namespaceVerificationId, setNamespaceVerificationId] = React.useState<string | null>(null);
   const [failureReason, setFailureReason] = React.useState<string | null>(null);
+  const [operationClass, setOperationClass] =
+    React.useState<NamespaceVerificationStartResult["operationClass"]>(null);
+  const [pirateDnsAuthorityVerified, setPirateDnsAuthorityVerified] =
+    React.useState<NamespaceVerificationStartResult["pirateDnsAuthorityVerified"]>(null);
+  const [setupNameservers, setSetupNameservers] =
+    React.useState<NamespaceVerificationStartResult["setupNameservers"]>(null);
   const [resuming, setResuming] = React.useState(false);
 
   const callbacksRef = React.useRef(callbacks);
@@ -95,6 +110,9 @@ export function VerifyNamespaceModal({
   onSessionStartedRef.current = onSessionStarted;
   const onSessionClearedRef = React.useRef(onSessionCleared);
   onSessionClearedRef.current = onSessionCleared;
+  const handleSessionCleared = React.useCallback(() => {
+    onSessionClearedRef.current?.();
+  }, []);
 
   const resetChallengeState = React.useCallback(() => {
     setSessionId(null);
@@ -102,36 +120,28 @@ export function VerifyNamespaceModal({
     setChallengeTxtValue(null);
     setChallengePayload(null);
     setSignature("");
+    setOperationClass(null);
+    setPirateDnsAuthorityVerified(null);
+    setSetupNameservers(null);
   }, []);
 
-  const restoreSession = React.useCallback((result: {
-    namespaceVerificationSessionId: string;
-    family: NamespaceFamily;
-    rootLabel: string;
-    challengeHost: string | null;
-    challengeTxtValue: string | null;
-    challengePayload: SpacesChallengePayload | null;
-    status: string;
-  }) => {
-    setSessionId(result.namespaceVerificationSessionId);
-    setChallengeHost(result.challengeHost);
-    setChallengeTxtValue(result.challengeTxtValue);
-    setChallengePayload(result.challengePayload);
-    setActiveFamily(result.family);
-    setRootLabel(result.rootLabel);
-    setSignature("");
-
-    if (result.status === "verified") {
-      setState("verified");
-      onSessionClearedRef.current?.();
-    } else if (result.status === "expired") {
-      setState("expired");
-    } else if (result.status === "challenge_pending") {
-      setState("challenge_pending");
-    } else {
-      setState("challenge_ready");
-    }
-  }, []);
+  const applySessionResult = React.useCallback((result: NamespaceVerificationStartResult) => {
+    applyNamespaceSessionResult({
+      setSessionId,
+      setChallengeHost,
+      setChallengeTxtValue,
+      setChallengePayload,
+      setActiveFamily,
+      setRootLabel,
+      setSignature,
+      setOperationClass,
+      setPirateDnsAuthorityVerified,
+      setSetupNameservers,
+      setFailureReason,
+      setState,
+      onSessionCleared: handleSessionCleared,
+    }, result);
+  }, [handleSessionCleared]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -141,7 +151,7 @@ export function VerifyNamespaceModal({
       setState("starting");
       void callbacksRef.current.onGetSession({ namespaceVerificationSessionId: activeSessionId })
         .then((result) => {
-          restoreSession(result);
+          applySessionResult(result);
         })
         .catch(() => {
           setState("idle");
@@ -160,7 +170,7 @@ export function VerifyNamespaceModal({
     resetChallengeState();
     setNamespaceVerificationId(null);
     setFailureReason(null);
-  }, [open, activeSessionId, initialRootLabel, initialFamily, resetChallengeState, restoreSession]);
+  }, [open, activeSessionId, applySessionResult, initialRootLabel, initialFamily, resetChallengeState]);
 
   const handleStart = React.useCallback(() => {
     const trimmed = rootLabel.trim().replace(/^[@.]/, "");
@@ -171,19 +181,14 @@ export function VerifyNamespaceModal({
 
     void callbacks.onStartSession({ family: activeFamily, rootLabel: trimmed })
       .then((result) => {
-        setSessionId(result.namespaceVerificationSessionId);
-        setChallengeHost(result.challengeHost);
-        setChallengeTxtValue(result.challengeTxtValue);
-        setChallengePayload(result.challengePayload);
-        setRootLabel(result.rootLabel);
-        setState("challenge_ready");
+        applySessionResult(result);
         onSessionStartedRef.current?.(result.namespaceVerificationSessionId);
       })
       .catch((error: unknown) => {
         setState("idle");
         toast.error(error instanceof Error ? error.message : "Could not start verification");
       });
-  }, [callbacks, activeFamily, rootLabel]);
+  }, [activeFamily, applySessionResult, callbacks, rootLabel]);
 
   const handleVerify = React.useCallback(() => {
     if (!sessionId) return;
@@ -210,6 +215,9 @@ export function VerifyNamespaceModal({
           setNamespaceVerificationId(result.namespaceVerificationId);
           onVerified?.(result.namespaceVerificationId);
           onSessionClearedRef.current?.();
+        } else if (result.status === "dns_setup_required") {
+          setState("dns_setup_required");
+          setFailureReason(null);
         } else if (result.status === "challenge_pending") {
           setState("challenge_pending");
           setFailureReason(null);
@@ -240,13 +248,7 @@ export function VerifyNamespaceModal({
 
       void callbacks.onStartSession({ family: activeFamily, rootLabel: trimmed })
         .then((result) => {
-          setSessionId(result.namespaceVerificationSessionId);
-          setChallengeHost(result.challengeHost);
-          setChallengeTxtValue(result.challengeTxtValue);
-          setChallengePayload(result.challengePayload);
-          setRootLabel(result.rootLabel);
-          setSignature("");
-          setState("challenge_ready");
+          applySessionResult(result);
           onSessionStartedRef.current?.(result.namespaceVerificationSessionId);
         })
         .catch((error: unknown) => {
@@ -272,7 +274,7 @@ export function VerifyNamespaceModal({
         }
         void callbacks.onGetSession({ namespaceVerificationSessionId: sessionId })
           .then((sessionResult) => {
-            restoreSession(sessionResult);
+            applySessionResult(sessionResult);
           })
           .catch((error: unknown) => {
             setState("idle");
@@ -284,7 +286,7 @@ export function VerifyNamespaceModal({
         setState("failed");
         toast.error(error instanceof Error ? error.message : "Could not refresh verification");
       });
-  }, [callbacks, activeFamily, challengeHost, resetChallengeState, restoreSession, sessionId]);
+  }, [activeFamily, applySessionResult, callbacks, resetChallengeState, sessionId]);
 
   const handleAbandon = React.useCallback(() => {
     onSessionClearedRef.current?.();
@@ -298,6 +300,7 @@ export function VerifyNamespaceModal({
   const isStarting = state === "starting";
   const isChallengeReady = state === "challenge_ready";
   const isChallengePending = state === "challenge_pending";
+  const isDnsSetupRequired = state === "dns_setup_required";
   const isVerifying = state === "verifying";
   const isVerified = state === "verified";
   const isFailed = state === "failed";
@@ -308,6 +311,15 @@ export function VerifyNamespaceModal({
   const isSpaces = activeFamily === "spaces";
   const meta = namespaceFamilyMeta[activeFamily];
   const canSubmitSignature = isSpaces ? signature.trim().length > 0 : true;
+  const hnsMode = isHns
+    ? getHnsVerificationMode({
+      state,
+      challengeHost,
+      challengeTxtValue,
+      pirateDnsAuthorityVerified,
+      operationClass,
+    })
+    : null;
 
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
@@ -353,6 +365,12 @@ export function VerifyNamespaceModal({
                   value={rootLabel}
                 />
               </div>
+
+              {isHns ? (
+                <FormNote>
+                  Start with nameserver setup when the root does not already have authoritative DNS. Only add TXT after that path is live.
+                </FormNote>
+              ) : null}
             </>
           ) : null}
 
@@ -362,31 +380,16 @@ export function VerifyNamespaceModal({
             </div>
           ) : null}
 
-          {(isChallengeReady || isChallengePending || isVerifying) && isHns && challengeHost && challengeTxtValue ? (
-            <div className="space-y-4">
-              <FormNote>
-                {isChallengePending
-                  ? "TXT propagation is still pending. You can close this and check again later."
-                  : "Add this TXT record, then verify."}
-              </FormNote>
-              <div className="space-y-3">
-                <div>
-                  <p className="mb-1.5 text-base text-muted-foreground">Host</p>
-                  <CopyField value={challengeHost} />
-                </div>
-                <div>
-                  <p className="mb-1.5 text-base text-muted-foreground">Value</p>
-                  <CopyField value={challengeTxtValue} />
-                </div>
-              </div>
-              <button
-                className="text-base text-muted-foreground hover:text-foreground"
-                type="button"
-                onClick={handleAbandon}
-              >
-                Verify a different namespace
-              </button>
-            </div>
+          {(isDnsSetupRequired || isChallengeReady || isChallengePending || isVerifying) && isHns && hnsMode ? (
+            <NamespaceVerificationHnsPanel
+              challengeHost={challengeHost}
+              challengePending={isChallengePending}
+              challengeTxtValue={challengeTxtValue}
+              mode={hnsMode}
+              onAbandon={handleAbandon}
+              rootLabel={rootLabel}
+              setupNameservers={setupNameservers}
+            />
           ) : null}
 
           {(isChallengeReady || isVerifying) && isSpaces && challengePayload ? (
@@ -415,7 +418,7 @@ export function VerifyNamespaceModal({
                     Challenge details
                   </AccordionTrigger>
                   <AccordionContent className="pb-0">
-                    <ChallengeMessage value={challengePayload.message} />
+                    <NamespaceVerificationChallengeMessage value={challengePayload.message} />
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
@@ -442,7 +445,9 @@ export function VerifyNamespaceModal({
                   ? "Verification expired. Generate a new challenge."
                   : failureReason
                     ? failureReason.replace(/_/g, " ")
-                    : isHns
+                    : isHns && hnsMode === "dns_setup_required"
+                      ? "Set nameservers first, then refresh the session."
+                      : isHns
                       ? "Could not verify this root. Check the TXT record and try again."
                       : "Could not verify this root. Check the signature and try again."}
               </FormNote>
@@ -454,6 +459,12 @@ export function VerifyNamespaceModal({
           <div className="flex w-full justify-end gap-3">
             {isVerified ? (
               <Button onClick={() => onOpenChange(false)}>Done</Button>
+            ) : null}
+            {isDnsSetupRequired ? (
+              <>
+                <Button onClick={() => onOpenChange(false)} variant="outline">Close</Button>
+                <Button loading={isStarting} onClick={handleRestart}>Check setup</Button>
+              </>
             ) : null}
             {isChallengePending ? (
               <>
@@ -467,47 +478,23 @@ export function VerifyNamespaceModal({
                 {isFailed && isHns ? (
                   <Button loading={isVerifying} onClick={handleVerify}>Check again</Button>
                 ) : null}
-                <Button onClick={handleRestart}>{isHns ? "Get new record" : "New challenge"}</Button>
+                <Button onClick={handleRestart}>{isHns ? "Continue" : "New challenge"}</Button>
               </>
             ) : null}
             {isIdle || isStarting ? (
               <>
                 <Button onClick={() => onOpenChange(false)} variant="outline">Cancel</Button>
-                <Button disabled={!hasRootInput} loading={isStarting} onClick={handleStart}>{isHns ? "Get record" : "Get challenge"}</Button>
+                <Button disabled={!hasRootInput} loading={isStarting} onClick={handleStart}>{isHns ? "Continue" : "Get challenge"}</Button>
               </>
             ) : null}
             {(isChallengeReady || isVerifying) ? (
-              <Button disabled={!canSubmitSignature} loading={isVerifying} onClick={handleVerify}>Verify</Button>
+              <Button disabled={!canSubmitSignature} loading={isVerifying} onClick={handleVerify}>
+                {isHns && hnsMode === "pirate_managed" ? "Check again" : "Verify"}
+              </Button>
             ) : null}
           </div>
         </ModalFooter>
       </ModalContent>
     </Modal>
-  );
-}
-
-function ChallengeMessage({ value }: { value: string }) {
-  const [copied, setCopied] = React.useState(false);
-
-  const handleCopy = React.useCallback(async () => {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
-  }, [value]);
-
-  return (
-    <div className="rounded-xl border border-input bg-background p-3">
-      <pre className="mb-3 whitespace-pre-wrap break-all font-mono text-base leading-6 text-muted-foreground">
-        {value}
-      </pre>
-      <Button
-        className="h-8 text-base"
-        onClick={handleCopy}
-        size="sm"
-        variant="outline"
-      >
-        {copied ? "Copied" : "Copy message"}
-      </Button>
-    </div>
   );
 }

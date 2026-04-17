@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Globe, Lock } from "@phosphor-icons/react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Accordion,
@@ -9,6 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/primitives/accordion";
+import { Avatar } from "@/components/primitives/avatar";
 import { SidebarProvider } from "@/components/compositions/sidebar/sidebar";
 import { cn } from "@/lib/utils";
 import { CommunitySidebarCharity } from "./community-sidebar-charity";
@@ -25,29 +25,20 @@ function formatMemberCount(count: number): string {
   return count.toLocaleString("en-US");
 }
 
-function formatCreatedDate(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
 const SECTION_LABEL =
   "py-3 text-[15px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/55 hover:no-underline";
 
 export function CommunitySidebar({
+  avatarSrc,
   charity,
   className,
-  createdAt,
   description,
   displayName,
   flairPolicy,
   memberCount,
-  membershipMode,
   moderator,
   referenceLinks,
+  rulesAction,
   rules,
 }: CommunitySidebarProps) {
   const isMobile = useIsMobile();
@@ -63,24 +54,24 @@ export function CommunitySidebar({
   const hasFlairs =
     flairPolicy?.flairEnabled === true &&
     flairPolicy.definitions.some((f) => f.status === "active");
-
-  const AccessIcon = membershipMode === "open" ? Globe : Lock;
-
-  const accessLabel = membershipMode === "open"
-    ? "Open"
-    : membershipMode === "request"
-      ? "Request to join"
-      : "Gated";
+  const showRulesSection = activeRules.length > 0;
 
   const content = (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1.5">
-        <h2 className="text-lg font-semibold leading-tight">{displayName}</h2>
-        {description && (
-          <p className="line-clamp-3 text-base leading-snug text-muted-foreground">
-            {description}
-          </p>
-        )}
+      <div className="flex items-start gap-3">
+        <Avatar
+          fallback={displayName}
+          size="md"
+          src={avatarSrc?.trim() || undefined}
+        />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <h2 className="text-lg font-semibold leading-tight">{displayName}</h2>
+          {description && (
+            <p className="line-clamp-4 text-base leading-snug text-muted-foreground">
+              {description}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -96,15 +87,6 @@ export function CommunitySidebar({
             </div>
           </div>
         )}
-        <div className="flex flex-col gap-1.5 text-base text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <AccessIcon className="size-5 text-muted-foreground/50" />
-            <span>{accessLabel}</span>
-          </div>
-          <div className="text-muted-foreground/70">
-            Created {formatCreatedDate(createdAt)}
-          </div>
-        </div>
       </div>
 
       {moderator && (
@@ -120,7 +102,6 @@ export function CommunitySidebar({
           <CommunitySidebarCharity charity={charity} />
         </div>
       )}
-
       <Accordion
         className="border-b-0"
         defaultValue={["links", "rules", "tags"]}
@@ -135,9 +116,12 @@ export function CommunitySidebar({
           </AccordionItem>
         )}
 
-        {activeRules.length > 0 && (
+        {showRulesSection && (
           <AccordionItem className="border-b-0" value="rules">
-            <AccordionTrigger className={SECTION_LABEL}>Rules</AccordionTrigger>
+            <div className="flex items-center gap-3">
+              <AccordionTrigger className={cn(SECTION_LABEL, "flex-1")}>Rules</AccordionTrigger>
+              {rulesAction ? <div className="shrink-0">{rulesAction}</div> : null}
+            </div>
             <AccordionContent className="pb-0">
               <CommunitySidebarRules rules={activeRules} />
             </AccordionContent>
@@ -175,7 +159,7 @@ export function CommunitySidebar({
     <SidebarProvider>
       <aside
         className={cn(
-          "sticky top-[4.5rem] w-[352px] shrink-0",
+          "sticky top-[4.5rem] w-full shrink-0",
           "max-h-[calc(100dvh-4.5rem-3rem)] overflow-y-auto",
           className,
         )}

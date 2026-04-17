@@ -16,13 +16,49 @@ import {
 import { Toaster, toast } from "@/components/primitives/sonner";
 import { SidebarInset, SidebarProvider } from "@/components/compositions/sidebar/sidebar";
 import { ApiProvider, useSessionRevalidation } from "@/lib/api";
-import { PirateAuthProvider } from "@/lib/auth/privy-provider";
+import { PirateAuthProvider, usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
+import { useKnownCommunities } from "@/lib/known-communities-store";
 import { useSession } from "@/lib/api/session-store";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
 
+function buildCreatePostPath(communityId: string): string {
+  return `/c/${encodeURIComponent(communityId)}/submit`;
+}
 
-function buildSidebarSections(messages: ShellMessages["appSidebar"]): AppSidebarSection[] {
+function resolveCreatePostPath(route: AppRoute): string | null {
+  if (route.kind === "community") {
+    return buildCreatePostPath(route.communityId);
+  }
+
+  if (route.kind === "create-post") {
+    return route.path;
+  }
+
+  return null;
+}
+
+function useClientReady(): boolean {
+  const [ready, setReady] = React.useState(false);
+
+  React.useEffect(() => {
+    setReady(true);
+  }, []);
+
+  return ready;
+}
+
+function formatCommunitySidebarLabel(displayName: string): string {
+  const trimmed = displayName.trim();
+  if (!trimmed) return "c/unknown";
+  if (trimmed.toLowerCase().startsWith("c/")) return trimmed;
+  return `c/${trimmed}`;
+}
+
+function buildSidebarSections(
+  messages: ShellMessages["appSidebar"],
+  communities: ReturnType<typeof useKnownCommunities>,
+): AppSidebarSection[] {
   return [
     {
       id: "communities",
@@ -30,7 +66,12 @@ function buildSidebarSections(messages: ShellMessages["appSidebar"]): AppSidebar
         messages.sections.find((section) => section.id === "communities")?.label
         ?? "Communities",
       defaultOpen: true,
-      items: [],
+      items: communities.map((community) => ({
+        avatarSrc: community.avatarSrc,
+        id: `c/${community.communityId}`,
+        label: formatCommunitySidebarLabel(community.displayName),
+        onSelect: () => navigate(`/c/${community.communityId}`),
+      })),
     },
   ];
 }
@@ -66,6 +107,8 @@ function activeSidebarItem(route: AppRoute): string | undefined {
       return "your-communities";
     case "community":
       return `c/${route.communityId}`;
+    case "create-post":
+      return `c/${route.communityId}`;
     case "create-community":
       return "create-community";
     default:
@@ -77,7 +120,7 @@ function activeMobileNav(
   route: AppRoute,
 ): ComponentProps<typeof MobileFooterNav>["activeItem"] {
   if (route.kind === "inbox") return "inbox";
-  if (route.kind === "create-community") return "create";
+  if (route.kind === "create-post") return "create";
   if (route.kind === "me" || route.kind === "user") return "profile";
   return "home";
 }
@@ -86,15 +129,50 @@ function showSearchUnavailable(message: string) {
   toast.info(message);
 }
 
-function AppShellHeader({ copy }: { copy: ShellMessages }) {
+function showConnectUnavailable() {
+  toast.info("Connect is not configured for this environment.");
+}
+
+function resolveSessionAvatarFallback(session: ReturnType<typeof useSession>) {
+  const displayName = session?.profile?.display_name?.trim();
+
+  if (displayName) {
+    return displayName;
+  }
+
+  const handleLabel = session?.profile?.global_handle?.label?.trim();
+
+  if (handleLabel) {
+    return handleLabel;
+  }
+
+  return "Pirate User";
+}
+
+function AppShellHeader({
+  copy,
+  route,
+}: {
+  copy: ShellMessages;
+  route: AppRoute;
+}) {
   const session = useSession();
-  const displayName = session?.profile?.display_name ?? "";
+  const { connect } = usePiratePrivyRuntime();
+  const clientReady = useClientReady();
+  const avatarFallback = resolveSessionAvatarFallback(session);
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
+  const showConnectAction = clientReady && !session;
+  const createPostPath = resolveCreatePostPath(route);
+  const disableCreateAction = !clientReady || !createPostPath;
+  const useAppSidebarTrigger = route.kind !== "community-moderation";
 
   return (
     <AppHeader
-      avatarFallback={displayName}
+      avatarFallback={avatarFallback}
+      createActionTitle={disableCreateAction ? "Open a community to create a post." : undefined}
+      disableCreateAction={disableCreateAction}
       labels={{
+        connectLabel: copy.appHeader.connectLabel,
         createLabel: copy.appHeader.createLabel,
         homeAriaLabel: copy.appHeader.homeAriaLabel,
         notificationsAriaLabel: copy.appHeader.notificationsAriaLabel,
@@ -103,12 +181,17 @@ function AppShellHeader({ copy }: { copy: ShellMessages }) {
         searchAriaLabel: copy.appHeader.searchAriaLabel,
         searchPlaceholder: copy.appHeader.searchPlaceholder,
       }}
-      onCreateClick={() => navigate("/communities/new")}
+      onCreateClick={createPostPath ? () => navigate(createPostPath) : undefined}
       onHomeClick={() => navigate("/")}
       onNotificationsClick={() => navigate("/inbox")}
-      onProfileClick={() => session ? navigate("/me") : navigate("/auth")}
+      onConnectClick={() => connect ? connect() : showConnectUnavailable()}
+      onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable()}
       onSearchClick={() => showSearchUnavailable(copy.appHeader.searchUnavailableToast)}
-      useSidebarTrigger
+      showCreateAction={clientReady}
+      showNotificationsAction={clientReady && !!session}
+      showConnectAction={showConnectAction}
+      showProfileAction={clientReady}
+      useSidebarTrigger={useAppSidebarTrigger}
       userAvatarSrc={avatarSrc}
     />
   );
@@ -122,13 +205,19 @@ function AppShellMobileNav({
   route: AppRoute;
 }) {
   const session = useSession();
-  const displayName = session?.profile?.display_name ?? "";
+  const { connect } = usePiratePrivyRuntime();
+  const clientReady = useClientReady();
+  const avatarFallback = resolveSessionAvatarFallback(session);
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
+  const createPostPath = resolveCreatePostPath(route);
+  const disableCreateAction = !clientReady || !createPostPath;
 
   return (
     <MobileFooterNav
       activeItem={activeMobileNav(route)}
-      avatarFallback={displayName}
+      avatarFallback={avatarFallback}
+      createActionTitle={disableCreateAction ? "Open a community to create a post." : undefined}
+      disableCreateAction={disableCreateAction}
       labels={{
         create: copy.mobileFooter.createLabel,
         home: copy.mobileFooter.homeLabel,
@@ -138,10 +227,10 @@ function AppShellMobileNav({
         profile: copy.mobileFooter.profileLabel,
         profileAriaLabel: copy.mobileFooter.profileAriaLabel,
       }}
-      onCreateClick={() => navigate("/communities/new")}
+      onCreateClick={createPostPath ? () => navigate(createPostPath) : undefined}
       onHomeClick={() => navigate("/")}
       onInboxClick={() => navigate("/inbox")}
-      onProfileClick={() => session ? navigate("/me") : navigate("/auth")}
+      onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable()}
       userAvatarSrc={avatarSrc}
     />
   );
@@ -155,46 +244,67 @@ function SessionRevalidator({ children }: { children: React.ReactNode }) {
     if (session) {
       void revalidate();
     }
-  }, []);
+  }, [revalidate, session]);
 
   return <>{children}</>;
 }
 
-export function PirateApp({ initialPath }: { initialPath?: string }) {
+export function PirateApp({ initialHost, initialPath }: { initialHost?: string; initialPath?: string }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "shell");
-  const route = useRoute(initialPath);
+  const route = useRoute(initialPath, initialHost);
+  const isCommunityModerationRoute = route.kind === "community-moderation";
+  const isPublicProfileRoute = route.kind === "public-profile";
+  const knownCommunities = useKnownCommunities();
   const primaryItems = buildPrimaryItems(copy.appSidebar);
-  const sections = buildSidebarSections(copy.appSidebar);
+  const sections = buildSidebarSections(copy.appSidebar, knownCommunities);
 
   return (
-    <PirateAuthProvider>
-      <ApiProvider>
+    <ApiProvider initialHost={initialHost}>
+      <PirateAuthProvider>
         <SessionRevalidator>
-          <SidebarProvider defaultOpen>
-            <AppSidebar
-              activeItemId={activeSidebarItem(route)}
-              brandLabel={copy.appSidebar.brandLabel}
-              homeAriaLabel={copy.appSidebar.homeAriaLabel}
-              onHomeClick={() => navigate("/")}
-              primaryItems={primaryItems}
-              resourceItems={copy.appSidebar.resourceItems}
-              resourcesLabel={copy.appSidebar.resourcesLabel}
-              sections={sections}
-            />
-            <SidebarInset className="min-h-dvh">
-              <AppShellHeader copy={copy} />
-              <main
-                className="mx-auto flex w-full max-w-[96rem] flex-1 px-3 pb-24 pt-[calc(env(safe-area-inset-top)+5rem)] md:pb-8 md:px-5 md:pt-6 lg:px-8"
-              >
-                {renderRoute(route)}
+          <SidebarProvider className="flex-col" defaultOpen>
+            {isPublicProfileRoute ? (
+              <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
+                <div className="mx-auto w-full max-w-5xl">
+                  {renderRoute(route)}
+                </div>
               </main>
-              <AppShellMobileNav copy={copy} route={route} />
-            </SidebarInset>
+            ) : (
+              <>
+                <AppShellHeader copy={copy} route={route} />
+                <div className="flex min-h-0 w-full flex-1">
+                  {isCommunityModerationRoute ? (
+                    <main className="flex min-h-0 w-full flex-1">
+                      {renderRoute(route)}
+                    </main>
+                  ) : (
+                    <>
+                      <AppSidebar
+                        activeItemId={activeSidebarItem(route)}
+                        brandLabel={copy.appSidebar.brandLabel}
+                        homeAriaLabel={copy.appSidebar.homeAriaLabel}
+                        onHomeClick={() => navigate("/")}
+                        primaryItems={primaryItems}
+                        resourceItems={copy.appSidebar.resourceItems}
+                        resourcesLabel={copy.appSidebar.resourcesLabel}
+                        sections={sections}
+                      />
+                      <SidebarInset className="min-h-0">
+                        <main className="flex w-full flex-1 px-3 pb-24 pt-4 md:pb-8 md:px-5 md:pt-6 lg:px-8">
+                          {renderRoute(route)}
+                        </main>
+                        <AppShellMobileNav copy={copy} route={route} />
+                      </SidebarInset>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
             <Toaster />
           </SidebarProvider>
         </SessionRevalidator>
-      </ApiProvider>
-    </PirateAuthProvider>
+      </PirateAuthProvider>
+    </ApiProvider>
   );
 }

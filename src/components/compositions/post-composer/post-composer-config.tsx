@@ -127,8 +127,18 @@ export function defaultSongState(song?: SongComposerState): SongComposerState {
     genre: song?.genre ?? "Electronic",
     primaryLanguage: song?.primaryLanguage ?? "English",
     secondaryLanguage: song?.secondaryLanguage ?? "",
+    primaryAudioUpload: song?.primaryAudioUpload ?? null,
+    primaryAudioLabel: song?.primaryAudioLabel,
     coverUpload: song?.coverUpload ?? null,
     coverLabel: song?.coverLabel,
+    previewAudioUpload: song?.previewAudioUpload ?? null,
+    previewAudioLabel: song?.previewAudioLabel,
+    canvasVideoUpload: song?.canvasVideoUpload ?? null,
+    canvasVideoLabel: song?.canvasVideoLabel,
+    instrumentalAudioUpload: song?.instrumentalAudioUpload ?? null,
+    instrumentalAudioLabel: song?.instrumentalAudioLabel,
+    vocalAudioUpload: song?.vocalAudioUpload ?? null,
+    vocalAudioLabel: song?.vocalAudioLabel,
   };
 }
 

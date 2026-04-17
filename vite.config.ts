@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { redwood } from "rwsdk/vite";
 
-export default defineConfig({
+export default defineConfig(({ isSsrBuild }) => ({
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
   },
@@ -21,6 +21,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
+      ...(isSsrBuild
+        ? {
+            "@privy-io/react-auth": resolve(__dirname, "./src/lib/auth/privy-react-auth.ssr.tsx"),
+          }
+        : {}),
     },
   },
-});
+}));

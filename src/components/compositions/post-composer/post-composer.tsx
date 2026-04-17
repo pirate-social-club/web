@@ -57,6 +57,7 @@ import {
   References,
   dedupeReferences,
   SearchReferencePicker,
+  SelectedReferenceCard,
 } from "./post-composer-references";
 import { LiveTabContent, SummaryRow } from "./post-composer-live-tab";
 import { IdentitySection, QualifierSection } from "./post-composer-identity-section";
@@ -75,17 +76,30 @@ export function PostComposer({
   canCreateSongPost = false,
   titleValue = "",
   titleCountLabel = "0/300",
+  onTitleValueChange,
   textBodyValue = "",
+  onTextBodyValueChange,
   captionValue = "",
   lyricsValue = "",
+  onLyricsValueChange,
   linkUrlValue = "",
   linkPreview,
   songMode = "original",
   song,
+  onSongChange,
+  onSongModeChange,
+  onModeChange,
   derivativeStep,
+  onDerivativeStepChange,
   monetization,
+  onMonetizationChange,
   identity,
   live,
+  onSubmit,
+  submitDisabled = false,
+  submitError = null,
+  submitLabel = "Post",
+  submitLoading = false,
 }: PostComposerProps) {
   const visibleTabs = React.useMemo(
     () => availableTabs.filter((tab) => tab !== "song" || canCreateSongPost),
@@ -118,6 +132,30 @@ export function PostComposer({
     },
   );
   const [prevRoomKind, setPrevRoomKind] = React.useState<LiveRoomKind>(liveState.roomKind);
+
+  const updateSongState = React.useCallback((updater: (current: SongComposerState) => SongComposerState) => {
+    setSongState((current) => {
+      const next = updater(current);
+      onSongChange?.(next);
+      return next;
+    });
+  }, [onSongChange]);
+
+  const updateDerivativeState = React.useCallback((updater: (current: DerivativeStepState | undefined) => DerivativeStepState | undefined) => {
+    setDerivativeState((current) => {
+      const next = updater(current);
+      onDerivativeStepChange?.(next);
+      return next;
+    });
+  }, [onDerivativeStepChange]);
+
+  const updateMonetizationState = React.useCallback((updater: (current: MonetizationState) => MonetizationState) => {
+    setMonetizationState((current) => {
+      const next = updater(current);
+      onMonetizationChange?.(next);
+      return next;
+    });
+  }, [onMonetizationChange]);
 
   React.useEffect(() => {
     if (liveState.roomKind !== prevRoomKind) {
@@ -155,6 +193,10 @@ export function PostComposer({
   }, [songMode]);
 
   React.useEffect(() => {
+    onModeChange?.(activeTab);
+  }, [activeTab, onModeChange]);
+
+  React.useEffect(() => {
     setSongState(defaultSongState(song));
   }, [song]);
 
@@ -163,9 +205,20 @@ export function PostComposer({
   }, [monetization]);
 
   React.useEffect(() => {
+    onMonetizationChange?.(monetizationState);
+  }, [monetizationState, onMonetizationChange]);
+
+  React.useEffect(() => {
     setDerivativeState(derivativeStep);
     setDerivativePickerKey(0);
   }, [derivativeStep]);
+
+  React.useEffect(() => {
+    if (derivativeState?.required && activeSongMode !== "remix") {
+      setActiveSongMode("remix");
+      onSongModeChange?.("remix");
+    }
+  }, [activeSongMode, derivativeState?.required, onSongModeChange]);
 
   React.useEffect(() => {
     if (live) {
@@ -235,7 +288,7 @@ export function PostComposer({
         return (
           <div>
             <FieldLabel label="Body" />
-            <EditorChrome value={textBodyValue} />
+            <EditorChrome onChange={onTextBodyValueChange} value={textBodyValue} />
           </div>
         );
       case "image":
@@ -293,9 +346,18 @@ export function PostComposer({
                     "rounded-full px-3 py-1.5 text-base font-medium capitalize transition-colors",
                     activeSongMode === value
                       ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground",
+                      : derivativeState?.required && value === "original"
+                        ? "cursor-not-allowed text-muted-foreground/50"
+                        : "text-muted-foreground",
                   )}
-                  onClick={() => setActiveSongMode(value)}
+                  onClick={() => {
+                    if (derivativeState?.required && value === "original") {
+                      return;
+                    }
+                    setActiveSongMode(value);
+                    onSongModeChange?.(value);
+                  }}
+                  disabled={Boolean(derivativeState?.required && value === "original")}
                   type="button"
                 >
                   {value}
@@ -304,12 +366,23 @@ export function PostComposer({
             </div>
 
             <div className="space-y-4">
-              <UploadField accept="audio/*" label="Audio" />
+              <UploadField
+                accept="audio/*"
+                label="Audio"
+                onChange={(files) =>
+                  updateSongState((current) => ({
+                    ...current,
+                    primaryAudioUpload: files?.[0] ?? null,
+                    primaryAudioLabel: files?.[0]?.name ?? current.primaryAudioLabel,
+                  }))
+                }
+                selectedLabel={songState.primaryAudioUpload?.name ?? songState.primaryAudioLabel}
+              />
               <UploadField
                 accept="image/*"
                 label="Cover art"
                 onChange={(files) =>
-                  setSongState((current) => ({
+                  updateSongState((current) => ({
                     ...current,
                     coverUpload: files?.[0] ?? null,
                     coverLabel: files?.[0]?.name ?? current.coverLabel,
@@ -319,8 +392,56 @@ export function PostComposer({
                 variant="artwork"
               />
               <div className="grid gap-3 md:grid-cols-2">
-                <UploadField accept="audio/*" label="Instrumental stem" />
-                <UploadField accept="audio/*" label="Vocal stem" />
+                <UploadField
+                  accept="audio/*"
+                  label="Instrumental stem"
+                  onChange={(files) =>
+                    updateSongState((current) => ({
+                      ...current,
+                      instrumentalAudioUpload: files?.[0] ?? null,
+                      instrumentalAudioLabel: files?.[0]?.name ?? current.instrumentalAudioLabel,
+                    }))
+                  }
+                  selectedLabel={songState.instrumentalAudioUpload?.name ?? songState.instrumentalAudioLabel}
+                />
+                <UploadField
+                  accept="audio/*"
+                  label="Vocal stem"
+                  onChange={(files) =>
+                    updateSongState((current) => ({
+                      ...current,
+                      vocalAudioUpload: files?.[0] ?? null,
+                      vocalAudioLabel: files?.[0]?.name ?? current.vocalAudioLabel,
+                    }))
+                  }
+                  selectedLabel={songState.vocalAudioUpload?.name ?? songState.vocalAudioLabel}
+                />
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <UploadField
+                  accept="audio/*"
+                  label="Preview clip"
+                  onChange={(files) =>
+                    updateSongState((current) => ({
+                      ...current,
+                      previewAudioUpload: files?.[0] ?? null,
+                      previewAudioLabel: files?.[0]?.name ?? current.previewAudioLabel,
+                    }))
+                  }
+                  selectedLabel={songState.previewAudioUpload?.name ?? songState.previewAudioLabel}
+                />
+                <UploadField
+                  accept="video/*"
+                  label="Canvas video"
+                  onChange={(files) =>
+                    updateSongState((current) => ({
+                      ...current,
+                      canvasVideoUpload: files?.[0] ?? null,
+                      canvasVideoLabel: files?.[0]?.name ?? current.canvasVideoLabel,
+                    }))
+                  }
+                  selectedLabel={songState.canvasVideoUpload?.name ?? songState.canvasVideoLabel}
+                />
               </div>
             </div>
 
@@ -328,7 +449,9 @@ export function PostComposer({
               <div>
                 <FieldLabel label="Genre" />
                 <Select
-                  onValueChange={(value) => setSongState((current) => ({ ...current, genre: value }))}
+                  onValueChange={(value) =>
+                    updateSongState((current) => ({ ...current, genre: value }))
+                  }
                   value={songState.genre}
                 >
                   <SelectTrigger>
@@ -348,7 +471,7 @@ export function PostComposer({
                 <FieldLabel label="Primary language" />
                 <Select
                   onValueChange={(value) =>
-                    setSongState((current) => ({ ...current, primaryLanguage: value }))
+                    updateSongState((current) => ({ ...current, primaryLanguage: value }))
                   }
                   value={songState.primaryLanguage}
                 >
@@ -369,7 +492,7 @@ export function PostComposer({
                 <FieldLabel label="Secondary language" />
                 <Select
                   onValueChange={(value) =>
-                    setSongState((current) => ({
+                    updateSongState((current) => ({
                       ...current,
                       secondaryLanguage: value === noneLanguageValue ? "" : value,
                     }))
@@ -393,9 +516,10 @@ export function PostComposer({
 
             <LabeledTextarea
               className="min-h-36"
-              defaultValue={lyricsValue}
               label="Lyrics"
+              onChange={onLyricsValueChange}
               placeholder="Paste lyrics"
+              value={lyricsValue}
             />
 
           </div>
@@ -443,8 +567,9 @@ export function PostComposer({
             <FieldLabel counter={titleCountLabel} label="Title" />
             <Input
               className="h-14"
+              onChange={(event) => onTitleValueChange?.(event.target.value)}
               placeholder="Title"
-              defaultValue={titleValue}
+              value={titleValue}
             />
           </div>
 
@@ -474,10 +599,11 @@ export function PostComposer({
                 emptyLabel="No source tracks found."
                 items={derivativeSearchResults}
                 onSelect={(reference) => {
-                  setDerivativeState((current) => ({
+                  updateDerivativeState((current) => ({
                     visible: true,
                     trigger: current?.trigger ?? "remix",
                     requirementLabel: current?.requirementLabel,
+                    required: current?.required,
                     searchResults: current?.searchResults,
                     references: dedupeReferences([...(current?.references ?? []), reference]),
                   }));
@@ -491,7 +617,29 @@ export function PostComposer({
                   {derivativeState.requirementLabel}
                 </div>
               ) : null}
-              <References items={derivativeState?.references} />
+              {derivativeState?.references?.length ? (
+                <div className="space-y-2">
+                  {derivativeState.references.map((reference) => (
+                    <SelectedReferenceCard
+                      key={reference.id}
+                      item={reference}
+                      onClear={() => {
+                        updateDerivativeState((current) => {
+                          if (!current) {
+                            return current;
+                          }
+                          return {
+                            ...current,
+                            references: (current.references ?? []).filter((item) => item.id !== reference.id),
+                          };
+                        });
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <References items={derivativeState?.references} />
+              )}
             </section>
           ) : null}
 
@@ -742,7 +890,14 @@ export function PostComposer({
         </CardContent>
 
         <CardFooter className="justify-end gap-3 border-t border-border-soft p-5">
-          <Button disabled={postDisabled}>Post</Button>
+          {submitError ? <FormNote tone="warning">{submitError}</FormNote> : null}
+          <Button
+            disabled={postDisabled || submitDisabled}
+            loading={submitLoading}
+            onClick={onSubmit}
+          >
+            {submitLabel}
+          </Button>
         </CardFooter>
       </Card>
     </div>

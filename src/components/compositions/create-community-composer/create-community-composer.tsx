@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { Card, CardContent, CardFooter } from "@/components/primitives/card";
 import { Checkbox } from "@/components/primitives/checkbox";
@@ -13,12 +14,13 @@ import {
 import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
 import { OptionCard } from "@/components/primitives/option-card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/primitives/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/primitives/radio-group";
 import { Stepper } from "@/components/primitives/stepper";
 import { Textarea } from "@/components/primitives/textarea";
 import { toast } from "@/components/primitives/sonner";
+import { resolveCommunityBannerSrc } from "@/lib/default-community-media";
+import { formatGateRequirement, getGateDraftWarning } from "@/lib/identity-gates";
 import { cn } from "@/lib/utils";
-import { formatGateRequirement } from "@/lib/nationality-gate";
 
 import type {
   AnonymousIdentityScope,
@@ -27,10 +29,11 @@ import type {
   CreateCommunityComposerProps,
   CommunityDefaultAgeGatePolicy,
   CommunityMembershipMode,
-  NationalityGateDraft,
+  IdentityGateDraft,
 } from "./create-community-composer.types";
 
 const ISO_ALPHA_2 = /^[A-Z]{2}$/;
+const acceptedCommunityImageTypes = "image/png,image/jpeg,image/webp,image/gif";
 
 const membershipMeta: Record<CommunityMembershipMode, { label: string; detail: string }> = {
   open: {
@@ -103,22 +106,18 @@ function SegmentedControl<T extends string>({
 
   return (
     <div className="space-y-3">
-      <Tabs onValueChange={(next) => onChange(next as T)} value={value}>
-        <TabsList
-          className="grid h-auto w-full rounded-[calc(var(--radius-lg)+0.25rem)] bg-muted/40 p-1.5"
-          style={{ gridTemplateColumns: `repeat(${keys.length}, minmax(0, 1fr))` }}
-        >
-          {keys.map((key) => (
-            <TabsTrigger
-              className="min-h-12 rounded-[var(--radius-lg)] px-4 py-2.5 text-base font-medium data-[state=active]:bg-card data-[state=active]:shadow-none"
-              key={key}
-              value={key}
-            >
-              {options[key].label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <RadioGroup
+        className="grid"
+        onValueChange={(next) => onChange(next as T)}
+        value={value}
+        style={{ gridTemplateColumns: `repeat(${keys.length}, minmax(0, 1fr))` }}
+      >
+        {keys.map((key) => (
+          <RadioGroupItem key={key} value={key}>
+            {options[key].label}
+          </RadioGroupItem>
+        ))}
+      </RadioGroup>
       {selectedOption.detail ? <FormNote>{selectedOption.detail}</FormNote> : null}
     </div>
   );
@@ -173,9 +172,81 @@ function ReviewSection({ title, children }: { title: string; children: React.Rea
   );
 }
 
+function useObjectUrl(file: File | null): string | null {
+  const [objectUrl, setObjectUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!file) {
+      setObjectUrl(null);
+      return;
+    }
+
+    const nextUrl = URL.createObjectURL(file);
+    setObjectUrl(nextUrl);
+
+    return () => {
+      URL.revokeObjectURL(nextUrl);
+    };
+  }, [file]);
+
+  return objectUrl;
+}
+
+function MediaPicker({
+  accept,
+  file,
+  label,
+  onSelect,
+  onRemove,
+}: {
+  accept: string;
+  file: File | null;
+  label: string;
+  onSelect: (file: File | null) => void;
+  onRemove: () => void;
+}) {
+  const inputId = React.useId();
+
+  return (
+    <div className="space-y-2">
+      <FieldLabel label={label} />
+      <input
+        accept={accept}
+        className="sr-only"
+        id={inputId}
+        onChange={(event) => {
+          onSelect(event.target.files?.[0] ?? null);
+          event.currentTarget.value = "";
+        }}
+        type="file"
+      />
+      <div className="flex min-h-14 items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3.5">
+        <p className="min-w-0 truncate text-base font-medium text-foreground">
+          {file?.name || `No ${label.toLowerCase()} selected`}
+        </p>
+        <div className="flex shrink-0 items-center gap-2">
+          {file ? (
+            <Button onClick={onRemove} size="sm" type="button" variant="ghost">
+              Remove
+            </Button>
+          ) : null}
+          <label className="cursor-pointer" htmlFor={inputId}>
+            <span className="inline-flex h-10 items-center rounded-full bg-muted px-4 text-base font-semibold text-foreground">
+              {file ? "Replace" : "Choose file"}
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CreateCommunityComposer({
+  avatarRef = "",
+  bannerRef = "",
   displayName = "",
   description = "",
+  gateDrafts = [],
   membershipMode = "open",
   defaultAgeGatePolicy = "none",
   allowAnonymousIdentity = true,
@@ -196,10 +267,22 @@ export function CreateCommunityComposer({
     React.useState<boolean>(allowAnonymousIdentity);
   const [activeAnonymousScope, setActiveAnonymousScope] =
     React.useState<AnonymousIdentityScope>(anonymousIdentityScopeProp ?? "community_stable");
+  const [activeAvatarRef, setActiveAvatarRef] = React.useState(avatarRef ?? "");
+  const [activeBannerRef, setActiveBannerRef] = React.useState(bannerRef ?? "");
+  const [activeAvatarFile, setActiveAvatarFile] = React.useState<File | null>(null);
+  const [activeBannerFile, setActiveBannerFile] = React.useState<File | null>(null);
   const [activeDisplayName, setActiveDisplayName] = React.useState(displayName ?? "");
   const [activeDescription, setActiveDescription] = React.useState(description ?? "");
-  const [nationalityEnabled, setNationalityEnabled] = React.useState(false);
-  const [nationalityRequiredValue, setNationalityRequiredValue] = React.useState("");
+  const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
+  const genderGate = gateDrafts.find((draft) => draft.gateType === "gender");
+  const [nationalityEnabled, setNationalityEnabled] = React.useState(Boolean(nationalityGate));
+  const [nationalityRequiredValue, setNationalityRequiredValue] = React.useState(
+    nationalityGate?.requiredValue ?? "",
+  );
+  const [genderEnabled, setGenderEnabled] = React.useState(Boolean(genderGate));
+  const [genderRequiredValue, setGenderRequiredValue] = React.useState<"M" | "F">(
+    genderGate?.requiredValue ?? "F",
+  );
   const [submitting, setSubmitting] = React.useState(false);
 
   const creatorUniqueHumanVerified = creatorVerificationState?.uniqueHumanVerified ?? false;
@@ -208,11 +291,27 @@ export function CreateCommunityComposer({
     activeDefaultAgeGatePolicy !== "18_plus" || creatorAgeOver18Verified;
   const creatorCanCreate = creatorUniqueHumanVerified && creatorAgeRequirementMet;
 
-  const activeGateDrafts: NationalityGateDraft[] = nationalityEnabled && ISO_ALPHA_2.test(nationalityRequiredValue)
-    ? [{ gateType: "nationality", provider: "self", requiredValue: nationalityRequiredValue }]
-    : [];
+  const activeGateDrafts: IdentityGateDraft[] = [
+    ...(nationalityEnabled && ISO_ALPHA_2.test(nationalityRequiredValue)
+      ? [{ gateType: "nationality" as const, provider: "self" as const, requiredValue: nationalityRequiredValue }]
+      : []),
+    ...(genderEnabled
+      ? [{ gateType: "gender" as const, provider: "self" as const, requiredValue: genderRequiredValue }]
+      : []),
+  ];
 
   React.useEffect(() => { setActiveMembershipMode(membershipMode); }, [membershipMode]);
+  React.useEffect(() => { setActiveAvatarRef(avatarRef); }, [avatarRef]);
+  React.useEffect(() => { setActiveBannerRef(bannerRef); }, [bannerRef]);
+  React.useEffect(() => {
+    const nextNationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
+    setNationalityEnabled(Boolean(nextNationalityGate));
+    setNationalityRequiredValue(nextNationalityGate?.requiredValue ?? "");
+
+    const nextGenderGate = gateDrafts.find((draft) => draft.gateType === "gender");
+    setGenderEnabled(Boolean(nextGenderGate));
+    setGenderRequiredValue(nextGenderGate?.requiredValue ?? "F");
+  }, [gateDrafts]);
   React.useEffect(() => { setActiveDefaultAgeGatePolicy(defaultAgeGatePolicy); }, [defaultAgeGatePolicy]);
   React.useEffect(() => { setActiveAllowAnonymousIdentity(allowAnonymousIdentity); }, [allowAnonymousIdentity]);
   React.useEffect(() => {
@@ -236,6 +335,10 @@ export function CreateCommunityComposer({
 
     setSubmitting(true);
     void onCreate({
+      avatarFile: activeAvatarFile,
+      avatarRef: activeAvatarRef.trim() || null,
+      bannerFile: activeBannerFile,
+      bannerRef: activeBannerRef.trim() || null,
       displayName: activeDisplayName.trim(),
       description: activeDescription.trim() || null,
       membershipMode: activeMembershipMode,
@@ -253,6 +356,10 @@ export function CreateCommunityComposer({
       });
   }, [
     onCreate,
+    activeAvatarFile,
+    activeAvatarRef,
+    activeBannerFile,
+    activeBannerRef,
     activeDisplayName,
     activeDescription,
     activeMembershipMode,
@@ -300,6 +407,17 @@ export function CreateCommunityComposer({
   ]);
 
   const membershipLabel = membershipMeta[activeMembershipMode].label;
+  const previewDisplayName = activeDisplayName.trim() || "New community";
+  const previewAvatarSrc = useObjectUrl(activeAvatarFile) ?? (activeAvatarRef.trim() || null);
+  const previewBannerOverride = useObjectUrl(activeBannerFile) ?? (activeBannerRef.trim() || null);
+  const previewBannerSrc = React.useMemo(
+    () => resolveCommunityBannerSrc({
+      bannerSrc: previewBannerOverride,
+      communityId: "draft-community",
+      displayName: previewDisplayName,
+    }),
+    [previewBannerOverride, previewDisplayName],
+  );
   const creatorVerificationMessage = !creatorUniqueHumanVerified
     ? "Complete unique human verification before creating a community."
     : !creatorAgeRequirementMet
@@ -340,6 +458,58 @@ export function CreateCommunityComposer({
                     onChange={(e) => setActiveDescription(e.target.value)}
                     placeholder="What is this community for?"
                     value={activeDescription}
+                  />
+                </div>
+
+                <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-card">
+                  <div
+                    className="h-28 w-full bg-cover bg-center md:h-32"
+                    style={{ backgroundImage: `url(${previewBannerSrc})` }}
+                  />
+                  <div className="-mt-6 flex items-end gap-3 px-4 pb-4">
+                    <Avatar
+                      className="h-14 w-14 border-4 border-card bg-card"
+                      fallback={previewDisplayName}
+                      size="lg"
+                      src={previewAvatarSrc ?? undefined}
+                    />
+                    <div className="min-w-0 space-y-0.5 pb-1">
+                      <p className="truncate text-lg font-semibold text-foreground">
+                        {previewDisplayName}
+                      </p>
+                      {activeDescription.trim() ? (
+                        <p className="line-clamp-1 text-base text-muted-foreground">
+                          {activeDescription.trim()}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <MediaPicker
+                    accept={acceptedCommunityImageTypes}
+                    file={activeAvatarFile}
+                    label="Avatar"
+                    onRemove={() => setActiveAvatarFile(null)}
+                    onSelect={(file) => {
+                      setActiveAvatarFile(file);
+                      if (file) {
+                        setActiveAvatarRef("");
+                      }
+                    }}
+                  />
+                  <MediaPicker
+                    accept={acceptedCommunityImageTypes}
+                    file={activeBannerFile}
+                    label="Banner"
+                    onRemove={() => setActiveBannerFile(null)}
+                    onSelect={(file) => {
+                      setActiveBannerFile(file);
+                      if (file) {
+                        setActiveBannerRef("");
+                      }
+                    }}
                   />
                 </div>
 
@@ -416,6 +586,35 @@ export function CreateCommunityComposer({
                         ) : null}
                       </div>
                     ) : null}
+
+                    <OptionCard
+                      description="Require members to reveal the Self document marker on their document before joining."
+                      selected={genderEnabled}
+                      title="Self document marker"
+                      onClick={() => setGenderEnabled((prev) => !prev)}
+                    />
+
+                    {genderEnabled ? (
+                      <div className="space-y-3">
+                        <SegmentedControl
+                          onChange={(value) => setGenderRequiredValue(value as "M" | "F")}
+                          options={{
+                            F: {
+                              label: "F marker",
+                              detail: "Accept only members whose Self document marker is F.",
+                            },
+                            M: {
+                              label: "M marker",
+                              detail: "Accept only members whose Self document marker is M.",
+                            },
+                          }}
+                          value={genderRequiredValue}
+                        />
+                        {getGateDraftWarning("gender") ? (
+                          <FormNote tone="warning">{getGateDraftWarning("gender")}</FormNote>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </Section>
@@ -479,6 +678,14 @@ export function CreateCommunityComposer({
                   <ReviewField label="Description" value={activeDescription || "\u2014"} />
                 </div>
                 <ReviewField
+                  label="Avatar"
+                  value={activeAvatarFile?.name || (activeAvatarRef.trim() ? "Saved image" : "Generated default")}
+                />
+                <ReviewField
+                  label="Banner"
+                  value={activeBannerFile?.name || (activeBannerRef.trim() ? "Saved image" : "Generated default")}
+                />
+                <ReviewField
                   label="Namespace"
                   value={namespaceAttachment
                     ? `${namespaceAttachment.family === "spaces" ? "@" : "."}${namespaceAttachment.normalizedRootLabel}`
@@ -492,7 +699,12 @@ export function CreateCommunityComposer({
                   <div className="md:col-span-2">
                     <ReviewField
                       label="Membership gates"
-                      value={activeGateDrafts.map((d) => formatGateRequirement({ gate_type: d.gateType, required_value: d.requiredValue })).join(", ")}
+                      value={activeGateDrafts
+                        .map((draft) => formatGateRequirement(
+                          { gate_type: draft.gateType, required_value: draft.requiredValue },
+                          { audience: "admin" },
+                        ))
+                        .join(", ")}
                     />
                   </div>
                 ) : null}

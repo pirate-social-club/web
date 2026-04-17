@@ -18,6 +18,28 @@ const listeners = new Set<SessionListener>();
 let cachedSession: StoredSession | null = null;
 let hydrated = false;
 
+function decodeBase64Url(value: string): string | null {
+  if (typeof window === "undefined") return null;
+
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+
+  try {
+    return window.atob(padded);
+  } catch {
+    return null;
+  }
+}
+
+function isAuthFailure(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const maybeError = error as { status?: unknown; code?: unknown };
+  return maybeError.status === 401 || maybeError.code === "auth_error";
+}
+
 function notifyAll(): void {
   for (const listener of listeners) {
     listener();
@@ -56,6 +78,32 @@ export function getStoredSession(): StoredSession | null {
 
 export function getAccessToken(): string | null {
   return getStoredSession()?.accessToken ?? null;
+}
+
+export function getSessionAccessTokenExpiryMs(
+  session: StoredSession | null | undefined,
+): number | null {
+  const payloadSegment = session?.accessToken.split(".")[1];
+  if (!payloadSegment) return null;
+
+  const decodedPayload = decodeBase64Url(payloadSegment);
+  if (!decodedPayload) return null;
+
+  try {
+    const payload = JSON.parse(decodedPayload) as { exp?: unknown };
+    return typeof payload.exp === "number" ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isSessionAccessTokenExpiringSoon(
+  session: StoredSession | null | undefined,
+  withinMs = 5 * 60 * 1000,
+): boolean {
+  const expiryMs = getSessionAccessTokenExpiryMs(session);
+  if (!expiryMs) return false;
+  return expiryMs - Date.now() <= withinMs;
 }
 
 export function setSession(response: SessionExchangeResponse): StoredSession {
@@ -122,8 +170,10 @@ export async function revalidateSession(
   try {
     await getUsersMe();
     return true;
-  } catch {
-    clearSession();
+  } catch (error) {
+    if (isAuthFailure(error)) {
+      clearSession();
+    }
     return false;
   }
 }

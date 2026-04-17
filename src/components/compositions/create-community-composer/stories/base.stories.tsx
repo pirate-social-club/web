@@ -56,6 +56,33 @@ export const AccessStep: Story = {
   render: () => <CreateCommunityComposer {...baseComposer} initialStep={2} />,
 };
 
+export const AccessStepWithDocumentMarkerGate: Story = {
+  name: "Flow / Access Step With Document Marker Gate",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[{ gateType: "gender", provider: "self", requiredValue: "F" }]}
+      initialStep={2}
+      membershipMode="gated"
+    />
+  ),
+};
+
+export const ReviewWithMixedIdentityGates: Story = {
+  name: "Flow / Review With Mixed Identity Gates",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[
+        { gateType: "nationality", provider: "self", requiredValue: "US" },
+        { gateType: "gender", provider: "self", requiredValue: "F" },
+      ]}
+      initialStep={3}
+      membershipMode="gated"
+    />
+  ),
+};
+
 export const ReviewStep: Story = {
   name: "Flow / Review",
   render: () => <CreateCommunityComposer {...baseComposer} initialStep={3} />,

@@ -46,11 +46,6 @@ export const GENERATED_LOCALE_CATALOGS = {
         "suggestedCommunitiesAction": "Suggested Communities",
         "title": "Finish setting up your Pirate identity"
       },
-      "auth": {
-        "body": "Keep `/auth` as the landing placeholder for now. Do not treat callback paths or provider contracts as stable until the web auth flow is specified.",
-        "description": "The app route exists, but provider-specific browser auth wiring is intentionally not locked yet.",
-        "title": "Auth placeholder"
-      },
       "inbox": {
         "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",
         "description": "This route is scaffolded so the mobile nav can point somewhere truthful while inbox behavior is still undefined.",
@@ -61,13 +56,14 @@ export const GENERATED_LOCALE_CATALOGS = {
         "title": "Create a community"
       },
       "notFound": {
-        "body": "The first scaffold only locks a small set of routes: home, feeds, communities, posts, profiles, onboarding, auth placeholder, inbox placeholder, and community create.",
+        "body": "The first scaffold only locks a small set of routes: home, feeds, communities, posts, profiles, onboarding, inbox placeholder, and community create.",
         "description": "No scaffolded page exists for {path}.",
         "title": "Route not found"
       }
     },
     "shell": {
       "appHeader": {
+        "connectLabel": "Connect",
         "createLabel": "Create",
         "homeAriaLabel": "Go to home",
         "notificationsAriaLabel": "Notifications",
@@ -195,11 +191,6 @@ export const GENERATED_LOCALE_CATALOGS = {
         "suggestedCommunitiesAction": "مجتمعات مقترحة",
         "title": "أكمل إعداد هوية Pirate الخاصة بك"
       },
-      "auth": {
-        "body": "أبقِ `/auth` كصفحة هبوط مؤقتة الآن. لا تتعامل مع مسارات الاستدعاء أو عقود المزود على أنها ثابتة حتى يتم تحديد تدفق المصادقة على الويب.",
-        "description": "هذا المسار موجود، لكن ربط مصادقة المتصفح الخاصة بالمزوّد لم يتم تثبيته عمدًا بعد.",
-        "title": "عنصر نائب للمصادقة"
-      },
       "inbox": {
         "body": "أبقِ `/inbox` كعنصر نائب محايد حتى يتم تحديد الإشعارات أو المراسلة كسطوح منتج حقيقية.",
         "description": "تم تجهيز هذا المسار حتى يشير إليه تنقل الهاتف بصدق بينما لا يزال سلوك الوارد غير محدد.",
@@ -210,13 +201,14 @@ export const GENERATED_LOCALE_CATALOGS = {
         "title": "أنشئ مجتمعًا"
       },
       "notFound": {
-        "body": "النسخة الأولى من الهيكل تثبّت فقط مجموعة صغيرة من المسارات: الرئيسية، الخلاصات، المجتمعات، المنشورات، الملفات الشخصية، الإعداد، عنصر نائب للمصادقة، عنصر نائب للوارد، وإنشاء مجتمع.",
+        "body": "النسخة الأولى من الهيكل تثبّت فقط مجموعة صغيرة من المسارات: الرئيسية، الخلاصات، المجتمعات، المنشورات، الملفات الشخصية، الإعداد، عنصر نائب للوارد، وإنشاء مجتمع.",
         "description": "لا توجد صفحة مجهزة للمسار {path}.",
         "title": "المسار غير موجود"
       }
     },
     "shell": {
       "appHeader": {
+        "connectLabel": "اتصل",
         "createLabel": "أنشئ",
         "homeAriaLabel": "اذهب إلى الصفحة الرئيسية",
         "notificationsAriaLabel": "الإشعارات",

@@ -1,5 +1,6 @@
 {
   "appHeader": {
+    "connectLabel": "Connect",
     "createLabel": "Create",
     "homeAriaLabel": "Go to home",
     "notificationsAriaLabel": "Notifications",

@@ -5,6 +5,7 @@ import {
   Bell,
   List,
   Plus,
+  Square,
 } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
@@ -15,6 +16,15 @@ import { SearchTrigger } from "@/components/primitives/search-trigger";
 import { useSidebar } from "@/components/compositions/sidebar/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+
+function CreatePostGlyph() {
+  return (
+    <span className="relative inline-flex size-5 items-center justify-center">
+      <Square className="size-5" weight="regular" />
+      <Plus className="absolute size-3.5" weight="bold" />
+    </span>
+  );
+}
 
 function SidebarMenuToggleButton({ ariaLabel }: { ariaLabel: string }) {
   const { toggleSidebar } = useSidebar();
@@ -27,6 +37,7 @@ function SidebarMenuToggleButton({ ariaLabel }: { ariaLabel: string }) {
 }
 
 export interface AppHeaderLabels {
+  connectLabel?: string;
   createLabel?: string;
   homeAriaLabel?: string;
   notificationsAriaLabel?: string;
@@ -39,15 +50,22 @@ export interface AppHeaderLabels {
 export interface AppHeaderProps {
   avatarFallback?: string;
   className?: string;
+  createActionTitle?: string;
+  disableCreateAction?: boolean;
   forceMobile?: boolean;
   labels?: AppHeaderLabels;
+  onConnectClick?: () => void;
   onCreateClick?: () => void;
   onHomeClick?: () => void;
   onMenuClick?: () => void;
   onNotificationsClick?: () => void;
   onProfileClick?: () => void;
   onSearchClick?: () => void;
+  showCreateAction?: boolean;
   showNotificationsDot?: boolean;
+  showNotificationsAction?: boolean;
+  showConnectAction?: boolean;
+  showProfileAction?: boolean;
   useSidebarTrigger?: boolean;
   userAvatarSrc?: string | null;
 }
@@ -55,19 +73,27 @@ export interface AppHeaderProps {
 export function AppHeader({
   avatarFallback = "Pirate User",
   className,
+  createActionTitle,
+  disableCreateAction = false,
   forceMobile,
   labels,
+  onConnectClick,
   onCreateClick,
   onHomeClick,
   onMenuClick,
   onNotificationsClick,
   onProfileClick,
   onSearchClick,
+  showCreateAction = true,
   showNotificationsDot = true,
+  showNotificationsAction = true,
+  showConnectAction = false,
+  showProfileAction = true,
   useSidebarTrigger = false,
   userAvatarSrc,
 }: AppHeaderProps) {
   const {
+    connectLabel = "Connect",
     createLabel = "Create",
     homeAriaLabel = "Go to home",
     notificationsAriaLabel = "Notifications",
@@ -103,51 +129,74 @@ export function AppHeader({
 
   return (
     <header className={cn("sticky top-0 z-30 border-b border-border-soft bg-background/95 backdrop-blur-xl", className)}>
-      <div className="mx-auto flex h-[4.5rem] w-full max-w-[96rem] items-center gap-5 px-5 lg:px-8">
-        <IconButton
-          aria-label={homeAriaLabel}
-          onClick={onHomeClick}
-          variant="ghost"
-          className="shrink-0"
-        >
-          <PirateBrandMark className="h-11 w-11" decorative={false} />
-        </IconButton>
+      <div className="grid h-[4.5rem] w-full grid-cols-[minmax(0,1fr)_minmax(18rem,34rem)_minmax(0,1fr)] items-center gap-4 px-5 lg:px-8">
+        <div className="min-w-0">
+          <button
+            aria-label={homeAriaLabel}
+            className="inline-flex items-center gap-3 rounded-full px-1 py-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={onHomeClick}
+            type="button"
+          >
+            <PirateBrandMark className="h-9 w-9 shrink-0" decorative={false} />
+            <span className="text-lg font-semibold tracking-tight text-foreground">Pirate</span>
+          </button>
+        </div>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           <SearchTrigger
             ariaLabel={searchAriaLabel}
+            size="compact"
             onClick={onSearchClick}
             placeholder={searchPlaceholder}
           />
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <Button className="h-12 px-5" leadingIcon={<Plus className="size-5" weight="bold" />} onClick={onCreateClick} variant="ghost">
-            {createLabel}
-          </Button>
-          <IconButton
-            aria-label={notificationsAriaLabel}
-            className="relative"
-            onClick={onNotificationsClick}
-            variant="ghost"
-          >
-            <Bell className="size-6" weight="regular" />
-            {showNotificationsDot ? (
-              <span className="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-primary" />
-            ) : null}
-          </IconButton>
-          <IconButton
-            aria-label={profileAriaLabel}
-            onClick={onProfileClick}
-            variant="ghost"
-          >
-            <Avatar
-              className="h-11 w-11 bg-card text-base"
-              fallback={avatarFallback}
-              size="sm"
-              src={userAvatarSrc ?? undefined}
-            />
-          </IconButton>
+        <div className="flex min-w-0 items-center justify-end gap-1.5">
+          {showConnectAction ? (
+            <Button className="h-12 px-5" onClick={onConnectClick}>
+              {connectLabel}
+            </Button>
+          ) : null}
+          {showCreateAction ? (
+            <IconButton
+              aria-label={createLabel}
+              className="relative"
+              disabled={disableCreateAction}
+              onClick={onCreateClick}
+              title={createActionTitle}
+              variant="ghost"
+            >
+              <CreatePostGlyph />
+            </IconButton>
+          ) : null}
+          {showNotificationsAction ? (
+            <IconButton
+              aria-label={notificationsAriaLabel}
+              className="relative"
+              onClick={onNotificationsClick}
+              variant="ghost"
+            >
+              <Bell className="size-6" weight="regular" />
+              {showNotificationsDot ? (
+                <span className="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-primary" />
+              ) : null}
+            </IconButton>
+          ) : null}
+          {showProfileAction && !showConnectAction ? (
+            <IconButton
+              aria-label={profileAriaLabel}
+              className="p-0"
+              onClick={onProfileClick}
+              variant="ghost"
+            >
+              <Avatar
+                className="h-11 w-11 bg-card text-base"
+                fallback={avatarFallback}
+                size="sm"
+                src={userAvatarSrc ?? undefined}
+              />
+            </IconButton>
+          ) : null}
         </div>
       </div>
     </header>

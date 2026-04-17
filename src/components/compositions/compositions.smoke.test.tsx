@@ -6,8 +6,16 @@ import { Flag, House, Plus } from "@phosphor-icons/react";
 import { Feed } from "@/components/compositions/feed/feed";
 import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap";
 import { AppSidebar } from "@/components/compositions/app-sidebar/app-sidebar";
+import {
+  CommunitySafetyPage,
+  createDefaultCommunitySafetyAdultContentPolicy,
+  createDefaultCommunitySafetyCivilityPolicy,
+  createDefaultCommunitySafetyGraphicContentPolicy,
+  createDefaultCommunitySafetyProviderSettings,
+} from "@/components/compositions/community-safety-page/community-safety-page";
 import { SidebarProvider } from "@/components/compositions/sidebar/sidebar";
 import { PostThread } from "@/components/compositions/post-thread/post-thread";
+import { SettingsPage } from "@/components/compositions/settings-page/settings-page";
 import { UiLocaleProvider } from "@/lib/ui-locale";
 
 const primaryItems = [
@@ -71,7 +79,7 @@ describe("composition smoke tests", () => {
       </UiLocaleProvider>,
     );
 
-    expect(markup).toContain("Pirate");
+    expect(markup).toContain("Home");
     expect(markup).toContain("Resources");
   });
 
@@ -138,5 +146,67 @@ describe("composition smoke tests", () => {
 
     expect(markup).toContain("Handle");
     expect(markup).toContain(".pirate");
+  });
+
+  test("renders the moderation safety page", () => {
+    const markup = render(
+      <CommunitySafetyPage
+        adultContentPolicy={createDefaultCommunitySafetyAdultContentPolicy()}
+        civilityPolicy={createDefaultCommunitySafetyCivilityPolicy()}
+        graphicContentPolicy={createDefaultCommunitySafetyGraphicContentPolicy()}
+        providerSettings={createDefaultCommunitySafetyProviderSettings()}
+      />,
+    );
+
+    expect(markup).toContain("Safety");
+    expect(markup).toContain("OpenAI moderation pass");
+    expect(markup).toContain("Threatening language");
+  });
+
+  test("renders the settings shell", () => {
+    const markup = render(
+      <SettingsPage
+        activeTab="profile"
+        preferences={{
+          ageStatusLabel: "18+ verified",
+          locale: "en",
+          localeOptions: [
+            { label: "English", value: "en" },
+            { label: "Arabic", value: "ar" },
+          ],
+          submitState: { kind: "idle" },
+        }}
+        profile={{
+          avatarSrc: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=300&q=80",
+          bio: "Making internet-native spaces for music and culture.",
+          coverSrc: "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1600&q=80",
+          currentHandle: "captainblackbeard.pirate",
+          displayName: "Blackbeard",
+          linkedHandles: [{
+            handleId: null,
+            kind: "pirate",
+            label: "captainblackbeard.pirate",
+            primary: true,
+            verificationState: "verified",
+          }],
+          postAuthorLabel: "captainblackbeard.pirate",
+          submitState: { kind: "idle" },
+        }}
+        wallet={{
+          connectedWallets: [
+            {
+              address: "0x42a5f77f2d06c9a7e304817b3c177b91e0c2f3a8",
+              chainLabel: "Ethereum",
+              isPrimary: true,
+            },
+          ],
+          primaryAddress: "0x42a5f77f2d06c9a7e304817b3c177b91e0c2f3a8",
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Settings");
+    expect(markup).toContain("Profile");
+    expect(markup).toContain("Save profile");
   });
 });

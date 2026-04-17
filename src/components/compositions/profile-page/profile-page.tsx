@@ -11,6 +11,7 @@ export function ProfilePage({
   className,
   comments = [],
   defaultTab = "overview",
+  onEditProfile,
   overviewItems = [],
   posts = [],
   profile,
@@ -18,9 +19,9 @@ export function ProfilePage({
   scrobbles = [],
 }: ProfilePageProps) {
   return (
-    <div className={cn("min-h-screen bg-background text-foreground", className)}>
+    <div className={cn("w-full min-h-screen bg-background text-foreground", className)}>
       <div className="flex w-full flex-col gap-6 pb-10">
-        <ProfileHero profile={profile} />
+        <ProfileHero onEditProfile={onEditProfile} profile={profile} />
 
         <Tabs className="flex flex-col gap-6" defaultValue={defaultTab}>
           <TabsList className="h-auto w-full justify-start gap-2 overflow-x-auto rounded-[var(--radius-3xl)] bg-muted/80 p-1.5">

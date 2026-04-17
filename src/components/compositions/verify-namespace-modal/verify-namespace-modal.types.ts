@@ -1,8 +1,27 @@
 export type NamespaceFamily = "hns" | "spaces";
 
+export type NamespaceVerificationStatus =
+  | "draft"
+  | "inspecting"
+  | "dns_setup_required"
+  | "challenge_required"
+  | "challenge_pending"
+  | "verifying"
+  | "verified"
+  | "failed"
+  | "expired"
+  | "disputed";
+
+export type NamespaceVerificationOperationClass =
+  | "owner_managed_namespace"
+  | "routing_only_namespace"
+  | "pirate_delegated_namespace"
+  | "owner_signed_updates_namespace";
+
 export type NamespaceVerificationModalState =
   | "idle"
   | "starting"
+  | "dns_setup_required"
   | "challenge_ready"
   | "challenge_pending"
   | "verifying"
@@ -30,11 +49,14 @@ export type NamespaceVerificationStartResult = {
   challengeTxtValue: string | null;
   challengePayload: SpacesChallengePayload | null;
   challengeExpiresAt: string | null;
-  status: string;
+  status: NamespaceVerificationStatus;
+  operationClass: NamespaceVerificationOperationClass | null;
+  pirateDnsAuthorityVerified: boolean | null;
+  setupNameservers: string[] | null;
 };
 
 export type NamespaceVerificationCompleteResult = {
-  status: string;
+  status: NamespaceVerificationStatus;
   namespaceVerificationId: string | null;
   failureReason: string | null;
 };

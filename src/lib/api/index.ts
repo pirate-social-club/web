@@ -1,5 +1,6 @@
 import * as React from "react";
 import { ApiClient } from "./client";
+import { resolveApiBaseUrl } from "./base-url";
 import { getAccessToken, revalidateSession } from "./session-store";
 
 export const api = new ApiClient({
@@ -10,16 +11,18 @@ const ApiClientContext = React.createContext<ApiClient>(api);
 
 export function ApiProvider({
   baseUrl,
+  initialHost,
   children,
 }: {
   baseUrl?: string;
+  initialHost?: string;
   children: React.ReactNode;
 }) {
   const client = React.useMemo(() => {
-    if (!baseUrl) return api;
-    const c = new ApiClient({ baseUrl, getToken: getAccessToken });
+    const resolvedBaseUrl = baseUrl ?? resolveApiBaseUrl(initialHost);
+    const c = new ApiClient({ baseUrl: resolvedBaseUrl, getToken: getAccessToken });
     return c;
-  }, [baseUrl]);
+  }, [baseUrl, initialHost]);
 
   return React.createElement(
     ApiClientContext.Provider,

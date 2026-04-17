@@ -39,11 +39,6 @@
     "suggestedCommunitiesAction": "Suggested Communities",
     "title": "Finish setting up your Pirate identity"
   },
-  "auth": {
-    "body": "Keep `/auth` as the landing placeholder for now. Do not treat callback paths or provider contracts as stable until the web auth flow is specified.",
-    "description": "The app route exists, but provider-specific browser auth wiring is intentionally not locked yet.",
-    "title": "Auth placeholder"
-  },
   "inbox": {
     "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",
     "description": "This route is scaffolded so the mobile nav can point somewhere truthful while inbox behavior is still undefined.",
@@ -54,7 +49,7 @@
     "title": "Create a community"
   },
   "notFound": {
-    "body": "The first scaffold only locks a small set of routes: home, feeds, communities, posts, profiles, onboarding, auth placeholder, inbox placeholder, and community create.",
+    "body": "The first scaffold only locks a small set of routes: home, feeds, communities, posts, profiles, onboarding, inbox placeholder, and community create.",
     "description": "No scaffolded page exists for {path}.",
     "title": "Route not found"
   }

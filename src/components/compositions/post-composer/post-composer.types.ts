@@ -89,8 +89,18 @@ export interface SongComposerState {
   genre?: string;
   primaryLanguage?: string;
   secondaryLanguage?: string;
+  primaryAudioUpload?: File | null;
+  primaryAudioLabel?: string;
   coverUpload?: File | null;
   coverLabel?: string;
+  previewAudioUpload?: File | null;
+  previewAudioLabel?: string;
+  canvasVideoUpload?: File | null;
+  canvasVideoLabel?: string;
+  instrumentalAudioUpload?: File | null;
+  instrumentalAudioLabel?: string;
+  vocalAudioUpload?: File | null;
+  vocalAudioLabel?: string;
 }
 
 export interface MonetizationState {
@@ -130,15 +140,28 @@ export interface PostComposerProps {
   canScheduleLivestream?: boolean;
   titleValue?: string;
   titleCountLabel?: string;
+  onTitleValueChange?: (value: string) => void;
   textBodyValue?: string;
+  onTextBodyValueChange?: (value: string) => void;
   captionValue?: string;
   lyricsValue?: string;
+  onLyricsValueChange?: (value: string) => void;
   linkUrlValue?: string;
   linkPreview?: LinkPreviewState;
   songMode?: SongMode;
   song?: SongComposerState;
+  onSongChange?: (value: SongComposerState) => void;
+  onSongModeChange?: (value: SongMode) => void;
+  onModeChange?: (value: ComposerTab) => void;
   derivativeStep?: DerivativeStepState;
+  onDerivativeStepChange?: (value: DerivativeStepState | undefined) => void;
   monetization?: MonetizationState;
+  onMonetizationChange?: (value: MonetizationState | undefined) => void;
   identity?: ComposerIdentityState;
   live?: LiveComposerState;
+  onSubmit?: () => void;
+  submitDisabled?: boolean;
+  submitError?: string | null;
+  submitLabel?: string;
+  submitLoading?: boolean;
 }

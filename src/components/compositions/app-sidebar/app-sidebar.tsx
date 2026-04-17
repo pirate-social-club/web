@@ -3,19 +3,18 @@
 import * as React from "react";
 import { Flag, House, Plus } from "@phosphor-icons/react";
 
+import { Avatar } from "@/components/primitives/avatar";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/primitives/accordion";
-import { PirateBrandMark } from "@/components/primitives/pirate-brand-mark";
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -39,6 +38,7 @@ export interface AppSidebarPrimaryItem {
 }
 
 export interface AppSidebarSectionItem {
+  avatarSrc?: string | null;
   id: string;
   label: string;
   onSelect?: () => void;
@@ -130,6 +130,14 @@ function SidebarSectionBlock({
                         onClick={item.onSelect}
                         tooltip={item.label}
                       >
+                        {item.avatarSrc ? (
+                          <Avatar
+                            className="h-7 w-7 border-border-soft"
+                            fallback={item.label}
+                            size="xs"
+                            src={item.avatarSrc}
+                          />
+                        ) : null}
                         <span>{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -213,25 +221,11 @@ export function AppSidebar({
 
   return (
     <Sidebar
-      className={cn("w-[18rem] pt-0", className)}
+      className={cn("w-[18rem] pt-0 md:top-[4.5rem]", className)}
       collapsible="icon"
       side={resolvedSide}
       {...props}
     >
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
-        <button
-          aria-label={homeAriaLabel}
-          className="flex w-full items-center gap-3 rounded-lg text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-          onClick={onHomeClick}
-          type="button"
-        >
-          <PirateBrandMark className="h-10 w-10 shrink-0" decorative={false} />
-          <span className="truncate text-lg font-semibold group-data-[collapsible=icon]:hidden">
-            {brandLabel}
-          </span>
-        </button>
-      </SidebarHeader>
-
       <SidebarContent className="gap-3 overflow-y-auto px-0 pb-4 pt-3">
         <SidebarGroup className="px-4 pt-1">
           <SidebarGroupContent>

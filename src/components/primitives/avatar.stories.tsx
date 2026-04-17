@@ -24,6 +24,12 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+export const GeneratedThumbs: Story = {
+  args: {
+    fallback: "Pirate User",
+  },
+};
+
 export const Sizes: Story = {
   render: () => (
     <div className="flex items-end gap-3">

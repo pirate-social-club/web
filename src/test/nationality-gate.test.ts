@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { formatGateRequirement, getJoinCtaLabel, isJoinCtaActionable } from "../lib/nationality-gate";
-import type { MembershipGateSummary, JoinEligibility } from "@pirate/api-contracts";
+import {
+  formatGateRequirement,
+  getGateFailureMessage,
+  getJoinCtaLabel,
+  getVerificationPromptCopy,
+  isJoinCtaActionable,
+} from "../lib/identity-gates";
+import type { MembershipGateSummary, JoinEligibility, GateFailureDetails } from "@pirate/api-contracts";
 
 describe("formatGateRequirement", () => {
   test("formats nationality gate with known country code", () => {
@@ -15,7 +21,17 @@ describe("formatGateRequirement", () => {
 
   test("formats non-nationality gate generically", () => {
     const gate: MembershipGateSummary = { gate_type: "unique_human" };
-    expect(formatGateRequirement(gate)).toContain("unique_human");
+    expect(formatGateRequirement(gate)).toBe("Requires unique human verification");
+  });
+
+  test("formats gender gate generically for public previews", () => {
+    const gate: MembershipGateSummary = { gate_type: "gender", required_value: "F" };
+    expect(formatGateRequirement(gate)).toBe("Verify with ID");
+  });
+
+  test("formats gender gate with exact marker for admin surfaces", () => {
+    const gate: MembershipGateSummary = { gate_type: "gender", required_value: "F" };
+    expect(formatGateRequirement(gate, { audience: "admin" })).toBe("Requires Self document marker F");
   });
 });
 
@@ -65,5 +81,23 @@ describe("isJoinCtaActionable", () => {
   test("not actionable for already_joined", () => {
     const e = { status: "already_joined" } as JoinEligibility;
     expect(isJoinCtaActionable(e)).toBe(false);
+  });
+});
+
+describe("getVerificationPromptCopy", () => {
+  test("describes self document marker verification clearly", () => {
+    expect(getVerificationPromptCopy("self", ["gender"]).title).toBe("Verify with ID");
+  });
+
+  test("collapses unique human when a richer self capability is present", () => {
+    const description = getVerificationPromptCopy("self", ["unique_human", "nationality"]).description;
+    expect(description.includes("unique human")).toBe(false);
+  });
+});
+
+describe("getGateFailureMessage", () => {
+  test("formats gender mismatch copy", () => {
+    const details = { failure_reason: "gender_mismatch" } as GateFailureDetails;
+    expect(getGateFailureMessage(details)).toContain("ID check");
   });
 });

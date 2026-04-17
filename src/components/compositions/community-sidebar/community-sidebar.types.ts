@@ -65,7 +65,14 @@ export interface CommunitySidebarCharity {
   name: string;
 }
 
+export interface CommunitySidebarNamespacePanel {
+  routeLabel: string;
+  status: "available" | "pending" | "verified";
+  onOpen?: () => void;
+}
+
 export interface CommunitySidebarProps {
+  avatarSrc?: string | null;
   className?: string;
   charity?: CommunitySidebarCharity | null;
   createdAt: string;
@@ -75,6 +82,8 @@ export interface CommunitySidebarProps {
   memberCount?: number | null;
   membershipMode: CommunityMembershipMode;
   moderator?: CommunitySidebarModerator | null;
+  namespacePanel?: CommunitySidebarNamespacePanel | null;
   referenceLinks?: CommunitySidebarReferenceLink[];
+  rulesAction?: React.ReactNode;
   rules?: CommunitySidebarRule[];
 }

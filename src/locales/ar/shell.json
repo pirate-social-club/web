@@ -1,5 +1,6 @@
 {
   "appHeader": {
+    "connectLabel": "اتصل",
     "createLabel": "أنشئ",
     "homeAriaLabel": "اذهب إلى الصفحة الرئيسية",
     "notificationsAriaLabel": "الإشعارات",

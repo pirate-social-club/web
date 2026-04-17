@@ -121,25 +121,37 @@ export function LabeledTextarea({
   label,
   placeholder,
   defaultValue,
+  value,
+  onChange,
   className,
 }: {
   label: string;
   placeholder: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   className?: string;
 }) {
   return (
     <div>
       <FieldLabel label={label} />
-      <Textarea className={className} defaultValue={defaultValue} placeholder={placeholder} />
+      <Textarea
+        className={className}
+        defaultValue={value == null ? defaultValue : undefined}
+        onChange={(event) => onChange?.(event.target.value)}
+        placeholder={placeholder}
+        value={value}
+      />
     </div>
   );
 }
 
 export function EditorChrome({
   value,
+  onChange,
 }: {
   value: string;
+  onChange?: (value: string) => void;
 }) {
   const toolbar = ["B", "i", "S", "x2", "T", "link", "list", "ordered", "more"];
 
@@ -158,7 +170,8 @@ export function EditorChrome({
       </div>
       <Textarea
         className="min-h-44 rounded-none border-0 shadow-none focus-visible:ring-0"
-        defaultValue={value}
+        onChange={(event) => onChange?.(event.target.value)}
+        value={value}
       />
     </div>
   );

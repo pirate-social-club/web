@@ -56,6 +56,10 @@ export interface ProfileData {
   viewerContext: "self" | "public";
   viewerFollows?: boolean;
   canMessage?: boolean;
+  followBusy?: boolean;
+  followDisabled?: boolean;
+  followLoading?: boolean;
+  onToggleFollow?: () => void;
 }
 
 export interface ProfilePageProps {
@@ -71,4 +75,5 @@ export interface ProfilePageProps {
   scrobbles?: ProfileScrobbleItem[];
   defaultTab?: ProfilePageTab;
   className?: string;
+  onEditProfile?: () => void;
 }

@@ -55,7 +55,13 @@ function PublicProfileActionsCard({
         </IconButton>
       </div>
       <div className="flex gap-3 px-5 pb-5">
-        <Button className="flex-1" variant={profile.viewerFollows ? "secondary" : "default"}>
+        <Button
+          className="flex-1"
+          disabled={profile.followDisabled}
+          loading={profile.followBusy}
+          onClick={profile.onToggleFollow}
+          variant={profile.viewerFollows ? "secondary" : "default"}
+        >
           {profile.viewerFollows ? "Following" : "Follow"}
         </Button>
         <Button className="flex-1" disabled={!profile.canMessage} variant="secondary">

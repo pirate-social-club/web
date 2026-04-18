@@ -54,8 +54,8 @@ export interface AppSidebarSection {
 const sectionLabelClassName =
   "px-4 pb-1.5 pt-3 text-base font-normal uppercase tracking-[0.06em] text-sidebar-foreground/32 hover:no-underline";
 
-const topLevelRowClassName = "h-12 rounded-xl px-4 text-base font-medium";
-const nestedRowClassName = "h-12 rounded-xl px-4 text-base font-medium";
+const topLevelRowClassName = "h-11 rounded-xl px-3.5 text-base font-medium";
+const nestedRowClassName = "h-11 rounded-xl px-3.5 text-base font-medium";
 
 const DEFAULT_PRIMARY_ITEMS: readonly AppSidebarPrimaryItem[] = [
   { id: "home", icon: House, label: "Home" },
@@ -221,7 +221,7 @@ export function AppSidebar({
 
   return (
     <Sidebar
-      className={cn("w-[18rem] pt-0 md:top-[4.5rem]", className)}
+      className={cn("w-[15.5rem] pt-0 md:top-[4.5rem]", className)}
       collapsible="icon"
       side={resolvedSide}
       {...props}

@@ -22,15 +22,15 @@ export function ContentRailShell({
   railClassName,
 }: ContentRailShellProps) {
   return (
-    <section className={cn("mx-auto flex w-full min-w-0 max-w-[72rem] flex-col gap-5", className)}>
+    <section className={cn("mx-auto flex w-full min-w-0 max-w-[78rem] flex-col gap-5", className)}>
       {header ? <div className="min-w-0">{header}</div> : null}
-      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className={cn("min-w-0", contentClassName)}>{children}</div>
+      <div className="flex min-w-0 flex-col gap-6 xl:flex-row xl:items-start" dir="ltr">
+        <div className={cn("min-w-0 xl:flex-1", contentClassName)}>{children}</div>
         {rail ? (
-          <>
+          <div className="min-w-0 xl:w-[18rem] xl:shrink-0">
             <aside className={cn("hidden xl:block", railClassName)}>{rail}</aside>
             <div className="xl:hidden">{rail}</div>
-          </>
+          </div>
         ) : null}
       </div>
     </section>

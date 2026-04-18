@@ -64,6 +64,10 @@ function buildSidebarSections(
   messages: ShellMessages["appSidebar"],
   communities: ReturnType<typeof useKnownCommunities>,
 ): AppSidebarSection[] {
+  if (communities.length === 0) {
+    return [];
+  }
+
   return [
     {
       id: "recent",
@@ -279,10 +283,17 @@ export function PirateApp({ initialHost, initialPath }: { initialHost?: string; 
       ) : (
         <PirateAuthProvider>
           <SessionRevalidator>
-            <SidebarProvider className="flex-col" defaultOpen>
+            <SidebarProvider
+              className="flex-col"
+              defaultOpen
+              style={{
+                "--sidebar-width": "15.5rem",
+                "--sidebar-width-icon": "3.75rem",
+              } as React.CSSProperties}
+            >
               <>
                 <AppShellHeader copy={copy} route={route} />
-                <div className="flex min-h-0 w-full flex-1">
+                <div className="flex min-h-0 w-full flex-1" dir="ltr">
                   {isCommunityModerationRoute ? (
                     <main className="flex min-h-0 w-full flex-1">
                       {renderAuthenticatedRoute(route)}

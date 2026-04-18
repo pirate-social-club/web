@@ -1095,6 +1095,7 @@ export class ApiClient {
     getByUserId: (userId: string): Promise<Profile> => {
       return this.request<Profile>(
         `/profiles/${encodeURIComponent(userId)}`,
+        { tokenRequired: false },
       );
     },
 

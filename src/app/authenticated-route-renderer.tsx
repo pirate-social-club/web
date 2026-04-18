@@ -7,6 +7,7 @@ import { Gavel, Heart, LinkSimple, Lock, Plus, SealCheck, Shield } from "@phosph
 import { AppRoute, navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import {
+  clearSession,
   setSession,
   updateSessionOnboarding,
   updateSessionProfile,
@@ -22,7 +23,6 @@ import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirat
 import type { CommunityPurchase as ApiCommunityPurchase } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { GateFailureDetails as ApiGateFailureDetails } from "@pirate/api-contracts";
-import type { HomeFeedCommunitySummary as ApiHomeFeedCommunitySummary } from "@pirate/api-contracts";
 import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
@@ -113,7 +113,7 @@ import { rememberKnownCommunity, useKnownCommunities } from "@/lib/known-communi
 import { useUiLocale } from "@/lib/ui-locale";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { resolveLocaleLanguageTag, SUPPORTED_UI_LOCALES, type UiLocaleCode } from "@/lib/ui-locale-core";
-import { buildPublicProfilePathForProfile } from "@/lib/profile-routing";
+import { buildPublicProfilePathForProfile, getProfileHandleLabel } from "@/lib/profile-routing";
 import { getLocaleMessages } from "@/locales";
 import {
   getGateFailureMessage,
@@ -587,7 +587,6 @@ function HomePage() {
       : [...navigator.languages, navigator.language].filter(Boolean),
   }), [preferredUiLocale]);
   const [activeSort, setActiveSort] = React.useState<FeedSort>("best");
-  const [communitySummaries, setCommunitySummaries] = React.useState<ApiHomeFeedCommunitySummary[]>([]);
   const [feedEntries, setFeedEntries] = React.useState<ApiHomeFeedItem[]>([]);
   const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
   const [listingsByAssetId, setListingsByAssetId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
@@ -607,13 +606,13 @@ function HomePage() {
         sort: activeSort,
       })
       .then(async (result) => {
-        const nextCommunitySummaries = result.top_communities;
         const nextFeedEntries = result.items;
         const nextAuthorProfiles = await loadProfilesByUserId(
           api,
           nextFeedEntries
             .map((entry) => entry.post.post.identity_mode === "public" ? entry.post.post.author_user_id : null)
             .filter((userId): userId is string => Boolean(userId)),
+          session?.profile ? { [session.user.user_id]: session.profile } : {},
         );
         const songCommunityIds = [...new Set(
           nextFeedEntries
@@ -634,7 +633,6 @@ function HomePage() {
 
         if (cancelled) return;
 
-        setCommunitySummaries(nextCommunitySummaries);
         setFeedEntries(nextFeedEntries);
         setAuthorProfiles(nextAuthorProfiles);
         setListingsByAssetId(Object.fromEntries(
@@ -654,6 +652,15 @@ function HomePage() {
       })
       .catch((nextError: unknown) => {
         if (cancelled) return;
+        if (isApiAuthError(nextError)) {
+          clearSession();
+          setFeedEntries([]);
+          setAuthorProfiles({});
+          setListingsByAssetId({});
+          setPurchasesByAssetId({});
+          setError(null);
+          return;
+        }
         setError(nextError);
       })
       .finally(() => {
@@ -663,7 +670,7 @@ function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [activeSort, api, contentLocale]);
+  }, [activeSort, api, contentLocale, session]);
 
   const feedItems = feedEntries.map((entry) => {
     const assetId = entry.post.post.asset_id ?? undefined;
@@ -690,41 +697,7 @@ function HomePage() {
   }
 
   return (
-      <section className="flex min-w-0 flex-1 flex-col gap-6">
-      {communitySummaries.length > 0 ? (
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">Top communities</h2>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {communitySummaries.slice(0, 6).map((community) => (
-              <button
-                className="flex items-center gap-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 text-left transition-colors hover:border-border hover:bg-card/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                key={community.community_id}
-                onClick={() => navigate(`/c/${community.community_id}`)}
-                type="button"
-              >
-                <Avatar
-                  fallback={community.display_name}
-                  size="sm"
-                  src={community.avatar_ref ?? undefined}
-                />
-                <div className="min-w-0 space-y-1">
-                  <div className="truncate font-semibold text-foreground">
-                    {formatCommunityLabel(community.route_slug ?? community.display_name)}
-                  </div>
-                  {typeof community.member_count === "number" && community.member_count > 0 ? (
-                    <div className="truncate text-base text-muted-foreground">
-                      {interpolateMessage(copy.home.membersLabel, {
-                        count: community.member_count.toLocaleString("en-US"),
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
+    <section className="flex min-w-0 flex-1 flex-col gap-6">
       <Feed
         activeSort={activeSort}
         availableSorts={HOME_SORT_OPTIONS}
@@ -803,11 +776,14 @@ function YourCommunitiesPage() {
 
 function CreatePostPage({ communityId }: { communityId: string }) {
   const api = useApi();
+  const session = useSession();
   const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
   const [pricingPolicy, setPricingPolicy] = React.useState<ApiCommunityPricingPolicy | null>(null);
   const [loadError, setLoadError] = React.useState<unknown>(null);
   const [composerMode, setComposerMode] = React.useState<ComposerTab>("text");
+  const [identityMode, setIdentityMode] = React.useState<"public" | "anonymous">("public");
+  const [selectedQualifierIds, setSelectedQualifierIds] = React.useState<string[]>([]);
   const [title, setTitle] = React.useState("");
   const [body, setBody] = React.useState("");
   const [linkUrl, setLinkUrl] = React.useState("");
@@ -944,6 +920,36 @@ function CreatePostPage({ communityId }: { communityId: string }) {
     }));
   }, [pricingPolicy?.regional_pricing_enabled]);
 
+  const availableIdentityQualifiers = React.useMemo(
+    () => (community?.allowed_disclosed_qualifiers ?? []).map((qualifierId) => ({
+      qualifierId,
+      label: formatQualifierLabel(qualifierId),
+    })),
+    [community?.allowed_disclosed_qualifiers],
+  );
+
+  React.useEffect(() => {
+    if (!community?.allow_anonymous_identity) {
+      setIdentityMode("public");
+    }
+  }, [community?.allow_anonymous_identity]);
+
+  React.useEffect(() => {
+    if (composerMode === "song") {
+      setIdentityMode("public");
+    }
+  }, [composerMode]);
+
+  React.useEffect(() => {
+    if (!availableIdentityQualifiers.length) {
+      setSelectedQualifierIds([]);
+      return;
+    }
+
+    const allowedQualifierIds = new Set(availableIdentityQualifiers.map((qualifier) => qualifier.qualifierId));
+    setSelectedQualifierIds((current) => current.filter((qualifierId) => allowedQualifierIds.has(qualifierId)));
+  }, [availableIdentityQualifiers]);
+
   const canSubmitText = title.trim().length > 0 && body.trim().length > 0;
   const canSubmitSong = Boolean(songState.primaryAudioUpload && lyrics.trim());
   const canSubmitLink = title.trim().length > 0 && linkUrl.trim().length > 0;
@@ -1034,6 +1040,15 @@ function CreatePostPage({ communityId }: { communityId: string }) {
     setSubmitError(null);
     try {
       let result: ApiCreatedPost;
+      const resolvedIdentityMode = composerMode === "song" || !community.allow_anonymous_identity
+        ? "public"
+        : identityMode;
+      const anonymousScope = resolvedIdentityMode === "anonymous"
+        ? (community.anonymous_identity_scope ?? "community_stable")
+        : undefined;
+      const disclosedQualifierIds = resolvedIdentityMode === "anonymous" && selectedQualifierIds.length > 0
+        ? selectedQualifierIds
+        : undefined;
       const isLockedSong = composerMode === "song" && paidSongPriceUsd != null;
 
       if (composerMode === "song") {
@@ -1147,7 +1162,9 @@ function CreatePostPage({ communityId }: { communityId: string }) {
         result = await api.communities.createPost(communityId, {
           idempotency_key: crypto.randomUUID(),
           post_type: "link",
-          identity_mode: "public",
+          identity_mode: resolvedIdentityMode,
+          anonymous_scope: anonymousScope,
+          disclosed_qualifier_ids: disclosedQualifierIds,
           translation_policy: "machine_allowed",
           title: title.trim(),
           link_url: linkUrl.trim(),
@@ -1157,7 +1174,9 @@ function CreatePostPage({ communityId }: { communityId: string }) {
         result = await api.communities.createPost(communityId, {
           idempotency_key: crypto.randomUUID(),
           post_type: "text",
-          identity_mode: "public",
+          identity_mode: resolvedIdentityMode,
+          anonymous_scope: anonymousScope,
+          disclosed_qualifier_ids: disclosedQualifierIds,
           translation_policy: "machine_allowed",
           title: title.trim(),
           body: body.trim(),
@@ -1200,8 +1219,10 @@ function CreatePostPage({ communityId }: { communityId: string }) {
     monetizationState.regionalPricingEnabled,
     monetizationState.rightsAttested,
     monetizationState.visible,
+    identityMode,
     paidSongPriceUsd,
     title,
+    selectedQualifierIds,
     uploadSongArtifact,
   ]);
 
@@ -1285,13 +1306,26 @@ function CreatePostPage({ communityId }: { communityId: string }) {
           onLyricsValueChange={setLyrics}
           onModeChange={setComposerMode}
           onMonetizationChange={setMonetizationState}
+          onIdentityModeChange={setIdentityMode}
           onDerivativeStepChange={setDerivativeStep}
+          onSelectedQualifierIdsChange={setSelectedQualifierIds}
           onSongChange={setSongState}
           onSongModeChange={setSongMode}
           onSubmit={() => void handleSubmit()}
           onTextBodyValueChange={setBody}
           onTitleValueChange={setTitle}
           monetization={monetizationState}
+          identity={community
+            ? {
+              allowAnonymousIdentity: community.allow_anonymous_identity,
+              allowQualifiersOnAnonymousPosts: community.allow_qualifiers_on_anonymous_posts ?? true,
+              identityMode,
+              publicHandle: resolvePublicIdentityLabel(session?.profile) ?? "@handle",
+              anonymousLabel: resolveAnonymousComposerLabel(community.anonymous_identity_scope),
+              availableQualifiers: availableIdentityQualifiers,
+              selectedQualifierIds,
+            }
+            : undefined}
           derivativeStep={derivativeStep}
           song={songState}
           songMode={songMode}
@@ -1330,6 +1364,94 @@ function formatRelativeTimestamp(isoString: string): string {
     day: "numeric",
     month: "short",
   });
+}
+
+function formatQualifierLabel(qualifierTemplateId: string): string {
+  const trimmed = qualifierTemplateId.trim();
+  if (!trimmed) return "Qualifier";
+
+  const normalized = trimmed
+    .replace(/^qlf_/iu, "")
+    .replace(/^vc_/iu, "")
+    .replace(/^proof_/iu, "");
+
+  if (normalized === "age_over_18") return "18+";
+  if (normalized === "unique_human") return "Unique Human";
+  if (normalized === "sanctions_clear") return "Sanctions Clear";
+
+  return normalized
+    .split(/[_-]+/u)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function resolveAnonymousComposerLabel(
+  scope: ApiCommunity["anonymous_identity_scope"] | undefined | null,
+): string {
+  switch (scope) {
+    case "thread_stable":
+      return "anon_thread";
+    case "post_ephemeral":
+      return "anon_post";
+    case "community_stable":
+    default:
+      return "anon_community";
+  }
+}
+
+function resolvePublicIdentityLabel(
+  profile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
+): string | null {
+  if (!profile?.global_handle?.label) {
+    return null;
+  }
+
+  return getProfileHandleLabel(profile);
+}
+
+function resolvePublicAuthorFallback(
+  authorUserId?: string | null,
+  authorProfile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
+): string {
+  return resolvePublicIdentityLabel(authorProfile)
+    ?? (authorUserId ? authorUserId.slice(0, 8) : "Pirate user");
+}
+
+function resolvePostAuthorLabel(
+  post: Pick<ApiPost["post"], "agent_display_name_snapshot" | "anonymous_label" | "author_user_id" | "identity_mode">,
+  authorProfile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
+): string {
+  if (post.identity_mode === "anonymous") {
+    return post.anonymous_label ?? "anon";
+  }
+
+  return post.agent_display_name_snapshot
+    ? post.agent_display_name_snapshot
+    : resolvePublicAuthorFallback(post.author_user_id, authorProfile);
+}
+
+function resolveCommentAuthorLabel(
+  comment: Pick<ApiCommentListItem["comment"], "anonymous_label" | "author_user_id" | "identity_mode">,
+  authorProfile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
+): string {
+  if (comment.identity_mode === "anonymous") {
+    return comment.anonymous_label ?? "anon";
+  }
+
+  return resolvePublicAuthorFallback(comment.author_user_id, authorProfile);
+}
+
+function resolvePostQualifierLabels(postResponse: ApiPost): string[] | undefined {
+  const disclosedQualifierLabels = postResponse.post.disclosed_qualifiers_json
+    ?.map((qualifier) => qualifier.rendered_label?.trim())
+    .filter((label): label is string => Boolean(label));
+
+  if (disclosedQualifierLabels?.length) {
+    return disclosedQualifierLabels;
+  }
+
+  return postResponse.label?.label ? [postResponse.label.label] : undefined;
 }
 
 function toViewerVote(value: ApiPost["viewer_vote"]): PostCardProps["engagement"]["viewerVote"] {
@@ -1531,17 +1653,7 @@ export function toCommunityFeedItem(
 ): FeedItem {
   const { post } = postResponse;
   const authorProfile = post.author_user_id ? authorProfiles[post.author_user_id] : undefined;
-  const authorLabel = post.identity_mode === "anonymous"
-    ? post.anonymous_label ?? "anon"
-    : post.agent_display_name_snapshot
-      ? post.agent_display_name_snapshot
-      : authorProfile?.display_name?.trim()
-        ? authorProfile.display_name.trim()
-        : authorProfile?.global_handle?.label
-            ? `u/${authorProfile.primary_public_handle?.label ?? authorProfile.global_handle.label}`
-          : post.author_user_id
-            ? `u/${post.author_user_id.slice(0, 8)}`
-            : "Pirate user";
+  const authorLabel = resolvePostAuthorLabel(post, authorProfile);
 
   return {
     id: post.post_id,
@@ -1566,7 +1678,7 @@ export function toCommunityFeedItem(
       },
       identityPresentation: post.identity_mode === "anonymous" ? "anonymous_primary" : "author_primary",
       postHref: `/p/${post.post_id}`,
-      qualifierLabels: postResponse.label?.label ? [postResponse.label.label] : undefined,
+      qualifierLabels: resolvePostQualifierLabels(postResponse),
       title: postResponse.translated_title ?? post.title ?? undefined,
       titleDir: postResponse.translation_state === "ready"
         ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
@@ -1588,17 +1700,7 @@ export function toHomeFeedItem(
   const { community, post: postResponse } = entry;
   const { post } = postResponse;
   const authorProfile = post.author_user_id ? authorProfiles[post.author_user_id] ?? undefined : undefined;
-  const authorLabel = post.identity_mode === "anonymous"
-    ? post.anonymous_label ?? "anon"
-    : post.agent_display_name_snapshot
-      ? post.agent_display_name_snapshot
-      : authorProfile?.display_name?.trim()
-        ? authorProfile.display_name.trim()
-        : authorProfile?.global_handle?.label
-          ? `u/${authorProfile.primary_public_handle?.label ?? authorProfile.global_handle.label}`
-          : post.author_user_id
-            ? `u/${post.author_user_id.slice(0, 8)}`
-            : "Pirate user";
+  const authorLabel = resolvePostAuthorLabel(post, authorProfile);
 
   return {
     id: post.post_id,
@@ -1630,7 +1732,7 @@ export function toHomeFeedItem(
         ? "anonymous_primary"
         : "author_with_community",
       postHref: `/p/${post.post_id}`,
-      qualifierLabels: postResponse.label?.label ? [postResponse.label.label] : undefined,
+      qualifierLabels: resolvePostQualifierLabels(postResponse),
       title: postResponse.translated_title ?? post.title ?? undefined,
       titleDir: postResponse.translation_state === "ready"
         ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
@@ -1654,17 +1756,7 @@ function toThreadPostCard(
   },
 ): PostCardProps {
   const { post } = postResponse;
-  const authorLabel = post.identity_mode === "anonymous"
-    ? post.anonymous_label ?? "anon"
-    : post.agent_display_name_snapshot
-      ? post.agent_display_name_snapshot
-      : authorProfile?.display_name?.trim()
-        ? authorProfile.display_name.trim()
-        : authorProfile?.global_handle?.label
-          ? `u/${authorProfile.primary_public_handle?.label ?? authorProfile.global_handle.label}`
-          : post.author_user_id
-            ? `u/${post.author_user_id.slice(0, 8)}`
-            : "Pirate user";
+  const authorLabel = resolvePostAuthorLabel(post, authorProfile);
 
   return {
     byline: {
@@ -1696,7 +1788,7 @@ function toThreadPostCard(
       ? "anonymous_primary"
       : "author_with_community",
     postHref: `/p/${post.post_id}`,
-    qualifierLabels: postResponse.label?.label ? [postResponse.label.label] : undefined,
+    qualifierLabels: resolvePostQualifierLabels(postResponse),
     title: opts?.preferOriginalText
       ? post.title ?? undefined
       : postResponse.translated_title ?? post.title ?? undefined,
@@ -1871,15 +1963,7 @@ function toThreadComment(
 ): PostThreadComment {
   const { comment } = item;
   const authorProfile = comment.author_user_id ? authorProfiles[comment.author_user_id] : null;
-  const authorLabel = comment.identity_mode === "anonymous"
-    ? comment.anonymous_label ?? "anon"
-    : authorProfile?.display_name?.trim()
-      ? authorProfile.display_name.trim()
-      : authorProfile?.global_handle?.label
-        ? `u/${authorProfile.primary_public_handle?.label ?? authorProfile.global_handle.label}`
-        : comment.author_user_id
-          ? `u/${comment.author_user_id.slice(0, 8)}`
-          : "Pirate user";
+  const authorLabel = resolveCommentAuthorLabel(comment, authorProfile);
   const defaultBody = item.translated_body ?? comment.body ?? "";
   const originalBody = item.translation_state === "ready"
     && item.translated_body
@@ -2245,6 +2329,7 @@ function getCommunityOpenAIModerationSettingsState(community: ApiCommunity) {
 
 function useCommunityPageData(communityId: string, contentLocale: string, activeSort: FeedSort) {
   const api = useApi();
+  const session = useSession();
   const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
   const [preview, setPreview] = React.useState<ApiCommunityPreview | null>(null);
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
@@ -2272,11 +2357,14 @@ function useCommunityPageData(communityId: string, contentLocale: string, active
               .filter((userId): userId is string => typeof userId === "string" && userId.length > 0),
           ),
         );
+        const profileFallbacks = session?.profile
+          ? { [session.user.user_id]: session.profile }
+          : {};
 
         const profileEntries = await Promise.all(
           uniqueAuthorIds.map(async (userId) => {
             try {
-              return [userId, await api.profiles.getByUserId(userId)] as const;
+              return [userId, profileFallbacks[userId] ?? await api.profiles.getByUserId(userId)] as const;
             } catch {
               return [userId, undefined] as const;
             }
@@ -2299,7 +2387,7 @@ function useCommunityPageData(communityId: string, contentLocale: string, active
       });
 
     return () => { cancelled = true; };
-  }, [activeSort, api, communityId, contentLocale]);
+  }, [activeSort, api, communityId, contentLocale, session]);
 
   React.useEffect(() => {
     if (!community) return;
@@ -3503,11 +3591,13 @@ function CommunityModerationPage({
 async function loadProfilesByUserId(
   api: ReturnType<typeof useApi>,
   userIds: readonly string[],
+  fallbackProfilesByUserId: Record<string, ApiProfile | null | undefined> = {},
 ): Promise<Record<string, ApiProfile | null>> {
   const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
   const profileEntries = await Promise.all(uniqueUserIds.map(async (userId) => [
     userId,
-    await api.profiles.getByUserId(userId).catch(() => null),
+    fallbackProfilesByUserId[userId]
+      ?? await api.profiles.getByUserId(userId).catch(() => null),
   ] as const));
 
   return Object.fromEntries(profileEntries);
@@ -3530,6 +3620,7 @@ function usePost(
   },
 ) {
   const api = useApi();
+  const session = useSession();
   const [post, setPost] = React.useState<ApiPost | null>(null);
   const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
   const [authorProfile, setAuthorProfile] = React.useState<ApiProfile | null>(null);
@@ -3543,13 +3634,14 @@ function usePost(
     const nextAuthorProfilesByUserId = await loadProfilesByUserId(
       api,
       collectThreadCommentAuthorUserIds(nextCommentNodes),
+      session?.profile ? { [session.user.user_id]: session.profile } : {},
     );
 
     return {
       authorProfilesByUserId: nextAuthorProfilesByUserId,
       commentNodes: nextCommentNodes,
     };
-  }, [api, canMutate, locale, postId]);
+  }, [api, canMutate, locale, postId, session]);
 
   const refreshTopLevelComments = React.useCallback(async (communityId: string) => {
     const nextThreadState = await loadTopLevelComments(communityId);
@@ -3588,7 +3680,11 @@ function usePost(
           locale,
           sort: "best",
         });
-      const nextProfiles = await loadProfilesByUserId(api, collectCommentAuthorUserIds(repliesPage.items));
+      const nextProfiles = await loadProfilesByUserId(
+        api,
+        collectCommentAuthorUserIds(repliesPage.items),
+        session?.profile ? { [session.user.user_id]: session.profile } : {},
+      );
       setAuthorProfilesByUserId((current) => ({
         ...current,
         ...nextProfiles,
@@ -3608,7 +3704,7 @@ function usePost(
       })));
       toast.error(getErrorMessage(nextError, "Could not load replies."));
     }
-  }, [api, canMutate, commentNodes, locale]);
+  }, [api, canMutate, commentNodes, locale, session]);
 
   const createTopLevelComment = React.useCallback(async (body: string) => {
     if (!canMutate || !post) {
@@ -3637,7 +3733,7 @@ function usePost(
       const nextProfiles = await loadProfilesByUserId(api, [
         ...collectCommentAuthorUserIds([context.comment]),
         ...collectCommentAuthorUserIds(context.replies),
-      ]);
+      ], session?.profile ? { [session.user.user_id]: session.profile } : {});
 
       setAuthorProfilesByUserId((current) => ({
         ...current,
@@ -3655,7 +3751,7 @@ function usePost(
       toast.error(getErrorMessage(nextError, "Could not post this reply."));
       throw nextError;
     }
-  }, [api, canMutate, locale]);
+  }, [api, canMutate, locale, session]);
 
   const voteOnComment = React.useCallback(async (commentId: string, direction: "up" | "down") => {
     if (!canMutate) {
@@ -3724,7 +3820,7 @@ function usePost(
         ]);
         const authorProfilesByUserId = await loadProfilesByUserId(api, [
           ...(p.post.identity_mode === "public" && p.post.author_user_id ? [p.post.author_user_id] : []),
-        ]);
+        ], session?.profile ? { [session.user.user_id]: session.profile } : {});
         if (cancelled) return;
         setPost(p);
         setCommunity(communityResult);
@@ -3748,7 +3844,7 @@ function usePost(
       });
 
     return () => { cancelled = true; };
-  }, [api, canMutate, loadTopLevelComments, locale, postId]);
+  }, [api, canMutate, loadTopLevelComments, locale, postId, session]);
 
   const comments = React.useMemo(
     () => commentNodes.map((node) => mapThreadCommentNode(

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { HomeFeedItem } from "@pirate/api-contracts";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
+import type { Profile } from "@pirate/api-contracts";
 
 import { toHomeFeedItem } from "@/app/authenticated-route-renderer";
 
@@ -81,5 +82,101 @@ describe("toHomeFeedItem", () => {
     expect(item.post.byline?.community?.label).toBe("c/alpha");
     expect(item.post.engagement?.commentCount).toBe(5);
     expect(item.post.engagement?.score).toBe(9);
+  });
+
+  test("prefers disclosed qualifier snapshots over the label badge", () => {
+    const entry = createEntry();
+    entry.post.post.disclosed_qualifiers_json = [
+      {
+        qualifier_kind: "verification_capability",
+        qualifier_source: "community_post",
+        qualifier_template_id: "unique_human",
+        redundancy_key: null,
+        rendered_label: "Unique Human",
+        sensitivity_level: null,
+      },
+      {
+        qualifier_kind: "verification_capability",
+        qualifier_source: "community_post",
+        qualifier_template_id: "age_over_18",
+        redundancy_key: null,
+        rendered_label: "18+",
+        sensitivity_level: null,
+      },
+    ];
+    entry.post.label = { label: "Legacy Label", label_id: "lbl_legacy", status: "active" };
+
+    const item = toHomeFeedItem(entry, {});
+
+    expect(item.post.qualifierLabels).toEqual(["Unique Human", "18+"]);
+  });
+
+  test("uses hydrated public handles before raw user id fallback", () => {
+    const entry = createEntry();
+    const authorProfile: Profile = {
+      avatar_ref: null,
+      bio: null,
+      cover_ref: null,
+      created_at: "2026-04-18T10:00:00.000Z",
+      display_name: "Blackbeard",
+      global_handle: {
+        free_rename_consumed: false,
+        global_handle_id: "ghl_blackbeard",
+        issuance_source: "generated_signup",
+        issued_at: "2026-04-18T10:00:00.000Z",
+        label: "sable-harbor-4143.pirate",
+        replaced_at: null,
+        status: "active",
+        tier: "generated",
+      },
+      linked_handles: null,
+      preferred_locale: null,
+      primary_public_handle: null,
+      primary_wallet_address: null,
+      updated_at: "2026-04-18T10:00:00.000Z",
+      user_id: "usr_author",
+      verification_capabilities: null,
+    };
+
+    const item = toHomeFeedItem(entry, { usr_author: authorProfile });
+
+    expect(item.post.byline?.author?.label).toBe("sable-harbor-4143.pirate");
+  });
+
+  test("prefers the primary public handle when one is selected", () => {
+    const entry = createEntry();
+    const authorProfile: Profile = {
+      avatar_ref: null,
+      bio: null,
+      cover_ref: null,
+      created_at: "2026-04-18T10:00:00.000Z",
+      display_name: "Blackbeard",
+      global_handle: {
+        free_rename_consumed: false,
+        global_handle_id: "ghl_blackbeard",
+        issuance_source: "generated_signup",
+        issued_at: "2026-04-18T10:00:00.000Z",
+        label: "sable-harbor-4143.pirate",
+        replaced_at: null,
+        status: "active",
+        tier: "generated",
+      },
+      linked_handles: null,
+      preferred_locale: null,
+      primary_public_handle: {
+        kind: "ens",
+        label: "blackbeard.eth",
+        linked_handle_id: "lnk_blackbeard_ens",
+        verification_state: "verified",
+      },
+      primary_wallet_address: null,
+      updated_at: "2026-04-18T10:00:00.000Z",
+      user_id: "usr_author",
+      verification_capabilities: null,
+    };
+
+    const item = toHomeFeedItem(entry, { usr_author: authorProfile });
+
+    expect(item.post.byline?.author?.label).toBe("blackbeard.eth");
   });
 });

@@ -81,8 +81,8 @@ export const RightsRemix: Story = {
   ),
 };
 
-export const MonetizedDonationFlow: Story = {
-  name: "Monetized Donation",
+export const PaidUnlock: Story = {
+  name: "Paid Unlock",
   render: () => (
     <PostComposer
       {...baseComposer}
@@ -99,40 +99,35 @@ export const MonetizedDonationFlow: Story = {
       }}
       monetization={{
         visible: true,
-        license: "commercial_remix",
-        revenueSharePct: 15,
         priceUsd: "3.99",
-        openEdition: false,
-        maxSupply: "500",
-        donationAvailable: true,
-        donationOptIn: true,
-        donationPartnerId: "musicares",
-        donationPartnerName: "MusiCares",
-        donationSharePct: 10,
         rightsAttested: true,
       }}
     />
   ),
 };
 
-export const NonCommercialSong: Story = {
-  name: "Non-Commercial",
+export const PaidUnlockRegionalPricing: Story = {
+  name: "Paid Unlock Regional Pricing",
   render: () => (
     <PostComposer
       {...baseComposer}
       mode="song"
       canCreateSongPost
-      titleValue="Lo-fi beats for studying"
-      titleCountLabel="28/300"
-      lyricsValue="Rain on the window / pages turning slowly..."
+      titleValue="Benefit single for the club drop"
+      titleCountLabel="36/300"
+      lyricsValue="Raise the room up / hold the line / send the chorus over..."
       song={{
-        genre: "Ambient",
+        genre: "R&B",
         primaryLanguage: "English",
-        coverLabel: "lofi-beats-cover.png",
+        secondaryLanguage: "French",
+        coverLabel: "benefit-single-cover.png",
       }}
       monetization={{
         visible: true,
-        license: "non_commercial",
+        priceUsd: "3.99",
+        regionalPricingAvailable: true,
+        regionalPricingEnabled: true,
+        rightsAttested: true,
       }}
     />
   ),

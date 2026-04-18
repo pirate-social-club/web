@@ -19,7 +19,6 @@ import type {
   LiveRoomKind,
   LiveVisibility,
   SongComposerState,
-  SongLicense,
 } from "./post-composer.types";
 
 export const tabMeta: Record<ComposerTab, { label: string; icon: React.ReactNode }> = {
@@ -70,28 +69,6 @@ export const songLanguageOptions = [
   "Portuguese",
 ] as const;
 
-export const licenseOptions: {
-  value: SongLicense;
-  label: string;
-  description: string;
-}[] = [
-  {
-    value: "non_commercial",
-    label: "Non-commercial only",
-    description: "Private listening and sharing. No commercial releases or paid derivatives.",
-  },
-  {
-    value: "commercial_no_remix",
-    label: "Commercial use (no remix)",
-    description: "Monetization is allowed, but downstream remix derivatives stay closed.",
-  },
-  {
-    value: "commercial_remix",
-    label: "Commercial use + remix",
-    description: "Commercial use stays open and licensed remix derivatives can flow through.",
-  },
-];
-
 export const fallbackTrackOptions: ComposerReference[] = [
   { id: "trk_01midnightwaves", title: "Midnight Waves", subtitle: "DJ Solar" },
   { id: "trk_01echoes", title: "Echoes", subtitle: "DJ Solar" },
@@ -104,23 +81,6 @@ export const fallbackSourceOptions: ComposerReference[] = [
   { id: "ast_01def", title: "After Hours", subtitle: "DJ Solar" },
   { id: "ast_01ghi", title: "Blue", subtitle: "Joni Mitchell" },
 ];
-
-export function allowsCommercialUse(license?: SongLicense) {
-  return license === "commercial_no_remix" || license === "commercial_remix";
-}
-
-export function formatLicenseLabel(license?: SongLicense) {
-  switch (license) {
-    case "non_commercial":
-      return "Non-commercial only";
-    case "commercial_no_remix":
-      return "Commercial use (no remix)";
-    case "commercial_remix":
-      return "Commercial use + remix";
-    default:
-      return "Unconfigured";
-  }
-}
 
 export function defaultSongState(song?: SongComposerState): SongComposerState {
   return {
@@ -145,26 +105,15 @@ export function defaultSongState(song?: SongComposerState): SongComposerState {
 export function defaultMonetizationState(monetization?: MonetizationState): MonetizationState {
   return {
     visible: monetization?.visible ?? false,
-    license: monetization?.license ?? "non_commercial",
-    revenueSharePct: monetization?.revenueSharePct ?? 10,
     priceLabel: monetization?.priceLabel,
     priceUsd:
       monetization?.priceUsd ??
       monetization?.priceLabel?.replace(/[^0-9.]/g, "") ??
       "1.00",
-    openEdition: monetization?.openEdition ?? true,
-    maxSupply: monetization?.maxSupply ?? "250",
-    donationAvailable: monetization?.donationAvailable ?? false,
-    donationOptIn: monetization?.donationOptIn ?? false,
-    donationPartnerId: monetization?.donationPartnerId,
-    donationPartnerName: monetization?.donationPartnerName,
-    donationSharePct: monetization?.donationSharePct ?? 10,
+    regionalPricingAvailable: monetization?.regionalPricingAvailable ?? false,
+    regionalPricingEnabled: monetization?.regionalPricingEnabled ?? false,
     rightsAttested: monetization?.rightsAttested ?? false,
   };
-}
-
-export function resolveDonationPartnerName(state: MonetizationState) {
-  return state.donationPartnerName ?? "Community partner";
 }
 
 type MonetizationState = import("./post-composer.types").MonetizationState;

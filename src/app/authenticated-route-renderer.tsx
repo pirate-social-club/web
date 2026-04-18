@@ -934,20 +934,24 @@ function CreatePostPage({ communityId }: { communityId: string }) {
   }, [community]);
 
   React.useEffect(() => {
-    if (!community) return;
     setMonetizationState((prev) => ({
       ...prev,
-      donationAvailable: community.donation_policy_mode != null && community.donation_policy_mode !== "none",
-      donationPartnerId: community.donation_partner_id ?? undefined,
-      donationPartnerName: community.donation_partner?.display_name ?? undefined,
-      donationOptIn: false,
+      regionalPricingAvailable: pricingPolicy?.regional_pricing_enabled === true,
+      regionalPricingEnabled:
+        pricingPolicy?.regional_pricing_enabled === true
+          ? prev.regionalPricingEnabled ?? false
+          : false,
     }));
-  }, [community]);
+  }, [pricingPolicy?.regional_pricing_enabled]);
 
   const canSubmitText = title.trim().length > 0 && body.trim().length > 0;
   const canSubmitSong = Boolean(songState.primaryAudioUpload && lyrics.trim());
   const canSubmitLink = title.trim().length > 0 && linkUrl.trim().length > 0;
   const canSubmit = composerMode === "song" ? canSubmitSong : composerMode === "link" ? canSubmitLink : canSubmitText;
+  const paidSongPriceUsd = composerMode === "song" && monetizationState.visible
+    ? parseUsdInput(monetizationState.priceUsd ?? monetizationState.priceLabel)
+    : null;
+  const paidSongPriceInvalid = composerMode === "song" && monetizationState.visible && paidSongPriceUsd == null;
 
   const buildMatchedSourceReferences = React.useCallback((bundle: ApiSongArtifactBundle): ComposerReference[] => {
     const moderationResult = bundle.moderation_result && typeof bundle.moderation_result === "object"
@@ -1030,12 +1034,13 @@ function CreatePostPage({ communityId }: { communityId: string }) {
     setSubmitError(null);
     try {
       let result: ApiCreatedPost;
-      const paidSongPriceUsd = composerMode === "song" && monetizationState.visible
-        ? parseUsdInput(monetizationState.priceUsd ?? monetizationState.priceLabel)
-        : null;
       const isLockedSong = composerMode === "song" && paidSongPriceUsd != null;
 
       if (composerMode === "song") {
+        if (monetizationState.visible && paidSongPriceUsd == null) {
+          throw new Error("Enter a valid unlock price before publishing this song.");
+        }
+
         if (isLockedSong && !monetizationState.rightsAttested) {
           throw new Error("Confirm you have the rights to sell this song before publishing it.");
         }
@@ -1132,7 +1137,9 @@ function CreatePostPage({ communityId }: { communityId: string }) {
           await api.communities.createListing(communityId, {
             asset_id: result.asset_id,
             price_usd: paidSongPriceUsd ?? 1,
-            regional_pricing_enabled: pricingPolicy?.regional_pricing_enabled === true,
+            regional_pricing_enabled:
+              pricingPolicy?.regional_pricing_enabled === true
+              && monetizationState.regionalPricingEnabled === true,
             status: "active",
           });
         }
@@ -1190,8 +1197,10 @@ function CreatePostPage({ communityId }: { communityId: string }) {
     songState.vocalAudioUpload,
     monetizationState.priceLabel,
     monetizationState.priceUsd,
+    monetizationState.regionalPricingEnabled,
     monetizationState.rightsAttested,
     monetizationState.visible,
+    paidSongPriceUsd,
     title,
     uploadSongArtifact,
   ]);
@@ -1275,7 +1284,7 @@ function CreatePostPage({ communityId }: { communityId: string }) {
           onLinkUrlValueChange={setLinkUrl}
           onLyricsValueChange={setLyrics}
           onModeChange={setComposerMode}
-          onMonetizationChange={(value) => setMonetizationState(value ?? defaultMonetizationState())}
+          onMonetizationChange={setMonetizationState}
           onDerivativeStepChange={setDerivativeStep}
           onSongChange={setSongState}
           onSongModeChange={setSongMode}
@@ -1287,7 +1296,7 @@ function CreatePostPage({ communityId }: { communityId: string }) {
           song={songState}
           songMode={songMode}
           submitLabel={composerMode === "song" && derivativeStep?.required ? "Publish remix" : "Post"}
-          submitDisabled={!canSubmit}
+          submitDisabled={!canSubmit || paidSongPriceInvalid}
           submitError={submitError}
           submitLoading={submitting}
           textBodyValue={body}

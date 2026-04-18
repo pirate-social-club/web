@@ -16,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/primitives/select";
-import { Scrubber } from "@/components/primitives/scrubber";
 import { Tabs, TabsList, TabsTrigger } from "@/components/primitives/tabs";
 import { cn } from "@/lib/utils";
 
@@ -37,13 +36,9 @@ import {
   noneLanguageValue,
   songGenreOptions,
   songLanguageOptions,
-  licenseOptions,
   fallbackSourceOptions,
-  allowsCommercialUse,
-  formatLicenseLabel,
   defaultSongState,
   defaultMonetizationState,
-  resolveDonationPartnerName,
 } from "./post-composer-config";
 import {
   ShellPill,
@@ -60,7 +55,7 @@ import {
   SearchReferencePicker,
   SelectedReferenceCard,
 } from "./post-composer-references";
-import { LiveTabContent, SummaryRow } from "./post-composer-live-tab";
+import { LiveTabContent } from "./post-composer-live-tab";
 import { IdentitySection, QualifierSection } from "./post-composer-identity-section";
 
 function deriveSelectedQualifierIds(
@@ -90,7 +85,7 @@ export function PostComposer({
   linkUrlValue = "",
   onLinkUrlValueChange,
   linkPreview,
-  songMode = "original",
+  songMode,
   song,
   onSongChange,
   onSongModeChange,
@@ -100,6 +95,8 @@ export function PostComposer({
   monetization,
   onMonetizationChange,
   identity,
+  onIdentityModeChange,
+  onSelectedQualifierIdsChange,
   live,
   onSubmit,
   submitDisabled = false,
@@ -112,18 +109,22 @@ export function PostComposer({
     [availableTabs, canCreateSongPost],
   );
   const [activeTab, setActiveTab] = React.useState<ComposerTab>(visibleTabs[0] ?? "text");
-  const [activeSongMode, setActiveSongMode] = React.useState(songMode);
-  const [songState, setSongState] = React.useState<SongComposerState>(defaultSongState(song));
+  const [uncontrolledSongMode, setUncontrolledSongMode] = React.useState<NonNullable<PostComposerProps["songMode"]>>(
+    songMode ?? "original",
+  );
+  const [uncontrolledSongState, setUncontrolledSongState] = React.useState<SongComposerState>(
+    () => defaultSongState(song),
+  );
   const [identityMode, setIdentityMode] = React.useState<IdentityMode>(
     identity?.identityMode ?? "public",
   );
   const [selectedQualifierIds, setSelectedQualifierIds] = React.useState<string[]>(
     identity ? deriveSelectedQualifierIds(identity) : [],
   );
-  const [monetizationState, setMonetizationState] = React.useState<MonetizationState>(
-    defaultMonetizationState(monetization),
+  const [uncontrolledMonetizationState, setUncontrolledMonetizationState] = React.useState<MonetizationState>(
+    () => defaultMonetizationState(monetization),
   );
-  const [derivativeState, setDerivativeState] = React.useState<DerivativeStepState | undefined>(
+  const [uncontrolledDerivativeState, setUncontrolledDerivativeState] = React.useState<DerivativeStepState | undefined>(
     derivativeStep,
   );
   const [derivativePickerKey, setDerivativePickerKey] = React.useState(0);
@@ -138,30 +139,51 @@ export function PostComposer({
     },
   );
   const [prevRoomKind, setPrevRoomKind] = React.useState<LiveRoomKind>(liveState.roomKind);
+  const activeSongMode = songMode ?? uncontrolledSongMode;
+  const songState = song ?? uncontrolledSongState;
+  const monetizationState = monetization ?? uncontrolledMonetizationState;
+  const derivativeState = derivativeStep ?? uncontrolledDerivativeState;
+
+  const setSongModeWithCallback = React.useCallback((next: NonNullable<PostComposerProps["songMode"]>) => {
+    if (songMode === undefined) {
+      setUncontrolledSongMode(next);
+    }
+    onSongModeChange?.(next);
+  }, [onSongModeChange, songMode]);
+
+  const setIdentityModeWithCallback = React.useCallback((next: IdentityMode) => {
+    setIdentityMode(next);
+    onIdentityModeChange?.(next);
+  }, [onIdentityModeChange]);
+
+  const setSelectedQualifierIdsWithCallback = React.useCallback((next: string[]) => {
+    setSelectedQualifierIds(next);
+    onSelectedQualifierIdsChange?.(next);
+  }, [onSelectedQualifierIdsChange]);
 
   const updateSongState = React.useCallback((updater: (current: SongComposerState) => SongComposerState) => {
-    setSongState((current) => {
-      const next = updater(current);
-      onSongChange?.(next);
-      return next;
-    });
-  }, [onSongChange]);
+    const next = updater(songState);
+    if (song === undefined) {
+      setUncontrolledSongState(next);
+    }
+    onSongChange?.(next);
+  }, [onSongChange, song, songState]);
 
   const updateDerivativeState = React.useCallback((updater: (current: DerivativeStepState | undefined) => DerivativeStepState | undefined) => {
-    setDerivativeState((current) => {
-      const next = updater(current);
-      onDerivativeStepChange?.(next);
-      return next;
-    });
-  }, [onDerivativeStepChange]);
+    const next = updater(derivativeState);
+    if (derivativeStep === undefined) {
+      setUncontrolledDerivativeState(next);
+    }
+    onDerivativeStepChange?.(next);
+  }, [derivativeState, derivativeStep, onDerivativeStepChange]);
 
   const updateMonetizationState = React.useCallback((updater: (current: MonetizationState) => MonetizationState) => {
-    setMonetizationState((current) => {
-      const next = updater(current);
-      onMonetizationChange?.(next);
-      return next;
-    });
-  }, [onMonetizationChange]);
+    const next = updater(monetizationState);
+    if (monetization === undefined) {
+      setUncontrolledMonetizationState(next);
+    }
+    onMonetizationChange?.(next);
+  }, [monetization, monetizationState, onMonetizationChange]);
 
   React.useEffect(() => {
     if (liveState.roomKind !== prevRoomKind) {
@@ -195,28 +217,27 @@ export function PostComposer({
   }, [mode, visibleTabs]);
 
   React.useEffect(() => {
-    setActiveSongMode(songMode);
+    setUncontrolledSongMode(songMode ?? "original");
   }, [songMode]);
 
   React.useEffect(() => {
-    setSongState(defaultSongState(song));
+    setUncontrolledSongState(defaultSongState(song));
   }, [song]);
 
   React.useEffect(() => {
-    setMonetizationState(defaultMonetizationState(monetization));
+    setUncontrolledMonetizationState(defaultMonetizationState(monetization));
   }, [monetization]);
 
   React.useEffect(() => {
-    setDerivativeState(derivativeStep);
+    setUncontrolledDerivativeState(derivativeStep);
     setDerivativePickerKey(0);
   }, [derivativeStep]);
 
   React.useEffect(() => {
     if (derivativeState?.required && activeSongMode !== "remix") {
-      setActiveSongMode("remix");
-      onSongModeChange?.("remix");
+      setSongModeWithCallback("remix");
     }
-  }, [activeSongMode, derivativeState?.required, onSongModeChange]);
+  }, [activeSongMode, derivativeState?.required, setSongModeWithCallback]);
 
   React.useEffect(() => {
     if (live) {
@@ -235,21 +256,21 @@ export function PostComposer({
 
   React.useEffect(() => {
     if (!anonymousEligibleTabs.includes(activeTab) && identityMode === "anonymous") {
-      setIdentityMode("public");
+      setIdentityModeWithCallback("public");
     }
-  }, [activeTab, identityMode]);
+  }, [activeTab, identityMode, setIdentityModeWithCallback]);
 
   React.useEffect(() => {
     if (identityMode === "anonymous" && identity?.allowQualifiersOnAnonymousPosts === false) {
-      setSelectedQualifierIds([]);
+      setSelectedQualifierIdsWithCallback([]);
     }
-  }, [identity?.allowQualifiersOnAnonymousPosts, identityMode]);
+  }, [identity?.allowQualifiersOnAnonymousPosts, identityMode, setSelectedQualifierIdsWithCallback]);
 
   React.useEffect(() => {
     if (identityMode !== "anonymous" && selectedQualifierIds.length > 0) {
-      setSelectedQualifierIds([]);
+      setSelectedQualifierIdsWithCallback([]);
     }
-  }, [identityMode, selectedQualifierIds]);
+  }, [identityMode, selectedQualifierIds, setSelectedQualifierIdsWithCallback]);
 
   const shouldShowDerivativeStep = Boolean(
     (derivativeState?.visible || (activeTab === "song" && activeSongMode === "remix")),
@@ -263,7 +284,6 @@ export function PostComposer({
       ]),
     [derivativeState?.references, derivativeState?.searchResults],
   );
-  const donationPartnerName = resolveDonationPartnerName(monetizationState);
   const liveAllocationsValid =
     liveState.performerAllocations.reduce((sum, allocation) => sum + allocation.sharePct, 0) ===
     100;
@@ -354,8 +374,7 @@ export function PostComposer({
                     if (derivativeState?.required && value === "original") {
                       return;
                     }
-                    setActiveSongMode(value);
-                    onSongModeChange?.(value);
+                    setSongModeWithCallback(value);
                   }}
                   disabled={Boolean(derivativeState?.required && value === "original")}
                   type="button"
@@ -591,14 +610,14 @@ export function PostComposer({
             <IdentitySection
               identity={identity!}
               identityMode={identityMode}
-              onIdentityModeChange={setIdentityMode}
+              onIdentityModeChange={setIdentityModeWithCallback}
             />
           ) : null}
 
           {shouldShowQualifiers ? (
             <QualifierSection
               identity={identity!}
-              onSelectedQualifierIdsChange={setSelectedQualifierIds}
+              onSelectedQualifierIdsChange={setSelectedQualifierIdsWithCallback}
               selectedQualifierIds={selectedQualifierIds}
             />
           ) : null}
@@ -657,225 +676,74 @@ export function PostComposer({
             </section>
           ) : null}
 
-          {monetizationState.visible ? (
+          {activeTab === "song" ? (
             <section className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
-              {activeTab === "song" ? (
-                <div className="space-y-3">
-                  <FormSectionHeading
-                    description="Pick the Story Protocol license path for this release before you set pricing."
-                    title="License"
-                  />
-                  <div className="grid gap-3">
-                    {licenseOptions.map((option) => (
-                      <OptionCard
-                        key={option.value}
-                        description={option.description}
-                        onClick={() =>
-                          setMonetizationState((current) => ({
-                            ...current,
-                            license: option.value,
-                          }))
-                        }
-                        selected={monetizationState.license === option.value}
-                        title={option.label}
-                      />
-                    ))}
-                  </div>
-
-                  {allowsCommercialUse(monetizationState.license) ? (
-                    <div className="rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <FormSectionHeading
-                          description="Derivative commercial revenue owed back to this track."
-                          title="Revenue share"
-                        />
-                        <span className="text-lg font-semibold text-foreground">
-                          {monetizationState.revenueSharePct ?? 0}%
-                        </span>
-                      </div>
-                      <div className="mt-4">
-                        <Scrubber
-                          showThumb
-                          onChange={(value) =>
-                            setMonetizationState((current) => ({
-                              ...current,
-                              revenueSharePct: value,
-                            }))
-                          }
-                          value={monetizationState.revenueSharePct ?? 0}
-                        />
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              <div className="space-y-3">
-                <FormSectionHeading
-                  description="Configure the paid listing surface."
-                  title="Sales"
+              <FormSectionHeading title="Access" />
+              <div className="grid gap-3 md:grid-cols-2">
+                <OptionCard
+                  description="Anyone can play the full track."
+                  onClick={() =>
+                    updateMonetizationState((current) => ({
+                      ...current,
+                      visible: false,
+                      regionalPricingEnabled: false,
+                    }))
+                  }
+                  selected={!monetizationState.visible}
+                  title="Public"
                 />
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <FieldLabel label="Unlock price (USD)" />
-                    <Input
-                      className="h-12"
-                      inputMode="decimal"
-                      onChange={(event) =>
-                        setMonetizationState((current) => ({
-                          ...current,
-                          priceUsd: event.target.value,
-                        }))
-                      }
-                      placeholder="1.00"
-                      value={monetizationState.priceUsd ?? ""}
-                    />
-                  </div>
-
-                  <div className="rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-3">
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        checked={monetizationState.openEdition}
-                        className="mt-0.5"
-                        id="open-edition"
-                        onCheckedChange={(next) =>
-                          setMonetizationState((current) => ({
-                            ...current,
-                            openEdition: next === true,
-                          }))
-                        }
-                      />
-                      <div className="space-y-1">
-                        <Label htmlFor="open-edition">Open edition</Label>
-                        <FormNote>Leave supply uncapped for this release.</FormNote>
-                      </div>
-                    </div>
-                    {!monetizationState.openEdition ? (
-                      <div className="mt-3">
-                        <FieldLabel label="Max supply" />
-                        <Input
-                          className="h-12"
-                          inputMode="numeric"
-                          onChange={(event) =>
-                            setMonetizationState((current) => ({
-                              ...current,
-                              maxSupply: event.target.value,
-                            }))
-                          }
-                          placeholder="250"
-                          value={monetizationState.maxSupply ?? ""}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
+                <OptionCard
+                  description="Preview in feed. Full track unlocks after purchase."
+                  onClick={() =>
+                    updateMonetizationState((current) => ({
+                      ...current,
+                      visible: true,
+                    }))
+                  }
+                  selected={monetizationState.visible}
+                  title="Paid unlock"
+                />
               </div>
 
-              {monetizationState.donationAvailable ? (
-                <div className="space-y-3">
-                  <FormSectionHeading
-                    description="Donation remains creator-side and only applies when this listing is paid."
-                    title="Donation"
-                  />
-
-                  <div className="rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4">
-                    <div className="flex items-center justify-between gap-4 border-b border-border-soft pb-4">
-                      <FieldLabel label="Community partner" />
-                      <span className="text-base font-medium text-foreground">{donationPartnerName}</span>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        checked={monetizationState.donationOptIn}
-                        className="mt-4"
-                        id="donation-opt-in"
-                        onCheckedChange={(next) =>
-                          setMonetizationState((current) => ({
+              {monetizationState.visible ? (
+                <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <FieldLabel label="Unlock price (USD)" />
+                      <Input
+                        className="h-12"
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          updateMonetizationState((current) => ({
                             ...current,
-                            donationOptIn: next === true,
+                            priceUsd: event.target.value,
                           }))
                         }
+                        placeholder="1.00"
+                        value={monetizationState.priceUsd ?? ""}
                       />
-                      <div className="space-y-1 pt-3">
-                        <Label htmlFor="donation-opt-in">
-                          Donate part of your proceeds to {donationPartnerName}
-                        </Label>
-                      </div>
                     </div>
 
-                    {monetizationState.donationOptIn ? (
-                      <div className="mt-4 space-y-3">
-                        <div className="flex items-center justify-between gap-4">
-                          <FieldLabel label="Donation share" />
-                          <span className="text-lg font-semibold text-foreground">
-                            {monetizationState.donationSharePct ?? 0}%
-                          </span>
+                    {monetizationState.regionalPricingAvailable ? (
+                      <div className="rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3">
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={monetizationState.regionalPricingEnabled}
+                            className="mt-0.5"
+                            id="regional-pricing"
+                            onCheckedChange={(next) =>
+                              updateMonetizationState((current) => ({
+                                ...current,
+                                regionalPricingEnabled: next === true,
+                              }))
+                            }
+                          />
+                          <div className="space-y-1">
+                            <Label htmlFor="regional-pricing">Use community regional pricing</Label>
+                          </div>
                         </div>
-                        <Scrubber
-                          max={50}
-                          onChange={(value) =>
-                            setMonetizationState((current) => ({
-                              ...current,
-                              donationSharePct: value,
-                            }))
-                          }
-                          showThumb
-                          value={Math.min(50, Math.max(1, monetizationState.donationSharePct ?? 10))}
-                        />
                       </div>
                     ) : null}
-                  </div>
-                </div>
-              ) : null}
-
-              {activeTab === "song" ? (
-                <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4">
-                  <FormSectionHeading
-                    description="Review the release configuration before posting."
-                    title="Review"
-                  />
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <SummaryRow label="Title" value={titleValue || "Untitled"} />
-                    <SummaryRow label="Genre" value={songState.genre ?? "Unconfigured"} />
-                    <SummaryRow
-                      label="Languages"
-                      value={
-                        songState.secondaryLanguage
-                          ? `${songState.primaryLanguage ?? "English"} + ${songState.secondaryLanguage}`
-                          : (songState.primaryLanguage ?? "English")
-                      }
-                    />
-                    <SummaryRow
-                      label="License"
-                      value={formatLicenseLabel(monetizationState.license)}
-                    />
-                    {allowsCommercialUse(monetizationState.license) ? (
-                      <SummaryRow
-                        label="Revenue share"
-                        value={`${monetizationState.revenueSharePct ?? 0}%`}
-                      />
-                    ) : null}
-                    <SummaryRow
-                      label="Donation"
-                      value={
-                        monetizationState.donationOptIn
-                          ? `${monetizationState.donationSharePct ?? 0}% to ${donationPartnerName}`
-                          : "Off"
-                      }
-                    />
-                    <SummaryRow
-                      label="Price"
-                      value={
-                        monetizationState.priceUsd ? `$${monetizationState.priceUsd}` : "Unconfigured"
-                      }
-                    />
-                    <SummaryRow
-                      label="Supply"
-                      value={
-                        monetizationState.openEdition
-                          ? "Open edition"
-                          : `${monetizationState.maxSupply || "Unconfigured"} copies`
-                      }
-                    />
                   </div>
 
                   <div className="flex items-start gap-3 border-t border-border-soft pt-4">
@@ -884,7 +752,7 @@ export function PostComposer({
                       className="mt-0.5"
                       id="rights-attested"
                       onCheckedChange={(next) =>
-                        setMonetizationState((current) => ({
+                        updateMonetizationState((current) => ({
                           ...current,
                           rightsAttested: next === true,
                         }))

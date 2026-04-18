@@ -8,8 +8,6 @@ export interface CommunityPickerItem {
 
 export type SongMode = "original" | "remix";
 
-export type SongLicense = "non_commercial" | "commercial_no_remix" | "commercial_remix";
-
 export type LiveRoomKind = "solo" | "duet";
 
 export type LiveAccessMode = "free" | "gated" | "paid";
@@ -26,7 +24,7 @@ export interface LivePerformerAllocation {
 
 export type DerivativeTrigger = "remix" | "declaration" | "analysis";
 
-export type AnonymousIdentityScope = "club_stable" | "thread_stable" | "post_ephemeral";
+export type AnonymousIdentityScope = "community_stable" | "thread_stable" | "post_ephemeral";
 
 export type IdentityMode = "public" | "anonymous";
 
@@ -111,17 +109,10 @@ export interface SongComposerState {
 
 export interface MonetizationState {
   visible: boolean;
-  license?: SongLicense;
-  revenueSharePct?: number;
   priceLabel?: string;
   priceUsd?: string;
-  openEdition?: boolean;
-  maxSupply?: string;
-  donationAvailable?: boolean;
-  donationOptIn?: boolean;
-  donationPartnerId?: string;
-  donationPartnerName?: string;
-  donationSharePct?: number;
+  regionalPricingAvailable?: boolean;
+  regionalPricingEnabled?: boolean;
   rightsAttested?: boolean;
 }
 
@@ -167,8 +158,10 @@ export interface PostComposerProps {
   derivativeStep?: DerivativeStepState;
   onDerivativeStepChange?: (value: DerivativeStepState | undefined) => void;
   monetization?: MonetizationState;
-  onMonetizationChange?: (value: MonetizationState | undefined) => void;
+  onMonetizationChange?: (value: MonetizationState) => void;
   identity?: ComposerIdentityState;
+  onIdentityModeChange?: (value: IdentityMode) => void;
+  onSelectedQualifierIdsChange?: (value: string[]) => void;
   live?: LiveComposerState;
   onSubmit?: () => void;
   submitDisabled?: boolean;

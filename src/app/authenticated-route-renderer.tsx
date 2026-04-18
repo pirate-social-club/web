@@ -582,7 +582,7 @@ const YOUR_COMMUNITIES_SORT_OPTIONS: FeedSortOption[] = [
   { value: "top", label: "Top" },
 ];
 
-const COMMUNITY_SORT_OPTIONS: FeedSortOption[] = [
+export const COMMUNITY_SORT_OPTIONS: FeedSortOption[] = [
   { value: "best", label: "Best" },
   { value: "new", label: "New" },
   { value: "top", label: "Top" },
@@ -621,6 +621,8 @@ function CreatePostPage({ communityId }: { communityId: string }) {
   const [composerMode, setComposerMode] = React.useState<ComposerTab>("text");
   const [title, setTitle] = React.useState("");
   const [body, setBody] = React.useState("");
+  const [linkUrl, setLinkUrl] = React.useState("");
+  const [caption, setCaption] = React.useState("");
   const [lyrics, setLyrics] = React.useState("");
   const [songState, setSongState] = React.useState<SongComposerState>(() => defaultSongState());
   const [monetizationState, setMonetizationState] = React.useState<MonetizationState>(() => defaultMonetizationState());
@@ -749,13 +751,14 @@ function CreatePostPage({ communityId }: { communityId: string }) {
       donationAvailable: community.donation_policy_mode != null && community.donation_policy_mode !== "none",
       donationPartnerId: community.donation_partner_id ?? undefined,
       donationPartnerName: community.donation_partner?.display_name ?? undefined,
-      donationOptIn: community.donation_policy_mode === "fundraiser_default",
+      donationOptIn: false,
     }));
   }, [community]);
 
   const canSubmitText = title.trim().length > 0 && body.trim().length > 0;
   const canSubmitSong = Boolean(songState.primaryAudioUpload && lyrics.trim());
-  const canSubmit = composerMode === "song" ? canSubmitSong : canSubmitText;
+  const canSubmitLink = title.trim().length > 0 && linkUrl.trim().length > 0;
+  const canSubmit = composerMode === "song" ? canSubmitSong : composerMode === "link" ? canSubmitLink : canSubmitText;
 
   const buildMatchedSourceReferences = React.useCallback((bundle: ApiSongArtifactBundle): ComposerReference[] => {
     const moderationResult = bundle.moderation_result && typeof bundle.moderation_result === "object"
@@ -923,6 +926,7 @@ function CreatePostPage({ communityId }: { communityId: string }) {
           idempotency_key: crypto.randomUUID(),
           post_type: "song",
           identity_mode: "public",
+          translation_policy: "machine_allowed",
           access_mode: isLockedSong ? "locked" : "public",
           title: title.trim() || undefined,
           song_mode: publishAsDerivative ? "remix" : songMode,
@@ -943,11 +947,22 @@ function CreatePostPage({ communityId }: { communityId: string }) {
             status: "active",
           });
         }
+      } else if (composerMode === "link") {
+        result = await api.communities.createPost(communityId, {
+          idempotency_key: crypto.randomUUID(),
+          post_type: "link",
+          identity_mode: "public",
+          translation_policy: "machine_allowed",
+          title: title.trim(),
+          link_url: linkUrl.trim(),
+          caption: caption.trim() || undefined,
+        });
       } else {
         result = await api.communities.createPost(communityId, {
           idempotency_key: crypto.randomUUID(),
           post_type: "text",
           identity_mode: "public",
+          translation_policy: "machine_allowed",
           title: title.trim(),
           body: body.trim(),
         });
@@ -965,6 +980,7 @@ function CreatePostPage({ communityId }: { communityId: string }) {
     body,
     buildMatchedSourceReferences,
     canSubmit,
+    caption,
     community,
     communityId,
     composerMode,
@@ -972,6 +988,7 @@ function CreatePostPage({ communityId }: { communityId: string }) {
     derivativeStep?.required,
     eligibility?.status,
     lyrics,
+    linkUrl,
     pendingSongBundleId,
     pricingPolicy?.regional_pricing_enabled,
     resolveBundleAnalysisState,
@@ -1058,11 +1075,15 @@ function CreatePostPage({ communityId }: { communityId: string }) {
     >
       <StackPageShell title="">
         <PostComposer
-          availableTabs={["text", "song"]}
+          availableTabs={["text", "link", "song"]}
           canCreateSongPost
+          captionValue={caption}
           clubName={`c/${community.display_name}`}
+          linkUrlValue={linkUrl}
           lyricsValue={lyrics}
           mode={composerMode}
+          onCaptionValueChange={setCaption}
+          onLinkUrlValueChange={setLinkUrl}
           onLyricsValueChange={setLyrics}
           onModeChange={setComposerMode}
           onMonetizationChange={(value) => setMonetizationState(value ?? defaultMonetizationState())}
@@ -1222,6 +1243,7 @@ function toCommunityPostContent(
       return {
         type: "link",
         href: post.link_url ?? "#",
+        linkCaption: resolvedCaption,
         linkLabel: post.link_url ?? undefined,
         linkTitle: title,
       };
@@ -1278,7 +1300,7 @@ function toCommunityPostContent(
   }
 }
 
-function toCommunityFeedItem(
+export function toCommunityFeedItem(
   postResponse: ApiPost,
   authorProfiles: Record<string, ApiProfile | undefined>,
   songOptions?: SongPresentationOptions,
@@ -1900,7 +1922,7 @@ function getCommunityOpenAIModerationSettingsState(community: ApiCommunity) {
   };
 }
 
-function useCommunityPageData(communityId: string, localeTag: string, activeSort: FeedSort) {
+function useCommunityPageData(communityId: string, contentLocale: string, activeSort: FeedSort) {
   const api = useApi();
   const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
   const [preview, setPreview] = React.useState<ApiCommunityPreview | null>(null);
@@ -1919,7 +1941,7 @@ function useCommunityPageData(communityId: string, localeTag: string, activeSort
       api.communities.get(communityId),
       api.communities.preview(communityId),
       api.communities.getJoinEligibility(communityId),
-      api.communities.listPosts(communityId, { locale: localeTag, sort: activeSort }),
+      api.communities.listPosts(communityId, { locale: contentLocale, sort: activeSort }),
     ])
       .then(async ([communityResult, previewResult, eligibilityResult, postResponse]) => {
         const uniqueAuthorIds = Array.from(
@@ -1956,7 +1978,7 @@ function useCommunityPageData(communityId: string, localeTag: string, activeSort
       });
 
     return () => { cancelled = true; };
-  }, [activeSort, api, communityId, localeTag]);
+  }, [activeSort, api, communityId, contentLocale]);
 
   React.useEffect(() => {
     if (!community) return;
@@ -1994,7 +2016,17 @@ function useCommunityPageData(communityId: string, localeTag: string, activeSort
 function CommunityPage({ communityId }: { communityId: string }) {
   const api = useApi();
   const session = useSession();
-  const { localeTag } = useRouteMessages();
+  const { locale: uiLocale } = useUiLocale();
+  const preferredUiLocale: UiLocaleCode = session?.profile.preferred_locale
+    && isUiLocaleCode(session.profile.preferred_locale)
+    ? session.profile.preferred_locale
+    : uiLocale;
+  const contentLocale = React.useMemo(() => resolveViewerContentLocale({
+    uiLocale: preferredUiLocale,
+    browserLocales: typeof navigator === "undefined"
+      ? []
+      : [...navigator.languages, navigator.language].filter(Boolean),
+  }), [preferredUiLocale]);
   const [activeSort, setActiveSort] = React.useState<FeedSort>("best");
   const {
     authorProfiles,
@@ -2005,7 +2037,7 @@ function CommunityPage({ communityId }: { communityId: string }) {
     loading,
     posts,
     refetchEligibility,
-  } = useCommunityPageData(communityId, localeTag, activeSort);
+  } = useCommunityPageData(communityId, contentLocale, activeSort);
   const commerceEnabled = Boolean(session?.user?.user_id) && eligibility?.status === "already_joined";
   const {
     listingsByAssetId,

@@ -200,32 +200,53 @@ export function PublicProfilePage({
   videos,
   ...profile
 }: PublicProfileProps) {
+  const tabs: Array<{ value: PublicProfileTab; label: string }> = [
+    ...(posts?.length ? [{ value: "posts" as const, label: "Posts" }] : []),
+    ...(songs?.length ? [{ value: "songs" as const, label: "Songs" }] : []),
+    ...(scrobbles?.length ? [{ value: "scrobbles" as const, label: "Scrobbles" }] : []),
+    ...(videos?.length ? [{ value: "videos" as const, label: "Videos" }] : []),
+    { value: "about", label: "About" },
+  ];
+  const resolvedDefaultTab = tabs.some((tab) => tab.value === defaultTab)
+    ? defaultTab
+    : tabs[0]?.value ?? "about";
+
   return (
     <div className={cn("w-full min-h-screen bg-background text-foreground", className)}>
       <div className="flex flex-col gap-6 pb-10">
         <PublicHero profile={profile} />
 
-        <Tabs className="flex flex-col gap-6" defaultValue={defaultTab}>
-          <TabsList className="h-auto w-full justify-start gap-2 overflow-x-auto rounded-[var(--radius-3xl)] bg-muted/80 p-1.5">
-            <TabsTrigger className="min-w-fit" value="posts">Posts</TabsTrigger>
-            <TabsTrigger className="min-w-fit" value="songs">Songs</TabsTrigger>
-            <TabsTrigger className="min-w-fit" value="scrobbles">Scrobbles</TabsTrigger>
-            <TabsTrigger className="min-w-fit" value="videos">Videos</TabsTrigger>
-            <TabsTrigger className="min-w-fit" value="about">About</TabsTrigger>
-          </TabsList>
+        <Tabs className="flex flex-col gap-6" defaultValue={resolvedDefaultTab}>
+          {tabs.length > 1 ? (
+            <TabsList className="h-auto w-full justify-start gap-2 overflow-x-auto rounded-[var(--radius-3xl)] bg-muted/80 p-1.5">
+              {tabs.map((tab) => (
+                <TabsTrigger className="min-w-fit" key={tab.value} value={tab.value}>
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          ) : null}
 
-          <TabsContent className="mt-0" value="posts">
-            <PostsPanel posts={posts} />
-          </TabsContent>
-          <TabsContent className="mt-0" value="songs">
-            <SongsPanel songs={songs} />
-          </TabsContent>
-          <TabsContent className="mt-0" value="scrobbles">
-            <ScrobblesPanel scrobbles={scrobbles} />
-          </TabsContent>
-          <TabsContent className="mt-0" value="videos">
-            <VideosPanel videos={videos} />
-          </TabsContent>
+          {posts?.length ? (
+            <TabsContent className="mt-0" value="posts">
+              <PostsPanel posts={posts} />
+            </TabsContent>
+          ) : null}
+          {songs?.length ? (
+            <TabsContent className="mt-0" value="songs">
+              <SongsPanel songs={songs} />
+            </TabsContent>
+          ) : null}
+          {scrobbles?.length ? (
+            <TabsContent className="mt-0" value="scrobbles">
+              <ScrobblesPanel scrobbles={scrobbles} />
+            </TabsContent>
+          ) : null}
+          {videos?.length ? (
+            <TabsContent className="mt-0" value="videos">
+              <VideosPanel videos={videos} />
+            </TabsContent>
+          ) : null}
           <TabsContent className="mt-0" value="about">
             <AboutPanel bio={profile.bio} communities={communities} />
           </TabsContent>

@@ -1,5 +1,5 @@
+import type { DocumentProps } from "rwsdk/router";
 import type { RequestInfo } from "rwsdk/worker";
-import { requestInfo } from "rwsdk/worker";
 
 import { UiLocaleProvider } from "@/lib/ui-locale";
 import {
@@ -19,15 +19,16 @@ type AppContext = {
   theme?: ThemeMode;
 };
 
-export const Document: React.FC<{ children: React.ReactNode }> = ({
+export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = ({
   children,
+  ctx,
+  rw,
 }) => {
   const isDev = import.meta.env.DEV;
-  const currentRequestInfo = requestInfo as RequestInfo<any, AppContext>;
-  const locale = currentRequestInfo.ctx.locale ?? "en";
-  const dir = currentRequestInfo.ctx.dir ?? resolveLocaleDirection(locale);
-  const theme = currentRequestInfo.ctx.theme ?? "dark";
-  const nonce = currentRequestInfo.rw.nonce;
+  const locale = ctx.locale ?? "en";
+  const dir = ctx.dir ?? resolveLocaleDirection(locale);
+  const theme = ctx.theme ?? "dark";
+  const nonce = rw.nonce;
   const clientModuleUrl = isDev
     ? "/src/client.tsx"
     : "rwsdk_asset:/src/client.tsx";

@@ -2,7 +2,7 @@ import * as React from "react";
 
 export type AppRoute =
   | { kind: "home"; path: "/" }
-  | { kind: "public-profile"; path: string; handleLabel: string; hostSuffix: string }
+  | { kind: "public-profile"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "your-communities"; path: "/your-communities" }
   | { kind: "settings"; path: string; section: "profile" | "wallet" | "preferences" }
   | { kind: "create-post"; path: string; communityId: string }
@@ -12,7 +12,6 @@ export type AppRoute =
   | { kind: "post"; path: string; postId: string }
   | { kind: "inbox"; path: "/inbox" }
   | { kind: "me"; path: "/me" }
-  | { kind: "user"; path: string; userId: string }
   | { kind: "onboarding"; path: "/onboarding" }
   | { kind: "not-found"; path: string };
 
@@ -31,7 +30,7 @@ const RESERVED_PUBLIC_PROFILE_HOSTS = new Set([
   "dev",
   "staging",
 ]);
-const PUBLIC_PROFILE_HOST_SUFFIXES = ["staging.pirate.sc", "pirate.sc", "pirate", "localhost"];
+const PUBLIC_PROFILE_HOST_SUFFIXES = ["pirate", "localhost"];
 
 let cachedPathname = "/";
 let cachedHostname = "";
@@ -164,9 +163,10 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
 
   if (segments.length === 2 && segments[0] === "u") {
     return {
-      kind: "user",
+      kind: "public-profile",
       path: normalized,
-      userId: decodeURIComponent(segments[1]),
+      handleLabel: decodeURIComponent(segments[1]),
+      hostSuffix: null,
     };
   }
 

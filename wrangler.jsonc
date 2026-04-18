@@ -16,10 +16,6 @@
     {
       "pattern": "www.pirate.sc/*",
       "zone_name": "pirate.sc"
-    },
-    {
-      "pattern": "*.pirate.sc/*",
-      "zone_name": "pirate.sc"
     }
   ],
   "assets": {
@@ -38,10 +34,6 @@
       "routes": [
         {
           "pattern": "staging.pirate.sc/*",
-          "zone_name": "pirate.sc"
-        },
-        {
-          "pattern": "*.staging.pirate.sc/*",
           "zone_name": "pirate.sc"
         }
       ]

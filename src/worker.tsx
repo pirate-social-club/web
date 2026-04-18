@@ -13,9 +13,9 @@ import {
 type ThemeMode = "dark" | "light" | "system";
 
 type AppContext = {
-  dir: UiDirection;
-  locale: UiLocaleCode;
-  theme: ThemeMode;
+  dir?: UiDirection;
+  locale?: UiLocaleCode;
+  theme?: ThemeMode;
 };
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
@@ -56,7 +56,7 @@ export default defineApp<AppRequestInfo>([
     route("/settings/profile", AppRoutePage),
     route("/settings/wallet", AppRoutePage),
     route("/settings/preferences", AppRoutePage),
-    route("/u/:userId", AppRoutePage),
+    route("/u/:handleLabel", AppRoutePage),
     route("/onboarding", AppRoutePage),
   ]),
 ]);

@@ -215,6 +215,14 @@ describe("ApiClient media uploads", () => {
         requested_handle_label: "captain.pirate",
         resolved_handle_label: "captain.pirate",
         is_canonical: true,
+        created_communities: [
+          {
+            community_id: "cmt_test",
+            display_name: "Test Builders",
+            route_slug: null,
+            created_at: "2026-04-17T00:00:00.000Z",
+          },
+        ],
         profile: {
           user_id: "usr_test",
           global_handle: {

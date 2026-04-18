@@ -1,0 +1,38 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pirate-web-public",
+  "main": "src/worker-public.ts",
+  "workers_dev": true,
+  "compatibility_date": "2026-04-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "NODE_ENV": "production",
+    "HNS_PUBLIC_API_ORIGIN": "https://api.pirate.sc",
+    "HNS_PUBLIC_APP_ORIGIN": "https://pirate.sc"
+  },
+  "routes": [
+    {
+      "pattern": "pirate.sc/u/*",
+      "zone_name": "pirate.sc"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "env": {
+    "staging": {
+      "name": "pirate-web-public-staging",
+      "vars": {
+        "NODE_ENV": "production",
+        "HNS_PUBLIC_API_ORIGIN": "https://api-staging.pirate.sc",
+        "HNS_PUBLIC_APP_ORIGIN": "https://staging.pirate.sc"
+      },
+      "routes": [
+        {
+          "pattern": "staging.pirate.sc/u/*",
+          "zone_name": "pirate.sc"
+        }
+      ]
+    }
+  }
+}

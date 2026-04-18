@@ -7,33 +7,29 @@ function expectJson(actual: unknown, expected: unknown): void {
 }
 
 describe("public profile host routing", () => {
-  test("extracts pirate handle subdomains from localhost and pirate.sc hosts", () => {
+  test("extracts pirate handle hosts from localhost and hns domains", () => {
     expectJson(extractPublicProfileHost("captain.localhost"), {
       handleLabel: "captain",
       hostSuffix: "localhost",
     });
-    expectJson(extractPublicProfileHost("captain.pirate.sc"), {
+    expectJson(extractPublicProfileHost("captain.pirate"), {
       handleLabel: "captain",
-      hostSuffix: "pirate.sc",
-    });
-    expectJson(extractPublicProfileHost("captain.staging.pirate.sc"), {
-      handleLabel: "captain",
-      hostSuffix: "staging.pirate.sc",
+      hostSuffix: "pirate",
     });
   });
 
   test("ignores reserved or nested subdomains", () => {
-    expect(extractPublicProfileHost("api.pirate.sc")).toBe(null);
-    expect(extractPublicProfileHost("captain.dev.pirate.sc")).toBe(null);
+    expect(extractPublicProfileHost("api.pirate")).toBe(null);
+    expect(extractPublicProfileHost("captain.dev.pirate")).toBe(null);
     expect(extractPublicProfileHost("localhost")).toBe(null);
   });
 
-  test("matches public profile routes from host before path routes", () => {
-    expectJson(matchRoute("/", "captain.pirate.sc"), {
+  test("matches public profile routes from host and path routes", () => {
+    expectJson(matchRoute("/", "captain.pirate"), {
       kind: "public-profile",
       path: "/",
       handleLabel: "captain",
-      hostSuffix: "pirate.sc",
+      hostSuffix: "pirate",
     });
     expectJson(matchRoute("/settings/profile", "captain.localhost"), {
       kind: "public-profile",
@@ -41,11 +37,11 @@ describe("public profile host routing", () => {
       handleLabel: "captain",
       hostSuffix: "localhost",
     });
-    expectJson(matchRoute("/", "captain.staging.pirate.sc"), {
+    expectJson(matchRoute("/u/captain.pirate", "pirate.sc"), {
       kind: "public-profile",
-      path: "/",
-      handleLabel: "captain",
-      hostSuffix: "staging.pirate.sc",
+      path: "/u/captain.pirate",
+      handleLabel: "captain.pirate",
+      hostSuffix: null,
     });
   });
 });

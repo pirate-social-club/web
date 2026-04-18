@@ -124,6 +124,12 @@ type ApiPublicProfileResolution = {
   requested_handle_label: string;
   resolved_handle_label: string;
   is_canonical: boolean;
+  created_communities: Array<{
+    community_id: string;
+    display_name: string;
+    route_slug: string | null;
+    created_at: string;
+  }>;
 };
 
 type ApiSongArtifactUploadContentRequest = {

@@ -4,7 +4,8 @@ import * as React from "react";
 import type { ComponentProps } from "react";
 import { Flag, House, Plus } from "@phosphor-icons/react";
 
-import { renderRoute } from "@/app/pages";
+import { renderAuthenticatedRoute } from "@/app/authenticated-route-renderer";
+import { renderPublicRoute } from "@/app/public-route-renderer";
 import { type AppRoute, navigate, useRoute } from "@/app/router";
 import { AppHeader } from "@/components/compositions/app-shell-chrome/app-header";
 import { MobileFooterNav } from "@/components/compositions/app-shell-chrome/mobile-footer-nav";
@@ -121,7 +122,7 @@ function activeMobileNav(
 ): ComponentProps<typeof MobileFooterNav>["activeItem"] {
   if (route.kind === "inbox") return "inbox";
   if (route.kind === "create-post") return "create";
-  if (route.kind === "me" || route.kind === "user") return "profile";
+  if (route.kind === "me" || route.kind === "public-profile") return "profile";
   return "home";
 }
 
@@ -261,22 +262,25 @@ export function PirateApp({ initialHost, initialPath }: { initialHost?: string; 
 
   return (
     <ApiProvider initialHost={initialHost}>
-      <PirateAuthProvider>
-        <SessionRevalidator>
-          <SidebarProvider className="flex-col" defaultOpen>
-            {isPublicProfileRoute ? (
-              <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
-                <div className="mx-auto w-full max-w-5xl">
-                  {renderRoute(route)}
-                </div>
-              </main>
-            ) : (
+      {isPublicProfileRoute ? (
+        <>
+          <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
+            <div className="mx-auto w-full max-w-5xl">
+              {renderPublicRoute(route)}
+            </div>
+          </main>
+          <Toaster />
+        </>
+      ) : (
+        <PirateAuthProvider>
+          <SessionRevalidator>
+            <SidebarProvider className="flex-col" defaultOpen>
               <>
                 <AppShellHeader copy={copy} route={route} />
                 <div className="flex min-h-0 w-full flex-1">
                   {isCommunityModerationRoute ? (
                     <main className="flex min-h-0 w-full flex-1">
-                      {renderRoute(route)}
+                      {renderAuthenticatedRoute(route)}
                     </main>
                   ) : (
                     <>
@@ -292,19 +296,19 @@ export function PirateApp({ initialHost, initialPath }: { initialHost?: string; 
                       />
                       <SidebarInset className="min-h-0">
                         <main className="flex w-full flex-1 px-3 pb-24 pt-4 md:pb-8 md:px-5 md:pt-6 lg:px-8">
-                          {renderRoute(route)}
+                          {renderAuthenticatedRoute(route)}
                         </main>
                         <AppShellMobileNav copy={copy} route={route} />
                       </SidebarInset>
                     </>
                   )}
                 </div>
+                <Toaster />
               </>
-            )}
-            <Toaster />
-          </SidebarProvider>
-        </SessionRevalidator>
-      </PirateAuthProvider>
+            </SidebarProvider>
+          </SessionRevalidator>
+        </PirateAuthProvider>
+      )}
     </ApiProvider>
   );
 }

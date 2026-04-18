@@ -18,8 +18,9 @@
     "worker:run": "bun run locales:generate && rw-scripts worker-run",
     "generate": "bun run locales:generate && wrangler types --include-runtime false",
     "test": "bun test",
+    "boundary:audit": "node ./scripts/boundary-audit.mjs",
     "ui:audit": "node ./scripts/ui-audit.mjs",
-    "validate": "bun run locales:generate && bun run types && bun test && bun run ui:audit",
+    "validate": "bun run locales:generate && bun run types && bun run boundary:audit && bun test && bun run ui:audit",
     "types": "bun run locales:generate && tsc --noEmit"
   },
   "dependencies": {

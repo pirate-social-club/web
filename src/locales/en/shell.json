@@ -1,7 +1,9 @@
 {
   "appHeader": {
     "connectLabel": "Connect",
+    "createEmptyLabel": "No recent communities.",
     "createLabel": "Create",
+    "createPickerTitle": "Create post in",
     "homeAriaLabel": "Go to home",
     "notificationsAriaLabel": "Notifications",
     "openNavigationAriaLabel": "Open navigation",

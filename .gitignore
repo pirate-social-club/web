@@ -9,3 +9,5 @@ coverage/
 debug-storybook.log
 .env.local
 .env.*.local
+.env.development
+.env.production

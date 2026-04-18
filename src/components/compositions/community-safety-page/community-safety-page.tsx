@@ -6,7 +6,6 @@ import { ArrowLeft } from "@phosphor-icons/react";
 import { Button } from "@/components/primitives/button";
 import { Checkbox } from "@/components/primitives/checkbox";
 import { FormNote } from "@/components/primitives/form-layout";
-import { IconButton } from "@/components/primitives/icon-button";
 import { Label } from "@/components/primitives/label";
 import {
   Select,
@@ -219,9 +218,6 @@ export function CommunitySafetyPage({
     <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-8", className)}>
       <div className="flex items-start justify-between gap-6">
         <div className="flex min-w-0 items-start gap-4">
-          <IconButton aria-label="Back" onClick={onBackClick} variant="ghost">
-            <ArrowLeft className="size-6" />
-          </IconButton>
           <div className="min-w-0 space-y-2">
             <h1 className="text-[2.25rem] font-semibold tracking-tight">Safety</h1>
             <p className="text-base text-muted-foreground">

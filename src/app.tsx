@@ -36,7 +36,11 @@ function resolveCreatePostPath(route: AppRoute): string | null {
     return route.path;
   }
 
-  return null;
+  if (route.kind === "create-post-global") {
+    return route.path;
+  }
+
+  return "/submit";
 }
 
 function useClientReady(): boolean {
@@ -62,10 +66,10 @@ function buildSidebarSections(
 ): AppSidebarSection[] {
   return [
     {
-      id: "communities",
+      id: "recent",
       label:
-        messages.sections.find((section) => section.id === "communities")?.label
-        ?? "Communities",
+        messages.sections.find((section) => section.id === "recent")?.label
+        ?? "Recent",
       defaultOpen: true,
       items: communities.map((community) => ({
         avatarSrc: community.avatarSrc,
@@ -110,6 +114,8 @@ function activeSidebarItem(route: AppRoute): string | undefined {
       return `c/${route.communityId}`;
     case "create-post":
       return `c/${route.communityId}`;
+    case "create-post-global":
+      return undefined;
     case "create-community":
       return "create-community";
     default:
@@ -121,7 +127,7 @@ function activeMobileNav(
   route: AppRoute,
 ): ComponentProps<typeof MobileFooterNav>["activeItem"] {
   if (route.kind === "inbox") return "inbox";
-  if (route.kind === "create-post") return "create";
+  if (route.kind === "create-post" || route.kind === "create-post-global") return "create";
   if (route.kind === "me" || route.kind === "public-profile") return "profile";
   return "home";
 }
@@ -164,13 +170,12 @@ function AppShellHeader({
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
   const showConnectAction = clientReady && !session;
   const createPostPath = resolveCreatePostPath(route);
-  const disableCreateAction = !clientReady || !createPostPath;
+  const disableCreateAction = !clientReady;
   const useAppSidebarTrigger = route.kind !== "community-moderation";
 
   return (
     <AppHeader
       avatarFallback={avatarFallback}
-      createActionTitle={disableCreateAction ? "Open a community to create a post." : undefined}
       disableCreateAction={disableCreateAction}
       labels={{
         connectLabel: copy.appHeader.connectLabel,
@@ -211,13 +216,12 @@ function AppShellMobileNav({
   const avatarFallback = resolveSessionAvatarFallback(session);
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
   const createPostPath = resolveCreatePostPath(route);
-  const disableCreateAction = !clientReady || !createPostPath;
+  const disableCreateAction = !clientReady;
 
   return (
     <MobileFooterNav
       activeItem={activeMobileNav(route)}
       avatarFallback={avatarFallback}
-      createActionTitle={disableCreateAction ? "Open a community to create a post." : undefined}
       disableCreateAction={disableCreateAction}
       labels={{
         create: copy.mobileFooter.createLabel,

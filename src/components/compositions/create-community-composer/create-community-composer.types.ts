@@ -45,9 +45,6 @@ export interface CreateCommunityComposerProps {
   anonymousIdentityScope?: AnonymousIdentityScope;
   creatorVerificationState?: CreatorVerificationState;
   initialStep?: ComposerStep;
-  namespaceAttachment?: NamespaceAttachmentState | null;
-  onOpenNamespaceVerification?: () => void;
-  onClearNamespaceVerification?: () => void;
   onCreate?: (input: {
     avatarFile: File | null;
     avatarRef: string | null;

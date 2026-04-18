@@ -253,9 +253,6 @@ export function CreateCommunityComposer({
   anonymousIdentityScope: anonymousIdentityScopeProp,
   creatorVerificationState,
   initialStep,
-  namespaceAttachment,
-  onOpenNamespaceVerification,
-  onClearNamespaceVerification,
   onCreate,
 }: CreateCommunityComposerProps) {
   const [activeStep, setActiveStep] = React.useState<ComposerStep>(initialStep ?? 1);
@@ -346,7 +343,7 @@ export function CreateCommunityComposer({
       allowAnonymousIdentity: activeAllowAnonymousIdentity,
       anonymousIdentityScope: activeAnonymousScope,
       gateDrafts: activeGateDrafts,
-      namespaceVerificationId: namespaceAttachment?.namespaceVerificationId ?? null,
+      namespaceVerificationId: null,
     })
       .catch((error: unknown) => {
         toast.error(error instanceof Error ? error.message : "Could not create community");
@@ -367,7 +364,6 @@ export function CreateCommunityComposer({
     activeAllowAnonymousIdentity,
     activeAnonymousScope,
     activeGateDrafts,
-    namespaceAttachment,
   ]);
 
   const gateDraftsValid = activeMembershipMode !== "gated" || activeGateDrafts.length > 0;
@@ -512,38 +508,6 @@ export function CreateCommunityComposer({
                     }}
                   />
                 </div>
-
-                <div>
-                  <FieldLabel label="Namespace" />
-                  <FormNote className="mb-2">Optional now. Attach one later to claim your canonical slug.</FormNote>
-                  {namespaceAttachment ? (
-                    <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-base font-medium text-foreground">Verified namespace attached</p>
-                          <FormNote className="mt-1">
-                            {namespaceAttachment.family === "spaces" ? "@" : "."}
-                            {namespaceAttachment.normalizedRootLabel}
-                          </FormNote>
-                        </div>
-                        <div className="shrink-0">
-                          <Button onClick={onOpenNamespaceVerification} size="sm" type="button" variant="outline">
-                            Change
-                          </Button>
-                        </div>
-                      </div>
-                      <div>
-                        <Button onClick={onClearNamespaceVerification} size="sm" type="button" variant="ghost">
-                          Remove namespace
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button className="h-12 w-full rounded-[var(--radius-lg)]" onClick={onOpenNamespaceVerification} type="button" variant="outline">
-                      Verify namespace now
-                    </Button>
-                  )}
-                </div>
               </div>
             </Section>
           ) : null}
@@ -684,12 +648,6 @@ export function CreateCommunityComposer({
                 <ReviewField
                   label="Banner"
                   value={activeBannerFile?.name || (activeBannerRef.trim() ? "Saved image" : "Generated default")}
-                />
-                <ReviewField
-                  label="Namespace"
-                  value={namespaceAttachment
-                    ? `${namespaceAttachment.family === "spaces" ? "@" : "."}${namespaceAttachment.normalizedRootLabel}`
-                    : "Uses community ID URL until verified"}
                 />
               </ReviewSection>
 

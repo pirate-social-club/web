@@ -8,31 +8,98 @@ import {
   Tag,
   Trash,
 } from "@phosphor-icons/react";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
+import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { FormFieldLabel } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { Textarea } from "@/components/primitives/textarea";
 import { cn } from "@/lib/utils";
+import type { CommunityPickerItem } from "./post-composer.types";
+
+export type { CommunityPickerItem } from "./post-composer.types";
 
 export function ShellPill({
   avatarSrc,
   children,
+  communities,
+  emptyLabel,
+  onSelectCommunity,
 }: {
   avatarSrc?: string;
   children: React.ReactNode;
+  communities?: CommunityPickerItem[];
+  emptyLabel?: string;
+  onSelectCommunity?: (communityId: string) => void;
 }) {
+  if (!communities || !onSelectCommunity) {
+    return (
+      <div className="inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground">
+        {avatarSrc ? (
+          <img alt="" className="size-8 rounded-full object-cover" src={avatarSrc} />
+        ) : (
+          <div className="grid size-8 place-items-center rounded-full bg-background text-muted-foreground">
+            <Tag className="size-5" />
+          </div>
+        )}
+        <span>{children}</span>
+        <CaretDown className="size-5 text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
-    <div className="inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground">
-      {avatarSrc ? (
-        <img alt="" className="size-8 rounded-full object-cover" src={avatarSrc} />
-      ) : (
-        <div className="grid size-8 place-items-center rounded-full bg-background text-muted-foreground">
-          <Tag className="size-5" />
-        </div>
-      )}
-      <span>{children}</span>
-      <CaretDown className="size-5 text-muted-foreground" />
-    </div>
+    <DropdownMenuPrimitive.Root>
+      <DropdownMenuPrimitive.Trigger asChild>
+        <button
+          className="inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring"
+          type="button"
+        >
+          {avatarSrc ? (
+            <img alt="" className="size-8 rounded-full object-cover" src={avatarSrc} />
+          ) : (
+            <div className="grid size-8 place-items-center rounded-full bg-background text-muted-foreground">
+              <Tag className="size-5" />
+            </div>
+          )}
+          <span>{children}</span>
+          <CaretDown className="size-5 text-muted-foreground" />
+        </button>
+      </DropdownMenuPrimitive.Trigger>
+      <DropdownMenuPrimitive.Portal>
+        <DropdownMenuPrimitive.Content
+          align="start"
+          sideOffset={4}
+          className={cn(
+            "relative z-50 max-h-96 min-w-[12rem] overflow-hidden rounded-[var(--radius-lg)] border border-border bg-popover p-0 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+          )}
+        >
+          {communities.length === 0 ? (
+            <div className="px-3 py-4 text-muted-foreground">
+              {emptyLabel ?? "No recent communities."}
+            </div>
+          ) : (
+            communities.map((community) => (
+              <DropdownMenuPrimitive.Item
+                className="grid w-full cursor-pointer select-none grid-cols-[2.25rem_1fr] items-center gap-3 px-3 py-2.5 text-base text-popover-foreground outline-none transition-colors hover:bg-muted focus:bg-muted"
+                key={community.communityId}
+                onClick={() => onSelectCommunity(community.communityId)}
+                textValue={community.displayName}
+              >
+                <Avatar
+                  className="h-9 w-9 bg-card text-base"
+                  fallback={community.displayName.slice(0, 2).toUpperCase()}
+                  size="sm"
+                  src={community.avatarSrc ?? undefined}
+                />
+                <span className="truncate">{community.displayName}</span>
+              </DropdownMenuPrimitive.Item>
+            ))
+          )}
+        </DropdownMenuPrimitive.Content>
+      </DropdownMenuPrimitive.Portal>
+    </DropdownMenuPrimitive.Root>
   );
 }
 

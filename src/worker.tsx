@@ -43,6 +43,7 @@ export default defineApp<AppRequestInfo>([
     route("/", AppRoutePage),
     route("/your-communities", AppRoutePage),
     route("/communities/new", AppRoutePage),
+    route("/submit", AppRoutePage),
     route("/c/:communityId/submit", AppRoutePage),
     route("/c/:communityId/mod/rules", AppRoutePage),
     route("/c/:communityId/mod/gates", AppRoutePage),

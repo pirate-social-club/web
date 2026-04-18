@@ -71,6 +71,9 @@ function deriveSelectedQualifierIds(
 export function PostComposer({
   clubName,
   clubAvatarSrc,
+  communityPickerItems,
+  communityPickerEmptyLabel,
+  onSelectCommunity,
   mode,
   availableTabs = defaultTabs,
   canCreateSongPost = false,
@@ -532,11 +535,18 @@ export function PostComposer({
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-4">
+    <div className="w-full space-y-4">
       <CardTitle className="text-3xl">Create post</CardTitle>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <ShellPill avatarSrc={clubAvatarSrc}>{clubName}</ShellPill>
+        <ShellPill
+          avatarSrc={clubAvatarSrc}
+          communities={communityPickerItems}
+          emptyLabel={communityPickerEmptyLabel}
+          onSelectCommunity={onSelectCommunity}
+        >
+          {clubName}
+        </ShellPill>
       </div>
 
       <Card className="overflow-hidden bg-background shadow-none">

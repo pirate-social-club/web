@@ -6,7 +6,8 @@ export type AppRoute =
   | { kind: "your-communities"; path: "/your-communities" }
   | { kind: "settings"; path: string; section: "profile" | "wallet" | "preferences" }
   | { kind: "create-post"; path: string; communityId: string }
-  | { kind: "community-moderation"; path: string; communityId: string; section: "rules" | "namespace" | "gates" | "safety" }
+  | { kind: "create-post-global"; path: "/submit" }
+  | { kind: "community-moderation"; path: string; communityId: string; section: "rules" | "links" | "donations" | "namespace" | "gates" | "safety" }
   | { kind: "community"; path: string; communityId: string }
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
@@ -109,6 +110,10 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
     return { kind: "onboarding", path: normalized };
   }
 
+  if (normalized === "/submit") {
+    return { kind: "create-post-global", path: normalized };
+  }
+
   const segments = normalized.split("/").filter(Boolean);
 
   if (segments.length === 2 && segments[0] === "settings") {
@@ -124,6 +129,8 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   if (segments.length === 4 && segments[0] === "c" && segments[2] === "mod") {
     if (
       segments[3] === "rules"
+      || segments[3] === "links"
+      || segments[3] === "donations"
       || segments[3] === "namespace"
       || segments[3] === "gates"
       || segments[3] === "safety"

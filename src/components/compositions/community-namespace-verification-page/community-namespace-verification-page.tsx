@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { At, ArrowLeft, Handshake } from "@phosphor-icons/react";
+import { At, Handshake } from "@phosphor-icons/react";
 
 import {
   Accordion,
@@ -15,7 +15,6 @@ import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { OptionCard } from "@/components/primitives/option-card";
 import { PrefixInput } from "@/components/primitives/prefix-input";
-import { IconButton } from "@/components/primitives/icon-button";
 import { toast } from "@/components/primitives/sonner";
 import {
   getHnsVerificationMode,
@@ -324,9 +323,6 @@ export function CommunityNamespaceVerificationPage({
     <section className="mx-auto flex w-full max-w-[64rem] flex-col gap-8">
       <div className="flex items-start justify-between gap-6">
         <div className="flex min-w-0 items-start gap-4">
-          <IconButton aria-label="Back" onClick={onBackClick} variant="ghost">
-            <ArrowLeft className="size-6" />
-          </IconButton>
           <div className="min-w-0 space-y-2">
             <h1 className="text-[2.25rem] font-semibold tracking-tight">Verify namespace</h1>
             <p className="text-base text-muted-foreground">

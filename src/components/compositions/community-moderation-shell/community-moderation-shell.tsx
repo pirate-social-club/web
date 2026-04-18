@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import {
-  ArrowLeft,
   Gavel,
+  Heart,
+  LinkSimple,
   Lock,
   MagnifyingGlass,
   SealCheck,
@@ -56,6 +57,8 @@ const defaultSections: CommunityModerationNavSection[] = [
       { active: true, icon: Gavel, label: "Rules" },
       { icon: Lock, label: "Gates" },
       { icon: Shield, label: "Safety" },
+      { icon: Heart, label: "Donations" },
+      { icon: LinkSimple, label: "Links" },
       { icon: SealCheck, label: "Namespace" },
     ],
   },
@@ -75,14 +78,7 @@ export function CommunityModerationShell({
         <SidebarContent className="gap-4 px-0 pb-4 pt-5">
           <SidebarGroup className="px-4 py-0">
             <SidebarGroupContent>
-              <button
-                className="mb-5 inline-flex items-center gap-3 text-base text-muted-foreground transition-colors hover:text-foreground"
-                onClick={onExitClick}
-                type="button"
-              >
-                <ArrowLeft className="size-5" />
-                <span>Exit mod tools</span>
-              </button>
+
               <div className="mb-5 flex items-center gap-3">
                 <Avatar
                   className="h-10 w-10"

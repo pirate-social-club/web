@@ -1,7 +1,9 @@
 {
   "appHeader": {
     "connectLabel": "اتصل",
+    "createEmptyLabel": "لا توجد مجتمعات حديثة.",
     "createLabel": "أنشئ",
+    "createPickerTitle": "أنشئ منشورًا في",
     "homeAriaLabel": "اذهب إلى الصفحة الرئيسية",
     "notificationsAriaLabel": "الإشعارات",
     "openNavigationAriaLabel": "افتح التنقل",

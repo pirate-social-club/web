@@ -1,5 +1,11 @@
 export type ComposerTab = "text" | "image" | "video" | "link" | "song" | "live";
 
+export interface CommunityPickerItem {
+  communityId: string;
+  displayName: string;
+  avatarSrc?: string | null;
+}
+
 export type SongMode = "original" | "remix";
 
 export type SongLicense = "non_commercial" | "commercial_no_remix" | "commercial_remix";
@@ -134,6 +140,9 @@ export interface ComposerIdentityState {
 export interface PostComposerProps {
   clubName: string;
   clubAvatarSrc?: string;
+  communityPickerItems?: CommunityPickerItem[];
+  communityPickerEmptyLabel?: string;
+  onSelectCommunity?: (communityId: string) => void;
   mode: ComposerTab;
   availableTabs?: ComposerTab[];
   canCreateSongPost?: boolean;

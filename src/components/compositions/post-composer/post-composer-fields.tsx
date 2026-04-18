@@ -1,16 +1,12 @@
 import * as React from "react";
 import {
   CaretDown,
-  DotsThree,
   Image as ImageIcon,
-  Link,
-  List,
   Tag,
-  Trash,
 } from "@phosphor-icons/react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Avatar } from "@/components/primitives/avatar";
-import { Button } from "@/components/primitives/button";
+import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
 import { FormFieldLabel } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { Textarea } from "@/components/primitives/textarea";
@@ -213,34 +209,50 @@ export function LabeledTextarea({
   );
 }
 
-export function EditorChrome({
+export function LabeledFormattedTextarea({
+  label,
+  placeholder,
   value,
   onChange,
+  className,
 }: {
+  label: string;
+  placeholder: string;
   value: string;
   onChange?: (value: string) => void;
+  className?: string;
 }) {
-  const toolbar = ["B", "i", "S", "x2", "T", "link", "list", "ordered", "more"];
-
   return (
-    <div className="rounded-full border border-border-soft bg-background">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border-soft px-4 py-3 text-muted-foreground">
-        {toolbar.map((item) => (
-          <span key={item} className="text-base font-medium">
-            {item === "link" ? <Link className="size-5" /> : null}
-            {item === "list" ? <List className="size-5" /> : null}
-            {item === "ordered" ? <List className="size-5" /> : null}
-            {item === "more" ? <DotsThree className="size-5" /> : null}
-            {!["link", "list", "ordered", "more"].includes(item) ? item : null}
-          </span>
-        ))}
-      </div>
-      <Textarea
-        className="min-h-44 rounded-none border-0 shadow-none focus-visible:ring-0"
-        onChange={(event) => onChange?.(event.target.value)}
+    <div>
+      <FieldLabel label={label} />
+      <FormattedTextarea
+        className={className}
+        onChange={onChange}
+        placeholder={placeholder}
         value={value}
       />
     </div>
+  );
+}
+
+export function EditorChrome({
+  value,
+  onChange,
+  placeholder = "Write your post",
+  className,
+}: {
+  value: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <FormattedTextarea
+      className={cn("min-h-44", className)}
+      onChange={onChange}
+      placeholder={placeholder}
+      value={value}
+    />
   );
 }
 

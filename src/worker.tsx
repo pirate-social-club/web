@@ -19,6 +19,14 @@ type AppContext = {
 };
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
+const COMMUNITY_MODERATION_SECTIONS = [
+  "rules",
+  "links",
+  "donations",
+  "gates",
+  "safety",
+  "namespace",
+] as const;
 
 function parseThemeCookie(cookieHeader: string | null): ThemeMode {
   const match = cookieHeader?.match(/(?:^|;\s*)theme=(dark|light|system)(?:;|$)/);
@@ -45,10 +53,9 @@ export default defineApp<AppRequestInfo>([
     route("/communities/new", AppRoutePage),
     route("/submit", AppRoutePage),
     route("/c/:communityId/submit", AppRoutePage),
-    route("/c/:communityId/mod/rules", AppRoutePage),
-    route("/c/:communityId/mod/gates", AppRoutePage),
-    route("/c/:communityId/mod/safety", AppRoutePage),
-    route("/c/:communityId/mod/namespace", AppRoutePage),
+    ...COMMUNITY_MODERATION_SECTIONS.map((section) =>
+      route(`/c/:communityId/mod/${section}`, AppRoutePage)
+    ),
     route("/c/:communityId", AppRoutePage),
     route("/p/:postId", AppRoutePage),
     route("/inbox", AppRoutePage),

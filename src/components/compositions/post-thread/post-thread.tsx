@@ -3,8 +3,9 @@ import { CaretDown, CaretUp } from "@phosphor-icons/react";
 
 import { PostCard } from "@/components/compositions/post-card/post-card";
 import { Button } from "@/components/primitives/button";
+import { FormattedText } from "@/components/primitives/formatted-text";
+import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
 import { IconButton } from "@/components/primitives/icon-button";
-import { Textarea } from "@/components/primitives/textarea";
 import { cn } from "@/lib/utils";
 import type { PostThreadComment, PostThreadProps } from "./post-thread.types";
 
@@ -100,14 +101,13 @@ function CommentNode({
 
             {body ? (
               <div className="space-y-2">
-                <p
+                <FormattedText
                   className={cn(
                     "text-base leading-7 text-foreground",
                     comment.status && comment.status !== "published" && "text-muted-foreground",
                   )}
-                >
-                  {body}
-                </p>
+                  value={body}
+                />
                 {canToggleOriginal ? (
                   <Button
                     size="sm"
@@ -156,8 +156,9 @@ function CommentNode({
 
             {replyOpen ? (
               <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-background/60 p-3">
-                <Textarea
-                  onChange={(event) => setReplyBody(event.target.value)}
+                <FormattedTextarea
+                  className="min-h-28"
+                  onChange={setReplyBody}
                   placeholder={comment.replyPlaceholder}
                   value={replyBody}
                 />
@@ -305,8 +306,9 @@ export function PostThread({
           ) : null}
           {rootReplyOpen ? (
             <div className="mt-3 space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-background/60 p-3">
-              <Textarea
-                onChange={(event) => setRootReplyBody(event.target.value)}
+              <FormattedTextarea
+                className="min-h-28"
+                onChange={setRootReplyBody}
                 placeholder={rootReplyPlaceholder}
                 value={rootReplyBody}
               />

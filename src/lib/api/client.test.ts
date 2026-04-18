@@ -263,6 +263,86 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("loads the authenticated home feed with sort and locale params", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        items: [],
+        next_cursor: null,
+        top_communities: [],
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.feed.home({
+        locale: "es",
+        sort: "top",
+      });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.url).toBe("http://pirate.test/feed/home?locale=es&sort=top");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("loads public communities without auth headers", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+
+      if (request.url.endsWith("/public-communities/captain-club/posts?locale=en-US&sort=top")) {
+        return Response.json({
+          items: [],
+        });
+      }
+
+      return Response.json({
+        community_id: "cmt_test",
+        display_name: "Captain Club",
+        description: "Public preview",
+        avatar_ref: null,
+        banner_ref: null,
+        membership_mode: "open",
+        human_verification_lane: "self",
+        member_count: null,
+        membership_gate_summaries: [],
+        viewer_membership_status: "not_member",
+        created_at: "2026-04-17T00:00:00.000Z",
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      const community = await client.publicCommunities.get("captain-club");
+      await client.publicCommunities.listPosts("captain-club", {
+        locale: "en-US",
+        sort: "top",
+      });
+
+      expect(requests[0]?.method).toBe("GET");
+      expect(requests[0]?.url).toBe("http://pirate.test/public-communities/captain-club");
+      expect(requests[0]?.headers.get("authorization")).toBe(null);
+      expect(requests[1]?.url).toBe("http://pirate.test/public-communities/captain-club/posts?locale=en-US&sort=top");
+      expect(requests[1]?.headers.get("authorization")).toBe(null);
+      expect(community.display_name).toBe("Captain Club");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("adds locale to post and comment read requests", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -303,6 +383,35 @@ describe("ApiClient media uploads", () => {
       expect(requests[3]?.url).toBe("http://pirate.test/comments/cmt_reply/replies?locale=nl&sort=new");
       expect(requests[4]?.url).toBe("http://pirate.test/comments/cmt_reply/replies");
       expect(requests[5]?.url).toBe("http://pirate.test/comments/cmt_reply/vote");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("loads public thread routes without auth headers", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      return Response.json({ items: [], post: { post_id: "pst_test" } });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.publicPosts.get("pst_test", { locale: "zh-Hans" });
+      await client.publicComments.listPostComments("pst_test", { limit: "25", locale: "zh-Hans", sort: "best" });
+      await client.publicComments.listReplies("cmt_test", { locale: "zh-Hans", sort: "new" });
+
+      expect(requests[0]?.url).toBe("http://pirate.test/public-posts/pst_test?locale=zh-Hans");
+      expect(requests[0]?.headers.get("authorization")).toBe(null);
+      expect(requests[1]?.url).toBe("http://pirate.test/public-comments/posts/pst_test/comments?limit=25&locale=zh-Hans&sort=best");
+      expect(requests[1]?.headers.get("authorization")).toBe(null);
+      expect(requests[2]?.url).toBe("http://pirate.test/public-comments/cmt_test/replies?locale=zh-Hans&sort=new");
+      expect(requests[2]?.headers.get("authorization")).toBe(null);
     } finally {
       globalThis.fetch = originalFetch;
     }

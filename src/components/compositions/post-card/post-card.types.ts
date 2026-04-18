@@ -112,6 +112,7 @@ export type PostCardContent =
       href: string;
       linkTitle: string;
       linkLabel?: string;
+      linkCaption?: string;
       previewImageSrc?: string;
     }
   | SongContentSpec;

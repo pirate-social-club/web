@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
+import { useSession } from "@/lib/api/session-store";
 
 type PrivyProviderComponent = React.ComponentType<{
   appId: string;
@@ -62,6 +63,7 @@ export function usePiratePrivyRuntime(): PrivyRuntimeState {
 export function PirateAuthProvider({ children }: { children: React.ReactNode }) {
   const appId = getPrivyAppId();
   const clientId = getPrivyClientId();
+  const session = useSession();
   const [busy, setBusy] = React.useState(false);
   const [connectedWallets, setConnectedWallets] = React.useState<PirateConnectedEvmWallet[]>([]);
   const [pendingConnect, setPendingConnect] = React.useState(false);
@@ -70,6 +72,7 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
   const [BridgeComponent, setBridgeComponent] = React.useState<PrivyAuthBridgeComponent | null>(null);
   const [WalletBridgeComponent, setWalletBridgeComponent] = React.useState<PrivyWalletBridgeComponent | null>(null);
   const [walletsReady, setWalletsReady] = React.useState(false);
+  const shouldLoadPrivy = !!appId && (pendingConnect || !!session);
 
   const privyConfig = React.useMemo(() => ({
     appearance: {
@@ -95,7 +98,7 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   React.useEffect(() => {
-    if (!appId) {
+    if (!appId || !shouldLoadPrivy) {
       setProviderComponent(null);
       setBridgeComponent(null);
       setConnectedWallets([]);
@@ -148,7 +151,7 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
     return () => {
       cancelled = true;
     };
-  }, [appId]);
+  }, [appId, shouldLoadPrivy]);
 
   const connect = React.useCallback(() => {
     if (!appId) {
@@ -177,7 +180,7 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
     connect: appId ? connect : null,
     connectedWallets,
     configured: !!appId,
-    loaded: !!ProviderComponent && !!BridgeComponent && !!WalletBridgeComponent,
+    loaded: !appId || !!ProviderComponent && !!BridgeComponent && !!WalletBridgeComponent,
     walletsReady,
   }), [
     BridgeComponent,
@@ -191,7 +194,7 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
     walletsReady,
   ]);
 
-  if (!appId || !ProviderComponent || !BridgeComponent || !WalletBridgeComponent) {
+  if (!appId || !shouldLoadPrivy || !ProviderComponent || !BridgeComponent || !WalletBridgeComponent) {
     return (
       <PrivyRuntimeContext.Provider value={runtimeState}>
         {children}

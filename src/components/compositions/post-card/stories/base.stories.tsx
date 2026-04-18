@@ -283,6 +283,20 @@ export const ClickableCard: Story = {
 // LOADING STATES
 // ============================================================================
 
+export const SpoilerText: Story = {
+  name: "Formatting: Spoilers",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="The ending of that new album caught me off guard"
+      content={{
+        type: "text",
+        body: "Can't believe they went with >!that twist in the final track!<. Also the collab with >!Daft Punk!< was unexpected.",
+      }}
+    />
+  ),
+};
+
 export const Loading: Story = {
   name: "State: Loading",
   render: () => (

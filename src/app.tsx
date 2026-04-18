@@ -258,6 +258,7 @@ export function PirateApp({ initialHost, initialPath }: { initialHost?: string; 
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "shell");
   const route = useRoute(initialPath, initialHost);
+  const session = useSession();
   const isCommunityModerationRoute = route.kind === "community-moderation";
   const isPublicProfileRoute = route.kind === "public-profile";
   const knownCommunities = useKnownCommunities();
@@ -270,7 +271,7 @@ export function PirateApp({ initialHost, initialPath }: { initialHost?: string; 
         <>
           <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
             <div className="mx-auto w-full max-w-5xl">
-              {renderPublicRoute(route)}
+              {route.kind === "public-profile" ? renderPublicRoute(route) : null}
             </div>
           </main>
           <Toaster />
@@ -300,7 +301,9 @@ export function PirateApp({ initialHost, initialPath }: { initialHost?: string; 
                       />
                       <SidebarInset className="min-h-0">
                         <main className="flex w-full flex-1 px-3 pb-24 pt-4 md:pb-8 md:px-5 md:pt-6 lg:px-8">
-                          {renderAuthenticatedRoute(route)}
+                          {route.kind === "community" && !session
+                            ? renderPublicRoute(route)
+                            : renderAuthenticatedRoute(route)}
                         </main>
                         <AppShellMobileNav copy={copy} route={route} />
                       </SidebarInset>

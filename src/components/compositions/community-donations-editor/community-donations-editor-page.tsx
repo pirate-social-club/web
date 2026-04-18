@@ -15,7 +15,7 @@ import {
 } from "@/components/primitives/select";
 import { cn } from "@/lib/utils";
 
-export type DonationPolicyMode = "none" | "optional_creator_sidecar" | "fundraiser_default";
+export type DonationPolicyMode = "none" | "optional_creator_sidecar";
 
 export interface DonationPartnerPreview {
   donationPartnerId: string;
@@ -27,8 +27,7 @@ export interface DonationPartnerPreview {
 
 const MODE_OPTIONS: Array<{ label: string; value: DonationPolicyMode }> = [
   { value: "none", label: "No donations" },
-  { value: "optional_creator_sidecar", label: "Creators can opt in" },
-  { value: "fundraiser_default", label: "Donate by default" },
+  { value: "optional_creator_sidecar", label: "Artists choose per song" },
 ];
 
 export interface CommunityDonationsEditorPageProps {

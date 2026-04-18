@@ -49,6 +49,7 @@ import {
   ShellPill,
   FieldLabel,
   UploadField,
+  LabeledFormattedTextarea,
   LabeledTextarea,
   EditorChrome,
   LinkPreviewCard,
@@ -83,9 +84,11 @@ export function PostComposer({
   textBodyValue = "",
   onTextBodyValueChange,
   captionValue = "",
+  onCaptionValueChange,
   lyricsValue = "",
   onLyricsValueChange,
   linkUrlValue = "",
+  onLinkUrlValueChange,
   linkPreview,
   songMode = "original",
   song,
@@ -196,20 +199,12 @@ export function PostComposer({
   }, [songMode]);
 
   React.useEffect(() => {
-    onModeChange?.(activeTab);
-  }, [activeTab, onModeChange]);
-
-  React.useEffect(() => {
     setSongState(defaultSongState(song));
   }, [song]);
 
   React.useEffect(() => {
     setMonetizationState(defaultMonetizationState(monetization));
   }, [monetization]);
-
-  React.useEffect(() => {
-    onMonetizationChange?.(monetizationState);
-  }, [monetizationState, onMonetizationChange]);
 
   React.useEffect(() => {
     setDerivativeState(derivativeStep);
@@ -325,15 +320,17 @@ export function PostComposer({
               <FieldLabel label="URL" />
               <Input
                 className="h-14"
-                defaultValue={linkUrlValue}
+                onChange={(event) => onLinkUrlValueChange?.(event.target.value)}
                 placeholder="https://"
+                value={linkUrlValue}
               />
             </div>
-            <LabeledTextarea
+            <LabeledFormattedTextarea
               className="min-h-28"
-              defaultValue={captionValue}
               label="Commentary"
+              onChange={onCaptionValueChange}
               placeholder="Add commentary"
+              value={captionValue}
             />
             {linkPreview ? <LinkPreviewCard {...linkPreview} /> : null}
           </div>
@@ -551,7 +548,14 @@ export function PostComposer({
 
       <Card className="overflow-hidden bg-background shadow-none">
         <CardHeader className="border-b border-border-soft px-0 pb-0 pt-0">
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ComposerTab)}>
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              const nextTab = value as ComposerTab;
+              setActiveTab(nextTab);
+              onModeChange?.(nextTab);
+            }}
+          >
             <TabsList className="h-auto w-full justify-start rounded-none border-b border-border-soft bg-transparent p-0">
               {visibleTabs.map((tab) => (
                 <TabsTrigger

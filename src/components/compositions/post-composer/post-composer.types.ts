@@ -153,9 +153,11 @@ export interface PostComposerProps {
   textBodyValue?: string;
   onTextBodyValueChange?: (value: string) => void;
   captionValue?: string;
+  onCaptionValueChange?: (value: string) => void;
   lyricsValue?: string;
   onLyricsValueChange?: (value: string) => void;
   linkUrlValue?: string;
+  onLinkUrlValueChange?: (value: string) => void;
   linkPreview?: LinkPreviewState;
   songMode?: SongMode;
   song?: SongComposerState;

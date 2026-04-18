@@ -44,4 +44,19 @@ describe("public profile host routing", () => {
       hostSuffix: null,
     });
   });
+
+  test("matches community moderation sections from path routes", () => {
+    expectJson(matchRoute("/c/community-123/mod/links"), {
+      kind: "community-moderation",
+      path: "/c/community-123/mod/links",
+      communityId: "community-123",
+      section: "links",
+    });
+    expectJson(matchRoute("/c/community-123/mod/donations"), {
+      kind: "community-moderation",
+      path: "/c/community-123/mod/donations",
+      communityId: "community-123",
+      section: "donations",
+    });
+  });
 });

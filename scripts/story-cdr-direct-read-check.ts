@@ -10,13 +10,7 @@ import { initWasm } from "../src/lib/story/vendor/piplabs/crypto";
 import { cdrAbi, contractAddresses } from "../src/lib/story/vendor/piplabs/contracts";
 import { CDRClient } from "../src/lib/story/vendor/piplabs/sdk/client";
 import { uuidToLabel } from "../src/lib/story/vendor/piplabs/sdk/label";
-
-function decodeBase64(value: string): Uint8Array {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-  const binary = Buffer.from(padded, "base64");
-  return new Uint8Array(binary);
-}
+import { decodeBase64 } from "./_lib/base64";
 
 function readFlag(flagName: string): string | null {
   const prefix = `${flagName}=`;
@@ -150,7 +144,6 @@ async function main(): Promise<void> {
       uuid: vaultUuid,
       accessAuxData: "0x",
       requesterPubKey: requesterPublicKey,
-      feeOverride: undefined,
     });
     txHash = readResult.txHash;
     console.log(JSON.stringify({

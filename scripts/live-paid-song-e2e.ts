@@ -11,6 +11,7 @@ import { initWasm } from "../src/lib/story/vendor/piplabs/crypto";
 import { uuidToLabel } from "../src/lib/story/vendor/piplabs/sdk/label";
 import { toBytes, toHex } from "viem";
 import { cdrAbi, contractAddresses } from "../src/lib/story/vendor/piplabs/contracts";
+import { decodeBase64 } from "./_lib/base64";
 
 const execFileAsync = promisify(execFile);
 
@@ -34,12 +35,6 @@ const HTTP_AGENT = new Agent({
   headersTimeout: 10 * 60 * 1_000,
   bodyTimeout: 10 * 60 * 1_000,
 });
-
-function decodeBase64(value: string): Uint8Array {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-  return new Uint8Array(Buffer.from(padded, "base64"));
-}
 
 function step(label: string): void {
   console.error(`[live-paid-song-e2e] ${label}`);
@@ -159,24 +154,6 @@ async function expectOkJson<T>(
     throw new Error(`${input?.method ?? "GET"} ${path} failed: ${response.status} ${await response.text()}`);
   }
   return await response.json() as T;
-}
-
-async function expectJson<T>(
-  path: string,
-  input?: {
-    token?: string;
-    method?: string;
-    json?: unknown;
-    bytes?: Uint8Array;
-    contentType?: string;
-  },
-): Promise<{ status: number; body: T }> {
-  const response = await request(path, input);
-  const body = await response.json() as T;
-  return {
-    status: response.status,
-    body,
-  };
 }
 
 async function expectOkBytes(

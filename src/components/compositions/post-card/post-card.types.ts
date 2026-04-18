@@ -104,15 +104,32 @@ export interface VideoContentSpec {
 }
 
 export type PostCardContent =
-  | { type: "text"; body: string }
-  | { type: "image"; src: string; alt: string; caption?: string; aspectRatio?: number }
+  | {
+      type: "text";
+      body: string;
+      bodyDir?: "ltr" | "rtl" | "auto";
+      bodyLang?: string;
+    }
+  | {
+      type: "image";
+      src: string;
+      alt: string;
+      caption?: string;
+      captionDir?: "ltr" | "rtl" | "auto";
+      captionLang?: string;
+      aspectRatio?: number;
+    }
   | VideoContentSpec
   | {
       type: "link";
       href: string;
       linkTitle: string;
+      linkTitleDir?: "ltr" | "rtl" | "auto";
+      linkTitleLang?: string;
       linkLabel?: string;
       linkCaption?: string;
+      linkCaptionDir?: "ltr" | "rtl" | "auto";
+      linkCaptionLang?: string;
       previewImageSrc?: string;
     }
   | SongContentSpec;
@@ -156,6 +173,8 @@ export interface PostCardProps {
   byline: PostCardByline;
   qualifierLabels?: string[];
   title?: string;
+  titleDir?: "ltr" | "rtl" | "auto";
+  titleLang?: string;
   titleHref?: string;
   postHref?: string;
   content: PostCardContent;

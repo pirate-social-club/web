@@ -78,10 +78,10 @@ function CommentNode({
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base leading-[1.25] text-muted-foreground">
               {comment.authorHref ? (
                 <a className="font-semibold text-foreground hover:underline" href={comment.authorHref}>
-                  {comment.authorLabel}
+                  <bdi>{comment.authorLabel}</bdi>
                 </a>
               ) : (
-                <span className="font-semibold text-foreground">{comment.authorLabel}</span>
+                <span className="font-semibold text-foreground"><bdi>{comment.authorLabel}</bdi></span>
               )}
               {comment.metadataLabel ? (
                 <>
@@ -106,6 +106,8 @@ function CommentNode({
                     "text-base leading-7 text-foreground",
                     comment.status && comment.status !== "published" && "text-muted-foreground",
                   )}
+                  dir={comment.bodyDir ?? "auto"}
+                  lang={comment.bodyLang}
                   value={body}
                 />
                 {canToggleOriginal ? (
@@ -231,6 +233,8 @@ export function PostThread({
   postShowOriginalLabel,
   postShowTranslationLabel,
   commentsHeading = "Comments",
+  commentsHeadingDir,
+  commentsHeadingLang,
   commentsBody,
   comments,
   replies,
@@ -290,7 +294,9 @@ export function PostThread({
       <section className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
         <div className="border-b border-border-soft px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <div className="text-base font-medium text-foreground">{commentsHeading}</div>
+            <div className="text-base font-medium text-foreground" dir={commentsHeadingDir ?? "auto"} lang={commentsHeadingLang}>
+              {commentsHeading}
+            </div>
             {canReplyAtRoot ? (
               <Button
                 size="sm"

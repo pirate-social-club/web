@@ -1389,6 +1389,20 @@ function toSongPlaybackDescriptor(
   return null;
 }
 
+function resolveTranslatedTextPresentation(resolvedLocale: string | null | undefined): {
+  dir?: "rtl";
+  lang?: string;
+} {
+  const normalized = String(resolvedLocale ?? "").toLowerCase();
+  if (normalized === "ar" || normalized.startsWith("ar-")) {
+    return {
+      dir: "rtl",
+      lang: "ar",
+    };
+  }
+  return {};
+}
+
 function toCommunityPostContent(
   postResponse: ApiPost,
   songOptions?: SongPresentationOptions,
@@ -1401,6 +1415,10 @@ function toCommunityPostContent(
   const resolvedCaption = opts?.preferOriginalText
     ? post.caption ?? undefined
     : translated_caption ?? post.caption ?? undefined;
+  const translatedTextPresentation = !opts?.preferOriginalText
+    && postResponse.translation_state === "ready"
+    ? resolveTranslatedTextPresentation(postResponse.resolved_locale)
+    : {};
   const primaryMedia = post.media_refs?.[0];
   const imageMedia = primaryMedia as ({ width?: number | null; height?: number | null } & typeof primaryMedia) | undefined;
   const title = opts?.preferOriginalText ? (post.title ?? "Untitled post") : (translated_title ?? post.title ?? "Untitled post");
@@ -1418,6 +1436,8 @@ function toCommunityPostContent(
         aspectRatio,
         alt: title,
         caption: resolvedCaption,
+        captionDir: translatedTextPresentation.dir,
+        captionLang: translatedTextPresentation.lang,
         src: primaryMedia?.storage_ref ?? "",
       };
     }
@@ -1433,8 +1453,12 @@ function toCommunityPostContent(
         type: "link",
         href: post.link_url ?? "#",
         linkCaption: resolvedCaption,
+        linkCaptionDir: translatedTextPresentation.dir,
+        linkCaptionLang: translatedTextPresentation.lang,
         linkLabel: post.link_url ?? undefined,
         linkTitle: title,
+        linkTitleDir: translatedTextPresentation.dir,
+        linkTitleLang: translatedTextPresentation.lang,
       };
     case "song":
       {
@@ -1485,6 +1509,8 @@ function toCommunityPostContent(
       return {
         type: "text",
         body: resolvedBody,
+        bodyDir: translatedTextPresentation.dir,
+        bodyLang: translatedTextPresentation.lang,
       };
   }
 }
@@ -1533,6 +1559,12 @@ export function toCommunityFeedItem(
       postHref: `/p/${post.post_id}`,
       qualifierLabels: postResponse.label?.label ? [postResponse.label.label] : undefined,
       title: postResponse.translated_title ?? post.title ?? undefined,
+      titleDir: postResponse.translation_state === "ready"
+        ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
+        : undefined,
+      titleLang: postResponse.translation_state === "ready"
+        ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
+        : undefined,
       titleHref: `/p/${post.post_id}`,
       viewContext: "community",
     },
@@ -1591,6 +1623,12 @@ export function toHomeFeedItem(
       postHref: `/p/${post.post_id}`,
       qualifierLabels: postResponse.label?.label ? [postResponse.label.label] : undefined,
       title: postResponse.translated_title ?? post.title ?? undefined,
+      titleDir: postResponse.translation_state === "ready"
+        ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
+        : undefined,
+      titleLang: postResponse.translation_state === "ready"
+        ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
+        : undefined,
       titleHref: `/p/${post.post_id}`,
       viewContext: "home",
     },
@@ -1653,6 +1691,12 @@ function toThreadPostCard(
     title: opts?.preferOriginalText
       ? post.title ?? undefined
       : postResponse.translated_title ?? post.title ?? undefined,
+    titleDir: !opts?.preferOriginalText && postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
+      : undefined,
+    titleLang: !opts?.preferOriginalText && postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
+      : undefined,
     titleHref: `/p/${post.post_id}`,
     viewContext: "home",
   };
@@ -1840,6 +1884,12 @@ function toThreadComment(
       : undefined,
     authorLabel,
     body: defaultBody,
+    bodyDir: item.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(item.resolved_locale).dir ?? "auto"
+      : "auto",
+    bodyLang: item.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(item.resolved_locale).lang
+      : undefined,
     children,
     commentId: comment.comment_id,
     cancelReplyLabel: opts?.onReplySubmit ? labels.cancelReplyLabel : undefined,
@@ -3885,6 +3935,8 @@ function PostPage({ postId }: { postId: string }) {
     <ContentRailShell rail={community ? <CommunitySidebar {...buildCommunitySidebar(community)} /> : undefined}>
       <PostThread
         commentsHeading={copy.common.commentsHeading}
+        commentsHeadingDir={contentLocale === "ar" ? "rtl" : undefined}
+        commentsHeadingLang={contentLocale === "ar" ? "ar" : undefined}
         emptyCommentsLabel={copy.common.noComments}
         onRootReplySubmit={createTopLevelComment}
         post={localizedPostCard}

@@ -1,18 +1,25 @@
 "use client";
 
 import * as React from "react";
+import { LinkSimple, ListBullets, ListNumbers, Quotes } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
 import { Textarea } from "./textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./tooltip";
 
 const toolbar = [
   { action: "bold", label: "B", title: "Bold" },
   { action: "italic", label: "I", title: "Italic" },
   { action: "strike", label: "S", title: "Strikethrough" },
-  { action: "quote", label: ">", title: "Quote" },
-  { action: "link", label: "[]", title: "Link" },
-  { action: "bulletList", label: "UL", title: "Bulleted list" },
-  { action: "orderedList", label: "OL", title: "Numbered list" },
+  { action: "quote", label: <Quotes className="size-5" />, title: "Blockquote" },
+  { action: "link", label: <LinkSimple className="size-5" />, title: "Link" },
+  { action: "bulletList", label: <ListBullets className="size-5" />, title: "Bulleted list" },
+  { action: "orderedList", label: <ListNumbers className="size-5" />, title: "Numbered list" },
 ] as const;
 
 type ToolbarAction = (typeof toolbar)[number]["action"];
@@ -122,22 +129,29 @@ export function FormattedTextarea({
 
   return (
     <div className={cn("overflow-hidden rounded-xl border border-input bg-background shadow-sm", containerClassName)}>
-      <div className="flex flex-wrap items-center gap-2 border-b border-border-soft px-3 py-3">
-        {toolbar.map((item) => (
-          <button
-            key={item.action}
-            aria-label={item.title}
-            className="inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-transparent px-3 text-base font-semibold text-muted-foreground transition-colors hover:border-border-soft hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => handleToolbarAction(item.action)}
-            type="button"
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <TooltipProvider delayDuration={100}>
+        <div className="flex flex-wrap items-center gap-2 border-b border-border-soft px-3 py-3">
+          {toolbar.map((item) => (
+            <Tooltip key={item.action}>
+              <TooltipTrigger asChild>
+                <button
+                  aria-label={item.title}
+                  className="inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-transparent px-3 text-base font-semibold text-muted-foreground transition-colors hover:border-border-soft hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => handleToolbarAction(item.action)}
+                  type="button"
+                >
+                  {item.label}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{item.title}</TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+      </TooltipProvider>
       <Textarea
         {...props}
         className={cn("min-h-32 rounded-none border-0 shadow-none focus-visible:ring-0", className)}
+        dir={props.dir ?? "auto"}
         onChange={(event) => onChange?.(event.target.value)}
         ref={textareaRef}
         value={value}

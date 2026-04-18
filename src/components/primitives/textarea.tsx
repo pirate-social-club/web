@@ -14,6 +14,7 @@ const Textarea = React.forwardRef<
         "flex min-h-28 w-full rounded-xl border border-input bg-background px-4 py-3 text-base shadow-sm transition-[color,box-shadow,border-color] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
+      dir={props.dir ?? "auto"}
       ref={ref}
       {...props}
     />

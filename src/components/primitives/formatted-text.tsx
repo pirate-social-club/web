@@ -75,9 +75,13 @@ function renderParagraph(lines: string[], key: string) {
 
 export function FormattedText({
   className,
+  dir = "auto",
+  lang,
   value,
 }: {
   className?: string;
+  dir?: React.HTMLAttributes<HTMLDivElement>["dir"];
+  lang?: string;
   value: string;
 }) {
   const lines = value.split("\n");
@@ -152,5 +156,9 @@ export function FormattedText({
     blocks.push(renderParagraph(paragraphLines, `p-${index}`));
   }
 
-  return <div className={cn("space-y-3 text-base", className)}>{blocks}</div>;
+  return (
+    <div className={cn("space-y-3 text-base", className)} dir={dir} lang={lang}>
+      {blocks}
+    </div>
+  );
 }

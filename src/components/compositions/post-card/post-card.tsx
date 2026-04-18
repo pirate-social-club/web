@@ -55,6 +55,8 @@ export function PostCard({
   byline,
   qualifierLabels,
   title,
+  titleDir,
+  titleLang,
   titleHref,
   postHref,
   content,
@@ -72,13 +74,15 @@ export function PostCard({
     effectiveTitleHref ? (
       <a
         className={cn(postCardType.title, "font-semibold text-foreground hover:underline")}
+        dir={titleDir ?? "auto"}
         href={effectiveTitleHref}
+        lang={titleLang}
         data-post-card-interactive="true"
       >
         {title}
       </a>
     ) : (
-      <h3 className={cn(postCardType.title, "font-semibold text-foreground")}>
+      <h3 className={cn(postCardType.title, "font-semibold text-foreground")} dir={titleDir ?? "auto"} lang={titleLang}>
         {title}
       </h3>
     )

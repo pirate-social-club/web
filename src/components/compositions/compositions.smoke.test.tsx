@@ -136,6 +136,44 @@ describe("composition smoke tests", () => {
     expect(markup).toContain("Keeping the branch folded until someone opens it is the right call.");
   });
 
+  test("renders Arabic translated thread content with RTL direction", () => {
+    const markup = render(
+      <PostThread
+        commentsHeading="التعليقات"
+        commentsHeadingDir="rtl"
+        commentsHeadingLang="ar"
+        post={{
+          ...basePost,
+          title: "اختبار مرحبا بالعالم",
+          titleDir: "rtl",
+          titleLang: "ar",
+          content: {
+            type: "text",
+            body: "هل تسمعني؟",
+            bodyDir: "rtl",
+            bodyLang: "ar",
+          },
+        }}
+        comments={[
+          {
+            commentId: "reply-ar-1",
+            authorLabel: "u/arabic",
+            body: "هذا تعليق مترجم.",
+            bodyDir: "rtl",
+            bodyLang: "ar",
+            timestampLabel: "1h ago",
+          },
+        ]}
+      />,
+    );
+
+    expect(markup).toContain('dir="rtl"');
+    expect(markup).toContain('lang="ar"');
+    expect(markup).toContain("اختبار مرحبا بالعالم");
+    expect(markup).toContain("هل تسمعني؟");
+    expect(markup).toContain("هذا تعليق مترجم.");
+  });
+
   test("renders onboarding without a browser environment", () => {
     const markup = render(
       <OnboardingRedditBootstrap

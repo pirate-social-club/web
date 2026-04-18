@@ -11,6 +11,8 @@ export interface PostThreadComment {
   scoreLabel?: string;
   viewerVote?: "up" | "down" | null;
   body?: string;
+  bodyDir?: "ltr" | "rtl" | "auto";
+  bodyLang?: string;
   originalBody?: string;
   status?: PostThreadCommentStatus;
   metadataLabel?: string;
@@ -35,6 +37,8 @@ export interface PostThreadProps {
   postShowOriginalLabel?: string;
   postShowTranslationLabel?: string;
   commentsHeading?: string;
+  commentsHeadingDir?: "ltr" | "rtl" | "auto";
+  commentsHeadingLang?: string;
   commentsBody?: string;
   comments?: PostThreadComment[];
   replies?: PostThreadComment[];

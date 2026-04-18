@@ -16,7 +16,14 @@ export interface PostCardMediaProps {
 export function PostCardMedia({ content, className }: PostCardMediaProps) {
   switch (content.type) {
     case "text":
-      return <FormattedText className={cn(postCardType.body, "text-foreground", className)} value={content.body} />;
+      return (
+        <FormattedText
+          className={cn(postCardType.body, "text-foreground", className)}
+          dir={content.bodyDir ?? "auto"}
+          lang={content.bodyLang}
+          value={content.body}
+        />
+      );
     case "image":
       return (
         <figure className={cn("overflow-hidden rounded-lg", className)}>
@@ -27,7 +34,11 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
             style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
           />
           {content.caption && (
-            <figcaption className={cn("mt-1.5 text-muted-foreground", postCardType.caption)}>
+            <figcaption
+              className={cn("mt-1.5 text-muted-foreground", postCardType.caption)}
+              dir={content.captionDir ?? "auto"}
+              lang={content.captionLang}
+            >
               {content.caption}
             </figcaption>
           )}
@@ -45,7 +56,9 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
           >
             <div className="min-w-0 flex-1">
               <p className={cn(postCardType.label, "line-clamp-2 font-semibold text-foreground")}>
+                <span dir={content.linkTitleDir ?? "auto"} lang={content.linkTitleLang}>
                 {content.linkTitle}
+                </span>
               </p>
               <div className={cn("mt-1.5 flex items-center gap-1.5 text-muted-foreground", postCardType.meta)}>
                 <span className="truncate">{content.linkLabel ?? content.href}</span>
@@ -63,7 +76,12 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
             </div>
           </a>
           {content.linkCaption ? (
-            <FormattedText className={cn(postCardType.caption, "text-foreground")} value={content.linkCaption} />
+            <FormattedText
+              className={cn(postCardType.caption, "text-foreground")}
+              dir={content.linkCaptionDir ?? "auto"}
+              lang={content.linkCaptionLang}
+              value={content.linkCaption}
+            />
           ) : null}
         </div>
       );

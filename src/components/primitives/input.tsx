@@ -29,6 +29,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <input
         className={cn(inputVariants({ size }), className)}
+        dir={props.dir ?? "auto"}
         ref={ref}
         type={type}
         {...props}

@@ -14,10 +14,12 @@ bun run dev            # dev server on :5173
 bun run test
 bun run storybook      # component workspace on :6006
 bun run build          # full production build (heavy, avoid by default)
+bun run validate       # canonical pre-deploy validation
 ```
 
 See [AGENTS.md](./AGENTS.md) for validation escalation order and style rules.
 See [docs/ui-structure.md](./docs/ui-structure.md), [docs/ui-best-practices.md](./docs/ui-best-practices.md), and [docs/ui-maintenance.md](./docs/ui-maintenance.md) for the component structure and maintenance rules.
+See [docs/deploy.md](./docs/deploy.md) for the canonical main/public worker deploy commands.
 
 ## Source Layout
 

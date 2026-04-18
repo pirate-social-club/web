@@ -38,7 +38,6 @@ function createCommentListItem(input: {
       last_reply_at: null,
       parent_comment_id: input.parentCommentId ?? null,
       score: input.score,
-      source_language: "en",
       status: "published",
       swarm_body_ref: null,
       thread_root_post_id: "pst_browser",

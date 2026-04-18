@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { createVeryWidget } from "@veryai/widget";
-import { Gavel, Lock, Plus, SealCheck, Shield } from "@phosphor-icons/react";
+import { Gavel, Heart, LinkSimple, Lock, Plus, SealCheck, Shield } from "@phosphor-icons/react";
 
 import { AppRoute, navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
@@ -15,6 +15,7 @@ import {
 import type { OnboardingStatus } from "@pirate/api-contracts";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
+import type { CommentListItem as ApiCommentListItem } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
@@ -35,6 +36,16 @@ import {
 import { resolveApiBaseUrl, resolveApiUrl } from "@/lib/api/base-url";
 import { readStoryCdrAsset } from "@/lib/story/cdr-browser";
 import { CommunityPageShell } from "@/components/compositions/community-page-shell/community-page-shell";
+import {
+  CommunityDonationsEditorPage,
+  type DonationPartnerPreview,
+  type DonationPolicyMode,
+} from "@/components/compositions/community-donations-editor/community-donations-editor-page";
+import {
+  CommunityLinksEditorPage,
+  createEmptyCommunityLinkEditorItem,
+  type CommunityLinkEditorItem,
+} from "@/components/compositions/community-links-editor/community-links-editor-page";
 import { CommunityModerationShell } from "@/components/compositions/community-moderation-shell/community-moderation-shell";
 import { CommunityGatesEditorPage } from "@/components/compositions/community-gates-editor/community-gates-editor-page";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community-membership-gate-panel/community-membership-gate-panel";
@@ -51,7 +62,7 @@ import { CommunitySidebar } from "@/components/compositions/community-sidebar/co
 import type { CommunitySidebarRule } from "@/components/compositions/community-sidebar/community-sidebar.types";
 import { ContentRailShell } from "@/components/compositions/content-rail-shell/content-rail-shell";
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
-import type { NamespaceAttachmentState, IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
+import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import { Feed, type FeedItem, type FeedSort, type FeedSortOption } from "@/components/compositions/feed/feed";
 import { PostComposer } from "@/components/compositions/post-composer/post-composer";
 import {
@@ -59,6 +70,7 @@ import {
   defaultSongState,
 } from "@/components/compositions/post-composer/post-composer-config";
 import type {
+  CommunityPickerItem,
   ComposerReference,
   ComposerTab,
   DerivativeStepState,
@@ -69,6 +81,7 @@ import type {
 import type { PostCardProps } from "@/components/compositions/post-card/post-card.types";
 import type { SongContentSpec } from "@/components/compositions/post-card/post-card.types";
 import { PostThread } from "@/components/compositions/post-thread/post-thread";
+import type { PostThreadComment } from "@/components/compositions/post-thread/post-thread.types";
 import type { OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type {
   ImportJobState,
@@ -85,7 +98,6 @@ import type {
 } from "@/components/compositions/settings-page/settings-page.types";
 import { useGlobalHandleFlow } from "@/hooks/use-global-handle-flow";
 import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
-import { VerifyNamespaceModal } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal";
 import type {
   NamespaceVerificationCallbacks,
   SpacesChallengePayload,
@@ -94,8 +106,9 @@ import { Button } from "@/components/primitives/button";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Spinner } from "@/components/primitives/spinner";
 import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
-import { rememberKnownCommunity } from "@/lib/known-communities-store";
+import { rememberKnownCommunity, useKnownCommunities } from "@/lib/known-communities-store";
 import { useUiLocale } from "@/lib/ui-locale";
+import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { resolveLocaleLanguageTag, SUPPORTED_UI_LOCALES, type UiLocaleCode } from "@/lib/ui-locale-core";
 import { buildPublicProfilePathForProfile } from "@/lib/profile-routing";
 import { getLocaleMessages } from "@/locales";
@@ -144,23 +157,29 @@ function StackPageShell({
   actions?: React.ReactNode;
   children?: React.ReactNode;
 }) {
+  const showHeader = Boolean(title.trim() || description || actions);
+
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-6">
-      <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-5 md:px-6 md:py-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-              {title}
-            </h1>
-            {description ? (
-              <p className="max-w-3xl text-base leading-7 text-muted-foreground">
-                {description}
-              </p>
-            ) : null}
+      {showHeader ? (
+        <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-5 md:px-6 md:py-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col gap-2">
+              {title.trim() ? (
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                  {title}
+                </h1>
+              ) : null}
+              {description ? (
+                <p className="max-w-3xl text-base leading-7 text-muted-foreground">
+                  {description}
+                </p>
+              ) : null}
+            </div>
+            {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
           </div>
-          {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
         </div>
-      </div>
+      ) : null}
       {children}
     </section>
   );
@@ -571,7 +590,7 @@ const COMMUNITY_SORT_OPTIONS: FeedSortOption[] = [
 
 function YourCommunitiesPage() {
   const { copy } = useRouteMessages();
-  const [activeSort, setActiveSort] = React.useState<FeedSort>("new");
+  const [activeSort, setActiveSort] = React.useState<FeedSort>("best");
 
   return (
     <Feed
@@ -712,6 +731,27 @@ function CreatePostPage({ communityId }: { communityId: string }) {
       setSubmitError(null);
     }
   }, [clearPendingSongBundle, songBundleInputFingerprint]);
+
+  React.useEffect(() => {
+    if (!community) return;
+
+    rememberKnownCommunity({
+      avatarSrc: community.avatar_ref ?? undefined,
+      communityId: community.community_id,
+      displayName: community.display_name,
+    });
+  }, [community]);
+
+  React.useEffect(() => {
+    if (!community) return;
+    setMonetizationState((prev) => ({
+      ...prev,
+      donationAvailable: community.donation_policy_mode != null && community.donation_policy_mode !== "none",
+      donationPartnerId: community.donation_partner_id ?? undefined,
+      donationPartnerName: community.donation_partner?.display_name ?? undefined,
+      donationOptIn: community.donation_policy_mode === "fundraiser_default",
+    }));
+  }, [community]);
 
   const canSubmitText = title.trim().length > 0 && body.trim().length > 0;
   const canSubmitSong = Boolean(songState.primaryAudioUpload && lyrics.trim());
@@ -952,9 +992,9 @@ function CreatePostPage({ communityId }: { communityId: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <section className="flex min-w-0 flex-1 items-center justify-center py-20">
         <Spinner className="size-6" />
-      </div>
+      </section>
     );
   }
 
@@ -1016,7 +1056,7 @@ function CreatePostPage({ communityId }: { communityId: string }) {
     <ContentRailShell
       rail={<CommunitySidebar {...buildCommunitySidebar(community)} />}
     >
-      <StackPageShell title="Create post">
+      <StackPageShell title="">
         <PostComposer
           availableTabs={["text", "song"]}
           canCreateSongPost
@@ -1079,6 +1119,12 @@ function toViewerVote(value: ApiPost["viewer_vote"]): PostCardProps["engagement"
   return null;
 }
 
+function toCommentViewerVote(value: ApiCommentListItem["viewer_vote"]): "up" | "down" | null {
+  if (value === 1) return "up";
+  if (value === -1) return "down";
+  return null;
+}
+
 type SongPresentationOptions = {
   currentUserId?: string | null;
   listing?: ApiCommunityListing;
@@ -1136,8 +1182,15 @@ function toSongPlaybackDescriptor(
 function toCommunityPostContent(
   postResponse: ApiPost,
   songOptions?: SongPresentationOptions,
+  opts?: {
+    preferOriginalText?: boolean;
+  },
 ): PostCardProps["content"] {
   const { post, translated_body, translated_caption } = postResponse;
+  const resolvedBody = opts?.preferOriginalText ? post.body ?? "" : translated_body ?? post.body ?? "";
+  const resolvedCaption = opts?.preferOriginalText
+    ? post.caption ?? undefined
+    : translated_caption ?? post.caption ?? undefined;
   const primaryMedia = post.media_refs?.[0];
   const imageMedia = primaryMedia as ({ width?: number | null; height?: number | null } & typeof primaryMedia) | undefined;
   const title = post.title ?? "Untitled post";
@@ -1154,7 +1207,7 @@ function toCommunityPostContent(
         type: "image",
         aspectRatio,
         alt: title,
-        caption: translated_caption ?? post.caption ?? undefined,
+        caption: resolvedCaption,
         src: primaryMedia?.storage_ref ?? "",
       };
     }
@@ -1220,7 +1273,7 @@ function toCommunityPostContent(
     default:
       return {
         type: "text",
-        body: translated_body ?? post.body ?? "",
+        body: resolvedBody,
       };
   }
 }
@@ -1280,6 +1333,9 @@ function toThreadPostCard(
   community: ApiCommunity | null,
   authorProfile?: ApiProfile,
   songOptions?: SongPresentationOptions,
+  opts?: {
+    preferOriginalText?: boolean;
+  },
 ): PostCardProps {
   const { post } = postResponse;
   const authorLabel = post.identity_mode === "anonymous"
@@ -1314,7 +1370,7 @@ function toThreadPostCard(
         : undefined,
       timestampLabel: formatRelativeTimestamp(post.created_at),
     },
-    content: toCommunityPostContent(postResponse, songOptions),
+    content: toCommunityPostContent(postResponse, songOptions, opts),
     engagement: {
       commentCount: 0,
       score: postResponse.upvote_count - postResponse.downvote_count,
@@ -1331,9 +1387,283 @@ function toThreadPostCard(
   };
 }
 
+function shouldShowOriginalPost(postResponse: ApiPost): boolean {
+  if (postResponse.translation_state !== "ready") {
+    return false;
+  }
+
+  return (postResponse.translated_body ?? null) !== (postResponse.post.body ?? null)
+    || (postResponse.translated_caption ?? null) !== (postResponse.post.caption ?? null);
+}
+
+function collectCommentAuthorUserIds(items: ApiCommentListItem[]): string[] {
+  return [...new Set(items
+    .map((item) => item.comment.identity_mode === "public" ? item.comment.author_user_id : null)
+    .filter((value): value is string => Boolean(value)))];
+}
+
+function collectThreadCommentAuthorUserIds(nodes: ThreadCommentNode[]): string[] {
+  return [...new Set(nodes.flatMap((node) => [
+    ...collectCommentAuthorUserIds([node.item]),
+    ...collectThreadCommentAuthorUserIds(node.children),
+  ]))];
+}
+
+export function createThreadCommentNode(item: ApiCommentListItem): ThreadCommentNode {
+  return {
+    item,
+    children: [],
+    hasLoadedReplies: false,
+    loadingReplies: false,
+    nextRepliesCursor: null,
+  };
+}
+
+export function mergeThreadCommentNodes(
+  previousNodes: ThreadCommentNode[],
+  nextNodes: ThreadCommentNode[],
+): ThreadCommentNode[] {
+  const previousByCommentId = new Map(
+    previousNodes.map((node) => [node.item.comment.comment_id, node] as const),
+  );
+
+  return nextNodes.map((node) => {
+    const previousNode = previousByCommentId.get(node.item.comment.comment_id);
+    if (!previousNode) {
+      return node;
+    }
+
+    return {
+      ...node,
+      children: mergeThreadCommentNodes(previousNode.children, node.children.length > 0 ? node.children : previousNode.children),
+      hasLoadedReplies: previousNode.hasLoadedReplies,
+      loadingReplies: previousNode.loadingReplies,
+      nextRepliesCursor: previousNode.nextRepliesCursor,
+    };
+  });
+}
+
+async function listAllCommentPages(
+  fetchPage: (cursor: string | null) => Promise<{
+    items: ApiCommentListItem[];
+    next_cursor: string | null;
+  }>,
+): Promise<ApiCommentListItem[]> {
+  const items: ApiCommentListItem[] = [];
+  let cursor: string | null = null;
+
+  while (true) {
+    const page = await fetchPage(cursor);
+    items.push(...page.items);
+    if (!page.next_cursor) {
+      return items;
+    }
+    cursor = page.next_cursor;
+  }
+}
+
+async function loadThreadCommentTree(
+  api: ReturnType<typeof useApi>,
+  communityId: string,
+  postId: string,
+  locale: string,
+): Promise<ThreadCommentNode[]> {
+  const topLevelComments = await listAllCommentPages((cursor) => api.communities.listComments(communityId, postId, {
+    cursor,
+    limit: THREAD_COMMENT_PAGE_LIMIT,
+    locale,
+    sort: "best",
+  }));
+
+  return topLevelComments.map((item) => createThreadCommentNode(item));
+}
+
+function updateThreadCommentNode(
+  nodes: ThreadCommentNode[],
+  commentId: string,
+  updater: (node: ThreadCommentNode) => ThreadCommentNode,
+): ThreadCommentNode[] {
+  return nodes.map((node) => {
+    if (node.item.comment.comment_id === commentId) {
+      return updater(node);
+    }
+
+    if (node.children.length === 0) {
+      return node;
+    }
+
+    const nextChildren = updateThreadCommentNode(node.children, commentId, updater);
+    return nextChildren === node.children ? node : { ...node, children: nextChildren };
+  });
+}
+
+function findThreadCommentNode(
+  nodes: ThreadCommentNode[],
+  commentId: string,
+): ThreadCommentNode | null {
+  for (const node of nodes) {
+    if (node.item.comment.comment_id === commentId) {
+      return node;
+    }
+    const child = findThreadCommentNode(node.children, commentId);
+    if (child) {
+      return child;
+    }
+  }
+  return null;
+}
+
+function toThreadComment(
+  item: ApiCommentListItem,
+  authorProfiles: Record<string, ApiProfile | null>,
+  labels: {
+    cancelReplyLabel: string;
+    loadMoreRepliesLabel: string;
+    loadRepliesLabel: string;
+    loadingRepliesLabel: string;
+    replyActionLabel: string;
+    replyPlaceholder: string;
+    showOriginalLabel: string;
+    submitReplyLabel: string;
+    showTranslationLabel: string;
+  },
+  opts?: {
+    loadingReplies?: boolean;
+    moreRepliesLabel?: string;
+    onLoadMoreReplies?: () => void;
+    onReplySubmit?: (body: string) => Promise<void> | void;
+    onVote?: (direction: "up" | "down") => void;
+  },
+  children?: PostThreadComment[],
+): PostThreadComment {
+  const { comment } = item;
+  const authorProfile = comment.author_user_id ? authorProfiles[comment.author_user_id] : null;
+  const authorLabel = comment.identity_mode === "anonymous"
+    ? comment.anonymous_label ?? "anon"
+    : authorProfile?.display_name?.trim()
+      ? authorProfile.display_name.trim()
+      : authorProfile?.global_handle?.label
+        ? `u/${authorProfile.primary_public_handle?.label ?? authorProfile.global_handle.label}`
+        : comment.author_user_id
+          ? `u/${comment.author_user_id.slice(0, 8)}`
+          : "Pirate user";
+  const defaultBody = item.translated_body ?? comment.body ?? "";
+  const originalBody = item.translation_state === "ready"
+    && item.translated_body
+    && item.translated_body !== comment.body
+    ? comment.body ?? undefined
+    : undefined;
+
+  return {
+    authorHref: comment.identity_mode === "public" && comment.author_user_id && authorProfile
+      ? buildPublicProfilePathForProfile(authorProfile)
+      : undefined,
+    authorLabel,
+    body: defaultBody,
+    children,
+    commentId: comment.comment_id,
+    cancelReplyLabel: opts?.onReplySubmit ? labels.cancelReplyLabel : undefined,
+    moreRepliesLabel: opts?.moreRepliesLabel,
+    onLoadMoreReplies: opts?.onLoadMoreReplies,
+    onReplySubmit: opts?.onReplySubmit,
+    onVote: opts?.onVote,
+    originalBody,
+    replyActionLabel: opts?.onReplySubmit ? labels.replyActionLabel : undefined,
+    replyPlaceholder: opts?.onReplySubmit ? labels.replyPlaceholder : undefined,
+    scoreLabel: String(comment.score),
+    submitReplyLabel: opts?.onReplySubmit ? labels.submitReplyLabel : undefined,
+    showOriginalLabel: originalBody ? labels.showOriginalLabel : undefined,
+    showTranslationLabel: originalBody ? labels.showTranslationLabel : undefined,
+    status: comment.status,
+    timestampLabel: formatRelativeTimestamp(comment.created_at),
+    viewerVote: toCommentViewerVote(item.viewer_vote),
+  };
+}
+
+function buildThreadMoreRepliesLabel(
+  node: ThreadCommentNode,
+  labels: {
+    loadMoreRepliesLabel: string;
+    loadRepliesLabel: string;
+    loadingRepliesLabel: string;
+  },
+): string | undefined {
+  if (node.loadingReplies) {
+    return labels.loadingRepliesLabel;
+  }
+
+  const remainingReplies = Math.max(node.item.comment.direct_reply_count - node.children.length, 0);
+  if (remainingReplies <= 0) {
+    return undefined;
+  }
+
+  if (!node.hasLoadedReplies) {
+    return `${labels.loadRepliesLabel} (${remainingReplies})`;
+  }
+
+  if (node.nextRepliesCursor) {
+    return `${labels.loadMoreRepliesLabel} (${remainingReplies})`;
+  }
+
+  return undefined;
+}
+
+function mapThreadCommentNode(
+  node: ThreadCommentNode,
+  authorProfiles: Record<string, ApiProfile | null>,
+  labels: {
+    cancelReplyLabel: string;
+    loadMoreRepliesLabel: string;
+    loadRepliesLabel: string;
+    loadingRepliesLabel: string;
+    replyActionLabel: string;
+    replyPlaceholder: string;
+    showOriginalLabel: string;
+    submitReplyLabel: string;
+    showTranslationLabel: string;
+  },
+  onLoadReplies: (commentId: string) => void,
+  onReplySubmit: (commentId: string, body: string) => Promise<void>,
+  onVote: (commentId: string, direction: "up" | "down") => void,
+): PostThreadComment {
+  return toThreadComment(
+    node.item,
+    authorProfiles,
+    labels,
+    {
+      loadingReplies: node.loadingReplies,
+      moreRepliesLabel: buildThreadMoreRepliesLabel(node, labels),
+      onLoadMoreReplies: node.item.comment.direct_reply_count > 0
+        ? () => onLoadReplies(node.item.comment.comment_id)
+        : undefined,
+      onReplySubmit: async (body) => await onReplySubmit(node.item.comment.comment_id, body),
+      onVote: (direction) => onVote(node.item.comment.comment_id, direction),
+    },
+    node.children.map((child) => mapThreadCommentNode(
+      child,
+      authorProfiles,
+      labels,
+      onLoadReplies,
+      onReplySubmit,
+      onVote,
+    )),
+  );
+}
+
 function buildCommunitySidebar(community: ApiCommunity) {
+  const charityHref = community.donation_partner?.provider_partner_ref
+    ? `https://app.endaoment.org/orgs/${community.donation_partner.provider_partner_ref}`
+    : undefined;
+
   return {
     avatarSrc: community.avatar_ref ?? undefined,
+    charity: community.donation_policy_mode !== "none" && community.donation_partner
+      ? {
+        avatarSrc: community.donation_partner.image_url ?? undefined,
+        href: charityHref,
+        name: community.donation_partner.display_name,
+      }
+      : null,
     createdAt: community.created_at,
     description: community.description ?? "",
     displayName: community.display_name,
@@ -1398,7 +1728,7 @@ function getNamespaceActionLabel(community: ApiCommunity): string | null {
 
 function buildCommunityModerationPath(
   communityId: string,
-  section: "rules" | "gates" | "safety" | "namespace",
+  section: "rules" | "links" | "donations" | "gates" | "safety" | "namespace",
 ): string {
   return `/c/${encodeURIComponent(communityId)}/mod/${section}`;
 }
@@ -1470,7 +1800,7 @@ function clearPendingSelfJoinSession(communityId: string): void {
 }
 
 function buildCommunityModerationSections(
-  activeSection: "rules" | "gates" | "safety" | "namespace",
+  activeSection: "rules" | "links" | "donations" | "gates" | "safety" | "namespace",
   communityId: string,
 ) {
   return [{
@@ -1481,6 +1811,18 @@ function buildCommunityModerationSections(
         icon: Gavel,
         label: "Rules",
         onSelect: () => navigate(buildCommunityModerationPath(communityId, "rules")),
+      },
+      {
+        active: activeSection === "links",
+        icon: LinkSimple,
+        label: "Links",
+        onSelect: () => navigate(buildCommunityModerationPath(communityId, "links")),
+      },
+      {
+        active: activeSection === "donations",
+        icon: Heart,
+        label: "Donations",
+        onSelect: () => navigate(buildCommunityModerationPath(communityId, "donations")),
       },
       {
         active: activeSection === "gates",
@@ -1558,7 +1900,7 @@ function getCommunityOpenAIModerationSettingsState(community: ApiCommunity) {
   };
 }
 
-function useCommunityPageData(communityId: string, localeTag: string) {
+function useCommunityPageData(communityId: string, localeTag: string, activeSort: FeedSort) {
   const api = useApi();
   const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
   const [preview, setPreview] = React.useState<ApiCommunityPreview | null>(null);
@@ -1577,7 +1919,7 @@ function useCommunityPageData(communityId: string, localeTag: string) {
       api.communities.get(communityId),
       api.communities.preview(communityId),
       api.communities.getJoinEligibility(communityId),
-      api.communities.listPosts(communityId, { locale: localeTag }),
+      api.communities.listPosts(communityId, { locale: localeTag, sort: activeSort }),
     ])
       .then(async ([communityResult, previewResult, eligibilityResult, postResponse]) => {
         const uniqueAuthorIds = Array.from(
@@ -1614,7 +1956,7 @@ function useCommunityPageData(communityId: string, localeTag: string) {
       });
 
     return () => { cancelled = true; };
-  }, [api, communityId, localeTag]);
+  }, [activeSort, api, communityId, localeTag]);
 
   React.useEffect(() => {
     if (!community) return;
@@ -1653,6 +1995,7 @@ function CommunityPage({ communityId }: { communityId: string }) {
   const api = useApi();
   const session = useSession();
   const { localeTag } = useRouteMessages();
+  const [activeSort, setActiveSort] = React.useState<FeedSort>("best");
   const {
     authorProfiles,
     community,
@@ -1662,7 +2005,7 @@ function CommunityPage({ communityId }: { communityId: string }) {
     loading,
     posts,
     refetchEligibility,
-  } = useCommunityPageData(communityId, localeTag);
+  } = useCommunityPageData(communityId, localeTag, activeSort);
   const commerceEnabled = Boolean(session?.user?.user_id) && eligibility?.status === "already_joined";
   const {
     listingsByAssetId,
@@ -1670,7 +2013,6 @@ function CommunityPage({ communityId }: { communityId: string }) {
     refresh: refreshSongCommerce,
   } = useSongCommerceState(communityId, commerceEnabled);
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
-  const [activeSort, setActiveSort] = React.useState<FeedSort>("new");
   const [joinLoading, setJoinLoading] = React.useState(false);
   const [joinError, setJoinError] = React.useState<string | null>(null);
   const [joinRequested, setJoinRequested] = React.useState(false);
@@ -1880,9 +2222,9 @@ function CommunityPage({ communityId }: { communityId: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <section className="flex min-w-0 flex-1 items-center justify-center py-20">
         <Spinner className="size-6" />
-      </div>
+      </section>
     );
   }
 
@@ -1944,7 +2286,14 @@ function CommunityPage({ communityId }: { communityId: string }) {
       }
       : undefined);
   });
-  const namespaceActionLabel = ownsCommunity ? getNamespaceActionLabel(community) : null;
+  const namespaceActionLabel = ownsCommunity && !community.namespace_verification_id
+    ? getNamespaceActionLabel(community)
+    : null;
+  const modToolsAction = ownsCommunity && community.namespace_verification_id ? (
+    <Button onClick={() => navigate(buildCommunityModerationPath(communityId, "rules"))} variant="secondary">
+      Mod Tools
+    </Button>
+  ) : null;
   const primaryHeaderAction = canCreatePost ? (
     <Button
       leadingIcon={<Plus className="size-5" />}
@@ -1961,13 +2310,14 @@ function CommunityPage({ communityId }: { communityId: string }) {
       {getCommunityActionLabel(eligibility.status)}
     </Button>
   ) : null;
-  const headerAction = namespaceActionLabel || primaryHeaderAction ? (
+  const headerAction = namespaceActionLabel || modToolsAction || primaryHeaderAction ? (
     <div className="flex flex-wrap items-center justify-end gap-3">
       {namespaceActionLabel ? (
         <Button onClick={() => navigate(buildCommunityModerationPath(communityId, "namespace"))} variant="secondary">
           {namespaceActionLabel}
         </Button>
       ) : null}
+      {modToolsAction}
       {primaryHeaderAction}
     </div>
   ) : null;
@@ -2076,9 +2426,9 @@ function CommunityModerationGuard({
 }) {
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <section className="flex min-w-0 flex-1 items-center justify-center py-20">
         <Spinner className="size-6" />
-      </div>
+      </section>
     );
   }
 
@@ -2128,7 +2478,48 @@ function CommunityModerationGuard({
   return null;
 }
 
-type CommunityModerationSection = "rules" | "gates" | "safety" | "namespace";
+type CommunityModerationSection = "rules" | "links" | "donations" | "gates" | "safety" | "namespace";
+export type ThreadCommentNode = {
+  item: ApiCommentListItem;
+  children: ThreadCommentNode[];
+  hasLoadedReplies: boolean;
+  loadingReplies: boolean;
+  nextRepliesCursor: string | null;
+};
+
+const THREAD_COMMENT_PAGE_LIMIT = "100";
+
+function getCommunityLinkDrafts(community: ApiCommunity): CommunityLinkEditorItem[] {
+  return (community.reference_links ?? []).map((link) => ({
+    id: link.community_reference_link_id,
+    label: link.label ?? link.metadata.display_name ?? "",
+    platform: link.platform,
+    url: link.url,
+    verified: link.verified,
+  }));
+}
+
+function getCommunityDonationPartnerPreview(community: ApiCommunity): DonationPartnerPreview | null {
+  if (!community.donation_partner || !community.donation_partner_id) {
+    return null;
+  }
+
+  return {
+    donationPartnerId: community.donation_partner_id,
+    displayName: community.donation_partner.display_name,
+    imageUrl: community.donation_partner.image_url ?? null,
+    provider: "Endaoment",
+    providerPartnerRef: community.donation_partner.provider_partner_ref ?? null,
+  };
+}
+
+function buildEndaomentOrgUrl(providerPartnerRef: string | null | undefined): string {
+  if (!providerPartnerRef?.trim()) {
+    return "";
+  }
+
+  return `https://app.endaoment.org/orgs/${providerPartnerRef.trim()}`;
+}
 
 function extractRequiredValue(
   config: unknown,
@@ -2187,7 +2578,15 @@ function CommunityModerationPage({
   const [ruleName, setRuleName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [reportReason, setReportReason] = React.useState("");
+  const [links, setLinks] = React.useState<CommunityLinkEditorItem[]>([]);
+  const [donationMode, setDonationMode] = React.useState<DonationPolicyMode>("none");
+  const [endaomentUrl, setEndaomentUrl] = React.useState("");
+  const [partnerPreview, setPartnerPreview] = React.useState<DonationPartnerPreview | null>(null);
+  const [resolveError, setResolveError] = React.useState<string | null>(null);
+  const [resolvingDonationPartner, setResolvingDonationPartner] = React.useState(false);
   const [savingRules, setSavingRules] = React.useState(false);
+  const [savingLinks, setSavingLinks] = React.useState(false);
+  const [savingDonations, setSavingDonations] = React.useState(false);
   const [membershipMode, setMembershipMode] = React.useState<"open" | "request" | "gated">("open");
   const [defaultAgeGatePolicy, setDefaultAgeGatePolicy] = React.useState<"none" | "18_plus">("none");
   const [allowAnonymousIdentity, setAllowAnonymousIdentity] = React.useState(true);
@@ -2211,6 +2610,16 @@ function CommunityModerationPage({
   const [savingGates, setSavingGates] = React.useState(false);
 
   React.useEffect(() => {
+    if (!community) return;
+
+    rememberKnownCommunity({
+      avatarSrc: community.avatar_ref ?? undefined,
+      communityId: community.community_id,
+      displayName: community.display_name,
+    });
+  }, [community]);
+
+  React.useEffect(() => {
     const firstRule = community?.community_profile?.rules?.[0];
     setRuleName(firstRule?.title ?? "");
     setDescription(firstRule?.body ?? "");
@@ -2219,6 +2628,11 @@ function CommunityModerationPage({
 
   React.useEffect(() => {
     if (!community) return;
+    setLinks(getCommunityLinkDrafts(community));
+    setDonationMode(community.donation_policy_mode ?? "none");
+    setEndaomentUrl(buildEndaomentOrgUrl(community.donation_partner?.provider_partner_ref));
+    setPartnerPreview(getCommunityDonationPartnerPreview(community));
+    setResolveError(null);
     setMembershipMode(community.membership_mode);
     setDefaultAgeGatePolicy(community.default_age_gate_policy ?? "none");
     setAllowAnonymousIdentity(community.allow_anonymous_identity);
@@ -2239,11 +2653,15 @@ function CommunityModerationPage({
 
   const title = section === "rules"
     ? "Rules"
-    : section === "gates"
-      ? "Gates"
-      : section === "safety"
-        ? "Safety"
-        : "Namespace verification";
+    : section === "links"
+      ? "Links"
+      : section === "donations"
+        ? "Donations"
+        : section === "gates"
+        ? "Gates"
+        : section === "safety"
+          ? "Safety"
+          : "Namespace verification";
 
   const blocked = CommunityModerationGuard({
     community,
@@ -2432,6 +2850,108 @@ function CommunityModerationPage({
     setCommunity,
   ]);
 
+  const handleSaveLinks = React.useCallback(() => {
+    if (!community || savingLinks) {
+      return;
+    }
+
+    setSavingLinks(true);
+    void api.communities.updateReferenceLinks(community.community_id, {
+      reference_links: links
+        .filter((link) => link.url.trim())
+        .map((link, index) => ({
+          community_reference_link_id: link.id.startsWith("draft-") ? null : link.id,
+          label: link.label.trim() || null,
+          platform: link.platform as NonNullable<ApiCommunity["reference_links"]>[number]["platform"],
+          position: index,
+          url: link.url.trim(),
+        })),
+    })
+      .then((updatedCommunity) => {
+        setCommunity(updatedCommunity);
+        setLinks(getCommunityLinkDrafts(updatedCommunity));
+        toast.success("Links saved.");
+      })
+      .catch((nextError: unknown) => {
+        console.warn("[community-links] failed to save links", nextError);
+        toast.error(getErrorMessage(nextError, "Could not save links."));
+      })
+      .finally(() => {
+        setSavingLinks(false);
+      });
+  }, [api.communities, community, links, savingLinks, setCommunity]);
+
+  const handleResolveDonationPartner = React.useCallback(() => {
+    if (!community || resolvingDonationPartner || !endaomentUrl.trim()) {
+      return;
+    }
+
+    setResolvingDonationPartner(true);
+    setResolveError(null);
+    void api.communities.resolveDonationPartner(community.community_id, {
+      endaoment_url: endaomentUrl.trim(),
+    })
+      .then((resolvedPartner) => {
+        setPartnerPreview({
+          donationPartnerId: resolvedPartner.donation_partner_id,
+          displayName: resolvedPartner.display_name,
+          imageUrl: resolvedPartner.image_url ?? null,
+          provider: "Endaoment",
+          providerPartnerRef: resolvedPartner.provider_partner_ref ?? null,
+        });
+        setEndaomentUrl(buildEndaomentOrgUrl(resolvedPartner.provider_partner_ref));
+      })
+      .catch((nextError: unknown) => {
+        console.warn("[community-donations] failed to resolve partner", nextError);
+        setPartnerPreview(null);
+        setResolveError(getErrorMessage(nextError, "Could not find that Endaoment organization."));
+      })
+      .finally(() => {
+        setResolvingDonationPartner(false);
+      });
+  }, [api.communities, community, endaomentUrl, resolvingDonationPartner]);
+
+  const handleSaveDonations = React.useCallback(() => {
+    if (!community || savingDonations) {
+      return;
+    }
+
+    if (donationMode !== "none" && !partnerPreview) {
+      setResolveError("Resolve an Endaoment organization before saving.");
+      return;
+    }
+
+    setSavingDonations(true);
+    setResolveError(null);
+    void api.communities.updateDonationPolicy(community.community_id, {
+      donation_policy_mode: donationMode,
+      donation_partner_id: donationMode === "none" ? null : (partnerPreview?.donationPartnerId ?? null),
+      donation_partner: donationMode === "none" || !partnerPreview
+        ? null
+        : {
+          donation_partner_id: partnerPreview.donationPartnerId,
+          display_name: partnerPreview.displayName,
+          provider: "endaoment",
+          provider_partner_ref: partnerPreview.providerPartnerRef ?? null,
+          image_url: partnerPreview.imageUrl ?? null,
+        },
+    })
+      .then((updatedCommunity) => {
+        setCommunity(updatedCommunity);
+        setDonationMode(updatedCommunity.donation_policy_mode ?? "none");
+        setPartnerPreview(getCommunityDonationPartnerPreview(updatedCommunity));
+        setEndaomentUrl(buildEndaomentOrgUrl(updatedCommunity.donation_partner?.provider_partner_ref));
+        toast.success("Donations saved.");
+      })
+      .catch((nextError: unknown) => {
+        console.warn("[community-donations] failed to save donation policy", nextError);
+        toast.error(getErrorMessage(nextError, "Could not save donations."));
+      })
+      .finally(() => {
+        setSavingDonations(false);
+      });
+  }, [api.communities, community, donationMode, partnerPreview, savingDonations, setCommunity]);
+
   const handleSaveGates = React.useCallback(() => {
     if (!community || savingGates) {
       return;
@@ -2498,6 +3018,55 @@ function CommunityModerationPage({
           ruleName={ruleName}
           saveDisabled={!ruleName.trim() || !description.trim() || savingRules}
           saveLoading={savingRules}
+        />
+      );
+    } else if (section === "links") {
+      content = (
+        <CommunityLinksEditorPage
+          links={links}
+          onAddLink={() => setLinks((current) => [...current, createEmptyCommunityLinkEditorItem()])}
+          onLinkChange={(id, patch) => {
+            setLinks((current) => current.map((link) => link.id === id ? { ...link, ...patch } : link));
+          }}
+          onRemoveLink={(id) => {
+            setLinks((current) => current.filter((link) => link.id !== id));
+          }}
+          onSave={handleSaveLinks}
+          saveDisabled={savingLinks || links.some((link) => !link.url.trim())}
+          saveLoading={savingLinks}
+        />
+      );
+    } else if (section === "donations") {
+      content = (
+        <CommunityDonationsEditorPage
+          donationMode={donationMode}
+          endaomentUrl={endaomentUrl}
+          onClearPartner={() => {
+            setPartnerPreview(null);
+            setEndaomentUrl("");
+            setResolveError(null);
+            if (donationMode !== "none") {
+              setDonationMode("none");
+            }
+          }}
+          onDonationModeChange={(value) => {
+            setDonationMode(value);
+            if (value === "none") {
+              setResolveError(null);
+            }
+          }}
+          onEndaomentUrlChange={(value) => {
+            setEndaomentUrl(value);
+            setPartnerPreview(null);
+            setResolveError(null);
+          }}
+          onResolve={handleResolveDonationPartner}
+          onSave={handleSaveDonations}
+          partnerPreview={partnerPreview}
+          resolveError={resolveError}
+          resolving={resolvingDonationPartner}
+          saveDisabled={savingDonations || (donationMode !== "none" && !partnerPreview)}
+          saveLoading={savingDonations}
         />
       );
     } else if (section === "gates") {
@@ -2578,31 +3147,224 @@ function CommunityModerationPage({
   );
 }
 
-function usePost(postId: string) {
+async function loadProfilesByUserId(
+  api: ReturnType<typeof useApi>,
+  userIds: readonly string[],
+): Promise<Record<string, ApiProfile | null>> {
+  const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
+  const profileEntries = await Promise.all(uniqueUserIds.map(async (userId) => [
+    userId,
+    await api.profiles.getByUserId(userId).catch(() => null),
+  ] as const));
+
+  return Object.fromEntries(profileEntries);
+}
+
+function usePost(
+  postId: string,
+  locale: string,
+  labels: {
+    cancelReplyLabel: string;
+    loadMoreRepliesLabel: string;
+    loadRepliesLabel: string;
+    loadingRepliesLabel: string;
+    replyActionLabel: string;
+    replyPlaceholder: string;
+    showOriginalLabel: string;
+    submitReplyLabel: string;
+    showTranslationLabel: string;
+  },
+) {
   const api = useApi();
   const [post, setPost] = React.useState<ApiPost | null>(null);
   const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
   const [authorProfile, setAuthorProfile] = React.useState<ApiProfile | null>(null);
+  const [commentNodes, setCommentNodes] = React.useState<ThreadCommentNode[]>([]);
+  const [authorProfilesByUserId, setAuthorProfilesByUserId] = React.useState<Record<string, ApiProfile | null>>({});
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
+
+  const loadTopLevelComments = React.useCallback(async (communityId: string) => {
+    const nextCommentNodes = await loadThreadCommentTree(api, communityId, postId, locale);
+    const nextAuthorProfilesByUserId = await loadProfilesByUserId(
+      api,
+      collectThreadCommentAuthorUserIds(nextCommentNodes),
+    );
+
+    return {
+      authorProfilesByUserId: nextAuthorProfilesByUserId,
+      commentNodes: nextCommentNodes,
+    };
+  }, [api, locale, postId]);
+
+  const refreshTopLevelComments = React.useCallback(async (communityId: string) => {
+    const nextThreadState = await loadTopLevelComments(communityId);
+    setAuthorProfilesByUserId((current) => ({
+      ...current,
+      ...nextThreadState.authorProfilesByUserId,
+    }));
+    setCommentNodes((current) => mergeThreadCommentNodes(current, nextThreadState.commentNodes));
+  }, [loadTopLevelComments]);
+
+  const loadRepliesForComment = React.useCallback(async (commentId: string) => {
+    const currentNode = findThreadCommentNode(commentNodes, commentId);
+    if (!currentNode || currentNode.loadingReplies) {
+      return;
+    }
+    if (currentNode.hasLoadedReplies && !currentNode.nextRepliesCursor) {
+      return;
+    }
+
+    setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({
+      ...node,
+      loadingReplies: true,
+    })));
+
+    try {
+      const repliesPage = await api.comments.listReplies(commentId, {
+        cursor: currentNode.hasLoadedReplies ? currentNode.nextRepliesCursor : null,
+        limit: THREAD_COMMENT_PAGE_LIMIT,
+        locale,
+        sort: "best",
+      });
+      const nextProfiles = await loadProfilesByUserId(api, collectCommentAuthorUserIds(repliesPage.items));
+      setAuthorProfilesByUserId((current) => ({
+        ...current,
+        ...nextProfiles,
+      }));
+      setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({
+        ...node,
+        children: [...node.children, ...repliesPage.items.map((item) => createThreadCommentNode(item))],
+        hasLoadedReplies: true,
+        loadingReplies: false,
+        nextRepliesCursor: repliesPage.next_cursor,
+      })));
+    } catch (nextError) {
+      console.warn("[post-thread] failed to load replies", { commentId, message: getErrorMessage(nextError, "unknown") });
+      setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({
+        ...node,
+        loadingReplies: false,
+      })));
+      toast.error(getErrorMessage(nextError, "Could not load replies."));
+    }
+  }, [api, commentNodes, locale]);
+
+  const createTopLevelComment = React.useCallback(async (body: string) => {
+    if (!post) {
+      return;
+    }
+
+    try {
+      await api.communities.createComment(post.post.community_id, post.post.post_id, { body });
+      await refreshTopLevelComments(post.post.community_id);
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not post this reply."));
+      throw nextError;
+    }
+  }, [api, post, refreshTopLevelComments]);
+
+  const createReply = React.useCallback(async (commentId: string, body: string) => {
+    try {
+      await api.comments.createReply(commentId, { body });
+      const context = await api.comments.getContext(commentId, {
+        limit: THREAD_COMMENT_PAGE_LIMIT,
+        locale,
+      });
+      const nextProfiles = await loadProfilesByUserId(api, [
+        ...collectCommentAuthorUserIds([context.comment]),
+        ...collectCommentAuthorUserIds(context.replies),
+      ]);
+
+      setAuthorProfilesByUserId((current) => ({
+        ...current,
+        ...nextProfiles,
+      }));
+      setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({
+        ...node,
+        item: context.comment,
+        children: context.replies.map((item) => createThreadCommentNode(item)),
+        hasLoadedReplies: true,
+        loadingReplies: false,
+        nextRepliesCursor: context.next_replies_cursor,
+      })));
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not post this reply."));
+      throw nextError;
+    }
+  }, [api, locale]);
+
+  const voteOnComment = React.useCallback(async (commentId: string, direction: "up" | "down") => {
+    const nextValue = direction === "up" ? 1 : -1;
+    const currentNode = findThreadCommentNode(commentNodes, commentId);
+    const previousVote = currentNode?.item.viewer_vote ?? null;
+    const previousScore = currentNode?.item.comment.score ?? 0;
+
+    setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({
+      ...node,
+      item: {
+        ...node.item,
+        comment: {
+          ...node.item.comment,
+          score: node.item.comment.score + (nextValue - (node.item.viewer_vote ?? 0)),
+        },
+        viewer_vote: nextValue,
+      },
+    })));
+
+    try {
+      const response = await api.comments.vote(commentId, nextValue);
+      setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({
+        ...node,
+        item: {
+          ...node.item,
+          viewer_vote: response.value,
+        },
+      })));
+    } catch (nextError) {
+      setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({
+        ...node,
+        item: {
+          ...node.item,
+          comment: {
+            ...node.item.comment,
+            score: previousScore,
+          },
+          viewer_vote: previousVote,
+        },
+      })));
+      toast.error(getErrorMessage(nextError, "Could not update this vote."));
+    }
+  }, [api, commentNodes]);
 
   React.useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setCommentNodes([]);
+    setAuthorProfilesByUserId({});
 
-    void api.posts.get(postId)
+    void api.posts.get(postId, { locale })
       .then(async (p) => {
-        const [communityResult, authorProfileResult] = await Promise.all([
+        const [communityResult, commentTree] = await Promise.all([
           api.communities.get(p.post.community_id).catch(() => null),
-          p.post.identity_mode === "public" && p.post.author_user_id
-            ? api.profiles.getByUserId(p.post.author_user_id).catch(() => null)
-            : Promise.resolve(null),
+          loadTopLevelComments(p.post.community_id),
+        ]);
+        const authorProfilesByUserId = await loadProfilesByUserId(api, [
+          ...(p.post.identity_mode === "public" && p.post.author_user_id ? [p.post.author_user_id] : []),
         ]);
         if (cancelled) return;
         setPost(p);
         setCommunity(communityResult);
-        setAuthorProfile(authorProfileResult);
+        setAuthorProfile(
+          p.post.identity_mode === "public" && p.post.author_user_id
+            ? authorProfilesByUserId[p.post.author_user_id] ?? null
+            : null,
+        );
+        setCommentNodes(commentTree.commentNodes);
+        setAuthorProfilesByUserId({
+          ...commentTree.authorProfilesByUserId,
+          ...authorProfilesByUserId,
+        });
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -2613,15 +3375,74 @@ function usePost(postId: string) {
       });
 
     return () => { cancelled = true; };
-  }, [api, postId]);
+  }, [api, loadTopLevelComments, locale, postId]);
 
-  return { post, community, authorProfile, error, loading };
+  const comments = React.useMemo(
+    () => commentNodes.map((node) => mapThreadCommentNode(
+      node,
+      authorProfilesByUserId,
+      labels,
+      loadRepliesForComment,
+      createReply,
+      voteOnComment,
+    )),
+    [authorProfilesByUserId, commentNodes, createReply, labels, loadRepliesForComment, voteOnComment],
+  );
+
+  React.useEffect(() => {
+    if (!community) return;
+
+    rememberKnownCommunity({
+      avatarSrc: community.avatar_ref ?? undefined,
+      communityId: community.community_id,
+      displayName: community.display_name,
+    });
+  }, [community]);
+
+  return { post, community, authorProfile, comments, createTopLevelComment, error, loading };
 }
 
 function PostPage({ postId }: { postId: string }) {
   const api = useApi();
   const session = useSession();
-  const { post, community, authorProfile, error, loading } = usePost(postId);
+  const { copy } = useRouteMessages();
+  const { locale: uiLocale } = useUiLocale();
+  const preferredUiLocale: UiLocaleCode = session?.profile.preferred_locale
+    && isUiLocaleCode(session.profile.preferred_locale)
+    ? session.profile.preferred_locale
+    : uiLocale;
+  const contentLocale = React.useMemo(() => resolveViewerContentLocale({
+    uiLocale: preferredUiLocale,
+    browserLocales: typeof navigator === "undefined"
+      ? []
+      : [...navigator.languages, navigator.language].filter(Boolean),
+  }), [preferredUiLocale]);
+  const translationLabels = React.useMemo(() => ({
+    cancelReplyLabel: copy.common.cancelReply,
+    loadMoreRepliesLabel: copy.common.loadMoreReplies,
+    loadRepliesLabel: copy.common.loadReplies,
+    loadingRepliesLabel: copy.common.loadingReplies,
+    replyActionLabel: copy.common.replyAction,
+    replyPlaceholder: copy.common.replyPlaceholder,
+    showOriginalLabel: copy.common.showOriginal,
+    submitReplyLabel: copy.common.submitReply,
+    showTranslationLabel: copy.common.showTranslation,
+  }), [
+    copy.common.cancelReply,
+    copy.common.loadMoreReplies,
+    copy.common.loadReplies,
+    copy.common.loadingReplies,
+    copy.common.replyAction,
+    copy.common.replyPlaceholder,
+    copy.common.showOriginal,
+    copy.common.submitReply,
+    copy.common.showTranslation,
+  ]);
+  const { post, community, authorProfile, comments, createTopLevelComment, error, loading } = usePost(
+    postId,
+    contentLocale,
+    translationLabels,
+  );
   const commerceEnabled = Boolean(session?.user?.user_id && community?.community_id);
   const {
     listingsByAssetId,
@@ -2665,9 +3486,9 @@ function PostPage({ postId }: { postId: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <section className="flex min-w-0 flex-1 items-center justify-center py-20">
         <Spinner className="size-6" />
-      </div>
+      </section>
     );
   }
 
@@ -2705,33 +3526,52 @@ function PostPage({ postId }: { postId: string }) {
   const threadAssetId = post.post.asset_id ?? null;
   const threadListing = threadAssetId ? listingsByAssetId[threadAssetId] : undefined;
   const threadPurchase = threadAssetId ? purchasesByAssetId[threadAssetId] : undefined;
+  const songOptions = post.post.post_type === "song" && community && threadAssetId
+    ? {
+      currentUserId: session?.user?.user_id,
+      listing: threadListing,
+      onBuy: threadListing
+        ? () => void handleBuySong(
+          threadListing,
+          post.post.title ?? "song",
+          community.community_id,
+        )
+        : undefined,
+      playback: songPlayback,
+      purchase: threadPurchase,
+    }
+    : undefined;
+  const localizedPostCard = toThreadPostCard(
+    post,
+    community,
+    authorProfile ?? undefined,
+    songOptions,
+  );
+  const originalPostCard = shouldShowOriginalPost(post)
+    ? toThreadPostCard(
+      post,
+      community,
+      authorProfile ?? undefined,
+      songOptions,
+      { preferOriginalText: true },
+    )
+    : undefined;
 
   return (
     <ContentRailShell rail={community ? <CommunitySidebar {...buildCommunitySidebar(community)} /> : undefined}>
       <PostThread
-        commentsBody="Replies are not wired yet. This route now uses the thread destination surface."
-        commentsHeading="Comments"
-        post={toThreadPostCard(
-          post,
-          community,
-          authorProfile ?? undefined,
-          post.post.post_type === "song" && community && threadAssetId
-            ? {
-              currentUserId: session?.user?.user_id,
-              listing: threadListing,
-              onBuy: threadListing
-                ? () => void handleBuySong(
-                  threadListing,
-                  post.post.title ?? "song",
-                  community.community_id,
-                )
-                : undefined,
-              playback: songPlayback,
-              purchase: threadPurchase,
-            }
-            : undefined,
-        )}
-        replies={[]}
+        commentsHeading={copy.common.commentsHeading}
+        emptyCommentsLabel={copy.common.noComments}
+        onRootReplySubmit={createTopLevelComment}
+        post={localizedPostCard}
+        postOriginal={originalPostCard}
+        postShowOriginalLabel={originalPostCard ? copy.common.showOriginal : undefined}
+        postShowTranslationLabel={originalPostCard ? copy.common.showTranslation : undefined}
+        comments={comments}
+        rootReplyActionLabel={copy.common.replyAction}
+        rootReplyCancelLabel={copy.common.cancelReply}
+        rootReplyPlaceholder={copy.common.replyPlaceholder}
+        rootReplySubmitLabel={copy.common.submitReply}
       />
     </ContentRailShell>
   );
@@ -3454,11 +4294,11 @@ function OnboardingPage() {
 
   if (loading) {
     return (
-      <StackPageShell title={copy.onboarding.title} description={copy.onboarding.description}>
+      <section className="flex min-w-0 flex-1 items-center justify-center py-20">
         <div className="flex items-center justify-center py-20">
           <Spinner className="size-6" />
         </div>
-      </StackPageShell>
+      </section>
     );
   }
 
@@ -3490,10 +4330,7 @@ function OnboardingPage() {
   }
 
   return (
-    <StackPageShell
-      title={copy.onboarding.title}
-      description={copy.onboarding.description}
-    >
+    <section className="flex min-w-0 flex-1 flex-col gap-6">
       <div className="mx-auto w-full max-w-5xl">
         <OnboardingRedditBootstrap
           actions={{
@@ -3527,7 +4364,7 @@ function OnboardingPage() {
           snapshot={snapshot}
         />
       </div>
-    </StackPageShell>
+    </section>
   );
 }
 
@@ -3615,10 +4452,6 @@ function CreateCommunityPage() {
   const [verificationSessionId, setVerificationSessionId] = React.useState<string | null>(null);
   const [verificationLoading, setVerificationLoading] = React.useState(false);
   const [verificationError, setVerificationError] = React.useState<string | null>(null);
-  const [namespaceModalOpen, setNamespaceModalOpen] = React.useState(false);
-  const [activeNamespaceSessionId, setActiveNamespaceSessionId] = React.useState<string | null>(null);
-  const [namespaceAttachment, setNamespaceAttachment] =
-    React.useState<NamespaceAttachmentState | null>(null);
   const widgetRef = React.useRef<{ destroy?: () => void; open?: () => void } | null>(null);
 
   const cleanupWidget = React.useCallback(() => {
@@ -3725,53 +4558,6 @@ function CreateCommunityPage() {
       ? "pending"
       : "not_started";
 
-  const namespaceVerificationCallbacks = React.useMemo<NamespaceVerificationCallbacks>(() => ({
-    onStartSession: async ({ family, rootLabel }) => {
-      const result = await api.verification.startNamespaceSession({
-        family,
-        root_label: rootLabel,
-      });
-
-      return toNamespaceSessionResult(result);
-    },
-    onCompleteSession: async ({
-      namespaceVerificationSessionId,
-      restartChallenge,
-      signaturePayload,
-    }) => {
-      const result = await api.verification.completeNamespaceSession(
-        namespaceVerificationSessionId,
-        {
-          restart_challenge: restartChallenge ?? null,
-          signature_payload: signaturePayload ?? null,
-        },
-      );
-
-      if (result.status === "verified" && result.namespace_verification_id) {
-        const verification = await api.verification.getNamespaceVerification(
-          result.namespace_verification_id,
-        );
-        setNamespaceAttachment({
-          namespaceVerificationId: verification.namespace_verification_id,
-          family: verification.family,
-          normalizedRootLabel: verification.normalized_root_label,
-        });
-        setNamespaceModalOpen(false);
-        setActiveNamespaceSessionId(null);
-      }
-
-      return {
-        status: result.status,
-        namespaceVerificationId: result.namespace_verification_id ?? null,
-        failureReason: result.failure_reason ?? null,
-      };
-    },
-    onGetSession: async ({ namespaceVerificationSessionId }) => {
-      const result = await api.verification.getNamespaceSession(namespaceVerificationSessionId);
-      return toNamespaceSessionResult(result);
-    },
-  }), [api]);
-
   const handleCreate = React.useCallback(async (input: {
     avatarFile: File | null;
     avatarRef: string | null;
@@ -3784,7 +4570,6 @@ function CreateCommunityPage() {
     allowAnonymousIdentity: boolean;
     anonymousIdentityScope: "community_stable" | "thread_stable" | "post_ephemeral";
     gateDrafts: IdentityGateDraft[];
-    namespaceVerificationId: string | null;
   }) => {
     try {
       const avatarRef = input.avatarFile
@@ -3831,13 +4616,6 @@ function CreateCommunityPage() {
             report_reason: rule.title,
           })),
         },
-        ...(input.namespaceVerificationId
-          ? {
-            namespace: {
-              namespace_verification_id: input.namespaceVerificationId,
-            },
-          }
-          : {}),
       });
 
       rememberKnownCommunity({
@@ -3903,29 +4681,14 @@ function CreateCommunityPage() {
   }
 
   return (
-    <StackPageShell
-      title={copy.createCommunity.title}
-      description={copy.createCommunity.description}
-    >
+    <section className="flex min-w-0 flex-1 flex-col gap-6">
       <div className="mx-auto w-full max-w-5xl">
         <CreateCommunityComposer
           creatorVerificationState={creatorVerificationState}
-          namespaceAttachment={namespaceAttachment}
-          onClearNamespaceVerification={() => setNamespaceAttachment(null)}
           onCreate={handleCreate}
-          onOpenNamespaceVerification={() => setNamespaceModalOpen(true)}
         />
       </div>
-      <VerifyNamespaceModal
-        activeSessionId={activeNamespaceSessionId}
-        callbacks={namespaceVerificationCallbacks}
-        onOpenChange={setNamespaceModalOpen}
-        onSessionCleared={() => setActiveNamespaceSessionId(null)}
-        onSessionStarted={setActiveNamespaceSessionId}
-        onVerified={() => setNamespaceModalOpen(false)}
-        open={namespaceModalOpen}
-      />
-    </StackPageShell>
+    </section>
   );
 }
 
@@ -3947,6 +4710,34 @@ function NotFoundPage({ path }: { path: string }) {
   );
 }
 
+function CreatePostGlobalPage() {
+  const knownCommunities = useKnownCommunities();
+  const [selectedCommunityId, setSelectedCommunityId] = React.useState<string | null>(null);
+  const pickerItems: CommunityPickerItem[] = React.useMemo(
+    () => knownCommunities.map((c) => ({
+      communityId: c.communityId,
+      displayName: c.displayName,
+      avatarSrc: c.avatarSrc,
+    })),
+    [knownCommunities],
+  );
+
+  if (selectedCommunityId) {
+    return <CreatePostPage communityId={selectedCommunityId} />;
+  }
+
+  return (
+    <PostComposer
+      clubName="Choose a community"
+      communityPickerEmptyLabel="No recent communities."
+      communityPickerItems={pickerItems}
+      mode="text"
+      onSelectCommunity={setSelectedCommunityId}
+      submitDisabled
+    />
+  );
+}
+
 export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
   console.info("[renderAuthenticatedRoute]", route.kind, route);
   switch (route.kind) {
@@ -3954,6 +4745,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <HomePage />;
     case "your-communities":
       return <YourCommunitiesPage />;
+    case "create-post-global":
+      return <CreatePostGlobalPage />;
     case "create-post":
       return <CreatePostPage communityId={route.communityId} />;
     case "community-moderation":

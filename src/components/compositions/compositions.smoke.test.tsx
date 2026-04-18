@@ -112,12 +112,20 @@ describe("composition smoke tests", () => {
         commentsBody="Crew discussion continues below."
         commentsHeading="Comments"
         post={basePost}
-        replies={[
+        comments={[
           {
-            replyId: "reply-1",
+            commentId: "reply-1",
             authorLabel: "firstmate",
             body: "Looks clear from the deck.",
             timestampLabel: "1h ago",
+            children: [
+              {
+                commentId: "reply-1-1",
+                authorLabel: "lookout",
+                body: "Keeping the branch folded until someone opens it is the right call.",
+                timestampLabel: "48m ago",
+              },
+            ],
           },
         ]}
       />,
@@ -125,6 +133,7 @@ describe("composition smoke tests", () => {
 
     expect(markup).toContain("Comments");
     expect(markup).toContain("Looks clear from the deck.");
+    expect(markup).toContain("Keeping the branch folded until someone opens it is the right call.");
   });
 
   test("renders onboarding without a browser environment", () => {

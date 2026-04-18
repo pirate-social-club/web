@@ -262,4 +262,49 @@ describe("ApiClient media uploads", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  test("adds locale to post and comment read requests", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      return Response.json({});
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.posts.get("pst_test", { locale: "nl" });
+      await client.communities.listComments("cmt_test", "pst_test", {
+        locale: "nl",
+        sort: "best",
+        limit: "25",
+      });
+      await client.communities.createComment("cmt_test", "pst_test", {
+        body: "Top level",
+      });
+      await client.comments.listReplies("cmt_reply", {
+        locale: "nl",
+        sort: "new",
+      });
+      await client.comments.createReply("cmt_reply", {
+        body: "Reply body",
+      });
+      await client.comments.vote("cmt_reply", 1);
+
+      expect(requests[0]?.url).toBe("http://pirate.test/posts/pst_test?locale=nl");
+      expect(requests[1]?.url).toBe(
+        "http://pirate.test/communities/cmt_test/posts/pst_test/comments?limit=25&locale=nl&sort=best",
+      );
+      expect(requests[2]?.url).toBe("http://pirate.test/communities/cmt_test/posts/pst_test/comments");
+      expect(requests[3]?.url).toBe("http://pirate.test/comments/cmt_reply/replies?locale=nl&sort=new");
+      expect(requests[4]?.url).toBe("http://pirate.test/comments/cmt_reply/replies");
+      expect(requests[5]?.url).toBe("http://pirate.test/comments/cmt_reply/vote");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

@@ -15,6 +15,10 @@ import type {
   CommunityPurchaseSettlement,
   CommunityPurchaseSettlementFailure,
   CommunityPricingPolicy,
+  CommentContext,
+  CommentListResponse,
+  CommentVoteResponse,
+  CreateCommentRequest,
   CreatePostRequest,
   CreateCommunityListingRequest,
   CreateSongArtifactBundleRequest,
@@ -177,6 +181,31 @@ type ApiCommunitySafetyUpdateRequest = {
     threatening_language: Community["civility_policy"]["threatening_language"];
   };
   openai_moderation_settings: NonNullable<Community["openai_moderation_settings"]>;
+};
+
+type ApiDonationPartnerSummaryInput = {
+  donation_partner_id: string;
+  display_name: string;
+  provider: "endaoment";
+  provider_partner_ref?: string | null;
+  image_url?: string | null;
+};
+
+type ApiCommunityDonationPolicyResponse = {
+  community_id: string;
+  donation_policy_mode: Community["donation_policy_mode"];
+  donation_partner_status: Community["donation_partner_status"];
+  donation_partner_id: string | null;
+  donation_partner: (Community["donation_partner"] & { image_url?: string | null }) | null;
+  updated_at: string;
+};
+
+type ApiResolveDonationPartnerResponse = {
+  donation_partner_id: string;
+  display_name: string;
+  provider: "endaoment";
+  provider_partner_ref?: string | null;
+  image_url?: string | null;
 };
 
 export class ApiError extends Error {
@@ -559,6 +588,65 @@ export class ApiClient {
       );
     },
 
+    updateReferenceLinks: (
+      communityId: string,
+      body: {
+        reference_links: Array<{
+          community_reference_link_id?: string | null;
+          platform: NonNullable<Community["reference_links"]>[number]["platform"];
+          url: string;
+          label?: string | null;
+          position?: number | null;
+        }>;
+      },
+    ): Promise<Community> => {
+      return this.request<Community>(
+        `/communities/${encodeURIComponent(communityId)}/reference-links`,
+        {
+          method: "PUT",
+          body: JSON.stringify(body),
+        },
+      );
+    },
+
+    getDonationPolicy: (
+      communityId: string,
+    ): Promise<ApiCommunityDonationPolicyResponse> => {
+      return this.request<ApiCommunityDonationPolicyResponse>(
+        `/communities/${encodeURIComponent(communityId)}/donation-policy`,
+      );
+    },
+
+    resolveDonationPartner: (
+      communityId: string,
+      body: { endaoment_url: string },
+    ): Promise<ApiResolveDonationPartnerResponse> => {
+      return this.request<ApiResolveDonationPartnerResponse>(
+        `/communities/${encodeURIComponent(communityId)}/donation-policy/resolve`,
+        {
+          method: "POST",
+          body: JSON.stringify(body),
+        },
+      );
+    },
+
+    updateDonationPolicy: (
+      communityId: string,
+      body: {
+        donation_policy_mode: Community["donation_policy_mode"];
+        donation_partner_id?: string | null;
+        donation_partner?: ApiDonationPartnerSummaryInput | null;
+      },
+    ): Promise<Community> => {
+      return this.request<Community>(
+        `/communities/${encodeURIComponent(communityId)}/donation-policy`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        },
+      );
+    },
+
     updateGates: (
       communityId: string,
       body: ApiCommunityGatesUpdateRequest,
@@ -782,6 +870,7 @@ export class ApiClient {
         cursor?: string | null;
         locale?: string | null;
         flair_id?: string | null;
+        sort?: "best" | "new" | "top" | null;
       },
     ): Promise<{ items: LocalizedPostResponse[] }> => {
       const params = new URLSearchParams();
@@ -789,6 +878,7 @@ export class ApiClient {
       if (opts?.cursor) params.set("cursor", opts.cursor);
       if (opts?.locale) params.set("locale", opts.locale);
       if (opts?.flair_id) params.set("flair_id", opts.flair_id);
+      if (opts?.sort) params.set("sort", opts.sort);
       const qs = params.toString();
       const path = `/communities/${encodeURIComponent(communityId)}/posts`;
       return this.request<{ items: LocalizedPostResponse[] }>(
@@ -802,6 +892,41 @@ export class ApiClient {
     ): Promise<Post> => {
       return this.request<Post>(
         `/communities/${encodeURIComponent(communityId)}/posts`,
+        {
+          method: "POST",
+          body: JSON.stringify(body),
+        },
+      );
+    },
+
+    listComments: (
+      communityId: string,
+      postId: string,
+      opts?: {
+        limit?: string | null;
+        cursor?: string | null;
+        locale?: string | null;
+        sort?: "best" | "new" | "old" | "top" | null;
+      },
+    ): Promise<CommentListResponse> => {
+      const params = new URLSearchParams();
+      if (opts?.limit) params.set("limit", opts.limit);
+      if (opts?.cursor) params.set("cursor", opts.cursor);
+      if (opts?.locale) params.set("locale", opts.locale);
+      if (opts?.sort) params.set("sort", opts.sort);
+      const qs = params.toString();
+      const path =
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/comments`;
+      return this.request<CommentListResponse>(qs ? `${path}?${qs}` : path);
+    },
+
+    createComment: (
+      communityId: string,
+      postId: string,
+      body: CreateCommentRequest,
+    ): Promise<void> => {
+      return this.request(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/comments`,
         {
           method: "POST",
           body: JSON.stringify(body),
@@ -862,9 +987,83 @@ export class ApiClient {
   };
 
   posts = {
-    get: (postId: string): Promise<LocalizedPostResponse> => {
+    get: (
+      postId: string,
+      opts?: {
+        locale?: string | null;
+      },
+    ): Promise<LocalizedPostResponse> => {
+      const params = new URLSearchParams();
+      if (opts?.locale) params.set("locale", opts.locale);
+      const qs = params.toString();
       return this.request<LocalizedPostResponse>(
-        `/posts/${encodeURIComponent(postId)}`,
+        qs
+          ? `/posts/${encodeURIComponent(postId)}?${qs}`
+          : `/posts/${encodeURIComponent(postId)}`,
+      );
+    },
+  };
+
+  comments = {
+    listReplies: (
+      commentId: string,
+      opts?: {
+        limit?: string | null;
+        cursor?: string | null;
+        locale?: string | null;
+        sort?: "best" | "new" | "old" | "top" | null;
+      },
+    ): Promise<CommentListResponse> => {
+      const params = new URLSearchParams();
+      if (opts?.limit) params.set("limit", opts.limit);
+      if (opts?.cursor) params.set("cursor", opts.cursor);
+      if (opts?.locale) params.set("locale", opts.locale);
+      if (opts?.sort) params.set("sort", opts.sort);
+      const qs = params.toString();
+      const path = `/comments/${encodeURIComponent(commentId)}/replies`;
+      return this.request<CommentListResponse>(qs ? `${path}?${qs}` : path);
+    },
+
+    getContext: (
+      commentId: string,
+      opts?: {
+        limit?: string | null;
+        cursor?: string | null;
+        locale?: string | null;
+      },
+    ): Promise<CommentContext> => {
+      const params = new URLSearchParams();
+      if (opts?.limit) params.set("limit", opts.limit);
+      if (opts?.cursor) params.set("cursor", opts.cursor);
+      if (opts?.locale) params.set("locale", opts.locale);
+      const qs = params.toString();
+      const path = `/comments/${encodeURIComponent(commentId)}/context`;
+      return this.request<CommentContext>(qs ? `${path}?${qs}` : path);
+    },
+
+    createReply: (
+      commentId: string,
+      body: CreateCommentRequest,
+    ): Promise<void> => {
+      return this.request(
+        `/comments/${encodeURIComponent(commentId)}/replies`,
+        {
+          method: "POST",
+          body: JSON.stringify(body),
+        },
+      );
+    },
+
+    vote: (
+      commentId: string,
+      value: -1 | 1,
+    ): Promise<CommentVoteResponse> => {
+      return this.request<CommentVoteResponse>(
+        `/comments/${encodeURIComponent(commentId)}/vote`,
+        {
+          method: "POST",
+          body: JSON.stringify({ value }),
+        },
       );
     },
   };

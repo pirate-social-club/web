@@ -33,6 +33,7 @@ import type {
   ApiCommunityRuleInput,
   ApiCommunitySafetyUpdateRequest,
   ApiCreateCommunityRequest,
+  ApiUpdateCommunityRequest,
   ApiResolveDonationPartnerResponse,
   CommunityListPostsOptions,
   CommunityReferenceLinksInput,
@@ -55,8 +56,18 @@ export function createCommunitiesApi(request: ApiRequest) {
       body.set("file", input.file);
       return request<ApiCommunityMediaUploadResponse>("/community-media", { method: "POST", body });
     },
-    get: (communityId: string): Promise<Community> =>
-      request<Community>(`/communities/${encodeURIComponent(communityId)}`),
+    get: (communityId: string, opts?: { locale?: string | null }): Promise<Community> => {
+      const params = new URLSearchParams();
+      if (opts?.locale) params.set("locale", opts.locale);
+      const qs = params.toString();
+      const path = `/communities/${encodeURIComponent(communityId)}`;
+      return request<Community>(qs ? `${path}?${qs}` : path);
+    },
+    update: (communityId: string, body: ApiUpdateCommunityRequest): Promise<Community> =>
+      request<Community>(`/communities/${encodeURIComponent(communityId)}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
     attachNamespace: (communityId: string, namespaceVerificationId: string): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}/namespace`, {
         method: "POST",
@@ -129,8 +140,13 @@ export function createCommunitiesApi(request: ApiRequest) {
         `/communities/${encodeURIComponent(communityId)}/join`,
         { method: "POST", body: JSON.stringify({}) },
       ),
-    preview: (communityId: string): Promise<CommunityPreview> =>
-      request<CommunityPreview>(`/communities/${encodeURIComponent(communityId)}/preview`),
+    preview: (communityId: string, opts?: { locale?: string | null }): Promise<CommunityPreview> => {
+      const params = new URLSearchParams();
+      if (opts?.locale) params.set("locale", opts.locale);
+      const qs = params.toString();
+      const path = `/communities/${encodeURIComponent(communityId)}/preview`;
+      return request<CommunityPreview>(qs ? `${path}?${qs}` : path);
+    },
     getJoinEligibility: (communityId: string): Promise<JoinEligibility> =>
       request<JoinEligibility>(
         `/communities/${encodeURIComponent(communityId)}/join-eligibility`,

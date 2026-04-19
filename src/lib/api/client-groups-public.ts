@@ -71,10 +71,15 @@ export function createPublicProfilesApi(request: ApiRequest) {
 
 export function createPublicCommunitiesApi(request: ApiRequest) {
   return {
-    get: (communityId: string): Promise<CommunityPreview> =>
-      request<CommunityPreview>(`/public-communities/${encodeURIComponent(communityId)}`, {
+    get: (communityId: string, opts?: { locale?: string | null }): Promise<CommunityPreview> => {
+      const params = new URLSearchParams();
+      if (opts?.locale) params.set("locale", opts.locale);
+      const qs = params.toString();
+      const path = `/public-communities/${encodeURIComponent(communityId)}`;
+      return request<CommunityPreview>(qs ? `${path}?${qs}` : path, {
         tokenRequired: false,
-      }),
+      });
+    },
     listPosts: (
       communityId: string,
       opts?: CommunityListPostsOptions,

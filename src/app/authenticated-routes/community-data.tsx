@@ -12,6 +12,8 @@ import { useSession } from "@/lib/api/session-store";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { FeedSort } from "@/components/compositions/feed/feed";
 
+import { sortCommunityFeedPosts } from "./feed-sorting";
+
 export async function loadProfilesByUserId(
   api: ReturnType<typeof useApi>,
   userIds: readonly string[],
@@ -32,7 +34,7 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
   const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
   const [preview, setPreview] = React.useState<ApiCommunityPreview | null>(null);
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
-  const [posts, setPosts] = React.useState<ApiPost[]>([]);
+  const [rawPosts, setRawPosts] = React.useState<ApiPost[]>([]);
   const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | undefined>>({});
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
@@ -43,10 +45,10 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
     setError(null);
 
     void Promise.all([
-      api.communities.get(communityId),
-      api.communities.preview(communityId),
+      api.communities.get(communityId, { locale: contentLocale }),
+      api.communities.preview(communityId, { locale: contentLocale }),
       api.communities.getJoinEligibility(communityId),
-      api.communities.listPosts(communityId, { locale: contentLocale, sort: activeSort }),
+      api.communities.listPosts(communityId, { limit: "100", locale: contentLocale, sort: "new" }),
     ])
       .then(async ([communityResult, previewResult, eligibilityResult, postResponse]) => {
         const uniqueAuthorIds = Array.from(new Set(
@@ -67,7 +69,7 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
         setCommunity(communityResult);
         setPreview(previewResult);
         setEligibility(eligibilityResult);
-        setPosts(postResponse.items);
+        setRawPosts(postResponse.items);
         setAuthorProfiles(Object.fromEntries(profileEntries));
       })
       .catch((e: unknown) => {
@@ -79,7 +81,9 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
       });
 
     return () => { cancelled = true; };
-  }, [activeSort, api, communityId, contentLocale, session]);
+  }, [api, communityId, contentLocale, session]);
+
+  const posts = React.useMemo(() => sortCommunityFeedPosts(rawPosts, activeSort), [activeSort, rawPosts]);
 
   React.useEffect(() => {
     if (!community) return;
@@ -110,7 +114,7 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
     loading,
     posts,
     replaceCommunity,
-    setPosts,
+    setPosts: setRawPosts,
     refetchEligibility,
   };
 }

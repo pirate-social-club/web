@@ -4,13 +4,16 @@ import * as React from "react";
 import type { CommunityPreview as ApiCommunityPreview, LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
 import { toCommunityFeedItem } from "@/app/authenticated-route-renderer";
+import { sortCommunityFeedPosts } from "@/app/authenticated-routes/feed-sorting";
 import { type FeedSort, type FeedSortOption } from "@/components/compositions/feed/feed";
 import { CommunityPageShell } from "@/components/compositions/community-page-shell/community-page-shell";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
+import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
+import { buildCommunitySidebarRequirements } from "./authenticated-routes/community-sidebar-helpers";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) {
@@ -35,7 +38,7 @@ function buildFeedSortOptions(copy: ReturnType<typeof getLocaleMessages<"routes"
 function usePublicCommunityPageData(communityId: string, localeTag: string, activeSort: FeedSort) {
   const api = useApi();
   const [preview, setPreview] = React.useState<ApiCommunityPreview | null>(null);
-  const [posts, setPosts] = React.useState<ApiPost[]>([]);
+  const [rawPosts, setRawPosts] = React.useState<ApiPost[]>([]);
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -45,13 +48,13 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
     setError(null);
 
     void Promise.all([
-      api.publicCommunities.get(communityId),
-      api.publicCommunities.listPosts(communityId, { locale: localeTag, sort: activeSort }),
+      api.publicCommunities.get(communityId, { locale: localeTag }),
+      api.publicCommunities.listPosts(communityId, { limit: "100", locale: localeTag, sort: "new" }),
     ])
       .then(([previewResult, postResponse]) => {
         if (cancelled) return;
         setPreview(previewResult);
-        setPosts(postResponse.items);
+        setRawPosts(postResponse.items);
       })
       .catch((nextError: unknown) => {
         if (cancelled) return;
@@ -64,7 +67,9 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
     return () => {
       cancelled = true;
     };
-  }, [activeSort, api, communityId, localeTag]);
+  }, [api, communityId, localeTag]);
+
+  const posts = React.useMemo(() => sortCommunityFeedPosts(rawPosts, activeSort), [activeSort, rawPosts]);
 
   return { error, loading, posts, preview };
 }
@@ -73,21 +78,26 @@ function buildPreviewSidebar(preview: ApiCommunityPreview) {
   return {
     avatarSrc: preview.avatar_ref ?? undefined,
     createdAt: preview.created_at,
-    description: preview.description ?? "",
+    description: resolveCommunityLocalizedText(preview, "community.description", preview.description),
     displayName: preview.display_name,
     memberCount: preview.member_count ?? undefined,
     membershipMode: preview.membership_mode,
+    requirements: buildCommunitySidebarRequirements({
+      gateSummaries: preview.membership_gate_summaries,
+    }),
     rules: [],
   };
 }
 
 function PublicCommunityNotFound({ communityId }: { communityId: string }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").publicCommunity;
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="w-full max-w-xl rounded-[var(--radius-3xl)] border border-border-soft bg-card px-6 py-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Community not found</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{copy.notFoundTitle}</h1>
         <p className="mt-3 text-base leading-7 text-muted-foreground">
-          We could not find <span className="text-foreground">c/{communityId}</span>.
+          {copy.notFoundDescription.replace("{communityId}", communityId)}
         </p>
       </div>
     </div>
@@ -95,10 +105,12 @@ function PublicCommunityNotFound({ communityId }: { communityId: string }) {
 }
 
 function PublicCommunityErrorState({ description }: { description: string }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").publicCommunity;
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="w-full max-w-xl rounded-[var(--radius-3xl)] border border-border-soft bg-card px-6 py-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Community</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{copy.errorTitle}</h1>
         <p className="mt-3 text-base leading-7 text-muted-foreground">{description}</p>
       </div>
     </div>
@@ -129,7 +141,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
 
     return (
       <PublicCommunityErrorState
-        description={getErrorMessage(error, "This community could not be loaded right now.")}
+        description={getErrorMessage(error, copy.publicCommunity.errorDescription)}
       />
     );
   }
@@ -147,7 +159,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         bannerSrc={preview.banner_ref ?? undefined}
         communityId={preview.community_id}
         emptyState={{
-          title: "No posts yet",
+          title: copy.publicCommunity.emptyPosts,
         }}
         items={posts.map((post) => toCommunityFeedItem(post, {}))}
         onSortChange={setActiveSort}

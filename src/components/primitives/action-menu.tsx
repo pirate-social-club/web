@@ -30,6 +30,8 @@ export interface ActionMenuProps {
   align?: React.ComponentProps<typeof DropdownMenuPrimitive.Content>["align"];
   contentClassName?: string;
   triggerClassName?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onAction?: (key: string) => void;
 }
 
@@ -39,16 +41,27 @@ export function ActionMenu({
   align = "end",
   contentClassName,
   triggerClassName,
+  open,
+  onOpenChange,
   onAction,
 }: ActionMenuProps) {
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const isControlled = open !== undefined;
+  const resolvedOpen = open ?? mobileOpen;
+
+  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
+    if (!isControlled) {
+      setMobileOpen(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
+  }, [isControlled, onOpenChange]);
 
   if (items.length === 0) return null;
 
   if (isMobile) {
     return (
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+      <Sheet open={resolvedOpen} onOpenChange={handleOpenChange}>
         <SheetTrigger asChild>
           <IconButton
             aria-label={label}
@@ -77,7 +90,7 @@ export function ActionMenu({
                   disabled={item.disabled}
                   onClick={() => {
                     onAction?.(item.key);
-                    setMobileOpen(false);
+                    handleOpenChange(false);
                   }}
                   type="button"
                 >
@@ -97,7 +110,7 @@ export function ActionMenu({
   }
 
   return (
-    <DropdownMenuPrimitive.Root>
+    <DropdownMenuPrimitive.Root open={resolvedOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuPrimitive.Trigger asChild>
         <IconButton
           aria-label={label}

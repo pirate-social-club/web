@@ -3,8 +3,8 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useUiLocale } from "@/lib/ui-locale";
 import { Avatar } from "@/components/primitives/avatar";
-import { ActionMenu } from "@/components/primitives/action-menu";
 import { postCardType } from "./post-card.styles";
+import { PostCardActionMenu } from "./post-card-action-menu";
 import type {
   PostCardByline,
   PostCardIdentity,
@@ -194,7 +194,11 @@ export function PostCardHeader({
           viewContext={viewContext}
         />
       </div>
-      <ActionMenu items={menuItems ?? []} label={saved ? "Saved post actions" : "Post options"} onAction={onMenuAction} />
+      <PostCardActionMenu
+        items={menuItems ?? []}
+        label={saved ? "Saved post actions" : "Post options"}
+        onAction={onMenuAction}
+      />
     </div>
   );
 }

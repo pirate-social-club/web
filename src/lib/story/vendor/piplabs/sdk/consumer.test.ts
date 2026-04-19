@@ -109,13 +109,13 @@ describe("Consumer DKG registration lookback", () => {
       getCommPubKeyMap(): Promise<Map<string, Uint8Array[]>>;
     }).getCommPubKeyMap();
 
-    expect(ranges.length).toBeGreaterThan(0);
+    expect(ranges.length > 0).toBe(true);
     expect(ranges.every((range) => range.toBlock - range.fromBlock + 1n <= 10_000n)).toBe(true);
     expect(ranges.some((range) => range.fromBlock <= registrationBlock && registrationBlock <= range.toBlock)).toBe(true);
     expect(ranges.some((range) => range.fromBlock === 0n)).toBe(false);
 
     const commPubKeys = map.get(validatorAddr.toLowerCase());
-    expect(commPubKeys).toBeDefined();
+    expect(commPubKeys == null).toBe(false);
     expect(commPubKeys?.length).toBe(1);
     expect(Array.from(commPubKeys?.[0] ?? [])).toEqual([1, 2, 3, 4]);
   });
@@ -142,7 +142,7 @@ describe("Consumer DKG registration lookback", () => {
     expect(ranges.some((range) => range.fromBlock === 0n)).toBe(true);
 
     const commPubKeys = map.get(validatorAddr.toLowerCase());
-    expect(commPubKeys).toBeDefined();
+    expect(commPubKeys == null).toBe(false);
     expect(commPubKeys?.length).toBe(1);
     expect(Array.from(commPubKeys?.[0] ?? [])).toEqual([10, 11, 12, 13]);
   });

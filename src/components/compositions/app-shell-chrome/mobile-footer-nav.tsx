@@ -57,7 +57,7 @@ export function MobileFooterNav({
   onHomeClick,
   onInboxClick,
   onProfileClick,
-  showInboxDot = true,
+  showInboxDot = false,
   userAvatarSrc,
 }: MobileFooterNavProps) {
   const {

@@ -24,10 +24,15 @@ import type {
   CreateSongArtifactBundleRequest,
   CreateSongArtifactUploadRequest,
   CommunityPreview,
+  DismissTaskRequest,
   GateFailureDetails,
   HomeFeedResponse,
   HomeFeedSort,
   JoinEligibility,
+  MarkNotificationsReadRequest,
+  NotificationFeedResponse,
+  NotificationSummary,
+  NotificationTasksResponse,
   // keep all existing imports
   Community,
   CommunityCreateAcceptedResponse,
@@ -50,6 +55,7 @@ import type {
   UpdateCommunityListingRequest,
   UpdateCommunityMoneyPolicyRequest,
   UpdateCommunityPricingPolicyRequest,
+  UserTask,
   VerificationSession,
 } from "@pirate/api-contracts";
 
@@ -1295,6 +1301,49 @@ export class ApiClient {
   jobs = {
     get: (jobId: string): Promise<Job> => {
       return this.request<Job>(`/jobs/${encodeURIComponent(jobId)}`);
+    },
+  };
+
+  notifications = {
+    getSummary: (): Promise<NotificationSummary> => {
+      return this.request<NotificationSummary>("/notifications/summary");
+    },
+
+    getTasks: (): Promise<NotificationTasksResponse> => {
+      return this.request<NotificationTasksResponse>("/notifications/tasks");
+    },
+
+    getFeed: (
+      opts?: {
+        cursor?: string | null;
+        limit?: number | null;
+      },
+    ): Promise<NotificationFeedResponse> => {
+      const params = new URLSearchParams();
+      if (opts?.cursor) params.set("cursor", opts.cursor);
+      if (opts?.limit) params.set("limit", String(opts.limit));
+      const qs = params.toString();
+      return this.request<NotificationFeedResponse>(
+        qs ? `/notifications/feed?${qs}` : "/notifications/feed",
+      );
+    },
+
+    markRead: (
+      input?: MarkNotificationsReadRequest,
+    ): Promise<{ ok: boolean }> => {
+      return this.request<{ ok: boolean }>("/notifications/mark-read", {
+        method: "POST",
+        body: JSON.stringify(input ?? {}),
+      });
+    },
+
+    dismissTask: (
+      input: DismissTaskRequest,
+    ): Promise<UserTask> => {
+      return this.request<UserTask>("/notifications/dismiss-task", {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
     },
   };
 }

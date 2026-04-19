@@ -111,13 +111,13 @@ describe("Observer registered-event lookback", () => {
 
     const attestations = await observer.getValidatorAttestations();
 
-    expect(ranges.length).toBeGreaterThan(0);
+    expect(ranges.length > 0).toBe(true);
     expect(ranges.every((range) => range.toBlock - range.fromBlock + 1n <= 10_000n)).toBe(true);
     expect(ranges.some((range) => range.fromBlock <= registrationBlock && registrationBlock <= range.toBlock)).toBe(true);
     expect(ranges.some((range) => range.fromBlock === 0n)).toBe(false);
 
     const attestation = attestations.get(validatorAddr.toLowerCase());
-    expect(attestation).toBeDefined();
+    expect(attestation == null).toBe(false);
     expect(Array.from(attestation ?? [])).toEqual([161, 178, 195, 212]);
   });
 
@@ -143,7 +143,7 @@ describe("Observer registered-event lookback", () => {
     expect(ranges.some((range) => range.fromBlock === 0n)).toBe(true);
 
     const attestation = attestations.get(validatorAddr.toLowerCase());
-    expect(attestation).toBeDefined();
+    expect(attestation == null).toBe(false);
     expect(Array.from(attestation ?? [])).toEqual([10, 11, 12, 13]);
   });
 });

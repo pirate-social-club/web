@@ -25,6 +25,8 @@ import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contract
 import type { GateFailureDetails as ApiGateFailureDetails } from "@pirate/api-contracts";
 import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
+import type { NotificationFeedResponse as ApiNotificationFeedResponse } from "@pirate/api-contracts";
+import type { NotificationTasksResponse as ApiNotificationTasksResponse } from "@pirate/api-contracts";
 import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
 import type { RedditVerification as ApiRedditVerification } from "@pirate/api-contracts";
 import type { RedditImportSummary as ApiRedditImportSummary } from "@pirate/api-contracts";
@@ -115,6 +117,10 @@ import { FormNote } from "@/components/primitives/form-layout";
 import { Spinner } from "@/components/primitives/spinner";
 import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { rememberKnownCommunity, useKnownCommunities } from "@/lib/known-communities-store";
+import {
+  clearUnreadNotificationActivityCount,
+  decrementOpenNotificationTaskCount,
+} from "@/lib/notifications/use-notification-summary";
 import { useUiLocale } from "@/lib/ui-locale";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { resolveLocaleLanguageTag, SUPPORTED_UI_LOCALES, type UiLocaleCode } from "@/lib/ui-locale-core";
@@ -5156,14 +5162,154 @@ function OnboardingPage() {
 }
 
 function InboxPlaceholderPage() {
-  const { copy } = useRouteMessages();
+  const api = useApi();
+  const [tab, setTab] = React.useState<"tasks" | "activity">("tasks");
+  const [tasks, setTasks] = React.useState<ApiNotificationTasksResponse>({ items: [] });
+  const [feed, setFeed] = React.useState<ApiNotificationFeedResponse>({ items: [], next_cursor: null });
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    async function load() {
+      try {
+        if (tab === "tasks") {
+          const result = await api.notifications.getTasks();
+          if (!cancelled) setTasks(result);
+        } else {
+          let readAt: string | null = null;
+
+          try {
+            readAt = new Date().toISOString();
+            await api.notifications.markRead();
+            clearUnreadNotificationActivityCount();
+          } catch {}
+
+          const result = await api.notifications.getFeed();
+          if (!cancelled) {
+            setFeed({
+              ...result,
+              items: result.items.map((item) => ({
+                ...item,
+                receipt: {
+                  ...item.receipt,
+                  read_at: item.receipt.read_at ?? readAt,
+                  seen_at: item.receipt.seen_at ?? readAt,
+                },
+              })),
+            });
+          }
+        }
+      } catch {} finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => { cancelled = true; };
+  }, [api, tab]);
+
+  function formatTaskLabel(type: string): string {
+    switch (type) {
+      case "namespace_verification_required":
+        return "Verify your community namespace";
+      default:
+        return type.replace(/_/g, " ");
+    }
+  }
+
+  function formatEventLabel(type: string): string {
+    switch (type) {
+      case "comment_reply":
+        return "replied to your comment";
+      case "post_commented":
+        return "commented on your post";
+      default:
+        return type.replace(/_/g, " ");
+    }
+  }
+
+  function handleDismiss(taskId: string) {
+    void api.notifications.dismissTask({ task_id: taskId }).then(() => {
+      setTasks((prev) => ({ items: prev.items.filter((task) => task.task_id !== taskId) }));
+      decrementOpenNotificationTaskCount();
+    }).catch(() => {});
+  }
 
   return (
-    <StackPageShell
-      title={copy.inbox.title}
-      description={copy.inbox.description}
-    >
-      <EmptyFeedState message={copy.inbox.body} />
+    <StackPageShell title="Inbox">
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-1 rounded-[var(--radius-3xl)] border border-border-soft bg-card p-1">
+          <button
+            className={`flex-1 rounded-[var(--radius-2xl)] px-4 py-2 text-base font-medium transition-colors ${tab === "tasks" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            onClick={() => setTab("tasks")}
+            type="button"
+          >
+            Tasks
+          </button>
+          <button
+            className={`flex-1 rounded-[var(--radius-2xl)] px-4 py-2 text-base font-medium transition-colors ${tab === "activity" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            onClick={() => setTab("activity")}
+            type="button"
+          >
+            Activity
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-8 text-center text-muted-foreground">
+            Loading...
+          </div>
+        ) : tab === "tasks" ? (
+          tasks.items.length === 0 ? (
+            <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-8 text-center text-muted-foreground">
+              No open tasks
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {tasks.items.map((task) => (
+                <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-4" key={task.task_id}>
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="flex-1">
+                      <div className="text-base font-medium text-foreground">{formatTaskLabel(task.type)}</div>
+                      <div className="text-base text-muted-foreground">
+                        {task.payload?.community_display_name ? String(task.payload.community_display_name) : "Complete this required step"}
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button onClick={() => navigate(`/c/${task.subject_id}/mod/namespace`)} variant="default">
+                        Verify
+                      </Button>
+                      <Button onClick={() => handleDismiss(task.task_id)} variant="secondary">
+                        Dismiss
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : feed.items.length === 0 ? (
+          <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-8 text-center text-muted-foreground">
+            No recent activity
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {feed.items.map((item) => (
+              <div
+                className={`rounded-[var(--radius-3xl)] border px-5 py-4 ${item.receipt.read_at ? "border-border-soft bg-card" : "border-primary/30 bg-primary/5"}`}
+                key={item.event.event_id}
+              >
+                <div className="text-base font-medium text-foreground">{formatEventLabel(item.event.type)}</div>
+                <div className="text-base text-muted-foreground">
+                  {item.event.payload?.community_display_name ? String(item.event.payload.community_display_name) : item.event.subject_type}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </StackPageShell>
   );
 }

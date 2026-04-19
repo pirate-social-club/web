@@ -87,7 +87,7 @@ export function AppHeader({
   onNotificationsClick,
   onProfileClick,
   showCreateAction = true,
-  showNotificationsDot = true,
+  showNotificationsDot = false,
   showNotificationsAction = true,
   showConnectAction = false,
   showProfileAction = true,

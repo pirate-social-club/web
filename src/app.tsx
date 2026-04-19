@@ -20,6 +20,7 @@ import { ApiProvider, useSessionRevalidation } from "@/lib/api";
 import { PirateAuthProvider, usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { useKnownCommunities } from "@/lib/known-communities-store";
 import { useSession } from "@/lib/api/session-store";
+import { useNotificationSummary } from "@/lib/notifications/use-notification-summary";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
 
@@ -162,9 +163,11 @@ function resolveSessionAvatarFallback(session: ReturnType<typeof useSession>) {
 
 function AppShellHeader({
   copy,
+  hasUnread,
   route,
 }: {
   copy: ShellMessages;
+  hasUnread: boolean;
   route: AppRoute;
 }) {
   const session = useSession();
@@ -198,6 +201,7 @@ function AppShellHeader({
       onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable()}
       onSearchClick={() => showSearchUnavailable(copy.appHeader.searchUnavailableToast)}
       showCreateAction={clientReady}
+      showNotificationsDot={hasUnread}
       showNotificationsAction={clientReady && !!session}
       showConnectAction={showConnectAction}
       showProfileAction={clientReady}
@@ -209,9 +213,11 @@ function AppShellHeader({
 
 function AppShellMobileNav({
   copy,
+  hasUnread,
   route,
 }: {
   copy: ShellMessages;
+  hasUnread: boolean;
   route: AppRoute;
 }) {
   const session = useSession();
@@ -240,6 +246,7 @@ function AppShellMobileNav({
       onHomeClick={() => navigate("/")}
       onInboxClick={() => navigate("/inbox")}
       onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable()}
+      showInboxDot={hasUnread}
       userAvatarSrc={avatarSrc}
     />
   );
@@ -256,6 +263,68 @@ function SessionRevalidator({ children }: { children: React.ReactNode }) {
   }, [revalidate, session]);
 
   return <>{children}</>;
+}
+
+function NotificationShell({
+  copy,
+  isCommunityModerationRoute,
+  primaryItems,
+  route,
+  sections,
+  session,
+}: {
+  copy: ShellMessages;
+  isCommunityModerationRoute: boolean;
+  primaryItems: AppSidebarPrimaryItem[];
+  route: AppRoute;
+  sections: AppSidebarSection[];
+  session: ReturnType<typeof useSession>;
+}) {
+  const notificationSummary = useNotificationSummary();
+
+  return (
+    <SidebarProvider
+      className="flex-col"
+      defaultOpen
+      style={{
+        "--sidebar-width": "15.5rem",
+        "--sidebar-width-icon": "3.75rem",
+      } as React.CSSProperties}
+    >
+      <>
+        <AppShellHeader copy={copy} hasUnread={notificationSummary.has_unread} route={route} />
+        <div className="flex min-h-0 w-full flex-1" dir="ltr">
+          {isCommunityModerationRoute ? (
+            <main className="flex min-h-0 w-full flex-1">
+              {renderAuthenticatedRoute(route)}
+            </main>
+          ) : (
+            <>
+              <AppSidebar
+                activeItemId={activeSidebarItem(route)}
+                brandLabel={copy.appSidebar.brandLabel}
+                homeAriaLabel={copy.appSidebar.homeAriaLabel}
+                onHomeClick={() => navigate("/")}
+                primaryItems={primaryItems}
+                resourceItems={copy.appSidebar.resourceItems}
+                resourcesLabel={copy.appSidebar.resourcesLabel}
+                sections={sections}
+              />
+              <SidebarInset className="min-h-0">
+                <main className="flex w-full flex-1 px-3 pb-24 pt-4 md:pb-8 md:px-5 md:pt-6 lg:px-8">
+                  {route.kind === "community" && !session
+                    ? renderPublicRoute(route)
+                    : renderAuthenticatedRoute(route)}
+                </main>
+                <AppShellMobileNav copy={copy} hasUnread={notificationSummary.has_unread} route={route} />
+              </SidebarInset>
+            </>
+          )}
+        </div>
+        <Toaster />
+      </>
+    </SidebarProvider>
+  );
 }
 
 export function PirateApp({ initialHost, initialPath }: { initialHost?: string; initialPath?: string }) {
@@ -283,47 +352,14 @@ export function PirateApp({ initialHost, initialPath }: { initialHost?: string; 
       ) : (
         <PirateAuthProvider>
           <SessionRevalidator>
-            <SidebarProvider
-              className="flex-col"
-              defaultOpen
-              style={{
-                "--sidebar-width": "15.5rem",
-                "--sidebar-width-icon": "3.75rem",
-              } as React.CSSProperties}
-            >
-              <>
-                <AppShellHeader copy={copy} route={route} />
-                <div className="flex min-h-0 w-full flex-1" dir="ltr">
-                  {isCommunityModerationRoute ? (
-                    <main className="flex min-h-0 w-full flex-1">
-                      {renderAuthenticatedRoute(route)}
-                    </main>
-                  ) : (
-                    <>
-                      <AppSidebar
-                        activeItemId={activeSidebarItem(route)}
-                        brandLabel={copy.appSidebar.brandLabel}
-                        homeAriaLabel={copy.appSidebar.homeAriaLabel}
-                        onHomeClick={() => navigate("/")}
-                        primaryItems={primaryItems}
-                        resourceItems={copy.appSidebar.resourceItems}
-                        resourcesLabel={copy.appSidebar.resourcesLabel}
-                        sections={sections}
-                      />
-                      <SidebarInset className="min-h-0">
-                        <main className="flex w-full flex-1 px-3 pb-24 pt-4 md:pb-8 md:px-5 md:pt-6 lg:px-8">
-                          {route.kind === "community" && !session
-                            ? renderPublicRoute(route)
-                            : renderAuthenticatedRoute(route)}
-                        </main>
-                        <AppShellMobileNav copy={copy} route={route} />
-                      </SidebarInset>
-                    </>
-                  )}
-                </div>
-                <Toaster />
-              </>
-            </SidebarProvider>
+            <NotificationShell
+              copy={copy}
+              isCommunityModerationRoute={isCommunityModerationRoute}
+              primaryItems={primaryItems}
+              route={route}
+              sections={sections}
+              session={session}
+            />
           </SessionRevalidator>
         </PirateAuthProvider>
       )}

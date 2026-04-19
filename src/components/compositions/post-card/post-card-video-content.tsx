@@ -4,9 +4,13 @@ import { Lock as FilledLockIcon, Play as PlayIcon } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
 import { mediaControlButtonVariants } from "@/components/primitives/media-control-button";
-import { VideoPlayer } from "@/components/compositions/video-player";
 import { postCardType } from "./post-card.styles";
 import type { UpstreamAttribution, VideoContentSpec } from "./post-card.types";
+
+const LazyVideoPlayer = React.lazy(async () => {
+  const module = await import("@/components/compositions/video-player");
+  return { default: module.VideoPlayer };
+});
 
 export interface VideoPostContentProps {
   content: VideoContentSpec;
@@ -99,12 +103,18 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
   if (expanded && ui.canPlay) {
     return (
       <div className={cn("flex flex-col gap-2", className)}>
-        <VideoPlayer
-          src={content.src}
-          poster={content.posterSrc}
-          title={content.title}
-          playsinline
-        />
+        <React.Suspense
+          fallback={
+            <div className="aspect-video w-full rounded-lg bg-black/90" aria-busy="true" />
+          }
+        >
+          <LazyVideoPlayer
+            src={content.src}
+            poster={content.posterSrc}
+            title={content.title}
+            playsinline
+          />
+        </React.Suspense>
         {derivativeSummary && (
           <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
             {derivativeSummary}

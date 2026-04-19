@@ -66,10 +66,22 @@ export function AuthRequiredRouteState({
   description: string;
 }) {
   const hydrated = useClientHydrated();
-  const { busy, configured, connect, loaded } = usePiratePrivyRuntime();
+  const { busy, configured, connect, loadError, loaded } = usePiratePrivyRuntime();
 
   if (!hydrated || (configured && !loaded)) {
     return <FullPageSpinner />;
+  }
+
+  if (configured && loadError) {
+    return (
+      <StackPageShell title={title}>
+        <StatusCard
+          title="Authentication unavailable"
+          description={`${description} Check the console for Privy loader errors.`}
+          tone="warning"
+        />
+      </StackPageShell>
+    );
   }
 
   return (

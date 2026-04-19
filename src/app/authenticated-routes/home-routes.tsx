@@ -17,8 +17,8 @@ import { loadProfilesByUserId } from "./community-data";
 import { toHomeFeedItem } from "./post-presentation";
 import { submitOptimisticPostVote, updateHomeFeedEntryPostVote } from "./post-vote";
 import { buildFeedSortOptions, buildTopTimeRangeOptions, getErrorMessage, useRouteContentLocale, useRouteMessages, useClientHydrated } from "./route-core";
-import { getRouteAuthDescription, getRouteFailureDescription, getRouteString } from "./route-status-copy";
-import { AuthRequiredRouteState, EmptyFeedState, RouteLoadFailureState } from "./route-shell";
+import { getRouteFailureDescription, getRouteString } from "./route-status-copy";
+import { EmptyFeedState, RouteLoadFailureState } from "./route-shell";
 import { useSongPlayback } from "./song-commerce";
 
 export function HomePage() {
@@ -46,6 +46,7 @@ export function HomePage() {
 
   React.useEffect(() => {
     let cancelled = false;
+
     if (!hydrated) return () => { cancelled = true; };
 
     if (!session) {
@@ -146,10 +147,6 @@ export function HomePage() {
     return <RouteLoadFailureState description={getErrorMessage(error, getRouteFailureDescription("home"))} title={copy.home.title} />;
   }
 
-  if (!session) {
-    return <AuthRequiredRouteState description={getRouteAuthDescription("home")} title={copy.home.title} />;
-  }
-
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-6">
       <Feed
@@ -174,7 +171,7 @@ export function HomePage() {
         availableSorts={sortOptions}
         controls={activeSort === "top" ? <TopTimeRangeControl onValueChange={setTopTimeRange} options={topTimeRangeOptions} value={topTimeRange} /> : undefined}
         emptyState={{
-          action: <Button onClick={() => navigate("/communities/new")} variant="secondary">{createCommunityLabel}</Button>,
+          action: session ? <Button onClick={() => navigate("/communities/new")} variant="secondary">{createCommunityLabel}</Button> : undefined,
           body: emptyHomeBody,
           title: emptyHomeTitle,
         }}

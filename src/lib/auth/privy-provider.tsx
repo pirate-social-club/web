@@ -31,6 +31,7 @@ type PrivyRuntimeState = {
   connect: (() => void) | null;
   connectedWallets: PirateConnectedEvmWallet[];
   configured: boolean;
+  loadError: string | null;
   loaded: boolean;
   walletsReady: boolean;
 };
@@ -40,6 +41,7 @@ const PrivyRuntimeContext = React.createContext<PrivyRuntimeState>({
   connect: null,
   connectedWallets: [],
   configured: false,
+  loadError: null,
   loaded: false,
   walletsReady: false,
 });
@@ -72,6 +74,7 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
   const [BridgeComponent, setBridgeComponent] = React.useState<PrivyAuthBridgeComponent | null>(null);
   const [WalletBridgeComponent, setWalletBridgeComponent] = React.useState<PrivyWalletBridgeComponent | null>(null);
   const [walletsReady, setWalletsReady] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const shouldLoadPrivy = !!appId && (pendingConnect || !!session);
 
   const privyConfig = React.useMemo(() => ({
@@ -102,12 +105,14 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
       setProviderComponent(null);
       setBridgeComponent(null);
       setConnectedWallets([]);
+      setLoadError(null);
       setWalletsReady(false);
       setWalletBridgeComponent(null);
       return;
     }
 
     let cancelled = false;
+    setLoadError(null);
 
     void import("@privy-io/react-auth")
       .then((mod) => {
@@ -118,6 +123,7 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
       .catch((error) => {
         console.error("[PirateAuthProvider] Failed to load PrivyProvider", error);
         if (!cancelled) {
+          setLoadError((current) => current ?? `PrivyProvider import failed: ${error instanceof Error ? error.message : String(error)}`);
           setProviderComponent(null);
         }
       });
@@ -131,6 +137,7 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
       .catch((error) => {
         console.error("[PirateAuthProvider] Failed to load PrivyAuthBridge", error);
         if (!cancelled) {
+          setLoadError((current) => current ?? `PrivyAuthBridge import failed: ${error instanceof Error ? error.message : String(error)}`);
           setBridgeComponent(null);
         }
       });
@@ -144,6 +151,7 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
       .catch((error) => {
         console.error("[PirateAuthProvider] Failed to load PrivyWalletBridge", error);
         if (!cancelled) {
+          setLoadError((current) => current ?? `PrivyWalletBridge import failed: ${error instanceof Error ? error.message : String(error)}`);
           setWalletBridgeComponent(null);
         }
       });
@@ -180,7 +188,8 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
     connect: appId ? connect : null,
     connectedWallets,
     configured: !!appId,
-    loaded: !appId || !!ProviderComponent && !!BridgeComponent && !!WalletBridgeComponent,
+    loadError,
+    loaded: !appId || !shouldLoadPrivy || !!loadError || !!ProviderComponent && !!BridgeComponent && !!WalletBridgeComponent,
     walletsReady,
   }), [
     BridgeComponent,
@@ -190,7 +199,9 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
     busy,
     connect,
     connectedWallets,
+    loadError,
     pendingConnect,
+    shouldLoadPrivy,
     walletsReady,
   ]);
 

@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 export type PricingTier = {
   tier_key: string;
   display_name?: string | null;
-  adjustment_type: "multiplier" | "fixed_price_usd";
+  adjustment_type: "multiplier";
   adjustment_value: number;
 };
 

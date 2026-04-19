@@ -3,7 +3,10 @@
 import * as React from "react";
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
-import { useSession } from "@/lib/api/session-store";
+import {
+  getSessionAccessTokenExpiryMs,
+  useSession,
+} from "@/lib/api/session-store";
 
 type PrivyProviderComponent = React.ComponentType<{
   appId: string;
@@ -36,6 +39,12 @@ type PrivyRuntimeState = {
   walletsReady: boolean;
 };
 
+type PrivyWalletDemandContextValue = {
+  retainWalletSync: () => () => void;
+};
+
+const REFRESH_WINDOW_MS = 5 * 60 * 1000;
+
 const PrivyRuntimeContext = React.createContext<PrivyRuntimeState>({
   busy: false,
   connect: null,
@@ -44,6 +53,9 @@ const PrivyRuntimeContext = React.createContext<PrivyRuntimeState>({
   loadError: null,
   loaded: false,
   walletsReady: false,
+});
+const PrivyWalletDemandContext = React.createContext<PrivyWalletDemandContextValue>({
+  retainWalletSync: () => () => undefined,
 });
 
 export function getPrivyAppId(): string | null {
@@ -62,6 +74,24 @@ export function usePiratePrivyRuntime(): PrivyRuntimeState {
   return React.useContext(PrivyRuntimeContext);
 }
 
+export function usePiratePrivyWallets({ enabled = true }: { enabled?: boolean } = {}) {
+  const { connectedWallets, walletsReady } = React.useContext(PrivyRuntimeContext);
+  const { retainWalletSync } = React.useContext(PrivyWalletDemandContext);
+
+  React.useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    return retainWalletSync();
+  }, [enabled, retainWalletSync]);
+
+  return {
+    connectedWallets: enabled ? connectedWallets : [],
+    walletsReady: enabled ? walletsReady : false,
+  };
+}
+
 export function PirateAuthProvider({ children }: { children: React.ReactNode }) {
   const appId = getPrivyAppId();
   const clientId = getPrivyClientId();
@@ -73,9 +103,12 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
   const [ProviderComponent, setProviderComponent] = React.useState<PrivyProviderComponent | null>(null);
   const [BridgeComponent, setBridgeComponent] = React.useState<PrivyAuthBridgeComponent | null>(null);
   const [WalletBridgeComponent, setWalletBridgeComponent] = React.useState<PrivyWalletBridgeComponent | null>(null);
+  const [refreshWindowReached, setRefreshWindowReached] = React.useState(false);
+  const [walletSyncDemand, setWalletSyncDemand] = React.useState(0);
   const [walletsReady, setWalletsReady] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
-  const shouldLoadPrivy = !!appId && (pendingConnect || !!session);
+  const shouldLoadWalletSync = walletSyncDemand > 0;
+  const shouldLoadPrivy = !!appId && (pendingConnect || refreshWindowReached || shouldLoadWalletSync);
 
   const privyConfig = React.useMemo(() => ({
     appearance: {
@@ -100,14 +133,50 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
     setBusy(false);
   }, []);
 
+  const retainWalletSync = React.useCallback(() => {
+    setWalletSyncDemand((current) => current + 1);
+
+    let released = false;
+
+    return () => {
+      if (released) {
+        return;
+      }
+
+      released = true;
+      setWalletSyncDemand((current) => Math.max(0, current - 1));
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const expiryMs = getSessionAccessTokenExpiryMs(session);
+    if (!session || !expiryMs) {
+      setRefreshWindowReached(false);
+      return;
+    }
+
+    const refreshAt = expiryMs - REFRESH_WINDOW_MS;
+    if (refreshAt <= Date.now()) {
+      setRefreshWindowReached(true);
+      return;
+    }
+
+    setRefreshWindowReached(false);
+
+    const timeoutId = window.setTimeout(() => {
+      setRefreshWindowReached(true);
+    }, refreshAt - Date.now());
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [session?.accessToken, session]);
+
   React.useEffect(() => {
     if (!appId || !shouldLoadPrivy) {
       setProviderComponent(null);
       setBridgeComponent(null);
-      setConnectedWallets([]);
       setLoadError(null);
-      setWalletsReady(false);
-      setWalletBridgeComponent(null);
       return;
     }
 
@@ -142,6 +211,21 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
         }
       });
 
+    return () => {
+      cancelled = true;
+    };
+  }, [appId, shouldLoadPrivy]);
+
+  React.useEffect(() => {
+    if (!appId || !shouldLoadPrivy || !shouldLoadWalletSync) {
+      setConnectedWallets([]);
+      setWalletsReady(false);
+      setWalletBridgeComponent(null);
+      return;
+    }
+
+    let cancelled = false;
+
     void import("@/lib/auth/privy-wallet-bridge")
       .then((mod) => {
         if (!cancelled) {
@@ -151,7 +235,6 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
       .catch((error) => {
         console.error("[PirateAuthProvider] Failed to load PrivyWalletBridge", error);
         if (!cancelled) {
-          setLoadError((current) => current ?? `PrivyWalletBridge import failed: ${error instanceof Error ? error.message : String(error)}`);
           setWalletBridgeComponent(null);
         }
       });
@@ -159,7 +242,7 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
     return () => {
       cancelled = true;
     };
-  }, [appId, shouldLoadPrivy]);
+  }, [appId, shouldLoadPrivy, shouldLoadWalletSync]);
 
   const connect = React.useCallback(() => {
     if (!appId) {
@@ -189,12 +272,11 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
     connectedWallets,
     configured: !!appId,
     loadError,
-    loaded: !appId || !shouldLoadPrivy || !!loadError || !!ProviderComponent && !!BridgeComponent && !!WalletBridgeComponent,
+    loaded: !appId || !shouldLoadPrivy || !!loadError || !!ProviderComponent && !!BridgeComponent,
     walletsReady,
   }), [
     BridgeComponent,
     ProviderComponent,
-    WalletBridgeComponent,
     appId,
     busy,
     connect,
@@ -205,32 +287,38 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
     walletsReady,
   ]);
 
-  if (!appId || !shouldLoadPrivy || !ProviderComponent || !BridgeComponent || !WalletBridgeComponent) {
+  if (!appId || !shouldLoadPrivy || !ProviderComponent || !BridgeComponent) {
     return (
-      <PrivyRuntimeContext.Provider value={runtimeState}>
-        {children}
-      </PrivyRuntimeContext.Provider>
+      <PrivyWalletDemandContext.Provider value={{ retainWalletSync }}>
+        <PrivyRuntimeContext.Provider value={runtimeState}>
+          {children}
+        </PrivyRuntimeContext.Provider>
+      </PrivyWalletDemandContext.Provider>
     );
   }
 
   return (
-    <PrivyRuntimeContext.Provider value={runtimeState}>
-      {children}
-      <ProviderComponent
-        appId={appId}
-        clientId={clientId ?? undefined}
-        config={privyConfig}
-      >
-        <BridgeComponent
-          onBusyChange={setBusy}
-          onConnectReady={setLoadedConnect}
-          onModalClosed={unloadPrivy}
-        />
-        <WalletBridgeComponent
-          onWalletsChange={setConnectedWallets}
-          onWalletsReadyChange={setWalletsReady}
-        />
-      </ProviderComponent>
-    </PrivyRuntimeContext.Provider>
+    <PrivyWalletDemandContext.Provider value={{ retainWalletSync }}>
+      <PrivyRuntimeContext.Provider value={runtimeState}>
+        {children}
+        <ProviderComponent
+          appId={appId}
+          clientId={clientId ?? undefined}
+          config={privyConfig}
+        >
+          <BridgeComponent
+            onBusyChange={setBusy}
+            onConnectReady={setLoadedConnect}
+            onModalClosed={unloadPrivy}
+          />
+          {WalletBridgeComponent ? (
+            <WalletBridgeComponent
+              onWalletsChange={setConnectedWallets}
+              onWalletsReadyChange={setWalletsReady}
+            />
+          ) : null}
+        </ProviderComponent>
+      </PrivyRuntimeContext.Provider>
+    </PrivyWalletDemandContext.Provider>
   );
 }

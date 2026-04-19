@@ -6,7 +6,10 @@ import type { CommunityPurchase as ApiCommunityPurchase } from "@pirate/api-cont
 
 import { useApi } from "@/lib/api";
 import { resolveApiUrl } from "@/lib/api/base-url";
-import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
+import {
+  usePiratePrivyRuntime,
+  usePiratePrivyWallets,
+} from "@/lib/auth/privy-provider";
 import type { SongContentSpec } from "@/components/compositions/post-card/post-card.types";
 import { toast } from "@/components/primitives/sonner";
 
@@ -94,7 +97,8 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
 
 export function useSongPlayback(accessToken: string | null): SongPlaybackController {
   const api = useApi();
-  const { connect, connectedWallets } = usePiratePrivyRuntime();
+  const { connect } = usePiratePrivyRuntime();
+  const { connectedWallets } = usePiratePrivyWallets();
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const objectUrlsRef = React.useRef(new Map<string, string>());
   const activeTrackKeyRef = React.useRef<string | null>(null);

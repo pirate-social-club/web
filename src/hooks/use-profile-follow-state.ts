@@ -4,7 +4,10 @@ import * as React from "react";
 import { isAddress, type Address } from "viem";
 
 import { toast } from "@/components/primitives/sonner";
-import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
+import {
+  usePiratePrivyRuntime,
+  usePiratePrivyWallets,
+} from "@/lib/auth/privy-provider";
 import { type StoredSession, useSession } from "@/lib/api/session-store";
 import {
   fetchProfileFollowSummary,
@@ -63,9 +66,12 @@ export function useProfileFollowState(
   const {
     busy: authBusy,
     connect,
+  } = usePiratePrivyRuntime();
+  const shouldSyncWallets = !ownProfile && Boolean(session);
+  const {
     connectedWallets,
     walletsReady,
-  } = usePiratePrivyRuntime();
+  } = usePiratePrivyWallets({ enabled: shouldSyncWallets });
   const targetAddress = React.useMemo(
     () => normalizeAddress(targetWalletAddress),
     [targetWalletAddress],
@@ -284,7 +290,9 @@ export function useProfileFollowState(
     followingCount,
     followBusy: followBusy || authBusy,
     followDisabled: ownProfile || !targetAddress || (Boolean(viewerAddress) && !followReady),
-    followLoading: Boolean(viewerAddress) && (!followReady || (!walletsReady && Boolean(session))),
+    followLoading: !ownProfile
+      && Boolean(viewerAddress)
+      && (!followReady || (shouldSyncWallets && !walletsReady)),
     isFollowing,
     onToggleFollow,
   };

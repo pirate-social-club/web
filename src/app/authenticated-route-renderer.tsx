@@ -224,6 +224,55 @@ function parseUsdInput(value: string | null | undefined): number | null {
   return Math.round(normalized * 100) / 100;
 }
 
+export function buildSongPostRequest(input: {
+  bundleId: string;
+  derivativeStep?: Pick<DerivativeStepState, "required" | "references">;
+  idempotencyKey: string;
+  paidSongPriceUsd: number | null;
+  songMode: SongMode;
+  title: string;
+}) {
+  const selectedSourceRefs = input.derivativeStep?.references?.map((reference) => reference.id) ?? [];
+  const publishAsDerivative = Boolean(
+    input.derivativeStep?.required
+    || input.songMode === "remix"
+    || selectedSourceRefs.length > 0,
+  );
+
+  return {
+    idempotency_key: input.idempotencyKey,
+    post_type: "song" as const,
+    identity_mode: "public" as const,
+    translation_policy: "machine_allowed" as const,
+    access_mode: input.paidSongPriceUsd != null ? "locked" as const : "public" as const,
+    title: input.title.trim() || undefined,
+    song_mode: publishAsDerivative ? "remix" as const : input.songMode,
+    rights_basis: publishAsDerivative ? "derivative" as const : "original" as const,
+    upstream_asset_refs: publishAsDerivative ? selectedSourceRefs : undefined,
+    song_artifact_bundle_id: input.bundleId,
+  };
+}
+
+export function buildSongListingRequest(input: {
+  assetId: string;
+  paidSongPriceUsd: number | null;
+  pricingPolicyRegionalPricingEnabled: boolean;
+  regionalPricingEnabled: boolean;
+}) {
+  if (input.paidSongPriceUsd == null) {
+    return null;
+  }
+
+  return {
+    asset_id: input.assetId,
+    price_usd: input.paidSongPriceUsd,
+    regional_pricing_enabled:
+      input.pricingPolicyRegionalPricingEnabled
+      && input.regionalPricingEnabled,
+    status: "active" as const,
+  };
+}
+
 function mapListingStatus(
   status: ApiCommunityListing["status"] | undefined,
 ): SongContentSpec["listingStatus"] | undefined {
@@ -1126,37 +1175,30 @@ function CreatePostPage({ communityId }: { communityId: string }) {
           }
         }
 
-        const publishAsDerivative = Boolean(
-          derivativeStep?.required
-          || songMode === "remix"
-          || selectedSourceRefs.length > 0,
-        )
-        result = await api.communities.createPost(communityId, {
-          idempotency_key: crypto.randomUUID(),
-          post_type: "song",
-          identity_mode: "public",
-          translation_policy: "machine_allowed",
-          access_mode: isLockedSong ? "locked" : "public",
-          title: title.trim() || undefined,
-          song_mode: publishAsDerivative ? "remix" : songMode,
-          rights_basis: publishAsDerivative ? "derivative" : "original",
-          upstream_asset_refs: publishAsDerivative ? selectedSourceRefs : undefined,
-          song_artifact_bundle_id: bundleId,
-        });
+        result = await api.communities.createPost(communityId, buildSongPostRequest({
+          bundleId,
+          derivativeStep,
+          idempotencyKey: crypto.randomUUID(),
+          paidSongPriceUsd,
+          songMode,
+          title,
+        }));
 
         if (isLockedSong) {
           if (!result.asset_id) {
             throw new Error("The song published, but the paid asset was not created.");
           }
 
-          await api.communities.createListing(communityId, {
-            asset_id: result.asset_id,
-            price_usd: paidSongPriceUsd ?? 1,
-            regional_pricing_enabled:
-              pricingPolicy?.regional_pricing_enabled === true
-              && monetizationState.regionalPricingEnabled === true,
-            status: "active",
+          const listingRequest = buildSongListingRequest({
+            assetId: result.asset_id,
+            paidSongPriceUsd,
+            pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
+            regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
           });
+          if (!listingRequest) {
+            throw new Error("The song published, but the paid listing payload was not created.");
+          }
+          await api.communities.createListing(communityId, listingRequest);
         }
       } else if (composerMode === "link") {
         result = await api.communities.createPost(communityId, {

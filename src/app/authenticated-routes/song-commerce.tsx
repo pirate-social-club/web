@@ -7,11 +7,17 @@ import type { CommunityPurchase as ApiCommunityPurchase } from "@pirate/api-cont
 import { useApi } from "@/lib/api";
 import { resolveApiUrl } from "@/lib/api/base-url";
 import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
-import { readStoryCdrAsset } from "@/lib/story/cdr-browser";
 import type { SongContentSpec } from "@/components/compositions/post-card/post-card.types";
 import { toast } from "@/components/primitives/sonner";
 
 import { getErrorMessage } from "./route-core";
+
+let storyCdrBrowserModulePromise: Promise<typeof import("@/lib/story/cdr-browser")> | null = null;
+
+async function loadStoryCdrBrowser() {
+  storyCdrBrowserModulePromise ??= import("@/lib/story/cdr-browser");
+  return await storyCdrBrowserModulePromise;
+}
 
 export type SongCommerceState = {
   listingsByAssetId: Record<string, ApiCommunityListing | undefined>;
@@ -183,6 +189,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
         connect?.();
         throw new Error("Connect a wallet to unlock Story CDR playback.");
       }
+      const { readStoryCdrAsset } = await loadStoryCdrBrowser();
       return await readStoryCdrAsset({
         access: access.story_cdr_access,
         accessToken,

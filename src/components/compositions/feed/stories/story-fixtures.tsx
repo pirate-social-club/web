@@ -1,17 +1,9 @@
 import * as React from "react";
 
 import { COMMUNITY_RECORDS, HOME_POSTS, YOUR_COMMUNITIES_POSTS } from "@/app/mocks";
-import { PillButton, pillButtonVariants } from "@/components/primitives/pill-button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/primitives/select";
-import { cn } from "@/lib/utils";
+import { PillButton } from "@/components/primitives/pill-button";
 import type { FeedItem, FeedSortOption } from "../feed";
-
+export { TopTimeRangeControl, topTimeRangeOptions } from "../feed";
 export function toFeedItems(posts: typeof HOME_POSTS): FeedItem[] {
   return posts.map((post) => ({
     id: post.postId,
@@ -58,43 +50,6 @@ export const sortOptions: FeedSortOption[] = [
   { value: "new", label: "New" },
   { value: "top", label: "Top" },
 ];
-
-export const topTimeRangeOptions = [
-  { value: "hour", label: "This hour" },
-  { value: "day", label: "Today" },
-  { value: "week", label: "This week" },
-  { value: "month", label: "This month" },
-  { value: "year", label: "This year" },
-  { value: "all", label: "All time" },
-] as const;
-
-export function TopTimeRangeControl({
-  value,
-  onValueChange,
-}: {
-  value: string;
-  onValueChange: (value: string) => void;
-}) {
-  return (
-    <Select onValueChange={onValueChange} value={value}>
-      <SelectTrigger
-        className={cn(
-          pillButtonVariants({ tone: "default" }),
-          "w-full min-w-[10rem] justify-between bg-card py-0 pl-4 pr-3 shadow-none md:w-[11rem]",
-        )}
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {topTimeRangeOptions.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
 
 export const homeFeedItems = toFeedItems(HOME_POSTS);
 export const yourCommunitiesFeedItems = toFeedItems(YOUR_COMMUNITIES_POSTS);

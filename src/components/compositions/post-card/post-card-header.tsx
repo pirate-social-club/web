@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { useUiLocale } from "@/lib/ui-locale";
 import { Avatar } from "@/components/primitives/avatar";
 import { ActionMenu } from "@/components/primitives/action-menu";
 import { postCardType } from "./post-card.styles";
@@ -40,6 +41,11 @@ function resolveIdentities(
         primaryIdentity: author ?? community,
         secondaryIdentity: author && community ? community : undefined,
       };
+    case "anonymous_with_community":
+      return {
+        primaryIdentity: author ?? community,
+        secondaryIdentity: author && community ? community : undefined,
+      };
     case "anonymous_primary":
     case "author_primary":
       return {
@@ -61,12 +67,12 @@ function InteractiveIdentityLink({
   if (identity.href) {
     return (
       <a className={className} data-post-card-interactive="true" href={identity.href}>
-        {identity.label}
+        <bdi>{identity.label}</bdi>
       </a>
     );
   }
 
-  return <span className={className}>{identity.label}</span>;
+  return <span className={className}><bdi>{identity.label}</bdi></span>;
 }
 
 function PostCardBylineContent({
@@ -74,11 +80,13 @@ function PostCardBylineContent({
   identityPresentation,
   qualifierLabels,
   viewContext,
+  isRtl,
 }: {
   byline: PostCardByline;
   identityPresentation?: PostCardIdentityPresentation;
   qualifierLabels?: string[];
   viewContext: PostCardViewContext;
+  isRtl: boolean;
 }) {
   const { timestampLabel } = byline;
   const resolvedPresentation = deriveIdentityPresentation(viewContext, identityPresentation);
@@ -90,7 +98,14 @@ function PostCardBylineContent({
   }
 
   return (
-    <div className={cn("flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-muted-foreground", postCardType.meta)}>
+    <div
+      className={cn(
+        "flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-muted-foreground",
+        isRtl ? "justify-end text-right" : "justify-start text-left",
+        postCardType.meta,
+      )}
+      dir="auto"
+    >
       <InteractiveIdentityLink
         className="font-semibold text-foreground hover:underline"
         identity={primaryIdentity}
@@ -137,6 +152,7 @@ export function PostCardHeader({
   onMenuAction,
   className,
 }: PostCardHeaderProps) {
+  const { isRtl } = useUiLocale();
   const resolvedPresentation = deriveIdentityPresentation(viewContext, identityPresentation);
   const { primaryIdentity, secondaryIdentity } = resolveIdentities(byline, resolvedPresentation);
   const avatarIdentity = primaryIdentity ?? secondaryIdentity;
@@ -153,7 +169,13 @@ export function PostCardHeader({
   );
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div
+      className={cn(
+        "flex items-center gap-2",
+        className,
+      )}
+      dir={isRtl ? "rtl" : "ltr"}
+    >
       {avatarIdentity?.href ? (
         <a href={avatarIdentity.href} className="shrink-0">
           <span data-post-card-interactive="true">
@@ -163,10 +185,11 @@ export function PostCardHeader({
       ) : (
         AvatarElement
       )}
-      <div className="min-w-0 flex-1">
+      <div className={cn("min-w-0 flex-1", isRtl ? "text-right" : "text-left")}>
         <PostCardBylineContent
           byline={byline}
           identityPresentation={identityPresentation}
+          isRtl={isRtl}
           qualifierLabels={qualifierLabels}
           viewContext={viewContext}
         />

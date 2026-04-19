@@ -3,7 +3,7 @@ import type { HomeFeedItem } from "@pirate/api-contracts";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 import type { Profile } from "@pirate/api-contracts";
 
-import { toHomeFeedItem } from "@/app/authenticated-route-renderer";
+import { applyPostVote, toHomeFeedItem } from "@/app/authenticated-route-renderer";
 
 function createEntry(): HomeFeedItem {
   return {
@@ -178,5 +178,35 @@ describe("toHomeFeedItem", () => {
     const item = toHomeFeedItem(entry, { usr_author: authorProfile });
 
     expect(item.post.byline?.author?.label).toBe("blackbeard.eth");
+  });
+
+  test("passes through an onVote handler when the container provides one", () => {
+    const onVote = () => undefined;
+
+    const item = toHomeFeedItem(createEntry(), {}, undefined, { onVote });
+
+    expect(item.post.onVote).toBe(onVote);
+  });
+});
+
+describe("applyPostVote", () => {
+  test("moves counts when changing an upvote into a downvote", () => {
+    const entry = createEntry();
+
+    const updated = applyPostVote(entry.post, -1);
+
+    expect(updated.viewer_vote).toBe(-1);
+    expect(updated.upvote_count).toBe(10);
+    expect(updated.downvote_count).toBe(3);
+  });
+
+  test("supports clearing a local vote snapshot for rollback", () => {
+    const entry = createEntry();
+
+    const updated = applyPostVote(entry.post, null);
+
+    expect(updated.viewer_vote).toBe(null);
+    expect(updated.upvote_count).toBe(10);
+    expect(updated.downvote_count).toBe(2);
   });
 });

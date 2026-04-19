@@ -4,6 +4,10 @@ export type UiLocaleCode = (typeof SUPPORTED_UI_LOCALES)[number];
 export type UiDirection = "ltr" | "rtl";
 export type UiPlacement = "left" | "right" | "start" | "end";
 
+export function isUiLocaleCode(value: string): value is UiLocaleCode {
+  return (SUPPORTED_UI_LOCALES as readonly string[]).includes(value);
+}
+
 export function resolveLocaleDirection(locale: UiLocaleCode): UiDirection {
   return locale === "ar" ? "rtl" : "ltr";
 }

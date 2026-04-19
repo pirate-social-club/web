@@ -18,7 +18,7 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
     case "text":
       return (
         <FormattedText
-          className={cn(postCardType.body, "text-foreground", className)}
+          className={cn(postCardType.body, "max-w-[72ch] self-start text-foreground", className)}
           dir={content.bodyDir ?? "auto"}
           lang={content.bodyLang}
           value={content.body}
@@ -48,7 +48,7 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
       return <VideoPostContent content={content} className={className} />;
     case "link":
       return (
-        <div className={cn("space-y-2", className)}>
+        <div className={cn("max-w-[72ch] self-start space-y-2", className)}>
           <a
             className="flex w-full items-stretch gap-3 transition-colors hover:opacity-90"
             href={content.href}
@@ -57,7 +57,7 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
             <div className="min-w-0 flex-1">
               <p className={cn(postCardType.label, "line-clamp-2 font-semibold text-foreground")}>
                 <span dir={content.linkTitleDir ?? "auto"} lang={content.linkTitleLang}>
-                {content.linkTitle}
+                  {content.linkTitle}
                 </span>
               </p>
               <div className={cn("mt-1.5 flex items-center gap-1.5 text-muted-foreground", postCardType.meta)}>

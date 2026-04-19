@@ -25,7 +25,13 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-function HeaderOnlyStory({ forceMobile = false }: { forceMobile?: boolean }) {
+function HeaderOnlyStory({
+  forceMobile = false,
+  showNotificationsDot = false,
+}: {
+  forceMobile?: boolean;
+  showNotificationsDot?: boolean;
+}) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "shell");
   const bodyCopy = copy.storybook;
@@ -45,6 +51,7 @@ function HeaderOnlyStory({ forceMobile = false }: { forceMobile?: boolean }) {
             ? copy.appHeader.searchPlaceholder
             : copy.storybook.standaloneDesktopSearchPlaceholder,
         }}
+        showNotificationsDot={showNotificationsDot}
       />
       <div className={forceMobile ? "px-3 pb-24 pt-[calc(env(safe-area-inset-top)+5rem)]" : "mx-auto max-w-5xl px-6 py-10"}>
         <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5 text-base text-muted-foreground md:p-8">
@@ -55,7 +62,7 @@ function HeaderOnlyStory({ forceMobile = false }: { forceMobile?: boolean }) {
   );
 }
 
-function FooterOnlyStory() {
+function FooterOnlyStory({ showInboxDot = false }: { showInboxDot?: boolean }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "shell");
   const bodyCopy = copy.storybook;
@@ -77,6 +84,7 @@ function FooterOnlyStory() {
           profile: copy.mobileFooter.profileLabel,
           profileAriaLabel: copy.mobileFooter.profileAriaLabel,
         }}
+        showInboxDot={showInboxDot}
       />
     </div>
   );
@@ -138,6 +146,10 @@ export const DesktopHeaderArabic: Story = {
   render: () => <HeaderOnlyStory />,
 };
 
+export const DesktopHeaderWithNotifications: Story = {
+  render: () => <HeaderOnlyStory showNotificationsDot />,
+};
+
 export const DesktopHeaderPseudo: Story = {
   globals: {
     direction: "auto",
@@ -180,6 +192,13 @@ export const MobileFooterArabic: Story = {
     viewport: { defaultViewport: "mobile1" },
   },
   render: () => <FooterOnlyStory />,
+};
+
+export const MobileFooterWithNotifications: Story = {
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => <FooterOnlyStory showInboxDot />,
 };
 
 export const MobileChrome: Story = {

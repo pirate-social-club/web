@@ -21,7 +21,8 @@ import { PirateAuthProvider, usePiratePrivyRuntime } from "@/lib/auth/privy-prov
 import { useKnownCommunities } from "@/lib/known-communities-store";
 import { useSession } from "@/lib/api/session-store";
 import { useNotificationSummary } from "@/lib/notifications/use-notification-summary";
-import { useUiLocale } from "@/lib/ui-locale";
+import { UiLocaleProvider, useUiLocale } from "@/lib/ui-locale";
+import { isUiLocaleCode, resolveLocaleDirection, type UiDirection, type UiLocaleCode } from "@/lib/ui-locale-core";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
 
 function buildCreatePostPath(communityId: string): string {
@@ -163,12 +164,14 @@ function resolveSessionAvatarFallback(session: ReturnType<typeof useSession>) {
 
 function AppShellHeader({
   copy,
-  hasUnread,
+  dir,
   route,
+  hasUnread,
 }: {
   copy: ShellMessages;
-  hasUnread: boolean;
+  dir: "ltr" | "rtl";
   route: AppRoute;
+  hasUnread: boolean;
 }) {
   const session = useSession();
   const { connect } = usePiratePrivyRuntime();
@@ -184,6 +187,7 @@ function AppShellHeader({
     <AppHeader
       avatarFallback={avatarFallback}
       disableCreateAction={disableCreateAction}
+      dir={dir}
       labels={{
         connectLabel: copy.appHeader.connectLabel,
         createLabel: copy.appHeader.createLabel,
@@ -200,9 +204,9 @@ function AppShellHeader({
       onConnectClick={() => connect ? connect() : showConnectUnavailable()}
       onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable()}
       onSearchClick={() => showSearchUnavailable(copy.appHeader.searchUnavailableToast)}
-      showCreateAction={clientReady}
-      showNotificationsDot={hasUnread}
+      showCreateAction={clientReady && !!session}
       showNotificationsAction={clientReady && !!session}
+      showNotificationsDot={hasUnread}
       showConnectAction={showConnectAction}
       showProfileAction={clientReady}
       useSidebarTrigger={useAppSidebarTrigger}
@@ -213,12 +217,12 @@ function AppShellHeader({
 
 function AppShellMobileNav({
   copy,
-  hasUnread,
   route,
+  hasUnread,
 }: {
   copy: ShellMessages;
-  hasUnread: boolean;
   route: AppRoute;
+  hasUnread: boolean;
 }) {
   const session = useSession();
   const { connect } = usePiratePrivyRuntime();
@@ -267,17 +271,23 @@ function SessionRevalidator({ children }: { children: React.ReactNode }) {
 
 function NotificationShell({
   copy,
+  effectiveDir,
+  isRtl,
   isCommunityModerationRoute,
+  knownCommunities,
   primaryItems,
-  route,
   sections,
+  route,
   session,
 }: {
   copy: ShellMessages;
+  effectiveDir: "ltr" | "rtl";
+  isRtl: boolean;
   isCommunityModerationRoute: boolean;
+  knownCommunities: ReturnType<typeof useKnownCommunities>;
   primaryItems: AppSidebarPrimaryItem[];
-  route: AppRoute;
   sections: AppSidebarSection[];
+  route: AppRoute;
   session: ReturnType<typeof useSession>;
 }) {
   const notificationSummary = useNotificationSummary();
@@ -286,14 +296,18 @@ function NotificationShell({
     <SidebarProvider
       className="flex-col"
       defaultOpen
+      dir={isRtl ? "rtl" : "ltr"}
       style={{
         "--sidebar-width": "15.5rem",
         "--sidebar-width-icon": "3.75rem",
       } as React.CSSProperties}
     >
       <>
-        <AppShellHeader copy={copy} hasUnread={notificationSummary.has_unread} route={route} />
-        <div className="flex min-h-0 w-full flex-1" dir="ltr">
+        <AppShellHeader copy={copy} dir={effectiveDir} route={route} hasUnread={notificationSummary.has_unread} />
+        <div
+          className="flex min-h-0 w-full flex-1"
+          dir={effectiveDir}
+        >
           {isCommunityModerationRoute ? (
             <main className="flex min-h-0 w-full flex-1">
               {renderAuthenticatedRoute(route)}
@@ -309,14 +323,18 @@ function NotificationShell({
                 resourceItems={copy.appSidebar.resourceItems}
                 resourcesLabel={copy.appSidebar.resourcesLabel}
                 sections={sections}
+                side={isRtl ? "right" : "left"}
               />
               <SidebarInset className="min-h-0">
-                <main className="flex w-full flex-1 px-3 pb-24 pt-4 md:pb-8 md:px-5 md:pt-6 lg:px-8">
+                <main
+                  className="flex w-full flex-1 px-3 pb-24 pt-4 md:pb-8 md:px-5 md:pt-6 lg:px-8"
+                  dir={effectiveDir}
+                >
                   {route.kind === "community" && !session
                     ? renderPublicRoute(route)
                     : renderAuthenticatedRoute(route)}
                 </main>
-                <AppShellMobileNav copy={copy} hasUnread={notificationSummary.has_unread} route={route} />
+                <AppShellMobileNav copy={copy} route={route} hasUnread={notificationSummary.has_unread} />
               </SidebarInset>
             </>
           )}
@@ -327,16 +345,31 @@ function NotificationShell({
   );
 }
 
-export function PirateApp({ initialHost, initialPath }: { initialHost?: string; initialPath?: string }) {
-  const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "shell");
+function resolveSessionUiLocale(session: ReturnType<typeof useSession>): UiLocaleCode | null {
+  const preferredLocale = session?.profile?.preferred_locale ?? "";
+  return isUiLocaleCode(preferredLocale) ? preferredLocale : null;
+}
+
+function PirateAppShell({ initialHost, initialPath }: { initialHost?: string; initialPath?: string }) {
+  const { locale, setLocale } = useUiLocale();
   const route = useRoute(initialPath, initialHost);
   const session = useSession();
+  const sessionLocale = resolveSessionUiLocale(session);
+  const effectiveLocale = sessionLocale ?? locale;
+  const effectiveDir = resolveLocaleDirection(effectiveLocale);
+  const isRtl = effectiveDir === "rtl";
+  const copy = getLocaleMessages(effectiveLocale, "shell");
   const isCommunityModerationRoute = route.kind === "community-moderation";
   const isPublicProfileRoute = route.kind === "public-profile";
   const knownCommunities = useKnownCommunities();
   const primaryItems = buildPrimaryItems(copy.appSidebar);
   const sections = buildSidebarSections(copy.appSidebar, knownCommunities);
+
+  React.useEffect(() => {
+    if (sessionLocale && sessionLocale !== locale) {
+      setLocale(sessionLocale);
+    }
+  }, [locale, sessionLocale, setLocale]);
 
   return (
     <ApiProvider initialHost={initialHost}>
@@ -354,15 +387,36 @@ export function PirateApp({ initialHost, initialPath }: { initialHost?: string; 
           <SessionRevalidator>
             <NotificationShell
               copy={copy}
+              effectiveDir={effectiveDir}
+              isRtl={isRtl}
               isCommunityModerationRoute={isCommunityModerationRoute}
+              knownCommunities={knownCommunities}
               primaryItems={primaryItems}
-              route={route}
               sections={sections}
+              route={route}
               session={session}
             />
           </SessionRevalidator>
         </PirateAuthProvider>
       )}
     </ApiProvider>
+  );
+}
+
+export function PirateApp({
+  initialDir = "ltr",
+  initialHost,
+  initialLocale = "en",
+  initialPath,
+}: {
+  initialDir?: UiDirection;
+  initialHost?: string;
+  initialLocale?: UiLocaleCode;
+  initialPath?: string;
+}) {
+  return (
+    <UiLocaleProvider dir={initialDir} locale={initialLocale}>
+      <PirateAppShell initialHost={initialHost} initialPath={initialPath} />
+    </UiLocaleProvider>
   );
 }

@@ -17,10 +17,11 @@ export interface VotePillProps {
   score: number;
   viewerVote?: "up" | "down" | null;
   onVote?: (direction: "up" | "down" | null) => void;
+  allowClear?: boolean;
   className?: string;
 }
 
-export function VotePill({ score, viewerVote, onVote, className }: VotePillProps) {
+export function VotePill({ score, viewerVote, onVote, allowClear = false, className }: VotePillProps) {
   return (
     <div
       className={cn(
@@ -38,7 +39,7 @@ export function VotePill({ score, viewerVote, onVote, className }: VotePillProps
             ? "text-primary hover:bg-primary/10"
             : "text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground",
         )}
-        onClick={() => onVote?.(viewerVote === "up" ? null : "up")}
+        onClick={() => onVote?.(viewerVote === "up" && allowClear ? null : "up")}
         type="button"
         aria-label="Upvote"
       >
@@ -63,7 +64,7 @@ export function VotePill({ score, viewerVote, onVote, className }: VotePillProps
             ? "text-destructive hover:bg-destructive/10"
             : "text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground",
         )}
-        onClick={() => onVote?.(viewerVote === "down" ? null : "down")}
+        onClick={() => onVote?.(viewerVote === "down" && allowClear ? null : "down")}
         type="button"
         aria-label="Downvote"
       >

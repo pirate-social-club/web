@@ -31,7 +31,14 @@ export function PostCardEngagementBar({
   const { score, viewerVote, commentCount } = engagement;
 
   return (
-    <div className={cn("flex items-center gap-1.5 pt-0.5", className)}>
+    <div
+      className={cn(
+        "flex items-center gap-1.5 pt-0.5",
+        unlock ? "w-full" : "self-start",
+        className,
+      )}
+      dir="ltr"
+    >
       <VotePill score={score} viewerVote={viewerVote} onVote={onVote} />
       <CommentPill count={commentCount} onComment={onComment} />
       {onShare && (

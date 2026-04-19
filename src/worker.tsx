@@ -36,7 +36,14 @@ function parseThemeCookie(cookieHeader: string | null): ThemeMode {
 function AppRoutePage(requestInfo: AppRequestInfo) {
   const url = new URL(requestInfo.request.url);
 
-  return <PirateApp initialHost={url.hostname} initialPath={url.pathname} />;
+  return (
+    <PirateApp
+      initialDir={requestInfo.ctx.dir}
+      initialHost={url.hostname}
+      initialLocale={requestInfo.ctx.locale}
+      initialPath={url.pathname}
+    />
+  );
 }
 
 export default defineApp<AppRequestInfo>([

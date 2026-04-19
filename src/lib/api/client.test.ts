@@ -358,6 +358,7 @@ describe("ApiClient media uploads", () => {
       });
 
       await client.posts.get("pst_test", { locale: "nl" });
+      await client.posts.vote("pst_test", 1);
       await client.communities.listComments("cmt_test", "pst_test", {
         locale: "nl",
         sort: "best",
@@ -376,13 +377,14 @@ describe("ApiClient media uploads", () => {
       await client.comments.vote("cmt_reply", 1);
 
       expect(requests[0]?.url).toBe("http://pirate.test/posts/pst_test?locale=nl");
-      expect(requests[1]?.url).toBe(
+      expect(requests[1]?.url).toBe("http://pirate.test/posts/pst_test/vote");
+      expect(requests[2]?.url).toBe(
         "http://pirate.test/communities/cmt_test/posts/pst_test/comments?limit=25&locale=nl&sort=best",
       );
-      expect(requests[2]?.url).toBe("http://pirate.test/communities/cmt_test/posts/pst_test/comments");
-      expect(requests[3]?.url).toBe("http://pirate.test/comments/cmt_reply/replies?locale=nl&sort=new");
-      expect(requests[4]?.url).toBe("http://pirate.test/comments/cmt_reply/replies");
-      expect(requests[5]?.url).toBe("http://pirate.test/comments/cmt_reply/vote");
+      expect(requests[3]?.url).toBe("http://pirate.test/communities/cmt_test/posts/pst_test/comments");
+      expect(requests[4]?.url).toBe("http://pirate.test/comments/cmt_reply/replies?locale=nl&sort=new");
+      expect(requests[5]?.url).toBe("http://pirate.test/comments/cmt_reply/replies");
+      expect(requests[6]?.url).toBe("http://pirate.test/comments/cmt_reply/vote");
     } finally {
       globalThis.fetch = originalFetch;
     }

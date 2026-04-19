@@ -3,13 +3,14 @@
 import * as React from "react";
 import type { CommunityPreview as ApiCommunityPreview, LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
-import { COMMUNITY_SORT_OPTIONS, toCommunityFeedItem } from "@/app/authenticated-route-renderer";
-import { type FeedSort } from "@/components/compositions/feed/feed";
+import { toCommunityFeedItem } from "@/app/authenticated-route-renderer";
+import { type FeedSort, type FeedSortOption } from "@/components/compositions/feed/feed";
 import { CommunityPageShell } from "@/components/compositions/community-page-shell/community-page-shell";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) {
@@ -21,6 +22,14 @@ function getErrorMessage(error: unknown, fallback: string): string {
   }
 
   return fallback;
+}
+
+function buildFeedSortOptions(copy: ReturnType<typeof getLocaleMessages<"routes">>["common"]): FeedSortOption[] {
+  return [
+    { value: "best", label: copy.bestTab },
+    { value: "new", label: copy.newTab },
+    { value: "top", label: copy.topTab },
+  ];
 }
 
 function usePublicCommunityPageData(communityId: string, localeTag: string, activeSort: FeedSort) {
@@ -98,6 +107,8 @@ function PublicCommunityErrorState({ description }: { description: string }) {
 
 export function PublicCommunityRoutePage({ communityId }: { communityId: string }) {
   const { locale } = useUiLocale();
+  const copy = React.useMemo(() => getLocaleMessages(locale, "routes"), [locale]);
+  const sortOptions = React.useMemo(() => buildFeedSortOptions(copy.common), [copy.common]);
   const contentLocale = React.useMemo(() => resolveViewerContentLocale({
     uiLocale: locale,
     browserLocales: typeof navigator === "undefined"
@@ -132,7 +143,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       <CommunityPageShell
         activeSort={activeSort}
         avatarSrc={preview.avatar_ref ?? undefined}
-        availableSorts={COMMUNITY_SORT_OPTIONS}
+        availableSorts={sortOptions}
         bannerSrc={preview.banner_ref ?? undefined}
         communityId={preview.community_id}
         emptyState={{

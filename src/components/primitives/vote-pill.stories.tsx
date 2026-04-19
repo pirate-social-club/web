@@ -22,6 +22,7 @@ export const Interactive: Story = {
     return (
       <VotePill
         {...args}
+        allowClear
         onVote={setViewerVote}
         viewerVote={viewerVote}
       />

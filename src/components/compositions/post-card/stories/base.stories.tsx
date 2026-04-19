@@ -4,6 +4,7 @@ import * as React from "react";
 import { PostCard } from "../post-card";
 import { PostCardSkeleton } from "../post-card-skeleton";
 import type { PostCardProps } from "../post-card.types";
+import { UiLocaleProvider } from "@/lib/ui-locale";
 
 const basePost: PostCardProps = {
   viewContext: "home",
@@ -265,6 +266,32 @@ export const AnonymousWithQualifiers: Story = {
         priceLabel: "$2.99",
       }}
     />
+  ),
+};
+
+export const RtlAuthorAlignment: Story = {
+  name: "Layout: RTL Author Alignment",
+  render: () => (
+    <UiLocaleProvider dir="rtl" locale="ar">
+      <div dir="rtl">
+        <PostCard
+          {...basePost}
+          byline={{
+            community: { kind: "community", label: "c/Infinity", href: "#" },
+            author: {
+              kind: "user",
+              label: "sable-harbor-4143.pirate",
+              href: "#",
+              avatarSrc: "https://i.pravatar.cc/100?img=11",
+            },
+            timestampLabel: "31m",
+          }}
+          title="اختبار أهلاً بالعالم"
+          titleDir="rtl"
+          content={{ type: "text", body: "هل تسمعني؟", bodyDir: "rtl" }}
+        />
+      </div>
+    </UiLocaleProvider>
   ),
 };
 

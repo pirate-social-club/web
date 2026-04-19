@@ -15,6 +15,54 @@ function sanitizeLabel(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
 
+function buildInitials(displayName: string): string {
+  const parts = sanitizeLabel(displayName)
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (parts.length === 0) {
+    return "C";
+  }
+
+  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("") || "C";
+}
+
+export function buildDefaultCommunityAvatarSrc(input: {
+  communityId: string;
+  displayName: string;
+}): string {
+  const hash = hashSeed(input.communityId.trim());
+  const hue = hash % 360;
+  const secondaryHue = (hue + 38) % 360;
+  const initials = buildInitials(input.displayName);
+
+  return encodeSvg(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="${initials}">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="hsl(${hue} 78% 58%)" />
+          <stop offset="100%" stop-color="hsl(${secondaryHue} 82% 44%)" />
+        </linearGradient>
+      </defs>
+      <rect width="128" height="128" rx="64" fill="url(#g)" />
+      <circle cx="96" cy="32" r="18" fill="rgba(255,255,255,0.18)" />
+      <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle"
+            fill="rgba(255,255,255,0.96)" font-family="Inter, Arial, sans-serif"
+            font-size="44" font-weight="700" letter-spacing="1">${initials}</text>
+    </svg>`,
+  );
+}
+
+export function resolveCommunityAvatarSrc(input: {
+  communityId: string;
+  displayName: string;
+  avatarSrc?: string | null;
+}): string {
+  const avatarSrc = input.avatarSrc?.trim();
+  return avatarSrc || buildDefaultCommunityAvatarSrc(input);
+}
+
 export function buildDefaultCommunityBannerSrc(input: {
   communityId: string;
   displayName: string;

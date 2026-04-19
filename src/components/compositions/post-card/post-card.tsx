@@ -73,7 +73,7 @@ export function PostCard({
   const titleElement = title ? (
     effectiveTitleHref ? (
       <a
-        className={cn(postCardType.title, "font-semibold text-foreground hover:underline")}
+        className={cn(postCardType.title, "max-w-[72ch] self-start font-semibold text-foreground hover:underline")}
         dir={titleDir ?? "auto"}
         href={effectiveTitleHref}
         lang={titleLang}
@@ -82,7 +82,11 @@ export function PostCard({
         {title}
       </a>
     ) : (
-      <h3 className={cn(postCardType.title, "font-semibold text-foreground")} dir={titleDir ?? "auto"} lang={titleLang}>
+      <h3
+        className={cn(postCardType.title, "max-w-[72ch] self-start font-semibold text-foreground")}
+        dir={titleDir ?? "auto"}
+        lang={titleLang}
+      >
         {title}
       </h3>
     )

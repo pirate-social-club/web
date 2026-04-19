@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { Flag, House, Plus } from "@phosphor-icons/react";
 
 import { Feed } from "@/components/compositions/feed/feed";
+import { NotificationInboxPage } from "@/components/compositions/notification-inbox-page/notification-inbox-page";
 import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap";
 import { AppSidebar } from "@/components/compositions/app-sidebar/app-sidebar";
 import {
@@ -56,6 +57,47 @@ const basePost = {
   engagement: {
     score: 42,
     commentCount: 3,
+  },
+};
+
+const namespaceVerificationTask = {
+  task_id: "tsk_namespace_infinity",
+  user_id: "usr_owner_1",
+  type: "namespace_verification_required" as const,
+  subject_type: "community",
+  subject_id: "gld_community_1",
+  status: "open" as const,
+  priority: 10,
+  payload: {
+    community_display_name: "Infinity Mirror",
+  },
+  resolved_at: null,
+  dismissed_at: null,
+  created_at: "2026-04-19T08:00:00.000Z",
+  updated_at: "2026-04-19T08:00:00.000Z",
+};
+
+const commentReplyNotification = {
+  event: {
+    event_id: "nev_reply_1",
+    type: "comment_reply" as const,
+    actor_user_id: "usr_actor_1",
+    subject_type: "comment",
+    subject_id: "cmt_parent_1",
+    object_type: "comment",
+    object_id: "cmt_reply_1",
+    payload: {
+      community_id: "gld_community_1",
+      thread_root_post_id: "pst_root_1",
+    },
+    created_at: "2026-04-19T11:45:00.000Z",
+  },
+  receipt: {
+    event_id: "nev_reply_1",
+    recipient_user_id: "usr_owner_1",
+    seen_at: null,
+    read_at: null,
+    created_at: "2026-04-19T11:45:00.000Z",
   },
 };
 
@@ -193,6 +235,19 @@ describe("composition smoke tests", () => {
 
     expect(markup).toContain("Handle");
     expect(markup).toContain(".pirate");
+  });
+
+  test("renders the notification inbox page", () => {
+    const markup = render(
+      <NotificationInboxPage
+        activityItems={[commentReplyNotification]}
+        tasks={[namespaceVerificationTask]}
+      />,
+    );
+
+    expect(markup).toContain("Inbox");
+    expect(markup).toContain("Verify your community namespace");
+    expect(markup).toContain("Recent activity");
   });
 
   test("renders the moderation safety page", () => {

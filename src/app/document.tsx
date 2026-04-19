@@ -1,7 +1,6 @@
 import type { DocumentProps } from "rwsdk/router";
 import type { RequestInfo } from "rwsdk/worker";
 
-import { UiLocaleProvider } from "@/lib/ui-locale";
 import {
   resolveLocaleDirection,
   resolveLocaleLanguageTag,
@@ -66,9 +65,7 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
         />
       </head>
       <body>
-        <UiLocaleProvider dir={dir} locale={locale}>
-          {children}
-        </UiLocaleProvider>
+        {children}
         <script nonce={nonce} type="module" src={clientModuleUrl} />
       </body>
     </html>

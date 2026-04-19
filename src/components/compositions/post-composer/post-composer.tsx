@@ -4,18 +4,8 @@ import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/primitives/card";
-import { Checkbox } from "@/components/primitives/checkbox";
-import { FormNote, FormSectionHeading } from "@/components/primitives/form-layout";
-import { OptionCard } from "@/components/primitives/option-card";
+import { FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
-import { Label } from "@/components/primitives/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/primitives/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/primitives/tabs";
 import { cn } from "@/lib/utils";
 
@@ -33,30 +23,20 @@ import {
   tabMeta,
   defaultTabs,
   anonymousEligibleTabs,
-  noneLanguageValue,
-  songGenreOptions,
-  songLanguageOptions,
-  fallbackSourceOptions,
   defaultSongState,
   defaultMonetizationState,
 } from "./post-composer-config";
 import {
   ShellPill,
   FieldLabel,
-  UploadField,
-  LabeledFormattedTextarea,
-  LabeledTextarea,
-  EditorChrome,
-  LinkPreviewCard,
 } from "./post-composer-fields";
+import { PostComposerPrimaryArea } from "./post-composer-content";
 import {
-  References,
-  dedupeReferences,
-  SearchReferencePicker,
-  SelectedReferenceCard,
-} from "./post-composer-references";
-import { LiveTabContent } from "./post-composer-live-tab";
-import { IdentitySection, QualifierSection } from "./post-composer-identity-section";
+  PostComposerDerivativeSection,
+  PostComposerIdentitySections,
+  PostComposerSongAccessSection,
+  deriveDerivativeSearchResults,
+} from "./post-composer-sections";
 
 function deriveSelectedQualifierIds(
   identity: NonNullable<PostComposerProps["identity"]>,
@@ -276,271 +256,9 @@ export function PostComposer({
     (derivativeState?.visible || (activeTab === "song" && activeSongMode === "remix")),
   );
   const derivativeSearchResults = React.useMemo(
-    () =>
-      dedupeReferences([
-        ...(derivativeState?.searchResults ?? []),
-        ...(derivativeState?.references ?? []),
-        ...fallbackSourceOptions,
-      ]),
-    [derivativeState?.references, derivativeState?.searchResults],
+    () => deriveDerivativeSearchResults(derivativeState),
+    [derivativeState],
   );
-  const shouldShowIdentity =
-    Boolean(identity?.allowAnonymousIdentity) && anonymousEligibleTabs.includes(activeTab);
-  const shouldShowQualifiers =
-    Boolean(identity) &&
-    Boolean(identity?.availableQualifiers?.some((qualifier) => !qualifier.suppressedByClubGate)) &&
-    identityMode === "anonymous" &&
-    identity?.allowQualifiersOnAnonymousPosts !== false;
-
-  const renderPrimaryArea = () => {
-    switch (activeTab) {
-      case "text":
-        return (
-          <div>
-            <FieldLabel label="Body" />
-            <EditorChrome onChange={onTextBodyValueChange} value={textBodyValue} />
-          </div>
-        );
-      case "image":
-        return (
-          <div className="space-y-3">
-            <UploadField accept="image/*" label="Image" />
-            <LabeledTextarea
-              className="min-h-28"
-              defaultValue={captionValue}
-              label="Caption"
-              placeholder="Add a caption"
-            />
-          </div>
-        );
-      case "video":
-        return (
-          <div className="space-y-3">
-            <UploadField accept="video/*" label="Video" />
-            <LabeledTextarea
-              className="min-h-28"
-              defaultValue={captionValue}
-              label="Caption"
-              placeholder="Add a caption"
-            />
-          </div>
-        );
-      case "link":
-        return (
-          <div className="space-y-3">
-            <div>
-              <FieldLabel label="URL" />
-              <Input
-                className="h-14"
-                onChange={(event) => onLinkUrlValueChange?.(event.target.value)}
-                placeholder="https://"
-                value={linkUrlValue}
-              />
-            </div>
-            <LabeledFormattedTextarea
-              className="min-h-28"
-              label="Commentary"
-              onChange={onCaptionValueChange}
-              placeholder="Add commentary"
-              value={captionValue}
-            />
-            {linkPreview ? <LinkPreviewCard {...linkPreview} /> : null}
-          </div>
-        );
-      case "song":
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 rounded-full bg-muted p-1">
-              {(["original", "remix"] as const).map((value) => (
-                <button
-                  key={value}
-                  className={cn(
-                    "rounded-full px-3 py-1.5 text-base font-medium capitalize transition-colors",
-                    activeSongMode === value
-                      ? "bg-card text-foreground shadow-sm"
-                      : derivativeState?.required && value === "original"
-                        ? "cursor-not-allowed text-muted-foreground/50"
-                        : "text-muted-foreground",
-                  )}
-                  onClick={() => {
-                    if (derivativeState?.required && value === "original") {
-                      return;
-                    }
-                    setSongModeWithCallback(value);
-                  }}
-                  disabled={Boolean(derivativeState?.required && value === "original")}
-                  type="button"
-                >
-                  {value}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              <UploadField
-                accept="audio/*"
-                label="Audio"
-                onChange={(files) =>
-                  updateSongState((current) => ({
-                    ...current,
-                    primaryAudioUpload: files?.[0] ?? null,
-                    primaryAudioLabel: files?.[0]?.name ?? current.primaryAudioLabel,
-                  }))
-                }
-                selectedLabel={songState.primaryAudioUpload?.name ?? songState.primaryAudioLabel}
-              />
-              <UploadField
-                accept="image/*"
-                label="Cover art"
-                onChange={(files) =>
-                  updateSongState((current) => ({
-                    ...current,
-                    coverUpload: files?.[0] ?? null,
-                    coverLabel: files?.[0]?.name ?? current.coverLabel,
-                  }))
-                }
-                selectedLabel={songState.coverUpload?.name ?? songState.coverLabel}
-                variant="artwork"
-              />
-              <div className="grid gap-3 md:grid-cols-2">
-                <UploadField
-                  accept="audio/*"
-                  label="Instrumental stem"
-                  onChange={(files) =>
-                    updateSongState((current) => ({
-                      ...current,
-                      instrumentalAudioUpload: files?.[0] ?? null,
-                      instrumentalAudioLabel: files?.[0]?.name ?? current.instrumentalAudioLabel,
-                    }))
-                  }
-                  selectedLabel={songState.instrumentalAudioUpload?.name ?? songState.instrumentalAudioLabel}
-                />
-                <UploadField
-                  accept="audio/*"
-                  label="Vocal stem"
-                  onChange={(files) =>
-                    updateSongState((current) => ({
-                      ...current,
-                      vocalAudioUpload: files?.[0] ?? null,
-                      vocalAudioLabel: files?.[0]?.name ?? current.vocalAudioLabel,
-                    }))
-                  }
-                  selectedLabel={songState.vocalAudioUpload?.name ?? songState.vocalAudioLabel}
-                />
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <UploadField
-                  accept="audio/*"
-                  label="Preview clip"
-                  onChange={(files) =>
-                    updateSongState((current) => ({
-                      ...current,
-                      previewAudioUpload: files?.[0] ?? null,
-                      previewAudioLabel: files?.[0]?.name ?? current.previewAudioLabel,
-                    }))
-                  }
-                  selectedLabel={songState.previewAudioUpload?.name ?? songState.previewAudioLabel}
-                />
-                <UploadField
-                  accept="video/*"
-                  label="Canvas video"
-                  onChange={(files) =>
-                    updateSongState((current) => ({
-                      ...current,
-                      canvasVideoUpload: files?.[0] ?? null,
-                      canvasVideoLabel: files?.[0]?.name ?? current.canvasVideoLabel,
-                    }))
-                  }
-                  selectedLabel={songState.canvasVideoUpload?.name ?? songState.canvasVideoLabel}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-3">
-              <div>
-                <FieldLabel label="Genre" />
-                <Select
-                  onValueChange={(value) =>
-                    updateSongState((current) => ({ ...current, genre: value }))
-                  }
-                  value={songState.genre}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select genre" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {songGenreOptions.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <FieldLabel label="Primary language" />
-                <Select
-                  onValueChange={(value) =>
-                    updateSongState((current) => ({ ...current, primaryLanguage: value }))
-                  }
-                  value={songState.primaryLanguage}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {songLanguageOptions.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <FieldLabel label="Secondary language" />
-                <Select
-                  onValueChange={(value) =>
-                    updateSongState((current) => ({
-                      ...current,
-                      secondaryLanguage: value === noneLanguageValue ? "" : value,
-                    }))
-                  }
-                  value={songState.secondaryLanguage || noneLanguageValue}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Optional" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={noneLanguageValue}>None</SelectItem>
-                    {songLanguageOptions.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <LabeledTextarea
-              className="min-h-36"
-              label="Lyrics"
-              onChange={onLyricsValueChange}
-              placeholder="Paste lyrics"
-              value={lyricsValue}
-            />
-
-          </div>
-        );
-      case "live":
-        return <LiveTabContent live={liveState} onLiveChange={setLiveState} />;
-      default:
-        return null;
-    }
-  };
 
   return (
     <div className="w-full space-y-4">
@@ -598,167 +316,51 @@ export function PostComposer({
             />
           </div>
 
-          {shouldShowIdentity ? (
-            <IdentitySection
-              identity={identity!}
-              identityMode={identityMode}
-              onIdentityModeChange={setIdentityModeWithCallback}
-            />
-          ) : null}
+          <PostComposerIdentitySections
+            activeTab={activeTab}
+            anonymousEligibleTabs={anonymousEligibleTabs}
+            identity={identity}
+            identityMode={identityMode}
+            onIdentityModeChange={setIdentityModeWithCallback}
+            onSelectedQualifierIdsChange={setSelectedQualifierIdsWithCallback}
+            selectedQualifierIds={selectedQualifierIds}
+          />
 
-          {shouldShowQualifiers ? (
-            <QualifierSection
-              identity={identity!}
-              onSelectedQualifierIdsChange={setSelectedQualifierIdsWithCallback}
-              selectedQualifierIds={selectedQualifierIds}
-            />
-          ) : null}
-
-          {renderPrimaryArea()}
+          <PostComposerPrimaryArea
+            activeSongMode={activeSongMode}
+            activeTab={activeTab}
+            captionValue={captionValue}
+            derivativeState={derivativeState}
+            linkPreview={linkPreview}
+            linkUrlValue={linkUrlValue}
+            liveState={liveState}
+            lyricsValue={lyricsValue}
+            onCaptionValueChange={onCaptionValueChange}
+            onLinkUrlValueChange={onLinkUrlValueChange}
+            onLyricsValueChange={onLyricsValueChange}
+            onTextBodyValueChange={onTextBodyValueChange}
+            setLiveState={setLiveState}
+            setSongModeWithCallback={setSongModeWithCallback}
+            songState={songState}
+            textBodyValue={textBodyValue}
+            updateSongState={updateSongState}
+          />
 
           {shouldShowDerivativeStep ? (
-            <section className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
-              <FormSectionHeading title="Source track" />
-              <SearchReferencePicker
-                ariaLabel="Search source tracks"
-                emptyLabel="No source tracks found."
-                items={derivativeSearchResults}
-                onSelect={(reference) => {
-                  updateDerivativeState((current) => ({
-                    visible: true,
-                    trigger: current?.trigger ?? "remix",
-                    requirementLabel: current?.requirementLabel,
-                    required: current?.required,
-                    searchResults: current?.searchResults,
-                    references: dedupeReferences([...(current?.references ?? []), reference]),
-                  }));
-                  setDerivativePickerKey((current) => current + 1);
-                }}
-                placeholder="Search Pirate / Story assets"
-                resetKey={derivativePickerKey}
-              />
-              {derivativeState?.requirementLabel ? (
-                <div className="rounded-[var(--radius-lg)] bg-muted px-4 py-3 text-base text-foreground">
-                  {derivativeState.requirementLabel}
-                </div>
-              ) : null}
-              {derivativeState?.references?.length ? (
-                <div className="space-y-2">
-                  {derivativeState.references.map((reference) => (
-                    <SelectedReferenceCard
-                      key={reference.id}
-                      item={reference}
-                      onClear={() => {
-                        updateDerivativeState((current) => {
-                          if (!current) {
-                            return current;
-                          }
-                          return {
-                            ...current,
-                            references: (current.references ?? []).filter((item) => item.id !== reference.id),
-                          };
-                        });
-                      }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <References items={derivativeState?.references} />
-              )}
-            </section>
+            <PostComposerDerivativeSection
+              derivativePickerKey={derivativePickerKey}
+              derivativeSearchResults={derivativeSearchResults}
+              derivativeState={derivativeState}
+              onAdvancePicker={() => setDerivativePickerKey((current) => current + 1)}
+              updateDerivativeState={updateDerivativeState}
+            />
           ) : null}
 
           {activeTab === "song" ? (
-            <section className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
-              <FormSectionHeading title="Access" />
-              <div className="grid gap-3 md:grid-cols-2">
-                <OptionCard
-                  description="Anyone can play the full track."
-                  onClick={() =>
-                    updateMonetizationState((current) => ({
-                      ...current,
-                      visible: false,
-                      regionalPricingEnabled: false,
-                    }))
-                  }
-                  selected={!monetizationState.visible}
-                  title="Public"
-                />
-                <OptionCard
-                  description="Preview in feed. Full track unlocks after purchase."
-                  onClick={() =>
-                    updateMonetizationState((current) => ({
-                      ...current,
-                      visible: true,
-                    }))
-                  }
-                  selected={monetizationState.visible}
-                  title="Paid unlock"
-                />
-              </div>
-
-              {monetizationState.visible ? (
-                <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <FieldLabel label="Unlock price (USD)" />
-                      <Input
-                        className="h-12"
-                        inputMode="decimal"
-                        onChange={(event) =>
-                          updateMonetizationState((current) => ({
-                            ...current,
-                            priceUsd: event.target.value,
-                          }))
-                        }
-                        placeholder="1.00"
-                        value={monetizationState.priceUsd ?? ""}
-                      />
-                    </div>
-
-                    {monetizationState.regionalPricingAvailable ? (
-                      <div className="rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3">
-                        <div className="flex items-start gap-3">
-                          <Checkbox
-                            checked={monetizationState.regionalPricingEnabled}
-                            className="mt-0.5"
-                            id="regional-pricing"
-                            onCheckedChange={(next) =>
-                              updateMonetizationState((current) => ({
-                                ...current,
-                                regionalPricingEnabled: next === true,
-                              }))
-                            }
-                          />
-                          <div className="space-y-1">
-                            <Label htmlFor="regional-pricing">Use community regional pricing</Label>
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="flex items-start gap-3 border-t border-border-soft pt-4">
-                    <Checkbox
-                      checked={monetizationState.rightsAttested}
-                      className="mt-0.5"
-                      id="rights-attested"
-                      onCheckedChange={(next) =>
-                        updateMonetizationState((current) => ({
-                          ...current,
-                          rightsAttested: next === true,
-                        }))
-                      }
-                    />
-                    <div className="space-y-1">
-                      <Label htmlFor="rights-attested">
-                        I have the rights to publish and monetize this track.
-                      </Label>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </section>
+            <PostComposerSongAccessSection
+              monetizationState={monetizationState}
+              updateMonetizationState={updateMonetizationState}
+            />
           ) : null}
           </>
         </CardContent>

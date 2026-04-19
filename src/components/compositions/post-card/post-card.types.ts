@@ -154,7 +154,8 @@ export type PostCardIdentityPresentation =
   | "author_primary"
   | "author_with_community"
   | "community_primary"
-  | "anonymous_primary";
+  | "anonymous_primary"
+  | "anonymous_with_community";
 
 export type PostCardEngagement = {
   score: number;

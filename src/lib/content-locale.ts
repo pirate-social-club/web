@@ -61,6 +61,10 @@ export function resolveViewerContentLocale(input: {
   uiLocale: UiLocaleCode;
   browserLocales?: readonly string[] | null;
 }): string {
+  if (input.uiLocale === "ar") {
+    return "ar";
+  }
+
   for (const candidate of input.browserLocales ?? []) {
     const normalized = normalizeContentLocale(candidate);
     if (normalized) {

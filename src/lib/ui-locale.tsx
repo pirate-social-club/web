@@ -33,6 +33,12 @@ function isSupportedLocale(value: string): value is UiLocaleCode {
   return (SUPPORTED_UI_LOCALES as readonly string[]).includes(value);
 }
 
+function readStoredUiLocale(): UiLocaleCode | null {
+  if (typeof window === "undefined") return null;
+  const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+  return stored && isSupportedLocale(stored) ? stored : null;
+}
+
 export function UiLocaleProvider({
   children,
   dir,
@@ -41,17 +47,23 @@ export function UiLocaleProvider({
   dir: UiDirection;
   locale: UiLocaleCode;
 }>) {
-  const [activeLocale, setActiveLocale] = React.useState<UiLocaleCode>(locale);
+  const [activeLocale, setActiveLocale] = React.useState<UiLocaleCode>(() => {
+    return readStoredUiLocale() ?? locale;
+  });
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-    if (stored && isSupportedLocale(stored)) {
-      setActiveLocale(stored);
+    const stored = readStoredUiLocale();
+    if (stored) {
+      if (stored !== activeLocale) {
+        setActiveLocale(stored);
+      }
       return;
     }
-    setActiveLocale(locale);
-  }, [locale]);
+    if (locale !== activeLocale) {
+      setActiveLocale(locale);
+    }
+  }, [activeLocale, locale]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;

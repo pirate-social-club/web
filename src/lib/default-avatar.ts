@@ -2,6 +2,7 @@ import { thumbs } from "@dicebear/collection";
 import { createAvatar } from "@dicebear/core";
 
 const DEFAULT_SIZE = 128;
+const AVATAR_BACKGROUND_COLOR = "d9a441";
 const avatarCache = new Map<string, string>();
 
 function buildSeed(value: string) {
@@ -23,7 +24,7 @@ export function buildDefaultAvatarSrc(seedSource: string, size = DEFAULT_SIZE) {
   }
 
   const dataUri = createAvatar(thumbs, {
-    backgroundColor: ["transparent"],
+    backgroundColor: [AVATAR_BACKGROUND_COLOR],
     eyesColor: ["111111"],
     mouthColor: ["111111"],
     radius: 50,

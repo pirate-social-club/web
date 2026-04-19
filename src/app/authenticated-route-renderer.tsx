@@ -3180,6 +3180,81 @@ function validatePricingPolicyDraft(input: {
   return null;
 }
 
+function buildStarterPricingPolicyDraft() {
+  const tiers: PricingTier[] = [
+    { tier_key: "tier_1", display_name: "Tier 1", adjustment_type: "multiplier", adjustment_value: 1.15 },
+    { tier_key: "tier_2", display_name: "Tier 2", adjustment_type: "multiplier", adjustment_value: 1 },
+    { tier_key: "tier_3", display_name: "Tier 3", adjustment_type: "multiplier", adjustment_value: 0.85 },
+    { tier_key: "tier_4", display_name: "Tier 4", adjustment_type: "multiplier", adjustment_value: 0.7 },
+    { tier_key: "tier_5", display_name: "Tier 5", adjustment_type: "multiplier", adjustment_value: 0.55 },
+  ];
+
+  const countryAssignments: PricingCountryAssignment[] = [
+    { country_code: "DK", tier_key: "tier_1" },
+    { country_code: "NO", tier_key: "tier_1" },
+    { country_code: "CH", tier_key: "tier_1" },
+    { country_code: "LU", tier_key: "tier_1" },
+    { country_code: "IS", tier_key: "tier_1" },
+    { country_code: "US", tier_key: "tier_2" },
+    { country_code: "CA", tier_key: "tier_2" },
+    { country_code: "AU", tier_key: "tier_2" },
+    { country_code: "NZ", tier_key: "tier_2" },
+    { country_code: "GB", tier_key: "tier_2" },
+    { country_code: "IE", tier_key: "tier_2" },
+    { country_code: "DE", tier_key: "tier_2" },
+    { country_code: "AT", tier_key: "tier_2" },
+    { country_code: "BE", tier_key: "tier_2" },
+    { country_code: "NL", tier_key: "tier_2" },
+    { country_code: "SE", tier_key: "tier_2" },
+    { country_code: "FI", tier_key: "tier_2" },
+    { country_code: "FR", tier_key: "tier_3" },
+    { country_code: "IT", tier_key: "tier_3" },
+    { country_code: "ES", tier_key: "tier_3" },
+    { country_code: "PT", tier_key: "tier_3" },
+    { country_code: "GR", tier_key: "tier_3" },
+    { country_code: "CY", tier_key: "tier_3" },
+    { country_code: "SI", tier_key: "tier_3" },
+    { country_code: "EE", tier_key: "tier_3" },
+    { country_code: "LT", tier_key: "tier_3" },
+    { country_code: "LV", tier_key: "tier_3" },
+    { country_code: "CZ", tier_key: "tier_3" },
+    { country_code: "SK", tier_key: "tier_3" },
+    { country_code: "MT", tier_key: "tier_3" },
+    { country_code: "PL", tier_key: "tier_4" },
+    { country_code: "HU", tier_key: "tier_4" },
+    { country_code: "HR", tier_key: "tier_4" },
+    { country_code: "RO", tier_key: "tier_4" },
+    { country_code: "BG", tier_key: "tier_4" },
+    { country_code: "TR", tier_key: "tier_4" },
+    { country_code: "BR", tier_key: "tier_4" },
+    { country_code: "MX", tier_key: "tier_4" },
+    { country_code: "CL", tier_key: "tier_4" },
+    { country_code: "CR", tier_key: "tier_4" },
+    { country_code: "ZA", tier_key: "tier_4" },
+    { country_code: "MY", tier_key: "tier_4" },
+    { country_code: "TH", tier_key: "tier_4" },
+    { country_code: "IN", tier_key: "tier_5" },
+    { country_code: "ID", tier_key: "tier_5" },
+    { country_code: "PH", tier_key: "tier_5" },
+    { country_code: "VN", tier_key: "tier_5" },
+    { country_code: "NG", tier_key: "tier_5" },
+    { country_code: "PK", tier_key: "tier_5" },
+    { country_code: "EG", tier_key: "tier_5" },
+    { country_code: "MA", tier_key: "tier_5" },
+    { country_code: "AR", tier_key: "tier_5" },
+    { country_code: "CO", tier_key: "tier_5" },
+    { country_code: "PE", tier_key: "tier_5" },
+  ];
+
+  return {
+    countryAssignments,
+    defaultTierKey: "tier_2",
+    regionalPricingEnabled: true,
+    tiers,
+    verificationProviderRequirement: "self" as const,
+  };
+}
+
 function CommunityModerationPage({
   communityId,
   section,
@@ -3668,6 +3743,15 @@ function CommunityModerationPage({
     verificationProviderRequirement,
   ]);
 
+  const applyStarterPricingTemplate = React.useCallback(() => {
+    const starter = buildStarterPricingPolicyDraft();
+    setRegionalPricingEnabled(starter.regionalPricingEnabled);
+    setVerificationProviderRequirement(starter.verificationProviderRequirement);
+    setDefaultTierKey(starter.defaultTierKey);
+    setPricingTiers(starter.tiers);
+    setCountryAssignments(starter.countryAssignments);
+  }, []);
+
   const handleSaveGates = React.useCallback(() => {
     if (!community || savingGates) {
       return;
@@ -3774,11 +3858,19 @@ function CommunityModerationPage({
               onDefaultTierKeyChange={setDefaultTierKey}
               onRegionalPricingEnabledChange={(value) => {
                 setRegionalPricingEnabled(value);
-                if (value && !verificationProviderRequirement) {
+                if (!value) {
+                  return;
+                }
+                if (pricingTiers.length === 0 && countryAssignments.length === 0 && !defaultTierKey) {
+                  applyStarterPricingTemplate();
+                  return;
+                }
+                if (!verificationProviderRequirement) {
                   setVerificationProviderRequirement("self");
                 }
               }}
               onTiersChange={setPricingTiers}
+              onUseStarterTemplate={applyStarterPricingTemplate}
               onVerificationProviderRequirementChange={setVerificationProviderRequirement}
               onSave={handleSavePricing}
               regionalPricingEnabled={regionalPricingEnabled}

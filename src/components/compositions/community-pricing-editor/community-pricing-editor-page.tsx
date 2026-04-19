@@ -46,9 +46,14 @@ export interface CommunityPricingEditorPageProps {
   onTiersChange?: (value: PricingTier[]) => void;
   onCountryAssignmentsChange?: (value: CountryAssignment[]) => void;
   onSave?: () => void;
+  onUseStarterTemplate?: () => void;
   saveNote?: string | null;
   saveDisabled?: boolean;
   saveLoading?: boolean;
+}
+
+function formatTierLabel(tier: PricingTier): string {
+  return tier.display_name?.trim() || tier.tier_key;
 }
 
 function TierRow({
@@ -64,14 +69,23 @@ function TierRow({
 }) {
   return (
     <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3">
-      <div className="grid flex-1 gap-3 md:grid-cols-3">
+      <div className="grid flex-1 gap-3 md:grid-cols-4">
         <div>
-          <FormFieldLabel label="Key" />
+          <FormFieldLabel label="Name" />
+          <Input
+            className="h-10"
+            onChange={(event) => onUpdate?.({ display_name: event.target.value })}
+            placeholder="Tier 1"
+            value={tier.display_name ?? ""}
+          />
+        </div>
+        <div>
+          <FormFieldLabel label="Internal key" />
           <Input
             className="h-10"
             disabled={isDefault}
             onChange={(event) => onUpdate?.({ tier_key: event.target.value })}
-            placeholder="tier_a"
+            placeholder="tier_1"
             value={tier.tier_key}
           />
         </div>
@@ -128,12 +142,12 @@ function TierRow({
 
 function CountryRow({
   assignment,
-  tierKeys,
+  tiers,
   onUpdate,
   onRemove,
 }: {
   assignment: CountryAssignment;
-  tierKeys: string[];
+  tiers: PricingTier[];
   onUpdate?: (patch: Partial<CountryAssignment>) => void;
   onRemove?: () => void;
 }) {
@@ -158,9 +172,9 @@ function CountryRow({
           <SelectValue placeholder="Select tier" />
         </SelectTrigger>
         <SelectContent>
-          {tierKeys.map((key) => (
-            <SelectItem key={key} value={key}>
-              {key}
+          {tiers.map((tier) => (
+            <SelectItem key={tier.tier_key} value={tier.tier_key}>
+              {formatTierLabel(tier)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -190,6 +204,7 @@ export function CommunityPricingEditorPage({
   onTiersChange,
   onCountryAssignmentsChange,
   onSave,
+  onUseStarterTemplate,
   saveNote = null,
   saveDisabled = false,
   saveLoading = false,
@@ -202,9 +217,16 @@ export function CommunityPricingEditorPage({
         <div className="min-w-0">
           <h1 className="text-[2.25rem] font-semibold tracking-tight">Pricing</h1>
         </div>
-        <Button disabled={saveDisabled} loading={saveLoading} onClick={onSave}>
-          Save
-        </Button>
+        <div className="flex items-center gap-3">
+          {onUseStarterTemplate ? (
+            <Button onClick={onUseStarterTemplate} variant="secondary">
+              Load starter template
+            </Button>
+          ) : null}
+          <Button disabled={saveDisabled} loading={saveLoading} onClick={onSave}>
+            Save
+          </Button>
+        </div>
       </div>
 
       {saveNote ? <FormNote tone="warning">{saveNote}</FormNote> : null}
@@ -268,6 +290,7 @@ export function CommunityPricingEditorPage({
                   ...tiers,
                   {
                     tier_key: `tier_${tiers.length + 1}`,
+                    display_name: `Tier ${tiers.length + 1}`,
                     adjustment_type: "multiplier",
                     adjustment_value: 0.5,
                   },
@@ -292,9 +315,9 @@ export function CommunityPricingEditorPage({
                 <SelectValue placeholder="Select default tier" />
               </SelectTrigger>
               <SelectContent>
-                {tierKeys.map((key) => (
-                  <SelectItem key={key} value={key}>
-                    {key}
+                {tiers.map((tier) => (
+                  <SelectItem key={tier.tier_key} value={tier.tier_key}>
+                    {formatTierLabel(tier)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -321,7 +344,7 @@ export function CommunityPricingEditorPage({
                     ),
                   )
                 }
-                tierKeys={tierKeys}
+                tiers={tiers}
               />
             ))}
             <Button
@@ -338,6 +361,9 @@ export function CommunityPricingEditorPage({
             </Button>
           </div>
 
+          <FormNote tone="muted">
+            The starter template uses broad regional bands with Denmark in the highest tier. Review every tier before saving.
+          </FormNote>
           <FormNote tone="muted">
             Enabling regional pricing affects new listings only. Existing listings keep their current setting.
           </FormNote>

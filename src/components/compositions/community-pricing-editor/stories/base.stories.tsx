@@ -17,16 +17,24 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const defaultTiers: PricingTier[] = [
-  { tier_key: "default", adjustment_type: "fixed_price_usd", adjustment_value: 1 },
-  { tier_key: "tier_a", adjustment_type: "multiplier", adjustment_value: 0.5 },
-  { tier_key: "tier_b", adjustment_type: "fixed_price_usd", adjustment_value: 0.25 },
+  { tier_key: "default", display_name: "Default", adjustment_type: "fixed_price_usd", adjustment_value: 1 },
+  { tier_key: "tier_2", display_name: "Tier 2", adjustment_type: "multiplier", adjustment_value: 0.85 },
+  { tier_key: "tier_3", display_name: "Tier 3", adjustment_type: "fixed_price_usd", adjustment_value: 0.25 },
 ];
 
 const defaultAssignments: CountryAssignment[] = [
   { country_code: "US", tier_key: "default" },
-  { country_code: "IN", tier_key: "tier_a" },
-  { country_code: "BR", tier_key: "tier_b" },
+  { country_code: "IN", tier_key: "tier_2" },
+  { country_code: "BR", tier_key: "tier_3" },
 ];
+
+const baseArgs = {
+  countryAssignments: [],
+  defaultTierKey: "default",
+  regionalPricingEnabled: false,
+  tiers: defaultTiers,
+  verificationProviderRequirement: null,
+} satisfies React.ComponentProps<typeof CommunityPricingEditorPage>;
 
 function InteractiveStory({
   initialEnabled,
@@ -62,22 +70,15 @@ function InteractiveStory({
 }
 
 export const Disabled: Story = {
-  args: {
-    countryAssignments: [],
-    defaultTierKey: "default",
-    regionalPricingEnabled: false,
-    tiers: defaultTiers,
-    verificationProviderRequirement: null,
-  },
+  args: baseArgs,
   render: () => <InteractiveStory initialAssignments={[]} initialEnabled={false} initialTiers={defaultTiers} />,
 };
 
 export const Enabled: Story = {
   args: {
+    ...baseArgs,
     countryAssignments: defaultAssignments,
-    defaultTierKey: "default",
     regionalPricingEnabled: true,
-    tiers: defaultTiers,
     verificationProviderRequirement: "self",
   },
   render: () => <InteractiveStory initialAssignments={defaultAssignments} initialEnabled initialTiers={defaultTiers} />,
@@ -85,11 +86,10 @@ export const Enabled: Story = {
 
 export const EmptyPolicy: Story = {
   args: {
-    countryAssignments: [],
-    defaultTierKey: "default",
+    ...baseArgs,
     regionalPricingEnabled: true,
-    tiers: [{ tier_key: "default", adjustment_type: "fixed_price_usd", adjustment_value: 1 }],
+    tiers: [{ tier_key: "default", display_name: "Default", adjustment_type: "fixed_price_usd", adjustment_value: 1 }],
     verificationProviderRequirement: "self",
   },
-  render: () => <InteractiveStory initialAssignments={[]} initialEnabled initialTiers={[{ tier_key: "default", adjustment_type: "fixed_price_usd", adjustment_value: 1 }]} />,
+  render: () => <InteractiveStory initialAssignments={[]} initialEnabled initialTiers={[{ tier_key: "default", display_name: "Default", adjustment_type: "fixed_price_usd", adjustment_value: 1 }]} />,
 };

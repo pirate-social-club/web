@@ -108,6 +108,10 @@ export function PostCard({
         isClickable && "cursor-pointer hover:bg-muted/20 focus-visible:bg-muted/20",
         className,
       )}
+      style={{
+        containIntrinsicSize: "560px",
+        contentVisibility: "auto",
+      }}
       onClick={(event) => {
         if (!isClickable || isInteractiveTarget(event.target, event.currentTarget)) return;
         navigateToPost();

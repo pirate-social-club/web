@@ -37,7 +37,15 @@ const privyServerAliasPlugin = {
   },
 };
 
-const enableClientWorkerShim = process.env.PIRATE_ENABLE_RWSDK_CLIENT_SHIMS === "1";
+// The lightweight AGENTS.md verification command builds `src/worker.tsx` via
+// the client pipeline first, which resolves `rwsdk/worker` through the default
+// export condition instead of the worker condition. Enable the browser-side
+// stubs automatically for that exact diagnostic path so the recommended local
+// verification command works without extra env setup.
+const isWorkerDiagnosticBuild =
+  process.argv.includes("--ssr") && process.argv.includes("src/worker.tsx");
+const enableClientWorkerShim =
+  process.env.PIRATE_ENABLE_RWSDK_CLIENT_SHIMS === "1" || isWorkerDiagnosticBuild;
 
 export default defineConfig(() => ({
   define: {

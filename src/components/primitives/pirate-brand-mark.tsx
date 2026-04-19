@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import pirateBrandMarkUrl from "@/assets/pirate-logo.png";
+import pirateBrandMarkUrl from "@/assets/logo_ghost_sm.png";
 import { cn } from "@/lib/utils";
 
 export interface PirateBrandMarkProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, "src"> {

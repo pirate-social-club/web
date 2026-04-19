@@ -12,9 +12,10 @@ import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { IconButton } from "@/components/primitives/icon-button";
 import { PirateBrandMark } from "@/components/primitives/pirate-brand-mark";
-import { SearchTrigger } from "@/components/primitives/search-trigger";
 import { useSidebar } from "@/components/compositions/sidebar/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { UiDirection } from "@/lib/ui-locale";
+import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 
 function CreatePostGlyph() {
@@ -52,6 +53,7 @@ export interface AppHeaderProps {
   className?: string;
   createActionTitle?: string;
   disableCreateAction?: boolean;
+  dir?: UiDirection;
   forceMobile?: boolean;
   labels?: AppHeaderLabels;
   onConnectClick?: () => void;
@@ -75,6 +77,7 @@ export function AppHeader({
   className,
   createActionTitle,
   disableCreateAction = false,
+  dir,
   forceMobile,
   labels,
   onConnectClick,
@@ -83,7 +86,6 @@ export function AppHeader({
   onMenuClick,
   onNotificationsClick,
   onProfileClick,
-  onSearchClick,
   showCreateAction = true,
   showNotificationsDot = true,
   showNotificationsAction = true,
@@ -99,16 +101,68 @@ export function AppHeader({
     notificationsAriaLabel = "Notifications",
     openNavigationAriaLabel = "Open navigation",
     profileAriaLabel = "Open profile",
-    searchAriaLabel = "Search",
-    searchPlaceholder = "Search Pirate",
   } = labels ?? {};
   const detectedMobile = useIsMobile();
   const isMobile = forceMobile ?? detectedMobile;
+  const localeState = useUiLocale();
+  const effectiveDir = dir ?? localeState.dir;
+  const isRtl = effectiveDir === "rtl";
+  const actions: React.ReactNode[] = [];
+  if (showCreateAction) {
+    actions.push(
+      <IconButton
+        aria-label={createLabel}
+        className="relative"
+        disabled={disableCreateAction}
+        onClick={onCreateClick}
+        title={createActionTitle}
+        variant="ghost"
+        key="create"
+      >
+        <CreatePostGlyph />
+      </IconButton>,
+    );
+  }
+  if (showNotificationsAction) {
+    actions.push(
+      <IconButton
+        aria-label={notificationsAriaLabel}
+        className="relative"
+        onClick={onNotificationsClick}
+        variant="ghost"
+        key="notifications"
+      >
+        <Bell className="size-6" weight="regular" />
+        {showNotificationsDot ? (
+          <span className="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-primary" />
+        ) : null}
+      </IconButton>,
+    );
+  }
+  if (showProfileAction && !showConnectAction) {
+    actions.push(
+      <IconButton
+        aria-label={profileAriaLabel}
+        className="p-0"
+        onClick={onProfileClick}
+        variant="ghost"
+        key="profile"
+      >
+        <Avatar
+          className="h-11 w-11 bg-card text-base"
+          fallback={avatarFallback}
+          size="sm"
+          src={userAvatarSrc ?? undefined}
+        />
+      </IconButton>,
+    );
+  }
+  const utilityActions = isRtl ? [...actions].reverse() : actions;
 
   if (isMobile) {
     return (
       <header className={cn("fixed inset-x-0 top-0 z-40 border-b border-border-soft bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur-md", className)}>
-        <div className="grid h-16 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-3">
+        <div className="flex h-16 items-center px-3" dir={isRtl ? "rtl" : "ltr"}>
           {useSidebarTrigger ? (
             <SidebarMenuToggleButton ariaLabel={openNavigationAriaLabel} />
           ) : (
@@ -116,12 +170,7 @@ export function AppHeader({
               <List className="size-6" weight="bold" />
             </IconButton>
           )}
-          <SearchTrigger
-            ariaLabel={searchAriaLabel}
-            size="compact"
-            onClick={onSearchClick}
-            placeholder={searchPlaceholder}
-          />
+          {/* Search removed for now until the feed has enough content to justify it. */}
         </div>
       </header>
     );
@@ -129,74 +178,36 @@ export function AppHeader({
 
   return (
     <header className={cn("sticky top-0 z-30 border-b border-border-soft bg-background/95 backdrop-blur-xl", className)}>
-      <div className="grid h-[4.5rem] w-full grid-cols-[minmax(0,1fr)_minmax(18rem,34rem)_minmax(0,1fr)] items-center gap-4 px-5 lg:px-8">
-        <div className="min-w-0">
+      <div
+        className="grid h-[4.5rem] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 lg:px-8"
+        dir={isRtl ? "rtl" : "ltr"}
+      >
+        <div className={cn("min-w-0", isRtl && "text-right")}>
           <button
             aria-label={homeAriaLabel}
-            className="inline-flex items-center gap-3 rounded-full px-1 py-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex max-w-full items-center gap-3 rounded-full px-1 py-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={onHomeClick}
             type="button"
+            dir="ltr"
           >
             <PirateBrandMark className="h-9 w-9 shrink-0" decorative={false} />
-            <span className="text-lg font-semibold tracking-tight text-foreground">Pirate</span>
+            <span className="truncate text-lg font-semibold tracking-tight text-foreground">Pirate</span>
           </button>
         </div>
 
-        <div className="min-w-0">
-          <SearchTrigger
-            ariaLabel={searchAriaLabel}
-            size="compact"
-            onClick={onSearchClick}
-            placeholder={searchPlaceholder}
-          />
-        </div>
-
-        <div className="flex min-w-0 items-center justify-end gap-1.5">
+        <div
+          className={cn(
+            "flex min-w-0 items-center gap-1.5",
+            isRtl ? "justify-start" : "justify-end",
+          )}
+          dir="ltr"
+        >
           {showConnectAction ? (
             <Button className="h-12 px-5" onClick={onConnectClick}>
               {connectLabel}
             </Button>
           ) : null}
-          {showCreateAction ? (
-            <IconButton
-              aria-label={createLabel}
-              className="relative"
-              disabled={disableCreateAction}
-              onClick={onCreateClick}
-              title={createActionTitle}
-              variant="ghost"
-            >
-              <CreatePostGlyph />
-            </IconButton>
-          ) : null}
-          {showNotificationsAction ? (
-            <IconButton
-              aria-label={notificationsAriaLabel}
-              className="relative"
-              onClick={onNotificationsClick}
-              variant="ghost"
-            >
-              <Bell className="size-6" weight="regular" />
-              {showNotificationsDot ? (
-                <span className="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-primary" />
-              ) : null}
-            </IconButton>
-          ) : null}
-          {showProfileAction && !showConnectAction ? (
-            <IconButton
-              aria-label={profileAriaLabel}
-              className="p-0"
-              onClick={onProfileClick}
-              variant="ghost"
-            >
-              <Avatar
-                className="h-11 w-11 bg-card text-base"
-                fallback={avatarFallback}
-                size="sm"
-                src={userAvatarSrc ?? undefined}
-              />
-            </IconButton>
-          ) : null}
+          {utilityActions}
         </div>
       </div>
     </header>

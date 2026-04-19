@@ -241,7 +241,7 @@ export function CommunityPricingEditorPage({
         <div className="space-y-1">
           <Label htmlFor="regional-pricing-enabled">Regional pricing</Label>
           <div className="text-base text-muted-foreground">
-            Buyers need nationality verification. New listings must opt in individually.
+            Buyers without verified nationality pay the default price.
           </div>
         </div>
       </div>

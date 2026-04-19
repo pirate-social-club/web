@@ -76,3 +76,7 @@ export function renderAuthenticatedRoute(route: AppRoute): ReactNode {
       return null;
   }
 }
+
+export function AuthenticatedRouteRenderer({ route }: { route: AppRoute }) {
+  return <>{renderAuthenticatedRoute(route)}</>;
+}

@@ -30,3 +30,11 @@ export function renderPublicRoute(
       );
   }
 }
+
+export function PublicRouteRenderer({
+  route,
+}: {
+  route: Extract<AppRoute, { kind: "public-profile" | "community" }>;
+}) {
+  return <>{renderPublicRoute(route)}</>;
+}

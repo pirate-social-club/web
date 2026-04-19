@@ -4,8 +4,6 @@ import * as React from "react";
 import type { ComponentProps } from "react";
 import { Flag, House, Plus } from "@phosphor-icons/react";
 
-import { renderAuthenticatedRoute } from "@/app/authenticated-route-renderer";
-import { renderPublicRoute } from "@/app/public-route-renderer";
 import { type AppRoute, navigate, useRoute } from "@/app/router";
 import { AppHeader } from "@/components/compositions/app-shell-chrome/app-header";
 import { MobileFooterNav } from "@/components/compositions/app-shell-chrome/mobile-footer-nav";
@@ -24,6 +22,16 @@ import { useNotificationSummary } from "@/lib/notifications/use-notification-sum
 import { UiLocaleProvider, useUiLocale } from "@/lib/ui-locale";
 import { isUiLocaleCode, resolveLocaleDirection, type UiDirection, type UiLocaleCode } from "@/lib/ui-locale-core";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
+
+const LazyAuthenticatedRouteRenderer = React.lazy(async () => {
+  const mod = await import("@/app/authenticated-route-renderer");
+  return { default: mod.AuthenticatedRouteRenderer };
+});
+
+const LazyPublicRouteRenderer = React.lazy(async () => {
+  const mod = await import("@/app/public-route-renderer");
+  return { default: mod.PublicRouteRenderer };
+});
 
 function buildCreatePostPath(communityId: string): string {
   return `/c/${encodeURIComponent(communityId)}/submit`;
@@ -256,6 +264,14 @@ function AppShellMobileNav({
   );
 }
 
+function RouteContentFallback() {
+  return (
+    <div className="flex min-h-[40vh] w-full items-center justify-center" aria-busy="true">
+      <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-primary" />
+    </div>
+  );
+}
+
 function SessionRevalidator({ children }: { children: React.ReactNode }) {
   const { revalidate } = useSessionRevalidation();
   const session = useSession();
@@ -310,7 +326,9 @@ function NotificationShell({
         >
           {isCommunityModerationRoute ? (
             <main className="flex min-h-0 w-full flex-1">
-              {renderAuthenticatedRoute(route)}
+              <React.Suspense fallback={<RouteContentFallback />}>
+                <LazyAuthenticatedRouteRenderer route={route} />
+              </React.Suspense>
             </main>
           ) : (
             <>
@@ -330,9 +348,11 @@ function NotificationShell({
                   className="flex w-full flex-1 px-3 pb-24 pt-4 md:pb-8 md:px-5 md:pt-6 lg:px-8"
                   dir={effectiveDir}
                 >
-                  {route.kind === "community" && !session
-                    ? renderPublicRoute(route)
-                    : renderAuthenticatedRoute(route)}
+                  <React.Suspense fallback={<RouteContentFallback />}>
+                    {route.kind === "community" && !session
+                      ? <LazyPublicRouteRenderer route={route} />
+                      : <LazyAuthenticatedRouteRenderer route={route} />}
+                  </React.Suspense>
                 </main>
                 <AppShellMobileNav copy={copy} route={route} hasUnread={notificationSummary.has_unread} />
               </SidebarInset>
@@ -377,7 +397,9 @@ function PirateAppShell({ initialHost, initialPath }: { initialHost?: string; in
         <>
           <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
             <div className="mx-auto w-full max-w-5xl">
-              {route.kind === "public-profile" ? renderPublicRoute(route) : null}
+              <React.Suspense fallback={<RouteContentFallback />}>
+                {route.kind === "public-profile" ? <LazyPublicRouteRenderer route={route} /> : null}
+              </React.Suspense>
             </div>
           </main>
           <Toaster />

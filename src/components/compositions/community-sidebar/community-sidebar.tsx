@@ -37,6 +37,7 @@ export function CommunitySidebar({
   flairPolicy,
   memberCount,
   moderator,
+  requirements,
   referenceLinks,
   rulesAction,
   rules,
@@ -50,6 +51,7 @@ export function CommunitySidebar({
   const activeLinks = (referenceLinks ?? [])
     .filter((l) => l.linkStatus === "active")
     .sort((a, b) => a.position - b.position);
+  const activeRequirements = (requirements ?? []).filter((requirement) => requirement.trim().length > 0);
 
   const hasFlairs =
     flairPolicy?.flairEnabled === true &&
@@ -58,20 +60,18 @@ export function CommunitySidebar({
 
   const content = (
     <div className="flex flex-col gap-5">
-      <div className="flex items-start gap-3">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2">
         <Avatar
           fallback={displayName}
           size="md"
           src={avatarSrc?.trim() || undefined}
         />
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <h2 className="text-lg font-semibold leading-tight">{displayName}</h2>
-          {description && (
-            <p className="line-clamp-4 text-base leading-snug text-muted-foreground">
-              {description}
-            </p>
-          )}
-        </div>
+        <h2 className="min-w-0 text-lg font-semibold leading-tight">{displayName}</h2>
+        {description && (
+          <p className="col-span-2 min-w-0 line-clamp-4 text-base leading-snug text-muted-foreground">
+            {description}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -104,7 +104,7 @@ export function CommunitySidebar({
       )}
       <Accordion
         className="border-b-0"
-        defaultValue={["links", "rules", "tags"]}
+        defaultValue={["links", "requirements", "rules", "tags"]}
         type="multiple"
       >
         {activeLinks.length > 0 && (
@@ -112,6 +112,19 @@ export function CommunitySidebar({
             <AccordionTrigger className={SECTION_LABEL}>Links</AccordionTrigger>
             <AccordionContent className="pb-0">
               <CommunitySidebarLinks links={activeLinks} />
+            </AccordionContent>
+          </AccordionItem>
+        )}
+
+        {activeRequirements.length > 0 && (
+          <AccordionItem className="border-b-0" value="requirements">
+            <AccordionTrigger className={SECTION_LABEL}>Requirements</AccordionTrigger>
+            <AccordionContent className="pb-0">
+              <ul className="list-disc space-y-1.5 pl-5 text-base leading-snug text-muted-foreground">
+                {activeRequirements.map((requirement) => (
+                  <li key={requirement}>{requirement}</li>
+                ))}
+              </ul>
             </AccordionContent>
           </AccordionItem>
         )}

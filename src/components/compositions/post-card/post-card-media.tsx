@@ -4,9 +4,34 @@ import { ArrowSquareOut } from "@phosphor-icons/react";
 import { FormattedText } from "@/components/primitives/formatted-text";
 import { cn } from "@/lib/utils";
 import { postCardType } from "./post-card.styles";
-import { SongPostContent } from "./post-card-song-content";
-import { VideoPostContent } from "./post-card-video-content";
 import type { PostCardContent } from "./post-card.types";
+
+const LazySongPostContent = React.lazy(async () => {
+  const module = await import("./post-card-song-content");
+  return { default: module.SongPostContent };
+});
+
+const LazyVideoPostContent = React.lazy(async () => {
+  const module = await import("./post-card-video-content");
+  return { default: module.VideoPostContent };
+});
+
+function SongPostContentFallback({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex items-center gap-3 rounded-lg border border-border-soft bg-muted/30 p-3", className)}>
+      <div className="size-16 shrink-0 rounded-lg bg-muted" />
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="h-4 w-32 rounded bg-muted" />
+        <div className="h-3 w-24 rounded bg-muted/80" />
+      </div>
+      <div className="size-10 shrink-0 rounded-full bg-muted" />
+    </div>
+  );
+}
+
+function VideoPostContentFallback({ className }: { className?: string }) {
+  return <div className={cn("aspect-video w-full rounded-lg bg-muted", className)} aria-busy="true" />;
+}
 
 export interface PostCardMediaProps {
   content: PostCardContent;
@@ -45,7 +70,11 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
         </figure>
       );
     case "video":
-      return <VideoPostContent content={content} className={className} />;
+      return (
+        <React.Suspense fallback={<VideoPostContentFallback className={className} />}>
+          <LazyVideoPostContent content={content} className={className} />
+        </React.Suspense>
+      );
     case "link":
       return (
         <div className={cn("max-w-[72ch] self-start space-y-2", className)}>
@@ -86,6 +115,10 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
         </div>
       );
     case "song":
-      return <SongPostContent content={content} className={className} />;
+      return (
+        <React.Suspense fallback={<SongPostContentFallback className={className} />}>
+          <LazySongPostContent content={content} className={className} />
+        </React.Suspense>
+      );
   }
 }

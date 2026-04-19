@@ -102,9 +102,7 @@ export function MobileFooterNav({
               className={cn(
                 "relative mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors",
                 item.id === "create" && disableCreateAction ? "cursor-not-allowed opacity-50" : null,
-                active
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                active ? "text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
               disabled={item.id === "create" && disableCreateAction}
               key={item.id}
@@ -126,9 +124,7 @@ export function MobileFooterNav({
           aria-label={profileAriaLabel}
           className={cn(
             "mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors",
-            activeItem === "profile"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            activeItem === "profile" ? "text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
           onClick={onProfileClick}
           type="button"

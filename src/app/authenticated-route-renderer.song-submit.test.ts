@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildSongListingRequest,
   buildSongPostRequest,
+  resolveComposerSubmitState,
 } from "@/app/authenticated-route-renderer";
 
 describe("song submit payload helpers", () => {
@@ -103,6 +104,32 @@ describe("song submit payload helpers", () => {
       price_usd: 1,
       regional_pricing_enabled: false,
       status: "active",
+    });
+  });
+
+  test("derives song submit validation from the route state", () => {
+    expect(resolveComposerSubmitState({
+      canSubmit: true,
+      composerMode: "song",
+      derivativeStep: { required: true, references: [] },
+      monetizationState: { visible: true, rightsAttested: false },
+      paidSongPriceInvalid: false,
+      submitError: null,
+    })).toEqual({
+      disabled: true,
+      submitError: "Confirm you have the rights to publish and monetize this track.",
+    });
+
+    expect(resolveComposerSubmitState({
+      canSubmit: true,
+      composerMode: "song",
+      derivativeStep: { required: true, references: [{ id: "ast_1", title: "Source" }] },
+      monetizationState: { visible: true, rightsAttested: true },
+      paidSongPriceInvalid: false,
+      submitError: null,
+    })).toEqual({
+      disabled: false,
+      submitError: null,
     });
   });
 });

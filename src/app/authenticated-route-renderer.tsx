@@ -273,6 +273,39 @@ export function buildSongListingRequest(input: {
   };
 }
 
+export function resolveComposerSubmitState(input: {
+  canSubmit: boolean;
+  composerMode: ComposerTab;
+  derivativeStep?: Pick<DerivativeStepState, "required" | "references">;
+  monetizationState: Pick<MonetizationState, "visible" | "rightsAttested">;
+  paidSongPriceInvalid: boolean;
+  submitError: string | null;
+}) {
+  const missingRightsAttestation = input.composerMode === "song"
+    && input.monetizationState.visible
+    && !input.monetizationState.rightsAttested;
+  const missingRequiredRemixSource = input.composerMode === "song"
+    && input.derivativeStep?.required === true
+    && (input.derivativeStep.references?.length ?? 0) === 0;
+  const validationError = !input.canSubmit
+    ? null
+    : input.paidSongPriceInvalid
+      ? "Enter a valid unlock price."
+      : missingRightsAttestation
+        ? "Confirm you have the rights to publish and monetize this track."
+        : missingRequiredRemixSource
+          ? "Attach a source track before publishing this remix."
+          : null;
+
+  return {
+    disabled: !input.canSubmit
+      || input.paidSongPriceInvalid
+      || missingRightsAttestation
+      || missingRequiredRemixSource,
+    submitError: validationError ?? input.submitError,
+  };
+}
+
 function mapListingStatus(
   status: ApiCommunityListing["status"] | undefined,
 ): SongContentSpec["listingStatus"] | undefined {
@@ -1007,6 +1040,14 @@ function CreatePostPage({ communityId }: { communityId: string }) {
     ? parseUsdInput(monetizationState.priceUsd ?? monetizationState.priceLabel)
     : null;
   const paidSongPriceInvalid = composerMode === "song" && monetizationState.visible && paidSongPriceUsd == null;
+  const submitState = resolveComposerSubmitState({
+    canSubmit,
+    composerMode,
+    derivativeStep,
+    monetizationState,
+    paidSongPriceInvalid,
+    submitError,
+  });
 
   const buildMatchedSourceReferences = React.useCallback((bundle: ApiSongArtifactBundle): ComposerReference[] => {
     const moderationResult = bundle.moderation_result && typeof bundle.moderation_result === "object"
@@ -1081,7 +1122,7 @@ function CreatePostPage({ communityId }: { communityId: string }) {
   }, [api, communityId]);
 
   const handleSubmit = React.useCallback(async () => {
-    if (!canSubmit || !community || eligibility?.status !== "already_joined") {
+    if (submitState.disabled || !community || eligibility?.status !== "already_joined") {
       return;
     }
 
@@ -1236,7 +1277,6 @@ function CreatePostPage({ communityId }: { communityId: string }) {
     api,
     body,
     buildMatchedSourceReferences,
-    canSubmit,
     caption,
     community,
     communityId,
@@ -1263,6 +1303,7 @@ function CreatePostPage({ communityId }: { communityId: string }) {
     monetizationState.visible,
     identityMode,
     paidSongPriceUsd,
+    submitState.disabled,
     title,
     selectedQualifierIds,
     uploadSongArtifact,
@@ -1372,8 +1413,8 @@ function CreatePostPage({ communityId }: { communityId: string }) {
           song={songState}
           songMode={songMode}
           submitLabel={composerMode === "song" && derivativeStep?.required ? "Publish remix" : "Post"}
-          submitDisabled={!canSubmit || paidSongPriceInvalid}
-          submitError={submitError}
+          submitDisabled={submitState.disabled}
+          submitError={submitState.submitError}
           submitLoading={submitting}
           textBodyValue={body}
           titleCountLabel={`${title.length}/300`}

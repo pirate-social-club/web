@@ -284,14 +284,6 @@ export function PostComposer({
       ]),
     [derivativeState?.references, derivativeState?.searchResults],
   );
-  const liveAllocationsValid =
-    liveState.performerAllocations.reduce((sum, allocation) => sum + allocation.sharePct, 0) ===
-    100;
-  const postDisabled =
-    (activeTab === "song" &&
-      monetizationState.visible &&
-      !Boolean(monetizationState.rightsAttested)) ||
-    (activeTab === "live" && !liveAllocationsValid);
   const shouldShowIdentity =
     Boolean(identity?.allowAnonymousIdentity) && anonymousEligibleTabs.includes(activeTab);
   const shouldShowQualifiers =
@@ -774,7 +766,7 @@ export function PostComposer({
         <CardFooter className="justify-end gap-3 border-t border-border-soft p-5">
           {submitError ? <FormNote tone="warning">{submitError}</FormNote> : null}
           <Button
-            disabled={postDisabled || submitDisabled}
+            disabled={submitDisabled}
             loading={submitLoading}
             onClick={onSubmit}
           >

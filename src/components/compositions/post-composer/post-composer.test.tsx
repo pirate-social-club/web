@@ -217,4 +217,28 @@ describe("PostComposer monetization", () => {
       findElement(tree, (element) => element.props.id === "regional-pricing") === null,
     ).toBe(false);
   });
+
+  test("uses only the route-provided submitDisabled state for the submit button", () => {
+    const tree = renderComposer({
+      availableTabs: ["song"],
+      canCreateSongPost: true,
+      clubName: "Lane1",
+      mode: "song",
+      monetization: defaultMonetizationState({
+        rightsAttested: false,
+        visible: true,
+      } as MonetizationState),
+      submitDisabled: false,
+    });
+
+    const submitButton = findElement(
+      tree,
+      (element) => element.props.children === "Post" && "disabled" in element.props,
+    );
+    if (!submitButton) {
+      throw new Error("Missing submit button");
+    }
+
+    expect(submitButton.props.disabled).toBe(false);
+  });
 });

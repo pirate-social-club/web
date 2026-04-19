@@ -90,9 +90,7 @@ function TierRow({
           />
         </div>
         <div>
-          <FormFieldLabel
-            label={tier.adjustment_type === "multiplier" ? "Multiplier" : "Price (USD)"}
-          />
+          <FormFieldLabel label="Multiplier" />
           <Input
             className="h-10"
             inputMode="decimal"
@@ -102,30 +100,11 @@ function TierRow({
                 onUpdate?.({ adjustment_value: parsed });
               }
             }}
-            placeholder={tier.adjustment_type === "multiplier" ? "0.5" : "1.00"}
+            placeholder="1.00"
             value={tier.adjustment_value || ""}
           />
         </div>
-        <div>
-          <FormFieldLabel label="Type" />
-          <Select
-            onValueChange={(value) =>
-              onUpdate?.({
-                adjustment_type: value as PricingTier["adjustment_type"],
-                adjustment_value: value === "fixed_price_usd" ? 1 : 0.5,
-              })
-            }
-            value={tier.adjustment_type}
-          >
-            <SelectTrigger className="h-10">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="multiplier">Multiplier</SelectItem>
-              <SelectItem value="fixed_price_usd">Fixed price</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <div />
       </div>
       <Button
         className="mt-5 size-10 shrink-0"

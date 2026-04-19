@@ -17,9 +17,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const defaultTiers: PricingTier[] = [
-  { tier_key: "default", display_name: "Default", adjustment_type: "fixed_price_usd", adjustment_value: 1 },
+  { tier_key: "default", display_name: "Default", adjustment_type: "multiplier", adjustment_value: 1 },
   { tier_key: "tier_2", display_name: "Tier 2", adjustment_type: "multiplier", adjustment_value: 0.85 },
-  { tier_key: "tier_3", display_name: "Tier 3", adjustment_type: "fixed_price_usd", adjustment_value: 0.25 },
+  { tier_key: "tier_3", display_name: "Tier 3", adjustment_type: "multiplier", adjustment_value: 0.7 },
 ];
 
 const defaultAssignments: CountryAssignment[] = [
@@ -88,8 +88,8 @@ export const EmptyPolicy: Story = {
   args: {
     ...baseArgs,
     regionalPricingEnabled: true,
-    tiers: [{ tier_key: "default", display_name: "Default", adjustment_type: "fixed_price_usd", adjustment_value: 1 }],
+    tiers: [{ tier_key: "default", display_name: "Default", adjustment_type: "multiplier", adjustment_value: 1 }],
     verificationProviderRequirement: "self",
   },
-  render: () => <InteractiveStory initialAssignments={[]} initialEnabled initialTiers={[{ tier_key: "default", display_name: "Default", adjustment_type: "fixed_price_usd", adjustment_value: 1 }]} />,
+  render: () => <InteractiveStory initialAssignments={[]} initialEnabled initialTiers={[{ tier_key: "default", display_name: "Default", adjustment_type: "multiplier", adjustment_value: 1 }]} />,
 };

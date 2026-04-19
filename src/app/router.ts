@@ -7,7 +7,7 @@ export type AppRoute =
   | { kind: "settings"; path: string; section: "profile" | "wallet" | "preferences" }
   | { kind: "create-post"; path: string; communityId: string }
   | { kind: "create-post-global"; path: "/submit" }
-  | { kind: "community-moderation"; path: string; communityId: string; section: "rules" | "links" | "donations" | "namespace" | "gates" | "safety" }
+  | { kind: "community-moderation"; path: string; communityId: string; section: "rules" | "links" | "donations" | "pricing" | "namespace" | "gates" | "safety" }
   | { kind: "community"; path: string; communityId: string }
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
@@ -131,6 +131,7 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
       segments[3] === "rules"
       || segments[3] === "links"
       || segments[3] === "donations"
+      || segments[3] === "pricing"
       || segments[3] === "namespace"
       || segments[3] === "gates"
       || segments[3] === "safety"

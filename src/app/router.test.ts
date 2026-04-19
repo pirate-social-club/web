@@ -58,5 +58,11 @@ describe("public profile host routing", () => {
       communityId: "community-123",
       section: "donations",
     });
+    expectJson(matchRoute("/c/community-123/mod/pricing"), {
+      kind: "community-moderation",
+      path: "/c/community-123/mod/pricing",
+      communityId: "community-123",
+      section: "pricing",
+    });
   });
 });

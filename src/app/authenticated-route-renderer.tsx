@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { createVeryWidget } from "@veryai/widget";
-import { Gavel, Heart, LinkSimple, Lock, Plus, SealCheck, Shield } from "@phosphor-icons/react";
+import { CurrencyDollar, Gavel, Heart, LinkSimple, Lock, Plus, SealCheck, Shield } from "@phosphor-icons/react";
 
 import { AppRoute, navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
@@ -49,6 +49,11 @@ import {
   type CommunityLinkEditorItem,
 } from "@/components/compositions/community-links-editor/community-links-editor-page";
 import { CommunityModerationShell } from "@/components/compositions/community-moderation-shell/community-moderation-shell";
+import {
+  CommunityPricingEditorPage,
+  type CountryAssignment as PricingCountryAssignment,
+  type PricingTier,
+} from "@/components/compositions/community-pricing-editor/community-pricing-editor-page";
 import { CommunityGatesEditorPage } from "@/components/compositions/community-gates-editor/community-gates-editor-page";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community-membership-gate-panel/community-membership-gate-panel";
 import { CommunityNamespaceVerificationPage } from "@/components/compositions/community-namespace-verification-page/community-namespace-verification-page";
@@ -2238,7 +2243,7 @@ function getNamespaceActionLabel(community: ApiCommunity): string | null {
 
 function buildCommunityModerationPath(
   communityId: string,
-  section: "rules" | "links" | "donations" | "gates" | "safety" | "namespace",
+  section: "rules" | "links" | "donations" | "pricing" | "gates" | "safety" | "namespace",
 ): string {
   return `/c/${encodeURIComponent(communityId)}/mod/${section}`;
 }
@@ -2310,7 +2315,7 @@ function clearPendingSelfJoinSession(communityId: string): void {
 }
 
 function buildCommunityModerationSections(
-  activeSection: "rules" | "links" | "donations" | "gates" | "safety" | "namespace",
+  activeSection: "rules" | "links" | "donations" | "pricing" | "gates" | "safety" | "namespace",
   communityId: string,
 ) {
   return [{
@@ -2333,6 +2338,12 @@ function buildCommunityModerationSections(
         icon: Heart,
         label: "Donations",
         onSelect: () => navigate(buildCommunityModerationPath(communityId, "donations")),
+      },
+      {
+        active: activeSection === "pricing",
+        icon: CurrencyDollar,
+        label: "Pricing",
+        onSelect: () => navigate(buildCommunityModerationPath(communityId, "pricing")),
       },
       {
         active: activeSection === "gates",
@@ -3002,7 +3013,7 @@ function CommunityModerationGuard({
   return null;
 }
 
-type CommunityModerationSection = "rules" | "links" | "donations" | "gates" | "safety" | "namespace";
+type CommunityModerationSection = "rules" | "links" | "donations" | "pricing" | "gates" | "safety" | "namespace";
 export type ThreadCommentNode = {
   item: ApiCommentListItem;
   children: ThreadCommentNode[];
@@ -3089,6 +3100,80 @@ function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDraft[] {
   return drafts;
 }
 
+function getPricingTierDrafts(policy: ApiCommunityPricingPolicy | null): PricingTier[] {
+  return policy?.tiers.map((tier) => ({
+    tier_key: tier.tier_key,
+    display_name: tier.display_name ?? null,
+    adjustment_type: tier.adjustment_type,
+    adjustment_value: tier.adjustment_value,
+  })) ?? [];
+}
+
+function getPricingCountryAssignmentDrafts(
+  policy: ApiCommunityPricingPolicy | null,
+): PricingCountryAssignment[] {
+  return policy?.country_assignments.map((assignment) => ({
+    country_code: assignment.country_code,
+    tier_key: assignment.tier_key,
+  })) ?? [];
+}
+
+function isValidPricingTierKey(value: string): boolean {
+  return /^[a-z0-9][a-z0-9_-]*$/u.test(value);
+}
+
+function validatePricingPolicyDraft(input: {
+  countryAssignments: PricingCountryAssignment[];
+  defaultTierKey: string | null;
+  regionalPricingEnabled: boolean;
+  tiers: PricingTier[];
+}): string | null {
+  if (!input.regionalPricingEnabled) {
+    return null;
+  }
+
+  if (input.tiers.length === 0) {
+    return "Add at least one pricing tier.";
+  }
+
+  const seenTierKeys = new Set<string>();
+  for (const tier of input.tiers) {
+    const tierKey = tier.tier_key.trim();
+    if (!tierKey) {
+      return "Each pricing tier needs a key.";
+    }
+    if (!isValidPricingTierKey(tierKey)) {
+      return "Tier keys must use lowercase letters, numbers, hyphens, or underscores.";
+    }
+    if (seenTierKeys.has(tierKey)) {
+      return "Tier keys must be unique.";
+    }
+    if (!(tier.adjustment_value > 0)) {
+      return "Tier adjustments must be greater than zero.";
+    }
+    seenTierKeys.add(tierKey);
+  }
+
+  if (!input.defaultTierKey || !seenTierKeys.has(input.defaultTierKey)) {
+    return "Choose a default tier.";
+  }
+
+  for (const assignment of input.countryAssignments) {
+    const countryCode = assignment.country_code.trim();
+    if (!countryCode) {
+      return "Each country assignment needs a country code.";
+    }
+    if (!/^[A-Z]{2}$/u.test(countryCode)) {
+      return "Country codes must use two uppercase letters.";
+    }
+    if (!seenTierKeys.has(assignment.tier_key)) {
+      return "Each country assignment must point to an existing tier.";
+    }
+  }
+
+  return null;
+}
+
 function CommunityModerationPage({
   communityId,
   section,
@@ -3111,6 +3196,15 @@ function CommunityModerationPage({
   const [savingRules, setSavingRules] = React.useState(false);
   const [savingLinks, setSavingLinks] = React.useState(false);
   const [savingDonations, setSavingDonations] = React.useState(false);
+  const [pricingPolicy, setPricingPolicy] = React.useState<ApiCommunityPricingPolicy | null>(null);
+  const [pricingPolicyError, setPricingPolicyError] = React.useState<unknown>(null);
+  const [pricingPolicyLoading, setPricingPolicyLoading] = React.useState(false);
+  const [regionalPricingEnabled, setRegionalPricingEnabled] = React.useState(false);
+  const [verificationProviderRequirement, setVerificationProviderRequirement] = React.useState<"self" | null>(null);
+  const [defaultTierKey, setDefaultTierKey] = React.useState<string | null>(null);
+  const [pricingTiers, setPricingTiers] = React.useState<PricingTier[]>([]);
+  const [countryAssignments, setCountryAssignments] = React.useState<PricingCountryAssignment[]>([]);
+  const [savingPricing, setSavingPricing] = React.useState(false);
   const [membershipMode, setMembershipMode] = React.useState<"open" | "request" | "gated">("open");
   const [defaultAgeGatePolicy, setDefaultAgeGatePolicy] = React.useState<"none" | "18_plus">("none");
   const [allowAnonymousIdentity, setAllowAnonymousIdentity] = React.useState(true);
@@ -3169,11 +3263,55 @@ function CommunityModerationPage({
   }, [community]);
 
   React.useEffect(() => {
+    if (!community) {
+      setPricingPolicy(null);
+      setPricingPolicyError(null);
+      setPricingPolicyLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPricingPolicyLoading(true);
+    setPricingPolicyError(null);
+
+    void api.communities.getPricingPolicy(community.community_id)
+      .then((result) => {
+        if (cancelled) return;
+        setPricingPolicy(result);
+      })
+      .catch((nextError: unknown) => {
+        if (cancelled) return;
+        setPricingPolicyError(nextError);
+      })
+      .finally(() => {
+        if (!cancelled) setPricingPolicyLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api.communities, community]);
+
+  React.useEffect(() => {
+    setRegionalPricingEnabled(pricingPolicy?.regional_pricing_enabled === true);
+    setVerificationProviderRequirement(pricingPolicy?.verification_provider_requirement ?? null);
+    setDefaultTierKey(pricingPolicy?.default_tier_key ?? null);
+    setPricingTiers(getPricingTierDrafts(pricingPolicy));
+    setCountryAssignments(getPricingCountryAssignmentDrafts(pricingPolicy));
+  }, [pricingPolicy]);
+
+  React.useEffect(() => {
     setActiveNamespaceSessionId(community?.pending_namespace_verification_session_id ?? null);
   }, [community?.pending_namespace_verification_session_id]);
 
   const effectiveNamespaceSessionId =
     activeNamespaceSessionId ?? community?.pending_namespace_verification_session_id ?? null;
+  const pricingValidationError = validatePricingPolicyDraft({
+    countryAssignments,
+    defaultTierKey,
+    regionalPricingEnabled,
+    tiers: pricingTiers,
+  });
 
   const title = section === "rules"
     ? "Rules"
@@ -3181,6 +3319,8 @@ function CommunityModerationPage({
       ? "Links"
       : section === "donations"
         ? "Donations"
+        : section === "pricing"
+          ? "Pricing"
         : section === "gates"
         ? "Gates"
         : section === "safety"
@@ -3476,6 +3616,52 @@ function CommunityModerationPage({
       });
   }, [api.communities, community, donationMode, partnerPreview, savingDonations, setCommunity]);
 
+  const handleSavePricing = React.useCallback(() => {
+    if (!community || savingPricing || pricingValidationError) {
+      return;
+    }
+
+    setSavingPricing(true);
+    void api.communities.updatePricingPolicy(community.community_id, {
+      regional_pricing_enabled: regionalPricingEnabled,
+      verification_provider_requirement: regionalPricingEnabled
+        ? (verificationProviderRequirement ?? "self")
+        : null,
+      default_tier_key: regionalPricingEnabled ? defaultTierKey : null,
+      tiers: pricingTiers.map((tier) => ({
+        tier_key: tier.tier_key.trim(),
+        display_name: tier.display_name?.trim() || null,
+        adjustment_type: tier.adjustment_type,
+        adjustment_value: tier.adjustment_value,
+      })),
+      country_assignments: countryAssignments.map((assignment) => ({
+        country_code: assignment.country_code.trim().toUpperCase(),
+        tier_key: assignment.tier_key.trim(),
+      })),
+    })
+      .then((updatedPolicy) => {
+        setPricingPolicy(updatedPolicy);
+        toast.success("Pricing saved.");
+      })
+      .catch((nextError: unknown) => {
+        console.warn("[community-pricing] failed to save pricing policy", nextError);
+        toast.error(getErrorMessage(nextError, "Could not save pricing."));
+      })
+      .finally(() => {
+        setSavingPricing(false);
+      });
+  }, [
+    api.communities,
+    community,
+    countryAssignments,
+    defaultTierKey,
+    pricingTiers,
+    pricingValidationError,
+    regionalPricingEnabled,
+    savingPricing,
+    verificationProviderRequirement,
+  ]);
+
   const handleSaveGates = React.useCallback(() => {
     if (!community || savingGates) {
       return;
@@ -3560,6 +3746,43 @@ function CommunityModerationPage({
           saveLoading={savingLinks}
         />
       );
+    } else if (section === "pricing") {
+      content = pricingPolicyLoading
+        ? (
+          <section className="flex min-w-0 flex-1 items-center justify-center py-20">
+            <Spinner className="size-6" />
+          </section>
+        )
+        : pricingPolicyError
+          ? (
+            <RouteLoadFailureState
+              description={getErrorMessage(pricingPolicyError, "This pricing page could not be loaded right now.")}
+              title="Pricing"
+            />
+          )
+          : (
+            <CommunityPricingEditorPage
+              countryAssignments={countryAssignments}
+              defaultTierKey={defaultTierKey}
+              onCountryAssignmentsChange={setCountryAssignments}
+              onDefaultTierKeyChange={setDefaultTierKey}
+              onRegionalPricingEnabledChange={(value) => {
+                setRegionalPricingEnabled(value);
+                if (value && !verificationProviderRequirement) {
+                  setVerificationProviderRequirement("self");
+                }
+              }}
+              onTiersChange={setPricingTiers}
+              onVerificationProviderRequirementChange={setVerificationProviderRequirement}
+              onSave={handleSavePricing}
+              regionalPricingEnabled={regionalPricingEnabled}
+              saveNote={pricingValidationError}
+              saveDisabled={savingPricing || pricingValidationError != null}
+              saveLoading={savingPricing}
+              tiers={pricingTiers}
+              verificationProviderRequirement={verificationProviderRequirement}
+            />
+          );
     } else if (section === "donations") {
       content = (
         <CommunityDonationsEditorPage

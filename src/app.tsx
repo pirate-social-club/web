@@ -26,6 +26,7 @@ import { resolveLocaleDirection, type UiDirection, type UiLocaleCode } from "@/l
 import { buildCommunityPath } from "@/lib/community-routing";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
 import { buildCommunityModerationIndexPath } from "@/app/authenticated-routes/moderation-helpers";
+import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 
 const LazyAuthenticatedRouteRenderer = React.lazy(async () => {
   const mod = await import("@/app/authenticated-route-renderer");
@@ -324,6 +325,32 @@ function RouteContentFallback() {
   );
 }
 
+function useShellMobileLayout() {
+  const [isMobileLayout, setIsMobileLayout] = React.useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches;
+  });
+
+  React.useEffect(() => {
+    const mobileWidthQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
+    const update = () => {
+      setIsMobileLayout(mobileWidthQuery.matches);
+    };
+
+    mobileWidthQuery.addEventListener("change", update);
+    update();
+
+    return () => {
+      mobileWidthQuery.removeEventListener("change", update);
+    };
+  }, []);
+
+  return isMobileLayout;
+}
+
 function SessionRevalidator({ children }: { children: React.ReactNode }) {
   const { revalidate } = useSessionRevalidation();
   const session = useSession();
@@ -352,10 +379,13 @@ function NotificationShell({
   route: AppRoute;
   session: ReturnType<typeof useSession>;
 }) {
+  const isMobileLayout = useShellMobileLayout();
   const notificationSummary = useNotificationSummary();
   const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities);
   const resourceItems = buildResourceItems(copy.appSidebar);
+  const isMobileCreatePostRoute = isMobileLayout && (route.kind === "create-post" || route.kind === "create-post-global");
+  const useStandaloneRouteShell = isCommunityModerationRoute || isMobileCreatePostRoute;
 
   return (
     <SidebarProvider
@@ -368,9 +398,9 @@ function NotificationShell({
       } as React.CSSProperties}
     >
       <>
-        <AppShellHeader copy={copy} route={route} hasUnread={notificationSummary.has_unread} />
+        {isMobileCreatePostRoute ? null : <AppShellHeader copy={copy} route={route} hasUnread={notificationSummary.has_unread} />}
         <div className="flex min-h-0 w-full flex-1">
-          {isCommunityModerationRoute ? (
+          {useStandaloneRouteShell ? (
             <main className="flex min-h-0 w-full flex-1">
               <React.Suspense fallback={<RouteContentFallback />}>
                 <LazyAuthenticatedRouteRenderer route={route} />
@@ -397,7 +427,7 @@ function NotificationShell({
                       : <LazyAuthenticatedRouteRenderer route={route} />}
                   </React.Suspense>
                 </main>
-                <AppShellMobileNav copy={copy} route={route} hasUnread={notificationSummary.has_unread} />
+                {isMobileCreatePostRoute ? null : <AppShellMobileNav copy={copy} route={route} hasUnread={notificationSummary.has_unread} />}
               </SidebarInset>
             </>
           )}

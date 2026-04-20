@@ -5,7 +5,7 @@ import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
 import { buildPublicProfilePathForProfile } from "@/lib/profile-routing";
-import type { PostThreadComment } from "@/components/compositions/post-thread/post-thread.types";
+import type { PostThreadComment, PostThreadSubmitResult } from "@/components/compositions/post-thread/post-thread.types";
 
 import { formatRelativeTimestamp, getErrorMessage } from "./route-core";
 import { resolveCommentAuthorLabel, toCommentViewerVote } from "./post-presentation";
@@ -147,7 +147,7 @@ export function toThreadComment(
   opts?: {
     moreRepliesLabel?: string;
     onLoadMoreReplies?: () => void;
-    onReplySubmit?: (body: string) => Promise<void> | void;
+    onReplySubmit?: (input: { body: string; authorMode: "human" | "agent" }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
     onVote?: (direction: "up" | "down") => void;
   },
   children?: PostThreadComment[],
@@ -223,7 +223,7 @@ export function mapThreadCommentNode(
   authorProfiles: Record<string, ApiProfile | null>,
   labels: Parameters<typeof toThreadComment>[2],
   onLoadReplies: (commentId: string) => void,
-  onReplySubmit?: (commentId: string, body: string) => Promise<void>,
+  onReplySubmit?: (commentId: string, input: { body: string; authorMode: "human" | "agent" }) => Promise<PostThreadSubmitResult | void>,
   onVote?: (commentId: string, direction: "up" | "down") => void,
 ): PostThreadComment {
   return toThreadComment(
@@ -236,7 +236,7 @@ export function mapThreadCommentNode(
         ? () => onLoadReplies(node.item.comment.comment_id)
         : undefined,
       onReplySubmit: onReplySubmit
-        ? async (body) => await onReplySubmit(node.item.comment.comment_id, body)
+        ? async (input) => await onReplySubmit(node.item.comment.comment_id, input)
         : undefined,
       onVote: onVote
         ? (direction) => onVote(node.item.comment.comment_id, direction)

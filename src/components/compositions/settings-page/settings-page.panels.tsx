@@ -18,7 +18,10 @@ import {
   SelectValue,
 } from "@/components/primitives/select";
 import { Textarea } from "@/components/primitives/textarea";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 import type {
   SettingsConnectedWallet,
@@ -26,12 +29,7 @@ import type {
   SettingsPageProps,
   SettingsTab,
 } from "./settings-page.types";
-
-const TAB_LABELS: Record<SettingsTab, string> = {
-  profile: "Profile",
-  wallet: "Wallet",
-  preferences: "Preferences",
-};
+import { OwnedAgentsPanel } from "@/components/compositions/owned-agents-panel/owned-agents-panel";
 
 function useObjectUrl(file: File | null): string | null {
   const [objectUrl, setObjectUrl] = React.useState<string | null>(null);
@@ -86,7 +84,7 @@ function SettingsRow({
         {note ? <div className="text-base text-muted-foreground">{note}</div> : null}
       </div>
       {value ? (
-        <div className="min-w-0 flex-1 text-right text-base text-muted-foreground">
+        <div className="min-w-0 flex-1 text-start text-base text-muted-foreground">
           {value}
         </div>
       ) : null}
@@ -180,24 +178,24 @@ function MediaControlCard({
   );
 }
 
-function formatHandleNote(handle: SettingsHandle): string {
+function formatHandleNote(handle: SettingsHandle, copy: ReturnType<typeof getLocaleMessages<"routes">>["settings"]): string {
   if (handle.note) {
     return handle.note;
   }
 
   if (handle.kind === "pirate") {
-    return "Pirate handle";
+    return copy.handleNotePirate;
   }
 
   if (handle.verificationState === "stale") {
-    return "ENS needs refresh";
+    return copy.handleNoteEnsRefresh;
   }
 
   if (handle.verificationState === "unverified") {
-    return "ENS not verified";
+    return copy.handleNoteEnsUnverified;
   }
 
-  return "ENS";
+  return copy.handleNoteEns;
 }
 
 function HandleSelector({
@@ -209,6 +207,8 @@ function HandleSelector({
   onValueChange?: (handleId: string | null) => void;
   value?: string | null;
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").settings;
   const selectedValue = value ?? "pirate";
 
   return (
@@ -222,7 +222,7 @@ function HandleSelector({
           <RadioGroupItem
             disabled={handle.verificationState !== "verified"}
             indicatorClassName={cn(
-              "min-h-20 w-full justify-start rounded-none border-b border-border px-5 py-4 text-left last:border-b-0",
+              "min-h-20 w-full justify-start rounded-none border-b border-border px-5 py-4 text-start last:border-b-0",
               "data-[state=checked]:bg-muted/40 data-[state=checked]:text-foreground",
             )}
             key={`${handle.kind}:${handle.handleId ?? "pirate"}`}
@@ -232,10 +232,10 @@ function HandleSelector({
             <div className="flex w-full items-center justify-between gap-4">
               <div className="min-w-0 space-y-1">
                 <div className="truncate text-base font-medium text-foreground">{handle.label}</div>
-                <div className="truncate text-base text-muted-foreground">{formatHandleNote(handle)}</div>
+                <div className="truncate text-base text-muted-foreground">{formatHandleNote(handle, copy)}</div>
               </div>
               <div className="shrink-0 text-base text-muted-foreground">
-                {selectedValue === (handle.handleId ?? "pirate") ? "Primary" : ""}
+                {selectedValue === (handle.handleId ?? "pirate") ? copy.primaryHandleLabel : ""}
               </div>
             </div>
           </RadioGroupItem>
@@ -246,10 +246,13 @@ function HandleSelector({
 }
 
 function WalletList({ connectedWallets }: { connectedWallets: SettingsConnectedWallet[] }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").settings;
+
   if (connectedWallets.length === 0) {
     return (
       <Card className="border-border bg-card px-5 py-5 shadow-none">
-        <div className="text-base text-muted-foreground">No connected wallets yet.</div>
+        <div className="text-base text-muted-foreground">{copy.noConnectedWallets}</div>
       </Card>
     );
   }
@@ -261,7 +264,7 @@ function WalletList({ connectedWallets }: { connectedWallets: SettingsConnectedW
           <SettingsRow
             key={`${wallet.chainLabel}:${wallet.address}`}
             label={wallet.chainLabel}
-            note={wallet.isPrimary ? "Primary wallet" : undefined}
+            note={wallet.isPrimary ? copy.primaryWalletNote : undefined}
             value={wallet.address}
           />
         ))}
@@ -277,21 +280,32 @@ export function SettingsTabNav({
   activeTab: SettingsTab;
   onTabChange?: (tab: SettingsTab) => void;
 }) {
+  const { locale } = useUiLocale();
+  const isMobile = useIsMobile();
+  const copy = getLocaleMessages(locale, "routes").settings;
+  const tabLabels: Record<SettingsTab, string> = {
+    profile: copy.profileTab,
+    wallet: copy.walletTab,
+    preferences: copy.preferencesTab,
+    agents: "Agents",
+  };
+
   return (
-    <nav aria-label="Settings sections" className="overflow-x-auto border-b border-border">
-      <div className="flex min-w-max gap-8">
-        {(Object.keys(TAB_LABELS) as SettingsTab[]).map((tab) => (
+    <nav aria-label={copy.sectionsLabel} className="overflow-x-auto border-b border-border-soft">
+      <div className={cn("flex min-w-max gap-8", isMobile && "gap-5")}>
+        {(Object.keys(tabLabels) as SettingsTab[]).map((tab) => (
           <button
             aria-current={tab === activeTab ? "page" : undefined}
             className={cn(
               "border-b-2 border-transparent px-0 py-4 text-base font-medium text-muted-foreground transition-colors",
+              isMobile && "whitespace-nowrap py-3",
               tab === activeTab && "border-foreground text-foreground",
             )}
             key={tab}
             onClick={() => onTabChange?.(tab)}
             type="button"
           >
-            {TAB_LABELS[tab]}
+            {tabLabels[tab]}
           </button>
         ))}
       </div>
@@ -302,6 +316,8 @@ export function SettingsTabNav({
 export function ProfileTab({
   profile,
 }: Pick<SettingsPageProps, "profile">) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").settings;
   const [pendingAvatarFile, setPendingAvatarFile] = React.useState<File | null>(null);
   const [pendingCoverFile, setPendingCoverFile] = React.useState<File | null>(null);
 
@@ -318,7 +334,7 @@ export function ProfileTab({
 
   return (
     <div className="space-y-8">
-      <SettingsSection title="Appearance">
+      <SettingsSection title={copy.appearanceSection}>
         <div className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
           <MediaControlCard
             canRemove={Boolean(profile.avatarSrc || pendingAvatarFile)}
@@ -328,11 +344,11 @@ export function ProfileTab({
               profile.onAvatarSelect?.(file);
             }}
             preview={<Avatar className="size-full bg-card" fallback={profile.displayName} size="lg" src={avatarPreview ?? profile.avatarSrc} />}
-            removeLabel="Remove avatar"
-            selectLabel={profile.avatarSrc || pendingAvatarFile ? "Replace avatar" : "Upload avatar"}
+            removeLabel={copy.removeAvatar}
+            selectLabel={profile.avatarSrc || pendingAvatarFile ? copy.replaceAvatar : copy.uploadAvatar}
             selectedLabel={pendingAvatarFile?.name ?? profile.pendingAvatarLabel}
             shape="avatar"
-            title="Avatar"
+            title={copy.avatarTitle}
           />
 
           <MediaControlCard
@@ -353,20 +369,20 @@ export function ProfileTab({
                   : undefined}
               />
             )}
-            removeLabel="Remove cover"
-            selectLabel={profile.coverSrc || pendingCoverFile ? "Replace cover" : "Upload cover"}
+            removeLabel={copy.removeCover}
+            selectLabel={profile.coverSrc || pendingCoverFile ? copy.replaceCover : copy.uploadCover}
             selectedLabel={pendingCoverFile?.name ?? profile.pendingCoverLabel}
             shape="cover"
-            title="Cover"
+            title={copy.coverTitle}
           />
         </div>
       </SettingsSection>
 
-      <SettingsSection title="Profile">
+      <SettingsSection title={copy.profileSection}>
         <Card className="space-y-5 border-border bg-card px-5 py-5 shadow-none">
           <div className="space-y-2">
             <label className="text-base font-medium text-foreground" htmlFor="settings-display-name">
-              Display name
+              {copy.displayNameLabel}
             </label>
             <Input
               id="settings-display-name"
@@ -378,7 +394,7 @@ export function ProfileTab({
           </div>
           <div className="space-y-2">
             <label className="text-base font-medium text-foreground" htmlFor="settings-bio">
-              Bio
+              {copy.bioLabel}
             </label>
             <Textarea
               id="settings-bio"
@@ -388,8 +404,8 @@ export function ProfileTab({
             />
           </div>
           <SettingsRow
-            label="Posts and comments"
-            note="Primary public byline"
+            label={copy.postsAndCommentsLabel}
+            note={copy.postsAndCommentsNote}
             value={profile.postAuthorLabel}
           />
           {profile.handleFlow && profile.currentHandle ? (
@@ -399,7 +415,7 @@ export function ProfileTab({
           ) : null}
           <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
             {profile.submitState.kind === "error" ? (
-              <div className="mr-auto text-base text-destructive">{profile.submitState.message}</div>
+              <div className="me-auto text-base text-destructive">{profile.submitState.message}</div>
             ) : null}
             <Button
               disabled={profile.saveDisabled}
@@ -407,13 +423,13 @@ export function ProfileTab({
               onClick={() => profile.onSave?.()}
               type="button"
             >
-              Save profile
+              {copy.saveProfile}
             </Button>
           </div>
         </Card>
       </SettingsSection>
 
-      <SettingsSection title="Linked handles">
+      <SettingsSection title={copy.linkedHandlesSection}>
         <HandleSelector
           handles={profile.linkedHandles}
           onValueChange={profile.onPrimaryHandleChange}
@@ -427,19 +443,21 @@ export function ProfileTab({
 export function WalletTab({
   wallet,
 }: Pick<SettingsPageProps, "wallet">) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").settings;
   return (
     <div className="space-y-8">
       <Card className="space-y-5 border-border bg-card px-5 py-5 shadow-none">
         <div className="space-y-1">
-          <div className="text-base text-muted-foreground">Primary wallet</div>
+          <div className="text-base text-muted-foreground">{copy.primaryWalletLabel}</div>
           <div className="text-lg font-semibold text-foreground">
-            {wallet.primaryAddress ?? "No wallet connected"}
+            {wallet.primaryAddress ?? copy.noWalletConnected}
           </div>
         </div>
         {wallet.primaryAddress ? <CopyField value={wallet.primaryAddress} /> : null}
       </Card>
 
-      <SettingsSection title="Connected wallets">
+      <SettingsSection title={copy.connectedWalletsSection}>
         <WalletList connectedWallets={wallet.connectedWallets} />
       </SettingsSection>
     </div>
@@ -449,17 +467,19 @@ export function WalletTab({
 export function PreferencesTab({
   preferences,
 }: Pick<SettingsPageProps, "preferences">) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").settings;
   return (
     <div className="space-y-8">
-      <SettingsSection title="Language">
+      <SettingsSection title={copy.languageSection}>
         <Card className="space-y-5 border-border bg-card px-5 py-5 shadow-none">
           <div className="space-y-2">
             <label className="text-base font-medium text-foreground" htmlFor="settings-language">
-              App language
+              {copy.appLanguageLabel}
             </label>
             <Select onValueChange={preferences.onLocaleChange} value={preferences.locale}>
               <SelectTrigger className="rounded-[var(--radius-lg)]" id="settings-language">
-                <SelectValue placeholder="Select language" />
+                <SelectValue placeholder={copy.selectLanguage} />
               </SelectTrigger>
               <SelectContent>
                 {preferences.localeOptions.map((option) => (
@@ -472,7 +492,7 @@ export function PreferencesTab({
           </div>
           <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
             {preferences.submitState.kind === "error" ? (
-              <div className="mr-auto text-base text-destructive">{preferences.submitState.message}</div>
+              <div className="me-auto text-base text-destructive">{preferences.submitState.message}</div>
             ) : null}
             <Button
               disabled={preferences.saveDisabled}
@@ -480,19 +500,40 @@ export function PreferencesTab({
               onClick={() => preferences.onSave?.()}
               type="button"
             >
-              Save preferences
+              {copy.savePreferences}
             </Button>
           </div>
         </Card>
       </SettingsSection>
 
       {preferences.ageStatusLabel ? (
-        <SettingsSection title="Identity">
+        <SettingsSection title={copy.identitySection}>
           <Card className="overflow-hidden border-border bg-card shadow-none">
-            <SettingsRow label="Age status" value={preferences.ageStatusLabel} />
+            <SettingsRow label={copy.ageStatusLabel} value={preferences.ageStatusLabel} />
           </Card>
         </SettingsSection>
       ) : null}
+    </div>
+  );
+}
+
+export function AgentsTab({
+  agents,
+}: Pick<SettingsPageProps, "agents">) {
+  return (
+    <div className="space-y-8">
+      <OwnedAgentsPanel
+        agents={agents.items}
+        canRegister={agents.canRegister}
+        loading={agents.loading}
+        registrationState={agents.registrationState}
+        importValue={agents.importValue}
+        onStartPairing={agents.onStartPairing}
+        onImportValueChange={agents.onImportValueChange}
+        onImportRegistration={agents.onImportRegistration}
+        onCheckRegistration={agents.onCheckRegistration}
+        onDeregister={agents.onDeregister}
+      />
     </div>
   );
 }

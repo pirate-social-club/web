@@ -7,9 +7,16 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/primitives/tabs";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 
 import type {
+  AuthorMode,
+  CharityContributionState,
+  CommunityCharityPartner,
+  ComposerAudienceState,
   ComposerTab,
   DerivativeStepState,
   IdentityMode,
@@ -23,8 +30,10 @@ import {
   tabMeta,
   defaultTabs,
   anonymousEligibleTabs,
+  defaultAudienceState,
   defaultSongState,
   defaultMonetizationState,
+  defaultCharityContributionState,
 } from "./post-composer-config";
 import {
   ShellPill,
@@ -33,8 +42,10 @@ import {
 import { PostComposerPrimaryArea } from "./post-composer-content";
 import {
   PostComposerDerivativeSection,
+  PostComposerAudienceSection,
   PostComposerIdentitySections,
   PostComposerSongAccessSection,
+  PostComposerCharitySection,
   deriveDerivativeSearchResults,
 } from "./post-composer-sections";
 
@@ -74,7 +85,13 @@ export function PostComposer({
   onDerivativeStepChange,
   monetization,
   onMonetizationChange,
+  charityPartner,
+  charityContribution,
+  onCharityContributionChange,
+  audience,
+  onAudienceChange,
   identity,
+  onAuthorModeChange,
   onIdentityModeChange,
   onSelectedQualifierIdsChange,
   live,
@@ -84,6 +101,9 @@ export function PostComposer({
   submitLabel = "Post",
   submitLoading = false,
 }: PostComposerProps) {
+  const { isRtl, locale } = useUiLocale();
+  const isMobile = useIsMobile();
+  const copy = getLocaleMessages(locale, "routes").createPost;
   const visibleTabs = React.useMemo(
     () => availableTabs.filter((tab) => tab !== "song" || canCreateSongPost),
     [availableTabs, canCreateSongPost],
@@ -98,11 +118,20 @@ export function PostComposer({
   const [identityMode, setIdentityMode] = React.useState<IdentityMode>(
     identity?.identityMode ?? "public",
   );
+  const [authorMode, setAuthorMode] = React.useState<AuthorMode>(
+    identity?.authorMode ?? "human",
+  );
   const [selectedQualifierIds, setSelectedQualifierIds] = React.useState<string[]>(
     identity ? deriveSelectedQualifierIds(identity) : [],
   );
   const [uncontrolledMonetizationState, setUncontrolledMonetizationState] = React.useState<MonetizationState>(
     () => defaultMonetizationState(monetization),
+  );
+  const [uncontrolledCharityContribution, setUncontrolledCharityContribution] = React.useState<CharityContributionState>(
+    () => defaultCharityContributionState(charityContribution),
+  );
+  const [uncontrolledAudienceState, setUncontrolledAudienceState] = React.useState<ComposerAudienceState>(
+    () => defaultAudienceState(audience),
   );
   const [uncontrolledDerivativeState, setUncontrolledDerivativeState] = React.useState<DerivativeStepState | undefined>(
     derivativeStep,
@@ -122,6 +151,8 @@ export function PostComposer({
   const activeSongMode = songMode ?? uncontrolledSongMode;
   const songState = song ?? uncontrolledSongState;
   const monetizationState = monetization ?? uncontrolledMonetizationState;
+  const charityContributionState = charityContribution ?? uncontrolledCharityContribution;
+  const audienceState = audience ?? uncontrolledAudienceState;
   const derivativeState = derivativeStep ?? uncontrolledDerivativeState;
 
   const setSongModeWithCallback = React.useCallback((next: NonNullable<PostComposerProps["songMode"]>) => {
@@ -135,6 +166,11 @@ export function PostComposer({
     setIdentityMode(next);
     onIdentityModeChange?.(next);
   }, [onIdentityModeChange]);
+
+  const setAuthorModeWithCallback = React.useCallback((next: AuthorMode) => {
+    setAuthorMode(next);
+    onAuthorModeChange?.(next);
+  }, [onAuthorModeChange]);
 
   const setSelectedQualifierIdsWithCallback = React.useCallback((next: string[]) => {
     setSelectedQualifierIds(next);
@@ -164,6 +200,22 @@ export function PostComposer({
     }
     onMonetizationChange?.(next);
   }, [monetization, monetizationState, onMonetizationChange]);
+
+  const updateCharityContributionState = React.useCallback((updater: (current: CharityContributionState) => CharityContributionState) => {
+    const next = updater(charityContributionState);
+    if (charityContribution === undefined) {
+      setUncontrolledCharityContribution(next);
+    }
+    onCharityContributionChange?.(next);
+  }, [charityContribution, charityContributionState, onCharityContributionChange]);
+
+  const updateAudienceState = React.useCallback((updater: (current: ComposerAudienceState) => ComposerAudienceState) => {
+    const next = updater(audienceState);
+    if (audience === undefined) {
+      setUncontrolledAudienceState(next);
+    }
+    onAudienceChange?.(next);
+  }, [audience, audienceState, onAudienceChange]);
 
   React.useEffect(() => {
     if (liveState.roomKind !== prevRoomKind) {
@@ -209,9 +261,21 @@ export function PostComposer({
   }, [monetization]);
 
   React.useEffect(() => {
+    setUncontrolledCharityContribution(defaultCharityContributionState(charityContribution));
+  }, [charityContribution]);
+
+  React.useEffect(() => {
+    setUncontrolledAudienceState(defaultAudienceState(audience));
+  }, [audience]);
+
+  React.useEffect(() => {
     setUncontrolledDerivativeState(derivativeStep);
     setDerivativePickerKey(0);
   }, [derivativeStep]);
+
+  React.useEffect(() => {
+    setAuthorMode(identity?.authorMode ?? "human");
+  }, [identity?.authorMode]);
 
   React.useEffect(() => {
     if (derivativeState?.required && activeSongMode !== "remix") {
@@ -241,10 +305,20 @@ export function PostComposer({
   }, [activeTab, identityMode, setIdentityModeWithCallback]);
 
   React.useEffect(() => {
+    if (authorMode === "agent" && identityMode !== "public") {
+      setIdentityModeWithCallback("public");
+    }
+  }, [authorMode, identityMode, setIdentityModeWithCallback]);
+
+  React.useEffect(() => {
+    if (authorMode === "agent" && selectedQualifierIds.length > 0) {
+      setSelectedQualifierIdsWithCallback([]);
+      return;
+    }
     if (identityMode === "anonymous" && identity?.allowQualifiersOnAnonymousPosts === false) {
       setSelectedQualifierIdsWithCallback([]);
     }
-  }, [identity?.allowQualifiersOnAnonymousPosts, identityMode, setSelectedQualifierIdsWithCallback]);
+  }, [authorMode, identity?.allowQualifiersOnAnonymousPosts, identityMode, selectedQualifierIds.length, setSelectedQualifierIdsWithCallback]);
 
   React.useEffect(() => {
     if (identityMode !== "anonymous" && selectedQualifierIds.length > 0) {
@@ -259,10 +333,22 @@ export function PostComposer({
     () => deriveDerivativeSearchResults(derivativeState),
     [derivativeState],
   );
+  const orderedVisibleTabs = React.useMemo(
+    () => (isRtl ? [...visibleTabs].reverse() : visibleTabs),
+    [isRtl, visibleTabs],
+  );
+  const tabLabels: Record<ComposerTab, string> = {
+    text: copy.tabs.text,
+    image: copy.tabs.image,
+    video: copy.tabs.video,
+    link: copy.tabs.link,
+    song: copy.tabs.song,
+    live: copy.tabs.live,
+  };
 
   return (
-    <div className="w-full space-y-4">
-      <CardTitle className="text-3xl">Create post</CardTitle>
+    <div className={cn("w-full space-y-4", isMobile && "space-y-3")}>
+      {!isMobile ? <CardTitle className="text-3xl">{copy.title}</CardTitle> : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ShellPill
@@ -275,8 +361,8 @@ export function PostComposer({
         </ShellPill>
       </div>
 
-      <Card className="overflow-hidden bg-background shadow-none">
-        <CardHeader className="border-b border-border-soft px-0 pb-0 pt-0">
+      <Card className={cn("overflow-hidden bg-background shadow-none", isMobile && "border-0 bg-transparent")}>
+        <CardHeader className={cn("border-b border-border-soft px-0 pb-0 pt-0", isMobile && "border-b-0")}>
           <Tabs
             value={activeTab}
             onValueChange={(value) => {
@@ -285,18 +371,25 @@ export function PostComposer({
               onModeChange?.(nextTab);
             }}
           >
-            <TabsList className="h-auto w-full justify-start rounded-none border-b border-border-soft bg-transparent p-0">
-              {visibleTabs.map((tab) => (
+            <TabsList
+              className={cn(
+                "h-auto w-full rounded-none border-b border-border-soft bg-transparent p-0",
+                isMobile && "overflow-x-auto border-b-0",
+                isRtl ? "justify-end" : "justify-start",
+              )}
+            >
+              {orderedVisibleTabs.map((tab) => (
                 <TabsTrigger
                   key={tab}
                   value={tab}
                   className={cn(
                     "rounded-none border-b-2 border-transparent px-5 py-4 text-base font-semibold data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                    isMobile && "px-4 py-3 whitespace-nowrap",
                   )}
                 >
                   <span className="inline-flex items-center gap-2">
                     {tabMeta[tab].icon}
-                    {tabMeta[tab].label}
+                    {tabLabels[tab]}
                   </span>
                 </TabsTrigger>
               ))}
@@ -304,14 +397,14 @@ export function PostComposer({
           </Tabs>
         </CardHeader>
 
-        <CardContent className="space-y-5 p-5">
+        <CardContent className={cn("space-y-5 p-5", isMobile && "space-y-4 px-0 pb-0 pt-1")}>
           <>
           <div>
-            <FieldLabel counter={titleCountLabel} label="Title" />
+            <FieldLabel counter={titleCountLabel} label={copy.fields.title} />
             <Input
               className="h-14"
               onChange={(event) => onTitleValueChange?.(event.target.value)}
-              placeholder="Title"
+              placeholder={copy.placeholders.title}
               value={titleValue}
             />
           </div>
@@ -319,8 +412,10 @@ export function PostComposer({
           <PostComposerIdentitySections
             activeTab={activeTab}
             anonymousEligibleTabs={anonymousEligibleTabs}
+            authorMode={authorMode}
             identity={identity}
             identityMode={identityMode}
+            onAuthorModeChange={setAuthorModeWithCallback}
             onIdentityModeChange={setIdentityModeWithCallback}
             onSelectedQualifierIdsChange={setSelectedQualifierIdsWithCallback}
             selectedQualifierIds={selectedQualifierIds}
@@ -330,6 +425,7 @@ export function PostComposer({
             activeSongMode={activeSongMode}
             activeTab={activeTab}
             captionValue={captionValue}
+            copy={copy}
             derivativeState={derivativeState}
             linkPreview={linkPreview}
             linkUrlValue={linkUrlValue}
@@ -348,6 +444,7 @@ export function PostComposer({
 
           {shouldShowDerivativeStep ? (
             <PostComposerDerivativeSection
+              copy={copy}
               derivativePickerKey={derivativePickerKey}
               derivativeSearchResults={derivativeSearchResults}
               derivativeState={derivativeState}
@@ -358,14 +455,31 @@ export function PostComposer({
 
           {activeTab === "song" ? (
             <PostComposerSongAccessSection
+              copy={copy}
               monetizationState={monetizationState}
               updateMonetizationState={updateMonetizationState}
+            />
+          ) : null}
+
+          {activeTab === "song" && monetizationState.visible && charityPartner ? (
+            <PostComposerCharitySection
+              charityContribution={charityContributionState}
+              charityPartner={charityPartner}
+              updateCharityContribution={updateCharityContributionState}
+            />
+          ) : null}
+
+          {activeTab !== "live" ? (
+            <PostComposerAudienceSection
+              audience={audienceState}
+              copy={copy}
+              updateAudience={updateAudienceState}
             />
           ) : null}
           </>
         </CardContent>
 
-        <CardFooter className="justify-end gap-3 border-t border-border-soft p-5">
+        <CardFooter className={cn("justify-end gap-3 border-t border-border-soft p-5", isMobile && "border-t-0 px-0 pb-0 pt-2")}>
           {submitError ? <FormNote tone="warning">{submitError}</FormNote> : null}
           <Button
             disabled={submitDisabled}

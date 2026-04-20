@@ -4,6 +4,10 @@ import * as React from "react";
 
 import { Card } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
+import { cn } from "@/lib/utils";
 import { PostCard } from "../post-card/post-card";
 import { SongItem } from "../song-item/song-item";
 import type {
@@ -25,13 +29,14 @@ function Panel({
   hasContent: boolean;
   title: string;
 }) {
+  const isMobile = useIsMobile();
   return (
-    <Card className="overflow-hidden">
-      <div className="border-b border-border px-5 py-4">
-        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+    <Card className={cn("overflow-hidden", isMobile && "border-0 bg-transparent shadow-none")}>
+      <div className={cn("border-b border-border px-5 py-4", isMobile && "px-0")}>
+        <h2 className="text-start text-lg font-semibold text-foreground">{title}</h2>
       </div>
       {hasContent ? children : (
-        <div className="px-5 py-8 text-base leading-7 text-muted-foreground">
+        <div className={cn("text-start px-5 py-8 text-base leading-7 text-muted-foreground", isMobile && "px-0")}>
           {emptyCopy}
         </div>
       )}
@@ -40,8 +45,9 @@ function Panel({
 }
 
 function FeedEmptyState({ copy }: { copy: string }) {
+  const isMobile = useIsMobile();
   return (
-    <Card className="px-5 py-8 text-base leading-7 text-muted-foreground">
+    <Card className={cn("text-start px-5 py-8 text-base leading-7 text-muted-foreground", isMobile && "border-0 bg-transparent px-0 shadow-none")}>
       {copy}
     </Card>
   );
@@ -58,7 +64,7 @@ function toSongItemProps(scrobble: ProfileScrobbleItem) {
 
 function CommentRow({ comment }: { comment: ProfileCommentItem }) {
   return (
-    <article className="space-y-3 px-5 py-4">
+    <article className="space-y-3 px-5 py-4 text-start">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-muted-foreground">
         {comment.communityLabel ? (
           comment.communityHref ? (
@@ -96,7 +102,7 @@ export function VerificationRows({
       {verificationItems.map((item, index) => (
         <React.Fragment key={item.label}>
           {index > 0 ? <Separator /> : null}
-          <div className="space-y-2 px-5 py-4">
+          <div className="space-y-2 px-5 py-4 text-start">
             <div className="flex items-start justify-between gap-4">
               <div className="text-base text-muted-foreground">{item.label}</div>
               <div className="text-base font-semibold text-foreground">{item.value}</div>
@@ -142,7 +148,9 @@ function ActivityRows({ items }: { items: ProfileActivityItem[] }) {
 }
 
 export function OverviewPanel({ items }: { items: ProfileActivityItem[] }) {
-  if (items.length === 0) return <FeedEmptyState copy="No activity yet." />;
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").profile;
+  if (items.length === 0) return <FeedEmptyState copy={copy.emptyActivity} />;
   return <ActivityRows items={items} />;
 }
 
@@ -151,7 +159,9 @@ export function PostsPanel({
 }: {
   posts: NonNullable<ProfilePageProps["posts"]>;
 }) {
-  if (posts.length === 0) return <FeedEmptyState copy="No posts yet." />;
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").profile;
+  if (posts.length === 0) return <FeedEmptyState copy={copy.emptyPosts} />;
 
   return (
     <FeedStack>
@@ -169,8 +179,10 @@ export function CommentsPanel({
 }: {
   comments: NonNullable<ProfilePageProps["comments"]>;
 }) {
+  const { locale } = useUiLocale();
+  const routeCopy = getLocaleMessages(locale, "routes");
   return (
-    <Panel emptyCopy="No comments yet." hasContent={comments.length > 0} title="Comments">
+    <Panel emptyCopy={routeCopy.common.noComments} hasContent={comments.length > 0} title={routeCopy.profile.commentsTab}>
       <FeedStack>
         {comments.map((comment) => (
           <Card className="overflow-hidden" key={comment.commentId}>
@@ -187,8 +199,10 @@ export function ScrobblesPanel({
 }: {
   scrobbles: NonNullable<ProfilePageProps["scrobbles"]>;
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").profile;
   return (
-    <Panel emptyCopy="No scrobbles yet." hasContent={scrobbles.length > 0} title="Scrobbles">
+    <Panel emptyCopy={copy.emptyScrobbles} hasContent={scrobbles.length > 0} title={copy.scrobblesTab}>
       <FeedStack>
         {scrobbles.map((scrobble) => (
           <Card className="overflow-hidden" key={scrobble.scrobbleId}>

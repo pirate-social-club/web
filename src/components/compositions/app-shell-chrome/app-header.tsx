@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  ArrowLeft,
   Bell,
   List,
   Plus,
@@ -14,8 +15,6 @@ import { IconButton } from "@/components/primitives/icon-button";
 import { PirateBrandMark } from "@/components/primitives/pirate-brand-mark";
 import { useSidebar } from "@/components/compositions/sidebar/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { UiDirection } from "@/lib/ui-locale";
-import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 
 function CreatePostGlyph() {
@@ -38,6 +37,7 @@ function SidebarMenuToggleButton({ ariaLabel }: { ariaLabel: string }) {
 }
 
 export interface AppHeaderLabels {
+  backAriaLabel?: string;
   connectLabel?: string;
   createLabel?: string;
   homeAriaLabel?: string;
@@ -53,9 +53,13 @@ export interface AppHeaderProps {
   className?: string;
   createActionTitle?: string;
   disableCreateAction?: boolean;
-  dir?: UiDirection;
   forceMobile?: boolean;
+  hideBrand?: boolean;
   labels?: AppHeaderLabels;
+  mobileLeadingContent?: React.ReactNode;
+  mobileCenterContent?: React.ReactNode;
+  mobileTrailingContent?: React.ReactNode;
+  onBackClick?: () => void;
   onConnectClick?: () => void;
   onCreateClick?: () => void;
   onHomeClick?: () => void;
@@ -77,9 +81,13 @@ export function AppHeader({
   className,
   createActionTitle,
   disableCreateAction = false,
-  dir,
   forceMobile,
+  hideBrand = false,
   labels,
+  mobileLeadingContent,
+  mobileCenterContent,
+  mobileTrailingContent,
+  onBackClick,
   onConnectClick,
   onCreateClick,
   onHomeClick,
@@ -95,6 +103,7 @@ export function AppHeader({
   userAvatarSrc,
 }: AppHeaderProps) {
   const {
+    backAriaLabel = "Go back",
     connectLabel = "Connect",
     createLabel = "Create",
     homeAriaLabel = "Go to home",
@@ -104,9 +113,6 @@ export function AppHeader({
   } = labels ?? {};
   const detectedMobile = useIsMobile();
   const isMobile = forceMobile ?? detectedMobile;
-  const localeState = useUiLocale();
-  const effectiveDir = dir ?? localeState.dir;
-  const isRtl = effectiveDir === "rtl";
   const actions: React.ReactNode[] = [];
   if (showCreateAction) {
     actions.push(
@@ -157,20 +163,45 @@ export function AppHeader({
       </IconButton>,
     );
   }
-  const utilityActions = isRtl ? [...actions].reverse() : actions;
+  const brand = (
+    <button
+      aria-label={homeAriaLabel}
+      className="inline-flex max-w-full items-center gap-3 rounded-full px-1 py-1 text-start align-middle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      onClick={onHomeClick}
+      type="button"
+    >
+      <PirateBrandMark className="h-9 w-9 shrink-0" decorative={false} />
+      <span className="truncate text-lg font-semibold leading-none tracking-[0.18em] text-foreground">PIRATE</span>
+    </button>
+  );
 
   if (isMobile) {
     return (
       <header className={cn("fixed inset-x-0 top-0 z-40 border-b border-border-soft bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur-md", className)}>
-        <div className="flex h-16 items-center px-3" dir={isRtl ? "rtl" : "ltr"}>
-          {useSidebarTrigger ? (
-            <SidebarMenuToggleButton ariaLabel={openNavigationAriaLabel} />
-          ) : (
-            <IconButton aria-label={openNavigationAriaLabel} onClick={onMenuClick} variant="ghost">
-              <List className="size-6" weight="bold" />
-            </IconButton>
+        <div className="grid h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3">
+          {mobileLeadingContent ?? (
+            useSidebarTrigger ? (
+              <SidebarMenuToggleButton ariaLabel={openNavigationAriaLabel} />
+            ) : onBackClick ? (
+              <IconButton aria-label={backAriaLabel} onClick={onBackClick} variant="ghost">
+                <ArrowLeft className="size-6" weight="bold" />
+              </IconButton>
+            ) : (
+              <IconButton aria-label={openNavigationAriaLabel} onClick={onMenuClick} variant="ghost">
+                <List className="size-6" weight="bold" />
+              </IconButton>
+            )
           )}
-          {/* Search removed for now until the feed has enough content to justify it. */}
+          <div className="min-w-0 justify-self-start">
+            {mobileCenterContent ?? (hideBrand ? null : brand)}
+          </div>
+          <div className="justify-self-end">
+            {mobileTrailingContent ?? (showConnectAction ? (
+              <Button className="h-11 px-4" onClick={onConnectClick}>
+                {connectLabel}
+              </Button>
+            ) : <div className="h-11 w-11" aria-hidden="true" />)}
+          </div>
         </div>
       </header>
     );
@@ -178,36 +209,18 @@ export function AppHeader({
 
   return (
     <header className={cn("sticky top-0 z-30 border-b border-border-soft bg-background/95 backdrop-blur-xl", className)}>
-      <div
-        className="grid h-[4.5rem] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 lg:px-8"
-        dir={isRtl ? "rtl" : "ltr"}
-      >
-        <div className={cn("min-w-0", isRtl && "text-right")}>
-          <button
-            aria-label={homeAriaLabel}
-            className="inline-flex max-w-full items-center gap-3 rounded-full px-1 py-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={onHomeClick}
-            type="button"
-            dir="ltr"
-          >
-            <PirateBrandMark className="h-9 w-9 shrink-0" decorative={false} />
-            <span className="truncate text-lg font-semibold tracking-tight text-foreground">Pirate</span>
-          </button>
+      <div className="grid h-[4.5rem] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 lg:px-8">
+        <div className="min-w-0 text-start">
+          {hideBrand ? null : brand}
         </div>
 
-        <div
-          className={cn(
-            "flex min-w-0 items-center gap-1.5",
-            isRtl ? "justify-start" : "justify-end",
-          )}
-          dir="ltr"
-        >
+        <div className="flex min-w-0 items-center justify-end gap-1.5">
           {showConnectAction ? (
             <Button className="h-12 px-5" onClick={onConnectClick}>
               {connectLabel}
             </Button>
           ) : null}
-          {utilityActions}
+          {actions}
         </div>
       </div>
     </header>

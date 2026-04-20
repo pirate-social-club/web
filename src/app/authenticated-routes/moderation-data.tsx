@@ -6,6 +6,7 @@ import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import { useApi } from "@/lib/api";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { useSession } from "@/lib/api/session-store";
+import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 
 import type { CommunityModerationSection } from "./moderation-helpers";
 import { NotFoundPage } from "./misc-routes";
@@ -15,10 +16,14 @@ import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState, StackPa
 
 export function getCommunityModerationTitle(section: CommunityModerationSection): string {
   switch (section) {
+    case "profile":
+      return "Profile";
     case "rules":
       return "Rules";
     case "links":
       return "Links";
+    case "labels":
+      return "Labels";
     case "donations":
       return "Donations";
     case "pricing":
@@ -27,6 +32,8 @@ export function getCommunityModerationTitle(section: CommunityModerationSection)
       return "Gates";
     case "safety":
       return "Safety";
+    case "agents":
+      return "Agents";
     case "namespace":
     default:
       return "Namespace verification";
@@ -35,12 +42,23 @@ export function getCommunityModerationTitle(section: CommunityModerationSection)
 
 export function useCommunityRecord(communityId: string) {
   const api = useApi();
+  const session = useSession();
+  const { busy, configured, loaded } = usePiratePrivyRuntime();
   const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     let cancelled = false;
+
+    if (configured && (!loaded || busy) && !session?.accessToken) {
+      setLoading(true);
+      setError(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     setLoading(true);
     setError(null);
 
@@ -64,7 +82,7 @@ export function useCommunityRecord(communityId: string) {
     return () => {
       cancelled = true;
     };
-  }, [api, communityId]);
+  }, [api, busy, communityId, configured, loaded, session?.accessToken]);
 
   return { community, error, loading, setCommunity };
 }
@@ -74,12 +92,14 @@ export function CommunityModerationGuard({
   error,
   loading,
   session,
+  showInlineTitle = true,
   title,
 }: {
   community: ApiCommunity | null;
   error: unknown;
   loading: boolean;
   session: ReturnType<typeof useSession>;
+  showInlineTitle?: boolean;
   title: string;
 }) {
   if (loading) {
@@ -88,7 +108,7 @@ export function CommunityModerationGuard({
 
   if (error) {
     if (isApiAuthError(error)) {
-      return <AuthRequiredRouteState description={getRouteAuthDescription("moderation")} title={title} />;
+      return <AuthRequiredRouteState description={getRouteAuthDescription("moderation")} title={showInlineTitle ? title : ""} />;
     }
 
     if (isApiNotFoundError(error)) {
@@ -98,18 +118,18 @@ export function CommunityModerationGuard({
     return (
       <RouteLoadFailureState
         description={getErrorMessage(error, getRouteFailureDescription("moderation"))}
-        title={title}
+        title={showInlineTitle ? title : ""}
       />
     );
   }
 
   if (!community) {
-    return <RouteLoadFailureState description={getRouteIncompleteDescription("moderation")} title={title} />;
+    return <RouteLoadFailureState description={getRouteIncompleteDescription("moderation")} title={showInlineTitle ? title : ""} />;
   }
 
   if (session?.user?.user_id !== community.created_by_user_id) {
     return (
-      <StackPageShell title={title}>
+      <StackPageShell title={showInlineTitle ? title : ""}>
         <StatusCard
           description={getRouteString("moderation", "accessRequiredDescription", "Only community moderators can open this page.")}
           title={getRouteString("moderation", "accessRequiredTitle", "Moderator access required")}

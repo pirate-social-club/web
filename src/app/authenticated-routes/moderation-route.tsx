@@ -1,27 +1,148 @@
 "use client";
 
+import * as React from "react";
+
 import { navigate } from "@/app/router";
-import {
-  CommunityDonationsEditorPage,
-} from "@/components/compositions/community-donations-editor/community-donations-editor-page";
-import {
-  CommunityLinksEditorPage,
-  createEmptyCommunityLinkEditorItem,
-} from "@/components/compositions/community-links-editor/community-links-editor-page";
-import { CommunityModerationShell } from "@/components/compositions/community-moderation-shell/community-moderation-shell";
-import { CommunityPricingEditorPage } from "@/components/compositions/community-pricing-editor/community-pricing-editor-page";
+import { CommunityDonationsEditorPage } from "@/components/compositions/community-donations-editor/community-donations-editor-page";
 import { CommunityGatesEditorPage } from "@/components/compositions/community-gates-editor/community-gates-editor-page";
+import { CommunityLabelsEditorPage } from "@/components/compositions/community-labels-editor/community-labels-editor-page";
+import { CommunityLinksEditorPage, createEmptyCommunityLinkEditorItem } from "@/components/compositions/community-links-editor/community-links-editor-page";
+import { CommunityModerationIndexPage as CommunityModerationIndexPageView } from "@/components/compositions/community-moderation-index-page/community-moderation-index-page";
+import { CommunityModerationShell } from "@/components/compositions/community-moderation-shell/community-moderation-shell";
+import { CommunityProfileEditorPage } from "@/components/compositions/community-profile-editor/community-profile-editor-page";
 import { CommunityNamespaceVerificationPage } from "@/components/compositions/community-namespace-verification-page/community-namespace-verification-page";
+import { CommunityPricingEditorPage } from "@/components/compositions/community-pricing-editor/community-pricing-editor-page";
 import { CommunityRulesEditorPage } from "@/components/compositions/community-rules-editor/community-rules-editor-page";
+import { CommunityAgentPolicyPage } from "@/components/compositions/community-agent-policy/community-agent-policy";
 import { CommunitySafetyPage } from "@/components/compositions/community-safety-page/community-safety-page";
+import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
+import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 
 import { CommunityModerationGuard, getCommunityModerationTitle } from "./moderation-data";
-import { buildCommunityModerationSections, type CommunityModerationSection } from "./moderation-helpers";
+import {
+  buildCommunityModerationIndexPath,
+  buildCommunityModerationSections,
+  type CommunityModerationSection,
+} from "./moderation-helpers";
 import { getRouteFailureDescription } from "./route-status-copy";
 import { useCommunityModerationState } from "./moderation-state";
 import { FullPageSpinner, RouteLoadFailureState } from "./route-shell";
+
+function useIsModerationMobileLayout() {
+  const [isMobileLayout, setIsMobileLayout] = React.useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    const matchesMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent);
+    const userAgentData = (window.navigator as Navigator & {
+      userAgentData?: { mobile?: boolean };
+    }).userAgentData;
+
+    return window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches && (userAgentData?.mobile === true || matchesMobileUserAgent);
+  });
+
+  React.useEffect(() => {
+    const mobileWidthQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
+
+    const isMobileUserAgent = () => {
+      const userAgentData = (window.navigator as Navigator & {
+        userAgentData?: { mobile?: boolean };
+      }).userAgentData;
+      const matchesMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent);
+
+      if (userAgentData?.mobile === true) {
+        return true;
+      }
+
+      return matchesMobileUserAgent;
+    };
+
+    const update = () => {
+      setIsMobileLayout(mobileWidthQuery.matches && isMobileUserAgent());
+    };
+
+    mobileWidthQuery.addEventListener("change", update);
+    update();
+
+    return () => {
+      mobileWidthQuery.removeEventListener("change", update);
+    };
+  }, []);
+
+  return isMobileLayout;
+}
+
+function MobileModerationSectionLayout({
+  children,
+  communityId,
+  title,
+}: {
+  children: React.ReactNode;
+  communityId: string;
+  title: string;
+}) {
+  return (
+    <div className="min-h-screen w-full bg-background text-foreground">
+      <MobilePageHeader onBackClick={() => navigate(buildCommunityModerationIndexPath(communityId))} title={title} />
+      <section className="flex min-w-0 flex-1 flex-col gap-4 px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)] md:px-6 md:py-6">
+        <div className="min-w-0">{children}</div>
+      </section>
+    </div>
+  );
+}
+
+export function CommunityModerationIndexPage({
+  communityId,
+}: {
+  communityId: string;
+}) {
+  const isMobile = useIsModerationMobileLayout();
+  const state = useCommunityModerationState(communityId);
+  const sections = buildCommunityModerationSections(null, communityId);
+  const blocked = CommunityModerationGuard({
+    community: state.community,
+    error: state.error,
+    loading: state.loading,
+    session: state.session,
+    showInlineTitle: !isMobile,
+    title: "Mod tools",
+  });
+  const content = blocked ?? (
+    <CommunityModerationIndexPageView
+      mobileLayout={isMobile}
+      onBackClick={isMobile ? undefined : () => navigate(`/c/${communityId}`)}
+      sections={sections}
+      showTitle={!isMobile}
+    />
+  );
+
+  if (isMobile) {
+    return (
+      <div className="min-h-screen w-full bg-background text-foreground">
+        <MobilePageHeader onBackClick={() => navigate(`/c/${communityId}`)} title="Mod tools" />
+        <section className="flex min-w-0 flex-1 flex-col py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
+          <div className="min-w-0">
+            {content}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <CommunityModerationShell
+      communityAvatarSrc={state.community?.avatar_ref ?? undefined}
+      communityLabel={state.community ? `r/${state.community.display_name}` : "Moderator tools"}
+      onExitClick={() => navigate(`/c/${communityId}`)}
+      sections={sections}
+    >
+      {content}
+    </CommunityModerationShell>
+  );
+}
 
 export function CommunityModerationPage({
   communityId,
@@ -31,24 +152,65 @@ export function CommunityModerationPage({
   section: CommunityModerationSection;
 }) {
   const api = useApi();
+  const isMobile = useIsModerationMobileLayout();
   const state = useCommunityModerationState(communityId);
   const title = getCommunityModerationTitle(section);
+  const moderationIndexPath = buildCommunityModerationIndexPath(communityId);
   const blocked = CommunityModerationGuard({
     community: state.community,
     error: state.error,
     loading: state.loading,
     session: state.session,
+    showInlineTitle: !isMobile,
     title,
   });
 
   let content = blocked;
 
   if (!content && state.community) {
-    if (section === "rules") {
+    if (section === "profile") {
+      content = (
+        <CommunityProfileEditorPage
+          avatarSrc={state.profileAvatarRemoved ? undefined : (state.community.avatar_ref ?? undefined)}
+          bannerSrc={state.profileBannerRemoved ? undefined : (state.community.banner_ref ?? undefined)}
+          description={state.profileDescription}
+          displayName={state.profileDisplayName}
+          displayNameError={state.profileDisplayNameError}
+          onAvatarRemove={() => {
+            state.setProfileAvatarFile(null);
+            state.setProfileAvatarRemoved(true);
+          }}
+          onAvatarSelect={(file) => {
+            state.setProfileAvatarFile(file);
+            if (file) {
+              state.setProfileAvatarRemoved(false);
+            }
+          }}
+          onBackClick={isMobile ? () => navigate(moderationIndexPath) : undefined}
+          onBannerRemove={() => {
+            state.setProfileBannerFile(null);
+            state.setProfileBannerRemoved(true);
+          }}
+          onBannerSelect={(file) => {
+            state.setProfileBannerFile(file);
+            if (file) {
+              state.setProfileBannerRemoved(false);
+            }
+          }}
+          onDescriptionChange={state.setProfileDescription}
+          onDisplayNameChange={state.setProfileDisplayName}
+          onSave={state.handleSaveProfile}
+          pendingAvatarLabel={state.profileAvatarFile?.name}
+          pendingBannerLabel={state.profileBannerFile?.name}
+          saveDisabled={state.savingProfile || !state.profileHasChanges}
+          saveLoading={state.savingProfile}
+        />
+      );
+    } else if (section === "rules") {
       content = (
         <CommunityRulesEditorPage
           description={state.description}
-          onBackClick={() => navigate(`/c/${communityId}`)}
+          onBackClick={() => navigate(moderationIndexPath)}
           onDescriptionChange={state.setDescription}
           onReportReasonChange={state.setReportReason}
           onRuleNameChange={state.setRuleName}
@@ -73,6 +235,20 @@ export function CommunityModerationPage({
           onSave={state.handleSaveLinks}
           saveDisabled={state.savingLinks || state.links.some((link) => !link.url.trim())}
           saveLoading={state.savingLinks}
+        />
+      );
+    } else if (section === "labels") {
+      content = (
+        <CommunityLabelsEditorPage
+          labels={state.labels}
+          labelsEnabled={state.labelsEnabled}
+          onLabelsChange={state.setLabels}
+          onLabelsEnabledChange={state.setLabelsEnabled}
+          onRequireOnTopLevelPostsChange={state.setRequireOnTopLevelPosts}
+          onSave={state.handleSaveLabels}
+          requireOnTopLevelPosts={state.requireOnTopLevelPosts}
+          saveDisabled={state.savingLabels || state.labelsValidationError != null}
+          saveLoading={state.savingLabels}
         />
       );
     } else if (section === "pricing") {
@@ -123,19 +299,12 @@ export function CommunityModerationPage({
     } else if (section === "donations") {
       content = (
         <CommunityDonationsEditorPage
-          donationMode={state.donationMode}
           endaomentUrl={state.endaomentUrl}
           onClearPartner={() => {
             state.setPartnerPreview(null);
             state.setEndaomentUrl("");
             state.setResolveError(null);
             state.setDonationMode("none");
-          }}
-          onDonationModeChange={(value) => {
-            state.setDonationMode(value);
-            if (value === "none") {
-              state.setResolveError(null);
-            }
           }}
           onEndaomentUrlChange={(value) => {
             state.setEndaomentUrl(value);
@@ -147,7 +316,7 @@ export function CommunityModerationPage({
           partnerPreview={state.partnerPreview}
           resolveError={state.resolveError}
           resolving={state.resolvingDonationPartner}
-          saveDisabled={state.savingDonations || (state.donationMode !== "none" && !state.partnerPreview)}
+          saveDisabled={state.savingDonations || (state.endaomentUrl.trim().length > 0 && !state.partnerPreview)}
           saveLoading={state.savingDonations}
         />
       );
@@ -161,7 +330,7 @@ export function CommunityModerationPage({
           membershipMode={state.membershipMode}
           onAllowAnonymousIdentityChange={state.setAllowAnonymousIdentity}
           onAnonymousIdentityScopeChange={state.setAnonymousIdentityScope}
-          onBackClick={() => navigate(`/c/${communityId}`)}
+          onBackClick={() => navigate(moderationIndexPath)}
           onDefaultAgeGatePolicyChange={state.setDefaultAgeGatePolicy}
           onGateDraftsChange={state.setGateDrafts}
           onMembershipModeChange={state.setMembershipMode}
@@ -177,7 +346,7 @@ export function CommunityModerationPage({
           civilityPolicy={state.civilityPolicy}
           graphicContentPolicy={state.graphicContentPolicy}
           onAdultContentPolicyChange={state.setAdultContentPolicy}
-          onBackClick={() => navigate(`/c/${communityId}`)}
+          onBackClick={() => navigate(moderationIndexPath)}
           onCivilityPolicyChange={state.setCivilityPolicy}
           onGraphicContentPolicyChange={state.setGraphicContentPolicy}
           onProviderSettingsChange={state.setProviderSettings}
@@ -187,13 +356,23 @@ export function CommunityModerationPage({
           saveLoading={state.savingSafety}
         />
       );
+    } else if (section === "agents") {
+      content = (
+        <CommunityAgentPolicyPage
+          onSave={state.handleSaveAgents}
+          onSettingsChange={state.setAgentSettings}
+          saveDisabled={state.savingAgents}
+          settings={state.agentSettings}
+          submitState={state.agentSubmitState}
+        />
+      );
     } else {
       content = (
         <CommunityNamespaceVerificationPage
           activeSessionId={state.effectiveNamespaceSessionId}
           callbacks={state.namespaceVerificationCallbacks}
           initialRootLabel={state.community.route_slug ?? ""}
-          onBackClick={() => navigate(`/c/${communityId}`)}
+          onBackClick={() => navigate(moderationIndexPath)}
           onSessionCleared={() => {
             state.setActiveNamespaceSessionId(null);
             state.setCommunity((current) => current ? { ...current, pending_namespace_verification_session_id: null } : current);
@@ -209,6 +388,14 @@ export function CommunityModerationPage({
         />
       );
     }
+  }
+
+  if (isMobile) {
+    return (
+      <MobileModerationSectionLayout communityId={communityId} title={title}>
+        {content}
+      </MobileModerationSectionLayout>
+    );
   }
 
   return (

@@ -6,6 +6,9 @@ import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
 import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
 import { IconButton } from "@/components/primitives/icon-button";
+import { triggerCommentTapHaptic, triggerLikeToggleHaptic, triggerNavigationTapHaptic } from "@/lib/haptics";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import type { PostThreadComment, PostThreadProps } from "./post-thread.types";
 
@@ -55,7 +58,10 @@ function CommentNode({
     }
     try {
       setReplyBusy(true);
-      await comment.onReplySubmit(trimmed);
+      const result = await comment.onReplySubmit({ body: trimmed, authorMode: "human" });
+      if (result === "blocked") {
+        return;
+      }
       setReplyBody("");
       setReplyOpen(false);
     } finally {
@@ -67,9 +73,9 @@ function CommentNode({
     <article className="space-y-3 px-4 py-4">
       <div
         className={cn(
-          "rounded-[var(--radius-lg)] px-4 py-3 transition-colors",
-          comment.highlighted && "bg-primary/10 ring-1 ring-primary/30",
-          !comment.highlighted && depth === 0 && "bg-muted/20",
+          "px-0 py-0 transition-colors md:rounded-[var(--radius-lg)] md:px-4 md:py-3",
+          comment.highlighted && "bg-primary/10 md:ring-1 md:ring-primary/30",
+          !comment.highlighted && depth === 0 && "md:bg-muted/20",
           !comment.highlighted && depth > 0 && "bg-transparent",
         )}
       >
@@ -130,7 +136,10 @@ function CommentNode({
                       aria-label="Upvote comment"
                       size="sm"
                       variant={comment.viewerVote === "up" ? "secondary" : "ghost"}
-                      onClick={() => comment.onVote?.("up")}
+                      onClick={() => {
+                        triggerLikeToggleHaptic(comment.viewerVote !== "up");
+                        comment.onVote?.("up");
+                      }}
                     >
                       <CaretUp className="size-5" />
                     </IconButton>
@@ -138,7 +147,10 @@ function CommentNode({
                       aria-label="Downvote comment"
                       size="sm"
                       variant={comment.viewerVote === "down" ? "secondary" : "ghost"}
-                      onClick={() => comment.onVote?.("down")}
+                      onClick={() => {
+                        triggerLikeToggleHaptic(comment.viewerVote !== "down");
+                        comment.onVote?.("down");
+                      }}
                     >
                       <CaretDown className="size-5" />
                     </IconButton>
@@ -148,7 +160,10 @@ function CommentNode({
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => setReplyOpen((value) => !value)}
+                    onClick={() => {
+                      triggerCommentTapHaptic();
+                      setReplyOpen((value) => !value);
+                    }}
                   >
                     {comment.replyActionLabel}
                   </Button>
@@ -157,14 +172,14 @@ function CommentNode({
             ) : null}
 
             {replyOpen ? (
-              <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-background/60 p-3">
-                <FormattedTextarea
-                  className="min-h-28"
-                  onChange={setReplyBody}
-                  placeholder={comment.replyPlaceholder}
-                  value={replyBody}
-                />
-                <div className="flex items-center gap-2">
+              <div className="space-y-3 border border-border-soft bg-background/60 p-3 md:rounded-[var(--radius-lg)]">
+              <FormattedTextarea
+                className="min-h-28"
+                onChange={setReplyBody}
+                placeholder={comment.replyPlaceholder}
+                value={replyBody}
+              />
+              <div className="flex items-center gap-2">
                   <Button
                     size="sm"
                     variant="secondary"
@@ -192,7 +207,10 @@ function CommentNode({
               aria-label={collapsed ? "Expand replies" : "Collapse replies"}
               size="sm"
               variant="ghost"
-              onClick={() => setCollapsed((value) => !value)}
+              onClick={() => {
+                triggerNavigationTapHaptic();
+                setCollapsed((value) => !value);
+              }}
             >
               {collapsed ? <CaretDown className="size-5" /> : <CaretUp className="size-5" />}
             </IconButton>
@@ -201,7 +219,14 @@ function CommentNode({
 
         {hasBranch && collapsed ? (
           <div className="mt-3">
-            <Button size="sm" variant="ghost" onClick={() => setCollapsed(false)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                triggerNavigationTapHaptic();
+                setCollapsed(false);
+              }}
+            >
               {comment.moreRepliesLabel ?? `Show ${children.length} replies`}
             </Button>
           </div>
@@ -246,6 +271,8 @@ export function PostThread({
   onRootReplySubmit,
   className,
 }: PostThreadProps) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
   const items = comments ?? replies ?? [];
   const [showOriginalPost, setShowOriginalPost] = React.useState(false);
   const [rootReplyOpen, setRootReplyOpen] = React.useState(false);
@@ -254,6 +281,8 @@ export function PostThread({
   const activePost = showOriginalPost && postOriginal ? postOriginal : post;
   const canToggleOriginalPost = Boolean(postOriginal && postShowOriginalLabel && postShowTranslationLabel);
   const canReplyAtRoot = Boolean(onRootReplySubmit);
+  const resolvedCommentsHeading = commentsHeading === "Comments" ? copy.common.commentsHeading : commentsHeading;
+  const resolvedEmptyCommentsLabel = emptyCommentsLabel === "No comments yet." ? copy.common.noComments : emptyCommentsLabel;
 
   React.useEffect(() => {
     setShowOriginalPost(false);
@@ -266,7 +295,10 @@ export function PostThread({
     }
     try {
       setRootReplyBusy(true);
-      await onRootReplySubmit(trimmed);
+      const result = await onRootReplySubmit({ body: trimmed, authorMode: "human" });
+      if (result === "blocked") {
+        return;
+      }
       setRootReplyBody("");
       setRootReplyOpen(false);
     } finally {
@@ -276,7 +308,7 @@ export function PostThread({
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
+      <div className="overflow-hidden border-y border-border-soft md:rounded-[var(--radius-2xl)] md:border md:bg-card">
         <PostCard {...activePost} className="border-b-0" />
         {canToggleOriginalPost ? (
           <div className="border-t border-border-soft px-4 py-2">
@@ -291,11 +323,11 @@ export function PostThread({
         ) : null}
       </div>
 
-      <section className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
+      <section className="overflow-hidden border-y border-border-soft md:rounded-[var(--radius-2xl)] md:border md:bg-card">
         <div className="border-b border-border-soft px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="text-base font-medium text-foreground" dir={commentsHeadingDir ?? "auto"} lang={commentsHeadingLang}>
-              {commentsHeading}
+              {resolvedCommentsHeading}
             </div>
             {canReplyAtRoot ? (
               <Button
@@ -311,7 +343,7 @@ export function PostThread({
             <p className="mt-2 text-base leading-[1.4] text-muted-foreground">{commentsBody}</p>
           ) : null}
           {rootReplyOpen ? (
-            <div className="mt-3 space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-background/60 p-3">
+            <div className="mt-3 space-y-3 border border-border-soft bg-background/60 p-3 md:rounded-[var(--radius-lg)]">
               <FormattedTextarea
                 className="min-h-28"
                 onChange={setRootReplyBody}
@@ -348,7 +380,7 @@ export function PostThread({
             ))}
           </div>
         ) : (
-          <div className="px-4 py-5 text-base leading-[1.4] text-muted-foreground">{emptyCommentsLabel}</div>
+          <div className="px-4 py-5 text-base leading-[1.4] text-muted-foreground">{resolvedEmptyCommentsLabel}</div>
         )}
       </section>
     </div>

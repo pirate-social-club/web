@@ -11,7 +11,7 @@ export interface PostCardSkeletonProps {
 export function PostCardSkeleton({ showMedia = true, className }: PostCardSkeletonProps) {
   return (
     <article
-      className={cn("flex flex-col gap-3 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-3", className)}
+      className={cn("flex flex-col gap-3 border-b border-border-soft px-4 py-3 md:rounded-[var(--radius-2xl)] md:border md:bg-card", className)}
     >
       <div className="flex items-center gap-2">
         <Skeleton className="size-5 rounded-full" />

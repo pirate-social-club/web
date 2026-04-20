@@ -1,5 +1,8 @@
 import type { PostCardProps } from "@/components/compositions/post-card/post-card.types";
 
+export type PostThreadAuthorMode = "human" | "agent";
+export type PostThreadSubmitResult = "blocked" | "submitted";
+
 export type PostThreadCommentStatus = "published" | "hidden" | "removed" | "deleted";
 
 export interface PostThreadComment {
@@ -26,7 +29,7 @@ export interface PostThreadComment {
   showOriginalLabel?: string;
   showTranslationLabel?: string;
   onLoadMoreReplies?: () => void;
-  onReplySubmit?: (body: string) => Promise<void> | void;
+  onReplySubmit?: (input: { body: string; authorMode: PostThreadAuthorMode }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   onVote?: (direction: "up" | "down") => void;
   children?: PostThreadComment[];
 }
@@ -47,6 +50,6 @@ export interface PostThreadProps {
   rootReplyPlaceholder?: string;
   rootReplyCancelLabel?: string;
   rootReplySubmitLabel?: string;
-  onRootReplySubmit?: (body: string) => Promise<void> | void;
+  onRootReplySubmit?: (input: { body: string; authorMode: PostThreadAuthorMode }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   className?: string;
 }

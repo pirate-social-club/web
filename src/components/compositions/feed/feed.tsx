@@ -11,7 +11,6 @@ import {
   SelectValue,
 } from "@/components/primitives/select";
 import type { PostCardProps } from "@/components/compositions/post-card/post-card.types";
-import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 
 export type FeedSort = "best" | "new" | "top";
@@ -77,7 +76,7 @@ export function TopTimeRangeControl({
       <SelectTrigger
         className={cn(
           pillButtonVariants({ tone: "default" }),
-          "w-full min-w-[10rem] justify-between bg-card py-0 pl-4 pr-3 shadow-none md:w-[11rem]",
+          "w-full min-w-[10rem] justify-between bg-card py-0 pe-3 ps-4 shadow-none md:w-[11rem]",
         )}
       >
         <SelectValue />
@@ -95,7 +94,7 @@ export function TopTimeRangeControl({
 
 function FeedLoadingRows({ count }: { count: number }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-0 md:space-y-3">
       {Array.from({ length: count }, (_, index) => (
         <PostCardSkeleton
           key={`feed-skeleton-${index}`}
@@ -109,7 +108,7 @@ function FeedLoadingRows({ count }: { count: number }) {
 function FeedEmpty({ emptyState }: { emptyState: FeedEmptyState }) {
   return (
     <div className="px-5 py-8 md:px-6">
-      <div className="max-w-2xl space-y-2">
+      <div className="max-w-2xl space-y-2 text-start">
         <h2 className="text-lg font-semibold text-foreground">{emptyState.title}</h2>
         {emptyState.body ? (
           <p className="text-base leading-7 text-muted-foreground">{emptyState.body}</p>
@@ -136,7 +135,6 @@ export function Feed({
   aside,
   className,
 }: FeedProps) {
-  const { isRtl } = useUiLocale();
   const hasItems = items.length > 0;
   const showHeadingBlock = Boolean(eyebrow || title || subtitle || headerAction);
   const showHeaderControls = availableSorts.length > 0 || controls;
@@ -145,70 +143,60 @@ export function Feed({
 
   return (
     <section className={cn("min-w-0", className)}>
-      <div className={cn("flex flex-col", showHeadingBlock || showHeaderControls ? "mb-4 gap-4 md:mb-5" : undefined)}>
-        {showHeadingBlock ? (
-          <div
-            className={cn(
-              "flex flex-col gap-4 md:items-end md:justify-between",
-              isRtl ? "md:flex-row-reverse" : "md:flex-row",
-            )}
-          >
-            <div className={cn("space-y-2", isRtl && "text-right")}>
-              {eyebrow ? (
-                <div className="text-base uppercase tracking-[0.12em] text-muted-foreground">
-                  {eyebrow}
+      <div className="flex gap-6">
+        <div className="min-w-0 flex-1">
+          <div className={cn("flex flex-col", showHeadingBlock || showHeaderControls ? "mb-4 gap-4 md:mb-5" : undefined)}>
+            {showHeadingBlock ? (
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div className="space-y-2 text-start">
+                  {eyebrow ? (
+                    <div className="text-base uppercase tracking-[0.12em] text-muted-foreground">
+                      {eyebrow}
+                    </div>
+                  ) : null}
+                  {title ? (
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                      {title}
+                    </h1>
+                  ) : null}
+                  {subtitle ? (
+                    <p className="max-w-3xl text-base leading-7 text-muted-foreground">
+                      {subtitle}
+                    </p>
+                  ) : null}
                 </div>
-              ) : null}
-              {title ? (
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-                  {title}
-                </h1>
-              ) : null}
-              {subtitle ? (
-                <p className="max-w-3xl text-base leading-7 text-muted-foreground">
-                  {subtitle}
-                </p>
-              ) : null}
-            </div>
-            {headerAction ? <div className={cn("flex flex-wrap gap-3", isRtl && "justify-end")}>{headerAction}</div> : null}
-          </div>
-        ) : null}
-
-        {showHeaderControls ? (
-          <div
-            className={cn(
-              "flex flex-col gap-3 md:items-center md:justify-between",
-              isRtl ? "md:flex-row-reverse" : "md:flex-row",
-            )}
-          >
-            {availableSorts.length > 0 ? (
-              <div className={cn("flex gap-2 overflow-x-auto pb-1", isRtl && "justify-start")} dir={isRtl ? "rtl" : "ltr"}>
-                {availableSorts.map((sort) => (
-                  <PillButton
-                    key={sort.value}
-                    onClick={() => onSortChange?.(sort.value)}
-                    tone={sort.value === activeSort ? "selected" : "default"}
-                  >
-                    {sort.label}
-                  </PillButton>
-                ))}
+                {headerAction ? <div className="flex flex-wrap gap-3">{headerAction}</div> : null}
               </div>
             ) : null}
-            {controls ? <div className={cn("flex flex-wrap gap-2", isRtl && "justify-end")}>{controls}</div> : null}
-          </div>
-        ) : null}
-      </div>
 
-      <div className={cn("flex gap-6", isRtl && "flex-row-reverse")}>
-        <div className="min-w-0 flex-1">
+            {showHeaderControls ? (
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                {availableSorts.length > 0 ? (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {availableSorts.map((sort) => (
+                      <PillButton
+                        key={sort.value}
+                        onClick={() => onSortChange?.(sort.value)}
+                        tone={sort.value === activeSort ? "selected" : "default"}
+                      >
+                        {sort.label}
+                      </PillButton>
+                    ))}
+                  </div>
+                ) : null}
+                {controls ? <div className="flex flex-wrap gap-2">{controls}</div> : null}
+              </div>
+            ) : null}
+          </div>
+
           {showLoadingOnly ? <FeedLoadingRows count={loadingCount} /> : null}
           {!loading && !hasItems && emptyState ? (
-            <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
+            <div className="overflow-hidden border-y border-border-soft md:rounded-[var(--radius-2xl)] md:border md:bg-card">
               <FeedEmpty emptyState={emptyState} />
             </div>
           ) : null}
           {hasItems ? (
-            <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
+            <div className="overflow-hidden border-y border-border-soft md:rounded-[var(--radius-2xl)] md:border md:bg-card">
               {items.map((item, index) => {
                 const { className: postClassName, ...post } = item.post;
 

@@ -267,7 +267,7 @@ const stackedRequirementsCommunity: CommunitySidebarProps = {
   ...minimalCommunity,
   description: "Private access for a narrow membership slice.",
   membershipMode: "gated",
-  requirements: ["Palestine nationality", "18+", "NFT"],
+  requirements: ["Palestine nationality", "18+", "Passport score"],
 };
 
 const manyFlairsCommunity: CommunitySidebarProps = {

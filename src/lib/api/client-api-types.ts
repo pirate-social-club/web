@@ -27,12 +27,8 @@ export type ApiCreateCommunityRequest = {
   governance_mode?: "centralized";
   gate_rules?: Array<{
     scope: "membership" | "viewer" | "posting";
-    gate_family: "identity_proof" | "token_holding";
+    gate_family: "identity_proof";
     gate_type:
-      | "erc721_holding"
-      | "erc1155_holding"
-      | "erc20_balance"
-      | "solana_nft_holding"
       | "unique_human"
       | "age_over_18"
       | "nationality"

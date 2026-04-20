@@ -62,14 +62,6 @@ function formatSidebarRequirement(input: {
       if (locale === "ar") return "درجة Passport";
       if (locale === "zh") return "Passport 分数";
       return "Passport score";
-    case "erc721_holding":
-    case "erc1155_holding":
-    case "solana_nft_holding":
-      return "NFT";
-    case "erc20_balance":
-      if (locale === "ar") return "رصيد الرمز";
-      if (locale === "zh") return "代币余额";
-      return "Token balance";
     case "sanctions_clear":
       if (locale === "ar") return "خلو من العقوبات";
       if (locale === "zh") return "无制裁限制";

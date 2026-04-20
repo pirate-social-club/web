@@ -113,10 +113,15 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     }
   }, [api.communities, communityId, refreshSongCommerce, session?.user.primary_wallet_attachment_id]);
 
-  const startSelfVerification = React.useCallback(async ({ showToastOnError = false }: {
+  const startSelfVerification = React.useCallback(async ({ showToastOnError = false, missingCapabilities }: {
     showToastOnError?: boolean;
+    missingCapabilities?: string[] | null;
   } = {}) => {
-    const requestedCapabilities = eligibility ? getVerificationCapabilitiesForProvider(eligibility, "self") : [];
+    const rawCapabilities = missingCapabilities ?? eligibility?.missing_capabilities ?? [];
+    const requestedCapabilities = getVerificationCapabilitiesForProvider(
+      { missing_capabilities: rawCapabilities.filter((c): c is ApiJoinEligibility["missing_capabilities"][number] => ["unique_human", "age_over_18", "nationality", "gender"].includes(c as string)) },
+      "self",
+    );
     if (requestedCapabilities.length === 0) {
       const message = "This community is missing the Self verification details needed to continue.";
       setSelfError(message);
@@ -209,7 +214,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           if (provider === "very") {
             await startVeryVerification();
           } else {
-            await startSelfVerification();
+            await startSelfVerification({ missingCapabilities: details.missing_capabilities });
           }
           return;
         }
@@ -289,10 +294,12 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           loading: provider === "very" ? veryLoading : selfLoading,
           onClick: async () => {
             if (provider === "very") {
-              await startVeryVerification();
-              closeModal();
+              const result = await startVeryVerification();
+              if (result.started) {
+                closeModal();
+              }
             } else {
-              const result = await startSelfVerification({ showToastOnError: true });
+              const result = await startSelfVerification({ showToastOnError: true, missingCapabilities: gate.eligibility.missing_capabilities });
               if (result.started) {
                 closeModal();
               }

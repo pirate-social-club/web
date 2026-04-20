@@ -12,7 +12,7 @@ import { updateSessionOnboarding } from "@/lib/api/session-store";
 type VeryVerificationState = "not_started" | "pending" | "verified";
 
 export function useVeryVerification(input: {
-  onVerified?: (status: OnboardingStatus) => void;
+  onVerified?: (status: OnboardingStatus) => Promise<void> | void;
   verified: boolean;
   verificationIntent: VerificationIntent;
 }) {
@@ -33,7 +33,12 @@ export function useVeryVerification(input: {
   const refreshOnboardingStatus = React.useCallback(async () => {
     const status = await api.onboarding.getStatus();
     updateSessionOnboarding(status);
-    onVerified?.(status);
+    try {
+      await onVerified?.(status);
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      setVerificationError(apiError?.message ?? "Post-verification step failed");
+    }
     return status;
   }, [api, onVerified]);
 
@@ -86,10 +91,12 @@ export function useVeryVerification(input: {
       });
       setVerificationSessionId(result.verification_session_id);
       await openVeryWidget(result);
+      return { started: true };
     } catch (error: unknown) {
       const apiError = error as ApiError;
       setVerificationError(apiError?.message ?? (error instanceof Error ? error.message : "Could not start Very verification"));
       setVerificationLoading(false);
+      return { started: false };
     } finally {
       if (!widgetRef.current) {
         setVerificationLoading(false);

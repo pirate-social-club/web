@@ -406,8 +406,10 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         loading: provider === "very" ? veryLoading : selfLoading,
         onClick: async () => {
           if (provider === "very") {
-            await startVeryVerification();
-            closeModal();
+            const result = await startVeryVerification();
+            if (result.started) {
+              closeModal();
+            }
           } else {
             const result = await startSelfVerification({
               eligibility: gate.eligibility,

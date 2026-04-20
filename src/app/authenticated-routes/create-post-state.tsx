@@ -57,13 +57,19 @@ type AvailableSigningAgent = {
   privateKeyPem: string;
 };
 
-function resolveAvailableSigningAgent(agents: ApiUserAgent[]): AvailableSigningAgent | null {
+async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<AvailableSigningAgent | null> {
   for (const agent of agents) {
     if (agent.status !== "active" || !agent.current_ownership) {
       continue;
     }
 
-    const storedKey = findStoredOwnedAgentKey(agent.agent_id);
+    let storedKey = null;
+    try {
+      storedKey = await findStoredOwnedAgentKey(agent.agent_id);
+    } catch (error) {
+      console.warn("[create-post-route] could not read local agent key", { agentId: agent.agent_id, error });
+      continue;
+    }
     if (!storedKey) {
       continue;
     }
@@ -136,12 +142,12 @@ export function useCreatePostState(communityId: string) {
       api.communities.getPricingPolicy(communityId).catch(() => null),
       session?.accessToken ? api.agents.list().catch(() => null) : Promise.resolve(null),
     ])
-      .then(([communityResult, eligibilityResult, pricingPolicyResult, ownedAgentsResult]) => {
+      .then(async ([communityResult, eligibilityResult, pricingPolicyResult, ownedAgentsResult]) => {
         if (cancelled) return;
         setCommunity(communityResult);
         setEligibility(eligibilityResult);
         setPricingPolicy(pricingPolicyResult);
-        setAvailableAgent(ownedAgentsResult ? resolveAvailableSigningAgent(ownedAgentsResult.items) : null);
+        setAvailableAgent(ownedAgentsResult ? await resolveAvailableSigningAgent(ownedAgentsResult.items) : null);
       })
       .catch((error: unknown) => {
         if (cancelled) return;

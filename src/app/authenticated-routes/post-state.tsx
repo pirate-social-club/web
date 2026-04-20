@@ -41,12 +41,18 @@ type AvailableSigningAgent = {
 
 type PostReadMode = "authenticated" | "public";
 
-function resolveAvailableSigningAgent(agents: ApiUserAgent[]): AvailableSigningAgent | null {
+async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<AvailableSigningAgent | null> {
   for (const agent of agents) {
     if (agent.status !== "active" || !agent.current_ownership) {
       continue;
     }
-    const storedKey = findStoredOwnedAgentKey(agent.agent_id);
+    let storedKey = null;
+    try {
+      storedKey = await findStoredOwnedAgentKey(agent.agent_id);
+    } catch (error) {
+      console.warn("[post-route] could not read local agent key", { agentId: agent.agent_id, error });
+      continue;
+    }
     if (!storedKey) {
       continue;
     }
@@ -332,7 +338,7 @@ export function usePost(
         setPost(p);
         setCommunity(communityResult);
         setReadMode(nextReadMode);
-        setAvailableAgent(ownedAgentsResult ? resolveAvailableSigningAgent(ownedAgentsResult.items) : null);
+        setAvailableAgent(ownedAgentsResult ? await resolveAvailableSigningAgent(ownedAgentsResult.items) : null);
         if (p.post.identity_mode === "public" && p.post.author_user_id && !authorProfilesByUserId[p.post.author_user_id]) {
           console.warn("[post-route] author handle fallback", {
             postId: p.post.post_id,

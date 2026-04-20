@@ -2,8 +2,8 @@
 
 import type { AgentActionProof } from "@pirate/api-contracts";
 
-const CANONICAL_VERSION = "pirate-agent-action-proof-v1";
-const SIGNATURE_VERSION = "pirate-agent-action-signature-v1";
+const CANONICAL_VERSION = "pirate-agent-action-proof-v2";
+const SIGNATURE_VERSION = "pirate-agent-action-signature-v2";
 const textEncoder = new TextEncoder();
 
 type CanonicalJson =
@@ -48,14 +48,35 @@ function compareUtf8Ascending(left: string, right: string): number {
 }
 
 function sortJsonValue(value: CanonicalJson): CanonicalJson {
+  return sortJsonValueWithSeen(value, new WeakSet<object>());
+}
+
+function sortJsonValueWithSeen(value: CanonicalJson, seen: WeakSet<object>): CanonicalJson {
   if (Array.isArray(value)) {
-    return value.map((item) => sortJsonValue(item));
+    return value.map((item) => sortJsonValueWithSeen(item, seen));
   }
   if (value && typeof value === "object") {
+    if (seen.has(value)) {
+      throw new Error("Agent action proof body cannot contain circular references.");
+    }
+    seen.add(value);
     const entries = Object.entries(value).sort(([left], [right]) => compareUtf8Ascending(left, right));
-    return Object.fromEntries(entries.map(([key, child]) => [key, sortJsonValue(child)]));
+    return Object.fromEntries(entries.map(([key, child]) => [key, sortJsonValueWithSeen(child, seen)]));
   }
   return value;
+}
+
+function resolveCanonicalUrl(value: string): URL {
+  const trimmed = value.trim();
+  try {
+    return new URL(trimmed);
+  } catch {
+    const browserOrigin = globalThis.location?.origin;
+    if (!browserOrigin) {
+      throw new Error("Agent action proof URLs must be absolute when browser origin is unavailable.");
+    }
+    return new URL(trimmed, browserOrigin);
+  }
 }
 
 function canonicalizeBody(body: unknown): string {
@@ -118,8 +139,9 @@ export function canonicalizeAgentActionProofRequest(input: {
   url: string;
   body?: unknown;
 }): string {
-  const url = new URL(input.url, "http://pirate.local");
+  const url = resolveCanonicalUrl(input.url);
   const method = input.method.trim().toUpperCase();
+  const origin = url.origin;
   const path = normalizePath(url.pathname);
   const query = canonicalizeQuery(url.searchParams);
   const body = canonicalizeBody(input.body);
@@ -127,6 +149,7 @@ export function canonicalizeAgentActionProofRequest(input: {
   return [
     CANONICAL_VERSION,
     method,
+    origin,
     path,
     query,
     body,

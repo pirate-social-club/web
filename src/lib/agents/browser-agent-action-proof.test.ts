@@ -33,7 +33,7 @@ describe("browser agent action proof", () => {
   test("canonicalizes request bodies recursively with UTF-8 key ordering", () => {
     const canonical = canonicalizeAgentActionProofRequest({
       method: "post",
-      url: "/communities/cmt_test/posts?z=1&%C3%A4=2",
+      url: "https://pirate.test/communities/cmt_test/posts?z=1&%C3%A4=2",
       body: {
         body: "Hello",
         nested: { z: 1, ä: 2 },
@@ -42,8 +42,9 @@ describe("browser agent action proof", () => {
       },
     });
 
-    expect(canonical).toContain("pirate-agent-action-proof-v1");
+    expect(canonical).toContain("pirate-agent-action-proof-v2");
     expect(canonical).toContain("POST");
+    expect(canonical).toContain("https://pirate.test");
     expect(canonical).toContain("/communities/cmt_test/posts");
     expect(canonical).toContain("z=1&%C3%A4=2");
     expect(canonical).toContain('{"body":"Hello","nested":{"z":1,"ä":2},"post_type":"text","title":"Test"}');
@@ -56,7 +57,7 @@ describe("browser agent action proof", () => {
     });
     const proof = await buildAgentActionProof({
       method: "POST",
-      url: "/communities/cmt_test/posts",
+      url: "https://pirate.test/communities/cmt_test/posts",
       body: {
         body: "Hello from agent",
         post_type: "text",
@@ -66,7 +67,7 @@ describe("browser agent action proof", () => {
     });
     const expectedHash = await computeAgentActionProofHash({
       method: "POST",
-      url: "/communities/cmt_test/posts",
+      url: "https://pirate.test/communities/cmt_test/posts",
       body: {
         body: "Hello from agent",
         post_type: "text",
@@ -94,5 +95,38 @@ describe("browser agent action proof", () => {
 
     expect(proof.canonical_request_hash).toBe(expectedHash);
     expect(verified).toBe(true);
+  });
+
+  test("binds the canonical request hash to the request origin", async () => {
+    const httpHash = await computeAgentActionProofHash({
+      method: "POST",
+      url: "http://pirate.test/communities/cmt_test/posts",
+      body: { title: "Ship log" },
+    });
+    const httpsHash = await computeAgentActionProofHash({
+      method: "POST",
+      url: "https://pirate.test/communities/cmt_test/posts",
+      body: { title: "Ship log" },
+    });
+
+    expect(httpHash === httpsHash).toBe(false);
+  });
+
+  test("rejects circular JSON bodies", () => {
+    const body: Record<string, unknown> = { title: "loop" };
+    body.self = body;
+
+    let thrown: unknown = null;
+    try {
+      canonicalizeAgentActionProofRequest({
+        method: "POST",
+        url: "https://pirate.test/example",
+        body,
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown instanceof Error ? thrown.message : String(thrown)).toContain("circular references");
   });
 });

@@ -429,7 +429,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
 
       if (completedSession.status === "verified" && completedSession.agent_id) {
         const now = new Date().toISOString();
-        saveStoredOwnedAgentKey({
+        await saveStoredOwnedAgentKey({
           agentId: completedSession.agent_id,
           displayName: pendingRegistration.displayName,
           ownershipProvider: "clawkey",

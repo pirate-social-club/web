@@ -9,7 +9,7 @@
     "openNavigationAriaLabel": "افتح التنقل",
     "profileAriaLabel": "افتح الملف الشخصي",
     "searchAriaLabel": "ابحث في بايرت",
-    "searchPlaceholder": "ابحث في Pirate",
+    "searchPlaceholder": "ابحث في بايرت",
     "searchUnavailableToast": "البحث غير متاح بعد."
   },
   "appSidebar": {
@@ -34,6 +34,14 @@
           { "id": "c/builders", "label": "c/البناؤون" },
           { "id": "c/mixes", "label": "c/الميكسات" },
           { "id": "c/samples", "label": "c/السامبلز" }
+        ]
+      },
+      {
+        "id": "moderation",
+        "label": "الإشراف",
+        "items": [
+          { "id": "c/pirate", "label": "c/بايرت" },
+          { "id": "c/builders", "label": "c/البناؤون" }
         ]
       }
     ],

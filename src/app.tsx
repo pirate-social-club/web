@@ -13,15 +13,19 @@ import {
   type AppSidebarSection,
 } from "@/components/compositions/app-sidebar/app-sidebar";
 import { Toaster, toast } from "@/components/primitives/sonner";
+import { Spinner } from "@/components/primitives/spinner";
 import { SidebarInset, SidebarProvider } from "@/components/compositions/sidebar/sidebar";
 import { ApiProvider, useSessionRevalidation } from "@/lib/api";
 import { PirateAuthProvider, usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
-import { useKnownCommunities } from "@/lib/known-communities-store";
 import { useSession } from "@/lib/api/session-store";
 import { useNotificationSummary } from "@/lib/notifications/use-notification-summary";
+import { useSidebarCommunities, type SidebarCommunitySummary } from "@/lib/owned-communities";
+import { resolveResourceHref } from "@/lib/resource-links";
 import { UiLocaleProvider, useUiLocale } from "@/lib/ui-locale";
-import { isUiLocaleCode, resolveLocaleDirection, type UiDirection, type UiLocaleCode } from "@/lib/ui-locale-core";
+import { resolveLocaleDirection, type UiDirection, type UiLocaleCode } from "@/lib/ui-locale-core";
+import { buildCommunityPath } from "@/lib/community-routing";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
+import { buildCommunityModerationIndexPath } from "@/app/authenticated-routes/moderation-helpers";
 
 const LazyAuthenticatedRouteRenderer = React.lazy(async () => {
   const mod = await import("@/app/authenticated-route-renderer");
@@ -53,6 +57,18 @@ function resolveCreatePostPath(route: AppRoute): string | null {
   return "/submit";
 }
 
+function resolveMobileBackPath(route: AppRoute): string | null {
+  if (route.kind === "community-moderation") {
+    return buildCommunityModerationIndexPath(route.communityId);
+  }
+
+  if (route.kind === "community-moderation-index") {
+    return buildCommunityPath(route.communityId);
+  }
+
+  return null;
+}
+
 function useClientReady(): boolean {
   const [ready, setReady] = React.useState(false);
 
@@ -63,36 +79,59 @@ function useClientReady(): boolean {
   return ready;
 }
 
-function formatCommunitySidebarLabel(displayName: string): string {
-  const trimmed = displayName.trim();
-  if (!trimmed) return "c/unknown";
-  if (trimmed.toLowerCase().startsWith("c/")) return trimmed;
-  return `c/${trimmed}`;
+function formatCommunitySidebarLabel(
+  communityId: string,
+  routeSlug?: string | null,
+): string {
+  const trimmedSlug = routeSlug?.trim();
+  if (trimmedSlug) {
+    return trimmedSlug.toLowerCase().startsWith("c/") ? trimmedSlug : `c/${trimmedSlug}`;
+  }
+
+  const trimmedId = communityId.trim();
+  if (!trimmedId) return "c/unknown";
+  if (trimmedId.length <= 14) return `c/${trimmedId}`;
+  return `c/${trimmedId.slice(0, 7)}…${trimmedId.slice(-4)}`;
 }
 
 function buildSidebarSections(
   messages: ShellMessages["appSidebar"],
-  communities: ReturnType<typeof useKnownCommunities>,
+  recentCommunities: SidebarCommunitySummary[],
+  moderatedCommunities: SidebarCommunitySummary[],
 ): AppSidebarSection[] {
-  if (communities.length === 0) {
-    return [];
-  }
+  const getSectionLabel = (sectionId: string, fallback: string) =>
+    messages.sections.find((section) => section.id === sectionId)?.label ?? fallback;
+  const sections: AppSidebarSection[] = [];
 
-  return [
-    {
+  if (recentCommunities.length > 0) {
+    sections.push({
       id: "recent",
-      label:
-        messages.sections.find((section) => section.id === "recent")?.label
-        ?? "Recent",
+      label: getSectionLabel("recent", "Recent"),
       defaultOpen: true,
-      items: communities.map((community) => ({
+      items: recentCommunities.map((community) => ({
         avatarSrc: community.avatarSrc,
         id: `c/${community.communityId}`,
-        label: formatCommunitySidebarLabel(community.displayName),
-        onSelect: () => navigate(`/c/${community.communityId}`),
+        label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
+        onSelect: () => navigate(buildCommunityPath(community.communityId, community.routeSlug)),
       })),
-    },
-  ];
+    });
+  }
+
+  if (moderatedCommunities.length > 0) {
+    sections.push({
+      id: "moderation",
+      label: getSectionLabel("moderation", "Moderation"),
+      defaultOpen: true,
+      items: moderatedCommunities.map((community) => ({
+        avatarSrc: community.avatarSrc,
+        id: `moderation/${community.communityId}`,
+        label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
+        onSelect: () => navigate(buildCommunityModerationIndexPath(community.communityId)),
+      })),
+    });
+  }
+
+  return sections;
 }
 
 function buildPrimaryItems(messages: ShellMessages["appSidebar"]): AppSidebarPrimaryItem[] {
@@ -116,6 +155,17 @@ function buildPrimaryItems(messages: ShellMessages["appSidebar"]): AppSidebarPri
       onSelect: () => navigate("/communities/new"),
     },
   ];
+}
+
+function buildResourceItems(messages: ShellMessages["appSidebar"]) {
+  return messages.resourceItems.map((item) => ({
+    ...item,
+    onSelect: () => {
+      const href = resolveResourceHref(item.id);
+      if (!href || typeof window === "undefined") return;
+      window.location.assign(href);
+    },
+  }));
 }
 
 function activeSidebarItem(route: AppRoute): string | undefined {
@@ -172,12 +222,10 @@ function resolveSessionAvatarFallback(session: ReturnType<typeof useSession>) {
 
 function AppShellHeader({
   copy,
-  dir,
   route,
   hasUnread,
 }: {
   copy: ShellMessages;
-  dir: "ltr" | "rtl";
   route: AppRoute;
   hasUnread: boolean;
 }) {
@@ -188,15 +236,18 @@ function AppShellHeader({
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
   const showConnectAction = clientReady && !session;
   const createPostPath = resolveCreatePostPath(route);
+  const mobileBackPath = resolveMobileBackPath(route);
   const disableCreateAction = !clientReady;
-  const useAppSidebarTrigger = route.kind !== "community-moderation";
+  const hideHeaderBrand = route.kind === "community-moderation" || route.kind === "community-moderation-index";
+  const useAppSidebarTrigger = route.kind !== "community-moderation" && route.kind !== "community-moderation-index";
 
   return (
     <AppHeader
       avatarFallback={avatarFallback}
       disableCreateAction={disableCreateAction}
-      dir={dir}
+      hideBrand={hideHeaderBrand}
       labels={{
+        backAriaLabel: "Back",
         connectLabel: copy.appHeader.connectLabel,
         createLabel: copy.appHeader.createLabel,
         homeAriaLabel: copy.appHeader.homeAriaLabel,
@@ -206,6 +257,7 @@ function AppShellHeader({
         searchAriaLabel: copy.appHeader.searchAriaLabel,
         searchPlaceholder: copy.appHeader.searchPlaceholder,
       }}
+      onBackClick={mobileBackPath ? () => navigate(mobileBackPath) : undefined}
       onCreateClick={createPostPath ? () => navigate(createPostPath) : undefined}
       onHomeClick={() => navigate("/")}
       onNotificationsClick={() => navigate("/inbox")}
@@ -267,7 +319,7 @@ function AppShellMobileNav({
 function RouteContentFallback() {
   return (
     <div className="flex min-h-[40vh] w-full items-center justify-center" aria-busy="true">
-      <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-primary" />
+      <Spinner className="size-6" />
     </div>
   );
 }
@@ -288,42 +340,36 @@ function SessionRevalidator({ children }: { children: React.ReactNode }) {
 function NotificationShell({
   copy,
   effectiveDir,
-  isRtl,
   isCommunityModerationRoute,
-  knownCommunities,
   primaryItems,
-  sections,
   route,
   session,
 }: {
   copy: ShellMessages;
   effectiveDir: "ltr" | "rtl";
-  isRtl: boolean;
   isCommunityModerationRoute: boolean;
-  knownCommunities: ReturnType<typeof useKnownCommunities>;
   primaryItems: AppSidebarPrimaryItem[];
-  sections: AppSidebarSection[];
   route: AppRoute;
   session: ReturnType<typeof useSession>;
 }) {
   const notificationSummary = useNotificationSummary();
+  const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
+  const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities);
+  const resourceItems = buildResourceItems(copy.appSidebar);
 
   return (
     <SidebarProvider
       className="flex-col"
       defaultOpen
-      dir={isRtl ? "rtl" : "ltr"}
+      dir={effectiveDir}
       style={{
         "--sidebar-width": "15.5rem",
         "--sidebar-width-icon": "3.75rem",
       } as React.CSSProperties}
     >
       <>
-        <AppShellHeader copy={copy} dir={effectiveDir} route={route} hasUnread={notificationSummary.has_unread} />
-        <div
-          className="flex min-h-0 w-full flex-1"
-          dir={effectiveDir}
-        >
+        <AppShellHeader copy={copy} route={route} hasUnread={notificationSummary.has_unread} />
+        <div className="flex min-h-0 w-full flex-1">
           {isCommunityModerationRoute ? (
             <main className="flex min-h-0 w-full flex-1">
               <React.Suspense fallback={<RouteContentFallback />}>
@@ -338,18 +384,15 @@ function NotificationShell({
                 homeAriaLabel={copy.appSidebar.homeAriaLabel}
                 onHomeClick={() => navigate("/")}
                 primaryItems={primaryItems}
-                resourceItems={copy.appSidebar.resourceItems}
+                resourceItems={resourceItems}
                 resourcesLabel={copy.appSidebar.resourcesLabel}
                 sections={sections}
-                side={isRtl ? "right" : "left"}
+                side="start"
               />
               <SidebarInset className="min-h-0">
-                <main
-                  className="flex w-full flex-1 px-3 pb-24 pt-4 md:pb-8 md:px-5 md:pt-6 lg:px-8"
-                  dir={effectiveDir}
-                >
+                <main className="flex w-full flex-1 px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.5rem)] md:px-5 md:pb-8 md:pt-6 lg:px-8">
                   <React.Suspense fallback={<RouteContentFallback />}>
-                    {route.kind === "community" && !session
+                    {(route.kind === "community" || route.kind === "post") && !session
                       ? <LazyPublicRouteRenderer route={route} />
                       : <LazyAuthenticatedRouteRenderer route={route} />}
                   </React.Suspense>
@@ -365,31 +408,16 @@ function NotificationShell({
   );
 }
 
-function resolveSessionUiLocale(session: ReturnType<typeof useSession>): UiLocaleCode | null {
-  const preferredLocale = session?.profile?.preferred_locale ?? "";
-  return isUiLocaleCode(preferredLocale) ? preferredLocale : null;
-}
-
 function PirateAppShell({ initialHost, initialPath }: { initialHost?: string; initialPath?: string }) {
-  const { locale, setLocale } = useUiLocale();
+  const { locale } = useUiLocale();
   const route = useRoute(initialPath, initialHost);
   const session = useSession();
-  const sessionLocale = resolveSessionUiLocale(session);
-  const effectiveLocale = sessionLocale ?? locale;
+  const effectiveLocale = locale;
   const effectiveDir = resolveLocaleDirection(effectiveLocale);
-  const isRtl = effectiveDir === "rtl";
   const copy = getLocaleMessages(effectiveLocale, "shell");
-  const isCommunityModerationRoute = route.kind === "community-moderation";
+  const isCommunityModerationRoute = route.kind === "community-moderation" || route.kind === "community-moderation-index";
   const isPublicProfileRoute = route.kind === "public-profile";
-  const knownCommunities = useKnownCommunities();
   const primaryItems = buildPrimaryItems(copy.appSidebar);
-  const sections = buildSidebarSections(copy.appSidebar, knownCommunities);
-
-  React.useEffect(() => {
-    if (sessionLocale && sessionLocale !== locale) {
-      setLocale(sessionLocale);
-    }
-  }, [locale, sessionLocale, setLocale]);
 
   return (
     <ApiProvider initialHost={initialHost}>
@@ -410,11 +438,8 @@ function PirateAppShell({ initialHost, initialPath }: { initialHost?: string; in
             <NotificationShell
               copy={copy}
               effectiveDir={effectiveDir}
-              isRtl={isRtl}
               isCommunityModerationRoute={isCommunityModerationRoute}
-              knownCommunities={knownCommunities}
               primaryItems={primaryItems}
-              sections={sections}
               route={route}
               session={session}
             />

@@ -35,6 +35,14 @@
           { "id": "c/mixes", "label": "c/mixes" },
           { "id": "c/samples", "label": "c/samples" }
         ]
+      },
+      {
+        "id": "moderation",
+        "label": "Moderation",
+        "items": [
+          { "id": "c/pirate", "label": "c/pirate" },
+          { "id": "c/builders", "label": "c/builders" }
+        ]
       }
     ],
     "resourceItems": [

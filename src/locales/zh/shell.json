@@ -1,0 +1,73 @@
+{
+  "appHeader": {
+    "connectLabel": "连接",
+    "createEmptyLabel": "最近没有社区。",
+    "createLabel": "发布",
+    "createPickerTitle": "选择要发布到的社区",
+    "homeAriaLabel": "返回首页",
+    "notificationsAriaLabel": "通知",
+    "openNavigationAriaLabel": "打开导航",
+    "profileAriaLabel": "打开个人资料",
+    "searchAriaLabel": "搜索 Pirate",
+    "searchPlaceholder": "搜索 Pirate",
+    "searchUnavailableToast": "搜索功能暂未开放。"
+  },
+  "appSidebar": {
+    "brandLabel": "Pirate",
+    "createCommunityLabel": "创建社区",
+    "homeAriaLabel": "返回首页",
+    "homeLabel": "首页",
+    "resourcesLabel": "资源",
+    "sections": [
+      {
+        "id": "recent",
+        "label": "最近访问",
+        "items": [
+          { "id": "c/club1", "label": "c/俱乐部1" },
+          { "id": "c/pirate-radio", "label": "c/海盗电台" }
+        ]
+      },
+      {
+        "id": "communities",
+        "label": "社区",
+        "items": [
+          { "id": "c/builders", "label": "c/创作者" },
+          { "id": "c/mixes", "label": "c/混音" },
+          { "id": "c/samples", "label": "c/采样" }
+        ]
+      },
+      {
+        "id": "moderation",
+        "label": "管理",
+        "items": [
+          { "id": "c/pirate", "label": "c/海盗" },
+          { "id": "c/builders", "label": "c/创作者" }
+        ]
+      }
+    ],
+    "resourceItems": [
+      { "id": "blog", "label": "博客" },
+      { "id": "terms-of-service", "label": "服务条款" },
+      { "id": "privacy-policy", "label": "隐私政策" }
+    ],
+    "yourCommunitiesLabel": "你的社区"
+  },
+  "mobileFooter": {
+    "createLabel": "发布",
+    "homeLabel": "首页",
+    "inboxAriaLabel": "收件箱",
+    "inboxLabel": "收件箱",
+    "primaryNavAriaLabel": "主导航",
+    "profileAriaLabel": "个人资料",
+    "profileLabel": "我的"
+  },
+  "storybook": {
+    "contentAreaLabel": "内容区域",
+    "desktopHeaderBody": "页头应独立使用。把它放进真实应用外壳，不要塞进引导卡片。",
+    "mobileHeaderBody": "仅移动端页头。",
+    "mobileFooterBody": "仅移动端底部导航。",
+    "mobileChromeLead": "独立外壳预览。",
+    "mobileChromeFollow": "页头和底部导航应保持可复用，并与引导流程分离。",
+    "standaloneDesktopSearchPlaceholder": "搜索任何内容"
+  }
+}

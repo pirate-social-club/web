@@ -66,6 +66,29 @@ export const GENERATED_LOCALE_CATALOGS = {
         "rulesLabel": "Rules",
         "title": "Community"
       },
+      "interactionGate": {
+        "blockedReplyDescription": "This community's requirements block you from replying right now.",
+        "blockedVoteDescription": "This community's requirements block you from voting right now.",
+        "cantReplyHereTitle": "You can't reply here",
+        "cantVoteHereTitle": "You can't vote here",
+        "close": "Close",
+        "connectToContinue": "Connect to continue.",
+        "couldNotCheckRequirements": "Couldn't check this community's interaction requirements.",
+        "joinInCommunity": "{joinLabel} in {communityName}",
+        "joinToReplyDescription": "{joinLabel} in {communityName} before you reply.",
+        "joinToReplyTitle": "{joinLabel} to reply",
+        "joinToVoteDescription": "{joinLabel} in {communityName} before you vote.",
+        "joinToVoteTitle": "{joinLabel} to vote",
+        "openCommunity": "Open {communityName}",
+        "readyDescription": "You can interact here.",
+        "readyTitle": "Ready",
+        "verifyInCommunity": "Verify in {communityName}",
+        "verifyToReplyDescription": "Complete ID check to reply here.",
+        "verifyToReplyTitle": "Verify to reply",
+        "verifyToVoteDescription": "Complete ID check to vote here.",
+        "verifyToVoteTitle": "Verify to vote",
+        "bannedDescription": "You are not eligible to join this community."
+      },
       "createPost": {
         "access": {
           "paidDescription": "Preview in feed. Full track unlocks after purchase.",
@@ -405,6 +428,20 @@ export const GENERATED_LOCALE_CATALOGS = {
                 "label": "c/samples"
               }
             ]
+          },
+          {
+            "id": "moderation",
+            "label": "Moderation",
+            "items": [
+              {
+                "id": "c/pirate",
+                "label": "c/pirate"
+              },
+              {
+                "id": "c/builders",
+                "label": "c/builders"
+              }
+            ]
           }
         ],
         "resourceItems": [
@@ -504,6 +541,29 @@ export const GENERATED_LOCALE_CATALOGS = {
         "requirementsLabel": "المتطلبات",
         "rulesLabel": "القواعد",
         "title": "المجتمع"
+      },
+      "interactionGate": {
+        "blockedReplyDescription": "متطلبات هذا المجتمع تمنعك من الرد الآن.",
+        "blockedVoteDescription": "متطلبات هذا المجتمع تمنعك من التصويت الآن.",
+        "cantReplyHereTitle": "لا يمكنك الرد هنا",
+        "cantVoteHereTitle": "لا يمكنك التصويت هنا",
+        "close": "إغلاق",
+        "connectToContinue": "اتصل للمتابعة.",
+        "couldNotCheckRequirements": "تعذر التحقق من متطلبات التفاعل في هذا المجتمع.",
+        "joinInCommunity": "{joinLabel} في {communityName}",
+        "joinToReplyDescription": "{joinLabel} في {communityName} قبل أن ترد.",
+        "joinToReplyTitle": "{joinLabel} قبل الرد",
+        "joinToVoteDescription": "{joinLabel} في {communityName} قبل أن تصوّت.",
+        "joinToVoteTitle": "{joinLabel} قبل التصويت",
+        "openCommunity": "افتح {communityName}",
+        "readyDescription": "يمكنك التفاعل هنا.",
+        "readyTitle": "جاهز",
+        "verifyInCommunity": "تحقق في {communityName}",
+        "verifyToReplyDescription": "أكمل فحص الهوية للرد هنا.",
+        "verifyToReplyTitle": "تحقق قبل الرد",
+        "verifyToVoteDescription": "أكمل فحص الهوية للتصويت هنا.",
+        "verifyToVoteTitle": "تحقق قبل التصويت",
+        "bannedDescription": "أنت غير مؤهل للانضمام إلى هذا المجتمع."
       },
       "createPost": {
         "access": {
@@ -844,6 +904,20 @@ export const GENERATED_LOCALE_CATALOGS = {
                 "label": "c/السامبلز"
               }
             ]
+          },
+          {
+            "id": "moderation",
+            "label": "الإشراف",
+            "items": [
+              {
+                "id": "c/pirate",
+                "label": "c/بايرت"
+              },
+              {
+                "id": "c/builders",
+                "label": "c/البناؤون"
+              }
+            ]
           }
         ],
         "resourceItems": [
@@ -943,6 +1017,29 @@ export const GENERATED_LOCALE_CATALOGS = {
         "requirementsLabel": "要求",
         "rulesLabel": "规则",
         "title": "社区"
+      },
+      "interactionGate": {
+        "blockedReplyDescription": "这个社区的要求当前不允许你回复。",
+        "blockedVoteDescription": "这个社区的要求当前不允许你投票。",
+        "cantReplyHereTitle": "你不能在这里回复",
+        "cantVoteHereTitle": "你不能在这里投票",
+        "close": "关闭",
+        "connectToContinue": "连接后继续。",
+        "couldNotCheckRequirements": "无法检查这个社区的互动要求。",
+        "joinInCommunity": "在 {communityName} 中{joinLabel}",
+        "joinToReplyDescription": "在回复前，先在 {communityName} 中{joinLabel}。",
+        "joinToReplyTitle": "{joinLabel}后回复",
+        "joinToVoteDescription": "在投票前，先在 {communityName} 中{joinLabel}。",
+        "joinToVoteTitle": "{joinLabel}后投票",
+        "openCommunity": "打开 {communityName}",
+        "readyDescription": "你可以在这里互动。",
+        "readyTitle": "已就绪",
+        "verifyInCommunity": "在 {communityName} 中验证",
+        "verifyToReplyDescription": "完成身份验证后即可在这里回复。",
+        "verifyToReplyTitle": "验证后回复",
+        "verifyToVoteDescription": "完成身份验证后即可在这里投票。",
+        "verifyToVoteTitle": "验证后投票",
+        "bannedDescription": "你没有资格加入这个社区。"
       },
       "createPost": {
         "access": {
@@ -1281,6 +1378,20 @@ export const GENERATED_LOCALE_CATALOGS = {
               {
                 "id": "c/samples",
                 "label": "c/采样"
+              }
+            ]
+          },
+          {
+            "id": "moderation",
+            "label": "管理",
+            "items": [
+              {
+                "id": "c/pirate",
+                "label": "c/海盗"
+              },
+              {
+                "id": "c/builders",
+                "label": "c/创作者"
               }
             ]
           }

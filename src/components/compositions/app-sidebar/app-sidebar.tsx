@@ -20,12 +20,14 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/compositions/sidebar/sidebar";
 import {
   resolveDirectionalSide,
   useUiLocale,
   type UiPlacement,
 } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 
 type SidebarIcon = React.ComponentType<React.ComponentProps<typeof House>>;
@@ -94,20 +96,50 @@ const DEFAULT_RESOURCE_ITEMS: readonly AppSidebarSectionItem[] = [
 
 function SidebarSectionBlock({
   activeItemId,
+  onItemSelect,
   sections,
 }: {
   activeItemId?: string;
+  onItemSelect: (onSelect?: () => void) => void;
   sections: readonly AppSidebarSection[];
 }) {
-  const defaultValue = sections
-    .filter((section) => section.defaultOpen)
-    .map((section) => section.id);
+  const defaultValue = React.useMemo(
+    () => sections
+      .filter((section) => section.defaultOpen)
+      .map((section) => section.id),
+    [sections],
+  );
+  const [openSectionIds, setOpenSectionIds] = React.useState<string[]>(defaultValue);
+  const previousSectionIdsRef = React.useRef<string[]>(sections.map((section) => section.id));
+
+  React.useEffect(() => {
+    const sectionIds = sections.map((section) => section.id);
+    const previousSectionIds = new Set(previousSectionIdsRef.current);
+
+    setOpenSectionIds((current) => {
+      const validOpenIds = current.filter((id) => sectionIds.includes(id));
+      const nextOpenIds = [...validOpenIds];
+
+      for (const section of sections) {
+        if (!section.defaultOpen || previousSectionIds.has(section.id) || nextOpenIds.includes(section.id)) {
+          continue;
+        }
+
+        nextOpenIds.push(section.id);
+      }
+
+      return nextOpenIds;
+    });
+
+    previousSectionIdsRef.current = sectionIds;
+  }, [sections]);
 
   return (
     <Accordion
       className="px-4 group-data-[collapsible=icon]:hidden"
-      defaultValue={defaultValue}
+      onValueChange={setOpenSectionIds}
       type="multiple"
+      value={openSectionIds}
     >
       {sections.map((section) => (
         <AccordionItem
@@ -127,7 +159,7 @@ function SidebarSectionBlock({
                       <SidebarMenuButton
                         className={nestedRowClassName}
                         isActive={item.id === activeItemId}
-                        onClick={item.onSelect}
+                        onClick={() => onItemSelect(item.onSelect)}
                         tooltip={item.label}
                       >
                         {item.avatarSrc ? (
@@ -156,10 +188,12 @@ function SidebarResources({
   activeItemId,
   items,
   label = "Resources",
+  onItemSelect,
 }: {
   activeItemId?: string;
   items: readonly AppSidebarSectionItem[];
   label?: string;
+  onItemSelect: (onSelect?: () => void) => void;
 }) {
   return (
     <SidebarGroup className="gap-0 px-4 py-0 group-data-[collapsible=icon]:hidden">
@@ -171,7 +205,7 @@ function SidebarResources({
               <SidebarMenuButton
                 className={nestedRowClassName}
                 isActive={item.id === activeItemId}
-                onClick={item.onSelect}
+                onClick={() => onItemSelect(item.onSelect)}
                 tooltip={item.label}
               >
                 <span>{item.label}</span>
@@ -200,23 +234,39 @@ export interface AppSidebarProps
 
 export function AppSidebar({
   activeItemId = "home",
-  brandLabel = "Pirate",
+  brandLabel,
   className,
-  homeAriaLabel = "Go to home",
+  homeAriaLabel,
   onHomeClick,
-  primaryItems = DEFAULT_PRIMARY_ITEMS,
-  resourceItems = DEFAULT_RESOURCE_ITEMS,
-  resourcesLabel = "Resources",
-  sections = DEFAULT_SECTIONS,
+  primaryItems,
+  resourceItems,
+  resourcesLabel,
+  sections,
   side = "start",
   ...props
 }: AppSidebarProps) {
-  const { dir } = useUiLocale();
-  const resolvedPrimaryItems = primaryItems.map((item) =>
+  const { dir, locale } = useUiLocale();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const copy = getLocaleMessages(locale, "shell");
+  const handleItemSelect = React.useCallback((onSelect?: () => void) => {
+    onSelect?.();
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [isMobile, setOpenMobile]);
+  const resolvedPrimaryItems = (primaryItems ?? DEFAULT_PRIMARY_ITEMS).map((item) => {
+    if (item.id === "home") return { ...item, label: copy.appSidebar.homeLabel };
+    if (item.id === "your-communities") return { ...item, label: copy.appSidebar.yourCommunitiesLabel };
+    if (item.id === "create-community") return { ...item, label: copy.appSidebar.createCommunityLabel };
+    return item;
+  }).map((item) =>
     item.id === "home" && onHomeClick && item.onSelect === undefined
       ? { ...item, onSelect: onHomeClick }
       : item,
   );
+  const resolvedSections = sections ?? copy.appSidebar.sections;
+  const resolvedResourceItems = resourceItems ?? copy.appSidebar.resourceItems;
+  const resolvedResourcesLabel = resourcesLabel ?? copy.appSidebar.resourcesLabel;
   const resolvedSide = resolveDirectionalSide(side, dir);
 
   return (
@@ -239,7 +289,7 @@ export function AppSidebar({
                     <SidebarMenuButton
                       className={topLevelRowClassName}
                       isActive={active}
-                      onClick={item.onSelect}
+                      onClick={() => handleItemSelect(item.onSelect)}
                       tooltip={item.label}
                     >
                       <Icon className="size-5" weight={active ? "fill" : "regular"} />
@@ -252,14 +302,19 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarSectionBlock activeItemId={activeItemId} sections={sections} />
+        <SidebarSectionBlock
+          activeItemId={activeItemId}
+          onItemSelect={handleItemSelect}
+          sections={resolvedSections}
+        />
 
         <SidebarSeparator className="mx-4 group-data-[collapsible=icon]:hidden" />
 
         <SidebarResources
           activeItemId={activeItemId}
-          items={resourceItems}
-          label={resourcesLabel}
+          items={resolvedResourceItems}
+          label={resolvedResourcesLabel}
+          onItemSelect={handleItemSelect}
         />
       </SidebarContent>
 

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  __resetAgentKeyStoreForTests,
   findStoredOwnedAgentKey,
   listStoredOwnedAgentKeys,
   removeStoredOwnedAgentKey,
@@ -129,6 +130,7 @@ class MockIndexedDbFactory {
 }
 
 const originalIndexedDb = globalThis.indexedDB;
+const originalLocalStorage = globalThis.localStorage;
 
 const EXAMPLE_RECORD: StoredOwnedAgentKey = {
   agentId: "agt_test_123",
@@ -155,8 +157,36 @@ describe("agent-key-store", () => {
     });
   }
 
+  function installMockLocalStorage(seed: Record<string, string> = {}) {
+    const storage = new Map(Object.entries(seed));
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem(key: string) {
+          return storage.has(key) ? storage.get(key) ?? null : null;
+        },
+        setItem(key: string, value: string) {
+          storage.set(key, value);
+        },
+        removeItem(key: string) {
+          storage.delete(key);
+        },
+      },
+    });
+    return storage;
+  }
+
+  function restoreLocalStorage(value: Storage | undefined = originalLocalStorage) {
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value,
+    });
+  }
+
   test("stores, reads, lists, and deletes owned agent keys", async () => {
+    __resetAgentKeyStoreForTests();
     installMockIndexedDb();
+    restoreLocalStorage();
     await saveStoredOwnedAgentKey(EXAMPLE_RECORD);
 
     expect(await findStoredOwnedAgentKey(EXAMPLE_RECORD.agentId)).toEqual(EXAMPLE_RECORD);
@@ -167,20 +197,41 @@ describe("agent-key-store", () => {
     expect(await findStoredOwnedAgentKey(EXAMPLE_RECORD.agentId)).toBeNull();
     expect(await listStoredOwnedAgentKeys()).toEqual([]);
     restoreIndexedDb();
+    restoreLocalStorage();
   });
 
   test("filters malformed records out of list results", async () => {
+    __resetAgentKeyStoreForTests();
     installMockIndexedDb(new Map<string, unknown>([
       ["good", EXAMPLE_RECORD],
       ["bad", { nope: true }],
     ]));
+    restoreLocalStorage();
 
     expect(await listStoredOwnedAgentKeys()).toEqual([EXAMPLE_RECORD]);
     restoreIndexedDb();
+    restoreLocalStorage();
+  });
+
+  test("migrates legacy localStorage records into IndexedDB and clears the old key", async () => {
+    __resetAgentKeyStoreForTests();
+    installMockIndexedDb();
+    const localStorageRecords = installMockLocalStorage({
+      "pirate:owned-agent-keys:v1": JSON.stringify([EXAMPLE_RECORD]),
+    });
+
+    expect(await listStoredOwnedAgentKeys()).toEqual([EXAMPLE_RECORD]);
+    expect(localStorageRecords.has("pirate:owned-agent-keys:v1")).toBe(false);
+    expect(await findStoredOwnedAgentKey(EXAMPLE_RECORD.agentId)).toEqual(EXAMPLE_RECORD);
+
+    restoreIndexedDb();
+    restoreLocalStorage();
   });
 
   test("throws when IndexedDB is unavailable", async () => {
+    __resetAgentKeyStoreForTests();
     restoreIndexedDb(undefined);
+    restoreLocalStorage();
 
     let thrown: unknown = null;
     try {
@@ -191,5 +242,6 @@ describe("agent-key-store", () => {
 
     expect(thrown instanceof Error ? thrown.message : String(thrown)).toContain("does not support secure agent key storage");
     restoreIndexedDb();
+    restoreLocalStorage();
   });
 });

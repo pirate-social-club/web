@@ -13,6 +13,9 @@ export type StoredOwnedAgentKey = {
 const DATABASE_NAME = "pirate-owned-agent-keys";
 const DATABASE_VERSION = 1;
 const STORE_NAME = "agent_keys";
+const LEGACY_LOCAL_STORAGE_KEY = "pirate:owned-agent-keys:v1";
+let legacyMigrationComplete = false;
+let legacyMigrationPromise: Promise<void> | null = null;
 
 function getIndexedDb(): IDBFactory {
   if (typeof globalThis.indexedDB === "undefined") {
@@ -53,7 +56,7 @@ function normalizeStoredOwnedAgentKey(value: unknown): StoredOwnedAgentKey | nul
 async function openAgentKeyDatabase(): Promise<IDBDatabase> {
   const indexedDb = getIndexedDb();
 
-  return await new Promise((resolve, reject) => {
+  const database = await new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDb.open(DATABASE_NAME, DATABASE_VERSION);
 
     request.onupgradeneeded = () => {
@@ -66,6 +69,9 @@ async function openAgentKeyDatabase(): Promise<IDBDatabase> {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error("Could not open agent key database."));
   });
+
+  await migrateLegacyAgentKeysIfNeeded(database);
+  return database;
 }
 
 function runStoreRequest<T>(
@@ -82,6 +88,58 @@ function runStoreRequest<T>(
     request.onerror = () => reject(request.error ?? new Error("Agent key storage request failed."));
     transaction.onerror = () => reject(transaction.error ?? new Error("Agent key storage transaction failed."));
   });
+}
+
+function readLegacyStoredAgentKeys(): StoredOwnedAgentKey[] {
+  if (typeof globalThis.localStorage === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = globalThis.localStorage.getItem(LEGACY_LOCAL_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed
+        .map((value) => normalizeStoredOwnedAgentKey(value))
+        .filter((value): value is StoredOwnedAgentKey => value !== null)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+async function migrateLegacyAgentKeysIfNeeded(database: IDBDatabase): Promise<void> {
+  if (legacyMigrationComplete) {
+    return;
+  }
+  if (!legacyMigrationPromise) {
+    legacyMigrationPromise = (async () => {
+      const legacyRecords = readLegacyStoredAgentKeys();
+      if (!legacyRecords.length) {
+        legacyMigrationComplete = true;
+        return;
+      }
+
+      for (const record of legacyRecords) {
+        await runStoreRequest(database, "readwrite", (store) => store.put(record));
+      }
+
+      try {
+        globalThis.localStorage?.removeItem(LEGACY_LOCAL_STORAGE_KEY);
+      } catch {
+        // Ignore browsers that deny localStorage writes after successful import.
+      }
+      legacyMigrationComplete = true;
+    })().finally(() => {
+      legacyMigrationPromise = null;
+    });
+  }
+
+  await legacyMigrationPromise;
 }
 
 export async function listStoredOwnedAgentKeys(): Promise<StoredOwnedAgentKey[]> {
@@ -124,4 +182,9 @@ export async function removeStoredOwnedAgentKey(agentId: string): Promise<void> 
   } finally {
     database.close();
   }
+}
+
+export function __resetAgentKeyStoreForTests(): void {
+  legacyMigrationComplete = false;
+  legacyMigrationPromise = null;
 }

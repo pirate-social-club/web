@@ -13,6 +13,7 @@ import {
 } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
+import { CheckboxCard } from "@/components/primitives/checkbox-card";
 import { OptionCard } from "@/components/primitives/option-card";
 import { RadioGroup, RadioGroupItem } from "@/components/primitives/radio-group";
 import { NationalityPicker } from "@/components/compositions/create-community-composer/nationality-picker";
@@ -237,18 +238,18 @@ export function CommunityGatesEditorPage({
               title="Gate checks"
             />
 
-            <OptionCard
+            <CheckboxCard
+              checked={Boolean(nationalityGate)}
               description="Require nationality verification through Self."
-              selected={Boolean(nationalityGate)}
               title="Nationality verification"
-              onClick={() => onGateDraftsChange?.(
-                nationalityGate
-                  ? removeGateDraft(gateDrafts, "nationality")
-                  : upsertGateDraft(gateDrafts, {
+              onCheckedChange={(checked) => onGateDraftsChange?.(
+                checked
+                  ? upsertGateDraft(gateDrafts, {
                     gateType: "nationality",
                     provider: "self",
                     requiredValue: "US",
-                  }),
+                  })
+                  : removeGateDraft(gateDrafts, "nationality"),
               )}
             />
 
@@ -269,18 +270,18 @@ export function CommunityGatesEditorPage({
               </div>
             ) : null}
 
-            <OptionCard
+            <CheckboxCard
+              checked={Boolean(genderGate)}
               description="Require the Self document marker on a verified document."
-              selected={Boolean(genderGate)}
               title="Self document marker"
-              onClick={() => onGateDraftsChange?.(
-                genderGate
-                  ? removeGateDraft(gateDrafts, "gender")
-                  : upsertGateDraft(gateDrafts, {
+              onCheckedChange={(checked) => onGateDraftsChange?.(
+                checked
+                  ? upsertGateDraft(gateDrafts, {
                     gateType: "gender",
                     provider: "self",
                     requiredValue: "F",
-                  }),
+                  })
+                  : removeGateDraft(gateDrafts, "gender"),
               )}
             />
 
@@ -310,18 +311,18 @@ export function CommunityGatesEditorPage({
               </div>
             ) : null}
 
-            <OptionCard
+            <CheckboxCard
+              checked={Boolean(erc721Gate)}
               description="Require a linked Ethereum wallet that holds a specific ERC-721 collection."
-              selected={Boolean(erc721Gate)}
               title="Ethereum NFT collection"
-              onClick={() => onGateDraftsChange?.(
-                erc721Gate
-                  ? removeGateDraft(gateDrafts, "erc721_holding")
-                  : upsertGateDraft(gateDrafts, {
+              onCheckedChange={(checked) => onGateDraftsChange?.(
+                checked
+                  ? upsertGateDraft(gateDrafts, {
                     gateType: "erc721_holding",
                     chainNamespace: "eip155:1",
                     contractAddress: "",
-                  }),
+                  })
+                  : removeGateDraft(gateDrafts, "erc721_holding"),
               )}
             />
 

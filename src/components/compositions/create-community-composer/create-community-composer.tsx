@@ -11,6 +11,7 @@ import {
   FormSectionHeading,
 } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
+import { CheckboxCard } from "@/components/primitives/checkbox-card";
 import { OptionCard } from "@/components/primitives/option-card";
 import { Stepper } from "@/components/primitives/stepper";
 import { Textarea } from "@/components/primitives/textarea";
@@ -424,18 +425,17 @@ export function CreateCommunityComposer({
                       title="Gate checks"
                     />
 
-                    <OptionCard
+                    <CheckboxCard
+                      checked={nationalityEnabled}
                       description="Require members to verify their nationality through self before joining."
-                      selected={nationalityEnabled}
                       title="Nationality verification"
-                      onClick={() => setNationalityEnabled((prev) => {
-                        const next = !prev;
+                      onCheckedChange={(checked) => {
                         logCreateCommunityGateDebug("toggleNationalityGate", {
-                          previous: prev,
-                          next,
+                          previous: nationalityEnabled,
+                          next: checked,
                         });
-                        return next;
-                      })}
+                        setNationalityEnabled(checked);
+                      }}
                     />
 
                     {nationalityEnabled ? (
@@ -457,11 +457,11 @@ export function CreateCommunityComposer({
                       </div>
                     ) : null}
 
-                    <OptionCard
+                    <CheckboxCard
+                      checked={genderEnabled}
                       description="Require members to reveal the Self document marker on their document before joining."
-                      selected={genderEnabled}
                       title="Self document marker"
-                      onClick={() => setGenderEnabled((prev) => !prev)}
+                      onCheckedChange={setGenderEnabled}
                     />
 
                     {genderEnabled ? (
@@ -486,11 +486,11 @@ export function CreateCommunityComposer({
                       </div>
                     ) : null}
 
-                    <OptionCard
+                    <CheckboxCard
+                      checked={erc721Enabled}
                       description="Require a linked Ethereum wallet that holds a specific ERC-721 collection."
-                      selected={erc721Enabled}
                       title="Ethereum NFT collection"
-                      onClick={() => setErc721Enabled((prev) => !prev)}
+                      onCheckedChange={setErc721Enabled}
                     />
 
                     {erc721Enabled ? (

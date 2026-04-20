@@ -112,6 +112,7 @@ export function FieldLabel({
 export function UploadField({
   label,
   accept,
+  copy,
   multiple = false,
   onChange,
   selectedLabel,
@@ -119,6 +120,10 @@ export function UploadField({
 }: {
   label: string;
   accept: string;
+  copy?: {
+    buttons?: Record<string, string>;
+    upload?: Record<string, string>;
+  };
   multiple?: boolean;
   onChange?: (files: FileList | null) => void;
   selectedLabel?: string;
@@ -150,7 +155,7 @@ export function UploadField({
             <div className="grid size-24 shrink-0 place-items-center rounded-[var(--radius-lg)] border border-border-soft bg-muted">
               {selectedLabel ? (
                 <span className="px-3 text-center text-base font-semibold text-foreground">
-                  Cover
+                  {copy?.upload?.cover ?? "Cover"}
                 </span>
               ) : (
                 <ImageIcon className="size-8 text-muted-foreground" />
@@ -158,22 +163,22 @@ export function UploadField({
             </div>
             <div className="min-w-0 flex-1 space-y-1">
               <p className="truncate text-base font-semibold text-foreground">
-                {selectedLabel || "Upload square artwork"}
+                {selectedLabel || copy?.upload?.squareArtwork || "Upload square artwork"}
               </p>
               <p className="text-base text-muted-foreground">
-                Shows in feed, release, and player surfaces.
+                {copy?.upload?.artworkHelp || "Shows in feed, release, and player surfaces."}
               </p>
             </div>
           </>
         ) : (
           <div className="min-w-0">
             <p className="truncate text-base font-semibold text-foreground">
-              {selectedLabel || "No file selected"}
+              {selectedLabel || copy?.upload?.noFileSelected || "No file selected"}
             </p>
           </div>
         )}
         <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-3.5 py-2 text-base font-semibold text-foreground">
-          {selectedLabel ? "Replace" : "Choose file"}
+          {selectedLabel ? (copy?.buttons?.replace || "Replace") : (copy?.buttons?.chooseFile || "Choose file")}
         </span>
       </label>
     </div>

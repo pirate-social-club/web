@@ -23,7 +23,7 @@ const SelectTrigger = React.forwardRef<
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <span aria-hidden="true" className="ml-2 text-base text-muted-foreground">
+      <span aria-hidden="true" className="ms-2 text-base text-muted-foreground">
         ▾
       </span>
     </SelectPrimitive.Icon>
@@ -109,13 +109,13 @@ const SelectItem = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <SelectPrimitive.Item
     className={cn(
-      "relative flex w-full cursor-pointer select-none items-center rounded-none py-2.5 pl-8 pr-3 text-base outline-none transition-colors text-popover-foreground hover:text-foreground data-[state=checked]:bg-muted data-[state=checked]:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-pointer select-none items-center rounded-none py-2.5 pe-3 ps-8 text-base outline-none transition-colors text-popover-foreground hover:text-foreground data-[state=checked]:bg-muted data-[state=checked]:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     ref={ref}
     {...props}
   >
-    <span className="absolute left-2.5 flex size-5 items-center justify-center text-base">
+    <span className="absolute start-2.5 flex size-5 items-center justify-center text-base">
       <SelectPrimitive.ItemIndicator>✓</SelectPrimitive.ItemIndicator>
     </span>
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

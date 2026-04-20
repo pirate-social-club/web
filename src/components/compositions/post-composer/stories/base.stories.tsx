@@ -18,3 +18,11 @@ export const Overview: Story = {
   name: "Overview",
   render: () => <PostComposer {...baseComposer} />,
 };
+
+export const MobileOverview: Story = {
+  name: "Mobile Overview",
+  parameters: {
+    viewport: { defaultViewport: "mobile2" },
+  },
+  render: () => <PostComposer {...baseComposer} />,
+};

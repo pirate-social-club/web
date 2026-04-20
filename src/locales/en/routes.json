@@ -51,6 +51,7 @@
   },
   "community": {
     "aboutTab": "About",
+    "charityLabel": "Charity",
     "createPostLabel": "Create Post",
     "feedTab": "Feed",
     "membersLabel": "Members",
@@ -58,6 +59,29 @@
     "requirementsLabel": "Requirements",
     "rulesLabel": "Rules",
     "title": "Community"
+  },
+  "interactionGate": {
+    "blockedReplyDescription": "This community's requirements block you from replying right now.",
+    "blockedVoteDescription": "This community's requirements block you from voting right now.",
+    "cantReplyHereTitle": "You can't reply here",
+    "cantVoteHereTitle": "You can't vote here",
+    "close": "Close",
+    "connectToContinue": "Connect to continue.",
+    "couldNotCheckRequirements": "Couldn't check this community's interaction requirements.",
+    "joinInCommunity": "{joinLabel} in {communityName}",
+    "joinToReplyDescription": "{joinLabel} in {communityName} before you reply.",
+    "joinToReplyTitle": "{joinLabel} to reply",
+    "joinToVoteDescription": "{joinLabel} in {communityName} before you vote.",
+    "joinToVoteTitle": "{joinLabel} to vote",
+    "openCommunity": "Open {communityName}",
+    "readyDescription": "You can interact here.",
+    "readyTitle": "Ready",
+    "verifyInCommunity": "Verify in {communityName}",
+    "verifyToReplyDescription": "Complete ID check to reply here.",
+    "verifyToReplyTitle": "Verify to reply",
+    "verifyToVoteDescription": "Complete ID check to vote here.",
+    "verifyToVoteTitle": "Verify to vote",
+    "bannedDescription": "You are not eligible to join this community."
   },
   "createPost": {
     "access": {

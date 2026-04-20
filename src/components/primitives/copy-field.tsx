@@ -24,13 +24,13 @@ const CopyField = React.forwardRef<HTMLDivElement, CopyFieldProps>(
     return (
       <div
         className={cn(
-          "flex min-h-12 items-center gap-2 rounded-full border border-input bg-background px-4 shadow-sm",
+          "flex h-12 overflow-hidden items-center gap-2 rounded-lg border border-input bg-background px-4 shadow-sm",
           className,
         )}
         ref={ref}
         {...props}
       >
-        <div className="min-w-0 flex-1 break-all font-mono text-base leading-6 text-foreground">
+        <div className="min-w-0 flex-1 truncate font-mono text-base text-foreground select-all">
           {value}
         </div>
         <Button

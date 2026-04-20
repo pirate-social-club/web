@@ -16,4 +16,11 @@ describe("resolveViewerContentLocale", () => {
       browserLocales: ["pt"],
     })).toBe("pt-BR");
   });
+
+  test("prefers simplified Chinese when the UI locale is Mandarin", () => {
+    expect(resolveViewerContentLocale({
+      uiLocale: "zh",
+      browserLocales: ["en-US", "en"],
+    })).toBe("zh-Hans");
+  });
 });

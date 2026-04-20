@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import type { Profile as ApiProfile } from "@pirate/api-contracts";
+import type { Profile as ApiProfile, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { updateSessionProfile, useSession } from "@/lib/api/session-store";
-import { isApiAuthError, type ApiError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
+import { saveStoredOwnedAgentKey } from "@/lib/agents/agent-key-store";
 import { useUiLocale } from "@/lib/ui-locale";
 import { type UiLocaleCode, isUiLocaleCode } from "@/lib/ui-locale-core";
 import { useGlobalHandleFlow } from "@/hooks/use-global-handle-flow";
@@ -14,23 +15,51 @@ import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import { toast } from "@/components/primitives/sonner";
 import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profile-page/profile-page";
 import { SettingsPage } from "@/components/compositions/settings-page/settings-page";
-import type { SettingsHandle, SettingsSubmitState, SettingsTab } from "@/components/compositions/settings-page/settings-page.types";
+import type { SettingsHandle, SettingsPageProps, SettingsSubmitState, SettingsTab } from "@/components/compositions/settings-page/settings-page.types";
 
-import { getRouteAuthDescription, getRouteTitle } from "./route-status-copy";
+import { getRouteAuthDescription } from "./route-status-copy";
 import { AuthRequiredRouteState } from "./route-shell";
 import { useRouteMessages } from "./route-core";
 
-const SETTINGS_LOCALE_OPTIONS: Array<{ label: string; value: UiLocaleCode }> = [
-  { label: "English", value: "en" },
-  { label: "Arabic", value: "ar" },
-  { label: "Pseudo", value: "pseudo" },
-];
+type PendingAgentRegistration = {
+  sessionId: string;
+  displayName: string;
+  publicKeyPem: string;
+  privateKeyPem: string;
+};
+
+type ImportedOpenClawBundle = {
+  display_name?: string;
+  public_key_pem: string;
+  private_key_pem: string;
+  agent_challenge: {
+    device_id: string;
+    public_key: string;
+    message: string;
+    signature: string;
+    timestamp: number;
+  };
+};
+
+function buildSettingsLocaleOptions(copy: ReturnType<typeof useRouteMessages>["copy"]) {
+  return [
+    { label: copy.settings.localeEnglish, value: "en" as const },
+    { label: copy.settings.localeArabic, value: "ar" as const },
+    { label: copy.settings.localeMandarin, value: "zh" as const },
+    { label: copy.settings.localePseudo, value: "pseudo" as const },
+  ];
+}
 
 function apiProfileToProps(
   profile: ApiProfile,
   ownProfile: boolean,
-  joinedStatLabel: string,
+  labels: {
+    followersLabel: string;
+    followingLabel: string;
+    joinedStatLabel: string;
+  },
   followState: ReturnType<typeof useProfileFollowState>,
+  localeTag: string,
 ) {
   const handle = profile.primary_public_handle?.label ?? profile.global_handle?.label ?? "";
 
@@ -52,9 +81,9 @@ function apiProfileToProps(
     },
     rightRail: {
       stats: [
-        { label: "Followers", value: followState.followerCount ?? "—" },
-        { label: "Following", value: followState.followingCount },
-        { label: joinedStatLabel, value: new Date(profile.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }) },
+        { label: labels.followersLabel, value: followState.followerCount ?? "—" },
+        { label: labels.followingLabel, value: followState.followingCount },
+        { label: labels.joinedStatLabel, value: new Date(profile.created_at).toLocaleDateString(localeTag, { month: "short", year: "numeric" }) },
       ],
       walletAddress: profile.primary_wallet_address ?? undefined,
     },
@@ -105,16 +134,83 @@ function formatWalletChainLabel(chainNamespace: string): string {
   }
 }
 
+function mapApiUserAgentToOwnedAgent(agent: ApiUserAgent): SettingsPageProps["agents"]["items"][number] {
+  return {
+    agentId: agent.agent_id,
+    displayName: agent.display_name,
+    status: agent.status,
+    createdAt: agent.created_at,
+    currentOwnership: agent.current_ownership
+      ? {
+        ownershipProvider: agent.current_ownership.ownership_provider,
+        verifiedAt: agent.current_ownership.verified_at ?? agent.created_at,
+        expiresAt: agent.current_ownership.expires_at ?? null,
+      }
+      : null,
+  };
+}
+
+function parseImportedOpenClawBundle(raw: string): ImportedOpenClawBundle {
+  const parsed = JSON.parse(raw) as unknown;
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("Import payload must be valid JSON.");
+  }
+
+  const bundle = parsed as Record<string, unknown>;
+  const challenge = bundle.agent_challenge;
+  if (!challenge || typeof challenge !== "object") {
+    throw new Error("Import payload must include agent_challenge.");
+  }
+
+  const agentChallenge = challenge as Record<string, unknown>;
+  if (
+    typeof bundle.public_key_pem !== "string"
+    || typeof bundle.private_key_pem !== "string"
+    || typeof agentChallenge.device_id !== "string"
+    || typeof agentChallenge.public_key !== "string"
+    || typeof agentChallenge.message !== "string"
+    || typeof agentChallenge.signature !== "string"
+    || typeof agentChallenge.timestamp !== "number"
+  ) {
+    throw new Error("Import payload is missing required OpenClaw fields.");
+  }
+
+  return {
+    display_name: typeof bundle.display_name === "string" ? bundle.display_name : undefined,
+    public_key_pem: bundle.public_key_pem,
+    private_key_pem: bundle.private_key_pem,
+    agent_challenge: {
+      device_id: agentChallenge.device_id,
+      public_key: agentChallenge.public_key,
+      message: agentChallenge.message,
+      signature: agentChallenge.signature,
+      timestamp: agentChallenge.timestamp,
+    },
+  };
+}
+
+function formatOwnedAgentsLoadError(error: unknown): string {
+  if (!(error instanceof ApiError)) {
+    return "Could not load agents."
+  }
+
+  if (error.message.includes("no such table: user_agents")) {
+    return "Local API is missing agent tables. Restart pirate-api dev server."
+  }
+
+  return error.message
+}
+
 export function CurrentUserProfilePage() {
-  const { copy } = useRouteMessages();
+  const { copy, localeTag } = useRouteMessages();
   const session = useSession();
   const profile = session?.profile ?? null;
-  const pageTitle = getRouteTitle("profile") ?? "Profile";
+  const pageTitle = copy.profile.title;
   const followState = useProfileFollowState(profile?.primary_wallet_address ?? null, true);
   const handleFlow = useGlobalHandleFlow({
     currentHandleLabel: profile?.global_handle?.label ?? "",
     onRenamed: async () => {
-      toast.success("Handle updated");
+      toast.success(copy.profile.handleUpdated);
     },
   });
 
@@ -124,7 +220,11 @@ export function CurrentUserProfilePage() {
 
   return (
     <ProfilePageComposition
-      {...apiProfileToProps(profile, true, copy.common.joinedStatLabel, followState)}
+      {...apiProfileToProps(profile, true, {
+        followersLabel: copy.profile.followersLabel,
+        followingLabel: copy.profile.followingLabel,
+        joinedStatLabel: copy.common.joinedStatLabel,
+      }, followState, localeTag)}
       onEditProfile={() => {
         handleFlow.clearDraft();
         navigate(buildSettingsPath("profile"));
@@ -134,12 +234,13 @@ export function CurrentUserProfilePage() {
 }
 
 export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab }) {
+  const { copy } = useRouteMessages();
   const api = useApi();
   const session = useSession();
   const profile = session?.profile ?? null;
   const walletAttachments = session?.walletAttachments ?? [];
   const { locale, setLocale } = useUiLocale();
-  const pageTitle = getRouteTitle("settings") ?? "Settings";
+  const pageTitle = copy.settings.title;
   const syncedPrimaryWalletRef = React.useRef<string | null>(null);
   const [displayName, setDisplayName] = React.useState("");
   const [bio, setBio] = React.useState("");
@@ -152,6 +253,11 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const [displayNameError, setDisplayNameError] = React.useState<string | undefined>(undefined);
   const [profileSubmitState, setProfileSubmitState] = React.useState<SettingsSubmitState>({ kind: "idle" });
   const [preferencesSubmitState, setPreferencesSubmitState] = React.useState<SettingsSubmitState>({ kind: "idle" });
+  const [ownedAgents, setOwnedAgents] = React.useState<SettingsPageProps["agents"]["items"]>([]);
+  const [agentsLoading, setAgentsLoading] = React.useState(false);
+  const [agentsState, setAgentsState] = React.useState<SettingsPageProps["agents"]["registrationState"]>({ kind: "idle" });
+  const [agentImportValue, setAgentImportValue] = React.useState("");
+  const pendingAgentRegistrationRef = React.useRef<PendingAgentRegistration | null>(null);
 
   React.useEffect(() => {
     if (!profile) return;
@@ -169,12 +275,51 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     setPreferencesSubmitState({ kind: "idle" });
   }, [locale, profile]);
 
+  const loadOwnedAgents = React.useCallback(async (input?: { cancelled?: () => boolean }) => {
+    setAgentsLoading(true);
+    try {
+      const result = await api.agents.list();
+      if (input?.cancelled?.()) return;
+      const items = result.items.map(mapApiUserAgentToOwnedAgent);
+      setOwnedAgents(items);
+      return items;
+    } finally {
+      if (!input?.cancelled?.()) {
+        setAgentsLoading(false);
+      }
+    }
+  }, [api]);
+
+  React.useEffect(() => {
+    if (!profile || activeTab !== "agents") {
+      return;
+    }
+
+    let cancelled = false;
+    setOwnedAgents([]);
+    setAgentsState({ kind: "idle" });
+
+    void loadOwnedAgents({ cancelled: () => cancelled })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        console.warn("[settings] owned agents load failed", error);
+        setAgentsState({
+          kind: "error",
+          message: formatOwnedAgentsLoadError(error),
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, loadOwnedAgents, profile]);
+
   const handleFlow = useGlobalHandleFlow({
     currentHandleLabel: profile?.global_handle?.label ?? "",
     onRenamed: async () => {
       const refreshedProfile = await api.profiles.getMe();
       updateSessionProfile(refreshedProfile);
-      toast.success("Handle updated");
+      toast.success(copy.profile.handleUpdated);
     },
   });
 
@@ -206,6 +351,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const currentHandle = profile?.global_handle?.label ? profile.global_handle.label.replace(/\.pirate$/i, "").concat(".pirate") : "";
   const linkedHandles = profile ? mapProfileLinkedHandles(profile) : [];
   const postAuthorLabel = profile ? getSelectedProfileHandleLabel(profile, selectedPrimaryHandleId) : currentHandle;
+  const settingsLocaleOptions = React.useMemo(() => buildSettingsLocaleOptions(copy), [copy]);
   const profileHasChanges = profile == null ? false : (
     displayName.trim() !== (profile.display_name ?? "").trim()
     || bio !== (profile.bio ?? "")
@@ -221,7 +367,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     if (!profile) return;
     const trimmedDisplayName = displayName.trim();
     if (!trimmedDisplayName) {
-      setDisplayNameError("Display name is required.");
+      setDisplayNameError(copy.settings.displayNameRequired);
       return;
     }
 
@@ -250,12 +396,12 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
       setCoverRemoved(finalProfile.cover_ref == null);
       setSelectedPrimaryHandleId(finalProfile.primary_public_handle?.linked_handle_id ?? null);
       setProfileSubmitState({ kind: "idle" });
-      toast.success("Profile updated");
+      toast.success(copy.settings.profileUpdated);
     } catch (e: unknown) {
       const apiErr = e as ApiError;
       setProfileSubmitState({ kind: "error", message: apiErr?.message ?? "Failed to save profile." });
     }
-  }, [api, avatarFile, avatarRemoved, bio, coverFile, coverRemoved, displayName, profile, profilePrimaryHandleId, selectedPrimaryHandleId]);
+  }, [api, avatarFile, avatarRemoved, bio, copy.settings.displayNameRequired, copy.settings.profileUpdated, coverFile, coverRemoved, displayName, profile, profilePrimaryHandleId, selectedPrimaryHandleId]);
 
   const handlePreferencesSave = React.useCallback(async () => {
     if (!profile) return;
@@ -265,12 +411,159 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
       updateSessionProfile(updatedProfile);
       setLocale(preferredLocale);
       setPreferencesSubmitState({ kind: "idle" });
-      toast.success("Preferences updated");
+      toast.success(copy.settings.preferencesUpdated);
     } catch (e: unknown) {
       const apiErr = e as ApiError;
       setPreferencesSubmitState({ kind: "error", message: apiErr?.message ?? "Failed to save preferences." });
     }
-  }, [api, preferredLocale, profile, setLocale]);
+  }, [api, copy.settings.preferencesUpdated, preferredLocale, profile, setLocale]);
+
+  const completePendingAgentRegistration = React.useCallback(async (input?: { silent?: boolean }) => {
+    const pendingRegistration = pendingAgentRegistrationRef.current;
+    if (!pendingRegistration) {
+      return;
+    }
+
+    try {
+      const completedSession = await api.agents.completeOwnershipSession(pendingRegistration.sessionId, {});
+
+      if (completedSession.status === "verified" && completedSession.agent_id) {
+        const now = new Date().toISOString();
+        saveStoredOwnedAgentKey({
+          agentId: completedSession.agent_id,
+          displayName: pendingRegistration.displayName,
+          ownershipProvider: "clawkey",
+          publicKeyPem: pendingRegistration.publicKeyPem,
+          privateKeyPem: pendingRegistration.privateKeyPem,
+          createdAt: now,
+          updatedAt: now,
+        });
+        pendingAgentRegistrationRef.current = null;
+        await loadOwnedAgents();
+        setAgentsState({ kind: "idle" });
+        toast.success("Agent registered");
+        return;
+      }
+
+      if (completedSession.status === "failed" || completedSession.status === "expired" || completedSession.status === "cancelled") {
+        pendingAgentRegistrationRef.current = null;
+        setAgentsState({
+          kind: "error",
+          message: "Agent registration did not complete.",
+        });
+      }
+    } catch (error: unknown) {
+      if (input?.silent) {
+        return;
+      }
+      const apiError = error as ApiError;
+      setAgentsState({
+        kind: "error",
+        message: apiError?.message ?? "Could not complete agent registration.",
+      });
+    }
+  }, [api.agents, loadOwnedAgents]);
+
+  React.useEffect(() => {
+    if (agentsState.kind !== "awaiting_owner" && agentsState.kind !== "pairing_code") {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      if (agentsState.kind === "awaiting_owner") {
+        void completePendingAgentRegistration({ silent: true });
+      }
+      void loadOwnedAgents()
+        .then((items) => {
+          if (items?.some((agent) => agent.status === "active")) {
+            pendingAgentRegistrationRef.current = null;
+            setAgentsState({ kind: "idle" });
+          }
+        })
+        .catch(() => {});
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [agentsState, completePendingAgentRegistration, loadOwnedAgents]);
+
+  const handleStartAgentPairing = React.useCallback(async () => {
+    setAgentsState({ kind: "verifying" });
+    try {
+      const pairing = await api.agents.createPairing();
+      setAgentsState({
+        kind: "pairing_code",
+        pairingCode: pairing.pairing_code,
+        expiresAt: pairing.expires_at,
+      });
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      setAgentsState({
+        kind: "error",
+        message: apiError?.message ?? "Could not create pairing code.",
+      });
+    }
+  }, [api.agents]);
+
+  const startAgentRegistration = React.useCallback(async (input: {
+    agentChallenge: ImportedOpenClawBundle["agent_challenge"];
+    displayName: string;
+    privateKeyPem: string;
+    publicKeyPem: string;
+  }) => {
+    const sessionResult = await api.agents.startOwnershipSession({
+      session_kind: "register",
+      ownership_provider: "clawkey",
+      display_name: input.displayName,
+      agent_challenge: input.agentChallenge,
+    });
+
+    const launch = sessionResult.launch?.clawkey_registration;
+    if (!launch) {
+      throw new Error("ClawKey registration URL was not returned");
+    }
+
+    pendingAgentRegistrationRef.current = {
+      sessionId: sessionResult.agent_ownership_session_id,
+      displayName: input.displayName,
+      publicKeyPem: input.publicKeyPem,
+      privateKeyPem: input.privateKeyPem,
+    };
+
+    setAgentsState({
+      kind: "awaiting_owner",
+      registrationUrl: launch.registration_url,
+      sessionId: launch.session_id,
+      expiresAt: launch.expires_at ?? null,
+    });
+  }, [api.agents]);
+
+  const handleImportAgentRegistration = React.useCallback(async () => {
+    if (!profile) return;
+
+    setAgentsState({ kind: "verifying" });
+
+    try {
+      const importedBundle = parseImportedOpenClawBundle(agentImportValue);
+      const fallbackDisplayName = `${(profile.display_name?.trim() || profile.global_handle.label.replace(/\.pirate$/i, ""))} Agent`;
+      const displayName = importedBundle.display_name?.trim() || fallbackDisplayName;
+
+      await startAgentRegistration({
+        agentChallenge: importedBundle.agent_challenge,
+        displayName,
+        publicKeyPem: importedBundle.public_key_pem,
+        privateKeyPem: importedBundle.private_key_pem,
+      });
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      setAgentsState({
+        kind: "error",
+        message: apiError?.message ?? (error instanceof Error ? error.message : "Could not import OpenClaw registration."),
+      });
+      pendingAgentRegistrationRef.current = null;
+    }
+  }, [agentImportValue, profile, startAgentRegistration]);
 
   if (!profile) {
     return <AuthRequiredRouteState description={getRouteAuthDescription("settings")} title={pageTitle} />;
@@ -281,9 +574,11 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
       activeTab={activeTab}
       onTabChange={(tab) => navigate(buildSettingsPath(tab))}
       preferences={{
-        ageStatusLabel: session?.user.verification_capabilities?.age_over_18?.state === "verified" ? "18+ verified" : "Not verified",
+        ageStatusLabel: session?.user.verification_capabilities?.age_over_18?.state === "verified"
+          ? copy.settings.ageVerified
+          : copy.settings.notVerified,
         locale: preferredLocale,
-        localeOptions: SETTINGS_LOCALE_OPTIONS,
+        localeOptions: settingsLocaleOptions,
         onLocaleChange: (next) => {
           if (isUiLocaleCode(next)) {
             setPreferredLocale(next);
@@ -326,6 +621,25 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
           isPrimary: wallet.is_primary,
         })),
         primaryAddress: profile.primary_wallet_address ?? undefined,
+      }}
+      agents={{
+        items: ownedAgents,
+        canRegister: !agentsLoading
+          && session?.user.verification_capabilities?.unique_human?.state === "verified"
+          && !ownedAgents.some((agent) => agent.status === "active"),
+        importValue: agentImportValue,
+        loading: agentsLoading,
+        registrationState: agentsState,
+        onStartPairing: () => {
+          void handleStartAgentPairing();
+        },
+        onImportRegistration: () => {
+          void handleImportAgentRegistration();
+        },
+        onImportValueChange: setAgentImportValue,
+        onCheckRegistration: () => {
+          void completePendingAgentRegistration();
+        },
       }}
     />
   );

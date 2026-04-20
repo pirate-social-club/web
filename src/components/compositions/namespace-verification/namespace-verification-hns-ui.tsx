@@ -59,17 +59,15 @@ export function NamespaceVerificationHnsPanel({
 
   return (
     <section className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-5 py-5">
-      <FormNote>
-        {mode === "dns_setup_required"
-          ? "Set nameservers first. Parent-side TXT values do not create the delegated _pirate record."
-          : mode === "pirate_managed"
-            ? challengePending
-              ? "Pirate is serving the TXT challenge from the delegated zone. Wait for propagation, then check again."
-              : "Delegation is live. Pirate serves the TXT challenge for you."
+      {mode === "pirate_managed" ? null : (
+        <FormNote>
+          {mode === "dns_setup_required"
+            ? "Set nameservers first. Parent-side TXT values will not create the _pirate record."
             : challengePending
               ? "TXT propagation is still pending."
               : "Add this TXT record on your authoritative DNS, then verify."}
-      </FormNote>
+        </FormNote>
+      )}
 
       {nameservers.length > 0 ? (
         <div className="space-y-3">
@@ -84,7 +82,7 @@ export function NamespaceVerificationHnsPanel({
 
       {mode === "dns_setup_required" ? (
         <div className="text-base text-muted-foreground">
-          Update the root&apos;s `NS` records where you manage the Handshake parent. After delegation is live, Pirate will publish the TXT challenge.
+          Update the root&apos;s `NS` records where you manage the Handshake parent. After that, Pirate will show the TXT record here.
         </div>
       ) : null}
 

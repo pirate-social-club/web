@@ -32,6 +32,7 @@ function CommunitySafetyPageStory() {
       onCivilityPolicyChange={setCivilityPolicy}
       onGraphicContentPolicyChange={setGraphicContentPolicy}
       onProviderSettingsChange={setProviderSettings}
+      onSave={() => undefined}
       providerSettings={providerSettings}
     />
   );

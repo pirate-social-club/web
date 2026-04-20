@@ -186,6 +186,7 @@ export function CommunityReviewStep({
   displayName,
   gateRequirementSummary,
   membershipLabel,
+  routeLabel,
 }: {
   ageGateLabel: string;
   anonymousPostingLabel: string;
@@ -197,6 +198,7 @@ export function CommunityReviewStep({
   displayName: string;
   gateRequirementSummary: string | null;
   membershipLabel: string;
+  routeLabel: string;
 }) {
   return (
     <div className="space-y-4">
@@ -205,6 +207,7 @@ export function CommunityReviewStep({
         <div className="md:col-span-2">
           <ReviewField label="Description" value={description || "\u2014"} />
         </div>
+        <ReviewField label="Route" value={routeLabel} />
         <ReviewField label="Avatar" value={avatarLabel} />
         <ReviewField label="Banner" value={bannerLabel} />
       </ReviewSection>

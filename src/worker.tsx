@@ -2,7 +2,25 @@ import { render, route } from "rwsdk/router";
 import { defineApp, type RequestInfo } from "rwsdk/worker";
 
 import { PirateApp } from "@/app";
+import { COMMUNITY_MODERATION_SECTIONS, SETTINGS_SECTIONS } from "@/app/route-definitions";
+import { LegalDocumentPage } from "@/components/legal/legal-document-page";
 import { Document } from "@/app/document";
+import { PRIVACY_POLICY_SOURCE } from "@/legal/privacy-policy";
+import { TERMS_OF_SERVICE_SOURCE } from "@/legal/terms-of-service";
+import {
+  applyDiscoveryHeaders,
+  buildAgentSkillResponse,
+  buildAgentSkillsIndexResponse,
+  buildApiCatalogResponse,
+  buildApiDocsResponse,
+  buildMarkdownForPage,
+  buildMarkdownResponse,
+  buildOpenApiResponse,
+  buildRobotsResponse,
+  buildSitemapResponse,
+  getDiscoveryContext,
+  markdownRequested,
+} from "@/lib/agent-discovery";
 import {
   resolveLocaleDirection,
   resolveRequestLocale,
@@ -13,20 +31,15 @@ import {
 type ThemeMode = "dark" | "light" | "system";
 
 type AppContext = {
+  appOrigin?: string;
+  canonicalUrl?: string;
   dir?: UiDirection;
+  isIndexable?: boolean;
   locale?: UiLocaleCode;
   theme?: ThemeMode;
 };
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
-const COMMUNITY_MODERATION_SECTIONS = [
-  "rules",
-  "links",
-  "donations",
-  "gates",
-  "safety",
-  "namespace",
-] as const;
 
 function parseThemeCookie(cookieHeader: string | null): ThemeMode {
   const match = cookieHeader?.match(/(?:^|;\s*)theme=(dark|light|system)(?:;|$)/);
@@ -46,20 +59,43 @@ function AppRoutePage(requestInfo: AppRequestInfo) {
   );
 }
 
-export default defineApp<AppRequestInfo>([
-  ({ ctx, request }) => {
+function PrivacyRoutePage() {
+  return <LegalDocumentPage source={PRIVACY_POLICY_SOURCE} />;
+}
+
+function TermsRoutePage() {
+  return <LegalDocumentPage source={TERMS_OF_SERVICE_SOURCE} />;
+}
+
+const app = defineApp<AppRequestInfo>([
+  ({ ctx, request, response }) => {
+    const discovery = getDiscoveryContext(request.url);
     const locale = resolveRequestLocale(request.headers.get("accept-language"));
 
+    ctx.appOrigin = discovery.appOrigin;
+    ctx.canonicalUrl = discovery.canonicalUrl;
     ctx.locale = locale;
     ctx.dir = resolveLocaleDirection(locale);
+    ctx.isIndexable = discovery.isIndexable;
     ctx.theme = parseThemeCookie(request.headers.get("cookie"));
+    applyDiscoveryHeaders(response.headers, discovery);
   },
   render(Document, [
+    route("/robots.txt", ({ request }) => buildRobotsResponse(request.url)),
+    route("/sitemap.xml", ({ request }) => buildSitemapResponse(request.url)),
+    route("/openapi.json", ({ request }) => buildOpenApiResponse(request.url)),
+    route("/docs/api", ({ request }) => buildApiDocsResponse(request.url, markdownRequested(request))),
+    route("/.well-known/api-catalog", ({ request }) => buildApiCatalogResponse(request.url)),
+    route("/.well-known/agent-skills/index.json", ({ request }) => buildAgentSkillsIndexResponse(request.url)),
+    route("/.well-known/agent-skills/:skillName/SKILL.md", ({ params }) => buildAgentSkillResponse(params.skillName)),
+    route("/privacy", PrivacyRoutePage),
+    route("/terms", TermsRoutePage),
     route("/", AppRoutePage),
     route("/your-communities", AppRoutePage),
     route("/communities/new", AppRoutePage),
     route("/submit", AppRoutePage),
     route("/c/:communityId/submit", AppRoutePage),
+    route("/c/:communityId/mod", AppRoutePage),
     ...COMMUNITY_MODERATION_SECTIONS.map((section) =>
       route(`/c/:communityId/mod/${section}`, AppRoutePage)
     ),
@@ -68,10 +104,40 @@ export default defineApp<AppRequestInfo>([
     route("/inbox", AppRoutePage),
     route("/me", AppRoutePage),
     route("/settings", AppRoutePage),
-    route("/settings/profile", AppRoutePage),
-    route("/settings/wallet", AppRoutePage),
-    route("/settings/preferences", AppRoutePage),
+    ...SETTINGS_SECTIONS.map((section) =>
+      route(`/settings/${section}`, AppRoutePage)
+    ),
     route("/u/:handleLabel", AppRoutePage),
     route("/onboarding", AppRoutePage),
   ]),
 ]);
+
+export default {
+  async fetch(request: Request, env: Env, cf: AppRequestInfo["cf"]) {
+    const response = await app.fetch(request, env, cf);
+    if (!markdownRequested(request)) {
+      return response;
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.toLowerCase().startsWith("text/html")) {
+      return response;
+    }
+
+    const ctx = getDiscoveryContext(request.url);
+    const markdown = buildMarkdownForPage(request.url);
+    const markdownResponse = buildMarkdownResponse(markdown, ctx, response.status);
+
+    for (const [key, value] of response.headers.entries()) {
+      if (key.toLowerCase() === "content-type") continue;
+      if (key.toLowerCase() === "content-length") continue;
+      if (key.toLowerCase() === "link") continue;
+      if (key.toLowerCase() === "vary") continue;
+      if (key.toLowerCase() === "x-robots-tag") continue;
+      if (key.toLowerCase() === "x-markdown-tokens") continue;
+      markdownResponse.headers.append(key, value);
+    }
+
+    return markdownResponse;
+  },
+};

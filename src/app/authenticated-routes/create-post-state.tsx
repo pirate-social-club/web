@@ -1,32 +1,94 @@
 "use client";
 
 import * as React from "react";
-import type { Community as ApiCommunity } from "@pirate/api-contracts";
+import type { Community as ApiCommunity, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
-import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
+import type { CreatePostRequest, Post as ApiCreatedPost } from "@pirate/api-contracts";
 import type { SongArtifactBundle as ApiSongArtifactBundle } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
+import { buildAgentActionProof } from "@/lib/agents/browser-agent-action-proof";
+import { findStoredOwnedAgentKey } from "@/lib/agents/agent-key-store";
 import { useSession } from "@/lib/api/session-store";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { ApiError } from "@/lib/api/client";
-import { defaultMonetizationState, defaultSongState } from "@/components/compositions/post-composer/post-composer-config";
-import type { ComposerReference, ComposerTab, DerivativeStepState, MonetizationState, SongComposerState, SongMode } from "@/components/compositions/post-composer/post-composer.types";
+import {
+  defaultCharityContributionState,
+  defaultAudienceState,
+  defaultMonetizationState,
+  defaultSongState,
+} from "@/components/compositions/post-composer/post-composer-config";
+import type {
+  AuthorMode,
+  CharityContributionState,
+  CommunityCharityPartner,
+  ComposerAudienceState,
+  ComposerReference,
+  ComposerTab,
+  DerivativeStepState,
+  MonetizationState,
+  SongComposerState,
+  SongMode,
+} from "@/components/compositions/post-composer/post-composer.types";
 
 import { formatQualifierLabel } from "./post-presentation";
 import { parseUsdInput } from "./route-core";
 import { buildSongListingRequest, buildSongPostRequest, resolveComposerSubmitState } from "./song-submit";
 
+export function isPublicAudienceAllowed(community: ApiCommunity | null): boolean {
+  if (!community) {
+    return true;
+  }
+
+  const hasActiveViewerGates = community.gate_rules?.some((rule) =>
+    rule.status === "active" && rule.scope === "viewer"
+  ) ?? false;
+
+  return !hasActiveViewerGates;
+}
+
+type AvailableSigningAgent = {
+  agentId: string;
+  displayName: string;
+  privateKeyPem: string;
+};
+
+function resolveAvailableSigningAgent(agents: ApiUserAgent[]): AvailableSigningAgent | null {
+  for (const agent of agents) {
+    if (agent.status !== "active" || !agent.current_ownership) {
+      continue;
+    }
+
+    const storedKey = findStoredOwnedAgentKey(agent.agent_id);
+    if (!storedKey) {
+      continue;
+    }
+
+    return {
+      agentId: agent.agent_id,
+      displayName: agent.display_name,
+      privateKeyPem: storedKey.privateKeyPem,
+    };
+  }
+
+  return null;
+}
+
 export function useCreatePostState(communityId: string) {
   const api = useApi();
   const session = useSession();
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").createPost;
   const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
   const [pricingPolicy, setPricingPolicy] = React.useState<ApiCommunityPricingPolicy | null>(null);
   const [loadError, setLoadError] = React.useState<unknown>(null);
   const [composerMode, setComposerMode] = React.useState<ComposerTab>("text");
+  const [authorMode, setAuthorMode] = React.useState<AuthorMode>("human");
   const [identityMode, setIdentityMode] = React.useState<"public" | "anonymous">("public");
   const [selectedQualifierIds, setSelectedQualifierIds] = React.useState<string[]>([]);
   const [title, setTitle] = React.useState("");
@@ -36,9 +98,12 @@ export function useCreatePostState(communityId: string) {
   const [lyrics, setLyrics] = React.useState("");
   const [songState, setSongState] = React.useState<SongComposerState>(() => defaultSongState());
   const [monetizationState, setMonetizationState] = React.useState<MonetizationState>(() => defaultMonetizationState());
+  const [charityContribution, setCharityContribution] = React.useState<CharityContributionState>(() => defaultCharityContributionState());
+  const [audience, setAudience] = React.useState<ComposerAudienceState>(() => defaultAudienceState());
   const [songMode, setSongMode] = React.useState<SongMode>("original");
   const [derivativeStep, setDerivativeStep] = React.useState<DerivativeStepState | undefined>(undefined);
   const [pendingSongBundleId, setPendingSongBundleId] = React.useState<string | null>(null);
+  const [availableAgent, setAvailableAgent] = React.useState<AvailableSigningAgent | null>(null);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
@@ -69,12 +134,14 @@ export function useCreatePostState(communityId: string) {
       api.communities.get(communityId),
       api.communities.getJoinEligibility(communityId),
       api.communities.getPricingPolicy(communityId).catch(() => null),
+      session?.accessToken ? api.agents.list().catch(() => null) : Promise.resolve(null),
     ])
-      .then(([communityResult, eligibilityResult, pricingPolicyResult]) => {
+      .then(([communityResult, eligibilityResult, pricingPolicyResult, ownedAgentsResult]) => {
         if (cancelled) return;
         setCommunity(communityResult);
         setEligibility(eligibilityResult);
         setPricingPolicy(pricingPolicyResult);
+        setAvailableAgent(ownedAgentsResult ? resolveAvailableSigningAgent(ownedAgentsResult.items) : null);
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -85,7 +152,7 @@ export function useCreatePostState(communityId: string) {
       });
 
     return () => { cancelled = true; };
-  }, [api, communityId]);
+  }, [api, communityId, session?.accessToken]);
 
   React.useEffect(() => {
     if (previousSongBundleInputFingerprint.current !== songBundleInputFingerprint) {
@@ -101,6 +168,33 @@ export function useCreatePostState(communityId: string) {
   }, [community]);
 
   React.useEffect(() => {
+    setCharityContribution(defaultCharityContributionState());
+  }, [communityId]);
+
+  React.useEffect(() => {
+    const publicOptionEnabled = isPublicAudienceAllowed(community);
+    setAudience((current) => {
+      const next: ComposerAudienceState = {
+        visibility: publicOptionEnabled ? current.visibility : "members_only",
+        publicOptionEnabled,
+        publicOptionDisabledReason: publicOptionEnabled
+          ? undefined
+          : copy.audience.publicDisabledReason,
+      };
+
+      if (
+        next.visibility === current.visibility
+        && next.publicOptionEnabled === current.publicOptionEnabled
+        && next.publicOptionDisabledReason === current.publicOptionDisabledReason
+      ) {
+        return current;
+      }
+
+      return next;
+    });
+  }, [community, copy.audience.publicDisabledReason]);
+
+  React.useEffect(() => {
     setMonetizationState((prev) => ({
       ...prev,
       regionalPricingAvailable: pricingPolicy?.regional_pricing_enabled === true,
@@ -112,6 +206,17 @@ export function useCreatePostState(communityId: string) {
     () => (community?.allowed_disclosed_qualifiers ?? []).map((qualifierId) => ({ qualifierId, label: formatQualifierLabel(qualifierId) })),
     [community?.allowed_disclosed_qualifiers],
   );
+  const charityPartner = React.useMemo<CommunityCharityPartner | null>(() => {
+    if (!community?.donation_partner || community.donation_policy_mode === "none") {
+      return null;
+    }
+
+    return {
+      partnerId: community.donation_partner_id ?? community.donation_partner.donation_partner_id,
+      displayName: community.donation_partner.display_name,
+      imageUrl: community.donation_partner.image_url ?? null,
+    };
+  }, [community]);
 
   React.useEffect(() => {
     if (!community?.allow_anonymous_identity) setIdentityMode("public");
@@ -120,6 +225,12 @@ export function useCreatePostState(communityId: string) {
   React.useEffect(() => {
     if (composerMode === "song") setIdentityMode("public");
   }, [composerMode]);
+
+  React.useEffect(() => {
+    if (!availableAgent && authorMode === "agent") {
+      setAuthorMode("human");
+    }
+  }, [authorMode, availableAgent]);
 
   React.useEffect(() => {
     if (!availableIdentityQualifiers.length) {
@@ -182,6 +293,26 @@ export function useCreatePostState(communityId: string) {
     return await api.communities.uploadSongArtifactContent(communityId, intent.song_artifact_upload_id, await file.arrayBuffer());
   }, [api, communityId]);
 
+  const signAgentAuthoredBody = React.useCallback(async <T extends Record<string, unknown>>(path: string, body: T) => {
+    if (!availableAgent) {
+      throw new Error("No local agent key is available for this post.");
+    }
+
+    const proof = await buildAgentActionProof({
+      method: "POST",
+      url: path,
+      body,
+      privateKeyPem: availableAgent.privateKeyPem,
+    });
+
+    return {
+      ...body,
+      authorship_mode: "user_agent" as const,
+      agent_id: availableAgent.agentId,
+      agent_action_proof: proof,
+    };
+  }, [availableAgent]);
+
   const handleSubmit = React.useCallback(async () => {
     if (submitState.disabled || !community || eligibility?.status !== "already_joined") return;
 
@@ -189,7 +320,7 @@ export function useCreatePostState(communityId: string) {
     setSubmitError(null);
     try {
       let result: ApiCreatedPost;
-      const resolvedIdentityMode = composerMode === "song" || !community.allow_anonymous_identity ? "public" : identityMode;
+      const resolvedIdentityMode = authorMode === "agent" || composerMode === "song" || !community.allow_anonymous_identity ? "public" : identityMode;
       const anonymousScope = resolvedIdentityMode === "anonymous" ? (community.anonymous_identity_scope ?? "community_stable") : undefined;
       const disclosedQualifierIds = resolvedIdentityMode === "anonymous" && selectedQualifierIds.length > 0 ? selectedQualifierIds : undefined;
       const isLockedSong = composerMode === "song" && paidSongPriceUsd != null;
@@ -239,14 +370,21 @@ export function useCreatePostState(communityId: string) {
           }
         }
 
-        result = await api.communities.createPost(communityId, buildSongPostRequest({
+        const songRequest = buildSongPostRequest({
           bundleId,
           derivativeStep,
           idempotencyKey: crypto.randomUUID(),
           paidSongPriceUsd,
           songMode,
           title,
-        }));
+          visibility: audience.visibility,
+        });
+        result = await api.communities.createPost(
+          communityId,
+          authorMode === "agent"
+            ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, songRequest)
+            : songRequest,
+        );
 
         if (isLockedSong) {
           if (!result.asset_id) throw new Error("The song published, but the paid asset was not created.");
@@ -255,14 +393,16 @@ export function useCreatePostState(communityId: string) {
             paidSongPriceUsd,
             pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
             regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
+            charityContributionPct: charityContribution.percentagePct,
+            charityPartnerId: charityPartner?.partnerId ?? null,
           });
           if (!listingRequest) throw new Error("The song published, but the paid listing payload was not created.");
           await api.communities.createListing(communityId, listingRequest);
         }
       } else if (composerMode === "link") {
-        result = await api.communities.createPost(communityId, {
+        const linkRequest: CreatePostRequest = {
           idempotency_key: crypto.randomUUID(),
-          post_type: "link",
+          post_type: "link" as const,
           identity_mode: resolvedIdentityMode,
           anonymous_scope: anonymousScope,
           disclosed_qualifier_ids: disclosedQualifierIds,
@@ -270,18 +410,32 @@ export function useCreatePostState(communityId: string) {
           title: title.trim(),
           link_url: linkUrl.trim(),
           caption: caption.trim() || undefined,
-        });
+          visibility: audience.visibility,
+        };
+        result = await api.communities.createPost(
+          communityId,
+          authorMode === "agent"
+            ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, linkRequest)
+            : linkRequest,
+        );
       } else {
-        result = await api.communities.createPost(communityId, {
+        const textRequest: CreatePostRequest = {
           idempotency_key: crypto.randomUUID(),
-          post_type: "text",
+          post_type: "text" as const,
           identity_mode: resolvedIdentityMode,
           anonymous_scope: anonymousScope,
           disclosed_qualifier_ids: disclosedQualifierIds,
           translation_policy: "machine_allowed",
           title: title.trim(),
           body: body.trim(),
-        });
+          visibility: audience.visibility,
+        };
+        result = await api.communities.createPost(
+          communityId,
+          authorMode === "agent"
+            ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, textRequest)
+            : textRequest,
+        );
       }
 
       navigate(`/p/${result.post_id}`);
@@ -292,20 +446,26 @@ export function useCreatePostState(communityId: string) {
       setSubmitting(false);
     }
   }, [
-    api, body, buildMatchedSourceReferences, caption, community, communityId, composerMode, derivativeStep, eligibility?.status,
+    api, audience.visibility, authorMode, body, buildMatchedSourceReferences, caption, community, communityId, composerMode, derivativeStep, eligibility?.status,
     identityMode, linkUrl, lyrics, monetizationState, paidSongPriceUsd, pendingSongBundleId, pricingPolicy?.regional_pricing_enabled,
-    resolveBundleAnalysisState, selectedQualifierIds, songMode, songState, submitState.disabled, title, uploadSongArtifact,
+    charityContribution.percentagePct, charityPartner?.partnerId,
+    resolveBundleAnalysisState, selectedQualifierIds, signAgentAuthoredBody, songMode, songState, submitState.disabled, title, uploadSongArtifact,
   ]);
 
   return {
     availableIdentityQualifiers,
     body,
     caption,
+    charityContribution,
+    charityPartner,
     community,
     composerMode,
     derivativeStep,
     eligibility,
+    authorMode,
     identityMode,
+    availableAgent,
+    audience,
     linkUrl,
     loadError,
     loading,
@@ -319,9 +479,12 @@ export function useCreatePostState(communityId: string) {
     submitting,
     title,
     setBody,
+    setAudience,
     setCaption,
+    setCharityContribution,
     setComposerMode,
     setDerivativeStep,
+    setAuthorMode,
     setIdentityMode,
     setLinkUrl,
     setLyrics,

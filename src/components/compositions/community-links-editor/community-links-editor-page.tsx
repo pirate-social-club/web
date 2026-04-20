@@ -4,6 +4,7 @@ import * as React from "react";
 import { Plus, Trash } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
+import { CommunityModerationSaveFooter } from "@/components/compositions/community-moderation-shell/community-moderation-save-footer";
 import { FormFieldLabel } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import {
@@ -74,25 +75,20 @@ export function CommunityLinksEditorPage({
   saveLoading = false,
 }: CommunityLinksEditorPageProps) {
   return (
-    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-8", className)}>
-      <div className="flex items-start justify-between gap-6">
+    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <h1 className="text-[2.25rem] font-semibold tracking-tight">Links</h1>
+          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Links</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={onAddLink} variant="secondary">
-            <Plus className="size-5" />
-            Add link
-          </Button>
-          <Button disabled={saveDisabled} loading={saveLoading} onClick={onSave}>
-            Save
-          </Button>
-        </div>
+        <Button className="w-full sm:w-auto" onClick={onAddLink} variant="secondary">
+          <Plus className="size-5" />
+          Add link
+        </Button>
       </div>
 
       <div className="flex flex-col gap-4">
         {links.map((link) => (
-          <div className="rounded-[1.75rem] border border-border-soft bg-card p-5" key={link.id}>
+          <div className="rounded-[1.75rem] border border-border-soft bg-card p-4 md:p-5" key={link.id}>
             <div className="grid gap-4 md:grid-cols-[12rem_minmax(0,0.8fr)_minmax(0,1.4fr)_auto] md:items-end">
               <div className="space-y-2">
                 <FormFieldLabel label="Platform" />
@@ -153,6 +149,12 @@ export function CommunityLinksEditorPage({
           </div>
         ) : null}
       </div>
+
+      <CommunityModerationSaveFooter
+        disabled={saveDisabled}
+        loading={saveLoading}
+        onSave={onSave}
+      />
     </section>
   );
 }

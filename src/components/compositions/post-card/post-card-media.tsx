@@ -43,7 +43,11 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
     case "text":
       return (
         <FormattedText
-          className={cn(postCardType.body, "max-w-[72ch] self-start text-foreground", className)}
+          className={cn(
+            postCardType.body,
+            "max-w-[72ch] self-start text-start text-foreground",
+            className,
+          )}
           dir={content.bodyDir ?? "auto"}
           lang={content.bodyLang}
           value={content.body}
@@ -60,7 +64,7 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
           />
           {content.caption && (
             <figcaption
-              className={cn("mt-1.5 text-muted-foreground", postCardType.caption)}
+              className={cn("mt-1.5 text-start text-muted-foreground", postCardType.caption)}
               dir={content.captionDir ?? "auto"}
               lang={content.captionLang}
             >
@@ -77,7 +81,7 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
       );
     case "link":
       return (
-        <div className={cn("max-w-[72ch] self-start space-y-2", className)}>
+        <div className={cn("max-w-[72ch] self-start space-y-2 text-start", className)}>
           <a
             className="flex w-full items-stretch gap-3 transition-colors hover:opacity-90"
             href={content.href}

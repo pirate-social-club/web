@@ -10,13 +10,17 @@ import { resolveApiBaseUrl } from "@/lib/api/base-url";
 import { updateSessionOnboarding, useSession } from "@/lib/api/session-store";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { ApiError } from "@/lib/api/client";
-import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
+import { VerifyNamespaceModal } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal";
+import type {
+  IdentityGateDraft,
+  NamespaceAttachmentState,
+} from "@/components/compositions/create-community-composer/create-community-composer.types";
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Button } from "@/components/primitives/button";
 
 import { DEFAULT_COMMUNITY_RULES } from "./moderation-helpers";
-import { getRouteAuthDescription, getRouteString } from "./route-status-copy";
+import { getRouteAuthDescription } from "./route-status-copy";
 import { AuthRequiredRouteState, StackPageShell, StatusCard } from "./route-shell";
 import { useRouteMessages } from "./route-core";
 
@@ -36,16 +40,19 @@ export function CreateCommunityPage() {
   const { copy } = useRouteMessages();
   const api = useApi();
   const session = useSession();
-  const verifyDescription = getRouteString("create-community", "verifyDescription", "Verify your identity before creating a community.");
-  const verifyPendingDescription = getRouteString("create-community", "verifyPendingDescription", "Complete the palm scan in Very.");
-  const verifyPendingTitle = getRouteString("create-community", "verifyPendingTitle", "Finish your Very verification");
-  const verifyStartDescription = getRouteString("create-community", "verifyStartDescription", "You must complete unique-human verification before creating a community.");
-  const verifyStartTitle = getRouteString("create-community", "verifyStartTitle", "Verify with Very");
-  const reopenVerificationLabel = getRouteString("create-community", "reopenVerification", "Reopen Very");
-  const startVerificationLabel = getRouteString("create-community", "startVerification", "Start Verification");
+  const verifyDescription = copy.createCommunity.verifyDescription;
+  const verifyPendingDescription = copy.createCommunity.verifyPendingDescription;
+  const verifyPendingTitle = copy.createCommunity.verifyPendingTitle;
+  const verifyStartDescription = copy.createCommunity.verifyStartDescription;
+  const verifyStartTitle = copy.createCommunity.verifyStartTitle;
+  const reopenVerificationLabel = copy.createCommunity.reopenVerification;
+  const startVerificationLabel = copy.createCommunity.startVerification;
   const [verificationSessionId, setVerificationSessionId] = React.useState<string | null>(null);
   const [verificationLoading, setVerificationLoading] = React.useState(false);
   const [verificationError, setVerificationError] = React.useState<string | null>(null);
+  const [activeNamespaceSessionId, setActiveNamespaceSessionId] = React.useState<string | null>(null);
+  const [namespaceAttachment, setNamespaceAttachment] = React.useState<NamespaceAttachmentState | null>(null);
+  const [namespaceModalOpen, setNamespaceModalOpen] = React.useState(false);
   const widgetRef = React.useRef<{ destroy?: () => void; open?: () => void } | null>(null);
 
   const cleanupWidget = React.useCallback(() => {
@@ -123,6 +130,52 @@ export function CreateCommunityPage() {
     ? { uniqueHumanVerified: session.onboarding.unique_human_verification_status === "verified", ageOver18Verified: false }
     : { uniqueHumanVerified: false, ageOver18Verified: false };
   const veryVerificationState = creatorVerificationState.uniqueHumanVerified ? "verified" : verificationSessionId ? "pending" : "not_started";
+  const namespaceVerificationCallbacks = React.useMemo(() => ({
+    onStartSession: async ({ family, rootLabel }: { family: "hns" | "spaces"; rootLabel: string }) => {
+      const result = await api.verification.startNamespaceSession({
+        family,
+        root_label: rootLabel,
+      });
+
+      setActiveNamespaceSessionId(result.namespace_verification_session_id);
+      return toNamespaceSessionResult(result);
+    },
+    onCompleteSession: async ({
+      namespaceVerificationSessionId,
+      restartChallenge,
+      signaturePayload,
+    }: {
+      namespaceVerificationSessionId: string;
+      family: "hns" | "spaces";
+      restartChallenge?: boolean;
+      signaturePayload?: { signature: string; signer_pubkey?: string } | null;
+    }) => {
+      const result = await api.verification.completeNamespaceSession(namespaceVerificationSessionId, {
+        restart_challenge: restartChallenge ?? null,
+        signature_payload: signaturePayload ?? null,
+      });
+
+      if (result.status === "verified" && result.namespace_verification_id) {
+        const verification = await api.verification.getNamespaceVerification(result.namespace_verification_id);
+        setNamespaceAttachment({
+          namespaceVerificationId: verification.namespace_verification_id,
+          family: verification.family,
+          normalizedRootLabel: verification.normalized_root_label,
+        });
+        setActiveNamespaceSessionId(null);
+      }
+
+      return {
+        status: result.status,
+        namespaceVerificationId: result.namespace_verification_id ?? null,
+        failureReason: result.failure_reason ?? null,
+      };
+    },
+    onGetSession: async ({ namespaceVerificationSessionId }: { namespaceVerificationSessionId: string }) => {
+      const result = await api.verification.getNamespaceSession(namespaceVerificationSessionId);
+      return toNamespaceSessionResult(result);
+    },
+  }), [api]);
 
   const handleCreate = React.useCallback(async (input: {
     avatarFile: File | null;
@@ -136,6 +189,7 @@ export function CreateCommunityPage() {
     allowAnonymousIdentity: boolean;
     anonymousIdentityScope: "community_stable" | "thread_stable" | "post_ephemeral";
     gateDrafts: IdentityGateDraft[];
+    namespaceVerificationId: string | null;
   }) => {
     try {
       const avatarRef = input.avatarFile ? (await api.communities.uploadMedia({ kind: "avatar", file: input.avatarFile })).media_ref : input.avatarRef;
@@ -159,6 +213,9 @@ export function CreateCommunityPage() {
         handle_policy: { policy_template: "standard" },
         governance_mode: "centralized",
         gate_rules: gateRules.length > 0 ? gateRules : undefined,
+        namespace: input.namespaceVerificationId
+          ? { namespace_verification_id: input.namespaceVerificationId }
+          : undefined,
         community_bootstrap: { rules: DEFAULT_COMMUNITY_RULES.map((rule) => ({ title: rule.title, body: rule.body, report_reason: rule.title })) },
       });
 
@@ -194,11 +251,34 @@ export function CreateCommunityPage() {
   }
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col gap-6">
-      <div className="mx-auto w-full max-w-5xl">
-        <CreateCommunityComposer creatorVerificationState={creatorVerificationState} onCreate={handleCreate} />
-      </div>
-    </section>
+    <>
+      <VerifyNamespaceModal
+        activeSessionId={activeNamespaceSessionId}
+        callbacks={namespaceVerificationCallbacks}
+        initialFamily={namespaceAttachment?.family}
+        initialRootLabel={namespaceAttachment?.normalizedRootLabel ?? ""}
+        onOpenChange={setNamespaceModalOpen}
+        onSessionCleared={() => setActiveNamespaceSessionId(null)}
+        onSessionStarted={setActiveNamespaceSessionId}
+        onVerified={() => setNamespaceModalOpen(false)}
+        open={namespaceModalOpen}
+      />
+      <section className="flex min-w-0 flex-1 flex-col gap-6">
+        <div className="mx-auto w-full max-w-5xl">
+          <CreateCommunityComposer
+            creatorVerificationState={creatorVerificationState}
+            hasPendingNamespaceSession={Boolean(activeNamespaceSessionId)}
+            namespaceAttachment={namespaceAttachment}
+            onClearNamespace={() => {
+              setNamespaceAttachment(null);
+              setActiveNamespaceSessionId(null);
+            }}
+            onCreate={handleCreate}
+            onVerifyNamespace={() => setNamespaceModalOpen(true)}
+          />
+        </div>
+      </section>
+    </>
   );
 }
 

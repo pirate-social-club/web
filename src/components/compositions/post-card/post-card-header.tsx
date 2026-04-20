@@ -1,8 +1,7 @@
 import * as React from "react";
 
-import { cn } from "@/lib/utils";
-import { useUiLocale } from "@/lib/ui-locale";
 import { Avatar } from "@/components/primitives/avatar";
+import { cn } from "@/lib/utils";
 import { postCardType } from "./post-card.styles";
 import { PostCardActionMenu } from "./post-card-action-menu";
 import type {
@@ -75,20 +74,64 @@ function InteractiveIdentityLink({
   return <span className={className}><bdi>{identity.label}</bdi></span>;
 }
 
+function AgentByline({ byline }: { byline: PostCardByline }) {
+  const { agentAuthor, community, timestampLabel } = byline;
+  if (!agentAuthor) return null;
+
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-baseline justify-start gap-x-1.5 gap-y-0.5 text-start text-muted-foreground",
+        postCardType.meta,
+      )}
+    >
+      {agentAuthor.href ? (
+        <a className="font-semibold text-foreground hover:underline" href={agentAuthor.href}>
+          <bdi>{agentAuthor.label}</bdi>
+        </a>
+      ) : (
+        <span className="font-semibold text-foreground"><bdi>{agentAuthor.label}</bdi></span>
+      )}
+      <span>owned by</span>
+      {agentAuthor.ownerHref ? (
+        <a className="font-medium text-muted-foreground hover:text-foreground hover:underline" href={agentAuthor.ownerHref}>
+          <bdi>{agentAuthor.ownerLabel}</bdi>
+        </a>
+      ) : (
+        <span className="font-medium text-muted-foreground"><bdi>{agentAuthor.ownerLabel}</bdi></span>
+      )}
+      {community ? (
+        <>
+          <span aria-hidden="true">·</span>
+          <InteractiveIdentityLink
+            className="font-medium text-muted-foreground hover:text-foreground hover:underline"
+            identity={community}
+          />
+        </>
+      ) : null}
+      <span aria-hidden="true">·</span>
+      <span><bdi>{timestampLabel}</bdi></span>
+    </div>
+  );
+}
+
 function PostCardBylineContent({
   byline,
   identityPresentation,
   qualifierLabels,
   viewContext,
-  isRtl,
 }: {
   byline: PostCardByline;
   identityPresentation?: PostCardIdentityPresentation;
   qualifierLabels?: string[];
   viewContext: PostCardViewContext;
-  isRtl: boolean;
 }) {
   const { timestampLabel } = byline;
+
+  if (byline.agentAuthor) {
+    return <AgentByline byline={byline} />;
+  }
+
   const resolvedPresentation = deriveIdentityPresentation(viewContext, identityPresentation);
   const { primaryIdentity, secondaryIdentity } = resolveIdentities(byline, resolvedPresentation);
   const qualifierText = qualifierLabels?.filter(Boolean).join(" · ");
@@ -100,11 +143,9 @@ function PostCardBylineContent({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-muted-foreground",
-        isRtl ? "justify-end text-right" : "justify-start text-left",
+        "flex flex-wrap items-baseline justify-start gap-x-1.5 gap-y-0.5 text-start text-muted-foreground",
         postCardType.meta,
       )}
-      dir="auto"
     >
       <InteractiveIdentityLink
         className="font-semibold text-foreground hover:underline"
@@ -113,7 +154,7 @@ function PostCardBylineContent({
       {qualifierText ? (
         <>
           <span aria-hidden="true">·</span>
-          <span>{qualifierText}</span>
+          <span><bdi>{qualifierText}</bdi></span>
         </>
       ) : null}
       {secondaryIdentity ? (
@@ -126,7 +167,7 @@ function PostCardBylineContent({
         </>
       ) : null}
       <span aria-hidden="true">·</span>
-      <span>{timestampLabel}</span>
+      <span><bdi>{timestampLabel}</bdi></span>
     </div>
   );
 }
@@ -152,10 +193,11 @@ export function PostCardHeader({
   onMenuAction,
   className,
 }: PostCardHeaderProps) {
-  const { isRtl } = useUiLocale();
   const resolvedPresentation = deriveIdentityPresentation(viewContext, identityPresentation);
   const { primaryIdentity, secondaryIdentity } = resolveIdentities(byline, resolvedPresentation);
-  const avatarIdentity = primaryIdentity ?? secondaryIdentity;
+  const avatarIdentity = byline.agentAuthor
+    ? byline.author ?? primaryIdentity ?? secondaryIdentity
+    : primaryIdentity ?? secondaryIdentity;
 
   const AvatarElement = (
     <Avatar
@@ -174,7 +216,6 @@ export function PostCardHeader({
         "flex items-center gap-2",
         className,
       )}
-      dir={isRtl ? "rtl" : "ltr"}
     >
       {avatarIdentity?.href ? (
         <a href={avatarIdentity.href} className="shrink-0">
@@ -185,11 +226,10 @@ export function PostCardHeader({
       ) : (
         AvatarElement
       )}
-      <div className={cn("min-w-0 flex-1", isRtl ? "text-right" : "text-left")}>
+      <div className="min-w-0 flex-1 text-start">
         <PostCardBylineContent
           byline={byline}
           identityPresentation={identityPresentation}
-          isRtl={isRtl}
           qualifierLabels={qualifierLabels}
           viewContext={viewContext}
         />

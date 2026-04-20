@@ -343,6 +343,36 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("loads authenticated community posts with locale and sort params", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        items: [],
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.listPosts("cmt_test", {
+        limit: "100",
+        locale: "nl",
+        sort: "top",
+      });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("GET");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/posts?limit=100&locale=nl&sort=top");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("adds locale to post and comment read requests", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -414,6 +444,95 @@ describe("ApiClient media uploads", () => {
       expect(requests[1]?.headers.get("authorization")).toBe(null);
       expect(requests[2]?.url).toBe("http://pirate.test/public-comments/cmt_test/replies?locale=zh-Hans&sort=new");
       expect(requests[2]?.headers.get("authorization")).toBe(null);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("waits briefly for a late auth refresh callback before failing a 401", async () => {
+    const requests: Request[] = [];
+    let token = "stale-token";
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+
+      if (request.headers.get("authorization") === "Bearer fresh-token") {
+        return Response.json({
+          user_id: "usr_test",
+          auth_sources: [],
+          created_at: "2026-04-17T00:00:00.000Z",
+          updated_at: "2026-04-17T00:00:00.000Z",
+        });
+      }
+
+      return Response.json({
+        code: "auth_error",
+        message: "Authentication failed",
+        retryable: false,
+      }, { status: 401 });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => token,
+      });
+
+      const requestPromise = client.users.getMe();
+      globalThis.setTimeout(() => {
+        client.setRefreshAuthCallback(async () => {
+          token = "fresh-token";
+          return true;
+        });
+      }, 10);
+
+      const result = await requestPromise;
+
+      expect(result.user_id).toBe("usr_test");
+      expect(requests).toHaveLength(2);
+      expect(requests[0]?.headers.get("authorization")).toBe("Bearer stale-token");
+      expect(requests[1]?.headers.get("authorization")).toBe("Bearer fresh-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("waits for auth refresh before sending an authenticated request without a token", async () => {
+    const requests: Request[] = [];
+    let token: string | null = null;
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+
+      return Response.json({
+        user_id: "usr_test",
+        auth_sources: [],
+        created_at: "2026-04-17T00:00:00.000Z",
+        updated_at: "2026-04-17T00:00:00.000Z",
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => token,
+      });
+
+      const requestPromise = client.users.getMe();
+      globalThis.setTimeout(() => {
+        client.setRefreshAuthCallback(async () => {
+          token = "fresh-token";
+          return true;
+        });
+      }, 10);
+
+      const result = await requestPromise;
+
+      expect(result.user_id).toBe("usr_test");
+      expect(requests).toHaveLength(1);
+      expect(requests[0]?.headers.get("authorization")).toBe("Bearer fresh-token");
     } finally {
       globalThis.fetch = originalFetch;
     }

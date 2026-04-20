@@ -15,12 +15,15 @@ describe("song submit payload helpers", () => {
       paidSongPriceUsd: null,
       songMode: "original",
       title: "  Free song  ",
+      visibility: "public",
     });
     const listingRequest = buildSongListingRequest({
       assetId: "ast_free",
       paidSongPriceUsd: null,
       pricingPolicyRegionalPricingEnabled: true,
       regionalPricingEnabled: true,
+      charityContributionPct: 10,
+      charityPartnerId: "don_charity_water",
     });
 
     expect(postRequest).toEqual({
@@ -34,6 +37,7 @@ describe("song submit payload helpers", () => {
       title: "Free song",
       translation_policy: "machine_allowed",
       upstream_asset_refs: undefined,
+      visibility: "public",
     });
     expect(listingRequest).toBeNull();
   });
@@ -46,22 +50,28 @@ describe("song submit payload helpers", () => {
       paidSongPriceUsd: 4.99,
       songMode: "original",
       title: "Paid song",
+      visibility: "members_only",
     });
     const listingRequest = buildSongListingRequest({
       assetId: "ast_paid",
       paidSongPriceUsd: 4.99,
       pricingPolicyRegionalPricingEnabled: true,
       regionalPricingEnabled: true,
+      charityContributionPct: 10,
+      charityPartnerId: "don_charity_water",
     });
 
     expect(postRequest.access_mode).toBe("locked");
     expect(postRequest.rights_basis).toBe("original");
     expect(postRequest.song_mode).toBe("original");
     expect(postRequest.upstream_asset_refs).toBe(undefined);
+    expect(postRequest.visibility).toBe("members_only");
     expect(listingRequest).toEqual({
       asset_id: "ast_paid",
       price_usd: 4.99,
       regional_pricing_enabled: true,
+      donation_partner_id: "don_charity_water",
+      donation_share_pct: 10,
       status: "active",
     });
   });
@@ -79,12 +89,15 @@ describe("song submit payload helpers", () => {
       paidSongPriceUsd: 1,
       songMode: "remix",
       title: "Paid remix",
+      visibility: "public",
     });
     const listingRequest = buildSongListingRequest({
       assetId: "ast_remix",
       paidSongPriceUsd: 1,
       pricingPolicyRegionalPricingEnabled: false,
       regionalPricingEnabled: true,
+      charityContributionPct: 0,
+      charityPartnerId: "don_charity_water",
     });
 
     expect(postRequest).toEqual({
@@ -98,11 +111,14 @@ describe("song submit payload helpers", () => {
       title: "Paid remix",
       translation_policy: "machine_allowed",
       upstream_asset_refs: ["ast_upstream_1", "ast_upstream_2"],
+      visibility: "public",
     });
     expect(listingRequest).toEqual({
       asset_id: "ast_remix",
       price_usd: 1,
       regional_pricing_enabled: false,
+      donation_partner_id: null,
+      donation_share_pct: null,
       status: "active",
     });
   });

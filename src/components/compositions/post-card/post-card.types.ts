@@ -143,9 +143,17 @@ export type PostCardIdentity = {
   avatarSrc?: string;
 };
 
+export type PostCardAgentAuthor = {
+  label: string;
+  href?: string;
+  ownerLabel: string;
+  ownerHref?: string;
+};
+
 export type PostCardByline = {
   community?: PostCardIdentity;
   author?: PostCardIdentity;
+  agentAuthor?: PostCardAgentAuthor;
   timestampLabel: string;
 };
 

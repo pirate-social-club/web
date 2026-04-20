@@ -9,6 +9,8 @@ import { Spinner } from "@/components/primitives/spinner";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
 import { buildCommunityPath } from "@/lib/community-routing";
+import { useUiLocale, resolveLocaleLanguageTag } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { buildPublicProfilePath, getProfileHandleLabel } from "@/lib/profile-routing";
 
 type PublicProfileResolution = {
@@ -71,6 +73,8 @@ function usePublicProfile(handleLabel: string) {
 function apiProfileToPublicProfileProps(
   resolution: PublicProfileResolution,
   appOrigin: string,
+  labels: { joinedLabel: string },
+  localeTag: string,
 ): PublicProfileProps {
   const profile = resolution.profile;
   const publicHandle = getProfileHandleLabel(profile);
@@ -89,8 +93,8 @@ function apiProfileToPublicProfileProps(
     handle: publicHandle,
     meta: [
       {
-        label: "Joined",
-        value: new Date(profile.created_at).toLocaleDateString("en-US", {
+        label: labels.joinedLabel,
+        value: new Date(profile.created_at).toLocaleDateString(localeTag, {
           month: "short",
           year: "numeric",
         }),
@@ -105,24 +109,24 @@ function apiProfileToPublicProfileProps(
   };
 }
 
-function PublicProfileNotFound({ path }: { path: string }) {
+function PublicProfileNotFound({ path, title, description }: { path: string; title: string; description: string }) {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="w-full max-w-xl rounded-[var(--radius-3xl)] border border-border-soft bg-card px-6 py-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Profile not found</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
         <p className="mt-3 text-base leading-7 text-muted-foreground">
-          We could not find a public profile for <span className="text-foreground">{path}</span>.
+          {description.replace("{path}", path)}
         </p>
       </div>
     </div>
   );
 }
 
-function PublicProfileErrorState({ description }: { description: string }) {
+function PublicProfileErrorState({ description, title }: { description: string; title: string }) {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="w-full max-w-xl rounded-[var(--radius-3xl)] border border-border-soft bg-card px-6 py-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Public profile</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
         <p className="mt-3 text-base leading-7 text-muted-foreground">{description}</p>
       </div>
     </div>
@@ -138,6 +142,9 @@ export function PublicProfileRoutePage({
   handleLabel: string;
   hostSuffix?: string | null;
 }) {
+  const { locale } = useUiLocale();
+  const localeTag = resolveLocaleLanguageTag(locale);
+  const copy = getLocaleMessages(locale, "routes").publicProfile;
   const { error, loading, resolution } = usePublicProfile(handleLabel);
 
   React.useEffect(() => {
@@ -165,19 +172,32 @@ export function PublicProfileRoutePage({
 
   if (error) {
     if (isApiNotFoundError(error)) {
-      return <PublicProfileNotFound path={hostSuffix ? `https://${handleLabel}.${hostSuffix}` : buildPublicProfilePath(handleLabel)} />;
+      return (
+        <PublicProfileNotFound
+          description={copy.notFoundDescription}
+          path={hostSuffix ? `https://${handleLabel}.${hostSuffix}` : buildPublicProfilePath(handleLabel)}
+          title={copy.notFoundTitle}
+        />
+      );
     }
 
     return (
       <PublicProfileErrorState
-        description={getErrorMessage(error, "This public profile could not be loaded right now.")}
+        description={getErrorMessage(error, copy.errorDescription)}
+        title={copy.errorTitle}
       />
     );
   }
 
   if (!resolution) {
-    return <PublicProfileNotFound path={hostSuffix ? `https://${handleLabel}.${hostSuffix}` : buildPublicProfilePath(handleLabel)} />;
+    return (
+      <PublicProfileNotFound
+        description={copy.notFoundDescription}
+        path={hostSuffix ? `https://${handleLabel}.${hostSuffix}` : buildPublicProfilePath(handleLabel)}
+        title={copy.notFoundTitle}
+      />
+    );
   }
 
-  return <PublicProfilePage {...apiProfileToPublicProfileProps(resolution, appOrigin)} />;
+  return <PublicProfilePage {...apiProfileToPublicProfileProps(resolution, appOrigin, { joinedLabel: copy.joinedLabel }, localeTag)} />;
 }

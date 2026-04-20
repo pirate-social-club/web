@@ -1,13 +1,21 @@
 import * as React from "react";
 
+import {
+  COMMUNITY_MODERATION_SECTIONS,
+  SETTINGS_SECTIONS,
+  type CommunityModerationSectionName,
+  type SettingsSection,
+} from "@/app/route-definitions";
+
 export type AppRoute =
   | { kind: "home"; path: "/" }
   | { kind: "public-profile"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "your-communities"; path: "/your-communities" }
-  | { kind: "settings"; path: string; section: "profile" | "wallet" | "preferences" }
+  | { kind: "settings"; path: string; section: SettingsSection }
   | { kind: "create-post"; path: string; communityId: string }
   | { kind: "create-post-global"; path: "/submit" }
-  | { kind: "community-moderation"; path: string; communityId: string; section: "rules" | "links" | "donations" | "pricing" | "namespace" | "gates" | "safety" }
+  | { kind: "community-moderation-index"; path: string; communityId: string }
+  | { kind: "community-moderation"; path: string; communityId: string; section: CommunityModerationSectionName }
   | { kind: "community"; path: string; communityId: string }
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
@@ -117,30 +125,30 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   const segments = normalized.split("/").filter(Boolean);
 
   if (segments.length === 2 && segments[0] === "settings") {
-    if (segments[1] === "profile" || segments[1] === "wallet" || segments[1] === "preferences") {
+    if (SETTINGS_SECTIONS.includes(segments[1] as SettingsSection)) {
       return {
         kind: "settings",
         path: normalized,
-        section: segments[1],
+        section: segments[1] as SettingsSection,
       };
     }
   }
 
+  if (segments.length === 3 && segments[0] === "c" && segments[2] === "mod") {
+    return {
+      kind: "community-moderation-index",
+      path: normalized,
+      communityId: decodeURIComponent(segments[1]),
+    };
+  }
+
   if (segments.length === 4 && segments[0] === "c" && segments[2] === "mod") {
-    if (
-      segments[3] === "rules"
-      || segments[3] === "links"
-      || segments[3] === "donations"
-      || segments[3] === "pricing"
-      || segments[3] === "namespace"
-      || segments[3] === "gates"
-      || segments[3] === "safety"
-    ) {
+    if (COMMUNITY_MODERATION_SECTIONS.includes(segments[3] as CommunityModerationSectionName)) {
       return {
         kind: "community-moderation",
         path: normalized,
         communityId: decodeURIComponent(segments[1]),
-        section: segments[3],
+        section: segments[3] as CommunityModerationSectionName,
       };
     }
   }

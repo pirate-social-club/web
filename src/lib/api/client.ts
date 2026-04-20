@@ -5,6 +5,7 @@ import {
   createUsersApi,
   createVerificationApi,
 } from "./client-groups-core";
+import { createAgentsApi } from "./client-groups-agents";
 import {
   createCommentsApi,
   createCommunityContentApi,
@@ -65,8 +66,10 @@ export class ApiClient {
   private getToken: () => string | null;
   private refreshAuth: RefreshAuthCallback | null = null;
   private refreshInFlight: Promise<boolean> | null = null;
+  private refreshAuthWaiters = new Set<(callback: RefreshAuthCallback | null) => void>();
 
   readonly auth = createAuthApi(this.request.bind(this));
+  readonly agents = createAgentsApi(this.request.bind(this));
   readonly users = createUsersApi(this.request.bind(this));
   readonly onboarding = createOnboardingApi(this.request.bind(this));
   readonly verification = createVerificationApi(this.request.bind(this));
@@ -96,10 +99,37 @@ export class ApiClient {
 
   setRefreshAuthCallback(callback: RefreshAuthCallback | null): void {
     this.refreshAuth = callback;
+    for (const waiter of this.refreshAuthWaiters) {
+      waiter(callback);
+    }
+    this.refreshAuthWaiters.clear();
+  }
+
+  private async waitForRefreshAuthCallback(timeoutMs = 1_500): Promise<RefreshAuthCallback | null> {
+    if (this.refreshAuth) {
+      return this.refreshAuth;
+    }
+
+    return await new Promise<RefreshAuthCallback | null>((resolve) => {
+      const timeoutId = globalThis.setTimeout(() => {
+        this.refreshAuthWaiters.delete(handleReady);
+        resolve(this.refreshAuth);
+      }, timeoutMs);
+
+      const handleReady = (callback: RefreshAuthCallback | null) => {
+        globalThis.clearTimeout(timeoutId);
+        this.refreshAuthWaiters.delete(handleReady);
+        resolve(callback);
+      };
+
+      this.refreshAuthWaiters.add(handleReady);
+    });
   }
 
   private async runAuthRefresh(): Promise<boolean> {
-    if (!this.refreshAuth) {
+    const refreshAuth = this.refreshAuth ?? await this.waitForRefreshAuthCallback();
+
+    if (!refreshAuth) {
       console.info("[auth] refresh skipped: no callback registered");
       return false;
     }
@@ -110,7 +140,7 @@ export class ApiClient {
     }
 
     console.info("[auth] refresh start");
-    this.refreshInFlight = this.refreshAuth()
+    this.refreshInFlight = refreshAuth()
       .then((ok) => {
         console.info("[auth] refresh result", { ok });
         return ok;
@@ -142,9 +172,17 @@ export class ApiClient {
     const body = fetchInit.body;
     const usesFormData = typeof FormData !== "undefined" && body instanceof FormData;
     const headers: Record<string, string> = usesFormData ? {} : { "Content-Type": "application/json" };
+    let token = tokenRequired ? this.getToken() : null;
 
     if (tokenRequired) {
-      const token = this.getToken();
+      if (!token) {
+        console.info("[auth] request missing token, attempting refresh", { method: init?.method ?? "GET", path });
+        const refreshed = await this.runAuthRefresh().catch(() => false);
+        if (refreshed) {
+          token = this.getToken();
+        }
+      }
+
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }

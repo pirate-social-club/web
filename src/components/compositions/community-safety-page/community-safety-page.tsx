@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { ArrowLeft } from "@phosphor-icons/react";
 
-import { Button } from "@/components/primitives/button";
+import { CommunityModerationSaveFooter } from "@/components/compositions/community-moderation-shell/community-moderation-save-footer";
 import { Checkbox } from "@/components/primitives/checkbox";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Label } from "@/components/primitives/label";
@@ -215,19 +214,14 @@ export function CommunitySafetyPage({
   saveLoading = false,
 }: CommunitySafetyPageProps) {
   return (
-    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-8", className)}>
-      <div className="flex items-start justify-between gap-6">
-        <div className="flex min-w-0 items-start gap-4">
-          <div className="min-w-0 space-y-2">
-            <h1 className="text-[2.25rem] font-semibold tracking-tight">Safety</h1>
-            <p className="text-base text-muted-foreground">
-              Tune how the OpenAI moderation pass feeds community filtering and review.
-            </p>
-          </div>
+    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
+      <div className="flex min-w-0 items-start gap-4">
+        <div className="min-w-0 space-y-2">
+          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Safety</h1>
+          <p className="text-base text-muted-foreground">
+            Tune how the OpenAI moderation pass feeds community filtering and review.
+          </p>
         </div>
-        <Button disabled={saveDisabled} loading={saveLoading} onClick={onSave}>
-          Save
-        </Button>
       </div>
 
       <Section
@@ -283,7 +277,7 @@ export function CommunitySafetyPage({
         </div>
       </Section>
 
-      <Section className="border-t border-border-soft pt-8" title="Adult content">
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Adult content">
         <div className="space-y-3">
           <PolicySelectRow
             label="Suggestive"
@@ -333,7 +327,7 @@ export function CommunitySafetyPage({
         </div>
       </Section>
 
-      <Section className="border-t border-border-soft pt-8" title="Graphic content">
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Graphic content">
         <div className="space-y-3">
           <PolicySelectRow
             label="Injury or medical content"
@@ -383,7 +377,7 @@ export function CommunitySafetyPage({
         </div>
       </Section>
 
-      <Section className="border-t border-border-soft pt-8" title="Civility">
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Civility">
         <div className="space-y-3">
           <PolicySelectRow
             label="Group-directed demeaning language"
@@ -423,6 +417,12 @@ export function CommunitySafetyPage({
           />
         </div>
       </Section>
+
+      <CommunityModerationSaveFooter
+        disabled={saveDisabled}
+        loading={saveLoading}
+        onSave={onSave}
+      />
     </section>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { CurrencyDollar, Gavel, Heart, LinkSimple, Lock, SealCheck, Shield } from "@phosphor-icons/react";
+import { CurrencyDollar, Gavel, Heart, ImageSquare, LinkSimple, Lock, Robot, SealCheck, Shield, Tag } from "@phosphor-icons/react";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 
@@ -27,7 +27,11 @@ export const DEFAULT_COMMUNITY_RULES = [
   },
 ] as const;
 
-export type CommunityModerationSection = "rules" | "links" | "donations" | "pricing" | "gates" | "safety" | "namespace";
+export type CommunityModerationSection = "profile" | "rules" | "links" | "labels" | "donations" | "pricing" | "gates" | "safety" | "namespace" | "agents";
+
+export function buildCommunityModerationIndexPath(communityId: string): string {
+  return `/c/${encodeURIComponent(communityId)}/mod`;
+}
 
 export function buildCommunityModerationPath(
   communityId: string,
@@ -37,18 +41,29 @@ export function buildCommunityModerationPath(
 }
 
 export function buildCommunityModerationSections(
-  activeSection: CommunityModerationSection,
+  activeSection: CommunityModerationSection | null,
   communityId: string,
 ) {
   return [{
-    label: "Moderation",
+    label: "Community",
     items: [
+      { active: activeSection === "profile", icon: ImageSquare, label: "Profile", onSelect: () => navigate(buildCommunityModerationPath(communityId, "profile")) },
       { active: activeSection === "rules", icon: Gavel, label: "Rules", onSelect: () => navigate(buildCommunityModerationPath(communityId, "rules")) },
       { active: activeSection === "links", icon: LinkSimple, label: "Links", onSelect: () => navigate(buildCommunityModerationPath(communityId, "links")) },
+      { active: activeSection === "labels", icon: Tag, label: "Labels", onSelect: () => navigate(buildCommunityModerationPath(communityId, "labels")) },
       { active: activeSection === "donations", icon: Heart, label: "Donations", onSelect: () => navigate(buildCommunityModerationPath(communityId, "donations")) },
       { active: activeSection === "pricing", icon: CurrencyDollar, label: "Pricing", onSelect: () => navigate(buildCommunityModerationPath(communityId, "pricing")) },
+    ],
+  }, {
+    label: "Access",
+    items: [
       { active: activeSection === "gates", icon: Lock, label: "Gates", onSelect: () => navigate(buildCommunityModerationPath(communityId, "gates")) },
       { active: activeSection === "safety", icon: Shield, label: "Safety", onSelect: () => navigate(buildCommunityModerationPath(communityId, "safety")) },
+      { active: activeSection === "agents", icon: Robot, label: "Agents", onSelect: () => navigate(buildCommunityModerationPath(communityId, "agents")) },
+    ],
+  }, {
+    label: "Verification",
+    items: [
       { active: activeSection === "namespace", icon: SealCheck, label: "Namespace verification", onSelect: () => navigate(buildCommunityModerationPath(communityId, "namespace")) },
     ],
   }];

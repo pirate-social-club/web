@@ -7,6 +7,7 @@ import {
   LinkSimple,
   Lock,
   MagnifyingGlass,
+  Robot,
   SealCheck,
   Shield,
 } from "@phosphor-icons/react";
@@ -57,6 +58,7 @@ const defaultSections: CommunityModerationNavSection[] = [
       { active: true, icon: Gavel, label: "Rules" },
       { icon: Lock, label: "Gates" },
       { icon: Shield, label: "Safety" },
+      { icon: Robot, label: "Agents" },
       { icon: Heart, label: "Donations" },
       { icon: LinkSimple, label: "Links" },
       { icon: SealCheck, label: "Namespace" },

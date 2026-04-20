@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  ArrowRight,
   ArrowsClockwise,
   Spinner,
 } from "@phosphor-icons/react";
@@ -12,21 +11,56 @@ import { Card, CardContent } from "@/components/primitives/card";
 import { CopyField } from "@/components/primitives/copy-field";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
-import { Stepper } from "@/components/primitives/stepper";
+import { resolveLocaleLanguageTag, useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
+import type { RoutesMessages } from "@/locales";
 
 import type {
   ImportJobState,
   OnboardingPhase,
   OnboardingRedditBootstrapProps,
   RedditVerificationState,
-  SuggestedCommunity,
 } from "./onboarding-reddit-bootstrap.types";
 
-const STEPS = [
-  { label: "Import karma" },
-  { label: "Choose name" },
-  { label: "Suggested communities" },
-];
+const ONBOARDING_PHASES = [
+  "import_karma",
+  "choose_name",
+] as const satisfies readonly OnboardingPhase[];
+type OnboardingCopy = RoutesMessages["onboarding"];
+
+function formatMessage(template: string, replacements: Record<string, string>) {
+  return template.replace(/\{(\w+)\}/gu, (_, key: string) => replacements[key] ?? `{${key}}`);
+}
+
+function OnboardingProgress({
+  currentStep,
+  currentLabel,
+  progressLabel,
+  stepCountLabel,
+}: {
+  currentStep: number;
+  currentLabel: string;
+  progressLabel: string;
+  stepCountLabel: string;
+}) {
+  const progress = `${(currentStep / ONBOARDING_PHASES.length) * 100}%`;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3 text-base text-muted-foreground">
+        <span>{progressLabel}</span>
+        <span className="tabular-nums">{stepCountLabel}</span>
+      </div>
+      <div className="text-lg font-semibold text-foreground">{currentLabel}</div>
+      <div className="h-1.5 rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-foreground transition-[width]"
+          style={{ width: progress }}
+        />
+      </div>
+    </div>
+  );
+}
 
 function extractVerificationCode(hint: string | undefined): string | null {
   if (!hint) return null;
@@ -37,11 +71,11 @@ function extractVerificationCode(hint: string | undefined): string | null {
   return hint.trim() || null;
 }
 
-function formatLastChecked(value: string | undefined): string | null {
+function formatLastChecked(value: string | undefined, localeTag: string): string | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(localeTag, {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
@@ -49,11 +83,7 @@ function formatLastChecked(value: string | undefined): string | null {
 }
 
 function phaseToStep(phase: OnboardingPhase): number {
-  switch (phase) {
-    case "import_karma": return 1;
-    case "choose_name": return 2;
-    case "suggested_communities": return 3;
-  }
+  return ONBOARDING_PHASES.indexOf(phase) + 1;
 }
 
 function Footer({
@@ -63,6 +93,7 @@ function Footer({
   nextDisabled,
   nextLoading,
   onNext,
+  copy,
 }: {
   nextLabel?: string;
   skipLabel?: string;
@@ -70,23 +101,23 @@ function Footer({
   nextDisabled?: boolean;
   nextLoading?: boolean;
   onNext: () => void;
+  copy: OnboardingCopy;
 }) {
   return (
-    <div className="flex items-center justify-between pt-6">
+    <div className="flex flex-col-reverse gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
       {onSkip ? (
-        <Button onClick={onSkip} variant="outline">
-          {skipLabel ?? "Skip"}
+        <Button className="w-full sm:w-auto" onClick={onSkip} variant="outline">
+          {skipLabel ?? copy.actions.skip}
         </Button>
       ) : <div />}
       <Button
-        className="max-w-xs flex-1"
+        className="w-full sm:max-w-xs sm:flex-1"
         disabled={nextDisabled}
         loading={nextLoading}
         onClick={onNext}
         size="lg"
-        trailingIcon={<ArrowRight className="size-5" />}
       >
-        {nextLabel ?? "Next"}
+        {nextLabel ?? copy.actions.next}
       </Button>
     </div>
   );
@@ -103,6 +134,8 @@ function ImportKarmaPhase({
   onNext,
   onSkip,
   onUsernameChange,
+  copy,
+  localeTag,
 }: {
   busy?: boolean;
   phaseError?: string | null;
@@ -114,6 +147,8 @@ function ImportKarmaPhase({
   onNext: () => void;
   onSkip: () => void;
   onUsernameChange?: (value: string) => void;
+  copy: OnboardingCopy;
+  localeTag: string;
 }) {
   const isVerified = reddit.verificationState === "verified";
   const isChecking = reddit.verificationState === "checking";
@@ -122,14 +157,15 @@ function ImportKarmaPhase({
   const isImporting = importJob.status === "running" || importJob.status === "queued";
   const isImportDone = importJob.status === "succeeded" || importJob.status === "partial_success";
   const verificationCode = extractVerificationCode(reddit.verificationHint);
-  const lastCheckedLabel = formatLastChecked(reddit.lastCheckedAt);
+  const lastCheckedLabel = formatLastChecked(reddit.lastCheckedAt, localeTag);
   const resolvedNextLabel = isImportDone
-    ? "Continue"
+    ? copy.actions.continue
     : isVerified
-      ? "Import karma"
+      ? copy.importKarmaAction
       : isCodeReady
-        ? "Check again"
-        : "Get code";
+        ? copy.actions.checkAgain
+        : copy.actions.getCode;
+  const surfaceLabel = copy.surfaces[reddit.codePlacementSurface ?? "profile"];
 
   const canNext =
     !busy && (
@@ -142,12 +178,13 @@ function ImportKarmaPhase({
     <div className="space-y-6">
       {!isVerified && (
         <div className="space-y-2">
-          <FormFieldLabel label="Reddit username" />
-          <div className="relative">
+          <FormFieldLabel label={copy.fields.redditUsername} />
+          <div className="relative" dir="ltr">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base text-muted-foreground">u/</span>
             <Input
-              className="pl-8"
+              className="pl-8 text-start"
               disabled={busy || !!isCodeReady || isChecking}
+              dir="ltr"
               onChange={(e) => onUsernameChange?.(e.target.value)}
               placeholder="technohippie"
               size="lg"
@@ -159,9 +196,11 @@ function ImportKarmaPhase({
 
       {isCodeReady && reddit.verificationHint ? (
         <div className="space-y-2">
-          <FormFieldLabel label={`Reddit ${reddit.codePlacementSurface ?? "profile"} code`} />
+          <FormFieldLabel
+            label={formatMessage(copy.fields.redditCode, { surface: surfaceLabel })}
+          />
           <FormNote>
-            Add this code to your Reddit profile Description:
+            {copy.notes.addCodeToProfile}
             {" "}
             <a
               className="underline underline-offset-4"
@@ -175,10 +214,10 @@ function ImportKarmaPhase({
           <CopyField value={verificationCode ?? reddit.verificationHint} />
           <FormNote tone="default">
             {busy
-              ? "Checking Reddit now..."
+              ? copy.notes.checkingRedditNow
               : lastCheckedLabel
-                ? `Checked Reddit at ${lastCheckedLabel}. The code is not visible yet. Save your profile, wait a few seconds, then click Check again.`
-                : "After saving your Reddit profile Description, wait a few seconds and click Check again."}
+                ? formatMessage(copy.notes.checkedRedditAt, { time: lastCheckedLabel })
+                : copy.notes.saveProfileThenCheckAgain}
           </FormNote>
         </div>
       ) : null}
@@ -194,9 +233,9 @@ function ImportKarmaPhase({
       {isVerified && !isImportDone && (
         <FormNote>
           {isImporting ? (
-            <><Spinner className="mr-2 inline size-4" />Importing...</>
+            <><Spinner className="mr-2 inline size-4" />{copy.notes.importing}</>
           ) : (
-            "Starting import..."
+            copy.notes.startingImport
           )}
         </FormNote>
       )}
@@ -208,6 +247,7 @@ function ImportKarmaPhase({
         onNext={onNext}
         onSkip={!busy && canSkip ? onSkip : undefined}
         skipLabel={skipLabel}
+        copy={copy}
       />
     </div>
   );
@@ -222,6 +262,7 @@ function ChooseNamePhase({
   handleValue,
   onHandleChange,
   onContinue,
+  copy,
 }: {
   busy?: boolean;
   phaseError?: string | null;
@@ -231,6 +272,7 @@ function ChooseNamePhase({
   handleValue: string;
   onHandleChange: (value: string) => void;
   onContinue: () => void;
+  copy: OnboardingCopy;
 }) {
   const displayValue = handleValue.endsWith(".pirate")
     ? handleValue.slice(0, -7)
@@ -240,20 +282,21 @@ function ChooseNamePhase({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <FormFieldLabel label="Handle" />
+        <FormFieldLabel label={copy.fields.handle} />
         <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+          <div className="relative flex-1" dir="ltr">
             <Input
-              className="pr-12 font-mono text-lg"
+              className="pr-12 text-start font-mono text-lg"
+              dir="ltr"
               onChange={(e) => onHandleChange(e.target.value)}
-              placeholder="Choose your handle"
+              placeholder={copy.placeholders.handle}
               size="lg"
               value={displayValue}
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono text-lg text-muted-foreground">.pirate</span>
           </div>
           <Button
-            aria-label="Generate a new handle"
+            aria-label={copy.actions.generateHandle}
             className="size-16 shrink-0"
             disabled={busy}
             onClick={onGenerateHandle}
@@ -268,8 +311,8 @@ function ChooseNamePhase({
       {handleSuggestion ? (
         <FormNote>
           {handleSuggestion.availability === "available"
-            ? `${handleSuggestion.suggestedLabel}.pirate is available`
-            : `${handleSuggestion.suggestedLabel}.pirate is taken`}
+            ? formatMessage(copy.notes.handleAvailable, { handle: handleSuggestion.suggestedLabel })
+            : formatMessage(copy.notes.handleTaken, { handle: handleSuggestion.suggestedLabel })}
         </FormNote>
       ) : null}
 
@@ -277,57 +320,7 @@ function ChooseNamePhase({
         <FormNote tone="warning">{phaseError}</FormNote>
       ) : null}
 
-      <Footer nextDisabled={!canContinue} nextLabel={nextLabel} nextLoading={busy} onNext={onContinue} />
-    </div>
-  );
-}
-
-function SuggestedCommunitiesPhase({
-  busy = false,
-  phaseError,
-  communities,
-  nextLabel,
-  skipLabel,
-  onContinue,
-  onSkip,
-}: {
-  busy?: boolean;
-  phaseError?: string | null;
-  communities: SuggestedCommunity[];
-  nextLabel?: string;
-  skipLabel?: string;
-  onContinue: () => void;
-  onSkip: () => void;
-}) {
-  return (
-    <div className="space-y-6">
-      {communities.length > 0 ? (
-        <div className="space-y-3">
-          {communities.map((community) => (
-            <div
-              key={community.communityId}
-              className="flex items-center justify-between rounded-full border border-border-soft bg-card px-4 py-3"
-            >
-              <span className="font-medium text-foreground">{community.name}</span>
-              <span className="text-base text-muted-foreground">{community.reason}</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <FormNote>No community suggestions yet. Join some from your feed later.</FormNote>
-      )}
-
-      {phaseError ? (
-        <FormNote tone="warning">{phaseError}</FormNote>
-      ) : null}
-
-      <Footer
-        nextLabel={nextLabel}
-        nextLoading={busy}
-        onNext={onContinue}
-        onSkip={onSkip}
-        skipLabel={skipLabel}
-      />
+      <Footer copy={copy} nextDisabled={!canContinue} nextLabel={nextLabel} nextLoading={busy} onNext={onContinue} />
     </div>
   );
 }
@@ -340,16 +333,33 @@ export function OnboardingRedditBootstrap({
   phase,
   reddit,
   importJob,
-  snapshot,
   handleSuggestion,
-  actions,
+  actions = {},
   callbacks,
 }: OnboardingRedditBootstrapProps) {
+  const { locale } = useUiLocale();
+  const localeTag = resolveLocaleLanguageTag(locale);
+  const copy = getLocaleMessages(locale, "routes").onboarding;
   const currentStep = phaseToStep(phase);
+  const numberFormatter = new Intl.NumberFormat(localeTag);
+  const stepLabels = [
+    copy.importKarmaAction,
+    copy.chooseNameAction,
+  ];
+  const currentLabel = stepLabels[currentStep - 1] ?? "";
+  const stepCountLabel = formatMessage(copy.stepCount, {
+    current: numberFormatter.format(currentStep),
+    total: numberFormatter.format(ONBOARDING_PHASES.length),
+  });
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
-      <Stepper currentStep={currentStep} steps={STEPS} />
+      <OnboardingProgress
+        currentLabel={currentLabel}
+        currentStep={currentStep}
+        progressLabel={copy.progressLabel}
+        stepCountLabel={stepCountLabel}
+      />
 
       <Card className="overflow-hidden border-border shadow-none">
         <CardContent className="p-5">
@@ -365,6 +375,8 @@ export function OnboardingRedditBootstrap({
               phaseError={phaseError}
               reddit={reddit}
               skipLabel={actions.tertiaryLabel}
+              copy={copy}
+              localeTag={localeTag}
             />
           ) : null}
           {phase === "choose_name" ? (
@@ -377,17 +389,7 @@ export function OnboardingRedditBootstrap({
               onGenerateHandle={callbacks?.onGenerateHandle ?? (() => {})}
               onHandleChange={callbacks?.onHandleChange ?? (() => {})}
               phaseError={phaseError}
-            />
-          ) : null}
-          {phase === "suggested_communities" ? (
-            <SuggestedCommunitiesPhase
-              busy={busy}
-              communities={snapshot?.suggestedCommunities ?? []}
-              nextLabel={actions.primaryLabel}
-              onContinue={callbacks?.onSuggestedCommunitiesContinue ?? (() => {})}
-              onSkip={callbacks?.onSuggestedCommunitiesSkip ?? (() => {})}
-              phaseError={phaseError}
-              skipLabel={actions.tertiaryLabel}
+              copy={copy}
             />
           ) : null}
         </CardContent>

@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import type {
   NotificationFeedItem,
   UserTask,
@@ -8,6 +9,8 @@ import type {
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 
 function payloadString(
   payload: Record<string, unknown> | null | undefined,
@@ -17,17 +20,17 @@ function payloadString(
   return typeof value === "string" && value.trim() ? value : null;
 }
 
-function formatTaskLabel(type: string): string {
+function formatTaskLabel(type: string, copy: ReturnType<typeof getLocaleMessages<"routes">>["inbox"]): string {
   switch (type) {
     case "namespace_verification_required":
-      return "Verify your community namespace";
+      return copy.taskNamespaceVerificationRequired;
     default:
       return type.replace(/_/g, " ");
   }
 }
 
-function formatEventLabel(item: NotificationFeedItem): string {
-  const actorLabel = payloadString(item.event.payload, "actor_display_name") ?? "Someone";
+function formatEventLabel(item: NotificationFeedItem, someoneLabel: string): string {
+  const actorLabel = payloadString(item.event.payload, "actor_display_name") ?? someoneLabel;
 
   switch (item.event.type) {
     case "comment_reply":
@@ -94,7 +97,7 @@ export function NotificationInboxPage({
   onOpenActivityItem,
   onVerifyTask,
   tasks,
-  title = "Inbox",
+  title,
 }: {
   activityItems: NotificationFeedItem[];
   loading?: boolean;
@@ -104,46 +107,48 @@ export function NotificationInboxPage({
   tasks: UserTask[];
   title?: string;
 }) {
+  const { locale } = useUiLocale();
+  const copy = React.useMemo(() => getLocaleMessages(locale, "routes").inbox, [locale]);
   const hasTasks = tasks.length > 0;
   const hasActivity = activityItems.length > 0;
 
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-6">
       <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-5 md:px-6 md:py-6">
-        <div className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{title}</div>
+        <div className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{title ?? copy.title}</div>
       </div>
 
       <div className="flex flex-col gap-4">
         {loading ? (
           <Card className="px-5 py-8 text-center text-muted-foreground">
-            Loading...
+            {copy.loading}
           </Card>
         ) : !hasTasks && !hasActivity ? (
           <Card className="px-5 py-8 text-center text-muted-foreground">
-            No notifications yet
+            {copy.emptyState}
           </Card>
         ) : (
           <>
             {hasTasks ? (
-              <SectionCard title="Action needed">
+              <SectionCard title={copy.taskActionNeeded}>
                 <div>
                   {tasks.map((task, index) => (
                     <div key={task.task_id}>
                       {index > 0 ? <Separator /> : null}
                       <div className="flex items-center gap-4 px-5 py-4">
                         <div className="min-w-0 flex-1">
-                          <p className="text-base font-medium text-foreground">{formatTaskLabel(task.type)}</p>
+                          <p className="text-base font-medium text-foreground">{formatTaskLabel(task.type, copy)}</p>
                           {task.payload?.community_display_name ? (
                             <p className="text-base text-muted-foreground">{String(task.payload.community_display_name)}</p>
                           ) : null}
                         </div>
                         {task.type === "namespace_verification_required" ? (
                           <Button onClick={() => onVerifyTask?.(task)} variant="secondary">
-                            Verify
+                            {copy.taskVerify}
                           </Button>
                         ) : null}
                         <Button onClick={() => onDismissTask?.(task)} variant="ghost">
-                          Dismiss
+                          {copy.taskDismiss}
                         </Button>
                       </div>
                     </div>
@@ -153,7 +158,7 @@ export function NotificationInboxPage({
             ) : null}
 
             {hasActivity ? (
-              <SectionCard title="Recent activity">
+              <SectionCard title={copy.recentActivity}>
                 <div>
                   {activityItems.map((item, index) => {
                     const href = resolveNotificationActivityHref(item);
@@ -175,7 +180,7 @@ export function NotificationInboxPage({
                         >
                           <div className="space-y-1.5">
                             <p className={`text-base text-foreground ${!item.receipt.read_at ? "font-semibold" : "font-medium"}`}>
-                              {formatEventLabel(item)}
+                              {formatEventLabel(item, copy.someone)}
                             </p>
                             {context ? (
                               <p className="text-base leading-6 text-muted-foreground">{context}</p>

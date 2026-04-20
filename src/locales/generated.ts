@@ -58,6 +58,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "community": {
         "aboutTab": "About",
+        "charityLabel": "Charity",
         "createPostLabel": "Create Post",
         "feedTab": "Feed",
         "membersLabel": "Members",
@@ -534,6 +535,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "community": {
         "aboutTab": "حول",
+        "charityLabel": "الجهة الخيرية",
         "createPostLabel": "أنشئ منشورًا",
         "feedTab": "الخلاصة",
         "membersLabel": "الأعضاء",
@@ -1010,6 +1012,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "community": {
         "aboutTab": "关于",
+        "charityLabel": "慈善机构",
         "createPostLabel": "发布帖子",
         "feedTab": "动态",
         "membersLabel": "成员",

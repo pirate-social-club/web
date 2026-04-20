@@ -30,6 +30,7 @@ export function CreatePostGlobalPage({
 }: {
   renderCreatePost: (communityId: string) => React.ReactNode;
 }) {
+  const { copy } = useRouteMessages();
   const knownCommunities = useKnownCommunities();
   const [selectedCommunityId, setSelectedCommunityId] = React.useState<string | null>(null);
   const pickerItems: CommunityPickerItem[] = React.useMemo(
@@ -47,12 +48,13 @@ export function CreatePostGlobalPage({
 
   return (
     <PostComposer
-      clubName="Choose a community"
-      communityPickerEmptyLabel="No recent communities."
+      clubName={copy.common.chooseCommunity}
+      communityPickerEmptyLabel={copy.common.noRecentCommunities}
       communityPickerItems={pickerItems}
       mode="text"
       onSelectCommunity={setSelectedCommunityId}
       submitDisabled
+      submitLabel={copy.createPost.actions.post}
     />
   );
 }

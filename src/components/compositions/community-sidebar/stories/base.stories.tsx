@@ -190,6 +190,7 @@ const gatedCommunity: CommunitySidebarProps = {
   memberCount: 1284,
   createdAt: "2025-01-20T00:00:00Z",
   membershipMode: "gated",
+  requirements: ["United States nationality"],
   moderator: {
     avatarSrc: "https://i.pravatar.cc/96?img=33",
     displayName: "modmatrix",
@@ -260,6 +261,13 @@ const minimalCommunity: CommunitySidebarProps = {
     displayName: "founder",
     handle: "u/founder.pirate",
   },
+};
+
+const stackedRequirementsCommunity: CommunitySidebarProps = {
+  ...minimalCommunity,
+  description: "Private access for a narrow membership slice.",
+  membershipMode: "gated",
+  requirements: ["Palestine nationality", "18+", "NFT"],
 };
 
 const manyFlairsCommunity: CommunitySidebarProps = {
@@ -349,6 +357,11 @@ export const Full: Story = {
 export const Gated: Story = {
   name: "Gated community",
   render: () => <CommunitySidebar {...gatedCommunity} />,
+};
+
+export const StackedRequirements: Story = {
+  name: "Stacked requirements",
+  render: () => <CommunitySidebar {...stackedRequirementsCommunity} />,
 };
 
 export const Minimal: Story = {

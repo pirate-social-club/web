@@ -6,7 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const optionCardVariants = cva(
-  "w-full rounded-[var(--radius-lg)] border px-4 py-4 text-left transition-[border-color,background-color]",
+  "w-full rounded-[var(--radius-lg)] border px-4 py-4 text-start transition-[border-color,background-color]",
   {
     variants: {
       variant: {

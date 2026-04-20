@@ -4,9 +4,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { Flag, House, Plus } from "@phosphor-icons/react";
 
 import { Feed } from "@/components/compositions/feed/feed";
+import { AppHeader } from "@/components/compositions/app-shell-chrome/app-header";
+import { CommunityAgentPolicyPage } from "@/components/compositions/community-agent-policy/community-agent-policy";
 import { NotificationInboxPage } from "@/components/compositions/notification-inbox-page/notification-inbox-page";
 import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap";
 import { AppSidebar } from "@/components/compositions/app-sidebar/app-sidebar";
+import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
 import {
   CommunitySafetyPage,
   createDefaultCommunitySafetyAdultContentPolicy,
@@ -148,6 +151,33 @@ describe("composition smoke tests", () => {
     expect(markup).toContain("Ship log");
   });
 
+  test("renders the app header brand in uppercase", () => {
+    const markup = render(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <SidebarProvider>
+          <AppHeader onHomeClick={() => undefined} />
+        </SidebarProvider>
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("PIRATE");
+  });
+
+  test("renders sidebar requirements as a minimal section", () => {
+    const markup = render(
+      <CommunitySidebar
+        createdAt="2026-04-19T08:00:00.000Z"
+        displayName="Requirements Club"
+        membershipMode="gated"
+        requirements={["Palestine nationality", "18+"]}
+      />,
+    );
+
+    expect(markup).toContain("Requirements");
+    expect(markup).toContain("Palestine nationality");
+    expect(markup).toContain("18+");
+  });
+
   test("renders a post thread with replies", () => {
     const markup = render(
       <PostThread
@@ -219,7 +249,6 @@ describe("composition smoke tests", () => {
   test("renders onboarding without a browser environment", () => {
     const markup = render(
       <OnboardingRedditBootstrap
-        actions={{ primaryLabel: "Continue", tertiaryLabel: "Skip" }}
         canSkip
         generatedHandle="captainhook.pirate"
         handleSuggestion={{
@@ -233,7 +262,7 @@ describe("composition smoke tests", () => {
       />,
     );
 
-    expect(markup).toContain("Handle");
+    expect(markup).toContain("captainhook");
     expect(markup).toContain(".pirate");
   });
 
@@ -265,6 +294,24 @@ describe("composition smoke tests", () => {
     expect(markup).toContain("Threatening language");
   });
 
+  test("renders the moderation agents page", () => {
+    const markup = render(
+      <CommunityAgentPolicyPage
+        settings={{
+          agentPostingPolicy: "allow",
+          agentPostingScope: "replies_only",
+          dailyPostCap: 5,
+          dailyReplyCap: 20,
+        }}
+        submitState={{ kind: "idle" }}
+      />,
+    );
+
+    expect(markup).toContain("Agents");
+    expect(markup).toContain("Posting policy");
+    expect(markup).toContain("Agent posts per day");
+  });
+
   test("renders the settings shell", () => {
     const markup = render(
       <SettingsPage
@@ -275,6 +322,7 @@ describe("composition smoke tests", () => {
           localeOptions: [
             { label: "English", value: "en" },
             { label: "Arabic", value: "ar" },
+            { label: "Mandarin", value: "zh" },
           ],
           submitState: { kind: "idle" },
         }}
@@ -304,11 +352,68 @@ describe("composition smoke tests", () => {
           ],
           primaryAddress: "0x42a5f77f2d06c9a7e304817b3c177b91e0c2f3a8",
         }}
+        agents={{
+          items: [],
+          canRegister: false,
+          registrationState: { kind: "idle" },
+        }}
       />,
     );
 
     expect(markup).toContain("Settings");
     expect(markup).toContain("Profile");
     expect(markup).toContain("Save profile");
+  });
+
+  test("renders the settings agents tab", () => {
+    const markup = render(
+      <SettingsPage
+        activeTab="agents"
+        preferences={{
+          ageStatusLabel: "18+ verified",
+          locale: "en",
+          localeOptions: [
+            { label: "English", value: "en" },
+          ],
+          submitState: { kind: "idle" },
+        }}
+        profile={{
+          bio: "",
+          currentHandle: "captainblackbeard.pirate",
+          displayName: "Blackbeard",
+          linkedHandles: [{
+            handleId: null,
+            kind: "pirate",
+            label: "captainblackbeard.pirate",
+            primary: true,
+            verificationState: "verified",
+          }],
+          postAuthorLabel: "captainblackbeard.pirate",
+          submitState: { kind: "idle" },
+        }}
+        wallet={{
+          connectedWallets: [],
+        }}
+        agents={{
+          items: [{
+            agentId: "agt_demo1",
+            displayName: "Captain Bot",
+            status: "active",
+            createdAt: "2026-03-15T10:00:00Z",
+            currentOwnership: {
+              ownershipProvider: "clawkey",
+              verifiedAt: "2026-03-15T10:05:00Z",
+              expiresAt: null,
+            },
+          }],
+          canRegister: false,
+          registrationState: { kind: "idle" },
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Agents");
+    expect(markup).toContain("Captain Bot");
+    expect(markup).toContain("ClawKey");
   });
 });

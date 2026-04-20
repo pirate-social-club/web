@@ -188,9 +188,9 @@ export function createLinkPost(frame: {
     ...createPostFrame(frame),
     content: {
       type: "link",
-      href: "https://pirate.sc/blog/feed-ranking",
+      href: "https://blog.pirate.sc/feed-ranking",
       linkTitle: "How We Think About Ranking Music Communities",
-      linkLabel: "pirate.sc/blog/feed-ranking",
+      linkLabel: "blog.pirate.sc/feed-ranking",
       previewImageSrc: "https://picsum.photos/seed/pirate-link/240/240",
     },
   };

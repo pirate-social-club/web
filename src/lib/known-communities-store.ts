@@ -1,6 +1,7 @@
 import * as React from "react";
 
 const STORAGE_KEY = "pirate_known_communities";
+const EMPTY_KNOWN_COMMUNITIES: KnownCommunity[] = [];
 
 export interface KnownCommunity {
   avatarSrc?: string | null;
@@ -26,14 +27,14 @@ function sortCommunities(communities: KnownCommunity[]): KnownCommunity[] {
 }
 
 function readFromStorage(): KnownCommunity[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return EMPTY_KNOWN_COMMUNITIES;
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) return EMPTY_KNOWN_COMMUNITIES;
 
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) return EMPTY_KNOWN_COMMUNITIES;
 
     return sortCommunities(
       parsed.filter((entry): entry is KnownCommunity =>
@@ -48,7 +49,7 @@ function readFromStorage(): KnownCommunity[] {
       ),
     );
   } catch {
-    return [];
+    return EMPTY_KNOWN_COMMUNITIES;
   }
 }
 
@@ -104,6 +105,6 @@ export function useKnownCommunities(): KnownCommunity[] {
   return React.useSyncExternalStore(
     subscribeToKnownCommunities,
     getKnownCommunities,
-    () => [],
+    () => EMPTY_KNOWN_COMMUNITIES,
   );
 }

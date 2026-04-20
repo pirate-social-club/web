@@ -14,6 +14,10 @@
       "zone_name": "pirate.sc"
     },
     {
+      "pattern": "blog.pirate.sc/*",
+      "zone_name": "pirate.sc"
+    },
+    {
       "pattern": "www.pirate.sc/*",
       "zone_name": "pirate.sc"
     }
@@ -34,6 +38,10 @@
       "routes": [
         {
           "pattern": "staging.pirate.sc/*",
+          "zone_name": "pirate.sc"
+        },
+        {
+          "pattern": "blog.staging.pirate.sc/*",
           "zone_name": "pirate.sc"
         }
       ]

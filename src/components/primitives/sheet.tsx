@@ -67,7 +67,7 @@ const SheetContent = React.forwardRef<
     >
       {children}
       {!hideCloseButton ? (
-        <DialogPrimitive.Close className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <DialogPrimitive.Close className="absolute end-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <X aria-hidden="true" className="h-5 w-5" weight="bold" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
@@ -81,7 +81,7 @@ const SheetHeader = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col space-y-2 text-center sm:text-left", className)} {...props} />
+  <div className={cn("flex flex-col space-y-2 text-center sm:text-start", className)} {...props} />
 );
 SheetHeader.displayName = "SheetHeader";
 

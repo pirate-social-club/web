@@ -1,6 +1,7 @@
 import * as React from "react";
-import { Check, MusicNote, SpinnerGap } from "@phosphor-icons/react";
+import { Check, MusicNote } from "@phosphor-icons/react";
 import { Lock as FilledLockIcon, Pause as PauseIcon, Play as PlayIcon } from "@phosphor-icons/react";
+import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
 import { MediaControlButton } from "@/components/primitives/media-control-button";
@@ -151,7 +152,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
       case "buffering":
         return (
           <MediaControlButton aria-label="Loading" size="md" disabled>
-            <SpinnerGap className="size-[18px] animate-spin" />
+            <Spinner className="size-[18px]" />
           </MediaControlButton>
         );
       case "preview":
@@ -174,7 +175,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
   const derivativeSummary = ui.showAttribution ? getDerivativeSummary(upstreamAttributions) : null;
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div className={cn("flex flex-col gap-2 text-start", className)}>
       {/* Main song row */}
       <div className="flex items-center gap-3">
         {/* Artwork */}

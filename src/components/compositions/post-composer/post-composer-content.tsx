@@ -41,6 +41,7 @@ export function PostComposerPrimaryArea({
   activeSongMode,
   activeTab,
   captionValue,
+  copy,
   derivativeState,
   linkPreview,
   linkUrlValue,
@@ -59,6 +60,14 @@ export function PostComposerPrimaryArea({
   activeSongMode: SongMode;
   activeTab: ComposerTab;
   captionValue: string;
+  copy: {
+    fields: Record<string, string>;
+    none: string;
+    placeholders: Record<string, string>;
+    songModes: Record<string, string>;
+    upload: Record<string, string>;
+    buttons: Record<string, string>;
+  };
   derivativeState?: DerivativeStepState;
   linkPreview?: LinkPreviewState;
   linkUrlValue: string;
@@ -78,31 +87,35 @@ export function PostComposerPrimaryArea({
     case "text":
       return (
         <div>
-          <FieldLabel label="Body" />
-          <EditorChrome onChange={onTextBodyValueChange} value={textBodyValue} />
+          <FieldLabel label={copy.fields.body} />
+          <EditorChrome
+            onChange={onTextBodyValueChange}
+            placeholder={copy.placeholders.body}
+            value={textBodyValue}
+          />
         </div>
       );
     case "image":
       return (
         <div className="space-y-3">
-          <UploadField accept="image/*" label="Image" />
+          <UploadField accept="image/*" copy={copy} label={copy.fields.image} />
           <LabeledTextarea
             className="min-h-28"
             defaultValue={captionValue}
-            label="Caption"
-            placeholder="Add a caption"
+            label={copy.fields.caption}
+            placeholder={copy.placeholders.caption}
           />
         </div>
       );
     case "video":
       return (
         <div className="space-y-3">
-          <UploadField accept="video/*" label="Video" />
+          <UploadField accept="video/*" copy={copy} label={copy.fields.video} />
           <LabeledTextarea
             className="min-h-28"
             defaultValue={captionValue}
-            label="Caption"
-            placeholder="Add a caption"
+            label={copy.fields.caption}
+            placeholder={copy.placeholders.caption}
           />
         </div>
       );
@@ -110,19 +123,19 @@ export function PostComposerPrimaryArea({
       return (
         <div className="space-y-3">
           <div>
-            <FieldLabel label="URL" />
+            <FieldLabel label={copy.fields.url} />
             <Input
               className="h-14"
               onChange={(event) => onLinkUrlValueChange?.(event.target.value)}
-              placeholder="https://"
+              placeholder={copy.placeholders.url}
               value={linkUrlValue}
             />
           </div>
           <LabeledFormattedTextarea
             className="min-h-28"
-            label="Commentary"
+            label={copy.fields.commentary}
             onChange={onCaptionValueChange}
-            placeholder="Add commentary"
+            placeholder={copy.placeholders.commentary}
             value={captionValue}
           />
           {linkPreview ? <LinkPreviewCard {...linkPreview} /> : null}
@@ -152,7 +165,7 @@ export function PostComposerPrimaryArea({
                 disabled={Boolean(derivativeState?.required && value === "original")}
                 type="button"
               >
-                {value}
+                {copy.songModes[value]}
               </button>
             ))}
           </div>
@@ -160,7 +173,8 @@ export function PostComposerPrimaryArea({
           <div className="space-y-4">
             <UploadField
               accept="audio/*"
-              label="Audio"
+              copy={copy}
+              label={copy.fields.audio}
               onChange={(files) =>
                 updateSongState((current) => ({
                   ...current,
@@ -172,7 +186,8 @@ export function PostComposerPrimaryArea({
             />
             <UploadField
               accept="image/*"
-              label="Cover art"
+              copy={copy}
+              label={copy.fields.coverArt}
               onChange={(files) =>
                 updateSongState((current) => ({
                   ...current,
@@ -186,7 +201,8 @@ export function PostComposerPrimaryArea({
             <div className="grid gap-3 md:grid-cols-2">
               <UploadField
                 accept="audio/*"
-                label="Instrumental stem"
+                copy={copy}
+                label={copy.fields.instrumentalStem}
                 onChange={(files) =>
                   updateSongState((current) => ({
                     ...current,
@@ -200,7 +216,8 @@ export function PostComposerPrimaryArea({
               />
               <UploadField
                 accept="audio/*"
-                label="Vocal stem"
+                copy={copy}
+                label={copy.fields.vocalStem}
                 onChange={(files) =>
                   updateSongState((current) => ({
                     ...current,
@@ -214,7 +231,8 @@ export function PostComposerPrimaryArea({
             <div className="grid gap-3 md:grid-cols-2">
               <UploadField
                 accept="audio/*"
-                label="Preview clip"
+                copy={copy}
+                label={copy.fields.previewClip}
                 onChange={(files) =>
                   updateSongState((current) => ({
                     ...current,
@@ -226,7 +244,8 @@ export function PostComposerPrimaryArea({
               />
               <UploadField
                 accept="video/*"
-                label="Canvas video"
+                copy={copy}
+                label={copy.fields.canvasVideo}
                 onChange={(files) =>
                   updateSongState((current) => ({
                     ...current,
@@ -241,7 +260,7 @@ export function PostComposerPrimaryArea({
 
           <div className="grid gap-3 md:grid-cols-3">
             <div>
-              <FieldLabel label="Genre" />
+              <FieldLabel label={copy.fields.genre} />
               <Select
                 onValueChange={(value) =>
                   updateSongState((current) => ({ ...current, genre: value }))
@@ -249,7 +268,7 @@ export function PostComposerPrimaryArea({
                 value={songState.genre}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select genre" />
+                  <SelectValue placeholder={copy.placeholders.selectGenre} />
                 </SelectTrigger>
                 <SelectContent>
                   {songGenreOptions.map((option) => (
@@ -262,7 +281,7 @@ export function PostComposerPrimaryArea({
             </div>
 
             <div>
-              <FieldLabel label="Primary language" />
+              <FieldLabel label={copy.fields.primaryLanguage} />
               <Select
                 onValueChange={(value) =>
                   updateSongState((current) => ({ ...current, primaryLanguage: value }))
@@ -270,7 +289,7 @@ export function PostComposerPrimaryArea({
                 value={songState.primaryLanguage}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select language" />
+                  <SelectValue placeholder={copy.placeholders.selectLanguage} />
                 </SelectTrigger>
                 <SelectContent>
                   {songLanguageOptions.map((option) => (
@@ -283,7 +302,7 @@ export function PostComposerPrimaryArea({
             </div>
 
             <div>
-              <FieldLabel label="Secondary language" />
+              <FieldLabel label={copy.fields.secondaryLanguage} />
               <Select
                 onValueChange={(value) =>
                   updateSongState((current) => ({
@@ -294,10 +313,10 @@ export function PostComposerPrimaryArea({
                 value={songState.secondaryLanguage || noneLanguageValue}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Optional" />
+                  <SelectValue placeholder={copy.placeholders.optional} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={noneLanguageValue}>None</SelectItem>
+                  <SelectItem value={noneLanguageValue}>{copy.none}</SelectItem>
                   {songLanguageOptions.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
@@ -310,9 +329,9 @@ export function PostComposerPrimaryArea({
 
           <LabeledTextarea
             className="min-h-36"
-            label="Lyrics"
+            label={copy.fields.lyrics}
             onChange={onLyricsValueChange}
-            placeholder="Paste lyrics"
+            placeholder={copy.placeholders.lyrics}
             value={lyricsValue}
           />
         </div>

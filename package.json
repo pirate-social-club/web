@@ -24,6 +24,7 @@
     "deploy:public:staging": "wrangler deploy --config wrangler.public.jsonc --env staging",
     "test": "bun test",
     "boundary:audit": "node ./scripts/boundary-audit.mjs",
+    "agents:openclaw:challenge": "node ./scripts/build-openclaw-challenge.mjs",
     "ui:audit": "node ./scripts/ui-audit.mjs",
     "validate": "bun run locales:generate && bun run types && bun run boundary:audit && bun test && bun run ui:audit",
     "types": "bun run locales:generate && tsc --noEmit"

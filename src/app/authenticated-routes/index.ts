@@ -5,7 +5,7 @@ export { CreateCommunityPage } from "./create-community-route";
 export { CreatePostPage } from "./create-post-route";
 export { HomePage, YourCommunitiesPage } from "./home-routes";
 export { InboxPlaceholderPage } from "./inbox-route";
-export { CommunityModerationPage } from "./moderation-route";
+export { CommunityModerationIndexPage, CommunityModerationPage } from "./moderation-route";
 export { CreatePostGlobalPage, NotFoundPage } from "./misc-routes";
 export { OnboardingPage } from "./onboarding-route";
 export type { HomeFeedEntry } from "./post-presentation";

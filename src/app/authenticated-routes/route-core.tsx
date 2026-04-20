@@ -100,25 +100,15 @@ export function parseUsdInput(value: string | null | undefined): number | null {
   return Math.round(parsed * 100) / 100;
 }
 
-export function resolvePreferredUiLocale(
-  sessionPreferredLocale: string | null | undefined,
-  uiLocale: UiLocaleCode,
-): UiLocaleCode {
-  return sessionPreferredLocale === "en" || sessionPreferredLocale === "ar" || sessionPreferredLocale === "pseudo"
-    ? sessionPreferredLocale
-    : uiLocale;
-}
-
-export function useRouteContentLocale(sessionPreferredLocale: string | null | undefined): string {
+export function useRouteContentLocale(): string {
   const { locale: uiLocale } = useUiLocale();
-  const preferredUiLocale = resolvePreferredUiLocale(sessionPreferredLocale, uiLocale);
 
   return React.useMemo(() => resolveViewerContentLocale({
-    uiLocale: preferredUiLocale,
+    uiLocale,
     browserLocales: typeof navigator === "undefined"
       ? []
       : [...navigator.languages, navigator.language].filter(Boolean),
-  }), [preferredUiLocale]);
+  }), [uiLocale]);
 }
 
 export function formatRelativeTimestamp(isoString: string): string {

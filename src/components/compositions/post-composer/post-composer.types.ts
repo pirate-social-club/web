@@ -14,6 +14,8 @@ export type LiveAccessMode = "free" | "gated" | "paid";
 
 export type LiveVisibility = "public" | "unlisted";
 
+export type PostAudience = "public" | "members_only";
+
 export type LiveSetlistItemKind = "original" | "cover" | "remix" | "dj_playback" | "unknown";
 
 export interface LivePerformerAllocation {
@@ -27,6 +29,7 @@ export type DerivativeTrigger = "remix" | "declaration" | "analysis";
 export type AnonymousIdentityScope = "community_stable" | "thread_stable" | "post_ephemeral";
 
 export type IdentityMode = "public" | "anonymous";
+export type AuthorMode = "human" | "agent";
 
 export interface QualifierOption {
   qualifierId: string;
@@ -116,13 +119,31 @@ export interface MonetizationState {
   rightsAttested?: boolean;
 }
 
+export interface CharityContributionState {
+  percentagePct: number;
+}
+
+export interface CommunityCharityPartner {
+  partnerId: string;
+  displayName: string;
+  imageUrl?: string | null;
+}
+
+export interface ComposerAudienceState {
+  visibility: PostAudience;
+  publicOptionEnabled?: boolean;
+  publicOptionDisabledReason?: string;
+}
+
 export interface ComposerIdentityState {
   visible?: boolean;
   allowAnonymousIdentity?: boolean;
   allowQualifiersOnAnonymousPosts?: boolean;
   identityMode?: IdentityMode;
+  authorMode?: AuthorMode;
   publicHandle?: string;
   anonymousLabel?: string;
+  agentLabel?: string;
   availableQualifiers?: QualifierOption[];
   selectedQualifierIds?: string[];
   helpText?: string;
@@ -159,7 +180,13 @@ export interface PostComposerProps {
   onDerivativeStepChange?: (value: DerivativeStepState | undefined) => void;
   monetization?: MonetizationState;
   onMonetizationChange?: (value: MonetizationState) => void;
+  charityPartner?: CommunityCharityPartner | null;
+  charityContribution?: CharityContributionState;
+  onCharityContributionChange?: (value: CharityContributionState) => void;
+  audience?: ComposerAudienceState;
+  onAudienceChange?: (value: ComposerAudienceState) => void;
   identity?: ComposerIdentityState;
+  onAuthorModeChange?: (value: AuthorMode) => void;
   onIdentityModeChange?: (value: IdentityMode) => void;
   onSelectedQualifierIdsChange?: (value: string[]) => void;
   live?: LiveComposerState;

@@ -7,6 +7,8 @@ import { Separator } from "@/components/primitives/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/primitives/tabs";
 import { PostCard } from "@/components/compositions/post-card/post-card";
 import { SongItem } from "@/components/compositions/song-item/song-item";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import type {
   PublicProfileProps,
@@ -80,7 +82,9 @@ function FeedStack({ children }: { children: React.ReactNode }) {
 }
 
 function PostsPanel({ posts }: { posts: PublicProfileProps["posts"] }) {
-  if (!posts?.length) return <EmptyState copy="No posts yet." />;
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").publicProfile;
+  if (!posts?.length) return <EmptyState copy={copy.emptyPosts} />;
   return (
     <FeedStack>
       {posts.map((item) => (
@@ -93,7 +97,9 @@ function PostsPanel({ posts }: { posts: PublicProfileProps["posts"] }) {
 }
 
 function SongsPanel({ songs }: { songs: PublicProfileProps["songs"] }) {
-  if (!songs?.length) return <EmptyState copy="No songs yet." />;
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").publicProfile;
+  if (!songs?.length) return <EmptyState copy={copy.emptySongs} />;
   return (
     <Card className="overflow-hidden">
       {songs.map((s, i) => {
@@ -110,7 +116,9 @@ function SongsPanel({ songs }: { songs: PublicProfileProps["songs"] }) {
 }
 
 function ScrobblesPanel({ scrobbles }: { scrobbles: PublicProfileProps["scrobbles"] }) {
-  if (!scrobbles?.length) return <EmptyState copy="No scrobbles yet." />;
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").publicProfile;
+  if (!scrobbles?.length) return <EmptyState copy={copy.emptyScrobbles} />;
   return (
     <Card className="overflow-hidden">
       {scrobbles.map((s, i) => {
@@ -127,7 +135,9 @@ function ScrobblesPanel({ scrobbles }: { scrobbles: PublicProfileProps["scrobble
 }
 
 function VideosPanel({ videos }: { videos: PublicProfileProps["videos"] }) {
-  if (!videos?.length) return <EmptyState copy="No videos yet." />;
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").publicProfile;
+  if (!videos?.length) return <EmptyState copy={copy.emptyVideos} />;
   return (
     <FeedStack>
       {videos.map((item) => (
@@ -146,8 +156,10 @@ function AboutPanel({
   bio?: string;
   communities?: PublicProfileProps["communities"];
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").publicProfile;
   const hasContent = bio || communities?.length;
-  if (!hasContent) return <EmptyState copy="No info yet." />;
+  if (!hasContent) return <EmptyState copy={copy.emptyAbout} />;
 
   return (
     <Card className="overflow-hidden">
@@ -155,7 +167,7 @@ function AboutPanel({
       {bio && communities?.length ? <Separator /> : null}
       {communities?.length ? (
         <div className="px-5 py-5">
-          <div className="mb-3 text-lg font-semibold text-foreground">Communities</div>
+          <div className="mb-3 text-lg font-semibold text-foreground">{copy.communitiesTitle}</div>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             {communities.map((c) =>
               c.href ? (
@@ -180,10 +192,12 @@ function AboutPanel({
 }
 
 function OpenInPirateFooter({ href }: { href?: string }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").publicProfile;
   return (
     <div className="flex justify-center pb-8 pt-4">
       <Button asChild={Boolean(href)} size="lg" variant="default">
-        {href ? <a href={href}>Open in Pirate</a> : "Open in Pirate"}
+        {href ? <a href={href}>{copy.openInPirate}</a> : copy.openInPirate}
       </Button>
     </div>
   );
@@ -200,12 +214,14 @@ export function PublicProfilePage({
   videos,
   ...profile
 }: PublicProfileProps) {
+  const { isRtl, locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").publicProfile;
   const tabs: Array<{ value: PublicProfileTab; label: string }> = [
-    ...(posts?.length ? [{ value: "posts" as const, label: "Posts" }] : []),
-    ...(songs?.length ? [{ value: "songs" as const, label: "Songs" }] : []),
-    ...(scrobbles?.length ? [{ value: "scrobbles" as const, label: "Scrobbles" }] : []),
-    ...(videos?.length ? [{ value: "videos" as const, label: "Videos" }] : []),
-    { value: "about", label: "About" },
+    ...(posts?.length ? [{ value: "posts" as const, label: copy.postsTab }] : []),
+    ...(songs?.length ? [{ value: "songs" as const, label: copy.songsTab }] : []),
+    ...(scrobbles?.length ? [{ value: "scrobbles" as const, label: copy.scrobblesTab }] : []),
+    ...(videos?.length ? [{ value: "videos" as const, label: copy.videosTab }] : []),
+    { value: "about", label: copy.aboutTab },
   ];
   const resolvedDefaultTab = tabs.some((tab) => tab.value === defaultTab)
     ? defaultTab
@@ -218,7 +234,12 @@ export function PublicProfilePage({
 
         <Tabs className="flex flex-col gap-6" defaultValue={resolvedDefaultTab}>
           {tabs.length > 1 ? (
-            <TabsList className="h-auto w-full justify-start gap-2 overflow-x-auto rounded-[var(--radius-3xl)] bg-muted/80 p-1.5">
+            <TabsList
+              className={cn(
+                "h-auto w-full gap-2 overflow-x-auto rounded-[var(--radius-3xl)] bg-muted/80 p-1.5",
+                isRtl ? "justify-end" : "justify-start",
+              )}
+            >
               {tabs.map((tab) => (
                 <TabsTrigger className="min-w-fit" key={tab.value} value={tab.value}>
                   {tab.label}

@@ -1,4 +1,4 @@
-export type OnboardingPhase = "import_karma" | "choose_name" | "suggested_communities";
+export type OnboardingPhase = "import_karma" | "choose_name";
 
 export type VerificationState =
   | "not_started"
@@ -50,22 +50,6 @@ export interface SubredditEntry {
   rankSource?: "karma" | "posts" | "source_order";
 }
 
-export interface SuggestedCommunity {
-  communityId: string;
-  name: string;
-  reason: string;
-}
-
-export interface SnapshotState {
-  accountAgeDays?: number;
-  globalKarma?: number | null;
-  topSubreddits: SubredditEntry[];
-  moderatorOf: string[];
-  inferredInterests: string[];
-  suggestedCommunities: SuggestedCommunity[];
-  coverageNote?: string;
-}
-
 export interface HandleSuggestion {
   suggestedLabel: string;
   source: "verified_reddit_username";
@@ -75,13 +59,6 @@ export interface HandleSuggestion {
 
 export interface OnboardingActions {
   primaryLabel?: string;
-  secondaryLabel?: string;
-  tertiaryLabel?: string;
-}
-
-export interface OnboardingActions {
-  primaryLabel?: string;
-  secondaryLabel?: string;
   tertiaryLabel?: string;
 }
 
@@ -92,8 +69,6 @@ export interface OnboardingCallbacks {
   onHandleChange: (value: string) => void;
   onGenerateHandle: () => void;
   onChooseNameContinue: () => void;
-  onSuggestedCommunitiesContinue: () => void;
-  onSuggestedCommunitiesSkip: () => void;
 }
 
 export interface OnboardingRedditBootstrapProps {
@@ -104,8 +79,7 @@ export interface OnboardingRedditBootstrapProps {
   phase: OnboardingPhase;
   reddit: RedditVerificationState;
   importJob: ImportJobState;
-  snapshot?: SnapshotState;
   handleSuggestion?: HandleSuggestion;
-  actions: OnboardingActions;
+  actions?: OnboardingActions;
   callbacks?: OnboardingCallbacks;
 }

@@ -34,6 +34,10 @@ const LazyCommunityModerationPage = lazyRouteModule(
   () => import("./authenticated-routes/moderation-route"),
   "CommunityModerationPage",
 );
+const LazyCommunityModerationIndexPage = lazyRouteModule(
+  () => import("./authenticated-routes/moderation-route"),
+  "CommunityModerationIndexPage",
+);
 const LazyCommunityPage = lazyRouteModule(
   () => import("./authenticated-routes/community-route"),
   "CommunityPage",
@@ -91,6 +95,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       );
     case "create-post":
       return <LazyCreatePostPage communityId={route.communityId} />;
+    case "community-moderation-index":
+      return <LazyCommunityModerationIndexPage communityId={route.communityId} />;
     case "community-moderation":
       return <LazyCommunityModerationPage communityId={route.communityId} section={route.section} />;
     case "community":

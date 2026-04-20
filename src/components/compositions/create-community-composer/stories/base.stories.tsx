@@ -17,6 +17,15 @@ const baseComposer: CreateCommunityComposerProps = {
   },
 };
 
+const genderGateDrafts = [
+  { gateType: "gender", provider: "self", requiredValue: "F" },
+] as const;
+
+const mixedGateDrafts = [
+  { gateType: "nationality", provider: "self", requiredValue: "US" },
+  { gateType: "gender", provider: "self", requiredValue: "F" },
+] as const;
+
 const meta = {
   title: "Compositions/CreateCommunityComposer",
   component: CreateCommunityComposer,
@@ -61,7 +70,7 @@ export const AccessStepWithDocumentMarkerGate: Story = {
   render: () => (
     <CreateCommunityComposer
       {...baseComposer}
-      gateDrafts={[{ gateType: "gender", provider: "self", requiredValue: "F" }]}
+      gateDrafts={[...genderGateDrafts]}
       initialStep={2}
       membershipMode="gated"
     />
@@ -73,10 +82,7 @@ export const ReviewWithMixedIdentityGates: Story = {
   render: () => (
     <CreateCommunityComposer
       {...baseComposer}
-      gateDrafts={[
-        { gateType: "nationality", provider: "self", requiredValue: "US" },
-        { gateType: "gender", provider: "self", requiredValue: "F" },
-      ]}
+      gateDrafts={[...mixedGateDrafts]}
       initialStep={3}
       membershipMode="gated"
     />

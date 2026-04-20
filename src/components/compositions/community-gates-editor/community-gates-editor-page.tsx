@@ -3,27 +3,28 @@
 import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
+import { CommunityModerationSaveFooter } from "@/components/compositions/community-moderation-shell/community-moderation-save-footer";
 import { Checkbox } from "@/components/primitives/checkbox";
 import {
   FormFieldLabel,
   FormNote,
   FormSectionHeading,
 } from "@/components/primitives/form-layout";
-import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
 import { OptionCard } from "@/components/primitives/option-card";
 import { RadioGroup, RadioGroupItem } from "@/components/primitives/radio-group";
+import { NationalityPicker } from "@/components/compositions/create-community-composer/nationality-picker";
 import type {
   AnonymousIdentityScope,
   CommunityDefaultAgeGatePolicy,
   CommunityMembershipMode,
+  CommunityReadAccessMode,
   CreatorVerificationState,
   IdentityGateDraft,
 } from "@/components/compositions/create-community-composer/create-community-composer.types";
+import { isCountryCode } from "@/lib/countries";
 import { getGateDraftWarning } from "@/lib/identity-gates";
 import { cn } from "@/lib/utils";
-
-const ISO_ALPHA_2 = /^[A-Z]{2}$/;
 
 const membershipMeta: Record<CommunityMembershipMode, { label: string; detail: string }> = {
   open: {
@@ -56,6 +57,17 @@ const anonymousScopeMeta: Record<
     label: "Post-ephemeral",
     detail: "Random label per post. Limits moderation continuity.",
     disabledHint: "Post-ephemeral scope is not available in v0.",
+  },
+};
+
+const readAccessMeta: Record<CommunityReadAccessMode, { label: string; detail: string }> = {
+  public: {
+    label: "Public",
+    detail: "Anyone can read posts.",
+  },
+  members_only: {
+    label: "Members only",
+    detail: "Only joined members can read posts.",
   },
 };
 
@@ -156,6 +168,7 @@ function removeGateDraft(
 export interface CommunityGatesEditorPageProps {
   allowAnonymousIdentity: boolean;
   anonymousIdentityScope: AnonymousIdentityScope;
+  readAccessMode?: CommunityReadAccessMode;
   className?: string;
   creatorVerificationState?: CreatorVerificationState;
   defaultAgeGatePolicy: CommunityDefaultAgeGatePolicy;
@@ -167,6 +180,7 @@ export interface CommunityGatesEditorPageProps {
   onDefaultAgeGatePolicyChange?: (value: CommunityDefaultAgeGatePolicy) => void;
   onGateDraftsChange?: (value: IdentityGateDraft[]) => void;
   onMembershipModeChange?: (value: CommunityMembershipMode) => void;
+  onReadAccessModeChange?: (value: CommunityReadAccessMode) => void;
   onSave?: () => void;
   saveDisabled?: boolean;
   showSaveAction?: boolean;
@@ -180,12 +194,14 @@ export function CommunityGatesEditorPage({
   defaultAgeGatePolicy,
   gateDrafts,
   membershipMode,
+  readAccessMode = "public",
   onAllowAnonymousIdentityChange,
   onAnonymousIdentityScopeChange,
   onBackClick,
   onDefaultAgeGatePolicyChange,
   onGateDraftsChange,
   onMembershipModeChange,
+  onReadAccessModeChange,
   onSave,
   saveDisabled = false,
   showSaveAction = true,
@@ -195,18 +211,13 @@ export function CommunityGatesEditorPage({
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? true;
 
   return (
-    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-8", className)}>
-      <div className="flex items-start justify-between gap-6">
+    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="flex min-w-0 items-start gap-4">
           <div className="min-w-0 space-y-2">
-            <h1 className="text-[2.25rem] font-semibold tracking-tight">Access and gates</h1>
+            <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Access and gates</h1>
           </div>
         </div>
-        {showSaveAction ? (
-          <Button disabled={saveDisabled} onClick={onSave}>
-            Save
-          </Button>
-        ) : null}
       </div>
 
       <Section title="Membership">
@@ -217,7 +228,7 @@ export function CommunityGatesEditorPage({
         />
 
         {membershipMode === "gated" ? (
-          <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-5 py-4">
+          <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:px-5">
             <FormSectionHeading
               description="Select at least one gate before saving."
               title="Gate checks"
@@ -240,20 +251,17 @@ export function CommunityGatesEditorPage({
 
             {nationalityGate ? (
               <div className="space-y-2">
-                <FormFieldLabel label="Country code (ISO 3166-1 alpha-2)" />
-                <Input
-                  className="h-12 w-24 rounded-[var(--radius-lg)]"
-                  maxLength={2}
-                  onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                <FormFieldLabel label="Allowed nationality" />
+                <NationalityPicker
+                  onChange={(code) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
                     gateType: "nationality",
                     provider: "self",
-                    requiredValue: event.target.value.toUpperCase(),
+                    requiredValue: code ?? "",
                   }))}
-                  placeholder="US"
-                  value={nationalityGate.requiredValue}
+                  value={nationalityGate.requiredValue || null}
                 />
-                {nationalityGate.requiredValue.length > 0 && !ISO_ALPHA_2.test(nationalityGate.requiredValue) ? (
-                  <FormNote tone="warning">Enter a valid 2-letter country code.</FormNote>
+                {nationalityGate.requiredValue.length > 0 && !isCountryCode(nationalityGate.requiredValue) ? (
+                  <FormNote tone="warning">Select a valid country.</FormNote>
                 ) : null}
               </div>
             ) : null}
@@ -302,7 +310,21 @@ export function CommunityGatesEditorPage({
         ) : null}
       </Section>
 
-      <Section className="border-t border-border-soft pt-8" title="Identity and access">
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Reading">
+        <div className="space-y-3">
+          {(Object.keys(readAccessMeta) as CommunityReadAccessMode[]).map((mode) => (
+            <OptionCard
+              key={mode}
+              description={readAccessMeta[mode].detail}
+              selected={mode === readAccessMode}
+              title={readAccessMeta[mode].label}
+              onClick={() => onReadAccessModeChange?.(mode)}
+            />
+          ))}
+        </div>
+      </Section>
+
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Identity and access">
         <div className="space-y-5">
           <CheckboxRow
             checked={allowAnonymousIdentity}
@@ -349,6 +371,13 @@ export function CommunityGatesEditorPage({
           ) : null}
         </div>
       </Section>
+
+      {showSaveAction ? (
+        <CommunityModerationSaveFooter
+          disabled={saveDisabled}
+          onSave={onSave}
+        />
+      ) : null}
     </section>
   );
 }

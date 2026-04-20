@@ -1,6 +1,10 @@
 import type { UseGlobalHandleFlowReturn } from "@/hooks/use-global-handle-flow";
+import type {
+  OwnedAgent,
+  AgentRegistrationState,
+} from "@/components/compositions/owned-agents-panel/owned-agents-panel.types";
 
-export type SettingsTab = "profile" | "wallet" | "preferences";
+export type SettingsTab = "profile" | "wallet" | "preferences" | "agents";
 
 export interface SettingsHandle {
   handleId: string | null;
@@ -70,5 +74,17 @@ export interface SettingsPageProps {
     submitState: SettingsSubmitState;
     onLocaleChange?: (value: string) => void;
     onSave?: () => void;
+  };
+  agents: {
+    items: OwnedAgent[];
+    canRegister: boolean;
+    loading?: boolean;
+    registrationState: AgentRegistrationState;
+    importValue?: string;
+    onStartPairing?: () => void;
+    onImportValueChange?: (value: string) => void;
+    onImportRegistration?: () => void;
+    onCheckRegistration?: () => void;
+    onDeregister?: (agentId: string) => void;
   };
 }

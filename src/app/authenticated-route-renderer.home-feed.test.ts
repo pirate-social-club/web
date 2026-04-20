@@ -3,7 +3,7 @@ import type { HomeFeedItem } from "@pirate/api-contracts";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 import type { Profile } from "@pirate/api-contracts";
 
-import { applyPostVote, toHomeFeedItem } from "@/app/authenticated-route-renderer";
+import { applyPostVote, toCommunityFeedItem, toHomeFeedItem } from "@/app/authenticated-route-renderer";
 
 function createEntry(): HomeFeedItem {
   return {
@@ -47,6 +47,7 @@ function createEntry(): HomeFeedItem {
         song_mode: null,
         source_language: "en",
         status: "published",
+        visibility: "public",
         title: "Hello world",
         translation_policy: "none",
         updated_at: "2026-04-18T10:00:00.000Z",
@@ -186,6 +187,25 @@ describe("toHomeFeedItem", () => {
     const item = toHomeFeedItem(createEntry(), {}, undefined, { onVote });
 
     expect(item.post.onVote).toBe(onVote);
+  });
+
+  test("passes through an onComment handler when the container provides one", () => {
+    const onComment = () => undefined;
+
+    const item = toHomeFeedItem(createEntry(), {}, undefined, { onComment });
+
+    expect(item.post.onComment).toBe(onComment);
+  });
+});
+
+describe("toCommunityFeedItem", () => {
+  test("keeps community thread counts and comment actions on feed cards", () => {
+    const onComment = () => undefined;
+
+    const item = toCommunityFeedItem(createEntry().post, {}, undefined, { onComment });
+
+    expect(item.post.engagement?.commentCount).toBe(5);
+    expect(item.post.onComment).toBe(onComment);
   });
 });
 

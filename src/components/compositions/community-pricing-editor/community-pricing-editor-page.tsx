@@ -4,6 +4,7 @@ import * as React from "react";
 import { Minus, Plus, Trash } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
+import { CommunityModerationSaveFooter } from "@/components/compositions/community-moderation-shell/community-moderation-save-footer";
 import { Checkbox } from "@/components/primitives/checkbox";
 import {
   FormFieldLabel,
@@ -68,7 +69,7 @@ function TierRow({
   onUpdate?: (patch: Partial<PricingTier>) => void;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3">
+    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3 md:flex-row md:items-start">
       <div className="grid flex-1 gap-3 md:grid-cols-4">
         <div>
           <FormFieldLabel label="Name" />
@@ -107,7 +108,7 @@ function TierRow({
         <div />
       </div>
       <Button
-        className="mt-5 size-10 shrink-0"
+        className="size-10 shrink-0 self-end md:mt-5"
         disabled={isDefault}
         onClick={onRemove}
         size="icon"
@@ -131,8 +132,8 @@ function CountryRow({
   onRemove?: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-20">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="w-full sm:w-20">
         <Input
           className="h-10 uppercase"
           maxLength={2}
@@ -147,7 +148,7 @@ function CountryRow({
         onValueChange={(value) => onUpdate?.({ tier_key: value })}
         value={assignment.tier_key}
       >
-        <SelectTrigger className="h-10 flex-1">
+        <SelectTrigger className="h-10 w-full flex-1">
           <SelectValue placeholder="Select tier" />
         </SelectTrigger>
         <SelectContent>
@@ -159,7 +160,7 @@ function CountryRow({
         </SelectContent>
       </Select>
       <Button
-        className="size-10 shrink-0"
+        className="size-10 shrink-0 self-end sm:self-auto"
         onClick={onRemove}
         size="icon"
         variant="secondary"
@@ -191,21 +192,16 @@ export function CommunityPricingEditorPage({
   const tierKeys = tiers.map((t) => t.tier_key);
 
   return (
-    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-8", className)}>
-      <div className="flex items-start justify-between gap-6">
+    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <h1 className="text-[2.25rem] font-semibold tracking-tight">Pricing</h1>
+          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Pricing</h1>
         </div>
-        <div className="flex items-center gap-3">
-          {onUseStarterTemplate ? (
-            <Button onClick={onUseStarterTemplate} variant="secondary">
-              Load starter template
-            </Button>
-          ) : null}
-          <Button disabled={saveDisabled} loading={saveLoading} onClick={onSave}>
-            Save
+        {onUseStarterTemplate ? (
+          <Button className="w-full sm:w-auto" onClick={onUseStarterTemplate} variant="secondary">
+            Load starter template
           </Button>
-        </div>
+        ) : null}
       </div>
 
       {saveNote ? <FormNote tone="warning">{saveNote}</FormNote> : null}
@@ -235,7 +231,7 @@ export function CommunityPricingEditorPage({
               }
               value={verificationProviderRequirement ?? "self"}
             >
-              <SelectTrigger className="h-12 max-w-xs">
+              <SelectTrigger className="h-12 w-full sm:max-w-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -264,6 +260,7 @@ export function CommunityPricingEditorPage({
               />
             ))}
             <Button
+              className="w-full sm:w-auto"
               onClick={() =>
                 onTiersChange?.([
                   ...tiers,
@@ -290,7 +287,7 @@ export function CommunityPricingEditorPage({
               onValueChange={onDefaultTierKeyChange}
               value={defaultTierKey ?? undefined}
             >
-              <SelectTrigger className="h-12 max-w-xs">
+              <SelectTrigger className="h-12 w-full sm:max-w-xs">
                 <SelectValue placeholder="Select default tier" />
               </SelectTrigger>
               <SelectContent>
@@ -327,6 +324,7 @@ export function CommunityPricingEditorPage({
               />
             ))}
             <Button
+              className="w-full sm:w-auto"
               onClick={() =>
                 onCountryAssignmentsChange?.([
                   ...countryAssignments,
@@ -348,6 +346,12 @@ export function CommunityPricingEditorPage({
           </FormNote>
         </>
       ) : null}
+
+      <CommunityModerationSaveFooter
+        disabled={saveDisabled}
+        loading={saveLoading}
+        onSave={onSave}
+      />
     </section>
   );
 }

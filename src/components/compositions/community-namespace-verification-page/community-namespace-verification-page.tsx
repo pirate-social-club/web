@@ -79,6 +79,7 @@ export function CommunityNamespaceVerificationPage({
   onSessionStarted,
   onVerified,
 }: CommunityNamespaceVerificationPageProps) {
+  const verifyActionLabel = "Verify";
   const [rootLabel, setRootLabel] = React.useState(initialRootLabel);
   const rootLabelRef = React.useRef(rootLabel);
   rootLabelRef.current = rootLabel;
@@ -320,11 +321,11 @@ export function CommunityNamespaceVerificationPage({
       && state !== "challenge_pending");
 
   return (
-    <section className="mx-auto flex w-full max-w-[64rem] flex-col gap-8">
-      <div className="flex items-start justify-between gap-6">
+    <section className="mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="flex min-w-0 items-start gap-4">
           <div className="min-w-0 space-y-2">
-            <h1 className="text-[2.25rem] font-semibold tracking-tight">Verify namespace</h1>
+            <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Verify namespace</h1>
             <p className="text-base text-muted-foreground">
               Attach a verified route to this community.
             </p>
@@ -393,7 +394,7 @@ export function CommunityNamespaceVerificationPage({
         ) : null}
 
         {(isChallengeReady || isVerifying) && isSpaces && challengePayload ? (
-          <section className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-5 py-5">
+          <section className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5 md:py-5">
             <FormNote>Copy the digest, sign it with your root key, then paste the signature.</FormNote>
             <div className="space-y-3">
               <div className="space-y-1.5">
@@ -433,7 +434,7 @@ export function CommunityNamespaceVerificationPage({
         ) : null}
 
         {isVerified ? (
-          <div className="rounded-[var(--radius-2xl)] border border-border-soft bg-card px-5 py-4">
+          <div className="rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5">
             <div className="text-base font-semibold text-foreground">Root verified.</div>
           </div>
         ) : null}
@@ -453,7 +454,7 @@ export function CommunityNamespaceVerificationPage({
         ) : null}
       </div>
 
-      <div className="flex justify-end gap-3 border-t border-border-soft pt-6">
+      <div className="flex flex-col-reverse gap-3 border-t border-border-soft pt-6 sm:flex-row sm:justify-end">
         {isDnsSetupRequired ? (
           <>
             <Button onClick={handleAbandon} variant="outline">Cancel</Button>
@@ -463,13 +464,13 @@ export function CommunityNamespaceVerificationPage({
         {isChallengePending ? (
           <>
             <Button onClick={handleAbandon} variant="outline">Cancel</Button>
-            <Button loading={isVerifying} onClick={handleVerify}>Check again</Button>
+            <Button loading={isVerifying} onClick={handleVerify}>{verifyActionLabel}</Button>
           </>
         ) : null}
         {(isFailed || isExpired) ? (
           <>
             <Button onClick={handleAbandon} variant="outline">Cancel</Button>
-            {isFailed && isHns ? <Button loading={isVerifying} onClick={handleVerify}>Check again</Button> : null}
+            {isFailed && isHns ? <Button loading={isVerifying} onClick={handleVerify}>{verifyActionLabel}</Button> : null}
             <Button onClick={handleRestart}>{isHns ? "Get new record" : "New challenge"}</Button>
           </>
         ) : null}
@@ -483,7 +484,7 @@ export function CommunityNamespaceVerificationPage({
         ) : null}
         {(isChallengeReady || isVerifying) ? (
           <Button disabled={!canSubmitSignature} loading={isVerifying} onClick={handleVerify}>
-            {isHns && hnsMode === "pirate_managed" ? "Check again" : "Verify"}
+            {verifyActionLabel}
           </Button>
         ) : null}
       </div>

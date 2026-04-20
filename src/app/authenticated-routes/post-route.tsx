@@ -10,6 +10,7 @@ import { ContentRailShell } from "@/components/compositions/content-rail-shell/c
 import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
 import { PostThread } from "@/components/compositions/post-thread/post-thread";
 import { toast } from "@/components/primitives/sonner";
+import { useUiLocale } from "@/lib/ui-locale";
 
 import { buildCommunitySidebar } from "./community-sidebar-helpers";
 import { NotFoundPage } from "./misc-routes";
@@ -23,9 +24,10 @@ import { usePost } from "./post-state";
 export function PostPage({ postId }: { postId: string }) {
   const api = useApi();
   const session = useSession();
+  const { locale } = useUiLocale();
   const { copy } = useRouteMessages();
   const pageTitle = getRouteTitle("post") ?? "Post";
-  const contentLocale = useRouteContentLocale(session?.profile.preferred_locale);
+  const contentLocale = useRouteContentLocale();
   const translationLabels = React.useMemo(() => ({
     cancelReplyLabel: copy.common.cancelReply,
     loadMoreRepliesLabel: copy.common.loadMoreReplies,
@@ -37,8 +39,8 @@ export function PostPage({ postId }: { postId: string }) {
     submitReplyLabel: copy.common.submitReply,
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
-  const canMutate = Boolean(session?.accessToken);
-  const { post, community, authorProfile, comments, createTopLevelComment, error, loading, voteOnPost } = usePost(postId, contentLocale, canMutate, translationLabels);
+  const hasSession = Boolean(session?.accessToken);
+  const { post, community, authorProfile, comments, createTopLevelComment, error, gateModal, loading, voteOnPost } = usePost(postId, contentLocale, hasSession, translationLabels);
   const commerceEnabled = Boolean(session?.user?.user_id && community?.community_id);
   const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(community?.community_id ?? "", commerceEnabled);
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
@@ -101,23 +103,26 @@ export function PostPage({ postId }: { postId: string }) {
     : undefined;
 
   return (
-    <ContentRailShell rail={community ? <CommunitySidebar {...buildCommunitySidebar(community)} /> : undefined}>
-      <PostThread
-        commentsHeading={copy.common.commentsHeading}
-        commentsHeadingDir={contentLocale === "ar" ? "rtl" : undefined}
-        commentsHeadingLang={contentLocale === "ar" ? "ar" : undefined}
-        emptyCommentsLabel={copy.common.noComments}
-        onRootReplySubmit={createTopLevelComment}
-        post={localizedPostCard}
-        postOriginal={originalPostCard}
-        postShowOriginalLabel={originalPostCard ? copy.common.showOriginal : undefined}
-        postShowTranslationLabel={originalPostCard ? copy.common.showTranslation : undefined}
-        comments={comments}
-        rootReplyActionLabel={copy.common.replyAction}
-        rootReplyCancelLabel={copy.common.cancelReply}
-        rootReplyPlaceholder={copy.common.replyPlaceholder}
-        rootReplySubmitLabel={copy.common.submitReply}
-      />
-    </ContentRailShell>
+    <>
+      {gateModal}
+      <ContentRailShell rail={community ? <CommunitySidebar {...buildCommunitySidebar(community, locale)} /> : undefined}>
+        <PostThread
+          commentsHeading={copy.common.commentsHeading}
+          commentsHeadingDir={contentLocale === "ar" ? "rtl" : undefined}
+          commentsHeadingLang={contentLocale === "ar" ? "ar" : undefined}
+          emptyCommentsLabel={copy.common.noComments}
+          onRootReplySubmit={createTopLevelComment}
+          post={localizedPostCard}
+          postOriginal={originalPostCard}
+          postShowOriginalLabel={originalPostCard ? copy.common.showOriginal : undefined}
+          postShowTranslationLabel={originalPostCard ? copy.common.showTranslation : undefined}
+          comments={comments}
+          rootReplyActionLabel={copy.common.replyAction}
+          rootReplyCancelLabel={copy.common.cancelReply}
+          rootReplyPlaceholder={copy.common.replyPlaceholder}
+          rootReplySubmitLabel={copy.common.submitReply}
+        />
+      </ContentRailShell>
+    </>
   );
 }

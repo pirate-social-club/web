@@ -108,7 +108,9 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
   const [walletsReady, setWalletsReady] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const shouldLoadWalletSync = walletSyncDemand > 0;
-  const shouldLoadPrivy = !!appId && (pendingConnect || refreshWindowReached || shouldLoadWalletSync);
+  // Keep Privy mounted whenever configured so the app can silently restore a Pirate
+  // session after reload before auth-required routes fall through to 401 states.
+  const shouldLoadPrivy = !!appId;
 
   const privyConfig = React.useMemo(() => ({
     appearance: {

@@ -6,7 +6,7 @@ import type { MembershipGateSummary as ApiMembershipGateSummary } from "@pirate/
 
 import type { CommunitySidebarRule } from "@/components/compositions/community-sidebar/community-sidebar.types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
-import { getCountryName } from "@/lib/countries";
+import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
 
 function getRequirementLocale(locale: string | null | undefined): "ar" | "zh" | "en" {
   const normalized = String(locale ?? "").toLowerCase();
@@ -16,24 +16,7 @@ function getRequirementLocale(locale: string | null | undefined): "ar" | "zh" | 
 }
 
 function getCountryDisplayName(requiredValue: string, locale: string | null | undefined): string {
-  const normalizedCode = requiredValue.toUpperCase();
-  const requirementLocale = getRequirementLocale(locale);
-  if (normalizedCode === "PS") {
-    if (requirementLocale === "ar") return "فلسطين";
-    if (requirementLocale === "zh") return "巴勒斯坦";
-    return "Palestine";
-  }
-
-  if (requirementLocale === "en") {
-    return getCountryName(requiredValue) ?? requiredValue;
-  }
-
-  try {
-    const displayNames = new Intl.DisplayNames([locale ?? "en"], { type: "region" });
-    return displayNames.of(normalizedCode) ?? getCountryName(requiredValue) ?? requiredValue;
-  } catch {
-    return getCountryName(requiredValue) ?? requiredValue;
-  }
+  return getLocalizedCountryDisplayName(requiredValue, locale) ?? requiredValue;
 }
 
 function formatSidebarRequirement(input: {

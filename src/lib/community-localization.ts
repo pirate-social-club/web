@@ -11,7 +11,7 @@ type CommunityLocalizedText = {
   items: CommunityLocalizedTextItem[];
 };
 
-type LocalizableCommunityLike = {
+type LocalizableCommunityLike = Record<string, unknown> & {
   localized_text?: CommunityLocalizedText | null;
 };
 

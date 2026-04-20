@@ -14,10 +14,10 @@ import { OptionCard } from "@/components/primitives/option-card";
 import { Stepper } from "@/components/primitives/stepper";
 import { Textarea } from "@/components/primitives/textarea";
 import { toast } from "@/components/primitives/sonner";
+import { isCountryCode } from "@/lib/countries";
 import { resolveCommunityAvatarSrc, resolveCommunityBannerSrc } from "@/lib/default-community-media";
 import { formatGateRequirement, getGateDraftWarning } from "@/lib/identity-gates";
 import {
-  ISO_ALPHA_2,
   FieldLabel,
   MediaPicker,
   Section,
@@ -30,6 +30,7 @@ import {
   CheckboxRow,
   CommunityReviewStep,
 } from "./create-community-composer.sections";
+import { NationalityPicker } from "./nationality-picker";
 
 import type {
   AnonymousIdentityScope,
@@ -40,19 +41,29 @@ import type {
   IdentityGateDraft,
 } from "./create-community-composer.types";
 
+const EMPTY_GATE_DRAFTS: IdentityGateDraft[] = [];
+
+function logCreateCommunityGateDebug(event: string, data: Record<string, unknown>) {
+  console.debug("[CreateCommunityComposer]", event, data);
+}
+
 export function CreateCommunityComposer({
   avatarRef = "",
   bannerRef = "",
   displayName = "",
   description = "",
-  gateDrafts = [],
+  namespaceAttachment = null,
+  hasPendingNamespaceSession = false,
+  gateDrafts = EMPTY_GATE_DRAFTS,
   membershipMode = "open",
   defaultAgeGatePolicy = "none",
   allowAnonymousIdentity = true,
   anonymousIdentityScope: anonymousIdentityScopeProp,
   creatorVerificationState,
   initialStep,
+  onClearNamespace,
   onCreate,
+  onVerifyNamespace,
 }: CreateCommunityComposerProps) {
   const [activeStep, setActiveStep] = React.useState<ComposerStep>(initialStep ?? 1);
   const [activeMembershipMode, setActiveMembershipMode] =
@@ -80,15 +91,33 @@ export function CreateCommunityComposer({
     genderGate?.requiredValue ?? "F",
   );
   const [submitting, setSubmitting] = React.useState(false);
+  const gateDraftsSyncKey = React.useMemo(
+    () =>
+      gateDrafts
+        .map((draft) =>
+          [draft.gateType, draft.provider, draft.requiredValue, draft.gateRuleId ?? ""].join(":"),
+        )
+        .sort()
+        .join("|"),
+    [gateDrafts],
+  );
 
   const creatorUniqueHumanVerified = creatorVerificationState?.uniqueHumanVerified ?? false;
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? false;
   const creatorAgeRequirementMet =
     activeDefaultAgeGatePolicy !== "18_plus" || creatorAgeOver18Verified;
   const creatorCanCreate = creatorUniqueHumanVerified && creatorAgeRequirementMet;
+  const namespaceRouteLabel = React.useMemo(() => {
+    if (!namespaceAttachment) {
+      return hasPendingNamespaceSession ? "Verification in progress" : "No verified route";
+    }
+
+    const prefix = namespaceAttachment.family === "spaces" ? "@" : ".";
+    return `${prefix}${namespaceAttachment.normalizedRootLabel}`;
+  }, [hasPendingNamespaceSession, namespaceAttachment]);
 
   const activeGateDrafts: IdentityGateDraft[] = [
-    ...(nationalityEnabled && ISO_ALPHA_2.test(nationalityRequiredValue)
+    ...(nationalityEnabled && isCountryCode(nationalityRequiredValue)
       ? [{ gateType: "nationality" as const, provider: "self" as const, requiredValue: nationalityRequiredValue }]
       : []),
     ...(genderEnabled
@@ -100,6 +129,10 @@ export function CreateCommunityComposer({
   React.useEffect(() => { setActiveAvatarRef(avatarRef); }, [avatarRef]);
   React.useEffect(() => { setActiveBannerRef(bannerRef); }, [bannerRef]);
   React.useEffect(() => {
+    logCreateCommunityGateDebug("syncGateDraftsFromProps", {
+      gateDrafts,
+      gateDraftsSyncKey,
+    });
     const nextNationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
     setNationalityEnabled(Boolean(nextNationalityGate));
     setNationalityRequiredValue(nextNationalityGate?.requiredValue ?? "");
@@ -107,7 +140,7 @@ export function CreateCommunityComposer({
     const nextGenderGate = gateDrafts.find((draft) => draft.gateType === "gender");
     setGenderEnabled(Boolean(nextGenderGate));
     setGenderRequiredValue(nextGenderGate?.requiredValue ?? "F");
-  }, [gateDrafts]);
+  }, [gateDraftsSyncKey]);
   React.useEffect(() => { setActiveDefaultAgeGatePolicy(defaultAgeGatePolicy); }, [defaultAgeGatePolicy]);
   React.useEffect(() => { setActiveAllowAnonymousIdentity(allowAnonymousIdentity); }, [allowAnonymousIdentity]);
   React.useEffect(() => {
@@ -142,7 +175,7 @@ export function CreateCommunityComposer({
       allowAnonymousIdentity: activeAllowAnonymousIdentity,
       anonymousIdentityScope: activeAnonymousScope,
       gateDrafts: activeGateDrafts,
-      namespaceVerificationId: null,
+      namespaceVerificationId: namespaceAttachment?.namespaceVerificationId ?? null,
     })
       .catch((error: unknown) => {
         toast.error(error instanceof Error ? error.message : "Could not create community");
@@ -163,6 +196,7 @@ export function CreateCommunityComposer({
     activeAllowAnonymousIdentity,
     activeAnonymousScope,
     activeGateDrafts,
+    namespaceAttachment,
   ]);
 
   const gateDraftsValid = activeMembershipMode !== "gated" || activeGateDrafts.length > 0;
@@ -325,6 +359,29 @@ export function CreateCommunityComposer({
                     }}
                   />
                 </div>
+
+                <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-base font-semibold text-foreground">Route</p>
+                    <p className="text-base text-muted-foreground">{namespaceRouteLabel}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {onVerifyNamespace ? (
+                      <Button onClick={onVerifyNamespace} type="button" variant="secondary">
+                        {namespaceAttachment
+                          ? "Change route"
+                          : hasPendingNamespaceSession
+                            ? "Resume verification"
+                            : "Verify route"}
+                      </Button>
+                    ) : null}
+                    {namespaceAttachment && onClearNamespace ? (
+                      <Button onClick={onClearNamespace} type="button" variant="ghost">
+                        Clear
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             </Section>
           ) : null}
@@ -349,21 +406,31 @@ export function CreateCommunityComposer({
                       description="Require members to verify their nationality through self before joining."
                       selected={nationalityEnabled}
                       title="Nationality verification"
-                      onClick={() => setNationalityEnabled((prev) => !prev)}
+                      onClick={() => setNationalityEnabled((prev) => {
+                        const next = !prev;
+                        logCreateCommunityGateDebug("toggleNationalityGate", {
+                          previous: prev,
+                          next,
+                        });
+                        return next;
+                      })}
                     />
 
                     {nationalityEnabled ? (
                       <div className="space-y-2">
-                        <FieldLabel label="Country code (ISO 3166-1 alpha-2)" />
-                        <Input
-                          className="h-12 w-24 rounded-[var(--radius-lg)]"
-                          maxLength={2}
-                          onChange={(e) => setNationalityRequiredValue(e.target.value.toUpperCase())}
-                          placeholder="US"
-                          value={nationalityRequiredValue}
+                        <FieldLabel label="Allowed nationality" />
+                        <NationalityPicker
+                          onChange={(code) => {
+                            logCreateCommunityGateDebug("selectNationality", {
+                              previous: nationalityRequiredValue,
+                              next: code,
+                            });
+                            setNationalityRequiredValue(code ?? "");
+                          }}
+                          value={nationalityRequiredValue || null}
                         />
-                        {nationalityRequiredValue.length > 0 && !ISO_ALPHA_2.test(nationalityRequiredValue) ? (
-                          <FormNote tone="warning">Enter a valid 2-letter country code.</FormNote>
+                        {nationalityRequiredValue.length > 0 && !isCountryCode(nationalityRequiredValue) ? (
+                          <FormNote tone="warning">Select a valid country.</FormNote>
                         ) : null}
                       </div>
                     ) : null}
@@ -473,6 +540,7 @@ export function CreateCommunityComposer({
               displayName={activeDisplayName}
               gateRequirementSummary={gateRequirementSummary}
               membershipLabel={membershipLabel}
+              routeLabel={namespaceRouteLabel}
             />
           ) : null}
         </CardContent>

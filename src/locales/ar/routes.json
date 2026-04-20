@@ -51,6 +51,7 @@
   },
   "community": {
     "aboutTab": "حول",
+    "charityLabel": "الجهة الخيرية",
     "createPostLabel": "أنشئ منشورًا",
     "feedTab": "الخلاصة",
     "membersLabel": "الأعضاء",
@@ -58,6 +59,29 @@
     "requirementsLabel": "المتطلبات",
     "rulesLabel": "القواعد",
     "title": "المجتمع"
+  },
+  "interactionGate": {
+    "blockedReplyDescription": "متطلبات هذا المجتمع تمنعك من الرد الآن.",
+    "blockedVoteDescription": "متطلبات هذا المجتمع تمنعك من التصويت الآن.",
+    "cantReplyHereTitle": "لا يمكنك الرد هنا",
+    "cantVoteHereTitle": "لا يمكنك التصويت هنا",
+    "close": "إغلاق",
+    "connectToContinue": "اتصل للمتابعة.",
+    "couldNotCheckRequirements": "تعذر التحقق من متطلبات التفاعل في هذا المجتمع.",
+    "joinInCommunity": "{joinLabel} في {communityName}",
+    "joinToReplyDescription": "{joinLabel} في {communityName} قبل أن ترد.",
+    "joinToReplyTitle": "{joinLabel} قبل الرد",
+    "joinToVoteDescription": "{joinLabel} في {communityName} قبل أن تصوّت.",
+    "joinToVoteTitle": "{joinLabel} قبل التصويت",
+    "openCommunity": "افتح {communityName}",
+    "readyDescription": "يمكنك التفاعل هنا.",
+    "readyTitle": "جاهز",
+    "verifyInCommunity": "تحقق في {communityName}",
+    "verifyToReplyDescription": "أكمل فحص الهوية للرد هنا.",
+    "verifyToReplyTitle": "تحقق قبل الرد",
+    "verifyToVoteDescription": "أكمل فحص الهوية للتصويت هنا.",
+    "verifyToVoteTitle": "تحقق قبل التصويت",
+    "bannedDescription": "أنت غير مؤهل للانضمام إلى هذا المجتمع."
   },
   "createPost": {
     "access": {

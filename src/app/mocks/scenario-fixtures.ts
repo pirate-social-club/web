@@ -14,38 +14,10 @@ export const ONBOARDING_SAMPLE: OnboardingSample = {
     status: "succeeded",
     sourceLabel: "Pushpull archival snapshot",
   },
-  snapshot: {
-    accountAgeDays: 2847,
-    globalKarma: 18432,
-    topSubreddits: [
-      { subreddit: "hiphopheads", karma: 4821, posts: 12, rankSource: "karma" },
-      { subreddit: "electronicmusic", karma: 2103, posts: 8, rankSource: "karma" },
-      { subreddit: "design", karma: 1547, posts: 23, rankSource: "karma" },
-    ],
-    moderatorOf: [],
-    inferredInterests: ["hip-hop", "left-field electronic", "design"],
-    suggestedCommunities: [
-      {
-        communityId: COMMUNITY_IDS.builders,
-        name: "c/builders",
-        reason: "You engage with product and interface threads.",
-      },
-      {
-        communityId: COMMUNITY_IDS.tameImpala,
-        name: "c/tameimpala",
-        reason: "You spend time in music-heavy discussion communities.",
-      },
-    ],
-  },
   handleSuggestion: {
     suggestedLabel: "technohippie",
     source: "verified_reddit_username",
     availability: "available",
-  },
-  actions: {
-    primaryLabel: "Continue",
-    secondaryLabel: "Choose another handle",
-    tertiaryLabel: "Skip",
   },
 };
 

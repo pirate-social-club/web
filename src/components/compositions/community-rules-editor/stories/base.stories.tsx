@@ -23,6 +23,7 @@ export const Default: Story = {
   render: () => (
     <CommunityRulesEditorPage
       description="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
+      onSave={() => undefined}
       reportReason="Respect others and be civil"
       ruleName="Respect others and be civil"
     />
@@ -38,6 +39,7 @@ export const Blank: Story = {
   render: () => (
     <CommunityRulesEditorPage
       description=""
+      onSave={() => undefined}
       reportReason=""
       ruleName=""
     />

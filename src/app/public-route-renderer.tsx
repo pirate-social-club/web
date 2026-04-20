@@ -3,15 +3,18 @@
 import * as React from "react";
 
 import type { AppRoute } from "@/app/router";
+import { PostPage } from "@/app/authenticated-routes";
 import { PublicCommunityRoutePage } from "@/app/public-community-route";
 import { PublicProfileRoutePage } from "@/app/public-profile-route";
 
 export function renderPublicRoute(
-  route: Extract<AppRoute, { kind: "public-profile" | "community" }>,
+  route: Extract<AppRoute, { kind: "public-profile" | "community" | "post" }>,
 ): React.ReactNode {
   switch (route.kind) {
     case "community":
       return <PublicCommunityRoutePage communityId={route.communityId} />;
+    case "post":
+      return <PostPage postId={route.postId} />;
     case "public-profile":
       return (
         <PublicProfileRoutePage
@@ -34,7 +37,7 @@ export function renderPublicRoute(
 export function PublicRouteRenderer({
   route,
 }: {
-  route: Extract<AppRoute, { kind: "public-profile" | "community" }>;
+  route: Extract<AppRoute, { kind: "public-profile" | "community" | "post" }>;
 }) {
   return <>{renderPublicRoute(route)}</>;
 }

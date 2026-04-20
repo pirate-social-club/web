@@ -9,6 +9,9 @@ import {
 
 import { Avatar } from "@/components/primitives/avatar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { triggerNavigationTapHaptic } from "@/lib/haptics";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 
 type FooterNavItemId = "home" | "create" | "inbox" | "profile";
@@ -60,17 +63,25 @@ export function MobileFooterNav({
   showInboxDot = false,
   userAvatarSrc,
 }: MobileFooterNavProps) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "shell");
   const {
-    create = "Create",
-    home = "Home",
-    inbox = "Inbox",
+    create = copy.mobileFooter.createLabel,
+    home = copy.mobileFooter.homeLabel,
+    inbox = copy.mobileFooter.inboxLabel,
     inboxAriaLabel = inbox,
-    primaryNavAriaLabel = "Primary",
-    profile = "Profile",
+    primaryNavAriaLabel = copy.mobileFooter.primaryNavAriaLabel,
+    profile = copy.mobileFooter.profileLabel,
     profileAriaLabel = profile,
   } = labels ?? {};
   const detectedMobile = useIsMobile();
   const isMobile = forceMobile ?? detectedMobile;
+  const handleTap = React.useCallback((action?: () => void) => {
+    if (!action) return;
+
+    triggerNavigationTapHaptic();
+    action();
+  }, []);
 
   if (!isMobile) return null;
 
@@ -106,7 +117,7 @@ export function MobileFooterNav({
               )}
               disabled={item.id === "create" && disableCreateAction}
               key={item.id}
-              onClick={clickById[item.id]}
+              onClick={() => handleTap(clickById[item.id])}
               title={item.id === "create" ? createActionTitle : undefined}
               type="button"
             >
@@ -126,7 +137,7 @@ export function MobileFooterNav({
             "mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors",
             activeItem === "profile" ? "text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
-          onClick={onProfileClick}
+          onClick={() => handleTap(onProfileClick)}
           type="button"
           >
           <Avatar

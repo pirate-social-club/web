@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Lock, Share } from "@phosphor-icons/react";
 
+import { triggerNavigationTapHaptic, triggerShareSuccessHaptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import { VotePill } from "@/components/primitives/vote-pill";
 import { CommentPill } from "@/components/primitives/comment-pill";
@@ -29,6 +30,18 @@ export function PostCardEngagementBar({
   className,
 }: PostCardEngagementBarProps) {
   const { score, viewerVote, commentCount } = engagement;
+  const handleShare = React.useCallback(() => {
+    if (!onShare) return;
+
+    triggerShareSuccessHaptic();
+    onShare();
+  }, [onShare]);
+  const handleUnlock = React.useCallback(() => {
+    if (!unlock) return;
+
+    triggerNavigationTapHaptic();
+    unlock.onClick();
+  }, [unlock]);
 
   return (
     <div
@@ -37,7 +50,6 @@ export function PostCardEngagementBar({
         unlock ? "w-full" : "self-start",
         className,
       )}
-      dir="ltr"
     >
       <VotePill score={score} viewerVote={viewerVote} onVote={onVote} />
       <CommentPill count={commentCount} onComment={onComment} />
@@ -46,7 +58,7 @@ export function PostCardEngagementBar({
           className={cn(
             "inline-flex h-9 items-center gap-1.5 rounded-xl border border-border-soft bg-background px-3 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground",
           )}
-          onClick={onShare}
+          onClick={handleShare}
           type="button"
           data-post-card-interactive="true"
         >
@@ -60,7 +72,7 @@ export function PostCardEngagementBar({
           className={cn(
             "inline-flex h-9 items-center gap-1.5 rounded-xl border border-primary/25 bg-primary/8 px-3 text-base font-medium text-primary transition-colors hover:bg-primary/14",
           )}
-          onClick={unlock.onClick}
+          onClick={handleUnlock}
           type="button"
           data-post-card-interactive="true"
         >

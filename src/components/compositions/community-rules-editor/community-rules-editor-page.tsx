@@ -1,14 +1,11 @@
 "use client";
 
 import * as React from "react";
-import {
-  CaretRight,
-} from "@phosphor-icons/react";
 
-import { Button } from "@/components/primitives/button";
 import { Input } from "@/components/primitives/input";
 import { Textarea } from "@/components/primitives/textarea";
 import { cn } from "@/lib/utils";
+import { CommunityModerationSaveFooter } from "@/components/compositions/community-moderation-shell/community-moderation-save-footer";
 
 export interface CommunityRulesEditorPageProps {
   className?: string;
@@ -38,22 +35,17 @@ export function CommunityRulesEditorPage({
   saveLoading = false,
 }: CommunityRulesEditorPageProps) {
   return (
-    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-8", className)}>
-      <div className="flex items-start justify-between gap-6">
-        <div className="flex min-w-0 items-start gap-4">
-          <div className="min-w-0 space-y-2">
-            <h1 className="text-[2.25rem] font-semibold tracking-tight">Name and describe your rule</h1>
-            <p className="text-base text-muted-foreground">
-              Rules set the expectations for members and visitors in your community.
-            </p>
-          </div>
+    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
+      <div className="flex min-w-0 items-start gap-4">
+        <div className="min-w-0 space-y-2">
+          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Create rule</h1>
+          <p className="text-base text-muted-foreground">
+            Rules set the expectations for members and visitors in your community.
+          </p>
         </div>
-        <Button disabled={saveDisabled} loading={saveLoading} onClick={onSave}>
-          Save
-        </Button>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-6 md:space-y-8">
         <div className="space-y-3">
           <Input
             onChange={(event) => onRuleNameChange?.(event.target.value)}
@@ -61,7 +53,7 @@ export function CommunityRulesEditorPage({
             size="lg"
             value={ruleName}
           />
-          <div className="flex items-center justify-between text-base text-muted-foreground">
+          <div className="flex flex-col gap-1 text-base text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span>Max characters 100</span>
             <span>{ruleName.length}/100</span>
           </div>
@@ -74,7 +66,7 @@ export function CommunityRulesEditorPage({
             placeholder="Description"
             value={description}
           />
-          <div className="flex items-center justify-between text-base text-muted-foreground">
+          <div className="flex flex-col gap-1 text-base text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span>Max characters 500</span>
             <span>{description.length}/500</span>
           </div>
@@ -95,21 +87,19 @@ export function CommunityRulesEditorPage({
               size="lg"
               value={reportReason}
             />
-            <div className="flex items-center justify-between text-base text-muted-foreground">
+            <div className="flex flex-col gap-1 text-base text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
               <span>By default, this is the same as your rule name.</span>
               <span>{reportReason.length}/100</span>
             </div>
           </div>
-
-          <div className="flex items-center justify-between border-b border-border-soft pb-4">
-            <div className="text-lg font-medium">Show when reporting</div>
-            <button className="inline-flex items-center gap-3 text-base text-muted-foreground transition-colors hover:text-foreground" type="button">
-              <span>Posts, comments, and chat messages</span>
-              <CaretRight className="size-5" />
-            </button>
-          </div>
         </div>
       </div>
+
+      <CommunityModerationSaveFooter
+        disabled={saveDisabled}
+        loading={saveLoading}
+        onSave={onSave}
+      />
     </section>
   );
 }

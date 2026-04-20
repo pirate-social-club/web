@@ -28,6 +28,7 @@ export type SongPresentationOptions = {
 
 export type PostPresentationOptions = {
   onVote?: PostCardProps["onVote"];
+  onComment?: PostCardProps["onComment"];
   preferOriginalText?: boolean;
 };
 
@@ -84,16 +85,38 @@ function resolvePublicAuthorFallback(
 }
 
 function resolvePostAuthorLabel(
-  post: Pick<ApiPost["post"], "agent_display_name_snapshot" | "anonymous_label" | "author_user_id" | "identity_mode">,
+  post: Pick<ApiPost["post"], "agent_display_name_snapshot" | "anonymous_label" | "author_user_id" | "authorship_mode" | "identity_mode">,
   authorProfile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
 ): string {
   if (post.identity_mode === "anonymous") {
     return post.anonymous_label ?? "anon";
   }
 
-  return post.agent_display_name_snapshot
+  return post.authorship_mode === "user_agent" && post.agent_display_name_snapshot
     ? post.agent_display_name_snapshot
     : resolvePublicAuthorFallback(post.author_user_id, authorProfile);
+}
+
+function resolveAgentAuthor(
+  post: Pick<ApiPost["post"], "agent_display_name_snapshot" | "agent_owner_handle_snapshot" | "author_user_id" | "authorship_mode" | "identity_mode">,
+  authorProfile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
+) {
+  if (post.identity_mode !== "public" || post.authorship_mode !== "user_agent" || !post.agent_display_name_snapshot) {
+    return undefined;
+  }
+
+  const ownerLabel = post.agent_owner_handle_snapshot?.trim()
+    || resolvePublicIdentityLabel(authorProfile)
+    || resolvePublicAuthorFallback(post.author_user_id, authorProfile);
+  const ownerHref = post.author_user_id && authorProfile
+    ? buildPublicProfilePathForProfile(authorProfile)
+    : undefined;
+
+  return {
+    label: post.agent_display_name_snapshot,
+    ownerLabel,
+    ownerHref,
+  };
 }
 
 export function resolveCommentAuthorLabel(
@@ -288,12 +311,12 @@ function toCommunityPostContent(
 
 export function toCommunityFeedItem(
   postResponse: ApiPost,
-  authorProfiles: Record<string, ApiProfile | undefined>,
+  authorProfiles: Record<string, ApiProfile | null>,
   songOptions?: SongPresentationOptions,
   opts?: PostPresentationOptions,
 ): FeedItem {
   const { post } = postResponse;
-  const authorProfile = post.author_user_id ? authorProfiles[post.author_user_id] : undefined;
+  const authorProfile = post.author_user_id ? authorProfiles[post.author_user_id] ?? undefined : undefined;
 
   return {
     id: post.post_id,
@@ -306,15 +329,17 @@ export function toCommunityFeedItem(
             ? buildPublicProfilePathForProfile(authorProfile)
             : undefined,
         },
+        agentAuthor: resolveAgentAuthor(post, authorProfile),
         timestampLabel: formatRelativeTimestamp(post.created_at),
       },
       content: toCommunityPostContent(postResponse, songOptions),
       engagement: {
-        commentCount: 0,
+        commentCount: postResponse.thread_snapshot?.comment_count ?? 0,
         score: postResponse.upvote_count - postResponse.downvote_count,
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
       identityPresentation: post.identity_mode === "anonymous" ? "anonymous_primary" : "author_primary",
+      onComment: opts?.onComment,
       onVote: opts?.onVote,
       postHref: `/p/${post.post_id}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
@@ -348,6 +373,7 @@ export function toHomeFeedItem(
             ? buildPublicProfilePathForProfile(authorProfile)
             : undefined,
         },
+        agentAuthor: resolveAgentAuthor(post, authorProfile),
         community: {
           kind: "community",
           href: `/c/${community.community_id}`,
@@ -362,6 +388,7 @@ export function toHomeFeedItem(
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
       identityPresentation: post.identity_mode === "anonymous" ? "anonymous_with_community" : "author_with_community",
+      onComment: opts?.onComment,
       onVote: opts?.onVote,
       postHref: `/p/${post.post_id}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
@@ -392,6 +419,7 @@ export function toThreadPostCard(
           ? buildPublicProfilePathForProfile(authorProfile)
           : undefined,
       },
+      agentAuthor: resolveAgentAuthor(post, authorProfile),
       community: community
         ? { kind: "community", label: `c/${community.display_name}`, href: `/c/${community.community_id}` }
         : undefined,
@@ -399,11 +427,12 @@ export function toThreadPostCard(
     },
     content: toCommunityPostContent(postResponse, songOptions, opts),
     engagement: {
-      commentCount: 0,
+      commentCount: postResponse.thread_snapshot?.comment_count ?? 0,
       score: postResponse.upvote_count - postResponse.downvote_count,
       viewerVote: toViewerVote(postResponse.viewer_vote),
     },
     identityPresentation: post.identity_mode === "anonymous" ? "anonymous_primary" : "author_with_community",
+    onComment: opts?.onComment,
     onVote: opts?.onVote,
     postHref: `/p/${post.post_id}`,
     qualifierLabels: resolvePostQualifierLabels(postResponse),

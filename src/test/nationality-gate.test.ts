@@ -14,6 +14,16 @@ describe("formatGateRequirement", () => {
     expect(formatGateRequirement(gate)).toContain("United States");
   });
 
+  test("formats nationality gate with localized country name", () => {
+    const gate: MembershipGateSummary = { gate_type: "nationality", required_value: "PS" };
+    expect(formatGateRequirement(gate, { locale: "ar" })).toContain("فلسطين");
+  });
+
+  test("formats nationality gate with country name and code for admin surfaces", () => {
+    const gate: MembershipGateSummary = { gate_type: "nationality", required_value: "US" };
+    expect(formatGateRequirement(gate, { audience: "admin" })).toContain("United States (US)");
+  });
+
   test("formats unknown country code as raw code", () => {
     const gate: MembershipGateSummary = { gate_type: "nationality", required_value: "XX" };
     expect(formatGateRequirement(gate)).toContain("XX");
@@ -87,6 +97,10 @@ describe("isJoinCtaActionable", () => {
 describe("getVerificationPromptCopy", () => {
   test("describes self document marker verification clearly", () => {
     expect(getVerificationPromptCopy("self", ["gender"]).title).toBe("Verify with ID");
+  });
+
+  test("localizes verification prompt copy", () => {
+    expect(getVerificationPromptCopy("self", ["nationality"], { locale: "ar" }).title).toBe("تحقق بالهوية");
   });
 
   test("collapses unique human when a richer self capability is present", () => {

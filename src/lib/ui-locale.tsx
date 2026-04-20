@@ -71,9 +71,11 @@ export function UiLocaleProvider({
     document.documentElement.dir = resolveLocaleDirection(activeLocale);
     document.documentElement.lang = activeLocale === "ar"
       ? "ar"
-      : activeLocale === "pseudo"
-        ? "en-XA"
-        : "en";
+      : activeLocale === "zh"
+        ? "zh-CN"
+        : activeLocale === "pseudo"
+          ? "en-XA"
+          : "en";
   }, [activeLocale]);
 
   const setLocale = React.useCallback((nextLocale: UiLocaleCode) => {

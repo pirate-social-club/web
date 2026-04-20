@@ -54,6 +54,7 @@ function normalizeContentLocale(locale: string | null | undefined): string | nul
 
 function uiLocaleToContentLocale(locale: UiLocaleCode): string {
   if (locale === "ar") return "ar";
+  if (locale === "zh") return "zh-Hans";
   return "en";
 }
 
@@ -63,6 +64,9 @@ export function resolveViewerContentLocale(input: {
 }): string {
   if (input.uiLocale === "ar") {
     return "ar";
+  }
+  if (input.uiLocale === "zh") {
+    return "zh-Hans";
   }
 
   for (const candidate of input.browserLocales ?? []) {

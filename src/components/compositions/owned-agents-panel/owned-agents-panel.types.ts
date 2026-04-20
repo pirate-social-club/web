@@ -1,0 +1,53 @@
+export type OwnedAgentStatus =
+  | "pending"
+  | "active"
+  | "suspended"
+  | "revoked"
+  | "transferred"
+  | "deregistered";
+
+export type OwnershipProvider = "self_agent_id" | "clawkey";
+
+export interface OwnedAgentOwnershipSnapshot {
+  ownershipProvider: OwnershipProvider;
+  verifiedAt: string;
+  expiresAt: string | null;
+}
+
+export interface OwnedAgent {
+  agentId: string;
+  displayName: string;
+  status: OwnedAgentStatus;
+  createdAt: string;
+  currentOwnership: OwnedAgentOwnershipSnapshot | null;
+}
+
+export type AgentRegistrationState =
+  | { kind: "idle" }
+  | { kind: "verifying" }
+  | {
+    kind: "pairing_code";
+    pairingCode: string;
+    expiresAt: string;
+  }
+  | {
+    kind: "awaiting_owner";
+    registrationUrl: string;
+    sessionId: string;
+    expiresAt?: string | null;
+  }
+  | { kind: "complete" }
+  | { kind: "error"; message: string };
+
+export interface OwnedAgentsPanelProps {
+  agents: OwnedAgent[];
+  canRegister: boolean;
+  loading?: boolean;
+  registrationState: AgentRegistrationState;
+  importValue?: string;
+  onStartPairing?: () => void;
+  onImportValueChange?: (value: string) => void;
+  onImportRegistration?: () => void;
+  onCheckRegistration?: () => void;
+  onDeregister?: (agentId: string) => void;
+}

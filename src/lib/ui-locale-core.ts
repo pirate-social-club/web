@@ -1,4 +1,4 @@
-export const SUPPORTED_UI_LOCALES = ["en", "ar", "pseudo"] as const;
+export const SUPPORTED_UI_LOCALES = ["en", "ar", "zh", "pseudo"] as const;
 
 export type UiLocaleCode = (typeof SUPPORTED_UI_LOCALES)[number];
 export type UiDirection = "ltr" | "rtl";
@@ -14,6 +14,7 @@ export function resolveLocaleDirection(locale: UiLocaleCode): UiDirection {
 
 export function resolveLocaleLanguageTag(locale: UiLocaleCode): string {
   if (locale === "ar") return "ar";
+  if (locale === "zh") return "zh-CN";
   if (locale === "pseudo") return "en-XA";
   return "en";
 }
@@ -39,6 +40,7 @@ export function resolveRequestLocale(
 
   for (const tag of requestedTags) {
     if (tag === "ar" || tag.startsWith("ar-")) return "ar";
+    if (tag === "zh" || tag.startsWith("zh-")) return "zh";
     if (tag === "en" || tag.startsWith("en-")) return "en";
   }
 

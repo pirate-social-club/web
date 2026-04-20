@@ -51,6 +51,7 @@
   },
   "community": {
     "aboutTab": "关于",
+    "charityLabel": "慈善机构",
     "createPostLabel": "发布帖子",
     "feedTab": "动态",
     "membersLabel": "成员",
@@ -58,6 +59,29 @@
     "requirementsLabel": "要求",
     "rulesLabel": "规则",
     "title": "社区"
+  },
+  "interactionGate": {
+    "blockedReplyDescription": "这个社区的要求当前不允许你回复。",
+    "blockedVoteDescription": "这个社区的要求当前不允许你投票。",
+    "cantReplyHereTitle": "你不能在这里回复",
+    "cantVoteHereTitle": "你不能在这里投票",
+    "close": "关闭",
+    "connectToContinue": "连接后继续。",
+    "couldNotCheckRequirements": "无法检查这个社区的互动要求。",
+    "joinInCommunity": "在 {communityName} 中{joinLabel}",
+    "joinToReplyDescription": "在回复前，先在 {communityName} 中{joinLabel}。",
+    "joinToReplyTitle": "{joinLabel}后回复",
+    "joinToVoteDescription": "在投票前，先在 {communityName} 中{joinLabel}。",
+    "joinToVoteTitle": "{joinLabel}后投票",
+    "openCommunity": "打开 {communityName}",
+    "readyDescription": "你可以在这里互动。",
+    "readyTitle": "已就绪",
+    "verifyInCommunity": "在 {communityName} 中验证",
+    "verifyToReplyDescription": "完成身份验证后即可在这里回复。",
+    "verifyToReplyTitle": "验证后回复",
+    "verifyToVoteDescription": "完成身份验证后即可在这里投票。",
+    "verifyToVoteTitle": "验证后投票",
+    "bannedDescription": "你没有资格加入这个社区。"
   },
   "createPost": {
     "access": {

@@ -6,6 +6,7 @@ import { useModalStatus, usePrivy } from "@privy-io/react-auth";
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import type { ApiError } from "@/lib/api/client";
+import { isOnboardingComplete } from "@/lib/onboarding";
 import {
   getSessionAccessTokenExpiryMs,
   isSessionAccessTokenExpiringSoon,
@@ -17,6 +18,8 @@ import { toast } from "@/components/primitives/sonner";
 const REFRESH_WINDOW_MS = 5 * 60 * 1000;
 const RETRY_COOLDOWN_MS = 30 * 1000;
 const MAX_RETRY_COUNT = 3;
+const AUTH_BOOTSTRAP_WAIT_MS = 1_500;
+const AUTH_BOOTSTRAP_POLL_MS = 50;
 
 export interface PrivyAuthBridgeProps {
   onBusyChange?: (busy: boolean) => void;
@@ -38,12 +41,30 @@ export function PrivyAuthBridge({
   const retryCountRef = React.useRef(0);
   const retryUntilRef = React.useRef(0);
   const wasOpenRef = React.useRef(false);
+  const authStateRef = React.useRef({ authenticated, ready });
   const liveStateRef = React.useRef({ busy: false, authenticated: false, login: login as (() => void) | null, session: false });
 
+  authStateRef.current = { authenticated, ready };
   liveStateRef.current = { busy, authenticated, login: login as (() => void) | null, session: !!session };
 
   const isInRetryCooldown = React.useCallback((): boolean => {
     return retryCountRef.current >= MAX_RETRY_COUNT && Date.now() < retryUntilRef.current;
+  }, []);
+
+  const waitForAuthBootstrap = React.useCallback(async (): Promise<{ authenticated: boolean; ready: boolean }> => {
+    if (authStateRef.current.ready) {
+      return authStateRef.current;
+    }
+
+    const deadline = Date.now() + AUTH_BOOTSTRAP_WAIT_MS;
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => globalThis.setTimeout(resolve, AUTH_BOOTSTRAP_POLL_MS));
+      if (authStateRef.current.ready) {
+        break;
+      }
+    }
+
+    return authStateRef.current;
   }, []);
 
   const exchangePrivySession = React.useCallback(async (options?: {
@@ -70,7 +91,11 @@ export function PrivyAuthBridge({
       retryCountRef.current = 0;
       retryUntilRef.current = 0;
 
-      if (options?.navigateOnFirstSession !== false && !hadSession) {
+      if (
+        options?.navigateOnFirstSession !== false
+        && !hadSession
+        && !isOnboardingComplete(response.onboarding)
+      ) {
         navigate("/onboarding");
       }
       return true;
@@ -94,10 +119,11 @@ export function PrivyAuthBridge({
 
   React.useEffect(() => {
     api.setRefreshAuthCallback(async () => {
-      if (!ready || !authenticated || isInRetryCooldown()) {
+      const authState = ready ? { authenticated, ready } : await waitForAuthBootstrap();
+      if (!authState.ready || !authState.authenticated || isInRetryCooldown()) {
         console.info("[auth] client refresh declined", {
-          ready,
-          authenticated,
+          ready: authState.ready,
+          authenticated: authState.authenticated,
           cooldown: isInRetryCooldown(),
         });
         return false;
@@ -112,7 +138,7 @@ export function PrivyAuthBridge({
     return () => {
       api.setRefreshAuthCallback(null);
     };
-  }, [api, authenticated, exchangePrivySession, isInRetryCooldown, ready]);
+  }, [api, authenticated, exchangePrivySession, isInRetryCooldown, ready, waitForAuthBootstrap]);
 
   React.useEffect(() => {
     onBusyChange?.(busy);

@@ -166,6 +166,7 @@ export function VerifyNamespaceModalView({
 }) {
   const meta = namespaceFamilyMeta[activeFamily];
   const hasRootInput = rootLabel.trim().replace(/^[@.]/, "").length > 0;
+  const verifyActionLabel = "Verify";
 
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
@@ -302,14 +303,14 @@ export function VerifyNamespaceModalView({
             {isChallengePending ? (
               <>
                 <Button onClick={() => onOpenChange(false)} variant="outline">Close</Button>
-                <Button loading={isVerifying} onClick={onVerify}>Check again</Button>
+                <Button loading={isVerifying} onClick={onVerify}>{verifyActionLabel}</Button>
               </>
             ) : null}
             {(isFailed || isExpired) ? (
               <>
                 <Button onClick={() => onOpenChange(false)} variant="outline">Cancel</Button>
                 {isFailed && isHns ? (
-                  <Button loading={isVerifying} onClick={onVerify}>Check again</Button>
+                  <Button loading={isVerifying} onClick={onVerify}>{verifyActionLabel}</Button>
                 ) : null}
                 <Button onClick={onRestart}>{isHns ? "Continue" : "New challenge"}</Button>
               </>
@@ -328,7 +329,7 @@ export function VerifyNamespaceModalView({
             ) : null}
             {(isChallengeReady || isVerifying) ? (
               <Button disabled={!canSubmitSignature} loading={isVerifying} onClick={onVerify}>
-                {isHns && hnsMode === "pirate_managed" ? "Check again" : "Verify"}
+                {verifyActionLabel}
               </Button>
             ) : null}
           </div>

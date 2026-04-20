@@ -13,7 +13,10 @@ import stylesUrl from "@/styles/tokens.css?url";
 type ThemeMode = "dark" | "light" | "system";
 
 type AppContext = {
+  appOrigin?: string;
+  canonicalUrl?: string;
   dir?: UiDirection;
+  isIndexable?: boolean;
   locale?: UiLocaleCode;
   theme?: ThemeMode;
 };
@@ -28,6 +31,7 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
   const dir = ctx.dir ?? resolveLocaleDirection(locale);
   const theme = ctx.theme ?? "dark";
   const nonce = rw.nonce;
+  const canonicalUrl = ctx.canonicalUrl ?? null;
   const clientModuleUrl = isDev
     ? "/src/client.tsx"
     : "rwsdk_asset:/src/client.tsx";
@@ -46,6 +50,8 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#222324" />
         <title>Pirate Social Club</title>
+        {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
+        {!ctx.isIndexable ? <meta name="robots" content="noindex, nofollow" /> : null}
         <link rel="stylesheet" href={stylesUrl} />
         <link rel="modulepreload" href={clientModuleUrl} />
         {isDev ? (

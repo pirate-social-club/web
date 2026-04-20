@@ -8,6 +8,11 @@ import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { DonationPartnerPreview, DonationPolicyMode } from "@/components/compositions/community-donations-editor/community-donations-editor-page";
+import type {
+  CommunityAgentPolicyPageProps,
+  CommunityAgentPolicySettings,
+} from "@/components/compositions/community-agent-policy/community-agent-policy.types";
+import type { LabelEditorDefinition } from "@/components/compositions/community-labels-editor/community-labels-editor-page";
 import type { CommunityLinkEditorItem } from "@/components/compositions/community-links-editor/community-links-editor-page";
 import type { PricingTier, CountryAssignment as PricingCountryAssignment } from "@/components/compositions/community-pricing-editor/community-pricing-editor-page";
 import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
@@ -33,6 +38,68 @@ import { useCommunityRecord } from "./moderation-data";
 import { getErrorMessage } from "./route-core";
 
 type ApiCommunityPricingPolicyState = ApiCommunityPricingPolicy | null;
+
+function isValidHexColor(value: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test(value.trim());
+}
+
+function getCommunityLabelDrafts(
+  community: ApiCommunity | null,
+): LabelEditorDefinition[] {
+  return community?.label_policy?.definitions
+    ?.slice()
+    .sort((left, right) => left.position - right.position)
+    .map((definition) => ({
+      id: definition.label_id,
+      label: definition.label,
+      color: definition.color_token ?? "#f97316",
+      status: definition.status,
+    })) ?? [];
+}
+
+function getLabelValidationError(
+  labelsEnabled: boolean,
+  labels: LabelEditorDefinition[],
+): string | null {
+  if (!labelsEnabled) {
+    return null;
+  }
+
+  const seen = new Set<string>();
+  for (const label of labels) {
+    if (label.status !== "active") {
+      continue;
+    }
+
+    const normalizedName = label.label.trim().toLowerCase();
+    if (!normalizedName) {
+      return "Each label needs a name.";
+    }
+    if (!isValidHexColor(label.color)) {
+      return "Each label needs a valid hex color.";
+    }
+    if (seen.has(normalizedName)) {
+      return "Label names must be unique.";
+    }
+    seen.add(normalizedName);
+  }
+
+  return null;
+}
+
+function getCommunityAgentPolicySettings(
+  community: ApiCommunity | null,
+): CommunityAgentPolicySettings {
+  return {
+    agentPostingPolicy: community?.agent_posting_policy === "disallow" ? "disallow" : "allow",
+    agentPostingScope: community?.agent_posting_scope === "top_level_and_replies"
+      ? "top_level_and_replies"
+      : "replies_only",
+    dailyPostCap: community?.agent_daily_post_cap ?? null,
+    dailyReplyCap: community?.agent_daily_reply_cap ?? null,
+  };
+}
+
 export function useCommunityModerationState(communityId: string) {
   const api = useApi();
   const session = useSession();
@@ -40,7 +107,17 @@ export function useCommunityModerationState(communityId: string) {
   const [ruleName, setRuleName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [reportReason, setReportReason] = React.useState("");
+  const [profileDisplayName, setProfileDisplayName] = React.useState("");
+  const [profileDescription, setProfileDescription] = React.useState("");
+  const [profileAvatarFile, setProfileAvatarFile] = React.useState<File | null>(null);
+  const [profileBannerFile, setProfileBannerFile] = React.useState<File | null>(null);
+  const [profileAvatarRemoved, setProfileAvatarRemoved] = React.useState(false);
+  const [profileBannerRemoved, setProfileBannerRemoved] = React.useState(false);
+  const [profileDisplayNameError, setProfileDisplayNameError] = React.useState<string | undefined>(undefined);
   const [links, setLinks] = React.useState<CommunityLinkEditorItem[]>([]);
+  const [labelsEnabled, setLabelsEnabled] = React.useState(false);
+  const [requireOnTopLevelPosts, setRequireOnTopLevelPosts] = React.useState(false);
+  const [labels, setLabels] = React.useState<LabelEditorDefinition[]>([]);
   const [donationMode, setDonationMode] = React.useState<DonationPolicyMode>("none");
   const [endaomentUrl, setEndaomentUrl] = React.useState("");
   const [partnerPreview, setPartnerPreview] = React.useState<DonationPartnerPreview | null>(null);
@@ -48,6 +125,7 @@ export function useCommunityModerationState(communityId: string) {
   const [resolvingDonationPartner, setResolvingDonationPartner] = React.useState(false);
   const [savingRules, setSavingRules] = React.useState(false);
   const [savingLinks, setSavingLinks] = React.useState(false);
+  const [savingLabels, setSavingLabels] = React.useState(false);
   const [savingDonations, setSavingDonations] = React.useState(false);
   const [pricingPolicy, setPricingPolicy] = React.useState<ApiCommunityPricingPolicyState>(null);
   const [pricingPolicyError, setPricingPolicyError] = React.useState<unknown>(null);
@@ -70,6 +148,12 @@ export function useCommunityModerationState(communityId: string) {
   const [civilityPolicy, setCivilityPolicy] = React.useState(() => getCommunityCivilityPolicyState({} as ApiCommunity));
   const [savingSafety, setSavingSafety] = React.useState(false);
   const [savingGates, setSavingGates] = React.useState(false);
+  const [agentSettings, setAgentSettings] = React.useState<CommunityAgentPolicySettings>(
+    getCommunityAgentPolicySettings(null),
+  );
+  const [savingAgents, setSavingAgents] = React.useState(false);
+  const [savingProfile, setSavingProfile] = React.useState(false);
+  const [agentSaveError, setAgentSaveError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!community) {
@@ -96,6 +180,16 @@ export function useCommunityModerationState(communityId: string) {
     }
 
     setLinks(getCommunityLinkDrafts(community));
+    setLabelsEnabled(community.label_policy?.label_enabled === true);
+    setRequireOnTopLevelPosts(community.label_policy?.require_label_on_top_level_posts === true);
+    setLabels(getCommunityLabelDrafts(community));
+    setProfileDisplayName(community.display_name);
+    setProfileDescription(community.description ?? "");
+    setProfileAvatarFile(null);
+    setProfileBannerFile(null);
+    setProfileAvatarRemoved(community.avatar_ref == null);
+    setProfileBannerRemoved(community.banner_ref == null);
+    setProfileDisplayNameError(undefined);
     setDonationMode(community.donation_policy_mode ?? "none");
     setEndaomentUrl(buildEndaomentOrgUrl(community.donation_partner?.provider_partner_ref));
     setPartnerPreview(getCommunityDonationPartnerPreview(community));
@@ -109,6 +203,8 @@ export function useCommunityModerationState(communityId: string) {
     setAdultContentPolicy(getCommunityAdultContentPolicyState(community));
     setGraphicContentPolicy(getCommunityGraphicContentPolicyState(community));
     setCivilityPolicy(getCommunityCivilityPolicyState(community));
+    setAgentSettings(getCommunityAgentPolicySettings(community));
+    setAgentSaveError(null);
   }, [community]);
 
   React.useEffect(() => {
@@ -158,12 +254,21 @@ export function useCommunityModerationState(communityId: string) {
   }, [community?.pending_namespace_verification_session_id]);
 
   const effectiveNamespaceSessionId = activeNamespaceSessionId ?? community?.pending_namespace_verification_session_id ?? null;
+  const labelsValidationError = getLabelValidationError(labelsEnabled, labels);
   const pricingValidationError = validatePricingPolicyDraft({
     countryAssignments,
     defaultTierKey,
     regionalPricingEnabled,
     tiers: pricingTiers,
   });
+  const profileHasChanges = community == null ? false : (
+    profileDisplayName.trim() !== community.display_name.trim()
+    || profileDescription !== (community.description ?? "")
+    || profileAvatarFile !== null
+    || profileBannerFile !== null
+    || (profileAvatarRemoved && community.avatar_ref != null)
+    || (profileBannerRemoved && community.banner_ref != null)
+  );
 
   const namespaceVerificationCallbacks = React.useMemo<NamespaceVerificationCallbacks>(() => ({
     onStartSession: async ({ family, rootLabel }) => {
@@ -257,6 +362,57 @@ export function useCommunityModerationState(communityId: string) {
     );
   }, [api.communities, community, description, reportReason, ruleName, saveCommunity, savingRules]);
 
+  const handleSaveProfile = React.useCallback(async () => {
+    if (!community || savingProfile) return;
+    const trimmedDisplayName = profileDisplayName.trim();
+    if (!trimmedDisplayName) {
+      setProfileDisplayNameError("Name is required.");
+      return;
+    }
+
+    setProfileDisplayNameError(undefined);
+    setSavingProfile(true);
+    try {
+      let avatarRef = profileAvatarRemoved ? null : community.avatar_ref ?? null;
+      let bannerRef = profileBannerRemoved ? null : community.banner_ref ?? null;
+
+      if (profileAvatarFile) {
+        avatarRef = (await api.communities.uploadMedia({ kind: "avatar", file: profileAvatarFile })).media_ref;
+      }
+      if (profileBannerFile) {
+        bannerRef = (await api.communities.uploadMedia({ kind: "banner", file: profileBannerFile })).media_ref;
+      }
+
+      const updatedCommunity = await api.communities.update(community.community_id, {
+        display_name: trimmedDisplayName,
+        description: profileDescription.trim() ? profileDescription : null,
+        avatar_ref: avatarRef,
+        banner_ref: bannerRef,
+      });
+      setCommunity(updatedCommunity);
+      setProfileAvatarFile(null);
+      setProfileBannerFile(null);
+      setProfileAvatarRemoved(updatedCommunity.avatar_ref == null);
+      setProfileBannerRemoved(updatedCommunity.banner_ref == null);
+      toast.success("Profile saved.");
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not save profile."));
+    } finally {
+      setSavingProfile(false);
+    }
+  }, [
+    api.communities,
+    community,
+    profileAvatarFile,
+    profileAvatarRemoved,
+    profileBannerFile,
+    profileBannerRemoved,
+    profileDescription,
+    profileDisplayName,
+    savingProfile,
+    setCommunity,
+  ]);
+
   const handleSaveSafety = React.useCallback(() => {
     if (!community || savingSafety) return;
     void saveCommunity(
@@ -298,6 +454,39 @@ export function useCommunityModerationState(communityId: string) {
     }).catch(() => undefined);
   }, [api.communities, community, links, saveCommunity, savingLinks]);
 
+  const handleSaveLabels = React.useCallback(() => {
+    if (!community || savingLabels || labelsValidationError) return;
+    void saveCommunity(
+      () => api.communities.updateLabelPolicy(community.community_id, {
+        label_enabled: labelsEnabled,
+        require_label_on_top_level_posts: labelsEnabled && requireOnTopLevelPosts,
+        definitions: labels.map((label, index) => ({
+          label_id: label.id.startsWith("draft-") ? null : label.id,
+          label: label.label.trim(),
+          color_token: label.color.trim() || null,
+          status: label.status,
+          position: index,
+        })),
+      }),
+      setSavingLabels,
+      "Labels saved.",
+      "Could not save labels.",
+    ).then((updatedCommunity) => {
+      setLabelsEnabled(updatedCommunity.label_policy?.label_enabled === true);
+      setRequireOnTopLevelPosts(updatedCommunity.label_policy?.require_label_on_top_level_posts === true);
+      setLabels(getCommunityLabelDrafts(updatedCommunity));
+    }).catch(() => undefined);
+  }, [
+    api.communities,
+    community,
+    labels,
+    labelsEnabled,
+    labelsValidationError,
+    requireOnTopLevelPosts,
+    saveCommunity,
+    savingLabels,
+  ]);
+
   const handleResolveDonationPartner = React.useCallback(() => {
     if (!community || resolvingDonationPartner || !endaomentUrl.trim()) return;
     setResolvingDonationPartner(true);
@@ -324,16 +513,17 @@ export function useCommunityModerationState(communityId: string) {
 
   const handleSaveDonations = React.useCallback(() => {
     if (!community || savingDonations) return;
-    if (donationMode !== "none" && !partnerPreview) {
+    if (endaomentUrl.trim() && !partnerPreview) {
       setResolveError("Resolve an Endaoment organization before saving.");
       return;
     }
+    const nextDonationMode: DonationPolicyMode = partnerPreview ? "optional_creator_sidecar" : "none";
     setResolveError(null);
     void saveCommunity(
       () => api.communities.updateDonationPolicy(community.community_id, {
-        donation_policy_mode: donationMode,
-        donation_partner_id: donationMode === "none" ? null : (partnerPreview?.donationPartnerId ?? null),
-        donation_partner: donationMode === "none" || !partnerPreview ? null : {
+        donation_policy_mode: nextDonationMode,
+        donation_partner_id: nextDonationMode === "none" ? null : (partnerPreview?.donationPartnerId ?? null),
+        donation_partner: nextDonationMode === "none" || !partnerPreview ? null : {
           donation_partner_id: partnerPreview.donationPartnerId,
           display_name: partnerPreview.displayName,
           provider: "endaoment",
@@ -349,7 +539,7 @@ export function useCommunityModerationState(communityId: string) {
       setPartnerPreview(getCommunityDonationPartnerPreview(updatedCommunity));
       setEndaomentUrl(buildEndaomentOrgUrl(updatedCommunity.donation_partner?.provider_partner_ref));
     }).catch(() => undefined);
-  }, [api.communities, community, donationMode, partnerPreview, saveCommunity, savingDonations]);
+  }, [api.communities, community, endaomentUrl, partnerPreview, saveCommunity, savingDonations]);
 
   const handleSavePricing = React.useCallback(() => {
     if (!community || savingPricing || pricingValidationError) return;
@@ -416,7 +606,35 @@ export function useCommunityModerationState(communityId: string) {
     );
   }, [allowAnonymousIdentity, anonymousIdentityScope, api.communities, community, defaultAgeGatePolicy, gateDrafts, membershipMode, saveCommunity, savingGates]);
 
+  const handleSaveAgents = React.useCallback(() => {
+    if (!community || savingAgents) return;
+    setAgentSaveError(null);
+    void saveCommunity(
+      () => api.communities.update(community.community_id, {
+        agent_posting_policy: agentSettings.agentPostingPolicy,
+        agent_posting_scope: agentSettings.agentPostingScope,
+        agent_daily_post_cap: agentSettings.dailyPostCap,
+        agent_daily_reply_cap: agentSettings.dailyReplyCap,
+      }),
+      setSavingAgents,
+      "Agents saved.",
+      "Could not save agents.",
+    ).then((updatedCommunity) => {
+      setAgentSettings(getCommunityAgentPolicySettings(updatedCommunity));
+    }).catch((nextError: unknown) => {
+      setAgentSaveError(getErrorMessage(nextError, "Could not save agents."));
+    });
+  }, [agentSettings, api.communities, community, saveCommunity, savingAgents]);
+
+  const agentSubmitState: CommunityAgentPolicyPageProps["submitState"] = savingAgents
+    ? { kind: "saving" }
+    : agentSaveError
+      ? { kind: "error", message: agentSaveError }
+      : { kind: "idle" };
+
   return {
+    agentSettings,
+    agentSubmitState,
     activeNamespaceSessionId,
     adultContentPolicy,
     allowAnonymousIdentity,
@@ -433,11 +651,22 @@ export function useCommunityModerationState(communityId: string) {
     error,
     gateDrafts,
     graphicContentPolicy,
+    labels,
+    labelsEnabled,
+    labelsValidationError,
     links,
     loading,
     membershipMode,
     namespaceVerificationCallbacks,
     partnerPreview,
+    profileAvatarFile,
+    profileAvatarRemoved,
+    profileBannerFile,
+    profileBannerRemoved,
+    profileDescription,
+    profileDisplayName,
+    profileDisplayNameError,
+    profileHasChanges,
     pricingPolicyError,
     pricingPolicyLoading,
     pricingTiers,
@@ -450,14 +679,18 @@ export function useCommunityModerationState(communityId: string) {
     ruleName,
     savingDonations,
     savingGates,
+    savingLabels,
     savingLinks,
+    savingProfile,
     savingPricing,
     savingRules,
     savingSafety,
+    savingAgents,
     session,
     verificationProviderRequirement,
     setActiveNamespaceSessionId,
     setAdultContentPolicy,
+    setAgentSettings,
     setAllowAnonymousIdentity,
     setAnonymousIdentityScope,
     setCivilityPolicy,
@@ -470,23 +703,37 @@ export function useCommunityModerationState(communityId: string) {
     setEndaomentUrl,
     setGateDrafts,
     setGraphicContentPolicy,
+    setLabels,
+    setLabelsEnabled,
     setLinks,
     setMembershipMode,
     setPartnerPreview,
+    setProfileAvatarFile,
+    setProfileAvatarRemoved,
+    setProfileBannerFile,
+    setProfileBannerRemoved,
+    setProfileDescription,
+    setProfileDisplayName,
+    setProfileDisplayNameError,
     setProviderSettings,
     setPricingTiers,
     setRegionalPricingEnabled,
     setReportReason,
+    setRequireOnTopLevelPosts,
     setResolveError,
     setRuleName,
     setVerificationProviderRequirement,
     handleResolveDonationPartner,
+    handleSaveAgents,
     handleSaveDonations,
     handleSaveGates,
+    handleSaveLabels,
     handleSaveLinks,
+    handleSaveProfile,
     handleSavePricing,
     handleSaveRules,
     handleSaveSafety,
     applyStarterPricingTemplate,
+    requireOnTopLevelPosts,
   };
 }

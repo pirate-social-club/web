@@ -113,6 +113,19 @@ export type ApiCommunityGatesUpdateRequest = {
     : never;
 };
 
+export type ApiUpdateCommunityRequest = {
+  display_name?: string | null;
+  description?: string | null;
+  avatar_ref?: string | null;
+  banner_ref?: string | null;
+  agent_posting_policy?: Community["agent_posting_policy"] | null;
+  agent_posting_scope?: Community["agent_posting_scope"] | null;
+  agent_daily_post_cap?: number | null;
+  agent_daily_reply_cap?: number | null;
+  human_verification_lane?: Community["human_verification_lane"] | null;
+  accepted_agent_ownership_providers?: Community["accepted_agent_ownership_providers"] | null;
+};
+
 export type ApiCommunitySafetyUpdateRequest = {
   adult_content_policy: {
     suggestive: Community["adult_content_policy"]["suggestive"];
@@ -183,6 +196,18 @@ export type CommunityReferenceLinksInput = {
     platform: NonNullable<Community["reference_links"]>[number]["platform"];
     url: string;
     label?: string | null;
+    position?: number | null;
+  }>;
+};
+
+export type CommunityLabelPolicyInput = {
+  label_enabled: boolean;
+  require_label_on_top_level_posts: boolean;
+  definitions: Array<{
+    label_id?: string | null;
+    label: string;
+    color_token?: string | null;
+    status: "active" | "archived";
     position?: number | null;
   }>;
 };

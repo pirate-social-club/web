@@ -1,17 +1,20 @@
 "use client";
 
+import * as React from "react";
 import type { JoinEligibility, MembershipGateSummary } from "@pirate/api-contracts";
+import QRCode from "qrcode";
 
 import { Button } from "@/components/primitives/button";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Spinner } from "@/components/primitives/spinner";
-import { formatGateRequirement, getJoinCtaLabel, isJoinCtaActionable } from "@/lib/identity-gates";
+import { getJoinCtaLabel, isJoinCtaActionable } from "@/lib/identity-gates";
 
 type VerificationPrompt = {
   title: string;
   description: string;
   actionLabel: string;
   href?: string | null;
+  qrValue?: string | null;
 };
 
 export interface CommunityMembershipGatePanelProps {
@@ -47,6 +50,59 @@ function JoinCta({
   );
 }
 
+function VerificationQr({ value }: { value: string }) {
+  const [src, setSrc] = React.useState<string | null>(null);
+  const [error, setError] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    void QRCode.toDataURL(value, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 320,
+    })
+      .then((nextSrc: string) => {
+        if (cancelled) return;
+        setSrc(nextSrc);
+        setError(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSrc(null);
+        setError(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [value]);
+
+  if (error) {
+    return <FormNote tone="warning">Could not render the verification QR code.</FormNote>;
+  }
+
+  if (!src) {
+    return (
+      <div className="flex min-h-64 items-center justify-center rounded-[var(--radius-lg)] border border-border-soft bg-card">
+        <Spinner className="size-5" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex justify-center rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
+      <img
+        alt="Self verification QR code"
+        className="size-64 max-w-full rounded-[var(--radius-md)]"
+        height={256}
+        src={src}
+        width={256}
+      />
+    </div>
+  );
+}
+
 export function CommunityMembershipGatePanel({
   gates,
   eligibility,
@@ -58,20 +114,12 @@ export function CommunityMembershipGatePanel({
   verificationError,
   onJoin,
   onCancelVerification,
-  revealRequirementValues = false,
 }: CommunityMembershipGatePanelProps) {
   if (gates.length === 0) return null;
 
   return (
     <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-4">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
-          {gates.map((gate, index) => (
-            <p key={index} className="text-base text-muted-foreground">
-              {formatGateRequirement(gate, { audience: revealRequirementValues ? "admin" : "public" })}
-            </p>
-          ))}
-        </div>
+      <div className="flex justify-end">
         {eligibility && !verificationPrompt ? (
           <JoinCta eligibility={eligibility} loading={joinLoading} onJoin={onJoin} />
         ) : null}
@@ -81,15 +129,13 @@ export function CommunityMembershipGatePanel({
         <div className="mt-4 space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4">
           <p className="text-base font-semibold text-foreground">{verificationPrompt.title}</p>
           <p className="text-base text-muted-foreground">{verificationPrompt.description}</p>
+          {verificationPrompt.qrValue ? <VerificationQr value={verificationPrompt.qrValue} /> : null}
           {verificationPrompt.href ? (
-            <a
-              className="inline-block text-base font-medium text-orange-500 underline decoration-orange-500/30 underline-offset-4 hover:decoration-orange-500"
-              href={verificationPrompt.href}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              {verificationPrompt.actionLabel}
-            </a>
+            <Button asChild variant="secondary">
+              <a href={verificationPrompt.href} rel="noopener noreferrer" target="_blank">
+                {verificationPrompt.actionLabel}
+              </a>
+            </Button>
           ) : null}
           {verificationLoading ? (
             <div className="flex items-center gap-2">

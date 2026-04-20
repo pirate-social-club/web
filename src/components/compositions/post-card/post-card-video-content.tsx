@@ -102,7 +102,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
 
   if (expanded && ui.canPlay) {
     return (
-      <div className={cn("flex flex-col gap-2", className)}>
+      <div className={cn("flex flex-col gap-2 text-start", className)}>
         <React.Suspense
           fallback={
             <div className="aspect-video w-full rounded-lg bg-black/90" aria-busy="true" />
@@ -125,7 +125,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
   }
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div className={cn("flex flex-col gap-2 text-start", className)}>
       <button
         className={cn(
           "relative block w-full overflow-hidden rounded-lg bg-muted",
@@ -174,7 +174,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
         )}
 
         {durationLabel && !ui.isAgeGated && (
-          <div className="absolute bottom-2 right-2">
+          <div className="absolute bottom-2 end-2">
             <span
               className={cn(
                 "rounded bg-black/70 px-1.5 py-0.5 text-white",

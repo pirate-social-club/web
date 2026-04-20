@@ -8,30 +8,39 @@ import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
+import { Avatar } from "@/components/primitives/avatar";
 import { useApi } from "@/lib/api";
 import { clearSession, useSession } from "@/lib/api/session-store";
+import { buildCommunityPath } from "@/lib/community-routing";
+import { useSidebarCommunities } from "@/lib/owned-communities";
+import { useUiLocale } from "@/lib/ui-locale";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
+import { Spinner } from "@/components/primitives/spinner";
 import { Feed, type FeedSort, TopTimeRangeControl } from "@/components/compositions/feed/feed";
 
 import { loadProfilesByUserId } from "./community-data";
+import { sortHomeFeedEntries } from "./feed-sorting";
 import { toHomeFeedItem } from "./post-presentation";
 import { submitOptimisticPostVote, updateHomeFeedEntryPostVote } from "./post-vote";
 import { buildFeedSortOptions, buildTopTimeRangeOptions, getErrorMessage, useRouteContentLocale, useRouteMessages, useClientHydrated } from "./route-core";
-import { getRouteFailureDescription, getRouteString } from "./route-status-copy";
-import { EmptyFeedState, RouteLoadFailureState } from "./route-shell";
+import { getRouteFailureDescription } from "./route-status-copy";
+import { EmptyFeedState, RouteLoadFailureState, StackPageShell } from "./route-shell";
 import { useSongPlayback } from "./song-commerce";
+import { useCommunityInteractionGate } from "./community-interaction-gate";
 
 export function HomePage() {
   const api = useApi();
   const hydrated = useClientHydrated();
   const session = useSession();
+  const { locale } = useUiLocale();
   const { copy } = useRouteMessages();
   const sortOptions = React.useMemo(() => buildFeedSortOptions(copy.common), [copy.common]);
   const topTimeRangeOptions = React.useMemo(() => buildTopTimeRangeOptions(copy.common), [copy.common]);
-  const contentLocale = useRouteContentLocale(session?.profile.preferred_locale);
-  const createCommunityLabel = getRouteString("home", "createCommunity", "Create a community");
-  const emptyHomeBody = getRouteString("home", "emptyHomeBody", "Join a community or create one to start building your home feed.");
-  const emptyHomeTitle = getRouteString("home", "emptyHomeTitle", "No posts yet");
+  const contentLocale = useRouteContentLocale();
+  const createCommunityLabel = copy.home.createCommunityLabel;
+  const emptyHomeBody = copy.home.emptyHomeBody;
+  const emptyHomeTitle = copy.home.emptyHomeTitle;
   const [activeSort, setActiveSort] = React.useState<FeedSort>("best");
   const [topTimeRange, setTopTimeRange] = React.useState("day");
   const [feedEntries, setFeedEntries] = React.useState<ApiHomeFeedItem[]>([]);
@@ -43,30 +52,22 @@ export function HomePage() {
   const [loading, setLoading] = React.useState(true);
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
+  const { gateModal, runGatedCommunityAction } = useCommunityInteractionGate({
+    previewLocale: contentLocale,
+    routeKind: "home",
+    uiLocale: locale,
+  });
 
   React.useEffect(() => {
     let cancelled = false;
 
     if (!hydrated) return () => { cancelled = true; };
 
-    if (!session) {
-      setFeedEntries([]);
-      setTopCommunities([]);
-      setAuthorProfiles({});
-      setListingsByAssetId({});
-      setPurchasesByAssetId({});
-      setError(null);
-      setLoading(false);
-      return () => { cancelled = true; };
-    }
-
     setLoading(true);
     setError(null);
 
     void api.feed.home({
       locale: contentLocale,
-      sort: activeSort,
-      timeRange: activeSort === "top" ? topTimeRange : null,
     })
       .then(async (result) => {
         const nextFeedEntries = result.items;
@@ -74,7 +75,7 @@ export function HomePage() {
         const nextAuthorProfiles = await loadProfilesByUserId(
           api,
           nextFeedEntries.map((entry) => entry.post.post.identity_mode === "public" ? entry.post.post.author_user_id : null).filter((userId): userId is string => Boolean(userId)),
-          session.profile ? { [session.user.user_id]: session.profile } : {},
+          session?.profile ? { [session.user.user_id]: session.profile } : {},
         );
         const songCommunityIds = [...new Set(nextFeedEntries.filter((entry) => entry.post.post.post_type === "song").map((entry) => entry.community.community_id))];
         const commerceByCommunity = await Promise.all(songCommunityIds.map(async (communityId) => {
@@ -86,6 +87,7 @@ export function HomePage() {
         }));
 
         if (cancelled) return;
+
         setFeedEntries(nextFeedEntries);
         setTopCommunities(nextTopCommunities);
         setAuthorProfiles(nextAuthorProfiles);
@@ -100,12 +102,6 @@ export function HomePage() {
         if (cancelled) return;
         if ((nextError as { status?: number; code?: string }).status === 401 || (nextError as { code?: string }).code === "auth_error") {
           clearSession();
-          setFeedEntries([]);
-          setTopCommunities([]);
-          setAuthorProfiles({});
-          setListingsByAssetId({});
-          setPurchasesByAssetId({});
-          setError(null);
           return;
         }
         setError(nextError);
@@ -115,23 +111,36 @@ export function HomePage() {
       });
 
     return () => { cancelled = true; };
-  }, [activeSort, api, contentLocale, hydrated, session, topTimeRange]);
+  }, [api, contentLocale, hydrated, session]);
+
+  const sortedFeedEntries = React.useMemo(() => sortHomeFeedEntries(feedEntries, {
+    sort: activeSort,
+    topTimeRange: activeSort === "top" ? topTimeRange : null,
+  }), [activeSort, feedEntries, topTimeRange]);
 
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
-    if (!session?.accessToken) return;
-    const previousPost = feedEntries.find((entry) => entry.post.post.post_id === postId)?.post;
-    await submitOptimisticPostVote({
-      direction,
-      onApply: (nextValue) => setFeedEntries((current) => updateHomeFeedEntryPostVote(current, postId, nextValue)),
-      onRollback: (restoredPost) => setFeedEntries((current) => current.map((entry) => entry.post.post.post_id === postId ? { ...entry, post: restoredPost } : entry)),
+    const entry = feedEntries.find((candidate) => candidate.post.post.post_id === postId);
+    if (!entry) return;
+    await runGatedCommunityAction({
+      action: "vote_post",
+      communityId: entry.community.community_id,
+      onAllowed: async () => {
+        const previousPost = entry.post;
+        await submitOptimisticPostVote({
+          direction,
+          onApply: (nextValue) => setFeedEntries((current) => updateHomeFeedEntryPostVote(current, postId, nextValue)),
+          onRollback: (restoredPost) => setFeedEntries((current) => current.map((currentEntry) => currentEntry.post.post.post_id === postId ? { ...currentEntry, post: restoredPost } : currentEntry)),
+          postId,
+          previousPost: previousPost ?? null,
+          requestIdsRef: voteRequestIdsRef,
+          vote: api.posts.vote,
+        });
+      },
       postId,
-      previousPost: previousPost ?? null,
-      requestIdsRef: voteRequestIdsRef,
-      vote: api.posts.vote,
     });
-  }, [api.posts, feedEntries, session?.accessToken]);
+  }, [api.posts.vote, feedEntries, runGatedCommunityAction]);
 
-  const feedItems = feedEntries.map((entry) => {
+  const feedItems = sortedFeedEntries.map((entry) => {
     const assetId = entry.post.post.asset_id ?? undefined;
     return toHomeFeedItem(
       entry,
@@ -139,7 +148,10 @@ export function HomePage() {
       entry.post.post.post_type === "song"
         ? { currentUserId: session?.user?.user_id, listing: assetId ? listingsByAssetId[assetId] : undefined, playback: songPlayback, purchase: assetId ? purchasesByAssetId[assetId] : undefined }
         : undefined,
-      { onVote: (direction) => void voteOnPost(entry.post.post.post_id, direction) },
+      {
+        onComment: () => navigate(`/p/${entry.post.post.post_id}`),
+        onVote: (direction) => void voteOnPost(entry.post.post.post_id, direction),
+      },
     );
   });
 
@@ -148,8 +160,10 @@ export function HomePage() {
   }
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col gap-6">
-      <Feed
+    <>
+      {gateModal}
+      <section className="flex min-w-0 flex-1 flex-col gap-6">
+        <Feed
         activeSort={activeSort}
         aside={topCommunities.length > 0 ? (
           <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
@@ -158,7 +172,7 @@ export function HomePage() {
             </div>
             <div className="divide-y divide-border-soft">
               {topCommunities.map((community) => (
-                <button className="flex w-full items-center gap-3 px-5 py-3 text-left" key={community.community_id} onClick={() => navigate(`/c/${community.route_slug ?? community.community_id}`)} type="button">
+                <button className="flex w-full items-center gap-3 px-5 py-3 text-start" key={community.community_id} onClick={() => navigate(`/c/${community.route_slug ?? community.community_id}`)} type="button">
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-base font-medium text-foreground">{community.display_name}</div>
                     {community.member_count != null ? <div className="text-base text-muted-foreground">{copy.home.membersLabel.replace("{count}", community.member_count.toLocaleString())}</div> : null}
@@ -178,34 +192,71 @@ export function HomePage() {
         items={feedItems}
         loading={loading}
         onSortChange={setActiveSort}
-        title={copy.home.title}
-      />
-    </section>
+        />
+      </section>
+    </>
   );
 }
 
 export function YourCommunitiesPage() {
   const { copy } = useRouteMessages();
-  const sortOptions = React.useMemo(() => buildFeedSortOptions(copy.common), [copy.common]);
-  const createCommunityLabel = getRouteString("home", "createCommunity", "Create a community");
-  const emptyYourCommunitiesBody = getRouteString("home", "emptyYourCommunitiesBody", "Communities you create or join will show up here.");
-  const emptyYourCommunitiesTitle = getRouteString("home", "emptyYourCommunitiesTitle", "No communities yet");
-  const [activeSort, setActiveSort] = React.useState<FeedSort>("best");
+  const { communities, error, loading } = useSidebarCommunities();
+  const createCommunityLabel = copy.home.createCommunityLabel;
+  const emptyYourCommunitiesBody = copy.home.emptyYourCommunitiesBody;
+  const emptyYourCommunitiesTitle = copy.home.emptyYourCommunitiesTitle;
+
+  if (loading && communities.length === 0) {
+    return (
+      <section className="flex min-w-0 flex-1 items-center justify-center py-20">
+        <Spinner className="size-6" />
+      </section>
+    );
+  }
+
+  if (error && communities.length === 0) {
+    return (
+      <RouteLoadFailureState
+        description={getErrorMessage(error, "Could not load your communities.")}
+        title={copy.yourCommunities.title}
+      />
+    );
+  }
 
   return (
-    <Feed
-      activeSort={activeSort}
-      availableSorts={sortOptions}
-      emptyState={{
-        action: <Button variant="secondary" onClick={() => navigate("/communities/new")}>{createCommunityLabel}</Button>,
-        body: emptyYourCommunitiesBody,
-        title: emptyYourCommunitiesTitle,
-      }}
-      items={[]}
-      loading={false}
-      onSortChange={setActiveSort}
+    <StackPageShell
+      actions={<Button onClick={() => navigate("/communities/new")} variant="secondary">{createCommunityLabel}</Button>}
       title={copy.yourCommunities.title}
-    />
+    >
+      {communities.length === 0 ? (
+        <EmptyFeedState message={`${emptyYourCommunitiesTitle}. ${emptyYourCommunitiesBody}`} />
+      ) : (
+        <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
+          {communities.map((community, index) => (
+            <button
+              className={cn(
+                "flex w-full items-center gap-3 px-5 py-4 text-start",
+                index === communities.length - 1 ? undefined : "border-b border-border-soft",
+              )}
+              key={community.communityId}
+              onClick={() => navigate(buildCommunityPath(community.communityId, community.routeSlug))}
+              type="button"
+            >
+              <Avatar
+                className="size-11 border-border-soft"
+                fallback={community.displayName}
+                src={community.avatarSrc ?? undefined}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-base font-semibold text-foreground">{community.displayName}</div>
+                <div className="truncate text-base text-muted-foreground">
+                  {community.routeSlug ? `c/${community.routeSlug}` : community.communityId}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </StackPageShell>
   );
 }
 

@@ -172,3 +172,37 @@ export const AnonymousWithoutQualifierDisclosure: Story = {
     />
   ),
 };
+
+export const PrivateInRestrictedCommunity: Story = {
+  name: "Private In Restricted Community",
+  render: () => (
+    <PostComposer
+      {...baseComposer}
+      clubName="c/us-politics"
+      audience={{
+        visibility: "members_only",
+        publicOptionEnabled: false,
+        publicOptionDisabledReason: "This community already limits who can read posts.",
+      }}
+      identity={{
+        ...baseComposer.identity,
+        helpText:
+          "This post is limited to joined members.",
+      }}
+    />
+  ),
+};
+
+export const PrivateInPublicCommunity: Story = {
+  name: "Private In Public Community",
+  render: () => (
+    <PostComposer
+      {...baseComposer}
+      clubName="c/industry-whispers"
+      audience={{
+        visibility: "members_only",
+        publicOptionEnabled: true,
+      }}
+    />
+  ),
+};

@@ -14,40 +14,70 @@ import {
   ComboboxValue,
 } from "@/components/primitives/combobox";
 import { FormSectionHeading } from "@/components/primitives/form-layout";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import type {
+  AuthorMode,
   ComposerIdentityState,
   IdentityMode,
 } from "./post-composer.types";
 
 export function IdentitySection({
+  authorMode,
   identity,
   identityMode,
+  onAuthorModeChange,
   onIdentityModeChange,
 }: {
+  authorMode: AuthorMode;
   identity: ComposerIdentityState;
   identityMode: IdentityMode;
+  onAuthorModeChange: (mode: AuthorMode) => void;
   onIdentityModeChange: (mode: IdentityMode) => void;
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").createPost;
   const handleLabel = identity.publicHandle ?? "@handle";
   const anonymousLabel = identity.anonymousLabel ?? "anon_club";
+  const agentLabel = identity.agentLabel ?? "Agent";
+  const headingDescription = authorMode === "agent"
+    ? agentLabel
+    : identityMode === "anonymous"
+    ? anonymousLabel
+    : handleLabel;
 
   return (
     <section className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
       <FormSectionHeading
-        description={identityMode === "anonymous" ? anonymousLabel : handleLabel}
-        title="Post As"
+        description={headingDescription}
+        title={copy.sections.postAs}
       />
-      <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-3">
-        <Checkbox
-          checked={identityMode === "anonymous"}
-          className="mt-0.5"
-          id="post-anonymously"
-          onCheckedChange={(next) => onIdentityModeChange(next === true ? "anonymous" : "public")}
-        />
-        <div className="space-y-1">
-          <Label htmlFor="post-anonymously">Post anonymously</Label>
+      {identity.agentLabel ? (
+        <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-3">
+          <Checkbox
+            checked={authorMode === "agent"}
+            className="mt-0.5"
+            id="post-as-agent"
+            onCheckedChange={(next) => onAuthorModeChange(next === true ? "agent" : "human")}
+          />
+          <div className="space-y-1">
+            <Label htmlFor="post-as-agent">Post as agent</Label>
+          </div>
         </div>
-      </div>
+      ) : null}
+      {identity.allowAnonymousIdentity && authorMode !== "agent" ? (
+        <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-3">
+          <Checkbox
+            checked={identityMode === "anonymous"}
+            className="mt-0.5"
+            id="post-anonymously"
+            onCheckedChange={(next) => onIdentityModeChange(next === true ? "anonymous" : "public")}
+          />
+          <div className="space-y-1">
+            <Label htmlFor="post-anonymously">{copy.identity.postAnonymously}</Label>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -61,6 +91,8 @@ export function QualifierSection({
   selectedQualifierIds: string[];
   onSelectedQualifierIdsChange: (qualifierIds: string[]) => void;
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").createPost;
   const availableQualifiers = (identity.availableQualifiers ?? []).filter(
     (qualifier) => !qualifier.suppressedByClubGate,
   );
@@ -69,11 +101,11 @@ export function QualifierSection({
   );
   const helpText =
     identity.helpText ??
-    "Attach verified qualifiers to this post. Qualifiers already implied by community gates are omitted.";
+    copy.identity.qualifiersHelp;
 
   return (
     <section className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
-      <FormSectionHeading description={helpText} title="Qualifiers" />
+      <FormSectionHeading description={helpText} title={copy.sections.qualifiers} />
 
       {availableQualifiers.length > 0 ? (
         <div className="space-y-3">
@@ -96,15 +128,15 @@ export function QualifierSection({
                       <ComboboxChip key={qualifier.qualifierId}>{qualifier.label}</ComboboxChip>
                     ))}
                     <ComboboxChipsInput
-                      aria-label="Search qualifiers"
-                      placeholder={activeQualifiers.length > 0 ? "Search qualifiers" : "Add qualifiers"}
+                      aria-label={copy.identity.searchQualifiers}
+                      placeholder={activeQualifiers.length > 0 ? copy.identity.searchQualifiers : copy.identity.addQualifiers}
                     />
                   </>
                 )}
               </ComboboxValue>
             </ComboboxChips>
             <ComboboxContent>
-              <ComboboxEmpty>No qualifiers found.</ComboboxEmpty>
+              <ComboboxEmpty>{copy.empty.noQualifiers}</ComboboxEmpty>
               <ComboboxList>
                 {(qualifier) => (
                   <ComboboxItem key={qualifier.qualifierId} value={qualifier}>
@@ -122,7 +154,7 @@ export function QualifierSection({
 
       {availableQualifiers.length === 0 ? (
         <div className="rounded-[var(--radius-lg)] border border-dashed border-border-soft px-4 py-4 text-base text-muted-foreground">
-          No optional qualifiers are available for this community.
+          {copy.empty.noOptionalQualifiers}
         </div>
       ) : null}
     </section>

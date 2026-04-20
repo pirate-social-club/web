@@ -1,6 +1,12 @@
 "use client";
 
-import type { ComposerTab, DerivativeStepState, MonetizationState, SongMode } from "@/components/compositions/post-composer/post-composer.types";
+import type {
+  ComposerTab,
+  DerivativeStepState,
+  MonetizationState,
+  PostAudience,
+  SongMode,
+} from "@/components/compositions/post-composer/post-composer.types";
 
 type SongDerivativeReference = NonNullable<DerivativeStepState["references"]>[number];
 type SongDerivativeInput = Pick<DerivativeStepState, "required"> & {
@@ -14,6 +20,7 @@ export function buildSongPostRequest(input: {
   paidSongPriceUsd: number | null;
   songMode: SongMode;
   title: string;
+  visibility: PostAudience;
 }) {
   return {
     access_mode: input.paidSongPriceUsd != null ? "locked" as const : "public" as const,
@@ -28,6 +35,7 @@ export function buildSongPostRequest(input: {
     upstream_asset_refs: input.songMode === "remix"
       ? input.derivativeStep?.references?.map((reference) => reference.id)
       : undefined,
+    visibility: input.visibility,
   };
 }
 
@@ -36,15 +44,25 @@ export function buildSongListingRequest(input: {
   paidSongPriceUsd: number | null;
   pricingPolicyRegionalPricingEnabled: boolean;
   regionalPricingEnabled: boolean;
+  charityContributionPct?: number | null;
+  charityPartnerId?: string | null;
 }) {
   if (input.paidSongPriceUsd == null) {
     return null;
   }
 
+  const donationSharePct = Number.isInteger(input.charityContributionPct)
+    && (input.charityContributionPct ?? 0) > 0
+    && (input.charityContributionPct ?? 0) <= 100
+    ? input.charityContributionPct ?? null
+    : null;
+
   return {
     asset_id: input.assetId,
     price_usd: input.paidSongPriceUsd,
     regional_pricing_enabled: input.pricingPolicyRegionalPricingEnabled && input.regionalPricingEnabled,
+    donation_partner_id: donationSharePct && input.charityPartnerId ? input.charityPartnerId : null,
+    donation_share_pct: donationSharePct,
     status: "active" as const,
   };
 }

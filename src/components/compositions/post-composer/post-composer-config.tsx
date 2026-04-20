@@ -13,6 +13,8 @@ import {
   VideoCamera,
 } from "@phosphor-icons/react";
 import type {
+  CharityContributionState,
+  ComposerAudienceState,
   ComposerReference,
   ComposerTab,
   LiveAccessMode,
@@ -113,6 +115,20 @@ export function defaultMonetizationState(monetization?: MonetizationState): Mone
     regionalPricingAvailable: monetization?.regionalPricingAvailable ?? false,
     regionalPricingEnabled: monetization?.regionalPricingEnabled ?? false,
     rightsAttested: monetization?.rightsAttested ?? false,
+  };
+}
+
+export function defaultAudienceState(audience?: ComposerAudienceState): ComposerAudienceState {
+  return {
+    visibility: audience?.visibility ?? "public",
+    publicOptionEnabled: audience?.publicOptionEnabled ?? true,
+    publicOptionDisabledReason: audience?.publicOptionDisabledReason,
+  };
+}
+
+export function defaultCharityContributionState(contribution?: CharityContributionState): CharityContributionState {
+  return {
+    percentagePct: contribution?.percentagePct ?? 0,
   };
 }
 

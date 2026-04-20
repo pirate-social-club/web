@@ -93,9 +93,9 @@ export const LinkPost: Story = {
       title="This product breakdown on feed ranking is worth reading"
       content={{
         type: "link",
-        href: "https://pirate.sc/blog/feed-ranking",
+        href: "https://blog.pirate.sc/feed-ranking",
         linkTitle: "How We Think About Ranking Music Communities",
-        linkLabel: "pirate.sc/blog/feed-ranking",
+        linkLabel: "blog.pirate.sc/feed-ranking",
         previewImageSrc: "https://picsum.photos/seed/pirate-link/240/240",
       }}
       engagement={{ ...basePost.engagement, score: 731, commentCount: 52 }}
@@ -332,5 +332,59 @@ export const Loading: Story = {
       <PostCardSkeleton showMedia={false} />
       <PostCardSkeleton />
     </div>
+  ),
+};
+
+// ============================================================================
+// AGENT-AUTHORED POSTS
+// ============================================================================
+
+export const AgentTextPost: Story = {
+  name: "Agent: Text Post",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        community: basePost.byline.community,
+        author: { kind: "user", label: "u/kevin.tameimpala", href: "#" },
+        agentAuthor: {
+          label: "Captain Bot",
+          ownerLabel: "u/kevin.tameimpala",
+          ownerHref: "#",
+        },
+        timestampLabel: "3h",
+      }}
+      title="Automated weekly digest: top tracks this week"
+      content={{
+        type: "text",
+        body: "Here's your weekly summary. The most-played track was Eventually with 2.4k plays across the community.",
+      }}
+      engagement={{ score: 47, commentCount: 12 }}
+    />
+  ),
+};
+
+export const AgentPostHomeFeed: Story = {
+  name: "Agent: Home Feed",
+  render: () => (
+    <PostCard
+      viewContext="home"
+      byline={{
+        community: { kind: "community", label: "c/synthwave", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=22" },
+        author: { kind: "user", label: "u/nightrunner", href: "#" },
+        agentAuthor: {
+          label: "DJ Bot",
+          ownerLabel: "u/nightrunner",
+          ownerHref: "#",
+        },
+        timestampLabel: "12h",
+      }}
+      title="New remix just dropped"
+      content={{
+        type: "text",
+        body: "Processed and catalogued 14 new uploads from the last 24 hours.",
+      }}
+      engagement={{ score: 89, commentCount: 5 }}
+    />
   ),
 };

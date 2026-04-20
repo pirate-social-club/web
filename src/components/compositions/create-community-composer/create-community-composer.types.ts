@@ -2,6 +2,7 @@ import type { CommunityMembershipMode } from "@/lib/community-membership";
 
 export type { CommunityMembershipMode };
 export type CommunityDefaultAgeGatePolicy = "none" | "18_plus";
+export type CommunityReadAccessMode = "public" | "members_only";
 export type NamespaceFamily = "hns" | "spaces";
 
 export type AnonymousIdentityScope = "community_stable" | "thread_stable" | "post_ephemeral";
@@ -38,6 +39,8 @@ export interface CreateCommunityComposerProps {
   bannerRef?: string;
   displayName?: string;
   description?: string;
+  namespaceAttachment?: NamespaceAttachmentState | null;
+  hasPendingNamespaceSession?: boolean;
   gateDrafts?: IdentityGateDraft[];
   membershipMode?: CommunityMembershipMode;
   defaultAgeGatePolicy?: CommunityDefaultAgeGatePolicy;
@@ -45,6 +48,7 @@ export interface CreateCommunityComposerProps {
   anonymousIdentityScope?: AnonymousIdentityScope;
   creatorVerificationState?: CreatorVerificationState;
   initialStep?: ComposerStep;
+  onClearNamespace?: () => void;
   onCreate?: (input: {
     avatarFile: File | null;
     avatarRef: string | null;
@@ -61,4 +65,5 @@ export interface CreateCommunityComposerProps {
   }) => Promise<{
     communityId: string;
   }>;
+  onVerifyNamespace?: () => void;
 }

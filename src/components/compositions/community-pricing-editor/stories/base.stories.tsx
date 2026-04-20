@@ -60,6 +60,7 @@ function InteractiveStory({
       onCountryAssignmentsChange={setAssignments}
       onDefaultTierKeyChange={setDefaultKey}
       onRegionalPricingEnabledChange={setEnabled}
+      onSave={() => undefined}
       onVerificationProviderRequirementChange={setVerificationProviderRequirement}
       onTiersChange={setTiers}
       regionalPricingEnabled={enabled}

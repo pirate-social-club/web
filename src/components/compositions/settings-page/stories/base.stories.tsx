@@ -38,6 +38,11 @@ function InteractiveSettingsStory(args: SettingsPageProps) {
 
 const baseArgs: SettingsPageProps = {
   activeTab: "profile",
+  agents: {
+    items: [],
+    canRegister: true,
+    registrationState: { kind: "idle" },
+  },
   profile: {
     avatarSrc: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=300&q=80",
     bio: "Making internet-native spaces for music and culture.",
@@ -91,6 +96,7 @@ const baseArgs: SettingsPageProps = {
     localeOptions: [
       { label: "English", value: "en" },
       { label: "Arabic", value: "ar" },
+      { label: "Mandarin", value: "zh" },
       { label: "Pseudo", value: "pseudo" },
     ],
     submitState: { kind: "idle" },
@@ -122,6 +128,29 @@ export const Wallet: Story = {
 export const Preferences: Story = {
   args: {
     activeTab: "preferences",
+  },
+};
+
+export const Agents: Story = {
+  args: {
+    activeTab: "agents",
+    agents: {
+      items: [
+        {
+          agentId: "agt_demo1",
+          displayName: "Captain Bot",
+          status: "active",
+          createdAt: "2026-03-15T10:00:00Z",
+          currentOwnership: {
+            ownershipProvider: "clawkey",
+            verifiedAt: "2026-03-15T10:05:00Z",
+            expiresAt: null,
+          },
+        },
+      ],
+      canRegister: false,
+      registrationState: { kind: "idle" },
+    },
   },
 };
 

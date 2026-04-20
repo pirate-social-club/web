@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChatCircle } from "@phosphor-icons/react";
 
+import { triggerCommentTapHaptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 export interface CommentPillProps {
@@ -12,13 +13,20 @@ export interface CommentPillProps {
 }
 
 export function CommentPill({ count, onComment, className }: CommentPillProps) {
+  const handleComment = React.useCallback(() => {
+    if (!onComment) return;
+
+    triggerCommentTapHaptic();
+    onComment();
+  }, [onComment]);
+
   return (
     <button
       className={cn(
         "inline-flex h-9 items-center gap-1.5 rounded-xl border border-border-soft bg-background px-3 text-base text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground",
         className,
       )}
-      onClick={onComment}
+      onClick={handleComment}
       type="button"
       aria-label={`Comments (${count})`}
       data-post-card-interactive="true"

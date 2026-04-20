@@ -35,6 +35,7 @@ import type {
   ApiCreateCommunityRequest,
   ApiUpdateCommunityRequest,
   ApiResolveDonationPartnerResponse,
+  CommunityLabelPolicyInput,
   CommunityListPostsOptions,
   CommunityReferenceLinksInput,
   DonationPolicyUpdateInput,
@@ -97,6 +98,14 @@ export function createCommunitiesApi(request: ApiRequest) {
     ): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}/reference-links`, {
         method: "PUT",
+        body: JSON.stringify(body),
+      }),
+    updateLabelPolicy: (
+      communityId: string,
+      body: CommunityLabelPolicyInput,
+    ): Promise<Community> =>
+      request<Community>(`/communities/${encodeURIComponent(communityId)}/labels`, {
+        method: "PATCH",
         body: JSON.stringify(body),
       }),
     getDonationPolicy: (communityId: string): Promise<ApiCommunityDonationPolicyResponse> =>

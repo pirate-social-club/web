@@ -8,20 +8,14 @@ import type { RedditVerification as ApiRedditVerification } from "@pirate/api-co
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { updateSessionOnboarding, updateSessionProfile, useSession } from "@/lib/api/session-store";
+import { resolveOnboardingPhase } from "@/lib/onboarding";
 import { type OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
-import type { ImportJobState, RedditVerificationState, SnapshotState } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
+import type { ImportJobState, RedditVerificationState } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap";
 
 import { getErrorMessage, useClientHydrated, useRouteMessages } from "./route-core";
 import { getRouteAuthDescription, getRouteFailureDescription } from "./route-status-copy";
 import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "./route-shell";
-
-function resolveOnboardingPhase(status: OnboardingStatus): OnboardingPhase {
-  if (status.reddit_verification_status !== "verified") return "import_karma";
-  if (status.reddit_import_status !== "succeeded") return "import_karma";
-  if (status.cleanup_rename_available) return "choose_name";
-  return "suggested_communities";
-}
 
 function mapRedditVerification(apiResult: ApiRedditVerification, usernameValue: string): RedditVerificationState {
   const stateMap: Record<string, RedditVerificationState["verificationState"]> = {
@@ -75,7 +69,6 @@ export function OnboardingPage() {
   const [redditUsername, setRedditUsername] = React.useState("");
   const [redditVerification, setRedditVerification] = React.useState<RedditVerificationState>({ usernameValue: "", verificationState: "not_started" });
   const [importJob, setImportJob] = React.useState<ImportJobState>({ status: "not_started" });
-  const [snapshot, setSnapshot] = React.useState<SnapshotState | undefined>(undefined);
   const [generatedHandle, setGeneratedHandle] = React.useState("");
   const [actionLoading, setActionLoading] = React.useState(false);
 
@@ -93,9 +86,14 @@ export function OnboardingPage() {
     void api.onboarding.getStatus()
       .then((status) => {
         if (cancelled) return;
+        const nextPhase = resolveOnboardingPhase(status);
         setOnboardingStatus(status);
         setImportJob(mapImportJobStatus(status.reddit_import_status));
-        setPhase(resolveOnboardingPhase(status));
+        if (!nextPhase) {
+          navigate("/");
+          return;
+        }
+        setPhase(nextPhase);
         if (status.reddit_verification_status === "verified") {
           setRedditVerification({ usernameValue: "", verificationState: "verified" });
         }
@@ -124,23 +122,13 @@ export function OnboardingPage() {
         if (status.reddit_import_status === "succeeded" || status.reddit_import_status === "failed") {
           clearInterval(interval);
           if (status.reddit_import_status === "succeeded") {
-            void api.onboarding.getLatestRedditImport().then((summary) => {
-              setSnapshot({
-                accountAgeDays: summary.account_age_days ?? undefined,
-                globalKarma: summary.global_karma ?? null,
-                topSubreddits: summary.top_subreddits.map((s) => ({
-                  subreddit: s.subreddit,
-                  karma: s.karma ?? null,
-                  posts: s.posts ?? null,
-                  rankSource: s.rank_source ?? undefined,
-                })),
-                moderatorOf: summary.moderator_of,
-                inferredInterests: summary.inferred_interests,
-                suggestedCommunities: summary.suggested_communities.map((c) => ({ communityId: c.community_id, name: c.name, reason: c.reason })),
-              });
-              updateSessionOnboarding(status);
-              setPhase(resolveOnboardingPhase(status));
-            });
+            updateSessionOnboarding(status);
+            const nextPhase = resolveOnboardingPhase(status);
+            if (!nextPhase) {
+              navigate("/");
+              return;
+            }
+            setPhase(nextPhase);
           }
         }
       });
@@ -214,7 +202,7 @@ export function OnboardingPage() {
   const handleChooseNameContinue = React.useCallback(() => {
     if (actionLoading) return;
     if (generatedHandle.trim().length === 0) {
-      setError("Choose a handle before continuing");
+      setError(copy.onboarding.errors.chooseHandle);
       return;
     }
     setActionLoading(true);
@@ -223,11 +211,11 @@ export function OnboardingPage() {
       .then(() => api.profiles.getMe().then((profile) => updateSessionProfile(profile)))
       .then(() => {
         updateSessionOnboarding({ ...onboardingStatus!, cleanup_rename_available: false });
-        setPhase("suggested_communities");
+        navigate("/");
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Handle rename failed"))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : copy.onboarding.errors.renameFailed))
       .finally(() => setActionLoading(false));
-  }, [actionLoading, api, generatedHandle, onboardingStatus]);
+  }, [actionLoading, api, copy.onboarding.errors.chooseHandle, copy.onboarding.errors.renameFailed, generatedHandle, onboardingStatus]);
 
   if (loading) {
     return <FullPageSpinner />;
@@ -248,7 +236,6 @@ export function OnboardingPage() {
     <section className="flex min-w-0 flex-1 flex-col gap-6">
       <div className="mx-auto w-full max-w-5xl">
         <OnboardingRedditBootstrap
-          actions={{ tertiaryLabel: "Skip" }}
           busy={actionLoading}
           callbacks={{
             onUsernameChange: (value) => { setRedditUsername(value); setRedditVerification((prev) => ({ ...prev, usernameValue: value })); },
@@ -257,8 +244,6 @@ export function OnboardingPage() {
             onHandleChange: (value) => setGeneratedHandle(value),
             onGenerateHandle: () => {},
             onChooseNameContinue: handleChooseNameContinue,
-            onSuggestedCommunitiesContinue: () => navigate("/"),
-            onSuggestedCommunitiesSkip: () => navigate("/"),
           }}
           canSkip
           generatedHandle={generatedHandle}
@@ -267,7 +252,6 @@ export function OnboardingPage() {
           phase={phase}
           phaseError={onboardingStatus && typeof error === "string" ? error : null}
           reddit={redditVerification}
-          snapshot={snapshot}
         />
       </div>
     </section>

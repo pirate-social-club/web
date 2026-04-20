@@ -4,7 +4,6 @@ import * as React from "react";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
-import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
@@ -12,7 +11,7 @@ import { useSession } from "@/lib/api/session-store";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { FeedSort } from "@/components/compositions/feed/feed";
 
-import { sortCommunityFeedPosts } from "./feed-sorting";
+import { useCommunityFeedPosts } from "./community-feed-data";
 
 export async function loadProfilesByUserId(
   api: ReturnType<typeof useApi>,
@@ -20,10 +19,27 @@ export async function loadProfilesByUserId(
   fallbackProfilesByUserId: Record<string, ApiProfile | null | undefined> = {},
 ): Promise<Record<string, ApiProfile | null>> {
   const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
-  const profileEntries = await Promise.all(uniqueUserIds.map(async (userId) => [
-    userId,
-    fallbackProfilesByUserId[userId] ?? await api.profiles.getByUserId(userId).catch(() => null),
-  ] as const));
+  const profileEntries = await Promise.all(uniqueUserIds.map(async (userId) => {
+    const fallbackProfile = fallbackProfilesByUserId[userId];
+    if (fallbackProfile) {
+      return [userId, fallbackProfile] as const;
+    }
+
+    try {
+      const profile = await api.profiles.getByUserId(userId);
+      console.info("[author-profiles] loaded", {
+        handle: profile.primary_public_handle?.label ?? profile.global_handle?.label ?? null,
+        userId,
+      });
+      return [userId, profile] as const;
+    } catch (error) {
+      console.warn("[author-profiles] lookup failed", {
+        message: error instanceof Error ? error.message : String(error),
+        userId,
+      });
+      return [userId, null] as const;
+    }
+  }));
 
   return Object.fromEntries(profileEntries);
 }
@@ -34,56 +50,89 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
   const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
   const [preview, setPreview] = React.useState<ApiCommunityPreview | null>(null);
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
-  const [rawPosts, setRawPosts] = React.useState<ApiPost[]>([]);
-  const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | undefined>>({});
-  const [error, setError] = React.useState<unknown>(null);
-  const [loading, setLoading] = React.useState(true);
+  const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
+  const [metadataLoading, setMetadataLoading] = React.useState(true);
+  const [metadataError, setMetadataError] = React.useState<unknown>(null);
+
+  React.useEffect(() => {
+    setCommunity(null);
+    setPreview(null);
+    setEligibility(null);
+    setAuthorProfiles({});
+    setMetadataLoading(true);
+    setMetadataError(null);
+  }, [communityId, contentLocale]);
+
+  const loadPosts = React.useCallback(async ({ communityId: nextCommunityId, locale, sort }: {
+    communityId: string;
+    locale: string;
+    sort: FeedSort;
+  }) => api.communities.listPosts(nextCommunityId, {
+    limit: "100",
+    locale,
+    sort,
+  }), [api]);
+
+  const {
+    error: postsError,
+    loading: postsLoading,
+    posts,
+    rawPosts,
+    setPosts,
+  } = useCommunityFeedPosts({
+    communityId,
+    locale: contentLocale,
+    sort: activeSort,
+    loadPosts,
+  });
 
   React.useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    setMetadataError(null);
+    setMetadataLoading(true);
 
     void Promise.all([
       api.communities.get(communityId, { locale: contentLocale }),
       api.communities.preview(communityId, { locale: contentLocale }),
       api.communities.getJoinEligibility(communityId),
-      api.communities.listPosts(communityId, { limit: "100", locale: contentLocale, sort: "new" }),
     ])
-      .then(async ([communityResult, previewResult, eligibilityResult, postResponse]) => {
-        const uniqueAuthorIds = Array.from(new Set(
-          postResponse.items
-            .map((item) => item.post.identity_mode === "public" ? item.post.author_user_id : null)
-            .filter((userId): userId is string => typeof userId === "string" && userId.length > 0),
-        ));
-        const profileFallbacks = session?.profile ? { [session.user.user_id]: session.profile } : {};
-        const profileEntries = await Promise.all(uniqueAuthorIds.map(async (userId) => {
-          try {
-            return [userId, profileFallbacks[userId] ?? await api.profiles.getByUserId(userId)] as const;
-          } catch {
-            return [userId, undefined] as const;
-          }
-        }));
-
+      .then(([communityResult, previewResult, eligibilityResult]) => {
         if (cancelled) return;
         setCommunity(communityResult);
         setPreview(previewResult);
         setEligibility(eligibilityResult);
-        setRawPosts(postResponse.items);
-        setAuthorProfiles(Object.fromEntries(profileEntries));
       })
       .catch((e: unknown) => {
         if (cancelled) return;
-        setError(e);
+        setMetadataError(e);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setMetadataLoading(false);
       });
 
     return () => { cancelled = true; };
-  }, [api, communityId, contentLocale, session]);
+  }, [api, communityId, contentLocale]);
 
-  const posts = React.useMemo(() => sortCommunityFeedPosts(rawPosts, activeSort), [activeSort, rawPosts]);
+  React.useEffect(() => {
+    let cancelled = false;
+    const publicAuthorIds = Array.from(new Set(
+      rawPosts
+        .map((item) => item.post.identity_mode === "public" ? item.post.author_user_id : null)
+        .filter((userId): userId is string => typeof userId === "string" && userId.length > 0),
+    ));
+    const profileFallbacks = session?.profile ? { [session.user.user_id]: session.profile } : {};
+
+    void loadProfilesByUserId(api, publicAuthorIds, profileFallbacks)
+      .then((profiles) => {
+        if (cancelled) return;
+        setAuthorProfiles(profiles);
+      })
+      .catch(() => {
+        if (!cancelled) setAuthorProfiles({});
+      });
+
+    return () => { cancelled = true; };
+  }, [api, rawPosts, session]);
 
   React.useEffect(() => {
     if (!community) return;
@@ -110,11 +159,11 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
     community,
     preview,
     eligibility,
-    error,
-    loading,
+    error: metadataError ?? postsError,
+    loading: metadataLoading || postsLoading,
     posts,
     replaceCommunity,
-    setPosts: setRawPosts,
+    setPosts,
     refetchEligibility,
   };
 }

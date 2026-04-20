@@ -132,3 +132,36 @@ export const PaidUnlockRegionalPricing: Story = {
     />
   ),
 };
+
+export const WithCharityContribution: Story = {
+  name: "With Charity Contribution",
+  render: () => (
+    <PostComposer
+      {...baseComposer}
+      mode="song"
+      canCreateSongPost
+      titleValue="Benefit single for the club drop"
+      titleCountLabel="36/300"
+      lyricsValue="Raise the room up / hold the line / send the chorus over..."
+      song={{
+        genre: "R&B",
+        primaryLanguage: "English",
+        secondaryLanguage: "French",
+        coverLabel: "benefit-single-cover.png",
+      }}
+      charityPartner={{
+        partnerId: "endaoment:mock-charity-water",
+        displayName: "charity: water",
+        imageUrl: "https://placehold.co/96x96/111827/f97316?text=CW",
+      }}
+      charityContribution={{
+        percentagePct: 10,
+      }}
+      monetization={{
+        visible: true,
+        priceUsd: "3.99",
+        rightsAttested: true,
+      }}
+    />
+  ),
+};

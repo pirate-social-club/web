@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ArrowFatDown, ArrowFatUp } from "@phosphor-icons/react";
 
+import { triggerLikeToggleHaptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 function formatScore(score: number): string {
@@ -22,6 +23,15 @@ export interface VotePillProps {
 }
 
 export function VotePill({ score, viewerVote, onVote, allowClear = false, className }: VotePillProps) {
+  const handleVote = React.useCallback((direction: "up" | "down") => {
+    if (!onVote) return;
+
+    const nextVote = viewerVote === direction && allowClear ? null : direction;
+
+    triggerLikeToggleHaptic(nextVote !== null);
+    onVote(nextVote);
+  }, [allowClear, onVote, viewerVote]);
+
   return (
     <div
       className={cn(
@@ -39,7 +49,7 @@ export function VotePill({ score, viewerVote, onVote, allowClear = false, classN
             ? "text-primary hover:bg-primary/10"
             : "text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground",
         )}
-        onClick={() => onVote?.(viewerVote === "up" && allowClear ? null : "up")}
+        onClick={() => handleVote("up")}
         type="button"
         aria-label="Upvote"
       >
@@ -64,7 +74,7 @@ export function VotePill({ score, viewerVote, onVote, allowClear = false, classN
             ? "text-destructive hover:bg-destructive/10"
             : "text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground",
         )}
-        onClick={() => onVote?.(viewerVote === "down" && allowClear ? null : "down")}
+        onClick={() => handleVote("down")}
         type="button"
         aria-label="Downvote"
       >

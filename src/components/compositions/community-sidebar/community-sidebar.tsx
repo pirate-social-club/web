@@ -95,7 +95,7 @@ function CommunitySidebarSections({
 
       {charity && (
         <div className="flex flex-col gap-1.5">
-          <div className={SECTION_LABEL}>Charity</div>
+          <div className={SECTION_LABEL}>{copy.charityLabel}</div>
           <CommunitySidebarCharity charity={charity} />
         </div>
       )}

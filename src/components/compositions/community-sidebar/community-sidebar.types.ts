@@ -83,7 +83,7 @@ export interface CommunitySidebarProps {
   membershipMode: CommunityMembershipMode;
   moderator?: CommunitySidebarModerator | null;
   namespacePanel?: CommunitySidebarNamespacePanel | null;
+  requirements?: string[];
   referenceLinks?: CommunitySidebarReferenceLink[];
-  rulesAction?: React.ReactNode;
   rules?: CommunitySidebarRule[];
 }

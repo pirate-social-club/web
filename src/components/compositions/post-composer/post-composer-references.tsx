@@ -10,6 +10,8 @@ import {
   ComboboxList,
 } from "@/components/primitives/combobox";
 import { Input } from "@/components/primitives/input";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { FieldLabel } from "./post-composer-fields";
 import type { ComposerReference, LiveSetlistItemInput } from "./post-composer.types";
 
@@ -18,10 +20,12 @@ export function References({
 }: {
   items?: ComposerReference[];
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").createPost;
   if (!items || items.length === 0) {
     return (
       <div className="rounded-[var(--radius-lg)] border border-dashed border-border-soft px-4 py-4 text-base text-muted-foreground">
-        No upstream works attached yet.
+        {copy.empty.noReferences}
       </div>
     );
   }
@@ -39,7 +43,7 @@ export function References({
               <p className="truncate text-base text-muted-foreground">{item.subtitle}</p>
             ) : null}
           </div>
-          <span className="text-base text-muted-foreground">Source</span>
+          <span className="text-base text-muted-foreground">{copy.labels.source}</span>
         </div>
       ))}
     </div>
@@ -88,6 +92,8 @@ export function SearchReferencePicker({
   resetKey?: number;
   value?: ComposerReference;
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").createPost;
   return (
     <Combobox
       key={resetKey}
@@ -127,6 +133,8 @@ export function SelectedReferenceCard({
   item: ComposerReference;
   onClear: () => void;
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").createPost;
   return (
     <div className="flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3">
       <div className="min-w-0">
@@ -136,7 +144,7 @@ export function SelectedReferenceCard({
         ) : null}
       </div>
       <Button
-        aria-label={`Clear ${item.title}`}
+        aria-label={`${copy.buttons.clear} ${item.title}`}
         onClick={onClear}
         size="icon"
         variant="secondary"
@@ -164,6 +172,8 @@ export function SetlistItemRow({
   onReferenceSelect: (index: number, item: ComposerReference) => void;
   onUpdateManual: (index: number, field: "titleText" | "artistText", value: string) => void;
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").createPost;
   const selectedReference = React.useMemo(() => {
     return options.find((option) => option.id === item.declaredTrackId);
   }, [item, options]);
@@ -190,16 +200,16 @@ export function SetlistItemRow({
         </button>
       </div>
       <div className="space-y-2">
-        <FieldLabel label="Song" />
+        <FieldLabel label={copy.fields.song} />
         <SearchReferencePicker
-          ariaLabel={`Search songs for setlist item ${index + 1}`}
-          emptyLabel="No songs found."
+          ariaLabel={`${copy.setlist.searchSongs} ${index + 1}`}
+          emptyLabel={copy.empty.noSongs}
           items={options}
           onSelect={(reference) => {
             setShowManualFields(false);
             onReferenceSelect(index, reference);
           }}
-          placeholder="Search Pirate songbase"
+          placeholder={copy.placeholders.songSearch}
           value={item.declaredTrackId ? selectedReference : undefined}
         />
       </div>
@@ -216,20 +226,20 @@ export function SetlistItemRow({
         onClick={() => setShowManualFields((current) => !current)}
         type="button"
       >
-        {showManualFields ? "Hide manual details" : "Can't find the track?"}
+        {showManualFields ? copy.setlist.hideManualDetails : copy.setlist.cannotFindTrack}
       </button>
 
       {showManualFields ? (
         <div className="grid gap-3 md:grid-cols-2">
           <Input
             className="h-10"
-            placeholder="Song title"
+            placeholder={copy.placeholders.songTitle}
             defaultValue={item.titleText}
             onChange={(e) => onUpdateManual(index, "titleText", e.target.value)}
           />
           <Input
             className="h-10"
-            placeholder="Artist"
+            placeholder={copy.placeholders.artist}
             defaultValue={item.artistText ?? ""}
             onChange={(e) => onUpdateManual(index, "artistText", e.target.value)}
           />

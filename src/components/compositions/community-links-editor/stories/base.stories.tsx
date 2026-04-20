@@ -20,6 +20,7 @@ function LinksEditorStory({
       onAddLink={() => setLinks((current) => [...current, createEmptyCommunityLinkEditorItem()])}
       onLinkChange={(id, patch) => setLinks((current) => current.map((link) => link.id === id ? { ...link, ...patch } : link))}
       onRemoveLink={(id) => setLinks((current) => current.filter((link) => link.id !== id))}
+      onSave={() => undefined}
       saveDisabled={links.some((link) => !link.url.trim())}
     />
   );

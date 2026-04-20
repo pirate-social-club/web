@@ -71,22 +71,22 @@ export function ActionMenu({
           >
             <DotsThree className="size-5" />
           </IconButton>
-        </SheetTrigger>
-        <SheetContent side="bottom" className="rounded-t-[var(--radius-xl)] px-0 pb-6 pt-4">
-          <SheetHeader className="px-4 text-left">
-            <SheetTitle className="text-base leading-[1.3]">Actions</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4">
-            {items.map((item) => (
-              <React.Fragment key={item.key}>
-                {item.separatorBefore ? <div className="my-2 h-px bg-border" /> : null}
-                <button
-                  className={cn(
-                    "grid w-full grid-cols-[1.25rem_1fr] items-center gap-3 px-4 py-3 text-left text-base leading-[1.35] text-foreground",
-                    !item.icon && "grid-cols-[1fr]",
-                    item.destructive && "text-destructive",
-                    item.disabled && "pointer-events-none opacity-50",
-                  )}
+      </SheetTrigger>
+      <SheetContent side="bottom" className="rounded-t-[var(--radius-xl)] px-0 pb-6 pt-4">
+        <SheetHeader className="px-4 text-start">
+          <SheetTitle className="text-base leading-[1.3]">Actions</SheetTitle>
+        </SheetHeader>
+        <div className="mt-4">
+          {items.map((item) => (
+            <React.Fragment key={item.key}>
+              {item.separatorBefore ? <div className="my-2 h-px bg-border" /> : null}
+              <button
+                className={cn(
+                  "grid w-full grid-cols-[1.25rem_1fr] items-center gap-3 px-4 py-3 text-start text-base leading-[1.35] text-foreground",
+                  !item.icon && "grid-cols-[1fr]",
+                  item.destructive && "text-destructive",
+                  item.disabled && "pointer-events-none opacity-50",
+                )}
                   disabled={item.disabled}
                   onClick={() => {
                     onAction?.(item.key);
@@ -138,7 +138,7 @@ export function ActionMenu({
               ) : null}
               <DropdownMenuPrimitive.Item
                 className={cn(
-                  "relative w-full cursor-pointer select-none rounded-none py-2.5 pl-3 pr-3 text-base text-popover-foreground outline-none transition-colors hover:text-foreground focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                  "relative w-full cursor-pointer select-none rounded-none py-2.5 pe-3 ps-3 text-start text-base text-popover-foreground outline-none transition-colors hover:text-foreground focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
                   item.icon ? "grid grid-cols-[1.25rem_1fr] items-center gap-2" : "block",
                   item.destructive && "text-destructive focus:text-destructive",
                 )}

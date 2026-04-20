@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { isAddress } from "viem";
 
 import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
@@ -82,6 +83,7 @@ export function CreateCommunityComposer({
   const [activeDescription, setActiveDescription] = React.useState(description ?? "");
   const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
   const genderGate = gateDrafts.find((draft) => draft.gateType === "gender");
+  const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const [nationalityEnabled, setNationalityEnabled] = React.useState(Boolean(nationalityGate));
   const [nationalityRequiredValue, setNationalityRequiredValue] = React.useState(
     nationalityGate?.requiredValue ?? "",
@@ -90,13 +92,19 @@ export function CreateCommunityComposer({
   const [genderRequiredValue, setGenderRequiredValue] = React.useState<"M" | "F">(
     genderGate?.requiredValue ?? "F",
   );
+  const [erc721Enabled, setErc721Enabled] = React.useState(Boolean(erc721Gate));
+  const [erc721ContractAddress, setErc721ContractAddress] = React.useState(
+    erc721Gate?.contractAddress ?? "",
+  );
   const [submitting, setSubmitting] = React.useState(false);
   const gateDraftsSyncKey = React.useMemo(
     () =>
       gateDrafts
-        .map((draft) =>
-          [draft.gateType, draft.provider, draft.requiredValue, draft.gateRuleId ?? ""].join(":"),
-        )
+        .map((draft) => (
+          draft.gateType === "erc721_holding"
+            ? [draft.gateType, draft.chainNamespace, draft.contractAddress, draft.gateRuleId ?? ""].join(":")
+            : [draft.gateType, draft.provider, draft.requiredValue, draft.gateRuleId ?? ""].join(":")
+        ))
         .sort()
         .join("|"),
     [gateDrafts],
@@ -123,6 +131,13 @@ export function CreateCommunityComposer({
     ...(genderEnabled
       ? [{ gateType: "gender" as const, provider: "self" as const, requiredValue: genderRequiredValue }]
       : []),
+    ...(erc721Enabled && isAddress(erc721ContractAddress.trim())
+      ? [{
+        gateType: "erc721_holding" as const,
+        chainNamespace: "eip155:1" as const,
+        contractAddress: erc721ContractAddress.trim(),
+      }]
+      : []),
   ];
 
   React.useEffect(() => { setActiveMembershipMode(membershipMode); }, [membershipMode]);
@@ -140,6 +155,10 @@ export function CreateCommunityComposer({
     const nextGenderGate = gateDrafts.find((draft) => draft.gateType === "gender");
     setGenderEnabled(Boolean(nextGenderGate));
     setGenderRequiredValue(nextGenderGate?.requiredValue ?? "F");
+
+    const nextErc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
+    setErc721Enabled(Boolean(nextErc721Gate));
+    setErc721ContractAddress(nextErc721Gate?.contractAddress ?? "");
   }, [gateDraftsSyncKey]);
   React.useEffect(() => { setActiveDefaultAgeGatePolicy(defaultAgeGatePolicy); }, [defaultAgeGatePolicy]);
   React.useEffect(() => { setActiveAllowAnonymousIdentity(allowAnonymousIdentity); }, [allowAnonymousIdentity]);
@@ -199,7 +218,8 @@ export function CreateCommunityComposer({
     namespaceAttachment,
   ]);
 
-  const gateDraftsValid = activeMembershipMode !== "gated" || activeGateDrafts.length > 0;
+  const erc721GateValid = !erc721Enabled || isAddress(erc721ContractAddress.trim());
+  const gateDraftsValid = activeMembershipMode !== "gated" || (activeGateDrafts.length > 0 && erc721GateValid);
 
   const canCreateCommunity = React.useMemo(
     () =>
@@ -240,7 +260,9 @@ export function CreateCommunityComposer({
     ? activeGateDrafts
         .map((draft) =>
           formatGateRequirement(
-            { gate_type: draft.gateType, required_value: draft.requiredValue },
+            draft.gateType === "erc721_holding"
+              ? { gate_type: draft.gateType, chain_namespace: draft.chainNamespace, contract_address: draft.contractAddress }
+              : { gate_type: draft.gateType, required_value: draft.requiredValue },
             { audience: "admin" },
           ),
         )
@@ -398,7 +420,7 @@ export function CreateCommunityComposer({
                 {activeMembershipMode === "gated" ? (
                   <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-5 py-4">
                     <FormSectionHeading
-                      description="Select at least one identity proof before launch."
+                      description="Select at least one gate before launch."
                       title="Gate checks"
                     />
 
@@ -460,6 +482,28 @@ export function CreateCommunityComposer({
                         />
                         {getGateDraftWarning("gender") ? (
                           <FormNote tone="warning">{getGateDraftWarning("gender")}</FormNote>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    <OptionCard
+                      description="Require a linked Ethereum wallet that holds a specific ERC-721 collection."
+                      selected={erc721Enabled}
+                      title="Ethereum NFT collection"
+                      onClick={() => setErc721Enabled((prev) => !prev)}
+                    />
+
+                    {erc721Enabled ? (
+                      <div className="space-y-2">
+                        <FieldLabel label="Collection contract" />
+                        <Input
+                          className="h-12 rounded-[var(--radius-lg)]"
+                          onChange={(event) => setErc721ContractAddress(event.target.value)}
+                          placeholder="0x..."
+                          value={erc721ContractAddress}
+                        />
+                        {!isAddress(erc721ContractAddress.trim()) ? (
+                          <FormNote tone="warning">Enter a valid Ethereum contract address.</FormNote>
                         ) : null}
                       </div>
                     ) : null}

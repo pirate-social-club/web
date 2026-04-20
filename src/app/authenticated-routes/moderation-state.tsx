@@ -590,17 +590,30 @@ export function useCommunityModerationState(communityId: string) {
         default_age_gate_policy: defaultAgeGatePolicy,
         allow_anonymous_identity: allowAnonymousIdentity,
         anonymous_identity_scope: allowAnonymousIdentity ? anonymousIdentityScope : null,
-        gate_rules: gateDrafts.map((draft) => ({
-          scope: "membership" as const,
-          gate_family: "identity_proof" as const,
-          gate_type: draft.gateType,
-          gate_rule_id: draft.gateRuleId ?? null,
-          proof_requirements: [{
-            proof_type: draft.gateType,
-            accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
-            config: { required_value: draft.requiredValue },
-          }],
-        })),
+        gate_rules: gateDrafts.map((draft) => {
+          if (draft.gateType === "erc721_holding") {
+            return {
+              scope: "membership" as const,
+              gate_family: "token_holding" as const,
+              gate_type: "erc721_holding" as const,
+              gate_rule_id: draft.gateRuleId ?? null,
+              chain_namespace: draft.chainNamespace,
+              gate_config: { contract_address: draft.contractAddress.trim() },
+            };
+          }
+
+          return {
+            scope: "membership" as const,
+            gate_family: "identity_proof" as const,
+            gate_type: draft.gateType,
+            gate_rule_id: draft.gateRuleId ?? null,
+            proof_requirements: [{
+              proof_type: draft.gateType,
+              accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
+              config: { required_value: draft.requiredValue },
+            }],
+          };
+        }),
       }),
       setSavingGates,
       "Access settings saved.",

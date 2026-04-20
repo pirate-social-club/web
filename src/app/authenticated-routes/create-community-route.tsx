@@ -125,16 +125,28 @@ export function CreateCommunityPage() {
     try {
       const avatarRef = input.avatarFile ? (await api.communities.uploadMedia({ kind: "avatar", file: input.avatarFile })).media_ref : input.avatarRef;
       const bannerRef = input.bannerFile ? (await api.communities.uploadMedia({ kind: "banner", file: input.bannerFile })).media_ref : input.bannerRef;
-      const gateRules = input.gateDrafts.map((draft) => ({
-        scope: "membership" as const,
-        gate_family: "identity_proof" as const,
-        gate_type: draft.gateType,
-        proof_requirements: [{
-          proof_type: draft.gateType,
-          accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
-          config: { required_value: draft.requiredValue },
-        }],
-      }));
+      const gateRules = input.gateDrafts.map((draft) => {
+        if (draft.gateType === "erc721_holding") {
+          return {
+            scope: "membership" as const,
+            gate_family: "token_holding" as const,
+            gate_type: "erc721_holding" as const,
+            chain_namespace: draft.chainNamespace,
+            gate_config: { contract_address: draft.contractAddress.trim() },
+          };
+        }
+
+        return {
+          scope: "membership" as const,
+          gate_family: "identity_proof" as const,
+          gate_type: draft.gateType,
+          proof_requirements: [{
+            proof_type: draft.gateType,
+            accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
+            config: { required_value: draft.requiredValue },
+          }],
+        };
+      });
 
       const result = await api.communities.create({
         avatar_ref: avatarRef,

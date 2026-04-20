@@ -22,6 +22,7 @@ function getCountryDisplayName(requiredValue: string, locale: string | null | un
 function formatSidebarRequirement(input: {
   gateType: string;
   requiredValue?: string | null;
+  contractAddress?: string | null;
   locale?: string | null;
 }): string | null {
   const locale = getRequirementLocale(input.locale);
@@ -66,6 +67,10 @@ function formatSidebarRequirement(input: {
       if (locale === "ar") return "خلو من العقوبات";
       if (locale === "zh") return "无制裁限制";
       return "Sanctions clear";
+    case "erc721_holding":
+      if (locale === "ar") return "حاملو NFT على إيثريوم";
+      if (locale === "zh") return "以太坊 NFT 持有者";
+      return "Ethereum NFT holder";
     default:
       return null;
   }
@@ -73,7 +78,7 @@ function formatSidebarRequirement(input: {
 
 export function buildCommunitySidebarRequirements(input: {
   defaultAgeGatePolicy?: "none" | "18_plus" | null;
-  gateSummaries?: Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value">> | null;
+  gateSummaries?: Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value" | "contract_address">> | null;
   locale?: string | null;
 }): string[] {
   const requirements: string[] = [];
@@ -83,11 +88,12 @@ export function buildCommunitySidebarRequirements(input: {
   }
 
   for (const gate of input.gateSummaries ?? []) {
-    const label = formatSidebarRequirement({
-      gateType: gate.gate_type,
-      locale: input.locale,
-      requiredValue: gate.required_value ?? null,
-    });
+      const label = formatSidebarRequirement({
+        gateType: gate.gate_type,
+        contractAddress: gate.contract_address ?? null,
+        locale: input.locale,
+        requiredValue: gate.required_value ?? null,
+      });
     if (label && !requirements.includes(label)) {
       requirements.push(label);
     }
@@ -98,7 +104,7 @@ export function buildCommunitySidebarRequirements(input: {
 
 function getCommunityGateSummaries(
   community: ApiCommunity,
-): Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value">> {
+): Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value" | "contract_address">> {
   return (community.gate_rules ?? [])
     .filter((rule) => rule.scope === "membership" && rule.status === "active")
     .map((rule) => {
@@ -111,6 +117,11 @@ function getCommunityGateSummaries(
 
       return {
         gate_type: rule.gate_type as ApiMembershipGateSummary["gate_type"],
+        contract_address: config && typeof config === "object" && "contract_address" in config
+          ? typeof config.contract_address === "string"
+            ? config.contract_address
+            : null
+          : null,
         required_value: requiredValue,
       };
     });

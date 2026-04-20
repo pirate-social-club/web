@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { isAddress } from "viem";
 
 import { Button } from "@/components/primitives/button";
 import { CommunityModerationSaveFooter } from "@/components/compositions/community-moderation-shell/community-moderation-save-footer";
@@ -10,6 +11,7 @@ import {
   FormNote,
   FormSectionHeading,
 } from "@/components/primitives/form-layout";
+import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
 import { OptionCard } from "@/components/primitives/option-card";
 import { RadioGroup, RadioGroupItem } from "@/components/primitives/radio-group";
@@ -208,6 +210,7 @@ export function CommunityGatesEditorPage({
 }: CommunityGatesEditorPageProps) {
   const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
   const genderGate = gateDrafts.find((draft) => draft.gateType === "gender");
+  const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? true;
 
   return (
@@ -303,6 +306,40 @@ export function CommunityGatesEditorPage({
                 />
                 {getGateDraftWarning("gender") ? (
                   <FormNote tone="warning">{getGateDraftWarning("gender")}</FormNote>
+                ) : null}
+              </div>
+            ) : null}
+
+            <OptionCard
+              description="Require a linked Ethereum wallet that holds a specific ERC-721 collection."
+              selected={Boolean(erc721Gate)}
+              title="Ethereum NFT collection"
+              onClick={() => onGateDraftsChange?.(
+                erc721Gate
+                  ? removeGateDraft(gateDrafts, "erc721_holding")
+                  : upsertGateDraft(gateDrafts, {
+                    gateType: "erc721_holding",
+                    chainNamespace: "eip155:1",
+                    contractAddress: "",
+                  }),
+              )}
+            />
+
+            {erc721Gate ? (
+              <div className="space-y-2">
+                <FormFieldLabel label="Collection contract" />
+                <Input
+                  className="h-12 rounded-[var(--radius-lg)]"
+                  onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                    gateType: "erc721_holding",
+                    chainNamespace: "eip155:1",
+                    contractAddress: event.target.value,
+                  }))}
+                  placeholder="0x..."
+                  value={erc721Gate.contractAddress}
+                />
+                {!isAddress(erc721Gate.contractAddress.trim()) ? (
+                  <FormNote tone="warning">Enter a valid Ethereum contract address.</FormNote>
                 ) : null}
               </div>
             ) : null}

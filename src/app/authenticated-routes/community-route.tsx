@@ -479,7 +479,9 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         <CommunityMembershipGatePanel
           eligibility={eligibility}
           gates={preview.membership_gate_summaries}
-          joinError={joinError}
+          joinError={joinError ?? (eligibility?.status === "gate_failed" && eligibility.failure_reason
+            ? getGateFailureMessage(eligibility, { locale })
+            : null)}
           joinLoading={joinLoading}
           joinRequested={joinRequested}
           verificationError={selfError}

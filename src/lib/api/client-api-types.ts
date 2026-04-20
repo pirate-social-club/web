@@ -27,14 +27,15 @@ export type ApiCreateCommunityRequest = {
   governance_mode?: "centralized";
   gate_rules?: Array<{
     scope: "membership" | "viewer" | "posting";
-    gate_family: "identity_proof";
+    gate_family: "identity_proof" | "token_holding";
     gate_type:
       | "unique_human"
       | "age_over_18"
       | "nationality"
       | "gender"
       | "sanctions_clear"
-      | "wallet_score";
+      | "wallet_score"
+      | "erc721_holding";
     proof_requirements?: Array<{
       proof_type:
         | "unique_human"
@@ -49,6 +50,8 @@ export type ApiCreateCommunityRequest = {
       accepted_providers?: Array<"self" | "very" | "passport"> | null;
       config?: Record<string, unknown> | null;
     }> | null;
+    chain_namespace?: string | null;
+    gate_config?: Record<string, unknown> | null;
   }> | null;
   namespace?: {
     namespace_verification_id: string;

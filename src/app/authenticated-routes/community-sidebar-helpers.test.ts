@@ -26,4 +26,10 @@ describe("buildCommunitySidebarRequirements", () => {
       gateSummaries: [{ gate_type: "nationality", required_value: "PS" }],
     })).toEqual(["Palestine nationality"]);
   });
+
+  test("renders ethereum nft requirement labels", () => {
+    expect(buildCommunitySidebarRequirements({
+      gateSummaries: [{ gate_type: "erc721_holding", contract_address: "0x1111111111111111111111111111111111111111" }],
+    })).toEqual(["Ethereum NFT holder"]);
+  });
 });

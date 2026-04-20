@@ -116,11 +116,37 @@ function extractRequiredValue(config: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
+function extractContractAddress(config: unknown): string | null {
+  if (!config || typeof config !== "object") {
+    return null;
+  }
+
+  const value = (config as Record<string, unknown>).contract_address;
+  return typeof value === "string" ? value : null;
+}
+
 export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDraft[] {
   const drafts: IdentityGateDraft[] = [];
 
   for (const rule of community.gate_rules ?? []) {
-    if (rule.scope !== "membership" || rule.gate_family !== "identity_proof" || rule.status !== "active") {
+    if (rule.scope !== "membership" || rule.status !== "active") {
+      continue;
+    }
+
+    if (rule.gate_family === "token_holding" && rule.gate_type === "erc721_holding" && rule.chain_namespace === "eip155:1") {
+      const contractAddress = extractContractAddress(rule.gate_config);
+      if (contractAddress) {
+        drafts.push({
+          gateType: "erc721_holding",
+          chainNamespace: "eip155:1",
+          contractAddress,
+          gateRuleId: rule.gate_rule_id,
+        });
+      }
+      continue;
+    }
+
+    if (rule.gate_family !== "identity_proof") {
       continue;
     }
 

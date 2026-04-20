@@ -19,6 +19,12 @@ export type IdentityGateDraft =
     provider: "self";
     requiredValue: "M" | "F";
     gateRuleId?: string;
+  }
+  | {
+    gateType: "erc721_holding";
+    chainNamespace: "eip155:1";
+    contractAddress: string;
+    gateRuleId?: string;
   };
 
 export type ComposerStep = 1 | 2 | 3;

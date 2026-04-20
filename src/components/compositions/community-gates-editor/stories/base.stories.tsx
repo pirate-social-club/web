@@ -10,7 +10,7 @@ import type {
   IdentityGateDraft,
 } from "@/components/compositions/create-community-composer/create-community-composer.types";
 
-// Note: CommunityGatesEditorPage only supports nationality and gender gate drafts.
+// Note: CommunityGatesEditorPage supports nationality, gender, and Ethereum ERC-721 gates.
 // unique_human, age_over_18, and wallet_score gates are valid in v0 but not yet
 // configurable through this UI. Add stories for them after extending IdentityGateDraft.
 const meta = {
@@ -112,6 +112,23 @@ export const RestrictedReading: Story = {
       ]}
       membershipMode="gated"
       readAccessMode="members_only"
+    />
+  ),
+};
+
+export const EthereumNftGate: Story = {
+  render: () => (
+    <InteractiveCommunityGatesEditorPage
+      allowAnonymousIdentity
+      anonymousIdentityScope="community_stable"
+      defaultAgeGatePolicy="none"
+      gateDrafts={[{
+        gateType: "erc721_holding",
+        chainNamespace: "eip155:1",
+        contractAddress: "0x1111111111111111111111111111111111111111",
+      }]}
+      membershipMode="gated"
+      readAccessMode="public"
     />
   ),
 };

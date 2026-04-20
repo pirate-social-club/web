@@ -42,6 +42,13 @@ function formatCountryName(code: string, locale: SupportedCopyLocale): string {
   return getCountryDisplayName(code, locale) ?? code;
 }
 
+function shortenAddress(address: string): string {
+  if (address.length <= 10) {
+    return address;
+  }
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 function getVisibleSelfCapabilities(capabilities: MissingCapability[]): MissingCapability[] {
   const ordered = SELF_CAPABILITY_ORDER.filter((capability) => capabilities.includes(capability));
   if (ordered.some((capability) => capability !== "unique_human")) {
@@ -112,6 +119,16 @@ export function formatGateRequirement(
       if (locale === "ar") return "يتطلب التحقق عبر Passport";
       if (locale === "zh") return "需要 Passport 验证";
       return "Requires passport verification";
+    case "erc721_holding": {
+      const label = gate.contract_address ? shortenAddress(gate.contract_address) : null;
+      if (locale === "ar") {
+        return label ? `يتطلب امتلاك NFT على إيثريوم من ${label}` : "يتطلب امتلاك NFT على إيثريوم";
+      }
+      if (locale === "zh") {
+        return label ? `需要持有来自 ${label} 的以太坊 NFT` : "需要持有以太坊 NFT";
+      }
+      return label ? `Requires Ethereum NFT from ${label}` : "Requires Ethereum NFT";
+    }
     default:
       if (locale === "ar") return `يتطلب التحقق من ${gate.gate_type}`;
       if (locale === "zh") return `需要 ${gate.gate_type} 验证`;
@@ -388,6 +405,10 @@ export function getGateFailureMessage(
       if (locale === "ar") return "هذا المجتمع يستخدم بوابة لا يمكن للتحقق الحالي تلبيتها هنا بعد.";
       if (locale === "zh") return "这个社区使用了你当前验证暂时无法满足的门槛。";
       return "This community uses a gate your current verification cannot satisfy here yet.";
+    case "erc721_holding_required":
+      if (locale === "ar") return "اربط محفظة إيثريوم تملك هذا الـ NFT للانضمام إلى هذا المجتمع.";
+      if (locale === "zh") return "连接持有该 NFT 的以太坊钱包即可加入此社区。";
+      return "Connect an Ethereum wallet that holds this NFT to join this community.";
     case "banned":
       if (locale === "ar") return "أنت غير مؤهل للانضمام إلى هذا المجتمع.";
       if (locale === "zh") return "你没有资格加入这个社区。";

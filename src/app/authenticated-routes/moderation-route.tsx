@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { isAddress } from "viem";
 
 import { navigate } from "@/app/router";
 import { CommunityDonationsEditorPage } from "@/components/compositions/community-donations-editor/community-donations-editor-page";
@@ -335,7 +336,13 @@ export function CommunityModerationPage({
           onGateDraftsChange={state.setGateDrafts}
           onMembershipModeChange={state.setMembershipMode}
           onSave={state.handleSaveGates}
-          saveDisabled={state.savingGates || (state.membershipMode === "gated" && state.gateDrafts.length === 0)}
+          saveDisabled={
+            state.savingGates
+            || (state.membershipMode === "gated" && state.gateDrafts.length === 0)
+            || state.gateDrafts.some((draft) => (
+              draft.gateType === "erc721_holding" && !isAddress(draft.contractAddress.trim())
+            ))
+          }
           showSaveAction
         />
       );

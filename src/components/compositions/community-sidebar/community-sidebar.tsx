@@ -28,7 +28,7 @@ function formatMemberCount(count: number): string {
 }
 
 const SECTION_LABEL =
-  "py-3 text-[15px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/55 hover:no-underline";
+  "py-3 text-base font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/55 hover:no-underline";
 
 function CommunitySidebarSections({
   charity,

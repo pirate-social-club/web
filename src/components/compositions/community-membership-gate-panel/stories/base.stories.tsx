@@ -83,6 +83,101 @@ export const DocumentMarkerMismatch: Story = {
   ),
 };
 
+export const Joinable: Story = {
+  name: "States / Joinable",
+  args: { gates: [] },
+  render: () => (
+    <CommunityMembershipGatePanel
+      gates={[{ gate_type: "nationality", required_value: "US" }]}
+      eligibility={{
+        community_id: "community_joinable",
+        membership_mode: "gated",
+        human_verification_lane: "self",
+        joinable_now: true,
+        status: "joinable",
+        membership_gate_summaries: [{ gate_type: "nationality", required_value: "US" }],
+        missing_capabilities: [],
+        suggested_verification_provider: "self",
+        suggested_verification_intent: "community_join",
+      }}
+    />
+  ),
+};
+
+export const Requestable: Story = {
+  name: "States / Requestable",
+  args: { gates: [] },
+  render: () => (
+    <CommunityMembershipGatePanel
+      gates={[{ gate_type: "gender", required_value: "F" }]}
+      eligibility={{
+        community_id: "community_requestable",
+        membership_mode: "request",
+        human_verification_lane: "self",
+        joinable_now: false,
+        status: "requestable",
+        membership_gate_summaries: [{ gate_type: "gender", required_value: "F" }],
+        missing_capabilities: [],
+        suggested_verification_provider: "self",
+        suggested_verification_intent: "community_join",
+      }}
+    />
+  ),
+};
+
+export const MultipleMissingCapabilities: Story = {
+  name: "States / Multiple Missing Capabilities",
+  args: { gates: [] },
+  render: () => (
+    <CommunityMembershipGatePanel
+      gates={[
+        { gate_type: "nationality", required_value: "US" },
+        { gate_type: "age_over_18" },
+        { gate_type: "unique_human" },
+      ]}
+      eligibility={{
+        community_id: "community_multi",
+        membership_mode: "gated",
+        human_verification_lane: "self",
+        joinable_now: false,
+        status: "verification_required",
+        membership_gate_summaries: [
+          { gate_type: "nationality", required_value: "US" },
+          { gate_type: "age_over_18" },
+          { gate_type: "unique_human" },
+        ],
+        missing_capabilities: ["nationality", "age_over_18", "unique_human"],
+        suggested_verification_provider: "self",
+        suggested_verification_intent: "community_join",
+      }}
+    />
+  ),
+};
+
+export const Mobile: Story = {
+  name: "Mobile layout",
+  args: { gates: [] },
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <CommunityMembershipGatePanel
+      gates={[{ gate_type: "nationality", required_value: "US" }]}
+      eligibility={{
+        community_id: "community_mobile",
+        membership_mode: "gated",
+        human_verification_lane: "self",
+        joinable_now: false,
+        status: "verification_required",
+        membership_gate_summaries: [{ gate_type: "nationality", required_value: "US" }],
+        missing_capabilities: ["nationality"],
+        suggested_verification_provider: "self",
+        suggested_verification_intent: "community_join",
+      }}
+    />
+  ),
+};
+
 export const AdminValuePreview: Story = {
   name: "States / Admin Value Preview",
   args: { gates: [] },

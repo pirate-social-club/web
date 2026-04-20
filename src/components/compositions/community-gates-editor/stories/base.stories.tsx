@@ -10,6 +10,9 @@ import type {
   IdentityGateDraft,
 } from "@/components/compositions/create-community-composer/create-community-composer.types";
 
+// Note: CommunityGatesEditorPage only supports nationality and gender gate drafts.
+// unique_human, age_over_18, and wallet_score gates are valid in v0 but not yet
+// configurable through this UI. Add stories for them after extending IdentityGateDraft.
 const meta = {
   title: "Compositions/Moderation/Gates",
   component: CommunityGatesEditorPage,

@@ -8,34 +8,88 @@ import type { CommunitySidebarRule } from "@/components/compositions/community-s
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryName } from "@/lib/countries";
 
+function getRequirementLocale(locale: string | null | undefined): "ar" | "zh" | "en" {
+  const normalized = String(locale ?? "").toLowerCase();
+  if (normalized.startsWith("ar")) return "ar";
+  if (normalized.startsWith("zh")) return "zh";
+  return "en";
+}
+
+function getCountryDisplayName(requiredValue: string, locale: string | null | undefined): string {
+  const normalizedCode = requiredValue.toUpperCase();
+  const requirementLocale = getRequirementLocale(locale);
+  if (normalizedCode === "PS") {
+    if (requirementLocale === "ar") return "فلسطين";
+    if (requirementLocale === "zh") return "巴勒斯坦";
+    return "Palestine";
+  }
+
+  if (requirementLocale === "en") {
+    return getCountryName(requiredValue) ?? requiredValue;
+  }
+
+  try {
+    const displayNames = new Intl.DisplayNames([locale ?? "en"], { type: "region" });
+    return displayNames.of(normalizedCode) ?? getCountryName(requiredValue) ?? requiredValue;
+  } catch {
+    return getCountryName(requiredValue) ?? requiredValue;
+  }
+}
+
 function formatSidebarRequirement(input: {
   gateType: string;
   requiredValue?: string | null;
+  locale?: string | null;
 }): string | null {
+  const locale = getRequirementLocale(input.locale);
+
   switch (input.gateType) {
     case "nationality": {
       if (!input.requiredValue) {
+        if (locale === "ar") return "الجنسية";
+        if (locale === "zh") return "国籍";
         return "Nationality";
       }
-      return `${getCountryName(input.requiredValue) ?? input.requiredValue} nationality`;
+      const country = getCountryDisplayName(input.requiredValue, input.locale);
+      if (locale === "ar") return `جنسية ${country}`;
+      if (locale === "zh") return `${country} 国籍`;
+      return `${country} nationality`;
     }
     case "gender":
+      if (locale === "ar") {
+        return input.requiredValue
+          ? `علامة الجنس في الوثيقة ${input.requiredValue}`
+          : "علامة الجنس في الوثيقة";
+      }
+      if (locale === "zh") {
+        return input.requiredValue
+          ? `证件性别标记 ${input.requiredValue}`
+          : "证件性别标记";
+      }
       return input.requiredValue
         ? `Self document marker ${input.requiredValue}`
         : "Self document marker";
     case "age_over_18":
       return "18+";
     case "unique_human":
+      if (locale === "ar") return "فحص الهوية";
+      if (locale === "zh") return "身份验证";
       return "ID check";
     case "wallet_score":
+      if (locale === "ar") return "درجة Passport";
+      if (locale === "zh") return "Passport 分数";
       return "Passport score";
     case "erc721_holding":
     case "erc1155_holding":
     case "solana_nft_holding":
       return "NFT";
     case "erc20_balance":
+      if (locale === "ar") return "رصيد الرمز";
+      if (locale === "zh") return "代币余额";
       return "Token balance";
     case "sanctions_clear":
+      if (locale === "ar") return "خلو من العقوبات";
+      if (locale === "zh") return "无制裁限制";
       return "Sanctions clear";
     default:
       return null;
@@ -45,6 +99,7 @@ function formatSidebarRequirement(input: {
 export function buildCommunitySidebarRequirements(input: {
   defaultAgeGatePolicy?: "none" | "18_plus" | null;
   gateSummaries?: Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value">> | null;
+  locale?: string | null;
 }): string[] {
   const requirements: string[] = [];
 
@@ -55,6 +110,7 @@ export function buildCommunitySidebarRequirements(input: {
   for (const gate of input.gateSummaries ?? []) {
     const label = formatSidebarRequirement({
       gateType: gate.gate_type,
+      locale: input.locale,
       requiredValue: gate.required_value ?? null,
     });
     if (label && !requirements.includes(label)) {
@@ -85,7 +141,7 @@ function getCommunityGateSummaries(
     });
 }
 
-export function buildCommunitySidebar(community: ApiCommunity) {
+export function buildCommunitySidebar(community: ApiCommunity, locale?: string | null) {
   const charityHref = community.donation_partner?.provider_partner_ref
     ? `https://app.endaoment.org/orgs/${community.donation_partner.provider_partner_ref}`
     : undefined;
@@ -107,6 +163,7 @@ export function buildCommunitySidebar(community: ApiCommunity) {
     requirements: buildCommunitySidebarRequirements({
       defaultAgeGatePolicy: community.default_age_gate_policy ?? "none",
       gateSummaries: getCommunityGateSummaries(community),
+      locale,
     }),
     referenceLinks: community.reference_links?.map((link) => ({
       communityReferenceLinkId: link.community_reference_link_id,

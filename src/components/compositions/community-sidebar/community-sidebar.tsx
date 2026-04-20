@@ -10,6 +10,8 @@ import {
 } from "@/components/primitives/accordion";
 import { Avatar } from "@/components/primitives/avatar";
 import { SidebarProvider } from "@/components/compositions/sidebar/sidebar";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import { CommunitySidebarCharity } from "./community-sidebar-charity";
 import { CommunitySidebarFlairs } from "./community-sidebar-flairs";
@@ -28,22 +30,24 @@ function formatMemberCount(count: number): string {
 const SECTION_LABEL =
   "py-3 text-[15px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/55 hover:no-underline";
 
-export function CommunitySidebar({
-  avatarSrc,
+function CommunitySidebarSections({
   charity,
-  className,
   description,
-  displayName,
   flairPolicy,
   memberCount,
   moderator,
   requirements,
   referenceLinks,
-  rulesAction,
   rules,
-}: CommunitySidebarProps) {
-  const isMobile = useIsMobile();
-
+  showDescriptionSection = false,
+}: Pick<
+  CommunitySidebarProps,
+  "charity" | "description" | "flairPolicy" | "memberCount" | "moderator" | "requirements" | "referenceLinks" | "rules"
+> & {
+  showDescriptionSection?: boolean;
+}) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").community;
   const activeRules = (rules ?? [])
     .filter((r) => r.status === "active")
     .sort((a, b) => a.position - b.position);
@@ -58,21 +62,14 @@ export function CommunitySidebar({
     flairPolicy.definitions.some((f) => f.status === "active");
   const showRulesSection = activeRules.length > 0;
 
-  const content = (
-    <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2">
-        <Avatar
-          fallback={displayName}
-          size="md"
-          src={avatarSrc?.trim() || undefined}
-        />
-        <h2 className="min-w-0 text-lg font-semibold leading-tight">{displayName}</h2>
-        {description && (
-          <p className="col-span-2 min-w-0 line-clamp-4 text-base leading-snug text-muted-foreground">
-            {description}
-          </p>
-        )}
-      </div>
+  return (
+    <>
+      {showDescriptionSection && description ? (
+        <div className="flex flex-col gap-1.5">
+          <div className={SECTION_LABEL}>{copy.aboutTab}</div>
+          <p className="text-base leading-snug text-muted-foreground">{description}</p>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-2">
         {memberCount != null && (
@@ -82,7 +79,7 @@ export function CommunitySidebar({
                 {formatMemberCount(memberCount)}
               </span>
               <span className="mt-0.5 text-base text-muted-foreground/60">
-                Members
+                {copy.membersLabel}
               </span>
             </div>
           </div>
@@ -118,7 +115,7 @@ export function CommunitySidebar({
 
         {activeRequirements.length > 0 && (
           <AccordionItem className="border-b-0" value="requirements">
-            <AccordionTrigger className={SECTION_LABEL}>Requirements</AccordionTrigger>
+            <AccordionTrigger className={SECTION_LABEL}>{copy.requirementsLabel}</AccordionTrigger>
             <AccordionContent className="pb-0">
               <ul className="list-disc space-y-1.5 pl-5 text-base leading-snug text-muted-foreground">
                 {activeRequirements.map((requirement) => (
@@ -131,10 +128,7 @@ export function CommunitySidebar({
 
         {showRulesSection && (
           <AccordionItem className="border-b-0" value="rules">
-            <div className="flex items-center gap-3">
-              <AccordionTrigger className={cn(SECTION_LABEL, "flex-1")}>Rules</AccordionTrigger>
-              {rulesAction ? <div className="shrink-0">{rulesAction}</div> : null}
-            </div>
+            <AccordionTrigger className={SECTION_LABEL}>{copy.rulesLabel}</AccordionTrigger>
             <AccordionContent className="pb-0">
               <CommunitySidebarRules rules={activeRules} />
             </AccordionContent>
@@ -150,6 +144,84 @@ export function CommunitySidebar({
           </AccordionItem>
         )}
       </Accordion>
+    </>
+  );
+}
+
+export function CommunitySidebarDetails({
+  charity,
+  className,
+  description,
+  flairPolicy,
+  memberCount,
+  moderator,
+  requirements,
+  referenceLinks,
+  rules,
+}: Pick<
+  CommunitySidebarProps,
+  "charity" | "className" | "description" | "flairPolicy" | "memberCount" | "moderator" | "requirements" | "referenceLinks" | "rules"
+>) {
+  return (
+    <div className={cn("rounded-lg bg-card px-4 py-4", className)}>
+      <div className="flex flex-col gap-5">
+        <CommunitySidebarSections
+          charity={charity}
+          description={description}
+          flairPolicy={flairPolicy}
+          memberCount={memberCount}
+          moderator={moderator}
+          referenceLinks={referenceLinks}
+          requirements={requirements}
+          rules={rules}
+          showDescriptionSection
+        />
+      </div>
+    </div>
+  );
+}
+
+export function CommunitySidebar({
+  avatarSrc,
+  charity,
+  className,
+  description,
+  displayName,
+  flairPolicy,
+  memberCount,
+  moderator,
+  requirements,
+  referenceLinks,
+  rules,
+}: CommunitySidebarProps) {
+  const isMobile = useIsMobile();
+
+  const content = (
+    <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2">
+        <Avatar
+          fallback={displayName}
+          size="md"
+          src={avatarSrc?.trim() || undefined}
+        />
+        <h2 className="min-w-0 text-lg font-semibold leading-tight">{displayName}</h2>
+        {description && (
+          <p className="col-span-2 min-w-0 text-base leading-snug text-muted-foreground">
+            {description}
+          </p>
+        )}
+      </div>
+
+      <CommunitySidebarSections
+        charity={charity}
+        description={description}
+        flairPolicy={flairPolicy}
+        memberCount={memberCount}
+        moderator={moderator}
+        referenceLinks={referenceLinks}
+        requirements={requirements}
+        rules={rules}
+      />
     </div>
   );
 

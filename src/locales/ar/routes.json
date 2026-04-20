@@ -2,6 +2,7 @@
   "common": {
     "backHome": "العودة إلى الرئيسية",
     "bestTab": "الأفضل",
+    "chooseCommunity": "اختر مجتمعًا",
     "commentsHeading": "التعليقات",
     "createAction": "أنشئ",
     "cancelReply": "إلغاء",
@@ -11,6 +12,7 @@
     "loadingReplies": "جارٍ تحميل الردود...",
     "newTab": "الجديد",
     "noComments": "لا توجد تعليقات بعد.",
+    "noRecentCommunities": "لا توجد مجتمعات حديثة.",
     "replyAction": "رد",
     "replyPlaceholder": "اكتب ردًا",
     "showOriginal": "أظهر الأصل",
@@ -25,6 +27,11 @@
     "topYear": "هذا العام"
   },
   "home": {
+    "createCommunityLabel": "أنشئ مجتمعًا",
+    "emptyHomeBody": "انضم إلى مجتمع أو أنشئ واحدًا لتبدأ في بناء خلاصتك الرئيسية.",
+    "emptyHomeTitle": "لا توجد منشورات بعد",
+    "emptyYourCommunitiesBody": "المجتمعات التي تنشئها أو تنضم إليها تظهر هنا.",
+    "emptyYourCommunitiesTitle": "لا توجد مجتمعات بعد",
     "membersLabel": "{count} عضو",
     "railTitle": "المنشورات الحديثة",
     "subtitle": "",
@@ -42,21 +49,296 @@
     "description": "هيكل مسار لسلسلة مفردة لقراءة `GET /posts/{post_id}` مستقبلًا.",
     "fallbackTitle": "منشور"
   },
+  "community": {
+    "aboutTab": "حول",
+    "createPostLabel": "أنشئ منشورًا",
+    "feedTab": "الخلاصة",
+    "membersLabel": "الأعضاء",
+    "modToolsLabel": "أدوات الإشراف",
+    "requirementsLabel": "المتطلبات",
+    "rulesLabel": "القواعد",
+    "title": "المجتمع"
+  },
+  "createPost": {
+    "access": {
+      "paidDescription": "تظهر معاينة في الخلاصة، ويُفتح المسار الكامل بعد الشراء.",
+      "paidUnlock": "فتح مدفوع",
+      "public": "عام",
+      "publicDescription": "يمكن لأي شخص تشغيل المسار الكامل.",
+      "rightsAttested": "أؤكد أن لدي الحقوق لنشر هذا المسار وتحقيق الدخل منه.",
+      "useRegionalPricing": "استخدم التسعير الإقليمي للمجتمع"
+    },
+    "actions": {
+      "post": "انشر",
+      "publishRemix": "انشر الريمكس"
+    },
+    "audience": {
+      "private": "للأعضاء فقط",
+      "privateDescription": "يمكن للأعضاء المنضمين فقط قراءة هذا المنشور.",
+      "public": "عام",
+      "publicDisabledReason": "هذا المجتمع يقيّد بالفعل من يمكنه قراءة المنشورات.",
+      "publicDescription": "يمكن لأي شخص قراءة هذا المنشور."
+    },
+    "backToCommunity": "العودة إلى المجتمع",
+    "buttons": {
+      "chooseFile": "اختر ملفًا",
+      "clear": "امسح",
+      "replace": "استبدل"
+    },
+    "derivative": {
+      "searchSourceTracks": "ابحث عن المسارات المصدر"
+    },
+    "empty": {
+      "noOptionalQualifiers": "لا توجد مؤهلات اختيارية متاحة لهذا المجتمع.",
+      "noQualifiers": "لم يتم العثور على مؤهلات.",
+      "noReferences": "لا توجد أعمال مصدر مرفقة بعد.",
+      "noSongs": "لم يتم العثور على أغانٍ.",
+      "noSourceTracks": "لم يتم العثور على مسارات مصدر."
+    },
+    "fields": {
+      "audio": "الصوت",
+      "body": "المحتوى",
+      "canvasVideo": "فيديو الغلاف المتحرك",
+      "caption": "التعليق",
+      "commentary": "التعليق",
+      "coverArt": "صورة الغلاف",
+      "genre": "النوع",
+      "image": "الصورة",
+      "instrumentalStem": "مسار الآلات",
+      "lyrics": "الكلمات",
+      "primaryLanguage": "اللغة الأساسية",
+      "secondaryLanguage": "اللغة الثانوية",
+      "song": "الأغنية",
+      "title": "العنوان",
+      "unlockPriceUsd": "سعر الفتح (دولار)",
+      "url": "الرابط",
+      "video": "الفيديو",
+      "vocalStem": "المسار الصوتي",
+      "previewClip": "مقطع المعاينة"
+    },
+    "identity": {
+      "addQualifiers": "أضف مؤهلات",
+      "postAnonymously": "انشر بشكل مجهول",
+      "qualifiersHelp": "أرفق مؤهلات موثقة بهذا المنشور. المؤهلات التي يفرضها المجتمع مسبقًا لا تظهر هنا.",
+      "searchQualifiers": "ابحث عن المؤهلات"
+    },
+    "labels": {
+      "source": "المصدر"
+    },
+    "membershipRequiredDescription": "يمكن لأعضاء المجتمع فقط نشر المنشورات هنا.",
+    "membershipRequiredTitle": "انضم إلى هذا المجتمع قبل النشر",
+    "none": "لا شيء",
+    "placeholders": {
+      "artist": "الفنان",
+      "body": "اكتب منشورك",
+      "caption": "أضف تعليقًا",
+      "commentary": "أضف تعليقًا",
+      "lyrics": "ألصق الكلمات",
+      "optional": "اختياري",
+      "selectGenre": "اختر النوع",
+      "selectLanguage": "اختر اللغة",
+      "songSearch": "ابحث في مكتبة Pirate الموسيقية",
+      "songTitle": "عنوان الأغنية",
+      "sourceTrackSearch": "ابحث في أصول Pirate / Story",
+      "title": "العنوان",
+      "unlockPrice": "1.00",
+      "url": "https://"
+    },
+    "sections": {
+      "access": "الوصول",
+      "audience": "الجمهور",
+      "postAs": "انشر باسم",
+      "qualifiers": "المؤهلات",
+      "sourceTrack": "المسار المصدر"
+    },
+    "setlist": {
+      "cannotFindTrack": "ألا تجد المسار؟",
+      "hideManualDetails": "أخفِ التفاصيل اليدوية",
+      "searchSongs": "ابحث عن أغانٍ لعنصر قائمة التشغيل"
+    },
+    "songModes": {
+      "original": "أصلي",
+      "remix": "ريمكس"
+    },
+    "tabs": {
+      "image": "صورة",
+      "link": "رابط",
+      "live": "بث مباشر",
+      "song": "أغنية",
+      "text": "نص",
+      "video": "فيديو"
+    },
+    "title": "أنشئ منشورًا",
+    "upload": {
+      "artworkHelp": "تظهر في الخلاصة وصفحة الإصدار وواجهة المشغل.",
+      "cover": "الغلاف",
+      "noFileSelected": "لم يتم اختيار ملف",
+      "squareArtwork": "ارفع غلافًا مربعًا"
+    }
+  },
   "onboarding": {
+    "actions": {
+      "generateHandle": "أنشئ اسمًا جديدًا",
+      "checkAgain": "تحقق مرة أخرى",
+      "continue": "تابع",
+      "getCode": "احصل على الرمز",
+      "next": "التالي",
+      "skip": "تخطَّ"
+    },
     "chooseNameAction": "اختر الاسم",
     "description": "مسار إعداد واحد بمراحل تُدار من العميل. لم يتم تثبيت عناوين URL المتداخلة للإعداد بعد.",
+    "errors": {
+      "chooseHandle": "اختر اسمًا قبل المتابعة",
+      "renameFailed": "فشل تغيير الاسم"
+    },
+    "fields": {
+      "handle": "الاسم",
+      "redditCode": "رمز ريديت {surface}",
+      "redditUsername": "اسم مستخدم Reddit"
+    },
     "importKarmaAction": "استورد الكارما",
+    "notes": {
+      "addCodeToProfile": "أضف هذا الرمز إلى وصف ملفك الشخصي على Reddit:",
+      "checkedRedditAt": "تم فحص Reddit عند {time}. الرمز غير ظاهر بعد. احفظ ملفك الشخصي، وانتظر بضع ثوانٍ، ثم اضغط على \"تحقق مرة أخرى\".",
+      "checkingRedditNow": "جارٍ فحص Reddit الآن...",
+      "handleAvailable": "الاسم {handle}.pirate متاح",
+      "handleTaken": "الاسم {handle}.pirate مستخدم",
+      "importing": "جارٍ الاستيراد...",
+      "noSuggestionsYet": "لا توجد مجتمعات مقترحة بعد. يمكنك الانضمام من خلاصتك لاحقًا.",
+      "saveProfileThenCheckAgain": "بعد حفظ وصف ملفك الشخصي على Reddit، انتظر بضع ثوانٍ ثم اضغط على \"تحقق مرة أخرى\".",
+      "startingImport": "بدء الاستيراد..."
+    },
+    "placeholders": {
+      "handle": "اختر اسمك"
+    },
+    "progressLabel": "الإعداد",
+    "stepCount": "{current}/{total}",
     "suggestedCommunitiesAction": "مجتمعات مقترحة",
-    "title": "أكمل إعداد هوية Pirate الخاصة بك"
+    "surfaces": {
+      "about": "حول",
+      "bio": "النبذة",
+      "profile": "الملف الشخصي"
+    },
+    "title": "أكمل إعداد هويتك على بايرت"
   },
   "inbox": {
     "body": "أبقِ `/inbox` كعنصر نائب محايد حتى يتم تحديد الإشعارات أو المراسلة كسطوح منتج حقيقية.",
     "description": "تم تجهيز هذا المسار حتى يشير إليه تنقل الهاتف بصدق بينما لا يزال سلوك الوارد غير محدد.",
-    "title": "عنصر نائب للوارد"
+    "emptyState": "لا توجد إشعارات بعد",
+    "loading": "جارٍ التحميل...",
+    "recentActivity": "النشاط الأخير",
+    "someone": "شخص ما",
+    "taskActionNeeded": "إجراء مطلوب",
+    "taskDismiss": "إخفاء",
+    "taskNamespaceVerificationRequired": "تحقق من مساحة اسم مجتمعك",
+    "taskVerify": "تحقق",
+    "title": "الوارد"
   },
   "createCommunity": {
+    "reopenVerification": "أعد فتح التحقق",
     "description": "هيكل جاهز حول مكوّن إنشاء المجتمع الحالي. الإرسال غير موصول بعد.",
-    "title": "أنشئ مجتمعًا"
+    "startVerification": "تحقق",
+    "title": "أنشئ مجتمعًا",
+    "verifyDescription": "تحقق قبل إنشاء مجتمع.",
+    "verifyPendingDescription": "أكمل مسح راحة اليد للمتابعة.",
+    "verifyPendingTitle": "أكمل التحقق",
+    "verifyStartDescription": "امسح راحة يدك لإثبات أنك إنسان. لا يتم حفظ أي صور أو بيانات.",
+    "verifyStartTitle": "تحقق"
+  },
+  "profile": {
+    "commentsTab": "التعليقات",
+    "editProfile": "عدّل الملف الشخصي",
+    "emptyActivity": "لا يوجد نشاط بعد.",
+    "emptyPosts": "لا توجد منشورات بعد.",
+    "emptyScrobbles": "لا توجد سكروبلات بعد.",
+    "follow": "تابع",
+    "followersLabel": "المتابعون",
+    "following": "تتابع",
+    "followingLabel": "يتابع",
+    "handleUpdated": "تم تحديث المعرّف",
+    "message": "راسل",
+    "moreActions": "مزيد من الإجراءات",
+    "overviewTab": "نظرة عامة",
+    "postsTab": "المنشورات",
+    "scrobblesTab": "السكروبلات",
+    "shareProfile": "شارك الملف الشخصي",
+    "title": "الملف الشخصي",
+    "verificationTitle": "التحقق",
+    "walletTitle": "المحفظة"
+  },
+  "publicProfile": {
+    "aboutTab": "حول",
+    "communitiesTitle": "المجتمعات",
+    "emptyAbout": "لا توجد معلومات بعد.",
+    "emptyPosts": "لا توجد منشورات بعد.",
+    "emptyScrobbles": "لا توجد سكروبلات بعد.",
+    "emptySongs": "لا توجد أغانٍ بعد.",
+    "emptyVideos": "لا توجد فيديوهات بعد.",
+    "errorDescription": "تعذر تحميل هذا الملف الشخصي العام الآن.",
+    "errorTitle": "الملف الشخصي العام",
+    "joinedLabel": "انضم",
+    "notFoundDescription": "لم نتمكن من العثور على ملف شخصي عام لـ {path}.",
+    "notFoundTitle": "الملف الشخصي غير موجود",
+    "openInPirate": "افتح في بايرت",
+    "postsTab": "المنشورات",
+    "scrobblesTab": "السكروبلات",
+    "songsTab": "الأغاني",
+    "videosTab": "الفيديوهات"
+  },
+  "publicCommunity": {
+    "emptyPosts": "لا توجد منشورات بعد",
+    "errorDescription": "تعذر تحميل هذا المجتمع الآن.",
+    "errorTitle": "المجتمع",
+    "notFoundDescription": "لم نتمكن من العثور على c/{communityId}.",
+    "notFoundTitle": "المجتمع غير موجود"
+  },
+  "settings": {
+    "ageStatusLabel": "حالة العمر",
+    "ageVerified": "تم التحقق من 18+",
+    "appearanceSection": "المظهر",
+    "appLanguageLabel": "لغة التطبيق",
+    "avatarTitle": "الصورة الشخصية",
+    "bioLabel": "النبذة",
+    "connectedWalletsSection": "المحافظ المتصلة",
+    "coverTitle": "الغلاف",
+    "displayNameLabel": "اسم العرض",
+    "displayNameRequired": "اسم العرض مطلوب.",
+    "handleNoteEns": "ENS",
+    "handleNoteEnsRefresh": "يحتاج ENS إلى تحديث",
+    "handleNoteEnsUnverified": "ENS غير متحقق",
+    "handleNotePirate": "معرّف بايرت",
+    "identitySection": "الهوية",
+    "languageSection": "اللغة",
+    "linkedHandlesSection": "المعرّفات المرتبطة",
+    "localeArabic": "العربية",
+    "localeEnglish": "الإنجليزية",
+    "localeMandarin": "الماندرين",
+    "localePseudo": "الزائفة",
+    "noConnectedWallets": "لا توجد محافظ متصلة بعد.",
+    "notVerified": "غير متحقق",
+    "noWalletConnected": "لا توجد محفظة متصلة",
+    "postsAndCommentsLabel": "المنشورات والتعليقات",
+    "postsAndCommentsNote": "التوقيع العام الأساسي",
+    "preferencesTab": "التفضيلات",
+    "primaryHandleLabel": "الأساسي",
+    "primaryWalletLabel": "المحفظة الأساسية",
+    "primaryWalletNote": "المحفظة الأساسية",
+    "profileSection": "الملف الشخصي",
+    "profileUpdated": "تم تحديث الملف الشخصي",
+    "profileTab": "الملف الشخصي",
+    "removeAvatar": "أزل الصورة الشخصية",
+    "removeCover": "أزل الغلاف",
+    "replaceAvatar": "استبدل الصورة الشخصية",
+    "replaceCover": "استبدل الغلاف",
+    "savePreferences": "احفظ التفضيلات",
+    "saveProfile": "احفظ الملف الشخصي",
+    "sectionsLabel": "أقسام الإعدادات",
+    "selectLanguage": "اختر اللغة",
+    "title": "الإعدادات",
+    "uploadAvatar": "ارفع صورة شخصية",
+    "uploadCover": "ارفع غلافًا",
+    "preferencesUpdated": "تم تحديث التفضيلات",
+    "walletTab": "المحفظة"
   },
   "notFound": {
     "body": "النسخة الأولى من الهيكل تثبّت فقط مجموعة صغيرة من المسارات: الرئيسية، الخلاصات، المجتمعات، المنشورات، الملفات الشخصية، الإعداد، عنصر نائب للوارد، وإنشاء مجتمع.",

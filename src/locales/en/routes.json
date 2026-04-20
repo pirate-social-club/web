@@ -2,6 +2,7 @@
   "common": {
     "backHome": "Back Home",
     "bestTab": "Best",
+    "chooseCommunity": "Choose a community",
     "commentsHeading": "Comments",
     "createAction": "Create",
     "cancelReply": "Cancel",
@@ -11,6 +12,7 @@
     "loadingReplies": "Loading replies...",
     "newTab": "New",
     "noComments": "No comments yet.",
+    "noRecentCommunities": "No recent communities.",
     "replyAction": "Reply",
     "replyPlaceholder": "Write a reply",
     "showOriginal": "Show original",
@@ -25,6 +27,11 @@
     "topYear": "This year"
   },
   "home": {
+    "createCommunityLabel": "Create community",
+    "emptyHomeBody": "Join a community or create one to start building your home feed.",
+    "emptyHomeTitle": "No posts yet",
+    "emptyYourCommunitiesBody": "Communities you create or join show up here.",
+    "emptyYourCommunitiesTitle": "No communities yet",
     "membersLabel": "{count} members",
     "railTitle": "Recent posts",
     "subtitle": "",
@@ -42,21 +49,296 @@
     "description": "Single-thread route shell for the future `GET /posts/{post_id}` read.",
     "fallbackTitle": "Post"
   },
+  "community": {
+    "aboutTab": "About",
+    "createPostLabel": "Create Post",
+    "feedTab": "Feed",
+    "membersLabel": "Members",
+    "modToolsLabel": "Mod Tools",
+    "requirementsLabel": "Requirements",
+    "rulesLabel": "Rules",
+    "title": "Community"
+  },
+  "createPost": {
+    "access": {
+      "paidDescription": "Preview in feed. Full track unlocks after purchase.",
+      "paidUnlock": "Paid unlock",
+      "public": "Public",
+      "publicDescription": "Anyone can play the full track.",
+      "rightsAttested": "I have the rights to publish and monetize this track.",
+      "useRegionalPricing": "Use community regional pricing"
+    },
+    "actions": {
+      "post": "Post",
+      "publishRemix": "Publish remix"
+    },
+    "audience": {
+      "private": "Private",
+      "privateDescription": "Joined members can read this post.",
+      "public": "Public",
+      "publicDisabledReason": "This community already limits who can read posts.",
+      "publicDescription": "Anyone can read this post."
+    },
+    "backToCommunity": "Back to community",
+    "buttons": {
+      "chooseFile": "Choose file",
+      "clear": "Clear",
+      "replace": "Replace"
+    },
+    "derivative": {
+      "searchSourceTracks": "Search source tracks"
+    },
+    "empty": {
+      "noOptionalQualifiers": "No optional qualifiers are available for this community.",
+      "noQualifiers": "No qualifiers found.",
+      "noReferences": "No upstream works attached yet.",
+      "noSongs": "No songs found.",
+      "noSourceTracks": "No source tracks found."
+    },
+    "fields": {
+      "audio": "Audio",
+      "body": "Body",
+      "canvasVideo": "Canvas video",
+      "caption": "Caption",
+      "commentary": "Commentary",
+      "coverArt": "Cover art",
+      "genre": "Genre",
+      "image": "Image",
+      "instrumentalStem": "Instrumental stem",
+      "lyrics": "Lyrics",
+      "primaryLanguage": "Primary language",
+      "secondaryLanguage": "Secondary language",
+      "song": "Song",
+      "title": "Title",
+      "unlockPriceUsd": "Unlock price (USD)",
+      "url": "URL",
+      "video": "Video",
+      "vocalStem": "Vocal stem",
+      "previewClip": "Preview clip"
+    },
+    "identity": {
+      "addQualifiers": "Add qualifiers",
+      "postAnonymously": "Post anonymously",
+      "qualifiersHelp": "Attach verified qualifiers to this post. Qualifiers already implied by community gates are omitted.",
+      "searchQualifiers": "Search qualifiers"
+    },
+    "labels": {
+      "source": "Source"
+    },
+    "membershipRequiredDescription": "Only community members can publish posts here.",
+    "membershipRequiredTitle": "Join this community before posting",
+    "none": "None",
+    "placeholders": {
+      "artist": "Artist",
+      "body": "Write your post",
+      "caption": "Add a caption",
+      "commentary": "Add commentary",
+      "lyrics": "Paste lyrics",
+      "optional": "Optional",
+      "selectGenre": "Select genre",
+      "selectLanguage": "Select language",
+      "songSearch": "Search Pirate songbase",
+      "songTitle": "Song title",
+      "sourceTrackSearch": "Search Pirate / Story assets",
+      "title": "Title",
+      "unlockPrice": "1.00",
+      "url": "https://"
+    },
+    "sections": {
+      "access": "Access",
+      "audience": "Audience",
+      "postAs": "Post as",
+      "qualifiers": "Qualifiers",
+      "sourceTrack": "Source track"
+    },
+    "setlist": {
+      "cannotFindTrack": "Can't find the track?",
+      "hideManualDetails": "Hide manual details",
+      "searchSongs": "Search songs for setlist item"
+    },
+    "songModes": {
+      "original": "Original",
+      "remix": "Remix"
+    },
+    "tabs": {
+      "image": "Image",
+      "link": "Link",
+      "live": "Live",
+      "song": "Song",
+      "text": "Text",
+      "video": "Video"
+    },
+    "title": "Create post",
+    "upload": {
+      "artworkHelp": "Shows in feed, release, and player surfaces.",
+      "cover": "Cover",
+      "noFileSelected": "No file selected",
+      "squareArtwork": "Upload square artwork"
+    }
+  },
   "onboarding": {
+    "actions": {
+      "generateHandle": "Generate a new handle",
+      "checkAgain": "Check again",
+      "continue": "Continue",
+      "getCode": "Get code",
+      "next": "Next",
+      "skip": "Skip"
+    },
     "chooseNameAction": "Choose Name",
     "description": "Single onboarding route with client-managed phases. No nested onboarding URLs are locked yet.",
+    "errors": {
+      "chooseHandle": "Choose a handle before continuing",
+      "renameFailed": "Handle rename failed"
+    },
+    "fields": {
+      "handle": "Handle",
+      "redditCode": "Reddit {surface} code",
+      "redditUsername": "Reddit username"
+    },
     "importKarmaAction": "Import Karma",
+    "notes": {
+      "addCodeToProfile": "Add this code to your Reddit profile Description:",
+      "checkedRedditAt": "Checked Reddit at {time}. The code is not visible yet. Save your profile, wait a few seconds, then click Check again.",
+      "checkingRedditNow": "Checking Reddit now...",
+      "handleAvailable": "{handle}.pirate is available",
+      "handleTaken": "{handle}.pirate is taken",
+      "importing": "Importing...",
+      "noSuggestionsYet": "No community suggestions yet. Join some from your feed later.",
+      "saveProfileThenCheckAgain": "After saving your Reddit profile Description, wait a few seconds and click Check again.",
+      "startingImport": "Starting import..."
+    },
+    "placeholders": {
+      "handle": "Choose your handle"
+    },
+    "progressLabel": "Onboarding",
+    "stepCount": "{current}/{total}",
     "suggestedCommunitiesAction": "Suggested Communities",
+    "surfaces": {
+      "about": "about",
+      "bio": "bio",
+      "profile": "profile"
+    },
     "title": "Finish setting up your Pirate identity"
   },
   "inbox": {
     "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",
     "description": "This route is scaffolded so the mobile nav can point somewhere truthful while inbox behavior is still undefined.",
-    "title": "Inbox placeholder"
+    "emptyState": "No notifications yet",
+    "loading": "Loading...",
+    "recentActivity": "Recent activity",
+    "someone": "Someone",
+    "taskActionNeeded": "Action needed",
+    "taskDismiss": "Dismiss",
+    "taskNamespaceVerificationRequired": "Verify your community namespace",
+    "taskVerify": "Verify",
+    "title": "Inbox"
   },
   "createCommunity": {
+    "reopenVerification": "Reopen verification",
     "description": "Scaffolded shell around the existing community composer composition. Submission is not wired yet.",
-    "title": "Create a community"
+    "startVerification": "Verify",
+    "title": "Create a community",
+    "verifyDescription": "Verify before creating a community.",
+    "verifyPendingDescription": "Complete your palm scan to continue.",
+    "verifyPendingTitle": "Finish verification",
+    "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+    "verifyStartTitle": "Verify"
+  },
+  "profile": {
+    "commentsTab": "Comments",
+    "editProfile": "Edit profile",
+    "emptyActivity": "No activity yet.",
+    "emptyPosts": "No posts yet.",
+    "emptyScrobbles": "No scrobbles yet.",
+    "follow": "Follow",
+    "followersLabel": "Followers",
+    "following": "Following",
+    "followingLabel": "Following",
+    "handleUpdated": "Handle updated",
+    "message": "Message",
+    "moreActions": "More actions",
+    "overviewTab": "Overview",
+    "postsTab": "Posts",
+    "scrobblesTab": "Scrobbles",
+    "shareProfile": "Share profile",
+    "title": "Profile",
+    "verificationTitle": "Verification",
+    "walletTitle": "Wallet"
+  },
+  "publicProfile": {
+    "aboutTab": "About",
+    "communitiesTitle": "Communities",
+    "emptyAbout": "No info yet.",
+    "emptyPosts": "No posts yet.",
+    "emptyScrobbles": "No scrobbles yet.",
+    "emptySongs": "No songs yet.",
+    "emptyVideos": "No videos yet.",
+    "errorDescription": "This public profile could not be loaded right now.",
+    "errorTitle": "Public profile",
+    "joinedLabel": "Joined",
+    "notFoundDescription": "We could not find a public profile for {path}.",
+    "notFoundTitle": "Profile not found",
+    "openInPirate": "Open in Pirate",
+    "postsTab": "Posts",
+    "scrobblesTab": "Scrobbles",
+    "songsTab": "Songs",
+    "videosTab": "Videos"
+  },
+  "publicCommunity": {
+    "emptyPosts": "No posts yet",
+    "errorDescription": "This community could not be loaded right now.",
+    "errorTitle": "Community",
+    "notFoundDescription": "We could not find c/{communityId}.",
+    "notFoundTitle": "Community not found"
+  },
+  "settings": {
+    "ageStatusLabel": "Age status",
+    "ageVerified": "18+ verified",
+    "appearanceSection": "Appearance",
+    "appLanguageLabel": "App language",
+    "bioLabel": "Bio",
+    "connectedWalletsSection": "Connected wallets",
+    "coverTitle": "Cover",
+    "displayNameLabel": "Display name",
+    "displayNameRequired": "Display name is required.",
+    "handleNoteEns": "ENS",
+    "handleNoteEnsRefresh": "ENS needs refresh",
+    "handleNoteEnsUnverified": "ENS not verified",
+    "handleNotePirate": "Pirate handle",
+    "identitySection": "Identity",
+    "languageSection": "Language",
+    "linkedHandlesSection": "Linked handles",
+    "localeArabic": "Arabic",
+    "localeEnglish": "English",
+    "localeMandarin": "Mandarin",
+    "localePseudo": "Pseudo",
+    "noConnectedWallets": "No connected wallets yet.",
+    "notVerified": "Not verified",
+    "noWalletConnected": "No wallet connected",
+    "postsAndCommentsLabel": "Posts and comments",
+    "postsAndCommentsNote": "Primary public byline",
+    "preferencesTab": "Preferences",
+    "primaryHandleLabel": "Primary",
+    "primaryWalletLabel": "Primary wallet",
+    "primaryWalletNote": "Primary wallet",
+    "profileSection": "Profile",
+    "profileUpdated": "Profile updated",
+    "profileTab": "Profile",
+    "removeAvatar": "Remove avatar",
+    "removeCover": "Remove cover",
+    "replaceAvatar": "Replace avatar",
+    "replaceCover": "Replace cover",
+    "savePreferences": "Save preferences",
+    "saveProfile": "Save profile",
+    "sectionsLabel": "Settings sections",
+    "selectLanguage": "Select language",
+    "title": "Settings",
+    "uploadAvatar": "Upload avatar",
+    "uploadCover": "Upload cover",
+    "avatarTitle": "Avatar",
+    "preferencesUpdated": "Preferences updated",
+    "walletTab": "Wallet"
   },
   "notFound": {
     "body": "The first scaffold only locks a small set of routes: home, feeds, communities, posts, profiles, onboarding, inbox placeholder, and community create.",

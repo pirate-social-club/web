@@ -4,6 +4,7 @@ import * as React from "react";
 import type { CommunityPreview as ApiCommunityPreview, LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
 import { toCommunityFeedItem } from "@/app/authenticated-route-renderer";
+import { navigate } from "@/app/router";
 import { sortCommunityFeedPosts } from "@/app/authenticated-routes/feed-sorting";
 import { type FeedSort, type FeedSortOption } from "@/components/compositions/feed/feed";
 import { CommunityPageShell } from "@/components/compositions/community-page-shell/community-page-shell";
@@ -74,7 +75,7 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
   return { error, loading, posts, preview };
 }
 
-function buildPreviewSidebar(preview: ApiCommunityPreview) {
+function buildPreviewSidebar(preview: ApiCommunityPreview, locale: string) {
   return {
     avatarSrc: preview.avatar_ref ?? undefined,
     createdAt: preview.created_at,
@@ -84,8 +85,15 @@ function buildPreviewSidebar(preview: ApiCommunityPreview) {
     membershipMode: preview.membership_mode,
     requirements: buildCommunitySidebarRequirements({
       gateSummaries: preview.membership_gate_summaries,
+      locale,
     }),
-    rules: [],
+    rules: (preview.rules ?? []).map((rule) => ({
+      body: resolveCommunityLocalizedText(preview, `community.rule.${rule.rule_id}.body`, rule.body),
+      position: rule.position,
+      ruleId: rule.rule_id,
+      status: rule.status,
+      title: resolveCommunityLocalizedText(preview, `community.rule.${rule.rule_id}.title`, rule.title),
+    })),
   };
 }
 
@@ -161,10 +169,12 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         emptyState={{
           title: copy.publicCommunity.emptyPosts,
         }}
-        items={posts.map((post) => toCommunityFeedItem(post, {}))}
+        items={posts.map((post) => toCommunityFeedItem(post, {}, undefined, {
+          onComment: () => navigate(`/p/${post.post.post_id}`),
+        }))}
         onSortChange={setActiveSort}
         routeLabel={`c/${communityId}`}
-        sidebar={buildPreviewSidebar(preview)}
+        sidebar={buildPreviewSidebar(preview, locale)}
         title={preview.display_name}
       />
     </section>

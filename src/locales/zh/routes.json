@@ -1,0 +1,348 @@
+{
+  "common": {
+    "backHome": "返回首页",
+    "bestTab": "最佳",
+    "chooseCommunity": "选择社区",
+    "commentsHeading": "评论",
+    "createAction": "发布",
+    "cancelReply": "取消",
+    "joinedStatLabel": "加入时间",
+    "loadMoreReplies": "加载更多回复",
+    "loadReplies": "加载回复",
+    "loadingReplies": "正在加载回复...",
+    "newTab": "最新",
+    "noComments": "还没有评论。",
+    "noRecentCommunities": "还没有最近访问的社区。",
+    "replyAction": "回复",
+    "replyPlaceholder": "写回复",
+    "showOriginal": "显示原文",
+    "showTranslation": "显示翻译",
+    "submitReply": "发布回复",
+    "topAll": "全部时间",
+    "topDay": "今天",
+    "topHour": "这一小时",
+    "topMonth": "本月",
+    "topTab": "热门",
+    "topWeek": "本周",
+    "topYear": "今年"
+  },
+  "home": {
+    "createCommunityLabel": "创建社区",
+    "emptyHomeBody": "加入一个社区，或创建一个社区，开始建立你的首页动态。",
+    "emptyHomeTitle": "还没有帖子",
+    "emptyYourCommunitiesBody": "你创建或加入的社区会显示在这里。",
+    "emptyYourCommunitiesTitle": "还没有社区",
+    "membersLabel": "{count} 位成员",
+    "railTitle": "最新帖子",
+    "subtitle": "",
+    "title": "首页"
+  },
+  "yourCommunities": {
+    "gatedLabel": "受限",
+    "openLabel": "公开",
+    "railTitle": "你的空间",
+    "subtitle": "面向成员的动态流外壳。移动端保持紧凑，把更重的导航交给侧边栏。",
+    "title": "你的社区"
+  },
+  "post": {
+    "commentsBody": "帖子串回复还未完整搭建。这个路由当前主要用于固定 `post_id` 读取的 URL 合约和页面框架。",
+    "description": "为未来的 `GET /posts/{post_id}` 读取准备的单帖路由外壳。",
+    "fallbackTitle": "帖子"
+  },
+  "community": {
+    "aboutTab": "关于",
+    "createPostLabel": "发布帖子",
+    "feedTab": "动态",
+    "membersLabel": "成员",
+    "modToolsLabel": "管理工具",
+    "requirementsLabel": "要求",
+    "rulesLabel": "规则",
+    "title": "社区"
+  },
+  "createPost": {
+    "access": {
+      "paidDescription": "动态里显示预览，购买后可解锁完整曲目。",
+      "paidUnlock": "付费解锁",
+      "public": "公开",
+      "publicDescription": "任何人都可以播放完整曲目。",
+      "rightsAttested": "我确认我有权发布并将此曲目商业化。",
+      "useRegionalPricing": "使用社区区域定价"
+    },
+    "actions": {
+      "post": "发布",
+      "publishRemix": "发布混音"
+    },
+    "audience": {
+      "private": "仅成员",
+      "privateDescription": "只有已加入的成员可以阅读这条帖子。",
+      "public": "公开",
+      "publicDisabledReason": "这个社区已经限制了可阅读帖子的人群。",
+      "publicDescription": "任何人都可以阅读这条帖子。"
+    },
+    "backToCommunity": "返回社区",
+    "buttons": {
+      "chooseFile": "选择文件",
+      "clear": "清除",
+      "replace": "替换"
+    },
+    "derivative": {
+      "searchSourceTracks": "搜索源曲目"
+    },
+    "empty": {
+      "noOptionalQualifiers": "这个社区没有可选的资格标签。",
+      "noQualifiers": "未找到资格标签。",
+      "noReferences": "还没有附加源作品。",
+      "noSongs": "未找到歌曲。",
+      "noSourceTracks": "未找到源曲目。"
+    },
+    "fields": {
+      "audio": "音频",
+      "body": "正文",
+      "canvasVideo": "Canvas 视频",
+      "caption": "说明",
+      "commentary": "评论",
+      "coverArt": "封面图",
+      "genre": "流派",
+      "image": "图片",
+      "instrumentalStem": "伴奏分轨",
+      "lyrics": "歌词",
+      "primaryLanguage": "主要语言",
+      "secondaryLanguage": "次要语言",
+      "song": "歌曲",
+      "title": "标题",
+      "unlockPriceUsd": "解锁价格（美元）",
+      "url": "链接",
+      "video": "视频",
+      "vocalStem": "人声分轨",
+      "previewClip": "预览片段"
+    },
+    "identity": {
+      "addQualifiers": "添加资格标签",
+      "postAnonymously": "匿名发布",
+      "qualifiersHelp": "为这条帖子附加已验证的资格标签。社区规则已隐含的标签不会重复显示。",
+      "searchQualifiers": "搜索资格标签"
+    },
+    "labels": {
+      "source": "来源"
+    },
+    "membershipRequiredDescription": "只有社区成员才能在这里发帖。",
+    "membershipRequiredTitle": "发帖前先加入这个社区",
+    "none": "无",
+    "placeholders": {
+      "artist": "艺人",
+      "body": "写下你的帖子",
+      "caption": "添加说明",
+      "commentary": "添加评论",
+      "lyrics": "粘贴歌词",
+      "optional": "可选",
+      "selectGenre": "选择流派",
+      "selectLanguage": "选择语言",
+      "songSearch": "搜索 Pirate 曲库",
+      "songTitle": "歌曲标题",
+      "sourceTrackSearch": "搜索 Pirate / Story 资产",
+      "title": "标题",
+      "unlockPrice": "1.00",
+      "url": "https://"
+    },
+    "sections": {
+      "access": "访问权限",
+      "audience": "受众",
+      "postAs": "发布身份",
+      "qualifiers": "资格标签",
+      "sourceTrack": "源曲目"
+    },
+    "setlist": {
+      "cannotFindTrack": "找不到这首歌？",
+      "hideManualDetails": "隐藏手动详情",
+      "searchSongs": "为歌单项搜索歌曲"
+    },
+    "songModes": {
+      "original": "原创",
+      "remix": "混音"
+    },
+    "tabs": {
+      "image": "图片",
+      "link": "链接",
+      "live": "直播",
+      "song": "歌曲",
+      "text": "文本",
+      "video": "视频"
+    },
+    "title": "发布帖子",
+    "upload": {
+      "artworkHelp": "会显示在动态、发布页和播放器界面中。",
+      "cover": "封面",
+      "noFileSelected": "尚未选择文件",
+      "squareArtwork": "上传方形封面图"
+    }
+  },
+  "onboarding": {
+    "actions": {
+      "generateHandle": "生成新名称",
+      "checkAgain": "重新检查",
+      "continue": "继续",
+      "getCode": "获取代码",
+      "next": "下一步",
+      "skip": "跳过"
+    },
+    "chooseNameAction": "选择名称",
+    "description": "单一路由的引导流程，由客户端管理各阶段。嵌套引导 URL 还未固定。",
+    "errors": {
+      "chooseHandle": "继续前请先选择一个名称",
+      "renameFailed": "名称修改失败"
+    },
+    "fields": {
+      "handle": "名称",
+      "redditCode": "Reddit {surface} 验证码",
+      "redditUsername": "Reddit 用户名"
+    },
+    "importKarmaAction": "导入 Karma",
+    "notes": {
+      "addCodeToProfile": "把这段代码添加到你的 Reddit 个人资料简介中：",
+      "checkedRedditAt": "已在 {time} 检查 Reddit。代码还没有显示出来。保存个人资料后，等待几秒，再点击“重新检查”。",
+      "checkingRedditNow": "正在检查 Reddit...",
+      "handleAvailable": "{handle}.pirate 可用",
+      "handleTaken": "{handle}.pirate 已被占用",
+      "importing": "正在导入...",
+      "noSuggestionsYet": "还没有推荐社区。之后可以从你的 feed 中加入。",
+      "saveProfileThenCheckAgain": "保存 Reddit 个人资料简介后，等待几秒，再点击“重新检查”。",
+      "startingImport": "正在启动导入..."
+    },
+    "placeholders": {
+      "handle": "选择你的名称"
+    },
+    "progressLabel": "引导流程",
+    "stepCount": "{current}/{total}",
+    "suggestedCommunitiesAction": "推荐社区",
+    "surfaces": {
+      "about": "关于",
+      "bio": "简介",
+      "profile": "个人资料"
+    },
+    "title": "完成你的 Pirate 身份设置"
+  },
+  "inbox": {
+    "body": "在通知或消息系统成为真实产品界面前，先把 `/inbox` 保持为中性的占位页。",
+    "description": "这个路由已搭好外壳，这样移动端导航就能指向一个真实存在的位置，同时保留收件箱行为的后续定义空间。",
+    "emptyState": "还没有通知",
+    "loading": "加载中...",
+    "recentActivity": "最近动态",
+    "someone": "有人",
+    "taskActionNeeded": "需要处理",
+    "taskDismiss": "忽略",
+    "taskNamespaceVerificationRequired": "验证你的社区命名空间",
+    "taskVerify": "验证",
+    "title": "收件箱"
+  },
+  "createCommunity": {
+    "reopenVerification": "重新打开验证",
+    "description": "围绕现有社区创建组件搭建的页面外壳，提交流程暂未接通。",
+    "startVerification": "验证",
+    "title": "创建社区",
+    "verifyDescription": "创建社区前请先完成验证。",
+    "verifyPendingDescription": "完成掌纹扫描后继续。",
+    "verifyPendingTitle": "完成验证",
+    "verifyStartDescription": "扫描你的手掌以证明你是真人。不会保存照片或数据。",
+    "verifyStartTitle": "验证"
+  },
+  "profile": {
+    "commentsTab": "评论",
+    "editProfile": "编辑资料",
+    "emptyActivity": "还没有动态。",
+    "emptyPosts": "还没有帖子。",
+    "emptyScrobbles": "还没有 Scrobble。",
+    "follow": "关注",
+    "followersLabel": "关注者",
+    "following": "已关注",
+    "followingLabel": "关注中",
+    "handleUpdated": "用户名已更新",
+    "message": "发消息",
+    "moreActions": "更多操作",
+    "overviewTab": "概览",
+    "postsTab": "帖子",
+    "scrobblesTab": "Scrobbles",
+    "shareProfile": "分享资料",
+    "title": "个人资料",
+    "verificationTitle": "验证",
+    "walletTitle": "钱包"
+  },
+  "publicProfile": {
+    "aboutTab": "关于",
+    "communitiesTitle": "社区",
+    "emptyAbout": "还没有资料。",
+    "emptyPosts": "还没有帖子。",
+    "emptyScrobbles": "还没有 Scrobble。",
+    "emptySongs": "还没有歌曲。",
+    "emptyVideos": "还没有视频。",
+    "errorDescription": "当前无法加载这个公开资料页。",
+    "errorTitle": "公开资料页",
+    "joinedLabel": "加入时间",
+    "notFoundDescription": "找不到 {path} 的公开资料页。",
+    "notFoundTitle": "找不到个人资料",
+    "openInPirate": "在 Pirate 中打开",
+    "postsTab": "帖子",
+    "scrobblesTab": "Scrobbles",
+    "songsTab": "歌曲",
+    "videosTab": "视频"
+  },
+  "publicCommunity": {
+    "emptyPosts": "还没有帖子",
+    "errorDescription": "当前无法加载这个社区。",
+    "errorTitle": "社区",
+    "notFoundDescription": "找不到 c/{communityId}。",
+    "notFoundTitle": "找不到社区"
+  },
+  "settings": {
+    "ageStatusLabel": "年龄状态",
+    "ageVerified": "已完成 18+ 验证",
+    "appearanceSection": "外观",
+    "appLanguageLabel": "应用语言",
+    "avatarTitle": "头像",
+    "bioLabel": "简介",
+    "connectedWalletsSection": "已连接的钱包",
+    "coverTitle": "封面",
+    "displayNameLabel": "显示名称",
+    "displayNameRequired": "显示名称为必填项。",
+    "handleNoteEns": "ENS",
+    "handleNoteEnsRefresh": "ENS 需要刷新",
+    "handleNoteEnsUnverified": "ENS 未验证",
+    "handleNotePirate": "Pirate 用户名",
+    "identitySection": "身份",
+    "languageSection": "语言",
+    "linkedHandlesSection": "已关联用户名",
+    "localeArabic": "阿拉伯语",
+    "localeEnglish": "英语",
+    "localeMandarin": "中文",
+    "localePseudo": "伪本地化",
+    "noConnectedWallets": "还没有已连接的钱包。",
+    "notVerified": "未验证",
+    "noWalletConnected": "未连接钱包",
+    "postsAndCommentsLabel": "帖子和评论",
+    "postsAndCommentsNote": "默认公开署名",
+    "preferencesTab": "偏好",
+    "primaryHandleLabel": "主用",
+    "primaryWalletLabel": "主钱包",
+    "primaryWalletNote": "主钱包",
+    "profileSection": "个人资料",
+    "profileUpdated": "资料已更新",
+    "profileTab": "个人资料",
+    "removeAvatar": "移除头像",
+    "removeCover": "移除封面",
+    "replaceAvatar": "更换头像",
+    "replaceCover": "更换封面",
+    "savePreferences": "保存偏好",
+    "saveProfile": "保存资料",
+    "sectionsLabel": "设置分区",
+    "selectLanguage": "选择语言",
+    "title": "设置",
+    "uploadAvatar": "上传头像",
+    "uploadCover": "上传封面",
+    "preferencesUpdated": "偏好已更新",
+    "walletTab": "钱包"
+  },
+  "notFound": {
+    "body": "当前脚手架只固定了一小部分路由：首页、信息流、社区、帖子、个人资料、引导、收件箱占位页和创建社区。",
+    "description": "没有为 {path} 提供已搭建的页面。",
+    "title": "找不到路由"
+  }
+}

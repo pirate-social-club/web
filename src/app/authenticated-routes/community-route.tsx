@@ -32,8 +32,8 @@ import {
 import { clearPendingSelfJoinSession, readPendingSelfJoinSession, writePendingSelfJoinSession } from "./community-session-helpers";
 import { NotFoundPage } from "./misc-routes";
 import {
-  buildCommunityModerationIndexPath,
   buildCommunityModerationPath,
+  buildDefaultCommunityModerationPath,
 } from "./moderation-helpers";
 import { toCommunityFeedItem } from "./post-presentation";
 import { submitOptimisticPostVote, updateCommunityPostVote } from "./post-vote";
@@ -439,7 +439,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
-      {ownsCommunity ? <Button onClick={() => navigate(buildCommunityModerationIndexPath(communityId))} variant="secondary">{modToolsLabel}</Button> : null}
+      {ownsCommunity ? <Button onClick={() => navigate(buildDefaultCommunityModerationPath(communityId))} variant="secondary">{modToolsLabel}</Button> : null}
       {canCreatePost ? (
         <Button leadingIcon={<Plus className="size-5" />} onClick={() => navigate(`/c/${communityId}/submit`)}>{createPostLabel}</Button>
       ) : eligibility && preview.membership_gate_summaries.length === 0 ? (

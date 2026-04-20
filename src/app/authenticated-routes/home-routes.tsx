@@ -41,6 +41,8 @@ export function HomePage() {
   const createCommunityLabel = copy.home.createCommunityLabel;
   const emptyHomeBody = copy.home.emptyHomeBody;
   const emptyHomeTitle = copy.home.emptyHomeTitle;
+  const emptyHomeVerifyBody = copy.home.emptyHomeVerifyBody;
+  const verifyToPostLabel = copy.home.verifyToPostLabel;
   const [activeSort, setActiveSort] = React.useState<FeedSort>("best");
   const [topTimeRange, setTopTimeRange] = React.useState("day");
   const [feedEntries, setFeedEntries] = React.useState<ApiHomeFeedItem[]>([]);
@@ -117,6 +119,7 @@ export function HomePage() {
     sort: activeSort,
     topTimeRange: activeSort === "top" ? topTimeRange : null,
   }), [activeSort, feedEntries, topTimeRange]);
+  const needsPostingVerification = !!session && session.onboarding.unique_human_verification_status !== "verified";
 
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
     const entry = feedEntries.find((candidate) => candidate.post.post.post_id === postId);
@@ -185,8 +188,12 @@ export function HomePage() {
         availableSorts={sortOptions}
         controls={activeSort === "top" ? <TopTimeRangeControl onValueChange={setTopTimeRange} options={topTimeRangeOptions} value={topTimeRange} /> : undefined}
         emptyState={{
-          action: session ? <Button onClick={() => navigate("/communities/new")} variant="secondary">{createCommunityLabel}</Button> : undefined,
-          body: emptyHomeBody,
+          action: session ? (
+            <Button onClick={() => navigate(needsPostingVerification ? "/onboarding" : "/communities/new")} variant="secondary">
+              {needsPostingVerification ? verifyToPostLabel : createCommunityLabel}
+            </Button>
+          ) : undefined,
+          body: needsPostingVerification ? emptyHomeVerifyBody : emptyHomeBody,
           title: emptyHomeTitle,
         }}
         items={feedItems}

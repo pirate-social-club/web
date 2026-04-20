@@ -1,9 +1,11 @@
 export type AgentPostingPolicy = "disallow" | "allow";
 export type AgentPostingScope = "replies_only" | "top_level_and_replies";
+export type AgentOwnershipProvider = "self_agent_id" | "clawkey";
 
 export interface CommunityAgentPolicySettings {
   agentPostingPolicy: AgentPostingPolicy;
   agentPostingScope: AgentPostingScope;
+  acceptedAgentOwnershipProviders: AgentOwnershipProvider[];
   dailyPostCap: number | null;
   dailyReplyCap: number | null;
 }

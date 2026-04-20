@@ -29,13 +29,15 @@
   "home": {
     "createCommunityLabel": "أنشئ مجتمعًا",
     "emptyHomeBody": "انضم إلى مجتمع أو أنشئ واحدًا لتبدأ في بناء خلاصتك الرئيسية.",
+    "emptyHomeVerifyBody": "تحقق من حسابك قبل أن تنشر أول مشاركة.",
     "emptyHomeTitle": "لا توجد منشورات بعد",
     "emptyYourCommunitiesBody": "المجتمعات التي تنشئها أو تنضم إليها تظهر هنا.",
     "emptyYourCommunitiesTitle": "لا توجد مجتمعات بعد",
     "membersLabel": "{count} عضو",
     "railTitle": "المنشورات الحديثة",
     "subtitle": "",
-    "title": "الرئيسية"
+    "title": "الرئيسية",
+    "verifyToPostLabel": "تحقق للنشر"
   },
   "yourCommunities": {
     "gatedLabel": "مغلق",
@@ -152,6 +154,9 @@
     "membershipRequiredDescription": "يمكن لأعضاء المجتمع فقط نشر المنشورات هنا.",
     "membershipRequiredTitle": "انضم إلى هذا المجتمع قبل النشر",
     "none": "لا شيء",
+    "verifyAction": "تحقق",
+    "verifyRequiredDescription": "أكمل مسح راحة اليد قبل أن تنشر أول مشاركة.",
+    "verifyRequiredTitle": "تحقق قبل النشر",
     "placeholders": {
       "artist": "الفنان",
       "body": "اكتب منشورك",
@@ -236,6 +241,7 @@
       "handle": "اختر اسمك"
     },
     "progressLabel": "الإعداد",
+    "reopenVerification": "أعد فتح التحقق",
     "stepCount": "{current}/{total}",
     "suggestedCommunitiesAction": "مجتمعات مقترحة",
     "surfaces": {
@@ -243,7 +249,13 @@
       "bio": "النبذة",
       "profile": "الملف الشخصي"
     },
-    "title": "أكمل إعداد هويتك على بايرت"
+    "title": "أكمل إعداد هويتك على بايرت",
+    "verifyAction": "تحقق",
+    "verifyDescription": "تحقق الآن حتى تتمكن من النشر وفتح المجتمعات المقيّدة.",
+    "verifyPendingDescription": "أكمل مسح راحة اليد للمتابعة.",
+    "verifyPendingTitle": "أكمل التحقق",
+    "verifyStartDescription": "امسح راحة يدك لإثبات أنك إنسان. لا يتم حفظ أي صور أو بيانات.",
+    "verifyStartTitle": "تحقق"
   },
   "inbox": {
     "body": "أبقِ `/inbox` كعنصر نائب محايد حتى يتم تحديد الإشعارات أو المراسلة كسطوح منتج حقيقية.",

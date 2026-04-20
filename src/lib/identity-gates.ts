@@ -170,6 +170,32 @@ export function getSelfVerificationCapabilities(
   return SELF_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
 }
 
+export function getVerificationCapabilitiesForProvider(
+  eligibility: Pick<JoinEligibility, "missing_capabilities">,
+  provider: VerificationProvider,
+): MissingCapability[] {
+  const uniqueCapabilities = new Set<MissingCapability>();
+  for (const capability of eligibility.missing_capabilities) {
+    if (provider === "very") {
+      if (capability === "unique_human") {
+        uniqueCapabilities.add(capability);
+      }
+    } else if (SELF_CAPABILITY_ORDER.includes(capability)) {
+      uniqueCapabilities.add(capability);
+    }
+  }
+  if (provider === "self") {
+    return SELF_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
+  }
+  return Array.from(uniqueCapabilities);
+}
+
+export function resolveSuggestedVerificationProvider(
+  eligibility: Pick<JoinEligibility, "suggested_verification_provider">,
+): VerificationProvider {
+  return eligibility.suggested_verification_provider ?? "self";
+}
+
 export function getVerificationPromptCopy(
   provider: VerificationProvider,
   capabilities: MissingCapability[],

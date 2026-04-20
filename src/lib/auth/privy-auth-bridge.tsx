@@ -10,9 +10,11 @@ import { isOnboardingComplete } from "@/lib/onboarding";
 import {
   getSessionAccessTokenExpiryMs,
   isSessionAccessTokenExpiringSoon,
+  setSessionClearCallback,
   setSession,
   useSession,
 } from "@/lib/api/session-store";
+import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { toast } from "@/components/primitives/sonner";
 
 const REFRESH_WINDOW_MS = 5 * 60 * 1000;
@@ -22,12 +24,14 @@ const AUTH_BOOTSTRAP_WAIT_MS = 1_500;
 const AUTH_BOOTSTRAP_POLL_MS = 50;
 
 export interface PrivyAuthBridgeProps {
+  connectedWallets?: PirateConnectedEvmWallet[];
   onBusyChange?: (busy: boolean) => void;
   onConnectReady?: (connect: (() => void) | null) => void;
   onModalClosed?: () => void;
 }
 
 export function PrivyAuthBridge({
+  connectedWallets = [],
   onBusyChange,
   onConnectReady,
   onModalClosed,
@@ -35,7 +39,7 @@ export function PrivyAuthBridge({
   const api = useApi();
   const session = useSession();
   const { isOpen } = useModalStatus();
-  const { ready, authenticated, login, getAccessToken } = usePrivy();
+  const { ready, authenticated, login, getAccessToken, logout } = usePrivy();
   const [busy, setBusy] = React.useState(false);
   const [exchangeRequested, setExchangeRequested] = React.useState(false);
   const retryCountRef = React.useRef(0);
@@ -84,6 +88,7 @@ export function PrivyAuthBridge({
       const response = await api.auth.sessionExchange({
         type: "privy_access_token",
         privy_access_token: accessToken,
+        wallet_address: connectedWallets[0]?.address ?? null,
       });
 
       setSession(response);
@@ -115,7 +120,23 @@ export function PrivyAuthBridge({
     } finally {
       setBusy(false);
     }
-  }, [api, getAccessToken, session]);
+  }, [api, connectedWallets, getAccessToken, session]);
+
+  React.useEffect(() => {
+    setSessionClearCallback(async () => {
+      if (!authStateRef.current.authenticated) {
+        return;
+      }
+
+      await logout().catch((error: unknown) => {
+        console.error("[auth] privy logout failed", error);
+      });
+    });
+
+    return () => {
+      setSessionClearCallback(null);
+    };
+  }, [logout]);
 
   React.useEffect(() => {
     api.setRefreshAuthCallback(async () => {

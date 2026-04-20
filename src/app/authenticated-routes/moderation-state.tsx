@@ -18,6 +18,7 @@ import type { PricingTier, CountryAssignment as PricingCountryAssignment } from 
 import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import type { NamespaceVerificationCallbacks } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
 import { toast } from "@/components/primitives/sonner";
+import { getAcceptedProvidersForGateType } from "@/lib/community-gate-providers";
 
 import {
   buildEndaomentOrgUrl,
@@ -95,6 +96,7 @@ function getCommunityAgentPolicySettings(
     agentPostingScope: community?.agent_posting_scope === "top_level_and_replies"
       ? "top_level_and_replies"
       : "replies_only",
+    acceptedAgentOwnershipProviders: community?.accepted_agent_ownership_providers ?? [],
     dailyPostCap: community?.agent_daily_post_cap ?? null,
     dailyReplyCap: community?.agent_daily_reply_cap ?? null,
   };
@@ -595,7 +597,7 @@ export function useCommunityModerationState(communityId: string) {
           gate_rule_id: draft.gateRuleId ?? null,
           proof_requirements: [{
             proof_type: draft.gateType,
-            accepted_providers: ["self"] as ("self" | "very" | "passport")[],
+            accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
             config: { required_value: draft.requiredValue },
           }],
         })),
@@ -613,6 +615,7 @@ export function useCommunityModerationState(communityId: string) {
       () => api.communities.update(community.community_id, {
         agent_posting_policy: agentSettings.agentPostingPolicy,
         agent_posting_scope: agentSettings.agentPostingScope,
+        accepted_agent_ownership_providers: agentSettings.acceptedAgentOwnershipProviders,
         agent_daily_post_cap: agentSettings.dailyPostCap,
         agent_daily_reply_cap: agentSettings.dailyReplyCap,
       }),

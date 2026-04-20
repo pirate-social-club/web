@@ -29,6 +29,9 @@ export function CreatePostPage({ communityId }: { communityId: string }) {
   const backToCommunityLabel = copy.createPost.backToCommunity;
   const membershipRequiredTitle = copy.createPost.membershipRequiredTitle;
   const membershipRequiredDescription = copy.createPost.membershipRequiredDescription;
+  const verifyRequiredTitle = copy.createPost.verifyRequiredTitle;
+  const verifyRequiredDescription = copy.createPost.verifyRequiredDescription;
+  const verifyAction = copy.createPost.verifyAction;
 
   if (state.loading) {
     return <FullPageSpinner />;
@@ -64,6 +67,29 @@ export function CreatePostPage({ communityId }: { communityId: string }) {
       <ContentRailShell rail={<CommunitySidebar {...buildCommunitySidebar(state.community, locale)} />}>
         <StackPageShell title={pageTitle} actions={<Button onClick={() => navigate(`/c/${communityId}`)} variant="secondary">{backToCommunityLabel}</Button>}>
           <StatusCard title={membershipRequiredTitle} description={membershipRequiredDescription} tone="warning" />
+        </StackPageShell>
+      </ContentRailShell>
+    );
+  }
+
+  if (state.session?.onboarding.unique_human_verification_status !== "verified") {
+    const actions = <Button onClick={() => navigate("/onboarding")}>{verifyAction}</Button>;
+
+    if (isMobile) {
+      return (
+        <div className="min-h-screen w-full bg-background text-foreground">
+          <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
+          <section className="flex min-w-0 flex-1 flex-col px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
+            <StatusCard title={verifyRequiredTitle} description={verifyRequiredDescription} tone="warning" actions={actions} />
+          </section>
+        </div>
+      );
+    }
+
+    return (
+      <ContentRailShell rail={<CommunitySidebar {...buildCommunitySidebar(state.community, locale)} />}>
+        <StackPageShell title={pageTitle} actions={<Button onClick={() => navigate(`/c/${communityId}`)} variant="secondary">{backToCommunityLabel}</Button>}>
+          <StatusCard title={verifyRequiredTitle} description={verifyRequiredDescription} tone="warning" actions={actions} />
         </StackPageShell>
       </ContentRailShell>
     );

@@ -17,6 +17,7 @@ type SessionListener = () => void;
 const listeners = new Set<SessionListener>();
 let cachedSession: StoredSession | null = null;
 let hydrated = false;
+let sessionClearCallback: (() => Promise<void> | void) | null = null;
 
 function decodeBase64Url(value: string): string | null {
   if (typeof window === "undefined") return null;
@@ -147,6 +148,15 @@ export function clearSession(): void {
   cachedSession = null;
   writeToStorage(null);
   notifyAll();
+  void Promise.resolve(sessionClearCallback?.()).catch((error) => {
+    console.error("[auth] failed to clear upstream session", error);
+  });
+}
+
+export function setSessionClearCallback(
+  callback: (() => Promise<void> | void) | null,
+): void {
+  sessionClearCallback = callback;
 }
 
 export function subscribeToSession(listener: SessionListener): () => void {

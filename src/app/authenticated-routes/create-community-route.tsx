@@ -1,15 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { createVeryWidget } from "@veryai/widget";
-import type { VerificationSession } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
-import { resolveApiBaseUrl } from "@/lib/api/base-url";
-import { updateSessionOnboarding, useSession } from "@/lib/api/session-store";
+import { useSession } from "@/lib/api/session-store";
+import { getAcceptedProvidersForGateType } from "@/lib/community-gate-providers";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { ApiError } from "@/lib/api/client";
+import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { VerifyNamespaceModal } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal";
 import type {
   IdentityGateDraft,
@@ -47,89 +46,21 @@ export function CreateCommunityPage() {
   const verifyStartTitle = copy.createCommunity.verifyStartTitle;
   const reopenVerificationLabel = copy.createCommunity.reopenVerification;
   const startVerificationLabel = copy.createCommunity.startVerification;
-  const [verificationSessionId, setVerificationSessionId] = React.useState<string | null>(null);
-  const [verificationLoading, setVerificationLoading] = React.useState(false);
-  const [verificationError, setVerificationError] = React.useState<string | null>(null);
   const [activeNamespaceSessionId, setActiveNamespaceSessionId] = React.useState<string | null>(null);
   const [namespaceAttachment, setNamespaceAttachment] = React.useState<NamespaceAttachmentState | null>(null);
   const [namespaceModalOpen, setNamespaceModalOpen] = React.useState(false);
-  const widgetRef = React.useRef<{ destroy?: () => void; open?: () => void } | null>(null);
-
-  const cleanupWidget = React.useCallback(() => {
-    widgetRef.current?.destroy?.();
-    widgetRef.current = null;
-  }, []);
-
-  React.useEffect(() => () => cleanupWidget(), [cleanupWidget]);
-
-  const refreshOnboardingStatus = React.useCallback(async () => {
-    const status = await api.onboarding.getStatus();
-    updateSessionOnboarding(status);
-    return status;
-  }, [api]);
-
-  const openVeryWidget = React.useCallback(async (result: VerificationSession) => {
-    const launch = result.launch?.very_widget;
-    if (!launch) throw new Error("Very launch data was not returned");
-
-    cleanupWidget();
-    widgetRef.current = createVeryWidget({
-      appId: launch.app_id,
-      context: launch.context,
-      typeId: launch.type_id,
-      query: JSON.stringify(launch.query),
-      verifyUrl: launch.verify_url ?? `${resolveApiBaseUrl()}/very/verify`,
-      onSuccess: async (proof: string) => {
-        try {
-          await api.verification.completeSession(result.verification_session_id, { provider_payload_ref: proof });
-          await refreshOnboardingStatus();
-          setVerificationSessionId(null);
-          setVerificationError(null);
-        } catch (e: unknown) {
-          const apiError = e as ApiError;
-          setVerificationError(apiError?.message ?? "Could not complete Very verification");
-        } finally {
-          setVerificationLoading(false);
-          cleanupWidget();
-        }
-      },
-      onError: (error: string) => {
-        setVerificationError(error || "Very verification failed");
-        setVerificationLoading(false);
-        cleanupWidget();
-      },
-      theme: "dark",
-    });
-
-    widgetRef.current.open?.();
-  }, [api, cleanupWidget, refreshOnboardingStatus]);
-
-  const handleStartVeryVerification = React.useCallback(async () => {
-    setVerificationLoading(true);
-    setVerificationError(null);
-
-    try {
-      const result = await api.verification.startSession({
-        provider: "very",
-        verification_intent: "community_creation",
-      });
-      setVerificationSessionId(result.verification_session_id);
-      await openVeryWidget(result);
-    } catch (e: unknown) {
-      const apiError = e as ApiError;
-      setVerificationError(apiError?.message ?? (e instanceof Error ? e.message : "Could not start Very verification"));
-      setVerificationLoading(false);
-    } finally {
-      if (!widgetRef.current) {
-        setVerificationLoading(false);
-      }
-    }
-  }, [api, openVeryWidget]);
-
   const creatorVerificationState = session?.onboarding
     ? { uniqueHumanVerified: session.onboarding.unique_human_verification_status === "verified", ageOver18Verified: false }
     : { uniqueHumanVerified: false, ageOver18Verified: false };
-  const veryVerificationState = creatorVerificationState.uniqueHumanVerified ? "verified" : verificationSessionId ? "pending" : "not_started";
+  const {
+    startVerification: handleStartVeryVerification,
+    verificationError,
+    verificationLoading,
+    verificationState: veryVerificationState,
+  } = useVeryVerification({
+    verified: creatorVerificationState.uniqueHumanVerified,
+    verificationIntent: "community_creation",
+  });
   const namespaceVerificationCallbacks = React.useMemo(() => ({
     onStartSession: async ({ family, rootLabel }: { family: "hns" | "spaces"; rootLabel: string }) => {
       const result = await api.verification.startNamespaceSession({
@@ -198,7 +129,11 @@ export function CreateCommunityPage() {
         scope: "membership" as const,
         gate_family: "identity_proof" as const,
         gate_type: draft.gateType,
-        proof_requirements: [{ proof_type: draft.gateType, accepted_providers: ["self"] as ("self" | "very" | "passport")[], config: { required_value: draft.requiredValue } }],
+        proof_requirements: [{
+          proof_type: draft.gateType,
+          accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
+          config: { required_value: draft.requiredValue },
+        }],
       }));
 
       const result = await api.communities.create({

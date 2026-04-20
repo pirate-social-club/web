@@ -17,7 +17,8 @@ import { CommunityPageShell } from "@/components/compositions/community-page-she
 import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel, getSelfVerificationCapabilities, getVerificationPromptCopy } from "@/lib/identity-gates";
+import { getGateFailureMessage, getJoinCtaLabel, getSelfVerificationCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 
@@ -65,6 +66,22 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const [selfLoading, setSelfLoading] = React.useState(false);
   const [selfError, setSelfError] = React.useState<string | null>(null);
   const [selfModalOpen, setSelfModalOpen] = React.useState(false);
+  const {
+    startVerification: startVeryVerification,
+    verificationLoading: veryLoading,
+    verificationError: veryError,
+  } = useVeryVerification({
+    verified: false,
+    verificationIntent: "community_join",
+    onVerified: async () => {
+      const updatedEligibility = await refetchEligibility();
+      if (updatedEligibility.status === "joinable" || updatedEligibility.status === "requestable") {
+        const joinResult = await api.communities.join(communityId);
+        if (joinResult.status === "requested") setJoinRequested(true);
+        await refetchEligibility();
+      }
+    },
+  });
   const ownsCommunity = session?.user?.user_id === community?.created_by_user_id;
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const { gateModal, invalidateCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
@@ -99,7 +116,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const startSelfVerification = React.useCallback(async ({ showToastOnError = false }: {
     showToastOnError?: boolean;
   } = {}) => {
-    const requestedCapabilities = eligibility ? getSelfVerificationCapabilities(eligibility) : [];
+    const requestedCapabilities = eligibility ? getVerificationCapabilitiesForProvider(eligibility, "self") : [];
     if (requestedCapabilities.length === 0) {
       const message = "This community is missing the Self verification details needed to continue.";
       setSelfError(message);
@@ -158,12 +175,23 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     }
   }, [api, communityId, refetchEligibility]);
 
+  React.useEffect(() => {
+    if (veryError) {
+      toast.error(veryError);
+    }
+  }, [veryError]);
+
   const handleJoin = React.useCallback(async () => {
     setJoinLoading(true);
     setJoinError(null);
     if (eligibility?.status === "verification_required") {
       setJoinLoading(false);
-      await startSelfVerification();
+      const provider = resolveSuggestedVerificationProvider(eligibility);
+      if (provider === "very") {
+        await startVeryVerification();
+      } else {
+        await startSelfVerification();
+      }
       return;
     }
 
@@ -177,7 +205,12 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         const details = apiError.details as ApiGateFailureDetails;
         if (details.failure_reason === "missing_verification") {
           setJoinLoading(false);
-          await startSelfVerification();
+          const provider = resolveSuggestedVerificationProvider(details);
+          if (provider === "very") {
+            await startVeryVerification();
+          } else {
+            await startSelfVerification();
+          }
           return;
         }
         const gateFailureMessage = getGateFailureMessage(details, { locale });
@@ -189,7 +222,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     } finally {
       setJoinLoading(false);
     }
-  }, [api, communityId, eligibility, refetchEligibility, startSelfVerification]);
+  }, [api, communityId, eligibility, refetchEligibility, startSelfVerification, startVeryVerification]);
 
   React.useEffect(() => {
     function handleSelfCallback() {
@@ -246,17 +279,23 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     };
   }) => {
     if (gate.eligibility.status === "verification_required") {
+      const provider = resolveSuggestedVerificationProvider(gate.eligibility);
       return {
         description: action === "vote_post" || action === "vote_comment"
           ? copy.interactionGate.verifyToVoteDescription
           : copy.interactionGate.verifyToReplyDescription,
         primaryAction: {
           label: copy.createCommunity.startVerification,
-          loading: selfLoading,
+          loading: provider === "very" ? veryLoading : selfLoading,
           onClick: async () => {
-            const result = await startSelfVerification({ showToastOnError: true });
-            if (result.started) {
+            if (provider === "very") {
+              await startVeryVerification();
               closeModal();
+            } else {
+              const result = await startSelfVerification({ showToastOnError: true });
+              if (result.started) {
+                closeModal();
+              }
             }
           },
         },
@@ -318,7 +357,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         ? copy.interactionGate.cantVoteHereTitle
         : copy.interactionGate.cantReplyHereTitle,
     };
-  }, [copy.interactionGate, handleJoin, invalidateCommunityGate, joinLoading, locale, selfLoading, startSelfVerification]);
+  }, [copy.interactionGate, handleJoin, invalidateCommunityGate, joinLoading, locale, selfLoading, startSelfVerification, startVeryVerification, veryLoading]);
 
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
     if (!preview || !eligibility) return;

@@ -1,12 +1,22 @@
 "use client";
 
 import * as React from "react";
+import { defineChain } from "viem";
+import {
+  base,
+  baseSepolia,
+  mainnet,
+  optimism,
+  optimismSepolia,
+  sepolia,
+} from "viem/chains";
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import {
   getSessionAccessTokenExpiryMs,
   useSession,
 } from "@/lib/api/session-store";
+import { getPirateNetworkConfig } from "@/lib/network-config";
 
 type PrivyProviderComponent = React.ComponentType<{
   appId: string;
@@ -15,6 +25,7 @@ type PrivyProviderComponent = React.ComponentType<{
   children: React.ReactNode;
 }>;
 type PrivyAuthBridgeComponent = React.ComponentType<{
+  connectedWallets?: PirateConnectedEvmWallet[];
   onBusyChange?: (busy: boolean) => void;
   onConnectReady?: (connect: (() => void) | null) => void;
   onModalClosed?: () => void;
@@ -111,6 +122,38 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
   // Keep Privy mounted whenever configured so the app can silently restore a Pirate
   // session after reload before auth-required routes fall through to 401 states.
   const shouldLoadPrivy = !!appId;
+  const networkConfig = React.useMemo(() => getPirateNetworkConfig(), []);
+  const supportedChains = React.useMemo(() => {
+    const baseChain = networkConfig.base.network === "base-mainnet" ? base : baseSepolia;
+    const ethereumChain = networkConfig.base.network === "base-mainnet" ? mainnet : sepolia;
+    const optimismChain = networkConfig.base.network === "base-mainnet" ? optimism : optimismSepolia;
+    const storyChain = defineChain({
+      id: networkConfig.story.chainId,
+      name: networkConfig.story.label,
+      network: networkConfig.story.network,
+      nativeCurrency: {
+        decimals: 18,
+        name: "IP",
+        symbol: "IP",
+      },
+      rpcUrls: {
+        default: {
+          http: [networkConfig.story.rpcUrl],
+        },
+      },
+      blockExplorers: {
+        default: {
+          name: networkConfig.story.label,
+          url: networkConfig.story.explorerUrl,
+        },
+      },
+    });
+
+    return {
+      defaultChain: baseChain,
+      supportedChains: [baseChain, ethereumChain, optimismChain, storyChain],
+    };
+  }, [networkConfig]);
 
   const privyConfig = React.useMemo(() => ({
     appearance: {
@@ -128,7 +171,9 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
       },
       showWalletUIs: false,
     },
-  }), []);
+    defaultChain: supportedChains.defaultChain,
+    supportedChains: supportedChains.supportedChains,
+  }), [supportedChains.defaultChain, supportedChains.supportedChains]);
 
   const unloadPrivy = React.useCallback(() => {
     setPendingConnect(false);
@@ -308,11 +353,12 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
           clientId={clientId ?? undefined}
           config={privyConfig}
         >
-          <BridgeComponent
-            onBusyChange={setBusy}
-            onConnectReady={setLoadedConnect}
-            onModalClosed={unloadPrivy}
-          />
+        <BridgeComponent
+          connectedWallets={connectedWallets}
+          onBusyChange={setBusy}
+          onConnectReady={setLoadedConnect}
+          onModalClosed={unloadPrivy}
+        />
           {WalletBridgeComponent ? (
             <WalletBridgeComponent
               onWalletsChange={setConnectedWallets}

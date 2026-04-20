@@ -29,6 +29,8 @@ export const DEFAULT_COMMUNITY_RULES = [
 
 export type CommunityModerationSection = "profile" | "rules" | "links" | "labels" | "donations" | "pricing" | "gates" | "safety" | "namespace" | "agents";
 
+export const DEFAULT_COMMUNITY_MODERATION_SECTION: CommunityModerationSection = "profile";
+
 export function buildCommunityModerationIndexPath(communityId: string): string {
   return `/c/${encodeURIComponent(communityId)}/mod`;
 }
@@ -38,6 +40,10 @@ export function buildCommunityModerationPath(
   section: CommunityModerationSection,
 ): string {
   return `/c/${encodeURIComponent(communityId)}/mod/${section}`;
+}
+
+export function buildDefaultCommunityModerationPath(communityId: string): string {
+  return buildCommunityModerationPath(communityId, DEFAULT_COMMUNITY_MODERATION_SECTION);
 }
 
 export function buildCommunityModerationSections(

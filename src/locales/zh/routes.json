@@ -29,13 +29,15 @@
   "home": {
     "createCommunityLabel": "创建社区",
     "emptyHomeBody": "加入一个社区，或创建一个社区，开始建立你的首页动态。",
+    "emptyHomeVerifyBody": "先完成验证，再发你的第一条帖子。",
     "emptyHomeTitle": "还没有帖子",
     "emptyYourCommunitiesBody": "你创建或加入的社区会显示在这里。",
     "emptyYourCommunitiesTitle": "还没有社区",
     "membersLabel": "{count} 位成员",
     "railTitle": "最新帖子",
     "subtitle": "",
-    "title": "首页"
+    "title": "首页",
+    "verifyToPostLabel": "验证后发帖"
   },
   "yourCommunities": {
     "gatedLabel": "受限",
@@ -152,6 +154,9 @@
     "membershipRequiredDescription": "只有社区成员才能在这里发帖。",
     "membershipRequiredTitle": "发帖前先加入这个社区",
     "none": "无",
+    "verifyAction": "验证",
+    "verifyRequiredDescription": "先完成掌纹扫描，再发你的第一条帖子。",
+    "verifyRequiredTitle": "发帖前先验证",
     "placeholders": {
       "artist": "艺人",
       "body": "写下你的帖子",
@@ -236,6 +241,7 @@
       "handle": "选择你的名称"
     },
     "progressLabel": "引导流程",
+    "reopenVerification": "重新打开验证",
     "stepCount": "{current}/{total}",
     "suggestedCommunitiesAction": "推荐社区",
     "surfaces": {
@@ -243,7 +249,13 @@
       "bio": "简介",
       "profile": "个人资料"
     },
-    "title": "完成你的 Pirate 身份设置"
+    "title": "完成你的 Pirate 身份设置",
+    "verifyAction": "验证",
+    "verifyDescription": "现在完成验证，这样你就能发帖并解锁受限社区。",
+    "verifyPendingDescription": "完成掌纹扫描后继续。",
+    "verifyPendingTitle": "完成验证",
+    "verifyStartDescription": "扫描你的手掌以证明你是真人。不会保存照片或数据。",
+    "verifyStartTitle": "验证"
   },
   "inbox": {
     "body": "在通知或消息系统成为真实产品界面前，先把 `/inbox` 保持为中性的占位页。",

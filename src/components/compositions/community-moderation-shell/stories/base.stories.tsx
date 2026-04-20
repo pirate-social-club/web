@@ -240,6 +240,7 @@ function ModerationShellStory({
           settings={{
             agentPostingPolicy: "allow",
             agentPostingScope: "replies_only",
+            acceptedAgentOwnershipProviders: ["clawkey"],
             dailyPostCap: 5,
             dailyReplyCap: 20,
           }}

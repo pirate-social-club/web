@@ -6,16 +6,19 @@ import type { RedditImportSummary as ApiRedditImportSummary } from "@pirate/api-
 import type { RedditVerification as ApiRedditVerification } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
+import { Button } from "@/components/primitives/button";
+import { FormNote } from "@/components/primitives/form-layout";
 import { useApi } from "@/lib/api";
 import { updateSessionOnboarding, updateSessionProfile, useSession } from "@/lib/api/session-store";
 import { resolveOnboardingPhase } from "@/lib/onboarding";
+import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { type OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type { ImportJobState, RedditVerificationState } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap";
 
 import { getErrorMessage, useClientHydrated, useRouteMessages } from "./route-core";
 import { getRouteAuthDescription, getRouteFailureDescription } from "./route-status-copy";
-import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "./route-shell";
+import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState, StackPageShell, StatusCard } from "./route-shell";
 
 function mapRedditVerification(apiResult: ApiRedditVerification, usernameValue: string): RedditVerificationState {
   const stateMap: Record<string, RedditVerificationState["verificationState"]> = {
@@ -71,6 +74,25 @@ export function OnboardingPage() {
   const [importJob, setImportJob] = React.useState<ImportJobState>({ status: "not_started" });
   const [generatedHandle, setGeneratedHandle] = React.useState("");
   const [actionLoading, setActionLoading] = React.useState(false);
+  const uniqueHumanVerified = onboardingStatus?.unique_human_verification_status === "verified";
+  const {
+    startVerification,
+    verificationError,
+    verificationLoading,
+    verificationState,
+  } = useVeryVerification({
+    onVerified: (status) => {
+      setOnboardingStatus(status);
+      const nextPhase = resolveOnboardingPhase(status);
+      if (!nextPhase) {
+        navigate("/");
+        return;
+      }
+      setPhase(nextPhase);
+    },
+    verified: uniqueHumanVerified,
+    verificationIntent: "profile_verification",
+  });
 
   React.useEffect(() => {
     let cancelled = false;
@@ -89,6 +111,10 @@ export function OnboardingPage() {
         const nextPhase = resolveOnboardingPhase(status);
         setOnboardingStatus(status);
         setImportJob(mapImportJobStatus(status.reddit_import_status));
+        setGeneratedHandle(session.profile?.global_handle?.label ?? "");
+        if (status.unique_human_verification_status !== "verified") {
+          return;
+        }
         if (!nextPhase) {
           navigate("/");
           return;
@@ -97,7 +123,6 @@ export function OnboardingPage() {
         if (status.reddit_verification_status === "verified") {
           setRedditVerification({ usernameValue: "", verificationState: "verified" });
         }
-        setGeneratedHandle(session.profile?.global_handle?.label ?? "");
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -230,6 +255,28 @@ export function OnboardingPage() {
 
   if (!session) {
     return <AuthRequiredRouteState description={getRouteAuthDescription("onboarding")} title={copy.onboarding.title} />;
+  }
+
+  if (onboardingStatus && onboardingStatus.unique_human_verification_status !== "verified") {
+    const verificationAction = verificationState === "pending"
+      ? copy.onboarding.reopenVerification
+      : copy.onboarding.verifyAction;
+
+    return (
+      <StackPageShell
+        title={copy.onboarding.title}
+        description={copy.onboarding.verifyDescription}
+        actions={<Button onClick={() => navigate("/")} variant="secondary">{copy.common.backHome}</Button>}
+      >
+        {verificationError ? <FormNote tone="warning">{verificationError}</FormNote> : null}
+        <StatusCard
+          title={verificationState === "pending" ? copy.onboarding.verifyPendingTitle : copy.onboarding.verifyStartTitle}
+          description={verificationState === "pending" ? copy.onboarding.verifyPendingDescription : copy.onboarding.verifyStartDescription}
+          tone="warning"
+          actions={<Button loading={verificationLoading} onClick={() => void startVerification()}>{verificationAction}</Button>}
+        />
+      </StackPageShell>
+    );
   }
 
   return (

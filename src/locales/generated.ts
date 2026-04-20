@@ -36,13 +36,15 @@ export const GENERATED_LOCALE_CATALOGS = {
       "home": {
         "createCommunityLabel": "Create community",
         "emptyHomeBody": "Join a community or create one to start building your home feed.",
+        "emptyHomeVerifyBody": "Verify your account before you make your first post.",
         "emptyHomeTitle": "No posts yet",
         "emptyYourCommunitiesBody": "Communities you create or join show up here.",
         "emptyYourCommunitiesTitle": "No communities yet",
         "membersLabel": "{count} members",
         "railTitle": "Recent posts",
         "subtitle": "",
-        "title": "Home"
+        "title": "Home",
+        "verifyToPostLabel": "Verify to post"
       },
       "yourCommunities": {
         "gatedLabel": "Gated",
@@ -159,6 +161,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "membershipRequiredDescription": "Only community members can publish posts here.",
         "membershipRequiredTitle": "Join this community before posting",
         "none": "None",
+        "verifyAction": "Verify",
+        "verifyRequiredDescription": "Complete your palm scan before you make your first post.",
+        "verifyRequiredTitle": "Verify before posting",
         "placeholders": {
           "artist": "Artist",
           "body": "Write your post",
@@ -243,6 +248,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "handle": "Choose your handle"
         },
         "progressLabel": "Onboarding",
+        "reopenVerification": "Reopen verification",
         "stepCount": "{current}/{total}",
         "suggestedCommunitiesAction": "Suggested Communities",
         "surfaces": {
@@ -250,7 +256,13 @@ export const GENERATED_LOCALE_CATALOGS = {
           "bio": "bio",
           "profile": "profile"
         },
-        "title": "Finish setting up your Pirate identity"
+        "title": "Finish setting up your Pirate identity",
+        "verifyAction": "Verify",
+        "verifyDescription": "Verify now so you can post and unlock gated communities.",
+        "verifyPendingDescription": "Complete your palm scan to continue.",
+        "verifyPendingTitle": "Finish verification",
+        "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+        "verifyStartTitle": "Verify"
       },
       "inbox": {
         "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",
@@ -513,13 +525,15 @@ export const GENERATED_LOCALE_CATALOGS = {
       "home": {
         "createCommunityLabel": "أنشئ مجتمعًا",
         "emptyHomeBody": "انضم إلى مجتمع أو أنشئ واحدًا لتبدأ في بناء خلاصتك الرئيسية.",
+        "emptyHomeVerifyBody": "تحقق من حسابك قبل أن تنشر أول مشاركة.",
         "emptyHomeTitle": "لا توجد منشورات بعد",
         "emptyYourCommunitiesBody": "المجتمعات التي تنشئها أو تنضم إليها تظهر هنا.",
         "emptyYourCommunitiesTitle": "لا توجد مجتمعات بعد",
         "membersLabel": "{count} عضو",
         "railTitle": "المنشورات الحديثة",
         "subtitle": "",
-        "title": "الرئيسية"
+        "title": "الرئيسية",
+        "verifyToPostLabel": "تحقق للنشر"
       },
       "yourCommunities": {
         "gatedLabel": "مغلق",
@@ -636,6 +650,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "membershipRequiredDescription": "يمكن لأعضاء المجتمع فقط نشر المنشورات هنا.",
         "membershipRequiredTitle": "انضم إلى هذا المجتمع قبل النشر",
         "none": "لا شيء",
+        "verifyAction": "تحقق",
+        "verifyRequiredDescription": "أكمل مسح راحة اليد قبل أن تنشر أول مشاركة.",
+        "verifyRequiredTitle": "تحقق قبل النشر",
         "placeholders": {
           "artist": "الفنان",
           "body": "اكتب منشورك",
@@ -720,6 +737,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "handle": "اختر اسمك"
         },
         "progressLabel": "الإعداد",
+        "reopenVerification": "أعد فتح التحقق",
         "stepCount": "{current}/{total}",
         "suggestedCommunitiesAction": "مجتمعات مقترحة",
         "surfaces": {
@@ -727,7 +745,13 @@ export const GENERATED_LOCALE_CATALOGS = {
           "bio": "النبذة",
           "profile": "الملف الشخصي"
         },
-        "title": "أكمل إعداد هويتك على بايرت"
+        "title": "أكمل إعداد هويتك على بايرت",
+        "verifyAction": "تحقق",
+        "verifyDescription": "تحقق الآن حتى تتمكن من النشر وفتح المجتمعات المقيّدة.",
+        "verifyPendingDescription": "أكمل مسح راحة اليد للمتابعة.",
+        "verifyPendingTitle": "أكمل التحقق",
+        "verifyStartDescription": "امسح راحة يدك لإثبات أنك إنسان. لا يتم حفظ أي صور أو بيانات.",
+        "verifyStartTitle": "تحقق"
       },
       "inbox": {
         "body": "أبقِ `/inbox` كعنصر نائب محايد حتى يتم تحديد الإشعارات أو المراسلة كسطوح منتج حقيقية.",
@@ -990,13 +1014,15 @@ export const GENERATED_LOCALE_CATALOGS = {
       "home": {
         "createCommunityLabel": "创建社区",
         "emptyHomeBody": "加入一个社区，或创建一个社区，开始建立你的首页动态。",
+        "emptyHomeVerifyBody": "先完成验证，再发你的第一条帖子。",
         "emptyHomeTitle": "还没有帖子",
         "emptyYourCommunitiesBody": "你创建或加入的社区会显示在这里。",
         "emptyYourCommunitiesTitle": "还没有社区",
         "membersLabel": "{count} 位成员",
         "railTitle": "最新帖子",
         "subtitle": "",
-        "title": "首页"
+        "title": "首页",
+        "verifyToPostLabel": "验证后发帖"
       },
       "yourCommunities": {
         "gatedLabel": "受限",
@@ -1113,6 +1139,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "membershipRequiredDescription": "只有社区成员才能在这里发帖。",
         "membershipRequiredTitle": "发帖前先加入这个社区",
         "none": "无",
+        "verifyAction": "验证",
+        "verifyRequiredDescription": "先完成掌纹扫描，再发你的第一条帖子。",
+        "verifyRequiredTitle": "发帖前先验证",
         "placeholders": {
           "artist": "艺人",
           "body": "写下你的帖子",
@@ -1197,6 +1226,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "handle": "选择你的名称"
         },
         "progressLabel": "引导流程",
+        "reopenVerification": "重新打开验证",
         "stepCount": "{current}/{total}",
         "suggestedCommunitiesAction": "推荐社区",
         "surfaces": {
@@ -1204,7 +1234,13 @@ export const GENERATED_LOCALE_CATALOGS = {
           "bio": "简介",
           "profile": "个人资料"
         },
-        "title": "完成你的 Pirate 身份设置"
+        "title": "完成你的 Pirate 身份设置",
+        "verifyAction": "验证",
+        "verifyDescription": "现在完成验证，这样你就能发帖并解锁受限社区。",
+        "verifyPendingDescription": "完成掌纹扫描后继续。",
+        "verifyPendingTitle": "完成验证",
+        "verifyStartDescription": "扫描你的手掌以证明你是真人。不会保存照片或数据。",
+        "verifyStartTitle": "验证"
       },
       "inbox": {
         "body": "在通知或消息系统成为真实产品界面前，先把 `/inbox` 保持为中性的占位页。",

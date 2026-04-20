@@ -29,13 +29,15 @@
   "home": {
     "createCommunityLabel": "Create community",
     "emptyHomeBody": "Join a community or create one to start building your home feed.",
+    "emptyHomeVerifyBody": "Verify your account before you make your first post.",
     "emptyHomeTitle": "No posts yet",
     "emptyYourCommunitiesBody": "Communities you create or join show up here.",
     "emptyYourCommunitiesTitle": "No communities yet",
     "membersLabel": "{count} members",
     "railTitle": "Recent posts",
     "subtitle": "",
-    "title": "Home"
+    "title": "Home",
+    "verifyToPostLabel": "Verify to post"
   },
   "yourCommunities": {
     "gatedLabel": "Gated",
@@ -152,6 +154,9 @@
     "membershipRequiredDescription": "Only community members can publish posts here.",
     "membershipRequiredTitle": "Join this community before posting",
     "none": "None",
+    "verifyAction": "Verify",
+    "verifyRequiredDescription": "Complete your palm scan before you make your first post.",
+    "verifyRequiredTitle": "Verify before posting",
     "placeholders": {
       "artist": "Artist",
       "body": "Write your post",
@@ -236,6 +241,7 @@
       "handle": "Choose your handle"
     },
     "progressLabel": "Onboarding",
+    "reopenVerification": "Reopen verification",
     "stepCount": "{current}/{total}",
     "suggestedCommunitiesAction": "Suggested Communities",
     "surfaces": {
@@ -243,7 +249,13 @@
       "bio": "bio",
       "profile": "profile"
     },
-    "title": "Finish setting up your Pirate identity"
+    "title": "Finish setting up your Pirate identity",
+    "verifyAction": "Verify",
+    "verifyDescription": "Verify now so you can post and unlock gated communities.",
+    "verifyPendingDescription": "Complete your palm scan to continue.",
+    "verifyPendingTitle": "Finish verification",
+    "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+    "verifyStartTitle": "Verify"
   },
   "inbox": {
     "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",

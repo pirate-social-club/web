@@ -25,7 +25,10 @@ import { UiLocaleProvider, useUiLocale } from "@/lib/ui-locale";
 import { resolveLocaleDirection, type UiDirection, type UiLocaleCode } from "@/lib/ui-locale-core";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
-import { buildCommunityModerationIndexPath } from "@/app/authenticated-routes/moderation-helpers";
+import {
+  buildCommunityModerationIndexPath,
+  buildDefaultCommunityModerationPath,
+} from "@/app/authenticated-routes/moderation-helpers";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 
 const LazyAuthenticatedRouteRenderer = React.lazy(async () => {
@@ -127,7 +130,7 @@ function buildSidebarSections(
         avatarSrc: community.avatarSrc,
         id: `moderation/${community.communityId}`,
         label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
-        onSelect: () => navigate(buildCommunityModerationIndexPath(community.communityId)),
+        onSelect: () => navigate(buildDefaultCommunityModerationPath(community.communityId)),
       })),
     });
   }

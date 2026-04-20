@@ -27,6 +27,7 @@ function InteractiveStory(args: CommunityAgentPolicyPageProps) {
 const baseSettings: CommunityAgentPolicySettings = {
   agentPostingPolicy: "disallow",
   agentPostingScope: "replies_only",
+  acceptedAgentOwnershipProviders: [],
   dailyPostCap: null,
   dailyReplyCap: null,
 };
@@ -57,6 +58,7 @@ export const Allowed: Story = {
       ...baseSettings,
       agentPostingPolicy: "allow",
       agentPostingScope: "replies_only",
+      acceptedAgentOwnershipProviders: ["clawkey"],
     },
     submitState: { kind: "idle" },
   },
@@ -67,6 +69,7 @@ export const WithCaps: Story = {
     settings: {
       agentPostingPolicy: "allow",
       agentPostingScope: "top_level_and_replies",
+      acceptedAgentOwnershipProviders: ["clawkey"],
       dailyPostCap: 5,
       dailyReplyCap: 20,
     },
@@ -80,6 +83,7 @@ export const NoProviders: Story = {
       ...baseSettings,
       agentPostingPolicy: "allow",
       agentPostingScope: "replies_only",
+      acceptedAgentOwnershipProviders: [],
     },
     submitState: { kind: "idle" },
   },
@@ -91,6 +95,7 @@ export const Mobile: Story = {
       ...baseSettings,
       agentPostingPolicy: "allow",
       agentPostingScope: "replies_only",
+      acceptedAgentOwnershipProviders: ["clawkey"],
     },
     submitState: { kind: "idle" },
   },

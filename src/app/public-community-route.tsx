@@ -19,7 +19,8 @@ import { useApi } from "@/lib/api";
 import { isApiNotFoundError, type ApiError } from "@/lib/api/client";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
-import { getSelfVerificationCapabilities, getVerificationPromptCopy } from "@/lib/identity-gates";
+import { getSelfVerificationCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
@@ -222,6 +223,24 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
   const [selfLoading, setSelfLoading] = React.useState(false);
   const [selfError, setSelfError] = React.useState<string | null>(null);
   const [selfModalOpen, setSelfModalOpen] = React.useState(false);
+  const {
+    startVerification: startVeryVerification,
+    verificationLoading: veryLoading,
+    verificationError: veryError,
+  } = useVeryVerification({
+    verified: false,
+    verificationIntent: "community_join",
+    onVerified: () => {
+      invalidateCommunityGate(communityId);
+      toast.success("Verification completed. Try the action again.");
+    },
+  });
+
+  React.useEffect(() => {
+    if (veryError) {
+      toast.error(veryError);
+    }
+  }, [veryError]);
 
   const startSelfVerification = React.useCallback(async ({
     eligibility,
@@ -230,7 +249,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     eligibility: Pick<ApiJoinEligibility, "missing_capabilities">;
     source: "vote_modal";
   }) => {
-    const requestedCapabilities = getSelfVerificationCapabilities(eligibility);
+    const requestedCapabilities = getVerificationCapabilitiesForProvider(eligibility, "self");
     if (requestedCapabilities.length === 0) {
       const message = "This community is missing the Self verification details needed to continue.";
       setSelfError(message);
@@ -377,20 +396,26 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       return null;
     }
 
+    const provider = resolveSuggestedVerificationProvider(gate.eligibility);
     return {
       description: action === "vote_post" || action === "vote_comment"
         ? copy.interactionGate.verifyToVoteDescription
         : copy.interactionGate.verifyToReplyDescription,
       primaryAction: {
         label: copy.createCommunity.startVerification,
-        loading: selfLoading,
+        loading: provider === "very" ? veryLoading : selfLoading,
         onClick: async () => {
-          const result = await startSelfVerification({
-            eligibility: gate.eligibility,
-            source: "vote_modal",
-          });
-          if (result.started) {
+          if (provider === "very") {
+            await startVeryVerification();
             closeModal();
+          } else {
+            const result = await startSelfVerification({
+              eligibility: gate.eligibility,
+              source: "vote_modal",
+            });
+            if (result.started) {
+              closeModal();
+            }
           }
         },
       },
@@ -403,7 +428,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         ? copy.interactionGate.verifyToVoteTitle
         : copy.interactionGate.verifyToReplyTitle,
     };
-  }, [copy.createCommunity.startVerification, copy.interactionGate, selfLoading, startSelfVerification]);
+  }, [copy.createCommunity.startVerification, copy.interactionGate, selfLoading, startSelfVerification, startVeryVerification, veryLoading]);
 
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
     const previousPost = posts.find((candidate) => candidate.post.post_id === postId);

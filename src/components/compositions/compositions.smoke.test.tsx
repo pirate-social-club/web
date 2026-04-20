@@ -300,6 +300,7 @@ describe("composition smoke tests", () => {
         settings={{
           agentPostingPolicy: "allow",
           agentPostingScope: "replies_only",
+          acceptedAgentOwnershipProviders: ["clawkey"],
           dailyPostCap: 5,
           dailyReplyCap: 20,
         }}
@@ -309,6 +310,7 @@ describe("composition smoke tests", () => {
 
     expect(markup).toContain("Agents");
     expect(markup).toContain("Posting policy");
+    expect(markup).toContain("Ownership providers");
     expect(markup).toContain("Agent posts per day");
   });
 

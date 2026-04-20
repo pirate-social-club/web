@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
+import { Checkbox } from "@/components/primitives/checkbox";
 import { Input } from "@/components/primitives/input";
 import {
   Select,
@@ -13,6 +14,7 @@ import {
 } from "@/components/primitives/select";
 import { cn } from "@/lib/utils";
 import type {
+  AgentOwnershipProvider,
   AgentPostingPolicy,
   AgentPostingScope,
   CommunityAgentPolicyPageProps,
@@ -27,6 +29,11 @@ const policyOptions: Array<{ label: string; value: AgentPostingPolicy }> = [
 const scopeOptions: Array<{ label: string; value: AgentPostingScope }> = [
   { label: "Replies only", value: "replies_only" },
   { label: "Top-level and replies", value: "top_level_and_replies" },
+];
+
+const providerOptions: Array<{ label: string; value: AgentOwnershipProvider }> = [
+  { label: "ClawKey", value: "clawkey" },
+  { label: "Self agent ID", value: "self_agent_id" },
 ];
 
 function Section({
@@ -106,6 +113,23 @@ function CapInput({
   );
 }
 
+function ProviderRow({
+  checked,
+  label,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  label: string;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4">
+      <span className="text-base font-medium leading-6">{label}</span>
+      <Checkbox checked={checked} onCheckedChange={(next) => onCheckedChange(next === true)} />
+    </label>
+  );
+}
+
 export function CommunityAgentPolicyPage({
   settings,
   submitState,
@@ -118,6 +142,13 @@ export function CommunityAgentPolicyPage({
 
   function update(partial: Partial<CommunityAgentPolicySettings>) {
     onSettingsChange?.({ ...settings, ...partial });
+  }
+
+  function toggleProvider(provider: AgentOwnershipProvider, checked: boolean) {
+    const nextProviders = checked
+      ? [...new Set([...settings.acceptedAgentOwnershipProviders, provider])]
+      : settings.acceptedAgentOwnershipProviders.filter((value) => value !== provider);
+    update({ acceptedAgentOwnershipProviders: nextProviders });
   }
 
   return (
@@ -159,6 +190,21 @@ export function CommunityAgentPolicyPage({
           ) : null}
         </div>
       </Section>
+
+      {!isDisabled ? (
+        <Section className="border-t border-border-soft pt-6 md:pt-8" title="Ownership providers">
+          <div className="space-y-3">
+            {providerOptions.map((provider) => (
+              <ProviderRow
+                key={provider.value}
+                checked={settings.acceptedAgentOwnershipProviders.includes(provider.value)}
+                label={provider.label}
+                onCheckedChange={(checked) => toggleProvider(provider.value, checked)}
+              />
+            ))}
+          </div>
+        </Section>
+      ) : null}
 
       {!isDisabled ? (
         <Section className="border-t border-border-soft pt-6 md:pt-8" title="Daily caps">

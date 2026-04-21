@@ -45,7 +45,7 @@ export function NationalityPicker({
       />
       <ComboboxContent>
         <ComboboxEmpty>{cc.noCountriesFound}</ComboboxEmpty>
-        <ComboboxList>
+        <ComboboxList className="py-0">
           {(country) => (
             <ComboboxItem key={country.code} value={country}>
               <p className="text-base font-semibold text-foreground">{country.name}</p>
@@ -105,7 +105,7 @@ export function NationalityMultiPicker({
       </ComboboxChips>
       <ComboboxContent>
         <ComboboxEmpty>{cc.noCountriesFound}</ComboboxEmpty>
-        <ComboboxList>
+        <ComboboxList className="py-0">
           {(country) => (
             <ComboboxItem key={country.code} value={country}>
               <p className="text-base font-semibold text-foreground">{country.name}</p>

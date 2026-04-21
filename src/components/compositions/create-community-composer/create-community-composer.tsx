@@ -117,8 +117,11 @@ export function CreateCommunityComposer({
 
   const creatorUniqueHumanVerified = creatorVerificationState?.uniqueHumanVerified ?? false;
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? false;
+  const effectiveDefaultAgeGatePolicy: CommunityDefaultAgeGatePolicy =
+    minimumAgeEnabled && minimumAge >= 18 ? "18_plus" : activeDefaultAgeGatePolicy;
+
   const creatorAgeRequirementMet =
-    activeDefaultAgeGatePolicy !== "18_plus" || creatorAgeOver18Verified;
+    effectiveDefaultAgeGatePolicy !== "18_plus" || creatorAgeOver18Verified;
   const creatorCanCreate = deferCreatorVerification || (creatorUniqueHumanVerified && creatorAgeRequirementMet);
   const { copy } = useRouteMessages();
   const cc = copy.createCommunity.composer;
@@ -198,7 +201,7 @@ export function CreateCommunityComposer({
       displayName: activeDisplayName.trim(),
       description: activeDescription.trim() || null,
       membershipMode: activeMembershipMode,
-      defaultAgeGatePolicy: activeDefaultAgeGatePolicy,
+      defaultAgeGatePolicy: effectiveDefaultAgeGatePolicy,
       allowAnonymousIdentity: activeAllowAnonymousIdentity,
       anonymousIdentityScope: activeAnonymousScope,
       gateDrafts: activeGateDrafts,
@@ -536,18 +539,22 @@ export function CreateCommunityComposer({
                     </div>
                   ) : null}
 
-                  <CheckboxRow
-                    checked={activeDefaultAgeGatePolicy === "18_plus"}
-                    id="community-18-plus"
-                    label={cc.ageGateLabel}
-                    onCheckedChange={(checked) =>
-                      setActiveDefaultAgeGatePolicy(checked ? "18_plus" : "none")
-                    }
-                  />
-                  {activeDefaultAgeGatePolicy === "18_plus" && !deferCreatorVerification && !creatorAgeOver18Verified ? (
-                    <FormNote tone="warning">
-                      {cc.creatorAgeRequired}
-                    </FormNote>
+                  {!(minimumAgeEnabled && minimumAge >= 18) ? (
+                    <>
+                      <CheckboxRow
+                        checked={activeDefaultAgeGatePolicy === "18_plus"}
+                        id="community-18-plus"
+                        label={cc.ageGateLabel}
+                        onCheckedChange={(checked) =>
+                          setActiveDefaultAgeGatePolicy(checked ? "18_plus" : "none")
+                        }
+                      />
+                      {activeDefaultAgeGatePolicy === "18_plus" && !deferCreatorVerification && !creatorAgeOver18Verified ? (
+                        <FormNote tone="warning">
+                          {cc.creatorAgeRequired}
+                        </FormNote>
+                      ) : null}
+                    </>
                   ) : null}
                 </div>
               </Section>
@@ -556,7 +563,7 @@ export function CreateCommunityComposer({
 
           {activeStep === 3 ? (
             <CommunityReviewStep
-              ageGateLabel={activeDefaultAgeGatePolicy === "18_plus" ? "18+" : cc.none}
+              ageGateLabel={effectiveDefaultAgeGatePolicy === "18_plus" ? "18+" : cc.none}
               anonymousPostingLabel={activeAllowAnonymousIdentity ? cc.enabled : cc.disabled}
               anonymousScopeLabel={
                 activeAllowAnonymousIdentity && activeAnonymousScope !== "post_ephemeral"

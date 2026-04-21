@@ -197,6 +197,12 @@ export function CommunityGatesEditorPage({
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? true;
 
+  React.useEffect(() => {
+    if (minimumAgeGate && minimumAgeGate.minimumAge >= 18 && defaultAgeGatePolicy !== "18_plus") {
+      onDefaultAgeGatePolicyChange?.("18_plus");
+    }
+  }, [minimumAgeGate, defaultAgeGatePolicy, onDefaultAgeGatePolicyChange]);
+
   return (
     <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
@@ -369,17 +375,20 @@ export function CommunityGatesEditorPage({
             </div>
           ) : null}
 
-          <CheckboxRow
-            checked={defaultAgeGatePolicy === "18_plus"}
-            id="community-18-plus"
-            label={mc.ageGateLabel}
-            onCheckedChange={(checked) => onDefaultAgeGatePolicyChange?.(checked ? "18_plus" : "none")}
-          />
-
-          {defaultAgeGatePolicy === "18_plus" && !creatorAgeOver18Verified ? (
-            <FormNote tone="warning">
-              The owner must complete age verification before launching an 18+ community.
-            </FormNote>
+          {!(minimumAgeGate && minimumAgeGate.minimumAge >= 18) ? (
+            <>
+              <CheckboxRow
+                checked={defaultAgeGatePolicy === "18_plus"}
+                id="community-18-plus"
+                label={mc.ageGateLabel}
+                onCheckedChange={(checked) => onDefaultAgeGatePolicyChange?.(checked ? "18_plus" : "none")}
+              />
+              {defaultAgeGatePolicy === "18_plus" && !creatorAgeOver18Verified ? (
+                <FormNote tone="warning">
+                  The owner must complete age verification before launching an 18+ community.
+                </FormNote>
+              ) : null}
+            </>
           ) : null}
         </div>
       </Section>

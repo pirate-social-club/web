@@ -262,7 +262,6 @@ export function OnboardingPage() {
       <section className="flex min-w-0 flex-1 flex-col gap-6">
         <PageContainer>
           <OnboardingVerificationGate
-            onBackHome={() => navigate("/")}
             onVerify={() => void startVerification()}
             verificationError={verificationError}
             verificationLoading={verificationLoading}

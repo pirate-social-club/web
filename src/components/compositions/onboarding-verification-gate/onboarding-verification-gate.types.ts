@@ -3,5 +3,4 @@ export interface OnboardingVerificationGateProps {
   verificationLoading: boolean;
   verificationError?: string | null;
   onVerify: () => void;
-  onBackHome: () => void;
 }

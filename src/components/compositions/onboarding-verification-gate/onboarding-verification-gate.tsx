@@ -13,11 +13,9 @@ export function OnboardingVerificationGate({
   verificationLoading,
   verificationError,
   onVerify,
-  onBackHome,
 }: OnboardingVerificationGateProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").onboarding;
-  const common = getLocaleMessages(locale, "routes").common;
   const isPending = verificationState === "pending";
 
   return (
@@ -39,23 +37,14 @@ export function OnboardingVerificationGate({
             <FormNote tone="warning">{verificationError}</FormNote>
           ) : null}
 
-          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
-            <Button
-              className="w-full sm:w-auto"
-              onClick={onBackHome}
-              variant="outline"
-            >
-              {common.backHome}
-            </Button>
-            <Button
-              className="w-full sm:max-w-xs sm:flex-1"
-              loading={verificationLoading}
-              onClick={onVerify}
-              size="lg"
-            >
-              {isPending ? copy.reopenVerification : copy.verifyAction}
-            </Button>
-          </div>
+          <Button
+            className="w-full"
+            loading={verificationLoading}
+            onClick={onVerify}
+            size="lg"
+          >
+            {isPending ? copy.reopenVerification : copy.verifyAction}
+          </Button>
         </CardContent>
       </Card>
     </div>

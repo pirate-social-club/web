@@ -11,7 +11,6 @@ const meta = {
     verificationLoading: false,
     verificationError: null,
     onVerify: () => {},
-    onBackHome: () => {},
   },
   decorators: [
     (Story: () => React.ReactNode) => (

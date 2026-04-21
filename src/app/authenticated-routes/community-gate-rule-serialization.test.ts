@@ -23,7 +23,7 @@ describe("serializeIdentityGateDrafts", () => {
         contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
         inventory_provider: "courtyard",
         min_quantity: 5,
-        asset_filter: {
+        match: {
           category: "watch",
           brand: "Rolex",
         },

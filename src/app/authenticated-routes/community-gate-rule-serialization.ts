@@ -35,7 +35,7 @@ export function serializeIdentityGateDrafts(
           contract_address: draft.contractAddress.trim(),
           inventory_provider: draft.inventoryProvider,
           min_quantity: draft.minQuantity,
-          asset_filter: draft.assetFilter,
+          match: draft.assetFilter,
         },
       };
     }

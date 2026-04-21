@@ -190,6 +190,10 @@ No confirmed bug items remain open.
 - **Status:** ✅ **Fixed**
 - **Verification:** `profile-settings-routes.tsx` is now 284 lines. Profile/wallet/agent mapping moved to `profile-settings-mapping.ts`; owned-agent loading, pairing, polling, import parsing, registration completion, and key-store updates moved to `use-settings-owned-agents.ts`.
 
+### REFACTOR-006 — `create-post-state.tsx` has state explosion with no reducer
+- **Status:** ✅ **Fixed**
+- **Verification:** Draft/editor fields moved to reducer-backed `useCreatePostDraftState` in `create-post-draft-state.ts`. `create-post-state.tsx` now keeps only async resource/loading/submission state in local `useState` calls while preserving the existing returned setter API.
+
 ---
 
 ## Remaining Structural Refactors
@@ -202,13 +206,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Impact:** Adding a field requires touching 3+ files. Prop object changes every render, making downstream memoization impossible.
 - **Fix:** Introduce `PostComposerContext` or split into tab-specific sub-components that own their own state. Alternatively, accept a single `state` + `dispatch` pair.
 - **Risk:** High — composer is a core user flow. Refactor needs careful QA.
-
-### REFACTOR-006 — `create-post-state.tsx` has state explosion with no reducer
-- **Location:** `src/app/authenticated-routes/create-post-state.tsx`
-- **Verification:** Direct read. State is exploded into many individual `useState` calls with complex interdependent `useEffect` blocks.
-- **Impact:** Complex interdependent effects are hard to reason about and prone to race conditions.
-- **Fix:** Replace with `useReducer` or a lightweight state machine.
-- **Risk:** High — composer submission flow is critical.
 
 ---
 

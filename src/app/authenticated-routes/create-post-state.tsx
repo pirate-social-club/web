@@ -17,25 +17,13 @@ import { getLocaleMessages } from "@/locales";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import type { ApiError } from "@/lib/api/client";
-import {
-  defaultCharityContributionState,
-  defaultAudienceState,
-  defaultMonetizationState,
-  defaultSongState,
-} from "@/components/compositions/post-composer/post-composer-config";
 import type {
-  AuthorMode,
-  CharityContributionState,
   CommunityCharityPartner,
   ComposerAudienceState,
   ComposerReference,
-  ComposerTab,
-  DerivativeStepState,
-  MonetizationState,
-  SongComposerState,
-  SongMode,
 } from "@/components/compositions/post-composer/post-composer.types";
 
+import { useCreatePostDraftState } from "./create-post-draft-state";
 import { formatQualifierLabel } from "./post-presentation";
 import { parseUsdInput } from "./route-core";
 import { buildSongListingRequest, buildSongPostRequest, resolveComposerSubmitState } from "./song-submit";
@@ -94,24 +82,47 @@ export function useCreatePostState(communityId: string) {
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
   const [pricingPolicy, setPricingPolicy] = React.useState<ApiCommunityPricingPolicy | null>(null);
   const [loadError, setLoadError] = React.useState<unknown>(null);
-  const [composerMode, setComposerMode] = React.useState<ComposerTab>("text");
-  const [authorMode, setAuthorMode] = React.useState<AuthorMode>("human");
-  const [identityMode, setIdentityMode] = React.useState<"public" | "anonymous">("public");
-  const [selectedQualifierIds, setSelectedQualifierIds] = React.useState<string[]>([]);
-  const [title, setTitle] = React.useState("");
-  const [body, setBody] = React.useState("");
-  const [linkUrl, setLinkUrl] = React.useState("");
-  const [caption, setCaption] = React.useState("");
-  const [lyrics, setLyrics] = React.useState("");
-  const [songState, setSongState] = React.useState<SongComposerState>(() => defaultSongState());
-  const [monetizationState, setMonetizationState] = React.useState<MonetizationState>(() => defaultMonetizationState());
-  const [charityContribution, setCharityContribution] = React.useState<CharityContributionState>(() => defaultCharityContributionState());
-  const [audience, setAudience] = React.useState<ComposerAudienceState>(() => defaultAudienceState());
-  const [songMode, setSongMode] = React.useState<SongMode>("original");
-  const [derivativeStep, setDerivativeStep] = React.useState<DerivativeStepState | undefined>(undefined);
-  const [pendingSongBundleId, setPendingSongBundleId] = React.useState<string | null>(null);
+  const { actions: draftActions, state: draft } = useCreatePostDraftState();
+  const {
+    audience,
+    authorMode,
+    body,
+    caption,
+    charityContribution,
+    composerMode,
+    derivativeStep,
+    identityMode,
+    linkUrl,
+    lyrics,
+    monetizationState,
+    pendingSongBundleId,
+    selectedQualifierIds,
+    songMode,
+    songState,
+    submitError,
+    title,
+  } = draft;
+  const {
+    resetCharityContribution,
+    setAudience,
+    setAuthorMode,
+    setBody,
+    setCaption,
+    setCharityContribution,
+    setComposerMode,
+    setDerivativeStep,
+    setIdentityMode,
+    setLinkUrl,
+    setLyrics,
+    setMonetizationState,
+    setPendingSongBundleId,
+    setSelectedQualifierIds,
+    setSongMode,
+    setSongState,
+    setSubmitError,
+    setTitle,
+  } = draftActions;
   const [availableAgent, setAvailableAgent] = React.useState<AvailableSigningAgent | null>(null);
-  const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
 
@@ -175,8 +186,8 @@ export function useCreatePostState(communityId: string) {
   }, [community]);
 
   React.useEffect(() => {
-    setCharityContribution(defaultCharityContributionState());
-  }, [communityId]);
+    resetCharityContribution();
+  }, [communityId, resetCharityContribution]);
 
   React.useEffect(() => {
     const publicOptionEnabled = isPublicAudienceAllowed(community);

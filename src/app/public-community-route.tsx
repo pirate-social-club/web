@@ -25,6 +25,7 @@ import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
+import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
 import { buildCommunitySidebarRequirements } from "./authenticated-routes/community-sidebar-helpers";
 import { useCommunityInteractionGate } from "./authenticated-routes/community-interaction-gate";
 import { buildFeedSortOptions } from "./authenticated-routes/route-core";
@@ -164,28 +165,17 @@ function PublicCommunityNotFound({ communityId }: { communityId: string }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").publicCommunity;
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="w-full max-w-xl rounded-[var(--radius-3xl)] border border-border-soft bg-card px-6 py-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{copy.notFoundTitle}</h1>
-        <p className="mt-3 text-base leading-7 text-muted-foreground">
-          {copy.notFoundDescription.replace("{communityId}", communityId)}
-        </p>
-      </div>
-    </div>
+    <PublicRouteMessageState
+      description={copy.notFoundDescription.replace("{communityId}", communityId)}
+      title={copy.notFoundTitle}
+    />
   );
 }
 
 function PublicCommunityErrorState({ description }: { description: string }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").publicCommunity;
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="w-full max-w-xl rounded-[var(--radius-3xl)] border border-border-soft bg-card px-6 py-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{copy.errorTitle}</h1>
-        <p className="mt-3 text-base leading-7 text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
+  return <PublicRouteMessageState description={description} title={copy.errorTitle} />;
 }
 
 export function PublicCommunityRoutePage({ communityId }: { communityId: string }) {
@@ -444,7 +434,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
   }, [api.posts.vote, buildBlockedModalState, posts, runGatedCommunityAction, setPosts]);
 
   if (loading) {
-    return null;
+    return <PublicRouteLoadingState />;
   }
 
   if (error) {

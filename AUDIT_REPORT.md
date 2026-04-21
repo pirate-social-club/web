@@ -151,6 +151,11 @@ No confirmed bug items remain open.
 - **Status:** ✅ **Fixed**
 - **Verification:** `create-community-route.tsx` imports `SpacesChallengePayload` from the namespace verification type surface instead of declaring a local duplicate.
 
+### REFACTOR-021 — Public route loading and message states duplicated
+- **Status:** ✅ **Fixed**
+- **Location:** `src/app/public-route-states.tsx`
+- **Verification:** Public profile, public agent, and public community routes now share `PublicRouteLoadingState` and `PublicRouteMessageState`.
+
 ---
 
 ## Remaining Structural Refactors
@@ -218,12 +223,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Impact:** Pollutes production console; may leak internal paths or state shape.
 - **Fix:** Replace with a production-strippable logger, or remove.
 - **Risk:** Low.
-
-### REFACTOR-021 — Loading states duplicated across public routes
-- **Location:** `public-profile-route.tsx:114–115` and `public-community-route.tsx:178–179` both use identical `min-h-[60vh]` centered card spinner markup.
-- **Verification:** Direct read.
-- **Fix:** Extract `<RouteLoadingState>` component.
-- **Risk:** Negligible.
 
 ### REFACTOR-022 — Repeated Tailwind class combinations that should be extracted
 - **Location:**

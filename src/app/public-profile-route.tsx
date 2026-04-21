@@ -5,7 +5,6 @@ import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { PublicProfilePage } from "@/components/compositions/public-profile-page/public-profile-page";
 import type { PublicProfileProps } from "@/components/compositions/public-profile-page/public-profile-page.types";
-import { Spinner } from "@/components/primitives/spinner";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
 import { buildCommunityPath } from "@/lib/community-routing";
@@ -13,6 +12,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { useUiLocale, resolveLocaleLanguageTag } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { buildPublicProfilePath, getProfileHandleLabel } from "@/lib/profile-routing";
+import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
 
 type PublicProfileResolution = {
   is_canonical: boolean;
@@ -100,26 +100,15 @@ function apiProfileToPublicProfileProps(
 
 function PublicProfileNotFound({ path, title, description }: { path: string; title: string; description: string }) {
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="w-full max-w-xl rounded-[var(--radius-3xl)] border border-border-soft bg-card px-6 py-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-        <p className="mt-3 text-base leading-7 text-muted-foreground">
-          {description.replace("{path}", path)}
-        </p>
-      </div>
-    </div>
+    <PublicRouteMessageState
+      description={description.replace("{path}", path)}
+      title={title}
+    />
   );
 }
 
 function PublicProfileErrorState({ description, title }: { description: string; title: string }) {
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="w-full max-w-xl rounded-[var(--radius-3xl)] border border-border-soft bg-card px-6 py-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-        <p className="mt-3 text-base leading-7 text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
+  return <PublicRouteMessageState description={description} title={title} />;
 }
 
 export function PublicProfileRoutePage({
@@ -152,11 +141,7 @@ export function PublicProfileRoutePage({
   }, [hostSuffix, resolution]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner className="size-6" />
-      </div>
-    );
+    return <PublicRouteLoadingState />;
   }
 
   if (error) {

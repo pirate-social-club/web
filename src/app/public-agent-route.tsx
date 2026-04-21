@@ -4,9 +4,9 @@ import * as React from "react";
 import type { ApiPublicAgentResolution } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
-import { Spinner } from "@/components/primitives/spinner";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
+import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
 
 function usePublicAgent(handleLabel: string) {
   const api = useApi();
@@ -44,28 +44,17 @@ function PublicAgentNotFound({ path }: { path: string }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").publicAgent;
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="w-full max-w-xl rounded-[var(--radius-3xl)] border border-border-soft bg-card px-6 py-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{copy.notFoundTitle}</h1>
-        <p className="mt-3 text-base leading-7 text-muted-foreground">
-          {copy.notFoundDescription.replace("{path}", path)}
-        </p>
-      </div>
-    </div>
+    <PublicRouteMessageState
+      description={copy.notFoundDescription.replace("{path}", path)}
+      title={copy.notFoundTitle}
+    />
   );
 }
 
 function PublicAgentErrorState() {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").publicAgent;
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="w-full max-w-xl rounded-[var(--radius-3xl)] border border-border-soft bg-card px-6 py-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{copy.errorTitle}</h1>
-        <p className="mt-3 text-base leading-7 text-muted-foreground">{copy.errorDescription}</p>
-      </div>
-    </div>
-  );
+  return <PublicRouteMessageState description={copy.errorDescription} title={copy.errorTitle} />;
 }
 
 export function PublicAgentRoutePage({
@@ -80,11 +69,7 @@ export function PublicAgentRoutePage({
   const { error, loading, resolution } = usePublicAgent(handleLabel);
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner className="size-6" />
-      </div>
-    );
+    return <PublicRouteLoadingState />;
   }
 
   if (error) {

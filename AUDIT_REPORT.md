@@ -170,6 +170,10 @@ No confirmed bug items remain open.
 - **Location:** `src/lib/logger.ts`
 - **Verification:** No app-owned `console.*` matches remain outside `logger.ts` and vendored Story SDK code. App diagnostics now go through the production-gated logger wrapper.
 
+### REFACTOR-014 — `route-core.tsx` and `route-shell.tsx` dumping grounds
+- **Status:** ✅ **Fixed**
+- **Verification:** `route-core.tsx` now only re-exports route compatibility helpers from focused `lib/formatting`, `lib/route-messages`, and `hooks` modules. `route-shell.tsx` now only re-exports state components from `components/states/` plus two small route helpers.
+
 ---
 
 ## Remaining Structural Refactors
@@ -210,12 +214,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Impact:** 200+ deep imports. Import blocks are 10–20 lines long.
 - **Fix:** Add `components/primitives/index.ts` and `components/compositions/index.ts`.
 - **Risk:** Negligible.
-
-### REFACTOR-014 — `route-core.tsx` and `route-shell.tsx` are dumping grounds
-- **Location:** `app/authenticated-routes/route-core.tsx`, `route-shell.tsx`
-- **Verification:** Direct read. `route-core.tsx` mixes i18n helpers, formatting, currency parsing, time formatting, and feed sort builders. `route-shell.tsx` mixes loading spinners, page shells, auth-required states, route failure states, and empty feeds.
-- **Fix:** Split into `lib/formatting/error.ts`, `currency.ts`, `time.ts` and `components/states/full-page-spinner.tsx`, `auth-required-state.tsx`, `route-failure-state.tsx`.
-- **Risk:** Low.
 
 ### REFACTOR-022 — Repeated Tailwind class combinations that should be extracted
 - **Location:**

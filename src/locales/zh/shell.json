@@ -50,11 +50,11 @@
     ],
     "codeLabel": "代码",
     "codeItems": [
+      { "id": "source-freedom-browser", "label": "Freedom 浏览器" },
       { "id": "source-github", "label": "GitHub" },
-      { "id": "source-radicle-web", "label": "Web" },
+      { "id": "source-radicle-web", "label": "网页" },
       { "id": "source-radicle-api", "label": "API" },
-      { "id": "source-radicle-contracts", "label": "Contracts" },
-      { "id": "source-freedom-browser", "label": "Freedom Browser" }
+      { "id": "source-radicle-contracts", "label": "合约" }
     ],
     "resourceItems": [
       { "id": "blog", "label": "博客" },

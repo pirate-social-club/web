@@ -969,6 +969,10 @@ export const GENERATED_LOCALE_CATALOGS = {
         "codeLabel": "Code",
         "codeItems": [
           {
+            "id": "source-freedom-browser",
+            "label": "Freedom Browser"
+          },
+          {
             "id": "source-github",
             "label": "GitHub"
           },
@@ -983,10 +987,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           {
             "id": "source-radicle-contracts",
             "label": "Contracts"
-          },
-          {
-            "id": "source-freedom-browser",
-            "label": "Freedom Browser"
           }
         ],
         "resourceItems": [
@@ -1995,12 +1995,16 @@ export const GENERATED_LOCALE_CATALOGS = {
         "codeLabel": "الكود",
         "codeItems": [
           {
+            "id": "source-freedom-browser",
+            "label": "متصفح Freedom"
+          },
+          {
             "id": "source-github",
             "label": "GitHub"
           },
           {
             "id": "source-radicle-web",
-            "label": "Web"
+            "label": "الويب"
           },
           {
             "id": "source-radicle-api",
@@ -2008,11 +2012,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           },
           {
             "id": "source-radicle-contracts",
-            "label": "Contracts"
-          },
-          {
-            "id": "source-freedom-browser",
-            "label": "Freedom Browser"
+            "label": "العقود"
           }
         ],
         "resourceItems": [
@@ -3021,12 +3021,16 @@ export const GENERATED_LOCALE_CATALOGS = {
         "codeLabel": "代码",
         "codeItems": [
           {
+            "id": "source-freedom-browser",
+            "label": "Freedom 浏览器"
+          },
+          {
             "id": "source-github",
             "label": "GitHub"
           },
           {
             "id": "source-radicle-web",
-            "label": "Web"
+            "label": "网页"
           },
           {
             "id": "source-radicle-api",
@@ -3034,11 +3038,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           },
           {
             "id": "source-radicle-contracts",
-            "label": "Contracts"
-          },
-          {
-            "id": "source-freedom-browser",
-            "label": "Freedom Browser"
+            "label": "合约"
           }
         ],
         "resourceItems": [

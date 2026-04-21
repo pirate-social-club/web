@@ -50,11 +50,11 @@
     ],
     "codeLabel": "الكود",
     "codeItems": [
+      { "id": "source-freedom-browser", "label": "متصفح Freedom" },
       { "id": "source-github", "label": "GitHub" },
-      { "id": "source-radicle-web", "label": "Web" },
+      { "id": "source-radicle-web", "label": "الويب" },
       { "id": "source-radicle-api", "label": "API" },
-      { "id": "source-radicle-contracts", "label": "Contracts" },
-      { "id": "source-freedom-browser", "label": "Freedom Browser" }
+      { "id": "source-radicle-contracts", "label": "العقود" }
     ],
     "resourceItems": [
       { "id": "blog", "label": "المدونة" },

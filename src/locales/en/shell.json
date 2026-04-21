@@ -50,11 +50,11 @@
     ],
     "codeLabel": "Code",
     "codeItems": [
+      { "id": "source-freedom-browser", "label": "Freedom Browser" },
       { "id": "source-github", "label": "GitHub" },
       { "id": "source-radicle-web", "label": "Web" },
       { "id": "source-radicle-api", "label": "API" },
-      { "id": "source-radicle-contracts", "label": "Contracts" },
-      { "id": "source-freedom-browser", "label": "Freedom Browser" }
+      { "id": "source-radicle-contracts", "label": "Contracts" }
     ],
     "resourceItems": [
       { "id": "blog", "label": "Blog" },

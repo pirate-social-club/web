@@ -178,6 +178,10 @@ No confirmed bug items remain open.
 - **Status:** ✅ **Fixed**
 - **Verification:** Added `src/components/primitives/index.ts` and `src/components/compositions/index.ts` as stable import surfaces.
 
+### REFACTOR-022 — Repeated Tailwind shell class combinations
+- **Status:** ✅ **Fixed**
+- **Verification:** Added `CardShell` and `PageContainer` in `src/components/primitives/layout-shell.tsx` and migrated the audited card/container hotspots.
+
 ---
 
 ## Remaining Structural Refactors
@@ -211,14 +215,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Impact:** Complex interdependent effects are hard to reason about and prone to race conditions.
 - **Fix:** Replace with `useReducer` or a lightweight state machine.
 - **Risk:** High — composer submission flow is critical.
-
-### REFACTOR-022 — Repeated Tailwind class combinations that should be extracted
-- **Location:**
-  - Card shell: `route-shell.tsx:38,130`, `home-routes.tsx:273`, `notification-inbox-page.tsx:117`, `community-membership-gate-panel.tsx:121`
-  - Page container: `app.tsx:460`, `onboarding-route.tsx:284`, `create-community-route.tsx:202`
-- **Verification:** Direct read.
-- **Fix:** Extract `<CardShell>` and `<PageContainer>` primitives.
-- **Risk:** Negligible.
 
 ---
 

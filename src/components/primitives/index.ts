@@ -17,6 +17,7 @@ export * from "./icon-button";
 export * from "./input";
 export * from "./item";
 export * from "./label";
+export * from "./layout-shell";
 export * from "./media-control-button";
 export * from "./option-card";
 export * from "./pill-button";

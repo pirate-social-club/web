@@ -4,6 +4,7 @@ import * as React from "react";
 import type { ApiPublicAgentResolution } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
+import { CardShell, PageContainer } from "@/components/primitives/layout-shell";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
@@ -88,8 +89,8 @@ export function PublicAgentRoutePage({
   const ownerHandle = resolution.owner.global_handle.label;
 
   return (
-    <div className="mx-auto w-full max-w-[880px] px-4 py-6">
-      <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card p-7">
+    <PageContainer className="px-4 py-6" size="narrow">
+      <CardShell className="p-7">
         <h1 className="text-4xl font-semibold tracking-tight text-foreground">{displayName}</h1>
         <p className="mt-2 text-lg text-muted-foreground">{handle}</p>
         <div className="mt-6 flex flex-wrap gap-3">
@@ -102,7 +103,7 @@ export function PublicAgentRoutePage({
             {copy.providerLabel}
           </span>
         </div>
-      </div>
-    </div>
+      </CardShell>
+    </PageContainer>
   );
 }

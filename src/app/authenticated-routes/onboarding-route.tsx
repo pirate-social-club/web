@@ -8,6 +8,7 @@ import type { RedditVerification as ApiRedditVerification } from "@pirate/api-co
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
 import { FormNote } from "@/components/primitives/form-layout";
+import { PageContainer } from "@/components/primitives/layout-shell";
 import { useApi } from "@/lib/api";
 import { updateSessionOnboarding, updateSessionProfile, useSession } from "@/lib/api/session-store";
 import { resolveOnboardingPhase } from "@/lib/onboarding";
@@ -281,7 +282,7 @@ export function OnboardingPage() {
 
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-6">
-      <div className="mx-auto w-full max-w-5xl">
+      <PageContainer>
         <OnboardingRedditBootstrap
           busy={actionLoading}
           callbacks={{
@@ -300,7 +301,7 @@ export function OnboardingPage() {
           phaseError={onboardingStatus && typeof error === "string" ? error : null}
           reddit={redditVerification}
         />
-      </div>
+      </PageContainer>
     </section>
   );
 }

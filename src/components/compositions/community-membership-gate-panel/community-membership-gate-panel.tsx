@@ -6,6 +6,7 @@ import QRCode from "qrcode";
 
 import { Button } from "@/components/primitives/button";
 import { FormNote } from "@/components/primitives/form-layout";
+import { CardShell } from "@/components/primitives/layout-shell";
 import { Spinner } from "@/components/primitives/spinner";
 import { getJoinCtaLabel, isJoinCtaActionable } from "@/lib/identity-gates";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -122,7 +123,7 @@ export function CommunityMembershipGatePanel({
   if (gates.length === 0) return null;
 
   return (
-    <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-4">
+    <CardShell className="px-5 py-4">
       <div className="flex justify-end">
         {eligibility && !verificationPrompt ? (
           <JoinCta eligibility={eligibility} loading={joinLoading} onJoin={onJoin} />
@@ -160,6 +161,6 @@ export function CommunityMembershipGatePanel({
 
       {joinError ? <FormNote className="mt-2" tone="warning">{joinError}</FormNote> : null}
       {joinRequested ? <FormNote className="mt-2">Your join request has been submitted.</FormNote> : null}
-    </div>
+    </CardShell>
   );
 }

@@ -8,6 +8,7 @@ import type {
 
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
+import { CardShell } from "@/components/primitives/layout-shell";
 import { Separator } from "@/components/primitives/separator";
 import { useUiLocale } from "@/lib/ui-locale";
 import { resolveLocaleLanguageTag } from "@/lib/ui-locale-core";
@@ -119,9 +120,9 @@ export function NotificationInboxPage({
 
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-6">
-      <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-5 md:px-6 md:py-6">
+      <CardShell className="px-5 py-5 md:px-6 md:py-6">
         <div className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{title ?? copy.title}</div>
-      </div>
+      </CardShell>
 
       <div className="flex flex-col gap-4">
         {loading ? (

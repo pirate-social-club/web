@@ -18,6 +18,7 @@ import type {
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Button } from "@/components/primitives/button";
+import { PageContainer } from "@/components/primitives/layout-shell";
 
 import { DEFAULT_COMMUNITY_RULES } from "./moderation-helpers";
 import { getRouteAuthDescription } from "./route-status-copy";
@@ -200,7 +201,7 @@ export function CreateCommunityPage() {
         open={namespaceModalOpen}
       />
       <section className="flex min-w-0 flex-1 flex-col gap-6">
-        <div className="mx-auto w-full max-w-5xl">
+        <PageContainer>
           <CreateCommunityComposer
             creatorVerificationState={creatorVerificationState}
             hasPendingNamespaceSession={Boolean(activeNamespaceSessionId)}
@@ -212,7 +213,7 @@ export function CreateCommunityPage() {
             onCreate={handleCreate}
             onVerifyNamespace={() => setNamespaceModalOpen(true)}
           />
-        </div>
+        </PageContainer>
       </section>
     </>
   );

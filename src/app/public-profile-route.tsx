@@ -9,6 +9,7 @@ import { Spinner } from "@/components/primitives/spinner";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
 import { buildCommunityPath } from "@/lib/community-routing";
+import { getErrorMessage } from "@/lib/error-utils";
 import { useUiLocale, resolveLocaleLanguageTag } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { buildPublicProfilePath, getProfileHandleLabel } from "@/lib/profile-routing";
@@ -25,18 +26,6 @@ type PublicProfileResolution = {
     created_at: string;
   }>;
 };
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-
-  if (typeof error === "string" && error.trim()) {
-    return error;
-  }
-
-  return fallback;
-}
 
 function usePublicProfile(handleLabel: string) {
   const api = useApi();

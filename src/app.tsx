@@ -29,6 +29,7 @@ import {
   buildCommunityModerationIndexPath,
   buildDefaultCommunityModerationPath,
 } from "@/app/authenticated-routes/moderation-helpers";
+import { useClientHydrated } from "@/app/authenticated-routes/route-core";
 import { RootAppErrorState } from "@/app/authenticated-routes/route-shell";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 
@@ -72,16 +73,6 @@ function resolveMobileBackPath(route: AppRoute): string | null {
   }
 
   return null;
-}
-
-function useClientReady(): boolean {
-  const [ready, setReady] = React.useState(false);
-
-  React.useEffect(() => {
-    setReady(true);
-  }, []);
-
-  return ready;
 }
 
 function formatCommunitySidebarLabel(
@@ -239,7 +230,7 @@ function AppShellHeader({
 }) {
   const session = useSession();
   const { connect } = usePiratePrivyRuntime();
-  const clientReady = useClientReady();
+  const clientReady = useClientHydrated();
   const avatarFallback = resolveSessionAvatarFallback(session, copy.appHeader.defaultAvatarFallback);
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
   const showConnectAction = clientReady && !session;
@@ -294,7 +285,7 @@ function AppShellMobileNav({
 }) {
   const session = useSession();
   const { connect } = usePiratePrivyRuntime();
-  const clientReady = useClientReady();
+  const clientReady = useClientHydrated();
   const avatarFallback = resolveSessionAvatarFallback(session, copy.appHeader.defaultAvatarFallback);
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
   const createPostPath = resolveCreatePostPath(route);

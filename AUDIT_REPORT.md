@@ -103,6 +103,17 @@ No confirmed bug items remain open.
 - **Verification:** `verify-namespace-modal.tsx` and `community-namespace-verification-page.tsx` now consume the shared flow hook instead of owning duplicated lifecycle state.
 - **Test coverage:** `use-namespace-verification-flow.test.tsx` covers 11 state-transition cases.
 
+### REFACTOR-008 — `getErrorMessage` utility triplicated
+- **Status:** ✅ **Fixed**
+- **Location:** `src/lib/error-utils.ts`
+- **Verification:** Only one `getErrorMessage` implementation remains. `route-core.tsx` re-exports it for authenticated-route compatibility, and public routes import the shared utility directly.
+- **Test coverage:** `src/lib/error-utils.test.ts`
+
+### REFACTOR-009 — `useClientReady` / `useClientHydrated` duplicated
+- **Status:** ✅ **Fixed**
+- **Location:** `src/app/authenticated-routes/route-core.tsx`
+- **Verification:** Only `useClientHydrated` remains; no duplicate `useClientReady` implementation is present in `app.tsx`.
+
 ---
 
 ## Remaining Structural Refactors
@@ -142,18 +153,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Verification:** Direct read. Contains `ProfilePanel`, `WalletsPanel`, `AgentsPanel`, `NotificationsPanel`, `PreferencesPanel`, `SecurityPanel` in one file.
 - **Fix:** Split each panel into its own file in `components/compositions/settings-page/panels/`.
 - **Risk:** Low.
-
-### REFACTOR-008 — `getErrorMessage` utility triplicated
-- **Location:** `route-core.tsx:60`, `public-community-route.tsx:31`, `public-profile-route.tsx:29`
-- **Verification:** Direct read. Same error-message formatter in three route files.
-- **Fix:** Move to `lib/error-utils.ts`.
-- **Risk:** Negligible.
-
-### REFACTOR-009 — `useClientReady` / `useClientHydrated` duplicated
-- **Location:** `app.tsx:76`, `route-core.tsx:50`
-- **Verification:** Direct read. Both are `useState(false)` + `useEffect(() => setReady(true), [])`.
-- **Fix:** Keep the one in `route-core.tsx`, delete the one in `app.tsx`, import everywhere.
-- **Risk:** Negligible.
 
 ### REFACTOR-010 — `handleBuySong` duplicated between community-route and post-route
 - **Location:** `community-route.tsx:93–114`, `post-route.tsx:48–72`
@@ -326,7 +325,7 @@ These are theoretical concerns identified by static analysis. **Do not act on th
 ## Recommended Next Steps
 
 1. **No confirmed-bug audit tasks remain.** Keep treating any new bug claims as requiring source verification before adding them to the bug bucket.
-2. **Continue with low-risk structural cleanup**: `getErrorMessage` consolidation, `useClientReady` consolidation, API query-path helper, public/authenticated route boundary cleanup, and route-shell/route-core splitting.
+2. **Continue with low-risk structural cleanup**: API query-path helper, public/authenticated route boundary cleanup, route-shell/route-core splitting, and repeated route loading states.
 3. **Defer high-risk composer work** until it has stronger Storybook/test coverage. `PostComposer` and `create-post-state.tsx` still touch critical submission flows.
 4. **Run a performance profile** before acting on any Performance Hypothesis. Use React DevTools Profiler + Lighthouse. If no render hot spots are found, deprioritize memoization work.
 5. **Add bundle/dead-code tooling** (`knip`, `rollup-plugin-visualizer`) so future audits have objective data instead of static guesswork.

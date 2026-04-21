@@ -8,6 +8,8 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { type UiLocaleCode, resolveLocaleLanguageTag } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
 
+export { getErrorMessage } from "@/lib/error-utils";
+
 export function interpolateMessage(
   template: string,
   replacements: Record<string, string>,
@@ -55,18 +57,6 @@ export function useClientHydrated(): boolean {
   }, []);
 
   return hydrated;
-}
-
-export function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-
-  if (typeof error === "string" && error.trim()) {
-    return error;
-  }
-
-  return fallback;
 }
 
 export function formatUsdLabel(

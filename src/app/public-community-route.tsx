@@ -19,6 +19,7 @@ import { useApi } from "@/lib/api";
 import { isApiNotFoundError, type ApiError } from "@/lib/api/client";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
+import { getErrorMessage } from "@/lib/error-utils";
 import { getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
@@ -27,18 +28,6 @@ import { getLocaleMessages } from "@/locales";
 import { buildCommunitySidebarRequirements } from "./authenticated-routes/community-sidebar-helpers";
 import { useCommunityInteractionGate } from "./authenticated-routes/community-interaction-gate";
 import { buildFeedSortOptions } from "./authenticated-routes/route-core";
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-
-  if (typeof error === "string" && error.trim()) {
-    return error;
-  }
-
-  return fallback;
-}
 
 function usePublicCommunityPageData(communityId: string, localeTag: string, activeSort: FeedSort) {
   const api = useApi();

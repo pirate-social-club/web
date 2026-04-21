@@ -53,6 +53,7 @@
     "emptyYourCommunitiesBody": "Communities you create or join show up here.",
     "emptyYourCommunitiesTitle": "No communities yet",
     "membersLabel": "{count} members",
+    "loadCommunitiesError": "Could not load your communities.",
     "railTitle": "Recent posts",
     "subtitle": "",
     "title": "Home",
@@ -303,7 +304,8 @@
       "startingImport": "Starting import..."
     },
     "placeholders": {
-      "handle": "Choose your handle"
+      "handle": "Choose your handle",
+      "redditUsername": "technohippie"
     },
     "progressLabel": "Onboarding",
     "reopenVerification": "Reopen verification",
@@ -503,6 +505,9 @@
     "checkStatus": "Check status",
     "connectAction": "Connect OpenClaw",
     "emptyTitle": "Connect OpenClaw",
+    "handleLabel": "Agent handle",
+    "handlePlaceholder": "night-signal",
+    "handleRequired": "Agent handle is required.",
     "inactiveLabel": "Inactive",
     "loadingLabel": "Loading agents...",
     "manualFallbackLabel": "Manual fallback:",
@@ -517,6 +522,8 @@
     "providerClawKey": "ClawKey",
     "providerSelf": "Self",
     "registerAction": "Register with ClawKey",
+    "saveHandleAction": "Save handle",
+    "saveHandleError": "Could not save agent handle.",
     "saveNameAction": "Save name",
     "saveNameError": "Could not save agent name.",
     "verifiedAt": "{provider} · verified {date}"

@@ -23,6 +23,7 @@ import { useRouteMessages } from "./route-core";
 
 type PendingAgentRegistration = {
   sessionId: string;
+  handleLabel: string;
   displayName: string;
   publicKeyPem: string;
   privateKeyPem: string;
@@ -134,10 +135,24 @@ function formatWalletChainLabel(chainNamespace: string): string {
   }
 }
 
+function normalizeAgentHandleInput(value: string): string {
+  return value.trim().toLowerCase().replace(/\.clawitzer$/i, "");
+}
+
+function displayNameFromAgentHandle(value: string): string {
+  const normalized = normalizeAgentHandleInput(value);
+  return normalized
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ") || normalized;
+}
+
 function mapApiUserAgentToOwnedAgent(agent: ApiUserAgent): SettingsPageProps["agents"]["items"][number] {
   return {
     agentId: agent.agent_id,
     displayName: agent.display_name,
+    handleLabel: agent.handle?.label_display ?? null,
     status: agent.status,
     createdAt: agent.created_at,
     currentOwnership: agent.current_ownership
@@ -258,7 +273,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const [agentsState, setAgentsState] = React.useState<SettingsPageProps["agents"]["registrationState"]>({ kind: "idle" });
   const [agentImportValue, setAgentImportValue] = React.useState("");
   const pendingAgentRegistrationRef = React.useRef<PendingAgentRegistration | null>(null);
-  const pendingPairingDisplayNameRef = React.useRef<string | null>(null);
+  const pendingPairingHandleRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     if (!profile) return;
@@ -429,6 +444,9 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
       const completedSession = await api.agents.completeOwnershipSession(pendingRegistration.sessionId, {});
 
       if (completedSession.status === "verified" && completedSession.agent_id) {
+        await api.agents.claimHandle(completedSession.agent_id, {
+          desired_label: pendingRegistration.handleLabel,
+        });
         const now = new Date().toISOString();
         await saveStoredOwnedAgentKey({
           agentId: completedSession.agent_id,
@@ -484,6 +502,13 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     }
   }, [api.agents]);
 
+  const handleUpdateAgentHandle = React.useCallback(async (agentId: string, nextHandleLabel: string) => {
+    await api.agents.claimHandle(agentId, {
+      desired_label: nextHandleLabel.trim(),
+    });
+    await loadOwnedAgents();
+  }, [api.agents, loadOwnedAgents]);
+
   React.useEffect(() => {
     if (agentsState.kind !== "awaiting_owner" && agentsState.kind !== "pairing_code") {
       return;
@@ -496,13 +521,15 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
       void loadOwnedAgents()
         .then(async (items) => {
           const activeAgent = items?.find((agent) => agent.status === "active");
-          if (activeAgent && pendingPairingDisplayNameRef.current?.trim()) {
-            const pendingDisplayName = pendingPairingDisplayNameRef.current.trim();
+          if (activeAgent && pendingPairingHandleRef.current?.trim()) {
+            const pendingHandle = pendingPairingHandleRef.current.trim();
+            await handleUpdateAgentHandle(activeAgent.agentId, pendingHandle);
+            const pendingDisplayName = displayNameFromAgentHandle(pendingHandle);
             if (activeAgent.displayName !== pendingDisplayName) {
               await handleUpdateAgentName(activeAgent.agentId, pendingDisplayName);
-              await loadOwnedAgents();
             }
-            pendingPairingDisplayNameRef.current = null;
+            await loadOwnedAgents();
+            pendingPairingHandleRef.current = null;
           }
 
           if (activeAgent) {
@@ -518,11 +545,11 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [agentsState, completePendingAgentRegistration, handleUpdateAgentName, loadOwnedAgents]);
+  }, [agentsState, completePendingAgentRegistration, handleUpdateAgentHandle, handleUpdateAgentName, loadOwnedAgents]);
 
-  const handleStartAgentPairing = React.useCallback(async (displayName: string) => {
+  const handleStartAgentPairing = React.useCallback(async (handleLabel: string) => {
     setAgentsState({ kind: "verifying" });
-    pendingPairingDisplayNameRef.current = displayName.trim();
+    pendingPairingHandleRef.current = handleLabel.trim();
     try {
       const pairing = await api.agents.createPairing();
       setAgentsState({
@@ -531,7 +558,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         expiresAt: pairing.expires_at,
       });
     } catch (error: unknown) {
-      pendingPairingDisplayNameRef.current = null;
+      pendingPairingHandleRef.current = null;
       const apiError = error as ApiError;
       setAgentsState({
         kind: "error",
@@ -542,14 +569,15 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
 
   const startAgentRegistration = React.useCallback(async (input: {
     agentChallenge: ImportedOpenClawBundle["agent_challenge"];
-    displayName: string;
+    handleLabel: string;
     privateKeyPem: string;
     publicKeyPem: string;
   }) => {
+    const displayName = displayNameFromAgentHandle(input.handleLabel);
     const sessionResult = await api.agents.startOwnershipSession({
       session_kind: "register",
       ownership_provider: "clawkey",
-      display_name: input.displayName,
+      display_name: displayName,
       agent_challenge: input.agentChallenge,
     });
 
@@ -560,7 +588,8 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
 
     pendingAgentRegistrationRef.current = {
       sessionId: sessionResult.agent_ownership_session_id,
-      displayName: input.displayName,
+      handleLabel: input.handleLabel,
+      displayName,
       publicKeyPem: input.publicKeyPem,
       privateKeyPem: input.privateKeyPem,
     };
@@ -573,7 +602,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     });
   }, [api.agents]);
 
-  const handleImportAgentRegistration = React.useCallback(async (displayName: string) => {
+  const handleImportAgentRegistration = React.useCallback(async (handleLabel: string) => {
     if (!profile) return;
 
     setAgentsState({ kind: "verifying" });
@@ -583,7 +612,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
 
       await startAgentRegistration({
         agentChallenge: importedBundle.agent_challenge,
-        displayName,
+        handleLabel,
         publicKeyPem: importedBundle.public_key_pem,
         privateKeyPem: importedBundle.private_key_pem,
       });
@@ -662,16 +691,17 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         importValue: agentImportValue,
         loading: agentsLoading,
         registrationState: agentsState,
-        onStartPairing: (nextDisplayName) => {
-          void handleStartAgentPairing(nextDisplayName);
+        onStartPairing: (nextHandleLabel) => {
+          void handleStartAgentPairing(nextHandleLabel);
         },
-        onImportRegistration: (nextDisplayName) => {
-          void handleImportAgentRegistration(nextDisplayName);
+        onImportRegistration: (nextHandleLabel) => {
+          void handleImportAgentRegistration(nextHandleLabel);
         },
         onImportValueChange: setAgentImportValue,
         onCheckRegistration: () => {
           void completePendingAgentRegistration();
         },
+        onUpdateHandle: (agentId, nextHandleLabel) => handleUpdateAgentHandle(agentId, nextHandleLabel),
         onUpdateName: (agentId, nextDisplayName) => handleUpdateAgentName(agentId, nextDisplayName),
       }}
     />

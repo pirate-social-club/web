@@ -400,6 +400,7 @@ describe("composition smoke tests", () => {
           items: [{
             agentId: "agt_demo1",
             displayName: "Captain Bot",
+            handleLabel: null,
             status: "active",
             createdAt: "2026-03-15T10:00:00Z",
             currentOwnership: {

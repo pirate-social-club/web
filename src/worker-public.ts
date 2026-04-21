@@ -1,4 +1,5 @@
 import {
+  renderPublicAgentPage,
   renderPublicProfileErrorPage,
   renderPublicProfilePage,
 } from "./worker-public-html";
@@ -6,11 +7,12 @@ import { resolveLocaleLanguageTag, resolveRequestLocale } from "./lib/ui-locale-
 import { getLocaleMessages } from "./locales";
 import type {
   Env,
+  PublicAgentResolution,
   PublicProfileResolution,
 } from "./worker-public.types";
 
 type PublicProfileRequestTarget =
-  | { kind: "host"; handleLabel: string; hostSuffix: string }
+  | { kind: "host"; handleLabel: string; hostSuffix: string; identityKind: "profile" | "agent" }
   | { kind: "path"; handleLabel: string };
 
 const RESERVED_PUBLIC_PROFILE_HOSTS = new Set([
@@ -27,11 +29,11 @@ const RESERVED_PUBLIC_PROFILE_HOSTS = new Set([
   "staging",
 ]);
 
-const PUBLIC_PROFILE_HOST_SUFFIXES = ["pirate", "localhost"];
+const PUBLIC_PROFILE_HOST_SUFFIXES = ["pirate", "clawitzer", "localhost"];
 
 function extractPublicProfileHost(
   hostname: string,
-): { handleLabel: string; hostSuffix: string } | null {
+): { handleLabel: string; hostSuffix: string; identityKind: "profile" | "agent" } | null {
   const normalizedHostname = hostname.trim().toLowerCase().replace(/\.+$/u, "");
   if (!normalizedHostname || normalizedHostname === "localhost") {
     return null;
@@ -47,7 +49,11 @@ function extractPublicProfileHost(
       return null;
     }
 
-    return { handleLabel: subdomain, hostSuffix };
+    return {
+      handleLabel: subdomain,
+      hostSuffix,
+      identityKind: hostSuffix === "clawitzer" ? "agent" : "profile",
+    };
   }
 
   return null;
@@ -81,6 +87,7 @@ function extractPublicProfileRequestTarget(url: URL): PublicProfileRequestTarget
       kind: "host",
       handleLabel: hostTarget.handleLabel,
       hostSuffix: hostTarget.hostSuffix,
+      identityKind: hostTarget.identityKind,
     };
   }
 
@@ -142,8 +149,11 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
         : "pirate.sc";
   const apiOrigin = resolveApiOrigin(env, hostSuffix);
   const appOrigin = resolveAppOrigin(env, url, hostSuffix);
+  const publicLookupPath = target.kind === "host" && target.identityKind === "agent"
+    ? "public-agents"
+    : "public-profiles";
   const response = await fetch(
-    `${apiOrigin}/public-profiles/${encodeURIComponent(target.handleLabel)}`,
+    `${apiOrigin}/${publicLookupPath}/${encodeURIComponent(target.handleLabel)}`,
     {
       headers: { accept: "application/json" },
       redirect: "manual",
@@ -164,6 +174,22 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       copy.errorDescription,
       502,
     );
+  }
+
+  if (target.kind === "host" && target.identityKind === "agent") {
+    const resolution = await response.json() as PublicAgentResolution;
+    if (!resolution.is_canonical) {
+      const nextUrl = new URL(request.url);
+      nextUrl.hostname = `${resolution.resolved_handle_label.replace(/\.clawitzer$/i, "")}.${target.hostSuffix}`;
+      return Response.redirect(nextUrl.toString(), 302);
+    }
+
+    return renderPublicAgentPage({
+      agentResolution: resolution,
+      appOrigin,
+      canonicalUrl: url.toString(),
+      host: url.hostname,
+    });
   }
 
   const resolution = await response.json() as PublicProfileResolution;

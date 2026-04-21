@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { navigate } from "@/app/router";
 import { cn } from "@/lib/utils";
 import { PostCardHeader } from "./post-card-header";
 import { PostCardMedia } from "./post-card-media";
@@ -103,8 +104,8 @@ export function PostCard({
   const isClickable = Boolean(postHref);
 
   const navigateToPost = React.useCallback(() => {
-    if (!postHref || typeof window === "undefined") return;
-    window.location.assign(postHref);
+    if (!postHref) return;
+    navigate(postHref);
   }, [postHref]);
 
   return (

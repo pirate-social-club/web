@@ -6,6 +6,7 @@ import type { OwnedAgentsPanelProps, OwnedAgent } from "../owned-agents-panel.ty
 const sampleAgent: OwnedAgent = {
   agentId: "agt_abc123",
   displayName: "Captain Bot",
+  handleLabel: "captain-bot.clawitzer",
   status: "active",
   createdAt: "2026-03-15T10:00:00Z",
   currentOwnership: {
@@ -20,6 +21,7 @@ const sampleAgents: OwnedAgent[] = [
   {
     agentId: "agt_def456",
     displayName: "Parrot Assistant",
+    handleLabel: "parrot-assistant.clawitzer",
     status: "active",
     createdAt: "2026-02-10T08:00:00Z",
     currentOwnership: {
@@ -42,14 +44,15 @@ function InteractiveStory(args: OwnedAgentsPanelProps) {
         agents={agents}
         importValue={importValue}
         registrationState={regState}
-        onImportRegistration={(displayName) => {
+        onImportRegistration={(handleLabel) => {
           setRegState({ kind: "verifying" });
           setTimeout(() => {
             setAgents((prev) => [
               ...prev,
               {
                 agentId: "agt_new_" + Date.now(),
-                displayName,
+                displayName: handleLabel,
+                handleLabel: `${handleLabel.replace(/\.clawitzer$/i, "")}.clawitzer`,
                 status: "active",
                 createdAt: new Date().toISOString(),
                 currentOwnership: {
@@ -79,9 +82,9 @@ function InteractiveStory(args: OwnedAgentsPanelProps) {
             ),
           );
         }}
-        onUpdateName={async (agentId, displayName) => {
+        onUpdateHandle={async (agentId, handleLabel) => {
           setAgents((prev) => prev.map((agent) => (
-            agent.agentId === agentId ? { ...agent, displayName } : agent
+            agent.agentId === agentId ? { ...agent, handleLabel: `${handleLabel.replace(/\.clawitzer$/i, "")}.clawitzer` } : agent
           )));
         }}
       />
@@ -133,6 +136,7 @@ export const WithInactive: Story = {
       {
         agentId: "agt_old789",
         displayName: "Retired Bot",
+        handleLabel: "retired-bot.clawitzer",
         status: "deregistered",
         createdAt: "2025-12-01T12:00:00Z",
         currentOwnership: null,

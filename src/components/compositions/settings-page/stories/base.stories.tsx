@@ -139,6 +139,7 @@ export const Agents: Story = {
         {
           agentId: "agt_demo1",
           displayName: "Captain Bot",
+          handleLabel: "captain-bot.clawitzer",
           status: "active",
           createdAt: "2026-03-15T10:00:00Z",
           currentOwnership: {
@@ -150,7 +151,7 @@ export const Agents: Story = {
       ],
       canRegister: false,
       registrationState: { kind: "idle" },
-      onUpdateName: async () => {},
+      onUpdateHandle: async () => {},
     },
   },
 };

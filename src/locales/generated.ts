@@ -60,6 +60,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "emptyYourCommunitiesBody": "Communities you create or join show up here.",
         "emptyYourCommunitiesTitle": "No communities yet",
         "membersLabel": "{count} members",
+        "loadCommunitiesError": "Could not load your communities.",
         "railTitle": "Recent posts",
         "subtitle": "",
         "title": "Home",
@@ -310,7 +311,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "startingImport": "Starting import..."
         },
         "placeholders": {
-          "handle": "Choose your handle"
+          "handle": "Choose your handle",
+          "redditUsername": "technohippie"
         },
         "progressLabel": "Onboarding",
         "reopenVerification": "Reopen verification",
@@ -510,6 +512,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "checkStatus": "Check status",
         "connectAction": "Connect OpenClaw",
         "emptyTitle": "Connect OpenClaw",
+        "handleLabel": "Agent handle",
+        "handlePlaceholder": "night-signal",
+        "handleRequired": "Agent handle is required.",
         "inactiveLabel": "Inactive",
         "loadingLabel": "Loading agents...",
         "manualFallbackLabel": "Manual fallback:",
@@ -524,6 +529,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "providerClawKey": "ClawKey",
         "providerSelf": "Self",
         "registerAction": "Register with ClawKey",
+        "saveHandleAction": "Save handle",
+        "saveHandleError": "Could not save agent handle.",
         "saveNameAction": "Save name",
         "saveNameError": "Could not save agent name.",
         "verifiedAt": "{provider} · verified {date}"
@@ -1035,6 +1042,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "emptyYourCommunitiesBody": "المجتمعات التي تنشئها أو تنضم إليها تظهر هنا.",
         "emptyYourCommunitiesTitle": "لا توجد مجتمعات بعد",
         "membersLabel": "{count} عضو",
+        "loadCommunitiesError": "Could not load your communities.",
         "railTitle": "المنشورات الحديثة",
         "subtitle": "",
         "title": "الرئيسية",
@@ -1285,7 +1293,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "startingImport": "بدء الاستيراد..."
         },
         "placeholders": {
-          "handle": "اختر اسمك"
+          "handle": "اختر اسمك",
+          "redditUsername": "technohippie"
         },
         "progressLabel": "الإعداد",
         "reopenVerification": "أعد فتح التحقق",
@@ -1485,6 +1494,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "checkStatus": "تحقق من الحالة",
         "connectAction": "اربط OpenClaw",
         "emptyTitle": "اربط OpenClaw",
+        "handleLabel": "Agent handle",
+        "handlePlaceholder": "night-signal",
+        "handleRequired": "Agent handle is required.",
         "inactiveLabel": "غير نشط",
         "loadingLabel": "جارٍ تحميل الوكلاء...",
         "manualFallbackLabel": "خيار يدوي بديل:",
@@ -1499,6 +1511,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "providerClawKey": "ClawKey",
         "providerSelf": "Self",
         "registerAction": "سجّل باستخدام ClawKey",
+        "saveHandleAction": "Save handle",
+        "saveHandleError": "Could not save agent handle.",
         "saveNameAction": "احفظ الاسم",
         "saveNameError": "Could not save agent name.",
         "verifiedAt": "{provider} · تم التحقق في {date}"
@@ -2010,6 +2024,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "emptyYourCommunitiesBody": "你创建或加入的社区会显示在这里。",
         "emptyYourCommunitiesTitle": "还没有社区",
         "membersLabel": "{count} 位成员",
+        "loadCommunitiesError": "Could not load your communities.",
         "railTitle": "最新帖子",
         "subtitle": "",
         "title": "首页",
@@ -2260,7 +2275,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "startingImport": "正在启动导入..."
         },
         "placeholders": {
-          "handle": "选择你的名称"
+          "handle": "选择你的名称",
+          "redditUsername": "technohippie"
         },
         "progressLabel": "引导流程",
         "reopenVerification": "重新打开验证",
@@ -2460,6 +2476,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "checkStatus": "检查状态",
         "connectAction": "连接 OpenClaw",
         "emptyTitle": "连接 OpenClaw",
+        "handleLabel": "Agent handle",
+        "handlePlaceholder": "night-signal",
+        "handleRequired": "Agent handle is required.",
         "inactiveLabel": "未激活",
         "loadingLabel": "正在加载代理...",
         "manualFallbackLabel": "手动备用方案：",
@@ -2474,6 +2493,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "providerClawKey": "ClawKey",
         "providerSelf": "Self",
         "registerAction": "使用 ClawKey 注册",
+        "saveHandleAction": "Save handle",
+        "saveHandleError": "Could not save agent handle.",
         "saveNameAction": "保存名称",
         "saveNameError": "Could not save agent name.",
         "verifiedAt": "{provider} · 已验证于 {date}"

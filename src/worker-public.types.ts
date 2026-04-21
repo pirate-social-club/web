@@ -24,6 +24,29 @@ export type PublicProfileResolution = {
   resolved_handle_label: string;
 };
 
+export type PublicAgentResolution = {
+  is_canonical: boolean;
+  requested_handle_label: string;
+  resolved_handle_label: string;
+  agent: {
+    agent_id: string;
+    display_name?: string | null;
+    handle: {
+      label_display: string;
+    };
+    ownership_provider?: string | null;
+    created_at: string;
+    updated_at: string;
+  };
+  owner: {
+    user_id: string;
+    display_name?: string | null;
+    global_handle: {
+      label: string;
+    };
+  };
+};
+
 export type Env = {
   HNS_PUBLIC_API_ORIGIN?: string;
   HNS_PUBLIC_APP_ORIGIN?: string;

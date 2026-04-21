@@ -3,8 +3,10 @@ import type {
   AgentOwnershipPairingClaimRequest,
   AgentOwnershipPairingClaimResult,
   AgentOwnershipSession,
+  AgentHandle,
   CompleteAgentOwnershipSessionRequest,
   StartAgentOwnershipSessionRequest,
+  UpdateAgentHandleRequest,
   UserAgent,
   UserAgentListResponse,
 } from "@pirate/api-contracts";
@@ -39,6 +41,16 @@ export function createAgentsApi(request: ApiRequest) {
     ): Promise<UserAgent> =>
       request<UserAgent>(`/agents/${encodeURIComponent(agentId)}`, {
         method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    getHandle: (agentId: string): Promise<AgentHandle> =>
+      request<AgentHandle>(`/agents/${encodeURIComponent(agentId)}/handle`),
+    claimHandle: (
+      agentId: string,
+      body: UpdateAgentHandleRequest,
+    ): Promise<AgentHandle> =>
+      request<AgentHandle>(`/agents/${encodeURIComponent(agentId)}/handle`, {
+        method: "POST",
         body: JSON.stringify(body),
       }),
     startOwnershipSession: (

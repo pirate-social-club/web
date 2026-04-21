@@ -61,12 +61,14 @@ Items moved out of the bug bucket into lower buckets or rejected are noted in th
 - **Fix:** Once `@pirate/api-contracts` exports `UpdateUserAgentRequest`, remove the local definition and restore the import.
 
 ### OPEN-002 — `onboarding-reddit-bootstrap.tsx` demo placeholder
+- **Status:** ✅ **Fixed**
 - **Location:** `src/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.tsx:189`
-- **Fix:** Move `"technohippie"` to a locale placeholder key if it is meant to be user-facing.
+- **Fix:** Moved to `onboarding.placeholders.redditUsername` in locale files.
 
 ### OPEN-003 — `home-routes.tsx` fallback error string
+- **Status:** ✅ **Fixed**
 - **Location:** `src/app/authenticated-routes/home-routes.tsx:232`
-- **Fix:** Move `"Could not load your communities."` to a locale key.
+- **Fix:** Moved to `home.loadCommunitiesError` in locale files.
 
 ---
 

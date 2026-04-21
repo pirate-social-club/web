@@ -31,24 +31,28 @@ function providerLabel(provider: string): string {
   return provider;
 }
 
+function stripClawitzerSuffix(value: string | null): string {
+  return value?.replace(/\.clawitzer$/i, "") ?? "";
+}
+
 function AgentRow({
   agent,
   copy,
   localeTag,
-  onUpdateName,
+  onUpdateHandle,
   onDeregister,
 }: {
   agent: OwnedAgent;
   copy: OwnedAgentsCopy;
   localeTag: string;
-  onUpdateName?: (agentId: string, displayName: string) => Promise<void> | void;
+  onUpdateHandle?: (agentId: string, handleLabel: string) => Promise<void> | void;
   onDeregister?: (agentId: string) => void;
 }) {
   const isActive = agent.status === "active";
   const ownership = agent.currentOwnership;
-  const [draftName, setDraftName] = React.useState(agent.displayName);
-  const [renameError, setRenameError] = React.useState<string | null>(null);
-  const [renameSaving, setRenameSaving] = React.useState(false);
+  const [draftHandle, setDraftHandle] = React.useState(stripClawitzerSuffix(agent.handleLabel));
+  const [handleError, setHandleError] = React.useState<string | null>(null);
+  const [handleSaving, setHandleSaving] = React.useState(false);
   const ownershipProvider = ownership?.ownershipProvider === "self_agent_id"
     ? copy.providerSelf
     : ownership?.ownershipProvider === "clawkey"
@@ -56,29 +60,30 @@ function AgentRow({
       : ownership
         ? providerLabel(ownership.ownershipProvider)
         : null;
-  const canRename = isActive && Boolean(onUpdateName);
-  const nextDisplayName = draftName.trim();
-  const renameDisabled = renameSaving || nextDisplayName.length === 0 || nextDisplayName === agent.displayName;
+  const canEditHandle = isActive && Boolean(onUpdateHandle);
+  const nextHandle = draftHandle.trim();
+  const currentHandle = stripClawitzerSuffix(agent.handleLabel);
+  const handleDisabled = handleSaving || nextHandle.length === 0 || nextHandle === currentHandle;
 
   React.useEffect(() => {
-    setDraftName(agent.displayName);
-    setRenameError(null);
-    setRenameSaving(false);
-  }, [agent.agentId, agent.displayName]);
+    setDraftHandle(stripClawitzerSuffix(agent.handleLabel));
+    setHandleError(null);
+    setHandleSaving(false);
+  }, [agent.agentId, agent.handleLabel]);
 
-  const handleRename = async () => {
-    if (!onUpdateName || renameDisabled) {
+  const handleSaveHandle = async () => {
+    if (!onUpdateHandle || handleDisabled) {
       return;
     }
 
-    setRenameSaving(true);
-    setRenameError(null);
+    setHandleSaving(true);
+    setHandleError(null);
     try {
-      await onUpdateName(agent.agentId, nextDisplayName);
+      await onUpdateHandle(agent.agentId, nextHandle);
     } catch (error: unknown) {
-      setRenameError(error instanceof Error ? error.message : copy.saveNameError);
+      setHandleError(error instanceof Error ? error.message : copy.saveHandleError);
     } finally {
-      setRenameSaving(false);
+      setHandleSaving(false);
     }
   };
 
@@ -93,23 +98,26 @@ function AgentRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          {canRename ? (
-            <Input
-              aria-label={copy.nameLabel}
-              className="min-w-0"
-              onChange={(event) => {
-                setDraftName(event.target.value);
-                if (renameError) {
-                  setRenameError(null);
-                }
-              }}
-              placeholder={copy.namePlaceholder}
-              value={draftName}
-            />
+          {canEditHandle ? (
+            <div className="flex min-w-0 flex-1 items-center rounded-[var(--radius-md)] border border-input bg-background">
+              <Input
+                aria-label={copy.handleLabel}
+                className="min-w-0 border-0 bg-transparent"
+                onChange={(event) => {
+                  setDraftHandle(event.target.value);
+                  if (handleError) {
+                    setHandleError(null);
+                  }
+                }}
+                placeholder={copy.handlePlaceholder}
+                value={draftHandle}
+              />
+              <span className="shrink-0 px-3 text-muted-foreground">.clawitzer</span>
+            </div>
           ) : (
             <div className="flex min-w-0 items-center gap-2">
               <span className="truncate text-base font-semibold text-foreground">
-                {agent.displayName}
+                {agent.handleLabel ?? agent.displayName}
               </span>
               {isActive && ownership ? (
                 <SealCheck className="size-4 shrink-0 text-primary" weight="fill" />
@@ -118,12 +126,12 @@ function AgentRow({
           )}
 
           <div className="flex items-center gap-2">
-            {canRename ? (
-              <Button disabled={renameDisabled} loading={renameSaving} onClick={() => void handleRename()} variant="secondary">
-                {copy.saveNameAction}
+            {canEditHandle ? (
+              <Button disabled={handleDisabled} loading={handleSaving} onClick={() => void handleSaveHandle()} variant="secondary">
+                {copy.saveHandleAction}
               </Button>
             ) : null}
-            {isActive && ownership && canRename ? (
+            {isActive && ownership && canEditHandle ? (
               <SealCheck className="size-4 shrink-0 text-primary" weight="fill" />
             ) : null}
             {isActive && onDeregister ? (
@@ -140,6 +148,9 @@ function AgentRow({
         </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground">
+          {agent.displayName && agent.displayName !== agent.handleLabel ? (
+            <span>{agent.displayName}</span>
+          ) : null}
           {ownership ? (
             <span>
               {copy.verifiedAt
@@ -150,7 +161,7 @@ function AgentRow({
             <span>{copy.noActiveOwnership}</span>
           )}
         </div>
-        {renameError ? <FormNote tone="destructive">{renameError}</FormNote> : null}
+        {handleError ? <FormNote tone="destructive">{handleError}</FormNote> : null}
       </div>
     </div>
   );
@@ -189,17 +200,17 @@ function RegistrationCard({
   canImport: boolean;
   copy: OwnedAgentsCopy;
   importOpen: boolean;
-  onImportRegistration?: (displayName: string) => void;
+  onImportRegistration?: (handleLabel: string) => void;
   onShowAdvanced?: () => void;
-  onStartPairing?: (displayName: string) => void;
+  onStartPairing?: (handleLabel: string) => void;
 }) {
-  const [displayName, setDisplayName] = React.useState("");
+  const [handleLabel, setHandleLabel] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
 
-  const requireDisplayName = (): string | null => {
-    const trimmed = displayName.trim();
+  const requireHandle = (): string | null => {
+    const trimmed = handleLabel.trim();
     if (!trimmed) {
-      setError(copy.nameRequired);
+      setError(copy.handleRequired);
       return null;
     }
     return trimmed;
@@ -208,28 +219,32 @@ function RegistrationCard({
   return (
     <Card className="border-border bg-card shadow-none">
       <CardContent className="space-y-4 px-5 py-5">
-        <Input
-          aria-label={copy.nameLabel}
-          onChange={(event) => {
-            setDisplayName(event.target.value);
-            if (error) {
-              setError(null);
-            }
-          }}
-          placeholder={copy.namePlaceholder}
-          value={displayName}
-        />
+        <div className="flex min-w-0 items-center rounded-[var(--radius-md)] border border-input bg-background">
+          <Input
+            aria-label={copy.handleLabel}
+            className="min-w-0 border-0 bg-transparent"
+            onChange={(event) => {
+              setHandleLabel(event.target.value);
+              if (error) {
+                setError(null);
+              }
+            }}
+            placeholder={copy.handlePlaceholder}
+            value={handleLabel}
+          />
+          <span className="shrink-0 px-3 text-muted-foreground">.clawitzer</span>
+        </div>
         {error ? <FormNote tone="destructive">{error}</FormNote> : null}
         <div className="flex flex-wrap gap-3">
           {onStartPairing ? (
             <Button
               loading={busy}
               onClick={() => {
-                const nextDisplayName = requireDisplayName();
-                if (!nextDisplayName) {
+                const nextHandle = requireHandle();
+                if (!nextHandle) {
                   return;
                 }
-                onStartPairing(nextDisplayName);
+                onStartPairing(nextHandle);
               }}
             >
               {copy.connectAction}
@@ -244,11 +259,11 @@ function RegistrationCard({
             <Button
               loading={busy}
               onClick={() => {
-                const nextDisplayName = requireDisplayName();
-                if (!nextDisplayName) {
+                const nextHandle = requireHandle();
+                if (!nextHandle) {
                   return;
                 }
-                onImportRegistration(nextDisplayName);
+                onImportRegistration(nextHandle);
               }}
               variant="secondary"
             >
@@ -354,7 +369,7 @@ export function OwnedAgentsPanel({
   onImportRegistration,
   onCheckRegistration,
   onDeregister,
-  onUpdateName,
+  onUpdateHandle,
 }: OwnedAgentsPanelProps) {
   const { locale } = useUiLocale();
   const copy = React.useMemo(() => getLocaleMessages(locale, "routes").ownedAgents, [locale]);
@@ -420,7 +435,7 @@ export function OwnedAgentsPanel({
               copy={copy}
               localeTag={localeTag}
               onDeregister={onDeregister}
-              onUpdateName={onUpdateName}
+              onUpdateHandle={onUpdateHandle}
             />
           ))}
           {inactiveAgents.length > 0 ? (

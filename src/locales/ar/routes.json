@@ -53,6 +53,7 @@
     "emptyYourCommunitiesBody": "المجتمعات التي تنشئها أو تنضم إليها تظهر هنا.",
     "emptyYourCommunitiesTitle": "لا توجد مجتمعات بعد",
     "membersLabel": "{count} عضو",
+    "loadCommunitiesError": "Could not load your communities.",
     "railTitle": "المنشورات الحديثة",
     "subtitle": "",
     "title": "الرئيسية",
@@ -303,7 +304,8 @@
       "startingImport": "بدء الاستيراد..."
     },
     "placeholders": {
-      "handle": "اختر اسمك"
+      "handle": "اختر اسمك",
+      "redditUsername": "technohippie"
     },
     "progressLabel": "الإعداد",
     "reopenVerification": "أعد فتح التحقق",
@@ -503,6 +505,9 @@
     "checkStatus": "تحقق من الحالة",
     "connectAction": "اربط OpenClaw",
     "emptyTitle": "اربط OpenClaw",
+    "handleLabel": "Agent handle",
+    "handlePlaceholder": "night-signal",
+    "handleRequired": "Agent handle is required.",
     "inactiveLabel": "غير نشط",
     "loadingLabel": "جارٍ تحميل الوكلاء...",
     "manualFallbackLabel": "خيار يدوي بديل:",
@@ -517,6 +522,8 @@
     "providerClawKey": "ClawKey",
     "providerSelf": "Self",
     "registerAction": "سجّل باستخدام ClawKey",
+    "saveHandleAction": "Save handle",
+    "saveHandleError": "Could not save agent handle.",
     "saveNameAction": "احفظ الاسم",
     "saveNameError": "Could not save agent name.",
     "verifiedAt": "{provider} · تم التحقق في {date}"

@@ -186,7 +186,7 @@ function ImportKarmaPhase({
               disabled={busy || !!isCodeReady || isChecking}
               dir="ltr"
               onChange={(e) => onUsernameChange?.(e.target.value)}
-              placeholder="technohippie"
+              placeholder={copy.placeholders.redditUsername}
               size="lg"
               value={reddit.usernameValue}
             />

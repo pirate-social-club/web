@@ -53,6 +53,7 @@
     "emptyYourCommunitiesBody": "你创建或加入的社区会显示在这里。",
     "emptyYourCommunitiesTitle": "还没有社区",
     "membersLabel": "{count} 位成员",
+    "loadCommunitiesError": "Could not load your communities.",
     "railTitle": "最新帖子",
     "subtitle": "",
     "title": "首页",
@@ -303,7 +304,8 @@
       "startingImport": "正在启动导入..."
     },
     "placeholders": {
-      "handle": "选择你的名称"
+      "handle": "选择你的名称",
+      "redditUsername": "technohippie"
     },
     "progressLabel": "引导流程",
     "reopenVerification": "重新打开验证",
@@ -503,6 +505,9 @@
     "checkStatus": "检查状态",
     "connectAction": "连接 OpenClaw",
     "emptyTitle": "连接 OpenClaw",
+    "handleLabel": "Agent handle",
+    "handlePlaceholder": "night-signal",
+    "handleRequired": "Agent handle is required.",
     "inactiveLabel": "未激活",
     "loadingLabel": "正在加载代理...",
     "manualFallbackLabel": "手动备用方案：",
@@ -517,6 +522,8 @@
     "providerClawKey": "ClawKey",
     "providerSelf": "Self",
     "registerAction": "使用 ClawKey 注册",
+    "saveHandleAction": "Save handle",
+    "saveHandleError": "Could not save agent handle.",
     "saveNameAction": "保存名称",
     "saveNameError": "Could not save agent name.",
     "verifiedAt": "{provider} · 已验证于 {date}"

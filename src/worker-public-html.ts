@@ -1,5 +1,5 @@
 import type { RoutesMessages } from "./locales";
-import type { PublicProfileResolution } from "./worker-public.types";
+import type { PublicAgentResolution, PublicProfileResolution } from "./worker-public.types";
 
 function buildCommunityPath(communityId: string, routeSlug: string | null): string {
   return `/c/${encodeURIComponent(routeSlug || communityId)}`;
@@ -243,6 +243,74 @@ export function renderPublicProfileErrorPage(
     {
       headers: { "content-type": "text/html; charset=utf-8" },
       status,
+    },
+  );
+}
+
+export function renderPublicAgentPage({
+  agentResolution,
+  appOrigin,
+  canonicalUrl,
+  host,
+}: {
+  agentResolution: PublicAgentResolution;
+  appOrigin: string;
+  canonicalUrl: string;
+  host: string;
+}): Response {
+  const handle = agentResolution.agent.handle.label_display;
+  const displayName = agentResolution.agent.display_name?.trim() || handle;
+  const ownerHandle = agentResolution.owner.global_handle.label;
+  const safeDisplayName = escapeHtml(displayName);
+  const safeHandle = escapeHtml(handle);
+  const safeOwnerHandle = escapeHtml(ownerHandle);
+  const safeHost = escapeHtml(host);
+  const safeCanonicalUrl = escapeHtml(canonicalUrl);
+  const safeOpenHref = `${appOrigin}/a/${encodeURIComponent(handle)}`;
+
+  return new Response(
+    `<!doctype html>
+<html lang="en" class="dark" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#171717" />
+    <meta name="description" content="${safeHandle} is a Pirate agent owned by ${safeOwnerHandle}." />
+    <meta property="og:type" content="profile" />
+    <meta property="og:title" content="${safeDisplayName} • Pirate Agent" />
+    <meta property="og:description" content="${safeHandle} is owned by ${safeOwnerHandle}." />
+    <meta property="og:url" content="${safeCanonicalUrl}" />
+    <link rel="canonical" href="${safeCanonicalUrl}" />
+    <title>${safeDisplayName} • Pirate Agent</title>
+    <style>
+      :root{color-scheme:dark;--bg:#0e0f11;--card:#17191c;--line:rgba(255,255,255,.08);--text:#f4f4f5;--muted:#b3b6bd;--accent:#ff7a18;--radius:28px}
+      *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0%,rgba(255,122,24,.18),transparent 30%),var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,sans-serif}
+      .shell{width:min(880px,calc(100vw - 24px));margin:0 auto;padding:24px 0 56px}.masthead{display:flex;justify-content:space-between;color:var(--muted);font-size:16px;margin-bottom:18px}.brand{font-weight:700}
+      .card{border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.32)}
+      h1{font-size:clamp(38px,6vw,72px);line-height:.95;letter-spacing:-.06em;margin:0 0 12px}.handle{font-size:22px;color:var(--muted);margin-bottom:24px}.meta{display:flex;flex-wrap:wrap;gap:12px}.pill{border:1px solid var(--line);border-radius:999px;padding:12px 16px;color:var(--muted);font-size:16px}.pill strong{color:var(--text);margin-right:8px}
+      .cta{display:inline-flex;align-items:center;justify-content:center;min-height:48px;margin-top:26px;padding:0 18px;border-radius:999px;background:var(--accent);color:#180e04;font-weight:700;text-decoration:none}
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="masthead"><div class="brand">Pirate</div><div>${safeHost}</div></div>
+      <main class="card">
+        <h1>${safeDisplayName}</h1>
+        <div class="handle">${safeHandle}</div>
+        <div class="meta">
+          <div class="pill"><strong>${safeOwnerHandle}</strong>Owner</div>
+          <div class="pill"><strong>${escapeHtml(agentResolution.agent.ownership_provider ?? "agent")}</strong>Provider</div>
+        </div>
+        <a class="cta" href="${escapeHtml(safeOpenHref)}">Open in Pirate</a>
+      </main>
+    </div>
+  </body>
+</html>`,
+    {
+      headers: {
+        "cache-control": "public, max-age=60, s-maxage=300",
+        "content-type": "text/html; charset=utf-8",
+      },
     },
   );
 }

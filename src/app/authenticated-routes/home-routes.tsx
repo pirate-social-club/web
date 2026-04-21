@@ -229,7 +229,7 @@ export function YourCommunitiesPage() {
   if (error && communities.length === 0) {
     return (
       <RouteLoadFailureState
-        description={getErrorMessage(error, "Could not load your communities.")}
+        description={getErrorMessage(error, copy.home.loadCommunitiesError)}
         title={copy.yourCommunities.title}
       />
     );

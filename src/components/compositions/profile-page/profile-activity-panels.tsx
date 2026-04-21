@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { navigate } from "@/app/router";
 import { Card } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -57,14 +58,52 @@ function FeedStack({ children }: { children: React.ReactNode }) {
   return <div className="space-y-3">{children}</div>;
 }
 
+function isInteractiveTarget(target: EventTarget | null, currentTarget: HTMLElement): boolean {
+  if (!(target instanceof Element)) return false;
+
+  const interactiveElement = target.closest(
+    'a, button, input, textarea, select, summary, [role="button"], [role="link"], [data-post-card-interactive="true"]',
+  );
+
+  return interactiveElement != null && currentTarget.contains(interactiveElement);
+}
+
 function toSongItemProps(scrobble: ProfileScrobbleItem) {
   const { scrobbleId: _scrobbleId, ...songItem } = scrobble;
   return songItem;
 }
 
 function CommentRow({ comment }: { comment: ProfileCommentItem }) {
+  const isClickable = Boolean(comment.postHref);
+
   return (
-    <article className="space-y-3 px-5 py-4 text-start">
+    <article
+      className={cn(
+        "space-y-3 px-5 py-4 text-start transition-colors",
+        isClickable && "cursor-pointer hover:bg-muted/20 focus-visible:bg-muted/20",
+      )}
+      onClick={(event) => {
+        if (!isClickable || !comment.postHref || isInteractiveTarget(event.target, event.currentTarget)) {
+          return;
+        }
+
+        navigate(comment.postHref);
+      }}
+      onKeyDown={(event) => {
+        if (!isClickable || !comment.postHref || isInteractiveTarget(event.target, event.currentTarget)) {
+          return;
+        }
+
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+
+        event.preventDefault();
+        navigate(comment.postHref);
+      }}
+      role={isClickable ? "link" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+    >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-muted-foreground">
         {comment.communityLabel ? (
           comment.communityHref ? (

@@ -20,6 +20,10 @@ describe("resolveApiBaseUrl", () => {
     expect(resolveApiBaseUrl("captain.pirate.sc")).toBe("https://api.pirate.sc");
   });
 
+  test("uses HNS API for the HNS app host", () => {
+    expect(resolveApiBaseUrl("app.pirate")).toBe("https://api.pirate");
+  });
+
   test("joins relative paths against the resolved API origin", () => {
     expect(resolveApiUrl("/public-profiles/captain", "captain.pirate.sc")).toBe(
       "https://api.pirate.sc/public-profiles/captain",

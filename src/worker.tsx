@@ -72,6 +72,7 @@ function buildContentSecurityPolicy(nonce: string): string {
     [
       "connect-src",
       "'self'",
+      "https://api.pirate",
       "https://api.pirate.sc",
       "https://api-staging.pirate.sc",
       "https://auth.privy.io",

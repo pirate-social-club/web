@@ -54,6 +54,10 @@ export function resolveApiBaseUrl(hostname?: string | null): string {
     return "https://api.pirate.sc";
   }
 
+  if (resolvedHostname === "app.pirate") {
+    return "https://api.pirate";
+  }
+
   return resolveEnvironmentFallback();
 }
 

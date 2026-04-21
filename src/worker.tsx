@@ -21,6 +21,7 @@ import {
   getDiscoveryContext,
   markdownRequested,
 } from "@/lib/agent-discovery";
+import { resolveEffectiveRequestUrl } from "@/lib/hns-forwarded-origin";
 import {
   resolveLocaleDirection,
   resolveRequestLocale,
@@ -35,6 +36,7 @@ type AppContext = {
   appOrigin?: string;
   canonicalUrl?: string;
   dir?: UiDirection;
+  effectiveUrl?: string;
   isIndexable?: boolean;
   locale?: UiLocaleCode;
   theme?: ThemeMode;
@@ -116,7 +118,7 @@ function parseThemeCookie(cookieHeader: string | null): ThemeMode {
 }
 
 function AppRoutePage(requestInfo: AppRequestInfo) {
-  const url = new URL(requestInfo.request.url);
+  const url = new URL(requestInfo.ctx.effectiveUrl ?? requestInfo.request.url);
 
   return (
     <PirateApp
@@ -138,9 +140,11 @@ function TermsRoutePage() {
 
 const app = defineApp<AppRequestInfo>([
   ({ ctx, request, response, rw }) => {
-    const discovery = getDiscoveryContext(request.url);
+    const effectiveUrl = resolveEffectiveRequestUrl(request);
+    const discovery = getDiscoveryContext(effectiveUrl);
     const locale = resolveRequestLocale(request.headers.get("accept-language"));
 
+    ctx.effectiveUrl = effectiveUrl;
     ctx.appOrigin = discovery.appOrigin;
     ctx.canonicalUrl = discovery.canonicalUrl;
     ctx.locale = locale;
@@ -151,12 +155,12 @@ const app = defineApp<AppRequestInfo>([
     applyCspHeaders(response.headers, rw.nonce);
   },
   render(Document, [
-    route("/robots.txt", ({ request }) => buildRobotsResponse(request.url)),
-    route("/sitemap.xml", ({ request }) => buildSitemapResponse(request.url)),
-    route("/openapi.json", ({ request }) => buildOpenApiResponse(request.url)),
-    route("/docs/api", ({ request }) => buildApiDocsResponse(request.url, markdownRequested(request))),
-    route("/.well-known/api-catalog", ({ request }) => buildApiCatalogResponse(request.url)),
-    route("/.well-known/agent-skills/index.json", ({ request }) => buildAgentSkillsIndexResponse(request.url)),
+    route("/robots.txt", ({ ctx, request }) => buildRobotsResponse(ctx.effectiveUrl ?? request.url)),
+    route("/sitemap.xml", ({ ctx, request }) => buildSitemapResponse(ctx.effectiveUrl ?? request.url)),
+    route("/openapi.json", ({ ctx, request }) => buildOpenApiResponse(ctx.effectiveUrl ?? request.url)),
+    route("/docs/api", ({ ctx, request }) => buildApiDocsResponse(ctx.effectiveUrl ?? request.url, markdownRequested(request))),
+    route("/.well-known/api-catalog", ({ ctx, request }) => buildApiCatalogResponse(ctx.effectiveUrl ?? request.url)),
+    route("/.well-known/agent-skills/index.json", ({ ctx, request }) => buildAgentSkillsIndexResponse(ctx.effectiveUrl ?? request.url)),
     route("/.well-known/agent-skills/:skillName/SKILL.md", ({ params }) => buildAgentSkillResponse(params.skillName)),
     route("/privacy", PrivacyRoutePage),
     route("/terms", TermsRoutePage),
@@ -195,8 +199,9 @@ export default {
       return response;
     }
 
-    const ctx = getDiscoveryContext(request.url);
-    const markdown = buildMarkdownForPage(request.url);
+    const effectiveUrl = resolveEffectiveRequestUrl(request);
+    const ctx = getDiscoveryContext(effectiveUrl);
+    const markdown = buildMarkdownForPage(effectiveUrl);
     const markdownResponse = buildMarkdownResponse(markdown, ctx, response.status);
 
     for (const [key, value] of response.headers.entries()) {

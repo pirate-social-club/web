@@ -7,15 +7,12 @@ import type {
   CompleteAgentOwnershipSessionRequest,
   StartAgentOwnershipSessionRequest,
   UpdateAgentHandleRequest,
+  UpdateUserAgentRequest,
   UserAgent,
   UserAgentListResponse,
 } from "@pirate/api-contracts";
 
 import type { ApiRequest } from "./client-internal";
-
-type UpdateUserAgentRequest = {
-  display_name: string;
-};
 
 export function createAgentsApi(request: ApiRequest) {
   return {

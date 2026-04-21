@@ -44,21 +44,22 @@ Items moved out of the bug bucket into lower buckets or rejected are noted in th
 - **Verification:** All production files now use `localeTag` from `useUiLocale()`. The only remaining hardcoded `en-US` is in `feed/stories/story-fixtures.tsx:68`, which is story data, not production UI.
 
 ### BUG-007 — Hardcoded English user-facing strings
-- **Status:** ✅ **Mostly fixed**
-- **Verification:** The large majority of listed strings were moved to `locales/*/routes.json` or `shell.json` during the localization pass (~200 keys added across en/ar/zh).
-- **Remaining:**
-  - `onboarding-reddit-bootstrap.tsx:189` — `placeholder="technohippie"` (demo/example placeholder)
-  - `home-routes.tsx:232` — `"Could not load your communities."` as fallback argument to `getErrorMessage`
+- **Status:** ✅ **Fixed**
+- **Verification:** User-facing strings from the confirmed bug list were moved to `locales/*/routes.json` or `shell.json` during the localization pass (~200 keys added across en/ar/zh). The final two leftovers were also moved to locale keys:
+  - `onboarding-reddit-bootstrap.tsx:189` now uses `onboarding.placeholders.redditUsername`.
+  - `home-routes.tsx:232` now uses `home.loadCommunitiesError`.
 
 ---
 
-## Remaining Open Items
+## Resolved Open Items
 
-### OPEN-001 — Local `UpdateUserAgentRequest` type is API-contract drift
+No confirmed bug items remain open.
+
+### OPEN-001 — Local `UpdateUserAgentRequest` type was API-contract drift
+- **Status:** ✅ **Fixed**
 - **Location:** `src/lib/api/client-groups-agents.ts:14`
-- **Verification:** The type is defined locally because `@pirate/api-contracts` no longer exports it.
-- **Impact:** Temporary compatibility patch. If the upstream package renames or restructures the request shape, the local type will silently diverge.
-- **Fix:** Once `@pirate/api-contracts` exports `UpdateUserAgentRequest`, remove the local definition and restore the import.
+- **Verification:** `UpdateUserAgentRequest` is exported from `@pirate/api-contracts`; `client-groups-agents.ts` imports it from the contracts package.
+- **Fix:** Added the request type to `pirate-api/services/contracts/src/index.ts` and removed the local web-only definition.
 
 ### OPEN-002 — `onboarding-reddit-bootstrap.tsx` demo placeholder
 - **Status:** ✅ **Fixed**
@@ -306,8 +307,7 @@ These are theoretical concerns identified by static analysis. **Do not act on th
 
 ## Recommended Next Steps
 
-1. **Address OPEN-001** (`UpdateUserAgentRequest` drift) — track upstream `@pirate/api-contracts` and restore the import when the type is re-exported.
-2. **Address OPEN-002 and OPEN-003** — move the two remaining hardcoded fallback strings to locale keys.
-3. **Run a performance profile** before acting on any Performance Hypothesis. Use React DevTools Profiler + Lighthouse. If no render hot spots are found, deprioritize memoization work.
-4. **Pick 2–3 Structural Refactors** per sprint, starting with low-risk items (barrel files, duplicated utilities) and working up to high-risk god-file splits.
-5. **Add bundle/dead-code tooling** (`knip`, `rollup-plugin-visualizer`) so future audits have objective data instead of static guesswork.
+1. **No confirmed-bug audit tasks remain.** The remaining items in this report are structural refactors or performance hypotheses.
+2. **Run a performance profile** before acting on any Performance Hypothesis. Use React DevTools Profiler + Lighthouse. If no render hot spots are found, deprioritize memoization work.
+3. **Pick 2–3 Structural Refactors** per sprint, starting with low-risk items (barrel files, duplicated utilities) and working up to high-risk god-file splits.
+4. **Add bundle/dead-code tooling** (`knip`, `rollup-plugin-visualizer`) so future audits have objective data instead of static guesswork.

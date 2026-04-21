@@ -53,7 +53,7 @@
     "emptyYourCommunitiesBody": "你创建或加入的社区会显示在这里。",
     "emptyYourCommunitiesTitle": "还没有社区",
     "membersLabel": "{count} 位成员",
-    "loadCommunitiesError": "Could not load your communities.",
+    "loadCommunitiesError": "无法加载你的社区。",
     "railTitle": "最新帖子",
     "subtitle": "",
     "title": "首页",

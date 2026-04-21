@@ -53,7 +53,7 @@
     "emptyYourCommunitiesBody": "المجتمعات التي تنشئها أو تنضم إليها تظهر هنا.",
     "emptyYourCommunitiesTitle": "لا توجد مجتمعات بعد",
     "membersLabel": "{count} عضو",
-    "loadCommunitiesError": "Could not load your communities.",
+    "loadCommunitiesError": "تعذر تحميل مجتمعاتك.",
     "railTitle": "المنشورات الحديثة",
     "subtitle": "",
     "title": "الرئيسية",

@@ -3,8 +3,6 @@ import type { CommunityMembershipMode } from "@/lib/community-membership";
 export type { CommunityMembershipMode };
 export type CommunityDefaultAgeGatePolicy = "none" | "18_plus";
 export type CommunityReadAccessMode = "public" | "members_only";
-export type NamespaceFamily = "hns" | "spaces";
-
 export type AnonymousIdentityScope = "community_stable" | "thread_stable" | "post_ephemeral";
 
 export type IdentityGateDraft =
@@ -34,19 +32,11 @@ export interface CreatorVerificationState {
   ageOver18Verified: boolean;
 }
 
-export interface NamespaceAttachmentState {
-  namespaceVerificationId: string;
-  family: NamespaceFamily;
-  normalizedRootLabel: string;
-}
-
 export interface CreateCommunityComposerProps {
   avatarRef?: string;
   bannerRef?: string;
   displayName?: string;
   description?: string;
-  namespaceAttachment?: NamespaceAttachmentState | null;
-  hasPendingNamespaceSession?: boolean;
   gateDrafts?: IdentityGateDraft[];
   membershipMode?: CommunityMembershipMode;
   defaultAgeGatePolicy?: CommunityDefaultAgeGatePolicy;
@@ -55,7 +45,6 @@ export interface CreateCommunityComposerProps {
   creatorVerificationState?: CreatorVerificationState;
   deferCreatorVerification?: boolean;
   initialStep?: ComposerStep;
-  onClearNamespace?: () => void;
   onCreate?: (input: {
     avatarFile: File | null;
     avatarRef: string | null;
@@ -68,9 +57,7 @@ export interface CreateCommunityComposerProps {
     allowAnonymousIdentity: boolean;
     anonymousIdentityScope: AnonymousIdentityScope;
     gateDrafts: IdentityGateDraft[];
-    namespaceVerificationId: string | null;
   }) => Promise<{
     communityId: string;
   } | void>;
-  onVerifyNamespace?: () => void;
 }

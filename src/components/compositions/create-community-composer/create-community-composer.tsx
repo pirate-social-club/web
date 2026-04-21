@@ -54,8 +54,6 @@ export function CreateCommunityComposer({
   bannerRef = "",
   displayName = "",
   description = "",
-  namespaceAttachment = null,
-  hasPendingNamespaceSession = false,
   gateDrafts = EMPTY_GATE_DRAFTS,
   membershipMode = "open",
   defaultAgeGatePolicy = "none",
@@ -64,9 +62,7 @@ export function CreateCommunityComposer({
   creatorVerificationState,
   deferCreatorVerification = false,
   initialStep,
-  onClearNamespace,
   onCreate,
-  onVerifyNamespace,
 }: CreateCommunityComposerProps) {
   const [activeStep, setActiveStep] = React.useState<ComposerStep>(initialStep ?? 1);
   const [activeMembershipMode, setActiveMembershipMode] =
@@ -120,14 +116,7 @@ export function CreateCommunityComposer({
   const { copy } = useRouteMessages();
   const cc = copy.createCommunity.composer;
 
-  const namespaceRouteLabel = React.useMemo(() => {
-    if (!namespaceAttachment) {
-      return hasPendingNamespaceSession ? cc.verificationInProgress : cc.noRoute;
-    }
 
-    const prefix = namespaceAttachment.family === "spaces" ? "@" : ".";
-    return `${prefix}${namespaceAttachment.normalizedRootLabel}`;
-  }, [hasPendingNamespaceSession, namespaceAttachment, cc]);
 
   const activeGateDrafts: IdentityGateDraft[] = [
     ...(nationalityEnabled && isCountryCode(nationalityRequiredValue)
@@ -199,7 +188,6 @@ export function CreateCommunityComposer({
       allowAnonymousIdentity: activeAllowAnonymousIdentity,
       anonymousIdentityScope: activeAnonymousScope,
       gateDrafts: activeGateDrafts,
-      namespaceVerificationId: namespaceAttachment?.namespaceVerificationId ?? null,
     })
       .catch((error: unknown) => {
         toast.error(error instanceof Error ? error.message : cc.createError);
@@ -220,7 +208,6 @@ export function CreateCommunityComposer({
     activeAllowAnonymousIdentity,
     activeAnonymousScope,
     activeGateDrafts,
-    namespaceAttachment,
   ]);
 
   const erc721GateValid = !erc721Enabled || isAddress(erc721ContractAddress.trim());
@@ -398,28 +385,6 @@ export function CreateCommunityComposer({
                   />
                 </div>
 
-                <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between">
-                  <div className="space-y-0.5">
-                    <p className="text-base font-semibold text-foreground">{cc.routeLabel}</p>
-                    <p className="text-base text-muted-foreground">{namespaceRouteLabel}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {onVerifyNamespace ? (
-                      <Button onClick={onVerifyNamespace} type="button" variant="secondary">
-                        {namespaceAttachment
-                          ? cc.changeRoute
-                          : hasPendingNamespaceSession
-                            ? cc.resumeVerification
-                            : cc.verifyRoute}
-                      </Button>
-                    ) : null}
-                    {namespaceAttachment && onClearNamespace ? (
-                      <Button onClick={onClearNamespace} type="button" variant="ghost">
-                        {cc.clear}
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
               </div>
             </Section>
           ) : null}
@@ -574,7 +539,7 @@ export function CreateCommunityComposer({
               displayName={activeDisplayName}
               gateRequirementSummary={gateRequirementSummary}
               membershipLabel={membershipLabel}
-              routeLabel={namespaceRouteLabel}
+
             />
           ) : null}
         </CardContent>

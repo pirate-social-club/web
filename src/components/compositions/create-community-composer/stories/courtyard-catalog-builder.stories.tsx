@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { Checkbox } from "@/components/primitives/checkbox";
-import { Input } from "@/components/primitives/input";
 import { cn } from "@/lib/utils";
 
 import { NumericStepper, SegmentedControl } from "../create-community-composer.sections";
@@ -11,6 +10,7 @@ type CatalogCategory = "trading_card" | "watch";
 
 type CardVariant = {
   id: string;
+  subject: string;
   title: string;
   set: string;
   year: string;
@@ -28,10 +28,14 @@ type WatchModel = {
 };
 
 const cardVariants: CardVariant[] = [
-  { id: "charizard-v", title: "Charizard V", set: "Champion's Path", year: "2020", grader: "PSA", population: "46" },
-  { id: "charizard-ex", title: "Charizard ex", set: "Obsidian Flames", year: "2023", grader: "PSA", population: "31" },
-  { id: "charizard-gx", title: "Charizard-GX", set: "Hidden Fates", year: "2019", grader: "BGS", population: "18" },
-  { id: "charizard-base", title: "Charizard Holo", set: "Base Set", year: "1999", grader: "PSA", population: "7" },
+  { id: "charizard-v", subject: "Charizard", title: "Charizard V", set: "Champion's Path", year: "2020", grader: "PSA", population: "46" },
+  { id: "charizard-ex", subject: "Charizard", title: "Charizard ex", set: "Obsidian Flames", year: "2023", grader: "PSA", population: "31" },
+  { id: "charizard-gx", subject: "Charizard", title: "Charizard-GX", set: "Hidden Fates", year: "2019", grader: "BGS", population: "18" },
+  { id: "charizard-base", subject: "Charizard", title: "Charizard Holo", set: "Base Set", year: "1999", grader: "PSA", population: "7" },
+  { id: "pikachu-vmax", subject: "Pikachu", title: "Pikachu VMAX", set: "Vivid Voltage", year: "2020", grader: "PSA", population: "29" },
+  { id: "mewtwo-gx", subject: "Mewtwo", title: "Mewtwo-GX", set: "Shining Legends", year: "2017", grader: "BGS", population: "12" },
+  { id: "blastoise-holo", subject: "Blastoise", title: "Blastoise Holo", set: "Base Set", year: "1999", grader: "PSA", population: "5" },
+  { id: "venusaur-holo", subject: "Venusaur", title: "Venusaur Holo", set: "Base Set", year: "1999", grader: "PSA", population: "4" },
 ];
 
 const watchModels: WatchModel[] = [
@@ -102,17 +106,12 @@ function CourtyardCatalogGatePrototype({
   const [quantity, setQuantity] = React.useState(initialCategory === "trading_card" ? 3 : 5);
   const [subject, setSubject] = React.useState("Charizard");
   const [brand, setBrand] = React.useState("Rolex");
-  const [search, setSearch] = React.useState("charizard");
   const [matchAllCards, setMatchAllCards] = React.useState(true);
   const [selectedCards, setSelectedCards] = React.useState<string[]>(["charizard-v", "charizard-ex"]);
   const [selectedWatchModels, setSelectedWatchModels] = React.useState<string[]>(["rolex-submariner"]);
 
-  const visibleCards = cardVariants.filter((variant) =>
-    `${variant.title} ${variant.set} ${variant.year}`.toLowerCase().includes(search.toLowerCase()),
-  );
-  const visibleWatches = watchModels.filter((model) =>
-    model.brand === brand && `${model.brand} ${model.title} ${model.reference} ${model.material}`.toLowerCase().includes(search.toLowerCase()),
-  );
+  const visibleCards = cardVariants.filter((variant) => variant.subject === subject);
+  const visibleWatches = watchModels.filter((model) => model.brand === brand);
   const selectedCardNames = cardVariants
     .filter((variant) => selectedCards.includes(variant.id))
     .map((variant) => variant.title);
@@ -124,9 +123,8 @@ function CourtyardCatalogGatePrototype({
     : `${quantity} Courtyard ${selectedWatchNames.length > 0 ? selectedWatchNames.join(", ") : brand} watches`;
 
   React.useEffect(() => {
-    setSearch(category === "trading_card" ? subject.toLowerCase() : brand.toLowerCase());
     setQuantity(category === "trading_card" ? 3 : 5);
-  }, [brand, category, subject]);
+  }, [category]);
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4">
@@ -161,6 +159,7 @@ function CourtyardCatalogGatePrototype({
                     onClick={() => {
                       setSubject(nextSubject);
                       setMatchAllCards(true);
+                      setSelectedCards(cardVariants.filter((variant) => variant.subject === nextSubject).slice(0, 2).map((variant) => variant.id));
                     }}
                   >
                     {nextSubject}
@@ -187,17 +186,9 @@ function CourtyardCatalogGatePrototype({
           </aside>
 
           <main className="min-w-0 space-y-5">
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem]">
-              <Input
-                className="h-12 rounded-[var(--radius-lg)]"
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search Courtyard catalog"
-                value={search}
-              />
-              <div className="rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3">
-                <p className="text-base text-muted-foreground">Selected rule</p>
-                <p className="text-base font-semibold text-foreground">{ruleLabel}</p>
-              </div>
+            <div className="rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3">
+              <p className="text-base text-muted-foreground">Selected rule</p>
+              <p className="text-base font-semibold text-foreground">{ruleLabel}</p>
             </div>
 
             {category === "trading_card" ? (

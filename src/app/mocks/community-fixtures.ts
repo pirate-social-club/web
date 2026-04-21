@@ -166,7 +166,6 @@ export const COMMUNITY_RECORDS: Record<string, CommunitySummary> = {
         postId: "pst_01_ranking_breakdown",
         score: 731,
         timestampLabel: "1d",
-        title: "This product breakdown on feed ranking is worth reading",
         viewContext: "community",
       }),
     ],

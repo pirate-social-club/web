@@ -29,7 +29,7 @@ function createPostFrame({
   postId: string;
   score: number;
   timestampLabel: string;
-  title: string;
+  title?: string;
   viewContext: PostCardProps["viewContext"];
 }) {
   return {
@@ -55,8 +55,10 @@ function createPostFrame({
     ],
     postHref: `/p/${postId}`,
     postId,
-    title,
-    titleHref: `/p/${postId}`,
+    ...(title ? {
+      title,
+      titleHref: `/p/${postId}`,
+    } : {}),
     viewContext,
   };
 }
@@ -181,7 +183,6 @@ export function createLinkPost(frame: {
   postId: string;
   score: number;
   timestampLabel: string;
-  title: string;
   viewContext: PostCardProps["viewContext"];
 }): RoutePost {
   return {
@@ -189,7 +190,6 @@ export function createLinkPost(frame: {
     content: {
       type: "link",
       href: "https://blog.pirate.sc/feed-ranking",
-      linkTitle: "How We Think About Ranking Music Communities",
       linkLabel: "blog.pirate.sc/feed-ranking",
       previewImageSrc: "https://picsum.photos/seed/pirate-link/240/240",
     },

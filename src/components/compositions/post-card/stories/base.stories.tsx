@@ -94,6 +94,7 @@ export const LinkPost: Story = {
       content={{
         type: "link",
         href: "https://blog.pirate.sc/feed-ranking",
+        previewTitle: "How We Think About Ranking Music Communities",
         linkLabel: "blog.pirate.sc/feed-ranking",
         previewImageSrc: "https://picsum.photos/seed/pirate-link/240/240",
       }}

@@ -262,9 +262,11 @@ export function EditorChrome({
 
 export function LinkPreviewCard({
   domain,
+  title,
   imageSrc,
 }: {
   domain: string;
+  title?: string;
   imageSrc?: string;
 }) {
   return (
@@ -275,14 +277,17 @@ export function LinkPreviewCard({
           imageSrc ? "grid-cols-[minmax(0,7fr)_minmax(5rem,3fr)]" : "grid-cols-1",
         )}
       >
-        <div className="flex min-w-0 items-center px-4 py-3">
-          <p className="truncate text-base text-muted-foreground">{domain}</p>
+        <div className="flex min-h-20 min-w-0 items-center px-4 py-3">
+          <div className="min-w-0 space-y-1">
+            {title ? <p className="line-clamp-2 text-base font-semibold text-foreground">{title}</p> : null}
+            <p className="truncate text-base text-muted-foreground">{domain}</p>
+          </div>
         </div>
         {imageSrc ? (
           <img
             alt=""
             aria-hidden="true"
-            className="size-full min-h-16 object-cover"
+            className="size-full min-h-20 object-cover"
             src={imageSrc}
           />
         ) : null}

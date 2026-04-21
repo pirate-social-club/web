@@ -123,6 +123,9 @@ export type PostCardContent =
   | {
       type: "link";
       href: string;
+      previewTitle?: string;
+      previewTitleDir?: "ltr" | "rtl" | "auto";
+      previewTitleLang?: string;
       linkLabel?: string;
       linkCaption?: string;
       linkCaptionDir?: "ltr" | "rtl" | "auto";

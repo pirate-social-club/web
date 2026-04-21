@@ -966,26 +966,33 @@ export const GENERATED_LOCALE_CATALOGS = {
             ]
           }
         ],
-        "resourceItems": [
-          {
-            "id": "blog",
-            "label": "Blog"
-          },
+        "codeLabel": "Code",
+        "codeItems": [
           {
             "id": "source-github",
             "label": "GitHub"
           },
           {
             "id": "source-radicle-web",
-            "label": "Radicle Web"
+            "label": "Web"
           },
           {
             "id": "source-radicle-api",
-            "label": "Radicle API"
+            "label": "API"
           },
           {
             "id": "source-radicle-contracts",
-            "label": "Radicle Contracts"
+            "label": "Contracts"
+          },
+          {
+            "id": "source-freedom-browser",
+            "label": "Freedom Browser"
+          }
+        ],
+        "resourceItems": [
+          {
+            "id": "blog",
+            "label": "Blog"
           },
           {
             "id": "terms-of-service",
@@ -1985,26 +1992,33 @@ export const GENERATED_LOCALE_CATALOGS = {
             ]
           }
         ],
-        "resourceItems": [
-          {
-            "id": "blog",
-            "label": "المدونة"
-          },
+        "codeLabel": "الكود",
+        "codeItems": [
           {
             "id": "source-github",
             "label": "GitHub"
           },
           {
             "id": "source-radicle-web",
-            "label": "Radicle Web"
+            "label": "Web"
           },
           {
             "id": "source-radicle-api",
-            "label": "Radicle API"
+            "label": "API"
           },
           {
             "id": "source-radicle-contracts",
-            "label": "Radicle Contracts"
+            "label": "Contracts"
+          },
+          {
+            "id": "source-freedom-browser",
+            "label": "Freedom Browser"
+          }
+        ],
+        "resourceItems": [
+          {
+            "id": "blog",
+            "label": "المدونة"
           },
           {
             "id": "terms-of-service",
@@ -3004,26 +3018,33 @@ export const GENERATED_LOCALE_CATALOGS = {
             ]
           }
         ],
-        "resourceItems": [
-          {
-            "id": "blog",
-            "label": "博客"
-          },
+        "codeLabel": "代码",
+        "codeItems": [
           {
             "id": "source-github",
             "label": "GitHub"
           },
           {
             "id": "source-radicle-web",
-            "label": "Radicle Web"
+            "label": "Web"
           },
           {
             "id": "source-radicle-api",
-            "label": "Radicle API"
+            "label": "API"
           },
           {
             "id": "source-radicle-contracts",
-            "label": "Radicle Contracts"
+            "label": "Contracts"
+          },
+          {
+            "id": "source-freedom-browser",
+            "label": "Freedom Browser"
+          }
+        ],
+        "resourceItems": [
+          {
+            "id": "blog",
+            "label": "博客"
           },
           {
             "id": "terms-of-service",

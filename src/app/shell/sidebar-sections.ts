@@ -4,6 +4,7 @@ import {
   Flag,
   GitBranch,
   GithubLogo,
+  Globe,
   House,
   Newspaper,
   Plus,
@@ -32,6 +33,7 @@ import type { ShellMessages } from "@/locales";
 const resourceIcons = {
   blog: Newspaper,
   "privacy-policy": Shield,
+  "source-freedom-browser": Globe,
   "source-github": GithubLogo,
   "source-radicle-api": Code,
   "source-radicle-contracts": FileCode,
@@ -151,6 +153,20 @@ export function buildPrimaryItems(messages: ShellMessages["appSidebar"]): AppSid
 
 export function buildResourceItems(messages: ShellMessages["appSidebar"]) {
   return messages.resourceItems.map((item) => ({
+    ...item,
+    icon: resourceIcons[item.id as ResourceLinkId],
+    onSelect: () => {
+      const href = resolveResourceHref(item.id, {
+        preferNativeRadicle: prefersNativeRadicleLinks(),
+      });
+      if (!href || typeof window === "undefined") return;
+      window.location.assign(href);
+    },
+  }));
+}
+
+export function buildCodeItems(messages: ShellMessages["appSidebar"]) {
+  return messages.codeItems.map((item) => ({
     ...item,
     icon: resourceIcons[item.id as ResourceLinkId],
     onSelect: () => {

@@ -22,6 +22,7 @@ import { RootErrorBoundary } from "./root-error-boundary";
 import { RouteContentFallback } from "./route-content-fallback";
 import {
   activeSidebarItem,
+  buildCodeItems,
   buildPrimaryItems,
   buildResourceItems,
   buildSidebarSections,
@@ -69,6 +70,7 @@ function NotificationShell({
   const isMobileLayout = useShellMobileLayout();
   const notificationSummary = useNotificationSummary();
   const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
+  const codeItems = buildCodeItems(copy.appSidebar);
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities);
   const resourceItems = buildResourceItems(copy.appSidebar);
   const isMobileCreatePostRoute = isMobileLayout && (route.kind === "create-post" || route.kind === "create-post-global");
@@ -99,6 +101,8 @@ function NotificationShell({
                 activeItemId={activeSidebarItem(route)}
                 brandLabel={copy.appSidebar.brandLabel}
                 homeAriaLabel={copy.appSidebar.homeAriaLabel}
+                codeItems={codeItems}
+                codeLabel={copy.appSidebar.codeLabel}
                 onHomeClick={() => navigate("/")}
                 primaryItems={primaryItems}
                 resourceItems={resourceItems}

@@ -158,10 +158,12 @@ function SidebarSectionBlock({
 
 function SidebarResources({
   activeItemId,
+  accordionId,
   items,
   label = "Resources",
   onItemSelect,
 }: {
+  accordionId: string;
   activeItemId?: string;
   items: readonly AppSidebarSectionItem[];
   label?: string;
@@ -170,10 +172,10 @@ function SidebarResources({
   return (
     <Accordion
       className="px-4 group-data-[collapsible=icon]:hidden"
-      defaultValue={["resources"]}
+      defaultValue={[accordionId]}
       type="multiple"
     >
-      <AccordionItem className="border-b-0 border-sidebar-border" value="resources">
+      <AccordionItem className="border-b-0 border-sidebar-border" value={accordionId}>
         <AccordionTrigger className={sectionLabelClassName}>
           {label}
         </AccordionTrigger>
@@ -186,15 +188,15 @@ function SidebarResources({
 
                   return (
                     <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton
-                      className={nestedRowClassName}
-                      isActive={item.id === activeItemId}
-                      onClick={() => onItemSelect(item.onSelect)}
-                      tooltip={item.label}
-                    >
-                      {Icon ? <Icon className="size-5" /> : null}
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
+                      <SidebarMenuButton
+                        className={nestedRowClassName}
+                        isActive={item.id === activeItemId}
+                        onClick={() => onItemSelect(item.onSelect)}
+                        tooltip={item.label}
+                      >
+                        {Icon ? <Icon className="size-5" /> : null}
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
                 })}
@@ -212,6 +214,8 @@ export interface AppSidebarProps
   activeItemId?: string;
   brandLabel?: string;
   className?: string;
+  codeItems?: readonly AppSidebarSectionItem[];
+  codeLabel?: string;
   homeAriaLabel?: string;
   onHomeClick?: () => void;
   primaryItems?: readonly AppSidebarPrimaryItem[];
@@ -225,6 +229,8 @@ export function AppSidebar({
   activeItemId = "home",
   brandLabel,
   className,
+  codeItems,
+  codeLabel,
   homeAriaLabel,
   onHomeClick,
   primaryItems,
@@ -253,6 +259,8 @@ export function AppSidebar({
       ? { ...item, onSelect: onHomeClick }
       : item,
   );
+  const resolvedCodeItems = codeItems ?? copy.appSidebar.codeItems;
+  const resolvedCodeLabel = codeLabel ?? copy.appSidebar.codeLabel;
   const resolvedSections = sections ?? copy.appSidebar.sections;
   const resolvedResourceItems = resourceItems ?? copy.appSidebar.resourceItems;
   const resolvedResourcesLabel = resourcesLabel ?? copy.appSidebar.resourcesLabel;
@@ -300,9 +308,18 @@ export function AppSidebar({
         <SidebarSeparator className="mx-4 group-data-[collapsible=icon]:hidden" />
 
         <SidebarResources
+          accordionId="resources"
           activeItemId={activeItemId}
           items={resolvedResourceItems}
           label={resolvedResourcesLabel}
+          onItemSelect={handleItemSelect}
+        />
+
+        <SidebarResources
+          accordionId="code"
+          activeItemId={activeItemId}
+          items={resolvedCodeItems}
+          label={resolvedCodeLabel}
           onItemSelect={handleItemSelect}
         />
       </SidebarContent>

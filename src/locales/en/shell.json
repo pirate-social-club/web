@@ -48,12 +48,16 @@
         ]
       }
     ],
+    "codeLabel": "Code",
+    "codeItems": [
+      { "id": "source-github", "label": "GitHub" },
+      { "id": "source-radicle-web", "label": "Web" },
+      { "id": "source-radicle-api", "label": "API" },
+      { "id": "source-radicle-contracts", "label": "Contracts" },
+      { "id": "source-freedom-browser", "label": "Freedom Browser" }
+    ],
     "resourceItems": [
       { "id": "blog", "label": "Blog" },
-      { "id": "source-github", "label": "GitHub" },
-      { "id": "source-radicle-web", "label": "Radicle Web" },
-      { "id": "source-radicle-api", "label": "Radicle API" },
-      { "id": "source-radicle-contracts", "label": "Radicle Contracts" },
       { "id": "terms-of-service", "label": "Terms of Service" },
       { "id": "privacy-policy", "label": "Privacy Policy" }
     ],

@@ -3,6 +3,7 @@ export type ResourceLinkId =
   | "terms-of-service"
   | "privacy-policy"
   | "source-github"
+  | "source-freedom-browser"
   | "source-radicle-api"
   | "source-radicle-contracts"
   | "source-radicle-web";
@@ -60,6 +61,8 @@ export function resolveResourceHref(
       return "https://blog.pirate.sc";
     case "source-github":
       return "https://github.com/pirate-social-club";
+    case "source-freedom-browser":
+      return "https://github.com/solardev-xyz/freedom-browser";
     case "source-radicle-api":
       return resolveRadicleRepositoryHref("api", options);
     case "source-radicle-contracts":

@@ -14,7 +14,7 @@ import type {
 import type { MobileFooterNav } from "@/components/compositions/app-shell-chrome/mobile-footer-nav";
 import { buildCommunityPath } from "@/lib/community-routing";
 import type { SidebarCommunitySummary } from "@/lib/owned-communities";
-import { resolveResourceHref } from "@/lib/resource-links";
+import { prefersNativeRadicleLinks, resolveResourceHref } from "@/lib/resource-links";
 import type { ShellMessages } from "@/locales";
 
 function buildCreatePostPath(communityId: string): string {
@@ -131,7 +131,22 @@ export function buildResourceItems(messages: ShellMessages["appSidebar"]) {
   return messages.resourceItems.map((item) => ({
     ...item,
     onSelect: () => {
-      const href = resolveResourceHref(item.id);
+      const href = resolveResourceHref(item.id, {
+        preferNativeRadicle: prefersNativeRadicleLinks(),
+      });
+      if (!href || typeof window === "undefined") return;
+      window.location.assign(href);
+    },
+  }));
+}
+
+export function buildSourceItems(messages: ShellMessages["appSidebar"]) {
+  return messages.sourceItems.map((item) => ({
+    ...item,
+    onSelect: () => {
+      const href = resolveResourceHref(item.id, {
+        preferNativeRadicle: prefersNativeRadicleLinks(),
+      });
       if (!href || typeof window === "undefined") return;
       window.location.assign(href);
     },

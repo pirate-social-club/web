@@ -53,6 +53,13 @@
       { "id": "terms-of-service", "label": "服务条款" },
       { "id": "privacy-policy", "label": "隐私政策" }
     ],
+    "sourceLabel": "源代码",
+    "sourceItems": [
+      { "id": "source-github", "label": "GitHub" },
+      { "id": "source-radicle-web", "label": "Radicle Web" },
+      { "id": "source-radicle-api", "label": "Radicle API" },
+      { "id": "source-radicle-contracts", "label": "Radicle Contracts" }
+    ],
     "yourCommunitiesLabel": "你的社区"
   },
   "mobileFooter": {

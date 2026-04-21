@@ -980,6 +980,25 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "Privacy Policy"
           }
         ],
+        "sourceLabel": "Source",
+        "sourceItems": [
+          {
+            "id": "source-github",
+            "label": "GitHub"
+          },
+          {
+            "id": "source-radicle-web",
+            "label": "Radicle Web"
+          },
+          {
+            "id": "source-radicle-api",
+            "label": "Radicle API"
+          },
+          {
+            "id": "source-radicle-contracts",
+            "label": "Radicle Contracts"
+          }
+        ],
         "yourCommunitiesLabel": "Your Communities"
       },
       "mobileFooter": {
@@ -1983,6 +2002,25 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "سياسة الخصوصية"
           }
         ],
+        "sourceLabel": "المصدر",
+        "sourceItems": [
+          {
+            "id": "source-github",
+            "label": "GitHub"
+          },
+          {
+            "id": "source-radicle-web",
+            "label": "Radicle Web"
+          },
+          {
+            "id": "source-radicle-api",
+            "label": "Radicle API"
+          },
+          {
+            "id": "source-radicle-contracts",
+            "label": "Radicle Contracts"
+          }
+        ],
         "yourCommunitiesLabel": "مجتمعاتك"
       },
       "mobileFooter": {
@@ -2984,6 +3022,25 @@ export const GENERATED_LOCALE_CATALOGS = {
           {
             "id": "privacy-policy",
             "label": "隐私政策"
+          }
+        ],
+        "sourceLabel": "源代码",
+        "sourceItems": [
+          {
+            "id": "source-github",
+            "label": "GitHub"
+          },
+          {
+            "id": "source-radicle-web",
+            "label": "Radicle Web"
+          },
+          {
+            "id": "source-radicle-api",
+            "label": "Radicle API"
+          },
+          {
+            "id": "source-radicle-contracts",
+            "label": "Radicle Contracts"
           }
         ],
         "yourCommunitiesLabel": "你的社区"

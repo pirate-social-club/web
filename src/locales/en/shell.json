@@ -53,6 +53,13 @@
       { "id": "terms-of-service", "label": "Terms of Service" },
       { "id": "privacy-policy", "label": "Privacy Policy" }
     ],
+    "sourceLabel": "Source",
+    "sourceItems": [
+      { "id": "source-github", "label": "GitHub" },
+      { "id": "source-radicle-web", "label": "Radicle Web" },
+      { "id": "source-radicle-api", "label": "Radicle API" },
+      { "id": "source-radicle-contracts", "label": "Radicle Contracts" }
+    ],
     "yourCommunitiesLabel": "Your Communities"
   },
   "mobileFooter": {

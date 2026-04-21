@@ -25,6 +25,7 @@ import {
   buildPrimaryItems,
   buildResourceItems,
   buildSidebarSections,
+  buildSourceItems,
 } from "./sidebar-sections";
 import { useShellMobileLayout } from "./use-shell-mobile-layout";
 
@@ -71,6 +72,7 @@ function NotificationShell({
   const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities);
   const resourceItems = buildResourceItems(copy.appSidebar);
+  const sourceItems = buildSourceItems(copy.appSidebar);
   const isMobileCreatePostRoute = isMobileLayout && (route.kind === "create-post" || route.kind === "create-post-global");
   const useStandaloneRouteShell = isCommunityModerationRoute || isMobileCreatePostRoute;
 
@@ -105,6 +107,8 @@ function NotificationShell({
                 resourcesLabel={copy.appSidebar.resourcesLabel}
                 sections={sections}
                 side="start"
+                sourceItems={sourceItems}
+                sourceLabel={copy.appSidebar.sourceLabel}
               />
               <SidebarInset className="min-h-0">
                 <main className="flex w-full flex-1 px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.5rem)] md:px-5 md:pb-8 md:pt-6 lg:px-8">

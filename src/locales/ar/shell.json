@@ -53,6 +53,13 @@
       { "id": "terms-of-service", "label": "شروط الخدمة" },
       { "id": "privacy-policy", "label": "سياسة الخصوصية" }
     ],
+    "sourceLabel": "المصدر",
+    "sourceItems": [
+      { "id": "source-github", "label": "GitHub" },
+      { "id": "source-radicle-web", "label": "Radicle Web" },
+      { "id": "source-radicle-api", "label": "Radicle API" },
+      { "id": "source-radicle-contracts", "label": "Radicle Contracts" }
+    ],
     "yourCommunitiesLabel": "مجتمعاتك"
   },
   "mobileFooter": {

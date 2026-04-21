@@ -23,6 +23,7 @@ Items moved out of the bug bucket into lower buckets or rejected are noted in th
 - `moderation-state.tsx` is now a 133-line composer/facade instead of a 742-line god hook.
 - Namespace verification flow is extracted and covered by focused state-transition tests.
 - Moderation domains are split into focused hooks for commerce, content policy, profile, access gates, safety, and agent policy.
+- Settings page tab implementations are split into focused panel files while preserving the existing public import surface.
 - The remaining items are lower-risk structural cleanup or performance hypotheses that need profiling before optimization work.
 
 ---
@@ -126,6 +127,12 @@ No confirmed bug items remain open.
 - **Verification:** `buildQueryPath()` is the only remaining `URLSearchParams` builder in `src/lib/api`.
 - **Test coverage:** `src/lib/api/client-internal.test.ts`
 
+### REFACTOR-007 — `settings-page.panels.tsx` mixed unrelated tab implementations
+- **Status:** ✅ **Fixed**
+- **Location:** `src/components/compositions/settings-page/panels/`
+- **Verification:** `settings-page.panels.tsx` is now a 9-line compatibility barrel. Profile, wallet, preferences, agents, tab navigation, and shared row/section primitives live in focused files under `settings-page/panels/`.
+- **Note:** The original audit wording was stale; the file contained four tabs, not six panels. The maintainability issue still applied.
+
 ---
 
 ## Remaining Structural Refactors
@@ -160,12 +167,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Fix:** Replace with `useReducer` or a lightweight state machine.
 - **Risk:** High — composer submission flow is critical.
 
-### REFACTOR-007 — `settings-page.panels.tsx` is 539 lines with multiple unrelated panels
-- **Location:** `src/components/compositions/settings-page/settings-page.panels.tsx`
-- **Verification:** Direct read. Contains `ProfilePanel`, `WalletsPanel`, `AgentsPanel`, `NotificationsPanel`, `PreferencesPanel`, `SecurityPanel` in one file.
-- **Fix:** Split each panel into its own file in `components/compositions/settings-page/panels/`.
-- **Risk:** Low.
-
 ### REFACTOR-012 — No barrel files for primitives or compositions
 - **Location:** `components/primitives/` (0 `index.ts`), `components/compositions/` (1 `index.ts`)
 - **Verification:** `ls` and `find` confirm no barrel files.
@@ -194,7 +195,7 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Risk:** Low — additive logging, not logic changes.
 
 ### REFACTOR-016 — Hard-coded physical margins/paddings/borders should use logical properties
-- **Location:** 20+ files including `chip.tsx:44` (`mr-1.5`), `post-card-skeleton.tsx:37` (`ml-auto`), `onboarding-reddit-bootstrap.tsx:185,236,289` (`pl-8`, `mr-2`, `pr-12`), `community-pricing-editor-page.tsx:277,336` (`mr-2`), `verify-namespace-modal.view.tsx:174` (`pr-10`), `community-sidebar-rules.tsx:43` (`pl-7`), `community-sidebar.tsx:120` (`pl-5`), `legal-markdown.tsx:139` (`pl-6`), `create-community-composer.tsx:480` (`border-l` + `pl-4`), `community-gates-editor-page.tsx:337` (`border-l` + `pl-4`), `edit-profile-form.tsx:249` (`mr-auto`), `worker-public-html.ts:158` (`margin-right: 8px`)
+- **Location:** 20+ files including `chip.tsx:44` (`mr-1.5`), `post-card-skeleton.tsx:37` (`ml-auto`), `onboarding-reddit-bootstrap.tsx:185,236,289` (`pl-8`, `mr-2`, `pr-12`), `community-pricing-editor-page.tsx:277,336` (`mr-2`), `verify-namespace-modal.view.tsx:174` (`pr-10`), `community-sidebar-rules.tsx:43` (`pl-7`), `community-sidebar.tsx:120` (`pl-5`), `legal-markdown.tsx:139` (`pl-6`), `create-community-composer.tsx:480` (`border-l` + `pl-4`), `community-gates-editor-page.tsx:337` (`border-l` + `pl-4`), `edit-profile-form.tsx:249` (`mr-auto`)
 - **Verification:** Direct read.
 - **Impact:** Layout breaks in Arabic (`ar`) locale.
 - **Fix:** Replace with Tailwind logical utilities (`ms-`, `me-`, `ps-`, `pe-`, `border-s`, `border-e`). Tailwind v4 supports these natively.

@@ -123,7 +123,7 @@ export type PostCardContent =
   | {
       type: "link";
       href: string;
-      linkTitle: string;
+      linkTitle?: string;
       linkTitleDir?: "ltr" | "rtl" | "auto";
       linkTitleLang?: string;
       linkLabel?: string;

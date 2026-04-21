@@ -6,10 +6,12 @@ import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contra
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
+import { usePiratePrivyWallets } from "@/lib/auth/privy-provider";
 import { ContentRailShell } from "@/components/compositions/content-rail-shell/content-rail-shell";
 import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
 import { PostThread } from "@/components/compositions/post-thread/post-thread";
 import { toast } from "@/components/primitives/sonner";
+import { DEFAULT_STORY_CHECKOUT_ROUTE, executeRoutedStoryCheckout, findConnectedFundingWallet } from "@/lib/commerce/routed-checkout";
 import { useUiLocale } from "@/lib/ui-locale";
 
 import { buildCommunitySidebar } from "./community-sidebar-helpers";
@@ -42,6 +44,7 @@ export function PostPage({ postId }: { postId: string }) {
   const hasSession = Boolean(session?.accessToken);
   const { post, community, authorProfile, comments, createTopLevelComment, error, gateModal, loading, voteOnPost } = usePost(postId, contentLocale, hasSession, translationLabels);
   const commerceEnabled = Boolean(session?.user?.user_id && community?.community_id);
+  const { connectedWallets } = usePiratePrivyWallets({ enabled: commerceEnabled });
   const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(community?.community_id ?? "", commerceEnabled);
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
 
@@ -53,23 +56,41 @@ export function PostPage({ postId }: { postId: string }) {
     }
 
     let quoteId: string | null = null;
+    let fundingTxRef: string | null = null;
     try {
-      const quote = await api.communities.createPurchaseQuote(nextCommunityId, { listing_id: listing.listing_id, client_estimated_hop_count: 0, client_estimated_slippage_bps: 0 });
+      const fundingWallet = findConnectedFundingWallet({
+        connectedWallets,
+        primaryWalletAddress: session.profile.primary_wallet_address,
+      });
+      if (!fundingWallet) {
+        toast.error("Connect your primary wallet before buying this song.");
+        return;
+      }
+
+      const quote = await api.communities.createPurchaseQuote(nextCommunityId, {
+        listing_id: listing.listing_id,
+        ...DEFAULT_STORY_CHECKOUT_ROUTE,
+      });
       quoteId = quote.quote_id;
+      fundingTxRef = await executeRoutedStoryCheckout({
+        quote,
+        wallet: fundingWallet,
+      });
       const settlement = await api.communities.settlePurchase(nextCommunityId, {
         quote_id: quote.quote_id,
         settlement_wallet_attachment_id: settlementWalletAttachmentId,
-        settlement_tx_ref: `ui:${crypto.randomUUID()}`,
+        funding_tx_ref: fundingTxRef,
+        settlement_tx_ref: fundingTxRef,
       });
       await refreshSongCommerce();
       toast.success(`${titleText} unlocked for ${settlement.purchase_price_usd}.`);
     } catch (purchaseError) {
-      if (quoteId) {
+      if (quoteId && !fundingTxRef) {
         void api.communities.failPurchase(nextCommunityId, { quote_id: quoteId }).catch(() => undefined);
       }
       toast.error(getErrorMessage(purchaseError, "Could not unlock this song."));
     }
-  }, [api.communities, refreshSongCommerce, session?.user.primary_wallet_attachment_id]);
+  }, [api.communities, connectedWallets, refreshSongCommerce, session?.profile.primary_wallet_address, session?.user.primary_wallet_attachment_id]);
 
   if (loading) {
     return <FullPageSpinner />;

@@ -12,11 +12,13 @@ import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { isApiAuthError, isApiNotFoundError, type ApiError } from "@/lib/api/client";
+import { usePiratePrivyWallets } from "@/lib/auth/privy-provider";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community-membership-gate-panel/community-membership-gate-panel";
 import { CommunityPageShell } from "@/components/compositions/community-page-shell/community-page-shell";
 import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
+import { DEFAULT_STORY_CHECKOUT_ROUTE, executeRoutedStoryCheckout, findConnectedFundingWallet } from "@/lib/commerce/routed-checkout";
 import { getGateFailureMessage, getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
@@ -55,6 +57,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
   const { authorProfiles, community, preview, eligibility, error, loading, posts, refetchEligibility, setPosts } = useCommunityPageData(communityId, contentLocale, activeSort);
   const commerceEnabled = Boolean(session?.user?.user_id) && eligibility?.status === "already_joined";
+  const { connectedWallets } = usePiratePrivyWallets({ enabled: commerceEnabled });
   const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(communityId, commerceEnabled);
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const [joinLoading, setJoinLoading] = React.useState(false);
@@ -96,21 +99,39 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       return;
     }
     let quoteId: string | null = null;
+    let fundingTxRef: string | null = null;
     try {
-      const quote = await api.communities.createPurchaseQuote(communityId, { listing_id: listing.listing_id, client_estimated_hop_count: 0, client_estimated_slippage_bps: 0 });
+      const fundingWallet = findConnectedFundingWallet({
+        connectedWallets,
+        primaryWalletAddress: session.profile.primary_wallet_address,
+      });
+      if (!fundingWallet) {
+        toast.error("Connect your primary wallet before buying this song.");
+        return;
+      }
+
+      const quote = await api.communities.createPurchaseQuote(communityId, {
+        listing_id: listing.listing_id,
+        ...DEFAULT_STORY_CHECKOUT_ROUTE,
+      });
       quoteId = quote.quote_id;
+      fundingTxRef = await executeRoutedStoryCheckout({
+        quote,
+        wallet: fundingWallet,
+      });
       await api.communities.settlePurchase(communityId, {
         quote_id: quote.quote_id,
         settlement_wallet_attachment_id: settlementWalletAttachmentId,
-        settlement_tx_ref: `ui:${crypto.randomUUID()}`,
+        funding_tx_ref: fundingTxRef,
+        settlement_tx_ref: fundingTxRef,
       });
       await refreshSongCommerce();
       toast.success(`${titleText} unlocked.`);
     } catch (error) {
-      if (quoteId) void api.communities.failPurchase(communityId, { quote_id: quoteId }).catch(() => undefined);
+      if (quoteId && !fundingTxRef) void api.communities.failPurchase(communityId, { quote_id: quoteId }).catch(() => undefined);
       toast.error(getErrorMessage(error, "Could not unlock this song."));
     }
-  }, [api.communities, communityId, refreshSongCommerce, session?.user.primary_wallet_attachment_id]);
+  }, [api.communities, communityId, connectedWallets, refreshSongCommerce, session?.profile.primary_wallet_address, session?.user.primary_wallet_attachment_id]);
 
   const startSelfVerification = React.useCallback(async ({ showToastOnError = false, missingCapabilities }: {
     showToastOnError?: boolean;

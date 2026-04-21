@@ -252,9 +252,6 @@ function toCommunityPostContent(
         linkCaptionDir: translatedTextPresentation.dir,
         linkCaptionLang: translatedTextPresentation.lang,
         linkLabel: post.link_url ?? undefined,
-        linkTitle: title,
-        linkTitleDir: translatedTextPresentation.dir,
-        linkTitleLang: translatedTextPresentation.lang,
       };
     case "song": {
       const listing = songOptions?.listing;

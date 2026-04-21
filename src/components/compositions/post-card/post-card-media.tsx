@@ -81,32 +81,34 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
       );
     case "link":
       return (
-        <div className={cn("max-w-[72ch] self-start space-y-2 text-start", className)}>
+        <div className={cn("w-full space-y-2 text-start", className)}>
           <a
-            className="flex w-full items-stretch gap-3 transition-colors hover:opacity-90"
+            className="flex w-full items-stretch gap-3 rounded-lg border border-border-soft bg-muted/30 p-3 transition-colors hover:opacity-90"
             href={content.href}
             data-post-card-interactive="true"
           >
             <div className="min-w-0 flex-1">
-              <p className={cn(postCardType.label, "line-clamp-2 font-semibold text-foreground")}>
-                <span dir={content.linkTitleDir ?? "auto"} lang={content.linkTitleLang}>
-                  {content.linkTitle}
-                </span>
-              </p>
-              <div className={cn("mt-1.5 flex items-center gap-1.5 text-muted-foreground", postCardType.meta)}>
+              {content.linkTitle ? (
+                <p className={cn(postCardType.label, "line-clamp-2 font-semibold text-foreground")}>
+                  <span dir={content.linkTitleDir ?? "auto"} lang={content.linkTitleLang}>
+                    {content.linkTitle}
+                  </span>
+                </p>
+              ) : null}
+              <div className={cn("flex items-center gap-1.5 text-muted-foreground", postCardType.meta, content.linkTitle && "mt-1.5")}>
                 <span className="truncate">{content.linkLabel ?? content.href}</span>
                 <ArrowSquareOut className="size-4 shrink-0" />
               </div>
             </div>
-            <div className="size-20 shrink-0 overflow-hidden rounded-lg bg-muted sm:size-24">
-              {content.previewImageSrc ? (
+            {content.previewImageSrc ? (
+              <div className="size-20 shrink-0 overflow-hidden rounded-lg sm:size-24">
                 <img
-                  alt={content.linkTitle}
+                  alt={content.linkTitle ?? "Link preview"}
                   className="size-full object-cover"
                   src={content.previewImageSrc}
                 />
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </a>
           {content.linkCaption ? (
             <FormattedText

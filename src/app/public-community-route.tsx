@@ -26,9 +26,9 @@ import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-ver
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
-import { buildCommunitySidebarRequirements } from "./authenticated-routes/community-sidebar-helpers";
-import { useCommunityInteractionGate } from "./authenticated-routes/community-interaction-gate";
-import { buildFeedSortOptions } from "./authenticated-routes/route-core";
+import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
+import { buildCommunitySidebarRequirements } from "@/lib/community-sidebar-helpers";
+import { buildFeedSortOptions } from "@/lib/feed-sort-options";
 
 function usePublicCommunityPageData(communityId: string, localeTag: string, activeSort: FeedSort) {
   const api = useApi();

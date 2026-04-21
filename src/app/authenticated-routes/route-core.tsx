@@ -2,20 +2,14 @@
 
 import * as React from "react";
 
-import type { FeedSortOption, TopTimeRangeOption } from "@/components/compositions/feed/feed";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { useUiLocale } from "@/lib/ui-locale";
 import { type UiLocaleCode, resolveLocaleLanguageTag } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
 
 export { getErrorMessage } from "@/lib/error-utils";
-
-export function interpolateMessage(
-  template: string,
-  replacements: Record<string, string>,
-): string {
-  return template.replace(/\{(\w+)\}/gu, (_, key: string) => replacements[key] ?? `{${key}}`);
-}
+export { buildFeedSortOptions, buildTopTimeRangeOptions } from "@/lib/feed-sort-options";
+export { interpolateMessage } from "@/lib/route-messages";
 
 export function useRouteMessages() {
   const { locale } = useUiLocale();
@@ -24,29 +18,6 @@ export function useRouteMessages() {
     copy: getLocaleMessages(locale, "routes"),
     localeTag: resolveLocaleLanguageTag(locale),
   };
-}
-
-export function buildFeedSortOptions(
-  copy: ReturnType<typeof useRouteMessages>["copy"]["common"],
-): FeedSortOption[] {
-  return [
-    { value: "best", label: copy.bestTab },
-    { value: "new", label: copy.newTab },
-    { value: "top", label: copy.topTab },
-  ];
-}
-
-export function buildTopTimeRangeOptions(
-  copy: ReturnType<typeof useRouteMessages>["copy"]["common"],
-): TopTimeRangeOption[] {
-  return [
-    { value: "hour", label: copy.topHour },
-    { value: "day", label: copy.topDay },
-    { value: "week", label: copy.topWeek },
-    { value: "month", label: copy.topMonth },
-    { value: "year", label: copy.topYear },
-    { value: "all", label: copy.topAll },
-  ];
 }
 
 export function useClientHydrated(): boolean {

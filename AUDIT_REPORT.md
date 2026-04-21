@@ -156,6 +156,11 @@ No confirmed bug items remain open.
 - **Location:** `src/app/public-route-states.tsx`
 - **Verification:** Public profile, public agent, and public community routes now share `PublicRouteLoadingState` and `PublicRouteMessageState`.
 
+### REFACTOR-013 — Public routes imported authenticated-route internals
+- **Status:** ✅ **Fixed**
+- **Verification:** `public-community-route.tsx` now imports shared community sidebar helpers, interaction gate hook, and feed sort builders from `lib/`/`hooks/` instead of `authenticated-routes/`.
+- **Compatibility:** Thin re-export files remain in `authenticated-routes/` so existing authenticated imports and tests keep working.
+
 ---
 
 ## Remaining Structural Refactors
@@ -196,13 +201,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Impact:** 200+ deep imports. Import blocks are 10–20 lines long.
 - **Fix:** Add `components/primitives/index.ts` and `components/compositions/index.ts`.
 - **Risk:** Negligible.
-
-### REFACTOR-013 — Public routes import from `authenticated-routes/` internals
-- **Location:** `public-community-route.tsx:27–30` imports from `authenticated-routes/community-sidebar-helpers`, `authenticated-routes/community-interaction-gate`, `authenticated-routes/route-core`
-- **Verification:** Direct read.
-- **Impact:** Violates route boundaries; authenticated internals can accidentally break public pages.
-- **Fix:** Promote shared helpers to `lib/community-sidebar-helpers.ts`, `hooks/use-community-interaction-gate.ts`, `lib/feed-sorting.ts`.
-- **Risk:** Low.
 
 ### REFACTOR-014 — `route-core.tsx` and `route-shell.tsx` are dumping grounds
 - **Location:** `app/authenticated-routes/route-core.tsx`, `route-shell.tsx`

@@ -384,7 +384,7 @@ export function PirateAuthProvider({
         <BridgeComponent
           connectedWallets={connectedWallets}
           onBusyChange={setBusy}
-          onConnectReady={setLoadedConnect}
+          onConnectReady={(next) => setLoadedConnect(() => next)}
           onModalClosed={unloadPrivy}
           onReadyChange={setPrivyReady}
         />

@@ -287,7 +287,7 @@ export function renderPublicAgentPage({
       *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0%,rgba(255,122,24,.18),transparent 30%),var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,sans-serif}
       .shell{width:min(880px,calc(100vw - 24px));margin:0 auto;padding:24px 0 56px}.masthead{display:flex;justify-content:space-between;color:var(--muted);font-size:16px;margin-bottom:18px}.brand{font-weight:700}
       .card{border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.32)}
-      h1{font-size:clamp(38px,6vw,72px);line-height:.95;letter-spacing:-.06em;margin:0 0 12px}.handle{font-size:22px;color:var(--muted);margin-bottom:24px}.meta{display:flex;flex-wrap:wrap;gap:12px}.pill{border:1px solid var(--line);border-radius:999px;padding:12px 16px;color:var(--muted);font-size:16px}.pill strong{color:var(--text);margin-right:8px}
+      h1{font-size:clamp(38px,6vw,72px);line-height:.95;letter-spacing:-.06em;margin:0 0 12px}.handle{font-size:22px;color:var(--muted);margin-bottom:24px}.meta{display:flex;flex-wrap:wrap;gap:12px}.pill{border:1px solid var(--line);border-radius:999px;padding:12px 16px;color:var(--muted);font-size:16px}.pill strong{color:var(--text);margin-inline-end:8px}
       .cta{display:inline-flex;align-items:center;justify-content:center;min-height:48px;margin-top:26px;padding:0 18px;border-radius:999px;background:var(--accent);color:#180e04;font-weight:700;text-decoration:none}
     </style>
   </head>

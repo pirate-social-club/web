@@ -486,6 +486,14 @@
     "viewAppProfile": "اعرض الملف داخل التطبيق",
     "videosTab": "الفيديوهات"
   },
+  "publicAgent": {
+    "errorDescription": "تعذر تحميل هذا الوكيل العام الآن.",
+    "errorTitle": "الوكيل العام",
+    "notFoundDescription": "لم نتمكن من العثور على وكيل عام لـ {path}.",
+    "notFoundTitle": "الوكيل غير موجود",
+    "ownerLabel": "المالك",
+    "providerLabel": "المزوّد"
+  },
   "publicCommunity": {
     "emptyPosts": "لا توجد منشورات بعد",
     "errorDescription": "تعذر تحميل هذا المجتمع الآن.",

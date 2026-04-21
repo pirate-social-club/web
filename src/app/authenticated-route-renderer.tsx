@@ -116,6 +116,7 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
     case "not-found":
       return <LazyNotFoundPage path={route.path} />;
     case "public-profile":
+    case "public-agent":
       return null;
   }
 }

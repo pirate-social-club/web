@@ -10,6 +10,7 @@ import {
 export type AppRoute =
   | { kind: "home"; path: "/" }
   | { kind: "public-profile"; path: string; handleLabel: string; hostSuffix?: string | null }
+  | { kind: "public-agent"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "your-communities"; path: "/your-communities" }
   | { kind: "settings"; path: string; section: SettingsSection }
   | { kind: "create-post"; path: string; communityId: string }
@@ -180,6 +181,15 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   if (segments.length === 2 && segments[0] === "u") {
     return {
       kind: "public-profile",
+      path: normalized,
+      handleLabel: decodeURIComponent(segments[1]),
+      hostSuffix: null,
+    };
+  }
+
+  if (segments.length === 2 && segments[0] === "a") {
+    return {
+      kind: "public-agent",
       path: normalized,
       handleLabel: decodeURIComponent(segments[1]),
       hostSuffix: null,

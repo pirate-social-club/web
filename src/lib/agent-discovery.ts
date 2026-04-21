@@ -205,7 +205,8 @@ export function getDiscoveryContext(input: URL | string): DiscoveryContext {
     || INDEXED_STATIC_PATHS.includes(pathname as (typeof INDEXED_STATIC_PATHS)[number])
     || route.kind === "community"
     || route.kind === "post"
-    || route.kind === "public-profile";
+    || route.kind === "public-profile"
+    || route.kind === "public-agent";
 
   return {
     apiOrigin: resolveApiOriginFromHostname(url.hostname),
@@ -762,6 +763,19 @@ This is Pirate's public profile page for \`${route.handleLabel}\`.
 ## Related resources
 
 - Public profile API: ${ctx.apiOrigin}/public-profiles/${encodeURIComponent(route.handleLabel)}
+`;
+      }
+
+      if (route.kind === "public-agent") {
+        return `# Pirate Agent
+
+Canonical URL: ${ctx.canonicalUrl}
+
+This is Pirate's public agent page for \`${route.handleLabel}\`.
+
+## Related resources
+
+- Public agent API: ${ctx.apiOrigin}/public-agents/${encodeURIComponent(route.handleLabel)}
 `;
       }
 

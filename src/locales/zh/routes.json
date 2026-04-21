@@ -486,6 +486,14 @@
     "viewAppProfile": "查看应用内资料",
     "videosTab": "视频"
   },
+  "publicAgent": {
+    "errorDescription": "当前无法加载这个公开代理。",
+    "errorTitle": "公开代理",
+    "notFoundDescription": "找不到 {path} 的公开代理。",
+    "notFoundTitle": "找不到代理",
+    "ownerLabel": "所有者",
+    "providerLabel": "提供方"
+  },
   "publicCommunity": {
     "emptyPosts": "还没有帖子",
     "errorDescription": "当前无法加载这个社区。",

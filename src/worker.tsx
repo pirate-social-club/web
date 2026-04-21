@@ -108,6 +108,7 @@ const app = defineApp<AppRequestInfo>([
       route(`/settings/${section}`, AppRoutePage)
     ),
     route("/u/:handleLabel", AppRoutePage),
+    route("/a/:handleLabel", AppRoutePage),
     route("/onboarding", AppRoutePage),
   ]),
 ]);

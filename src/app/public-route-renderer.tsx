@@ -4,11 +4,12 @@ import * as React from "react";
 
 import type { AppRoute } from "@/app/router";
 import { PostPage } from "@/app/authenticated-routes";
+import { PublicAgentRoutePage } from "@/app/public-agent-route";
 import { PublicCommunityRoutePage } from "@/app/public-community-route";
 import { PublicProfileRoutePage } from "@/app/public-profile-route";
 
 export function renderPublicRoute(
-  route: Extract<AppRoute, { kind: "public-profile" | "community" | "post" }>,
+  route: Extract<AppRoute, { kind: "public-profile" | "public-agent" | "community" | "post" }>,
 ): React.ReactNode {
   switch (route.kind) {
     case "community":
@@ -31,13 +32,28 @@ export function renderPublicRoute(
           hostSuffix={route.hostSuffix}
         />
       );
+    case "public-agent":
+      return (
+        <PublicAgentRoutePage
+          appOrigin={route.hostSuffix == null
+            ? typeof window !== "undefined"
+              ? `${window.location.protocol}//${window.location.host}`
+              : "https://pirate.sc"
+            : route.hostSuffix === "localhost"
+              ? typeof window !== "undefined"
+                ? `${window.location.protocol}//localhost${window.location.port ? `:${window.location.port}` : ""}`
+                : "http://localhost:5173"
+              : "https://pirate.sc"}
+          handleLabel={route.handleLabel}
+        />
+      );
   }
 }
 
 export function PublicRouteRenderer({
   route,
 }: {
-  route: Extract<AppRoute, { kind: "public-profile" | "community" | "post" }>;
+  route: Extract<AppRoute, { kind: "public-profile" | "public-agent" | "community" | "post" }>;
 }) {
   return <>{renderPublicRoute(route)}</>;
 }

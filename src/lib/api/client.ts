@@ -14,6 +14,7 @@ import {
 import { createCommunitiesApi } from "./client-groups-communities";
 import {
   createProfilesApi,
+  createPublicAgentsApi,
   createPublicCommentsApi,
   createPublicCommunitiesApi,
   createPublicPostsApi,
@@ -82,6 +83,7 @@ export class ApiClient {
   readonly comments = createCommentsApi(this.request.bind(this));
   readonly profiles = createProfilesApi(this.request.bind(this));
   readonly publicProfiles = createPublicProfilesApi(this.request.bind(this));
+  readonly publicAgents = createPublicAgentsApi(this.request.bind(this));
   readonly publicCommunities = createPublicCommunitiesApi(this.request.bind(this));
   readonly publicPosts = createPublicPostsApi(this.request.bind(this));
   readonly publicComments = createPublicCommentsApi(this.request.bind(this));

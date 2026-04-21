@@ -486,6 +486,14 @@
     "viewAppProfile": "View app profile",
     "videosTab": "Videos"
   },
+  "publicAgent": {
+    "errorDescription": "This public agent could not be loaded right now.",
+    "errorTitle": "Public agent",
+    "notFoundDescription": "We could not find a public agent for {path}.",
+    "notFoundTitle": "Agent not found",
+    "ownerLabel": "Owner",
+    "providerLabel": "Provider"
+  },
   "publicCommunity": {
     "emptyPosts": "No posts yet",
     "errorDescription": "This community could not be loaded right now.",

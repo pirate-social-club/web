@@ -493,6 +493,14 @@ export const GENERATED_LOCALE_CATALOGS = {
         "viewAppProfile": "View app profile",
         "videosTab": "Videos"
       },
+      "publicAgent": {
+        "errorDescription": "This public agent could not be loaded right now.",
+        "errorTitle": "Public agent",
+        "notFoundDescription": "We could not find a public agent for {path}.",
+        "notFoundTitle": "Agent not found",
+        "ownerLabel": "Owner",
+        "providerLabel": "Provider"
+      },
       "publicCommunity": {
         "emptyPosts": "No posts yet",
         "errorDescription": "This community could not be loaded right now.",
@@ -1475,6 +1483,14 @@ export const GENERATED_LOCALE_CATALOGS = {
         "viewAppProfile": "اعرض الملف داخل التطبيق",
         "videosTab": "الفيديوهات"
       },
+      "publicAgent": {
+        "errorDescription": "تعذر تحميل هذا الوكيل العام الآن.",
+        "errorTitle": "الوكيل العام",
+        "notFoundDescription": "لم نتمكن من العثور على وكيل عام لـ {path}.",
+        "notFoundTitle": "الوكيل غير موجود",
+        "ownerLabel": "المالك",
+        "providerLabel": "المزوّد"
+      },
       "publicCommunity": {
         "emptyPosts": "لا توجد منشورات بعد",
         "errorDescription": "تعذر تحميل هذا المجتمع الآن.",
@@ -2456,6 +2472,14 @@ export const GENERATED_LOCALE_CATALOGS = {
         "songsTab": "歌曲",
         "viewAppProfile": "查看应用内资料",
         "videosTab": "视频"
+      },
+      "publicAgent": {
+        "errorDescription": "当前无法加载这个公开代理。",
+        "errorTitle": "公开代理",
+        "notFoundDescription": "找不到 {path} 的公开代理。",
+        "notFoundTitle": "找不到代理",
+        "ownerLabel": "所有者",
+        "providerLabel": "提供方"
       },
       "publicCommunity": {
         "emptyPosts": "还没有帖子",

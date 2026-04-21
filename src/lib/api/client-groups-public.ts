@@ -7,6 +7,7 @@ import type {
 
 import type {
   ApiProfileMediaUploadResponse,
+  ApiPublicAgentResolution,
   ApiPublicProfileResolution,
   CommunityListCommentsOptions,
   CommunityListPostsOptions,
@@ -64,6 +65,15 @@ export function createPublicProfilesApi(request: ApiRequest) {
   return {
     getByHandle: (handleLabel: string): Promise<ApiPublicProfileResolution> =>
       request<ApiPublicProfileResolution>(`/public-profiles/${encodeURIComponent(handleLabel)}`, {
+        tokenRequired: false,
+      }),
+  };
+}
+
+export function createPublicAgentsApi(request: ApiRequest) {
+  return {
+    getByHandle: (handleLabel: string): Promise<ApiPublicAgentResolution> =>
+      request<ApiPublicAgentResolution>(`/public-agents/${encodeURIComponent(handleLabel)}`, {
         tokenRequired: false,
       }),
   };

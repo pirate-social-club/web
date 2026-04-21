@@ -188,7 +188,7 @@ function activeMobileNav(
 ): ComponentProps<typeof MobileFooterNav>["activeItem"] {
   if (route.kind === "inbox") return "inbox";
   if (route.kind === "create-post" || route.kind === "create-post-global") return "create";
-  if (route.kind === "me" || route.kind === "public-profile") return "profile";
+  if (route.kind === "me" || route.kind === "public-profile" || route.kind === "public-agent") return "profile";
   return "home";
 }
 
@@ -486,7 +486,7 @@ function PirateAppShell({ initialHost, initialPath }: { initialHost?: string; in
   const effectiveDir = resolveLocaleDirection(effectiveLocale);
   const copy = getLocaleMessages(effectiveLocale, "shell");
   const isCommunityModerationRoute = route.kind === "community-moderation" || route.kind === "community-moderation-index";
-  const isPublicProfileRoute = route.kind === "public-profile";
+  const isPublicProfileRoute = route.kind === "public-profile" || route.kind === "public-agent";
   const primaryItems = buildPrimaryItems(copy.appSidebar);
 
   return (
@@ -501,7 +501,7 @@ function PirateAppShell({ initialHost, initialPath }: { initialHost?: string; in
             <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
               <div className="mx-auto w-full max-w-5xl">
                 <React.Suspense fallback={<RouteContentFallback />}>
-                  {route.kind === "public-profile" ? <LazyPublicRouteRenderer route={route} /> : null}
+                  {route.kind === "public-profile" || route.kind === "public-agent" ? <LazyPublicRouteRenderer route={route} /> : null}
                 </React.Suspense>
               </div>
             </main>

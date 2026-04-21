@@ -185,6 +185,10 @@ export function resolveApiOriginFromHostname(hostname: string): string {
     return "https://api-staging.pirate.sc";
   }
 
+  if (normalizedHostname === "app.pirate") {
+    return "https://api.pirate";
+  }
+
   return "https://api.pirate.sc";
 }
 

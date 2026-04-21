@@ -20,6 +20,7 @@ describe("public profile host routing", () => {
 
   test("ignores reserved or nested subdomains", () => {
     expect(extractPublicProfileHost("api.pirate")).toBe(null);
+    expect(extractPublicProfileHost("app.pirate")).toBe(null);
     expect(extractPublicProfileHost("captain.dev.pirate")).toBe(null);
     expect(extractPublicProfileHost("localhost")).toBe(null);
   });

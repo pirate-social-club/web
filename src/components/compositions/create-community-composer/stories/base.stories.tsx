@@ -137,6 +137,30 @@ export const ReviewWithNationalityGate: Story = {
   ),
 };
 
+export const ReviewWithCourtyardGate: Story = {
+  name: "Flow / Review With Courtyard Gate",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[...courtyardGateDrafts]}
+      initialStep={3}
+      membershipMode="gated"
+    />
+  ),
+};
+
+export const ReviewWithCourtyardWatchGate: Story = {
+  name: "Flow / Review With Courtyard Watch Gate",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[...courtyardWatchGateDrafts]}
+      initialStep={3}
+      membershipMode="gated"
+    />
+  ),
+};
+
 export const ReviewStep: Story = {
   name: "Flow / Review",
   render: () => <CreateCommunityComposer {...baseComposer} initialStep={3} />,

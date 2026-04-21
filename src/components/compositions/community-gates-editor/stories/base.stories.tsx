@@ -10,9 +10,9 @@ import type {
   IdentityGateDraft,
 } from "@/components/compositions/create-community-composer/create-community-composer.types";
 
-// Note: CommunityGatesEditorPage supports nationality and Ethereum ERC-721 gates.
-// unique_human, age_over_18, and wallet_score gates are valid in v0 but not yet
-// configurable through this UI. Add stories for them after extending IdentityGateDraft.
+// Note: CommunityGatesEditorPage supports nationality, Ethereum ERC-721, and
+// Courtyard inventory-match gates. unique_human, age_over_18, and wallet_score
+// gates are valid in v0 but not yet configurable through this UI.
 const meta = {
   title: "Compositions/Moderation/Gates",
   component: CommunityGatesEditorPage,
@@ -125,6 +125,55 @@ export const EthereumNftGate: Story = {
         gateType: "erc721_holding",
         chainNamespace: "eip155:1",
         contractAddress: "0x1111111111111111111111111111111111111111",
+      }]}
+      membershipMode="gated"
+      readAccessMode="public"
+    />
+  ),
+};
+
+export const CourtyardCardGate: Story = {
+  name: "Courtyard / Trading Card Gate",
+  render: () => (
+    <InteractiveCommunityGatesEditorPage
+      allowAnonymousIdentity
+      anonymousIdentityScope="community_stable"
+      defaultAgeGatePolicy="none"
+      gateDrafts={[{
+        gateType: "erc721_inventory_match",
+        chainNamespace: "eip155:137",
+        contractAddress: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+        inventoryProvider: "courtyard",
+        minQuantity: 3,
+        assetFilter: {
+          category: "trading_card",
+          franchise: "Pokemon",
+          subject: "Charizard",
+        },
+      }]}
+      membershipMode="gated"
+      readAccessMode="public"
+    />
+  ),
+};
+
+export const CourtyardWatchGate: Story = {
+  name: "Courtyard / Watch Gate",
+  render: () => (
+    <InteractiveCommunityGatesEditorPage
+      allowAnonymousIdentity
+      anonymousIdentityScope="community_stable"
+      defaultAgeGatePolicy="none"
+      gateDrafts={[{
+        gateType: "erc721_inventory_match",
+        chainNamespace: "eip155:137",
+        contractAddress: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+        inventoryProvider: "courtyard",
+        minQuantity: 5,
+        assetFilter: {
+          category: "watch",
+          brand: "Rolex",
+        },
       }]}
       membershipMode="gated"
       readAccessMode="public"

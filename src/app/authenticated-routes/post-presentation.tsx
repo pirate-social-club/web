@@ -252,6 +252,7 @@ function toCommunityPostContent(
         linkCaptionDir: translatedTextPresentation.dir,
         linkCaptionLang: translatedTextPresentation.lang,
         linkLabel: post.link_url ?? undefined,
+        previewImageSrc: post.link_og_image_url ?? undefined,
       };
     case "song": {
       const listing = songOptions?.listing;

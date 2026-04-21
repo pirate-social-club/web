@@ -31,6 +31,7 @@ export type ApiCreateCommunityRequest = {
     gate_type:
       | "unique_human"
       | "age_over_18"
+      | "minimum_age"
       | "nationality"
       | "gender"
       | "sanctions_clear"
@@ -43,6 +44,7 @@ export type ApiCreateCommunityRequest = {
         | "wallet_score"
         | "gov_id"
         | "age_over_18"
+        | "minimum_age"
         | "nationality"
         | "gender"
         | "sanctions_clear"

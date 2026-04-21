@@ -107,7 +107,7 @@ export const RestrictedReading: Story = {
       anonymousIdentityScope="thread_stable"
       defaultAgeGatePolicy="18_plus"
       gateDrafts={[
-        { gateType: "nationality", provider: "self", requiredValue: "US" },
+        { gateType: "nationality", provider: "self", requiredValues: ["USA"] },
       ]}
       membershipMode="gated"
       readAccessMode="members_only"

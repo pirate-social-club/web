@@ -22,6 +22,8 @@ function getCountryDisplayName(requiredValue: string, locale: string | null | un
 function formatSidebarRequirement(input: {
   gateType: string;
   requiredValue?: string | null;
+  requiredValues?: string[] | null;
+  requiredMinimumAge?: number | null;
   contractAddress?: string | null;
   locale?: string | null;
 }): string | null {
@@ -29,15 +31,16 @@ function formatSidebarRequirement(input: {
 
   switch (input.gateType) {
     case "nationality": {
-      if (!input.requiredValue) {
+      const requiredValues = input.requiredValues?.length ? input.requiredValues : input.requiredValue ? [input.requiredValue] : [];
+      if (requiredValues.length === 0) {
         if (locale === "ar") return "الجنسية";
         if (locale === "zh") return "国籍";
         return "Nationality";
       }
-      const country = getCountryDisplayName(input.requiredValue, input.locale);
-      if (locale === "ar") return `جنسية ${country}`;
-      if (locale === "zh") return `${country} 国籍`;
-      return `${country} nationality`;
+      const countries = requiredValues.map((value) => getCountryDisplayName(value, input.locale)).join(", ");
+      if (locale === "ar") return `جنسية ${countries}`;
+      if (locale === "zh") return `${countries} 国籍`;
+      return `${countries} nationality`;
     }
     case "gender":
       if (locale === "ar") {
@@ -55,6 +58,8 @@ function formatSidebarRequirement(input: {
         : "Self document marker";
     case "age_over_18":
       return "18+";
+    case "minimum_age":
+      return `${input.requiredMinimumAge ?? 18}+`;
     case "unique_human":
       if (locale === "ar") return "فحص الهوية";
       if (locale === "zh") return "身份验证";
@@ -78,7 +83,7 @@ function formatSidebarRequirement(input: {
 
 export function buildCommunitySidebarRequirements(input: {
   defaultAgeGatePolicy?: "none" | "18_plus" | null;
-  gateSummaries?: Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value" | "contract_address">> | null;
+  gateSummaries?: Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value" | "required_values" | "required_minimum_age" | "contract_address">> | null;
   locale?: string | null;
 }): string[] {
   const requirements: string[] = [];
@@ -93,6 +98,8 @@ export function buildCommunitySidebarRequirements(input: {
         contractAddress: gate.contract_address ?? null,
         locale: input.locale,
         requiredValue: gate.required_value ?? null,
+        requiredValues: gate.required_values ?? null,
+        requiredMinimumAge: gate.required_minimum_age ?? null,
       });
     if (label && !requirements.includes(label)) {
       requirements.push(label);
@@ -104,7 +111,7 @@ export function buildCommunitySidebarRequirements(input: {
 
 function getCommunityGateSummaries(
   community: ApiCommunity,
-): Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value" | "contract_address">> {
+): Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value" | "required_values" | "required_minimum_age" | "contract_address">> {
   return (community.gate_rules ?? [])
     .filter((rule) => rule.scope === "membership" && rule.status === "active")
     .map((rule) => {
@@ -113,6 +120,13 @@ function getCommunityGateSummaries(
         ? typeof config.required_value === "string"
           ? config.required_value
           : null
+        : null;
+      const rawRequiredValues = config && typeof config === "object" && Array.isArray((config as Record<string, unknown>).required_values)
+        ? (config as Record<string, unknown>).required_values as unknown[]
+        : null;
+      const requiredValues = rawRequiredValues?.filter((value): value is string => typeof value === "string") ?? null;
+      const requiredMinimumAge = config && typeof config === "object" && Number.isInteger((config as Record<string, unknown>).minimum_age)
+        ? (config as Record<string, unknown>).minimum_age as number
         : null;
 
       return {
@@ -123,6 +137,8 @@ function getCommunityGateSummaries(
             : null
           : null,
         required_value: requiredValue,
+        required_values: requiredValues,
+        required_minimum_age: requiredMinimumAge,
       };
     });
 }

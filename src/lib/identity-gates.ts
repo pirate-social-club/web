@@ -2,6 +2,7 @@ import type {
   GateFailureDetails,
   JoinEligibility,
   MembershipGateSummary,
+  VerificationRequirement,
 } from "@pirate/api-contracts";
 import { getCountryDisplayName } from "@/lib/countries";
 
@@ -11,6 +12,13 @@ type MissingCapability = JoinEligibility["missing_capabilities"][number];
 type SupportedCopyLocale = "en" | "ar" | "zh";
 
 const SELF_CAPABILITY_ORDER: MissingCapability[] = [
+  "unique_human",
+  "age_over_18",
+  "minimum_age",
+  "nationality",
+  "gender",
+];
+const SELF_REQUESTED_CAPABILITY_ORDER: MissingCapability[] = [
   "unique_human",
   "age_over_18",
   "nationality",
@@ -66,24 +74,20 @@ export function formatGateRequirement(
 
   switch (gate.gate_type) {
     case "nationality": {
-      if (gate.required_value) {
-        const country = formatCountryName(gate.required_value, locale);
+      const requiredValues = gate.required_values?.length ? gate.required_values : gate.required_value ? [gate.required_value] : [];
+      if (requiredValues.length > 0) {
+        const countries = requiredValues.map((value) => {
+          const country = formatCountryName(value, locale);
+          return audience === "admin" ? `${country} (${value})` : country;
+        });
+        const countryLabel = joinWithAnd(countries, locale);
         if (locale === "ar") {
-          if (audience === "admin") {
-            return `يتطلب التحقق من الجنسية: ${country} (${gate.required_value})`;
-          }
-          return `يتطلب التحقق من الجنسية: ${country}`;
+          return `يتطلب التحقق من الجنسية: ${countryLabel}`;
         }
         if (locale === "zh") {
-          if (audience === "admin") {
-            return `需要国籍验证：${country} (${gate.required_value})`;
-          }
-          return `需要国籍验证：${country}`;
+          return `需要国籍验证：${countryLabel}`;
         }
-        if (audience === "admin") {
-          return `Requires ${country} (${gate.required_value}) nationality`;
-        }
-        return `Requires ${country} nationality`;
+        return `Requires ${countryLabel} nationality`;
       }
       if (locale === "ar") return "يتطلب التحقق من الجنسية";
       if (locale === "zh") return "需要国籍验证";
@@ -115,6 +119,12 @@ export function formatGateRequirement(
       if (locale === "ar") return "يتطلب التحقق من أن عمرك 18+";
       if (locale === "zh") return "需要 18+ 验证";
       return "Requires 18+ verification";
+    case "minimum_age": {
+      const age = gate.required_minimum_age ?? 18;
+      if (locale === "ar") return `يتطلب التحقق من أن عمرك ${age}+`;
+      if (locale === "zh") return `需要 ${age}+ 验证`;
+      return `Requires ${age}+ verification`;
+    }
     case "wallet_score":
       if (locale === "ar") return "يتطلب التحقق عبر Passport";
       if (locale === "zh") return "需要 Passport 验证";
@@ -180,11 +190,11 @@ export function getSelfVerificationCapabilities(
 ): MissingCapability[] {
   const uniqueCapabilities = new Set<MissingCapability>();
   for (const capability of eligibility.missing_capabilities) {
-    if (SELF_CAPABILITY_ORDER.includes(capability)) {
+    if (SELF_REQUESTED_CAPABILITY_ORDER.includes(capability)) {
       uniqueCapabilities.add(capability);
     }
   }
-  return SELF_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
+  return SELF_REQUESTED_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
 }
 
 export function getVerificationCapabilitiesForProvider(
@@ -197,14 +207,26 @@ export function getVerificationCapabilitiesForProvider(
       if (capability === "unique_human") {
         uniqueCapabilities.add(capability);
       }
-    } else if (SELF_CAPABILITY_ORDER.includes(capability)) {
+    } else if (SELF_REQUESTED_CAPABILITY_ORDER.includes(capability)) {
       uniqueCapabilities.add(capability);
     }
   }
   if (provider === "self") {
-    return SELF_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
+    return SELF_REQUESTED_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
   }
   return Array.from(uniqueCapabilities);
+}
+
+export function getVerificationRequirementsForGates(
+  gates: MembershipGateSummary[] | null | undefined,
+): VerificationRequirement[] {
+  const minimumAges = (gates ?? [])
+    .filter((gate) => gate.gate_type === "minimum_age" && Number.isInteger(gate.required_minimum_age))
+    .map((gate) => gate.required_minimum_age as number);
+  if (minimumAges.length === 0) {
+    return [];
+  }
+  return [{ proof_type: "minimum_age", minimum_age: Math.max(...minimumAges) }];
 }
 
 export function resolveSuggestedVerificationProvider(
@@ -273,23 +295,24 @@ export function getVerificationPromptCopy(
   if (visibleCapabilities.length === 1) {
     switch (visibleCapabilities[0]) {
       case "age_over_18":
+      case "minimum_age":
         if (locale === "ar") {
           return {
             title: "تحقق بالهوية",
-            description: "أكد أن عمرك 18+ بالهوية.",
+            description: visibleCapabilities[0] === "minimum_age" ? "أكد العمر بالهوية." : "أكد أن عمرك 18+ بالهوية.",
             actionLabel: "تحقق بالهوية",
           };
         }
         if (locale === "zh") {
           return {
             title: "使用身份证件验证",
-            description: "使用证件确认你已满 18 岁。",
+            description: visibleCapabilities[0] === "minimum_age" ? "使用证件确认年龄。" : "使用证件确认你已满 18 岁。",
             actionLabel: "使用身份证件验证",
           };
         }
         return {
           title: "Verify with ID",
-          description: "Confirm you are 18+ with ID.",
+          description: visibleCapabilities[0] === "minimum_age" ? "Confirm age with ID." : "Confirm you are 18+ with ID.",
           actionLabel: "Verify with ID",
         };
       case "nationality":
@@ -341,6 +364,7 @@ export function getVerificationPromptCopy(
     if (locale === "ar") {
       switch (capability) {
         case "age_over_18": return "حالة 18+";
+        case "minimum_age": return "العمر";
         case "nationality": return "الجنسية";
         case "gender": return "علامة الجنس في وثيقة Self";
         case "unique_human": return "إثبات أنك إنسان";
@@ -349,6 +373,7 @@ export function getVerificationPromptCopy(
     if (locale === "zh") {
       switch (capability) {
         case "age_over_18": return "18+ 状态";
+        case "minimum_age": return "年龄";
         case "nationality": return "国籍";
         case "gender": return "Self 证件性别标记";
         case "unique_human": return "真人状态";
@@ -356,6 +381,7 @@ export function getVerificationPromptCopy(
     }
     switch (capability) {
       case "age_over_18": return "18+ status";
+      case "minimum_age": return "age status";
       case "nationality": return "nationality";
       case "gender": return "Self document marker";
       case "unique_human": return "unique human status";
@@ -397,6 +423,10 @@ export function getGateFailureMessage(
       if (locale === "ar") return "فحص هويتك لا يطابق قاعدة هذا المجتمع.";
       if (locale === "zh") return "你的证件验证结果不符合该社区规则。";
       return "Your ID check does not match this community's rule.";
+    case "minimum_age_mismatch":
+      if (locale === "ar") return "عمرك الموثق لا يطابق متطلبات هذا المجتمع.";
+      if (locale === "zh") return "你已验证的年龄不符合该社区要求。";
+      return "Your verified age does not match this community's requirement.";
     case "provider_not_accepted":
       if (locale === "ar") return "التحقق الحالي لا يلبّي متطلبات هذا المجتمع.";
       if (locale === "zh") return "你现有的验证方式不满足该社区要求。";

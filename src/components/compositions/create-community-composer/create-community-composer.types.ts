@@ -9,7 +9,13 @@ export type IdentityGateDraft =
   | {
     gateType: "nationality";
     provider: "self";
-    requiredValue: string;
+    requiredValues: string[];
+    gateRuleId?: string;
+  }
+  | {
+    gateType: "minimum_age";
+    provider: "self";
+    minimumAge: number;
     gateRuleId?: string;
   }
   | {

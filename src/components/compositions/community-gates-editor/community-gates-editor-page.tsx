@@ -15,7 +15,7 @@ import { Label } from "@/components/primitives/label";
 import { CheckboxCard } from "@/components/primitives/checkbox-card";
 import { OptionCard } from "@/components/primitives/option-card";
 import { RadioGroup, RadioGroupItem } from "@/components/primitives/radio-group";
-import { NationalityPicker } from "@/components/compositions/create-community-composer/nationality-picker";
+import { NationalityMultiPicker } from "@/components/compositions/create-community-composer/nationality-picker";
 import type {
   AnonymousIdentityScope,
   CommunityDefaultAgeGatePolicy,
@@ -192,6 +192,7 @@ export function CommunityGatesEditorPage({
     members_only: { label: mc.readAccessMembersOnlyLabel, detail: mc.readAccessMembersOnlyDetail },
   };
   const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
+  const minimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? true;
 
@@ -228,7 +229,7 @@ export function CommunityGatesEditorPage({
                   ? upsertGateDraft(gateDrafts, {
                     gateType: "nationality",
                     provider: "self",
-                    requiredValue: "US",
+                    requiredValues: ["USA"],
                   })
                   : removeGateDraft(gateDrafts, "nationality"),
               )}
@@ -237,16 +238,54 @@ export function CommunityGatesEditorPage({
             {nationalityGate ? (
               <div className="space-y-2">
                 <FormFieldLabel label={mc.allowedNationalityLabel} />
-                <NationalityPicker
-                  onChange={(code) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                <NationalityMultiPicker
+                  onChange={(codes) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
                     gateType: "nationality",
                     provider: "self",
-                    requiredValue: code ?? "",
+                    requiredValues: codes,
                   }))}
-                  value={nationalityGate.requiredValue || null}
+                  values={nationalityGate.requiredValues}
                 />
-                {nationalityGate.requiredValue.length > 0 && !isCountryCode(nationalityGate.requiredValue) ? (
+                {nationalityGate.requiredValues.some((value) => !isCountryCode(value)) ? (
                   <FormNote tone="warning">{mc.selectValidCountry}</FormNote>
+                ) : null}
+              </div>
+            ) : null}
+
+            <CheckboxCard
+              checked={Boolean(minimumAgeGate)}
+              description={mc.minimumAgeDescription}
+              title={mc.minimumAgeTitle}
+              onCheckedChange={(checked) => onGateDraftsChange?.(
+                checked
+                  ? upsertGateDraft(gateDrafts, {
+                    gateType: "minimum_age",
+                    provider: "self",
+                    minimumAge: 30,
+                  })
+                  : removeGateDraft(gateDrafts, "minimum_age"),
+              )}
+            />
+
+            {minimumAgeGate ? (
+              <div className="space-y-2">
+                <FormFieldLabel label={mc.minimumAgeLabel} />
+                <Input
+                  className="h-12 rounded-[var(--radius-lg)]"
+                  inputMode="numeric"
+                  max={125}
+                  min={1}
+                  onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                    gateType: "minimum_age",
+                    provider: "self",
+                    minimumAge: Number(event.target.value),
+                    gateRuleId: minimumAgeGate.gateRuleId,
+                  }))}
+                  type="number"
+                  value={String(minimumAgeGate.minimumAge)}
+                />
+                {(!Number.isInteger(minimumAgeGate.minimumAge) || minimumAgeGate.minimumAge < 1 || minimumAgeGate.minimumAge > 125) ? (
+                  <FormNote tone="warning">{mc.minimumAgeInvalid}</FormNote>
                 ) : null}
               </div>
             ) : null}

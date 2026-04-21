@@ -20,7 +20,7 @@ import { isApiNotFoundError, type ApiError } from "@/lib/api/client";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getErrorMessage } from "@/lib/error-utils";
-import { getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { logger } from "@/lib/logger";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
@@ -226,11 +226,12 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     eligibility,
     source,
   }: {
-    eligibility: Pick<ApiJoinEligibility, "missing_capabilities">;
+    eligibility: Pick<ApiJoinEligibility, "membership_gate_summaries" | "missing_capabilities">;
     source: "vote_modal";
   }) => {
     const requestedCapabilities = getVerificationCapabilitiesForProvider(eligibility, "self");
-    if (requestedCapabilities.length === 0) {
+    const verificationRequirements = getVerificationRequirementsForGates(eligibility.membership_gate_summaries);
+    if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
       const message = copy.publicCommunity.verificationMissingSelf;
       setSelfError(message);
       logger.warn("[public-community] self verification unavailable", {
@@ -248,6 +249,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       const result = await api.verification.startSession({
         provider: "self",
         requested_capabilities: requestedCapabilities,
+        verification_requirements: verificationRequirements,
         verification_intent: "community_join",
       });
       setSelfRequestedCapabilities(requestedCapabilities);

@@ -4,8 +4,13 @@ import { findCountry, getCountryDisplayName, getCountryName, isCountryCode } fro
 
 describe("countries", () => {
   test("looks up a country by alpha-2 code", () => {
-    expect(findCountry("us")).toEqual({ code: "US", name: "United States" });
+    expect(findCountry("us")).toEqual({ code: "US", identityCode: "USA", name: "United States" });
     expect(getCountryName("DE")).toBe("Germany");
+  });
+
+  test("looks up a country by alpha-3 identity code", () => {
+    expect(findCountry("usa")).toEqual({ code: "US", identityCode: "USA", name: "United States" });
+    expect(isCountryCode("USA")).toBe(true);
   });
 
   test("localizes special-case country names for supported locales", () => {

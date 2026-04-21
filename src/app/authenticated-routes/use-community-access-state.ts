@@ -56,6 +56,19 @@ export function useCommunityAccessState({
               gate_config: { contract_address: draft.contractAddress.trim() },
             };
           }
+          if (draft.gateType === "minimum_age") {
+            return {
+              scope: "membership" as const,
+              gate_family: "identity_proof" as const,
+              gate_type: "minimum_age" as const,
+              gate_rule_id: draft.gateRuleId ?? null,
+              proof_requirements: [{
+                proof_type: "minimum_age" as const,
+                accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
+                config: { minimum_age: draft.minimumAge },
+              }],
+            };
+          }
 
           return {
             scope: "membership" as const,
@@ -65,7 +78,9 @@ export function useCommunityAccessState({
             proof_requirements: [{
               proof_type: draft.gateType,
               accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
-              config: { required_value: draft.requiredValue },
+              config: draft.gateType === "nationality"
+                ? { required_values: draft.requiredValues }
+                : { required_value: draft.requiredValue },
             }],
           };
         }),

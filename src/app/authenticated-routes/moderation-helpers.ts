@@ -117,6 +117,35 @@ function extractRequiredValue(config: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
+function extractRequiredValues(config: unknown): string[] {
+  if (!config || typeof config !== "object") {
+    return [];
+  }
+
+  const record = config as Record<string, unknown>;
+  const values = new Set<string>();
+  if (typeof record.required_value === "string") {
+    values.add(record.required_value);
+  }
+  if (Array.isArray(record.required_values)) {
+    for (const value of record.required_values) {
+      if (typeof value === "string") {
+        values.add(value);
+      }
+    }
+  }
+  return Array.from(values);
+}
+
+function extractMinimumAge(config: unknown): number | null {
+  if (!config || typeof config !== "object") {
+    return null;
+  }
+
+  const value = (config as Record<string, unknown>).minimum_age ?? (config as Record<string, unknown>).required_minimum_age;
+  return Number.isInteger(value) ? value as number : null;
+}
+
 function extractContractAddress(config: unknown): string | null {
   if (!config || typeof config !== "object") {
     return null;
@@ -151,10 +180,22 @@ export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDra
       continue;
     }
 
-    const requiredValue = extractRequiredValue(rule.proof_requirements?.[0]?.config ?? rule.gate_config);
+    const config = rule.proof_requirements?.[0]?.config ?? rule.gate_config;
+    const requiredValue = extractRequiredValue(config);
 
-    if (rule.gate_type === "nationality" && requiredValue && /^[A-Z]{2}$/.test(requiredValue)) {
-      drafts.push({ gateType: "nationality", provider: "self", requiredValue, gateRuleId: rule.gate_rule_id });
+    if (rule.gate_type === "nationality") {
+      const requiredValues = extractRequiredValues(config);
+      if (requiredValues.length > 0) {
+        drafts.push({ gateType: "nationality", provider: "self", requiredValues, gateRuleId: rule.gate_rule_id });
+      }
+      continue;
+    }
+
+    if (rule.gate_type === "minimum_age") {
+      const minimumAge = extractMinimumAge(config);
+      if (minimumAge != null) {
+        drafts.push({ gateType: "minimum_age", provider: "self", minimumAge, gateRuleId: rule.gate_rule_id });
+      }
       continue;
     }
 

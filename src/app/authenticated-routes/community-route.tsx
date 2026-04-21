@@ -17,7 +17,7 @@ import { CommunityPageShell } from "@/components/compositions/community-page-she
 import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { getGateFailureMessage, getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -100,16 +100,19 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     });
   }, [buySong, communityId]);
 
-  const startSelfVerification = React.useCallback(async ({ showToastOnError = false, missingCapabilities }: {
+  const startSelfVerification = React.useCallback(async ({ showToastOnError = false, missingCapabilities, membershipGateSummaries }: {
     showToastOnError?: boolean;
     missingCapabilities?: string[] | null;
+    membershipGateSummaries?: ApiJoinEligibility["membership_gate_summaries"] | null;
   } = {}) => {
     const rawCapabilities = missingCapabilities ?? eligibility?.missing_capabilities ?? [];
+    const activeGateSummaries = membershipGateSummaries ?? eligibility?.membership_gate_summaries ?? [];
+    const verificationRequirements = getVerificationRequirementsForGates(activeGateSummaries);
     const requestedCapabilities = getVerificationCapabilitiesForProvider(
-      { missing_capabilities: rawCapabilities.filter((c): c is ApiJoinEligibility["missing_capabilities"][number] => ["unique_human", "age_over_18", "nationality", "gender"].includes(c as string)) },
+      { missing_capabilities: rawCapabilities.filter((c): c is ApiJoinEligibility["missing_capabilities"][number] => ["unique_human", "age_over_18", "minimum_age", "nationality", "gender"].includes(c as string)) },
       "self",
     );
-    if (requestedCapabilities.length === 0) {
+    if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
       const message = "This community is missing the Self verification details needed to continue.";
       setSelfError(message);
       if (showToastOnError) {
@@ -122,7 +125,12 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     setSelfError(null);
     setJoinError(null);
     try {
-      const result = await api.verification.startSession({ provider: "self", requested_capabilities: requestedCapabilities, verification_intent: "community_join" });
+      const result = await api.verification.startSession({
+        provider: "self",
+        requested_capabilities: requestedCapabilities,
+        verification_requirements: verificationRequirements,
+        verification_intent: "community_join",
+      });
       setSelfRequestedCapabilities(requestedCapabilities);
       setSelfSession(result);
       setSelfModalOpen(true);
@@ -201,7 +209,10 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           if (provider === "very") {
             await startVeryVerification();
           } else {
-            await startSelfVerification({ missingCapabilities: details.missing_capabilities });
+            await startSelfVerification({
+              missingCapabilities: details.missing_capabilities,
+              membershipGateSummaries: details.membership_gate_summaries ?? null,
+            });
           }
           return;
         }
@@ -286,7 +297,11 @@ export function CommunityPage({ communityId }: { communityId: string }) {
                 closeModal();
               }
             } else {
-              const result = await startSelfVerification({ showToastOnError: true, missingCapabilities: gate.eligibility.missing_capabilities });
+              const result = await startSelfVerification({
+                showToastOnError: true,
+                missingCapabilities: gate.eligibility.missing_capabilities,
+                membershipGateSummaries: gate.eligibility.membership_gate_summaries,
+              });
               if (result.started) {
                 closeModal();
               }

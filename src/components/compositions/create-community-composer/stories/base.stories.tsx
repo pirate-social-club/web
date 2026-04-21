@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { CreateCommunityComposer } from "../create-community-composer";
-import type { CreateCommunityComposerProps } from "../create-community-composer.types";
+import type { CreateCommunityComposerProps, IdentityGateDraft } from "../create-community-composer.types";
 
 const baseComposer: CreateCommunityComposerProps = {
   displayName: "American Voices",
@@ -17,9 +17,9 @@ const baseComposer: CreateCommunityComposerProps = {
   },
 };
 
-const nationalityGateDrafts = [
-  { gateType: "nationality", provider: "self", requiredValue: "US" },
-] as const;
+const nationalityGateDrafts: IdentityGateDraft[] = [
+  { gateType: "nationality", provider: "self", requiredValues: ["USA"] },
+];
 
 const meta = {
   title: "Compositions/CreateCommunityComposer",

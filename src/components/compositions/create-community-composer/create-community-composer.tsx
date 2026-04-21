@@ -32,7 +32,7 @@ import {
   CheckboxRow,
   CommunityReviewStep,
 } from "./create-community-composer.sections";
-import { NationalityPicker } from "./nationality-picker";
+import { NationalityMultiPicker } from "./nationality-picker";
 
 import type {
   AnonymousIdentityScope,
@@ -80,12 +80,15 @@ export function CreateCommunityComposer({
   const [activeDisplayName, setActiveDisplayName] = React.useState(displayName ?? "");
   const [activeDescription, setActiveDescription] = React.useState(description ?? "");
   const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
+  const minimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
   const genderGate = gateDrafts.find((draft) => draft.gateType === "gender");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const [nationalityEnabled, setNationalityEnabled] = React.useState(Boolean(nationalityGate));
-  const [nationalityRequiredValue, setNationalityRequiredValue] = React.useState(
-    nationalityGate?.requiredValue ?? "",
+  const [nationalityRequiredValues, setNationalityRequiredValues] = React.useState<string[]>(
+    nationalityGate?.requiredValues ?? [],
   );
+  const [minimumAgeEnabled, setMinimumAgeEnabled] = React.useState(Boolean(minimumAgeGate));
+  const [minimumAge, setMinimumAge] = React.useState(minimumAgeGate?.minimumAge ?? 30);
   const [genderEnabled, setGenderEnabled] = React.useState(Boolean(genderGate));
   const [genderRequiredValue, setGenderRequiredValue] = React.useState<"M" | "F">(
     genderGate?.requiredValue ?? "F",
@@ -101,7 +104,11 @@ export function CreateCommunityComposer({
         .map((draft) => (
           draft.gateType === "erc721_holding"
             ? [draft.gateType, draft.chainNamespace, draft.contractAddress, draft.gateRuleId ?? ""].join(":")
-            : [draft.gateType, draft.provider, draft.requiredValue, draft.gateRuleId ?? ""].join(":")
+            : draft.gateType === "nationality"
+              ? [draft.gateType, draft.provider, draft.requiredValues.join(","), draft.gateRuleId ?? ""].join(":")
+              : draft.gateType === "minimum_age"
+                ? [draft.gateType, draft.provider, draft.minimumAge, draft.gateRuleId ?? ""].join(":")
+                : [draft.gateType, draft.provider, draft.requiredValue, draft.gateRuleId ?? ""].join(":")
         ))
         .sort()
         .join("|"),
@@ -119,8 +126,11 @@ export function CreateCommunityComposer({
 
 
   const activeGateDrafts: IdentityGateDraft[] = [
-    ...(nationalityEnabled && isCountryCode(nationalityRequiredValue)
-      ? [{ gateType: "nationality" as const, provider: "self" as const, requiredValue: nationalityRequiredValue }]
+    ...(nationalityEnabled && nationalityRequiredValues.length > 0 && nationalityRequiredValues.every(isCountryCode)
+      ? [{ gateType: "nationality" as const, provider: "self" as const, requiredValues: nationalityRequiredValues }]
+      : []),
+    ...(minimumAgeEnabled && Number.isInteger(minimumAge) && minimumAge > 0 && minimumAge <= 125
+      ? [{ gateType: "minimum_age" as const, provider: "self" as const, minimumAge }]
       : []),
     ...(genderEnabled
       ? [{ gateType: "gender" as const, provider: "self" as const, requiredValue: genderRequiredValue }]
@@ -144,7 +154,11 @@ export function CreateCommunityComposer({
     });
     const nextNationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
     setNationalityEnabled(Boolean(nextNationalityGate));
-    setNationalityRequiredValue(nextNationalityGate?.requiredValue ?? "");
+    setNationalityRequiredValues(nextNationalityGate?.requiredValues ?? []);
+
+    const nextMinimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
+    setMinimumAgeEnabled(Boolean(nextMinimumAgeGate));
+    setMinimumAge(nextMinimumAgeGate?.minimumAge ?? 30);
 
     const nextGenderGate = gateDrafts.find((draft) => draft.gateType === "gender");
     setGenderEnabled(Boolean(nextGenderGate));
@@ -259,6 +273,10 @@ export function CreateCommunityComposer({
           formatGateRequirement(
             draft.gateType === "erc721_holding"
               ? { gate_type: draft.gateType, chain_namespace: draft.chainNamespace, contract_address: draft.contractAddress }
+              : draft.gateType === "nationality"
+                ? { gate_type: draft.gateType, required_values: draft.requiredValues }
+                : draft.gateType === "minimum_age"
+                  ? { gate_type: draft.gateType, required_minimum_age: draft.minimumAge }
               : { gate_type: draft.gateType, required_value: draft.requiredValue },
             { audience: "admin" },
           ),
@@ -425,18 +443,43 @@ export function CreateCommunityComposer({
                     {nationalityEnabled ? (
                       <div className="space-y-2">
                         <FieldLabel label={cc.allowedNationalityLabel} />
-                        <NationalityPicker
-                          onChange={(code) => {
+                        <NationalityMultiPicker
+                          onChange={(codes) => {
                             logCreateCommunityGateDebug("selectNationality", {
-                              previous: nationalityRequiredValue,
-                              next: code,
+                              previous: nationalityRequiredValues,
+                              next: codes,
                             });
-                            setNationalityRequiredValue(code ?? "");
+                            setNationalityRequiredValues(codes);
                           }}
-                          value={nationalityRequiredValue || null}
+                          values={nationalityRequiredValues}
                         />
-                        {nationalityRequiredValue.length > 0 && !isCountryCode(nationalityRequiredValue) ? (
+                        {nationalityRequiredValues.some((value) => !isCountryCode(value)) ? (
                           <FormNote tone="warning">{cc.selectValidCountry}</FormNote>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    <CheckboxCard
+                      checked={minimumAgeEnabled}
+                      description={cc.minimumAgeDescription}
+                      title={cc.minimumAgeTitle}
+                      onCheckedChange={setMinimumAgeEnabled}
+                    />
+
+                    {minimumAgeEnabled ? (
+                      <div className="space-y-2">
+                        <FieldLabel label={cc.minimumAgeLabel} />
+                        <Input
+                          className="h-12 rounded-[var(--radius-lg)]"
+                          inputMode="numeric"
+                          min={1}
+                          max={125}
+                          onChange={(event) => setMinimumAge(Number(event.target.value))}
+                          type="number"
+                          value={String(minimumAge)}
+                        />
+                        {(!Number.isInteger(minimumAge) || minimumAge < 1 || minimumAge > 125) ? (
+                          <FormNote tone="warning">{cc.minimumAgeInvalid}</FormNote>
                         ) : null}
                       </div>
                     ) : null}

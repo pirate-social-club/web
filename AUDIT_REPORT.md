@@ -147,6 +147,10 @@ No confirmed bug items remain open.
 - **Status:** ✅ **Fixed**
 - **Verification:** Dialog centering now uses `inset-x-0 mx-auto`; stepper connector positioning uses `insetInlineStart`.
 
+### REFACTOR-020 — `SpacesChallengePayload` type duplicated
+- **Status:** ✅ **Fixed**
+- **Verification:** `create-community-route.tsx` imports `SpacesChallengePayload` from the namespace verification type surface instead of declaring a local duplicate.
+
 ---
 
 ## Remaining Structural Refactors
@@ -214,12 +218,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Impact:** Pollutes production console; may leak internal paths or state shape.
 - **Fix:** Replace with a production-strippable logger, or remove.
 - **Risk:** Low.
-
-### REFACTOR-020 — `SpacesChallengePayload` type duplicated
-- **Location:** `verify-namespace-modal.types.ts` and `create-community-route.tsx:26–36`
-- **Verification:** Direct read.
-- **Fix:** Move namespace verification types to `types/namespace-verification.ts` and import everywhere.
-- **Risk:** Negligible.
 
 ### REFACTOR-021 — Loading states duplicated across public routes
 - **Location:** `public-profile-route.tsx:114–115` and `public-community-route.tsx:178–179` both use identical `min-h-[60vh]` centered card spinner markup.

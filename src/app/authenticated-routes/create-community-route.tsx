@@ -10,6 +10,7 @@ import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { ApiError } from "@/lib/api/client";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { VerifyNamespaceModal } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal";
+import type { SpacesChallengePayload } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
 import type {
   IdentityGateDraft,
   NamespaceAttachmentState,
@@ -22,18 +23,6 @@ import { DEFAULT_COMMUNITY_RULES } from "./moderation-helpers";
 import { getRouteAuthDescription } from "./route-status-copy";
 import { AuthRequiredRouteState, StackPageShell, StatusCard } from "./route-shell";
 import { useRouteMessages } from "./route-core";
-
-type SpacesChallengePayload = {
-  kind: "schnorr_sign";
-  domain: string;
-  root_label: string;
-  root_pubkey: string;
-  nonce: string;
-  issued_at: string;
-  expires_at: string;
-  message: string;
-  digest: string;
-};
 
 export function CreateCommunityPage() {
   const { copy } = useRouteMessages();

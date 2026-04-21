@@ -25,7 +25,7 @@ Items moved out of the bug bucket into lower buckets or rejected are noted in th
 - Moderation domains are split into focused hooks for commerce, content policy, profile, access gates, safety, and agent policy.
 - Settings page tab implementations are split into focused panel files while preserving the existing public import surface.
 - RTL-sensitive physical utilities have been converted to logical equivalents for content/layout cases.
-- The remaining items are lower-risk structural cleanup or performance hypotheses that need profiling before optimization work.
+- No confirmed bugs, open items, or structural refactors from this audit remain. Only unproven performance hypotheses remain, and those require profiling before code changes.
 
 ---
 
@@ -37,7 +37,7 @@ Items moved out of the bug bucket into lower buckets or rejected are noted in th
 
 ### BUG-002 — No React Error Boundaries in the entire app
 - **Status:** ✅ **Fixed**
-- **Verification:** `RootErrorBoundary` class component exists in `app.tsx:385` and wraps the shell at `app.tsx:502`.
+- **Verification:** `RootErrorBoundary` exists in `src/app/shell/root-error-boundary.tsx` and wraps the authenticated shell in `src/app/shell/app-shell.tsx`.
 
 ### BUG-003 — `react-server-dom-webpack` is an unused dependency
 - **Status:** ✅ **Fixed**

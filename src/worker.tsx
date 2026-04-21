@@ -41,6 +41,72 @@ type AppContext = {
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
 
+const CSP_REPORT_ONLY_HEADER = "Content-Security-Policy-Report-Only";
+
+function buildContentSecurityPolicy(nonce: string): string {
+  const directives: string[] = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval' https://challenges.cloudflare.com`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "media-src 'self' blob: https:",
+    "font-src 'self' data:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    [
+      "child-src",
+      "https://auth.privy.io",
+      "https://verify.walletconnect.com",
+      "https://verify.walletconnect.org",
+    ].join(" "),
+    [
+      "frame-src",
+      "https://auth.privy.io",
+      "https://verify.walletconnect.com",
+      "https://verify.walletconnect.org",
+      "https://challenges.cloudflare.com",
+    ].join(" "),
+    [
+      "connect-src",
+      "'self'",
+      "https://api.pirate.sc",
+      "https://api-staging.pirate.sc",
+      "https://auth.privy.io",
+      "wss://relay.walletconnect.com",
+      "wss://relay.walletconnect.org",
+      "wss://www.walletlink.org",
+      "https://*.rpc.privy.systems",
+      "https://explorer-api.walletconnect.com",
+      "https://api.ethfollow.xyz",
+      "https://mainnet.base.org",
+      "https://sepolia.base.org",
+      "https://eth.merkle.io",
+      "https://11155111.rpc.thirdweb.com",
+      "https://mainnet.optimism.io",
+      "https://sepolia.optimism.io",
+      "https://mainnet.storyrpc.io",
+      "https://aeneid.storyrpc.io",
+      "https://g.w.lavanet.xyz",
+      "https://bridge.very.org",
+      "https://verify.very.org",
+    ].join(" "),
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+  ];
+
+  return directives.join("; ");
+}
+
+function applyCspHeaders(headers: Headers, nonce: string): void {
+  if (import.meta.env.DEV) {
+    return;
+  }
+
+  headers.set(CSP_REPORT_ONLY_HEADER, buildContentSecurityPolicy(nonce));
+}
+
 function parseThemeCookie(cookieHeader: string | null): ThemeMode {
   const match = cookieHeader?.match(/(?:^|;\s*)theme=(dark|light|system)(?:;|$)/);
   return (match?.[1] as ThemeMode | undefined) ?? "dark";
@@ -68,7 +134,7 @@ function TermsRoutePage() {
 }
 
 const app = defineApp<AppRequestInfo>([
-  ({ ctx, request, response }) => {
+  ({ ctx, request, response, rw }) => {
     const discovery = getDiscoveryContext(request.url);
     const locale = resolveRequestLocale(request.headers.get("accept-language"));
 
@@ -79,6 +145,7 @@ const app = defineApp<AppRequestInfo>([
     ctx.isIndexable = discovery.isIndexable;
     ctx.theme = parseThemeCookie(request.headers.get("cookie"));
     applyDiscoveryHeaders(response.headers, discovery);
+    applyCspHeaders(response.headers, rw.nonce);
   },
   render(Document, [
     route("/robots.txt", ({ request }) => buildRobotsResponse(request.url)),

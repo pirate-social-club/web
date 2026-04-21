@@ -220,6 +220,22 @@ export function CommunityGatesEditorPage({
           value={membershipMode}
         />
 
+        {!hasAdultMinimumAgeGate ? (
+          <div className="space-y-2">
+            <CheckboxRow
+              checked={defaultAgeGatePolicy === "18_plus"}
+              id="community-18-plus"
+              label={mc.ageGateLabel}
+              onCheckedChange={(checked) => onDefaultAgeGatePolicyChange?.(checked ? "18_plus" : "none")}
+            />
+            {defaultAgeGatePolicy === "18_plus" && !creatorAgeOver18Verified ? (
+              <FormNote tone="warning">
+                {mc.ageGateWarning}
+              </FormNote>
+            ) : null}
+          </div>
+        ) : null}
+
         {membershipMode === "gated" ? (
           <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:px-5">
             <FormSectionHeading title={mc.gateChecksTitle} />
@@ -373,22 +389,6 @@ export function CommunityGatesEditorPage({
                 }))}
               </div>
             </div>
-          ) : null}
-
-          {!hasAdultMinimumAgeGate ? (
-            <>
-              <CheckboxRow
-                checked={defaultAgeGatePolicy === "18_plus"}
-                id="community-18-plus"
-                label={mc.ageGateLabel}
-                onCheckedChange={(checked) => onDefaultAgeGatePolicyChange?.(checked ? "18_plus" : "none")}
-              />
-              {defaultAgeGatePolicy === "18_plus" && !creatorAgeOver18Verified ? (
-                <FormNote tone="warning">
-                  {mc.ageGateWarning}
-                </FormNote>
-              ) : null}
-            </>
           ) : null}
         </div>
       </Section>

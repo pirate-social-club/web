@@ -222,6 +222,7 @@ export function CommunityReviewStep({
 
       <ReviewSection title={copy.reviewAccessPolicySection}>
         <ReviewField label={copy.reviewJoinFlow} value={membershipLabel} />
+        <ReviewField label={copy.reviewAgeGate} value={ageGateLabel} />
         {gateRequirementSummary ? (
           <div className="md:col-span-2">
             <ReviewField label={copy.reviewMembershipGates} value={gateRequirementSummary} />
@@ -231,7 +232,6 @@ export function CommunityReviewStep({
         {anonymousScopeLabel ? (
           <ReviewField label={copy.reviewAnonymousScope} value={anonymousScopeLabel} />
         ) : null}
-        <ReviewField label={copy.reviewAgeGate} value={ageGateLabel} />
       </ReviewSection>
 
       {creatorVerificationMessage ? (

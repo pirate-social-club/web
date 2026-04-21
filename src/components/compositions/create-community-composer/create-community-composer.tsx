@@ -429,6 +429,24 @@ export function CreateCommunityComposer({
                   value={activeMembershipMode}
                 />
 
+                {!hasAdultMinimumAgeGate ? (
+                  <div className="space-y-2">
+                    <CheckboxRow
+                      checked={activeDefaultAgeGatePolicy === "18_plus"}
+                      id="community-18-plus"
+                      label={cc.ageGateLabel}
+                      onCheckedChange={(checked) =>
+                        setActiveDefaultAgeGatePolicy(checked ? "18_plus" : "none")
+                      }
+                    />
+                    {activeDefaultAgeGatePolicy === "18_plus" && !deferCreatorVerification && !creatorAgeOver18Verified ? (
+                      <FormNote tone="warning">
+                        {cc.creatorAgeRequired}
+                      </FormNote>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 {activeMembershipMode === "gated" ? (
                   <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-5 py-4">
                     <FormSectionHeading title={cc.gateChecksTitle} />
@@ -545,23 +563,6 @@ export function CreateCommunityComposer({
                     </div>
                   ) : null}
 
-                  {!hasAdultMinimumAgeGate ? (
-                    <>
-                      <CheckboxRow
-                        checked={activeDefaultAgeGatePolicy === "18_plus"}
-                        id="community-18-plus"
-                        label={cc.ageGateLabel}
-                        onCheckedChange={(checked) =>
-                          setActiveDefaultAgeGatePolicy(checked ? "18_plus" : "none")
-                        }
-                      />
-                      {activeDefaultAgeGatePolicy === "18_plus" && !deferCreatorVerification && !creatorAgeOver18Verified ? (
-                        <FormNote tone="warning">
-                          {cc.creatorAgeRequired}
-                        </FormNote>
-                      ) : null}
-                    </>
-                  ) : null}
                 </div>
               </Section>
             </>

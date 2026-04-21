@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Flag, House, Plus } from "@phosphor-icons/react";
+import { Flag, House, Plus, type Icon } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
 import {
@@ -30,7 +30,7 @@ import {
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 
-type SidebarIcon = React.ComponentType<React.ComponentProps<typeof House>>;
+type SidebarIcon = Icon;
 
 export interface AppSidebarPrimaryItem {
   id: string;
@@ -41,6 +41,7 @@ export interface AppSidebarPrimaryItem {
 
 export interface AppSidebarSectionItem {
   avatarSrc?: string | null;
+  icon?: SidebarIcon;
   id: string;
   label: string;
   onSelect?: () => void;
@@ -180,18 +181,23 @@ function SidebarResources({
           <SidebarGroup className="gap-0 px-0 py-0">
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
-                {items.map((item) => (
-                  <SidebarMenuItem key={item.id}>
+                {items.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
                       className={nestedRowClassName}
                       isActive={item.id === activeItemId}
                       onClick={() => onItemSelect(item.onSelect)}
                       tooltip={item.label}
                     >
+                      {Icon ? <Icon className="size-5" /> : null}
                       <span>{item.label}</span>
                     </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

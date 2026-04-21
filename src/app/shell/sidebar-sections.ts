@@ -1,4 +1,15 @@
-import { Flag, House, Plus } from "@phosphor-icons/react";
+import {
+  Code,
+  FileCode,
+  Flag,
+  GitBranch,
+  GithubLogo,
+  House,
+  Newspaper,
+  Plus,
+  Scroll,
+  Shield,
+} from "@phosphor-icons/react";
 import type { ComponentProps } from "react";
 
 import type { AppRoute } from "@/app/router";
@@ -15,7 +26,18 @@ import type { MobileFooterNav } from "@/components/compositions/app-shell-chrome
 import { buildCommunityPath } from "@/lib/community-routing";
 import type { SidebarCommunitySummary } from "@/lib/owned-communities";
 import { prefersNativeRadicleLinks, resolveResourceHref } from "@/lib/resource-links";
+import type { ResourceLinkId } from "@/lib/resource-links";
 import type { ShellMessages } from "@/locales";
+
+const resourceIcons = {
+  blog: Newspaper,
+  "privacy-policy": Shield,
+  "source-github": GithubLogo,
+  "source-radicle-api": Code,
+  "source-radicle-contracts": FileCode,
+  "source-radicle-web": GitBranch,
+  "terms-of-service": Scroll,
+} satisfies Record<ResourceLinkId, typeof House>;
 
 function buildCreatePostPath(communityId: string): string {
   return `/c/${encodeURIComponent(communityId)}/submit`;
@@ -130,6 +152,7 @@ export function buildPrimaryItems(messages: ShellMessages["appSidebar"]): AppSid
 export function buildResourceItems(messages: ShellMessages["appSidebar"]) {
   return messages.resourceItems.map((item) => ({
     ...item,
+    icon: resourceIcons[item.id as ResourceLinkId],
     onSelect: () => {
       const href = resolveResourceHref(item.id, {
         preferNativeRadicle: prefersNativeRadicleLinks(),

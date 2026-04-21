@@ -5,7 +5,6 @@ import { createVeryWidget } from "@veryai/widget";
 import type { OnboardingStatus, VerificationIntent, VerificationSession } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
-import { resolveApiBaseUrl } from "@/lib/api/base-url";
 import type { ApiError } from "@/lib/api/client";
 import { updateSessionOnboarding } from "@/lib/api/session-store";
 
@@ -47,6 +46,9 @@ export function useVeryVerification(input: {
     if (!launch) {
       throw new Error("Very launch data was not returned");
     }
+    if (!launch.verify_url) {
+      throw new Error("Very verify URL was not returned");
+    }
 
     cleanupWidget();
     widgetRef.current = createVeryWidget({
@@ -54,7 +56,7 @@ export function useVeryVerification(input: {
       context: launch.context,
       typeId: launch.type_id,
       query: JSON.stringify(launch.query),
-      verifyUrl: launch.verify_url ?? `${resolveApiBaseUrl()}/very/verify`,
+      verifyUrl: launch.verify_url,
       onSuccess: async (proof: string) => {
         try {
           await api.verification.completeSession(result.verification_session_id, { provider_payload_ref: proof });

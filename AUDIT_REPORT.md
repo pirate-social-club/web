@@ -278,7 +278,7 @@ These are theoretical concerns identified by static analysis. **Do not act on th
 - **Validation step:** Profile community page renders. If `CommunitySidebar` appears as a hot render, wrap in `useMemo`.
 
 ### HYPOTHESIS-006 — Inline `style` props create new references every render
-- **Location:** `app.tsx:398`, `post-card.tsx:117`, `post-card-media.tsx:63`, `settings-page.panels.tsx:367`, `onboarding-reddit-bootstrap.tsx:58`, `community-gates-editor-page.tsx:109`, `create-community-composer.sections.tsx:110`, `create-community-composer.tsx:314`, `community-labels-editor-page.tsx:214`.
+- **Location:** `app.tsx:398`, `post-card.tsx:117`, `post-card-media.tsx:63`, `settings-page-profile-tab.tsx:243`, `onboarding-reddit-bootstrap.tsx:58`, `community-gates-editor-page.tsx:109`, `create-community-composer.sections.tsx:110`, `create-community-composer.tsx:314`, `community-labels-editor-page.tsx:214`.
 - **Claim:** Inline `style` objects defeat downstream memoization.
 - **Why it's a hypothesis:** The children receiving these styles are mostly unmemoized, so the reference churn is not the binding constraint. CSS variables or static classes are cleaner, but the performance delta is unmeasured.
 - **Validation step:** Profile after addressing HYPOTHESIS-001. If memoized children still re-render, trace prop references.

@@ -129,7 +129,7 @@ export function CreateCommunityComposer({
     ...(nationalityEnabled && nationalityRequiredValues.length > 0 && nationalityRequiredValues.every(isCountryCode)
       ? [{ gateType: "nationality" as const, provider: "self" as const, requiredValues: nationalityRequiredValues }]
       : []),
-    ...(minimumAgeEnabled && Number.isInteger(minimumAge) && minimumAge > 0 && minimumAge <= 125
+    ...(minimumAgeEnabled && Number.isInteger(minimumAge) && minimumAge >= 18 && minimumAge <= 125
       ? [{ gateType: "minimum_age" as const, provider: "self" as const, minimumAge }]
       : []),
     ...(genderEnabled
@@ -472,11 +472,11 @@ export function CreateCommunityComposer({
                         <FieldLabel label={cc.minimumAgeLabel} />
                         <NumericStepper
                           max={125}
-                          min={1}
+                          min={18}
                           value={minimumAge}
                           onChange={setMinimumAge}
                         />
-                        {(!Number.isInteger(minimumAge) || minimumAge < 1 || minimumAge > 125) ? (
+                        {(!Number.isInteger(minimumAge) || minimumAge < 18 || minimumAge > 125) ? (
                           <FormNote tone="warning">{cc.minimumAgeInvalid}</FormNote>
                         ) : null}
                       </div>

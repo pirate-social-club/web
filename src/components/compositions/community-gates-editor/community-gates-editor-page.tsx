@@ -274,7 +274,7 @@ export function CommunityGatesEditorPage({
                 <FormFieldLabel label={mc.minimumAgeLabel} />
                 <NumericStepper
                   max={125}
-                  min={1}
+                  min={18}
                   value={minimumAgeGate.minimumAge}
                   onChange={(next) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
                     gateType: "minimum_age",
@@ -283,7 +283,7 @@ export function CommunityGatesEditorPage({
                     gateRuleId: minimumAgeGate.gateRuleId,
                   }))}
                 />
-                {(!Number.isInteger(minimumAgeGate.minimumAge) || minimumAgeGate.minimumAge < 1 || minimumAgeGate.minimumAge > 125) ? (
+                {(!Number.isInteger(minimumAgeGate.minimumAge) || minimumAgeGate.minimumAge < 18 || minimumAgeGate.minimumAge > 125) ? (
                   <FormNote tone="warning">{mc.minimumAgeInvalid}</FormNote>
                 ) : null}
               </div>

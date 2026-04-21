@@ -19,7 +19,7 @@ import { toast } from "@/components/primitives/sonner";
 import { isCountryCode } from "@/lib/countries";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 import { resolveCommunityAvatarSrc, resolveCommunityBannerSrc } from "@/lib/default-community-media";
-import { formatGateRequirement, getGateDraftWarning } from "@/lib/identity-gates";
+import { formatGateRequirement } from "@/lib/identity-gates";
 import { logger } from "@/lib/logger";
 import {
   FieldLabel,
@@ -477,35 +477,6 @@ export function CreateCommunityComposer({
                     ) : null}
 
                     <CheckboxCard
-                      checked={genderEnabled}
-                      description={cc.genderDescription}
-                      title={cc.genderTitle}
-                      onCheckedChange={setGenderEnabled}
-                    />
-
-                    {genderEnabled ? (
-                      <div className="space-y-3">
-                        <SegmentedControl
-                          onChange={(value) => setGenderRequiredValue(value as "M" | "F")}
-                          options={{
-                            F: {
-                              label: cc.fMarkerLabel,
-                              detail: cc.fMarkerDetail,
-                            },
-                            M: {
-                              label: cc.mMarkerLabel,
-                              detail: cc.mMarkerDetail,
-                            },
-                          }}
-                          value={genderRequiredValue}
-                        />
-                        {getGateDraftWarning("gender") ? (
-                          <FormNote tone="warning">{getGateDraftWarning("gender")}</FormNote>
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    <CheckboxCard
                       checked={erc721Enabled}
                       description={cc.erc721Description}
                       title={cc.erc721Title}
@@ -521,7 +492,7 @@ export function CreateCommunityComposer({
                           placeholder={cc.collectionContractPlaceholder}
                           value={erc721ContractAddress}
                         />
-                        {!isAddress(erc721ContractAddress.trim()) ? (
+                        {erc721ContractAddress.trim().length > 0 && !isAddress(erc721ContractAddress.trim()) ? (
                           <FormNote tone="warning">{cc.invalidContractAddress}</FormNote>
                         ) : null}
                       </div>
@@ -546,21 +517,15 @@ export function CreateCommunityComposer({
                         {([
                           { key: "community_stable" as const, label: cc.anonymousCommunityStableLabel, detail: cc.anonymousCommunityStableDetail },
                           { key: "thread_stable" as const, label: cc.anonymousThreadStableLabel, detail: cc.anonymousThreadStableDetail },
-                          { key: "post_ephemeral" as const, label: cc.anonymousPostEphemeralLabel, detail: cc.anonymousPostEphemeralDetail, disabledHint: cc.anonymousPostEphemeralDisabled },
-                        ]).map((option) => {
-                          const disabled = option.key === "post_ephemeral";
-                          return (
-                            <OptionCard
-                              key={option.key}
-                              description={option.detail}
-                              disabled={disabled}
-                              disabledHint={option.disabledHint}
-                              selected={option.key === activeAnonymousScope}
-                              title={option.label}
-                              onClick={() => !disabled && setActiveAnonymousScope(option.key)}
-                            />
-                          );
-                        })}
+                        ]).map((option) => (
+                          <OptionCard
+                            key={option.key}
+                            description={option.detail}
+                            selected={option.key === activeAnonymousScope}
+                            title={option.label}
+                            onClick={() => setActiveAnonymousScope(option.key)}
+                          />
+                        ))}
                       </div>
                     </div>
                   ) : null}
@@ -588,11 +553,10 @@ export function CreateCommunityComposer({
               ageGateLabel={activeDefaultAgeGatePolicy === "18_plus" ? "18+" : cc.none}
               anonymousPostingLabel={activeAllowAnonymousIdentity ? cc.enabled : cc.disabled}
               anonymousScopeLabel={
-                activeAllowAnonymousIdentity
+                activeAllowAnonymousIdentity && activeAnonymousScope !== "post_ephemeral"
                   ? ({
                     community_stable: cc.anonymousCommunityStableLabel,
                     thread_stable: cc.anonymousThreadStableLabel,
-                    post_ephemeral: cc.anonymousPostEphemeralLabel,
                   })[activeAnonymousScope]
                   : undefined
               }

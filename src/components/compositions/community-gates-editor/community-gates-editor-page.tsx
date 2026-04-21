@@ -25,7 +25,6 @@ import type {
   IdentityGateDraft,
 } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import { isCountryCode } from "@/lib/countries";
-import { getGateDraftWarning } from "@/lib/identity-gates";
 import { cn } from "@/lib/utils";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
@@ -180,12 +179,12 @@ export function CommunityGatesEditorPage({
   };
 
   const anonymousScopeMeta: Record<
-    AnonymousIdentityScope,
-    { label: string; detail: string; disabledHint?: string }
+    Exclude<AnonymousIdentityScope, "post_ephemeral">,
+    { label: string; detail: string }
   > = {
     community_stable: { label: mc.anonymousScopeCommunityStableLabel, detail: mc.anonymousScopeCommunityStableDetail },
     thread_stable: { label: mc.anonymousScopeThreadStableLabel, detail: mc.anonymousScopeThreadStableDetail },
-    post_ephemeral: { label: mc.anonymousScopePostEphemeralLabel, detail: mc.anonymousScopePostEphemeralDetail, disabledHint: mc.anonymousScopePostEphemeralDisabledHint },
+
   };
 
   const readAccessMeta: Record<CommunityReadAccessMode, { label: string; detail: string }> = {
@@ -193,7 +192,6 @@ export function CommunityGatesEditorPage({
     members_only: { label: mc.readAccessMembersOnlyLabel, detail: mc.readAccessMembersOnlyDetail },
   };
   const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
-  const genderGate = gateDrafts.find((draft) => draft.gateType === "gender");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? true;
 
@@ -254,47 +252,6 @@ export function CommunityGatesEditorPage({
             ) : null}
 
             <CheckboxCard
-              checked={Boolean(genderGate)}
-              description={mc.genderDescription}
-              title={mc.genderTitle}
-              onCheckedChange={(checked) => onGateDraftsChange?.(
-                checked
-                  ? upsertGateDraft(gateDrafts, {
-                    gateType: "gender",
-                    provider: "self",
-                    requiredValue: "F",
-                  })
-                  : removeGateDraft(gateDrafts, "gender"),
-              )}
-            />
-
-            {genderGate ? (
-              <div className="space-y-3">
-                <SegmentedControl
-                  onChange={(value) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
-                    gateType: "gender",
-                    provider: "self",
-                    requiredValue: value as "M" | "F",
-                  }))}
-                  options={{
-                    F: {
-                      label: mc.fMarkerLabel,
-                      detail: mc.fMarkerDetail,
-                    },
-                    M: {
-                      label: mc.mMarkerLabel,
-                      detail: mc.mMarkerDetail,
-                    },
-                  }}
-                  value={genderGate.requiredValue}
-                />
-                {getGateDraftWarning("gender") ? (
-                  <FormNote tone="warning">{getGateDraftWarning("gender")}</FormNote>
-                ) : null}
-              </div>
-            ) : null}
-
-            <CheckboxCard
               checked={Boolean(erc721Gate)}
               description={mc.erc721Description}
               title={mc.erc721Title}
@@ -322,7 +279,7 @@ export function CommunityGatesEditorPage({
                   placeholder={mc.collectionContractPlaceholder}
                   value={erc721Gate.contractAddress}
                 />
-                {!isAddress(erc721Gate.contractAddress.trim()) ? (
+                {erc721Gate.contractAddress.trim().length > 0 && !isAddress(erc721Gate.contractAddress.trim()) ? (
                   <FormNote tone="warning">{mc.invalidContractAddress}</FormNote>
                 ) : null}
               </div>
@@ -358,22 +315,18 @@ export function CommunityGatesEditorPage({
             <div className="space-y-3 border-s border-border-soft ps-4">
               <p className="text-base font-medium">{mc.anonymousScopeLabel}</p>
               <div className="space-y-2">
-                {(Object.keys(anonymousScopeMeta) as AnonymousIdentityScope[]).map((scope) => {
+                {((Object.keys(anonymousScopeMeta) as (keyof typeof anonymousScopeMeta)[]).map((scope) => {
                   const option = anonymousScopeMeta[scope];
-                  const disabled = scope === "post_ephemeral";
-
                   return (
                     <OptionCard
                       key={scope}
                       description={option.detail}
-                      disabled={disabled}
-                      disabledHint={option.disabledHint}
                       selected={scope === anonymousIdentityScope}
                       title={option.label}
-                      onClick={() => !disabled && onAnonymousIdentityScopeChange?.(scope)}
+                      onClick={() => onAnonymousIdentityScopeChange?.(scope)}
                     />
                   );
-                })}
+                }))}
               </div>
             </div>
           ) : null}

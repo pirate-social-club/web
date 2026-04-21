@@ -9,6 +9,7 @@ import { FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { Textarea } from "@/components/primitives/textarea";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 function useObjectUrl(file: File | null): string | null {
   const [objectUrl, setObjectUrl] = React.useState<string | null>(null);
@@ -154,6 +155,8 @@ export function CommunityProfileEditorPage({
   saveDisabled,
   saveLoading,
 }: CommunityProfileEditorPageProps) {
+  const { copy } = useRouteMessages();
+  const mc = copy.moderation.profile;
   const [pendingAvatarFile, setPendingAvatarFile] = React.useState<File | null>(null);
   const [pendingBannerFile, setPendingBannerFile] = React.useState<File | null>(null);
 
@@ -171,7 +174,7 @@ export function CommunityProfileEditorPage({
   return (
     <div className="space-y-8">
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold text-foreground">Appearance</h2>
+        <h2 className="text-xl font-semibold text-foreground">{mc.appearanceTitle}</h2>
         <div className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
           <MediaControlCard
             canRemove={Boolean(avatarSrc || pendingAvatarFile)}
@@ -181,11 +184,11 @@ export function CommunityProfileEditorPage({
               onAvatarSelect?.(file);
             }}
             preview={<Avatar className="size-full bg-card" fallback={displayName} size="lg" src={avatarPreview ?? avatarSrc} />}
-            removeLabel="Remove avatar"
-            selectLabel={avatarSrc || pendingAvatarFile ? "Replace avatar" : "Upload avatar"}
+            removeLabel={mc.removeAvatar}
+            selectLabel={avatarSrc || pendingAvatarFile ? mc.replaceAvatar : mc.uploadAvatar}
             selectedLabel={pendingAvatarFile?.name ?? pendingAvatarLabel}
             shape="avatar"
-            title="Avatar"
+            title={mc.avatarTitle}
           />
 
           <MediaControlCard
@@ -206,17 +209,17 @@ export function CommunityProfileEditorPage({
                   : undefined}
               />
             )}
-            removeLabel="Remove cover"
-            selectLabel={bannerSrc || pendingBannerFile ? "Replace cover" : "Upload cover"}
+            removeLabel={mc.removeCover}
+            selectLabel={bannerSrc || pendingBannerFile ? mc.replaceCover : mc.uploadCover}
             selectedLabel={pendingBannerFile?.name ?? pendingBannerLabel}
             shape="cover"
-            title="Cover photo"
+            title={mc.coverTitle}
           />
         </div>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold text-foreground">Profile</h2>
+        <h2 className="text-xl font-semibold text-foreground">{mc.profileTitle}</h2>
         <Card className="space-y-5 border-border bg-card px-5 py-5 shadow-none">
           <div className="space-y-2">
             <label className="text-base font-medium text-foreground" htmlFor="community-profile-display-name">

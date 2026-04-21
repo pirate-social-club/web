@@ -3,6 +3,8 @@ import { Check } from "@phosphor-icons/react";
 import { Lock as FilledLockIcon, Play as PlayIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { mediaControlButtonVariants } from "@/components/primitives/media-control-button";
 import { postCardType } from "./post-card.styles";
 import type { UpstreamAttribution, VideoContentSpec } from "./post-card.types";
@@ -82,6 +84,8 @@ function getDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): str
 }
 
 export function VideoPostContent({ content, className }: VideoPostContentProps) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").common;
   const [expanded, setExpanded] = React.useState(false);
   const ui = deriveVideoUI(content);
   const {
@@ -134,11 +138,11 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
         type="button"
         onClick={handlePlay}
         disabled={!ui.canPlay}
-        aria-label={content.title ? `Play ${content.title}` : "Play video"}
+        aria-label={content.title ? `Play ${content.title}` : copy.playVideo}
       >
         {content.posterSrc ? (
           <img
-            alt={content.title ?? "Video thumbnail"}
+            alt={content.title ?? copy.videoThumbnail}
             className={cn(
               "aspect-video w-full object-cover transition-[filter,transform]",
               ui.showLockedThumbnail && "scale-[1.02] blur-[3px]",

@@ -207,6 +207,42 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("sends agent name updates as JSON patch requests", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        agent_id: "agt_test",
+        owner_user_id: "usr_test",
+        display_name: "Night Signal",
+        status: "active",
+        current_ownership_record_id: "aor_test",
+        current_ownership: null,
+        created_at: "2026-04-17T00:00:00.000Z",
+        updated_at: "2026-04-17T00:10:00.000Z",
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.agents.update("agt_test", { display_name: "Night Signal" });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("PATCH");
+      expect(capturedRequest.url).toBe("http://pirate.test/agents/agt_test");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+      expect(JSON.stringify(await capturedRequest.json())).toBe(
+        JSON.stringify({ display_name: "Night Signal" }),
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("loads public profiles without auth headers", async () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

@@ -98,12 +98,13 @@ export function PostComposer({
   onSubmit,
   submitDisabled = false,
   submitError = null,
-  submitLabel = "Post",
+  submitLabel,
   submitLoading = false,
 }: PostComposerProps) {
   const { isRtl, locale } = useUiLocale();
   const isMobile = useIsMobile();
-  const copy = getLocaleMessages(locale, "routes").createPost;
+  const routesCopy = getLocaleMessages(locale, "routes");
+  const copy = routesCopy.createPost;
   const visibleTabs = React.useMemo(
     () => availableTabs.filter((tab) => tab !== "song" || canCreateSongPost),
     [availableTabs, canCreateSongPost],
@@ -354,7 +355,7 @@ export function PostComposer({
         <ShellPill
           avatarSrc={clubAvatarSrc}
           communities={communityPickerItems}
-          emptyLabel={communityPickerEmptyLabel}
+          emptyLabel={communityPickerEmptyLabel ?? routesCopy.common.noRecentCommunities}
           onSelectCommunity={onSelectCommunity}
         >
           {clubName}
@@ -465,6 +466,7 @@ export function PostComposer({
             <PostComposerCharitySection
               charityContribution={charityContributionState}
               charityPartner={charityPartner}
+              copy={copy}
               updateCharityContribution={updateCharityContributionState}
             />
           ) : null}
@@ -486,7 +488,7 @@ export function PostComposer({
             loading={submitLoading}
             onClick={onSubmit}
           >
-            {submitLabel}
+            {submitLabel ?? copy.actions.post}
           </Button>
         </CardFooter>
       </Card>

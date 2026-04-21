@@ -7,6 +7,8 @@ import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { Input } from "@/components/primitives/input";
 import { cn } from "@/lib/utils";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 
 import type {
   WalletHubChainId,
@@ -16,6 +18,8 @@ import type {
 } from "./wallet-hub.types";
 
 function CopyAddressField({ value }: { value: string }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").wallet;
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = React.useCallback(async () => {
@@ -27,13 +31,13 @@ function CopyAddressField({ value }: { value: string }) {
   return (
     <div className="flex items-center gap-2">
       <Input
-        aria-label="Wallet address"
+        aria-label={copy.walletAddressLabel}
         className="font-mono text-base tracking-[0.01em]"
         readOnly
         value={value}
       />
       <Button
-        aria-label={copied ? "Copied" : "Copy address"}
+        aria-label={copied ? copy.copied : copy.copyAddress}
         onClick={handleCopy}
         size="icon"
         variant="secondary"
@@ -46,20 +50,22 @@ function CopyAddressField({ value }: { value: string }) {
 
 function WalletHeaderCard({
   walletAddress,
-  walletLabel = "EVM wallet",
+  walletLabel,
   onChangeWallet,
 }: Pick<WalletHubProps, "walletAddress" | "walletLabel" | "onChangeWallet">) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").wallet;
   return (
     <Card className="border-border bg-card shadow-none">
       <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Wallet</h1>
-            <div className="text-base text-muted-foreground">{walletLabel}</div>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">{copy.title}</h1>
+            <div className="text-base text-muted-foreground">{walletLabel ?? copy.evmWallet}</div>
           </div>
           {onChangeWallet ? (
             <Button onClick={onChangeWallet} variant="secondary">
-              Change wallet
+              {copy.changeWallet}
             </Button>
           ) : null}
         </div>
@@ -71,15 +77,19 @@ function WalletHeaderCard({
 }
 
 function TokenRow({ token }: { token: WalletHubToken }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").wallet;
   return (
     <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
       <div className="truncate text-base font-medium text-foreground">${token.symbol}</div>
-      <div className="shrink-0 text-base text-foreground">{token.balance ?? "Later"}</div>
+      <div className="shrink-0 text-base text-foreground">{token.balance ?? copy.balanceLater}</div>
     </div>
   );
 }
 
 function ChainSectionCard({ section }: { section: WalletHubChainSection }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").wallet;
   return (
     <Card className="border-border bg-card shadow-none">
       <div className="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
@@ -98,7 +108,7 @@ function ChainSectionCard({ section }: { section: WalletHubChainSection }) {
           </div>
         ) : (
           <div className="text-base text-muted-foreground">
-            {section.availability === "ready" ? "No assets yet." : "Later."}
+            {section.availability === "ready" ? copy.noAssetsYet : copy.later}
           </div>
         )}
       </div>

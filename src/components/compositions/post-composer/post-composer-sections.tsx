@@ -292,10 +292,12 @@ export function PostComposerSongAccessSection({
 export function PostComposerCharitySection({
   charityPartner,
   charityContribution,
+  copy,
   updateCharityContribution,
 }: {
   charityPartner: CommunityCharityPartner;
   charityContribution: CharityContributionState;
+  copy: { fields: Record<string, string> };
   updateCharityContribution: CharityContributionUpdater;
 }) {
   const isMobile = useIsMobile();
@@ -313,7 +315,7 @@ export function PostComposerCharitySection({
 
   return (
     <section className={cn("space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
-      <FormSectionHeading title="Charity" />
+      <FormSectionHeading title={copy.fields.charity} />
       <div className={cn("flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
         <div className="flex min-w-0 items-center gap-3">
           <Avatar

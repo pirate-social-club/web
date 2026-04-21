@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ArrowRight, Play } from "@phosphor-icons/react";
 
 import { Button } from "./button";
-import { Spinner } from "./spinner";
 
 const meta = {
   title: "Primitives/Button",

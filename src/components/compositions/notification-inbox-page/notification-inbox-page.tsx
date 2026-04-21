@@ -10,6 +10,7 @@ import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";
 import { useUiLocale } from "@/lib/ui-locale";
+import { resolveLocaleLanguageTag } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
 
 function payloadString(
@@ -29,23 +30,26 @@ function formatTaskLabel(type: string, copy: ReturnType<typeof getLocaleMessages
   }
 }
 
-function formatEventLabel(item: NotificationFeedItem, someoneLabel: string): string {
-  const actorLabel = payloadString(item.event.payload, "actor_display_name") ?? someoneLabel;
+function formatEventLabel(
+  item: NotificationFeedItem,
+  copy: ReturnType<typeof getLocaleMessages<"routes">>["inbox"],
+): string {
+  const actorLabel = payloadString(item.event.payload, "actor_display_name") ?? copy.someone;
 
   switch (item.event.type) {
     case "comment_reply":
-      return `${actorLabel} replied to your comment`;
+      return copy.eventCommentReply.replace("{actor}", actorLabel);
     case "post_commented":
-      return `${actorLabel} commented on your post`;
+      return copy.eventPostCommented.replace("{actor}", actorLabel);
     default:
       return `${actorLabel} ${item.event.type.replace(/_/g, " ")}`;
   }
 }
 
-function formatEventMeta(item: NotificationFeedItem): string {
+function formatEventMeta(item: NotificationFeedItem, localeTag: string): string {
   const communityLabel = payloadString(item.event.payload, "community_display_name")
     ?? payloadString(item.event.payload, "community_id");
-  const dateLabel = new Date(item.event.created_at).toLocaleDateString();
+  const dateLabel = new Date(item.event.created_at).toLocaleDateString(localeTag);
   return [communityLabel, dateLabel].filter(Boolean).join(" · ");
 }
 
@@ -109,6 +113,7 @@ export function NotificationInboxPage({
 }) {
   const { locale } = useUiLocale();
   const copy = React.useMemo(() => getLocaleMessages(locale, "routes").inbox, [locale]);
+  const localeTag = React.useMemo(() => resolveLocaleLanguageTag(locale), [locale]);
   const hasTasks = tasks.length > 0;
   const hasActivity = activityItems.length > 0;
 
@@ -180,12 +185,12 @@ export function NotificationInboxPage({
                         >
                           <div className="space-y-1.5">
                             <p className={`text-base text-foreground ${!item.receipt.read_at ? "font-semibold" : "font-medium"}`}>
-                              {formatEventLabel(item, copy.someone)}
+                              {formatEventLabel(item, copy)}
                             </p>
                             {context ? (
                               <p className="text-base leading-6 text-muted-foreground">{context}</p>
                             ) : null}
-                            <p className="text-base text-muted-foreground">{formatEventMeta(item)}</p>
+                            <p className="text-base text-muted-foreground">{formatEventMeta(item, localeTag)}</p>
                           </div>
                         </a>
                       </div>

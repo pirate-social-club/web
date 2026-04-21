@@ -4,6 +4,8 @@ import * as React from "react";
 import { X } from "@phosphor-icons/react";
 
 import { IconButton } from "@/components/primitives/icon-button";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { AppHeader } from "./app-header";
 
 export interface MobilePageHeaderProps {
@@ -19,12 +21,15 @@ export function MobilePageHeader({
   onCloseClick,
   trailingAction,
 }: MobilePageHeaderProps) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").common;
+
   return (
     <AppHeader
       forceMobile
       hideBrand
       mobileLeadingContent={onCloseClick ? (
-        <IconButton aria-label="Close" onClick={onCloseClick} variant="ghost">
+        <IconButton aria-label={copy.close} onClick={onCloseClick} variant="ghost">
           <X className="size-6" weight="bold" />
         </IconButton>
       ) : undefined}

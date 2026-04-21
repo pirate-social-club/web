@@ -11,6 +11,7 @@ import {
   ComboboxList,
 } from "@/components/primitives/combobox";
 import { COUNTRIES, findCountry, type Country } from "@/lib/countries";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 export interface NationalityPickerProps {
   value: string | null;
@@ -22,6 +23,8 @@ export function NationalityPicker({
   onChange,
 }: NationalityPickerProps) {
   const selectedCountry = React.useMemo(() => findCountry(value), [value]);
+  const { copy } = useRouteMessages();
+  const cc = copy.createCommunity.composer;
 
   return (
     <Combobox<Country>
@@ -34,10 +37,10 @@ export function NationalityPicker({
     >
       <ComboboxInput
         className="h-12 rounded-[var(--radius-lg)]"
-        placeholder="Search country"
+        placeholder={cc.searchCountry}
       />
       <ComboboxContent>
-        <ComboboxEmpty>No countries found.</ComboboxEmpty>
+        <ComboboxEmpty>{cc.noCountriesFound}</ComboboxEmpty>
         <ComboboxList>
           {(country) => (
             <ComboboxItem key={country.code} value={country}>

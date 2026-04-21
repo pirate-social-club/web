@@ -150,6 +150,7 @@ export const Agents: Story = {
       ],
       canRegister: false,
       registrationState: { kind: "idle" },
+      onUpdateName: async () => {},
     },
   },
 };

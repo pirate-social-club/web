@@ -19,7 +19,7 @@ import { useApi } from "@/lib/api";
 import { isApiNotFoundError, type ApiError } from "@/lib/api/client";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
-import { getSelfVerificationCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -232,7 +232,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     verificationIntent: "community_join",
     onVerified: () => {
       invalidateCommunityGate(communityId);
-      toast.success("Verification completed. Try the action again.");
+      toast.success(copy.publicCommunity.verificationCompleted);
     },
   });
 
@@ -251,7 +251,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
   }) => {
     const requestedCapabilities = getVerificationCapabilitiesForProvider(eligibility, "self");
     if (requestedCapabilities.length === 0) {
-      const message = "This community is missing the Self verification details needed to continue.";
+      const message = copy.publicCommunity.verificationMissingSelf;
       setSelfError(message);
       console.warn("[public-community] self verification unavailable", {
         communityId,
@@ -288,7 +288,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       return { started: true };
     } catch (error: unknown) {
       const apiError = error as ApiError;
-      const message = apiError?.message ?? "Could not start self verification";
+      const message = apiError?.message ?? copy.publicCommunity.verificationStartFailed;
       setSelfError(message);
       console.warn("[public-community] self session failed", {
         communityId,
@@ -315,8 +315,8 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         setSelfSession(null);
         setSelfRequestedCapabilities([]);
         setSelfModalOpen(false);
-        setSelfError("Verification session was lost. Start the ID check again.");
-        toast.error("Verification session was lost. Start the ID check again.");
+        setSelfError(copy.publicCommunity.verificationSessionLost);
+        toast.error(copy.publicCommunity.verificationSessionLost);
         clearPendingSelfJoinSession(communityId);
         window.history.replaceState({}, "", window.location.pathname);
         return;
@@ -342,17 +342,17 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
             setSelfError(null);
             clearPendingSelfJoinSession(communityId);
             invalidateCommunityGate(communityId);
-            toast.success("Verification completed. Try the action again.");
+            toast.success(copy.publicCommunity.verificationCompleted);
           })
           .catch((error: unknown) => {
             const apiError = error as ApiError;
-            setSelfError(apiError?.message ?? "Verification completion failed");
+            setSelfError(apiError?.message ?? copy.publicCommunity.verificationCompletionFailed);
             console.warn("[public-community] self verification completion failed", {
               communityId,
               message: apiError?.message ?? String(error),
               verificationSessionId: pendingSession.verificationSessionId,
             });
-            toast.error(apiError?.message ?? "Verification completion failed");
+            toast.error(apiError?.message ?? copy.publicCommunity.verificationCompletionFailed);
           })
           .finally(() => {
             setSelfLoading(false);
@@ -364,21 +364,21 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       setSelfSession(null);
       setSelfRequestedCapabilities([]);
       setSelfModalOpen(false);
-      setSelfError(result.status === "expired" ? "Verification session expired. Please try again." : result.reason);
+      setSelfError(result.status === "expired" ? copy.publicCommunity.verificationExpired : result.reason);
       console.warn("[public-community] self callback did not complete", {
         communityId,
         reason: result.status === "failed" ? result.reason : "expired",
         verificationSessionId: pendingSession.verificationSessionId,
       });
       clearPendingSelfJoinSession(communityId);
-      toast.error(result.status === "expired" ? "Verification session expired. Please try again." : result.reason);
+      toast.error(result.status === "expired" ? copy.publicCommunity.verificationExpired : result.reason);
       window.history.replaceState({}, "", window.location.pathname);
     }
 
     window.addEventListener("popstate", handleSelfCallback);
     handleSelfCallback();
     return () => window.removeEventListener("popstate", handleSelfCallback);
-  }, [api, communityId, invalidateCommunityGate]);
+  }, [api, communityId, copy.publicCommunity, invalidateCommunityGate]);
 
   const buildBlockedModalState = React.useCallback(({ action, closeModal, gate }: {
     action: "reply_comment" | "reply_post" | "vote_comment" | "vote_post";

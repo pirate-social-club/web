@@ -16,6 +16,7 @@ import {
 } from "@/components/primitives/select";
 import type { ReferenceLinkPlatform } from "@/components/compositions/community-sidebar/community-sidebar.types";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 const PLATFORM_OPTIONS: Array<{ label: string; value: ReferenceLinkPlatform }> = [
   { value: "official_website", label: "Website" },
@@ -74,11 +75,13 @@ export function CommunityLinksEditorPage({
   saveDisabled = false,
   saveLoading = false,
 }: CommunityLinksEditorPageProps) {
+  const { copy } = useRouteMessages();
+  const mc = copy.moderation.links;
   return (
     <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Links</h1>
+          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
         </div>
         <Button className="w-full sm:w-auto" onClick={onAddLink} variant="secondary">
           <Plus className="size-5" />
@@ -91,7 +94,7 @@ export function CommunityLinksEditorPage({
           <div className="rounded-[1.75rem] border border-border-soft bg-card p-4 md:p-5" key={link.id}>
             <div className="grid gap-4 md:grid-cols-[12rem_minmax(0,0.8fr)_minmax(0,1.4fr)_auto] md:items-end">
               <div className="space-y-2">
-                <FormFieldLabel label="Platform" />
+                <FormFieldLabel label={mc.platformLabel} />
                 <Select
                   onValueChange={(value) => onLinkChange?.(link.id, { platform: value as ReferenceLinkPlatform })}
                   value={link.platform}
@@ -110,17 +113,17 @@ export function CommunityLinksEditorPage({
               </div>
 
               <div className="space-y-2">
-                <FormFieldLabel label="Label" />
+                <FormFieldLabel label={mc.labelLabel} />
                 <Input
                   className="h-12 px-4 py-2"
                   onChange={(event) => onLinkChange?.(link.id, { label: event.target.value })}
-                  placeholder="Display name"
+                  placeholder={mc.displayNamePlaceholder}
                   value={link.label}
                 />
               </div>
 
               <div className="space-y-2">
-                <FormFieldLabel label="URL" />
+                <FormFieldLabel label={mc.urlLabel} />
                 <Input
                   className="h-12 px-4 py-2"
                   onChange={(event) => onLinkChange?.(link.id, { url: event.target.value })}

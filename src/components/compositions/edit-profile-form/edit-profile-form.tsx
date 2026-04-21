@@ -16,8 +16,10 @@ import {
 import { FormFieldLabel, FormNote, FormSectionHeading } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { Spinner } from "@/components/primitives/spinner";
+import { useUiLocale } from "@/lib/ui-locale";
 import { Textarea } from "@/components/primitives/textarea";
 import { cn } from "@/lib/utils";
+import { getLocaleMessages } from "@/locales";
 import type {
   EditProfileFieldError,
   EditProfileFormProps,
@@ -44,6 +46,8 @@ export function GlobalHandleField({
     "draft" | "preview" | "state" | "setDraft" | "checkAvailability" | "submitRename" | "resetState"
   >;
 }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").settings;
   const { draft, preview, state, setDraft, checkAvailability, submitRename } = handleFlow;
 
   const prevDraftRef = React.useRef(draft);
@@ -56,14 +60,14 @@ export function GlobalHandleField({
         handleFlow.resetState();
       }
     }
-  });
+  }, [draft, handleFlow, state.kind]);
 
   React.useEffect(() => {
     if (state.kind === "idle" && pendingCheckRef.current) {
       pendingCheckRef.current = false;
       checkAvailability();
     }
-  });
+  }, [checkAvailability, state.kind]);
 
   const handleBlur = () => {
     if (state.kind === "idle") {
@@ -89,20 +93,20 @@ export function GlobalHandleField({
 
   return (
     <div className="space-y-4">
-      <FormSectionHeading title="Handle" />
+      <FormSectionHeading title={copy.handleNotePirate} />
       <div className="space-y-2">
-        <FormFieldLabel htmlFor="current-handle" label="Current handle" />
+        <FormFieldLabel htmlFor="current-handle" label={copy.currentHandleLabel} />
         <Input disabled id="current-handle" value={currentHandle} />
       </div>
       <div className="space-y-2">
-        <FormFieldLabel htmlFor="handle-input" label="New handle" />
+        <FormFieldLabel htmlFor="handle-input" label={copy.newHandleLabel} />
         <Input
           disabled={isBusy}
           id="handle-input"
           onBlur={handleBlur}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="your-new-handle"
+          placeholder={copy.handlePlaceholder}
           value={draft}
         />
         {preview ? <FormNote>{preview}</FormNote> : null}
@@ -111,18 +115,18 @@ export function GlobalHandleField({
       {state.kind === "checking" && (
         <div className="flex items-center gap-2 text-base text-muted-foreground">
           <Spinner className="size-4" />
-          Checking availability...
+          {copy.checkingAvailability}
         </div>
       )}
 
       {state.kind === "available" && (
         <div className="space-y-3">
-          <FormNote tone="default">This handle is available.</FormNote>
+          <FormNote tone="default">{copy.handleAvailableMessage}</FormNote>
           {!state.freeRenameRemaining && (
-            <FormNote tone="warning">This rename requires a paid upgrade.</FormNote>
+            <FormNote tone="warning">{copy.renameRequiresPaidUpgrade}</FormNote>
           )}
           <Button onClick={() => void submitRename()} size="sm">
-            Rename handle
+            {copy.renameHandle}
           </Button>
         </div>
       )}
@@ -134,7 +138,7 @@ export function GlobalHandleField({
       {state.kind === "saving" && (
         <div className="flex items-center gap-2 text-base text-muted-foreground">
           <Spinner className="size-4" />
-          Renaming handle...
+          {copy.renamingHandle}
         </div>
       )}
 
@@ -143,7 +147,7 @@ export function GlobalHandleField({
       )}
 
       {state.kind === "success" && (
-        <FormNote tone="default">Handle updated to {state.newHandle}.</FormNote>
+        <FormNote tone="default">{copy.handleUpdatedMessage.replace("{handle}", state.newHandle)}</FormNote>
       )}
     </div>
   );
@@ -162,6 +166,8 @@ export function EditProfileForm({
   submitState,
   values,
 }: EditProfileFormProps) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").settings;
   const displayNameError = getFieldError(fieldErrors, "displayName");
   const bioError = getFieldError(fieldErrors, "bio");
   const bioLength = values.bio.length;
@@ -195,7 +201,7 @@ export function EditProfileForm({
       <div className="flex items-center gap-4">
         <Avatar fallback={currentDisplayName} size="lg" src={currentAvatarSrc} />
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Edit profile</h2>
+          <h2 className="text-lg font-semibold text-foreground">{copy.editProfileTitle}</h2>
           {currentHandle ? (
             <p className="text-base text-muted-foreground">{currentHandle}</p>
           ) : null}
@@ -203,12 +209,12 @@ export function EditProfileForm({
       </div>
 
       <div className="space-y-4">
-        <FormSectionHeading title="Profile" />
+        <FormSectionHeading title={copy.profileSectionTitle} />
         <div className="space-y-2">
           <FormFieldLabel
             counter={`${values.displayName.length}/${DISPLAY_NAME_MAX}`}
             htmlFor="display-name"
-            label="Display name"
+            label={copy.displayNameLabel}
           />
           <Input
             id="display-name"
@@ -225,12 +231,12 @@ export function EditProfileForm({
           <FormFieldLabel
             counter={`${bioLength}/${BIO_MAX}`}
             htmlFor="bio"
-            label="Bio"
+            label={copy.bioLabel}
           />
           <Textarea
             id="bio"
             onChange={(e) => handleBioChange(e.target.value)}
-            placeholder="Tell people about yourself"
+            placeholder={copy.bioPlaceholder}
             rows={4}
             value={values.bio}
           />
@@ -252,7 +258,7 @@ export function EditProfileForm({
           </div>
         ) : null}
         <Button disabled={!canSubmit} loading={isSaving} type="submit">
-          Save changes
+          {copy.saveProfile}
         </Button>
       </div>
     </form>
@@ -269,6 +275,8 @@ export function EditProfileDialog({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  const { locale } = useUiLocale();
+  const copy = React.useMemo(() => getLocaleMessages(locale, "routes").settings, [locale]);
   const [internalOpen, setInternalOpen] = React.useState(false);
   const open = openProp ?? internalOpen;
   const setOpen = onOpenChangeProp ?? setInternalOpen;
@@ -280,9 +288,9 @@ export function EditProfileDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit profile</DialogTitle>
+          <DialogTitle>{copy.editProfileTitle}</DialogTitle>
           <DialogDescription>
-            Update your display name, bio, or handle.
+            {copy.editProfileDescription}
           </DialogDescription>
         </DialogHeader>
         <EditProfileForm {...formProps} />

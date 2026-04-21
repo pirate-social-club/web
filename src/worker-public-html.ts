@@ -1,3 +1,4 @@
+import type { RoutesMessages } from "./locales";
 import type { PublicProfileResolution } from "./worker-public.types";
 
 function buildCommunityPath(communityId: string, routeSlug: string | null): string {
@@ -13,8 +14,8 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function formatJoinedLabel(createdAt: string): string {
-  return new Date(createdAt).toLocaleDateString("en-US", {
+function formatJoinedLabel(createdAt: string, localeTag: string): string {
+  return new Date(createdAt).toLocaleDateString(localeTag, {
     month: "short",
     year: "numeric",
     timeZone: "UTC",
@@ -24,10 +25,12 @@ function formatJoinedLabel(createdAt: string): string {
 function buildMetaDescription({
   bio,
   communityCount,
+  copy,
   displayHandle,
 }: {
   bio: string;
   communityCount: number;
+  copy: RoutesMessages["publicProfile"];
   displayHandle: string;
 }): string {
   const trimmedBio = bio.trim();
@@ -36,10 +39,14 @@ function buildMetaDescription({
   }
 
   if (communityCount > 0) {
-    return `${displayHandle} has created ${communityCount} ${communityCount === 1 ? "community" : "communities"} on Pirate.`;
+    return communityCount === 1
+      ? copy.createdCommunityMeta.replace("{handle}", displayHandle)
+      : copy.createdCommunitiesMeta
+          .replace("{handle}", displayHandle)
+          .replace("{count}", String(communityCount));
   }
 
-  return `${displayHandle} on Pirate.`;
+  return copy.defaultMeta.replace("{handle}", displayHandle);
 }
 
 export function renderPublicProfilePage({
@@ -47,23 +54,27 @@ export function renderPublicProfilePage({
   canonicalHandle,
   canonicalUrl,
   communities,
+  copy,
   displayHandle,
   host,
+  localeTag,
   profile,
 }: {
   appOrigin: string;
   canonicalHandle: string;
   canonicalUrl: string;
   communities: PublicProfileResolution["created_communities"];
+  copy: RoutesMessages["publicProfile"];
   displayHandle: string;
   host: string;
+  localeTag: string;
   profile: PublicProfileResolution["profile"];
 }): string {
   const displayName = profile.display_name?.trim() || displayHandle;
   const bio = profile.bio?.trim() || "";
   const avatar = profile.avatar_ref?.trim() || "";
   const cover = profile.cover_ref?.trim() || "";
-  const joined = formatJoinedLabel(profile.created_at);
+  const joined = formatJoinedLabel(profile.created_at, localeTag);
   const tagline = displayHandle === canonicalHandle ? displayHandle : canonicalHandle;
   const initials = escapeHtml(displayName.slice(0, 2).toUpperCase() || "P");
   const safeDisplayName = escapeHtml(displayName);
@@ -75,6 +86,7 @@ export function renderPublicProfilePage({
   const metaDescription = buildMetaDescription({
     bio,
     communityCount: communities.length,
+    copy,
     displayHandle,
   });
   const ogImage = cover || avatar;
@@ -95,7 +107,7 @@ export function renderPublicProfilePage({
     : `<div class="avatar-fallback">${initials}</div>`;
 
   return `<!doctype html>
-<html lang="en" class="dark" data-theme="dark">
+<html lang="${escapeHtml(localeTag)}" class="dark" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -193,12 +205,12 @@ export function renderPublicProfilePage({
               <div class="handle">${safeTagline}</div>
               ${bio ? `<p class="bio">${safeBio}</p>` : ""}
               <div class="meta">
-                <div class="meta-item"><strong>${safeHandle}</strong>Public handle</div>
-                <div class="meta-item"><strong>${escapeHtml(joined)}</strong>Joined</div>
+                <div class="meta-item"><strong>${safeHandle}</strong>${copy.publicHandleLabel}</div>
+                <div class="meta-item"><strong>${escapeHtml(joined)}</strong>${copy.joinedLabel}</div>
               </div>
               <div class="cta-row">
-                <a class="cta cta-primary" href="${safeOpenInPirateHref}">Open in Pirate</a>
-                <a class="cta cta-secondary" href="${safeOpenInPirateHref}#posts">View app profile</a>
+                <a class="cta cta-primary" href="${safeOpenInPirateHref}">${copy.openInPirate}</a>
+                <a class="cta cta-secondary" href="${safeOpenInPirateHref}#posts">${copy.viewAppProfile}</a>
               </div>
             </div>
           </div>
@@ -206,14 +218,14 @@ export function renderPublicProfilePage({
       </section>
       <section class="content">
         <div class="panel">
-          <h2>Communities</h2>
+          <h2>${copy.communitiesTitle}</h2>
           ${communities.length
             ? `<div class="community-list">${createdCommunitiesMarkup}</div>`
-            : `<div class="empty">No created communities yet.</div>`}
+            : `<div class="empty">${copy.noCreatedCommunities}</div>`}
         </div>
         <div class="panel">
-          <h2>About</h2>
-          <div class="empty">${bio ? safeBio : "No public bio yet."}</div>
+          <h2>${copy.aboutTab}</h2>
+          <div class="empty">${bio ? safeBio : copy.noPublicBio}</div>
         </div>
       </section>
     </div>

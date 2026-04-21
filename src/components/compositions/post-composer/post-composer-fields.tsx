@@ -8,7 +8,6 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Avatar } from "@/components/primitives/avatar";
 import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
 import { FormFieldLabel } from "@/components/primitives/form-layout";
-import { Input } from "@/components/primitives/input";
 import { Textarea } from "@/components/primitives/textarea";
 import { cn } from "@/lib/utils";
 import type { CommunityPickerItem } from "./post-composer.types";
@@ -120,9 +119,9 @@ export function UploadField({
 }: {
   label: string;
   accept: string;
-  copy?: {
-    buttons?: Record<string, string>;
-    upload?: Record<string, string>;
+  copy: {
+    buttons: Record<string, string>;
+    upload: Record<string, string>;
   };
   multiple?: boolean;
   onChange?: (files: FileList | null) => void;
@@ -155,7 +154,7 @@ export function UploadField({
             <div className="grid size-24 shrink-0 place-items-center rounded-[var(--radius-lg)] border border-border-soft bg-muted">
               {selectedLabel ? (
                 <span className="px-3 text-center text-base font-semibold text-foreground">
-                  {copy?.upload?.cover ?? "Cover"}
+                  {copy.upload.cover}
                 </span>
               ) : (
                 <ImageIcon className="size-8 text-muted-foreground" />
@@ -163,22 +162,22 @@ export function UploadField({
             </div>
             <div className="min-w-0 flex-1 space-y-1">
               <p className="truncate text-base font-semibold text-foreground">
-                {selectedLabel || copy?.upload?.squareArtwork || "Upload square artwork"}
+                {selectedLabel || copy.upload.squareArtwork}
               </p>
               <p className="text-base text-muted-foreground">
-                {copy?.upload?.artworkHelp || "Shows in feed, release, and player surfaces."}
+                {copy.upload.artworkHelp}
               </p>
             </div>
           </>
         ) : (
           <div className="min-w-0">
             <p className="truncate text-base font-semibold text-foreground">
-              {selectedLabel || copy?.upload?.noFileSelected || "No file selected"}
+              {selectedLabel || copy.upload.noFileSelected}
             </p>
           </div>
         )}
         <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-3.5 py-2 text-base font-semibold text-foreground">
-          {selectedLabel ? (copy?.buttons?.replace || "Replace") : (copy?.buttons?.chooseFile || "Choose file")}
+          {selectedLabel ? copy.buttons.replace : copy.buttons.chooseFile}
         </span>
       </label>
     </div>

@@ -6,34 +6,22 @@ import { Input } from "@/components/primitives/input";
 import { UploadField, FieldLabel } from "./post-composer-fields";
 import { SetlistItemRow, dedupeReferences, buildManualReference } from "./post-composer-references";
 import {
-  roomKindOptions,
-  accessModeOptions,
-  visibilityOptions,
   fallbackTrackOptions,
 } from "./post-composer-config";
 import type { ComposerReference, LiveComposerState } from "./post-composer.types";
 
-export function SummaryRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3">
-      <div className="space-y-1">
-        <span className="block text-base text-muted-foreground">{label}</span>
-        <span className="block text-lg font-semibold text-foreground">{value}</span>
-      </div>
-    </div>
-  );
-}
-
 export function LiveTabContent({
+  copy,
   live,
   onLiveChange,
 }: {
+  copy: {
+    fields: Record<string, string>;
+    placeholders: Record<string, string>;
+    live: Record<string, string>;
+    buttons: Record<string, string>;
+    upload: Record<string, string>;
+  };
   live: LiveComposerState;
   onLiveChange: (state: LiveComposerState) => void;
 }) {
@@ -103,7 +91,8 @@ export function LiveTabContent({
     <div className="space-y-5">
       <UploadField
         accept="image/*"
-        label="Cover art"
+        copy={copy}
+        label={copy.fields.coverArt}
         onChange={(files) =>
           onLiveChange({
             ...live,
@@ -117,9 +106,12 @@ export function LiveTabContent({
 
       <div className="grid gap-3 md:grid-cols-3">
         <div>
-          <FieldLabel label="Room kind" />
+          <FieldLabel label={copy.fields.roomKind} />
           <div className="flex flex-wrap gap-2">
-            {roomKindOptions.map((opt) => (
+            {([
+              { value: "solo" as const, label: copy.live.roomKindSolo },
+              { value: "duet" as const, label: copy.live.roomKindDuet },
+            ]).map((opt) => (
               <Chip
                 key={opt.value}
                 variant={live.roomKind === opt.value ? "selected" : "default"}
@@ -131,9 +123,13 @@ export function LiveTabContent({
           </div>
         </div>
         <div>
-          <FieldLabel label="Access" />
+          <FieldLabel label={copy.fields.access} />
           <div className="flex flex-wrap gap-2">
-            {accessModeOptions.map((opt) => (
+            {([
+              { value: "free" as const, label: copy.live.accessFree },
+              { value: "gated" as const, label: copy.live.accessGated },
+              { value: "paid" as const, label: copy.live.accessPaid },
+            ]).map((opt) => (
               <Chip
                 key={opt.value}
                 variant={live.accessMode === opt.value ? "selected" : "default"}
@@ -145,9 +141,12 @@ export function LiveTabContent({
           </div>
         </div>
         <div>
-          <FieldLabel label="Visibility" />
+          <FieldLabel label={copy.fields.visibility} />
           <div className="flex flex-wrap gap-2">
-            {visibilityOptions.map((opt) => (
+            {([
+              { value: "public" as const, label: copy.live.visibilityPublic },
+              { value: "unlisted" as const, label: copy.live.visibilityUnlisted },
+            ]).map((opt) => (
               <Chip
                 key={opt.value}
                 variant={live.visibility === opt.value ? "selected" : "default"}
@@ -162,13 +161,13 @@ export function LiveTabContent({
 
       {live.roomKind === "duet" ? (
         <div>
-          <FieldLabel label="Guest performer" />
+          <FieldLabel label={copy.fields.guestPerformer} />
           <Input
             className="h-10"
-            placeholder="Search for a collaborator"
+            placeholder={copy.placeholders.collaborator}
             defaultValue={live.guestUserId ?? ""}
           />
-          <FormNote className="mt-1">Invite a collaborator for this duet session.</FormNote>
+          <FormNote className="mt-1">{copy.live.collaboratorNote}</FormNote>
         </div>
       ) : null}
 
@@ -176,10 +175,10 @@ export function LiveTabContent({
         <FormSectionHeading
           description={
             live.roomKind === "solo"
-              ? "The host receives 100% of performer-side proceeds."
-              : "Split performer-side proceeds between host and collaborator."
+              ? copy.live.soloProceedsDescription
+              : copy.live.duetProceedsDescription
           }
-          title="Performer allocations"
+          title={copy.fields.performerAllocations}
         />
         <div className="space-y-2">
           {live.performerAllocations.map((alloc, i) => (
@@ -189,10 +188,10 @@ export function LiveTabContent({
             >
               <div className="flex items-center gap-3">
                 <span className="text-base font-medium text-foreground">
-                  {alloc.role === "host" ? "Host" : "Guest"}
+                  {alloc.role === "host" ? copy.live.hostLabel : copy.live.guestLabel}
                 </span>
                 <span className="text-base text-foreground">
-                  {alloc.role === "host" ? "You" : live.guestUserId || "Collaborator"}
+                  {alloc.role === "host" ? copy.live.youLabel : live.guestUserId || copy.live.collaboratorLabel}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -216,23 +215,23 @@ export function LiveTabContent({
           ))}
         </div>
         {live.performerAllocations.reduce((sum, a) => sum + a.sharePct, 0) !== 100 ? (
-          <FormNote tone="destructive">Allocations must sum to 100%</FormNote>
+          <FormNote tone="destructive">{copy.live.allocationsError}</FormNote>
         ) : null}
       </div>
 
       <div>
         <div className="mb-2 flex items-center justify-between gap-3">
-          <FormSectionHeading title="Setlist" />
+          <FormSectionHeading title={copy.fields.setlistTitle} />
           <Chip
             leadingIcon={<Plus className="size-4" />}
             onClick={handleAddSetlistItem}
           >
-            Add song
+            {copy.live.addSong}
           </Chip>
         </div>
         {live.setlistItems.length === 0 ? (
           <div className="rounded-[var(--radius-lg)] border border-dashed border-border-soft px-4 py-6 text-center text-base text-muted-foreground">
-            No songs yet. Add at least one song before going live.
+            {copy.live.emptySetlist}
           </div>
         ) : (
           <div className="space-y-2">

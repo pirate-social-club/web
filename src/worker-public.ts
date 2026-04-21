@@ -2,6 +2,8 @@ import {
   renderPublicProfileErrorPage,
   renderPublicProfilePage,
 } from "./worker-public-html";
+import { resolveLocaleLanguageTag, resolveRequestLocale } from "./lib/ui-locale-core";
+import { getLocaleMessages } from "./locales";
 import type {
   Env,
   PublicProfileResolution,
@@ -119,12 +121,15 @@ function resolveAppOrigin(env: Env, url: URL, hostSuffix: string): string {
 
 async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
+  const locale = resolveRequestLocale(request.headers.get("accept-language"));
+  const localeTag = resolveLocaleLanguageTag(locale);
+  const copy = getLocaleMessages(locale, "routes").publicProfile;
   const target = extractPublicProfileRequestTarget(url);
 
   if (!target) {
     return renderPublicProfileErrorPage(
-      "Public profile",
-      `The host ${url.hostname} does not map to a public Pirate profile.`,
+      copy.notFoundTitle,
+      copy.notFoundDescription.replace("{path}", url.hostname),
       404,
     );
   }
@@ -147,16 +152,16 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (response.status === 404) {
     return renderPublicProfileErrorPage(
-      "Profile not found",
-      `We could not find a public Pirate profile for ${url.hostname}.`,
+      copy.notFoundTitle,
+      copy.notFoundDescription.replace("{path}", url.hostname),
       404,
     );
   }
 
   if (!response.ok) {
     return renderPublicProfileErrorPage(
-      "Public profile",
-      "This public profile could not be loaded right now.",
+      copy.errorTitle,
+      copy.errorDescription,
       502,
     );
   }
@@ -179,9 +184,11 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     canonicalHandle: resolution.profile.global_handle.label,
     canonicalUrl: url.toString(),
     communities: resolution.created_communities,
+    copy,
     displayHandle:
       resolution.profile.primary_public_handle?.label ?? resolution.profile.global_handle.label,
     host: url.hostname,
+    localeTag,
     profile: resolution.profile,
   });
 

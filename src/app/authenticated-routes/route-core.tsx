@@ -69,12 +69,15 @@ export function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-export function formatUsdLabel(value: number | null | undefined): string | undefined {
+export function formatUsdLabel(
+  value: number | null | undefined,
+  localeTag = "en",
+): string | undefined {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return undefined;
   }
 
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(localeTag, {
     currency: "USD",
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,

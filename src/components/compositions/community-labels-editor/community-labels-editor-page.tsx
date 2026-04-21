@@ -9,6 +9,7 @@ import { CommunityModerationSaveFooter } from "@/components/compositions/communi
 import { FormFieldLabel, FormSectionHeading } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 export interface LabelEditorDefinition {
   id: string;
@@ -40,7 +41,7 @@ function normalizeHexInput(value: string): string {
   return `#${trimmed.slice(0, 6)}`;
 }
 
-function LabelChipPreview({ color, label }: { color: string; label: string }) {
+function LabelChipPreview({ color, label, fallback }: { color: string; label: string; fallback: string }) {
   const valid = isValidHexColor(color);
   return (
     <span
@@ -51,7 +52,7 @@ function LabelChipPreview({ color, label }: { color: string; label: string }) {
           : { backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }
       }
     >
-      {label || "Preview"}
+      {label || fallback}
     </span>
   );
 }
@@ -77,6 +78,8 @@ export function CommunityLabelsEditorPage({
   saveDisabled = false,
   saveLoading = false,
 }: CommunityLabelsEditorPageProps) {
+  const { copy } = useRouteMessages();
+  const mc = copy.moderation.labels;
   const activeLabels = labels.filter((l) => l.status === "active");
   const archivedLabels = labels.filter((l) => l.status === "archived");
   const duplicateActiveLabelNames = React.useMemo(() => {
@@ -132,14 +135,14 @@ export function CommunityLabelsEditorPage({
   return (
     <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
       <div className="space-y-2">
-        <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Labels</h1>
+        <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
       </div>
 
       <div className="space-y-6">
         <div className="rounded-[1.75rem] border border-border-soft bg-card p-5">
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
-              <FormSectionHeading title="Enable labels" />
+              <FormSectionHeading title={mc.enableLabel} />
               <Checkbox
                 checked={labelsEnabled}
                 onCheckedChange={(checked) => onLabelsEnabledChange?.(checked === true)}
@@ -148,7 +151,7 @@ export function CommunityLabelsEditorPage({
             {labelsEnabled ? (
               <div className="space-y-3 border-t border-border-soft pt-4">
                 <div className="flex items-center justify-between gap-3">
-                  <FormSectionHeading title="Require on top-level posts" />
+                  <FormSectionHeading title={mc.requireOnTopLevelPosts} />
                   <Checkbox
                     checked={requireOnTopLevelPosts}
                     onCheckedChange={(checked) => onRequireOnTopLevelPostsChange?.(checked === true)}
@@ -164,7 +167,7 @@ export function CommunityLabelsEditorPage({
             <div className="flex items-center justify-between gap-4">
               <FormSectionHeading
                 description={activeLabels.length > 0 ? `${activeLabels.length} label${activeLabels.length === 1 ? "" : "s"}` : undefined}
-                title="Definitions"
+                title={mc.definitionsTitle}
               />
               <Button onClick={addLabel} variant="secondary">
                 <Plus className="size-5" />
@@ -182,7 +185,7 @@ export function CommunityLabelsEditorPage({
                   <div className="rounded-[1.75rem] border border-border-soft bg-card p-4 md:p-5" key={def.id}>
                     <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_9rem_auto] md:items-end">
                       <div className="space-y-2">
-                        <FormFieldLabel label="Name" />
+                        <FormFieldLabel label={mc.nameLabel} />
                         <Input
                           aria-invalid={hasBlankName || hasDuplicateName}
                           className={cn(
@@ -190,13 +193,13 @@ export function CommunityLabelsEditorPage({
                             (hasBlankName || hasDuplicateName) && "border-destructive focus-visible:ring-destructive/40",
                           )}
                           onChange={(event) => updateLabel(def.id, { label: event.target.value })}
-                          placeholder="Label name"
+                          placeholder={mc.namePlaceholder}
                           value={def.label}
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <FormFieldLabel label="Color" />
+                        <FormFieldLabel label={mc.colorLabel} />
                         <div className="flex items-center gap-2">
                           <Input
                             aria-invalid={hasInvalidColor}
@@ -221,21 +224,21 @@ export function CommunityLabelsEditorPage({
 
                       <div className="flex items-center justify-end gap-2">
                         <Button
-                          aria-label={`Archive ${def.label.trim() || "label"}`}
+                          aria-label={mc.archiveLabel.replace("{label}", def.label.trim() || "label")}
                           className="size-12"
                           onClick={() => archiveLabel(def.id)}
                           size="icon"
-                          title={`Archive ${def.label.trim() || "label"}`}
+                          title={mc.archiveLabel.replace("{label}", def.label.trim() || "label")}
                           variant="secondary"
                         >
                           <Archive className="size-5" />
                         </Button>
                         <Button
-                          aria-label={`Delete ${def.label.trim() || "label"}`}
+                          aria-label={mc.deleteLabel.replace("{label}", def.label.trim() || "label")}
                           className="size-12"
                           onClick={() => removeLabel(def.id)}
                           size="icon"
-                          title={`Delete ${def.label.trim() || "label"}`}
+                          title={mc.deleteLabel.replace("{label}", def.label.trim() || "label")}
                           variant="secondary"
                         >
                           <Trash className="size-5" />
@@ -245,7 +248,7 @@ export function CommunityLabelsEditorPage({
 
                     {def.label || def.color ? (
                       <div className="mt-3 border-t border-border-soft pt-3">
-                        <LabelChipPreview color={def.color} label={def.label} />
+                        <LabelChipPreview color={def.color} label={def.label} fallback={mc.previewFallback} />
                       </div>
                     ) : null}
                   </div>
@@ -263,7 +266,7 @@ export function CommunityLabelsEditorPage({
               <div className="space-y-3">
                 <FormSectionHeading
                   description={`${archivedLabels.length} archived`}
-                  title="Archived"
+                  title={mc.archivedTitle}
                 />
                 <div className="flex flex-col gap-2">
                   {archivedLabels.map((def) => (
@@ -272,14 +275,14 @@ export function CommunityLabelsEditorPage({
                       key={def.id}
                     >
                       <div className="flex items-center gap-3">
-                        <LabelChipPreview color={def.color} label={def.label} />
+                        <LabelChipPreview color={def.color} label={def.label} fallback={mc.previewFallback} />
                       </div>
                       <Button
-                        aria-label={`Restore ${def.label.trim() || "label"}`}
+                        aria-label={mc.restoreLabel.replace("{label}", def.label.trim() || "label")}
                         className="size-10"
                         onClick={() => restoreLabel(def.id)}
                         size="icon"
-                        title={`Restore ${def.label.trim() || "label"}`}
+                        title={mc.restoreLabel.replace("{label}", def.label.trim() || "label")}
                         variant="secondary"
                       >
                         <Archive className="size-4" />

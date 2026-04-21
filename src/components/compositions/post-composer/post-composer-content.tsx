@@ -67,6 +67,7 @@ export function PostComposerPrimaryArea({
     songModes: Record<string, string>;
     upload: Record<string, string>;
     buttons: Record<string, string>;
+    live: Record<string, string>;
   };
   derivativeState?: DerivativeStepState;
   linkPreview?: LinkPreviewState;
@@ -337,7 +338,7 @@ export function PostComposerPrimaryArea({
         </div>
       );
     case "live":
-      return <LiveTabContent live={liveState} onLiveChange={setLiveState} />;
+      return <LiveTabContent copy={copy} live={liveState} onLiveChange={setLiveState} />;
     default:
       return null;
   }

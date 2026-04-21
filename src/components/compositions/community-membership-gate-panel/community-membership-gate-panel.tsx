@@ -8,6 +8,8 @@ import { Button } from "@/components/primitives/button";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Spinner } from "@/components/primitives/spinner";
 import { getJoinCtaLabel, isJoinCtaActionable } from "@/lib/identity-gates";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 
 type VerificationPrompt = {
   title: string;
@@ -51,6 +53,8 @@ function JoinCta({
 }
 
 function VerificationQr({ value }: { value: string }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").common;
   const [src, setSrc] = React.useState<string | null>(null);
   const [error, setError] = React.useState(false);
 
@@ -79,7 +83,7 @@ function VerificationQr({ value }: { value: string }) {
   }, [value]);
 
   if (error) {
-    return <FormNote tone="warning">Could not render the verification QR code.</FormNote>;
+    return <FormNote tone="warning">{copy.qrRenderError}</FormNote>;
   }
 
   if (!src) {
@@ -93,7 +97,7 @@ function VerificationQr({ value }: { value: string }) {
   return (
     <div className="flex justify-center rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
       <img
-        alt="Self verification QR code"
+        alt={copy.selfVerificationQrCode}
         className="size-64 max-w-full rounded-[var(--radius-md)]"
         height={256}
         src={src}

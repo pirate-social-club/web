@@ -13,6 +13,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
+import { PirateBrandMark } from "@/components/primitives/pirate-brand-mark";
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +27,7 @@ import {
   SidebarSeparator,
 } from "@/components/compositions/sidebar/sidebar";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 type ModNavIcon = React.ComponentType<{ className?: string; weight?: "regular" | "fill" | "bold" }>;
 
@@ -48,23 +50,8 @@ export interface CommunityModerationShellProps {
   communityAvatarSrc?: string | null;
   communityLabel: string;
   onExitClick?: () => void;
-  sections?: CommunityModerationNavSection[];
+  sections: CommunityModerationNavSection[];
 }
-
-const defaultSections: CommunityModerationNavSection[] = [
-  {
-    label: "Moderation",
-    items: [
-      { active: true, icon: Gavel, label: "Rules" },
-      { icon: Lock, label: "Gates" },
-      { icon: Shield, label: "Safety" },
-      { icon: Robot, label: "Agents" },
-      { icon: Heart, label: "Donations" },
-      { icon: LinkSimple, label: "Links" },
-      { icon: SealCheck, label: "Namespace" },
-    ],
-  },
-];
 
 export function CommunityModerationShell({
   children,
@@ -72,15 +59,21 @@ export function CommunityModerationShell({
   communityAvatarSrc,
   communityLabel,
   onExitClick,
-  sections = defaultSections,
+  sections,
 }: CommunityModerationShellProps) {
+  const { copy } = useRouteMessages();
   return (
     <SidebarProvider className={cn("min-h-screen bg-background text-foreground", className)}>
       <Sidebar className="w-[18rem]" collapsible="none">
         <SidebarContent className="gap-4 px-0 pb-4 pt-5">
           <SidebarGroup className="px-4 py-0">
             <SidebarGroupContent>
-
+              <div className="mb-6 flex items-center gap-3 px-1">
+                <PirateBrandMark className="h-9 w-9 shrink-0" decorative={false} />
+                <span className="truncate text-lg font-semibold leading-none tracking-[0.18em] text-foreground">
+                  PIRATE
+                </span>
+              </div>
               <div className="mb-5 flex items-center gap-3">
                 <Avatar
                   className="h-10 w-10"
@@ -92,7 +85,7 @@ export function CommunityModerationShell({
               </div>
               <div className="mb-2 flex h-12 items-center gap-3 rounded-full border border-border-soft bg-card px-4 text-muted-foreground">
                 <MagnifyingGlass className="size-5" />
-                <span className="text-base">Search tools</span>
+                <span className="text-base">{copy.moderation.shell.searchToolsPlaceholder}</span>
               </div>
             </SidebarGroupContent>
           </SidebarGroup>

@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/primitives/select";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 export type CommunitySafetyModerationDecisionLevel = "allow" | "review" | "disallow";
 export type CommunitySafetyEscalationDecisionLevel = "review" | "disallow";
@@ -88,22 +89,9 @@ export function createDefaultCommunitySafetyCivilityPolicy(): CommunitySafetyCiv
   };
 }
 
-const decisionLevelOptions: Array<{
-  label: string;
-  value: CommunitySafetyModerationDecisionLevel;
-}> = [
-  { label: "Allow", value: "allow" },
-  { label: "Review", value: "review" },
-  { label: "Disallow", value: "disallow" },
-];
 
-const escalationLevelOptions: Array<{
-  label: string;
-  value: CommunitySafetyEscalationDecisionLevel;
-}> = [
-  { label: "Review", value: "review" },
-  { label: "Disallow", value: "disallow" },
-];
+
+
 
 function Section({
   children,
@@ -213,11 +201,30 @@ export function CommunitySafetyPage({
   saveDisabled = false,
   saveLoading = false,
 }: CommunitySafetyPageProps) {
+  const { copy } = useRouteMessages();
+  const mc = copy.moderation.safety;
+
+  const decisionLevelOptions: Array<{
+    label: string;
+    value: CommunitySafetyModerationDecisionLevel;
+  }> = [
+    { label: mc.allowOption, value: "allow" },
+    { label: mc.reviewOption, value: "review" },
+    { label: mc.disallowOption, value: "disallow" },
+  ];
+
+  const escalationLevelOptions: Array<{
+    label: string;
+    value: CommunitySafetyEscalationDecisionLevel;
+  }> = [
+    { label: mc.reviewOption, value: "review" },
+    { label: mc.disallowOption, value: "disallow" },
+  ];
   return (
     <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
       <div className="flex min-w-0 items-start gap-4">
         <div className="min-w-0 space-y-2">
-          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Safety</h1>
+          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
           <p className="text-base text-muted-foreground">
             Tune how the OpenAI moderation pass feeds community filtering and review.
           </p>
@@ -225,14 +232,14 @@ export function CommunitySafetyPage({
       </div>
 
       <Section
-        note="Classifier input only. Community policy remains the final decision-maker."
-        title="OpenAI moderation pass"
+        note={mc.openAiNote}
+        title={mc.openAiTitle}
       >
         <div className="space-y-3">
           <ProviderToggleRow
             checked={providerSettings.scanTitles}
             id="community-safety-scan-titles"
-            label="Scan titles"
+            label={mc.scanTitles}
             onCheckedChange={(checked) => onProviderSettingsChange?.({
               ...providerSettings,
               scanTitles: checked,
@@ -241,7 +248,7 @@ export function CommunitySafetyPage({
           <ProviderToggleRow
             checked={providerSettings.scanPostBodies}
             id="community-safety-scan-post-bodies"
-            label="Scan post bodies"
+            label={mc.scanPostBodies}
             onCheckedChange={(checked) => onProviderSettingsChange?.({
               ...providerSettings,
               scanPostBodies: checked,
@@ -250,7 +257,7 @@ export function CommunitySafetyPage({
           <ProviderToggleRow
             checked={providerSettings.scanCaptions}
             id="community-safety-scan-captions"
-            label="Scan captions"
+            label={mc.scanCaptions}
             onCheckedChange={(checked) => onProviderSettingsChange?.({
               ...providerSettings,
               scanCaptions: checked,
@@ -259,7 +266,7 @@ export function CommunitySafetyPage({
           <ProviderToggleRow
             checked={providerSettings.scanLinkPreviewText}
             id="community-safety-scan-link-preview-text"
-            label="Scan link preview text"
+            label={mc.scanLinkPreviewText}
             onCheckedChange={(checked) => onProviderSettingsChange?.({
               ...providerSettings,
               scanLinkPreviewText: checked,
@@ -268,7 +275,7 @@ export function CommunitySafetyPage({
           <ProviderToggleRow
             checked={providerSettings.scanImages}
             id="community-safety-scan-images"
-            label="Scan uploaded images"
+            label={mc.scanImages}
             onCheckedChange={(checked) => onProviderSettingsChange?.({
               ...providerSettings,
               scanImages: checked,
@@ -277,10 +284,10 @@ export function CommunitySafetyPage({
         </div>
       </Section>
 
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Adult content">
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title={mc.adultContentTitle}>
         <div className="space-y-3">
           <PolicySelectRow
-            label="Suggestive"
+            label={mc.suggestiveLabel}
             onValueChange={(value) => onAdultContentPolicyChange?.({
               ...adultContentPolicy,
               suggestive: value,
@@ -289,7 +296,7 @@ export function CommunitySafetyPage({
             value={adultContentPolicy.suggestive}
           />
           <PolicySelectRow
-            label="Artistic nudity"
+            label={mc.artisticNudityLabel}
             onValueChange={(value) => onAdultContentPolicyChange?.({
               ...adultContentPolicy,
               artistic_nudity: value,
@@ -298,7 +305,7 @@ export function CommunitySafetyPage({
             value={adultContentPolicy.artistic_nudity}
           />
           <PolicySelectRow
-            label="Explicit nudity"
+            label={mc.explicitNudityLabel}
             onValueChange={(value) => onAdultContentPolicyChange?.({
               ...adultContentPolicy,
               explicit_nudity: value,
@@ -307,7 +314,7 @@ export function CommunitySafetyPage({
             value={adultContentPolicy.explicit_nudity}
           />
           <PolicySelectRow
-            label="Explicit sexual content"
+            label={mc.explicitSexualContentLabel}
             onValueChange={(value) => onAdultContentPolicyChange?.({
               ...adultContentPolicy,
               explicit_sexual_content: value,
@@ -316,7 +323,7 @@ export function CommunitySafetyPage({
             value={adultContentPolicy.explicit_sexual_content}
           />
           <PolicySelectRow
-            label="Fetish content"
+            label={mc.fetishContentLabel}
             onValueChange={(value) => onAdultContentPolicyChange?.({
               ...adultContentPolicy,
               fetish_content: value,
@@ -327,10 +334,10 @@ export function CommunitySafetyPage({
         </div>
       </Section>
 
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Graphic content">
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title={mc.graphicContentTitle}>
         <div className="space-y-3">
           <PolicySelectRow
-            label="Injury or medical content"
+            label={mc.injuryMedicalLabel}
             onValueChange={(value) => onGraphicContentPolicyChange?.({
               ...graphicContentPolicy,
               injury_medical: value,
@@ -339,7 +346,7 @@ export function CommunitySafetyPage({
             value={graphicContentPolicy.injury_medical}
           />
           <PolicySelectRow
-            label="Gore"
+            label={mc.goreLabel}
             onValueChange={(value) => onGraphicContentPolicyChange?.({
               ...graphicContentPolicy,
               gore: value,
@@ -348,7 +355,7 @@ export function CommunitySafetyPage({
             value={graphicContentPolicy.gore}
           />
           <PolicySelectRow
-            label="Extreme gore"
+            label={mc.extremeGoreLabel}
             onValueChange={(value) => onGraphicContentPolicyChange?.({
               ...graphicContentPolicy,
               extreme_gore: value,
@@ -357,7 +364,7 @@ export function CommunitySafetyPage({
             value={graphicContentPolicy.extreme_gore}
           />
           <PolicySelectRow
-            label="Body horror or disturbing content"
+            label={mc.bodyHorrorLabel}
             onValueChange={(value) => onGraphicContentPolicyChange?.({
               ...graphicContentPolicy,
               body_horror_disturbing: value,
@@ -366,7 +373,7 @@ export function CommunitySafetyPage({
             value={graphicContentPolicy.body_horror_disturbing}
           />
           <PolicySelectRow
-            label="Animal harm"
+            label={mc.animalHarmLabel}
             onValueChange={(value) => onGraphicContentPolicyChange?.({
               ...graphicContentPolicy,
               animal_harm: value,
@@ -377,10 +384,10 @@ export function CommunitySafetyPage({
         </div>
       </Section>
 
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Civility">
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title={mc.civilityTitle}>
         <div className="space-y-3">
           <PolicySelectRow
-            label="Group-directed demeaning language"
+            label={mc.groupDirectedDemeaningLabel}
             onValueChange={(value) => onCivilityPolicyChange?.({
               ...civilityPolicy,
               group_directed_demeaning_language: value,
@@ -389,7 +396,7 @@ export function CommunitySafetyPage({
             value={civilityPolicy.group_directed_demeaning_language}
           />
           <PolicySelectRow
-            label="Targeted insults"
+            label={mc.targetedInsultsLabel}
             onValueChange={(value) => onCivilityPolicyChange?.({
               ...civilityPolicy,
               targeted_insults: value,
@@ -398,7 +405,7 @@ export function CommunitySafetyPage({
             value={civilityPolicy.targeted_insults}
           />
           <PolicySelectRow
-            label="Targeted harassment"
+            label={mc.targetedHarassmentLabel}
             onValueChange={(value) => onCivilityPolicyChange?.({
               ...civilityPolicy,
               targeted_harassment: value,
@@ -407,7 +414,7 @@ export function CommunitySafetyPage({
             value={civilityPolicy.targeted_harassment}
           />
           <PolicySelectRow
-            label="Threatening language"
+            label={mc.threateningLanguageLabel}
             onValueChange={(value) => onCivilityPolicyChange?.({
               ...civilityPolicy,
               threatening_language: value,

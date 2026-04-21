@@ -1,9 +1,12 @@
 {
   "appHeader": {
+    "backAriaLabel": "返回",
     "connectLabel": "连接",
+    "connectUnavailableToast": "当前环境未配置 Connect。",
     "createEmptyLabel": "最近没有社区。",
     "createLabel": "发布",
     "createPickerTitle": "选择要发布到的社区",
+    "defaultAvatarFallback": "Pirate 用户",
     "homeAriaLabel": "返回首页",
     "notificationsAriaLabel": "通知",
     "openNavigationAriaLabel": "打开导航",
@@ -60,6 +63,11 @@
     "primaryNavAriaLabel": "主导航",
     "profileAriaLabel": "个人资料",
     "profileLabel": "我的"
+  },
+  "rootError": {
+    "description": "加载 Pirate 时出了问题。请刷新页面后重试。",
+    "reloadLabel": "刷新",
+    "title": "Pirate 遇到了问题"
   },
   "storybook": {
     "contentAreaLabel": "内容区域",

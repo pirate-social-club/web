@@ -29,6 +29,7 @@ import {
   buildCommunityModerationIndexPath,
   buildDefaultCommunityModerationPath,
 } from "@/app/authenticated-routes/moderation-helpers";
+import { RootAppErrorState } from "@/app/authenticated-routes/route-shell";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 
 const LazyAuthenticatedRouteRenderer = React.lazy(async () => {
@@ -204,11 +205,14 @@ function showSearchUnavailable(message: string) {
   toast.info(message);
 }
 
-function showConnectUnavailable() {
-  toast.info("Connect is not configured for this environment.");
+function showConnectUnavailable(message: string) {
+  toast.info(message);
 }
 
-function resolveSessionAvatarFallback(session: ReturnType<typeof useSession>) {
+function resolveSessionAvatarFallback(
+  session: ReturnType<typeof useSession>,
+  defaultLabel: string,
+) {
   const displayName = session?.profile?.display_name?.trim();
 
   if (displayName) {
@@ -221,7 +225,7 @@ function resolveSessionAvatarFallback(session: ReturnType<typeof useSession>) {
     return handleLabel;
   }
 
-  return "Pirate User";
+  return defaultLabel;
 }
 
 function AppShellHeader({
@@ -236,7 +240,7 @@ function AppShellHeader({
   const session = useSession();
   const { connect } = usePiratePrivyRuntime();
   const clientReady = useClientReady();
-  const avatarFallback = resolveSessionAvatarFallback(session);
+  const avatarFallback = resolveSessionAvatarFallback(session, copy.appHeader.defaultAvatarFallback);
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
   const showConnectAction = clientReady && !session;
   const createPostPath = resolveCreatePostPath(route);
@@ -251,7 +255,7 @@ function AppShellHeader({
       disableCreateAction={disableCreateAction}
       hideBrand={hideHeaderBrand}
       labels={{
-        backAriaLabel: "Back",
+        backAriaLabel: copy.appHeader.backAriaLabel,
         connectLabel: copy.appHeader.connectLabel,
         createLabel: copy.appHeader.createLabel,
         homeAriaLabel: copy.appHeader.homeAriaLabel,
@@ -265,8 +269,8 @@ function AppShellHeader({
       onCreateClick={createPostPath ? () => navigate(createPostPath) : undefined}
       onHomeClick={() => navigate("/")}
       onNotificationsClick={() => navigate("/inbox")}
-      onConnectClick={() => connect ? connect() : showConnectUnavailable()}
-      onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable()}
+      onConnectClick={() => connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
+      onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
       onSearchClick={() => showSearchUnavailable(copy.appHeader.searchUnavailableToast)}
       showCreateAction={clientReady && !!session}
       showNotificationsAction={clientReady && !!session}
@@ -291,7 +295,7 @@ function AppShellMobileNav({
   const session = useSession();
   const { connect } = usePiratePrivyRuntime();
   const clientReady = useClientReady();
-  const avatarFallback = resolveSessionAvatarFallback(session);
+  const avatarFallback = resolveSessionAvatarFallback(session, copy.appHeader.defaultAvatarFallback);
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
   const createPostPath = resolveCreatePostPath(route);
   const disableCreateAction = !clientReady;
@@ -313,7 +317,7 @@ function AppShellMobileNav({
       onCreateClick={createPostPath ? () => navigate(createPostPath) : undefined}
       onHomeClick={() => navigate("/")}
       onInboxClick={() => navigate("/inbox")}
-      onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable()}
+      onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
       showInboxDot={hasUnread}
       userAvatarSrc={avatarSrc}
     />
@@ -365,6 +369,48 @@ function SessionRevalidator({ children }: { children: React.ReactNode }) {
   }, [revalidate, session]);
 
   return <>{children}</>;
+}
+
+type RootErrorBoundaryProps = {
+  children: React.ReactNode;
+  description: string;
+  reloadLabel: string;
+  title: string;
+};
+
+type RootErrorBoundaryState = {
+  hasError: boolean;
+};
+
+class RootErrorBoundary extends React.Component<RootErrorBoundaryProps, RootErrorBoundaryState> {
+  public state: RootErrorBoundaryState = {
+    hasError: false,
+  };
+
+  public static getDerivedStateFromError(): RootErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[root-error-boundary] uncaught render error", {
+      error,
+      componentStack: errorInfo.componentStack,
+    });
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      return (
+        <RootAppErrorState
+          description={this.props.description}
+          reloadLabel={this.props.reloadLabel}
+          title={this.props.title}
+        />
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 function NotificationShell({
@@ -453,33 +499,39 @@ function PirateAppShell({ initialHost, initialPath }: { initialHost?: string; in
   const primaryItems = buildPrimaryItems(copy.appSidebar);
 
   return (
-    <ApiProvider initialHost={initialHost}>
-      {isPublicProfileRoute ? (
-        <>
-          <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
-            <div className="mx-auto w-full max-w-5xl">
-              <React.Suspense fallback={<RouteContentFallback />}>
-                {route.kind === "public-profile" ? <LazyPublicRouteRenderer route={route} /> : null}
-              </React.Suspense>
-            </div>
-          </main>
-          <Toaster />
-        </>
-      ) : (
-        <PirateAuthProvider>
-          <SessionRevalidator>
-            <NotificationShell
-              copy={copy}
-              effectiveDir={effectiveDir}
-              isCommunityModerationRoute={isCommunityModerationRoute}
-              primaryItems={primaryItems}
-              route={route}
-              session={session}
-            />
-          </SessionRevalidator>
-        </PirateAuthProvider>
-      )}
-    </ApiProvider>
+    <RootErrorBoundary
+      description={copy.rootError.description}
+      reloadLabel={copy.rootError.reloadLabel}
+      title={copy.rootError.title}
+    >
+      <ApiProvider initialHost={initialHost}>
+        {isPublicProfileRoute ? (
+          <>
+            <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
+              <div className="mx-auto w-full max-w-5xl">
+                <React.Suspense fallback={<RouteContentFallback />}>
+                  {route.kind === "public-profile" ? <LazyPublicRouteRenderer route={route} /> : null}
+                </React.Suspense>
+              </div>
+            </main>
+            <Toaster />
+          </>
+        ) : (
+          <PirateAuthProvider>
+            <SessionRevalidator>
+              <NotificationShell
+                copy={copy}
+                effectiveDir={effectiveDir}
+                isCommunityModerationRoute={isCommunityModerationRoute}
+                primaryItems={primaryItems}
+                route={route}
+                session={session}
+              />
+            </SessionRevalidator>
+          </PirateAuthProvider>
+        )}
+      </ApiProvider>
+    </RootErrorBoundary>
   );
 }
 

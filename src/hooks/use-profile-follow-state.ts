@@ -9,6 +9,8 @@ import {
   usePiratePrivyWallets,
 } from "@/lib/auth/privy-provider";
 import { type StoredSession, useSession } from "@/lib/api/session-store";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import {
   fetchProfileFollowSummary,
   fetchViewerFollowState,
@@ -62,6 +64,8 @@ export function useProfileFollowState(
   targetWalletAddress: string | null | undefined,
   ownProfile: boolean,
 ): ProfileFollowState {
+  const { locale } = useUiLocale();
+  const copy = React.useMemo(() => getLocaleMessages(locale, "routes").profile, [locale]);
   const session = useSession();
   const {
     busy: authBusy,
@@ -231,7 +235,7 @@ export function useProfileFollowState(
     }
 
     if (!viewerAddress) {
-      toast.error("Connect your wallet to follow people.");
+      toast.error(copy.connectWalletToFollow);
       connect?.();
       return;
     }
@@ -242,7 +246,7 @@ export function useProfileFollowState(
 
     if (!writeWallet) {
       connect?.();
-      toast.error("Reconnect your primary wallet to follow people.");
+      toast.error(copy.reconnectPrimaryWalletToFollow);
       return;
     }
 
@@ -267,7 +271,7 @@ export function useProfileFollowState(
         }
 
         setOverrideFollowing(previousOverride);
-        toast.error(error instanceof Error ? error.message : "Follow failed.");
+        toast.error(error instanceof Error ? error.message : copy.followFailed);
       })
       .finally(() => {
         setFollowBusy(false);
@@ -283,6 +287,9 @@ export function useProfileFollowState(
     targetAddress,
     viewerAddress,
     writeWallet,
+    copy.connectWalletToFollow,
+    copy.followFailed,
+    copy.reconnectPrimaryWalletToFollow,
   ]);
 
   return {

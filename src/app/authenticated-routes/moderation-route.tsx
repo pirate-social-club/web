@@ -29,6 +29,7 @@ import {
 } from "./moderation-helpers";
 import { getRouteFailureDescription } from "./route-status-copy";
 import { useCommunityModerationState } from "./moderation-state";
+import { useRouteMessages } from "./route-core";
 import { FullPageSpinner, RouteLoadFailureState } from "./route-shell";
 
 function useIsModerationMobileLayout() {
@@ -102,14 +103,15 @@ export function CommunityModerationIndexPage({
 }) {
   const isMobile = useIsModerationMobileLayout();
   const state = useCommunityModerationState(communityId);
-  const sections = buildCommunityModerationSections(null, communityId);
+  const { copy } = useRouteMessages();
+  const sections = buildCommunityModerationSections(null, communityId, copy.moderation);
   const blocked = CommunityModerationGuard({
     community: state.community,
     error: state.error,
     loading: state.loading,
     session: state.session,
     showInlineTitle: !isMobile,
-    title: "Mod tools",
+    title: copy.moderation.index.title,
   });
   const content = blocked ?? (
     <CommunityModerationIndexPageView
@@ -123,7 +125,7 @@ export function CommunityModerationIndexPage({
   if (isMobile) {
     return (
       <div className="min-h-screen w-full bg-background text-foreground">
-        <MobilePageHeader onBackClick={() => navigate(`/c/${communityId}`)} title="Mod tools" />
+        <MobilePageHeader onBackClick={() => navigate(`/c/${communityId}`)} title={copy.moderation.index.title} />
         <section className="flex min-w-0 flex-1 flex-col py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
           <div className="min-w-0">
             {content}
@@ -136,7 +138,7 @@ export function CommunityModerationIndexPage({
   return (
     <CommunityModerationShell
       communityAvatarSrc={state.community?.avatar_ref ?? undefined}
-      communityLabel={state.community ? `r/${state.community.display_name}` : "Moderator tools"}
+      communityLabel={state.community ? `r/${state.community.display_name}` : copy.moderation.shell.communityLabelFallback}
       onExitClick={() => navigate(`/c/${communityId}`)}
       sections={sections}
     >
@@ -155,7 +157,8 @@ export function CommunityModerationPage({
   const api = useApi();
   const isMobile = useIsModerationMobileLayout();
   const state = useCommunityModerationState(communityId);
-  const title = getCommunityModerationTitle(section);
+  const { copy } = useRouteMessages();
+  const title = getCommunityModerationTitle(section, copy.moderation);
   const moderationIndexPath = buildCommunityModerationIndexPath(communityId);
   const blocked = CommunityModerationGuard({
     community: state.community,
@@ -408,9 +411,9 @@ export function CommunityModerationPage({
   return (
     <CommunityModerationShell
       communityAvatarSrc={state.community?.avatar_ref ?? undefined}
-      communityLabel={state.community ? `r/${state.community.display_name}` : "Moderator tools"}
+      communityLabel={state.community ? `r/${state.community.display_name}` : copy.moderation.shell.communityLabelFallback}
       onExitClick={() => navigate(`/c/${communityId}`)}
-      sections={buildCommunityModerationSections(section, communityId)}
+      sections={buildCommunityModerationSections(section, communityId, copy.moderation)}
     >
       {content}
     </CommunityModerationShell>

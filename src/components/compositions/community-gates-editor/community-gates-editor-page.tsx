@@ -3,7 +3,6 @@
 import * as React from "react";
 import { isAddress } from "viem";
 
-import { Button } from "@/components/primitives/button";
 import { CommunityModerationSaveFooter } from "@/components/compositions/community-moderation-shell/community-moderation-save-footer";
 import { Checkbox } from "@/components/primitives/checkbox";
 import {
@@ -28,51 +27,13 @@ import type {
 import { isCountryCode } from "@/lib/countries";
 import { getGateDraftWarning } from "@/lib/identity-gates";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
-const membershipMeta: Record<CommunityMembershipMode, { label: string; detail: string }> = {
-  open: {
-    label: "Open",
-    detail: "Anyone can join immediately.",
-  },
-  request: {
-    label: "Request",
-    detail: "Users request to join.",
-  },
-  gated: {
-    label: "Gated",
-    detail: "Joining requires passing one or more gate checks.",
-  },
-};
 
-const anonymousScopeMeta: Record<
-  AnonymousIdentityScope,
-  { label: string; detail: string; disabledHint?: string }
-> = {
-  community_stable: {
-    label: "Community-stable",
-    detail: "One persistent anonymous label per user across the community.",
-  },
-  thread_stable: {
-    label: "Thread-stable",
-    detail: "One persistent anonymous label per user per thread.",
-  },
-  post_ephemeral: {
-    label: "Post-ephemeral",
-    detail: "Random label per post. Limits moderation continuity.",
-    disabledHint: "Post-ephemeral scope is not available in v0.",
-  },
-};
 
-const readAccessMeta: Record<CommunityReadAccessMode, { label: string; detail: string }> = {
-  public: {
-    label: "Public",
-    detail: "Anyone can read posts.",
-  },
-  members_only: {
-    label: "Members only",
-    detail: "Only joined members can read posts.",
-  },
-};
+
+
+
 
 function Section({
   title,
@@ -209,6 +170,28 @@ export function CommunityGatesEditorPage({
   saveDisabled = false,
   showSaveAction = true,
 }: CommunityGatesEditorPageProps) {
+  const { copy } = useRouteMessages();
+  const mc = copy.moderation.gates;
+
+  const membershipMeta: Record<CommunityMembershipMode, { label: string; detail: string }> = {
+    open: { label: mc.membershipOpenLabel, detail: mc.membershipOpenDetail },
+    request: { label: mc.membershipRequestLabel, detail: mc.membershipRequestDetail },
+    gated: { label: mc.membershipGatedLabel, detail: mc.membershipGatedDetail },
+  };
+
+  const anonymousScopeMeta: Record<
+    AnonymousIdentityScope,
+    { label: string; detail: string; disabledHint?: string }
+  > = {
+    community_stable: { label: mc.anonymousScopeCommunityStableLabel, detail: mc.anonymousScopeCommunityStableDetail },
+    thread_stable: { label: mc.anonymousScopeThreadStableLabel, detail: mc.anonymousScopeThreadStableDetail },
+    post_ephemeral: { label: mc.anonymousScopePostEphemeralLabel, detail: mc.anonymousScopePostEphemeralDetail, disabledHint: mc.anonymousScopePostEphemeralDisabledHint },
+  };
+
+  const readAccessMeta: Record<CommunityReadAccessMode, { label: string; detail: string }> = {
+    public: { label: mc.readAccessPublicLabel, detail: mc.readAccessPublicDetail },
+    members_only: { label: mc.readAccessMembersOnlyLabel, detail: mc.readAccessMembersOnlyDetail },
+  };
   const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
   const genderGate = gateDrafts.find((draft) => draft.gateType === "gender");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
@@ -219,12 +202,12 @@ export function CommunityGatesEditorPage({
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="flex min-w-0 items-start gap-4">
           <div className="min-w-0 space-y-2">
-            <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Access and gates</h1>
+            <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
           </div>
         </div>
       </div>
 
-      <Section title="Membership">
+      <Section title={mc.membershipTitle}>
         <SegmentedControl
           onChange={(value) => onMembershipModeChange?.(value as CommunityMembershipMode)}
           options={membershipMeta}
@@ -234,14 +217,14 @@ export function CommunityGatesEditorPage({
         {membershipMode === "gated" ? (
           <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:px-5">
             <FormSectionHeading
-              description="Select at least one gate before saving."
-              title="Gate checks"
+              description={mc.gateChecksDescription}
+              title={mc.gateChecksTitle}
             />
 
             <CheckboxCard
               checked={Boolean(nationalityGate)}
-              description="Require nationality verification through Self."
-              title="Nationality verification"
+              description={mc.nationalityDescription}
+              title={mc.nationalityTitle}
               onCheckedChange={(checked) => onGateDraftsChange?.(
                 checked
                   ? upsertGateDraft(gateDrafts, {
@@ -255,7 +238,7 @@ export function CommunityGatesEditorPage({
 
             {nationalityGate ? (
               <div className="space-y-2">
-                <FormFieldLabel label="Allowed nationality" />
+                <FormFieldLabel label={mc.allowedNationalityLabel} />
                 <NationalityPicker
                   onChange={(code) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
                     gateType: "nationality",
@@ -265,15 +248,15 @@ export function CommunityGatesEditorPage({
                   value={nationalityGate.requiredValue || null}
                 />
                 {nationalityGate.requiredValue.length > 0 && !isCountryCode(nationalityGate.requiredValue) ? (
-                  <FormNote tone="warning">Select a valid country.</FormNote>
+                  <FormNote tone="warning">{mc.selectValidCountry}</FormNote>
                 ) : null}
               </div>
             ) : null}
 
             <CheckboxCard
               checked={Boolean(genderGate)}
-              description="Require the Self document marker on a verified document."
-              title="Self document marker"
+              description={mc.genderDescription}
+              title={mc.genderTitle}
               onCheckedChange={(checked) => onGateDraftsChange?.(
                 checked
                   ? upsertGateDraft(gateDrafts, {
@@ -295,12 +278,12 @@ export function CommunityGatesEditorPage({
                   }))}
                   options={{
                     F: {
-                      label: "F marker",
-                      detail: "Accept only members whose Self document marker is F.",
+                      label: mc.fMarkerLabel,
+                      detail: mc.fMarkerDetail,
                     },
                     M: {
-                      label: "M marker",
-                      detail: "Accept only members whose Self document marker is M.",
+                      label: mc.mMarkerLabel,
+                      detail: mc.mMarkerDetail,
                     },
                   }}
                   value={genderGate.requiredValue}
@@ -313,8 +296,8 @@ export function CommunityGatesEditorPage({
 
             <CheckboxCard
               checked={Boolean(erc721Gate)}
-              description="Require a linked Ethereum wallet that holds a specific ERC-721 collection."
-              title="Ethereum NFT collection"
+              description={mc.erc721Description}
+              title={mc.erc721Title}
               onCheckedChange={(checked) => onGateDraftsChange?.(
                 checked
                   ? upsertGateDraft(gateDrafts, {
@@ -328,7 +311,7 @@ export function CommunityGatesEditorPage({
 
             {erc721Gate ? (
               <div className="space-y-2">
-                <FormFieldLabel label="Collection contract" />
+                <FormFieldLabel label={mc.collectionContractLabel} />
                 <Input
                   className="h-12 rounded-[var(--radius-lg)]"
                   onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
@@ -336,11 +319,11 @@ export function CommunityGatesEditorPage({
                     chainNamespace: "eip155:1",
                     contractAddress: event.target.value,
                   }))}
-                  placeholder="0x..."
+                  placeholder={mc.collectionContractPlaceholder}
                   value={erc721Gate.contractAddress}
                 />
                 {!isAddress(erc721Gate.contractAddress.trim()) ? (
-                  <FormNote tone="warning">Enter a valid Ethereum contract address.</FormNote>
+                  <FormNote tone="warning">{mc.invalidContractAddress}</FormNote>
                 ) : null}
               </div>
             ) : null}
@@ -348,7 +331,7 @@ export function CommunityGatesEditorPage({
         ) : null}
       </Section>
 
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Reading">
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title={mc.readingTitle}>
         <div className="space-y-3">
           {(Object.keys(readAccessMeta) as CommunityReadAccessMode[]).map((mode) => (
             <OptionCard
@@ -362,18 +345,18 @@ export function CommunityGatesEditorPage({
         </div>
       </Section>
 
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Identity and access">
+      <Section className="border-t border-border-soft pt-6 md:pt-8" title={mc.identityAndAccessTitle}>
         <div className="space-y-5">
           <CheckboxRow
             checked={allowAnonymousIdentity}
             id="community-allow-anonymous-posting"
-            label="Allow anonymous posting"
+            label={mc.allowAnonymousPosting}
             onCheckedChange={onAllowAnonymousIdentityChange ?? (() => {})}
           />
 
           {allowAnonymousIdentity ? (
             <div className="space-y-3 border-l border-border-soft pl-4">
-              <p className="text-base font-medium">Anonymous scope</p>
+              <p className="text-base font-medium">{mc.anonymousScopeLabel}</p>
               <div className="space-y-2">
                 {(Object.keys(anonymousScopeMeta) as AnonymousIdentityScope[]).map((scope) => {
                   const option = anonymousScopeMeta[scope];
@@ -398,7 +381,7 @@ export function CommunityGatesEditorPage({
           <CheckboxRow
             checked={defaultAgeGatePolicy === "18_plus"}
             id="community-18-plus"
-            label="18+ community"
+            label={mc.ageGateLabel}
             onCheckedChange={(checked) => onDefaultAgeGatePolicyChange?.(checked ? "18_plus" : "none")}
           />
 

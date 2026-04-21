@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 export interface CommunityModerationSaveFooterProps {
   className?: string;
@@ -19,9 +20,11 @@ export function CommunityModerationSaveFooter({
   disabled = false,
   loading = false,
   onSave,
-  primaryLabel = "Save",
+  primaryLabel,
   secondaryAction,
 }: CommunityModerationSaveFooterProps) {
+  const { copy } = useRouteMessages();
+  const label = primaryLabel ?? copy.moderation.saveFooter.defaultSaveLabel;
   return (
     <div
       className={cn(
@@ -34,7 +37,7 @@ export function CommunityModerationSaveFooter({
           {secondaryAction}
         </div>
         <Button className="w-full sm:w-auto" disabled={disabled} loading={loading} onClick={onSave}>
-          {primaryLabel}
+          {label}
         </Button>
       </div>
     </div>

@@ -65,35 +65,6 @@ const DEFAULT_PRIMARY_ITEMS: readonly AppSidebarPrimaryItem[] = [
   { id: "create-community", icon: Plus, label: "Create Community" },
 ];
 
-const DEFAULT_SECTIONS: readonly AppSidebarSection[] = [
-  {
-    id: "recent",
-    label: "Recent",
-    defaultOpen: true,
-    items: [
-      { id: "c/club1", label: "c/club1" },
-      { id: "c/club2", label: "c/club2" },
-      { id: "c/club3", label: "c/club3" },
-    ],
-  },
-  {
-    id: "communities",
-    label: "Communities",
-    defaultOpen: true,
-    items: [
-      { id: "c/pirates", label: "c/pirates" },
-      { id: "c/music", label: "c/music" },
-      { id: "c/builders", label: "c/builders" },
-    ],
-  },
-];
-
-const DEFAULT_RESOURCE_ITEMS: readonly AppSidebarSectionItem[] = [
-  { id: "blog", label: "Blog" },
-  { id: "terms-of-service", label: "Terms of Service" },
-  { id: "privacy-policy", label: "Privacy Policy" },
-];
-
 function SidebarSectionBlock({
   activeItemId,
   onItemSelect,

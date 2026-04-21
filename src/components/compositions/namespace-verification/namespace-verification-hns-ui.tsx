@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { CopyField } from "@/components/primitives/copy-field";
 import { FormNote } from "@/components/primitives/form-layout";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 import type { NamespaceVerificationModalState } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
 
@@ -54,6 +55,8 @@ export function NamespaceVerificationHnsPanel({
   rootLabel: string;
   setupNameservers: string[] | null;
 }) {
+  const { copy } = useRouteMessages();
+  const mc = copy.moderation.namespaceVerification.hns;
   const nameservers = (setupNameservers ?? []).filter((value) => value.trim().length > 0);
   const challengeName = challengeHost ?? (rootLabel.trim() ? `_pirate.${rootLabel.trim()}` : "_pirate");
 
@@ -62,16 +65,16 @@ export function NamespaceVerificationHnsPanel({
       {mode === "pirate_managed" ? null : (
         <FormNote>
           {mode === "dns_setup_required"
-            ? "Set nameservers first. Parent-side TXT values will not create the _pirate record."
+            ? mc.dnsSetupNote
             : challengePending
-              ? "TXT propagation is still pending."
-              : "Add this TXT record on your authoritative DNS, then verify."}
+              ? mc.txtPendingNote
+              : mc.txtVerifyNote}
         </FormNote>
       )}
 
       {nameservers.length > 0 ? (
         <div className="space-y-3">
-          <div className="text-base text-muted-foreground">Nameservers</div>
+          <div className="text-base text-muted-foreground">{mc.nameserversLabel}</div>
           <div className="space-y-2">
             {nameservers.map((value) => (
               <CopyField key={value} value={value} />
@@ -89,7 +92,7 @@ export function NamespaceVerificationHnsPanel({
       {mode === "pirate_managed" ? (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <div className="text-base text-muted-foreground">Challenge</div>
+            <div className="text-base text-muted-foreground">{mc.challengeLabel}</div>
             <CopyField value={challengeName} />
           </div>
         </div>
@@ -98,11 +101,11 @@ export function NamespaceVerificationHnsPanel({
       {mode === "owner_managed_txt" && challengeHost && challengeTxtValue ? (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <div className="text-base text-muted-foreground">Host</div>
+            <div className="text-base text-muted-foreground">{mc.hostLabel}</div>
             <CopyField value={challengeHost} />
           </div>
           <div className="space-y-1.5">
-            <div className="text-base text-muted-foreground">Value</div>
+            <div className="text-base text-muted-foreground">{mc.valueLabel}</div>
             <CopyField value={challengeTxtValue} />
           </div>
         </div>

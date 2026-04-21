@@ -1,9 +1,12 @@
 {
   "appHeader": {
+    "backAriaLabel": "رجوع",
     "connectLabel": "اتصل",
+    "connectUnavailableToast": "Connect غير مُعدّ لهذه البيئة.",
     "createEmptyLabel": "لا توجد مجتمعات حديثة.",
     "createLabel": "أنشئ",
     "createPickerTitle": "أنشئ منشورًا في",
+    "defaultAvatarFallback": "مستخدم بايرت",
     "homeAriaLabel": "اذهب إلى الصفحة الرئيسية",
     "notificationsAriaLabel": "الإشعارات",
     "openNavigationAriaLabel": "افتح التنقل",
@@ -60,6 +63,11 @@
     "primaryNavAriaLabel": "التنقل الرئيسي",
     "profileAriaLabel": "الملف الشخصي",
     "profileLabel": "الملف الشخصي"
+  },
+  "rootError": {
+    "description": "حدث خطأ أثناء تحميل Pirate. أعد تحميل الصفحة ثم حاول مرة أخرى.",
+    "reloadLabel": "إعادة التحميل",
+    "title": "واجه Pirate مشكلة"
   },
   "storybook": {
     "contentAreaLabel": "منطقة المحتوى",

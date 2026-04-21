@@ -262,6 +262,7 @@ const meta = {
   args: {
     children: null,
     communityLabel: moderationStoryCommunityLabel,
+    sections: [],
   },
   parameters: {
     layout: "fullscreen",

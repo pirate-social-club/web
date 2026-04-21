@@ -36,6 +36,8 @@ function CommentNode({
   comment: PostThreadComment;
   depth: number;
 }) {
+  const { locale } = useUiLocale();
+  const commonCopy = getLocaleMessages(locale, "routes").common;
   const children = comment.children ?? [];
   const hasBranch = children.length > 0 || Boolean(comment.moreRepliesLabel);
   const [collapsed, setCollapsed] = React.useState(Boolean(comment.initiallyCollapsed));
@@ -133,7 +135,7 @@ function CommentNode({
                 {comment.onVote ? (
                   <>
                     <IconButton
-                      aria-label="Upvote comment"
+                      aria-label={commonCopy.upvoteComment}
                       size="sm"
                       variant={comment.viewerVote === "up" ? "secondary" : "ghost"}
                       onClick={() => {
@@ -144,7 +146,7 @@ function CommentNode({
                       <CaretUp className="size-5" />
                     </IconButton>
                     <IconButton
-                      aria-label="Downvote comment"
+                      aria-label={commonCopy.downvoteComment}
                       size="sm"
                       variant={comment.viewerVote === "down" ? "secondary" : "ghost"}
                       onClick={() => {
@@ -204,7 +206,7 @@ function CommentNode({
 
           {children.length > 0 ? (
             <IconButton
-              aria-label={collapsed ? "Expand replies" : "Collapse replies"}
+              aria-label={collapsed ? commonCopy.expandReplies : commonCopy.collapseReplies}
               size="sm"
               variant="ghost"
               onClick={() => {
@@ -227,7 +229,7 @@ function CommentNode({
                 setCollapsed(false);
               }}
             >
-              {comment.moreRepliesLabel ?? `Show ${children.length} replies`}
+              {comment.moreRepliesLabel ?? commonCopy.showRepliesCount.replace("{count}", String(children.length))}
             </Button>
           </div>
         ) : null}

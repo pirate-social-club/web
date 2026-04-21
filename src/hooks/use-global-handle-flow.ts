@@ -5,6 +5,8 @@ import * as React from "react";
 import { useApi } from "@/lib/api";
 import { normalizeHandleLabel, isValidHandleSyntax, formatHandle } from "@/lib/global-handle";
 import type { ApiError } from "@/lib/api/client";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 
 export type HandleRenameState =
   | { kind: "idle" }
@@ -37,6 +39,8 @@ export function useGlobalHandleFlow({
   onRenamed,
 }: UseGlobalHandleFlowOptions): UseGlobalHandleFlowReturn {
   const api = useApi();
+  const { locale } = useUiLocale();
+  const copy = React.useMemo(() => getLocaleMessages(locale, "routes").settings, [locale]);
   const [draft, setDraft] = React.useState("");
   const [state, setState] = React.useState<HandleRenameState>({ kind: "idle" });
   const checkRequestIdRef = React.useRef(0);
@@ -74,7 +78,7 @@ export function useGlobalHandleFlow({
         if (!quote.eligible) {
           setState({
             kind: "unavailable",
-            reason: quote.reason ?? "This handle is not available.",
+            reason: quote.reason ?? copy.handleUnavailableMessage,
           });
         } else {
           setState({
@@ -85,9 +89,9 @@ export function useGlobalHandleFlow({
       })
       .catch(() => {
         if (requestId !== checkRequestIdRef.current) return;
-        setState({ kind: "error", message: "Could not check availability." });
+        setState({ kind: "error", message: copy.handleCheckFailed });
       });
-  }, [api, isNoop, isValidSyntax, normalized]);
+  }, [api, copy.handleCheckFailed, copy.handleUnavailableMessage, isNoop, isValidSyntax, normalized]);
 
   const submitRename = React.useCallback(async () => {
     if (isNoop || !isValidSyntax || state.kind !== "available") return;
@@ -101,16 +105,27 @@ export function useGlobalHandleFlow({
       const apiErr = e as ApiError;
       const status = apiErr?.status;
       if (status === 409) {
-        setState({ kind: "unavailable", reason: "This handle is already taken." });
+        setState({ kind: "unavailable", reason: copy.handleTakenMessage });
       } else if (status === 429) {
-        setState({ kind: "unavailable", reason: "Try again later." });
+        setState({ kind: "unavailable", reason: copy.handleRetryLaterMessage });
       } else if (status === 403) {
-        setState({ kind: "unavailable", reason: "This rename is not available right now." });
+        setState({ kind: "unavailable", reason: copy.handleRenameUnavailableMessage });
       } else {
-        setState({ kind: "error", message: apiErr?.message ?? "Rename failed." });
+        setState({ kind: "error", message: apiErr?.message ?? copy.handleRenameFailed });
       }
     }
-  }, [api, isNoop, isValidSyntax, normalized, state.kind, onRenamed]);
+  }, [
+    api,
+    copy.handleRenameFailed,
+    copy.handleRenameUnavailableMessage,
+    copy.handleRetryLaterMessage,
+    copy.handleTakenMessage,
+    isNoop,
+    isValidSyntax,
+    normalized,
+    onRenamed,
+    state.kind,
+  ]);
 
   const resetState = React.useCallback(() => {
     checkRequestIdRef.current += 1;

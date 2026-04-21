@@ -8,6 +8,7 @@ import { CommunityModerationSaveFooter } from "@/components/compositions/communi
 import { FormFieldLabel } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 export type DonationPolicyMode = "none" | "optional_creator_sidecar";
 
@@ -82,11 +83,13 @@ export function CommunityDonationsEditorPage({
   saveDisabled = false,
   saveLoading = false,
 }: CommunityDonationsEditorPageProps) {
+  const { copy } = useRouteMessages();
+  const mc = copy.moderation.donations;
   return (
     <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Charity</h1>
+          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
         </div>
       </div>
 
@@ -94,11 +97,11 @@ export function CommunityDonationsEditorPage({
         <div className="rounded-[1.75rem] border border-border-soft bg-card p-4 md:p-5">
           <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
             <div className="space-y-2">
-              <FormFieldLabel label="Charity URL" />
+              <FormFieldLabel label={mc.charityUrlLabel} />
               <Input
                 className="h-12 px-4 py-2"
                 onChange={(event) => onEndaomentUrlChange?.(event.target.value)}
-                placeholder="https://app.endaoment.org/orgs/..."
+                placeholder={mc.charityUrlPlaceholder}
                 value={endaomentUrl}
               />
             </div>

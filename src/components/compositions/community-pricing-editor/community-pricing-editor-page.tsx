@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/primitives/select";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 export type PricingTier = {
   tier_key: string;
@@ -57,119 +58,7 @@ function formatTierLabel(tier: PricingTier): string {
   return tier.display_name?.trim() || tier.tier_key;
 }
 
-function TierRow({
-  tier,
-  isDefault,
-  onRemove,
-  onUpdate,
-}: {
-  tier: PricingTier;
-  isDefault: boolean;
-  onRemove?: () => void;
-  onUpdate?: (patch: Partial<PricingTier>) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3 md:flex-row md:items-start">
-      <div className="grid flex-1 gap-3 md:grid-cols-4">
-        <div>
-          <FormFieldLabel label="Name" />
-          <Input
-            className="h-10"
-            onChange={(event) => onUpdate?.({ display_name: event.target.value })}
-            placeholder="Tier 1"
-            value={tier.display_name ?? ""}
-          />
-        </div>
-        <div>
-          <FormFieldLabel label="Internal key" />
-          <Input
-            className="h-10"
-            disabled={isDefault}
-            onChange={(event) => onUpdate?.({ tier_key: event.target.value })}
-            placeholder="tier_1"
-            value={tier.tier_key}
-          />
-        </div>
-        <div>
-          <FormFieldLabel label="Multiplier" />
-          <Input
-            className="h-10"
-            inputMode="decimal"
-            onChange={(event) => {
-              const parsed = parseFloat(event.target.value);
-              if (!Number.isNaN(parsed)) {
-                onUpdate?.({ adjustment_value: parsed });
-              }
-            }}
-            placeholder="1.00"
-            value={tier.adjustment_value || ""}
-          />
-        </div>
-        <div />
-      </div>
-      <Button
-        className="size-10 shrink-0 self-end md:mt-5"
-        disabled={isDefault}
-        onClick={onRemove}
-        size="icon"
-        variant="secondary"
-      >
-        <Trash className="size-4" />
-      </Button>
-    </div>
-  );
-}
 
-function CountryRow({
-  assignment,
-  tiers,
-  onUpdate,
-  onRemove,
-}: {
-  assignment: CountryAssignment;
-  tiers: PricingTier[];
-  onUpdate?: (patch: Partial<CountryAssignment>) => void;
-  onRemove?: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="w-full sm:w-20">
-        <Input
-          className="h-10 uppercase"
-          maxLength={2}
-          onChange={(event) =>
-            onUpdate?.({ country_code: event.target.value.toUpperCase() })
-          }
-          placeholder="US"
-          value={assignment.country_code}
-        />
-      </div>
-      <Select
-        onValueChange={(value) => onUpdate?.({ tier_key: value })}
-        value={assignment.tier_key}
-      >
-        <SelectTrigger className="h-10 w-full flex-1">
-          <SelectValue placeholder="Select tier" />
-        </SelectTrigger>
-        <SelectContent>
-          {tiers.map((tier) => (
-            <SelectItem key={tier.tier_key} value={tier.tier_key}>
-              {formatTierLabel(tier)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        className="size-10 shrink-0 self-end sm:self-auto"
-        onClick={onRemove}
-        size="icon"
-        variant="secondary"
-      >
-        <Minus className="size-4" />
-      </Button>
-    </div>
-  );
-}
 
 export function CommunityPricingEditorPage({
   className,
@@ -189,13 +78,129 @@ export function CommunityPricingEditorPage({
   saveDisabled = false,
   saveLoading = false,
 }: CommunityPricingEditorPageProps) {
+  const { copy } = useRouteMessages();
+  const mc = copy.moderation.pricing;
+
+  function TierRow({
+    tier,
+    isDefault,
+    onRemove,
+    onUpdate,
+  }: {
+    tier: PricingTier;
+    isDefault: boolean;
+    onRemove?: () => void;
+    onUpdate?: (patch: Partial<PricingTier>) => void;
+  }) {
+    return (
+      <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3 md:flex-row md:items-start">
+        <div className="grid flex-1 gap-3 md:grid-cols-4">
+          <div>
+            <FormFieldLabel label={mc.tierNameLabel} />
+            <Input
+              className="h-10"
+              onChange={(event) => onUpdate?.({ display_name: event.target.value })}
+              placeholder={mc.tierNamePlaceholder}
+              value={tier.display_name ?? ""}
+            />
+          </div>
+          <div>
+            <FormFieldLabel label={mc.internalKeyLabel} />
+            <Input
+              className="h-10"
+              disabled={isDefault}
+              onChange={(event) => onUpdate?.({ tier_key: event.target.value })}
+              placeholder={mc.internalKeyPlaceholder}
+              value={tier.tier_key}
+            />
+          </div>
+          <div>
+            <FormFieldLabel label={mc.multiplierLabel} />
+            <Input
+              className="h-10"
+              inputMode="decimal"
+              onChange={(event) => {
+                const parsed = parseFloat(event.target.value);
+                if (!Number.isNaN(parsed)) {
+                  onUpdate?.({ adjustment_value: parsed });
+                }
+              }}
+              placeholder={mc.multiplierPlaceholder}
+              value={tier.adjustment_value || ""}
+            />
+          </div>
+          <div />
+        </div>
+        <Button
+          className="size-10 shrink-0 self-end md:mt-5"
+          disabled={isDefault}
+          onClick={onRemove}
+          size="icon"
+          variant="secondary"
+        >
+          <Trash className="size-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  function CountryRow({
+    assignment,
+    tiers,
+    onUpdate,
+    onRemove,
+  }: {
+    assignment: CountryAssignment;
+    tiers: PricingTier[];
+    onUpdate?: (patch: Partial<CountryAssignment>) => void;
+    onRemove?: () => void;
+  }) {
+    return (
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="w-full sm:w-20">
+          <Input
+            className="h-10 uppercase"
+            maxLength={2}
+            onChange={(event) =>
+              onUpdate?.({ country_code: event.target.value.toUpperCase() })
+            }
+            placeholder={mc.countryCodePlaceholder}
+            value={assignment.country_code}
+          />
+        </div>
+        <Select
+          onValueChange={(value) => onUpdate?.({ tier_key: value })}
+          value={assignment.tier_key}
+        >
+          <SelectTrigger className="h-10 w-full flex-1">
+            <SelectValue placeholder={mc.selectTierPlaceholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {tiers.map((tier) => (
+              <SelectItem key={tier.tier_key} value={tier.tier_key}>
+                {formatTierLabel(tier)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          className="size-10 shrink-0 self-end sm:self-auto"
+          onClick={onRemove}
+          size="icon"
+          variant="secondary"
+        >
+          <Minus className="size-4" />
+        </Button>
+      </div>
+    );
+  }
   const tierKeys = tiers.map((t) => t.tier_key);
 
   return (
     <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Pricing</h1>
+          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
         </div>
         {onUseStarterTemplate ? (
           <Button className="w-full sm:w-auto" onClick={onUseStarterTemplate} variant="secondary">
@@ -214,7 +219,7 @@ export function CommunityPricingEditorPage({
           onCheckedChange={(next) => onRegionalPricingEnabledChange?.(next === true)}
         />
         <div className="space-y-1">
-          <Label htmlFor="regional-pricing-enabled">Regional pricing</Label>
+          <Label htmlFor="regional-pricing-enabled">{mc.regionalPricingLabel}</Label>
           <div className="text-base text-muted-foreground">
             Buyers without verified nationality pay the default price.
           </div>
@@ -224,7 +229,7 @@ export function CommunityPricingEditorPage({
       {regionalPricingEnabled ? (
         <>
           <div className="space-y-4">
-            <FormSectionHeading title="Verification" />
+            <FormSectionHeading title={mc.verificationTitle} />
             <Select
               onValueChange={(value) =>
                 onVerificationProviderRequirementChange?.(value === "self" ? "self" : null)
@@ -242,7 +247,7 @@ export function CommunityPricingEditorPage({
 
           <div className="space-y-4">
             <FormSectionHeading
-              title="Tiers"
+              title={mc.tiersTitle}
             />
             {tiers.map((tier, index) => (
               <TierRow
@@ -281,14 +286,14 @@ export function CommunityPricingEditorPage({
 
           <div className="space-y-4">
             <FormSectionHeading
-              title="Default tier"
+              title={mc.defaultTierTitle}
             />
             <Select
               onValueChange={onDefaultTierKeyChange}
               value={defaultTierKey ?? undefined}
             >
               <SelectTrigger className="h-12 w-full sm:max-w-xs">
-                <SelectValue placeholder="Select default tier" />
+                <SelectValue placeholder={mc.selectDefaultTierPlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {tiers.map((tier) => (
@@ -302,7 +307,7 @@ export function CommunityPricingEditorPage({
 
           <div className="space-y-4">
             <FormSectionHeading
-              title="Country assignments"
+              title={mc.countryAssignmentsTitle}
             />
             {countryAssignments.map((assignment, index) => (
               <CountryRow

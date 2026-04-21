@@ -4,7 +4,9 @@ import * as React from "react";
 import { ArrowFatDown, ArrowFatUp } from "@phosphor-icons/react";
 
 import { triggerLikeToggleHaptic } from "@/lib/haptics";
+import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { getLocaleMessages } from "@/locales";
 
 function formatScore(score: number): string {
   if (score >= 1000) {
@@ -23,6 +25,8 @@ export interface VotePillProps {
 }
 
 export function VotePill({ score, viewerVote, onVote, allowClear = false, className }: VotePillProps) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").common;
   const handleVote = React.useCallback((direction: "up" | "down") => {
     if (!onVote) return;
 
@@ -51,7 +55,7 @@ export function VotePill({ score, viewerVote, onVote, allowClear = false, classN
         )}
         onClick={() => handleVote("up")}
         type="button"
-        aria-label="Upvote"
+        aria-label={copy.upvote}
       >
         <ArrowFatUp className={cn("size-[20px]", viewerVote === "up" && "fill-current")} />
       </button>
@@ -76,7 +80,7 @@ export function VotePill({ score, viewerVote, onVote, allowClear = false, classN
         )}
         onClick={() => handleVote("down")}
         type="button"
-        aria-label="Downvote"
+        aria-label={copy.downvote}
       >
         <ArrowFatDown className={cn("size-[20px]", viewerVote === "down" && "fill-current")} />
       </button>

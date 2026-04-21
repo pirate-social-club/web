@@ -7,7 +7,7 @@ import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { updateSessionProfile, useSession } from "@/lib/api/session-store";
 import { ApiError } from "@/lib/api/client";
-import { saveStoredOwnedAgentKey } from "@/lib/agents/agent-key-store";
+import { findStoredOwnedAgentKey, saveStoredOwnedAgentKey } from "@/lib/agents/agent-key-store";
 import { useUiLocale } from "@/lib/ui-locale";
 import { type UiLocaleCode, isUiLocaleCode } from "@/lib/ui-locale-core";
 import { useGlobalHandleFlow } from "@/hooks/use-global-handle-flow";
@@ -258,6 +258,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const [agentsState, setAgentsState] = React.useState<SettingsPageProps["agents"]["registrationState"]>({ kind: "idle" });
   const [agentImportValue, setAgentImportValue] = React.useState("");
   const pendingAgentRegistrationRef = React.useRef<PendingAgentRegistration | null>(null);
+  const pendingPairingDisplayNameRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     if (!profile) return;
@@ -464,6 +465,25 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     }
   }, [api.agents, loadOwnedAgents]);
 
+  const handleUpdateAgentName = React.useCallback(async (agentId: string, nextDisplayName: string) => {
+    const updatedAgent = await api.agents.update(agentId, {
+      display_name: nextDisplayName.trim(),
+    });
+
+    setOwnedAgents((current) => current.map((agent) => (
+      agent.agentId === updatedAgent.agent_id ? mapApiUserAgentToOwnedAgent(updatedAgent) : agent
+    )));
+
+    const storedKey = await findStoredOwnedAgentKey(agentId);
+    if (storedKey) {
+      await saveStoredOwnedAgentKey({
+        ...storedKey,
+        displayName: updatedAgent.display_name,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }, [api.agents]);
+
   React.useEffect(() => {
     if (agentsState.kind !== "awaiting_owner" && agentsState.kind !== "pairing_code") {
       return;
@@ -474,22 +494,35 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         void completePendingAgentRegistration({ silent: true });
       }
       void loadOwnedAgents()
-        .then((items) => {
-          if (items?.some((agent) => agent.status === "active")) {
+        .then(async (items) => {
+          const activeAgent = items?.find((agent) => agent.status === "active");
+          if (activeAgent && pendingPairingDisplayNameRef.current?.trim()) {
+            const pendingDisplayName = pendingPairingDisplayNameRef.current.trim();
+            if (activeAgent.displayName !== pendingDisplayName) {
+              await handleUpdateAgentName(activeAgent.agentId, pendingDisplayName);
+              await loadOwnedAgents();
+            }
+            pendingPairingDisplayNameRef.current = null;
+          }
+
+          if (activeAgent) {
             pendingAgentRegistrationRef.current = null;
             setAgentsState({ kind: "idle" });
           }
         })
-        .catch(() => {});
+        .catch((error: unknown) => {
+          console.warn("[settings] agent pairing poll failed", error);
+        });
     }, 5000);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [agentsState, completePendingAgentRegistration, loadOwnedAgents]);
+  }, [agentsState, completePendingAgentRegistration, handleUpdateAgentName, loadOwnedAgents]);
 
-  const handleStartAgentPairing = React.useCallback(async () => {
+  const handleStartAgentPairing = React.useCallback(async (displayName: string) => {
     setAgentsState({ kind: "verifying" });
+    pendingPairingDisplayNameRef.current = displayName.trim();
     try {
       const pairing = await api.agents.createPairing();
       setAgentsState({
@@ -498,6 +531,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         expiresAt: pairing.expires_at,
       });
     } catch (error: unknown) {
+      pendingPairingDisplayNameRef.current = null;
       const apiError = error as ApiError;
       setAgentsState({
         kind: "error",
@@ -539,15 +573,13 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     });
   }, [api.agents]);
 
-  const handleImportAgentRegistration = React.useCallback(async () => {
+  const handleImportAgentRegistration = React.useCallback(async (displayName: string) => {
     if (!profile) return;
 
     setAgentsState({ kind: "verifying" });
 
     try {
       const importedBundle = parseImportedOpenClawBundle(agentImportValue);
-      const fallbackDisplayName = `${(profile.display_name?.trim() || profile.global_handle.label.replace(/\.pirate$/i, ""))} Agent`;
-      const displayName = importedBundle.display_name?.trim() || fallbackDisplayName;
 
       await startAgentRegistration({
         agentChallenge: importedBundle.agent_challenge,
@@ -630,16 +662,17 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         importValue: agentImportValue,
         loading: agentsLoading,
         registrationState: agentsState,
-        onStartPairing: () => {
-          void handleStartAgentPairing();
+        onStartPairing: (nextDisplayName) => {
+          void handleStartAgentPairing(nextDisplayName);
         },
-        onImportRegistration: () => {
-          void handleImportAgentRegistration();
+        onImportRegistration: (nextDisplayName) => {
+          void handleImportAgentRegistration(nextDisplayName);
         },
         onImportValueChange: setAgentImportValue,
         onCheckRegistration: () => {
           void completePendingAgentRegistration();
         },
+        onUpdateName: (agentId, nextDisplayName) => handleUpdateAgentName(agentId, nextDisplayName),
       }}
     />
   );

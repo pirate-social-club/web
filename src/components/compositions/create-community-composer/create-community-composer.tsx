@@ -17,6 +17,7 @@ import { Stepper } from "@/components/primitives/stepper";
 import { Textarea } from "@/components/primitives/textarea";
 import { toast } from "@/components/primitives/sonner";
 import { isCountryCode } from "@/lib/countries";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 import { resolveCommunityAvatarSrc, resolveCommunityBannerSrc } from "@/lib/default-community-media";
 import { formatGateRequirement, getGateDraftWarning } from "@/lib/identity-gates";
 import {
@@ -25,9 +26,7 @@ import {
   Section,
   SegmentedControl,
   acceptedCommunityImageTypes,
-  anonymousScopeMeta,
-  composerSteps,
-  membershipMeta,
+
   useCommunityPreviewMedia,
   CheckboxRow,
   CommunityReviewStep,
@@ -116,14 +115,17 @@ export function CreateCommunityComposer({
   const creatorAgeRequirementMet =
     activeDefaultAgeGatePolicy !== "18_plus" || creatorAgeOver18Verified;
   const creatorCanCreate = creatorUniqueHumanVerified && creatorAgeRequirementMet;
+  const { copy } = useRouteMessages();
+  const cc = copy.createCommunity.composer;
+
   const namespaceRouteLabel = React.useMemo(() => {
     if (!namespaceAttachment) {
-      return hasPendingNamespaceSession ? "Verification in progress" : "No verified route";
+      return hasPendingNamespaceSession ? cc.verificationInProgress : cc.noRoute;
     }
 
     const prefix = namespaceAttachment.family === "spaces" ? "@" : ".";
     return `${prefix}${namespaceAttachment.normalizedRootLabel}`;
-  }, [hasPendingNamespaceSession, namespaceAttachment]);
+  }, [hasPendingNamespaceSession, namespaceAttachment, cc]);
 
   const activeGateDrafts: IdentityGateDraft[] = [
     ...(nationalityEnabled && isCountryCode(nationalityRequiredValue)
@@ -198,7 +200,7 @@ export function CreateCommunityComposer({
       namespaceVerificationId: namespaceAttachment?.namespaceVerificationId ?? null,
     })
       .catch((error: unknown) => {
-        toast.error(error instanceof Error ? error.message : "Could not create community");
+        toast.error(error instanceof Error ? error.message : cc.createError);
       })
       .finally(() => {
         setSubmitting(false);
@@ -256,7 +258,11 @@ export function CreateCommunityComposer({
     creatorAgeRequirementMet,
   ]);
 
-  const membershipLabel = membershipMeta[activeMembershipMode].label;
+  const membershipLabel = ({
+    open: cc.membershipOpenLabel,
+    request: cc.membershipRequestLabel,
+    gated: cc.membershipGatedLabel,
+  })[activeMembershipMode];
   const gateRequirementSummary = activeGateDrafts.length > 0
     ? activeGateDrafts
         .map((draft) =>
@@ -269,7 +275,7 @@ export function CreateCommunityComposer({
         )
         .join(", ")
     : null;
-  const previewDisplayName = activeDisplayName.trim() || "New community";
+  const previewDisplayName = activeDisplayName.trim() || cc.previewFallback;
   const previewAvatarOverride = useCommunityPreviewMedia(activeAvatarFile, activeAvatarRef);
   const previewAvatarSrc = React.useMemo(
     () => resolveCommunityAvatarSrc({
@@ -289,44 +295,48 @@ export function CreateCommunityComposer({
     [previewBannerOverride, previewDisplayName],
   );
   const creatorVerificationMessage = !creatorUniqueHumanVerified
-    ? "Complete unique human verification before creating a community."
+    ? cc.uniqueHumanRequired
     : !creatorAgeRequirementMet
-      ? "This community is marked 18+, so the creator must also pass age verification before launch."
+      ? cc.ageVerificationRequired
       : null;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4">
-      <h2 className="text-3xl font-semibold tracking-tight">Create community</h2>
+      <h2 className="text-3xl font-semibold tracking-tight">{cc.title}</h2>
       {creatorVerificationMessage ? (
         <div className="rounded-[var(--radius-lg)] border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-          <p className="text-base font-semibold text-foreground">Verification required</p>
+          <p className="text-base font-semibold text-foreground">{cc.verificationRequired}</p>
           <FormNote className="mt-1">{creatorVerificationMessage}</FormNote>
         </div>
       ) : null}
 
-      <Stepper currentStep={activeStep} onStepClick={handleStepClick} steps={composerSteps} />
+      <Stepper currentStep={activeStep} onStepClick={handleStepClick} steps={[
+        { label: cc.stepCommunity },
+        { label: cc.stepAccess },
+        { label: cc.stepReview },
+      ]} />
 
       <Card className="overflow-hidden border-border bg-background shadow-none">
         <CardContent className="space-y-8 p-6 md:p-7">
           {activeStep === 1 ? (
-            <Section title="Community details">
+            <Section title={cc.detailsSection}>
               <div className="grid gap-4">
                 <div>
-                  <FieldLabel label="Display name" />
+                  <FieldLabel label={cc.displayNameLabel} />
                   <Input
                     className="h-12 rounded-[var(--radius-lg)]"
                     onChange={(e) => setActiveDisplayName(e.target.value)}
-                    placeholder="Community name"
+                    placeholder={cc.displayNamePlaceholder}
                     value={activeDisplayName}
                   />
                 </div>
 
                 <div>
-                  <FieldLabel label="Description" />
+                  <FieldLabel label={cc.descriptionLabel} />
                   <Textarea
                     className="min-h-24"
                     onChange={(e) => setActiveDescription(e.target.value)}
-                    placeholder="What is this community for?"
+                    placeholder={cc.descriptionPlaceholder}
                     value={activeDescription}
                   />
                 </div>
@@ -360,7 +370,7 @@ export function CreateCommunityComposer({
                   <MediaPicker
                     accept={acceptedCommunityImageTypes}
                     file={activeAvatarFile}
-                    label="Avatar"
+                    label={cc.avatarLabel}
                     onRemove={() => setActiveAvatarFile(null)}
                     onSelect={(file) => {
                       setActiveAvatarFile(file);
@@ -372,7 +382,7 @@ export function CreateCommunityComposer({
                   <MediaPicker
                     accept={acceptedCommunityImageTypes}
                     file={activeBannerFile}
-                    label="Banner"
+                    label={cc.bannerLabel}
                     onRemove={() => setActiveBannerFile(null)}
                     onSelect={(file) => {
                       setActiveBannerFile(file);
@@ -385,22 +395,22 @@ export function CreateCommunityComposer({
 
                 <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between">
                   <div className="space-y-0.5">
-                    <p className="text-base font-semibold text-foreground">Route</p>
+                    <p className="text-base font-semibold text-foreground">{cc.routeLabel}</p>
                     <p className="text-base text-muted-foreground">{namespaceRouteLabel}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {onVerifyNamespace ? (
                       <Button onClick={onVerifyNamespace} type="button" variant="secondary">
                         {namespaceAttachment
-                          ? "Change route"
+                          ? cc.changeRoute
                           : hasPendingNamespaceSession
-                            ? "Resume verification"
-                            : "Verify route"}
+                            ? cc.resumeVerification
+                            : cc.verifyRoute}
                       </Button>
                     ) : null}
                     {namespaceAttachment && onClearNamespace ? (
                       <Button onClick={onClearNamespace} type="button" variant="ghost">
-                        Clear
+                        {cc.clear}
                       </Button>
                     ) : null}
                   </div>
@@ -411,24 +421,28 @@ export function CreateCommunityComposer({
 
           {activeStep === 2 ? (
             <>
-              <Section title="Membership">
+              <Section title={cc.membershipSection}>
                 <SegmentedControl
                   onChange={(value) => setActiveMembershipMode(value as CommunityMembershipMode)}
-                  options={membershipMeta}
+                  options={{
+                    open: { label: cc.membershipOpenLabel, detail: cc.membershipOpenDetail },
+                    request: { label: cc.membershipRequestLabel, detail: cc.membershipRequestDetail },
+                    gated: { label: cc.membershipGatedLabel, detail: cc.membershipGatedDetail },
+                  }}
                   value={activeMembershipMode}
                 />
 
                 {activeMembershipMode === "gated" ? (
                   <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-5 py-4">
                     <FormSectionHeading
-                      description="Select at least one gate before launch."
-                      title="Gate checks"
+                      description={cc.gateChecksDescription}
+                      title={cc.gateChecksTitle}
                     />
 
                     <CheckboxCard
                       checked={nationalityEnabled}
-                      description="Require members to verify their nationality through self before joining."
-                      title="Nationality verification"
+                      description={cc.nationalityDescription}
+                      title={cc.nationalityTitle}
                       onCheckedChange={(checked) => {
                         logCreateCommunityGateDebug("toggleNationalityGate", {
                           previous: nationalityEnabled,
@@ -440,7 +454,7 @@ export function CreateCommunityComposer({
 
                     {nationalityEnabled ? (
                       <div className="space-y-2">
-                        <FieldLabel label="Allowed nationality" />
+                        <FieldLabel label={cc.allowedNationalityLabel} />
                         <NationalityPicker
                           onChange={(code) => {
                             logCreateCommunityGateDebug("selectNationality", {
@@ -452,15 +466,15 @@ export function CreateCommunityComposer({
                           value={nationalityRequiredValue || null}
                         />
                         {nationalityRequiredValue.length > 0 && !isCountryCode(nationalityRequiredValue) ? (
-                          <FormNote tone="warning">Select a valid country.</FormNote>
+                          <FormNote tone="warning">{cc.selectValidCountry}</FormNote>
                         ) : null}
                       </div>
                     ) : null}
 
                     <CheckboxCard
                       checked={genderEnabled}
-                      description="Require members to reveal the Self document marker on their document before joining."
-                      title="Self document marker"
+                      description={cc.genderDescription}
+                      title={cc.genderTitle}
                       onCheckedChange={setGenderEnabled}
                     />
 
@@ -470,12 +484,12 @@ export function CreateCommunityComposer({
                           onChange={(value) => setGenderRequiredValue(value as "M" | "F")}
                           options={{
                             F: {
-                              label: "F marker",
-                              detail: "Accept only members whose Self document marker is F.",
+                              label: cc.fMarkerLabel,
+                              detail: cc.fMarkerDetail,
                             },
                             M: {
-                              label: "M marker",
-                              detail: "Accept only members whose Self document marker is M.",
+                              label: cc.mMarkerLabel,
+                              detail: cc.mMarkerDetail,
                             },
                           }}
                           value={genderRequiredValue}
@@ -488,22 +502,22 @@ export function CreateCommunityComposer({
 
                     <CheckboxCard
                       checked={erc721Enabled}
-                      description="Require a linked Ethereum wallet that holds a specific ERC-721 collection."
-                      title="Ethereum NFT collection"
+                      description={cc.erc721Description}
+                      title={cc.erc721Title}
                       onCheckedChange={setErc721Enabled}
                     />
 
                     {erc721Enabled ? (
                       <div className="space-y-2">
-                        <FieldLabel label="Collection contract" />
+                        <FieldLabel label={cc.collectionContractLabel} />
                         <Input
                           className="h-12 rounded-[var(--radius-lg)]"
                           onChange={(event) => setErc721ContractAddress(event.target.value)}
-                          placeholder="0x..."
+                          placeholder={cc.collectionContractPlaceholder}
                           value={erc721ContractAddress}
                         />
                         {!isAddress(erc721ContractAddress.trim()) ? (
-                          <FormNote tone="warning">Enter a valid Ethereum contract address.</FormNote>
+                          <FormNote tone="warning">{cc.invalidContractAddress}</FormNote>
                         ) : null}
                       </div>
                     ) : null}
@@ -511,32 +525,34 @@ export function CreateCommunityComposer({
                 ) : null}
               </Section>
 
-              <Section className="border-t border-border-soft pt-8" title="Identity & access">
+              <Section className="border-t border-border-soft pt-8" title={cc.identityAccessSection}>
                 <div className="space-y-5">
                   <CheckboxRow
                     checked={activeAllowAnonymousIdentity}
                     id="community-allow-anonymous-posting"
-                    label="Allow anonymous posting"
+                    label={cc.allowAnonymousPosting}
                     onCheckedChange={setActiveAllowAnonymousIdentity}
                   />
 
                   {activeAllowAnonymousIdentity ? (
                     <div className="space-y-3 border-l border-border-soft pl-4">
-                      <p className="text-base font-medium text-foreground">Anonymous scope</p>
+                      <p className="text-base font-medium text-foreground">{cc.anonymousScopeLabel}</p>
                       <div className="space-y-2">
-                        {(Object.keys(anonymousScopeMeta) as AnonymousIdentityScope[]).map((scope) => {
-                          const option = anonymousScopeMeta[scope];
-                          const disabled = scope === "post_ephemeral";
-
+                        {([
+                          { key: "community_stable" as const, label: cc.anonymousCommunityStableLabel, detail: cc.anonymousCommunityStableDetail },
+                          { key: "thread_stable" as const, label: cc.anonymousThreadStableLabel, detail: cc.anonymousThreadStableDetail },
+                          { key: "post_ephemeral" as const, label: cc.anonymousPostEphemeralLabel, detail: cc.anonymousPostEphemeralDetail, disabledHint: cc.anonymousPostEphemeralDisabled },
+                        ]).map((option) => {
+                          const disabled = option.key === "post_ephemeral";
                           return (
                             <OptionCard
-                              key={scope}
+                              key={option.key}
                               description={option.detail}
                               disabled={disabled}
                               disabledHint={option.disabledHint}
-                              selected={scope === activeAnonymousScope}
+                              selected={option.key === activeAnonymousScope}
                               title={option.label}
-                              onClick={() => !disabled && setActiveAnonymousScope(scope)}
+                              onClick={() => !disabled && setActiveAnonymousScope(option.key)}
                             />
                           );
                         })}
@@ -547,14 +563,14 @@ export function CreateCommunityComposer({
                   <CheckboxRow
                     checked={activeDefaultAgeGatePolicy === "18_plus"}
                     id="community-18-plus"
-                    label="18+ community"
+                    label={cc.ageGateLabel}
                     onCheckedChange={(checked) =>
                       setActiveDefaultAgeGatePolicy(checked ? "18_plus" : "none")
                     }
                   />
                   {activeDefaultAgeGatePolicy === "18_plus" && !creatorAgeOver18Verified ? (
                     <FormNote tone="warning">
-                      The creator must complete age verification before launching an 18+ community.
+                      {cc.creatorAgeRequired}
                     </FormNote>
                   ) : null}
                 </div>
@@ -564,21 +580,26 @@ export function CreateCommunityComposer({
 
           {activeStep === 3 ? (
             <CommunityReviewStep
-              ageGateLabel={activeDefaultAgeGatePolicy === "18_plus" ? "18+" : "None"}
-              anonymousPostingLabel={activeAllowAnonymousIdentity ? "Enabled" : "Disabled"}
+              ageGateLabel={activeDefaultAgeGatePolicy === "18_plus" ? "18+" : cc.none}
+              anonymousPostingLabel={activeAllowAnonymousIdentity ? cc.enabled : cc.disabled}
               anonymousScopeLabel={
                 activeAllowAnonymousIdentity
-                  ? anonymousScopeMeta[activeAnonymousScope].label
+                  ? ({
+                    community_stable: cc.anonymousCommunityStableLabel,
+                    thread_stable: cc.anonymousThreadStableLabel,
+                    post_ephemeral: cc.anonymousPostEphemeralLabel,
+                  })[activeAnonymousScope]
                   : undefined
               }
               avatarLabel={
                 activeAvatarFile?.name ||
-                (activeAvatarRef.trim() ? "Saved image" : "Generated default")
+                (activeAvatarRef.trim() ? cc.savedImage : cc.generatedDefault)
               }
               bannerLabel={
                 activeBannerFile?.name ||
-                (activeBannerRef.trim() ? "Saved image" : "Generated default")
+                (activeBannerRef.trim() ? cc.savedImage : cc.generatedDefault)
               }
+              copy={cc}
               creatorVerificationMessage={creatorVerificationMessage}
               description={activeDescription}
               displayName={activeDisplayName}
@@ -593,15 +614,15 @@ export function CreateCommunityComposer({
           <div className="flex gap-3">
             {activeStep > 1 ? (
               <Button onClick={handleBack} variant="secondary">
-                Back
+                {cc.back}
               </Button>
             ) : null}
             {activeStep < 3 ? (
               <Button disabled={!canProceed} onClick={handleNext}>
-                Next
+                {cc.next}
               </Button>
             ) : (
-              <Button disabled={!canCreateCommunity} loading={submitting} onClick={handleCreate}>Create Community</Button>
+              <Button disabled={!canCreateCommunity} loading={submitting} onClick={handleCreate}>{cc.createCommunityAction}</Button>
             )}
           </div>
         </CardFooter>

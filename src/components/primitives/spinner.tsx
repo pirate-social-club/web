@@ -1,13 +1,19 @@
 import * as React from "react";
 
+import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { getLocaleMessages } from "@/locales";
 
 export interface SpinnerProps extends React.SVGProps<SVGSVGElement> {}
 
 export const Spinner = React.forwardRef<SVGSVGElement, SpinnerProps>(
-  ({ className, ...props }, ref) => (
-    <svg
-      aria-label="Loading"
+  ({ className, ...props }, ref) => {
+    const { locale } = useUiLocale();
+    const copy = getLocaleMessages(locale, "routes").common;
+
+    return (
+      <svg
+        aria-label={copy.loading}
       className={cn("size-4 animate-spin text-current", className)}
       fill="none"
       ref={ref}
@@ -23,7 +29,8 @@ export const Spinner = React.forwardRef<SVGSVGElement, SpinnerProps>(
         strokeWidth="3"
       />
     </svg>
-  ),
+    );
+  },
 );
 
 Spinner.displayName = "Spinner";

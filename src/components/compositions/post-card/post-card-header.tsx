@@ -1,7 +1,9 @@
 import * as React from "react";
 
 import { Avatar } from "@/components/primitives/avatar";
+import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { getLocaleMessages } from "@/locales";
 import { postCardType } from "./post-card.styles";
 import { PostCardActionMenu } from "./post-card-action-menu";
 import type {
@@ -76,6 +78,8 @@ function InteractiveIdentityLink({
 
 function AgentByline({ byline }: { byline: PostCardByline }) {
   const { agentAuthor, community, timestampLabel } = byline;
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").common;
   if (!agentAuthor) return null;
 
   return (
@@ -92,7 +96,7 @@ function AgentByline({ byline }: { byline: PostCardByline }) {
       ) : (
         <span className="font-semibold text-foreground"><bdi>{agentAuthor.label}</bdi></span>
       )}
-      <span>owned by</span>
+      <span>{copy.ownedBy}</span>
       {agentAuthor.ownerHref ? (
         <a className="font-medium text-muted-foreground hover:text-foreground hover:underline" href={agentAuthor.ownerHref}>
           <bdi>{agentAuthor.ownerLabel}</bdi>
@@ -193,6 +197,8 @@ export function PostCardHeader({
   onMenuAction,
   className,
 }: PostCardHeaderProps) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").common;
   const resolvedPresentation = deriveIdentityPresentation(viewContext, identityPresentation);
   const { primaryIdentity, secondaryIdentity } = resolveIdentities(byline, resolvedPresentation);
   const avatarIdentity = byline.agentAuthor
@@ -236,7 +242,7 @@ export function PostCardHeader({
       </div>
       <PostCardActionMenu
         items={menuItems ?? []}
-        label={saved ? "Saved post actions" : "Post options"}
+        label={saved ? copy.savedPostActions : copy.postOptions}
         onAction={onMenuAction}
       />
     </div>

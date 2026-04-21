@@ -1,9 +1,12 @@
 {
   "appHeader": {
+    "backAriaLabel": "Back",
     "connectLabel": "Connect",
+    "connectUnavailableToast": "Connect is not configured for this environment.",
     "createEmptyLabel": "No recent communities.",
     "createLabel": "Create",
     "createPickerTitle": "Create post in",
+    "defaultAvatarFallback": "Pirate User",
     "homeAriaLabel": "Go to home",
     "notificationsAriaLabel": "Notifications",
     "openNavigationAriaLabel": "Open navigation",
@@ -60,6 +63,11 @@
     "primaryNavAriaLabel": "Primary",
     "profileAriaLabel": "Profile",
     "profileLabel": "Profile"
+  },
+  "rootError": {
+    "description": "Something went wrong while loading Pirate. Reload the page and try again.",
+    "reloadLabel": "Reload",
+    "title": "Pirate hit a problem"
   },
   "storybook": {
     "contentAreaLabel": "Content area",

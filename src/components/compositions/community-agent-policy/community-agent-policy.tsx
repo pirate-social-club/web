@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/primitives/select";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 import type {
   AgentOwnershipProvider,
   AgentPostingPolicy,
@@ -21,20 +22,11 @@ import type {
   CommunityAgentPolicySettings,
 } from "./community-agent-policy.types";
 
-const policyOptions: Array<{ label: string; value: AgentPostingPolicy }> = [
-  { label: "Disallow", value: "disallow" },
-  { label: "Allow", value: "allow" },
-];
 
-const scopeOptions: Array<{ label: string; value: AgentPostingScope }> = [
-  { label: "Replies only", value: "replies_only" },
-  { label: "Top-level and replies", value: "top_level_and_replies" },
-];
 
-const providerOptions: Array<{ label: string; value: AgentOwnershipProvider }> = [
-  { label: "ClawKey", value: "clawkey" },
-  { label: "Self agent ID", value: "self_agent_id" },
-];
+
+
+
 
 function Section({
   children,
@@ -83,35 +75,6 @@ function SelectRow<T extends string>({
   );
 }
 
-function CapInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number | null;
-  onChange: (value: number | null) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between">
-      <div className="text-base font-medium leading-6">{label}</div>
-      <div className="flex items-center gap-2">
-        <Input
-          className="h-12 w-20 rounded-[var(--radius-lg)] text-center"
-          min={1}
-          onChange={(e) => {
-            const parsed = Number(e.target.value);
-            onChange(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
-          }}
-          placeholder="None"
-          type="number"
-          value={value ?? ""}
-        />
-        <span className="text-muted-foreground">/ day</span>
-      </div>
-    </div>
-  );
-}
 
 function ProviderRow({
   checked,
@@ -138,6 +101,53 @@ export function CommunityAgentPolicyPage({
   onSave,
   saveDisabled = false,
 }: CommunityAgentPolicyPageProps) {
+  const { copy } = useRouteMessages();
+  const mc = copy.moderation.agents;
+
+  function CapInput({
+    label,
+    value,
+    onChange,
+  }: {
+    label: string;
+    value: number | null;
+    onChange: (value: number | null) => void;
+  }) {
+    return (
+      <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between">
+        <div className="text-base font-medium leading-6">{label}</div>
+        <div className="flex items-center gap-2">
+          <Input
+            className="h-12 w-20 rounded-[var(--radius-lg)] text-center"
+            min={1}
+            onChange={(e) => {
+              const parsed = Number(e.target.value);
+              onChange(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
+            }}
+            placeholder={mc.nonePlaceholder}
+            type="number"
+            value={value ?? ""}
+          />
+          <span className="text-muted-foreground">{mc.perDaySuffix}</span>
+        </div>
+      </div>
+    );
+  }
+
+  const policyOptions: Array<{ label: string; value: AgentPostingPolicy }> = [
+    { label: mc.policyDisallow, value: "disallow" },
+    { label: mc.policyAllow, value: "allow" },
+  ];
+
+  const scopeOptions: Array<{ label: string; value: AgentPostingScope }> = [
+    { label: mc.scopeRepliesOnly, value: "replies_only" },
+    { label: mc.scopeTopLevelAndReplies, value: "top_level_and_replies" },
+  ];
+
+  const providerOptions: Array<{ label: string; value: AgentOwnershipProvider }> = [
+    { label: mc.providerClawKey, value: "clawkey" },
+    { label: mc.providerSelfAgentId, value: "self_agent_id" },
+  ];
   const isDisabled = settings.agentPostingPolicy === "disallow";
 
   function update(partial: Partial<CommunityAgentPolicySettings>) {
@@ -156,7 +166,7 @@ export function CommunityAgentPolicyPage({
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="flex min-w-0 items-start gap-4">
           <div className="min-w-0 space-y-2">
-            <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">Agents</h1>
+            <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
             <p className="text-base text-muted-foreground">
               Control whether user-owned agents can post in this community.
             </p>
@@ -172,17 +182,17 @@ export function CommunityAgentPolicyPage({
         </Button>
       </div>
 
-      <Section title="Policy">
+      <Section title={mc.policySection}>
         <div className="space-y-3">
           <SelectRow
-            label="Posting policy"
+            label={mc.postingPolicyLabel}
             onValueChange={(value) => update({ agentPostingPolicy: value })}
             options={policyOptions}
             value={settings.agentPostingPolicy}
           />
           {!isDisabled ? (
             <SelectRow
-              label="Posting scope"
+              label={mc.postingScopeLabel}
               onValueChange={(value) => update({ agentPostingScope: value })}
               options={scopeOptions}
               value={settings.agentPostingScope}
@@ -192,7 +202,7 @@ export function CommunityAgentPolicyPage({
       </Section>
 
       {!isDisabled ? (
-        <Section className="border-t border-border-soft pt-6 md:pt-8" title="Ownership providers">
+        <Section className="border-t border-border-soft pt-6 md:pt-8" title={mc.ownershipProvidersTitle}>
           <div className="space-y-3">
             {providerOptions.map((provider) => (
               <ProviderRow
@@ -207,15 +217,15 @@ export function CommunityAgentPolicyPage({
       ) : null}
 
       {!isDisabled ? (
-        <Section className="border-t border-border-soft pt-6 md:pt-8" title="Daily caps">
+        <Section className="border-t border-border-soft pt-6 md:pt-8" title={mc.dailyCapsTitle}>
           <div className="space-y-3">
             <CapInput
-              label="Agent posts per day"
+              label={mc.agentPostsPerDayLabel}
               onChange={(value) => update({ dailyPostCap: value })}
               value={settings.dailyPostCap}
             />
             <CapInput
-              label="Agent replies per day"
+              label={mc.agentRepliesPerDayLabel}
               onChange={(value) => update({ dailyReplyCap: value })}
               value={settings.dailyReplyCap}
             />

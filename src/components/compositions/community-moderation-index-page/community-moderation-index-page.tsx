@@ -6,6 +6,7 @@ import { ArrowLeft, CaretRight } from "@phosphor-icons/react";
 import type { CommunityModerationNavSection } from "@/components/compositions/community-moderation-shell/community-moderation-shell";
 import { Button } from "@/components/primitives/button";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 export interface CommunityModerationIndexPageProps {
   className?: string;
@@ -22,6 +23,7 @@ export function CommunityModerationIndexPage({
   sections,
   showTitle = true,
 }: CommunityModerationIndexPageProps) {
+  const { copy } = useRouteMessages();
   if (mobileLayout) {
     return (
       <section className={cn("flex w-full flex-col gap-5", className)}>
@@ -29,13 +31,13 @@ export function CommunityModerationIndexPage({
           {onBackClick ? (
             <div>
               <Button leadingIcon={<ArrowLeft className="size-5" />} onClick={onBackClick} variant="ghost">
-                Back
+                {copy.moderation.index.backLabel}
               </Button>
             </div>
           ) : null}
           {showTitle ? (
             <h1 className="text-[2rem] font-semibold tracking-tight text-foreground md:text-[2.25rem]">
-              Mod tools
+              {copy.moderation.index.title}
             </h1>
           ) : null}
         </div>

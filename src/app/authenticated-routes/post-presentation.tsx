@@ -21,6 +21,7 @@ export type { PostVoteValue } from "./post-vote";
 export type SongPresentationOptions = {
   currentUserId?: string | null;
   listing?: ApiCommunityListing;
+  localeTag?: string;
   purchase?: ApiCommunityPurchase;
   playback?: SongPlaybackController;
   onBuy?: () => void;
@@ -291,7 +292,7 @@ function toCommunityPostContent(
         onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
         onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
         playbackState,
-        priceLabel: listing ? formatUsdLabel(listing.price_usd) : undefined,
+        priceLabel: listing ? formatUsdLabel(listing.price_usd, songOptions?.localeTag) : undefined,
         rightsBasis: post.rights_basis ?? undefined,
         songMode: post.song_mode ?? undefined,
         title,

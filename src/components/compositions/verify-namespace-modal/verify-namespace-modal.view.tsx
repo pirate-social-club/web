@@ -30,54 +30,48 @@ import {
 } from "@/components/compositions/namespace-verification/namespace-verification-shared";
 import { OptionCard } from "@/components/primitives/option-card";
 import { PrefixInput } from "@/components/primitives/prefix-input";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 import type {
   NamespaceFamily,
   SpacesChallengePayload,
 } from "./verify-namespace-modal.types";
 
-export const namespaceFamilyMeta: Record<
+const namespaceFamilyMeta: Record<
   NamespaceFamily,
   {
-    label: string;
     externalExample: string;
-    detail: string;
-    rootInputLabel: string;
     rootInputPrefix?: string;
     icon: React.ReactNode;
   }
 > = {
   hns: {
-    label: "Handshake",
     externalExample: "kanye",
-    detail: "Set up DNS first, then verify root ownership.",
-    rootInputLabel: "Handshake root",
     rootInputPrefix: ".",
     icon: <Handshake className="size-5" />,
   },
   spaces: {
-    label: "Spaces",
     externalExample: "kanye",
-    detail: "Verify root ownership by signing a challenge.",
-    rootInputLabel: "Spaces root",
     rootInputPrefix: "@",
     icon: <At className="size-5" />,
   },
 };
 
 function getFailureMessage({
+  copy,
   failureReason,
   hnsMode,
   isExpired,
   isHns,
 }: {
+  copy: ReturnType<typeof useRouteMessages>["copy"]["moderation"]["namespaceVerification"]["failure"];
   failureReason: string | null;
   hnsMode: ReturnType<typeof getHnsVerificationMode> | null;
   isExpired: boolean;
   isHns: boolean;
 }) {
   if (isExpired) {
-    return "Verification expired. Generate a new challenge.";
+    return copy.expired;
   }
 
   if (failureReason) {
@@ -85,14 +79,14 @@ function getFailureMessage({
   }
 
   if (isHns && hnsMode === "dns_setup_required") {
-    return "Set nameservers first, then refresh the session.";
+    return copy.dnsSetupRequired;
   }
 
   if (isHns) {
-    return "Could not verify this root. Check the TXT record and try again.";
+    return copy.hnsDefault;
   }
 
-  return "Could not verify this root. Check the signature and try again.";
+  return copy.spacesDefault;
 }
 
 export function VerifyNamespaceModalView({
@@ -164,19 +158,25 @@ export function VerifyNamespaceModalView({
   setupNameservers: string[] | null;
   signature: string;
 }) {
+  const { copy } = useRouteMessages();
+  const mc = copy.moderation.namespaceVerification;
+  const family = copy.moderation.namespaceVerification.family;
   const meta = namespaceFamilyMeta[activeFamily];
+  const familyLabels: Record<NamespaceFamily, { label: string; detail: string; rootInputLabel: string }> = {
+    hns: { label: family.handshakeLabel, detail: family.handshakeDetail, rootInputLabel: family.handshakeRootLabel },
+    spaces: { label: family.spacesLabel, detail: family.spacesDetail, rootInputLabel: family.spacesRootLabel },
+  };
   const hasRootInput = rootLabel.trim().replace(/^[@.]/, "").length > 0;
-  const verifyActionLabel = "Verify";
 
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
       <ModalContent className="border-border bg-background p-6 sm:w-[min(100%-2rem,34rem)] sm:max-w-[34rem]">
         <ModalHeader className="pr-10 text-left">
           <ModalTitle className="text-[1.6rem] leading-tight tracking-tight sm:text-[1.85rem]">
-            Verify namespace
+            {mc.title}
           </ModalTitle>
           <ModalDescription className="max-w-[34ch] text-base leading-7">
-            Verify control of a namespace so it can be attached to this community.
+            {mc.description}
           </ModalDescription>
         </ModalHeader>
 
@@ -184,23 +184,24 @@ export function VerifyNamespaceModalView({
           {(isIdle || isStarting) && !resuming ? (
             <>
               <div className="space-y-2">
-                {(Object.keys(namespaceFamilyMeta) as NamespaceFamily[]).map((family) => {
-                  const option = namespaceFamilyMeta[family];
+                {(Object.keys(namespaceFamilyMeta) as NamespaceFamily[]).map((f) => {
+                  const option = namespaceFamilyMeta[f];
+                  const labels = familyLabels[f];
                   return (
                     <OptionCard
-                      key={family}
-                      description={option.detail}
+                      key={f}
+                      description={labels.detail}
                       icon={option.icon}
-                      selected={family === activeFamily}
-                      title={option.label}
-                      onClick={() => onFamilyChange(family)}
+                      selected={f === activeFamily}
+                      title={labels.label}
+                      onClick={() => onFamilyChange(f)}
                     />
                   );
                 })}
               </div>
 
               <div>
-                <FormFieldLabel className="mb-1.5" label={meta.rootInputLabel} />
+                <FormFieldLabel className="mb-1.5" label={familyLabels[activeFamily].rootInputLabel} />
                 <PrefixInput
                   disabled={busy}
                   onChange={(event) => onRootLabelChange(event.target.value)}
@@ -212,7 +213,7 @@ export function VerifyNamespaceModalView({
 
               {isHns ? (
                 <FormNote>
-                  Start with nameserver setup when the root does not already have authoritative DNS. Only add TXT after that path is live.
+                  {mc.hnsSetupNote}
                 </FormNote>
               ) : null}
             </>
@@ -220,7 +221,7 @@ export function VerifyNamespaceModalView({
 
           {resuming ? (
             <div className="flex items-center justify-center py-8 text-base text-muted-foreground">
-              Resuming verification...
+              {mc.resuming}
             </div>
           ) : null}
 
@@ -240,18 +241,18 @@ export function VerifyNamespaceModalView({
 
           {(isChallengeReady || isVerifying) && isSpaces && challengePayload ? (
             <div className="space-y-4">
-              <FormNote>Copy the digest, sign it with your root key, then paste the signature.</FormNote>
+              <FormNote>{mc.signatureNote}</FormNote>
               <div className="space-y-3">
                 <div>
-                  <p className="mb-1.5 text-base text-muted-foreground">Digest</p>
+                  <p className="mb-1.5 text-base text-muted-foreground">{mc.digestLabel}</p>
                   <CopyField value={challengePayload.digest} />
                 </div>
                 <div>
-                  <FormFieldLabel className="mb-1.5" label="Signature" />
+                  <FormFieldLabel className="mb-1.5" label={mc.signatureLabel} />
                   <Input
                     disabled={busy}
                     onChange={(event) => onSignatureChange(event.target.value)}
-                    placeholder="Paste your schnorr signature here"
+                    placeholder={mc.signaturePlaceholderModal}
                     value={signature}
                   />
                 </div>
@@ -259,7 +260,7 @@ export function VerifyNamespaceModalView({
               <Accordion collapsible type="single">
                 <AccordionItem className="border-b-0" value="details">
                   <AccordionTrigger className="py-1 text-base text-muted-foreground hover:no-underline">
-                    Challenge details
+                    {mc.challengeDetails}
                   </AccordionTrigger>
                   <AccordionContent className="pb-0">
                     <NamespaceVerificationChallengeMessage value={challengePayload.message} />
@@ -271,21 +272,21 @@ export function VerifyNamespaceModalView({
                 type="button"
                 onClick={onAbandon}
               >
-                Verify a different namespace
+                {mc.verifyDifferent}
               </button>
             </div>
           ) : null}
 
           {isVerified ? (
             <div className="rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3">
-              <p className="text-base font-medium text-foreground">Root verified.</p>
+              <p className="text-base font-medium text-foreground">{mc.rootVerified}</p>
             </div>
           ) : null}
 
           {isFailed || isExpired ? (
             <div className="space-y-3">
               <FormNote tone="warning">
-                {getFailureMessage({ failureReason, hnsMode, isExpired, isHns })}
+                {getFailureMessage({ copy: mc.failure, failureReason, hnsMode, isExpired, isHns })}
               </FormNote>
             </div>
           ) : null}
@@ -293,43 +294,43 @@ export function VerifyNamespaceModalView({
 
         <ModalFooter className="mt-6 border-t border-border/70 pt-4 sm:pt-5">
           <div className="flex w-full justify-end gap-3">
-            {isVerified ? <Button onClick={() => onOpenChange(false)}>Done</Button> : null}
+            {isVerified ? <Button onClick={() => onOpenChange(false)}>{mc.doneLabel}</Button> : null}
             {isDnsSetupRequired ? (
               <>
-                <Button onClick={() => onOpenChange(false)} variant="outline">Close</Button>
-                <Button loading={isStarting} onClick={onRestart}>Check setup</Button>
+                <Button onClick={() => onOpenChange(false)} variant="outline">{mc.closeLabel}</Button>
+                <Button loading={isStarting} onClick={onRestart}>{mc.checkSetup}</Button>
               </>
             ) : null}
             {isChallengePending ? (
               <>
-                <Button onClick={() => onOpenChange(false)} variant="outline">Close</Button>
-                <Button loading={isVerifying} onClick={onVerify}>{verifyActionLabel}</Button>
+                <Button onClick={() => onOpenChange(false)} variant="outline">{mc.closeLabel}</Button>
+                <Button loading={isVerifying} onClick={onVerify}>{mc.verifyAction}</Button>
               </>
             ) : null}
             {(isFailed || isExpired) ? (
               <>
-                <Button onClick={() => onOpenChange(false)} variant="outline">Cancel</Button>
+                <Button onClick={() => onOpenChange(false)} variant="outline">{mc.cancelLabel}</Button>
                 {isFailed && isHns ? (
-                  <Button loading={isVerifying} onClick={onVerify}>{verifyActionLabel}</Button>
+                  <Button loading={isVerifying} onClick={onVerify}>{mc.verifyAction}</Button>
                 ) : null}
-                <Button onClick={onRestart}>{isHns ? "Continue" : "New challenge"}</Button>
+                <Button onClick={onRestart}>{isHns ? mc.continueLabel : mc.newChallenge}</Button>
               </>
             ) : null}
             {isIdle || isStarting ? (
               <>
-                <Button onClick={() => onOpenChange(false)} variant="outline">Cancel</Button>
+                <Button onClick={() => onOpenChange(false)} variant="outline">{mc.cancelLabel}</Button>
                 <Button
                   disabled={!hasRootInput}
                   loading={isStarting}
                   onClick={onStart}
                 >
-                  {isHns ? "Continue" : "Get challenge"}
+                  {isHns ? mc.continueLabel : mc.getChallenge}
                 </Button>
               </>
             ) : null}
             {(isChallengeReady || isVerifying) ? (
               <Button disabled={!canSubmitSignature} loading={isVerifying} onClick={onVerify}>
-                {verifyActionLabel}
+                {mc.verifyAction}
               </Button>
             ) : null}
           </div>

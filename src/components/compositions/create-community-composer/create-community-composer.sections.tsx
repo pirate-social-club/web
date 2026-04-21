@@ -11,6 +11,7 @@ import {
 import { Label } from "@/components/primitives/label";
 import { RadioGroup, RadioGroupItem } from "@/components/primitives/radio-group";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 import type {
   AnonymousIdentityScope,
@@ -20,48 +21,7 @@ import type {
 export const ISO_ALPHA_2 = /^[A-Z]{2}$/;
 export const acceptedCommunityImageTypes = "image/png,image/jpeg,image/webp,image/gif";
 
-export const membershipMeta: Record<
-  CommunityMembershipMode,
-  { label: string; detail: string }
-> = {
-  open: {
-    label: "Open",
-    detail: "Anyone can join immediately.",
-  },
-  request: {
-    label: "Request",
-    detail: "Users request to join. Membership is pending until approved.",
-  },
-  gated: {
-    label: "Gated",
-    detail: "Joining requires passing one or more gate checks.",
-  },
-};
 
-export const anonymousScopeMeta: Record<
-  AnonymousIdentityScope,
-  { label: string; detail: string; disabledHint?: string }
-> = {
-  community_stable: {
-    label: "Community-stable",
-    detail: "One persistent anonymous label per user across the entire community. Best for moderation continuity.",
-  },
-  thread_stable: {
-    label: "Thread-stable",
-    detail: "One persistent anonymous label per user per thread. Different threads produce different labels.",
-  },
-  post_ephemeral: {
-    label: "Post-ephemeral",
-    detail: "Random label per post. No cross-post correlation. Limits moderation and strike capability.",
-    disabledHint: "Post-ephemeral scope is not available in v0.",
-  },
-};
-
-export const composerSteps = [
-  { label: "Community" },
-  { label: "Access" },
-  { label: "Review" },
-];
 
 export function Section({
   title,
@@ -181,6 +141,7 @@ export function CommunityReviewStep({
   anonymousScopeLabel,
   avatarLabel,
   bannerLabel,
+  copy,
   creatorVerificationMessage,
   description,
   displayName,
@@ -193,6 +154,7 @@ export function CommunityReviewStep({
   anonymousScopeLabel?: string;
   avatarLabel: string;
   bannerLabel: string;
+  copy: Record<string, string>;
   creatorVerificationMessage: string | null;
   description: string;
   displayName: string;
@@ -202,28 +164,28 @@ export function CommunityReviewStep({
 }) {
   return (
     <div className="space-y-4">
-      <ReviewSection title="Community">
-        <ReviewField label="Display name" value={displayName} />
+      <ReviewSection title={copy.reviewCommunitySection}>
+        <ReviewField label={copy.reviewDisplayName} value={displayName} />
         <div className="md:col-span-2">
-          <ReviewField label="Description" value={description || "\u2014"} />
+          <ReviewField label={copy.reviewDescription} value={description || "\u2014"} />
         </div>
-        <ReviewField label="Route" value={routeLabel} />
-        <ReviewField label="Avatar" value={avatarLabel} />
-        <ReviewField label="Banner" value={bannerLabel} />
+        <ReviewField label={copy.reviewRoute} value={routeLabel} />
+        <ReviewField label={copy.reviewAvatar} value={avatarLabel} />
+        <ReviewField label={copy.reviewBanner} value={bannerLabel} />
       </ReviewSection>
 
-      <ReviewSection title="Access policy">
-        <ReviewField label="Join flow" value={membershipLabel} />
+      <ReviewSection title={copy.reviewAccessPolicySection}>
+        <ReviewField label={copy.reviewJoinFlow} value={membershipLabel} />
         {gateRequirementSummary ? (
           <div className="md:col-span-2">
-            <ReviewField label="Membership gates" value={gateRequirementSummary} />
+            <ReviewField label={copy.reviewMembershipGates} value={gateRequirementSummary} />
           </div>
         ) : null}
-        <ReviewField label="Anonymous posting" value={anonymousPostingLabel} />
+        <ReviewField label={copy.reviewAnonymousPosting} value={anonymousPostingLabel} />
         {anonymousScopeLabel ? (
-          <ReviewField label="Anonymous scope" value={anonymousScopeLabel} />
+          <ReviewField label={copy.reviewAnonymousScope} value={anonymousScopeLabel} />
         ) : null}
-        <ReviewField label="Age gate" value={ageGateLabel} />
+        <ReviewField label={copy.reviewAgeGate} value={ageGateLabel} />
       </ReviewSection>
 
       {creatorVerificationMessage ? (
@@ -275,6 +237,8 @@ export function MediaPicker({
   onRemove: () => void;
 }) {
   const inputId = React.useId();
+  const { copy } = useRouteMessages();
+  const cc = copy.createCommunity.composer;
 
   return (
     <div className="space-y-2">
@@ -291,17 +255,17 @@ export function MediaPicker({
       />
       <div className="flex min-h-14 items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3.5">
         <p className="min-w-0 truncate text-base font-medium text-foreground">
-          {file?.name || `No ${label.toLowerCase()} selected`}
+          {file?.name || null}
         </p>
         <div className="flex shrink-0 items-center gap-2">
           {file ? (
             <Button onClick={onRemove} size="sm" type="button" variant="ghost">
-              Remove
+              {cc.remove}
             </Button>
           ) : null}
           <label className="cursor-pointer" htmlFor={inputId}>
             <span className="inline-flex h-10 items-center rounded-full bg-muted px-4 text-base font-semibold text-foreground">
-              {file ? "Replace" : "Choose file"}
+              {file ? cc.replace : cc.chooseFile}
             </span>
           </label>
         </div>

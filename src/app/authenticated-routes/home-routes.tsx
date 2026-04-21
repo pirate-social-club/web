@@ -34,7 +34,7 @@ export function HomePage() {
   const hydrated = useClientHydrated();
   const session = useSession();
   const { locale } = useUiLocale();
-  const { copy } = useRouteMessages();
+  const { copy, localeTag } = useRouteMessages();
   const sortOptions = React.useMemo(() => buildFeedSortOptions(copy.common), [copy.common]);
   const topTimeRangeOptions = React.useMemo(() => buildTopTimeRangeOptions(copy.common), [copy.common]);
   const contentLocale = useRouteContentLocale();
@@ -149,7 +149,13 @@ export function HomePage() {
       entry,
       authorProfiles,
       entry.post.post.post_type === "song"
-        ? { currentUserId: session?.user?.user_id, listing: assetId ? listingsByAssetId[assetId] : undefined, playback: songPlayback, purchase: assetId ? purchasesByAssetId[assetId] : undefined }
+        ? {
+          currentUserId: session?.user?.user_id,
+          listing: assetId ? listingsByAssetId[assetId] : undefined,
+          localeTag,
+          playback: songPlayback,
+          purchase: assetId ? purchasesByAssetId[assetId] : undefined,
+        }
         : undefined,
       {
         onComment: () => navigate(`/p/${entry.post.post.post_id}`),
@@ -178,7 +184,7 @@ export function HomePage() {
                 <button className="flex w-full items-center gap-3 px-5 py-3 text-start" key={community.community_id} onClick={() => navigate(`/c/${community.route_slug ?? community.community_id}`)} type="button">
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-base font-medium text-foreground">{community.display_name}</div>
-                    {community.member_count != null ? <div className="text-base text-muted-foreground">{copy.home.membersLabel.replace("{count}", community.member_count.toLocaleString())}</div> : null}
+                    {community.member_count != null ? <div className="text-base text-muted-foreground">{copy.home.membersLabel.replace("{count}", community.member_count.toLocaleString(localeTag))}</div> : null}
                   </div>
                 </button>
               ))}

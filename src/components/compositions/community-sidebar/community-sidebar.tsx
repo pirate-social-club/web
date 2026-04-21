@@ -11,6 +11,7 @@ import {
 import { Avatar } from "@/components/primitives/avatar";
 import { SidebarProvider } from "@/components/compositions/sidebar/sidebar";
 import { useUiLocale } from "@/lib/ui-locale";
+import { resolveLocaleLanguageTag } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import { CommunitySidebarCharity } from "./community-sidebar-charity";
@@ -20,11 +21,11 @@ import { CommunitySidebarModerator } from "./community-sidebar-moderator";
 import { CommunitySidebarRules } from "./community-sidebar-rules";
 import type { CommunitySidebarProps } from "./community-sidebar.types";
 
-function formatMemberCount(count: number): string {
+function formatMemberCount(count: number, localeTag: string): string {
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
   if (count >= 10_000) return `${(count / 1_000).toFixed(1)}K`;
   if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
-  return count.toLocaleString("en-US");
+  return count.toLocaleString(localeTag);
 }
 
 const SECTION_LABEL =
@@ -48,6 +49,7 @@ function CommunitySidebarSections({
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").community;
+  const localeTag = resolveLocaleLanguageTag(locale);
   const activeRules = (rules ?? [])
     .filter((r) => r.status === "active")
     .sort((a, b) => a.position - b.position);
@@ -76,7 +78,7 @@ function CommunitySidebarSections({
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col">
               <span className="text-xl font-bold leading-none tabular-nums">
-                {formatMemberCount(memberCount)}
+                {formatMemberCount(memberCount, localeTag)}
               </span>
               <span className="mt-0.5 text-base text-muted-foreground/60">
                 {copy.membersLabel}
@@ -88,7 +90,7 @@ function CommunitySidebarSections({
 
       {moderator && (
         <div className="flex flex-col gap-1.5">
-          <div className={SECTION_LABEL}>Moderator</div>
+          <div className={SECTION_LABEL}>{copy.moderatorLabel}</div>
           <CommunitySidebarModerator moderator={moderator} />
         </div>
       )}
@@ -106,7 +108,7 @@ function CommunitySidebarSections({
       >
         {activeLinks.length > 0 && (
           <AccordionItem className="border-b-0" value="links">
-            <AccordionTrigger className={SECTION_LABEL}>Links</AccordionTrigger>
+            <AccordionTrigger className={SECTION_LABEL}>{copy.linksLabel}</AccordionTrigger>
             <AccordionContent className="pb-0">
               <CommunitySidebarLinks links={activeLinks} />
             </AccordionContent>
@@ -137,7 +139,7 @@ function CommunitySidebarSections({
 
         {hasFlairs && (
           <AccordionItem className="border-b-0" value="tags">
-            <AccordionTrigger className={SECTION_LABEL}>Tags</AccordionTrigger>
+            <AccordionTrigger className={SECTION_LABEL}>{copy.tagsLabel}</AccordionTrigger>
             <AccordionContent className="pb-0">
               <CommunitySidebarFlairs flairPolicy={flairPolicy!} />
             </AccordionContent>

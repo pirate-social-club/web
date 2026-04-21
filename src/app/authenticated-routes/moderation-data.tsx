@@ -14,29 +14,32 @@ import { getErrorMessage } from "./route-core";
 import { getRouteAuthDescription, getRouteFailureDescription, getRouteIncompleteDescription, getRouteString } from "./route-status-copy";
 import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState, StackPageShell, StatusCard } from "./route-shell";
 
-export function getCommunityModerationTitle(section: CommunityModerationSection): string {
+export function getCommunityModerationTitle(
+  section: CommunityModerationSection,
+  copy: { nav: Record<string, string> },
+): string {
   switch (section) {
     case "profile":
-      return "Profile";
+      return copy.nav.profile;
     case "rules":
-      return "Rules";
+      return copy.nav.rules;
     case "links":
-      return "Links";
+      return copy.nav.links;
     case "labels":
-      return "Labels";
+      return copy.nav.labels;
     case "donations":
-      return "Donations";
+      return copy.nav.donations;
     case "pricing":
-      return "Pricing";
+      return copy.nav.pricing;
     case "gates":
-      return "Gates";
+      return copy.nav.gates;
     case "safety":
-      return "Safety";
+      return copy.nav.safety;
     case "agents":
-      return "Agents";
+      return copy.nav.agents;
     case "namespace":
     default:
-      return "Namespace verification";
+      return copy.nav.namespace;
   }
 }
 

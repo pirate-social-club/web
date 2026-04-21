@@ -11,6 +11,10 @@ import type {
 
 import type { ApiRequest } from "./client-internal";
 
+type UpdateUserAgentRequest = {
+  display_name: string;
+};
+
 export function createAgentsApi(request: ApiRequest) {
   return {
     createPairing: (): Promise<AgentOwnershipPairing> =>
@@ -29,6 +33,14 @@ export function createAgentsApi(request: ApiRequest) {
       request<UserAgentListResponse>("/agents"),
     get: (agentId: string): Promise<UserAgent> =>
       request<UserAgent>(`/agents/${encodeURIComponent(agentId)}`),
+    update: (
+      agentId: string,
+      body: UpdateUserAgentRequest,
+    ): Promise<UserAgent> =>
+      request<UserAgent>(`/agents/${encodeURIComponent(agentId)}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
     startOwnershipSession: (
       body: StartAgentOwnershipSessionRequest,
     ): Promise<AgentOwnershipSession> =>

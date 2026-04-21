@@ -42,14 +42,14 @@ function InteractiveStory(args: OwnedAgentsPanelProps) {
         agents={agents}
         importValue={importValue}
         registrationState={regState}
-        onImportRegistration={() => {
+        onImportRegistration={(displayName) => {
           setRegState({ kind: "verifying" });
           setTimeout(() => {
             setAgents((prev) => [
               ...prev,
               {
                 agentId: "agt_new_" + Date.now(),
-                displayName: "New Agent",
+                displayName,
                 status: "active",
                 createdAt: new Date().toISOString(),
                 currentOwnership: {
@@ -63,6 +63,13 @@ function InteractiveStory(args: OwnedAgentsPanelProps) {
           }, 2000);
         }}
         onImportValueChange={setImportValue}
+        onStartPairing={() => {
+          setRegState({
+            kind: "pairing_code",
+            pairingCode: "PIR-DEMO-CODE",
+            expiresAt: "2026-04-20T12:00:00Z",
+          });
+        }}
         onDeregister={(agentId) => {
           setAgents((prev) =>
             prev.map((a) =>
@@ -71,6 +78,11 @@ function InteractiveStory(args: OwnedAgentsPanelProps) {
                 : a,
             ),
           );
+        }}
+        onUpdateName={async (agentId, displayName) => {
+          setAgents((prev) => prev.map((agent) => (
+            agent.agentId === agentId ? { ...agent, displayName } : agent
+          )));
         }}
       />
     </div>

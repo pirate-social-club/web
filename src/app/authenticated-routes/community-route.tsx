@@ -17,7 +17,7 @@ import { CommunityPageShell } from "@/components/compositions/community-page-she
 import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel, getSelfVerificationCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { getGateFailureMessage, getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -30,7 +30,6 @@ import {
   getNamespaceActionLabel,
 } from "./community-sidebar-helpers";
 import { clearPendingSelfJoinSession, readPendingSelfJoinSession, writePendingSelfJoinSession } from "./community-session-helpers";
-import { NotFoundPage } from "./misc-routes";
 import {
   buildCommunityModerationPath,
   buildDefaultCommunityModerationPath,
@@ -47,7 +46,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const api = useApi();
   const session = useSession();
   const { locale } = useUiLocale();
-  const { copy } = useRouteMessages();
+  const { copy, localeTag } = useRouteMessages();
   const pageTitle = copy.community.title;
   const createPostLabel = copy.community.createPostLabel;
   const modToolsLabel = copy.community.modToolsLabel;
@@ -425,6 +424,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         ? {
           currentUserId: session?.user?.user_id,
           listing: assetId ? listingsByAssetId[assetId] : undefined,
+          localeTag,
           onBuy: assetId && listingsByAssetId[assetId] ? () => void handleBuySong(listingsByAssetId[assetId]!, post.post.title ?? "song") : undefined,
           playback: songPlayback,
           purchase: assetId ? purchasesByAssetId[assetId] : undefined,

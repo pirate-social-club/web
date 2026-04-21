@@ -5,7 +5,9 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "@phosphor-icons/react";
 import { cva, type VariantProps } from "class-variance-authority";
 
+import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { getLocaleMessages } from "@/locales";
 
 const Sheet = DialogPrimitive.Root;
 const SheetTrigger = DialogPrimitive.Trigger;
@@ -57,24 +59,29 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, hideCloseButton = false, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <DialogPrimitive.Content
-      className={cn(sheetVariants({ side }), className)}
-      ref={ref}
-      {...props}
-    >
-      {children}
-      {!hideCloseButton ? (
-        <DialogPrimitive.Close className="absolute end-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <X aria-hidden="true" className="h-5 w-5" weight="bold" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      ) : null}
-    </DialogPrimitive.Content>
-  </SheetPortal>
-));
+>(({ side = "right", className, children, hideCloseButton = false, ...props }, ref) => {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").common;
+
+  return (
+    <SheetPortal>
+      <SheetOverlay />
+      <DialogPrimitive.Content
+        className={cn(sheetVariants({ side }), className)}
+        ref={ref}
+        {...props}
+      >
+        {children}
+        {!hideCloseButton ? (
+          <DialogPrimitive.Close className="absolute end-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <X aria-hidden="true" className="h-5 w-5" weight="bold" />
+            <span className="sr-only">{copy.close}</span>
+          </DialogPrimitive.Close>
+        ) : null}
+      </DialogPrimitive.Content>
+    </SheetPortal>
+  );
+});
 SheetContent.displayName = DialogPrimitive.Content.displayName;
 
 const SheetHeader = ({

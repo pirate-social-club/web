@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 import type {
   NamespaceFamily,
@@ -85,6 +86,8 @@ export function applyNamespaceSessionResult(
 }
 
 export function NamespaceVerificationChallengeMessage({ value }: { value: string }) {
+  const { copy } = useRouteMessages();
+  const mc = copy.moderation.namespaceVerification.shared;
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = React.useCallback(async () => {
@@ -99,7 +102,7 @@ export function NamespaceVerificationChallengeMessage({ value }: { value: string
         {value}
       </pre>
       <Button className="h-9 text-base" onClick={handleCopy} size="sm" variant="outline">
-        {copied ? "Copied" : "Copy message"}
+        {copied ? mc.copied : mc.copyMessage}
       </Button>
     </div>
   );

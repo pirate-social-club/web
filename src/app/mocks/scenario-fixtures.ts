@@ -1,5 +1,4 @@
 import type { CreateCommunitySample, OnboardingSample, RoutePost } from "./types";
-import { COMMUNITY_IDS } from "./types";
 
 export const ONBOARDING_SAMPLE: OnboardingSample = {
   generatedHandle: "suspicious-code-7234.pirate",

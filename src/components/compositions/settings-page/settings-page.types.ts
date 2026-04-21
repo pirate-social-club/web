@@ -81,10 +81,11 @@ export interface SettingsPageProps {
     loading?: boolean;
     registrationState: AgentRegistrationState;
     importValue?: string;
-    onStartPairing?: () => void;
+    onStartPairing?: (displayName: string) => void;
     onImportValueChange?: (value: string) => void;
-    onImportRegistration?: () => void;
+    onImportRegistration?: (displayName: string) => void;
     onCheckRegistration?: () => void;
     onDeregister?: (agentId: string) => void;
+    onUpdateName?: (agentId: string, displayName: string) => Promise<void> | void;
   };
 }

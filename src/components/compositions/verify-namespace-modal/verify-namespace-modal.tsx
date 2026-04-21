@@ -253,7 +253,6 @@ export function VerifyNamespaceModal({
   const isFailed = state === "failed";
   const isExpired = state === "expired";
   const busy = isStarting || isVerifying;
-  const hasRootInput = rootLabel.trim().replace(/^[@.]/, "").length > 0;
   const isHns = activeFamily === "hns";
   const isSpaces = activeFamily === "spaces";
   const canSubmitSignature = isSpaces ? signature.trim().length > 0 : true;

@@ -426,6 +426,7 @@ export function OwnedAgentsPanel({
   onCheckRegistration,
   onDeregister,
   onUpdateHandle,
+  onUpdateName,
 }: OwnedAgentsPanelProps) {
   const { locale } = useUiLocale();
   const copy = React.useMemo(() => getLocaleMessages(locale, "routes").ownedAgents, [locale]);
@@ -492,13 +493,14 @@ export function OwnedAgentsPanel({
               localeTag={localeTag}
               onDeregister={onDeregister}
               onUpdateHandle={onUpdateHandle}
+              onUpdateName={onUpdateName}
             />
           ))}
           {inactiveAgents.length > 0 ? (
             <div className="space-y-2 pt-4">
               <p className="text-muted-foreground">{copy.inactiveLabel}</p>
               {inactiveAgents.map((agent) => (
-                <AgentRow key={agent.agentId} agent={agent} copy={copy} localeTag={localeTag} />
+                <AgentRow key={agent.agentId} agent={agent} copy={copy} localeTag={localeTag} onUpdateName={onUpdateName} />
               ))}
             </div>
           ) : null}

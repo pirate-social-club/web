@@ -203,12 +203,12 @@ export function useNamespaceVerificationFlow({
 
   const start = React.useCallback(() => {
     const trimmed = rootLabel.trim().replace(/^[@.]/, "");
-    if (!trimmed) return;
+    if (!trimmed) return Promise.resolve();
 
     setState("starting");
     setFailureReason(null);
 
-    void callbacksRef.current
+    return callbacksRef.current
       .onStartSession({ family: activeFamily, rootLabel: trimmed })
       .then((result) => {
         applySessionResult(result);
@@ -223,7 +223,7 @@ export function useNamespaceVerificationFlow({
   }, [activeFamily, applySessionResult, rootLabel]);
 
   const verify = React.useCallback(() => {
-    if (!sessionId) return;
+    if (!sessionId) return Promise.resolve();
 
     setState("verifying");
     setFailureReason(null);
@@ -242,7 +242,7 @@ export function useNamespaceVerificationFlow({
       };
     }
 
-    void callbacksRef.current
+    return callbacksRef.current
       .onCompleteSession(completeInput)
       .then((result) => {
         if (result.status === "verified" && result.namespaceVerificationId) {
@@ -277,13 +277,13 @@ export function useNamespaceVerificationFlow({
       if (!trimmed) {
         setState("idle");
         resetChallengeState();
-        return;
+        return Promise.resolve();
       }
 
       setState("starting");
       setFailureReason(null);
 
-      void callbacksRef.current
+      return callbacksRef.current
         .onStartSession({ family: activeFamily, rootLabel: trimmed })
         .then((result) => {
           applySessionResult(result);
@@ -298,13 +298,12 @@ export function useNamespaceVerificationFlow({
               : "Could not start verification",
           );
         });
-      return;
     }
 
     setState("starting");
     setFailureReason(null);
 
-    void callbacksRef.current
+    return callbacksRef.current
       .onCompleteSession({
         namespaceVerificationSessionId: sessionId,
         family: activeFamily,
@@ -315,7 +314,7 @@ export function useNamespaceVerificationFlow({
           setState("expired");
           return;
         }
-        void callbacksRef.current
+        return callbacksRef.current
           .onGetSession({ namespaceVerificationSessionId: sessionId })
           .then((sessionResult) => {
             applySessionResult(sessionResult);

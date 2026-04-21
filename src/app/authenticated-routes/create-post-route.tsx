@@ -20,6 +20,82 @@ import { getRouteAuthDescription, getRouteFailureDescription, getRouteIncomplete
 import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState, StackPageShell, StatusCard } from "./route-shell";
 import { useCreatePostState } from "./create-post-state";
 
+type CreatePostState = ReturnType<typeof useCreatePostState>;
+type RouteCopy = ReturnType<typeof useRouteMessages>["copy"];
+
+function CreatePostComposer({
+  copy,
+  state,
+}: {
+  copy: RouteCopy;
+  state: CreatePostState;
+}) {
+  if (!state.community) {
+    return null;
+  }
+
+  return (
+    <PostComposer
+      availableTabs={["text", "link", "song"]}
+      canCreateSongPost
+      clubName={`c/${state.community.display_name}`}
+      draft={{
+        audience: state.audience,
+        captionValue: state.caption,
+        charityContribution: state.charityContribution,
+        charityPartner: state.charityPartner,
+        derivativeStep: state.derivativeStep,
+        identity: {
+          authorMode: state.authorMode,
+          allowAnonymousIdentity: state.community.allow_anonymous_identity,
+          allowQualifiersOnAnonymousPosts: state.community.allow_qualifiers_on_anonymous_posts ?? true,
+          agentLabel: state.availableAgent?.displayName,
+          identityMode: state.identityMode,
+          publicHandle: resolvePublicIdentityLabel(state.session?.profile) ?? "@handle",
+          anonymousLabel: resolveAnonymousComposerLabel(state.community.anonymous_identity_scope),
+          availableQualifiers: state.availableIdentityQualifiers,
+          selectedQualifierIds: state.selectedQualifierIds,
+        },
+        linkUrlValue: state.linkUrl,
+        lyricsValue: state.lyrics,
+        mode: state.composerMode,
+        monetization: state.monetizationState,
+        song: state.songState,
+        songMode: state.songMode,
+        textBodyValue: state.body,
+        titleCountLabel: `${state.title.length}/300`,
+        titleValue: state.title,
+      }}
+      actions={{
+        onAudienceChange: state.setAudience,
+        onAuthorModeChange: state.setAuthorMode,
+        onCaptionValueChange: state.setCaption,
+        onCharityContributionChange: state.setCharityContribution,
+        onDerivativeStepChange: state.setDerivativeStep,
+        onIdentityModeChange: state.setIdentityMode,
+        onLinkUrlValueChange: state.setLinkUrl,
+        onLyricsValueChange: state.setLyrics,
+        onModeChange: state.setComposerMode,
+        onMonetizationChange: state.setMonetizationState,
+        onSelectedQualifierIdsChange: state.setSelectedQualifierIds,
+        onSongChange: state.setSongState,
+        onSongModeChange: state.setSongMode,
+        onTextBodyValueChange: state.setBody,
+        onTitleValueChange: state.setTitle,
+      }}
+      submit={{
+        disabled: state.submitState.disabled,
+        error: state.submitState.submitError,
+        label: state.composerMode === "song" && state.derivativeStep?.required
+          ? copy.createPost.actions.publishRemix
+          : copy.createPost.actions.post,
+        loading: state.submitting,
+        onSubmit: () => void state.handleSubmit(),
+      }}
+    />
+  );
+}
+
 export function CreatePostPage({ communityId }: { communityId: string }) {
   const state = useCreatePostState(communityId);
   const isMobile = useIsMobile();
@@ -100,58 +176,7 @@ export function CreatePostPage({ communityId }: { communityId: string }) {
       <div className="min-h-screen w-full bg-background text-foreground">
         <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
         <section className="flex min-w-0 flex-1 flex-col px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-          <PostComposer
-            availableTabs={["text", "link", "song"]}
-            audience={state.audience}
-            canCreateSongPost
-            captionValue={state.caption}
-            charityContribution={state.charityContribution}
-            charityPartner={state.charityPartner}
-            clubName={`c/${state.community.display_name}`}
-            derivativeStep={state.derivativeStep}
-            identity={{
-              authorMode: state.authorMode,
-              allowAnonymousIdentity: state.community.allow_anonymous_identity,
-              allowQualifiersOnAnonymousPosts: state.community.allow_qualifiers_on_anonymous_posts ?? true,
-              agentLabel: state.availableAgent?.displayName,
-              identityMode: state.identityMode,
-              publicHandle: resolvePublicIdentityLabel(state.session?.profile) ?? "@handle",
-              anonymousLabel: resolveAnonymousComposerLabel(state.community.anonymous_identity_scope),
-              availableQualifiers: state.availableIdentityQualifiers,
-              selectedQualifierIds: state.selectedQualifierIds,
-            }}
-            linkUrlValue={state.linkUrl}
-            lyricsValue={state.lyrics}
-            mode={state.composerMode}
-            monetization={state.monetizationState}
-            onCaptionValueChange={state.setCaption}
-            onAudienceChange={state.setAudience}
-            onAuthorModeChange={state.setAuthorMode}
-            onCharityContributionChange={state.setCharityContribution}
-            onDerivativeStepChange={state.setDerivativeStep}
-            onIdentityModeChange={state.setIdentityMode}
-            onLinkUrlValueChange={state.setLinkUrl}
-            onLyricsValueChange={state.setLyrics}
-            onModeChange={state.setComposerMode}
-            onMonetizationChange={state.setMonetizationState}
-            onSelectedQualifierIdsChange={state.setSelectedQualifierIds}
-            onSongChange={state.setSongState}
-            onSongModeChange={state.setSongMode}
-            onSubmit={() => void state.handleSubmit()}
-            onTextBodyValueChange={state.setBody}
-            onTitleValueChange={state.setTitle}
-            song={state.songState}
-            songMode={state.songMode}
-            submitDisabled={state.submitState.disabled}
-            submitError={state.submitState.submitError}
-            submitLabel={state.composerMode === "song" && state.derivativeStep?.required
-              ? copy.createPost.actions.publishRemix
-              : copy.createPost.actions.post}
-            submitLoading={state.submitting}
-            textBodyValue={state.body}
-            titleCountLabel={`${state.title.length}/300`}
-            titleValue={state.title}
-          />
+          <CreatePostComposer copy={copy} state={state} />
         </section>
       </div>
     );
@@ -160,58 +185,7 @@ export function CreatePostPage({ communityId }: { communityId: string }) {
   return (
     <ContentRailShell rail={<CommunitySidebar {...buildCommunitySidebar(state.community, locale)} />}>
       <StackPageShell title="">
-        <PostComposer
-          availableTabs={["text", "link", "song"]}
-          audience={state.audience}
-          canCreateSongPost
-          captionValue={state.caption}
-          charityContribution={state.charityContribution}
-          charityPartner={state.charityPartner}
-          clubName={`c/${state.community.display_name}`}
-          derivativeStep={state.derivativeStep}
-          identity={{
-            authorMode: state.authorMode,
-            allowAnonymousIdentity: state.community.allow_anonymous_identity,
-            allowQualifiersOnAnonymousPosts: state.community.allow_qualifiers_on_anonymous_posts ?? true,
-            agentLabel: state.availableAgent?.displayName,
-            identityMode: state.identityMode,
-            publicHandle: resolvePublicIdentityLabel(state.session?.profile) ?? "@handle",
-            anonymousLabel: resolveAnonymousComposerLabel(state.community.anonymous_identity_scope),
-            availableQualifiers: state.availableIdentityQualifiers,
-            selectedQualifierIds: state.selectedQualifierIds,
-          }}
-          linkUrlValue={state.linkUrl}
-          lyricsValue={state.lyrics}
-          mode={state.composerMode}
-          monetization={state.monetizationState}
-          onCaptionValueChange={state.setCaption}
-          onAudienceChange={state.setAudience}
-          onAuthorModeChange={state.setAuthorMode}
-          onCharityContributionChange={state.setCharityContribution}
-          onDerivativeStepChange={state.setDerivativeStep}
-          onIdentityModeChange={state.setIdentityMode}
-          onLinkUrlValueChange={state.setLinkUrl}
-          onLyricsValueChange={state.setLyrics}
-          onModeChange={state.setComposerMode}
-          onMonetizationChange={state.setMonetizationState}
-          onSelectedQualifierIdsChange={state.setSelectedQualifierIds}
-          onSongChange={state.setSongState}
-          onSongModeChange={state.setSongMode}
-          onSubmit={() => void state.handleSubmit()}
-          onTextBodyValueChange={state.setBody}
-          onTitleValueChange={state.setTitle}
-          song={state.songState}
-          songMode={state.songMode}
-          submitDisabled={state.submitState.disabled}
-          submitError={state.submitState.submitError}
-          submitLabel={state.composerMode === "song" && state.derivativeStep?.required
-            ? copy.createPost.actions.publishRemix
-            : copy.createPost.actions.post}
-          submitLoading={state.submitting}
-          textBodyValue={state.body}
-          titleCountLabel={`${state.title.length}/300`}
-          titleValue={state.title}
-        />
+        <CreatePostComposer copy={copy} state={state} />
       </StackPageShell>
     </ContentRailShell>
   );

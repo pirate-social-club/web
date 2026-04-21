@@ -194,18 +194,15 @@ No confirmed bug items remain open.
 - **Status:** ✅ **Fixed**
 - **Verification:** Draft/editor fields moved to reducer-backed `useCreatePostDraftState` in `create-post-draft-state.ts`. `create-post-state.tsx` now keeps only async resource/loading/submission state in local `useState` calls while preserving the existing returned setter API.
 
+### REFACTOR-005 — `PostComposer` receives ~40 props
+- **Status:** ✅ **Fixed**
+- **Verification:** `PostComposer` now accepts grouped `draft`, `actions`, and `submit` objects, while retaining legacy direct props for compatibility. `create-post-route.tsx` uses a `CreatePostComposer` adapter so mobile and desktop routes pass the grouped API instead of duplicating the full prop surface.
+
 ---
 
 ## Remaining Structural Refactors
 
-These are real issues that degrade maintainability, but they are not runtime bugs. Fix them based on sprint capacity and touch-risk, not urgency.
-
-### REFACTOR-005 — `PostComposer` receives ~40 props
-- **Location:** `src/components/compositions/post-composer/post-composer.tsx`, lines 58–103
-- **Verification:** Direct read. Props include every field, callback, tab state, and monetization setting.
-- **Impact:** Adding a field requires touching 3+ files. Prop object changes every render, making downstream memoization impossible.
-- **Fix:** Introduce `PostComposerContext` or split into tab-specific sub-components that own their own state. Alternatively, accept a single `state` + `dispatch` pair.
-- **Risk:** High — composer is a core user flow. Refactor needs careful QA.
+No remaining structural refactors from this audit.
 
 ---
 

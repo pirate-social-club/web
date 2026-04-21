@@ -148,47 +148,64 @@ export interface ComposerIdentityState {
   helpText?: string;
 }
 
-export interface PostComposerProps {
+export interface PostComposerDraftState {
+  mode: ComposerTab;
+  titleValue?: string;
+  titleCountLabel?: string;
+  textBodyValue?: string;
+  captionValue?: string;
+  lyricsValue?: string;
+  linkUrlValue?: string;
+  linkPreview?: LinkPreviewState;
+  songMode?: SongMode;
+  song?: SongComposerState;
+  derivativeStep?: DerivativeStepState;
+  monetization?: MonetizationState;
+  charityPartner?: CommunityCharityPartner | null;
+  charityContribution?: CharityContributionState;
+  audience?: ComposerAudienceState;
+  identity?: ComposerIdentityState;
+  live?: LiveComposerState;
+}
+
+export interface PostComposerDraftActions {
+  onCaptionValueChange?: (value: string) => void;
+  onTextBodyValueChange?: (value: string) => void;
+  onTitleValueChange?: (value: string) => void;
+  onLyricsValueChange?: (value: string) => void;
+  onLinkUrlValueChange?: (value: string) => void;
+  onSongChange?: (value: SongComposerState) => void;
+  onSongModeChange?: (value: SongMode) => void;
+  onModeChange?: (value: ComposerTab) => void;
+  onDerivativeStepChange?: (value: DerivativeStepState | undefined) => void;
+  onMonetizationChange?: (value: MonetizationState) => void;
+  onCharityContributionChange?: (value: CharityContributionState) => void;
+  onAudienceChange?: (value: ComposerAudienceState) => void;
+  onAuthorModeChange?: (value: AuthorMode) => void;
+  onIdentityModeChange?: (value: IdentityMode) => void;
+  onSelectedQualifierIdsChange?: (value: string[]) => void;
+}
+
+export interface PostComposerSubmitState {
+  disabled?: boolean;
+  error?: string | null;
+  label?: string;
+  loading?: boolean;
+  onSubmit?: () => void;
+}
+
+export interface PostComposerProps extends Partial<PostComposerDraftState>, PostComposerDraftActions {
   clubName: string;
   clubAvatarSrc?: string;
   communityPickerItems?: CommunityPickerItem[];
   communityPickerEmptyLabel?: string;
   onSelectCommunity?: (communityId: string) => void;
-  mode: ComposerTab;
   availableTabs?: ComposerTab[];
   canCreateSongPost?: boolean;
   canScheduleLivestream?: boolean;
-  titleValue?: string;
-  titleCountLabel?: string;
-  onTitleValueChange?: (value: string) => void;
-  textBodyValue?: string;
-  onTextBodyValueChange?: (value: string) => void;
-  captionValue?: string;
-  onCaptionValueChange?: (value: string) => void;
-  lyricsValue?: string;
-  onLyricsValueChange?: (value: string) => void;
-  linkUrlValue?: string;
-  onLinkUrlValueChange?: (value: string) => void;
-  linkPreview?: LinkPreviewState;
-  songMode?: SongMode;
-  song?: SongComposerState;
-  onSongChange?: (value: SongComposerState) => void;
-  onSongModeChange?: (value: SongMode) => void;
-  onModeChange?: (value: ComposerTab) => void;
-  derivativeStep?: DerivativeStepState;
-  onDerivativeStepChange?: (value: DerivativeStepState | undefined) => void;
-  monetization?: MonetizationState;
-  onMonetizationChange?: (value: MonetizationState) => void;
-  charityPartner?: CommunityCharityPartner | null;
-  charityContribution?: CharityContributionState;
-  onCharityContributionChange?: (value: CharityContributionState) => void;
-  audience?: ComposerAudienceState;
-  onAudienceChange?: (value: ComposerAudienceState) => void;
-  identity?: ComposerIdentityState;
-  onAuthorModeChange?: (value: AuthorMode) => void;
-  onIdentityModeChange?: (value: IdentityMode) => void;
-  onSelectedQualifierIdsChange?: (value: string[]) => void;
-  live?: LiveComposerState;
+  draft?: PostComposerDraftState;
+  actions?: PostComposerDraftActions;
+  submit?: PostComposerSubmitState;
   onSubmit?: () => void;
   submitDisabled?: boolean;
   submitError?: string | null;

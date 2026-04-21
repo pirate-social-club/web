@@ -34,7 +34,14 @@ function installHookStubs() {
     spyOn(React, "useCallback").mockImplementation(((
       callback: unknown,
     ) => callback) as unknown as typeof React.useCallback),
+    spyOn(React, "useContext").mockImplementation((() => ({
+      dir: "ltr",
+      isRtl: false,
+      locale: "en",
+      setLocale: () => undefined,
+    })) as unknown as typeof React.useContext),
     spyOn(React, "useEffect").mockImplementation((() => undefined) as unknown as typeof React.useEffect),
+    spyOn(React, "useId").mockImplementation((() => "test-id") as unknown as typeof React.useId),
     spyOn(React, "useRef").mockImplementation(((
       initial: unknown,
     ) => ({ current: initial })) as unknown as typeof React.useRef),
@@ -58,6 +65,10 @@ function walkTree(node: React.ReactNode, visit: (element: TestElement) => void) 
 
   const element = node as TestElement;
   visit(element);
+  if (typeof element.type === "function" && element.type.name === "PostComposerSongAccessSection") {
+    walkTree((element.type as (props: Record<string, unknown>) => React.ReactNode)(element.props), visit);
+    return;
+  }
   walkTree(element.props.children as React.ReactNode, visit);
 }
 

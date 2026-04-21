@@ -55,52 +55,54 @@ function deriveSelectedQualifierIds(
   return identity.selectedQualifierIds ?? [];
 }
 
-export function PostComposer({
-  clubName,
-  clubAvatarSrc,
-  communityPickerItems,
-  communityPickerEmptyLabel,
-  onSelectCommunity,
-  mode,
-  availableTabs = defaultTabs,
-  canCreateSongPost = false,
-  titleValue = "",
-  titleCountLabel = "0/300",
-  onTitleValueChange,
-  textBodyValue = "",
-  onTextBodyValueChange,
-  captionValue = "",
-  onCaptionValueChange,
-  lyricsValue = "",
-  onLyricsValueChange,
-  linkUrlValue = "",
-  onLinkUrlValueChange,
-  linkPreview,
-  songMode,
-  song,
-  onSongChange,
-  onSongModeChange,
-  onModeChange,
-  derivativeStep,
-  onDerivativeStepChange,
-  monetization,
-  onMonetizationChange,
-  charityPartner,
-  charityContribution,
-  onCharityContributionChange,
-  audience,
-  onAudienceChange,
-  identity,
-  onAuthorModeChange,
-  onIdentityModeChange,
-  onSelectedQualifierIdsChange,
-  live,
-  onSubmit,
-  submitDisabled = false,
-  submitError = null,
-  submitLabel,
-  submitLoading = false,
-}: PostComposerProps) {
+export function PostComposer(props: PostComposerProps) {
+  const {
+    availableTabs = defaultTabs,
+    canCreateSongPost = false,
+    clubAvatarSrc,
+    clubName,
+    communityPickerEmptyLabel,
+    communityPickerItems,
+    onSelectCommunity,
+  } = props;
+  const { actions, draft, submit } = props;
+  const mode = draft?.mode ?? props.mode ?? "text";
+  const titleValue = draft?.titleValue ?? props.titleValue ?? "";
+  const titleCountLabel = draft?.titleCountLabel ?? props.titleCountLabel ?? "0/300";
+  const textBodyValue = draft?.textBodyValue ?? props.textBodyValue ?? "";
+  const captionValue = draft?.captionValue ?? props.captionValue ?? "";
+  const lyricsValue = draft?.lyricsValue ?? props.lyricsValue ?? "";
+  const linkUrlValue = draft?.linkUrlValue ?? props.linkUrlValue ?? "";
+  const linkPreview = draft?.linkPreview ?? props.linkPreview;
+  const songMode = draft?.songMode ?? props.songMode;
+  const song = draft?.song ?? props.song;
+  const derivativeStep = draft?.derivativeStep ?? props.derivativeStep;
+  const monetization = draft?.monetization ?? props.monetization;
+  const charityPartner = draft?.charityPartner ?? props.charityPartner;
+  const charityContribution = draft?.charityContribution ?? props.charityContribution;
+  const audience = draft?.audience ?? props.audience;
+  const identity = draft?.identity ?? props.identity;
+  const live = draft?.live ?? props.live;
+  const onTitleValueChange = actions?.onTitleValueChange ?? props.onTitleValueChange;
+  const onTextBodyValueChange = actions?.onTextBodyValueChange ?? props.onTextBodyValueChange;
+  const onCaptionValueChange = actions?.onCaptionValueChange ?? props.onCaptionValueChange;
+  const onLyricsValueChange = actions?.onLyricsValueChange ?? props.onLyricsValueChange;
+  const onLinkUrlValueChange = actions?.onLinkUrlValueChange ?? props.onLinkUrlValueChange;
+  const onSongChange = actions?.onSongChange ?? props.onSongChange;
+  const onSongModeChange = actions?.onSongModeChange ?? props.onSongModeChange;
+  const onModeChange = actions?.onModeChange ?? props.onModeChange;
+  const onDerivativeStepChange = actions?.onDerivativeStepChange ?? props.onDerivativeStepChange;
+  const onMonetizationChange = actions?.onMonetizationChange ?? props.onMonetizationChange;
+  const onCharityContributionChange = actions?.onCharityContributionChange ?? props.onCharityContributionChange;
+  const onAudienceChange = actions?.onAudienceChange ?? props.onAudienceChange;
+  const onAuthorModeChange = actions?.onAuthorModeChange ?? props.onAuthorModeChange;
+  const onIdentityModeChange = actions?.onIdentityModeChange ?? props.onIdentityModeChange;
+  const onSelectedQualifierIdsChange = actions?.onSelectedQualifierIdsChange ?? props.onSelectedQualifierIdsChange;
+  const onSubmit = submit?.onSubmit ?? props.onSubmit;
+  const submitDisabled = submit?.disabled ?? props.submitDisabled ?? false;
+  const submitError = submit?.error ?? props.submitError ?? null;
+  const submitLabel = submit?.label ?? props.submitLabel;
+  const submitLoading = submit?.loading ?? props.submitLoading ?? false;
   const { isRtl, locale } = useUiLocale();
   const isMobile = useIsMobile();
   const routesCopy = getLocaleMessages(locale, "routes");

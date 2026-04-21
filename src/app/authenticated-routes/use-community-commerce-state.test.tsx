@@ -5,7 +5,8 @@ import type { Community as ApiCommunity, CommunityPricingPolicy as ApiCommunityP
 
 import { api } from "@/lib/api";
 
-import { useCommunityCommerceState, type SaveCommunityAction } from "./use-community-commerce-state";
+import type { SaveCommunityAction } from "./community-moderation-save";
+import { useCommunityCommerceState } from "./use-community-commerce-state";
 
 const { document, window } = parseHTML("<!DOCTYPE html><html><body></body></html>");
 (globalThis as any).document = document;

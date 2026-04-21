@@ -17,15 +17,10 @@ import {
   getPricingTierDrafts,
   validatePricingPolicyDraft,
 } from "./moderation-helpers";
+import type { SaveCommunityAction } from "./community-moderation-save";
 import { getErrorMessage } from "./route-core";
 
 type ApiCommunityPricingPolicyState = ApiCommunityPricingPolicy | null;
-export type SaveCommunityAction = (
-  action: () => Promise<ApiCommunity>,
-  savingSetter: React.Dispatch<React.SetStateAction<boolean>>,
-  successMessage: string,
-  failureMessage: string,
-) => Promise<ApiCommunity>;
 
 export function useCommunityCommerceState({
   community,

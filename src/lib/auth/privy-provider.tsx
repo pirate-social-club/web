@@ -104,7 +104,13 @@ export function usePiratePrivyWallets({ enabled = true }: { enabled?: boolean } 
   };
 }
 
-export function PirateAuthProvider({ children }: { children: React.ReactNode }) {
+export function PirateAuthProvider({
+  children,
+  deferPrivyUntilConnect = false,
+}: {
+  children: React.ReactNode;
+  deferPrivyUntilConnect?: boolean;
+}) {
   const appId = getPrivyAppId();
   const clientId = getPrivyClientId();
   const session = useSession();
@@ -120,9 +126,14 @@ export function PirateAuthProvider({ children }: { children: React.ReactNode }) 
   const [walletsReady, setWalletsReady] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const shouldLoadWalletSync = walletSyncDemand > 0;
-  // Keep Privy mounted whenever configured so the app can silently restore a Pirate
-  // session after reload before auth-required routes fall through to 401 states.
-  const shouldLoadPrivy = !!appId;
+  // Most routes keep Privy mounted so existing Privy auth can refresh Pirate sessions.
+  // Some unauthenticated entry points should not open or bootstrap auth until asked.
+  const shouldLoadPrivy = !!appId && (
+    !deferPrivyUntilConnect
+    || pendingConnect
+    || !!session
+    || refreshWindowReached
+  );
   const networkConfig = React.useMemo(() => getPirateNetworkConfig(), []);
   const supportedChains = React.useMemo(() => {
     const baseChain = networkConfig.base.network === "base-mainnet" ? base : baseSepolia;

@@ -159,7 +159,7 @@ export function PirateAppShell({ initialHost, initialPath }: { initialHost?: str
             <Toaster />
           </>
         ) : (
-          <PirateAuthProvider>
+          <PirateAuthProvider deferPrivyUntilConnect={route.kind === "create-community"}>
             <SessionRevalidator>
               <NotificationShell
                 copy={copy}

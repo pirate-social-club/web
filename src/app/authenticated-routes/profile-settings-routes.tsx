@@ -1,13 +1,11 @@
 "use client";
 
 import * as React from "react";
-import type { Profile as ApiProfile, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { updateSessionProfile, useSession } from "@/lib/api/session-store";
 import { ApiError } from "@/lib/api/client";
-import { findStoredOwnedAgentKey, saveStoredOwnedAgentKey } from "@/lib/agents/agent-key-store";
 import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
 import { type UiLocaleCode, isUiLocaleCode } from "@/lib/ui-locale-core";
@@ -16,206 +14,20 @@ import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import { toast } from "@/components/primitives/sonner";
 import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profile-page/profile-page";
 import { SettingsPage } from "@/components/compositions/settings-page/settings-page";
-import type { SettingsHandle, SettingsPageProps, SettingsSubmitState, SettingsTab } from "@/components/compositions/settings-page/settings-page.types";
+import type { SettingsSubmitState, SettingsTab } from "@/components/compositions/settings-page/settings-page.types";
 
 import { getRouteAuthDescription } from "./route-status-copy";
 import { AuthRequiredRouteState } from "./route-shell";
 import { useRouteMessages } from "./route-core";
-
-type PendingAgentRegistration = {
-  sessionId: string;
-  handleLabel: string;
-  displayName: string;
-  publicKeyPem: string;
-  privateKeyPem: string;
-};
-
-type ImportedOpenClawBundle = {
-  display_name?: string;
-  public_key_pem: string;
-  private_key_pem: string;
-  agent_challenge: {
-    device_id: string;
-    public_key: string;
-    message: string;
-    signature: string;
-    timestamp: number;
-  };
-};
-
-function buildSettingsLocaleOptions(copy: ReturnType<typeof useRouteMessages>["copy"]) {
-  return [
-    { label: copy.settings.localeEnglish, value: "en" as const },
-    { label: copy.settings.localeArabic, value: "ar" as const },
-    { label: copy.settings.localeMandarin, value: "zh" as const },
-    { label: copy.settings.localePseudo, value: "pseudo" as const },
-  ];
-}
-
-function apiProfileToProps(
-  profile: ApiProfile,
-  ownProfile: boolean,
-  labels: {
-    followersLabel: string;
-    followingLabel: string;
-    joinedStatLabel: string;
-  },
-  followState: ReturnType<typeof useProfileFollowState>,
-  localeTag: string,
-) {
-  const handle = profile.primary_public_handle?.label ?? profile.global_handle?.label ?? "";
-
-  return {
-    profile: {
-      displayName: profile.display_name ?? handle,
-      handle,
-      bio: profile.bio ?? "",
-      avatarSrc: profile.avatar_ref ?? undefined,
-      bannerSrc: profile.cover_ref ?? undefined,
-      meta: [],
-      viewerContext: ownProfile ? ("self" as const) : ("public" as const),
-      viewerFollows: followState.isFollowing,
-      canMessage: !ownProfile,
-      followBusy: followState.followBusy,
-      followDisabled: followState.followDisabled || followState.followLoading,
-      followLoading: followState.followLoading,
-      onToggleFollow: followState.onToggleFollow,
-    },
-    rightRail: {
-      stats: [
-        { label: labels.followersLabel, value: followState.followerCount ?? "—" },
-        { label: labels.followingLabel, value: followState.followingCount },
-        { label: labels.joinedStatLabel, value: new Date(profile.created_at).toLocaleDateString(localeTag, { month: "short", year: "numeric" }) },
-      ],
-      walletAddress: profile.primary_wallet_address ?? undefined,
-    },
-    overviewItems: [],
-    posts: [],
-    comments: [],
-    scrobbles: [],
-  };
-}
-
-function mapProfileLinkedHandles(profile: ApiProfile): SettingsHandle[] {
-  const linkedHandles = profile.linked_handles ?? [{
-    linked_handle_id: `global:${profile.global_handle.global_handle_id}`,
-    label: profile.global_handle.label,
-    kind: "pirate" as const,
-    verification_state: "verified" as const,
-  }];
-  const primaryLinkedHandleId = profile.primary_public_handle?.linked_handle_id ?? null;
-
-  return linkedHandles.map((handle) => ({
-    handleId: handle.kind === "pirate" ? null : handle.linked_handle_id,
-    kind: handle.kind,
-    label: handle.label,
-    primary: handle.kind === "pirate" ? primaryLinkedHandleId == null : primaryLinkedHandleId === handle.linked_handle_id,
-    verificationState: handle.verification_state,
-  }));
-}
-
-function getSelectedProfileHandleLabel(profile: ApiProfile, linkedHandleId: string | null): string {
-  if (linkedHandleId == null) return profile.global_handle.label;
-  return profile.linked_handles?.find((handle) => handle.linked_handle_id === linkedHandleId)?.label
-    ?? profile.primary_public_handle?.label
-    ?? profile.global_handle.label;
-}
-
-function buildSettingsPath(tab: SettingsTab): string {
-  return `/settings/${tab}`;
-}
-
-function formatWalletChainLabel(chainNamespace: string): string {
-  switch (chainNamespace) {
-    case "eip155:1":
-      return "Ethereum";
-    case "eip155:8453":
-      return "Base";
-    default:
-      return chainNamespace;
-  }
-}
-
-function normalizeAgentHandleInput(value: string): string {
-  return value.trim().toLowerCase().replace(/\.clawitzer$/i, "");
-}
-
-function displayNameFromAgentHandle(value: string): string {
-  const normalized = normalizeAgentHandleInput(value);
-  return normalized
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ") || normalized;
-}
-
-function mapApiUserAgentToOwnedAgent(agent: ApiUserAgent): SettingsPageProps["agents"]["items"][number] {
-  return {
-    agentId: agent.agent_id,
-    displayName: agent.display_name,
-    handleLabel: agent.handle?.label_display ?? null,
-    status: agent.status,
-    createdAt: agent.created_at,
-    currentOwnership: agent.current_ownership
-      ? {
-        ownershipProvider: agent.current_ownership.ownership_provider,
-        verifiedAt: agent.current_ownership.verified_at ?? agent.created_at,
-        expiresAt: agent.current_ownership.expires_at ?? null,
-      }
-      : null,
-  };
-}
-
-function parseImportedOpenClawBundle(raw: string): ImportedOpenClawBundle {
-  const parsed = JSON.parse(raw) as unknown;
-  if (!parsed || typeof parsed !== "object") {
-    throw new Error("Import payload must be valid JSON.");
-  }
-
-  const bundle = parsed as Record<string, unknown>;
-  const challenge = bundle.agent_challenge;
-  if (!challenge || typeof challenge !== "object") {
-    throw new Error("Import payload must include agent_challenge.");
-  }
-
-  const agentChallenge = challenge as Record<string, unknown>;
-  if (
-    typeof bundle.public_key_pem !== "string"
-    || typeof bundle.private_key_pem !== "string"
-    || typeof agentChallenge.device_id !== "string"
-    || typeof agentChallenge.public_key !== "string"
-    || typeof agentChallenge.message !== "string"
-    || typeof agentChallenge.signature !== "string"
-    || typeof agentChallenge.timestamp !== "number"
-  ) {
-    throw new Error("Import payload is missing required OpenClaw fields.");
-  }
-
-  return {
-    display_name: typeof bundle.display_name === "string" ? bundle.display_name : undefined,
-    public_key_pem: bundle.public_key_pem,
-    private_key_pem: bundle.private_key_pem,
-    agent_challenge: {
-      device_id: agentChallenge.device_id,
-      public_key: agentChallenge.public_key,
-      message: agentChallenge.message,
-      signature: agentChallenge.signature,
-      timestamp: agentChallenge.timestamp,
-    },
-  };
-}
-
-function formatOwnedAgentsLoadError(error: unknown): string {
-  if (!(error instanceof ApiError)) {
-    return "Could not load agents."
-  }
-
-  if (error.message.includes("no such table: user_agents")) {
-    return "Local API is missing agent tables. Restart pirate-api dev server."
-  }
-
-  return error.message
-}
+import {
+  apiProfileToProps,
+  buildSettingsLocaleOptions,
+  buildSettingsPath,
+  formatWalletChainLabel,
+  getSelectedProfileHandleLabel,
+  mapProfileLinkedHandles,
+} from "./profile-settings-mapping";
+import { useSettingsOwnedAgents } from "./use-settings-owned-agents";
 
 export function CurrentUserProfilePage() {
   const { copy, localeTag } = useRouteMessages();
@@ -269,12 +81,25 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const [displayNameError, setDisplayNameError] = React.useState<string | undefined>(undefined);
   const [profileSubmitState, setProfileSubmitState] = React.useState<SettingsSubmitState>({ kind: "idle" });
   const [preferencesSubmitState, setPreferencesSubmitState] = React.useState<SettingsSubmitState>({ kind: "idle" });
-  const [ownedAgents, setOwnedAgents] = React.useState<SettingsPageProps["agents"]["items"]>([]);
-  const [agentsLoading, setAgentsLoading] = React.useState(false);
-  const [agentsState, setAgentsState] = React.useState<SettingsPageProps["agents"]["registrationState"]>({ kind: "idle" });
-  const [agentImportValue, setAgentImportValue] = React.useState("");
-  const pendingAgentRegistrationRef = React.useRef<PendingAgentRegistration | null>(null);
-  const pendingPairingHandleRef = React.useRef<string | null>(null);
+  const ownedAgentsMessages = React.useMemo(() => ({
+    agentRegisteredToast: copy.ownedAgents.agentRegisteredToast,
+    completeAgentRegistrationError: copy.ownedAgents.completeAgentRegistrationError,
+    createPairingError: copy.ownedAgents.createPairingError,
+    importInvalidJsonError: copy.ownedAgents.importInvalidJsonError,
+    importMissingChallengeError: copy.ownedAgents.importMissingChallengeError,
+    importMissingFieldsError: copy.ownedAgents.importMissingFieldsError,
+    importRegistrationError: copy.ownedAgents.importRegistrationError,
+    missingRegistrationUrlError: copy.ownedAgents.missingRegistrationUrlError,
+    ownedAgentsLoadError: copy.ownedAgents.ownedAgentsLoadError,
+    ownedAgentsLocalTablesError: copy.ownedAgents.ownedAgentsLocalTablesError,
+    registrationIncompleteError: copy.ownedAgents.registrationIncompleteError,
+  }), [copy.ownedAgents]);
+  const agents = useSettingsOwnedAgents({
+    api,
+    canRegisterByVerification: session?.user.verification_capabilities?.unique_human?.state === "verified",
+    enabled: Boolean(profile && activeTab === "agents"),
+    messages: ownedAgentsMessages,
+  });
 
   React.useEffect(() => {
     if (!profile) return;
@@ -291,45 +116,6 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     setProfileSubmitState({ kind: "idle" });
     setPreferencesSubmitState({ kind: "idle" });
   }, [locale, profile]);
-
-  const loadOwnedAgents = React.useCallback(async (input?: { cancelled?: () => boolean }) => {
-    setAgentsLoading(true);
-    try {
-      const result = await api.agents.list();
-      if (input?.cancelled?.()) return;
-      const items = result.items.map(mapApiUserAgentToOwnedAgent);
-      setOwnedAgents(items);
-      return items;
-    } finally {
-      if (!input?.cancelled?.()) {
-        setAgentsLoading(false);
-      }
-    }
-  }, [api]);
-
-  React.useEffect(() => {
-    if (!profile || activeTab !== "agents") {
-      return;
-    }
-
-    let cancelled = false;
-    setOwnedAgents([]);
-    setAgentsState({ kind: "idle" });
-
-    void loadOwnedAgents({ cancelled: () => cancelled })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        logger.warn("[settings] owned agents load failed", error);
-        setAgentsState({
-          kind: "error",
-          message: formatOwnedAgentsLoadError(error),
-        });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTab, loadOwnedAgents, profile]);
 
   const handleFlow = useGlobalHandleFlow({
     currentHandleLabel: profile?.global_handle?.label ?? "",
@@ -416,9 +202,9 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
       toast.success(copy.settings.profileUpdated);
     } catch (e: unknown) {
       const apiErr = e as ApiError;
-      setProfileSubmitState({ kind: "error", message: apiErr?.message ?? "Failed to save profile." });
+      setProfileSubmitState({ kind: "error", message: apiErr?.message ?? copy.settings.saveProfileError });
     }
-  }, [api, avatarFile, avatarRemoved, bio, copy.settings.displayNameRequired, copy.settings.profileUpdated, coverFile, coverRemoved, displayName, profile, profilePrimaryHandleId, selectedPrimaryHandleId]);
+  }, [api, avatarFile, avatarRemoved, bio, copy.settings.displayNameRequired, copy.settings.profileUpdated, copy.settings.saveProfileError, coverFile, coverRemoved, displayName, profile, profilePrimaryHandleId, selectedPrimaryHandleId]);
 
   const handlePreferencesSave = React.useCallback(async () => {
     if (!profile) return;
@@ -431,201 +217,9 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
       toast.success(copy.settings.preferencesUpdated);
     } catch (e: unknown) {
       const apiErr = e as ApiError;
-      setPreferencesSubmitState({ kind: "error", message: apiErr?.message ?? "Failed to save preferences." });
+      setPreferencesSubmitState({ kind: "error", message: apiErr?.message ?? copy.settings.savePreferencesError });
     }
-  }, [api, copy.settings.preferencesUpdated, preferredLocale, profile, setLocale]);
-
-  const completePendingAgentRegistration = React.useCallback(async (input?: { silent?: boolean }) => {
-    const pendingRegistration = pendingAgentRegistrationRef.current;
-    if (!pendingRegistration) {
-      return;
-    }
-
-    try {
-      const completedSession = await api.agents.completeOwnershipSession(pendingRegistration.sessionId, {});
-
-      if (completedSession.status === "verified" && completedSession.agent_id) {
-        await api.agents.claimHandle(completedSession.agent_id, {
-          desired_label: pendingRegistration.handleLabel,
-        });
-        const now = new Date().toISOString();
-        await saveStoredOwnedAgentKey({
-          agentId: completedSession.agent_id,
-          displayName: pendingRegistration.displayName,
-          ownershipProvider: "clawkey",
-          publicKeyPem: pendingRegistration.publicKeyPem,
-          privateKeyPem: pendingRegistration.privateKeyPem,
-          createdAt: now,
-          updatedAt: now,
-        });
-        pendingAgentRegistrationRef.current = null;
-        await loadOwnedAgents();
-        setAgentsState({ kind: "idle" });
-        toast.success("Agent registered");
-        return;
-      }
-
-      if (completedSession.status === "failed" || completedSession.status === "expired" || completedSession.status === "cancelled") {
-        pendingAgentRegistrationRef.current = null;
-        setAgentsState({
-          kind: "error",
-          message: "Agent registration did not complete.",
-        });
-      }
-    } catch (error: unknown) {
-      if (input?.silent) {
-        return;
-      }
-      const apiError = error as ApiError;
-      setAgentsState({
-        kind: "error",
-        message: apiError?.message ?? "Could not complete agent registration.",
-      });
-    }
-  }, [api.agents, loadOwnedAgents]);
-
-  const handleUpdateAgentName = React.useCallback(async (agentId: string, nextDisplayName: string) => {
-    const updatedAgent = await api.agents.update(agentId, {
-      display_name: nextDisplayName.trim(),
-    });
-
-    setOwnedAgents((current) => current.map((agent) => (
-      agent.agentId === updatedAgent.agent_id ? mapApiUserAgentToOwnedAgent(updatedAgent) : agent
-    )));
-
-    const storedKey = await findStoredOwnedAgentKey(agentId);
-    if (storedKey) {
-      await saveStoredOwnedAgentKey({
-        ...storedKey,
-        displayName: updatedAgent.display_name,
-        updatedAt: new Date().toISOString(),
-      });
-    }
-  }, [api.agents]);
-
-  const handleUpdateAgentHandle = React.useCallback(async (agentId: string, nextHandleLabel: string) => {
-    await api.agents.claimHandle(agentId, {
-      desired_label: nextHandleLabel.trim(),
-    });
-    await loadOwnedAgents();
-  }, [api.agents, loadOwnedAgents]);
-
-  React.useEffect(() => {
-    if (agentsState.kind !== "awaiting_owner" && agentsState.kind !== "pairing_code") {
-      return;
-    }
-
-    const intervalId = window.setInterval(() => {
-      if (agentsState.kind === "awaiting_owner") {
-        void completePendingAgentRegistration({ silent: true });
-      }
-      void loadOwnedAgents()
-        .then(async (items) => {
-          const activeAgent = items?.find((agent) => agent.status === "active");
-          if (activeAgent && pendingPairingHandleRef.current?.trim()) {
-            const pendingHandle = pendingPairingHandleRef.current.trim();
-            await handleUpdateAgentHandle(activeAgent.agentId, pendingHandle);
-            const pendingDisplayName = displayNameFromAgentHandle(pendingHandle);
-            if (activeAgent.displayName !== pendingDisplayName) {
-              await handleUpdateAgentName(activeAgent.agentId, pendingDisplayName);
-            }
-            await loadOwnedAgents();
-            pendingPairingHandleRef.current = null;
-          }
-
-          if (activeAgent) {
-            pendingAgentRegistrationRef.current = null;
-            setAgentsState({ kind: "idle" });
-          }
-        })
-        .catch((error: unknown) => {
-          logger.warn("[settings] agent pairing poll failed", error);
-        });
-    }, 5000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [agentsState, completePendingAgentRegistration, handleUpdateAgentHandle, handleUpdateAgentName, loadOwnedAgents]);
-
-  const handleStartAgentPairing = React.useCallback(async (handleLabel: string) => {
-    setAgentsState({ kind: "verifying" });
-    pendingPairingHandleRef.current = handleLabel.trim();
-    try {
-      const pairing = await api.agents.createPairing();
-      setAgentsState({
-        kind: "pairing_code",
-        pairingCode: pairing.pairing_code,
-        expiresAt: pairing.expires_at,
-      });
-    } catch (error: unknown) {
-      pendingPairingHandleRef.current = null;
-      const apiError = error as ApiError;
-      setAgentsState({
-        kind: "error",
-        message: apiError?.message ?? "Could not create pairing code.",
-      });
-    }
-  }, [api.agents]);
-
-  const startAgentRegistration = React.useCallback(async (input: {
-    agentChallenge: ImportedOpenClawBundle["agent_challenge"];
-    handleLabel: string;
-    privateKeyPem: string;
-    publicKeyPem: string;
-  }) => {
-    const displayName = displayNameFromAgentHandle(input.handleLabel);
-    const sessionResult = await api.agents.startOwnershipSession({
-      session_kind: "register",
-      ownership_provider: "clawkey",
-      display_name: displayName,
-      agent_challenge: input.agentChallenge,
-    });
-
-    const launch = sessionResult.launch?.clawkey_registration;
-    if (!launch) {
-      throw new Error("ClawKey registration URL was not returned");
-    }
-
-    pendingAgentRegistrationRef.current = {
-      sessionId: sessionResult.agent_ownership_session_id,
-      handleLabel: input.handleLabel,
-      displayName,
-      publicKeyPem: input.publicKeyPem,
-      privateKeyPem: input.privateKeyPem,
-    };
-
-    setAgentsState({
-      kind: "awaiting_owner",
-      registrationUrl: launch.registration_url,
-      sessionId: launch.session_id,
-      expiresAt: launch.expires_at ?? null,
-    });
-  }, [api.agents]);
-
-  const handleImportAgentRegistration = React.useCallback(async (handleLabel: string) => {
-    if (!profile) return;
-
-    setAgentsState({ kind: "verifying" });
-
-    try {
-      const importedBundle = parseImportedOpenClawBundle(agentImportValue);
-
-      await startAgentRegistration({
-        agentChallenge: importedBundle.agent_challenge,
-        handleLabel,
-        publicKeyPem: importedBundle.public_key_pem,
-        privateKeyPem: importedBundle.private_key_pem,
-      });
-    } catch (error: unknown) {
-      const apiError = error as ApiError;
-      setAgentsState({
-        kind: "error",
-        message: apiError?.message ?? (error instanceof Error ? error.message : "Could not import OpenClaw registration."),
-      });
-      pendingAgentRegistrationRef.current = null;
-    }
-  }, [agentImportValue, profile, startAgentRegistration]);
+  }, [api, copy.settings.preferencesUpdated, copy.settings.savePreferencesError, preferredLocale, profile, setLocale]);
 
   if (!profile) {
     return <AuthRequiredRouteState description={getRouteAuthDescription("settings")} title={pageTitle} />;
@@ -684,27 +278,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         })),
         primaryAddress: profile.primary_wallet_address ?? undefined,
       }}
-      agents={{
-        items: ownedAgents,
-        canRegister: !agentsLoading
-          && session?.user.verification_capabilities?.unique_human?.state === "verified"
-          && !ownedAgents.some((agent) => agent.status === "active"),
-        importValue: agentImportValue,
-        loading: agentsLoading,
-        registrationState: agentsState,
-        onStartPairing: (nextHandleLabel) => {
-          void handleStartAgentPairing(nextHandleLabel);
-        },
-        onImportRegistration: (nextHandleLabel) => {
-          void handleImportAgentRegistration(nextHandleLabel);
-        },
-        onImportValueChange: setAgentImportValue,
-        onCheckRegistration: () => {
-          void completePendingAgentRegistration();
-        },
-        onUpdateHandle: (agentId, nextHandleLabel) => handleUpdateAgentHandle(agentId, nextHandleLabel),
-        onUpdateName: (agentId, nextDisplayName) => handleUpdateAgentName(agentId, nextDisplayName),
-      }}
+      agents={agents}
     />
   );
 }

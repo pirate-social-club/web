@@ -186,18 +186,15 @@ No confirmed bug items remain open.
 - **Status:** ✅ **Fixed**
 - **Verification:** `app.tsx` is now the stable `PirateApp` entry wrapper. Shell orchestration, sidebar section builders, mobile layout detection, header/footer chrome, route fallbacks, session-avatar fallback, and the root error boundary live under `src/app/shell/`.
 
+### REFACTOR-004 — `profile-settings-routes.tsx` mixed data mapping, wallet, agents, and UI
+- **Status:** ✅ **Fixed**
+- **Verification:** `profile-settings-routes.tsx` is now 284 lines. Profile/wallet/agent mapping moved to `profile-settings-mapping.ts`; owned-agent loading, pairing, polling, import parsing, registration completion, and key-store updates moved to `use-settings-owned-agents.ts`.
+
 ---
 
 ## Remaining Structural Refactors
 
 These are real issues that degrade maintainability, but they are not runtime bugs. Fix them based on sprint capacity and touch-risk, not urgency.
-
-### REFACTOR-004 — `profile-settings-routes.tsx` is 646 lines mixing data mapping, wallet, agents, and UI
-- **Location:** `src/app/authenticated-routes/profile-settings-routes.tsx`
-- **Verification:** Direct read. Contains `apiProfileToProps`, `mapProfileLinkedHandles`, agent registration logic, OpenClaw import, settings tabs, wallet linking, avatar upload, and global handle rename.
-- **Impact:** Every settings change touches a 646-line file.
-- **Fix:** Extract `hooks/use-profile-settings.ts`, `hooks/use-agent-registration.ts`, `lib/profile-data-mapping.ts`.
-- **Risk:** Medium.
 
 ### REFACTOR-005 — `PostComposer` receives ~40 props
 - **Location:** `src/components/compositions/post-composer/post-composer.tsx`, lines 58–103

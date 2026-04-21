@@ -254,11 +254,14 @@ describe("useCommunityCommerceState", () => {
         providerPartnerRef: "saved-org",
       });
     });
+    await waitFor(() => expect(result.current.partnerPreview?.donationPartnerId).toBe("partner-3"));
+
     act(() => {
       result.current.handleSaveDonations();
     });
 
     await waitFor(() => expect(calls.updateDonationPolicy).toHaveLength(1));
+    await waitFor(() => expect(result.current.donationMode).toBe("optional_creator_sidecar"));
 
     expect(save.calls).toEqual([{
       successMessage: "Donations saved.",
@@ -278,7 +281,6 @@ describe("useCommunityCommerceState", () => {
         },
       },
     });
-    expect(result.current.donationMode).toBe("optional_creator_sidecar");
     expect(result.current.endaomentUrl).toBe("https://app.endaoment.org/orgs/saved-org");
   });
 

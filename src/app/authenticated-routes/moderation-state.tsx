@@ -28,6 +28,7 @@ import { useCommunityRecord } from "./moderation-data";
 import { getErrorMessage } from "./route-core";
 import { useCommunityCommerceState } from "./use-community-commerce-state";
 import { useCommunityContentPolicyState } from "./use-community-content-policy-state";
+import { useCommunityProfileState } from "./use-community-profile-state";
 
 function getCommunityAgentPolicySettings(
   community: ApiCommunity | null,
@@ -47,13 +48,6 @@ export function useCommunityModerationState(communityId: string) {
   const api = useApi();
   const session = useSession();
   const { community, error, loading, setCommunity } = useCommunityRecord(communityId);
-  const [profileDisplayName, setProfileDisplayName] = React.useState("");
-  const [profileDescription, setProfileDescription] = React.useState("");
-  const [profileAvatarFile, setProfileAvatarFile] = React.useState<File | null>(null);
-  const [profileBannerFile, setProfileBannerFile] = React.useState<File | null>(null);
-  const [profileAvatarRemoved, setProfileAvatarRemoved] = React.useState(false);
-  const [profileBannerRemoved, setProfileBannerRemoved] = React.useState(false);
-  const [profileDisplayNameError, setProfileDisplayNameError] = React.useState<string | undefined>(undefined);
   const [membershipMode, setMembershipMode] = React.useState<"open" | "request" | "gated">("open");
   const [defaultAgeGatePolicy, setDefaultAgeGatePolicy] = React.useState<"none" | "18_plus">("none");
   const [allowAnonymousIdentity, setAllowAnonymousIdentity] = React.useState(true);
@@ -70,7 +64,6 @@ export function useCommunityModerationState(communityId: string) {
     getCommunityAgentPolicySettings(null),
   );
   const [savingAgents, setSavingAgents] = React.useState(false);
-  const [savingProfile, setSavingProfile] = React.useState(false);
   const [agentSaveError, setAgentSaveError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -90,13 +83,6 @@ export function useCommunityModerationState(communityId: string) {
       return;
     }
 
-    setProfileDisplayName(community.display_name);
-    setProfileDescription(community.description ?? "");
-    setProfileAvatarFile(null);
-    setProfileBannerFile(null);
-    setProfileAvatarRemoved(community.avatar_ref == null);
-    setProfileBannerRemoved(community.banner_ref == null);
-    setProfileDisplayNameError(undefined);
     setMembershipMode(community.membership_mode);
     setDefaultAgeGatePolicy(community.default_age_gate_policy ?? "none");
     setAllowAnonymousIdentity(community.allow_anonymous_identity);
@@ -115,14 +101,6 @@ export function useCommunityModerationState(communityId: string) {
   }, [community?.pending_namespace_verification_session_id]);
 
   const effectiveNamespaceSessionId = activeNamespaceSessionId ?? community?.pending_namespace_verification_session_id ?? null;
-  const profileHasChanges = community == null ? false : (
-    profileDisplayName.trim() !== community.display_name.trim()
-    || profileDescription !== (community.description ?? "")
-    || profileAvatarFile !== null
-    || profileBannerFile !== null
-    || (profileAvatarRemoved && community.avatar_ref != null)
-    || (profileBannerRemoved && community.banner_ref != null)
-  );
 
   const namespaceVerificationCallbacks = React.useMemo<NamespaceVerificationCallbacks>(() => ({
     onStartSession: async ({ family, rootLabel }) => {
@@ -189,57 +167,7 @@ export function useCommunityModerationState(communityId: string) {
 
   const commerce = useCommunityCommerceState({ community, saveCommunity });
   const contentPolicy = useCommunityContentPolicyState({ community, saveCommunity });
-
-  const handleSaveProfile = React.useCallback(async () => {
-    if (!community || savingProfile) return;
-    const trimmedDisplayName = profileDisplayName.trim();
-    if (!trimmedDisplayName) {
-      setProfileDisplayNameError("Name is required.");
-      return;
-    }
-
-    setProfileDisplayNameError(undefined);
-    setSavingProfile(true);
-    try {
-      let avatarRef = profileAvatarRemoved ? null : community.avatar_ref ?? null;
-      let bannerRef = profileBannerRemoved ? null : community.banner_ref ?? null;
-
-      if (profileAvatarFile) {
-        avatarRef = (await api.communities.uploadMedia({ kind: "avatar", file: profileAvatarFile })).media_ref;
-      }
-      if (profileBannerFile) {
-        bannerRef = (await api.communities.uploadMedia({ kind: "banner", file: profileBannerFile })).media_ref;
-      }
-
-      const updatedCommunity = await api.communities.update(community.community_id, {
-        display_name: trimmedDisplayName,
-        description: profileDescription.trim() ? profileDescription : null,
-        avatar_ref: avatarRef,
-        banner_ref: bannerRef,
-      });
-      setCommunity(updatedCommunity);
-      setProfileAvatarFile(null);
-      setProfileBannerFile(null);
-      setProfileAvatarRemoved(updatedCommunity.avatar_ref == null);
-      setProfileBannerRemoved(updatedCommunity.banner_ref == null);
-      toast.success("Profile saved.");
-    } catch (nextError) {
-      toast.error(getErrorMessage(nextError, "Could not save profile."));
-    } finally {
-      setSavingProfile(false);
-    }
-  }, [
-    api.communities,
-    community,
-    profileAvatarFile,
-    profileAvatarRemoved,
-    profileBannerFile,
-    profileBannerRemoved,
-    profileDescription,
-    profileDisplayName,
-    savingProfile,
-    setCommunity,
-  ]);
+  const profile = useCommunityProfileState({ community, setCommunity });
 
   const handleSaveSafety = React.useCallback(() => {
     if (!community || savingSafety) return;
@@ -345,17 +273,8 @@ export function useCommunityModerationState(communityId: string) {
     loading,
     membershipMode,
     namespaceVerificationCallbacks,
-    profileAvatarFile,
-    profileAvatarRemoved,
-    profileBannerFile,
-    profileBannerRemoved,
-    profileDescription,
-    profileDisplayName,
-    profileDisplayNameError,
-    profileHasChanges,
     providerSettings,
     savingGates,
-    savingProfile,
     savingSafety,
     savingAgents,
     session,
@@ -370,18 +289,11 @@ export function useCommunityModerationState(communityId: string) {
     setGateDrafts,
     setGraphicContentPolicy,
     setMembershipMode,
-    setProfileAvatarFile,
-    setProfileAvatarRemoved,
-    setProfileBannerFile,
-    setProfileBannerRemoved,
-    setProfileDescription,
-    setProfileDisplayName,
-    setProfileDisplayNameError,
     setProviderSettings,
     handleSaveAgents,
     handleSaveGates,
-    handleSaveProfile,
     handleSaveSafety,
+    ...profile,
     ...contentPolicy,
     ...commerce,
   };

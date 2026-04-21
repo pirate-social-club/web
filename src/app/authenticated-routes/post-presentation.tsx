@@ -342,7 +342,7 @@ export function toCommunityFeedItem(
       onVote: opts?.onVote,
       postHref: `/p/${post.post_id}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
-      title: postResponse.translated_title ?? post.title ?? undefined,
+      title: post.post_type === "link" ? undefined : postResponse.translated_title ?? post.title ?? undefined,
       titleDir: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined,
       titleLang: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined,
       titleHref: `/p/${post.post_id}`,
@@ -391,7 +391,7 @@ export function toHomeFeedItem(
       onVote: opts?.onVote,
       postHref: `/p/${post.post_id}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
-      title: postResponse.translated_title ?? post.title ?? undefined,
+      title: post.post_type === "link" ? undefined : postResponse.translated_title ?? post.title ?? undefined,
       titleDir: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined,
       titleLang: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined,
       titleHref: `/p/${post.post_id}`,
@@ -435,7 +435,11 @@ export function toThreadPostCard(
     onVote: opts?.onVote,
     postHref: `/p/${post.post_id}`,
     qualifierLabels: resolvePostQualifierLabels(postResponse),
-    title: opts?.preferOriginalText ? post.title ?? undefined : postResponse.translated_title ?? post.title ?? undefined,
+    title: post.post_type === "link"
+      ? undefined
+      : opts?.preferOriginalText
+        ? post.title ?? undefined
+        : postResponse.translated_title ?? post.title ?? undefined,
     titleDir: !opts?.preferOriginalText && postResponse.translation_state === "ready"
       ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
       : undefined,

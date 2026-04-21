@@ -250,7 +250,7 @@ export function useCreatePostState(communityId: string) {
 
   const canSubmitText = title.trim().length > 0 && body.trim().length > 0;
   const canSubmitSong = Boolean(songState.primaryAudioUpload && lyrics.trim());
-  const canSubmitLink = title.trim().length > 0 && linkUrl.trim().length > 0;
+  const canSubmitLink = linkUrl.trim().length > 0;
   const canSubmit = composerMode === "song" ? canSubmitSong : composerMode === "link" ? canSubmitLink : canSubmitText;
   const paidSongPriceUsd = composerMode === "song" && monetizationState.visible ? parseUsdInput(monetizationState.priceUsd ?? monetizationState.priceLabel) : null;
   const paidSongPriceInvalid = composerMode === "song" && monetizationState.visible && paidSongPriceUsd == null;
@@ -414,7 +414,6 @@ export function useCreatePostState(communityId: string) {
           anonymous_scope: anonymousScope,
           disclosed_qualifier_ids: disclosedQualifierIds,
           translation_policy: "machine_allowed",
-          title: title.trim(),
           link_url: linkUrl.trim(),
           caption: caption.trim() || undefined,
           visibility: audience.visibility,

@@ -21,8 +21,6 @@ export const PasteUrl: Story = {
     <PostComposer
       {...baseComposer}
       mode="link"
-      titleValue="Interview on the design of Yeezus era staging"
-      titleCountLabel="46/300"
       captionValue="Worth posting for the production notes alone."
       linkUrlValue="https://032c.com/magazine/kanye-west-tour-design"
       linkPreview={{

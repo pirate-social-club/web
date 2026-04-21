@@ -400,15 +400,17 @@ export function PostComposer({
 
         <CardContent className={cn("space-y-5 p-5", isMobile && "space-y-4 px-0 pb-0 pt-1")}>
           <>
-          <div>
-            <FieldLabel counter={titleCountLabel} label={copy.fields.title} />
-            <Input
-              className="h-14"
-              onChange={(event) => onTitleValueChange?.(event.target.value)}
-              placeholder={copy.placeholders.title}
-              value={titleValue}
-            />
-          </div>
+          {activeTab !== "link" ? (
+            <div>
+              <FieldLabel counter={titleCountLabel} label={copy.fields.title} />
+              <Input
+                className="h-14"
+                onChange={(event) => onTitleValueChange?.(event.target.value)}
+                placeholder={copy.placeholders.title}
+                value={titleValue}
+              />
+            </div>
+          ) : null}
 
           <PostComposerIdentitySections
             activeTab={activeTab}

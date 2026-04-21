@@ -9,6 +9,7 @@ import type { DonationPartnerPreview } from "@/components/compositions/community
 import type { CommunityLinkEditorItem } from "@/components/compositions/community-links-editor/community-links-editor-page";
 import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import type { PricingTier, CountryAssignment as PricingCountryAssignment } from "@/components/compositions/community-pricing-editor/community-pricing-editor-page";
+import { createDefaultCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 import {
   createDefaultCommunitySafetyAdultContentPolicy,
   createDefaultCommunitySafetyCivilityPolicy,
@@ -155,6 +156,41 @@ function extractContractAddress(config: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
+function extractCourtyardInventoryDraft(config: unknown): Omit<Extract<IdentityGateDraft, { gateType: "erc721_inventory_match" }>, "gateRuleId"> | null {
+  if (!config || typeof config !== "object") {
+    return null;
+  }
+
+  const record = config as Record<string, unknown>;
+  const contractAddress = typeof record.contract_address === "string" ? record.contract_address : null;
+  const minQuantity = Number.isInteger(record.min_quantity) ? record.min_quantity as number : null;
+  const assetFilter = record.asset_filter && typeof record.asset_filter === "object" && !Array.isArray(record.asset_filter)
+    ? record.asset_filter as Record<string, unknown>
+    : null;
+  const category = assetFilter?.category;
+  if (
+    !contractAddress
+    || record.inventory_provider !== "courtyard"
+    || minQuantity == null
+    || !assetFilter
+    || category !== "trading_card" && category !== "watch"
+  ) {
+    return null;
+  }
+
+  return createDefaultCourtyardInventoryDraft({
+    contractAddress,
+    minQuantity,
+    assetFilter: {
+      category,
+      franchise: typeof assetFilter.franchise === "string" ? assetFilter.franchise : undefined,
+      subject: typeof assetFilter.subject === "string" ? assetFilter.subject : undefined,
+      brand: typeof assetFilter.brand === "string" ? assetFilter.brand : undefined,
+      model: typeof assetFilter.model === "string" ? assetFilter.model : undefined,
+    },
+  });
+}
+
 export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDraft[] {
   const drafts: IdentityGateDraft[] = [];
 
@@ -172,6 +208,14 @@ export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDra
           contractAddress,
           gateRuleId: rule.gate_rule_id,
         });
+      }
+      continue;
+    }
+
+    if (rule.gate_family === "token_holding" && rule.gate_type === "erc721_inventory_match" && rule.chain_namespace === "eip155:137") {
+      const draft = extractCourtyardInventoryDraft(rule.gate_config);
+      if (draft) {
+        drafts.push({ ...draft, gateRuleId: rule.gate_rule_id });
       }
       continue;
     }

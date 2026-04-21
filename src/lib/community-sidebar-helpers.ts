@@ -76,6 +76,10 @@ function formatSidebarRequirement(input: {
       if (locale === "ar") return "حاملو NFT على إيثريوم";
       if (locale === "zh") return "以太坊 NFT 持有者";
       return "Ethereum NFT holder";
+    case "erc721_inventory_match":
+      if (locale === "ar") return "مقتنيات Courtyard";
+      if (locale === "zh") return "Courtyard 藏品";
+      return "Courtyard collectibles";
     default:
       return null;
   }

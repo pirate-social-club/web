@@ -114,6 +114,51 @@ describe("useCommunityAccessState", () => {
     expect(result.current.gateDrafts[0]?.gateType).toBe("nationality");
   });
 
+  test("initializes Courtyard inventory gate drafts from active token rules", async () => {
+    installCommunityApiMocks();
+    const { result } = renderAccessHook({
+      community: createCommunity({
+        gate_rules: [{
+          gate_rule_id: "gate-courtyard",
+          community_id: "community-1",
+          scope: "membership",
+          gate_family: "token_holding",
+          gate_type: "erc721_inventory_match",
+          chain_namespace: "eip155:137",
+          gate_config: {
+            contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+            inventory_provider: "courtyard",
+            min_quantity: 3,
+            asset_filter: {
+              category: "trading_card",
+              franchise: "Pokemon",
+              subject: "Charizard",
+            },
+          },
+          status: "active",
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+        }],
+      }),
+    });
+
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(1));
+
+    expect(result.current.gateDrafts[0]).toEqual({
+      gateType: "erc721_inventory_match",
+      chainNamespace: "eip155:137",
+      contractAddress: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+      inventoryProvider: "courtyard",
+      minQuantity: 3,
+      assetFilter: {
+        category: "trading_card",
+        franchise: "Pokemon",
+        subject: "Charizard",
+      },
+      gateRuleId: "gate-courtyard",
+    });
+  });
+
   test("saves normalized gate settings through the injected save boundary", async () => {
     const calls = installCommunityApiMocks();
     const save = createSaveCommunityMock();
@@ -187,5 +232,49 @@ describe("useCommunityAccessState", () => {
 
     expect(result.current.defaultAgeGatePolicy).toBe("none");
     expect(calls.updateGates[0]?.body.default_age_gate_policy).toBe("18_plus");
+  });
+
+  test("serializes Courtyard inventory gates when saving", async () => {
+    const calls = installCommunityApiMocks();
+    const save = createSaveCommunityMock();
+    const { result } = renderAccessHook({ saveCommunity: save.saveCommunity });
+
+    await waitFor(() => expect(result.current.membershipMode).toBe("gated"));
+
+    act(() => {
+      result.current.setGateDrafts([{
+        gateType: "erc721_inventory_match",
+        chainNamespace: "eip155:137",
+        contractAddress: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+        inventoryProvider: "courtyard",
+        minQuantity: 5,
+        assetFilter: {
+          category: "watch",
+          brand: "Rolex",
+        },
+      }]);
+    });
+    act(() => {
+      result.current.handleSaveGates();
+    });
+
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+
+    expect(calls.updateGates[0]?.body.gate_rules).toEqual([{
+      scope: "membership",
+      gate_family: "token_holding",
+      gate_type: "erc721_inventory_match",
+      gate_rule_id: null,
+      chain_namespace: "eip155:137",
+      gate_config: {
+        contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+        inventory_provider: "courtyard",
+        min_quantity: 5,
+        asset_filter: {
+          category: "watch",
+          brand: "Rolex",
+        },
+      },
+    }]);
   });
 });

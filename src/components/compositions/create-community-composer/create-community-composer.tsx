@@ -17,6 +17,11 @@ import { Stepper } from "@/components/primitives/stepper";
 import { Textarea } from "@/components/primitives/textarea";
 import { toast } from "@/components/primitives/sonner";
 import { isCountryCode } from "@/lib/countries";
+import {
+  createDefaultCourtyardInventoryDraft,
+  describeCourtyardInventoryDraft,
+  isValidCourtyardInventoryDraft,
+} from "@/lib/courtyard-inventory-gates";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 import { resolveCommunityAvatarSrc, resolveCommunityBannerSrc } from "@/lib/default-community-media";
 import { formatGateRequirement } from "@/lib/identity-gates";
@@ -83,6 +88,7 @@ export function CreateCommunityComposer({
   const minimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
   const genderGate = gateDrafts.find((draft) => draft.gateType === "gender");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
+  const courtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
   const [nationalityEnabled, setNationalityEnabled] = React.useState(Boolean(nationalityGate));
   const [nationalityRequiredValues, setNationalityRequiredValues] = React.useState<string[]>(
     nationalityGate?.requiredValues ?? [],
@@ -97,6 +103,10 @@ export function CreateCommunityComposer({
   const [erc721ContractAddress, setErc721ContractAddress] = React.useState(
     erc721Gate?.contractAddress ?? "",
   );
+  const [courtyardInventoryEnabled, setCourtyardInventoryEnabled] = React.useState(Boolean(courtyardInventoryGate));
+  const [courtyardInventoryDraft, setCourtyardInventoryDraft] = React.useState(
+    courtyardInventoryGate ?? createDefaultCourtyardInventoryDraft(),
+  );
   const [submitting, setSubmitting] = React.useState(false);
   const gateDraftsSyncKey = React.useMemo(
     () =>
@@ -104,6 +114,20 @@ export function CreateCommunityComposer({
         .map((draft) => (
           draft.gateType === "erc721_holding"
             ? [draft.gateType, draft.chainNamespace, draft.contractAddress, draft.gateRuleId ?? ""].join(":")
+            : draft.gateType === "erc721_inventory_match"
+              ? [
+                draft.gateType,
+                draft.chainNamespace,
+                draft.contractAddress,
+                draft.inventoryProvider,
+                draft.minQuantity,
+                draft.assetFilter.category,
+                draft.assetFilter.franchise ?? "",
+                draft.assetFilter.subject ?? "",
+                draft.assetFilter.brand ?? "",
+                draft.assetFilter.model ?? "",
+                draft.gateRuleId ?? "",
+              ].join(":")
             : draft.gateType === "nationality"
               ? [draft.gateType, draft.provider, draft.requiredValues.join(","), draft.gateRuleId ?? ""].join(":")
               : draft.gateType === "minimum_age"
@@ -151,6 +175,19 @@ export function CreateCommunityComposer({
         contractAddress: erc721ContractAddress.trim(),
       }]
       : []),
+    ...(courtyardInventoryEnabled && isValidCourtyardInventoryDraft(courtyardInventoryDraft)
+      ? [{
+        ...courtyardInventoryDraft,
+        contractAddress: courtyardInventoryDraft.contractAddress.trim(),
+        assetFilter: {
+          category: courtyardInventoryDraft.assetFilter.category,
+          franchise: courtyardInventoryDraft.assetFilter.franchise?.trim() || undefined,
+          subject: courtyardInventoryDraft.assetFilter.subject?.trim() || undefined,
+          brand: courtyardInventoryDraft.assetFilter.brand?.trim() || undefined,
+          model: courtyardInventoryDraft.assetFilter.model?.trim() || undefined,
+        },
+      }]
+      : []),
   ];
 
   React.useEffect(() => { setActiveMembershipMode(membershipMode); }, [membershipMode]);
@@ -176,6 +213,10 @@ export function CreateCommunityComposer({
     const nextErc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
     setErc721Enabled(Boolean(nextErc721Gate));
     setErc721ContractAddress(nextErc721Gate?.contractAddress ?? "");
+
+    const nextCourtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
+    setCourtyardInventoryEnabled(Boolean(nextCourtyardInventoryGate));
+    setCourtyardInventoryDraft(nextCourtyardInventoryGate ?? createDefaultCourtyardInventoryDraft());
   }, [gateDraftsSyncKey]);
   React.useEffect(() => { setActiveDefaultAgeGatePolicy(defaultAgeGatePolicy); }, [defaultAgeGatePolicy]);
   React.useEffect(() => { setActiveAllowAnonymousIdentity(allowAnonymousIdentity); }, [allowAnonymousIdentity]);
@@ -234,7 +275,8 @@ export function CreateCommunityComposer({
   ]);
 
   const erc721GateValid = !erc721Enabled || isAddress(erc721ContractAddress.trim());
-  const gateDraftsValid = activeMembershipMode !== "gated" || (activeGateDrafts.length > 0 && erc721GateValid);
+  const courtyardInventoryGateValid = !courtyardInventoryEnabled || isValidCourtyardInventoryDraft(courtyardInventoryDraft);
+  const gateDraftsValid = activeMembershipMode !== "gated" || (activeGateDrafts.length > 0 && erc721GateValid && courtyardInventoryGateValid);
 
   const canCreateCommunity = React.useMemo(
     () =>
@@ -282,6 +324,16 @@ export function CreateCommunityComposer({
           formatGateRequirement(
             draft.gateType === "erc721_holding"
               ? { gate_type: draft.gateType, chain_namespace: draft.chainNamespace, contract_address: draft.contractAddress }
+              : draft.gateType === "erc721_inventory_match"
+                ? {
+                  gate_type: draft.gateType,
+                  chain_namespace: draft.chainNamespace,
+                  contract_address: draft.contractAddress,
+                  inventory_provider: draft.inventoryProvider,
+                  min_quantity: draft.minQuantity,
+                  asset_filter_label: describeCourtyardInventoryDraft(draft).replace(/^\d+ Courtyard /u, ""),
+                  asset_category: draft.assetFilter.category,
+                }
               : draft.gateType === "nationality"
                 ? { gate_type: draft.gateType, required_values: draft.requiredValues }
                 : draft.gateType === "minimum_age"
@@ -528,6 +580,117 @@ export function CreateCommunityComposer({
                         {erc721ContractAddress.trim().length > 0 && !isAddress(erc721ContractAddress.trim()) ? (
                           <FormNote tone="warning">{cc.invalidContractAddress}</FormNote>
                         ) : null}
+                      </div>
+                    ) : null}
+
+                    <CheckboxCard
+                      checked={courtyardInventoryEnabled}
+                      description={cc.courtyardDescription}
+                      title={cc.courtyardTitle}
+                      onCheckedChange={setCourtyardInventoryEnabled}
+                    />
+
+                    {courtyardInventoryEnabled ? (
+                      <div className="space-y-4 border-l-2 border-primary pl-4">
+                        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_9rem]">
+                          <div className="space-y-2">
+                            <FieldLabel label={cc.courtyardCategoryLabel} />
+                            <SegmentedControl
+                              options={{
+                                trading_card: { label: cc.courtyardTradingCardLabel, detail: "" },
+                                watch: { label: cc.courtyardWatchLabel, detail: "" },
+                              }}
+                              value={courtyardInventoryDraft.assetFilter.category}
+                              onChange={(value) => {
+                                const category = value === "watch" ? "watch" : "trading_card";
+                                setCourtyardInventoryDraft((draft) => ({
+                                  ...draft,
+                                  assetFilter: category === "watch"
+                                    ? { category, brand: draft.assetFilter.brand ?? "Rolex", model: draft.assetFilter.model ?? "" }
+                                    : { category, franchise: draft.assetFilter.franchise ?? "Pokemon", subject: draft.assetFilter.subject ?? "Charizard" },
+                                }));
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <FieldLabel label={cc.courtyardQuantityLabel} />
+                            <NumericStepper
+                              max={100}
+                              min={1}
+                              value={courtyardInventoryDraft.minQuantity}
+                              onChange={(value) => setCourtyardInventoryDraft((draft) => ({ ...draft, minQuantity: value }))}
+                            />
+                          </div>
+                        </div>
+
+                        {courtyardInventoryDraft.assetFilter.category === "watch" ? (
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <FieldLabel label={cc.courtyardBrandLabel} />
+                              <Input
+                                className="h-12 rounded-[var(--radius-lg)]"
+                                onChange={(event) => setCourtyardInventoryDraft((draft) => ({
+                                  ...draft,
+                                  assetFilter: { ...draft.assetFilter, brand: event.target.value },
+                                }))}
+                                placeholder={cc.courtyardBrandPlaceholder}
+                                value={courtyardInventoryDraft.assetFilter.brand ?? ""}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <FieldLabel label={cc.courtyardModelLabel} />
+                              <Input
+                                className="h-12 rounded-[var(--radius-lg)]"
+                                onChange={(event) => setCourtyardInventoryDraft((draft) => ({
+                                  ...draft,
+                                  assetFilter: { ...draft.assetFilter, model: event.target.value },
+                                }))}
+                                placeholder={cc.courtyardModelPlaceholder}
+                                value={courtyardInventoryDraft.assetFilter.model ?? ""}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <FieldLabel label={cc.courtyardFranchiseLabel} />
+                              <Input
+                                className="h-12 rounded-[var(--radius-lg)]"
+                                onChange={(event) => setCourtyardInventoryDraft((draft) => ({
+                                  ...draft,
+                                  assetFilter: { ...draft.assetFilter, franchise: event.target.value },
+                                }))}
+                                placeholder={cc.courtyardFranchisePlaceholder}
+                                value={courtyardInventoryDraft.assetFilter.franchise ?? ""}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <FieldLabel label={cc.courtyardSubjectLabel} />
+                              <Input
+                                className="h-12 rounded-[var(--radius-lg)]"
+                                onChange={(event) => setCourtyardInventoryDraft((draft) => ({
+                                  ...draft,
+                                  assetFilter: { ...draft.assetFilter, subject: event.target.value },
+                                }))}
+                                placeholder={cc.courtyardSubjectPlaceholder}
+                                value={courtyardInventoryDraft.assetFilter.subject ?? ""}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          <FieldLabel label={cc.courtyardContractLabel} />
+                          <Input
+                            className="h-12 rounded-[var(--radius-lg)]"
+                            onChange={(event) => setCourtyardInventoryDraft((draft) => ({ ...draft, contractAddress: event.target.value }))}
+                            placeholder={cc.collectionContractPlaceholder}
+                            value={courtyardInventoryDraft.contractAddress}
+                          />
+                          {!courtyardInventoryGateValid ? (
+                            <FormNote tone="warning">{cc.courtyardInvalid}</FormNote>
+                          ) : null}
+                        </div>
                       </div>
                     ) : null}
                   </div>

@@ -57,6 +57,16 @@ function shortenAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+function formatInventoryAssetLabel(gate: MembershipGateSummary): string {
+  if (gate.asset_filter_label?.trim()) {
+    return gate.asset_filter_label.trim();
+  }
+  if (gate.asset_category === "watch") {
+    return "watch";
+  }
+  return "card";
+}
+
 function getVisibleSelfCapabilities(capabilities: MissingCapability[]): MissingCapability[] {
   const ordered = SELF_CAPABILITY_ORDER.filter((capability) => capabilities.includes(capability));
   if (ordered.some((capability) => capability !== "unique_human")) {
@@ -138,6 +148,13 @@ export function formatGateRequirement(
         return label ? `需要持有来自 ${label} 的以太坊 NFT` : "需要持有以太坊 NFT";
       }
       return label ? `Requires Ethereum NFT from ${label}` : "Requires Ethereum NFT";
+    }
+    case "erc721_inventory_match": {
+      const quantity = gate.min_quantity ?? 1;
+      const assetLabel = formatInventoryAssetLabel(gate);
+      if (locale === "ar") return `يتطلب ${quantity} من مقتنيات Courtyard: ${assetLabel}`;
+      if (locale === "zh") return `需要 ${quantity} 个 Courtyard 藏品：${assetLabel}`;
+      return `Requires ${quantity} Courtyard ${assetLabel}`;
     }
     default:
       if (locale === "ar") return `يتطلب التحقق من ${gate.gate_type}`;
@@ -439,6 +456,14 @@ export function getGateFailureMessage(
       if (locale === "ar") return "اربط محفظة إيثريوم تملك هذا الـ NFT للانضمام إلى هذا المجتمع.";
       if (locale === "zh") return "连接持有该 NFT 的以太坊钱包即可加入此社区。";
       return "Connect an Ethereum wallet that holds this NFT to join this community.";
+    case "erc721_inventory_match_required":
+      if (locale === "ar") return "اربط محفظة تملك مقتنيات Courtyard المطلوبة للانضمام.";
+      if (locale === "zh") return "连接持有所需 Courtyard 藏品的钱包即可加入。";
+      return "Connect a wallet that holds the required Courtyard collectibles to join.";
+    case "token_inventory_unavailable":
+      if (locale === "ar") return "تعذر فحص مقتنيات Courtyard الآن.";
+      if (locale === "zh") return "暂时无法检查 Courtyard 藏品。";
+      return "Courtyard collectible inventory could not be checked right now.";
     case "banned":
       if (locale === "ar") return "أنت غير مؤهل للانضمام إلى هذا المجتمع.";
       if (locale === "zh") return "你没有资格加入这个社区。";

@@ -63,6 +63,21 @@ export function useCommunityAccessState({
               gate_config: { contract_address: draft.contractAddress.trim() },
             };
           }
+          if (draft.gateType === "erc721_inventory_match") {
+            return {
+              scope: "membership" as const,
+              gate_family: "token_holding" as const,
+              gate_type: "erc721_inventory_match" as const,
+              gate_rule_id: draft.gateRuleId ?? null,
+              chain_namespace: draft.chainNamespace,
+              gate_config: {
+                contract_address: draft.contractAddress.trim(),
+                inventory_provider: draft.inventoryProvider,
+                min_quantity: draft.minQuantity,
+                asset_filter: draft.assetFilter,
+              },
+            };
+          }
           if (draft.gateType === "minimum_age") {
             return {
               scope: "membership" as const,

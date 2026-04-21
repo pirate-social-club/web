@@ -20,6 +20,7 @@ import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mob
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
+import { isValidCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 
 import { CommunityModerationGuard, getCommunityModerationTitle } from "./moderation-data";
 import {
@@ -344,6 +345,7 @@ export function CommunityModerationPage({
             || (state.membershipMode === "gated" && state.gateDrafts.length === 0)
             || state.gateDrafts.some((draft) => (
               draft.gateType === "erc721_holding" && !isAddress(draft.contractAddress.trim())
+              || draft.gateType === "erc721_inventory_match" && !isValidCourtyardInventoryDraft(draft)
             ))
           }
           showSaveAction

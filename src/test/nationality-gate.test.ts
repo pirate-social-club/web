@@ -43,6 +43,17 @@ describe("formatGateRequirement", () => {
     const gate: MembershipGateSummary = { gate_type: "gender", required_value: "F" };
     expect(formatGateRequirement(gate, { audience: "admin" })).toBe("Requires Self document marker F");
   });
+
+  test("formats Courtyard inventory match gate", () => {
+    const gate: MembershipGateSummary = {
+      gate_type: "erc721_inventory_match",
+      inventory_provider: "courtyard",
+      min_quantity: 3,
+      asset_filter_label: "Pokemon Charizard",
+      asset_category: "trading_card",
+    };
+    expect(formatGateRequirement(gate)).toBe("Requires 3 Courtyard Pokemon Charizard");
+  });
 });
 
 describe("getJoinCtaLabel", () => {
@@ -113,5 +124,10 @@ describe("getGateFailureMessage", () => {
   test("formats gender mismatch copy", () => {
     const details = { failure_reason: "gender_mismatch" } as GateFailureDetails;
     expect(getGateFailureMessage(details)).toContain("ID check");
+  });
+
+  test("formats Courtyard provider outage copy", () => {
+    const details = { failure_reason: "token_inventory_unavailable" } as GateFailureDetails;
+    expect(getGateFailureMessage(details)).toContain("could not be checked");
   });
 });

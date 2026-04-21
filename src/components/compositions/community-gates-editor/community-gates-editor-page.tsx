@@ -25,6 +25,10 @@ import type {
   IdentityGateDraft,
 } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import { isCountryCode } from "@/lib/countries";
+import {
+  createDefaultCourtyardInventoryDraft,
+  isValidCourtyardInventoryDraft,
+} from "@/lib/courtyard-inventory-gates";
 import { cn } from "@/lib/utils";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 import { NumericStepper } from "@/components/compositions/create-community-composer/create-community-composer.sections";
@@ -195,6 +199,7 @@ export function CommunityGatesEditorPage({
   const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
   const minimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
+  const courtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? true;
   const hasAdultMinimumAgeGate =
     membershipMode === "gated"
@@ -342,6 +347,127 @@ export function CommunityGatesEditorPage({
                 {erc721Gate.contractAddress.trim().length > 0 && !isAddress(erc721Gate.contractAddress.trim()) ? (
                   <FormNote tone="warning">{mc.invalidContractAddress}</FormNote>
                 ) : null}
+              </div>
+            ) : null}
+
+            <CheckboxCard
+              checked={Boolean(courtyardInventoryGate)}
+              description={mc.courtyardDescription}
+              title={mc.courtyardTitle}
+              onCheckedChange={(checked) => onGateDraftsChange?.(
+                checked
+                  ? upsertGateDraft(gateDrafts, createDefaultCourtyardInventoryDraft())
+                  : removeGateDraft(gateDrafts, "erc721_inventory_match"),
+              )}
+            />
+
+            {courtyardInventoryGate ? (
+              <div className="space-y-4 border-l-2 border-primary pl-4">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_9rem]">
+                  <div className="space-y-2">
+                    <FormFieldLabel label={mc.courtyardCategoryLabel} />
+                    <SegmentedControl
+                      options={{
+                        trading_card: { label: mc.courtyardTradingCardLabel },
+                        watch: { label: mc.courtyardWatchLabel },
+                      }}
+                      value={courtyardInventoryGate.assetFilter.category}
+                      onChange={(value) => {
+                        const category = value === "watch" ? "watch" : "trading_card";
+                        onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                          ...courtyardInventoryGate,
+                          assetFilter: category === "watch"
+                            ? { category, brand: courtyardInventoryGate.assetFilter.brand ?? "Rolex", model: courtyardInventoryGate.assetFilter.model ?? "" }
+                            : { category, franchise: courtyardInventoryGate.assetFilter.franchise ?? "Pokemon", subject: courtyardInventoryGate.assetFilter.subject ?? "Charizard" },
+                        }));
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <FormFieldLabel label={mc.courtyardQuantityLabel} />
+                    <NumericStepper
+                      max={100}
+                      min={1}
+                      value={courtyardInventoryGate.minQuantity}
+                      onChange={(next) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                        ...courtyardInventoryGate,
+                        minQuantity: next,
+                      }))}
+                    />
+                  </div>
+                </div>
+
+                {courtyardInventoryGate.assetFilter.category === "watch" ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <FormFieldLabel label={mc.courtyardBrandLabel} />
+                      <Input
+                        className="h-12 rounded-[var(--radius-lg)]"
+                        onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                          ...courtyardInventoryGate,
+                          assetFilter: { ...courtyardInventoryGate.assetFilter, brand: event.target.value },
+                        }))}
+                        placeholder={mc.courtyardBrandPlaceholder}
+                        value={courtyardInventoryGate.assetFilter.brand ?? ""}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <FormFieldLabel label={mc.courtyardModelLabel} />
+                      <Input
+                        className="h-12 rounded-[var(--radius-lg)]"
+                        onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                          ...courtyardInventoryGate,
+                          assetFilter: { ...courtyardInventoryGate.assetFilter, model: event.target.value },
+                        }))}
+                        placeholder={mc.courtyardModelPlaceholder}
+                        value={courtyardInventoryGate.assetFilter.model ?? ""}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <FormFieldLabel label={mc.courtyardFranchiseLabel} />
+                      <Input
+                        className="h-12 rounded-[var(--radius-lg)]"
+                        onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                          ...courtyardInventoryGate,
+                          assetFilter: { ...courtyardInventoryGate.assetFilter, franchise: event.target.value },
+                        }))}
+                        placeholder={mc.courtyardFranchisePlaceholder}
+                        value={courtyardInventoryGate.assetFilter.franchise ?? ""}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <FormFieldLabel label={mc.courtyardSubjectLabel} />
+                      <Input
+                        className="h-12 rounded-[var(--radius-lg)]"
+                        onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                          ...courtyardInventoryGate,
+                          assetFilter: { ...courtyardInventoryGate.assetFilter, subject: event.target.value },
+                        }))}
+                        placeholder={mc.courtyardSubjectPlaceholder}
+                        value={courtyardInventoryGate.assetFilter.subject ?? ""}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <FormFieldLabel label={mc.courtyardContractLabel} />
+                  <Input
+                    className="h-12 rounded-[var(--radius-lg)]"
+                    onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                      ...courtyardInventoryGate,
+                      contractAddress: event.target.value,
+                    }))}
+                    placeholder={mc.collectionContractPlaceholder}
+                    value={courtyardInventoryGate.contractAddress}
+                  />
+                  {!isValidCourtyardInventoryDraft(courtyardInventoryGate) ? (
+                    <FormNote tone="warning">{mc.courtyardInvalid}</FormNote>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </div>

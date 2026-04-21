@@ -36,7 +36,8 @@ export type ApiCreateCommunityRequest = {
       | "gender"
       | "sanctions_clear"
       | "wallet_score"
-      | "erc721_holding";
+      | "erc721_holding"
+      | "erc721_inventory_match";
     proof_requirements?: Array<{
       proof_type:
         | "unique_human"

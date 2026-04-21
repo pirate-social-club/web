@@ -21,6 +21,35 @@ const nationalityGateDrafts: IdentityGateDraft[] = [
   { gateType: "nationality", provider: "self", requiredValues: ["USA"] },
 ];
 
+const courtyardGateDrafts: IdentityGateDraft[] = [
+  {
+    gateType: "erc721_inventory_match",
+    chainNamespace: "eip155:137",
+    contractAddress: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+    inventoryProvider: "courtyard",
+    minQuantity: 3,
+    assetFilter: {
+      category: "trading_card",
+      franchise: "Pokemon",
+      subject: "Charizard",
+    },
+  },
+];
+
+const courtyardWatchGateDrafts: IdentityGateDraft[] = [
+  {
+    gateType: "erc721_inventory_match",
+    chainNamespace: "eip155:137",
+    contractAddress: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+    inventoryProvider: "courtyard",
+    minQuantity: 5,
+    assetFilter: {
+      category: "watch",
+      brand: "Rolex",
+    },
+  },
+];
+
 const meta = {
   title: "Compositions/CreateCommunityComposer",
   component: CreateCommunityComposer,
@@ -66,6 +95,30 @@ export const AccessStepWithNationalityGate: Story = {
     <CreateCommunityComposer
       {...baseComposer}
       gateDrafts={[...nationalityGateDrafts]}
+      initialStep={2}
+      membershipMode="gated"
+    />
+  ),
+};
+
+export const AccessStepWithCourtyardGate: Story = {
+  name: "Flow / Access Step With Courtyard Gate",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[...courtyardGateDrafts]}
+      initialStep={2}
+      membershipMode="gated"
+    />
+  ),
+};
+
+export const AccessStepWithCourtyardWatchGate: Story = {
+  name: "Flow / Access Step With Courtyard Watch Gate",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[...courtyardWatchGateDrafts]}
       initialStep={2}
       membershipMode="gated"
     />

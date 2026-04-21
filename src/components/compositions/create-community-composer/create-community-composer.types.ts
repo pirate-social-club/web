@@ -29,6 +29,21 @@ export type IdentityGateDraft =
     chainNamespace: "eip155:1";
     contractAddress: string;
     gateRuleId?: string;
+  }
+  | {
+    gateType: "erc721_inventory_match";
+    chainNamespace: "eip155:137";
+    contractAddress: string;
+    inventoryProvider: "courtyard";
+    minQuantity: number;
+    assetFilter: {
+      category: "trading_card" | "watch";
+      franchise?: string;
+      subject?: string;
+      brand?: string;
+      model?: string;
+    };
+    gateRuleId?: string;
   };
 
 export type ComposerStep = 1 | 2 | 3;

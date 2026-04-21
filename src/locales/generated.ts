@@ -323,12 +323,11 @@ export const GENERATED_LOCALE_CATALOGS = {
           "bio": "bio",
           "profile": "profile"
         },
-        "title": "Finish setting up your Pirate identity",
+        "title": "Finish setup",
         "verifyAction": "Verify",
-        "verifyDescription": "Verify now so you can post and unlock gated communities.",
         "verifyPendingDescription": "Complete your palm scan to continue.",
-        "verifyPendingTitle": "Finish verification",
-        "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+        "verifyPendingTitle": "Verify",
+        "verifyStartDescription": "Scan your palm to continue. No data is saved.",
         "verifyStartTitle": "Verify"
       },
       "inbox": {
@@ -1363,12 +1362,11 @@ export const GENERATED_LOCALE_CATALOGS = {
           "bio": "النبذة",
           "profile": "الملف الشخصي"
         },
-        "title": "أكمل إعداد هويتك على بايرت",
+        "title": "أكمل الإعداد",
         "verifyAction": "تحقق",
-        "verifyDescription": "تحقق الآن حتى تتمكن من النشر وفتح المجتمعات المقيّدة.",
         "verifyPendingDescription": "أكمل مسح راحة اليد للمتابعة.",
-        "verifyPendingTitle": "أكمل التحقق",
-        "verifyStartDescription": "امسح راحة يدك لإثبات أنك إنسان. لا يتم حفظ أي صور أو بيانات.",
+        "verifyPendingTitle": "تحقق",
+        "verifyStartDescription": "امسح راحة يدك للمتابعة. لا يتم حفظ البيانات.",
         "verifyStartTitle": "تحقق"
       },
       "inbox": {
@@ -2403,12 +2401,11 @@ export const GENERATED_LOCALE_CATALOGS = {
           "bio": "简介",
           "profile": "个人资料"
         },
-        "title": "完成你的 Pirate 身份设置",
+        "title": "完成设置",
         "verifyAction": "验证",
-        "verifyDescription": "现在完成验证，这样你就能发帖并解锁受限社区。",
         "verifyPendingDescription": "完成掌纹扫描后继续。",
-        "verifyPendingTitle": "完成验证",
-        "verifyStartDescription": "扫描你的手掌以证明你是真人。不会保存照片或数据。",
+        "verifyPendingTitle": "验证",
+        "verifyStartDescription": "扫描手掌以继续。不会保存数据。",
         "verifyStartTitle": "验证"
       },
       "inbox": {

@@ -6,8 +6,6 @@ import type { RedditImportSummary as ApiRedditImportSummary } from "@pirate/api-
 import type { RedditVerification as ApiRedditVerification } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
-import { Button } from "@/components/primitives/button";
-import { FormNote } from "@/components/primitives/form-layout";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { useApi } from "@/lib/api";
 import { updateSessionOnboarding, updateSessionProfile, useSession } from "@/lib/api/session-store";
@@ -16,10 +14,11 @@ import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { type OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type { ImportJobState, RedditVerificationState } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap";
+import { OnboardingVerificationGate } from "@/components/compositions/onboarding-verification-gate/onboarding-verification-gate";
 
 import { getErrorMessage, useClientHydrated, useRouteMessages } from "./route-core";
 import { getRouteAuthDescription, getRouteFailureDescription } from "./route-status-copy";
-import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState, StackPageShell, StatusCard } from "./route-shell";
+import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "./route-shell";
 
 function mapRedditVerification(apiResult: ApiRedditVerification, usernameValue: string): RedditVerificationState {
   const stateMap: Record<string, RedditVerificationState["verificationState"]> = {
@@ -259,24 +258,18 @@ export function OnboardingPage() {
   }
 
   if (onboardingStatus && onboardingStatus.unique_human_verification_status !== "verified") {
-    const verificationAction = verificationState === "pending"
-      ? copy.onboarding.reopenVerification
-      : copy.onboarding.verifyAction;
-
     return (
-      <StackPageShell
-        title={copy.onboarding.title}
-        description={copy.onboarding.verifyDescription}
-        actions={<Button onClick={() => navigate("/")} variant="secondary">{copy.common.backHome}</Button>}
-      >
-        {verificationError ? <FormNote tone="warning">{verificationError}</FormNote> : null}
-        <StatusCard
-          title={verificationState === "pending" ? copy.onboarding.verifyPendingTitle : copy.onboarding.verifyStartTitle}
-          description={verificationState === "pending" ? copy.onboarding.verifyPendingDescription : copy.onboarding.verifyStartDescription}
-          tone="warning"
-          actions={<Button loading={verificationLoading} onClick={() => void startVerification()}>{verificationAction}</Button>}
-        />
-      </StackPageShell>
+      <section className="flex min-w-0 flex-1 flex-col gap-6">
+        <PageContainer>
+          <OnboardingVerificationGate
+            onBackHome={() => navigate("/")}
+            onVerify={() => void startVerification()}
+            verificationError={verificationError}
+            verificationLoading={verificationLoading}
+            verificationState={verificationState === "verified" ? "not_started" : verificationState}
+          />
+        </PageContainer>
+      </section>
     );
   }
 

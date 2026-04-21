@@ -316,12 +316,11 @@
       "bio": "النبذة",
       "profile": "الملف الشخصي"
     },
-    "title": "أكمل إعداد هويتك على بايرت",
+    "title": "أكمل الإعداد",
     "verifyAction": "تحقق",
-    "verifyDescription": "تحقق الآن حتى تتمكن من النشر وفتح المجتمعات المقيّدة.",
     "verifyPendingDescription": "أكمل مسح راحة اليد للمتابعة.",
-    "verifyPendingTitle": "أكمل التحقق",
-    "verifyStartDescription": "امسح راحة يدك لإثبات أنك إنسان. لا يتم حفظ أي صور أو بيانات.",
+    "verifyPendingTitle": "تحقق",
+    "verifyStartDescription": "امسح راحة يدك للمتابعة. لا يتم حفظ البيانات.",
     "verifyStartTitle": "تحقق"
   },
   "inbox": {

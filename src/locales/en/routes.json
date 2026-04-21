@@ -316,12 +316,11 @@
       "bio": "bio",
       "profile": "profile"
     },
-    "title": "Finish setting up your Pirate identity",
+    "title": "Finish setup",
     "verifyAction": "Verify",
-    "verifyDescription": "Verify now so you can post and unlock gated communities.",
     "verifyPendingDescription": "Complete your palm scan to continue.",
-    "verifyPendingTitle": "Finish verification",
-    "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+    "verifyPendingTitle": "Verify",
+    "verifyStartDescription": "Scan your palm to continue. No data is saved.",
     "verifyStartTitle": "Verify"
   },
   "inbox": {

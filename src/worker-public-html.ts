@@ -1,4 +1,8 @@
 import type { RoutesMessages } from "./locales";
+import {
+  X_FRAME_OPTIONS_DENY,
+  X_FRAME_OPTIONS_HEADER,
+} from "./lib/security-headers";
 import type { PublicAgentResolution, PublicProfileResolution } from "./worker-public.types";
 
 function buildCommunityPath(communityId: string, routeSlug: string | null): string {
@@ -241,7 +245,10 @@ export function renderPublicProfileErrorPage(
   return new Response(
     `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(title)}</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0e0f11;color:#f4f4f5;font-family:ui-sans-serif,system-ui,sans-serif;padding:24px}main{max-width:720px;text-align:center;border:1px solid rgba(255,255,255,.08);background:#17191c;border-radius:28px;padding:32px}h1{margin:0 0 12px;font-size:34px;letter-spacing:-.04em}p{margin:0;color:#b3b6bd;font-size:18px;line-height:1.6}</style></head><body><main><h1>${escapeHtml(title)}</h1><p>${escapeHtml(description)}</p></main></body></html>`,
     {
-      headers: { "content-type": "text/html; charset=utf-8" },
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        [X_FRAME_OPTIONS_HEADER]: X_FRAME_OPTIONS_DENY,
+      },
       status,
     },
   );
@@ -310,6 +317,7 @@ export function renderPublicAgentPage({
       headers: {
         "cache-control": "public, max-age=60, s-maxage=300",
         "content-type": "text/html; charset=utf-8",
+        [X_FRAME_OPTIONS_HEADER]: X_FRAME_OPTIONS_DENY,
       },
     },
   );

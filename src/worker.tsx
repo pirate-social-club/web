@@ -27,6 +27,7 @@ import {
   type UiDirection,
   type UiLocaleCode,
 } from "@/lib/ui-locale-core";
+import { applyFrameDenyHeader } from "@/lib/security-headers";
 
 type ThemeMode = "dark" | "light" | "system";
 
@@ -104,6 +105,7 @@ function applyCspHeaders(headers: Headers, nonce: string): void {
     return;
   }
 
+  applyFrameDenyHeader(headers);
   headers.set(CSP_REPORT_ONLY_HEADER, buildContentSecurityPolicy(nonce));
 }
 

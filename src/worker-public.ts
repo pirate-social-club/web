@@ -5,6 +5,10 @@ import {
 } from "./worker-public-html";
 import { resolveLocaleLanguageTag, resolveRequestLocale } from "./lib/ui-locale-core";
 import { getLocaleMessages } from "./locales";
+import {
+  X_FRAME_OPTIONS_DENY,
+  X_FRAME_OPTIONS_HEADER,
+} from "./lib/security-headers";
 import type {
   Env,
   PublicAgentResolution,
@@ -222,6 +226,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     headers: {
       "cache-control": "public, max-age=60, s-maxage=300",
       "content-type": "text/html; charset=utf-8",
+      [X_FRAME_OPTIONS_HEADER]: X_FRAME_OPTIONS_DENY,
     },
   });
 }

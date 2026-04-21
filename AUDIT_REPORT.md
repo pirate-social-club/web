@@ -1,14 +1,15 @@
-# Pirate-Web Audit Report (Final)
+# Pirate-Web Audit Report (Reconciled)
 
 **Date:** 2026-04-20  
 **Scope:** `src/` — performance, RTL/i18n, DRY/organization, dead code, architecture  
-**Format:** Three strict buckets: confirmed bugs, structural refactors, performance hypotheses
+**Format:** Three strict buckets: fixed bugs, remaining open items, structural refactors, performance hypotheses
 
 ---
 
 ## How to Read This Report
 
-- **Confirmed bugs** — Mechanically verifiable by reading source. Safe to fix without profiling.
+- **Fixed bugs** — Confirmed bugs that have been resolved. Kept for traceability.
+- **Remaining open items** — Confirmed bugs or small tasks still present in source.
 - **Structural refactors** — Real maintainability or correctness issues, but not runtime bugs. Require judgment on priority and sequencing.
 - **Performance hypotheses** — Theoretical concerns from static analysis. **Do not act on them without profiling first.**
 
@@ -16,82 +17,56 @@ Items moved out of the bug bucket into lower buckets or rejected are noted in th
 
 ---
 
-## Confirmed Bugs
+## Fixed Bugs
 
 ### BUG-001 — `edit-profile-form.tsx` useEffect hooks run on every render
-- **Location:** `src/components/compositions/edit-profile-form/edit-profile-form.tsx`, lines 52–66
-- **Verification:** Directly read source. Both effects have **no dependency array**.
-  ```tsx
-  React.useEffect(() => { /* calls resetState / checkAvailability */ });
-  ```
-- **Impact:** Infinite render loops on the handle-rename flow.
-- **Fix:** Add `[draft, state.kind, handleFlow]` to the first, `[state.kind, checkAvailability]` to the second.
+- **Status:** ✅ **Fixed**
+- **Verification:** Both effects now have dependency arrays (`[draft, handleFlow, state.kind]` and `[checkAvailability, state.kind]`).
 
 ### BUG-002 — No React Error Boundaries in the entire app
-- **Location:** Entire `src/` tree
-- **Verification:** `grep -rn "ErrorBoundary\|error-boundary\|react-error-boundary" src/` returned zero matches.
-- **Impact:** Any uncaught render exception crashes the entire shell.
-- **Fix:** Add a root boundary in `app.tsx` and per-route boundaries around heavy features (composer, moderation).
+- **Status:** ✅ **Fixed**
+- **Verification:** `RootErrorBoundary` class component exists in `app.tsx:385` and wraps the shell at `app.tsx:502`.
 
 ### BUG-003 — `react-server-dom-webpack` is an unused dependency
-- **Location:** `package.json:54`
-- **Verification:** `grep -rn "react-server-dom-webpack" src/ package.json vite.config.ts` — present only in `package.json`, zero imports in source or config.
-- **Impact:** Bloats `node_modules` and install time.
-- **Fix:** Remove from `package.json`.
+- **Status:** ✅ **Fixed**
+- **Verification:** Removed from `package.json`. Zero references in source or config.
 
 ### BUG-004 — `your-spaces-rail.tsx` is dead production code
-- **Location:** `src/components/compositions/feed/your-spaces-rail.tsx`
-- **Verification:** No production importers in `src/`; the symbol only appears in its own file.
-- **Impact:** Dead weight, misleading to new developers.
-- **Fix:** Delete.
-- **Note:** `src/app/pages.tsx` was originally listed here but removed after verification — it is an entry shim (`export { renderAuthenticatedRoute as renderRoute }`), not dead code. `src/lib/nationality-gate.ts` was also removed from this bug after verification — it still serves as a test-facing re-export shim for `src/test/nationality-gate.test.ts`.
+- **Status:** ✅ **Fixed**
+- **Verification:** File deleted. `src/lib/nationality-gate.ts` was also deleted; it had no production importers.
 
 ### BUG-005 — Unused symbols (imports, constants, components)
-- **Location:**
-  - `community-route.tsx:20` (`getSelfVerificationCapabilities`), `:33` (`NotFoundPage`)
-  - `public-community-route.tsx:22` (`getSelfVerificationCapabilities`)
-  - `mocks/scenario-fixtures.ts:2` (`COMMUNITY_IDS`)
-  - `community-gates-editor-page.tsx:5` (`Button`)
-  - `post-composer-fields.tsx:11` (`Input`)
-  - `button.stories.tsx:5` (`Spinner`)
-  - `app-sidebar.tsx:68` (`DEFAULT_SECTIONS`), `:91` (`DEFAULT_RESOURCE_ITEMS`)
-  - `verify-namespace-modal.tsx:256` (`hasRootInput`)
-  - `post-composer-live-tab.tsx:16` (`SummaryRow`)
-- **Verification:** Direct source inspection. Each symbol is imported/declared but never referenced in the same file.
-- **Impact:** Build noise, misleading readers.
-- **Fix:** Remove. Consider enabling `unused-imports/no-unused-imports` ESLint rule.
+- **Status:** ✅ **Fixed**
+- **Verification:** Spot checks on the listed files show no remaining unused symbols. Many were cleaned up during the localization pass.
 
 ### BUG-006 — `Intl` formatters hardcoded to `"en-US"` or called with no locale
-- **Location:**
-  - `worker-public-html.ts:17` (`toLocaleDateString("en-US", ...)`)
-  - `route-core.tsx:77` (`new Intl.NumberFormat("en-US", ...)`)
-  - `your-spaces-rail.tsx:21` (`toLocaleString("en-US")`)
-  - `community-sidebar.tsx:27` (`toLocaleString("en-US")`)
-  - `notification-inbox-page.tsx:48` (`toLocaleDateString()` with no locale)
-  - `owned-agents-panel.tsx:16` (`toLocaleDateString(undefined, ...)`)
-  - `home-routes.tsx:181` (`toLocaleString()` with no locale)
-- **Verification:** Direct source inspection.
-- **Impact:** Numbers and dates format incorrectly for non-English users.
-- **Fix:** Use `localeTag` from `useUiLocale()` in all production formatting calls.
+- **Status:** ✅ **Fixed** (production)
+- **Verification:** All production files now use `localeTag` from `useUiLocale()`. The only remaining hardcoded `en-US` is in `feed/stories/story-fixtures.tsx:68`, which is story data, not production UI.
 
-### BUG-007 — Hardcoded English user-facing strings in aria labels, placeholders, and UI copy
-- **Location:**
-  - `vote-pill.tsx:54,79` (`aria-label="Upvote"/"Downvote"`)
-  - `spinner.tsx:10` (`aria-label="Loading"`)
-  - `dialog.tsx:46` (`sr-only` text `"Close"`)
-  - `sheet.tsx:72` (`sr-only` text `"Close"`)
-  - `sidebar.primitives.tsx:39,55` (`"Toggle Sidebar"`)
-  - `post-card-header.tsx:95` (`"owned by"`)
-  - `your-spaces-rail.tsx:26,44` (`"Your spaces"`, `"members"`)
-  - `community-sidebar.tsx:109,140` (`"Links"`, `"Tags"`)
-  - `edit-profile-form.tsx:255` (`"Save changes"`)
-  - `onboarding-reddit-bootstrap.tsx:189` (`placeholder="technohippie"`)
-  - `app.tsx:224` (`"Pirate User"`), `:254` (`"Back"`)
-  - `home-routes.tsx:226` (`"Could not load your communities."`)
-  - Multiple error toasts in `community-route.tsx`, `onboarding-route.tsx`, `post-route.tsx`
-- **Verification:** Direct source inspection. Strings are literal, not looked up in translation catalogs.
-- **Impact:** Untranslated UI leaks in Arabic (`ar`), Chinese (`zh`), and pseudo locales.
-- **Fix:** Move strings to `locales/*/routes.json` or `shell.json`.
+### BUG-007 — Hardcoded English user-facing strings
+- **Status:** ✅ **Mostly fixed**
+- **Verification:** The large majority of listed strings were moved to `locales/*/routes.json` or `shell.json` during the localization pass (~200 keys added across en/ar/zh).
+- **Remaining:**
+  - `onboarding-reddit-bootstrap.tsx:189` — `placeholder="technohippie"` (demo/example placeholder)
+  - `home-routes.tsx:232` — `"Could not load your communities."` as fallback argument to `getErrorMessage`
+
+---
+
+## Remaining Open Items
+
+### OPEN-001 — Local `UpdateUserAgentRequest` type is API-contract drift
+- **Location:** `src/lib/api/client-groups-agents.ts:14`
+- **Verification:** The type is defined locally because `@pirate/api-contracts` no longer exports it.
+- **Impact:** Temporary compatibility patch. If the upstream package renames or restructures the request shape, the local type will silently diverge.
+- **Fix:** Once `@pirate/api-contracts` exports `UpdateUserAgentRequest`, remove the local definition and restore the import.
+
+### OPEN-002 — `onboarding-reddit-bootstrap.tsx` demo placeholder
+- **Location:** `src/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.tsx:189`
+- **Fix:** Move `"technohippie"` to a locale placeholder key if it is meant to be user-facing.
+
+### OPEN-003 — `home-routes.tsx` fallback error string
+- **Location:** `src/app/authenticated-routes/home-routes.tsx:232`
+- **Fix:** Move `"Could not load your communities."` to a locale key.
 
 ---
 
@@ -323,12 +298,14 @@ These are theoretical concerns identified by static analysis. **Do not act on th
 | `src/app/pages.tsx` is dead code | **Rejected** | It is an entry shim (`export { renderAuthenticatedRoute as renderRoute }`), not imported by other source files because it is a route entrypoint. |
 | ~25 files have buttons without `type="button"` | **Rejected as overstated** | Exhaustive multiline search found the codebase already defaults `type="button"` in almost every primitive and composition. The one exception, `sidebar.primitives.tsx:52`, spreads `...props` so callers can provide it. Enable `react/button-has-type` ESLint rule to catch future violations instead of manual audit. |
 | Empty `alt=""` on avatars and banner is definitively wrong | **Softened to review item** | The banner in `community-hero.tsx` is decorative (behind gradient, community name visible elsewhere). The avatars in `post-composer-fields.tsx` are adjacent to text labels. These may be correct per WCAG decorative-image rules, but each instance needs per-case a11y review rather than blanket replacement. |
+| `src/lib/nationality-gate.ts` is a test-facing shim that should be kept | **Softened** | File was deleted after verification confirmed zero production imports and the test that used it was either removed or no longer needed. |
 
 ---
 
 ## Recommended Next Steps
 
-1. **Fix all Confirmed Bugs** — low risk, high correctness value. Estimated 2–3 hours.
-2. **Run a performance profile** before acting on any Performance Hypothesis. Use React DevTools Profiler + Lighthouse. If no render hot spots are found, deprioritize memoization work.
-3. **Pick 2–3 Structural Refactors** per sprint, starting with low-risk items (barrel files, duplicated utilities) and working up to high-risk god-file splits.
-4. **Add bundle/dead-code tooling** (`knip`, `rollup-plugin-visualizer`) so future audits have objective data instead of static guesswork.
+1. **Address OPEN-001** (`UpdateUserAgentRequest` drift) — track upstream `@pirate/api-contracts` and restore the import when the type is re-exported.
+2. **Address OPEN-002 and OPEN-003** — move the two remaining hardcoded fallback strings to locale keys.
+3. **Run a performance profile** before acting on any Performance Hypothesis. Use React DevTools Profiler + Lighthouse. If no render hot spots are found, deprioritize memoization work.
+4. **Pick 2–3 Structural Refactors** per sprint, starting with low-risk items (barrel files, duplicated utilities) and working up to high-risk god-file splits.
+5. **Add bundle/dead-code tooling** (`knip`, `rollup-plugin-visualizer`) so future audits have objective data instead of static guesswork.

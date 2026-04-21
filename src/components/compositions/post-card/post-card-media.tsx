@@ -84,24 +84,25 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
         <div className={cn("w-full space-y-2 text-start", className)}>
           <a
             className={cn(
-              "grid w-full items-stretch gap-3 transition-opacity hover:opacity-90",
+              "grid w-full items-stretch gap-3 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               content.previewImageSrc
-                ? "grid-cols-[minmax(0,1fr)_minmax(5rem,30%)]"
+                ? "grid-cols-[minmax(0,7fr)_minmax(5rem,3fr)]"
                 : "grid-cols-1",
             )}
             href={content.href}
             data-post-card-interactive="true"
           >
-            <div className="min-w-0 rounded-lg border border-border-soft bg-muted/30 p-3">
+            <div className="flex min-h-16 min-w-0 items-center rounded-lg border border-border-soft bg-muted/30 px-3 py-2.5">
               <div className={cn("flex min-w-0 items-center gap-1.5 text-muted-foreground", postCardType.meta)}>
                 <span className="truncate">{content.linkLabel ?? content.href}</span>
                 <ArrowSquareOut className="size-4 shrink-0" />
               </div>
             </div>
             {content.previewImageSrc ? (
-              <div className="overflow-hidden rounded-lg">
+              <div className="min-h-16 overflow-hidden rounded-lg">
                 <img
-                  alt="Link preview"
+                  alt=""
+                  aria-hidden="true"
                   className="size-full object-cover"
                   src={content.previewImageSrc}
                 />

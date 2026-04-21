@@ -86,9 +86,7 @@ export interface MoreOptionsState {
 }
 
 export interface LinkPreviewState {
-  title: string;
   domain: string;
-  description?: string;
   imageSrc?: string;
 }
 

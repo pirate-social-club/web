@@ -261,31 +261,28 @@ export function EditorChrome({
 }
 
 export function LinkPreviewCard({
-  title,
   domain,
-  description,
   imageSrc,
 }: {
-  title: string;
   domain: string;
-  description?: string;
   imageSrc?: string;
 }) {
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border-soft bg-card">
-      <div className="flex min-h-28 flex-col md:flex-row">
-        <div className="flex-1 space-y-2 px-4 py-4">
-          <p className="text-base font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Preview
-          </p>
-          <p className="text-base font-semibold text-foreground">{title}</p>
-          {description ? <p className="text-base text-muted-foreground">{description}</p> : null}
-          <p className="text-base text-muted-foreground">{domain}</p>
+      <div
+        className={cn(
+          "grid min-h-16 items-stretch gap-3",
+          imageSrc ? "grid-cols-[minmax(0,7fr)_minmax(5rem,3fr)]" : "grid-cols-1",
+        )}
+      >
+        <div className="flex min-w-0 items-center px-4 py-3">
+          <p className="truncate text-base text-muted-foreground">{domain}</p>
         </div>
         {imageSrc ? (
           <img
             alt=""
-            className="h-28 w-full border-t border-border-soft object-cover md:h-auto md:w-40 md:border-s md:border-t-0"
+            aria-hidden="true"
+            className="size-full min-h-16 object-cover"
             src={imageSrc}
           />
         ) : null}

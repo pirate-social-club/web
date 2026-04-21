@@ -92,7 +92,7 @@ export function PostCard({
   const unlockFromContent = deriveUnlockFromContent(content);
   const unlock = engagement.unlock ?? unlockFromContent;
   const isClickable = Boolean(postHref);
-  const openPostLabel = title ? `Open post: ${title}` : "Open post";
+  const openPostLabel = title ? `Open post: ${title}` : content.type === "link" ? "Open link post" : "Open post";
 
   return (
     <article

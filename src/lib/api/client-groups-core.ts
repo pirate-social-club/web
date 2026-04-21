@@ -14,7 +14,7 @@ import type {
   VerificationSession,
 } from "@pirate/api-contracts";
 
-import type { ApiRequest } from "./client-internal";
+import { buildQueryPath, type ApiRequest } from "./client-internal";
 
 export function createAuthApi(request: ApiRequest) {
   return {
@@ -123,13 +123,12 @@ export function createFeedApi(request: ApiRequest) {
         timeRange?: string | null;
       },
     ): Promise<HomeFeedResponse> => {
-      const params = new URLSearchParams();
-      if (opts?.cursor) params.set("cursor", opts.cursor);
-      if (opts?.locale) params.set("locale", opts.locale);
-      if (opts?.sort) params.set("sort", opts.sort);
-      if (opts?.timeRange) params.set("time_range", opts.timeRange);
-      const qs = params.toString();
-      return request<HomeFeedResponse>(qs ? `/feed/home?${qs}` : "/feed/home");
+      return request<HomeFeedResponse>(buildQueryPath("/feed/home", {
+        cursor: opts?.cursor,
+        locale: opts?.locale,
+        sort: opts?.sort,
+        time_range: opts?.timeRange,
+      }));
     },
   };
 }

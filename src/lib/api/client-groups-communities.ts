@@ -40,7 +40,7 @@ import type {
   CommunityReferenceLinksInput,
   DonationPolicyUpdateInput,
 } from "./client-api-types";
-import type { ApiRequest } from "./client-internal";
+import { buildQueryPath, type ApiRequest } from "./client-internal";
 
 export function createCommunitiesApi(request: ApiRequest) {
   return {
@@ -58,11 +58,10 @@ export function createCommunitiesApi(request: ApiRequest) {
       return request<ApiCommunityMediaUploadResponse>("/community-media", { method: "POST", body });
     },
     get: (communityId: string, opts?: { locale?: string | null }): Promise<Community> => {
-      const params = new URLSearchParams();
-      if (opts?.locale) params.set("locale", opts.locale);
-      const qs = params.toString();
-      const path = `/communities/${encodeURIComponent(communityId)}`;
-      return request<Community>(qs ? `${path}?${qs}` : path);
+      return request<Community>(buildQueryPath(
+        `/communities/${encodeURIComponent(communityId)}`,
+        { locale: opts?.locale },
+      ));
     },
     update: (communityId: string, body: ApiUpdateCommunityRequest): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}`, {
@@ -150,11 +149,10 @@ export function createCommunitiesApi(request: ApiRequest) {
         { method: "POST", body: JSON.stringify({}) },
       ),
     preview: (communityId: string, opts?: { locale?: string | null }): Promise<CommunityPreview> => {
-      const params = new URLSearchParams();
-      if (opts?.locale) params.set("locale", opts.locale);
-      const qs = params.toString();
-      const path = `/communities/${encodeURIComponent(communityId)}/preview`;
-      return request<CommunityPreview>(qs ? `${path}?${qs}` : path);
+      return request<CommunityPreview>(buildQueryPath(
+        `/communities/${encodeURIComponent(communityId)}/preview`,
+        { locale: opts?.locale },
+      ));
     },
     getJoinEligibility: (communityId: string): Promise<JoinEligibility> =>
       request<JoinEligibility>(
@@ -261,15 +259,16 @@ export function createCommunitiesApi(request: ApiRequest) {
       communityId: string,
       opts?: CommunityListPostsOptions,
     ): Promise<{ items: LocalizedPostResponse[] }> => {
-      const params = new URLSearchParams();
-      if (opts?.limit) params.set("limit", opts.limit);
-      if (opts?.cursor) params.set("cursor", opts.cursor);
-      if (opts?.locale) params.set("locale", opts.locale);
-      if (opts?.flair_id) params.set("flair_id", opts.flair_id);
-      if (opts?.sort) params.set("sort", opts.sort);
-      const qs = params.toString();
-      const path = `/communities/${encodeURIComponent(communityId)}/posts`;
-      return request<{ items: LocalizedPostResponse[] }>(qs ? `${path}?${qs}` : path);
+      return request<{ items: LocalizedPostResponse[] }>(buildQueryPath(
+        `/communities/${encodeURIComponent(communityId)}/posts`,
+        {
+          cursor: opts?.cursor,
+          flair_id: opts?.flair_id,
+          limit: opts?.limit,
+          locale: opts?.locale,
+          sort: opts?.sort,
+        },
+      ));
     },
   };
 }

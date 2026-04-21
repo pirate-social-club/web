@@ -17,7 +17,7 @@ import type {
   ApiSongArtifactUploadContentRequest,
   CommunityListCommentsOptions,
 } from "./client-api-types";
-import type { ApiRequest } from "./client-internal";
+import { buildQueryPath, type ApiRequest } from "./client-internal";
 
 export function createPostsApi(request: ApiRequest) {
   return {
@@ -25,11 +25,10 @@ export function createPostsApi(request: ApiRequest) {
       postId: string,
       opts?: { locale?: string | null },
     ): Promise<LocalizedPostResponse> => {
-      const params = new URLSearchParams();
-      if (opts?.locale) params.set("locale", opts.locale);
-      const qs = params.toString();
       return request<LocalizedPostResponse>(
-        qs ? `/posts/${encodeURIComponent(postId)}?${qs}` : `/posts/${encodeURIComponent(postId)}`,
+        buildQueryPath(`/posts/${encodeURIComponent(postId)}`, {
+          locale: opts?.locale,
+        }),
       );
     },
     vote: (postId: string, value: -1 | 1): Promise<PostVoteResponse> =>
@@ -46,26 +45,28 @@ export function createCommentsApi(request: ApiRequest) {
       commentId: string,
       opts?: CommunityListCommentsOptions,
     ): Promise<CommentListResponse> => {
-      const params = new URLSearchParams();
-      if (opts?.limit) params.set("limit", opts.limit);
-      if (opts?.cursor) params.set("cursor", opts.cursor);
-      if (opts?.locale) params.set("locale", opts.locale);
-      if (opts?.sort) params.set("sort", opts.sort);
-      const qs = params.toString();
-      const path = `/comments/${encodeURIComponent(commentId)}/replies`;
-      return request<CommentListResponse>(qs ? `${path}?${qs}` : path);
+      return request<CommentListResponse>(buildQueryPath(
+        `/comments/${encodeURIComponent(commentId)}/replies`,
+        {
+          cursor: opts?.cursor,
+          limit: opts?.limit,
+          locale: opts?.locale,
+          sort: opts?.sort,
+        },
+      ));
     },
     getContext: (
       commentId: string,
       opts?: { limit?: string | null; cursor?: string | null; locale?: string | null },
     ): Promise<CommentContext> => {
-      const params = new URLSearchParams();
-      if (opts?.limit) params.set("limit", opts.limit);
-      if (opts?.cursor) params.set("cursor", opts.cursor);
-      if (opts?.locale) params.set("locale", opts.locale);
-      const qs = params.toString();
-      const path = `/comments/${encodeURIComponent(commentId)}/context`;
-      return request<CommentContext>(qs ? `${path}?${qs}` : path);
+      return request<CommentContext>(buildQueryPath(
+        `/comments/${encodeURIComponent(commentId)}/context`,
+        {
+          cursor: opts?.cursor,
+          limit: opts?.limit,
+          locale: opts?.locale,
+        },
+      ));
     },
     createReply: (commentId: string, body: CreateCommentRequest): Promise<void> =>
       request(`/comments/${encodeURIComponent(commentId)}/replies`, {
@@ -92,15 +93,15 @@ export function createCommunityContentApi(request: ApiRequest) {
       postId: string,
       opts?: CommunityListCommentsOptions,
     ): Promise<CommentListResponse> => {
-      const params = new URLSearchParams();
-      if (opts?.limit) params.set("limit", opts.limit);
-      if (opts?.cursor) params.set("cursor", opts.cursor);
-      if (opts?.locale) params.set("locale", opts.locale);
-      if (opts?.sort) params.set("sort", opts.sort);
-      const qs = params.toString();
-      const path =
-        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/comments`;
-      return request<CommentListResponse>(qs ? `${path}?${qs}` : path);
+      return request<CommentListResponse>(buildQueryPath(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/comments`,
+        {
+          cursor: opts?.cursor,
+          limit: opts?.limit,
+          locale: opts?.locale,
+          sort: opts?.sort,
+        },
+      ));
     },
     createComment: (
       communityId: string,

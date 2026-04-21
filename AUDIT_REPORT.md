@@ -120,6 +120,12 @@ No confirmed bug items remain open.
 - **Verification:** Community and post routes now call `useSongPurchase()` instead of owning separate quote, wallet-transfer, settlement, and failure paths.
 - **Test coverage:** `src/app/authenticated-routes/song-purchase.test.ts`
 
+### REFACTOR-011 — URLSearchParams builder repeated in API client files
+- **Status:** ✅ **Fixed**
+- **Location:** `src/lib/api/client-internal.ts`
+- **Verification:** `buildQueryPath()` is the only remaining `URLSearchParams` builder in `src/lib/api`.
+- **Test coverage:** `src/lib/api/client-internal.test.ts`
+
 ---
 
 ## Remaining Structural Refactors
@@ -159,12 +165,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Verification:** Direct read. Contains `ProfilePanel`, `WalletsPanel`, `AgentsPanel`, `NotificationsPanel`, `PreferencesPanel`, `SecurityPanel` in one file.
 - **Fix:** Split each panel into its own file in `components/compositions/settings-page/panels/`.
 - **Risk:** Low.
-
-### REFACTOR-011 — URLSearchParams builder repeated 15× in API client files
-- **Location:** `lib/api/client-groups-*.ts` (15 occurrences)
-- **Verification:** Direct read. Same `new URLSearchParams()` → conditional `params.set(...)` → `` `${path}?${qs}` `` pattern.
-- **Fix:** Add `buildQueryPath(path, params)` helper in `lib/api/client-internal.ts`.
-- **Risk:** Negligible.
 
 ### REFACTOR-012 — No barrel files for primitives or compositions
 - **Location:** `components/primitives/` (0 `index.ts`), `components/compositions/` (1 `index.ts`)

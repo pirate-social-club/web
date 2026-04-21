@@ -9,7 +9,7 @@ import type {
 } from "@pirate/api-contracts";
 
 import type { NotificationFeedOptions } from "./client-api-types";
-import type { ApiRequest } from "./client-internal";
+import { buildQueryPath, type ApiRequest } from "./client-internal";
 
 export function createJobsApi(request: ApiRequest) {
   return {
@@ -24,12 +24,11 @@ export function createNotificationsApi(request: ApiRequest) {
     getTasks: (): Promise<NotificationTasksResponse> =>
       request<NotificationTasksResponse>("/notifications/tasks"),
     getFeed: (opts?: NotificationFeedOptions): Promise<NotificationFeedResponse> => {
-      const params = new URLSearchParams();
-      if (opts?.cursor) params.set("cursor", opts.cursor);
-      if (opts?.limit) params.set("limit", String(opts.limit));
-      const qs = params.toString();
       return request<NotificationFeedResponse>(
-        qs ? `/notifications/feed?${qs}` : "/notifications/feed",
+        buildQueryPath("/notifications/feed", {
+          cursor: opts?.cursor,
+          limit: opts?.limit,
+        }),
       );
     },
     markRead: (input?: MarkNotificationsReadRequest): Promise<{ ok: boolean }> =>

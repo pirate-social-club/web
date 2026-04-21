@@ -15,6 +15,7 @@ import { useSession } from "@/lib/api/session-store";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
+import { logger } from "@/lib/logger";
 import type { ApiError } from "@/lib/api/client";
 import {
   defaultCharityContributionState,
@@ -67,7 +68,7 @@ async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<Ava
     try {
       storedKey = await findStoredOwnedAgentKey(agent.agent_id);
     } catch (error) {
-      console.warn("[create-post-route] could not read local agent key", { agentId: agent.agent_id, error });
+      logger.warn("[create-post-route] could not read local agent key", { agentId: agent.agent_id, error });
       continue;
     }
     if (!storedKey) {

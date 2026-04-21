@@ -1,6 +1,8 @@
 import * as React from "react";
 import type { SessionExchangeResponse } from "@pirate/api-contracts";
 
+import { logger } from "@/lib/logger";
+
 const STORAGE_KEY = "pirate_session";
 
 export interface StoredSession {
@@ -66,7 +68,9 @@ function writeToStorage(session: StoredSession | null): void {
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
-  } catch {}
+  } catch (error) {
+    logger.warn("[auth] failed to persist session", error);
+  }
 }
 
 export function getStoredSession(): StoredSession | null {
@@ -149,7 +153,7 @@ export function clearSession(): void {
   writeToStorage(null);
   notifyAll();
   void Promise.resolve(sessionClearCallback?.()).catch((error) => {
-    console.error("[auth] failed to clear upstream session", error);
+    logger.error("[auth] failed to clear upstream session", error);
   });
 }
 

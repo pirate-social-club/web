@@ -20,6 +20,7 @@ import { isCountryCode } from "@/lib/countries";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 import { resolveCommunityAvatarSrc, resolveCommunityBannerSrc } from "@/lib/default-community-media";
 import { formatGateRequirement, getGateDraftWarning } from "@/lib/identity-gates";
+import { logger } from "@/lib/logger";
 import {
   FieldLabel,
   MediaPicker,
@@ -45,7 +46,7 @@ import type {
 const EMPTY_GATE_DRAFTS: IdentityGateDraft[] = [];
 
 function logCreateCommunityGateDebug(event: string, data: Record<string, unknown>) {
-  console.debug("[CreateCommunityComposer]", event, data);
+  logger.debug("[CreateCommunityComposer]", event, data);
 }
 
 export function CreateCommunityComposer({

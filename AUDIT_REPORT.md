@@ -161,6 +161,15 @@ No confirmed bug items remain open.
 - **Verification:** `public-community-route.tsx` now imports shared community sidebar helpers, interaction gate hook, and feed sort builders from `lib/`/`hooks/` instead of `authenticated-routes/`.
 - **Compatibility:** Thin re-export files remain in `authenticated-routes/` so existing authenticated imports and tests keep working.
 
+### REFACTOR-015 — Errors silently swallowed with `.catch(() => {})`
+- **Status:** ✅ **Fixed**
+- **Verification:** No app-owned empty `catch {}` or `.catch(() => {})` matches remain outside vendored Story SDK code. Previously silent inbox, notification summary, known-community persistence, and session persistence failures now log through the app logger.
+
+### REFACTOR-019 — Console logging in production source
+- **Status:** ✅ **Fixed**
+- **Location:** `src/lib/logger.ts`
+- **Verification:** No app-owned `console.*` matches remain outside `logger.ts` and vendored Story SDK code. App diagnostics now go through the production-gated logger wrapper.
+
 ---
 
 ## Remaining Structural Refactors
@@ -206,20 +215,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Location:** `app/authenticated-routes/route-core.tsx`, `route-shell.tsx`
 - **Verification:** Direct read. `route-core.tsx` mixes i18n helpers, formatting, currency parsing, time formatting, and feed sort builders. `route-shell.tsx` mixes loading spinners, page shells, auth-required states, route failure states, and empty feeds.
 - **Fix:** Split into `lib/formatting/error.ts`, `currency.ts`, `time.ts` and `components/states/full-page-spinner.tsx`, `auth-required-state.tsx`, `route-failure-state.tsx`.
-- **Risk:** Low.
-
-### REFACTOR-015 — Errors silently swallowed with `.catch(() => {})`
-- **Location:** `moderation-state.tsx:456,480,543`, `inbox-route.tsx:71`, `profile-settings-routes.tsx:483`, `create-post-state.tsx:136–137`, `post-state.tsx:322,324`, `community-route.tsx:111`, `post-route.tsx:68`, `community-data.tsx:130`, `moderation-route.tsx:383`, `public-community-route.tsx:121`
-- **Verification:** Direct read. Each catches and discards the error.
-- **Impact:** Users see silent failures. Developers have no telemetry.
-- **Fix:** Replace with at least `console.error` in dev and structured logging/Sentry in production, or surface toasts to users.
-- **Risk:** Low — additive logging, not logic changes.
-
-### REFACTOR-019 — Console logging in production source
-- **Location:** 49 `console.*` calls across `lib/api/client.ts` (14), `public-community-route.tsx` (8), `avatar.tsx` (7), `privy-provider.tsx` (3), and scattered others.
-- **Verification:** `grep -rn "console\." src/` excluding tests/stories.
-- **Impact:** Pollutes production console; may leak internal paths or state shape.
-- **Fix:** Replace with a production-strippable logger, or remove.
 - **Risk:** Low.
 
 ### REFACTOR-022 — Repeated Tailwind class combinations that should be extracted

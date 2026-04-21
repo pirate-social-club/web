@@ -8,6 +8,7 @@ import { useApi } from "@/lib/api";
 import { updateSessionProfile, useSession } from "@/lib/api/session-store";
 import { ApiError } from "@/lib/api/client";
 import { findStoredOwnedAgentKey, saveStoredOwnedAgentKey } from "@/lib/agents/agent-key-store";
+import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
 import { type UiLocaleCode, isUiLocaleCode } from "@/lib/ui-locale-core";
 import { useGlobalHandleFlow } from "@/hooks/use-global-handle-flow";
@@ -318,7 +319,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     void loadOwnedAgents({ cancelled: () => cancelled })
       .catch((error: unknown) => {
         if (cancelled) return;
-        console.warn("[settings] owned agents load failed", error);
+        logger.warn("[settings] owned agents load failed", error);
         setAgentsState({
           kind: "error",
           message: formatOwnedAgentsLoadError(error),
@@ -357,7 +358,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         setSelectedPrimaryHandleId(updatedProfile.primary_public_handle?.linked_handle_id ?? null);
       })
       .catch((error: unknown) => {
-        console.warn("[settings] linked handle sync failed", error);
+        logger.warn("[settings] linked handle sync failed", error);
       });
 
     return () => { cancelled = true; };
@@ -538,7 +539,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
           }
         })
         .catch((error: unknown) => {
-          console.warn("[settings] agent pairing poll failed", error);
+          logger.warn("[settings] agent pairing poll failed", error);
         });
     }, 5000);
 

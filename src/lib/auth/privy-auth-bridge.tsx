@@ -14,6 +14,7 @@ import {
   setSession,
   useSession,
 } from "@/lib/api/session-store";
+import { logger } from "@/lib/logger";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { toast } from "@/components/primitives/sonner";
 
@@ -129,7 +130,7 @@ export function PrivyAuthBridge({
       }
 
       await logout().catch((error: unknown) => {
-        console.error("[auth] privy logout failed", error);
+        logger.error("[auth] privy logout failed", error);
       });
     });
 
@@ -142,7 +143,7 @@ export function PrivyAuthBridge({
     api.setRefreshAuthCallback(async () => {
       const authState = ready ? { authenticated, ready } : await waitForAuthBootstrap();
       if (!authState.ready || !authState.authenticated || isInRetryCooldown()) {
-        console.info("[auth] client refresh declined", {
+        logger.info("[auth] client refresh declined", {
           ready: authState.ready,
           authenticated: authState.authenticated,
           cooldown: isInRetryCooldown(),

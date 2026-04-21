@@ -4,6 +4,7 @@ import type { CommentListItem as ApiCommentListItem } from "@pirate/api-contract
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import { buildPublicProfilePathForProfile } from "@/lib/profile-routing";
 import type { PostThreadComment, PostThreadSubmitResult } from "@/components/compositions/post-thread/post-thread.types";
 
@@ -254,7 +255,7 @@ export function mapThreadCommentNode(
 }
 
 export function logReplyLoadFailure(commentId: string, error: unknown) {
-  console.warn("[post-thread] failed to load replies", {
+  logger.warn("[post-thread] failed to load replies", {
     commentId,
     message: getErrorMessage(error, "unknown"),
   });

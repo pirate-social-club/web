@@ -6,6 +6,7 @@ import type { NotificationTasksResponse as ApiNotificationTasksResponse } from "
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import { clearUnreadNotificationActivityCount, decrementOpenNotificationTaskCount } from "@/lib/notifications/use-notification-summary";
 import { NotificationInboxPage, resolveNotificationActivityHref } from "@/components/compositions/notification-inbox-page/notification-inbox-page";
 
@@ -27,7 +28,8 @@ export function InboxPlaceholderPage() {
           readAt = new Date().toISOString();
           await api.notifications.markRead();
           clearUnreadNotificationActivityCount();
-        } catch {
+        } catch (error) {
+          logger.warn("[inbox] failed to mark notifications read", error);
           readAt = null;
         }
 
@@ -50,7 +52,8 @@ export function InboxPlaceholderPage() {
             })),
           });
         }
-      } catch {
+      } catch (error) {
+        logger.warn("[inbox] failed to load notification inbox", error);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -68,7 +71,12 @@ export function InboxPlaceholderPage() {
         api.notifications.dismissTask({ task_id: task.task_id }).then(() => {
           setTasks((prev) => ({ items: prev.items.filter((t) => t.task_id !== task.task_id) }));
           decrementOpenNotificationTaskCount();
-        }).catch(() => {});
+        }).catch((error) => {
+          logger.warn("[inbox] failed to dismiss notification task", {
+            error,
+            taskId: task.task_id,
+          });
+        });
       }}
       onOpenActivityItem={(item) => {
         const href = resolveNotificationActivityHref(item);

@@ -10,6 +10,7 @@ import {
   usePiratePrivyRuntime,
   usePiratePrivyWallets,
 } from "@/lib/auth/privy-provider";
+import { logger } from "@/lib/logger";
 import type { SongContentSpec } from "@/components/compositions/post-card/post-card.types";
 import { toast } from "@/components/primitives/sonner";
 
@@ -75,7 +76,7 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
           .map((purchase) => [purchase.asset_id as string, purchase] as const),
       ));
     } catch (error) {
-      console.warn("[song-commerce] failed to refresh commerce state", {
+      logger.warn("[song-commerce] failed to refresh commerce state", {
         communityId,
         message: error instanceof Error ? error.message : String(error),
       });

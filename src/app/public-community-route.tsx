@@ -21,6 +21,7 @@ import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { logger } from "@/lib/logger";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -232,7 +233,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     if (requestedCapabilities.length === 0) {
       const message = copy.publicCommunity.verificationMissingSelf;
       setSelfError(message);
-      console.warn("[public-community] self verification unavailable", {
+      logger.warn("[public-community] self verification unavailable", {
         communityId,
         missingCapabilities: eligibility.missing_capabilities,
         source,
@@ -258,7 +259,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         verificationSessionId: result.verification_session_id,
       });
 
-      console.info("[public-community] self session started", {
+      logger.info("[public-community] self session started", {
         communityId,
         requestedCapabilities,
         source,
@@ -269,7 +270,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       const apiError = error as ApiError;
       const message = apiError?.message ?? copy.publicCommunity.verificationStartFailed;
       setSelfError(message);
-      console.warn("[public-community] self session failed", {
+      logger.warn("[public-community] self session failed", {
         communityId,
         message,
         source,
@@ -290,7 +291,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
 
       const pendingSession = readPendingSelfJoinSession(communityId);
       if (!pendingSession || pendingSession.communityId !== communityId) {
-        console.warn("[public-community] self callback missing pending session", { communityId });
+        logger.warn("[public-community] self callback missing pending session", { communityId });
         setSelfSession(null);
         setSelfRequestedCapabilities([]);
         setSelfModalOpen(false);
@@ -304,14 +305,14 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       setSelfRequestedCapabilities(pendingSession.requestedCapabilities);
       const result = parseSelfCallback(url);
       if (result.status === "completed") {
-        console.info("[public-community] self callback received proof", {
+        logger.info("[public-community] self callback received proof", {
           communityId,
           verificationSessionId: pendingSession.verificationSessionId,
         });
         setSelfLoading(true);
         void api.verification.completeSession(pendingSession.verificationSessionId, { proof: result.proof })
           .then(() => {
-            console.info("[public-community] self verification completed", {
+            logger.info("[public-community] self verification completed", {
               communityId,
               verificationSessionId: pendingSession.verificationSessionId,
             });
@@ -326,7 +327,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
           .catch((error: unknown) => {
             const apiError = error as ApiError;
             setSelfError(apiError?.message ?? copy.publicCommunity.verificationCompletionFailed);
-            console.warn("[public-community] self verification completion failed", {
+            logger.warn("[public-community] self verification completion failed", {
               communityId,
               message: apiError?.message ?? String(error),
               verificationSessionId: pendingSession.verificationSessionId,
@@ -344,7 +345,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       setSelfRequestedCapabilities([]);
       setSelfModalOpen(false);
       setSelfError(result.status === "expired" ? copy.publicCommunity.verificationExpired : result.reason);
-      console.warn("[public-community] self callback did not complete", {
+      logger.warn("[public-community] self callback did not complete", {
         communityId,
         reason: result.status === "failed" ? result.reason : "expired",
         verificationSessionId: pendingSession.verificationSessionId,

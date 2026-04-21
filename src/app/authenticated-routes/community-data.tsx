@@ -9,6 +9,7 @@ import type { Profile as ApiProfile } from "@pirate/api-contracts";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
+import { logger } from "@/lib/logger";
 import type { FeedSort } from "@/components/compositions/feed/feed";
 
 import { useCommunityFeedPosts } from "./community-feed-data";
@@ -27,13 +28,13 @@ export async function loadProfilesByUserId(
 
     try {
       const profile = await api.profiles.getByUserId(userId);
-      console.info("[author-profiles] loaded", {
+      logger.info("[author-profiles] loaded", {
         handle: profile.primary_public_handle?.label ?? profile.global_handle?.label ?? null,
         userId,
       });
       return [userId, profile] as const;
     } catch (error) {
-      console.warn("[author-profiles] lookup failed", {
+      logger.warn("[author-profiles] lookup failed", {
         message: error instanceof Error ? error.message : String(error),
         userId,
       });

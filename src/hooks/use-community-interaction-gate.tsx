@@ -16,6 +16,7 @@ import { buildCommunityPath } from "@/lib/community-routing";
 import {
   getJoinCtaLabel,
 } from "@/lib/identity-gates";
+import { logger } from "@/lib/logger";
 import { interpolateMessage } from "@/lib/route-messages";
 import { getLocaleMessages } from "@/locales";
 
@@ -298,7 +299,7 @@ export function useCommunityInteractionGate({
     };
 
     if (!hasSession) {
-      console.info("[interaction-gate] blocked", { ...logBase, reason: "auth" });
+      logger.info("[interaction-gate] blocked", { ...logBase, reason: "auth" });
       if (connect) {
         connect();
       } else {
@@ -311,7 +312,7 @@ export function useCommunityInteractionGate({
     try {
       gate = gateData ?? await (resolveGateData ? resolveGateData() : loadCommunityGate(communityId));
     } catch (error) {
-      console.warn("[interaction-gate] eligibility lookup failed", {
+      logger.warn("[interaction-gate] eligibility lookup failed", {
         ...logBase,
         message: error instanceof Error ? error.message : String(error),
       });
@@ -325,7 +326,7 @@ export function useCommunityInteractionGate({
     });
 
     if (state === "allowed") {
-      console.info("[interaction-gate] allowed", {
+      logger.info("[interaction-gate] allowed", {
         ...logBase,
         eligibilityStatus: gate.eligibility.status,
       });
@@ -349,7 +350,7 @@ export function useCommunityInteractionGate({
       interactionCopy,
       openCommunity,
     });
-    console.info("[interaction-gate] blocked", {
+    logger.info("[interaction-gate] blocked", {
       ...logBase,
       eligibilityStatus: gate.eligibility.status,
       missingCapabilities: gate.eligibility.missing_capabilities,

@@ -29,6 +29,7 @@ import type {
   JsonErrorResponse,
   RefreshAuthCallback,
 } from "./client-internal";
+import { logger } from "../logger";
 
 export class ApiError extends Error {
   readonly code: string;
@@ -132,23 +133,23 @@ export class ApiClient {
     const refreshAuth = this.refreshAuth ?? await this.waitForRefreshAuthCallback();
 
     if (!refreshAuth) {
-      console.info("[auth] refresh skipped: no callback registered");
+      logger.info("[auth] refresh skipped: no callback registered");
       return false;
     }
 
     if (this.refreshInFlight) {
-      console.info("[auth] awaiting in-flight refresh");
+      logger.info("[auth] awaiting in-flight refresh");
       return this.refreshInFlight;
     }
 
-    console.info("[auth] refresh start");
+    logger.info("[auth] refresh start");
     this.refreshInFlight = refreshAuth()
       .then((ok) => {
-        console.info("[auth] refresh result", { ok });
+        logger.info("[auth] refresh result", { ok });
         return ok;
       })
       .catch((error) => {
-        console.info("[auth] refresh failed", {
+        logger.info("[auth] refresh failed", {
           message: error instanceof Error ? error.message : String(error),
         });
         throw error;
@@ -178,7 +179,7 @@ export class ApiClient {
 
     if (tokenRequired) {
       if (!token) {
-        console.info("[auth] request missing token, attempting refresh", { method: init?.method ?? "GET", path });
+        logger.info("[auth] request missing token, attempting refresh", { method: init?.method ?? "GET", path });
         const refreshed = await this.runAuthRefresh().catch(() => false);
         if (refreshed) {
           token = this.getToken();
@@ -191,7 +192,7 @@ export class ApiClient {
     }
 
     const method = init?.method ?? "GET";
-    console.info("[api-client] request", { method, path, tokenRequired });
+    logger.info("[api-client] request", { method, path, tokenRequired });
 
     let res: Response;
     try {
@@ -200,7 +201,7 @@ export class ApiClient {
         headers: { ...headers, ...(fetchInit.headers as Record<string, string>) },
       });
     } catch (error) {
-      console.error("[api-client] network request failed", {
+      logger.error("[api-client] network request failed", {
         method,
         path,
         message: error instanceof Error ? error.message : String(error),
@@ -208,7 +209,7 @@ export class ApiClient {
       throw error;
     }
 
-    console.info("[api-client] response", { method, path, status: res.status, ok: res.ok });
+    logger.info("[api-client] response", { method, path, status: res.status, ok: res.ok });
 
     if (!res.ok) {
       let code = "internal_error";
@@ -231,11 +232,11 @@ export class ApiClient {
           res.status === 401 &&
           body.code === "auth_error"
         ) {
-          console.info("[auth] request received 401", { method, path });
+          logger.info("[auth] request received 401", { method, path });
           const refreshed = await this.runAuthRefresh().catch(() => false);
 
           if (refreshed) {
-            console.info("[auth] replaying request after refresh", { method, path });
+            logger.info("[auth] replaying request after refresh", { method, path });
             return this.request<T>(path, {
               ...init,
               replayedAfterRefresh: true,
@@ -243,7 +244,7 @@ export class ApiClient {
           }
         }
 
-        console.error("[api-client] request failed", {
+        logger.error("[api-client] request failed", {
           method,
           path,
           status: res.status,
@@ -256,7 +257,7 @@ export class ApiClient {
         if (error instanceof ApiError) {
           throw error;
         }
-        console.error("[api-client] request failed", {
+        logger.error("[api-client] request failed", {
           method,
           path,
           status: res.status,

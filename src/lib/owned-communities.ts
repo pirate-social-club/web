@@ -5,6 +5,7 @@ import * as React from "react";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { useKnownCommunities } from "@/lib/known-communities-store";
+import { logger } from "@/lib/logger";
 import { getProfileHandleLabel } from "@/lib/profile-routing";
 
 export interface SidebarCommunitySummary {
@@ -78,7 +79,7 @@ export function useSidebarCommunities(): {
 
     setLoading(true);
     setError(null);
-    console.info("[your-communities] loading created communities", { handleLabel });
+    logger.info("[your-communities] loading created communities", { handleLabel });
 
     void api.publicProfiles.getByHandle(handleLabel)
       .then((result) => {
@@ -92,7 +93,7 @@ export function useSidebarCommunities(): {
           updatedAt: community.created_at,
         })));
 
-        console.info("[your-communities] loaded created communities", {
+        logger.info("[your-communities] loaded created communities", {
           count: nextOwnedCommunities.length,
           handleLabel,
         });
@@ -100,7 +101,7 @@ export function useSidebarCommunities(): {
       })
       .catch((nextError: unknown) => {
         if (cancelled) return;
-        console.warn("[your-communities] failed to load created communities", {
+        logger.warn("[your-communities] failed to load created communities", {
           handleLabel,
           message: nextError instanceof Error ? nextError.message : String(nextError),
         });

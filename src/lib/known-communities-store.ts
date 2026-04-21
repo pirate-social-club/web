@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import { logger } from "@/lib/logger";
+
 const STORAGE_KEY = "pirate_known_communities";
 const EMPTY_KNOWN_COMMUNITIES: KnownCommunity[] = [];
 
@@ -58,7 +60,9 @@ function writeToStorage(communities: KnownCommunity[]): void {
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(communities));
-  } catch {}
+  } catch (error) {
+    logger.warn("[known-communities] failed to persist communities", error);
+  }
 }
 
 export function getKnownCommunities(): KnownCommunity[] {

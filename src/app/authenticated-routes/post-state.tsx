@@ -11,6 +11,7 @@ import { buildAgentActionProof } from "@/lib/agents/browser-agent-action-proof";
 import { findStoredOwnedAgentKey } from "@/lib/agents/agent-key-store";
 import { useSession } from "@/lib/api/session-store";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
+import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
 import { toast } from "@/components/primitives/sonner";
 import type { PostThreadSubmitResult } from "@/components/compositions/post-thread/post-thread.types";
@@ -50,7 +51,7 @@ async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<Ava
     try {
       storedKey = await findStoredOwnedAgentKey(agent.agent_id);
     } catch (error) {
-      console.warn("[post-route] could not read local agent key", { agentId: agent.agent_id, error });
+      logger.warn("[post-route] could not read local agent key", { agentId: agent.agent_id, error });
       continue;
     }
     if (!storedKey) {
@@ -314,7 +315,7 @@ export function usePost(
           throw nextError;
         }
 
-        console.info("[post-route] falling back to public read", { postId });
+        logger.info("[post-route] falling back to public read", { postId });
         return {
           post: await api.publicPosts.get(postId, { locale }),
           readMode: "public",
@@ -340,7 +341,7 @@ export function usePost(
         setReadMode(nextReadMode);
         setAvailableAgent(ownedAgentsResult ? await resolveAvailableSigningAgent(ownedAgentsResult.items) : null);
         if (p.post.identity_mode === "public" && p.post.author_user_id && !authorProfilesByUserId[p.post.author_user_id]) {
-          console.warn("[post-route] author handle fallback", {
+          logger.warn("[post-route] author handle fallback", {
             postId: p.post.post_id,
             readMode: nextReadMode,
             userId: p.post.author_user_id,

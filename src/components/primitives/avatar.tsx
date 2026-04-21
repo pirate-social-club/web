@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { buildDefaultAvatarSrc } from "@/lib/default-avatar";
+import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "./skeleton";
 
@@ -69,7 +70,7 @@ export function Avatar({
   );
 
   React.useEffect(() => {
-    console.info("[avatar] source update", {
+    logger.info("[avatar] source update", {
       fallback,
       generatedFallbackSrcPresent: Boolean(generatedFallbackSrc),
       normalizedFallbackSrc,
@@ -95,7 +96,7 @@ export function Avatar({
           alt={fallback}
           className="h-full w-full object-cover"
           onLoad={() => {
-            console.info("[avatar] image loaded", {
+            logger.info("[avatar] image loaded", {
               currentSrc,
               fallback,
               imageFailed,
@@ -106,7 +107,7 @@ export function Avatar({
           onError={() => {
             const currentPrimarySrc = retriedPrimarySrc ?? normalizedPrimarySrc;
 
-            console.error("[avatar] image failed", {
+            logger.error("[avatar] image failed", {
               currentPrimarySrc,
               currentSrc,
               fallback,
@@ -123,7 +124,7 @@ export function Avatar({
               && isRetryableImageSrc(normalizedPrimarySrc)
             ) {
               const nextPrimarySrc = buildRetriedImageSrc(normalizedPrimarySrc);
-              console.info("[avatar] retrying primary image", {
+              logger.info("[avatar] retrying primary image", {
                 fallback,
                 normalizedPrimarySrc,
                 nextPrimarySrc,
@@ -137,7 +138,7 @@ export function Avatar({
               const nextFallbackSrc = normalizedFallbackSrc || generatedFallbackSrc;
 
               if (nextFallbackSrc && nextFallbackSrc !== currentSrc) {
-                console.info("[avatar] falling back to alternate source", {
+                logger.info("[avatar] falling back to alternate source", {
                   fallback,
                   nextFallbackSrc,
                 });
@@ -145,7 +146,7 @@ export function Avatar({
                 return;
               }
             }
-            console.info("[avatar] marking image failed", {
+            logger.info("[avatar] marking image failed", {
               fallback,
               currentSrc,
             });

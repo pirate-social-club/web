@@ -4,6 +4,7 @@ import * as React from "react";
 import type { NotificationSummary } from "@pirate/api-contracts";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
+import { logger } from "@/lib/logger";
 
 const DEFAULT_SUMMARY: NotificationSummary = {
   open_task_count: 0,
@@ -68,7 +69,9 @@ export function useNotificationSummary(): NotificationSummary {
         if (!cancelled) {
           emitSummary(result);
         }
-      } catch {}
+      } catch (error) {
+        logger.warn("[notifications] failed to load summary", error);
+      }
     }
 
     fetchSummary();

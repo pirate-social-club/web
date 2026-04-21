@@ -182,18 +182,15 @@ No confirmed bug items remain open.
 - **Status:** ✅ **Fixed**
 - **Verification:** Added `CardShell` and `PageContainer` in `src/components/primitives/layout-shell.tsx` and migrated the audited card/container hotspots.
 
+### REFACTOR-002 — `app.tsx` mixed shell, sidebar, routing, and state concerns
+- **Status:** ✅ **Fixed**
+- **Verification:** `app.tsx` is now the stable `PirateApp` entry wrapper. Shell orchestration, sidebar section builders, mobile layout detection, header/footer chrome, route fallbacks, session-avatar fallback, and the root error boundary live under `src/app/shell/`.
+
 ---
 
 ## Remaining Structural Refactors
 
 These are real issues that degrade maintainability, but they are not runtime bugs. Fix them based on sprint capacity and touch-risk, not urgency.
-
-### REFACTOR-002 — `app.tsx` is 502 lines mixing routing, shell, sidebar, and state
-- **Location:** `src/app.tsx`
-- **Verification:** Direct read. Contains route path resolution, sidebar section builders, toast helpers, session avatar fallback, mobile layout hook, and shell components.
-- **Impact:** Hard to navigate, test, or modify without side effects.
-- **Fix:** Extract to `app/shell/app-shell.tsx`, `app/shell/sidebar-sections.ts`, `app/shell/use-shell-mobile-layout.ts`.
-- **Risk:** Medium — touches shell layout, but the logic is mostly pure move.
 
 ### REFACTOR-004 — `profile-settings-routes.tsx` is 646 lines mixing data mapping, wallet, agents, and UI
 - **Location:** `src/app/authenticated-routes/profile-settings-routes.tsx`

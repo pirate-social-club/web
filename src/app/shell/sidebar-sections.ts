@@ -1,0 +1,166 @@
+import { Flag, House, Plus } from "@phosphor-icons/react";
+import type { ComponentProps } from "react";
+
+import type { AppRoute } from "@/app/router";
+import { navigate } from "@/app/router";
+import {
+  buildCommunityModerationIndexPath,
+  buildDefaultCommunityModerationPath,
+} from "@/app/authenticated-routes/moderation-helpers";
+import type {
+  AppSidebarPrimaryItem,
+  AppSidebarSection,
+} from "@/components/compositions/app-sidebar/app-sidebar";
+import type { MobileFooterNav } from "@/components/compositions/app-shell-chrome/mobile-footer-nav";
+import { buildCommunityPath } from "@/lib/community-routing";
+import type { SidebarCommunitySummary } from "@/lib/owned-communities";
+import { resolveResourceHref } from "@/lib/resource-links";
+import type { ShellMessages } from "@/locales";
+
+function buildCreatePostPath(communityId: string): string {
+  return `/c/${encodeURIComponent(communityId)}/submit`;
+}
+
+export function resolveCreatePostPath(route: AppRoute): string | null {
+  if (route.kind === "community") {
+    return buildCreatePostPath(route.communityId);
+  }
+
+  if (route.kind === "create-post") {
+    return route.path;
+  }
+
+  if (route.kind === "create-post-global") {
+    return route.path;
+  }
+
+  return "/submit";
+}
+
+export function resolveMobileBackPath(route: AppRoute): string | null {
+  if (route.kind === "community-moderation") {
+    return buildCommunityModerationIndexPath(route.communityId);
+  }
+
+  if (route.kind === "community-moderation-index") {
+    return buildCommunityPath(route.communityId);
+  }
+
+  return null;
+}
+
+function formatCommunitySidebarLabel(
+  communityId: string,
+  routeSlug?: string | null,
+): string {
+  const trimmedSlug = routeSlug?.trim();
+  if (trimmedSlug) {
+    return trimmedSlug.toLowerCase().startsWith("c/") ? trimmedSlug : `c/${trimmedSlug}`;
+  }
+
+  const trimmedId = communityId.trim();
+  if (!trimmedId) return "c/unknown";
+  if (trimmedId.length <= 14) return `c/${trimmedId}`;
+  return `c/${trimmedId.slice(0, 7)}...${trimmedId.slice(-4)}`;
+}
+
+export function buildSidebarSections(
+  messages: ShellMessages["appSidebar"],
+  recentCommunities: SidebarCommunitySummary[],
+  moderatedCommunities: SidebarCommunitySummary[],
+): AppSidebarSection[] {
+  const getSectionLabel = (sectionId: string, fallback: string) =>
+    messages.sections.find((section) => section.id === sectionId)?.label ?? fallback;
+  const sections: AppSidebarSection[] = [];
+
+  if (recentCommunities.length > 0) {
+    sections.push({
+      id: "recent",
+      label: getSectionLabel("recent", "Recent"),
+      defaultOpen: true,
+      items: recentCommunities.map((community) => ({
+        avatarSrc: community.avatarSrc,
+        id: `c/${community.communityId}`,
+        label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
+        onSelect: () => navigate(buildCommunityPath(community.communityId, community.routeSlug)),
+      })),
+    });
+  }
+
+  if (moderatedCommunities.length > 0) {
+    sections.push({
+      id: "moderation",
+      label: getSectionLabel("moderation", "Moderation"),
+      defaultOpen: true,
+      items: moderatedCommunities.map((community) => ({
+        avatarSrc: community.avatarSrc,
+        id: `moderation/${community.communityId}`,
+        label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
+        onSelect: () => navigate(buildDefaultCommunityModerationPath(community.communityId)),
+      })),
+    });
+  }
+
+  return sections;
+}
+
+export function buildPrimaryItems(messages: ShellMessages["appSidebar"]): AppSidebarPrimaryItem[] {
+  return [
+    {
+      id: "home",
+      icon: House,
+      label: messages.homeLabel,
+      onSelect: () => navigate("/"),
+    },
+    {
+      id: "your-communities",
+      icon: Flag,
+      label: messages.yourCommunitiesLabel,
+      onSelect: () => navigate("/your-communities"),
+    },
+    {
+      id: "create-community",
+      icon: Plus,
+      label: messages.createCommunityLabel,
+      onSelect: () => navigate("/communities/new"),
+    },
+  ];
+}
+
+export function buildResourceItems(messages: ShellMessages["appSidebar"]) {
+  return messages.resourceItems.map((item) => ({
+    ...item,
+    onSelect: () => {
+      const href = resolveResourceHref(item.id);
+      if (!href || typeof window === "undefined") return;
+      window.location.assign(href);
+    },
+  }));
+}
+
+export function activeSidebarItem(route: AppRoute): string | undefined {
+  switch (route.kind) {
+    case "home":
+      return "home";
+    case "your-communities":
+      return "your-communities";
+    case "community":
+    case "create-post":
+      return `c/${route.communityId}`;
+    case "create-post-global":
+      return undefined;
+    case "create-community":
+      return "create-community";
+    default:
+      return undefined;
+  }
+}
+
+export function activeMobileNav(
+  route: AppRoute,
+): ComponentProps<typeof MobileFooterNav>["activeItem"] {
+  if (route.kind === "inbox") return "inbox";
+  if (route.kind === "create-post" || route.kind === "create-post-global") return "create";
+  if (route.kind === "me" || route.kind === "public-profile" || route.kind === "public-agent") return "profile";
+  return "home";
+}

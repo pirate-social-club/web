@@ -18,6 +18,7 @@ import { Textarea } from "@/components/primitives/textarea";
 import { toast } from "@/components/primitives/sonner";
 import { isCountryCode } from "@/lib/countries";
 import {
+  COURTYARD_CATALOG_AUTHORING_ENABLED,
   createDefaultCourtyardInventoryDraft,
   describeCourtyardInventoryDraft,
   isValidCourtyardInventoryDraft,
@@ -586,112 +587,14 @@ export function CreateCommunityComposer({
                     <CheckboxCard
                       checked={courtyardInventoryEnabled}
                       description={cc.courtyardDescription}
+                      disabled={!COURTYARD_CATALOG_AUTHORING_ENABLED && !courtyardInventoryEnabled}
+                      disabledHint={!COURTYARD_CATALOG_AUTHORING_ENABLED ? cc.courtyardCatalogUnavailable : undefined}
                       title={cc.courtyardTitle}
                       onCheckedChange={setCourtyardInventoryEnabled}
                     />
 
-                    {courtyardInventoryEnabled ? (
-                      <div className="space-y-4 border-l-2 border-primary pl-4">
-                        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_9rem]">
-                          <div className="space-y-2">
-                            <FieldLabel label={cc.courtyardCategoryLabel} />
-                            <SegmentedControl
-                              options={{
-                                trading_card: { label: cc.courtyardTradingCardLabel, detail: "" },
-                                watch: { label: cc.courtyardWatchLabel, detail: "" },
-                              }}
-                              value={courtyardInventoryDraft.assetFilter.category}
-                              onChange={(value) => {
-                                const category = value === "watch" ? "watch" : "trading_card";
-                                setCourtyardInventoryDraft((draft) => ({
-                                  ...draft,
-                                  assetFilter: category === "watch"
-                                    ? { category, brand: draft.assetFilter.brand ?? "Rolex", model: draft.assetFilter.model ?? "" }
-                                    : { category, franchise: draft.assetFilter.franchise ?? "Pokemon", subject: draft.assetFilter.subject ?? "Charizard" },
-                                }));
-                              }}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <FieldLabel label={cc.courtyardQuantityLabel} />
-                            <NumericStepper
-                              max={100}
-                              min={1}
-                              value={courtyardInventoryDraft.minQuantity}
-                              onChange={(value) => setCourtyardInventoryDraft((draft) => ({ ...draft, minQuantity: value }))}
-                            />
-                          </div>
-                        </div>
-
-                        {courtyardInventoryDraft.assetFilter.category === "watch" ? (
-                          <div className="grid gap-3 md:grid-cols-2">
-                            <div className="space-y-2">
-                              <FieldLabel label={cc.courtyardBrandLabel} />
-                              <Input
-                                className="h-12 rounded-[var(--radius-lg)]"
-                                onChange={(event) => setCourtyardInventoryDraft((draft) => ({
-                                  ...draft,
-                                  assetFilter: { ...draft.assetFilter, brand: event.target.value },
-                                }))}
-                                placeholder={cc.courtyardBrandPlaceholder}
-                                value={courtyardInventoryDraft.assetFilter.brand ?? ""}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <FieldLabel label={cc.courtyardModelLabel} />
-                              <Input
-                                className="h-12 rounded-[var(--radius-lg)]"
-                                onChange={(event) => setCourtyardInventoryDraft((draft) => ({
-                                  ...draft,
-                                  assetFilter: { ...draft.assetFilter, model: event.target.value },
-                                }))}
-                                placeholder={cc.courtyardModelPlaceholder}
-                                value={courtyardInventoryDraft.assetFilter.model ?? ""}
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="grid gap-3 md:grid-cols-2">
-                            <div className="space-y-2">
-                              <FieldLabel label={cc.courtyardFranchiseLabel} />
-                              <Input
-                                className="h-12 rounded-[var(--radius-lg)]"
-                                onChange={(event) => setCourtyardInventoryDraft((draft) => ({
-                                  ...draft,
-                                  assetFilter: { ...draft.assetFilter, franchise: event.target.value },
-                                }))}
-                                placeholder={cc.courtyardFranchisePlaceholder}
-                                value={courtyardInventoryDraft.assetFilter.franchise ?? ""}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <FieldLabel label={cc.courtyardSubjectLabel} />
-                              <Input
-                                className="h-12 rounded-[var(--radius-lg)]"
-                                onChange={(event) => setCourtyardInventoryDraft((draft) => ({
-                                  ...draft,
-                                  assetFilter: { ...draft.assetFilter, subject: event.target.value },
-                                }))}
-                                placeholder={cc.courtyardSubjectPlaceholder}
-                                value={courtyardInventoryDraft.assetFilter.subject ?? ""}
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="space-y-2">
-                          <FieldLabel label={cc.courtyardContractLabel} />
-                          <Input
-                            className="h-12 rounded-[var(--radius-lg)]"
-                            onChange={(event) => setCourtyardInventoryDraft((draft) => ({ ...draft, contractAddress: event.target.value }))}
-                            placeholder={cc.collectionContractPlaceholder}
-                            value={courtyardInventoryDraft.contractAddress}
-                          />
-                          {!courtyardInventoryGateValid ? (
-                            <FormNote tone="warning">{cc.courtyardInvalid}</FormNote>
-                          ) : null}
-                        </div>
-                      </div>
+                    {!COURTYARD_CATALOG_AUTHORING_ENABLED && courtyardInventoryEnabled ? (
+                      <FormNote tone="warning">{cc.courtyardCatalogUnavailable}</FormNote>
                     ) : null}
                   </div>
                 ) : null}

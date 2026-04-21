@@ -174,6 +174,10 @@ No confirmed bug items remain open.
 - **Status:** ✅ **Fixed**
 - **Verification:** `route-core.tsx` now only re-exports route compatibility helpers from focused `lib/formatting`, `lib/route-messages`, and `hooks` modules. `route-shell.tsx` now only re-exports state components from `components/states/` plus two small route helpers.
 
+### REFACTOR-012 — Barrel files for primitives and compositions
+- **Status:** ✅ **Fixed**
+- **Verification:** Added `src/components/primitives/index.ts` and `src/components/compositions/index.ts` as stable import surfaces.
+
 ---
 
 ## Remaining Structural Refactors
@@ -207,13 +211,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Impact:** Complex interdependent effects are hard to reason about and prone to race conditions.
 - **Fix:** Replace with `useReducer` or a lightweight state machine.
 - **Risk:** High — composer submission flow is critical.
-
-### REFACTOR-012 — No barrel files for primitives or compositions
-- **Location:** `components/primitives/` (0 `index.ts`), `components/compositions/` (1 `index.ts`)
-- **Verification:** `ls` and `find` confirm no barrel files.
-- **Impact:** 200+ deep imports. Import blocks are 10–20 lines long.
-- **Fix:** Add `components/primitives/index.ts` and `components/compositions/index.ts`.
-- **Risk:** Negligible.
 
 ### REFACTOR-022 — Repeated Tailwind class combinations that should be extracted
 - **Location:**

@@ -4,10 +4,10 @@ import * as React from "react";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 
 import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
-import { getAcceptedProvidersForGateType } from "@/lib/community-gate-providers";
 import { useApi } from "@/lib/api";
 
 import type { SaveCommunityAction } from "./community-moderation-save";
+import { serializeIdentityGateDrafts } from "./community-gate-rule-serialization";
 import { getCommunityGateDrafts } from "./moderation-helpers";
 
 export function useCommunityAccessState({
@@ -52,60 +52,7 @@ export function useCommunityAccessState({
         default_age_gate_policy: effectiveDefaultAgeGatePolicy,
         allow_anonymous_identity: allowAnonymousIdentity,
         anonymous_identity_scope: allowAnonymousIdentity ? anonymousIdentityScope : null,
-        gate_rules: gateDrafts.map((draft) => {
-          if (draft.gateType === "erc721_holding") {
-            return {
-              scope: "membership" as const,
-              gate_family: "token_holding" as const,
-              gate_type: "erc721_holding" as const,
-              gate_rule_id: draft.gateRuleId ?? null,
-              chain_namespace: draft.chainNamespace,
-              gate_config: { contract_address: draft.contractAddress.trim() },
-            };
-          }
-          if (draft.gateType === "erc721_inventory_match") {
-            return {
-              scope: "membership" as const,
-              gate_family: "token_holding" as const,
-              gate_type: "erc721_inventory_match" as const,
-              gate_rule_id: draft.gateRuleId ?? null,
-              chain_namespace: draft.chainNamespace,
-              gate_config: {
-                contract_address: draft.contractAddress.trim(),
-                inventory_provider: draft.inventoryProvider,
-                min_quantity: draft.minQuantity,
-                asset_filter: draft.assetFilter,
-              },
-            };
-          }
-          if (draft.gateType === "minimum_age") {
-            return {
-              scope: "membership" as const,
-              gate_family: "identity_proof" as const,
-              gate_type: "minimum_age" as const,
-              gate_rule_id: draft.gateRuleId ?? null,
-              proof_requirements: [{
-                proof_type: "minimum_age" as const,
-                accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
-                config: { minimum_age: draft.minimumAge },
-              }],
-            };
-          }
-
-          return {
-            scope: "membership" as const,
-            gate_family: "identity_proof" as const,
-            gate_type: draft.gateType,
-            gate_rule_id: draft.gateRuleId ?? null,
-            proof_requirements: [{
-              proof_type: draft.gateType,
-              accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
-              config: draft.gateType === "nationality"
-                ? { required_values: draft.requiredValues }
-                : { required_value: draft.requiredValue },
-            }],
-          };
-        }),
+        gate_rules: serializeIdentityGateDrafts(gateDrafts, { includeGateRuleIds: true }),
       }),
       setSavingGates,
       "Access settings saved.",

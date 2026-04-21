@@ -6,7 +6,6 @@ import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
-import { getAcceptedProvidersForGateType } from "@/lib/community-gate-providers";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { ApiError } from "@/lib/api/client";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
@@ -19,6 +18,7 @@ import { FormNote } from "@/components/primitives/form-layout";
 import { PageContainer } from "@/components/primitives/layout-shell";
 
 import { DEFAULT_COMMUNITY_RULES } from "./moderation-helpers";
+import { serializeIdentityGateDrafts } from "./community-gate-rule-serialization";
 
 export function CreateCommunityPage() {
   const api = useApi();
@@ -70,56 +70,7 @@ export function CreateCommunityPage() {
     try {
       const avatarRef = input.avatarFile ? (await api.communities.uploadMedia({ kind: "avatar", file: input.avatarFile })).media_ref : input.avatarRef;
       const bannerRef = input.bannerFile ? (await api.communities.uploadMedia({ kind: "banner", file: input.bannerFile })).media_ref : input.bannerRef;
-      const gateRules = input.gateDrafts.map((draft) => {
-        if (draft.gateType === "erc721_holding") {
-          return {
-            scope: "membership" as const,
-            gate_family: "token_holding" as const,
-            gate_type: "erc721_holding" as const,
-            chain_namespace: draft.chainNamespace,
-            gate_config: { contract_address: draft.contractAddress.trim() },
-          };
-        }
-        if (draft.gateType === "erc721_inventory_match") {
-          return {
-            scope: "membership" as const,
-            gate_family: "token_holding" as const,
-            gate_type: "erc721_inventory_match" as const,
-            chain_namespace: draft.chainNamespace,
-            gate_config: {
-              contract_address: draft.contractAddress.trim(),
-              inventory_provider: draft.inventoryProvider,
-              min_quantity: draft.minQuantity,
-              asset_filter: draft.assetFilter,
-            },
-          };
-        }
-        if (draft.gateType === "minimum_age") {
-          return {
-            scope: "membership" as const,
-            gate_family: "identity_proof" as const,
-            gate_type: "minimum_age" as const,
-            proof_requirements: [{
-              proof_type: "minimum_age" as const,
-              accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
-              config: { minimum_age: draft.minimumAge },
-            }],
-          };
-        }
-
-        return {
-          scope: "membership" as const,
-          gate_family: "identity_proof" as const,
-          gate_type: draft.gateType,
-          proof_requirements: [{
-            proof_type: draft.gateType,
-            accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
-            config: draft.gateType === "nationality"
-              ? { required_values: draft.requiredValues }
-              : { required_value: draft.requiredValue },
-          }],
-        };
-      });
+      const gateRules = serializeIdentityGateDrafts(input.gateDrafts);
 
       const result = await api.communities.create({
         avatar_ref: avatarRef,

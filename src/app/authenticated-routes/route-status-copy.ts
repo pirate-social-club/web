@@ -19,7 +19,7 @@ const ROUTE_STATUS_COPY: Record<RouteStatusCopyKey, {
   strings?: Record<string, string>;
 }> = {
   "community": {
-    auth: "Reconnect to load this community again.",
+    auth: "Sign in to view this community.",
     failure: "The community could not be loaded right now.",
     incomplete: "The community response was incomplete. Try loading it again.",
     title: "Community",
@@ -29,7 +29,7 @@ const ROUTE_STATUS_COPY: Record<RouteStatusCopyKey, {
     },
   },
   "create-community": {
-    auth: "Reconnect to create a community.",
+    auth: "Sign in to create a community.",
     failure: "The create community page could not be loaded right now.",
     incomplete: "The create community response was incomplete. Try loading it again.",
     strings: {
@@ -43,7 +43,7 @@ const ROUTE_STATUS_COPY: Record<RouteStatusCopyKey, {
     },
   },
   "create-post": {
-    auth: "Reconnect to open the post composer again.",
+    auth: "Sign in to create a post.",
     failure: "The post composer could not be loaded right now.",
     incomplete: "The community response was incomplete. Try loading the composer again.",
     title: "Create post",
@@ -54,7 +54,7 @@ const ROUTE_STATUS_COPY: Record<RouteStatusCopyKey, {
     },
   },
   "home": {
-    auth: "Reconnect to load your home feed.",
+    auth: "Sign in to view your home feed.",
     failure: "The home feed could not be loaded right now.",
     incomplete: "The home feed response was incomplete. Try loading it again.",
     strings: {
@@ -66,7 +66,7 @@ const ROUTE_STATUS_COPY: Record<RouteStatusCopyKey, {
     },
   },
   "moderation": {
-    auth: "Reconnect to open mod tools.",
+    auth: "Sign in to access mod tools.",
     failure: "This moderation page could not be loaded right now.",
     incomplete: "The community response was incomplete.",
     title: "Moderator tools",
@@ -76,24 +76,24 @@ const ROUTE_STATUS_COPY: Record<RouteStatusCopyKey, {
     },
   },
   "onboarding": {
-    auth: "Reconnect to continue onboarding.",
+    auth: "Sign in to continue onboarding.",
     failure: "The onboarding flow could not be loaded right now.",
     incomplete: "The onboarding response was incomplete. Try loading it again.",
   },
   "post": {
-    auth: "Reconnect to load this post again.",
+    auth: "Sign in to view this post.",
     failure: "The post could not be loaded right now.",
     incomplete: "The post response was incomplete. Try loading it again.",
     title: "Post",
   },
   "profile": {
-    auth: "Reconnect to load your profile again.",
+    auth: "Sign in to view your profile.",
     failure: "The profile could not be loaded right now.",
     incomplete: "The profile response was incomplete. Try loading it again.",
     title: "Profile",
   },
   "settings": {
-    auth: "Reconnect to load your settings again.",
+    auth: "Sign in to access settings.",
     failure: "The settings page could not be loaded right now.",
     incomplete: "The settings response was incomplete. Try loading it again.",
     title: "Settings",

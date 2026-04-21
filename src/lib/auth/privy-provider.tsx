@@ -30,6 +30,7 @@ type PrivyAuthBridgeComponent = React.ComponentType<{
   onBusyChange?: (busy: boolean) => void;
   onConnectReady?: (connect: (() => void) | null) => void;
   onModalClosed?: () => void;
+  onReadyChange?: (ready: boolean) => void;
 }>;
 type PrivyWalletBridgeComponent = React.ComponentType<{
   onWalletsChange?: (wallets: PirateConnectedEvmWallet[]) => void;
@@ -125,6 +126,7 @@ export function PirateAuthProvider({
   const [walletSyncDemand, setWalletSyncDemand] = React.useState(0);
   const [walletsReady, setWalletsReady] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [privyReady, setPrivyReady] = React.useState(false);
   const shouldLoadWalletSync = walletSyncDemand > 0;
   // Most routes keep Privy mounted so existing Privy auth can refresh Pirate sessions.
   // Some unauthenticated entry points should not open or bootstrap auth until asked.
@@ -331,7 +333,7 @@ export function PirateAuthProvider({
     connectedWallets,
     configured: !!appId,
     loadError,
-    loaded: !appId || !shouldLoadPrivy || !!loadError || !!ProviderComponent && !!BridgeComponent,
+    loaded: !appId || !shouldLoadPrivy || !!loadError || (!!ProviderComponent && !!BridgeComponent && privyReady && !busy),
     walletsReady,
   }), [
     BridgeComponent,
@@ -342,6 +344,7 @@ export function PirateAuthProvider({
     connectedWallets,
     loadError,
     pendingConnect,
+    privyReady,
     shouldLoadPrivy,
     walletsReady,
   ]);
@@ -370,6 +373,7 @@ export function PirateAuthProvider({
           onBusyChange={setBusy}
           onConnectReady={setLoadedConnect}
           onModalClosed={unloadPrivy}
+          onReadyChange={setPrivyReady}
         />
           {WalletBridgeComponent ? (
             <WalletBridgeComponent

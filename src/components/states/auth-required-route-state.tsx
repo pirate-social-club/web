@@ -37,12 +37,12 @@ export function AuthRequiredRouteState({
   return (
     <StackPageShell title={title}>
       <StatusCard
-        title="Session expired"
+        title="Sign in"
         description={description}
         tone="warning"
         actions={configured && connect ? (
           <Button loading={busy} onClick={connect}>
-            Reconnect
+            Sign in
           </Button>
         ) : undefined}
       />

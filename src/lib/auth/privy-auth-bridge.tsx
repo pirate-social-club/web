@@ -29,6 +29,7 @@ export interface PrivyAuthBridgeProps {
   onBusyChange?: (busy: boolean) => void;
   onConnectReady?: (connect: (() => void) | null) => void;
   onModalClosed?: () => void;
+  onReadyChange?: (ready: boolean) => void;
 }
 
 export function PrivyAuthBridge({
@@ -36,6 +37,7 @@ export function PrivyAuthBridge({
   onBusyChange,
   onConnectReady,
   onModalClosed,
+  onReadyChange,
 }: PrivyAuthBridgeProps) {
   const api = useApi();
   const session = useSession();
@@ -167,6 +169,10 @@ export function PrivyAuthBridge({
   }, [busy, onBusyChange]);
 
   React.useEffect(() => {
+    onReadyChange?.(ready);
+  }, [ready, onReadyChange]);
+
+  React.useEffect(() => {
     if (isOpen) {
       wasOpenRef.current = true;
       return;
@@ -199,6 +205,7 @@ export function PrivyAuthBridge({
 
     if (!session || isSessionAccessTokenExpiringSoon(session, REFRESH_WINDOW_MS)) {
       setExchangeRequested(true);
+      setBusy(true);
     }
   }, [authenticated, busy, exchangeRequested, isInRetryCooldown, ready, session]);
 

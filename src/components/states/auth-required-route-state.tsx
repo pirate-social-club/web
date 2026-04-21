@@ -3,6 +3,7 @@
 import { Button } from "@/components/primitives/button";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
+import { logger } from "@/lib/logger";
 
 import { FullPageSpinner } from "./full-page-spinner";
 import { StackPageShell } from "./stack-page-shell";
@@ -17,6 +18,8 @@ export function AuthRequiredRouteState({
 }) {
   const hydrated = useClientHydrated();
   const { busy, configured, connect, loadError, loaded } = usePiratePrivyRuntime();
+
+  logger.info("[auth-required] render", { hydrated, configured, loaded, busy, hasConnect: !!connect, title });
 
   if (!hydrated || (configured && !loaded)) {
     return <FullPageSpinner />;

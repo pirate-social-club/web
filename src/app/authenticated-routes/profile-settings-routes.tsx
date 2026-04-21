@@ -34,6 +34,7 @@ export function CurrentUserProfilePage() {
   const session = useSession();
   const profile = session?.profile ?? null;
   const pageTitle = copy.profile.title;
+  logger.info("[profile-page] render", { hasProfile: !!profile, hasSession: !!session });
   const followState = useProfileFollowState(profile?.primary_wallet_address ?? null, true);
   const handleFlow = useGlobalHandleFlow({
     currentHandleLabel: profile?.global_handle?.label ?? "",

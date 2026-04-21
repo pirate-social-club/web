@@ -136,6 +136,18 @@ export function PirateAuthProvider({
     || !!session
     || refreshWindowReached
   );
+
+  React.useEffect(() => {
+    logger.info("[auth-provider] shouldLoadPrivy changed", { shouldLoadPrivy, deferPrivyUntilConnect, hasSession: !!session, refreshWindowReached, pendingConnect });
+  }, [shouldLoadPrivy, deferPrivyUntilConnect, session, refreshWindowReached, pendingConnect]);
+
+  React.useEffect(() => {
+    logger.info("[auth-provider] privyReady changed", { privyReady });
+  }, [privyReady]);
+
+  React.useEffect(() => {
+    logger.info("[auth-provider] busy changed", { busy, pendingConnect });
+  }, [busy, pendingConnect]);
   const networkConfig = React.useMemo(() => getPirateNetworkConfig(), []);
   const supportedChains = React.useMemo(() => {
     const baseChain = networkConfig.base.network === "base-mainnet" ? base : baseSepolia;

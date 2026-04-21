@@ -45,6 +45,18 @@ export function PrivyAuthBridge({
   const { ready, authenticated, login, getAccessToken, logout } = usePrivy();
   const [busy, setBusy] = React.useState(false);
   const [exchangeRequested, setExchangeRequested] = React.useState(false);
+  const mountIdRef = React.useRef(Math.random().toString(36).slice(2, 8));
+
+  React.useEffect(() => {
+    logger.info("[auth-bridge] mounted", { mountId: mountIdRef.current });
+    return () => {
+      logger.info("[auth-bridge] unmounted", { mountId: mountIdRef.current });
+    };
+  }, []);
+
+  React.useEffect(() => {
+    logger.info("[auth-bridge] state", { mountId: mountIdRef.current, ready, authenticated, busy, exchangeRequested, hasSession: !!session });
+  }, [ready, authenticated, busy, exchangeRequested, session]);
   const retryCountRef = React.useRef(0);
   const retryUntilRef = React.useRef(0);
   const wasOpenRef = React.useRef(false);
@@ -80,9 +92,12 @@ export function PrivyAuthBridge({
   }): Promise<boolean> => {
     const hadSession = !!session;
     setBusy(true);
+    logger.info("[auth-bridge] exchange start", { mountId: mountIdRef.current, hadSession, silent: options?.silent });
 
     try {
+      logger.info("[auth-bridge] calling getAccessToken");
       const accessToken = await getAccessToken();
+      logger.info("[auth-bridge] getAccessToken result", { hasToken: !!accessToken });
 
       if (!accessToken) {
         throw new Error("Privy did not return an access token.");
@@ -109,6 +124,7 @@ export function PrivyAuthBridge({
       return true;
     } catch (error) {
       const apiError = error as ApiError;
+      logger.info("[auth-bridge] exchange failed", { mountId: mountIdRef.current, message: apiError?.message ?? String(error), silent: options?.silent });
       if (!options?.silent) {
         toast.error(apiError?.message ?? "Privy authentication failed");
       }
@@ -122,6 +138,7 @@ export function PrivyAuthBridge({
       return false;
     } finally {
       setBusy(false);
+      logger.info("[auth-bridge] exchange end", { mountId: mountIdRef.current });
     }
   }, [api, connectedWallets, getAccessToken, session]);
 
@@ -169,7 +186,10 @@ export function PrivyAuthBridge({
   }, [busy, onBusyChange]);
 
   React.useEffect(() => {
-    onReadyChange?.(ready);
+    const timeoutId = setTimeout(() => {
+      onReadyChange?.(ready);
+    }, 0);
+    return () => clearTimeout(timeoutId);
   }, [ready, onReadyChange]);
 
   React.useEffect(() => {
@@ -204,6 +224,7 @@ export function PrivyAuthBridge({
     }
 
     if (!session || isSessionAccessTokenExpiringSoon(session, REFRESH_WINDOW_MS)) {
+      logger.info("[auth-bridge] requesting exchange", { mountId: mountIdRef.current, hasSession: !!session, expiringSoon: session ? isSessionAccessTokenExpiringSoon(session, REFRESH_WINDOW_MS) : false });
       setExchangeRequested(true);
       setBusy(true);
     }
@@ -254,6 +275,7 @@ export function PrivyAuthBridge({
 
     const stableConnect = () => {
       const { busy: b, authenticated: a, login: l, session: s } = liveStateRef.current;
+      logger.info("[auth-bridge] connect called", { mountId: mountIdRef.current, busy: b, authenticated: a, hasSession: !!s });
       if (b) {
         return;
       }

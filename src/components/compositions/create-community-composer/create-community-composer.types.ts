@@ -53,6 +53,7 @@ export interface CreateCommunityComposerProps {
   allowAnonymousIdentity?: boolean;
   anonymousIdentityScope?: AnonymousIdentityScope;
   creatorVerificationState?: CreatorVerificationState;
+  deferCreatorVerification?: boolean;
   initialStep?: ComposerStep;
   onClearNamespace?: () => void;
   onCreate?: (input: {
@@ -70,6 +71,6 @@ export interface CreateCommunityComposerProps {
     namespaceVerificationId: string | null;
   }) => Promise<{
     communityId: string;
-  }>;
+  } | void>;
   onVerifyNamespace?: () => void;
 }

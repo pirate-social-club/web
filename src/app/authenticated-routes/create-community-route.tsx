@@ -5,6 +5,7 @@ import * as React from "react";
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
+import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { getAcceptedProvidersForGateType } from "@/lib/community-gate-providers";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { ApiError } from "@/lib/api/client";
@@ -17,25 +18,14 @@ import type {
 } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
 import { FormNote } from "@/components/primitives/form-layout";
-import { Button } from "@/components/primitives/button";
 import { PageContainer } from "@/components/primitives/layout-shell";
 
 import { DEFAULT_COMMUNITY_RULES } from "./moderation-helpers";
-import { getRouteAuthDescription } from "./route-status-copy";
-import { AuthRequiredRouteState, StackPageShell, StatusCard } from "./route-shell";
-import { useRouteMessages } from "./route-core";
 
 export function CreateCommunityPage() {
-  const { copy } = useRouteMessages();
   const api = useApi();
   const session = useSession();
-  const verifyDescription = copy.createCommunity.verifyDescription;
-  const verifyPendingDescription = copy.createCommunity.verifyPendingDescription;
-  const verifyPendingTitle = copy.createCommunity.verifyPendingTitle;
-  const verifyStartDescription = copy.createCommunity.verifyStartDescription;
-  const verifyStartTitle = copy.createCommunity.verifyStartTitle;
-  const reopenVerificationLabel = copy.createCommunity.reopenVerification;
-  const startVerificationLabel = copy.createCommunity.startVerification;
+  const { connect } = usePiratePrivyRuntime();
   const [activeNamespaceSessionId, setActiveNamespaceSessionId] = React.useState<string | null>(null);
   const [namespaceAttachment, setNamespaceAttachment] = React.useState<NamespaceAttachmentState | null>(null);
   const [namespaceModalOpen, setNamespaceModalOpen] = React.useState(false);
@@ -45,8 +35,6 @@ export function CreateCommunityPage() {
   const {
     startVerification: handleStartVeryVerification,
     verificationError,
-    verificationLoading,
-    verificationState: veryVerificationState,
   } = useVeryVerification({
     verified: creatorVerificationState.uniqueHumanVerified,
     verificationIntent: "community_creation",
@@ -112,6 +100,26 @@ export function CreateCommunityPage() {
     gateDrafts: IdentityGateDraft[];
     namespaceVerificationId: string | null;
   }) => {
+    if (!session) {
+      if (!connect) {
+        throw new Error("Sign in is unavailable right now");
+      }
+
+      connect();
+      return;
+    }
+
+    if (
+      !creatorVerificationState.uniqueHumanVerified ||
+      input.defaultAgeGatePolicy === "18_plus" && !creatorVerificationState.ageOver18Verified
+    ) {
+      const result = await handleStartVeryVerification();
+      if (!result.started) {
+        throw new Error(verificationError ?? "Could not start verification");
+      }
+      return;
+    }
+
     try {
       const avatarRef = input.avatarFile ? (await api.communities.uploadMedia({ kind: "avatar", file: input.avatarFile })).media_ref : input.avatarRef;
       const bannerRef = input.bannerFile ? (await api.communities.uploadMedia({ kind: "banner", file: input.bannerFile })).media_ref : input.bannerRef;
@@ -167,25 +175,16 @@ export function CreateCommunityPage() {
       const apiError = e as ApiError;
       throw new Error(apiError?.message ?? "Community creation failed");
     }
-  }, [api]);
+  }, [api, connect, creatorVerificationState.ageOver18Verified, creatorVerificationState.uniqueHumanVerified, handleStartVeryVerification, session, verificationError]);
 
-  if (!session) {
-    return <AuthRequiredRouteState description={getRouteAuthDescription("create-community")} title={copy.createCommunity.title} />;
-  }
+  const handleVerifyNamespace = React.useCallback(() => {
+    if (!session) {
+      connect?.();
+      return;
+    }
 
-  if (!creatorVerificationState.uniqueHumanVerified) {
-    return (
-      <StackPageShell title={copy.createCommunity.title} description={verifyDescription}>
-        {verificationError ? <FormNote tone="warning">{verificationError}</FormNote> : null}
-        <StatusCard
-          title={veryVerificationState === "pending" ? verifyPendingTitle : verifyStartTitle}
-          description={veryVerificationState === "pending" ? verifyPendingDescription : verifyStartDescription}
-          tone="warning"
-          actions={veryVerificationState === "not_started" ? <Button loading={verificationLoading} onClick={handleStartVeryVerification}>{startVerificationLabel}</Button> : veryVerificationState === "pending" ? <Button loading={verificationLoading} onClick={handleStartVeryVerification}>{reopenVerificationLabel}</Button> : undefined}
-        />
-      </StackPageShell>
-    );
-  }
+    setNamespaceModalOpen(true);
+  }, [connect, session]);
 
   return (
     <>
@@ -202,8 +201,10 @@ export function CreateCommunityPage() {
       />
       <section className="flex min-w-0 flex-1 flex-col gap-6">
         <PageContainer>
+          {verificationError ? <FormNote tone="warning">{verificationError}</FormNote> : null}
           <CreateCommunityComposer
             creatorVerificationState={creatorVerificationState}
+            deferCreatorVerification
             hasPendingNamespaceSession={Boolean(activeNamespaceSessionId)}
             namespaceAttachment={namespaceAttachment}
             onClearNamespace={() => {
@@ -211,7 +212,7 @@ export function CreateCommunityPage() {
               setActiveNamespaceSessionId(null);
             }}
             onCreate={handleCreate}
-            onVerifyNamespace={() => setNamespaceModalOpen(true)}
+            onVerifyNamespace={handleVerifyNamespace}
           />
         </PageContainer>
       </section>

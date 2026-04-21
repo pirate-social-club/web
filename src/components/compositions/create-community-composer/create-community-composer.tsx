@@ -62,6 +62,7 @@ export function CreateCommunityComposer({
   allowAnonymousIdentity = true,
   anonymousIdentityScope: anonymousIdentityScopeProp,
   creatorVerificationState,
+  deferCreatorVerification = false,
   initialStep,
   onClearNamespace,
   onCreate,
@@ -115,7 +116,7 @@ export function CreateCommunityComposer({
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? false;
   const creatorAgeRequirementMet =
     activeDefaultAgeGatePolicy !== "18_plus" || creatorAgeOver18Verified;
-  const creatorCanCreate = creatorUniqueHumanVerified && creatorAgeRequirementMet;
+  const creatorCanCreate = deferCreatorVerification || (creatorUniqueHumanVerified && creatorAgeRequirementMet);
   const { copy } = useRouteMessages();
   const cc = copy.createCommunity.composer;
 
@@ -244,7 +245,7 @@ export function CreateCommunityComposer({
       case 1:
         return activeDisplayName.trim().length > 0;
       case 2:
-        if (!creatorAgeRequirementMet) return false;
+        if (!deferCreatorVerification && !creatorAgeRequirementMet) return false;
         return gateDraftsValid;
       case 3:
         return canCreateCommunity;
@@ -257,6 +258,7 @@ export function CreateCommunityComposer({
     gateDraftsValid,
     canCreateCommunity,
     creatorAgeRequirementMet,
+    deferCreatorVerification,
   ]);
 
   const membershipLabel = ({
@@ -295,11 +297,13 @@ export function CreateCommunityComposer({
     }),
     [previewBannerOverride, previewDisplayName],
   );
-  const creatorVerificationMessage = !creatorUniqueHumanVerified
-    ? cc.uniqueHumanRequired
-    : !creatorAgeRequirementMet
-      ? cc.ageVerificationRequired
-      : null;
+  const creatorVerificationMessage = deferCreatorVerification
+    ? null
+    : !creatorUniqueHumanVerified
+      ? cc.uniqueHumanRequired
+      : !creatorAgeRequirementMet
+        ? cc.ageVerificationRequired
+        : null;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4">
@@ -569,7 +573,7 @@ export function CreateCommunityComposer({
                       setActiveDefaultAgeGatePolicy(checked ? "18_plus" : "none")
                     }
                   />
-                  {activeDefaultAgeGatePolicy === "18_plus" && !creatorAgeOver18Verified ? (
+                  {activeDefaultAgeGatePolicy === "18_plus" && !deferCreatorVerification && !creatorAgeOver18Verified ? (
                     <FormNote tone="warning">
                       {cc.creatorAgeRequired}
                     </FormNote>

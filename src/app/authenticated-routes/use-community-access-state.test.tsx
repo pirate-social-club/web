@@ -160,4 +160,32 @@ describe("useCommunityAccessState", () => {
       },
     });
   });
+
+  test("derives adult content policy from an active minimum age membership gate", async () => {
+    const calls = installCommunityApiMocks();
+    const save = createSaveCommunityMock();
+    const { result } = renderAccessHook({
+      community: createCommunity({ default_age_gate_policy: "none" }),
+      saveCommunity: save.saveCommunity,
+    });
+
+    await waitFor(() => expect(result.current.membershipMode).toBe("gated"));
+
+    act(() => {
+      result.current.setDefaultAgeGatePolicy("none");
+      result.current.setGateDrafts([{
+        gateType: "minimum_age",
+        provider: "self",
+        minimumAge: 30,
+      }]);
+    });
+    act(() => {
+      result.current.handleSaveGates();
+    });
+
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+
+    expect(result.current.defaultAgeGatePolicy).toBe("none");
+    expect(calls.updateGates[0]?.body.default_age_gate_policy).toBe("18_plus");
+  });
 });

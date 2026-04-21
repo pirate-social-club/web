@@ -404,8 +404,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "identityAccessSection": "Identity & access",
           "allowAnonymousPosting": "Allow anonymous posting",
           "anonymousScopeLabel": "Anonymous scope",
-          "ageGateLabel": "18+ community",
-          "creatorAgeRequired": "The creator must complete age verification before launching an 18+ community.",
+          "ageGateLabel": "Adult content (18+)",
+          "creatorAgeRequired": "The creator must complete age verification before marking a community for adult content.",
           "back": "Back",
           "next": "Next",
           "createCommunityAction": "Create Community",
@@ -421,7 +421,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "reviewMembershipGates": "Membership gates",
           "reviewAnonymousPosting": "Anonymous posting",
           "reviewAnonymousScope": "Anonymous scope",
-          "reviewAgeGate": "Age gate",
+          "reviewAgeGate": "Adult content",
           "membershipOpenLabel": "Open",
           "membershipOpenDetail": "Anyone can join immediately.",
           "membershipRequestLabel": "Request",
@@ -761,8 +761,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "anonymousScopePostEphemeralLabel": "Post-ephemeral",
           "anonymousScopePostEphemeralDetail": "Random label per post. Limits moderation continuity.",
           "anonymousScopePostEphemeralDisabledHint": "Post-ephemeral scope is not available in v0.",
-          "ageGateLabel": "18+ community",
-          "ageGateWarning": "The owner must complete age verification before launching an 18+ community."
+          "ageGateLabel": "Adult content (18+)",
+          "ageGateWarning": "The owner must complete age verification before marking a community for adult content."
         },
         "donations": {
           "title": "Charity",
@@ -1438,8 +1438,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "identityAccessSection": "Identity & access",
           "allowAnonymousPosting": "Allow anonymous posting",
           "anonymousScopeLabel": "Anonymous scope",
-          "ageGateLabel": "18+ community",
-          "creatorAgeRequired": "The creator must complete age verification before launching an 18+ community.",
+          "ageGateLabel": "Adult content (18+)",
+          "creatorAgeRequired": "The creator must complete age verification before marking a community for adult content.",
           "back": "Back",
           "next": "Next",
           "createCommunityAction": "Create Community",
@@ -1455,7 +1455,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "reviewMembershipGates": "Membership gates",
           "reviewAnonymousPosting": "Anonymous posting",
           "reviewAnonymousScope": "Anonymous scope",
-          "reviewAgeGate": "Age gate",
+          "reviewAgeGate": "Adult content",
           "membershipOpenLabel": "Open",
           "membershipOpenDetail": "Anyone can join immediately.",
           "membershipRequestLabel": "Request",
@@ -1795,8 +1795,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "anonymousScopePostEphemeralLabel": "Post-ephemeral",
           "anonymousScopePostEphemeralDetail": "Random label per post. Limits moderation continuity.",
           "anonymousScopePostEphemeralDisabledHint": "Post-ephemeral scope is not available in v0.",
-          "ageGateLabel": "18+ community",
-          "ageGateWarning": "The owner must complete age verification before launching an 18+ community."
+          "ageGateLabel": "Adult content (18+)",
+          "ageGateWarning": "The owner must complete age verification before marking a community for adult content."
         },
         "donations": {
           "title": "Charity",
@@ -2472,8 +2472,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "identityAccessSection": "Identity & access",
           "allowAnonymousPosting": "Allow anonymous posting",
           "anonymousScopeLabel": "Anonymous scope",
-          "ageGateLabel": "18+ community",
-          "creatorAgeRequired": "The creator must complete age verification before launching an 18+ community.",
+          "ageGateLabel": "Adult content (18+)",
+          "creatorAgeRequired": "The creator must complete age verification before marking a community for adult content.",
           "back": "Back",
           "next": "Next",
           "createCommunityAction": "Create Community",
@@ -2489,7 +2489,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "reviewMembershipGates": "Membership gates",
           "reviewAnonymousPosting": "Anonymous posting",
           "reviewAnonymousScope": "Anonymous scope",
-          "reviewAgeGate": "Age gate",
+          "reviewAgeGate": "Adult content",
           "membershipOpenLabel": "Open",
           "membershipOpenDetail": "Anyone can join immediately.",
           "membershipRequestLabel": "Request",
@@ -2829,8 +2829,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "anonymousScopePostEphemeralLabel": "Post-ephemeral",
           "anonymousScopePostEphemeralDetail": "Random label per post. Limits moderation continuity.",
           "anonymousScopePostEphemeralDisabledHint": "Post-ephemeral scope is not available in v0.",
-          "ageGateLabel": "18+ community",
-          "ageGateWarning": "The owner must complete age verification before launching an 18+ community."
+          "ageGateLabel": "Adult content (18+)",
+          "ageGateWarning": "The owner must complete age verification before marking a community for adult content."
         },
         "donations": {
           "title": "Charity",

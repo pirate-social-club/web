@@ -39,10 +39,17 @@ export function useCommunityAccessState({
 
   const handleSaveGates = React.useCallback(() => {
     if (!community || savingGates) return;
+    const hasAdultMinimumAgeGate = membershipMode === "gated" && gateDrafts.some((draft) =>
+      draft.gateType === "minimum_age"
+      && Number.isInteger(draft.minimumAge)
+      && draft.minimumAge >= 18
+      && draft.minimumAge <= 125,
+    );
+    const effectiveDefaultAgeGatePolicy = hasAdultMinimumAgeGate ? "18_plus" : defaultAgeGatePolicy;
     void saveCommunity(
       () => api.communities.updateGates(community.community_id, {
         membership_mode: membershipMode,
-        default_age_gate_policy: defaultAgeGatePolicy,
+        default_age_gate_policy: effectiveDefaultAgeGatePolicy,
         allow_anonymous_identity: allowAnonymousIdentity,
         anonymous_identity_scope: allowAnonymousIdentity ? anonymousIdentityScope : null,
         gate_rules: gateDrafts.map((draft) => {

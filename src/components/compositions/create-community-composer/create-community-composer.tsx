@@ -117,8 +117,14 @@ export function CreateCommunityComposer({
 
   const creatorUniqueHumanVerified = creatorVerificationState?.uniqueHumanVerified ?? false;
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? false;
+  const hasAdultMinimumAgeGate =
+    activeMembershipMode === "gated"
+    && minimumAgeEnabled
+    && Number.isInteger(minimumAge)
+    && minimumAge >= 18
+    && minimumAge <= 125;
   const effectiveDefaultAgeGatePolicy: CommunityDefaultAgeGatePolicy =
-    minimumAgeEnabled && minimumAge >= 18 ? "18_plus" : activeDefaultAgeGatePolicy;
+    hasAdultMinimumAgeGate ? "18_plus" : activeDefaultAgeGatePolicy;
 
   const creatorAgeRequirementMet =
     effectiveDefaultAgeGatePolicy !== "18_plus" || creatorAgeOver18Verified;
@@ -539,7 +545,7 @@ export function CreateCommunityComposer({
                     </div>
                   ) : null}
 
-                  {!(minimumAgeEnabled && minimumAge >= 18) ? (
+                  {!hasAdultMinimumAgeGate ? (
                     <>
                       <CheckboxRow
                         checked={activeDefaultAgeGatePolicy === "18_plus"}

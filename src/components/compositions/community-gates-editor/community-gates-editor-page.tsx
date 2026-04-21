@@ -196,12 +196,12 @@ export function CommunityGatesEditorPage({
   const minimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? true;
-
-  React.useEffect(() => {
-    if (minimumAgeGate && minimumAgeGate.minimumAge >= 18 && defaultAgeGatePolicy !== "18_plus") {
-      onDefaultAgeGatePolicyChange?.("18_plus");
-    }
-  }, [minimumAgeGate, defaultAgeGatePolicy, onDefaultAgeGatePolicyChange]);
+  const hasAdultMinimumAgeGate =
+    membershipMode === "gated"
+    && minimumAgeGate != null
+    && Number.isInteger(minimumAgeGate.minimumAge)
+    && minimumAgeGate.minimumAge >= 18
+    && minimumAgeGate.minimumAge <= 125;
 
   return (
     <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
@@ -375,7 +375,7 @@ export function CommunityGatesEditorPage({
             </div>
           ) : null}
 
-          {!(minimumAgeGate && minimumAgeGate.minimumAge >= 18) ? (
+          {!hasAdultMinimumAgeGate ? (
             <>
               <CheckboxRow
                 checked={defaultAgeGatePolicy === "18_plus"}
@@ -385,7 +385,7 @@ export function CommunityGatesEditorPage({
               />
               {defaultAgeGatePolicy === "18_plus" && !creatorAgeOver18Verified ? (
                 <FormNote tone="warning">
-                  The owner must complete age verification before launching an 18+ community.
+                  {mc.ageGateWarning}
                 </FormNote>
               ) : null}
             </>

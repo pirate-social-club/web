@@ -535,7 +535,7 @@ export function CreateCommunityComposer({
                   />
 
                   {activeAllowAnonymousIdentity ? (
-                    <div className="space-y-3 border-l border-border-soft pl-4">
+                    <div className="space-y-3 border-s border-border-soft ps-4">
                       <p className="text-base font-medium text-foreground">{cc.anonymousScopeLabel}</p>
                       <div className="space-y-2">
                         {([

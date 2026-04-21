@@ -285,7 +285,7 @@ export function LinkPreviewCard({
         {imageSrc ? (
           <img
             alt=""
-            className="h-28 w-full border-t border-border-soft object-cover md:h-auto md:w-40 md:border-l md:border-t-0"
+            className="h-28 w-full border-t border-border-soft object-cover md:h-auto md:w-40 md:border-s md:border-t-0"
             src={imageSrc}
           />
         ) : null}

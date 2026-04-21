@@ -136,7 +136,7 @@ export function LegalMarkdown({
 
         if (block.type === "list") {
           return (
-            <ul className="grid gap-2 pl-6 text-base leading-7 text-muted-foreground" key={`block-${index}`}>
+            <ul className="grid gap-2 ps-6 text-base leading-7 text-muted-foreground" key={`block-${index}`}>
               {block.items.map((item, itemIndex) => (
                 <li className="list-disc" key={`item-${index}-${itemIndex}`}>
                   {renderInlineText(item)}

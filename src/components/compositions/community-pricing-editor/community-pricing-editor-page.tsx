@@ -279,7 +279,7 @@ export function CommunityPricingEditorPage({
               }
               variant="secondary"
             >
-              <Plus className="mr-2 size-4" />
+              <Plus className="me-2 size-4" />
               Add tier
             </Button>
           </div>
@@ -338,7 +338,7 @@ export function CommunityPricingEditorPage({
               }
               variant="secondary"
             >
-              <Plus className="mr-2 size-4" />
+              <Plus className="me-2 size-4" />
               Add country
             </Button>
           </div>

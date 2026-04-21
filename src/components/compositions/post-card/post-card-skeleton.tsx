@@ -34,7 +34,7 @@ export function PostCardSkeleton({ showMedia = true, className }: PostCardSkelet
         <Skeleton className="h-3 w-8" />
         <Skeleton className="size-8 rounded-full" />
         <Skeleton className="size-8 rounded-full" />
-        <Skeleton className="ml-auto size-8 rounded-full" />
+        <Skeleton className="ms-auto size-8 rounded-full" />
       </div>
     </article>
   );

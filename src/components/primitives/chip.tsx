@@ -41,7 +41,7 @@ const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(
       type="button"
       {...props}
     >
-      {leadingIcon ? <span className="mr-1.5">{leadingIcon}</span> : null}
+      {leadingIcon ? <span className="me-1.5">{leadingIcon}</span> : null}
       {children}
     </button>
   ),

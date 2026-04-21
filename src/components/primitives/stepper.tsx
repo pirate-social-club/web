@@ -53,7 +53,14 @@ function Stepper({ className, currentStep, onStepClick, steps }: StepperProps) {
                 <span className="text-base">{step.label}</span>
               </button>
               {steps.length > i + 1 && (
-                <div className={cn("absolute inset-x-0 m-0 h-px", lineClass)} style={{ top: "calc(0.375rem + 1rem)", left: "calc(50% + 1.25rem)", width: "calc(100% - 2.5rem)" }} />
+                <div
+                  className={cn("absolute m-0 h-px", lineClass)}
+                  style={{
+                    insetInlineStart: "calc(50% + 1.25rem)",
+                    top: "calc(0.375rem + 1rem)",
+                    width: "calc(100% - 2.5rem)",
+                  }}
+                />
               )}
             </div>
           </React.Fragment>

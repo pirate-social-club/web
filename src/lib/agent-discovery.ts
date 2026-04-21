@@ -631,7 +631,7 @@ function buildHtmlPage(title: string, canonicalUrl: string, body: string): strin
         border-radius: 8px;
         padding: 0.15em 0.35em;
       }
-      ul { padding-left: 20px; }
+      ul { padding-inline-start: 20px; }
     </style>
   </head>
   <body>

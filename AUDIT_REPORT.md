@@ -24,6 +24,7 @@ Items moved out of the bug bucket into lower buckets or rejected are noted in th
 - Namespace verification flow is extracted and covered by focused state-transition tests.
 - Moderation domains are split into focused hooks for commerce, content policy, profile, access gates, safety, and agent policy.
 - Settings page tab implementations are split into focused panel files while preserving the existing public import surface.
+- RTL-sensitive physical utilities have been converted to logical equivalents for content/layout cases.
 - The remaining items are lower-risk structural cleanup or performance hypotheses that need profiling before optimization work.
 
 ---
@@ -133,6 +134,19 @@ No confirmed bug items remain open.
 - **Verification:** `settings-page.panels.tsx` is now a 9-line compatibility barrel. Profile, wallet, preferences, agents, tab navigation, and shared row/section primitives live in focused files under `settings-page/panels/`.
 - **Note:** The original audit wording was stale; the file contained four tabs, not six panels. The maintainability issue still applied.
 
+### REFACTOR-016 — Physical margins/paddings/borders in content layout
+- **Status:** ✅ **Fixed**
+- **Verification:** Converted audited content/layout cases from `ml-`, `mr-`, `pl-`, `pr-`, `border-l`, `border-r`, and physical CSS margins/paddings to logical equivalents (`ms-`, `me-`, `ps-`, `pe-`, `border-s`, `border-e`, `margin-inline-end`, `padding-inline-start`).
+- **Note:** Remaining `left`/`right` matches are side-aware primitives (`sheet`, `sidebar`) where physical side is part of the component API.
+
+### REFACTOR-017 — Physical `text-left` alignment
+- **Status:** ✅ **Fixed**
+- **Verification:** Production `text-left`/`text-right` matches were replaced with `text-start` where direction-sensitive.
+
+### REFACTOR-018 — Dialog and stepper physical centering
+- **Status:** ✅ **Fixed**
+- **Verification:** Dialog centering now uses `inset-x-0 mx-auto`; stepper connector positioning uses `insetInlineStart`.
+
 ---
 
 ## Remaining Structural Refactors
@@ -193,26 +207,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Impact:** Users see silent failures. Developers have no telemetry.
 - **Fix:** Replace with at least `console.error` in dev and structured logging/Sentry in production, or surface toasts to users.
 - **Risk:** Low — additive logging, not logic changes.
-
-### REFACTOR-016 — Hard-coded physical margins/paddings/borders should use logical properties
-- **Location:** 20+ files including `chip.tsx:44` (`mr-1.5`), `post-card-skeleton.tsx:37` (`ml-auto`), `onboarding-reddit-bootstrap.tsx:185,236,289` (`pl-8`, `mr-2`, `pr-12`), `community-pricing-editor-page.tsx:277,336` (`mr-2`), `verify-namespace-modal.view.tsx:174` (`pr-10`), `community-sidebar-rules.tsx:43` (`pl-7`), `community-sidebar.tsx:120` (`pl-5`), `legal-markdown.tsx:139` (`pl-6`), `create-community-composer.tsx:480` (`border-l` + `pl-4`), `community-gates-editor-page.tsx:337` (`border-l` + `pl-4`), `edit-profile-form.tsx:249` (`mr-auto`)
-- **Verification:** Direct read.
-- **Impact:** Layout breaks in Arabic (`ar`) locale.
-- **Fix:** Replace with Tailwind logical utilities (`ms-`, `me-`, `ps-`, `pe-`, `border-s`, `border-e`). Tailwind v4 supports these natively.
-- **Risk:** Negligible.
-
-### REFACTOR-017 — Text alignment uses physical `text-left` instead of logical `text-start`
-- **Location:** `accordion.tsx:31`, `community-moderation-index-page.tsx:53,99`, `community-sidebar-rules.tsx:38`, `verify-namespace-modal.view.tsx:174`, `modal/stories/base.stories.tsx:61`
-- **Verification:** Direct read.
-- **Fix:** Replace with `text-start`.
-- **Risk:** Negligible.
-
-### REFACTOR-018 — Dialog and stepper use physical centering that may misalign in RTL
-- **Location:** `dialog.tsx:37` (`left-[50%] translate-x-[-50%]`), `stepper.tsx:56` (`left: "calc(50% + 1.25rem)"`)
-- **Verification:** Direct read.
-- **Impact:** Centering logic assumes LTR coordinate space. May drift in RTL.
-- **Fix:** Use `inset-x-0 mx-auto` or logical transforms.
-- **Risk:** Low — test in Arabic locale after change.
 
 ### REFACTOR-019 — Console logging in production source
 - **Location:** 49 `console.*` calls across `lib/api/client.ts` (14), `public-community-route.tsx` (8), `avatar.tsx` (7), `privy-provider.tsx` (3), and scattered others.

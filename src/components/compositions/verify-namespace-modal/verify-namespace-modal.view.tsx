@@ -171,7 +171,7 @@ export function VerifyNamespaceModalView({
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
       <ModalContent className="border-border bg-background p-6 sm:w-[min(100%-2rem,34rem)] sm:max-w-[34rem]">
-        <ModalHeader className="pr-10 text-left">
+        <ModalHeader className="pe-10 text-start">
           <ModalTitle className="text-[1.6rem] leading-tight tracking-tight sm:text-[1.85rem]">
             {mc.title}
           </ModalTitle>

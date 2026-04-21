@@ -167,7 +167,7 @@ export function renderPublicProfilePage({
       .bio { margin: 16px 0 0; max-width: 720px; color: var(--muted); font-size: 18px; line-height: 1.6; }
       .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
       .meta-item { border: 1px solid var(--line); background: rgba(255,255,255,0.03); border-radius: 999px; padding: 10px 14px; color: var(--muted); font-size: 16px; }
-      .meta-item strong { color: var(--text); margin-right: 8px; }
+      .meta-item strong { color: var(--text); margin-inline-end: 8px; }
       .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
       .cta { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 18px; border-radius: 999px; border: 1px solid transparent; font-size: 16px; font-weight: 600; }
       .cta-primary { background: var(--accent); color: #180e04; }

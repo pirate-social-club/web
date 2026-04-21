@@ -180,9 +180,9 @@ function ImportKarmaPhase({
         <div className="space-y-2">
           <FormFieldLabel label={copy.fields.redditUsername} />
           <div className="relative" dir="ltr">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base text-muted-foreground">u/</span>
+            <span className="absolute start-4 top-1/2 -translate-y-1/2 text-base text-muted-foreground">u/</span>
             <Input
-              className="pl-8 text-start"
+              className="ps-8 text-start"
               disabled={busy || !!isCodeReady || isChecking}
               dir="ltr"
               onChange={(e) => onUsernameChange?.(e.target.value)}
@@ -233,7 +233,7 @@ function ImportKarmaPhase({
       {isVerified && !isImportDone && (
         <FormNote>
           {isImporting ? (
-            <><Spinner className="mr-2 inline size-4" />{copy.notes.importing}</>
+            <><Spinner className="me-2 inline size-4" />{copy.notes.importing}</>
           ) : (
             copy.notes.startingImport
           )}
@@ -286,14 +286,14 @@ function ChooseNamePhase({
         <div className="flex items-center gap-2">
           <div className="relative flex-1" dir="ltr">
             <Input
-              className="pr-12 text-start font-mono text-lg"
+              className="pe-12 text-start font-mono text-lg"
               dir="ltr"
               onChange={(e) => onHandleChange(e.target.value)}
               placeholder={copy.placeholders.handle}
               size="lg"
               value={displayValue}
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono text-lg text-muted-foreground">.pirate</span>
+            <span className="absolute end-4 top-1/2 -translate-y-1/2 font-mono text-lg text-muted-foreground">.pirate</span>
           </div>
           <Button
             aria-label={copy.actions.generateHandle}

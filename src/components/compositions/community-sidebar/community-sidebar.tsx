@@ -119,7 +119,7 @@ function CommunitySidebarSections({
           <AccordionItem className="border-b-0" value="requirements">
             <AccordionTrigger className={SECTION_LABEL}>{copy.requirementsLabel}</AccordionTrigger>
             <AccordionContent className="pb-0">
-              <ul className="list-disc space-y-1.5 pl-5 text-base leading-snug text-muted-foreground">
+              <ul className="list-disc space-y-1.5 ps-5 text-base leading-snug text-muted-foreground">
                 {activeRequirements.map((requirement) => (
                   <li key={requirement}>{requirement}</li>
                 ))}

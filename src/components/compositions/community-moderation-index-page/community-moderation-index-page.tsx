@@ -52,7 +52,7 @@ export function CommunityModerationIndexPage({
                 {section.items.map((item, index) => (
                   <button
                     className={cn(
-                      "flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-muted/20",
+                      "flex w-full items-center justify-between gap-4 px-4 py-4 text-start transition-colors hover:bg-muted/20",
                       index < section.items.length - 1 ? "border-b border-border-soft" : undefined,
                     )}
                     key={item.label}
@@ -98,7 +98,7 @@ export function CommunityModerationIndexPage({
               {section.items.map((item, index) => (
                 <button
                   className={cn(
-                    "flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/30",
+                    "flex w-full items-center justify-between gap-4 px-5 py-4 text-start transition-colors hover:bg-muted/30",
                     index < section.items.length - 1 ? "border-b border-border-soft" : undefined,
                   )}
                   key={item.label}

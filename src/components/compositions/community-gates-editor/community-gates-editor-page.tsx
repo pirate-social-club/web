@@ -355,7 +355,7 @@ export function CommunityGatesEditorPage({
           />
 
           {allowAnonymousIdentity ? (
-            <div className="space-y-3 border-l border-border-soft pl-4">
+            <div className="space-y-3 border-s border-border-soft ps-4">
               <p className="text-base font-medium">{mc.anonymousScopeLabel}</p>
               <div className="space-y-2">
                 {(Object.keys(anonymousScopeMeta) as AnonymousIdentityScope[]).map((scope) => {

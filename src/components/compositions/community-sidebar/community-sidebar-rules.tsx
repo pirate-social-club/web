@@ -35,12 +35,12 @@ export function CommunitySidebarRules({
                 <span className="shrink-0 tabular-nums text-muted-foreground/60">
                   {i + 1}
                 </span>
-                <span className="text-left leading-snug">{rule.title}</span>
+                <span className="text-start leading-snug">{rule.title}</span>
               </span>
             </AccordionTrigger>
             {rule.body && (
               <AccordionContent>
-                <p className="pl-7 leading-snug text-muted-foreground/70">
+                <p className="ps-7 leading-snug text-muted-foreground/70">
                   {rule.body}
                 </p>
               </AccordionContent>

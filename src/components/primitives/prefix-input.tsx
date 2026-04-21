@@ -28,7 +28,7 @@ const PrefixInput = React.forwardRef<HTMLInputElement, PrefixInputProps>(
   ({ className, prefix, size, ...props }, ref) => {
     return (
       <div className={cn(prefixInputVariants({ size }), className)}>
-        <div className="grid h-full w-12 shrink-0 place-items-center border-r border-border-soft bg-muted/40 text-base font-semibold text-foreground">
+        <div className="grid h-full w-12 shrink-0 place-items-center border-e border-border-soft bg-muted/40 text-base font-semibold text-foreground">
           {prefix}
         </div>
         <input

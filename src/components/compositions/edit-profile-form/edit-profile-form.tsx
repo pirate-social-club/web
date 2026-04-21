@@ -252,7 +252,7 @@ export function EditProfileForm({
 
       <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
         {submitState.kind === "error" ? (
-          <div className="mr-auto flex items-center gap-2 text-base text-destructive">
+          <div className="me-auto flex items-center gap-2 text-base text-destructive">
             <Warning className="size-4 shrink-0" />
             {submitState.message}
           </div>

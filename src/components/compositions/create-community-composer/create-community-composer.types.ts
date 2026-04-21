@@ -1,6 +1,7 @@
 import type { CommunityMembershipMode } from "@/lib/community-membership";
+import type { CourtyardWalletInventoryGroup } from "@/lib/courtyard-inventory-gates";
 
-export type { CommunityMembershipMode };
+export type { CommunityMembershipMode, CourtyardWalletInventoryGroup };
 export type CommunityDefaultAgeGatePolicy = "none" | "18_plus";
 export type CommunityReadAccessMode = "public" | "members_only";
 export type AnonymousIdentityScope = "community_stable" | "thread_stable" | "post_ephemeral";
@@ -66,6 +67,8 @@ export interface CreateCommunityComposerProps {
   creatorVerificationState?: CreatorVerificationState;
   deferCreatorVerification?: boolean;
   initialStep?: ComposerStep;
+  courtyardInventoryGroups?: CourtyardWalletInventoryGroup[] | null;
+  courtyardInventoryLoading?: boolean;
   onCreate?: (input: {
     avatarFile: File | null;
     avatarRef: string | null;

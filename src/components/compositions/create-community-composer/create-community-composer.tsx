@@ -18,10 +18,11 @@ import { Textarea } from "@/components/primitives/textarea";
 import { toast } from "@/components/primitives/sonner";
 import { isCountryCode } from "@/lib/countries";
 import {
-  COURTYARD_CATALOG_AUTHORING_ENABLED,
+  COURTYARD_POLYGON_REGISTRY,
   createDefaultCourtyardInventoryDraft,
   describeCourtyardInventoryDraft,
   isValidCourtyardInventoryDraft,
+  type CourtyardWalletInventoryGroup,
 } from "@/lib/courtyard-inventory-gates";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 import { resolveCommunityAvatarSrc, resolveCommunityBannerSrc } from "@/lib/default-community-media";
@@ -48,11 +49,26 @@ import type {
   CommunityMembershipMode,
   IdentityGateDraft,
 } from "./create-community-composer.types";
+import { CourtyardWalletGateBuilder } from "./courtyard-wallet-gate-builder";
 
 const EMPTY_GATE_DRAFTS: IdentityGateDraft[] = [];
 
 function logCreateCommunityGateDebug(event: string, data: Record<string, unknown>) {
   logger.debug("[CreateCommunityComposer]", event, data);
+}
+
+function resolveSelectedCourtyardGroup(
+  draft: Extract<IdentityGateDraft, { gateType: "erc721_inventory_match" }>,
+  groups: CourtyardWalletInventoryGroup[] | null,
+): CourtyardWalletInventoryGroup | null {
+  if (!groups) return null;
+  return groups.find((group) => (
+    group.category === draft.assetFilter.category
+    && group.franchise === draft.assetFilter.franchise
+    && group.subject === draft.assetFilter.subject
+    && group.brand === draft.assetFilter.brand
+    && group.model === draft.assetFilter.model
+  )) ?? null;
 }
 
 export function CreateCommunityComposer({
@@ -68,6 +84,8 @@ export function CreateCommunityComposer({
   creatorVerificationState,
   deferCreatorVerification = false,
   initialStep,
+  courtyardInventoryGroups,
+  courtyardInventoryLoading = false,
   onCreate,
 }: CreateCommunityComposerProps) {
   const [activeStep, setActiveStep] = React.useState<ComposerStep>(initialStep ?? 1);
@@ -587,13 +605,35 @@ export function CreateCommunityComposer({
                     <CheckboxCard
                       checked={courtyardInventoryEnabled}
                       description={cc.courtyardDescription}
-                      disabled={!COURTYARD_CATALOG_AUTHORING_ENABLED && !courtyardInventoryEnabled}
-                      disabledHint={!COURTYARD_CATALOG_AUTHORING_ENABLED ? cc.courtyardCatalogUnavailable : undefined}
                       title={cc.courtyardTitle}
                       onCheckedChange={setCourtyardInventoryEnabled}
                     />
 
-                    {!COURTYARD_CATALOG_AUTHORING_ENABLED && courtyardInventoryEnabled ? (
+                    {courtyardInventoryEnabled && courtyardInventoryGroups !== undefined ? (
+                      <div className="space-y-4 border-l-2 border-primary pl-4">
+                        <CourtyardWalletGateBuilder
+                          groups={courtyardInventoryGroups}
+                          loading={courtyardInventoryLoading}
+                          quantity={courtyardInventoryDraft.minQuantity}
+                          selectedGroup={resolveSelectedCourtyardGroup(courtyardInventoryDraft, courtyardInventoryGroups)}
+                          onQuantityChange={(value) => setCourtyardInventoryDraft((draft) => ({ ...draft, minQuantity: value }))}
+                          onSelectGroup={(group) => setCourtyardInventoryDraft({
+                            gateType: "erc721_inventory_match",
+                            chainNamespace: "eip155:137",
+                            contractAddress: COURTYARD_POLYGON_REGISTRY,
+                            inventoryProvider: "courtyard",
+                            minQuantity: 1,
+                            assetFilter: {
+                              category: group.category,
+                              franchise: group.franchise,
+                              subject: group.subject,
+                              brand: group.brand,
+                              model: group.model,
+                            },
+                          })}
+                        />
+                      </div>
+                    ) : courtyardInventoryEnabled ? (
                       <FormNote tone="warning">{cc.courtyardCatalogUnavailable}</FormNote>
                     ) : null}
                   </div>

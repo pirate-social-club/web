@@ -3,6 +3,7 @@ import * as React from "react";
 
 import { CreateCommunityComposer } from "../create-community-composer";
 import type { CreateCommunityComposerProps, IdentityGateDraft } from "../create-community-composer.types";
+import type { CourtyardWalletInventoryGroup } from "@/lib/courtyard-inventory-gates";
 
 const baseComposer: CreateCommunityComposerProps = {
   displayName: "American Voices",
@@ -98,6 +99,95 @@ export const CreatorNotEligible: Story = {
         uniqueHumanVerified: false,
         ageOver18Verified: false,
       }}
+    />
+  ),
+};
+
+export const AccessStepWithCourtyardWalletLoading: Story = {
+  name: "Flow / Courtyard Wallet Loading",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      courtyardInventoryGroups={null}
+      courtyardInventoryLoading
+      gateDrafts={[]}
+      initialStep={2}
+      membershipMode="gated"
+    />
+  ),
+};
+
+export const AccessStepWithCourtyardWalletEmpty: Story = {
+  name: "Flow / Courtyard Wallet Empty",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      courtyardInventoryGroups={[]}
+      gateDrafts={[]}
+      initialStep={2}
+      membershipMode="gated"
+    />
+  ),
+};
+
+const cardInventory: CourtyardWalletInventoryGroup[] = [
+  { category: "trading_card", franchise: "pokemon", subject: "charizard", displayLabel: "Pokemon Charizard", displayDetail: "4 in wallet", count: 4 },
+  { category: "trading_card", franchise: "pokemon", subject: "pikachu", displayLabel: "Pokemon Pikachu", displayDetail: "2 in wallet", count: 2 },
+  { category: "trading_card", franchise: "magic", subject: "black lotus", displayLabel: "Magic Black Lotus", displayDetail: "1 in wallet", count: 1 },
+];
+
+export const AccessStepWithCourtyardWalletCards: Story = {
+  name: "Flow / Courtyard Wallet Cards",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      courtyardInventoryGroups={cardInventory}
+      gateDrafts={[]}
+      initialStep={2}
+      membershipMode="gated"
+    />
+  ),
+};
+
+const watchInventory: CourtyardWalletInventoryGroup[] = [
+  { category: "watch", brand: "rolex", model: "submariner", reference: "124060", displayLabel: "Rolex Submariner", displayDetail: "2 in wallet", count: 2 },
+  { category: "watch", brand: "rolex", model: "gmt-master", displayLabel: "Rolex GMT-Master", displayDetail: "1 in wallet", count: 1 },
+  { category: "watch", brand: "omega", model: "speedmaster", displayLabel: "Omega Speedmaster", displayDetail: "1 in wallet", count: 1 },
+];
+
+export const AccessStepWithCourtyardWalletWatches: Story = {
+  name: "Flow / Courtyard Wallet Watches",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      courtyardInventoryGroups={watchInventory}
+      gateDrafts={[]}
+      initialStep={2}
+      membershipMode="gated"
+    />
+  ),
+};
+
+const courtyardCardGateDrafts: IdentityGateDraft[] = [
+  {
+    gateType: "erc721_inventory_match",
+    chainNamespace: "eip155:137",
+    contractAddress: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+    inventoryProvider: "courtyard",
+    minQuantity: 3,
+    assetFilter: { category: "trading_card", franchise: "Pokemon", subject: "Charizard" },
+  },
+];
+
+export const ReviewWithCourtyardGate: Story = {
+  name: "Flow / Review With Courtyard Gate",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      courtyardInventoryGroups={cardInventory}
+      gateDrafts={[...courtyardCardGateDrafts]}
+      initialStep={3}
+      membershipMode="gated"
     />
   ),
 };

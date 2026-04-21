@@ -5,6 +5,18 @@ import type { IdentityGateDraft } from "@/components/compositions/create-communi
 export const COURTYARD_POLYGON_REGISTRY = "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD";
 export const COURTYARD_CATALOG_AUTHORING_ENABLED = false;
 
+export type CourtyardWalletInventoryGroup = {
+  category: "trading_card" | "watch";
+  franchise?: string;
+  subject?: string;
+  brand?: string;
+  model?: string;
+  reference?: string;
+  displayLabel: string;
+  displayDetail?: string;
+  count: number;
+};
+
 export type CourtyardInventoryDraft = Extract<IdentityGateDraft, { gateType: "erc721_inventory_match" }>;
 
 export function createDefaultCourtyardInventoryDraft(

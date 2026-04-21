@@ -1,19 +1,29 @@
 # Pirate-Web Audit Report (Reconciled)
 
-**Date:** 2026-04-20  
+**Date:** 2026-04-21  
 **Scope:** `src/` — performance, RTL/i18n, DRY/organization, dead code, architecture  
-**Format:** Three strict buckets: fixed bugs, remaining open items, structural refactors, performance hypotheses
+**Format:** Fixed bugs, completed refactors, remaining structural refactors, performance hypotheses
 
 ---
 
 ## How to Read This Report
 
 - **Fixed bugs** — Confirmed bugs that have been resolved. Kept for traceability.
-- **Remaining open items** — Confirmed bugs or small tasks still present in source.
-- **Structural refactors** — Real maintainability or correctness issues, but not runtime bugs. Require judgment on priority and sequencing.
+- **Completed structural refactors** — Audit items that were refactored after the original report.
+- **Remaining structural refactors** — Real maintainability or correctness issues, but not runtime bugs. Require judgment on priority and sequencing.
 - **Performance hypotheses** — Theoretical concerns from static analysis. **Do not act on them without profiling first.**
 
 Items moved out of the bug bucket into lower buckets or rejected are noted in the "Rejected / Softened Claims" section at the end.
+
+---
+
+## Current Status
+
+- No confirmed bug audit tasks remain open.
+- `moderation-state.tsx` is now a 133-line composer/facade instead of a 742-line god hook.
+- Namespace verification flow is extracted and covered by focused state-transition tests.
+- Moderation domains are split into focused hooks for commerce, content policy, profile, access gates, safety, and agent policy.
+- The remaining items are lower-risk structural cleanup or performance hypotheses that need profiling before optimization work.
 
 ---
 
@@ -73,16 +83,31 @@ No confirmed bug items remain open.
 
 ---
 
-## Structural Refactors
+## Completed Structural Refactors
+
+### REFACTOR-001 — `moderation-state.tsx` god hook
+- **Status:** ✅ **Fixed**
+- **Location:** `src/app/authenticated-routes/moderation-state.tsx`
+- **Verification:** File is now 133 lines and composes focused hooks:
+  - `useCommunityCommerceState`
+  - `useCommunityContentPolicyState`
+  - `useCommunityProfileState`
+  - `useCommunityAccessState`
+  - `useCommunitySafetyState`
+  - `useCommunityAgentPolicyState`
+- **Test coverage:** Focused hook tests cover commerce, content policy, profile, access gates, safety, and agents.
+
+### REFACTOR-003 — Namespace verification logic duplicated across modal and page
+- **Status:** ✅ **Fixed**
+- **Location:** `src/components/compositions/namespace-verification/use-namespace-verification-flow.ts`
+- **Verification:** `verify-namespace-modal.tsx` and `community-namespace-verification-page.tsx` now consume the shared flow hook instead of owning duplicated lifecycle state.
+- **Test coverage:** `use-namespace-verification-flow.test.tsx` covers 11 state-transition cases.
+
+---
+
+## Remaining Structural Refactors
 
 These are real issues that degrade maintainability, but they are not runtime bugs. Fix them based on sprint capacity and touch-risk, not urgency.
-
-### REFACTOR-001 — `moderation-state.tsx` is a god hook (742 lines)
-- **Location:** `src/app/authenticated-routes/moderation-state.tsx`
-- **Verification:** Direct read. Contains rules, links, labels, donations, pricing, gates, safety, agents, profile edits, and namespace verification state. State is exploded into dozens of individual `useState` calls.
-- **Impact:** Any moderation change requires editing a 742-line file. Easy to introduce regressions.
-- **Fix:** Split into domain hooks: `useModerationRulesState`, `useModerationPricingState`, `useModerationGatesState`, etc. Group related value/error/loading triples with `useReducer` where state machines are obvious.
-- **Risk:** High touch-risk — this is a core admin flow. Needs thorough QA.
 
 ### REFACTOR-002 — `app.tsx` is 502 lines mixing routing, shell, sidebar, and state
 - **Location:** `src/app.tsx`
@@ -90,13 +115,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Impact:** Hard to navigate, test, or modify without side effects.
 - **Fix:** Extract to `app/shell/app-shell.tsx`, `app/shell/sidebar-sections.ts`, `app/shell/use-shell-mobile-layout.ts`.
 - **Risk:** Medium — touches shell layout, but the logic is mostly pure move.
-
-### REFACTOR-003 — Namespace verification logic duplicated across two large components
-- **Location:** `verify-namespace-modal.tsx` and `community-namespace-verification-page.tsx`
-- **Verification:** Direct read. Both declare identical state variables (`rootLabel`, `activeFamily`, `sessionId`, `challengeHost`, `challengeTxtValue`, `challengePayload`, `signature`, `namespaceVerificationId`, `failureReason`, `operationClass`, `pirateDnsAuthorityVerified`, `setupNameservers`, `resuming`), plus identical `resetChallengeState`, `applySessionResult`, `handleStart`, `handleVerify`, `handleRestart`, and error toast strings.
-- **Impact:** Any protocol change must be edited in two places.
-- **Fix:** Extract a `useNamespaceVerification()` hook into `hooks/use-namespace-verification.ts`.
-- **Risk:** Low — both components become thin view wrappers.
 
 ### REFACTOR-004 — `profile-settings-routes.tsx` is 646 lines mixing data mapping, wallet, agents, and UI
 - **Location:** `src/app/authenticated-routes/profile-settings-routes.tsx`
@@ -307,7 +325,8 @@ These are theoretical concerns identified by static analysis. **Do not act on th
 
 ## Recommended Next Steps
 
-1. **No confirmed-bug audit tasks remain.** The remaining items in this report are structural refactors or performance hypotheses.
-2. **Run a performance profile** before acting on any Performance Hypothesis. Use React DevTools Profiler + Lighthouse. If no render hot spots are found, deprioritize memoization work.
-3. **Pick 2–3 Structural Refactors** per sprint, starting with low-risk items (barrel files, duplicated utilities) and working up to high-risk god-file splits.
-4. **Add bundle/dead-code tooling** (`knip`, `rollup-plugin-visualizer`) so future audits have objective data instead of static guesswork.
+1. **No confirmed-bug audit tasks remain.** Keep treating any new bug claims as requiring source verification before adding them to the bug bucket.
+2. **Continue with low-risk structural cleanup**: `getErrorMessage` consolidation, `useClientReady` consolidation, API query-path helper, public/authenticated route boundary cleanup, and route-shell/route-core splitting.
+3. **Defer high-risk composer work** until it has stronger Storybook/test coverage. `PostComposer` and `create-post-state.tsx` still touch critical submission flows.
+4. **Run a performance profile** before acting on any Performance Hypothesis. Use React DevTools Profiler + Lighthouse. If no render hot spots are found, deprioritize memoization work.
+5. **Add bundle/dead-code tooling** (`knip`, `rollup-plugin-visualizer`) so future audits have objective data instead of static guesswork.

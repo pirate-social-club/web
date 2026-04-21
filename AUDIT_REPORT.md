@@ -114,6 +114,12 @@ No confirmed bug items remain open.
 - **Location:** `src/app/authenticated-routes/route-core.tsx`
 - **Verification:** Only `useClientHydrated` remains; no duplicate `useClientReady` implementation is present in `app.tsx`.
 
+### REFACTOR-010 — `handleBuySong` duplicated between community-route and post-route
+- **Status:** ✅ **Fixed**
+- **Location:** `src/app/authenticated-routes/song-purchase.ts`
+- **Verification:** Community and post routes now call `useSongPurchase()` instead of owning separate quote, wallet-transfer, settlement, and failure paths.
+- **Test coverage:** `src/app/authenticated-routes/song-purchase.test.ts`
+
 ---
 
 ## Remaining Structural Refactors
@@ -152,12 +158,6 @@ These are real issues that degrade maintainability, but they are not runtime bug
 - **Location:** `src/components/compositions/settings-page/settings-page.panels.tsx`
 - **Verification:** Direct read. Contains `ProfilePanel`, `WalletsPanel`, `AgentsPanel`, `NotificationsPanel`, `PreferencesPanel`, `SecurityPanel` in one file.
 - **Fix:** Split each panel into its own file in `components/compositions/settings-page/panels/`.
-- **Risk:** Low.
-
-### REFACTOR-010 — `handleBuySong` duplicated between community-route and post-route
-- **Location:** `community-route.tsx:93–114`, `post-route.tsx:48–72`
-- **Verification:** Direct read. Same flow with only `communityId` source and success message differing.
-- **Fix:** Extract `hooks/use-song-purchase.ts`.
 - **Risk:** Low.
 
 ### REFACTOR-011 — URLSearchParams builder repeated 15× in API client files

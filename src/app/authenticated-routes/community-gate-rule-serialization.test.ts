@@ -13,6 +13,8 @@ describe("serializeIdentityGateDrafts", () => {
       assetFilter: {
         category: "watch",
         brand: "Rolex",
+        model: "Submariner",
+        reference: "124060",
       },
     }])).toEqual([{
       scope: "membership",
@@ -26,6 +28,8 @@ describe("serializeIdentityGateDrafts", () => {
         match: {
           category: "watch",
           brand: "Rolex",
+          model: "Submariner",
+          reference: "124060",
         },
       },
     }]);

@@ -318,6 +318,7 @@ export function PirateAuthProvider({
   }, [appId, shouldLoadPrivy, shouldLoadWalletSync]);
 
   const connect = React.useCallback(() => {
+    logger.info("[auth-provider] connect() invoked", { hasLoadedConnect: !!loadedConnect, stack: new Error().stack });
     if (!appId) {
       return;
     }

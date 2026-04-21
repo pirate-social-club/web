@@ -164,8 +164,9 @@ function extractCourtyardInventoryDraft(config: unknown): Omit<Extract<IdentityG
   const record = config as Record<string, unknown>;
   const contractAddress = typeof record.contract_address === "string" ? record.contract_address : null;
   const minQuantity = Number.isInteger(record.min_quantity) ? record.min_quantity as number : null;
-  const assetFilter = record.asset_filter && typeof record.asset_filter === "object" && !Array.isArray(record.asset_filter)
-    ? record.asset_filter as Record<string, unknown>
+  const rawMatch = record.match ?? record.asset_filter;
+  const assetFilter = rawMatch && typeof rawMatch === "object" && !Array.isArray(rawMatch)
+    ? rawMatch as Record<string, unknown>
     : null;
   const category = assetFilter?.category;
   if (
@@ -187,6 +188,12 @@ function extractCourtyardInventoryDraft(config: unknown): Omit<Extract<IdentityG
       subject: typeof assetFilter.subject === "string" ? assetFilter.subject : undefined,
       brand: typeof assetFilter.brand === "string" ? assetFilter.brand : undefined,
       model: typeof assetFilter.model === "string" ? assetFilter.model : undefined,
+      reference: typeof assetFilter.reference === "string" ? assetFilter.reference : undefined,
+      set: typeof assetFilter.set === "string" ? assetFilter.set : undefined,
+      year: typeof assetFilter.year === "string" ? assetFilter.year : undefined,
+      grader: typeof assetFilter.grader === "string" ? assetFilter.grader : undefined,
+      grade: typeof assetFilter.grade === "string" ? assetFilter.grade : undefined,
+      condition: typeof assetFilter.condition === "string" ? assetFilter.condition : undefined,
     },
   });
 }

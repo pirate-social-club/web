@@ -68,6 +68,12 @@ function resolveSelectedCourtyardGroup(
     && group.subject === draft.assetFilter.subject
     && group.brand === draft.assetFilter.brand
     && group.model === draft.assetFilter.model
+    && group.reference === draft.assetFilter.reference
+    && group.set === draft.assetFilter.set
+    && group.year === draft.assetFilter.year
+    && group.grader === draft.assetFilter.grader
+    && group.grade === draft.assetFilter.grade
+    && group.condition === draft.assetFilter.condition
   )) ?? null;
 }
 
@@ -145,6 +151,12 @@ export function CreateCommunityComposer({
                 draft.assetFilter.subject ?? "",
                 draft.assetFilter.brand ?? "",
                 draft.assetFilter.model ?? "",
+                draft.assetFilter.reference ?? "",
+                draft.assetFilter.set ?? "",
+                draft.assetFilter.year ?? "",
+                draft.assetFilter.grader ?? "",
+                draft.assetFilter.grade ?? "",
+                draft.assetFilter.condition ?? "",
                 draft.gateRuleId ?? "",
               ].join(":")
             : draft.gateType === "nationality"
@@ -204,6 +216,12 @@ export function CreateCommunityComposer({
           subject: courtyardInventoryDraft.assetFilter.subject?.trim() || undefined,
           brand: courtyardInventoryDraft.assetFilter.brand?.trim() || undefined,
           model: courtyardInventoryDraft.assetFilter.model?.trim() || undefined,
+          reference: courtyardInventoryDraft.assetFilter.reference?.trim() || undefined,
+          set: courtyardInventoryDraft.assetFilter.set?.trim() || undefined,
+          year: courtyardInventoryDraft.assetFilter.year?.trim() || undefined,
+          grader: courtyardInventoryDraft.assetFilter.grader?.trim() || undefined,
+          grade: courtyardInventoryDraft.assetFilter.grade?.trim() || undefined,
+          condition: courtyardInventoryDraft.assetFilter.condition?.trim() || undefined,
         },
       }]
       : []),
@@ -629,6 +647,12 @@ export function CreateCommunityComposer({
                               subject: group.subject,
                               brand: group.brand,
                               model: group.model,
+                              reference: group.reference,
+                              set: group.set,
+                              year: group.year,
+                              grader: group.grader,
+                              grade: group.grade,
+                              condition: group.condition,
                             },
                           })}
                         />

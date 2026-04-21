@@ -20,7 +20,19 @@ export type CourtyardWalletGateBuilderProps = {
 };
 
 function groupKey(group: CourtyardWalletInventoryGroup): string {
-  return `${group.category}:${group.displayLabel}`;
+  return [
+    group.category,
+    group.franchise ?? "",
+    group.subject ?? "",
+    group.brand ?? "",
+    group.model ?? "",
+    group.reference ?? "",
+    group.set ?? "",
+    group.year ?? "",
+    group.grader ?? "",
+    group.grade ?? "",
+    group.condition ?? "",
+  ].join(":");
 }
 
 export function CourtyardWalletGateBuilder({

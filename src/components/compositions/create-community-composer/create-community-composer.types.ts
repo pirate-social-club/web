@@ -43,6 +43,12 @@ export type IdentityGateDraft =
       subject?: string;
       brand?: string;
       model?: string;
+      reference?: string;
+      set?: string;
+      year?: string;
+      grader?: string;
+      grade?: string;
+      condition?: string;
     };
     gateRuleId?: string;
   };

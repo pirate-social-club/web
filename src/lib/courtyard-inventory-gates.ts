@@ -12,6 +12,11 @@ export type CourtyardWalletInventoryGroup = {
   brand?: string;
   model?: string;
   reference?: string;
+  set?: string;
+  year?: string;
+  grader?: string;
+  grade?: string;
+  condition?: string;
   displayLabel: string;
   displayDetail?: string;
   count: number;
@@ -48,9 +53,21 @@ export function isValidCourtyardInventoryDraft(draft: CourtyardInventoryDraft): 
   }
 
   if (draft.assetFilter.category === "trading_card") {
-    return Boolean(draft.assetFilter.franchise?.trim() || draft.assetFilter.subject?.trim());
+    return Boolean(
+      draft.assetFilter.franchise?.trim()
+      || draft.assetFilter.subject?.trim()
+      || draft.assetFilter.set?.trim()
+      || draft.assetFilter.year?.trim()
+      || draft.assetFilter.grader?.trim()
+      || draft.assetFilter.grade?.trim(),
+    );
   }
-  return Boolean(draft.assetFilter.brand?.trim() || draft.assetFilter.model?.trim());
+  return Boolean(
+    draft.assetFilter.brand?.trim()
+    || draft.assetFilter.model?.trim()
+    || draft.assetFilter.reference?.trim()
+    || draft.assetFilter.condition?.trim(),
+  );
 }
 
 export function describeCourtyardInventoryDraft(draft: CourtyardInventoryDraft): string {
@@ -59,6 +76,12 @@ export function describeCourtyardInventoryDraft(draft: CourtyardInventoryDraft):
     draft.assetFilter.subject,
     draft.assetFilter.brand,
     draft.assetFilter.model,
+    draft.assetFilter.reference,
+    draft.assetFilter.set,
+    draft.assetFilter.year,
+    draft.assetFilter.grader,
+    draft.assetFilter.grade,
+    draft.assetFilter.condition,
   ].map((value) => value?.trim()).filter((value): value is string => Boolean(value));
   const asset = draft.assetFilter.category === "watch" ? "watch" : "card";
   const pluralAsset = draft.minQuantity === 1 ? asset : `${asset}s`;

@@ -129,10 +129,11 @@ describe("useCommunityAccessState", () => {
             contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
             inventory_provider: "courtyard",
             min_quantity: 3,
-            asset_filter: {
-              category: "trading_card",
-              franchise: "Pokemon",
-              subject: "Charizard",
+            match: {
+              category: "watch",
+              brand: "Rolex",
+              model: "Submariner",
+              reference: "124060",
             },
           },
           status: "active",
@@ -151,9 +152,10 @@ describe("useCommunityAccessState", () => {
       inventoryProvider: "courtyard",
       minQuantity: 3,
       assetFilter: {
-        category: "trading_card",
-        franchise: "Pokemon",
-        subject: "Charizard",
+        category: "watch",
+        brand: "Rolex",
+        model: "Submariner",
+        reference: "124060",
       },
       gateRuleId: "gate-courtyard",
     });
@@ -270,7 +272,7 @@ describe("useCommunityAccessState", () => {
         contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
         inventory_provider: "courtyard",
         min_quantity: 5,
-        asset_filter: {
+        match: {
           category: "watch",
           brand: "Rolex",
         },

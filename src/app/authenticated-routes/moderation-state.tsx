@@ -263,7 +263,7 @@ export function useCommunityModerationState(communityId: string) {
     [setCommunity],
   );
 
-  const commerce = useCommunityCommerceState({ communityId, community, setCommunity });
+  const commerce = useCommunityCommerceState({ community, saveCommunity });
 
   const handleSaveRules = React.useCallback(() => {
     if (!community || savingRules) return;

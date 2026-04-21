@@ -20,15 +20,19 @@ import {
 import { getErrorMessage } from "./route-core";
 
 type ApiCommunityPricingPolicyState = ApiCommunityPricingPolicy | null;
+export type SaveCommunityAction = (
+  action: () => Promise<ApiCommunity>,
+  savingSetter: React.Dispatch<React.SetStateAction<boolean>>,
+  successMessage: string,
+  failureMessage: string,
+) => Promise<ApiCommunity>;
 
 export function useCommunityCommerceState({
-  communityId,
   community,
-  setCommunity,
+  saveCommunity,
 }: {
-  communityId: string;
   community: ApiCommunity | null;
-  setCommunity: React.Dispatch<React.SetStateAction<ApiCommunity | null>>;
+  saveCommunity: SaveCommunityAction;
 }) {
   const api = useApi();
 
@@ -105,29 +109,6 @@ export function useCommunityCommerceState({
     setPricingTiers(getPricingTierDrafts(pricingPolicy));
     setCountryAssignments(getPricingCountryAssignmentDrafts(pricingPolicy));
   }, [pricingPolicy]);
-
-  const saveCommunity = React.useCallback(
-    async (
-      action: () => Promise<ApiCommunity>,
-      savingSetter: React.Dispatch<React.SetStateAction<boolean>>,
-      successMessage: string,
-      failureMessage: string,
-    ) => {
-      savingSetter(true);
-      try {
-        const updatedCommunity = await action();
-        setCommunity(updatedCommunity);
-        toast.success(successMessage);
-        return updatedCommunity;
-      } catch (nextError) {
-        toast.error(getErrorMessage(nextError, failureMessage));
-        throw nextError;
-      } finally {
-        savingSetter(false);
-      }
-    },
-    [setCommunity],
-  );
 
   const handleResolveDonationPartner = React.useCallback(() => {
     if (!community || resolvingDonationPartner || !endaomentUrl.trim()) return;

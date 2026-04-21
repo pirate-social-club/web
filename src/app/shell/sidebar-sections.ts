@@ -140,19 +140,6 @@ export function buildResourceItems(messages: ShellMessages["appSidebar"]) {
   }));
 }
 
-export function buildSourceItems(messages: ShellMessages["appSidebar"]) {
-  return messages.sourceItems.map((item) => ({
-    ...item,
-    onSelect: () => {
-      const href = resolveResourceHref(item.id, {
-        preferNativeRadicle: prefersNativeRadicleLinks(),
-      });
-      if (!href || typeof window === "undefined") return;
-      window.location.assign(href);
-    },
-  }));
-}
-
 export function activeSidebarItem(route: AppRoute): string | undefined {
   switch (route.kind) {
     case "home":

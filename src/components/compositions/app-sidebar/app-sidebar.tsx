@@ -167,25 +167,37 @@ function SidebarResources({
   onItemSelect: (onSelect?: () => void) => void;
 }) {
   return (
-    <SidebarGroup className="gap-0 px-4 py-0 group-data-[collapsible=icon]:hidden">
-      <div className={sectionLabelClassName}>{label}</div>
-      <SidebarGroupContent>
-        <SidebarMenu className="gap-1">
-          {items.map((item) => (
-            <SidebarMenuItem key={item.id}>
-              <SidebarMenuButton
-                className={nestedRowClassName}
-                isActive={item.id === activeItemId}
-                onClick={() => onItemSelect(item.onSelect)}
-                tooltip={item.label}
-              >
-                <span>{item.label}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
+    <Accordion
+      className="px-4 group-data-[collapsible=icon]:hidden"
+      defaultValue={["resources"]}
+      type="multiple"
+    >
+      <AccordionItem className="border-b-0 border-sidebar-border" value="resources">
+        <AccordionTrigger className={sectionLabelClassName}>
+          {label}
+        </AccordionTrigger>
+        <AccordionContent className="pb-0">
+          <SidebarGroup className="gap-0 px-0 py-0">
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                {items.map((item) => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      className={nestedRowClassName}
+                      isActive={item.id === activeItemId}
+                      onClick={() => onItemSelect(item.onSelect)}
+                      tooltip={item.label}
+                    >
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }
 
@@ -201,8 +213,6 @@ export interface AppSidebarProps
   resourcesLabel?: string;
   sections?: readonly AppSidebarSection[];
   side?: UiPlacement;
-  sourceItems?: readonly AppSidebarSectionItem[];
-  sourceLabel?: string;
 }
 
 export function AppSidebar({
@@ -216,8 +226,6 @@ export function AppSidebar({
   resourcesLabel,
   sections,
   side = "start",
-  sourceItems,
-  sourceLabel,
   ...props
 }: AppSidebarProps) {
   const { dir, locale } = useUiLocale();
@@ -242,8 +250,6 @@ export function AppSidebar({
   const resolvedSections = sections ?? copy.appSidebar.sections;
   const resolvedResourceItems = resourceItems ?? copy.appSidebar.resourceItems;
   const resolvedResourcesLabel = resourcesLabel ?? copy.appSidebar.resourcesLabel;
-  const resolvedSourceItems = sourceItems ?? copy.appSidebar.sourceItems;
-  const resolvedSourceLabel = sourceLabel ?? copy.appSidebar.sourceLabel;
   const resolvedSide = resolveDirectionalSide(side, dir);
 
   return (
@@ -278,15 +284,6 @@ export function AppSidebar({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {resolvedSourceItems.length > 0 ? (
-          <SidebarResources
-            activeItemId={activeItemId}
-            items={resolvedSourceItems}
-            label={resolvedSourceLabel}
-            onItemSelect={handleItemSelect}
-          />
-        ) : null}
 
         <SidebarSectionBlock
           activeItemId={activeItemId}

@@ -972,17 +972,6 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "Blog"
           },
           {
-            "id": "terms-of-service",
-            "label": "Terms of Service"
-          },
-          {
-            "id": "privacy-policy",
-            "label": "Privacy Policy"
-          }
-        ],
-        "sourceLabel": "Source",
-        "sourceItems": [
-          {
             "id": "source-github",
             "label": "GitHub"
           },
@@ -997,6 +986,14 @@ export const GENERATED_LOCALE_CATALOGS = {
           {
             "id": "source-radicle-contracts",
             "label": "Radicle Contracts"
+          },
+          {
+            "id": "terms-of-service",
+            "label": "Terms of Service"
+          },
+          {
+            "id": "privacy-policy",
+            "label": "Privacy Policy"
           }
         ],
         "yourCommunitiesLabel": "Your Communities"
@@ -1994,17 +1991,6 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "المدونة"
           },
           {
-            "id": "terms-of-service",
-            "label": "شروط الخدمة"
-          },
-          {
-            "id": "privacy-policy",
-            "label": "سياسة الخصوصية"
-          }
-        ],
-        "sourceLabel": "المصدر",
-        "sourceItems": [
-          {
             "id": "source-github",
             "label": "GitHub"
           },
@@ -2019,6 +2005,14 @@ export const GENERATED_LOCALE_CATALOGS = {
           {
             "id": "source-radicle-contracts",
             "label": "Radicle Contracts"
+          },
+          {
+            "id": "terms-of-service",
+            "label": "شروط الخدمة"
+          },
+          {
+            "id": "privacy-policy",
+            "label": "سياسة الخصوصية"
           }
         ],
         "yourCommunitiesLabel": "مجتمعاتك"
@@ -3016,17 +3010,6 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "博客"
           },
           {
-            "id": "terms-of-service",
-            "label": "服务条款"
-          },
-          {
-            "id": "privacy-policy",
-            "label": "隐私政策"
-          }
-        ],
-        "sourceLabel": "源代码",
-        "sourceItems": [
-          {
             "id": "source-github",
             "label": "GitHub"
           },
@@ -3041,6 +3024,14 @@ export const GENERATED_LOCALE_CATALOGS = {
           {
             "id": "source-radicle-contracts",
             "label": "Radicle Contracts"
+          },
+          {
+            "id": "terms-of-service",
+            "label": "服务条款"
+          },
+          {
+            "id": "privacy-policy",
+            "label": "隐私政策"
           }
         ],
         "yourCommunitiesLabel": "你的社区"

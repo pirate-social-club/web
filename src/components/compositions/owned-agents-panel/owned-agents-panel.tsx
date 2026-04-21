@@ -40,12 +40,14 @@ function AgentRow({
   copy,
   localeTag,
   onUpdateHandle,
+  onUpdateName,
   onDeregister,
 }: {
   agent: OwnedAgent;
   copy: OwnedAgentsCopy;
   localeTag: string;
   onUpdateHandle?: (agentId: string, handleLabel: string) => Promise<void> | void;
+  onUpdateName?: (agentId: string, displayName: string) => Promise<void> | void;
   onDeregister?: (agentId: string) => void;
 }) {
   const isActive = agent.status === "active";
@@ -53,6 +55,13 @@ function AgentRow({
   const [draftHandle, setDraftHandle] = React.useState(stripClawitzerSuffix(agent.handleLabel));
   const [handleError, setHandleError] = React.useState<string | null>(null);
   const [handleSaving, setHandleSaving] = React.useState(false);
+  const [draftName, setDraftName] = React.useState(agent.displayName ?? "");
+  const [nameError, setNameError] = React.useState<string | null>(null);
+  const [nameSaving, setNameSaving] = React.useState(false);
+  const canEditName = isActive && Boolean(onUpdateName);
+  const nextName = draftName.trim();
+  const currentName = agent.displayName ?? "";
+  const nameDisabled = nameSaving || nextName.length === 0 || nextName === currentName;
   const ownershipProvider = ownership?.ownershipProvider === "self_agent_id"
     ? copy.providerSelf
     : ownership?.ownershipProvider === "clawkey"
@@ -71,6 +80,12 @@ function AgentRow({
     setHandleSaving(false);
   }, [agent.agentId, agent.handleLabel]);
 
+  React.useEffect(() => {
+    setDraftName(agent.displayName ?? "");
+    setNameError(null);
+    setNameSaving(false);
+  }, [agent.agentId, agent.displayName]);
+
   const handleSaveHandle = async () => {
     if (!onUpdateHandle || handleDisabled) {
       return;
@@ -87,6 +102,22 @@ function AgentRow({
     }
   };
 
+  const handleSaveName = async () => {
+    if (!onUpdateName || nameDisabled) {
+      return;
+    }
+
+    setNameSaving(true);
+    setNameError(null);
+    try {
+      await onUpdateName(agent.agentId, nextName);
+    } catch (error: unknown) {
+      setNameError(error instanceof Error ? error.message : copy.saveNameError);
+    } finally {
+      setNameSaving(false);
+    }
+  };
+
   return (
     <div className="group flex items-start gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4 transition-colors hover:bg-muted/50">
       <div className={cn(
@@ -96,7 +127,31 @@ function AgentRow({
         <Robot className="size-5" weight="duotone" />
       </div>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 space-y-3">
+        {canEditName ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-1 items-center rounded-[var(--radius-md)] border border-input bg-background">
+              <Input
+                aria-label={copy.nameLabel}
+                className="min-w-0 border-0 bg-transparent"
+                onChange={(event) => {
+                  setDraftName(event.target.value);
+                  if (nameError) {
+                    setNameError(null);
+                  }
+                }}
+                placeholder={copy.namePlaceholder}
+                value={draftName}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button disabled={nameDisabled} loading={nameSaving} onClick={() => void handleSaveName()} variant="secondary">
+                {copy.saveNameAction}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           {canEditHandle ? (
             <div className="flex min-w-0 flex-1 items-center rounded-[var(--radius-md)] border border-input bg-background">
@@ -147,8 +202,8 @@ function AgentRow({
           </div>
         </div>
 
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground">
-          {agent.displayName && agent.displayName !== agent.handleLabel ? (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground">
+          {!canEditName && agent.displayName && agent.displayName !== agent.handleLabel ? (
             <span>{agent.displayName}</span>
           ) : null}
           {ownership ? (
@@ -161,6 +216,7 @@ function AgentRow({
             <span>{copy.noActiveOwnership}</span>
           )}
         </div>
+        {nameError ? <FormNote tone="destructive">{nameError}</FormNote> : null}
         {handleError ? <FormNote tone="destructive">{handleError}</FormNote> : null}
       </div>
     </div>

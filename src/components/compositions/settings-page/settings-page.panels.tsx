@@ -533,6 +533,8 @@ export function AgentsTab({
         onImportRegistration={agents.onImportRegistration}
         onCheckRegistration={agents.onCheckRegistration}
         onDeregister={agents.onDeregister}
+        onUpdateHandle={agents.onUpdateHandle}
+        onUpdateName={agents.onUpdateName}
       />
     </div>
   );

@@ -61,8 +61,17 @@ export function PostCard({
   className,
 }: PostCardProps) {
   const effectiveTitleHref = titleHref ?? (content.type !== "link" ? postHref : undefined);
+  const shouldFoldLinkTitle = content.type === "link" && Boolean(content.previewImageSrc) && Boolean(title);
+  const mediaContent = shouldFoldLinkTitle && content.type === "link"
+    ? {
+        ...content,
+        linkTitle: title ?? undefined,
+        linkTitleDir: titleDir,
+        linkTitleLang: titleLang,
+      }
+    : content;
 
-  const titleElement = title ? (
+  const titleElement = title && !shouldFoldLinkTitle ? (
     effectiveTitleHref ? (
       <a
         className={cn(
@@ -132,7 +141,7 @@ export function PostCard({
         />
 
         {titleElement}
-        <PostCardMedia content={content} />
+        <PostCardMedia content={mediaContent} />
 
         <PostCardEngagementBar
           engagement={engagement}

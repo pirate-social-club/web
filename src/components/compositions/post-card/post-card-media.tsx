@@ -83,25 +83,30 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
       return (
         <div className={cn("w-full space-y-2 text-start", className)}>
           <a
-            className="flex w-full items-stretch gap-3 rounded-lg border border-border-soft bg-muted/30 p-3 transition-colors hover:opacity-90"
+            className={cn(
+              "grid w-full items-stretch gap-3 transition-opacity hover:opacity-90",
+              content.previewImageSrc
+                ? "grid-cols-[minmax(0,1fr)_minmax(5rem,30%)]"
+                : "grid-cols-1",
+            )}
             href={content.href}
             data-post-card-interactive="true"
           >
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 rounded-lg border border-border-soft bg-muted/30 p-3">
               {content.linkTitle ? (
-                <p className={cn(postCardType.label, "line-clamp-2 font-semibold text-foreground")}>
+                <p className={cn(postCardType.title, "line-clamp-2 font-semibold text-foreground")}>
                   <span dir={content.linkTitleDir ?? "auto"} lang={content.linkTitleLang}>
                     {content.linkTitle}
                   </span>
                 </p>
               ) : null}
-              <div className={cn("flex items-center gap-1.5 text-muted-foreground", postCardType.meta, content.linkTitle && "mt-1.5")}>
+              <div className={cn("flex min-w-0 items-center gap-1.5 text-muted-foreground", postCardType.meta, content.linkTitle && "mt-1.5")}>
                 <span className="truncate">{content.linkLabel ?? content.href}</span>
                 <ArrowSquareOut className="size-4 shrink-0" />
               </div>
             </div>
             {content.previewImageSrc ? (
-              <div className="size-20 shrink-0 overflow-hidden rounded-lg sm:size-24">
+              <div className="min-h-20 overflow-hidden rounded-lg">
                 <img
                   alt={content.linkTitle ?? "Link preview"}
                   className="size-full object-cover"

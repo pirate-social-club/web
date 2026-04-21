@@ -24,10 +24,10 @@ import { logger } from "@/lib/logger";
 import {
   FieldLabel,
   MediaPicker,
+  NumericStepper,
   Section,
   SegmentedControl,
   acceptedCommunityImageTypes,
-
   useCommunityPreviewMedia,
   CheckboxRow,
   CommunityReviewStep,
@@ -421,11 +421,12 @@ export function CreateCommunityComposer({
                 />
 
                 {activeMembershipMode === "gated" ? (
-                  <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-5 py-4">
-                    <FormSectionHeading
-                      description={cc.gateChecksDescription}
-                      title={cc.gateChecksTitle}
-                    />
+                  <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-5 py-4">
+                    <FormSectionHeading title={cc.gateChecksTitle} />
+
+                    {activeGateDrafts.length === 0 ? (
+                      <FormNote tone="warning">{cc.gateChecksDescription}</FormNote>
+                    ) : null}
 
                     <CheckboxCard
                       checked={nationalityEnabled}
@@ -441,7 +442,7 @@ export function CreateCommunityComposer({
                     />
 
                     {nationalityEnabled ? (
-                      <div className="space-y-2">
+                      <div className="space-y-2 border-l-2 border-primary pl-4">
                         <FieldLabel label={cc.allowedNationalityLabel} />
                         <NationalityMultiPicker
                           onChange={(codes) => {
@@ -467,16 +468,13 @@ export function CreateCommunityComposer({
                     />
 
                     {minimumAgeEnabled ? (
-                      <div className="space-y-2">
+                      <div className="space-y-2 border-l-2 border-primary pl-4">
                         <FieldLabel label={cc.minimumAgeLabel} />
-                        <Input
-                          className="h-12 rounded-[var(--radius-lg)]"
-                          inputMode="numeric"
-                          min={1}
+                        <NumericStepper
                           max={125}
-                          onChange={(event) => setMinimumAge(Number(event.target.value))}
-                          type="number"
-                          value={String(minimumAge)}
+                          min={1}
+                          value={minimumAge}
+                          onChange={setMinimumAge}
                         />
                         {(!Number.isInteger(minimumAge) || minimumAge < 1 || minimumAge > 125) ? (
                           <FormNote tone="warning">{cc.minimumAgeInvalid}</FormNote>
@@ -492,7 +490,7 @@ export function CreateCommunityComposer({
                     />
 
                     {erc721Enabled ? (
-                      <div className="space-y-2">
+                      <div className="space-y-2 border-l-2 border-primary pl-4">
                         <FieldLabel label={cc.collectionContractLabel} />
                         <Input
                           className="h-12 rounded-[var(--radius-lg)]"

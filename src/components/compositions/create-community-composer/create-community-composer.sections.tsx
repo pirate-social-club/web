@@ -4,6 +4,8 @@ import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
 import { Checkbox } from "@/components/primitives/checkbox";
+import { Input } from "@/components/primitives/input";
+import { Minus, Plus } from "@phosphor-icons/react";
 import {
   FormFieldLabel,
   FormNote,
@@ -131,6 +133,53 @@ export function ReviewSection({
     <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
       <h3 className="text-base font-semibold text-foreground">{title}</h3>
       <div className="grid gap-3 md:grid-cols-2">{children}</div>
+    </div>
+  );
+}
+
+export function NumericStepper({
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        disabled={value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))}
+        size="icon"
+        type="button"
+        variant="secondary"
+      >
+        <Minus className="size-4" />
+      </Button>
+      <Input
+        className="h-12 w-20 text-center rounded-[var(--radius-lg)]"
+        inputMode="numeric"
+        max={max}
+        min={min}
+        onChange={(e) => {
+          const parsed = parseInt(e.target.value, 10);
+          if (!Number.isNaN(parsed)) onChange(parsed);
+        }}
+        type="number"
+        value={String(value)}
+      />
+      <Button
+        disabled={value >= max}
+        onClick={() => onChange(Math.min(max, value + 1))}
+        size="icon"
+        type="button"
+        variant="secondary"
+      >
+        <Plus className="size-4" />
+      </Button>
     </div>
   );
 }

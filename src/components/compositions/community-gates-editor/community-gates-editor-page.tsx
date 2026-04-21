@@ -27,6 +27,7 @@ import type {
 import { isCountryCode } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
+import { NumericStepper } from "@/components/compositions/create-community-composer/create-community-composer.sections";
 
 
 
@@ -214,11 +215,12 @@ export function CommunityGatesEditorPage({
         />
 
         {membershipMode === "gated" ? (
-          <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:px-5">
-            <FormSectionHeading
-              description={mc.gateChecksDescription}
-              title={mc.gateChecksTitle}
-            />
+          <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:px-5">
+            <FormSectionHeading title={mc.gateChecksTitle} />
+
+            {gateDrafts.length === 0 ? (
+              <FormNote tone="warning">{mc.gateChecksDescription}</FormNote>
+            ) : null}
 
             <CheckboxCard
               checked={Boolean(nationalityGate)}
@@ -236,7 +238,7 @@ export function CommunityGatesEditorPage({
             />
 
             {nationalityGate ? (
-              <div className="space-y-2">
+              <div className="space-y-2 border-l-2 border-primary pl-4">
                 <FormFieldLabel label={mc.allowedNationalityLabel} />
                 <NationalityMultiPicker
                   onChange={(codes) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
@@ -268,21 +270,18 @@ export function CommunityGatesEditorPage({
             />
 
             {minimumAgeGate ? (
-              <div className="space-y-2">
+              <div className="space-y-2 border-l-2 border-primary pl-4">
                 <FormFieldLabel label={mc.minimumAgeLabel} />
-                <Input
-                  className="h-12 rounded-[var(--radius-lg)]"
-                  inputMode="numeric"
+                <NumericStepper
                   max={125}
                   min={1}
-                  onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                  value={minimumAgeGate.minimumAge}
+                  onChange={(next) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
                     gateType: "minimum_age",
                     provider: "self",
-                    minimumAge: Number(event.target.value),
+                    minimumAge: next,
                     gateRuleId: minimumAgeGate.gateRuleId,
                   }))}
-                  type="number"
-                  value={String(minimumAgeGate.minimumAge)}
                 />
                 {(!Number.isInteger(minimumAgeGate.minimumAge) || minimumAgeGate.minimumAge < 1 || minimumAgeGate.minimumAge > 125) ? (
                   <FormNote tone="warning">{mc.minimumAgeInvalid}</FormNote>
@@ -306,7 +305,7 @@ export function CommunityGatesEditorPage({
             />
 
             {erc721Gate ? (
-              <div className="space-y-2">
+              <div className="space-y-2 border-l-2 border-primary pl-4">
                 <FormFieldLabel label={mc.collectionContractLabel} />
                 <Input
                   className="h-12 rounded-[var(--radius-lg)]"

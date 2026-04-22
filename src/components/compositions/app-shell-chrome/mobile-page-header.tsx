@@ -10,6 +10,7 @@ import { AppHeader } from "./app-header";
 
 export interface MobilePageHeaderProps {
   title: string;
+  className?: string;
   onBackClick?: () => void;
   onCloseClick?: () => void;
   trailingAction?: React.ReactNode;
@@ -17,6 +18,7 @@ export interface MobilePageHeaderProps {
 
 export function MobilePageHeader({
   title,
+  className,
   onBackClick,
   onCloseClick,
   trailingAction,
@@ -26,6 +28,7 @@ export function MobilePageHeader({
 
   return (
     <AppHeader
+      className={className}
       forceMobile
       hideBrand
       mobileLeadingContent={onCloseClick ? (

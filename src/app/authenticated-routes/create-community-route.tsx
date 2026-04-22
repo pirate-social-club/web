@@ -131,13 +131,11 @@ export function CreateCommunityPage() {
       <div className="min-h-screen w-full bg-background text-foreground">
         <MobilePageHeader onCloseClick={() => navigate("/")} title={pageTitle} />
         <section className="flex min-w-0 flex-1 flex-col px-4 pb-8 pt-[calc(env(safe-area-inset-top)+5rem)]">
-          <PageContainer size="wide">
-            <CreateCommunityComposer
-              creatorVerificationState={creatorVerificationState}
-              deferCreatorVerification
-              onCreate={handleCreate}
-            />
-          </PageContainer>
+          <CreateCommunityComposer
+            creatorVerificationState={creatorVerificationState}
+            deferCreatorVerification
+            onCreate={handleCreate}
+          />
         </section>
       </div>
     );

@@ -12,6 +12,7 @@ import {
 } from "@/components/primitives/form-layout";
 import { Label } from "@/components/primitives/label";
 import { RadioGroup, RadioGroupItem } from "@/components/primitives/radio-group";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
@@ -38,10 +39,14 @@ export function Section({
 }) {
   return (
     <section className={cn("space-y-4", className)}>
-      <div className="space-y-1.5">
-        <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
-        {hint ? <FormNote>{hint}</FormNote> : null}
-      </div>
+      {title.trim() || hint ? (
+        <div className="space-y-1.5">
+          {title.trim() ? (
+            <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+          ) : null}
+          {hint ? <FormNote>{hint}</FormNote> : null}
+        </div>
+      ) : null}
       {children}
     </section>
   );
@@ -129,8 +134,10 @@ export function ReviewSection({
   title: string;
   children: React.ReactNode;
 }) {
+  const isMobile = useIsMobile();
+
   return (
-    <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
+    <div className={cn("space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
       <h3 className="text-base font-semibold text-foreground">{title}</h3>
       <div className="grid gap-3 md:grid-cols-2">{children}</div>
     </div>
@@ -283,6 +290,7 @@ export function MediaPicker({
   onRemove: () => void;
 }) {
   const inputId = React.useId();
+  const isMobile = useIsMobile();
   const { copy } = useRouteMessages();
   const cc = copy.createCommunity.composer;
 
@@ -299,8 +307,8 @@ export function MediaPicker({
         }}
         type="file"
       />
-      <div className="rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
-        <div className="flex min-h-24 items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-dashed border-border-soft bg-background px-4 py-4">
+      <div className={cn("rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
+        <div className={cn("flex min-h-24 items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-dashed border-border-soft bg-background px-4 py-4", isMobile && "rounded-[var(--radius-lg)] border-solid bg-muted/20")}>
           <div className="flex min-w-0 items-center gap-4">
             <ImageSquare className="size-10 shrink-0 text-muted-foreground" />
             <div className="min-w-0 space-y-1">

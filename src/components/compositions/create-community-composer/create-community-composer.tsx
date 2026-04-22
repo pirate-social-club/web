@@ -17,6 +17,8 @@ import { Stepper } from "@/components/primitives/stepper";
 import { Textarea } from "@/components/primitives/textarea";
 import { toast } from "@/components/primitives/sonner";
 import { isCountryCode } from "@/lib/countries";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import {
   COURTYARD_POLYGON_REGISTRY,
   createDefaultCourtyardInventoryDraft,
@@ -94,6 +96,7 @@ export function CreateCommunityComposer({
   courtyardInventoryLoading = false,
   onCreate,
 }: CreateCommunityComposerProps) {
+  const isMobile = useIsMobile();
   const [activeStep, setActiveStep] = React.useState<ComposerStep>(initialStep ?? 1);
   const [activeMembershipMode, setActiveMembershipMode] =
     React.useState<CommunityMembershipMode>(membershipMode);
@@ -424,7 +427,7 @@ export function CreateCommunityComposer({
         : null;
 
   return (
-    <div className="mx-auto w-full max-w-[72rem] space-y-4">
+    <div className={cn("mx-auto w-full max-w-[72rem] space-y-4", isMobile && "mx-0 max-w-none space-y-5")}>
       <h2 className="hidden text-3xl font-semibold tracking-tight md:block">{cc.title}</h2>
       {creatorVerificationMessage ? (
         <div className="rounded-[var(--radius-lg)] border border-amber-500/20 bg-amber-500/5 px-4 py-3">
@@ -433,20 +436,22 @@ export function CreateCommunityComposer({
         </div>
       ) : null}
 
-      <Stepper
-        currentStep={activeStep}
-        onStepClick={handleStepClick}
-        steps={[
-          { label: cc.stepCommunity },
-          { label: cc.stepAccess },
-          { label: cc.stepReview },
-        ]}
-      />
+      {!isMobile ? (
+        <Stepper
+          currentStep={activeStep}
+          onStepClick={handleStepClick}
+          steps={[
+            { label: cc.stepCommunity },
+            { label: cc.stepAccess },
+            { label: cc.stepReview },
+          ]}
+        />
+      ) : null}
 
-      <Card className="overflow-hidden border-border bg-background shadow-none">
-        <CardContent className="space-y-8 p-6 md:p-7">
+      <Card className={cn("overflow-hidden border-border bg-background shadow-none", isMobile && "overflow-visible border-0 bg-transparent")}>
+        <CardContent className={cn("space-y-8 p-6 md:p-7", isMobile && "space-y-7 p-0")}>
           {activeStep === 1 ? (
-            <Section title={cc.detailsSection}>
+            <Section title="">
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.95fr)]">
                 <div className="grid content-start gap-4">
                   <div>
@@ -496,8 +501,8 @@ export function CreateCommunityComposer({
                   </div>
                 </div>
 
-                <div className="border-t border-border-soft pt-6 lg:col-span-2">
-                  <Section title={cc.visualsSection}>
+                <div className={cn("border-t border-border-soft pt-6 lg:col-span-2", isMobile && "border-t-0 pt-1")}>
+                  <Section title="">
                     <div className="grid gap-4 md:grid-cols-2">
                       <MediaPicker
                         accept={acceptedCommunityImageTypes}
@@ -563,7 +568,7 @@ export function CreateCommunityComposer({
                 ) : null}
 
                 {activeMembershipMode === "gated" ? (
-                  <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-5 py-4">
+                  <div className={cn("space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-5 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
                     <FormSectionHeading title={cc.gateChecksTitle} />
 
                     {activeGateDrafts.length === 0 ? (
@@ -712,7 +717,7 @@ export function CreateCommunityComposer({
                 ) : null}
               </Section>
 
-              <Section className="border-t border-border-soft pt-8" title={cc.identityAccessSection}>
+              <Section className={cn("border-t border-border-soft pt-8", isMobile && "border-t-0 pt-1")} title={cc.identityAccessSection}>
                 <div className="space-y-5">
                   <CheckboxRow
                     checked={activeAllowAnonymousIdentity}
@@ -777,8 +782,8 @@ export function CreateCommunityComposer({
           ) : null}
         </CardContent>
 
-        <CardFooter className="justify-end border-t border-border-soft p-5">
-          <div className="flex gap-3">
+        <CardFooter className={cn("justify-end border-t border-border-soft p-5", isMobile && "border-t-0 px-0 pb-0 pt-2")}>
+          <div className={cn("flex gap-3", isMobile && "w-full justify-end")}>
             {activeStep > 1 ? (
               <Button onClick={handleBack} variant="secondary">
                 {cc.back}

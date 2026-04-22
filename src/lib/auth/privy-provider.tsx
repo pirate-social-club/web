@@ -192,7 +192,7 @@ export function PirateAuthProvider({
       showWalletLoginFirst: false,
       walletList: ["detected_ethereum_wallets", "metamask", "coinbase_wallet", "wallet_connect"],
     },
-    loginMethods: ["wallet", "email", "google", "twitter", "telegram", "passkey"],
+    loginMethods: ["wallet", "email", "google", "twitter", "passkey"],
     embeddedWallets: {
       ethereum: {
         createOnLogin: "off",

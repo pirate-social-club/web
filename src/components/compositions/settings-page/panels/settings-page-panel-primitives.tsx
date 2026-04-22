@@ -1,4 +1,9 @@
+"use client";
+
 import type { ReactNode } from "react";
+
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 export function SettingsSection({
   children,
@@ -7,8 +12,10 @@ export function SettingsSection({
   children: ReactNode;
   title: string;
 }) {
+  const isMobile = useIsMobile();
+
   return (
-    <section className="space-y-4">
+    <section className={cn("space-y-4", isMobile && "space-y-3")}>
       <h2 className="text-xl font-semibold text-foreground">{title}</h2>
       {children}
     </section>
@@ -26,8 +33,13 @@ export function SettingsRow({
   trailing?: ReactNode;
   value?: ReactNode;
 }) {
+  const isMobile = useIsMobile();
+
   return (
-    <div className="flex min-h-20 flex-col items-start gap-2 border-b border-border px-5 py-4 last:border-b-0 sm:flex-row sm:items-center sm:gap-4">
+    <div className={cn(
+      "flex min-h-20 flex-col items-start gap-2 border-b border-border px-5 py-4 last:border-b-0 sm:flex-row sm:items-center sm:gap-4",
+      isMobile && "px-0",
+    )}>
       <div className="min-w-0 flex-1 space-y-1">
         <div className="text-base font-medium text-foreground">{label}</div>
         {note ? <div className="text-base text-muted-foreground">{note}</div> : null}

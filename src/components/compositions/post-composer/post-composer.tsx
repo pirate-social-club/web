@@ -357,6 +357,7 @@ export function PostComposer(props: PostComposerProps) {
     () => (isRtl ? [...visibleTabs].reverse() : visibleTabs),
     [isRtl, visibleTabs],
   );
+  const useEqualWidthMobileTabs = isMobile && orderedVisibleTabs.length <= 4;
   const tabLabels: Record<ComposerTab, string> = {
     text: copy.tabs.text,
     image: copy.tabs.image,
@@ -395,7 +396,8 @@ export function PostComposer(props: PostComposerProps) {
             <TabsList
               className={cn(
                 "h-auto w-full rounded-none border-b border-border-soft bg-transparent p-0",
-                isMobile && "overflow-x-auto border-b-0",
+                isMobile && "border-b-0",
+                useEqualWidthMobileTabs ? "grid grid-cols-4 gap-0 overflow-visible" : isMobile && "overflow-x-auto",
                 isRtl ? "justify-end" : "justify-start",
               )}
             >
@@ -406,11 +408,12 @@ export function PostComposer(props: PostComposerProps) {
                   className={cn(
                     "rounded-none border-b-2 border-transparent px-5 py-4 text-base font-semibold data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none",
                     isMobile && "px-4 py-3 whitespace-nowrap",
+                    useEqualWidthMobileTabs && "min-w-0 px-1",
                   )}
                 >
-                  <span className="inline-flex items-center gap-2">
+                  <span className={cn("inline-flex items-center gap-2", useEqualWidthMobileTabs && "min-w-0")}>
                     {tabMeta[tab].icon}
-                    {tabLabels[tab]}
+                    <span className={cn(useEqualWidthMobileTabs && "truncate")}>{tabLabels[tab]}</span>
                   </span>
                 </TabsTrigger>
               ))}

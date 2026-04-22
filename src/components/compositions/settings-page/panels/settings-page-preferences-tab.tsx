@@ -9,7 +9,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/primitives/select";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
+import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
 
 import { SettingsRow, SettingsSection } from "./settings-page-panel-primitives";
@@ -19,11 +21,12 @@ export function PreferencesTab({
   preferences,
 }: Pick<SettingsPageProps, "preferences">) {
   const { locale } = useUiLocale();
+  const isMobile = useIsMobile();
   const copy = getLocaleMessages(locale, "routes").settings;
   return (
     <div className="space-y-8">
       <SettingsSection title={copy.languageSection}>
-        <Card className="space-y-5 border-border bg-card px-5 py-5 shadow-none">
+        <Card className={cn("space-y-5 border-border bg-card px-5 py-5 shadow-none", isMobile && "border-0 bg-transparent px-0 py-0")}>
           <div className="space-y-2">
             <label className="text-base font-medium text-foreground" htmlFor="settings-language">
               {copy.appLanguageLabel}
@@ -41,7 +44,7 @@ export function PreferencesTab({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
+          <div className={cn("flex items-center justify-end gap-3 border-t border-border pt-5", isMobile && "border-t-0 pt-1")}>
             {preferences.submitState.kind === "error" ? (
               <div className="me-auto text-base text-destructive">{preferences.submitState.message}</div>
             ) : null}
@@ -59,14 +62,14 @@ export function PreferencesTab({
 
       {preferences.ageStatusLabel ? (
         <SettingsSection title={copy.identitySection}>
-          <Card className="overflow-hidden border-border bg-card shadow-none">
+          <Card className={cn("overflow-hidden border-border bg-card shadow-none", isMobile && "border-0 bg-transparent")}>
             <SettingsRow label={copy.ageStatusLabel} value={preferences.ageStatusLabel} />
           </Card>
         </SettingsSection>
       ) : null}
 
       <SettingsSection title={copy.accountSection}>
-        <Card className="overflow-hidden border-border bg-card shadow-none">
+        <Card className={cn("overflow-hidden border-border bg-card shadow-none", isMobile && "border-0 bg-transparent")}>
           <SettingsRow
             label={copy.logOutLabel}
             trailing={(

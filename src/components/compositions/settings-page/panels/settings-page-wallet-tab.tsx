@@ -2,7 +2,9 @@
 
 import { Card } from "@/components/primitives/card";
 import { CopyField } from "@/components/primitives/copy-field";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
+import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
 
 import { SettingsRow, SettingsSection } from "./settings-page-panel-primitives";
@@ -13,18 +15,19 @@ import type {
 
 function WalletList({ connectedWallets }: { connectedWallets: SettingsConnectedWallet[] }) {
   const { locale } = useUiLocale();
+  const isMobile = useIsMobile();
   const copy = getLocaleMessages(locale, "routes").settings;
 
   if (connectedWallets.length === 0) {
     return (
-      <Card className="border-border bg-card px-5 py-5 shadow-none">
+      <Card className={cn("border-border bg-card px-5 py-5 shadow-none", isMobile && "border-0 bg-transparent px-0 py-0")}>
         <div className="text-base text-muted-foreground">{copy.noConnectedWallets}</div>
       </Card>
     );
   }
 
   return (
-    <Card className="overflow-hidden border-border bg-card shadow-none">
+    <Card className={cn("overflow-hidden border-border bg-card shadow-none", isMobile && "border-0 bg-transparent")}>
       <div className="flex flex-col">
         {connectedWallets.map((wallet) => (
           <SettingsRow
@@ -43,10 +46,11 @@ export function WalletTab({
   wallet,
 }: Pick<SettingsPageProps, "wallet">) {
   const { locale } = useUiLocale();
+  const isMobile = useIsMobile();
   const copy = getLocaleMessages(locale, "routes").settings;
   return (
     <div className="space-y-8">
-      <Card className="space-y-5 border-border bg-card px-5 py-5 shadow-none">
+      <Card className={cn("space-y-5 border-border bg-card px-5 py-5 shadow-none", isMobile && "border-0 bg-transparent px-0 py-0")}>
         <div className="space-y-1">
           <div className="text-base text-muted-foreground">{copy.primaryWalletLabel}</div>
           <div className="text-lg font-semibold text-foreground">

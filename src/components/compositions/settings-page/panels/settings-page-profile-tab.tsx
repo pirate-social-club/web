@@ -10,6 +10,7 @@ import { FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { RadioGroup, RadioGroupItem } from "@/components/primitives/radio-group";
 import { Textarea } from "@/components/primitives/textarea";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
@@ -90,9 +91,11 @@ function MediaControlCard({
   onRemove?: () => void;
   onSelect?: (file: File | null) => void;
 }) {
+  const isMobile = useIsMobile();
+
   return (
-    <Card className="overflow-hidden border-border bg-card shadow-none">
-      <div className="space-y-4 px-5 py-5">
+    <Card className={cn("overflow-hidden border-border bg-card shadow-none", isMobile && "border-0 bg-transparent")}>
+      <div className={cn("space-y-4 px-5 py-5", isMobile && "px-0 py-0")}>
         <div className="space-y-1">
           <h3 className="text-base font-semibold text-foreground">{title}</h3>
           {selectedLabel ? <div className="truncate text-base text-muted-foreground">{selectedLabel}</div> : null}
@@ -152,11 +155,12 @@ function HandleSelector({
   value?: string | null;
 }) {
   const { locale } = useUiLocale();
+  const isMobile = useIsMobile();
   const copy = getLocaleMessages(locale, "routes").settings;
   const selectedValue = value ?? "pirate";
 
   return (
-    <Card className="overflow-hidden border-border bg-card shadow-none">
+    <Card className={cn("overflow-hidden border-border bg-card shadow-none", isMobile && "border-0 bg-transparent")}>
       <RadioGroup
         className="gap-0 rounded-none bg-transparent p-0"
         onValueChange={(next) => onValueChange?.(next === "pirate" ? null : next)}
@@ -193,6 +197,7 @@ export function ProfileTab({
   profile,
 }: Pick<SettingsPageProps, "profile">) {
   const { locale } = useUiLocale();
+  const isMobile = useIsMobile();
   const copy = getLocaleMessages(locale, "routes").settings;
   const [pendingAvatarFile, setPendingAvatarFile] = React.useState<File | null>(null);
   const [pendingCoverFile, setPendingCoverFile] = React.useState<File | null>(null);
@@ -255,7 +260,7 @@ export function ProfileTab({
       </SettingsSection>
 
       <SettingsSection title={copy.profileSection}>
-        <Card className="space-y-5 border-border bg-card px-5 py-5 shadow-none">
+        <Card className={cn("space-y-5 border-border bg-card px-5 py-5 shadow-none", isMobile && "border-0 bg-transparent px-0 py-0")}>
           <div className="space-y-2">
             <label className="text-base font-medium text-foreground" htmlFor="settings-display-name">
               {copy.displayNameLabel}
@@ -284,7 +289,7 @@ export function ProfileTab({
             note={copy.postsAndCommentsNote}
             value={profile.postAuthorLabel}
           />
-          <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
+          <div className={cn("flex items-center justify-end gap-3 border-t border-border pt-5", isMobile && "border-t-0 pt-1")}>
             {profile.submitState.kind === "error" ? (
               <div className="me-auto text-base text-destructive">{profile.submitState.message}</div>
             ) : null}
@@ -309,7 +314,7 @@ export function ProfileTab({
               handleFlow={profile.handleFlow}
             />
           ) : (
-            <Card className="overflow-hidden border-border bg-card shadow-none">
+            <Card className={cn("overflow-hidden border-border bg-card shadow-none", isMobile && "border-0 bg-transparent")}>
               <SettingsRow
                 label={copy.currentHandleLabel}
                 value={profile.currentHandle}

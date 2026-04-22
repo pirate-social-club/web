@@ -24,17 +24,40 @@ describe("self verification helpers", () => {
       disclosures?: { nationality?: boolean };
       endpoint?: string;
       endpointType?: string;
+      sessionId?: string;
       scope?: string;
       userDefinedData?: string;
       userId?: string;
+      chainID?: number;
+      deeplinkCallback?: string;
+      devMode?: boolean;
+      header?: string;
+      logoBase64?: string;
+      version?: number;
     };
     expect(selfApp.appName).toBe("Pirate");
     expect(selfApp.disclosures).toEqual({ nationality: true });
     expect(selfApp.endpoint).toBe("https://api.pirate.test/verification-sessions/ver_123/self-callback");
     expect(selfApp.endpointType).toBe("https");
+    expect(selfApp.sessionId).toBe("ss_123");
     expect(selfApp.scope).toBe("community_join");
     expect(selfApp.userDefinedData).toBe("{\"verification_session_id\":\"ver_123\"}");
     expect(selfApp.userId).toBe("00000000-0000-4000-8000-000000000001");
+    expect({
+      chainID: selfApp.chainID,
+      deeplinkCallback: selfApp.deeplinkCallback,
+      devMode: selfApp.devMode,
+      header: selfApp.header,
+      logoBase64: selfApp.logoBase64,
+      version: selfApp.version,
+    }).toEqual({
+      chainID: 42220,
+      deeplinkCallback: "",
+      devMode: false,
+      header: "",
+      logoBase64: "",
+      version: 2,
+    });
   });
 
   test("includes deeplink callback when Self provides one", () => {
@@ -64,6 +87,16 @@ describe("self verification helpers", () => {
       scope: "",
       session_id: "ss_123",
       user_id: "user_123",
+      user_id_type: "uuid",
+    })).toBeNull();
+    expect(getSelfVerificationLaunchHref({
+      app_name: "Pirate",
+      disclosures: {},
+      endpoint: "https://self.xyz/verify",
+      endpoint_type: "https",
+      scope: "community_join",
+      session_id: "",
+      user_id: "00000000-0000-4000-8000-000000000001",
       user_id_type: "uuid",
     })).toBeNull();
   });

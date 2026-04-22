@@ -7,6 +7,7 @@ import type { OnboardingStatus, VerificationIntent, VerificationSession } from "
 import { useApi } from "@/lib/api";
 import type { ApiError } from "@/lib/api/client";
 import { updateSessionOnboarding } from "@/lib/api/session-store";
+import { installVeryBridgeFetchProxy } from "@/lib/verification/very-bridge-fetch-proxy";
 
 type VeryVerificationState = "not_started" | "pending" | "verified";
 
@@ -20,11 +21,14 @@ export function useVeryVerification(input: {
   const [verificationSessionId, setVerificationSessionId] = React.useState<string | null>(null);
   const [verificationLoading, setVerificationLoading] = React.useState(false);
   const [verificationError, setVerificationError] = React.useState<string | null>(null);
+  const bridgeFetchProxyCleanupRef = React.useRef<(() => void) | null>(null);
   const widgetRef = React.useRef<{ destroy?: () => void; open?: () => void } | null>(null);
 
   const cleanupWidget = React.useCallback(() => {
     widgetRef.current?.destroy?.();
     widgetRef.current = null;
+    bridgeFetchProxyCleanupRef.current?.();
+    bridgeFetchProxyCleanupRef.current = null;
   }, []);
 
   React.useEffect(() => () => cleanupWidget(), [cleanupWidget]);
@@ -51,6 +55,7 @@ export function useVeryVerification(input: {
     }
 
     cleanupWidget();
+    bridgeFetchProxyCleanupRef.current = installVeryBridgeFetchProxy();
     widgetRef.current = createVeryWidget({
       appId: launch.app_id,
       context: launch.context,

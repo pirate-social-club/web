@@ -55,6 +55,7 @@ export function CreatePostGlobalPage({
         <MobilePageHeader onCloseClick={() => navigate("/")} title={copy.createPost.title} />
         <section className="flex min-w-0 flex-1 flex-col px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
           <PostComposer
+            availableTabs={["text", "link"]}
             clubName={copy.common.chooseCommunity}
             communityPickerEmptyLabel={copy.common.noRecentCommunities}
             communityPickerItems={pickerItems}
@@ -70,6 +71,7 @@ export function CreatePostGlobalPage({
 
   return (
     <PostComposer
+      availableTabs={["text", "link"]}
       clubName={copy.common.chooseCommunity}
       communityPickerEmptyLabel={copy.common.noRecentCommunities}
       communityPickerItems={pickerItems}

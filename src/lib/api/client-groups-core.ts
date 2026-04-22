@@ -95,7 +95,7 @@ export function createVerificationApi(request: ApiRequest) {
       ),
     completeNamespaceSession: (
       namespaceVerificationSessionId: string,
-      input?: { restart_challenge?: boolean | null; signature_payload?: Record<string, unknown> | null },
+      input?: { restart_challenge?: boolean | null },
     ): Promise<NamespaceVerificationSession> =>
       request<NamespaceVerificationSession>(
         `/namespace-verification-sessions/${encodeURIComponent(namespaceVerificationSessionId)}/complete`,

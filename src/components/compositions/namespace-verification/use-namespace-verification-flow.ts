@@ -259,20 +259,6 @@ export function useNamespaceVerificationFlow({
       family: activeFamily,
     };
 
-    if (activeFamily === "spaces" && challengePayload && signature.trim()) {
-      try {
-        const signedEvent = JSON.parse(signature.trim()) as Record<string, unknown>;
-        completeInput.signaturePayload = {
-          signed_event: signedEvent,
-        };
-      } catch {
-        completeInput.signaturePayload = {
-          signature: signature.trim(),
-          signer_pubkey: challengePayload.root_pubkey,
-        };
-      }
-    }
-
     return callbacksRef.current
       .onCompleteSession(completeInput)
       .then((result) => {
@@ -300,7 +286,7 @@ export function useNamespaceVerificationFlow({
           error instanceof Error ? error.message : "Could not verify namespace",
         );
       });
-  }, [activeFamily, challengePayload, sessionId, signature]);
+  }, [activeFamily, sessionId]);
 
   const restart = React.useCallback(() => {
     if (!sessionId) {
@@ -389,7 +375,7 @@ export function useNamespaceVerificationFlow({
   const canStart = rootLabelResult.ok;
   const isHns = activeFamily === "hns";
   const isSpaces = activeFamily === "spaces";
-  const canSubmitSignature = isSpaces ? signature.trim().length > 0 : true;
+  const canSubmitSignature = true;
   const hnsMode = isHns
     ? getHnsVerificationMode({
         state,

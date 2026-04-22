@@ -151,14 +151,12 @@ export function CommunityNamespaceVerificationPage({
           />
         ) : null}
 
-        {(flow.isChallengeReady || flow.isVerifying) && flow.isSpaces && flow.challengePayload ? (
+        {(flow.isChallengeReady || flow.isChallengePending || flow.isVerifying) && flow.isSpaces && flow.challengePayload ? (
           <NamespaceVerificationSpacesPanel
             busy={flow.busy}
             challengePayload={flow.challengePayload}
             className="rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5 md:py-5"
             onAbandon={flow.actions.reset}
-            onSignatureChange={flow.actions.setSignature}
-            signature={flow.signature}
           />
         ) : null}
 
@@ -193,7 +191,7 @@ export function CommunityNamespaceVerificationPage({
         {flow.isChallengePending ? (
           <>
             <Button onClick={flow.actions.reset} variant="outline">{mc.cancelLabel}</Button>
-            <Button loading={flow.isVerifying} onClick={flow.actions.verify}>{mc.verifyAction}</Button>
+            <Button loading={flow.isVerifying} onClick={flow.actions.verify}>{flow.isSpaces ? mc.checkSetup : mc.verifyAction}</Button>
           </>
         ) : null}
         {(flow.isFailed || flow.isExpired) ? (
@@ -213,7 +211,7 @@ export function CommunityNamespaceVerificationPage({
         ) : null}
         {(flow.isChallengeReady || flow.isVerifying) ? (
           <Button disabled={!flow.canSubmitSignature} loading={flow.isVerifying} onClick={flow.actions.verify}>
-            {mc.verifyAction}
+            {flow.isSpaces ? mc.checkSetup : mc.verifyAction}
           </Button>
         ) : null}
       </div>

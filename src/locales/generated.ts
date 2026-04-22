@@ -875,17 +875,14 @@ export const GENERATED_LOCALE_CATALOGS = {
           "description": "Attach a verified route to this community.",
           "doneLabel": "Done",
           "resuming": "Resuming verification...",
-          "signingStepLabels": [
-            "Download event JSON",
-            "Sign in Akron",
-            "Upload signed JSON"
+          "publishStepLabels": [
+            "git clone",
+            "cd",
+            "Run this"
           ],
-          "downloadEventJson": "Download event JSON",
-          "akronSignInstruction": "Akron -> Sign Nostr event -> select Space -> choose downloaded JSON -> save.",
-          "uploadSignedEventJson": "Upload signed JSON",
-          "signedEventLoaded": "Signed JSON loaded",
+          "publisherInstallCommand": "git clone https://github.com/pirate-social-club/pirate-spaces-publisher.git",
+          "publisherCdCommand": "cd pirate-spaces-publisher",
           "digestLabel": "Digest",
-          "signatureLabel": "Signature",
           "challengeDetails": "Challenge details",
           "verifyDifferent": "Verify a different namespace",
           "rootVerified": "Root verified.",
@@ -904,14 +901,14 @@ export const GENERATED_LOCALE_CATALOGS = {
             "handshakeDetail": "Set up DNS first, then verify root ownership.",
             "handshakeRootLabel": "Handshake root",
             "spacesLabel": "Spaces",
-            "spacesDetail": "Verify root ownership by signing a challenge.",
+            "spacesDetail": "Verify root ownership by publishing a route.",
             "spacesRootLabel": "Spaces root"
           },
           "failure": {
             "expired": "Verification expired. Generate a new challenge.",
             "dnsSetupRequired": "Set nameservers first, then refresh the session.",
             "hnsDefault": "Could not verify this root. Check the TXT record and try again.",
-            "spacesDefault": "Could not verify this root. Check the signature and try again."
+            "spacesDefault": "Could not verify this root. Check the published records and try again."
           },
           "hns": {
             "dnsSetupNote": "Set nameservers first. Parent-side TXT values will not create the _pirate record.",
@@ -1949,17 +1946,14 @@ export const GENERATED_LOCALE_CATALOGS = {
           "description": "Attach a verified route to this community.",
           "doneLabel": "Done",
           "resuming": "Resuming verification...",
-          "signingStepLabels": [
-            "Download event JSON",
-            "Sign in Akron",
-            "Upload signed JSON"
+          "publishStepLabels": [
+            "git clone",
+            "cd",
+            "Run this"
           ],
-          "downloadEventJson": "Download event JSON",
-          "akronSignInstruction": "Akron -> Sign Nostr event -> select Space -> choose downloaded JSON -> save.",
-          "uploadSignedEventJson": "Upload signed JSON",
-          "signedEventLoaded": "Signed JSON loaded",
+          "publisherInstallCommand": "git clone https://github.com/pirate-social-club/pirate-spaces-publisher.git",
+          "publisherCdCommand": "cd pirate-spaces-publisher",
           "digestLabel": "Digest",
-          "signatureLabel": "Signature",
           "challengeDetails": "Challenge details",
           "verifyDifferent": "Verify a different namespace",
           "rootVerified": "Root verified.",
@@ -1978,14 +1972,14 @@ export const GENERATED_LOCALE_CATALOGS = {
             "handshakeDetail": "Set up DNS first, then verify root ownership.",
             "handshakeRootLabel": "Handshake root",
             "spacesLabel": "Spaces",
-            "spacesDetail": "Verify root ownership by signing a challenge.",
+            "spacesDetail": "Verify root ownership by publishing a route.",
             "spacesRootLabel": "Spaces root"
           },
           "failure": {
             "expired": "Verification expired. Generate a new challenge.",
             "dnsSetupRequired": "Set nameservers first, then refresh the session.",
             "hnsDefault": "Could not verify this root. Check the TXT record and try again.",
-            "spacesDefault": "Could not verify this root. Check the signature and try again."
+            "spacesDefault": "Could not verify this root. Check the published records and try again."
           },
           "hns": {
             "dnsSetupNote": "Set nameservers first. Parent-side TXT values will not create the _pirate record.",
@@ -3023,17 +3017,14 @@ export const GENERATED_LOCALE_CATALOGS = {
           "description": "Attach a verified route to this community.",
           "doneLabel": "Done",
           "resuming": "Resuming verification...",
-          "signingStepLabels": [
-            "Download event JSON",
-            "Sign in Akron",
-            "Upload signed JSON"
+          "publishStepLabels": [
+            "git clone",
+            "cd",
+            "Run this"
           ],
-          "downloadEventJson": "Download event JSON",
-          "akronSignInstruction": "Akron -> Sign Nostr event -> select Space -> choose downloaded JSON -> save.",
-          "uploadSignedEventJson": "Upload signed JSON",
-          "signedEventLoaded": "Signed JSON loaded",
+          "publisherInstallCommand": "git clone https://github.com/pirate-social-club/pirate-spaces-publisher.git",
+          "publisherCdCommand": "cd pirate-spaces-publisher",
           "digestLabel": "Digest",
-          "signatureLabel": "Signature",
           "challengeDetails": "Challenge details",
           "verifyDifferent": "Verify a different namespace",
           "rootVerified": "Root verified.",
@@ -3052,14 +3043,14 @@ export const GENERATED_LOCALE_CATALOGS = {
             "handshakeDetail": "Set up DNS first, then verify root ownership.",
             "handshakeRootLabel": "Handshake root",
             "spacesLabel": "Spaces",
-            "spacesDetail": "Verify root ownership by signing a challenge.",
+            "spacesDetail": "Verify root ownership by publishing a route.",
             "spacesRootLabel": "Spaces root"
           },
           "failure": {
             "expired": "Verification expired. Generate a new challenge.",
             "dnsSetupRequired": "Set nameservers first, then refresh the session.",
             "hnsDefault": "Could not verify this root. Check the TXT record and try again.",
-            "spacesDefault": "Could not verify this root. Check the signature and try again."
+            "spacesDefault": "Could not verify this root. Check the published records and try again."
           },
           "hns": {
             "dnsSetupNote": "Set nameservers first. Parent-side TXT values will not create the _pirate record.",

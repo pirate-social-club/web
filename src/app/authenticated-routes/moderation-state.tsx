@@ -59,10 +59,9 @@ export function useCommunityModerationState(communityId: string) {
 
       return toNamespaceSessionResult(result);
     },
-    onCompleteSession: async ({ namespaceVerificationSessionId, restartChallenge, signaturePayload }) => {
+    onCompleteSession: async ({ namespaceVerificationSessionId, restartChallenge }) => {
       const result = await api.verification.completeNamespaceSession(namespaceVerificationSessionId, {
         restart_challenge: restartChallenge ?? null,
-        signature_payload: signaturePayload ?? null,
       });
 
       if (result.status === "verified" && result.namespace_verification_id) {

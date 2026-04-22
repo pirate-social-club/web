@@ -30,22 +30,17 @@ export type NamespaceVerificationModalState =
   | "expired";
 
 export type SpacesChallengePayload = {
-  kind: "schnorr_sign";
+  kind: "fabric_txt_publish";
   domain: string;
   root_label: string;
   root_pubkey: string;
   nonce: string;
   issued_at: string;
   expires_at: string;
-  message: string;
-  digest: string;
-  signing_method?: "akron_nostr_event";
-  nostr_event?: {
-    created_at: number;
-    kind: number;
-    tags: string[][];
-    content: string;
-  };
+  txt_key: "pirate-verify";
+  txt_value: string;
+  web_url: string;
+  freedom_url: string;
 };
 
 export type NamespaceVerificationStartResult = {
@@ -77,7 +72,6 @@ export interface NamespaceVerificationCallbacks {
     namespaceVerificationSessionId: string;
     family: NamespaceFamily;
     restartChallenge?: boolean;
-    signaturePayload?: { signature?: string; signer_pubkey?: string; signed_event?: Record<string, unknown> } | null;
   }) => Promise<NamespaceVerificationCompleteResult>;
   onGetSession: (input: {
     namespaceVerificationSessionId: string;

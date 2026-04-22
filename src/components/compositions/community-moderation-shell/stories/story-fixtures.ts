@@ -15,15 +15,17 @@ export const mockNamespaceCallbacks: NamespaceVerificationCallbacks = {
         challengeHost: null,
         challengeTxtValue: null,
         challengePayload: {
-          kind: "schnorr_sign",
+          kind: "fabric_txt_publish",
           domain: "pirate.sc",
           root_label: rootLabel,
           root_pubkey: "stub_root_pubkey",
-          nonce: "pirate-space-verify=stub-session-id:abc123",
+          nonce: "stub-session-id:abc123",
           issued_at: new Date().toISOString(),
           expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
-          message: `pirate.space.verify\nroot=@${rootLabel}\nroot_pubkey=stub_root_pubkey\nnonce=pirate-space-verify=stub-session-id:abc123`,
-          digest: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          txt_key: "pirate-verify",
+          txt_value: "pirate-space-verify=stub-session-id:abc123",
+          web_url: `https://pirate.sc/c/@${rootLabel}`,
+          freedom_url: `https://pirate.sc/c/@${rootLabel}`,
         },
         challengeExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
         status: "challenge_required",
@@ -47,7 +49,7 @@ export const mockNamespaceCallbacks: NamespaceVerificationCallbacks = {
       setupNameservers: null,
     };
   },
-  onCompleteSession: async ({ family, restartChallenge, signaturePayload }) => {
+  onCompleteSession: async ({ family, restartChallenge }) => {
     if (restartChallenge) {
       return {
         status: "challenge_required",
@@ -56,7 +58,7 @@ export const mockNamespaceCallbacks: NamespaceVerificationCallbacks = {
       };
     }
 
-    if (family === "spaces" && signaturePayload) {
+    if (family === "spaces") {
       return {
         status: "verified",
         namespaceVerificationId: "nv_spaces_verified_stub",
@@ -83,15 +85,17 @@ export const mockNamespaceCallbacks: NamespaceVerificationCallbacks = {
         challengeHost: null,
         challengeTxtValue: null,
         challengePayload: {
-          kind: "schnorr_sign",
+          kind: "fabric_txt_publish",
           domain: "pirate.sc",
           root_label: rootLabel,
           root_pubkey: "stub_root_pubkey",
-          nonce: "pirate-space-verify=stub-session-id:abc123",
+          nonce: "stub-session-id:abc123",
           issued_at: new Date().toISOString(),
           expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
-          message: `pirate.space.verify\nroot=@${rootLabel}\nroot_pubkey=stub_root_pubkey\nnonce=pirate-space-verify=stub-session-id:abc123`,
-          digest: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          txt_key: "pirate-verify",
+          txt_value: "pirate-space-verify=stub-session-id:abc123",
+          web_url: `https://pirate.sc/c/@${rootLabel}`,
+          freedom_url: `https://pirate.sc/c/@${rootLabel}`,
         },
         challengeExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
         status: "challenge_required",

@@ -163,49 +163,32 @@ export function CreateCommunityPage() {
 
 export function toSpacesChallengePayload(value: Record<string, unknown> | null | undefined): SpacesChallengePayload | null {
   if (!value) return null;
-  const nostrEvent = value.nostr_event && typeof value.nostr_event === "object"
-    ? value.nostr_event as Record<string, unknown>
-    : null;
-  const nostrTags = Array.isArray(nostrEvent?.tags)
-    ? nostrEvent.tags
-      .map((tag) => Array.isArray(tag) && tag.every((part) => typeof part === "string") ? tag as string[] : null)
-      .filter((tag): tag is string[] => Array.isArray(tag))
-    : null;
   if (
-    value.kind !== "schnorr_sign" ||
+    value.kind !== "fabric_txt_publish" ||
     typeof value.domain !== "string" ||
     typeof value.root_label !== "string" ||
     typeof value.root_pubkey !== "string" ||
     typeof value.nonce !== "string" ||
     typeof value.issued_at !== "string" ||
     typeof value.expires_at !== "string" ||
-    typeof value.message !== "string" ||
-    typeof value.digest !== "string"
+    value.txt_key !== "pirate-verify" ||
+    typeof value.txt_value !== "string" ||
+    typeof value.web_url !== "string" ||
+    typeof value.freedom_url !== "string"
   ) return null;
 
   return {
-    kind: "schnorr_sign",
+    kind: "fabric_txt_publish",
     domain: value.domain,
     root_label: value.root_label,
     root_pubkey: value.root_pubkey,
     nonce: value.nonce,
     issued_at: value.issued_at,
     expires_at: value.expires_at,
-    message: value.message,
-    digest: value.digest,
-    signing_method: value.signing_method === "akron_nostr_event" ? "akron_nostr_event" : undefined,
-    nostr_event: nostrEvent &&
-      typeof nostrEvent.created_at === "number" &&
-      typeof nostrEvent.kind === "number" &&
-      typeof nostrEvent.content === "string" &&
-      nostrTags
-      ? {
-        created_at: nostrEvent.created_at,
-        kind: nostrEvent.kind,
-        tags: nostrTags,
-        content: nostrEvent.content,
-      }
-      : undefined,
+    txt_key: "pirate-verify",
+    txt_value: value.txt_value,
+    web_url: value.web_url,
+    freedom_url: value.freedom_url,
   };
 }
 

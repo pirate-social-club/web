@@ -234,13 +234,11 @@ export function VerifyNamespaceModalView({
             />
           ) : null}
 
-          {(isChallengeReady || isVerifying) && isSpaces && challengePayload ? (
+          {(isChallengeReady || isChallengePending || isVerifying) && isSpaces && challengePayload ? (
             <NamespaceVerificationSpacesPanel
               busy={busy}
               challengePayload={challengePayload}
               onAbandon={onAbandon}
-              onSignatureChange={onSignatureChange}
-              signature={signature}
             />
           ) : null}
 
@@ -271,7 +269,7 @@ export function VerifyNamespaceModalView({
             {isChallengePending ? (
               <>
                 <Button onClick={() => onOpenChange(false)} variant="outline">{mc.closeLabel}</Button>
-                <Button loading={isVerifying} onClick={onVerify}>{mc.verifyAction}</Button>
+                <Button loading={isVerifying} onClick={onVerify}>{isSpaces ? mc.checkSetup : mc.verifyAction}</Button>
               </>
             ) : null}
             {(isFailed || isExpired) ? (
@@ -297,7 +295,7 @@ export function VerifyNamespaceModalView({
             ) : null}
             {(isChallengeReady || isVerifying) ? (
               <Button disabled={!canSubmitSignature} loading={isVerifying} onClick={onVerify}>
-                {mc.verifyAction}
+                {isSpaces ? mc.checkSetup : mc.verifyAction}
               </Button>
             ) : null}
           </div>

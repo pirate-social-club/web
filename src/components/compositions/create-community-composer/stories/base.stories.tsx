@@ -28,7 +28,7 @@ const meta = {
   args: baseComposer,
   decorators: [
     (Story: () => React.ReactNode) => (
-      <div style={{ width: "min(100vw - 32px, 980px)" }}>
+      <div style={{ width: "min(100vw - 32px, 1120px)" }}>
         <Story />
       </div>
     ),

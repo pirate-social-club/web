@@ -274,8 +274,8 @@ export function CreateCommunityComposer({
   }, [anonymousIdentityScopeProp]);
 
   const handleStepClick = React.useCallback((step: number) => {
-    if (step >= 1 && step <= 3) setActiveStep(step as ComposerStep);
-  }, []);
+    if (step >= 1 && step <= activeStep) setActiveStep(step as ComposerStep);
+  }, [activeStep]);
 
   const handleNext = React.useCallback(() => {
     setActiveStep((s) => Math.min(s + 1, 3) as ComposerStep);
@@ -424,8 +424,8 @@ export function CreateCommunityComposer({
         : null;
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-4">
-      <h2 className="text-3xl font-semibold tracking-tight">{cc.title}</h2>
+    <div className="mx-auto w-full max-w-[72rem] space-y-4">
+      <h2 className="hidden text-3xl font-semibold tracking-tight md:block">{cc.title}</h2>
       {creatorVerificationMessage ? (
         <div className="rounded-[var(--radius-lg)] border border-amber-500/20 bg-amber-500/5 px-4 py-3">
           <p className="text-base font-semibold text-foreground">{cc.verificationRequired}</p>
@@ -433,87 +433,98 @@ export function CreateCommunityComposer({
         </div>
       ) : null}
 
-      <Stepper currentStep={activeStep} onStepClick={handleStepClick} steps={[
-        { label: cc.stepCommunity },
-        { label: cc.stepAccess },
-        { label: cc.stepReview },
-      ]} />
+      <Stepper
+        currentStep={activeStep}
+        onStepClick={handleStepClick}
+        steps={[
+          { label: cc.stepCommunity },
+          { label: cc.stepAccess },
+          { label: cc.stepReview },
+        ]}
+      />
 
       <Card className="overflow-hidden border-border bg-background shadow-none">
         <CardContent className="space-y-8 p-6 md:p-7">
           {activeStep === 1 ? (
             <Section title={cc.detailsSection}>
-              <div className="grid gap-4">
-                <div>
-                  <FieldLabel label={cc.displayNameLabel} />
-                  <Input
-                    className="h-12 rounded-[var(--radius-lg)]"
-                    onChange={(e) => setActiveDisplayName(e.target.value)}
-                    placeholder={cc.displayNamePlaceholder}
-                    value={activeDisplayName}
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel label={cc.descriptionLabel} />
-                  <Textarea
-                    className="min-h-24"
-                    onChange={(e) => setActiveDescription(e.target.value)}
-                    placeholder={cc.descriptionPlaceholder}
-                    value={activeDescription}
-                  />
-                </div>
-
-                <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-card">
-                  <div
-                    className="h-28 w-full bg-cover bg-center md:h-32"
-                    style={{ backgroundImage: `url(${previewBannerSrc})` }}
-                  />
-                  <div className="-mt-6 flex items-end gap-3 px-4 pb-4">
-                    <Avatar
-                      className="h-14 w-14 border-4 border-card bg-card"
-                      fallback={previewDisplayName}
-                      size="lg"
-                      src={previewAvatarSrc}
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.95fr)]">
+                <div className="grid content-start gap-4">
+                  <div>
+                    <FieldLabel label={cc.displayNameLabel} />
+                    <Input
+                      className="h-12 rounded-[var(--radius-lg)]"
+                      onChange={(e) => setActiveDisplayName(e.target.value)}
+                      placeholder={cc.displayNamePlaceholder}
+                      value={activeDisplayName}
                     />
-                    <div className="min-w-0 space-y-0.5 pb-1">
-                      <p className="truncate text-lg font-semibold text-foreground">
-                        {previewDisplayName}
-                      </p>
-                      {activeDescription.trim() ? (
-                        <p className="line-clamp-1 text-base text-muted-foreground">
-                          {activeDescription.trim()}
+                  </div>
+
+                  <div>
+                    <FieldLabel label={cc.descriptionLabel} />
+                    <Textarea
+                      className="min-h-32"
+                      onChange={(e) => setActiveDescription(e.target.value)}
+                      placeholder={cc.descriptionPlaceholder}
+                      value={activeDescription}
+                    />
+                  </div>
+                </div>
+
+                <div className="hidden rounded-[var(--radius-lg)] border border-border-soft bg-card px-5 py-5 lg:block">
+                  <h3 className="mb-4 text-lg font-semibold tracking-tight text-foreground">{cc.preview}</h3>
+                  <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border-soft bg-background">
+                    <div
+                      className="h-36 w-full border-b border-border-soft bg-cover bg-center"
+                      style={{
+                        backgroundColor: "color-mix(in oklab, var(--primary) 18%, var(--card))",
+                        backgroundImage: `linear-gradient(135deg, color-mix(in oklab, var(--primary) 24%, transparent), color-mix(in oklab, var(--background) 18%, transparent)), url(${previewBannerSrc})`,
+                      }}
+                    />
+                    <div className="-mt-8 flex items-end gap-5 bg-card px-5 pb-5">
+                      <Avatar
+                        className="h-24 w-24 border-4 border-card bg-card"
+                        fallback={previewDisplayName}
+                        size="lg"
+                        src={previewAvatarSrc}
+                      />
+                      <div className="min-w-0 space-y-1 pb-3">
+                        <p className="truncate text-2xl font-semibold text-foreground">
+                          {previewDisplayName}
                         </p>
-                      ) : null}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <MediaPicker
-                    accept={acceptedCommunityImageTypes}
-                    file={activeAvatarFile}
-                    label={cc.avatarLabel}
-                    onRemove={() => setActiveAvatarFile(null)}
-                    onSelect={(file) => {
-                      setActiveAvatarFile(file);
-                      if (file) {
-                        setActiveAvatarRef("");
-                      }
-                    }}
-                  />
-                  <MediaPicker
-                    accept={acceptedCommunityImageTypes}
-                    file={activeBannerFile}
-                    label={cc.bannerLabel}
-                    onRemove={() => setActiveBannerFile(null)}
-                    onSelect={(file) => {
-                      setActiveBannerFile(file);
-                      if (file) {
-                        setActiveBannerRef("");
-                      }
-                    }}
-                  />
+                <div className="border-t border-border-soft pt-6 lg:col-span-2">
+                  <Section title={cc.visualsSection}>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <MediaPicker
+                        accept={acceptedCommunityImageTypes}
+                        file={activeAvatarFile}
+                        label={cc.avatarLabel}
+                        onRemove={() => setActiveAvatarFile(null)}
+                        onSelect={(file) => {
+                          setActiveAvatarFile(file);
+                          if (file) {
+                            setActiveAvatarRef("");
+                          }
+                        }}
+                      />
+                      <MediaPicker
+                        accept={acceptedCommunityImageTypes}
+                        file={activeBannerFile}
+                        label={cc.bannerLabel}
+                        onRemove={() => setActiveBannerFile(null)}
+                        onSelect={(file) => {
+                          setActiveBannerFile(file);
+                          if (file) {
+                            setActiveBannerRef("");
+                          }
+                        }}
+                      />
+                    </div>
+                  </Section>
                 </div>
 
               </div>

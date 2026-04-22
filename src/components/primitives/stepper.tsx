@@ -16,6 +16,14 @@ export interface StepperProps {
   steps: StepperStep[];
 }
 
+export interface StepProgressProps {
+  className?: string;
+  currentStep: number;
+  progressLabel?: string;
+  stepCountLabel?: string;
+  steps: StepperStep[];
+}
+
 function Stepper({ className, currentStep, onStepClick, steps }: StepperProps) {
   return (
     <nav aria-label="Progress" className={cn("flex w-full items-start", className)}>
@@ -70,4 +78,34 @@ function Stepper({ className, currentStep, onStepClick, steps }: StepperProps) {
   );
 }
 
-export { Stepper };
+function StepProgress({
+  className,
+  currentStep,
+  progressLabel,
+  stepCountLabel,
+  steps,
+}: StepProgressProps) {
+  const safeStep = Math.min(Math.max(currentStep, 1), steps.length);
+  const progress = steps.length > 0 ? `${(safeStep / steps.length) * 100}%` : "0%";
+  const currentLabel = steps[safeStep - 1]?.label ?? "";
+
+  return (
+    <nav aria-label="Progress" className={cn("space-y-2", className)}>
+      {(progressLabel || stepCountLabel) ? (
+        <div className="flex items-center justify-between gap-3 text-base text-muted-foreground">
+          {progressLabel ? <span>{progressLabel}</span> : <span aria-hidden="true" />}
+          {stepCountLabel ? <span className="tabular-nums">{stepCountLabel}</span> : null}
+        </div>
+      ) : null}
+      <div className="text-lg font-semibold text-foreground">{currentLabel}</div>
+      <div className="h-1.5 rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-foreground transition-[width]"
+          style={{ width: progress }}
+        />
+      </div>
+    </nav>
+  );
+}
+
+export { Stepper, StepProgress };

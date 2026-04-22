@@ -355,10 +355,12 @@
       "verificationRequired": "Verification required",
       "uniqueHumanRequired": "Complete unique human verification before creating a community.",
       "ageVerificationRequired": "This community is marked 18+, so the creator must also pass age verification before launch.",
-      "stepCommunity": "Community",
+      "stepCommunity": "Basics",
       "stepAccess": "Access",
       "stepReview": "Review",
       "detailsSection": "Community details",
+      "preview": "Preview",
+      "visualsSection": "Images",
       "displayNameLabel": "Display name",
       "displayNamePlaceholder": "Community name",
       "previewFallback": "New community",
@@ -444,6 +446,9 @@
       "remove": "Remove",
       "chooseFile": "Choose file",
       "replace": "Replace",
+      "uploadPrompt": "No file selected",
+      "avatarUploadHelp": "PNG, JPG, WebP",
+      "bannerUploadHelp": "PNG, JPG, WebP",
       "searchCountry": "Search country",
       "noCountriesFound": "No countries found."
     }

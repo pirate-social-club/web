@@ -5,7 +5,7 @@ import * as React from "react";
 import { Button } from "@/components/primitives/button";
 import { Checkbox } from "@/components/primitives/checkbox";
 import { Input } from "@/components/primitives/input";
-import { Minus, Plus } from "@phosphor-icons/react";
+import { ImageSquare, Minus, Plus } from "@phosphor-icons/react";
 import {
   FormFieldLabel,
   FormNote,
@@ -299,21 +299,33 @@ export function MediaPicker({
         }}
         type="file"
       />
-      <div className="flex min-h-14 items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3.5">
-        <p className="min-w-0 truncate text-base font-medium text-foreground">
-          {file?.name || null}
-        </p>
-        <div className="flex shrink-0 items-center gap-2">
-          {file ? (
-            <Button onClick={onRemove} size="sm" type="button" variant="ghost">
-              {cc.remove}
-            </Button>
-          ) : null}
-          <label className="cursor-pointer" htmlFor={inputId}>
-            <span className="inline-flex h-10 items-center rounded-full bg-muted px-4 text-base font-semibold text-foreground">
-              {file ? cc.replace : cc.chooseFile}
-            </span>
-          </label>
+      <div className="rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
+        <div className="flex min-h-24 items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-dashed border-border-soft bg-background px-4 py-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <ImageSquare className="size-10 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 space-y-1">
+              <p className="truncate text-base font-medium text-foreground">
+                {file?.name || cc.uploadPrompt}
+              </p>
+              {file ? null : (
+                <p className="text-base text-muted-foreground">
+                  {label === cc.bannerLabel ? cc.bannerUploadHelp : cc.avatarUploadHelp}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {file ? (
+              <Button onClick={onRemove} size="sm" type="button" variant="ghost">
+                {cc.remove}
+              </Button>
+            ) : null}
+            <label className="cursor-pointer" htmlFor={inputId}>
+              <span className="inline-flex h-10 items-center rounded-full bg-muted px-4 text-base font-semibold text-foreground">
+                {file ? cc.replace : cc.chooseFile}
+              </span>
+            </label>
+          </div>
         </div>
       </div>
     </div>

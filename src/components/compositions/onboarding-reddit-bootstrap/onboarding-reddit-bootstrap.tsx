@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/primitives/card";
 import { CopyField } from "@/components/primitives/copy-field";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
+import { StepProgress } from "@/components/primitives/stepper";
 import { resolveLocaleLanguageTag, useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import type { RoutesMessages } from "@/locales";
@@ -30,36 +31,6 @@ type OnboardingCopy = RoutesMessages["onboarding"];
 
 function formatMessage(template: string, replacements: Record<string, string>) {
   return template.replace(/\{(\w+)\}/gu, (_, key: string) => replacements[key] ?? `{${key}}`);
-}
-
-function OnboardingProgress({
-  currentStep,
-  currentLabel,
-  progressLabel,
-  stepCountLabel,
-}: {
-  currentStep: number;
-  currentLabel: string;
-  progressLabel: string;
-  stepCountLabel: string;
-}) {
-  const progress = `${(currentStep / ONBOARDING_PHASES.length) * 100}%`;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3 text-base text-muted-foreground">
-        <span>{progressLabel}</span>
-        <span className="tabular-nums">{stepCountLabel}</span>
-      </div>
-      <div className="text-lg font-semibold text-foreground">{currentLabel}</div>
-      <div className="h-1.5 rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-foreground transition-[width]"
-          style={{ width: progress }}
-        />
-      </div>
-    </div>
-  );
 }
 
 function extractVerificationCode(hint: string | undefined): string | null {
@@ -342,11 +313,10 @@ export function OnboardingRedditBootstrap({
   const copy = getLocaleMessages(locale, "routes").onboarding;
   const currentStep = phaseToStep(phase);
   const numberFormatter = new Intl.NumberFormat(localeTag);
-  const stepLabels = [
-    copy.importKarmaAction,
-    copy.chooseNameAction,
+  const steps = [
+    { label: copy.importKarmaAction },
+    { label: copy.chooseNameAction },
   ];
-  const currentLabel = stepLabels[currentStep - 1] ?? "";
   const stepCountLabel = formatMessage(copy.stepCount, {
     current: numberFormatter.format(currentStep),
     total: numberFormatter.format(ONBOARDING_PHASES.length),
@@ -354,11 +324,11 @@ export function OnboardingRedditBootstrap({
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
-      <OnboardingProgress
-        currentLabel={currentLabel}
+      <StepProgress
         currentStep={currentStep}
         progressLabel={copy.progressLabel}
         stepCountLabel={stepCountLabel}
+        steps={steps}
       />
 
       <Card className="overflow-hidden border-border shadow-none">

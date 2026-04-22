@@ -10,6 +10,7 @@ import type { CommunityLinkEditorItem } from "@/components/compositions/communit
 import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import type { PricingTier, CountryAssignment as PricingCountryAssignment } from "@/components/compositions/community-pricing-editor/community-pricing-editor-page";
 import { createDefaultCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
+import { serializeExistingCommunityGateRuleForUpdate, type SerializedGateRule } from "./community-gate-rule-serialization";
 import {
   createDefaultCommunitySafetyAdultContentPolicy,
   createDefaultCommunitySafetyCivilityPolicy,
@@ -207,72 +208,86 @@ function extractCourtyardInventoryDraft(config: unknown): Omit<Extract<IdentityG
   });
 }
 
-export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDraft[] {
-  const drafts: IdentityGateDraft[] = [];
+type ApiCommunityGateRule = NonNullable<ApiCommunity["gate_rules"]>[number];
 
-  for (const rule of community.gate_rules ?? []) {
-    if (rule.scope !== "membership" || rule.status !== "active") {
-      continue;
-    }
+function isActiveMembershipGateRule(rule: ApiCommunityGateRule): boolean {
+  return rule.scope === "membership" && rule.status === "active";
+}
 
-    if (rule.gate_family === "token_holding" && rule.gate_type === "erc721_holding" && rule.chain_namespace === "eip155:1") {
-      const contractAddress = extractContractAddress(rule.gate_config);
-      if (contractAddress) {
-        drafts.push({
-          gateType: "erc721_holding",
-          chainNamespace: "eip155:1",
-          contractAddress,
-          gateRuleId: rule.gate_rule_id,
-        });
-      }
-      continue;
-    }
-
-    if (rule.gate_family === "token_holding" && rule.gate_type === "erc721_inventory_match" && rule.chain_namespace === "eip155:137") {
-      const draft = extractCourtyardInventoryDraft(rule.gate_config);
-      if (draft) {
-        drafts.push({ ...draft, gateRuleId: rule.gate_rule_id });
-      }
-      continue;
-    }
-
-    if (rule.gate_family !== "identity_proof") {
-      continue;
-    }
-
-    const config = rule.proof_requirements?.[0]?.config ?? rule.gate_config;
-    const requiredValue = extractRequiredValue(config);
-
-    if (rule.gate_type === "nationality") {
-      const requiredValues = extractRequiredValues(config);
-      if (requiredValues.length > 0) {
-        drafts.push({ gateType: "nationality", provider: "self", requiredValues, gateRuleId: rule.gate_rule_id });
-      }
-      continue;
-    }
-
-    if (rule.gate_type === "minimum_age") {
-      const minimumAge = extractMinimumAge(config);
-      if (minimumAge != null) {
-        drafts.push({ gateType: "minimum_age", provider: "self", minimumAge, gateRuleId: rule.gate_rule_id });
-      }
-      continue;
-    }
-
-    if (rule.gate_type === "wallet_score") {
-      const minimumScore = extractMinimumScore(config);
-      if (minimumScore != null) {
-        drafts.push({ gateType: "wallet_score", provider: "passport", minimumScore, gateRuleId: rule.gate_rule_id });
-      }
-      continue;
-    }
-
-    if (rule.gate_type === "gender" && (requiredValue === "M" || requiredValue === "F")) {
-      drafts.push({ gateType: "gender", provider: "self", requiredValue, gateRuleId: rule.gate_rule_id });
-    }
+function getCommunityGateDraft(rule: ApiCommunityGateRule): IdentityGateDraft | null {
+  if (!isActiveMembershipGateRule(rule)) {
+    return null;
   }
 
-  return drafts;
+  if (rule.gate_family === "token_holding" && rule.gate_type === "erc721_holding" && rule.chain_namespace === "eip155:1") {
+    const contractAddress = extractContractAddress(rule.gate_config);
+    if (contractAddress) {
+      return {
+        gateType: "erc721_holding",
+        chainNamespace: "eip155:1",
+        contractAddress,
+        gateRuleId: rule.gate_rule_id,
+      };
+    }
+    return null;
+  }
+
+  if (rule.gate_family === "token_holding" && rule.gate_type === "erc721_inventory_match" && rule.chain_namespace === "eip155:137") {
+    const draft = extractCourtyardInventoryDraft(rule.gate_config);
+    if (draft) {
+      return { ...draft, gateRuleId: rule.gate_rule_id };
+    }
+    return null;
+  }
+
+  if (rule.gate_family !== "identity_proof") {
+    return null;
+  }
+
+  const config = rule.proof_requirements?.[0]?.config ?? rule.gate_config;
+  const requiredValue = extractRequiredValue(config);
+
+  if (rule.gate_type === "nationality") {
+    const requiredValues = extractRequiredValues(config);
+    if (requiredValues.length > 0) {
+      return { gateType: "nationality", provider: "self", requiredValues, gateRuleId: rule.gate_rule_id };
+    }
+    return null;
+  }
+
+  if (rule.gate_type === "minimum_age") {
+    const minimumAge = extractMinimumAge(config);
+    if (minimumAge != null) {
+      return { gateType: "minimum_age", provider: "self", minimumAge, gateRuleId: rule.gate_rule_id };
+    }
+    return null;
+  }
+
+  if (rule.gate_type === "wallet_score") {
+    const minimumScore = extractMinimumScore(config);
+    if (minimumScore != null) {
+      return { gateType: "wallet_score", provider: "passport", minimumScore, gateRuleId: rule.gate_rule_id };
+    }
+    return null;
+  }
+
+  if (rule.gate_type === "gender" && (requiredValue === "M" || requiredValue === "F")) {
+    return { gateType: "gender", provider: "self", requiredValue, gateRuleId: rule.gate_rule_id };
+  }
+
+  return null;
+}
+
+export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDraft[] {
+  return (community.gate_rules ?? [])
+    .map((rule) => getCommunityGateDraft(rule))
+    .filter((draft): draft is IdentityGateDraft => draft != null);
+}
+
+export function getPreservedCommunityGateRules(community: ApiCommunity): SerializedGateRule[] {
+  return (community.gate_rules ?? [])
+    .filter((rule) => isActiveMembershipGateRule(rule) && getCommunityGateDraft(rule) == null)
+    .map((rule) => serializeExistingCommunityGateRuleForUpdate(rule));
 }
 
 export function getPricingTierDrafts(policy: ApiCommunityPricingPolicy | null): PricingTier[] {

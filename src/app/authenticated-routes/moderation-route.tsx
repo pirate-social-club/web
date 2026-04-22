@@ -342,7 +342,7 @@ export function CommunityModerationPage({
           onSave={state.handleSaveGates}
           saveDisabled={
             state.savingGates
-            || (state.membershipMode === "gated" && state.gateDrafts.length === 0)
+            || (state.membershipMode === "gated" && state.gateDrafts.length === 0 && state.preservedGateRuleCount === 0)
             || state.gateDrafts.some((draft) => (
               draft.gateType === "erc721_holding" && !isAddress(draft.contractAddress.trim())
               || draft.gateType === "erc721_inventory_match" && !isValidCourtyardInventoryDraft(draft)

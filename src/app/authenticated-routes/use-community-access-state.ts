@@ -8,7 +8,7 @@ import { useApi } from "@/lib/api";
 
 import type { SaveCommunityAction } from "./community-moderation-save";
 import { serializeIdentityGateDrafts } from "./community-gate-rule-serialization";
-import { getCommunityGateDrafts } from "./moderation-helpers";
+import { getCommunityGateDrafts, getPreservedCommunityGateRules } from "./moderation-helpers";
 
 export function useCommunityAccessState({
   community,
@@ -24,6 +24,10 @@ export function useCommunityAccessState({
   const [anonymousIdentityScope, setAnonymousIdentityScope] = React.useState<"community_stable" | "thread_stable" | "post_ephemeral">("community_stable");
   const [gateDrafts, setGateDrafts] = React.useState<IdentityGateDraft[]>([]);
   const [savingGates, setSavingGates] = React.useState(false);
+  const preservedGateRules = React.useMemo(
+    () => community ? getPreservedCommunityGateRules(community) : [],
+    [community],
+  );
 
   React.useEffect(() => {
     if (!community) {
@@ -52,13 +56,16 @@ export function useCommunityAccessState({
         default_age_gate_policy: effectiveDefaultAgeGatePolicy,
         allow_anonymous_identity: allowAnonymousIdentity,
         anonymous_identity_scope: allowAnonymousIdentity ? anonymousIdentityScope : null,
-        gate_rules: serializeIdentityGateDrafts(gateDrafts, { includeGateRuleIds: true }),
+        gate_rules: [
+          ...preservedGateRules,
+          ...serializeIdentityGateDrafts(gateDrafts, { includeGateRuleIds: true }),
+        ],
       }),
       setSavingGates,
       "Access settings saved.",
       "Could not save access settings.",
     );
-  }, [allowAnonymousIdentity, anonymousIdentityScope, api.communities, community, defaultAgeGatePolicy, gateDrafts, membershipMode, saveCommunity, savingGates]);
+  }, [allowAnonymousIdentity, anonymousIdentityScope, api.communities, community, defaultAgeGatePolicy, gateDrafts, membershipMode, preservedGateRules, saveCommunity, savingGates]);
 
   return {
     allowAnonymousIdentity,
@@ -67,6 +74,7 @@ export function useCommunityAccessState({
     gateDrafts,
     handleSaveGates,
     membershipMode,
+    preservedGateRuleCount: preservedGateRules.length,
     savingGates,
     setAllowAnonymousIdentity,
     setAnonymousIdentityScope,

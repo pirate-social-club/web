@@ -208,6 +208,78 @@ describe("useCommunityAccessState", () => {
     });
   });
 
+  test("preserves active membership gates the editor cannot edit", async () => {
+    const calls = installCommunityApiMocks();
+    const save = createSaveCommunityMock();
+    const { result } = renderAccessHook({
+      community: createCommunity({
+        gate_rules: [{
+          gate_rule_id: "gate-1",
+          community_id: "community-1",
+          scope: "membership",
+          gate_family: "identity_proof",
+          gate_type: "nationality",
+          proof_requirements: [{
+            proof_type: "nationality",
+            accepted_providers: ["self"],
+            config: { required_value: "US" },
+          }],
+          status: "active",
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+        }, {
+          gate_rule_id: "gate-preserved",
+          community_id: "community-1",
+          scope: "membership",
+          gate_family: "identity_proof",
+          gate_type: "sanctions_clear",
+          proof_requirements: [{
+            proof_type: "sanctions_clear",
+            accepted_providers: ["passport"],
+            config: { list: "global" },
+          }],
+          status: "active",
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+        }],
+      }),
+      saveCommunity: save.saveCommunity,
+    });
+
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(1));
+    expect(result.current.preservedGateRuleCount).toBe(1);
+
+    act(() => {
+      result.current.handleSaveGates();
+    });
+
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+
+    expect(calls.updateGates[0]?.body.gate_rules).toEqual([{
+      scope: "membership",
+      gate_family: "identity_proof",
+      gate_type: "sanctions_clear",
+      gate_rule_id: "gate-preserved",
+      proof_requirements: [{
+        proof_type: "sanctions_clear",
+        accepted_providers: ["passport"],
+        config: { list: "global" },
+      }],
+      chain_namespace: null,
+      gate_config: null,
+    }, {
+      scope: "membership",
+      gate_family: "identity_proof",
+      gate_type: "nationality",
+      gate_rule_id: "gate-1",
+      proof_requirements: [{
+        proof_type: "nationality",
+        accepted_providers: ["self"],
+        config: { required_values: ["US"] },
+      }],
+    }]);
+  });
+
   test("derives adult content policy from an active minimum age membership gate", async () => {
     const calls = installCommunityApiMocks();
     const save = createSaveCommunityMock();

@@ -1,10 +1,32 @@
 import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
-import type { ApiCreateCommunityRequest } from "@/lib/api/client-api-types";
+import type { Community as ApiCommunity } from "@pirate/api-contracts";
+import type { ApiCommunityGatesUpdateRequest, ApiCreateCommunityRequest } from "@/lib/api/client-api-types";
 import { getAcceptedProvidersForGateType } from "@/lib/community-gate-providers";
 
-type SerializedGateRule = NonNullable<ApiCreateCommunityRequest["gate_rules"]>[number] & {
+export type SerializedGateRule = NonNullable<ApiCreateCommunityRequest["gate_rules"]>[number] & {
   gate_rule_id?: string | null;
 };
+
+type ApiCommunityGateRule = NonNullable<ApiCommunity["gate_rules"]>[number];
+type UpdateGateRule = NonNullable<ApiCommunityGatesUpdateRequest["gate_rules"]>[number];
+
+export function serializeExistingCommunityGateRuleForUpdate(
+  rule: ApiCommunityGateRule,
+): SerializedGateRule {
+  return {
+    scope: rule.scope,
+    gate_family: rule.gate_family,
+    gate_type: rule.gate_type,
+    gate_rule_id: rule.gate_rule_id ?? null,
+    proof_requirements: rule.proof_requirements?.map((requirement) => ({
+      proof_type: requirement.proof_type,
+      accepted_providers: requirement.accepted_providers ?? null,
+      config: requirement.config ?? null,
+    })) ?? null,
+    chain_namespace: rule.chain_namespace ?? null,
+    gate_config: rule.gate_config ?? null,
+  } as UpdateGateRule;
+}
 
 export function serializeIdentityGateDrafts(
   gateDrafts: IdentityGateDraft[],

@@ -215,7 +215,7 @@ function resolveTranslatedTextPresentation(resolvedLocale: string | null | undef
 function toCommunityPostContent(
   postResponse: ApiPost,
   songOptions?: SongPresentationOptions,
-  opts?: { preferOriginalText?: boolean },
+  opts?: { embedMode?: "preview" | "official"; preferOriginalText?: boolean },
 ): PostCardProps["content"] {
   const { post, translated_body, translated_caption, translated_title } = postResponse;
   const resolvedBody = opts?.preferOriginalText ? post.body ?? "" : translated_body ?? post.body ?? "";
@@ -245,6 +245,26 @@ function toCommunityPostContent(
     case "video":
       return { type: "video", accessMode: "public", durationMs: primaryMedia?.duration_ms ?? undefined, src: primaryMedia?.storage_ref ?? "" };
     case "link":
+      if (post.embeds?.[0]?.provider === "x") {
+        const embed = post.embeds[0];
+        return {
+          type: "embed",
+          canonicalUrl: embed.canonical_url,
+          oembedHtml: embed.oembed_html,
+          originalUrl: embed.original_url,
+          preview: {
+            authorName: embed.preview?.author_name,
+            authorUrl: embed.preview?.author_url,
+            createdAt: embed.preview?.created_at,
+            hasMedia: embed.preview?.has_media,
+            mediaUrl: embed.preview?.media_url,
+            text: embed.preview?.text,
+          },
+          provider: "x",
+          renderMode: opts?.embedMode ?? "preview",
+          state: embed.state,
+        };
+      }
       return {
         type: "link",
         href: post.link_url ?? "#",
@@ -425,7 +445,7 @@ export function toThreadPostCard(
         : undefined,
       timestampLabel: formatRelativeTimestamp(post.created_at),
     },
-    content: toCommunityPostContent(postResponse, songOptions, opts),
+    content: toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" }),
     engagement: {
       commentCount: postResponse.thread_snapshot?.comment_count ?? 0,
       score: postResponse.upvote_count - postResponse.downvote_count,

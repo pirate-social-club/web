@@ -3,6 +3,7 @@ import { ArrowSquareOut } from "@phosphor-icons/react";
 
 import { FormattedText } from "@/components/primitives/formatted-text";
 import { cn } from "@/lib/utils";
+import { OfficialOEmbed, PostEmbedPreview } from "./post-card-embed";
 import { postCardType } from "./post-card.styles";
 import type { PostCardContent } from "./post-card.types";
 
@@ -130,6 +131,10 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
           ) : null}
         </div>
       );
+    case "embed":
+      return content.renderMode === "official"
+        ? <OfficialOEmbed content={content} className={className} />
+        : <PostEmbedPreview content={content} className={className} />;
     case "song":
       return (
         <React.Suspense fallback={<SongPostContentFallback className={className} />}>

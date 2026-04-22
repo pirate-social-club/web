@@ -49,7 +49,7 @@ const CSP_REPORT_ONLY_HEADER = "Content-Security-Policy-Report-Only";
 function buildContentSecurityPolicy(nonce: string): string {
   const directives: string[] = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval' https://challenges.cloudflare.com`,
+    `script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://platform.x.com https://platform.twitter.com`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob: https:",
@@ -70,6 +70,11 @@ function buildContentSecurityPolicy(nonce: string): string {
       "https://verify.walletconnect.com",
       "https://verify.walletconnect.org",
       "https://challenges.cloudflare.com",
+      "https://platform.x.com",
+      "https://platform.twitter.com",
+      "https://syndication.twitter.com",
+      "https://x.com",
+      "https://twitter.com",
     ].join(" "),
     [
       "connect-src",
@@ -96,6 +101,11 @@ function buildContentSecurityPolicy(nonce: string): string {
       "https://api.very.org",
       "https://bridge.very.org",
       "https://verify.very.org",
+      "https://platform.x.com",
+      "https://platform.twitter.com",
+      "https://syndication.twitter.com",
+      "https://x.com",
+      "https://twitter.com",
     ].join(" "),
     "worker-src 'self' blob:",
     "manifest-src 'self'",

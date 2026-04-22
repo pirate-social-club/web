@@ -132,6 +132,23 @@ export type PostCardContent =
       linkCaptionLang?: string;
       previewImageSrc?: string;
     }
+  | {
+      type: "embed";
+      provider: "x";
+      state: "pending" | "preview" | "embed" | "unavailable";
+      renderMode: "preview" | "official";
+      canonicalUrl: string;
+      originalUrl?: string;
+      preview?: {
+        authorName?: string | null;
+        authorUrl?: string | null;
+        text?: string | null;
+        hasMedia?: boolean | null;
+        mediaUrl?: string | null;
+        createdAt?: string | null;
+      } | null;
+      oembedHtml?: string | null;
+    }
   | SongContentSpec;
 
 export type PostCardMenuItem = ActionMenuItem;

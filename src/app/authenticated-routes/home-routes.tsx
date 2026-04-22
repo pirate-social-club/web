@@ -11,6 +11,7 @@ import { navigate } from "@/app/router";
 import { Avatar } from "@/components/primitives/avatar";
 import { useApi } from "@/lib/api";
 import { clearSession, useSession } from "@/lib/api/session-store";
+import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { useSidebarCommunities } from "@/lib/owned-communities";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -24,8 +25,8 @@ import { sortHomeFeedEntries } from "./feed-sorting";
 import { toHomeFeedItem } from "./post-presentation";
 import { submitOptimisticPostVote, updateHomeFeedEntryPostVote } from "./post-vote";
 import { buildFeedSortOptions, buildTopTimeRangeOptions, getErrorMessage, useRouteContentLocale, useRouteMessages, useClientHydrated } from "./route-core";
-import { getRouteAuthDescription, getRouteFailureDescription } from "./route-status-copy";
-import { AuthRequiredRouteState, EmptyFeedState, RouteLoadFailureState, StackPageShell } from "./route-shell";
+import { getRouteFailureDescription } from "./route-status-copy";
+import { EmptyFeedState, RouteLoadFailureState, StackPageShell } from "./route-shell";
 import { useSongPlayback } from "./song-commerce";
 import { useCommunityInteractionGate } from "./community-interaction-gate";
 
@@ -211,6 +212,42 @@ export function HomePage() {
   );
 }
 
+function YourCommunitiesAuthState() {
+  const hydrated = useClientHydrated();
+  const { busy, configured, connect, loaded } = usePiratePrivyRuntime();
+  const { copy } = useRouteMessages();
+
+  if (!hydrated || (configured && !loaded)) {
+    return (
+      <section className="flex min-h-[calc(100svh-11rem)] min-w-0 flex-1 items-center justify-center">
+        <Spinner className="size-6" />
+      </section>
+    );
+  }
+
+  return (
+    <section className="flex min-h-[calc(100svh-11rem)] min-w-0 flex-1 items-center justify-center px-1">
+      <div className="w-full max-w-[24rem] rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-6 shadow-[var(--shadow-md)]">
+        <div className="flex flex-col items-start gap-5 text-start">
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              {copy.yourCommunities.title}
+            </h1>
+            <p className="text-base leading-7 text-muted-foreground">
+              {copy.yourCommunities.signedOutBody}
+            </p>
+          </div>
+          {configured && connect ? (
+            <Button loading={busy} onClick={connect}>
+              {copy.yourCommunities.signInLabel}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function YourCommunitiesPage() {
   const { copy } = useRouteMessages();
   const session = useSession();
@@ -220,12 +257,7 @@ export function YourCommunitiesPage() {
   const emptyYourCommunitiesTitle = copy.home.emptyYourCommunitiesTitle;
 
   if (!session) {
-    return (
-      <AuthRequiredRouteState
-        description={getRouteAuthDescription("your-communities")}
-        title={copy.yourCommunities.title}
-      />
-    );
+    return <YourCommunitiesAuthState />;
   }
 
   if (loading && communities.length === 0) {

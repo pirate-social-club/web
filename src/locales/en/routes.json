@@ -63,6 +63,8 @@
     "gatedLabel": "Gated",
     "openLabel": "Open",
     "railTitle": "Your Spaces",
+    "signInLabel": "Sign in",
+    "signedOutBody": "Save the communities you join and pick up where you left off.",
     "subtitle": "A member-scoped feed shell. Keep it tight on mobile and let the sidebar carry the heavier navigation.",
     "title": "Your Communities"
   },

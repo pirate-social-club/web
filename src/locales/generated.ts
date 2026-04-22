@@ -70,6 +70,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "gatedLabel": "Gated",
         "openLabel": "Open",
         "railTitle": "Your Spaces",
+        "signInLabel": "Sign in",
+        "signedOutBody": "Save the communities you join and pick up where you left off.",
         "subtitle": "A member-scoped feed shell. Keep it tight on mobile and let the sidebar carry the heavier navigation.",
         "title": "Your Communities"
       },
@@ -1134,6 +1136,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "gatedLabel": "مغلق",
         "openLabel": "مفتوح",
         "railTitle": "مساحاتك",
+        "signInLabel": "تسجيل الدخول",
+        "signedOutBody": "احفظ المجتمعات التي تنضم إليها وتابع من حيث توقفت.",
         "subtitle": "خلاصة مخصّصة للأعضاء. أبقِها مركّزة على الهاتف ودع الشريط الجانبي يتحمّل التنقل الأثقل.",
         "title": "مجتمعاتك"
       },
@@ -2198,6 +2202,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "gatedLabel": "受限",
         "openLabel": "公开",
         "railTitle": "你的空间",
+        "signInLabel": "登录",
+        "signedOutBody": "保存你加入的社区，下次继续浏览。",
         "subtitle": "面向成员的动态流外壳。移动端保持紧凑，把更重的导航交给侧边栏。",
         "title": "你的社区"
       },

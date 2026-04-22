@@ -93,6 +93,7 @@ function buildContentSecurityPolicy(nonce: string): string {
       "https://mainnet.storyrpc.io",
       "https://aeneid.storyrpc.io",
       "https://g.w.lavanet.xyz",
+      "https://api.very.org",
       "https://bridge.very.org",
       "https://verify.very.org",
     ].join(" "),

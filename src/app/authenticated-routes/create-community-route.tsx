@@ -10,9 +10,7 @@ import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { ApiError } from "@/lib/api/client";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import type { SpacesChallengePayload } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
-import type {
-  IdentityGateDraft,
-} from "@/components/compositions/create-community-composer/create-community-composer.types";
+import type { CreateCommunityComposerProps } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
 import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
 import { FormNote } from "@/components/primitives/form-layout";
@@ -23,6 +21,8 @@ import { DEFAULT_COMMUNITY_RULES } from "./moderation-helpers";
 import { serializeIdentityGateDrafts } from "./community-gate-rule-serialization";
 import { useRouteMessages } from "./route-core";
 
+type CreateCommunityInput = Parameters<NonNullable<CreateCommunityComposerProps["onCreate"]>>[0];
+
 export function CreateCommunityPage() {
   const api = useApi();
   const session = useSession();
@@ -31,28 +31,66 @@ export function CreateCommunityPage() {
   const { copy } = useRouteMessages();
   const pageTitle = copy.createCommunity.title;
   const creatorVerificationState = session?.onboarding
-    ? { uniqueHumanVerified: session.onboarding.unique_human_verification_status === "verified", ageOver18Verified: false }
+    ? {
+        uniqueHumanVerified: session.onboarding.community_creation_ready || session.onboarding.unique_human_verification_status === "verified",
+        ageOver18Verified: session.user.verification_capabilities.age_over_18.state === "verified",
+      }
     : { uniqueHumanVerified: false, ageOver18Verified: false };
+  const pendingCreateInputRef = React.useRef<CreateCommunityInput | null>(null);
+  const createCommunityFromInput = React.useCallback(async (input: CreateCommunityInput) => {
+    const avatarRef = input.avatarFile ? (await api.communities.uploadMedia({ kind: "avatar", file: input.avatarFile })).media_ref : input.avatarRef;
+    const bannerRef = input.bannerFile ? (await api.communities.uploadMedia({ kind: "banner", file: input.bannerFile })).media_ref : input.bannerRef;
+    const gateRules = serializeIdentityGateDrafts(input.gateDrafts);
+
+    const result = await api.communities.create({
+      avatar_ref: avatarRef,
+      banner_ref: bannerRef,
+      display_name: input.displayName,
+      description: input.description,
+      membership_mode: input.membershipMode,
+      default_age_gate_policy: input.defaultAgeGatePolicy,
+      allow_anonymous_identity: input.allowAnonymousIdentity,
+      anonymous_identity_scope: input.anonymousIdentityScope,
+      handle_policy: { policy_template: "standard" },
+      governance_mode: "centralized",
+      gate_rules: gateRules.length > 0 ? gateRules : undefined,
+      community_bootstrap: { rules: DEFAULT_COMMUNITY_RULES.map((rule) => ({ title: rule.title, body: rule.body, report_reason: rule.title })) },
+    });
+
+    rememberKnownCommunity({
+      avatarSrc: result.community.avatar_ref ?? undefined,
+      communityId: result.community.community_id,
+      displayName: result.community.display_name ?? input.displayName,
+    });
+    navigate(`/c/${result.community.community_id}`);
+    return { communityId: result.community.community_id };
+  }, [api]);
   const {
     startVerification: handleStartVeryVerification,
     verificationError,
   } = useVeryVerification({
     verified: creatorVerificationState.uniqueHumanVerified,
     verificationIntent: "community_creation",
+    onVerified: async (status) => {
+      const input = pendingCreateInputRef.current;
+      if (!input) return;
+      if (!status.community_creation_ready && status.unique_human_verification_status !== "verified") {
+        throw new Error("Verification completed, but community creation is not ready yet");
+      }
+      if (input.defaultAgeGatePolicy === "18_plus" && !creatorVerificationState.ageOver18Verified) {
+        throw new Error("Verify 18+ status before creating an 18+ community");
+      }
+
+      try {
+        await createCommunityFromInput(input);
+      } finally {
+        if (pendingCreateInputRef.current === input) {
+          pendingCreateInputRef.current = null;
+        }
+      }
+    },
   });
-  const handleCreate = React.useCallback(async (input: {
-    avatarFile: File | null;
-    avatarRef: string | null;
-    bannerFile: File | null;
-    bannerRef: string | null;
-    displayName: string;
-    description: string | null;
-    membershipMode: "open" | "request" | "gated";
-    defaultAgeGatePolicy: "none" | "18_plus";
-    allowAnonymousIdentity: boolean;
-    anonymousIdentityScope: "community_stable" | "thread_stable" | "post_ephemeral";
-    gateDrafts: IdentityGateDraft[];
-  }) => {
+  const handleCreate = React.useCallback(async (input: CreateCommunityInput) => {
     if (!session) {
       if (!connect) {
         throw new Error("Sign in is unavailable right now");
@@ -66,7 +104,11 @@ export function CreateCommunityPage() {
       !creatorVerificationState.uniqueHumanVerified ||
       input.defaultAgeGatePolicy === "18_plus" && !creatorVerificationState.ageOver18Verified
     ) {
+      pendingCreateInputRef.current = input;
       const result = await handleStartVeryVerification();
+      if (!result.started && pendingCreateInputRef.current === input) {
+        pendingCreateInputRef.current = null;
+      }
       if (!result.started) {
         throw new Error(verificationError ?? "Could not start verification");
       }
@@ -74,37 +116,12 @@ export function CreateCommunityPage() {
     }
 
     try {
-      const avatarRef = input.avatarFile ? (await api.communities.uploadMedia({ kind: "avatar", file: input.avatarFile })).media_ref : input.avatarRef;
-      const bannerRef = input.bannerFile ? (await api.communities.uploadMedia({ kind: "banner", file: input.bannerFile })).media_ref : input.bannerRef;
-      const gateRules = serializeIdentityGateDrafts(input.gateDrafts);
-
-      const result = await api.communities.create({
-        avatar_ref: avatarRef,
-        banner_ref: bannerRef,
-        display_name: input.displayName,
-        description: input.description,
-        membership_mode: input.membershipMode,
-        default_age_gate_policy: input.defaultAgeGatePolicy,
-        allow_anonymous_identity: input.allowAnonymousIdentity,
-        anonymous_identity_scope: input.anonymousIdentityScope,
-        handle_policy: { policy_template: "standard" },
-        governance_mode: "centralized",
-        gate_rules: gateRules.length > 0 ? gateRules : undefined,
-        community_bootstrap: { rules: DEFAULT_COMMUNITY_RULES.map((rule) => ({ title: rule.title, body: rule.body, report_reason: rule.title })) },
-      });
-
-      rememberKnownCommunity({
-        avatarSrc: result.community.avatar_ref ?? undefined,
-        communityId: result.community.community_id,
-        displayName: result.community.display_name ?? input.displayName,
-      });
-      navigate(`/c/${result.community.community_id}`);
-      return { communityId: result.community.community_id };
+      return await createCommunityFromInput(input);
     } catch (e: unknown) {
       const apiError = e as ApiError;
       throw new Error(apiError?.message ?? "Community creation failed");
     }
-  }, [api, connect, creatorVerificationState.ageOver18Verified, creatorVerificationState.uniqueHumanVerified, handleStartVeryVerification, session, verificationError]);
+  }, [connect, createCommunityFromInput, creatorVerificationState.ageOver18Verified, creatorVerificationState.uniqueHumanVerified, handleStartVeryVerification, session, verificationError]);
 
   if (isMobile) {
     return (

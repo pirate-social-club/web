@@ -122,8 +122,8 @@
       "publishRemix": "انشر الريمكس"
     },
     "audience": {
-      "private": "للأعضاء فقط",
-      "privateDescription": "يمكن للأعضاء المنضمين فقط قراءة هذا المنشور.",
+      "community": "للأعضاء فقط",
+      "communityDescription": "يمكن للأعضاء المنضمين فقط قراءة هذا المنشور.",
       "public": "عام",
       "publicDisabledReason": "هذا المجتمع يقيّد بالفعل من يمكنه قراءة المنشورات.",
       "publicDescription": "يمكن لأي شخص قراءة هذا المنشور."
@@ -589,7 +589,6 @@
     "handleUpdatedMessage": "تم تحديث المعرّف إلى {handle}.",
     "identitySection": "الهوية",
     "languageSection": "اللغة",
-    "linkedHandlesSection": "المعرّفات المرتبطة",
     "localeArabic": "العربية",
     "localeEnglish": "الإنجليزية",
     "localeMandarin": "الماندرين",
@@ -624,7 +623,11 @@
     "uploadAvatar": "ارفع صورة شخصية",
     "uploadCover": "ارفع غلافًا",
     "preferencesUpdated": "تم تحديث التفضيلات",
-    "walletTab": "المحفظة"
+    "walletTab": "المحفظة",
+    "publicHandlesSection": "المعرّفات العامة",
+    "pirateHandleSection": "معرّف بايرت",
+    "changeHandleLabel": "تغيير",
+    "cancelHandleChangeLabel": "إلغاء"
   },
   "notFound": {
     "body": "النسخة الأولى من الهيكل تثبّت فقط مجموعة صغيرة من المسارات: الرئيسية، الخلاصات، المجتمعات، المنشورات، الملفات الشخصية، الإعداد، عنصر نائب للوارد، وإنشاء مجتمع.",

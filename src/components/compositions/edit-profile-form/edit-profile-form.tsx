@@ -39,16 +39,21 @@ function getFieldError(
 export function GlobalHandleField({
   currentHandle,
   handleFlow,
+  expandable = false,
 }: {
   currentHandle: string;
   handleFlow: Pick<
     UseGlobalHandleFlowReturn,
     "draft" | "preview" | "state" | "setDraft" | "checkAvailability" | "submitRename" | "resetState"
   >;
+  expandable?: boolean;
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").settings;
   const { draft, preview, state, setDraft, checkAvailability, submitRename } = handleFlow;
+  const [isExpanded, setIsExpanded] = React.useState(
+    !expandable || Boolean(draft) || state.kind !== "idle",
+  );
 
   const prevDraftRef = React.useRef(draft);
   const pendingCheckRef = React.useRef(false);
@@ -89,27 +94,53 @@ export function GlobalHandleField({
     }
   };
 
+  const handleCancel = () => {
+    if (expandable) {
+      setIsExpanded(false);
+      handleFlow.resetState();
+      setDraft("");
+    }
+  };
+
   const isBusy = state.kind === "checking" || state.kind === "saving";
+
+  if (!isExpanded) {
+    return (
+      <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border bg-background">
+        <div className="flex min-h-16 flex-col items-start gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="text-base font-medium text-muted-foreground">{copy.currentHandleLabel}</div>
+          <div className="flex items-center gap-4">
+            <div className="min-w-0 max-w-full truncate text-base font-medium text-foreground">{currentHandle}</div>
+            <Button onClick={() => setIsExpanded(true)} size="sm" variant="secondary">
+              {copy.changeHandleLabel}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <FormSectionHeading title={copy.handleNotePirate} />
-      <div className="space-y-2">
-        <FormFieldLabel htmlFor="current-handle" label={copy.currentHandleLabel} />
-        <Input disabled id="current-handle" value={currentHandle} />
-      </div>
-      <div className="space-y-2">
-        <FormFieldLabel htmlFor="handle-input" label={copy.newHandleLabel} />
-        <Input
-          disabled={isBusy}
-          id="handle-input"
-          onBlur={handleBlur}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={copy.handlePlaceholder}
-          value={draft}
-        />
-        {preview ? <FormNote>{preview}</FormNote> : null}
+      {!expandable && <FormSectionHeading title={copy.handleNotePirate} />}
+      <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border bg-background">
+        <div className="flex min-h-16 flex-col items-start gap-1 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="text-base font-medium text-muted-foreground">{copy.currentHandleLabel}</div>
+          <div className="min-w-0 max-w-full truncate text-base font-medium text-foreground sm:text-end">{currentHandle}</div>
+        </div>
+        <div className="space-y-2 px-4 py-4">
+          <FormFieldLabel htmlFor="handle-input" label={copy.newHandleLabel} />
+          <Input
+            disabled={isBusy}
+            id="handle-input"
+            onBlur={handleBlur}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={copy.handlePlaceholder}
+            value={draft}
+          />
+          {preview ? <FormNote>{preview}</FormNote> : null}
+        </div>
       </div>
 
       {state.kind === "checking" && (
@@ -125,14 +156,28 @@ export function GlobalHandleField({
           {!state.freeRenameRemaining && (
             <FormNote tone="warning">{copy.renameRequiresPaidUpgrade}</FormNote>
           )}
-          <Button onClick={() => void submitRename()} size="sm">
-            {copy.renameHandle}
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button onClick={() => void submitRename()} size="sm">
+              {copy.renameHandle}
+            </Button>
+            {expandable && (
+              <Button onClick={handleCancel} size="sm" variant="ghost">
+                {copy.cancelHandleChangeLabel}
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
       {state.kind === "unavailable" && (
-        <FormNote tone="destructive">{state.reason}</FormNote>
+        <div className="space-y-3">
+          <FormNote tone="destructive">{state.reason}</FormNote>
+          {expandable && (
+            <Button onClick={handleCancel} size="sm" variant="ghost">
+              {copy.cancelHandleChangeLabel}
+            </Button>
+          )}
+        </div>
       )}
 
       {state.kind === "saving" && (
@@ -143,11 +188,36 @@ export function GlobalHandleField({
       )}
 
       {state.kind === "error" && (
-        <FormNote tone="destructive">{state.message}</FormNote>
+        <div className="space-y-3">
+          <FormNote tone="destructive">{state.message}</FormNote>
+          {expandable && (
+            <Button onClick={handleCancel} size="sm" variant="ghost">
+              {copy.cancelHandleChangeLabel}
+            </Button>
+          )}
+        </div>
       )}
 
       {state.kind === "success" && (
-        <FormNote tone="default">{copy.handleUpdatedMessage.replace("{handle}", state.newHandle)}</FormNote>
+        <div className="space-y-3">
+          <FormNote tone="default">{copy.handleUpdatedMessage.replace("{handle}", state.newHandle)}</FormNote>
+          {expandable && (
+            <Button onClick={handleCancel} size="sm" variant="ghost">
+              {copy.cancelHandleChangeLabel}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {state.kind === "idle" && expandable && (
+        <div className="flex items-center gap-3">
+          <Button disabled size="sm">
+            {copy.renameHandle}
+          </Button>
+          <Button onClick={handleCancel} size="sm" variant="ghost">
+            {copy.cancelHandleChangeLabel}
+          </Button>
+        </div>
       )}
     </div>
   );

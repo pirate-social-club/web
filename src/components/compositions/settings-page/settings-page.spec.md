@@ -7,13 +7,24 @@
 - keep `display_name` as profile presentation, not the default post byline
 - keep settings copy minimal and row-based, closer to Reddit than to a form-heavy account console
 
-## v0 information architecture
+## Information architecture
 
 - `/settings/profile`
-  - display name
-  - bio
-  - primary handle
-  - linked handles
+  - Appearance
+    - avatar
+    - cover
+  - Profile
+    - display name
+    - bio
+    - posts and comments (primary public byline preview)
+    - save profile
+  - Pirate handle
+    - current .pirate handle
+    - change handle (expandable rename flow with availability check)
+  - Public handles
+    - selectable linked handles (Pirate, ENS, etc.)
+    - primary byline selector
+    - stale handle refresh actions
 - `/settings/wallet`
   - primary wallet address
   - connected wallets
@@ -21,17 +32,17 @@
   - language
   - age verification status
 
-## Data model gap
+## Data model
 
-The current profile contract exposes one active `global_handle` plus optional `display_name`.
+The profile read model now supports:
 
-If Pirate wants ENS, `.pirate`, and other handles to coexist, the app will need a read model for:
+- `global_handle`: canonical `.pirate` identity (rename via dedicated flow)
+- `display_name` + `bio`: profile presentation fields
+- `linked_handles[]`: external/alternate handles (ENS, etc.)
+- `primary_public_handle`: the handle shown as the public byline on posts/comments
 
-- `linked_handles[]`
-- `primary_public_handle`
-- optional per-handle visibility or ordering rules
+The settings page treats these as separate save paths:
 
-Until that exists, the safest near-term rule is:
-
-- use `profile.global_handle.label` as the canonical author label
-- continue showing `display_name` only in the profile hero and editable profile fields
+- **Save profile** persists display name, bio, avatar, cover, and primary public handle.
+- **Rename handle** is a dedicated action inside the Pirate handle card.
+- **Sync linked handles** refreshes ENS-linked handles automatically.

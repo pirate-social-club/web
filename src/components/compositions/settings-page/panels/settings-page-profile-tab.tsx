@@ -107,7 +107,7 @@ function MediaControlCard({
         </div>
         <div className="flex flex-wrap gap-3">
           <HiddenFileInput
-            accept="image/png,image/jpeg,image/webp,image/gif"
+            accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
             fileLabel={selectLabel}
             onSelect={onSelect}
           />
@@ -284,11 +284,6 @@ export function ProfileTab({
             note={copy.postsAndCommentsNote}
             value={profile.postAuthorLabel}
           />
-          {profile.handleFlow && profile.currentHandle ? (
-            <div className="border-t border-border pt-5">
-              <GlobalHandleField currentHandle={profile.currentHandle} handleFlow={profile.handleFlow} />
-            </div>
-          ) : null}
           <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
             {profile.submitState.kind === "error" ? (
               <div className="me-auto text-base text-destructive">{profile.submitState.message}</div>
@@ -305,7 +300,17 @@ export function ProfileTab({
         </Card>
       </SettingsSection>
 
-      <SettingsSection title={copy.linkedHandlesSection}>
+      {profile.handleFlow && profile.currentHandle ? (
+        <SettingsSection title={copy.pirateHandleSection}>
+          <GlobalHandleField
+            currentHandle={profile.currentHandle}
+            expandable
+            handleFlow={profile.handleFlow}
+          />
+        </SettingsSection>
+      ) : null}
+
+      <SettingsSection title={copy.publicHandlesSection}>
         <HandleSelector
           handles={profile.linkedHandles}
           onValueChange={profile.onPrimaryHandleChange}

@@ -129,8 +129,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "publishRemix": "Publish remix"
         },
         "audience": {
-          "private": "Private",
-          "privateDescription": "Joined members can read this post.",
+          "community": "Community",
+          "communityDescription": "Joined members can read this post.",
           "public": "Public",
           "publicDisabledReason": "This community already limits who can read posts.",
           "publicDescription": "Anyone can read this post."
@@ -595,7 +595,6 @@ export const GENERATED_LOCALE_CATALOGS = {
         "handleUpdatedMessage": "Handle updated to {handle}.",
         "identitySection": "Identity",
         "languageSection": "Language",
-        "linkedHandlesSection": "Linked handles",
         "localeArabic": "Arabic",
         "localeEnglish": "English",
         "localeMandarin": "Mandarin",
@@ -631,7 +630,11 @@ export const GENERATED_LOCALE_CATALOGS = {
         "uploadCover": "Upload cover",
         "avatarTitle": "Avatar",
         "preferencesUpdated": "Preferences updated",
-        "walletTab": "Wallet"
+        "walletTab": "Wallet",
+        "publicHandlesSection": "Public handles",
+        "pirateHandleSection": "Pirate handle",
+        "changeHandleLabel": "Change",
+        "cancelHandleChangeLabel": "Cancel"
       },
       "notFound": {
         "body": "The first scaffold only locks a small set of routes: home, feeds, communities, posts, profiles, onboarding, inbox placeholder, and community create.",
@@ -1176,8 +1179,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "publishRemix": "انشر الريمكس"
         },
         "audience": {
-          "private": "للأعضاء فقط",
-          "privateDescription": "يمكن للأعضاء المنضمين فقط قراءة هذا المنشور.",
+          "community": "للأعضاء فقط",
+          "communityDescription": "يمكن للأعضاء المنضمين فقط قراءة هذا المنشور.",
           "public": "عام",
           "publicDisabledReason": "هذا المجتمع يقيّد بالفعل من يمكنه قراءة المنشورات.",
           "publicDescription": "يمكن لأي شخص قراءة هذا المنشور."
@@ -1643,7 +1646,6 @@ export const GENERATED_LOCALE_CATALOGS = {
         "handleUpdatedMessage": "تم تحديث المعرّف إلى {handle}.",
         "identitySection": "الهوية",
         "languageSection": "اللغة",
-        "linkedHandlesSection": "المعرّفات المرتبطة",
         "localeArabic": "العربية",
         "localeEnglish": "الإنجليزية",
         "localeMandarin": "الماندرين",
@@ -1678,7 +1680,11 @@ export const GENERATED_LOCALE_CATALOGS = {
         "uploadAvatar": "ارفع صورة شخصية",
         "uploadCover": "ارفع غلافًا",
         "preferencesUpdated": "تم تحديث التفضيلات",
-        "walletTab": "المحفظة"
+        "walletTab": "المحفظة",
+        "publicHandlesSection": "المعرّفات العامة",
+        "pirateHandleSection": "معرّف بايرت",
+        "changeHandleLabel": "تغيير",
+        "cancelHandleChangeLabel": "إلغاء"
       },
       "notFound": {
         "body": "النسخة الأولى من الهيكل تثبّت فقط مجموعة صغيرة من المسارات: الرئيسية، الخلاصات، المجتمعات، المنشورات، الملفات الشخصية، الإعداد، عنصر نائب للوارد، وإنشاء مجتمع.",
@@ -2223,8 +2229,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "publishRemix": "发布混音"
         },
         "audience": {
-          "private": "仅成员",
-          "privateDescription": "只有已加入的成员可以阅读这条帖子。",
+          "community": "仅成员",
+          "communityDescription": "只有已加入的成员可以阅读这条帖子。",
           "public": "公开",
           "publicDisabledReason": "这个社区已经限制了可阅读帖子的人群。",
           "publicDescription": "任何人都可以阅读这条帖子。"
@@ -2690,7 +2696,6 @@ export const GENERATED_LOCALE_CATALOGS = {
         "handleUpdatedMessage": "用户名已更新为 {handle}。",
         "identitySection": "身份",
         "languageSection": "语言",
-        "linkedHandlesSection": "已关联用户名",
         "localeArabic": "阿拉伯语",
         "localeEnglish": "英语",
         "localeMandarin": "中文",
@@ -2725,7 +2730,11 @@ export const GENERATED_LOCALE_CATALOGS = {
         "uploadAvatar": "上传头像",
         "uploadCover": "上传封面",
         "preferencesUpdated": "偏好已更新",
-        "walletTab": "钱包"
+        "walletTab": "钱包",
+        "publicHandlesSection": "公开用户名",
+        "pirateHandleSection": "Pirate 用户名",
+        "changeHandleLabel": "更改",
+        "cancelHandleChangeLabel": "取消"
       },
       "notFound": {
         "body": "当前脚手架只固定了一小部分路由：首页、信息流、社区、帖子、个人资料、引导、收件箱占位页和创建社区。",

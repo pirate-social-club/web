@@ -122,8 +122,8 @@
       "publishRemix": "Publish remix"
     },
     "audience": {
-      "private": "Private",
-      "privateDescription": "Joined members can read this post.",
+      "community": "Community",
+      "communityDescription": "Joined members can read this post.",
       "public": "Public",
       "publicDisabledReason": "This community already limits who can read posts.",
       "publicDescription": "Anyone can read this post."
@@ -588,7 +588,6 @@
     "handleUpdatedMessage": "Handle updated to {handle}.",
     "identitySection": "Identity",
     "languageSection": "Language",
-    "linkedHandlesSection": "Linked handles",
     "localeArabic": "Arabic",
     "localeEnglish": "English",
     "localeMandarin": "Mandarin",
@@ -624,7 +623,11 @@
     "uploadCover": "Upload cover",
     "avatarTitle": "Avatar",
     "preferencesUpdated": "Preferences updated",
-    "walletTab": "Wallet"
+    "walletTab": "Wallet",
+    "publicHandlesSection": "Public handles",
+    "pirateHandleSection": "Pirate handle",
+    "changeHandleLabel": "Change",
+    "cancelHandleChangeLabel": "Cancel"
   },
   "notFound": {
     "body": "The first scaffold only locks a small set of routes: home, feeds, communities, posts, profiles, onboarding, inbox placeholder, and community create.",

@@ -122,8 +122,8 @@
       "publishRemix": "发布混音"
     },
     "audience": {
-      "private": "仅成员",
-      "privateDescription": "只有已加入的成员可以阅读这条帖子。",
+      "community": "仅成员",
+      "communityDescription": "只有已加入的成员可以阅读这条帖子。",
       "public": "公开",
       "publicDisabledReason": "这个社区已经限制了可阅读帖子的人群。",
       "publicDescription": "任何人都可以阅读这条帖子。"
@@ -589,7 +589,6 @@
     "handleUpdatedMessage": "用户名已更新为 {handle}。",
     "identitySection": "身份",
     "languageSection": "语言",
-    "linkedHandlesSection": "已关联用户名",
     "localeArabic": "阿拉伯语",
     "localeEnglish": "英语",
     "localeMandarin": "中文",
@@ -624,7 +623,11 @@
     "uploadAvatar": "上传头像",
     "uploadCover": "上传封面",
     "preferencesUpdated": "偏好已更新",
-    "walletTab": "钱包"
+    "walletTab": "钱包",
+    "publicHandlesSection": "公开用户名",
+    "pirateHandleSection": "Pirate 用户名",
+    "changeHandleLabel": "更改",
+    "cancelHandleChangeLabel": "取消"
   },
   "notFound": {
     "body": "当前脚手架只固定了一小部分路由：首页、信息流、社区、帖子、个人资料、引导、收件箱占位页和创建社区。",

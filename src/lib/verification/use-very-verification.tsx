@@ -7,6 +7,7 @@ import type { OnboardingStatus, VerificationIntent, VerificationSession } from "
 import { useApi } from "@/lib/api";
 import type { ApiError } from "@/lib/api/client";
 import { updateSessionOnboarding } from "@/lib/api/session-store";
+import { logger } from "@/lib/logger";
 import { installVeryBridgeFetchProxy } from "@/lib/verification/very-bridge-fetch-proxy";
 
 type VeryVerificationState = "not_started" | "pending" | "verified";
@@ -33,8 +34,15 @@ export function useVeryVerification(input: {
 
   React.useEffect(() => () => cleanupWidget(), [cleanupWidget]);
 
-  const refreshOnboardingStatus = React.useCallback(async () => {
-    const status = await api.onboarding.getStatus();
+  const refreshOnboardingStatus = React.useCallback(async (verifiedSession?: VerificationSession | null) => {
+    const latestStatus = await api.onboarding.getStatus();
+    const status = verifiedSession?.status === "verified"
+      ? {
+          ...latestStatus,
+          unique_human_verification_status: "verified" as const,
+          missing_requirements: latestStatus.missing_requirements.filter((requirement) => requirement !== "unique_human_verification"),
+        }
+      : latestStatus;
     updateSessionOnboarding(status);
     try {
       await onVerified?.(status);
@@ -64,8 +72,15 @@ export function useVeryVerification(input: {
       verifyUrl: launch.verify_url,
       onSuccess: async (proof: string) => {
         try {
-          await api.verification.completeSession(result.verification_session_id, { provider_payload_ref: proof });
-          await refreshOnboardingStatus();
+          logger.info("[very-verification] widget proof valid, completing session", {
+            verificationSessionId: result.verification_session_id,
+          });
+          const completedSession = await api.verification.completeSession(result.verification_session_id, { provider_payload_ref: proof });
+          logger.info("[very-verification] session completion response", {
+            verificationSessionId: completedSession.verification_session_id,
+            status: completedSession.status,
+          });
+          await refreshOnboardingStatus(completedSession);
           setVerificationSessionId(null);
           setVerificationError(null);
         } catch (error: unknown) {

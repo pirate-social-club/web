@@ -7,6 +7,7 @@ import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
+import { logger } from "@/lib/logger";
 import type { ApiError } from "@/lib/api/client";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import type { SpacesChallengePayload } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
@@ -73,6 +74,11 @@ export function CreateCommunityPage() {
     verificationIntent: "community_creation",
     onVerified: async (status) => {
       const input = pendingCreateInputRef.current;
+      logger.info("[create-community] Very verification callback", {
+        hasPendingInput: !!input,
+        communityCreationReady: status.community_creation_ready,
+        uniqueHumanVerificationStatus: status.unique_human_verification_status,
+      });
       if (!input) return;
       if (!status.community_creation_ready && status.unique_human_verification_status !== "verified") {
         throw new Error("Verification completed, but community creation is not ready yet");
@@ -82,6 +88,7 @@ export function CreateCommunityPage() {
       }
 
       try {
+        logger.info("[create-community] creating community after verification");
         await createCommunityFromInput(input);
       } finally {
         if (pendingCreateInputRef.current === input) {

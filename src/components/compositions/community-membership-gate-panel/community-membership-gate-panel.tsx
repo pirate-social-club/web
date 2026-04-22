@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import type { JoinEligibility, MembershipGateSummary } from "@pirate/api-contracts";
+import { ArrowSquareOut } from "@phosphor-icons/react";
 import QRCode from "qrcode";
 
 import { Button } from "@/components/primitives/button";
@@ -156,7 +157,7 @@ export function CommunityMembershipGatePanel({
     <CardShell className="px-5 py-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0 space-y-1.5">
-          <p className="text-base font-semibold text-foreground">{title}</p>
+          <p className="text-lg font-semibold leading-7 text-foreground">{title}</p>
           {description ? (
             <p className={`text-base leading-6 ${descriptionTone}`}>{description}</p>
           ) : null}
@@ -164,8 +165,9 @@ export function CommunityMembershipGatePanel({
 
         {showPromptAction ? (
           <Button asChild className="w-full shrink-0 md:w-auto" variant="secondary">
-            <a href={activePrompt.href ?? undefined} rel="noopener noreferrer" target="_blank">
-              {activePrompt.actionLabel}
+            <a className="gap-2" href={activePrompt.href ?? undefined} rel="noopener noreferrer" target="_blank">
+              <span>{activePrompt.actionLabel}</span>
+              <ArrowSquareOut className="size-5" />
             </a>
           </Button>
         ) : null}

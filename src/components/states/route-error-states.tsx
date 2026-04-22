@@ -51,7 +51,7 @@ export function RootAppErrorState({
           )}
         >
           <StatusCard
-            title={title}
+            title="Try again"
             description={description}
             tone="warning"
           />

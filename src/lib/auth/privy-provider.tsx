@@ -331,6 +331,10 @@ export function PirateAuthProvider({
     setPendingConnect(true);
   }, [appId, loadedConnect]);
 
+  const handleConnectReady = React.useCallback((next: (() => void) | null) => {
+    setLoadedConnect((current) => current === next ? current : next);
+  }, []);
+
   React.useEffect(() => {
     if (!pendingConnect || !loadedConnect) {
       return;
@@ -384,7 +388,7 @@ export function PirateAuthProvider({
         <BridgeComponent
           connectedWallets={connectedWallets}
           onBusyChange={setBusy}
-          onConnectReady={(next) => setLoadedConnect(() => next)}
+          onConnectReady={handleConnectReady}
           onModalClosed={unloadPrivy}
           onReadyChange={setPrivyReady}
         />

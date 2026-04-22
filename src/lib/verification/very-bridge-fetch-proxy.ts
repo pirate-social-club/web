@@ -42,7 +42,7 @@ export function installVeryBridgeFetchProxy(): () => void {
   }
 
   const originalFetch = window.fetch;
-  const proxiedFetch: typeof window.fetch = (input, init) => {
+  const proxiedFetch: typeof window.fetch = async (input, init) => {
     const sourceUrl = readFetchUrl(input);
     const proxyPath = sourceUrl ? resolveVeryBridgeProxyPath(sourceUrl) : null;
     if (!sourceUrl || !proxyPath) {
@@ -52,17 +52,35 @@ export function installVeryBridgeFetchProxy(): () => void {
     const sourceRequest = input instanceof Request
       ? new Request(input, init)
       : new Request(sourceUrl, init);
-    const proxiedRequest = new Request(resolveApiUrl(proxyPath), sourceRequest);
-    const headers = new Headers(proxiedRequest.headers);
+    const headers = new Headers();
+    const contentType = sourceRequest.headers.get("content-type");
+    const accept = sourceRequest.headers.get("accept");
+    if (contentType) {
+      headers.set("content-type", contentType);
+    }
+    if (accept) {
+      headers.set("accept", accept);
+    }
     const token = getAccessToken();
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
     }
-    if (!headers.has("content-type") && proxiedRequest.body != null) {
+    const body = sourceRequest.method === "GET" || sourceRequest.method === "HEAD"
+      ? undefined
+      : await sourceRequest.clone().arrayBuffer();
+    if (!headers.has("content-type") && body != null && body.byteLength > 0) {
       headers.set("content-type", "application/json");
     }
 
-    return originalFetch.call(window, new Request(proxiedRequest, { headers }));
+    return originalFetch.call(window, resolveApiUrl(proxyPath), {
+      body,
+      credentials: "omit",
+      headers,
+      method: sourceRequest.method,
+      mode: "cors",
+      redirect: sourceRequest.redirect,
+      signal: sourceRequest.signal,
+    });
   };
 
   window.fetch = proxiedFetch;

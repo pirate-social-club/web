@@ -59,19 +59,17 @@ describe("Very bridge fetch proxy", () => {
       }));
 
       expect(response.ok).toBe(true);
-      expect(capturedInit).toBe(undefined);
-      const forwardedInput = capturedInput as unknown;
-      expect(forwardedInput instanceof Request).toBe(true);
-      if (!(forwardedInput instanceof Request)) {
-        throw new Error("Expected Very bridge proxy to forward a Request");
+      expect(capturedInput).toBe("http://127.0.0.1:8787/verification-sessions/very-bridge/sessions");
+      if (!capturedInit) {
+        throw new Error("Expected Very bridge proxy to forward explicit init");
       }
 
-      const request = forwardedInput;
-      expect(request.url).toBe("http://127.0.0.1:8787/verification-sessions/very-bridge/sessions");
-      expect(request.method).toBe("POST");
-      expect(request.headers.get("content-type")).toBe("application/json");
-      expect(request.headers.get("x-widget")).toBe("very");
-      expect(await request.clone().text()).toBe("{\"iv\":\"iv-1\",\"payload\":\"payload-1\"}");
+      const headers = new Headers(capturedInit.headers);
+      expect(capturedInit.method).toBe("POST");
+      expect(capturedInit.credentials).toBe("omit");
+      expect(headers.get("content-type")).toBe("application/json");
+      expect(headers.get("x-widget")).toBeNull();
+      expect(new TextDecoder().decode(capturedInit.body as ArrayBuffer)).toBe("{\"iv\":\"iv-1\",\"payload\":\"payload-1\"}");
     } finally {
       cleanupProxy();
       restoreWindow();

@@ -8,6 +8,10 @@ import {
 import {
   getHnsVerificationMode,
 } from "@/components/compositions/namespace-verification/namespace-verification-hns-ui";
+import {
+  canonicalizeNamespaceRootInput,
+  canonicalizeNamespaceRootLabel,
+} from "@/components/compositions/namespace-verification/namespace-labels";
 
 import type {
   NamespaceFamily,
@@ -43,6 +47,9 @@ export type UseNamespaceVerificationFlowReturn = {
   operationClass: NamespaceVerificationOperationClass | null;
   pirateDnsAuthorityVerified: boolean | null;
   setupNameservers: string[] | null;
+  rootLabelError: string | null;
+  canonicalNamespaceKey: string | null;
+  routePreviewPath: string | null;
   resuming: boolean;
   isIdle: boolean;
   isStarting: boolean;
@@ -54,6 +61,7 @@ export type UseNamespaceVerificationFlowReturn = {
   isFailed: boolean;
   isExpired: boolean;
   busy: boolean;
+  canStart: boolean;
   isHns: boolean;
   isSpaces: boolean;
   canSubmitSignature: boolean;
@@ -104,6 +112,10 @@ export function useNamespaceVerificationFlow({
   const [setupNameservers, setSetupNameservers] =
     React.useState<NamespaceVerificationStartResult["setupNameservers"]>(null);
   const [resuming, setResuming] = React.useState(false);
+  const rootLabelResult = React.useMemo(
+    () => canonicalizeNamespaceRootLabel(activeFamily, rootLabel),
+    [activeFamily, rootLabel],
+  );
 
   const callbacksRef = React.useRef(callbacks);
   callbacksRef.current = callbacks;
@@ -127,6 +139,15 @@ export function useNamespaceVerificationFlow({
     setOperationClass(null);
     setPirateDnsAuthorityVerified(null);
     setSetupNameservers(null);
+  }, []);
+
+  const setRootLabelInput = React.useCallback((value: string) => {
+    setRootLabel(canonicalizeNamespaceRootInput(activeFamily, value));
+  }, [activeFamily]);
+
+  const setActiveFamilyInput = React.useCallback((family: NamespaceFamily) => {
+    setActiveFamily(family);
+    setRootLabel((value) => canonicalizeNamespaceRootInput(family, value));
   }, []);
 
   const reset = React.useCallback(() => {
@@ -202,14 +223,17 @@ export function useNamespaceVerificationFlow({
   ]);
 
   const start = React.useCallback(() => {
-    const trimmed = rootLabel.trim().replace(/^[@.]/, "");
-    if (!trimmed) return Promise.resolve();
+    if (rootLabelResult.empty) return Promise.resolve();
+    if (!rootLabelResult.ok) {
+      toast.error("Enter a valid namespace root");
+      return Promise.resolve();
+    }
 
     setState("starting");
     setFailureReason(null);
 
     return callbacksRef.current
-      .onStartSession({ family: activeFamily, rootLabel: trimmed })
+      .onStartSession({ family: activeFamily, rootLabel: rootLabelResult.rootLabel })
       .then((result) => {
         applySessionResult(result);
         onSessionStartedRef.current?.(result.namespaceVerificationSessionId);
@@ -220,7 +244,7 @@ export function useNamespaceVerificationFlow({
           error instanceof Error ? error.message : "Could not start verification",
         );
       });
-  }, [activeFamily, applySessionResult, rootLabel]);
+  }, [activeFamily, applySessionResult, rootLabelResult]);
 
   const verify = React.useCallback(() => {
     if (!sessionId) return Promise.resolve();
@@ -273,10 +297,16 @@ export function useNamespaceVerificationFlow({
 
   const restart = React.useCallback(() => {
     if (!sessionId) {
-      const trimmed = rootLabelRef.current.trim().replace(/^[@.]/, "");
-      if (!trimmed) {
+      const currentRootLabel = canonicalizeNamespaceRootLabel(activeFamily, rootLabelRef.current);
+      if (currentRootLabel.empty) {
         setState("idle");
         resetChallengeState();
+        return Promise.resolve();
+      }
+      if (!currentRootLabel.ok) {
+        setState("idle");
+        resetChallengeState();
+        toast.error("Enter a valid namespace root");
         return Promise.resolve();
       }
 
@@ -284,7 +314,7 @@ export function useNamespaceVerificationFlow({
       setFailureReason(null);
 
       return callbacksRef.current
-        .onStartSession({ family: activeFamily, rootLabel: trimmed })
+        .onStartSession({ family: activeFamily, rootLabel: currentRootLabel.rootLabel })
         .then((result) => {
           applySessionResult(result);
           onSessionStartedRef.current?.(result.namespaceVerificationSessionId);
@@ -349,6 +379,7 @@ export function useNamespaceVerificationFlow({
   const isFailed = state === "failed";
   const isExpired = state === "expired";
   const busy = isStarting || isVerifying;
+  const canStart = rootLabelResult.ok;
   const isHns = activeFamily === "hns";
   const isSpaces = activeFamily === "spaces";
   const canSubmitSignature = isSpaces ? signature.trim().length > 0 : true;
@@ -385,6 +416,9 @@ export function useNamespaceVerificationFlow({
     operationClass,
     pirateDnsAuthorityVerified,
     setupNameservers,
+    rootLabelError: rootLabelResult.ok || rootLabelResult.empty ? null : "Invalid namespace root",
+    canonicalNamespaceKey: rootLabelResult.ok ? rootLabelResult.namespaceKey : null,
+    routePreviewPath: rootLabelResult.ok ? rootLabelResult.routePath : null,
     resuming,
     isIdle,
     isStarting,
@@ -396,14 +430,15 @@ export function useNamespaceVerificationFlow({
     isFailed,
     isExpired,
     busy,
+    canStart,
     isHns,
     isSpaces,
     canSubmitSignature,
     hnsMode,
     shouldShowResumeState,
     actions: {
-      setRootLabel,
-      setActiveFamily,
+      setRootLabel: setRootLabelInput,
+      setActiveFamily: setActiveFamilyInput,
       setSignature,
       start,
       verify,

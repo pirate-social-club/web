@@ -890,6 +890,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "newChallenge": "New challenge",
           "getChallenge": "Get challenge",
           "verifyAction": "Verify",
+          "routePreviewLabel": "Route",
+          "invalidRootLabel": "Invalid namespace root.",
           "hnsSetupNote": "Start with nameserver setup when the root does not already have authoritative DNS. Only add TXT after that path is live.",
           "family": {
             "handshakeLabel": "Handshake",
@@ -1956,6 +1958,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "newChallenge": "New challenge",
           "getChallenge": "Get challenge",
           "verifyAction": "Verify",
+          "routePreviewLabel": "Route",
+          "invalidRootLabel": "Invalid namespace root.",
           "hnsSetupNote": "Start with nameserver setup when the root does not already have authoritative DNS. Only add TXT after that path is live.",
           "family": {
             "handshakeLabel": "Handshake",
@@ -3022,6 +3026,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "newChallenge": "New challenge",
           "getChallenge": "Get challenge",
           "verifyAction": "Verify",
+          "routePreviewLabel": "Route",
+          "invalidRootLabel": "Invalid namespace root.",
           "hnsSetupNote": "Start with nameserver setup when the root does not already have authoritative DNS. Only add TXT after that path is live.",
           "family": {
             "handshakeLabel": "Handshake",

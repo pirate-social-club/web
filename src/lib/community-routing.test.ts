@@ -7,6 +7,10 @@ describe("buildCommunityPath", () => {
     expect(buildCommunityPath("cmt_test", "builders")).toBe("/c/builders");
   });
 
+  test("keeps Spaces route markers readable", () => {
+    expect(buildCommunityPath("cmt_test", "@xn--t77hga")).toBe("/c/@xn--t77hga");
+  });
+
   test("falls back to the community id when no route slug exists", () => {
     expect(buildCommunityPath("cmt_test", null)).toBe("/c/cmt_test");
   });

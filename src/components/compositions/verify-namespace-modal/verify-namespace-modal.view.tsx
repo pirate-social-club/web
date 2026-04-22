@@ -48,7 +48,6 @@ const namespaceFamilyMeta: Record<
 > = {
   hns: {
     externalExample: "kanye",
-    rootInputPrefix: ".",
     icon: <img alt="" className="size-full object-cover" src={handshakeLogoUrl} />,
   },
   spaces: {
@@ -93,6 +92,7 @@ function getFailureMessage({
 export function VerifyNamespaceModalView({
   activeFamily,
   busy,
+  canStart,
   canSubmitSignature,
   challengeHost,
   challengePayload,
@@ -122,11 +122,14 @@ export function VerifyNamespaceModalView({
   open,
   resuming,
   rootLabel,
+  rootLabelError,
+  routePreviewPath,
   setupNameservers,
   signature,
 }: {
   activeFamily: NamespaceFamily;
   busy: boolean;
+  canStart: boolean;
   canSubmitSignature: boolean;
   challengeHost: string | null;
   challengePayload: SpacesChallengePayload | null;
@@ -156,6 +159,8 @@ export function VerifyNamespaceModalView({
   open: boolean;
   resuming: boolean;
   rootLabel: string;
+  rootLabelError: string | null;
+  routePreviewPath: string | null;
   setupNameservers: string[] | null;
   signature: string;
 }) {
@@ -167,8 +172,6 @@ export function VerifyNamespaceModalView({
     hns: { label: family.handshakeLabel, rootInputLabel: family.handshakeRootLabel },
     spaces: { label: family.spacesLabel, rootInputLabel: family.spacesRootLabel },
   };
-  const hasRootInput = rootLabel.trim().replace(/^[@.]/, "").length > 0;
-
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
       <ModalContent className="border-border bg-background p-6 sm:w-[min(100%-2rem,34rem)] sm:max-w-[34rem]">
@@ -209,6 +212,11 @@ export function VerifyNamespaceModalView({
                   prefix={meta.rootInputPrefix ?? ""}
                   value={rootLabel}
                 />
+                {rootLabelError ? (
+                  <FormNote className="mt-2" tone="warning">{mc.invalidRootLabel}</FormNote>
+                ) : routePreviewPath ? (
+                  <FormNote className="mt-2">{mc.routePreviewLabel}: {routePreviewPath}</FormNote>
+                ) : null}
               </div>
 
             </>
@@ -315,7 +323,7 @@ export function VerifyNamespaceModalView({
               <>
                 <Button onClick={() => onOpenChange(false)} variant="outline">{mc.cancelLabel}</Button>
                 <Button
-                  disabled={!hasRootInput}
+                  disabled={!canStart}
                   loading={isStarting}
                   onClick={onStart}
                 >

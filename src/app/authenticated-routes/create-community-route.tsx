@@ -192,6 +192,7 @@ export function toNamespaceSessionResult(result: {
   namespace_verification_session_id: string;
   family: "hns" | "spaces";
   submitted_root_label: string;
+  normalized_root_label?: string | null;
   challenge_host?: string | null;
   challenge_txt_value?: string | null;
   challenge_payload?: Record<string, unknown> | null;
@@ -204,7 +205,7 @@ export function toNamespaceSessionResult(result: {
   return {
     namespaceVerificationSessionId: result.namespace_verification_session_id,
     family: result.family,
-    rootLabel: result.submitted_root_label,
+    rootLabel: result.normalized_root_label ?? result.submitted_root_label,
     challengeHost: result.challenge_host ?? null,
     challengeTxtValue: result.challenge_txt_value ?? null,
     challengePayload: toSpacesChallengePayload(result.challenge_payload),

@@ -34,6 +34,7 @@ export function VerifyNamespaceModal({
     <VerifyNamespaceModalView
       activeFamily={flow.activeFamily}
       busy={flow.busy}
+      canStart={flow.canStart}
       canSubmitSignature={flow.canSubmitSignature}
       challengeHost={flow.challengeHost}
       challengePayload={flow.challengePayload}
@@ -63,6 +64,8 @@ export function VerifyNamespaceModal({
       open={open}
       resuming={flow.resuming}
       rootLabel={flow.rootLabel}
+      rootLabelError={flow.rootLabelError}
+      routePreviewPath={flow.routePreviewPath}
       setupNameservers={flow.setupNameservers}
       signature={flow.signature}
     />

@@ -36,7 +36,6 @@ const namespaceFamilyMeta: Record<NamespaceFamily, {
 }> = {
   hns: {
     externalExample: "infinity",
-    rootInputPrefix: ".",
     icon: <img alt="" className="size-full object-cover" src={handshakeLogoUrl} />,
   },
   spaces: {
@@ -87,7 +86,6 @@ export function CommunityNamespaceVerificationPage({
   });
 
   const meta = namespaceFamilyMeta[flow.activeFamily];
-  const hasRootInput = flow.rootLabel.trim().replace(/^[@.]/, "").length > 0;
 
   return (
     <section className="mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8">
@@ -133,6 +131,11 @@ export function CommunityNamespaceVerificationPage({
                 prefix={meta.rootInputPrefix ?? ""}
                 value={flow.rootLabel}
               />
+              {flow.rootLabelError ? (
+                <FormNote tone="warning">{mc.invalidRootLabel}</FormNote>
+              ) : flow.routePreviewPath ? (
+                <FormNote>{mc.routePreviewLabel}: {flow.routePreviewPath}</FormNote>
+              ) : null}
             </div>
 
           </>
@@ -240,7 +243,7 @@ export function CommunityNamespaceVerificationPage({
         {(flow.isIdle || flow.isStarting) ? (
           <>
             <Button onClick={flow.actions.reset} variant="outline">{mc.cancelLabel}</Button>
-            <Button disabled={!hasRootInput} loading={flow.isStarting} onClick={flow.actions.start}>
+            <Button disabled={!flow.canStart} loading={flow.isStarting} onClick={flow.actions.start}>
               {flow.isHns ? mc.continueLabel : mc.getChallenge}
             </Button>
           </>

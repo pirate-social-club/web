@@ -108,6 +108,61 @@ describe("useNamespaceVerificationFlow", () => {
     expect(result.current.busy).toBe(false);
   });
 
+  test("spaces input canonicalizes emoji roots before starting", async () => {
+    let submittedRootLabel = "";
+
+    const { result } = renderHook(() =>
+      useNamespaceVerificationFlow({
+        callbacks: createMockCallbacks({
+          onStartSession: ({ rootLabel }) => {
+            submittedRootLabel = rootLabel;
+            return Promise.resolve(
+              mockStartResult({
+                family: "spaces",
+                rootLabel,
+                status: "challenge_required",
+              }),
+            );
+          },
+        }),
+        enabled: true,
+        initialFamily: "spaces",
+      }),
+    );
+
+    act(() => {
+      result.current.actions.setRootLabel("\u{1F1F5}\u{1F1F8}");
+    });
+
+    expect(result.current.rootLabel).toBe("xn--t77hga");
+    expect(result.current.canonicalNamespaceKey).toBe("@xn--t77hga");
+    expect(result.current.routePreviewPath).toBe("/c/@xn--t77hga");
+
+    await act(async () => {
+      await result.current.actions.start();
+    });
+
+    expect(submittedRootLabel).toBe("xn--t77hga");
+  });
+
+  test("hns route preview stays unprefixed", () => {
+    const { result } = renderHook(() =>
+      useNamespaceVerificationFlow({
+        callbacks: createMockCallbacks(),
+        enabled: true,
+        initialFamily: "hns",
+      }),
+    );
+
+    act(() => {
+      result.current.actions.setRootLabel("MyRoot");
+    });
+
+    expect(result.current.rootLabel).toBe("myroot");
+    expect(result.current.canonicalNamespaceKey).toBe("myroot");
+    expect(result.current.routePreviewPath).toBe("/c/myroot");
+  });
+
   test("start returns dns_setup_required", async () => {
     const { result } = renderHook(() =>
       useNamespaceVerificationFlow({

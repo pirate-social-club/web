@@ -5,13 +5,7 @@ import * as React from "react";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 
 export function useShellMobileLayout() {
-  const [isMobileLayout, setIsMobileLayout] = React.useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-
-    return window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches;
-  });
+  const [isMobileLayout, setIsMobileLayout] = React.useState(false);
 
   React.useEffect(() => {
     const mobileWidthQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);

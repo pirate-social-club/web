@@ -190,13 +190,9 @@ export function PirateAuthProvider({
       loginMessage: "Use Privy to continue into the Pirate onboarding flow.",
       theme: "dark",
       showWalletLoginFirst: false,
-      walletList: ["detected_wallets", "rabby_wallet", "metamask", "coinbase_wallet", "wallet_connect"],
+      walletList: ["detected_ethereum_wallets", "metamask", "coinbase_wallet", "wallet_connect"],
     },
-    loginMethods: ["wallet", "email", "google", "apple", "twitter", "discord", "github", "passkey"],
-    loginMethodsAndOrder: {
-      primary: ["google", "twitter"],
-      overflow: ["email", "apple", "discord", "github", "wallet_connect"],
-    },
+    loginMethods: ["wallet", "email", "google", "twitter", "telegram", "passkey"],
     embeddedWallets: {
       ethereum: {
         createOnLogin: "off",

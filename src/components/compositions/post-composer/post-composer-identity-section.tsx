@@ -8,7 +8,6 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/components/primitives/combobox";
-import { FormSectionHeading } from "@/components/primitives/form-layout";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import type {
@@ -72,14 +71,9 @@ export function QualifierSection({
   const activeQualifiers = availableQualifiers.filter((qualifier) =>
     selectedQualifierIds.includes(qualifier.qualifierId),
   );
-  const helpText =
-    identity.helpText ??
-    copy.identity.qualifiersHelp;
 
   return (
-    <section className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
-      <FormSectionHeading description={helpText} title={copy.sections.qualifiers} />
-
+    <section className="rounded-[var(--radius-lg)] border border-border-soft bg-card p-3">
       {availableQualifiers.length > 0 ? (
         <Combobox
           multiple

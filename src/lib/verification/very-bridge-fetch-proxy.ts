@@ -45,23 +45,24 @@ export function installVeryBridgeFetchProxy(): () => void {
   const proxiedFetch: typeof window.fetch = (input, init) => {
     const sourceUrl = readFetchUrl(input);
     const proxyPath = sourceUrl ? resolveVeryBridgeProxyPath(sourceUrl) : null;
-    if (!proxyPath) {
+    if (!sourceUrl || !proxyPath) {
       return originalFetch.call(window, input, init);
     }
 
-    const headers = new Headers(init?.headers);
+    const sourceRequest = input instanceof Request
+      ? new Request(input, init)
+      : new Request(sourceUrl, init);
+    const proxiedRequest = new Request(resolveApiUrl(proxyPath), sourceRequest);
+    const headers = new Headers(proxiedRequest.headers);
     const token = getAccessToken();
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
     }
-    if (!headers.has("content-type") && init?.body != null) {
+    if (!headers.has("content-type") && proxiedRequest.body != null) {
       headers.set("content-type", "application/json");
     }
 
-    return originalFetch.call(window, resolveApiUrl(proxyPath), {
-      ...init,
-      headers,
-    });
+    return originalFetch.call(window, new Request(proxiedRequest, { headers }));
   };
 
   window.fetch = proxiedFetch;

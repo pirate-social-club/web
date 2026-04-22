@@ -198,6 +198,7 @@ export function CommunityGatesEditorPage({
   };
   const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
   const minimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
+  const walletScoreGate = gateDrafts.find((draft) => draft.gateType === "wallet_score");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const courtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? true;
@@ -312,6 +313,41 @@ export function CommunityGatesEditorPage({
                 />
                 {(!Number.isInteger(minimumAgeGate.minimumAge) || minimumAgeGate.minimumAge < 18 || minimumAgeGate.minimumAge > 125) ? (
                   <FormNote tone="warning">{mc.minimumAgeInvalid}</FormNote>
+                ) : null}
+              </div>
+            ) : null}
+
+            <CheckboxCard
+              checked={Boolean(walletScoreGate)}
+              description={mc.walletScoreDescription}
+              title={mc.walletScoreTitle}
+              onCheckedChange={(checked) => onGateDraftsChange?.(
+                checked
+                  ? upsertGateDraft(gateDrafts, {
+                    gateType: "wallet_score",
+                    provider: "passport",
+                    minimumScore: 20,
+                  })
+                  : removeGateDraft(gateDrafts, "wallet_score"),
+              )}
+            />
+
+            {walletScoreGate ? (
+              <div className="space-y-2 border-l-2 border-primary pl-4">
+                <FormFieldLabel label={mc.walletScoreLabel} />
+                <NumericStepper
+                  max={100}
+                  min={0}
+                  value={walletScoreGate.minimumScore}
+                  onChange={(next) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                    gateType: "wallet_score",
+                    provider: "passport",
+                    minimumScore: next,
+                    gateRuleId: walletScoreGate.gateRuleId,
+                  }))}
+                />
+                {(!Number.isFinite(walletScoreGate.minimumScore) || walletScoreGate.minimumScore < 0 || walletScoreGate.minimumScore > 100) ? (
+                  <FormNote tone="warning">{mc.walletScoreInvalid}</FormNote>
                 ) : null}
               </div>
             ) : null}

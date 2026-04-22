@@ -20,6 +20,12 @@ export type IdentityGateDraft =
     gateRuleId?: string;
   }
   | {
+    gateType: "wallet_score";
+    provider: "passport";
+    minimumScore: number;
+    gateRuleId?: string;
+  }
+  | {
     gateType: "gender";
     provider: "self";
     requiredValue: "M" | "F";

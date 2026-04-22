@@ -10,9 +10,9 @@ import type {
   IdentityGateDraft,
 } from "@/components/compositions/create-community-composer/create-community-composer.types";
 
-// Note: CommunityGatesEditorPage supports nationality, Ethereum ERC-721, and
-// Courtyard inventory-match gates. unique_human, age_over_18, and wallet_score
-// gates are valid in v0 but not yet configurable through this UI.
+// Note: CommunityGatesEditorPage supports nationality, Passport score,
+// Ethereum ERC-721, and Courtyard inventory-match gates. unique_human and
+// age_over_18 gates are valid in v0 but not yet configurable through this UI.
 const meta = {
   title: "Compositions/Moderation/Gates",
   component: CommunityGatesEditorPage,

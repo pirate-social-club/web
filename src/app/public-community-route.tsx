@@ -379,19 +379,25 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     }
 
     const provider = resolveSuggestedVerificationProvider(gate.eligibility);
+    const passportPrompt = getVerificationPromptCopy("passport", ["wallet_score"], { locale });
     return {
-      description: action === "vote_post" || action === "vote_comment"
-        ? copy.interactionGate.verifyToVoteDescription
-        : copy.interactionGate.verifyToReplyDescription,
+      description: provider === "passport"
+        ? passportPrompt.description
+        : action === "vote_post" || action === "vote_comment"
+          ? copy.interactionGate.verifyToVoteDescription
+          : copy.interactionGate.verifyToReplyDescription,
       primaryAction: {
-        label: copy.createCommunity.startVerification,
-        loading: provider === "very" ? veryLoading : selfLoading,
+        label: provider === "passport" ? passportPrompt.actionLabel : copy.createCommunity.startVerification,
+        loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
         onClick: async () => {
           if (provider === "very") {
             const result = await startVeryVerification();
             if (result.started) {
               closeModal();
             }
+          } else if (provider === "passport") {
+            window.open("https://app.passport.xyz/", "_blank", "noopener,noreferrer");
+            closeModal();
           } else {
             const result = await startSelfVerification({
               eligibility: gate.eligibility,
@@ -408,11 +414,13 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         label: copy.interactionGate.close,
         onClick: closeModal,
       },
-      title: action === "vote_post" || action === "vote_comment"
-        ? copy.interactionGate.verifyToVoteTitle
-        : copy.interactionGate.verifyToReplyTitle,
+      title: provider === "passport"
+        ? passportPrompt.title
+        : action === "vote_post" || action === "vote_comment"
+          ? copy.interactionGate.verifyToVoteTitle
+          : copy.interactionGate.verifyToReplyTitle,
     };
-  }, [copy.createCommunity.startVerification, copy.interactionGate, selfLoading, startSelfVerification, startVeryVerification, veryLoading]);
+  }, [copy.createCommunity.startVerification, copy.interactionGate, locale, selfLoading, startSelfVerification, startVeryVerification, veryLoading]);
 
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
     const previousPost = posts.find((candidate) => candidate.post.post_id === postId);

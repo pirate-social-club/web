@@ -15,6 +15,7 @@ import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import {
   getJoinCtaLabel,
+  getVerificationPromptCopy,
 } from "@/lib/identity-gates";
 import { logger } from "@/lib/logger";
 import { interpolateMessage } from "@/lib/route-messages";
@@ -81,6 +82,25 @@ function createDefaultBlockedModalState({
 
   switch (gate.eligibility.status) {
     case "verification_required":
+      if (gate.eligibility.suggested_verification_provider === "passport") {
+        const passportPrompt = getVerificationPromptCopy("passport", ["wallet_score"], { locale: interactionCopy.locale });
+        return {
+          description: passportPrompt.description,
+          primaryAction: {
+            label: passportPrompt.actionLabel,
+            onClick: () => {
+              window.open("https://app.passport.xyz/", "_blank", "noopener,noreferrer");
+              closeModal();
+            },
+          },
+          requirements: gate.preview.membership_gate_summaries,
+          secondaryAction: {
+            label: interactionCopy.close,
+            onClick: closeModal,
+          },
+          title: passportPrompt.title,
+        };
+      }
       return {
         description: isVoteAction
           ? interactionCopy.verifyToVoteDescription

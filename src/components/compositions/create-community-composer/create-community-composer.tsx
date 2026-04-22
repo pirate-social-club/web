@@ -111,6 +111,7 @@ export function CreateCommunityComposer({
   const [activeDescription, setActiveDescription] = React.useState(description ?? "");
   const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
   const minimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
+  const walletScoreGate = gateDrafts.find((draft) => draft.gateType === "wallet_score");
   const genderGate = gateDrafts.find((draft) => draft.gateType === "gender");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const courtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
@@ -120,6 +121,8 @@ export function CreateCommunityComposer({
   );
   const [minimumAgeEnabled, setMinimumAgeEnabled] = React.useState(Boolean(minimumAgeGate));
   const [minimumAge, setMinimumAge] = React.useState(minimumAgeGate?.minimumAge ?? 30);
+  const [walletScoreEnabled, setWalletScoreEnabled] = React.useState(Boolean(walletScoreGate));
+  const [minimumWalletScore, setMinimumWalletScore] = React.useState(walletScoreGate?.minimumScore ?? 20);
   const [genderEnabled, setGenderEnabled] = React.useState(Boolean(genderGate));
   const [genderRequiredValue, setGenderRequiredValue] = React.useState<"M" | "F">(
     genderGate?.requiredValue ?? "F",
@@ -163,7 +166,9 @@ export function CreateCommunityComposer({
               ? [draft.gateType, draft.provider, draft.requiredValues.join(","), draft.gateRuleId ?? ""].join(":")
               : draft.gateType === "minimum_age"
                 ? [draft.gateType, draft.provider, draft.minimumAge, draft.gateRuleId ?? ""].join(":")
-                : [draft.gateType, draft.provider, draft.requiredValue, draft.gateRuleId ?? ""].join(":")
+                : draft.gateType === "wallet_score"
+                  ? [draft.gateType, draft.provider, draft.minimumScore, draft.gateRuleId ?? ""].join(":")
+                  : [draft.gateType, draft.provider, draft.requiredValue, draft.gateRuleId ?? ""].join(":")
         ))
         .sort()
         .join("|"),
@@ -195,6 +200,9 @@ export function CreateCommunityComposer({
       : []),
     ...(minimumAgeEnabled && Number.isInteger(minimumAge) && minimumAge >= 18 && minimumAge <= 125
       ? [{ gateType: "minimum_age" as const, provider: "self" as const, minimumAge }]
+      : []),
+    ...(walletScoreEnabled && Number.isFinite(minimumWalletScore) && minimumWalletScore >= 0 && minimumWalletScore <= 100
+      ? [{ gateType: "wallet_score" as const, provider: "passport" as const, minimumScore: minimumWalletScore }]
       : []),
     ...(genderEnabled
       ? [{ gateType: "gender" as const, provider: "self" as const, requiredValue: genderRequiredValue }]
@@ -242,6 +250,10 @@ export function CreateCommunityComposer({
     const nextMinimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
     setMinimumAgeEnabled(Boolean(nextMinimumAgeGate));
     setMinimumAge(nextMinimumAgeGate?.minimumAge ?? 30);
+
+    const nextWalletScoreGate = gateDrafts.find((draft) => draft.gateType === "wallet_score");
+    setWalletScoreEnabled(Boolean(nextWalletScoreGate));
+    setMinimumWalletScore(nextWalletScoreGate?.minimumScore ?? 20);
 
     const nextGenderGate = gateDrafts.find((draft) => draft.gateType === "gender");
     setGenderEnabled(Boolean(nextGenderGate));
@@ -313,7 +325,8 @@ export function CreateCommunityComposer({
 
   const erc721GateValid = !erc721Enabled || isAddress(erc721ContractAddress.trim());
   const courtyardInventoryGateValid = !courtyardInventoryEnabled || isValidCourtyardInventoryDraft(courtyardInventoryDraft);
-  const gateDraftsValid = activeMembershipMode !== "gated" || (activeGateDrafts.length > 0 && erc721GateValid && courtyardInventoryGateValid);
+  const walletScoreGateValid = !walletScoreEnabled || (Number.isFinite(minimumWalletScore) && minimumWalletScore >= 0 && minimumWalletScore <= 100);
+  const gateDraftsValid = activeMembershipMode !== "gated" || (activeGateDrafts.length > 0 && erc721GateValid && courtyardInventoryGateValid && walletScoreGateValid);
 
   const canCreateCommunity = React.useMemo(
     () =>
@@ -375,7 +388,9 @@ export function CreateCommunityComposer({
                 ? { gate_type: draft.gateType, required_values: draft.requiredValues }
                 : draft.gateType === "minimum_age"
                   ? { gate_type: draft.gateType, required_minimum_age: draft.minimumAge }
-              : { gate_type: draft.gateType, required_value: draft.requiredValue },
+                  : draft.gateType === "wallet_score"
+                    ? { gate_type: draft.gateType, minimum_score: draft.minimumScore }
+                    : { gate_type: draft.gateType, required_value: draft.requiredValue },
             { audience: "admin" },
           ),
         )
@@ -594,6 +609,28 @@ export function CreateCommunityComposer({
                         />
                         {(!Number.isInteger(minimumAge) || minimumAge < 18 || minimumAge > 125) ? (
                           <FormNote tone="warning">{cc.minimumAgeInvalid}</FormNote>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    <CheckboxCard
+                      checked={walletScoreEnabled}
+                      description={cc.walletScoreDescription}
+                      title={cc.walletScoreTitle}
+                      onCheckedChange={setWalletScoreEnabled}
+                    />
+
+                    {walletScoreEnabled ? (
+                      <div className="space-y-2 border-l-2 border-primary pl-4">
+                        <FieldLabel label={cc.walletScoreLabel} />
+                        <NumericStepper
+                          max={100}
+                          min={0}
+                          value={minimumWalletScore}
+                          onChange={setMinimumWalletScore}
+                        />
+                        {(!Number.isFinite(minimumWalletScore) || minimumWalletScore < 0 || minimumWalletScore > 100) ? (
+                          <FormNote tone="warning">{cc.walletScoreInvalid}</FormNote>
                         ) : null}
                       </div>
                     ) : null}

@@ -2,23 +2,24 @@ import type {
   GateFailureDetails,
   JoinEligibility,
   MembershipGateSummary,
+  RequestedVerificationCapability,
   VerificationRequirement,
 } from "@pirate/api-contracts";
 import { getCountryDisplayName } from "@/lib/countries";
 
 type IdentityGateAudience = "public" | "admin";
-type VerificationProvider = "self" | "very";
+type VerificationProvider = "self" | "very" | "passport";
 type MissingCapability = JoinEligibility["missing_capabilities"][number];
 type SupportedCopyLocale = "en" | "ar" | "zh";
 
-const SELF_CAPABILITY_ORDER: MissingCapability[] = [
+const SELF_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "unique_human",
   "age_over_18",
   "minimum_age",
   "nationality",
   "gender",
 ];
-const SELF_REQUESTED_CAPABILITY_ORDER: MissingCapability[] = [
+const SELF_REQUESTED_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "unique_human",
   "age_over_18",
   "nationality",
@@ -73,6 +74,10 @@ function getVisibleSelfCapabilities(capabilities: MissingCapability[]): MissingC
     return ordered.filter((capability) => capability !== "unique_human");
   }
   return ordered;
+}
+
+function isSelfRequestedCapability(capability: MissingCapability): capability is RequestedVerificationCapability {
+  return SELF_REQUESTED_CAPABILITY_ORDER.some((candidate) => candidate === capability);
 }
 
 export function formatGateRequirement(
@@ -136,9 +141,14 @@ export function formatGateRequirement(
       return `Requires ${age}+ verification`;
     }
     case "wallet_score":
-      if (locale === "ar") return "يتطلب التحقق عبر Passport";
-      if (locale === "zh") return "需要 Passport 验证";
-      return "Requires passport verification";
+      if (typeof gate.minimum_score === "number") {
+        if (locale === "ar") return `يتطلب درجة Passport ${gate.minimum_score}+`;
+        if (locale === "zh") return `需要 Passport 分数 ${gate.minimum_score}+`;
+        return `Requires Passport score ${gate.minimum_score}+`;
+      }
+      if (locale === "ar") return "يتطلب درجة Passport";
+      if (locale === "zh") return "需要 Passport 分数";
+      return "Requires Passport score";
     case "erc721_holding": {
       const label = gate.contract_address ? shortenAddress(gate.contract_address) : null;
       if (locale === "ar") {
@@ -204,10 +214,10 @@ export function isJoinCtaActionable(eligibility: JoinEligibility): boolean {
 
 export function getSelfVerificationCapabilities(
   eligibility: Pick<JoinEligibility, "missing_capabilities">,
-): MissingCapability[] {
-  const uniqueCapabilities = new Set<MissingCapability>();
+): RequestedVerificationCapability[] {
+  const uniqueCapabilities = new Set<RequestedVerificationCapability>();
   for (const capability of eligibility.missing_capabilities) {
-    if (SELF_REQUESTED_CAPABILITY_ORDER.includes(capability)) {
+    if (isSelfRequestedCapability(capability)) {
       uniqueCapabilities.add(capability);
     }
   }
@@ -217,19 +227,24 @@ export function getSelfVerificationCapabilities(
 export function getVerificationCapabilitiesForProvider(
   eligibility: Pick<JoinEligibility, "missing_capabilities">,
   provider: VerificationProvider,
-): MissingCapability[] {
-  const uniqueCapabilities = new Set<MissingCapability>();
+): RequestedVerificationCapability[] {
+  const uniqueCapabilities = new Set<RequestedVerificationCapability>();
   for (const capability of eligibility.missing_capabilities) {
     if (provider === "very") {
       if (capability === "unique_human") {
         uniqueCapabilities.add(capability);
       }
-    } else if (SELF_REQUESTED_CAPABILITY_ORDER.includes(capability)) {
+    } else if (provider === "passport") {
+      continue;
+    } else if (isSelfRequestedCapability(capability)) {
       uniqueCapabilities.add(capability);
     }
   }
   if (provider === "self") {
     return SELF_REQUESTED_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
+  }
+  if (provider === "passport") {
+    return [];
   }
   return Array.from(uniqueCapabilities);
 }
@@ -282,6 +297,28 @@ export function getVerificationPromptCopy(
       title: "Verify with ID",
       description: "Complete ID check to continue.",
       actionLabel: "Verify with ID",
+    };
+  }
+
+  if (provider === "passport") {
+    if (locale === "ar") {
+      return {
+        title: "درجة Passport مطلوبة",
+        description: "ارفع درجة Passport ثم عد للانضمام.",
+        actionLabel: "فتح Passport",
+      };
+    }
+    if (locale === "zh") {
+      return {
+        title: "需要 Passport 分数",
+        description: "提高 Passport 分数后回来加入。",
+        actionLabel: "打开 Passport",
+      };
+    }
+    return {
+      title: "Passport score required",
+      description: "Improve your Passport score, then come back to join.",
+      actionLabel: "Open Passport",
     };
   }
 
@@ -385,6 +422,7 @@ export function getVerificationPromptCopy(
         case "nationality": return "الجنسية";
         case "gender": return "علامة الجنس في وثيقة Self";
         case "unique_human": return "إثبات أنك إنسان";
+        case "wallet_score": return "درجة Passport";
       }
     }
     if (locale === "zh") {
@@ -394,6 +432,7 @@ export function getVerificationPromptCopy(
         case "nationality": return "国籍";
         case "gender": return "Self 证件性别标记";
         case "unique_human": return "真人状态";
+        case "wallet_score": return "Passport 分数";
       }
     }
     switch (capability) {
@@ -402,6 +441,7 @@ export function getVerificationPromptCopy(
       case "nationality": return "nationality";
       case "gender": return "Self document marker";
       case "unique_human": return "unique human status";
+      case "wallet_score": return "Passport score";
     }
   });
 
@@ -464,6 +504,10 @@ export function getGateFailureMessage(
       if (locale === "ar") return "تعذر فحص مقتنيات Courtyard الآن.";
       if (locale === "zh") return "暂时无法检查 Courtyard 藏品。";
       return "Courtyard collectible inventory could not be checked right now.";
+    case "wallet_score_too_low":
+      if (locale === "ar") return "درجة Passport الخاصة بك لا تلبي متطلبات هذا المجتمع.";
+      if (locale === "zh") return "你的 Passport 分数不符合该社区要求。";
+      return "Your Passport score does not meet this community's requirement.";
     case "banned":
       if (locale === "ar") return "أنت غير مؤهل للانضمام إلى هذا المجتمع.";
       if (locale === "zh") return "你没有资格加入这个社区。";

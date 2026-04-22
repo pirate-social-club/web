@@ -54,6 +54,20 @@ export function serializeIdentityGateDrafts(
       };
     }
 
+    if (draft.gateType === "wallet_score") {
+      return {
+        scope: "membership",
+        gate_family: "identity_proof",
+        gate_type: "wallet_score",
+        ...gateRuleId,
+        proof_requirements: [{
+          proof_type: "wallet_score",
+          accepted_providers: getAcceptedProvidersForGateType(draft.gateType),
+          config: { minimum_score: draft.minimumScore },
+        }],
+      };
+    }
+
     return {
       scope: "membership",
       gate_family: "identity_proof",

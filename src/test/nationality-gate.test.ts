@@ -54,6 +54,11 @@ describe("formatGateRequirement", () => {
     };
     expect(formatGateRequirement(gate)).toBe("Requires 3 Courtyard Pokemon Charizard");
   });
+
+  test("formats wallet score gate with threshold", () => {
+    const gate: MembershipGateSummary = { gate_type: "wallet_score", minimum_score: 20 };
+    expect(formatGateRequirement(gate)).toBe("Requires Passport score 20+");
+  });
 });
 
 describe("getJoinCtaLabel", () => {
@@ -118,6 +123,10 @@ describe("getVerificationPromptCopy", () => {
     const description = getVerificationPromptCopy("self", ["unique_human", "nationality"]).description;
     expect(description.includes("unique human")).toBe(false);
   });
+
+  test("describes Passport score remediation", () => {
+    expect(getVerificationPromptCopy("passport", ["wallet_score"]).title).toBe("Passport score required");
+  });
 });
 
 describe("getGateFailureMessage", () => {
@@ -129,5 +138,10 @@ describe("getGateFailureMessage", () => {
   test("formats Courtyard provider outage copy", () => {
     const details = { failure_reason: "token_inventory_unavailable" } as GateFailureDetails;
     expect(getGateFailureMessage(details)).toContain("could not be checked");
+  });
+
+  test("formats wallet score mismatch copy", () => {
+    const details = { failure_reason: "wallet_score_too_low" } as GateFailureDetails;
+    expect(getGateFailureMessage(details)).toContain("Passport score");
   });
 });

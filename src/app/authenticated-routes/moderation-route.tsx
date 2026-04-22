@@ -346,6 +346,7 @@ export function CommunityModerationPage({
             || state.gateDrafts.some((draft) => (
               draft.gateType === "erc721_holding" && !isAddress(draft.contractAddress.trim())
               || draft.gateType === "erc721_inventory_match" && !isValidCourtyardInventoryDraft(draft)
+              || draft.gateType === "wallet_score" && (!Number.isFinite(draft.minimumScore) || draft.minimumScore < 0 || draft.minimumScore > 100)
             ))
           }
           showSaveAction

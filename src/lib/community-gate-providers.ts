@@ -6,6 +6,9 @@ export function getAcceptedProvidersForGateType(gateType: string): IdentityProof
   if (gateType === "unique_human") {
     return ["self", "very"];
   }
+  if (gateType === "wallet_score") {
+    return ["passport"];
+  }
 
   return ["self"];
 }

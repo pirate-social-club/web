@@ -24,6 +24,7 @@ function formatSidebarRequirement(input: {
   requiredValue?: string | null;
   requiredValues?: string[] | null;
   requiredMinimumAge?: number | null;
+  minimumScore?: number | null;
   contractAddress?: string | null;
   locale?: string | null;
 }): string | null {
@@ -65,6 +66,11 @@ function formatSidebarRequirement(input: {
       if (locale === "zh") return "身份验证";
       return "ID check";
     case "wallet_score":
+      if (typeof input.minimumScore === "number") {
+        if (locale === "ar") return `درجة Passport ${input.minimumScore}+`;
+        if (locale === "zh") return `Passport 分数 ${input.minimumScore}+`;
+        return `Passport score ${input.minimumScore}+`;
+      }
       if (locale === "ar") return "درجة Passport";
       if (locale === "zh") return "Passport 分数";
       return "Passport score";
@@ -87,7 +93,7 @@ function formatSidebarRequirement(input: {
 
 export function buildCommunitySidebarRequirements(input: {
   defaultAgeGatePolicy?: "none" | "18_plus" | null;
-  gateSummaries?: Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value" | "required_values" | "required_minimum_age" | "contract_address">> | null;
+  gateSummaries?: Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value" | "required_values" | "required_minimum_age" | "minimum_score" | "contract_address">> | null;
   locale?: string | null;
 }): string[] {
   const requirements: string[] = [];
@@ -104,6 +110,7 @@ export function buildCommunitySidebarRequirements(input: {
         requiredValue: gate.required_value ?? null,
         requiredValues: gate.required_values ?? null,
         requiredMinimumAge: gate.required_minimum_age ?? null,
+        minimumScore: gate.minimum_score ?? null,
       });
     if (label && !requirements.includes(label)) {
       requirements.push(label);
@@ -115,7 +122,7 @@ export function buildCommunitySidebarRequirements(input: {
 
 function getCommunityGateSummaries(
   community: ApiCommunity,
-): Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value" | "required_values" | "required_minimum_age" | "contract_address">> {
+): Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value" | "required_values" | "required_minimum_age" | "minimum_score" | "contract_address">> {
   return (community.gate_rules ?? [])
     .filter((rule) => rule.scope === "membership" && rule.status === "active")
     .map((rule) => {
@@ -132,6 +139,9 @@ function getCommunityGateSummaries(
       const requiredMinimumAge = config && typeof config === "object" && Number.isInteger((config as Record<string, unknown>).minimum_age)
         ? (config as Record<string, unknown>).minimum_age as number
         : null;
+      const minimumScore = config && typeof config === "object" && typeof (config as Record<string, unknown>).minimum_score === "number"
+        ? (config as Record<string, unknown>).minimum_score as number
+        : null;
 
       return {
         gate_type: rule.gate_type as ApiMembershipGateSummary["gate_type"],
@@ -143,6 +153,7 @@ function getCommunityGateSummaries(
         required_value: requiredValue,
         required_values: requiredValues,
         required_minimum_age: requiredMinimumAge,
+        minimum_score: minimumScore,
       };
     });
 }

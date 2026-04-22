@@ -53,4 +53,21 @@ describe("serializeIdentityGateDrafts", () => {
       }],
     });
   });
+
+  test("serializes Passport wallet score gates", () => {
+    expect(serializeIdentityGateDrafts([{
+      gateType: "wallet_score",
+      provider: "passport",
+      minimumScore: 20,
+    }])).toEqual([{
+      scope: "membership",
+      gate_family: "identity_proof",
+      gate_type: "wallet_score",
+      proof_requirements: [{
+        proof_type: "wallet_score",
+        accepted_providers: ["passport"],
+        config: { minimum_score: 20 },
+      }],
+    }]);
+  });
 });

@@ -147,6 +147,15 @@ function extractMinimumAge(config: unknown): number | null {
   return Number.isInteger(value) ? value as number : null;
 }
 
+function extractMinimumScore(config: unknown): number | null {
+  if (!config || typeof config !== "object") {
+    return null;
+  }
+
+  const value = (config as Record<string, unknown>).minimum_score;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 function extractContractAddress(config: unknown): string | null {
   if (!config || typeof config !== "object") {
     return null;
@@ -246,6 +255,14 @@ export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDra
       const minimumAge = extractMinimumAge(config);
       if (minimumAge != null) {
         drafts.push({ gateType: "minimum_age", provider: "self", minimumAge, gateRuleId: rule.gate_rule_id });
+      }
+      continue;
+    }
+
+    if (rule.gate_type === "wallet_score") {
+      const minimumScore = extractMinimumScore(config);
+      if (minimumScore != null) {
+        drafts.push({ gateType: "wallet_score", provider: "passport", minimumScore, gateRuleId: rule.gate_rule_id });
       }
       continue;
     }

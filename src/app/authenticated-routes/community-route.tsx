@@ -189,6 +189,8 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       const provider = resolveSuggestedVerificationProvider(eligibility);
       if (provider === "very") {
         await startVeryVerification();
+      } else if (provider === "passport") {
+        setJoinError(getVerificationPromptCopy("passport", ["wallet_score"], { locale }).description);
       } else {
         await startSelfVerification();
       }
@@ -208,6 +210,8 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           const provider = resolveSuggestedVerificationProvider(details);
           if (provider === "very") {
             await startVeryVerification();
+          } else if (provider === "passport") {
+            setJoinError(getVerificationPromptCopy("passport", ["wallet_score"], { locale }).description);
           } else {
             await startSelfVerification({
               missingCapabilities: details.missing_capabilities,
@@ -225,7 +229,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     } finally {
       setJoinLoading(false);
     }
-  }, [api, communityId, eligibility, refetchEligibility, startSelfVerification, startVeryVerification]);
+  }, [api, communityId, eligibility, locale, refetchEligibility, startSelfVerification, startVeryVerification]);
 
   React.useEffect(() => {
     function handleSelfCallback() {
@@ -283,19 +287,25 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   }) => {
     if (gate.eligibility.status === "verification_required") {
       const provider = resolveSuggestedVerificationProvider(gate.eligibility);
+      const passportPrompt = getVerificationPromptCopy("passport", ["wallet_score"], { locale });
       return {
-        description: action === "vote_post" || action === "vote_comment"
-          ? copy.interactionGate.verifyToVoteDescription
-          : copy.interactionGate.verifyToReplyDescription,
+        description: provider === "passport"
+          ? passportPrompt.description
+          : action === "vote_post" || action === "vote_comment"
+            ? copy.interactionGate.verifyToVoteDescription
+            : copy.interactionGate.verifyToReplyDescription,
         primaryAction: {
-          label: copy.createCommunity.startVerification,
-          loading: provider === "very" ? veryLoading : selfLoading,
+          label: provider === "passport" ? passportPrompt.actionLabel : copy.createCommunity.startVerification,
+          loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
           onClick: async () => {
             if (provider === "very") {
               const result = await startVeryVerification();
               if (result.started) {
                 closeModal();
               }
+            } else if (provider === "passport") {
+              window.open("https://app.passport.xyz/", "_blank", "noopener,noreferrer");
+              closeModal();
             } else {
               const result = await startSelfVerification({
                 showToastOnError: true,
@@ -313,9 +323,11 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           label: copy.interactionGate.close,
           onClick: closeModal,
         },
-        title: action === "vote_post" || action === "vote_comment"
-          ? copy.interactionGate.verifyToVoteTitle
-          : copy.interactionGate.verifyToReplyTitle,
+        title: provider === "passport"
+          ? passportPrompt.title
+          : action === "vote_post" || action === "vote_comment"
+            ? copy.interactionGate.verifyToVoteTitle
+            : copy.interactionGate.verifyToReplyTitle,
       };
     }
 
@@ -366,7 +378,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         ? copy.interactionGate.cantVoteHereTitle
         : copy.interactionGate.cantReplyHereTitle,
     };
-  }, [copy.interactionGate, handleJoin, invalidateCommunityGate, joinLoading, locale, selfLoading, startSelfVerification, startVeryVerification, veryLoading]);
+  }, [copy.createCommunity.startVerification, copy.interactionGate, handleJoin, invalidateCommunityGate, joinLoading, locale, selfLoading, startSelfVerification, startVeryVerification, veryLoading]);
 
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
     if (!preview || !eligibility) return;

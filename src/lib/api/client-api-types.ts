@@ -51,6 +51,7 @@ export type ApiCreateCommunityRequest = {
         | "sanctions_clear"
         | "phone";
       accepted_providers?: Array<"self" | "very" | "passport"> | null;
+      accepted_mechanisms?: Array<string> | null;
       config?: Record<string, unknown> | null;
     }> | null;
     chain_namespace?: string | null;

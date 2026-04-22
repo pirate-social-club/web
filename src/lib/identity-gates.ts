@@ -150,9 +150,14 @@ export function formatGateRequirement(
       if (locale === "zh") return "需要 Passport 分数";
       return "Requires Passport score";
     case "sanctions_clear":
-      if (locale === "ar") return "يتطلب فحص العقوبات عبر Passport";
-      if (locale === "zh") return "需要 Passport 制裁筛查";
-      return "Requires Passport sanctions screening";
+      if (gate.accepted_providers?.includes("passport") && !gate.accepted_providers.includes("self")) {
+        if (locale === "ar") return "يتطلب فحص العقوبات عبر Passport";
+        if (locale === "zh") return "需要 Passport 制裁筛查";
+        return "Requires Passport sanctions screening";
+      }
+      if (locale === "ar") return "يشمل فحص العقوبات";
+      if (locale === "zh") return "包含制裁筛查";
+      return "Includes sanctions screening";
     case "erc721_holding": {
       const label = gate.contract_address ? shortenAddress(gate.contract_address) : null;
       if (locale === "ar") {
@@ -263,13 +268,20 @@ export function getPassportPromptCapabilities(
 export function getVerificationRequirementsForGates(
   gates: MembershipGateSummary[] | null | undefined,
 ): VerificationRequirement[] {
+  const requirements: VerificationRequirement[] = [];
   const minimumAges = (gates ?? [])
     .filter((gate) => gate.gate_type === "minimum_age" && Number.isInteger(gate.required_minimum_age))
     .map((gate) => gate.required_minimum_age as number);
-  if (minimumAges.length === 0) {
-    return [];
+  if (minimumAges.length > 0) {
+    requirements.push({ proof_type: "minimum_age", minimum_age: Math.max(...minimumAges) });
   }
-  return [{ proof_type: "minimum_age", minimum_age: Math.max(...minimumAges) }];
+  if ((gates ?? []).some((gate) =>
+    gate.gate_type === "sanctions_clear"
+    && (gate.accepted_providers?.includes("self") ?? false)
+  )) {
+    requirements.push({ proof_type: "sanctions_clear" });
+  }
+  return requirements;
 }
 
 export function resolveSuggestedVerificationProvider(
@@ -415,23 +427,24 @@ export function getVerificationPromptCopy(
           actionLabel: "Verify with ID",
         };
       case "gender":
+      case "sanctions_clear":
         if (locale === "ar") {
           return {
             title: "تحقق بالهوية",
-            description: "أكمل فحص الهوية للمتابعة.",
+            description: visibleCapabilities[0] === "sanctions_clear" ? "أكمل فحص العقوبات بالهوية." : "أكمل فحص الهوية للمتابعة.",
             actionLabel: "تحقق بالهوية",
           };
         }
         if (locale === "zh") {
           return {
             title: "使用身份证件验证",
-            description: "完成身份验证后继续。",
+            description: visibleCapabilities[0] === "sanctions_clear" ? "使用证件完成制裁筛查。" : "完成身份验证后继续。",
             actionLabel: "使用身份证件验证",
           };
         }
         return {
           title: "Verify with ID",
-          description: "Complete ID check to continue.",
+          description: visibleCapabilities[0] === "sanctions_clear" ? "Complete sanctions screening with ID." : "Complete ID check to continue.",
           actionLabel: "Verify with ID",
         };
       default:
@@ -448,7 +461,7 @@ export function getVerificationPromptCopy(
         case "gender": return "علامة الجنس في وثيقة Self";
         case "unique_human": return "إثبات أنك إنسان";
         case "wallet_score": return "درجة Passport";
-        case "sanctions_clear": return "فحص العقوبات عبر Passport";
+        case "sanctions_clear": return "فحص العقوبات";
       }
     }
     if (locale === "zh") {
@@ -459,7 +472,7 @@ export function getVerificationPromptCopy(
         case "gender": return "Self 证件性别标记";
         case "unique_human": return "真人状态";
         case "wallet_score": return "Passport 分数";
-        case "sanctions_clear": return "Passport 制裁筛查";
+        case "sanctions_clear": return "制裁筛查";
       }
     }
     switch (capability) {
@@ -469,7 +482,7 @@ export function getVerificationPromptCopy(
       case "gender": return "Self document marker";
       case "unique_human": return "unique human status";
       case "wallet_score": return "Passport score";
-      case "sanctions_clear": return "Passport sanctions screening";
+      case "sanctions_clear": return "sanctions screening";
     }
   });
 

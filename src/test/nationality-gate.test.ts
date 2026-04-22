@@ -62,6 +62,11 @@ describe("formatGateRequirement", () => {
 
   test("formats sanctions screening gate", () => {
     const gate: MembershipGateSummary = { gate_type: "sanctions_clear" };
+    expect(formatGateRequirement(gate)).toBe("Includes sanctions screening");
+  });
+
+  test("formats Passport-only sanctions screening gate", () => {
+    const gate: MembershipGateSummary = { gate_type: "sanctions_clear", accepted_providers: ["passport"] };
     expect(formatGateRequirement(gate)).toBe("Requires Passport sanctions screening");
   });
 });

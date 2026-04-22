@@ -68,7 +68,6 @@ export function PostComposer(props: PostComposerProps) {
   const { actions, draft, submit } = props;
   const mode = draft?.mode ?? props.mode ?? "text";
   const titleValue = draft?.titleValue ?? props.titleValue ?? "";
-  const titleCountLabel = draft?.titleCountLabel ?? props.titleCountLabel ?? "0/300";
   const textBodyValue = draft?.textBodyValue ?? props.textBodyValue ?? "";
   const captionValue = draft?.captionValue ?? props.captionValue ?? "";
   const imageUpload = draft?.imageUpload !== undefined ? draft.imageUpload : props.imageUpload;
@@ -423,9 +422,10 @@ export function PostComposer(props: PostComposerProps) {
           <>
           {activeTab !== "link" ? (
             <div>
-              <FieldLabel counter={titleCountLabel} label={copy.fields.title} />
+              <FieldLabel label={copy.fields.title} />
               <Input
                 className="h-14"
+                maxLength={300}
                 onChange={(event) => onTitleValueChange?.(event.target.value)}
                 placeholder={copy.placeholders.title}
                 value={titleValue}

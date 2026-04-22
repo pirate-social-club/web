@@ -39,7 +39,7 @@ export function ShellPill({
             <Tag className="size-5" />
           </div>
         )}
-        <span>{children}</span>
+        <span className="min-w-0 flex-1 truncate text-center">{children}</span>
         <CaretDown className="size-5 text-muted-foreground" />
       </div>
     );
@@ -59,7 +59,7 @@ export function ShellPill({
               <Tag className="size-5" />
             </div>
           )}
-          <span>{children}</span>
+          <span className="min-w-0 flex-1 truncate text-center">{children}</span>
           <CaretDown className="size-5 text-muted-foreground" />
         </button>
       </DropdownMenuPrimitive.Trigger>
@@ -68,7 +68,7 @@ export function ShellPill({
           align="start"
           sideOffset={4}
           className={cn(
-            "relative z-50 max-h-96 min-w-[12rem] overflow-hidden rounded-[var(--radius-lg)] border border-border bg-popover p-0 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "relative z-50 max-h-96 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem] overflow-hidden rounded-[var(--radius-lg)] border border-border bg-popover p-0 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           )}
         >

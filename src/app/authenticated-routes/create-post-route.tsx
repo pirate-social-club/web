@@ -65,7 +65,6 @@ function CreatePostComposer({
         song: state.songState,
         songMode: state.songMode,
         textBodyValue: state.body,
-        titleCountLabel: `${state.title.length}/300`,
         titleValue: state.title,
       }}
       actions={{

@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { CommunityMembershipGatePanel } from "../community-membership-gate-panel";
-import { getVerificationPromptCopy } from "@/lib/identity-gates";
 
 const meta = {
   title: "Compositions/CommunityMembershipGatePanel",
@@ -172,10 +171,6 @@ export const PassportScoreRequired: Story = {
         suggested_verification_provider: "passport",
         suggested_verification_intent: null,
       }}
-      verificationPrompt={{
-        ...getVerificationPromptCopy("passport", ["wallet_score"]),
-        href: "https://app.passport.xyz/",
-      }}
     />
   ),
 };
@@ -196,10 +191,6 @@ export const PassportSanctionsScreeningRequired: Story = {
         missing_capabilities: ["sanctions_clear"],
         suggested_verification_provider: "passport",
         suggested_verification_intent: null,
-      }}
-      verificationPrompt={{
-        ...getVerificationPromptCopy("passport", ["sanctions_clear"]),
-        href: "https://app.passport.xyz/",
       }}
     />
   ),

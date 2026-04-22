@@ -147,7 +147,7 @@
     "fields": {
       "audio": "الصوت",
       "body": "المحتوى",
-      "canvasVideo": "فيديو الغلاف المتحرك",
+      "canvasVideo": "فيديو الغلاف المتحرك (9:16)",
       "caption": "التعليق",
       "commentary": "التعليق",
       "coverArt": "صورة الغلاف",
@@ -164,6 +164,7 @@
       "video": "الفيديو",
       "vocalStem": "المسار الصوتي",
       "previewClip": "مقطع المعاينة",
+      "previewStartSeconds": "بداية المعاينة (ثوانٍ)",
       "charity": "Charity"
     },
     "identity": {
@@ -195,6 +196,7 @@
       "sourceTrackSearch": "ابحث في أصول Pirate / Story",
       "title": "العنوان",
       "unlockPrice": "1.00",
+      "previewStartSeconds": "0",
       "url": "https://"
     },
     "sections": {
@@ -609,7 +611,7 @@
     "removeAvatar": "أزل الصورة الشخصية",
     "removeCover": "أزل الغلاف",
     "renameHandle": "أعد تسمية المعرّف",
-    "renameRequiresPaidUpgrade": "يتطلب هذا التغيير ترقية مدفوعة.",
+    "renameRequiresPaidUpgrade": "تغييرات المعرّف المدفوعة غير متاحة بعد.",
     "renamingHandle": "جارٍ تغيير المعرّف...",
     "replaceAvatar": "استبدل الصورة الشخصية",
     "replaceCover": "استبدل الغلاف",

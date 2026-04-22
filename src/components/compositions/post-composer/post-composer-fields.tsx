@@ -114,6 +114,7 @@ export function UploadField({
   copy,
   multiple = false,
   onChange,
+  placeholderLabel,
   selectedLabel,
   variant = "default",
 }: {
@@ -125,6 +126,7 @@ export function UploadField({
   };
   multiple?: boolean;
   onChange?: (files: FileList | null) => void;
+  placeholderLabel?: string;
   selectedLabel?: string;
   variant?: "default" | "artwork";
 }) {
@@ -172,7 +174,7 @@ export function UploadField({
         ) : (
           <div className="min-w-0">
             <p className="truncate text-base font-semibold text-foreground">
-              {selectedLabel || copy.upload.noFileSelected}
+              {selectedLabel || placeholderLabel || copy.upload.noFileSelected}
             </p>
           </div>
         )}

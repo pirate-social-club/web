@@ -94,10 +94,10 @@ export function useGlobalHandleFlow({
         if (requestId !== checkRequestIdRef.current) return;
         setState({ kind: "error", message: copy.handleCheckFailed });
       });
-  }, [api, copy.handleCheckFailed, copy.handleUnavailableMessage, isNoop, isValidSyntax, normalized]);
+  }, [api, copy.handleCheckFailed, copy.handleInvalidMessage, copy.handleUnavailableMessage, isNoop, isValidSyntax, normalized]);
 
   const submitRename = React.useCallback(async () => {
-    if (isNoop || !isValidSyntax || state.kind !== "available") return;
+    if (isNoop || !isValidSyntax || state.kind !== "available" || !state.freeRenameRemaining) return;
 
     setState({ kind: "saving" });
     try {

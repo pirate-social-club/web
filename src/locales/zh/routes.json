@@ -147,7 +147,7 @@
     "fields": {
       "audio": "音频",
       "body": "正文",
-      "canvasVideo": "Canvas 视频",
+      "canvasVideo": "Canvas 视频 (9:16)",
       "caption": "说明",
       "commentary": "评论",
       "coverArt": "封面图",
@@ -164,6 +164,7 @@
       "video": "视频",
       "vocalStem": "人声分轨",
       "previewClip": "预览片段",
+      "previewStartSeconds": "预览开始（秒）",
       "charity": "Charity"
     },
     "identity": {
@@ -195,6 +196,7 @@
       "sourceTrackSearch": "搜索 Pirate / Story 资产",
       "title": "标题",
       "unlockPrice": "1.00",
+      "previewStartSeconds": "0",
       "url": "https://"
     },
     "sections": {
@@ -609,7 +611,7 @@
     "removeAvatar": "移除头像",
     "removeCover": "移除封面",
     "renameHandle": "重命名用户名",
-    "renameRequiresPaidUpgrade": "这次修改需要付费升级。",
+    "renameRequiresPaidUpgrade": "付费用户名更改暂不可用。",
     "renamingHandle": "正在重命名用户名...",
     "replaceAvatar": "更换头像",
     "replaceCover": "更换封面",

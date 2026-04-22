@@ -96,6 +96,7 @@ export const PaidUnlock: Story = {
         primaryLanguage: "English",
         secondaryLanguage: "French",
         coverLabel: "benefit-single-cover.png",
+        previewStartSeconds: "42",
       }}
       monetization={{
         visible: true,
@@ -121,6 +122,7 @@ export const PaidUnlockRegionalPricing: Story = {
         primaryLanguage: "English",
         secondaryLanguage: "French",
         coverLabel: "benefit-single-cover.png",
+        previewStartSeconds: "42",
       }}
       monetization={{
         visible: true,
@@ -148,6 +150,7 @@ export const WithCharityContribution: Story = {
         primaryLanguage: "English",
         secondaryLanguage: "French",
         coverLabel: "benefit-single-cover.png",
+        previewStartSeconds: "42",
       }}
       charityPartner={{
         partnerId: "endaoment:mock-charity-water",

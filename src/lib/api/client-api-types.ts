@@ -63,7 +63,7 @@ export type ApiCreateCommunityRequest = {
 };
 
 export type ApiCommunityMediaUploadResponse = {
-  kind: "avatar" | "banner";
+  kind: "avatar" | "banner" | "post_image";
   media_ref: string;
   mime_type: string;
   size_bytes: number;
@@ -109,6 +109,7 @@ export type ApiPublicAgentResolution = {
     user_id: string;
     display_name: string | null;
     global_handle: { label: string };
+    primary_public_handle: { label: string } | null;
   };
 };
 

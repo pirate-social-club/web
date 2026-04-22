@@ -28,6 +28,8 @@ export type CreatePostDraftState = {
   composerMode: ComposerTab;
   derivativeStep: DerivativeStepState | undefined;
   identityMode: "public" | "anonymous";
+  imageUpload: File | null;
+  imageUploadLabel: string | undefined;
   linkUrl: string;
   lyrics: string;
   monetizationState: MonetizationState;
@@ -48,6 +50,8 @@ type DraftAction =
   | { type: "setComposerMode"; value: React.SetStateAction<ComposerTab> }
   | { type: "setDerivativeStep"; value: React.SetStateAction<DerivativeStepState | undefined> }
   | { type: "setIdentityMode"; value: React.SetStateAction<"public" | "anonymous"> }
+  | { type: "setImageUpload"; value: React.SetStateAction<File | null> }
+  | { type: "setImageUploadLabel"; value: React.SetStateAction<string | undefined> }
   | { type: "setLinkUrl"; value: React.SetStateAction<string> }
   | { type: "setLyrics"; value: React.SetStateAction<string> }
   | { type: "setMonetizationState"; value: React.SetStateAction<MonetizationState> }
@@ -68,6 +72,8 @@ type CreatePostDraftActions = {
   setComposerMode: React.Dispatch<React.SetStateAction<ComposerTab>>;
   setDerivativeStep: React.Dispatch<React.SetStateAction<DerivativeStepState | undefined>>;
   setIdentityMode: React.Dispatch<React.SetStateAction<"public" | "anonymous">>;
+  setImageUpload: React.Dispatch<React.SetStateAction<File | null>>;
+  setImageUploadLabel: React.Dispatch<React.SetStateAction<string | undefined>>;
   setLinkUrl: React.Dispatch<React.SetStateAction<string>>;
   setLyrics: React.Dispatch<React.SetStateAction<string>>;
   setMonetizationState: React.Dispatch<React.SetStateAction<MonetizationState>>;
@@ -93,6 +99,8 @@ function createInitialDraftState(): CreatePostDraftState {
     composerMode: "text",
     derivativeStep: undefined,
     identityMode: "public",
+    imageUpload: null,
+    imageUploadLabel: undefined,
     linkUrl: "",
     lyrics: "",
     monetizationState: defaultMonetizationState(),
@@ -123,6 +131,10 @@ function createPostDraftReducer(state: CreatePostDraftState, action: DraftAction
       return { ...state, derivativeStep: resolveSetState(state.derivativeStep, action.value) };
     case "setIdentityMode":
       return { ...state, identityMode: resolveSetState(state.identityMode, action.value) };
+    case "setImageUpload":
+      return { ...state, imageUpload: resolveSetState(state.imageUpload, action.value) };
+    case "setImageUploadLabel":
+      return { ...state, imageUploadLabel: resolveSetState(state.imageUploadLabel, action.value) };
     case "setLinkUrl":
       return { ...state, linkUrl: resolveSetState(state.linkUrl, action.value) };
     case "setLyrics":
@@ -160,6 +172,8 @@ export function useCreatePostDraftState(): {
     setComposerMode: (value) => dispatch({ type: "setComposerMode", value }),
     setDerivativeStep: (value) => dispatch({ type: "setDerivativeStep", value }),
     setIdentityMode: (value) => dispatch({ type: "setIdentityMode", value }),
+    setImageUpload: (value) => dispatch({ type: "setImageUpload", value }),
+    setImageUploadLabel: (value) => dispatch({ type: "setImageUploadLabel", value }),
     setLinkUrl: (value) => dispatch({ type: "setLinkUrl", value }),
     setLyrics: (value) => dispatch({ type: "setLyrics", value }),
     setMonetizationState: (value) => dispatch({ type: "setMonetizationState", value }),

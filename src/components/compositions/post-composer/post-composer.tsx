@@ -40,10 +40,10 @@ import {
   FieldLabel,
 } from "./post-composer-fields";
 import { PostComposerPrimaryArea } from "./post-composer-content";
+import { IdentitySection, QualifierSection } from "./post-composer-identity-section";
 import {
   PostComposerDerivativeSection,
   PostComposerAudienceSection,
-  PostComposerIdentitySections,
   PostComposerSongAccessSection,
   PostComposerCharitySection,
   deriveDerivativeSearchResults,
@@ -71,6 +71,8 @@ export function PostComposer(props: PostComposerProps) {
   const titleCountLabel = draft?.titleCountLabel ?? props.titleCountLabel ?? "0/300";
   const textBodyValue = draft?.textBodyValue ?? props.textBodyValue ?? "";
   const captionValue = draft?.captionValue ?? props.captionValue ?? "";
+  const imageUpload = draft?.imageUpload !== undefined ? draft.imageUpload : props.imageUpload;
+  const imageUploadLabel = draft?.imageUploadLabel ?? props.imageUploadLabel;
   const lyricsValue = draft?.lyricsValue ?? props.lyricsValue ?? "";
   const linkUrlValue = draft?.linkUrlValue ?? props.linkUrlValue ?? "";
   const linkPreview = draft?.linkPreview ?? props.linkPreview;
@@ -86,6 +88,7 @@ export function PostComposer(props: PostComposerProps) {
   const onTitleValueChange = actions?.onTitleValueChange ?? props.onTitleValueChange;
   const onTextBodyValueChange = actions?.onTextBodyValueChange ?? props.onTextBodyValueChange;
   const onCaptionValueChange = actions?.onCaptionValueChange ?? props.onCaptionValueChange;
+  const onImageUploadChange = actions?.onImageUploadChange ?? props.onImageUploadChange;
   const onLyricsValueChange = actions?.onLyricsValueChange ?? props.onLyricsValueChange;
   const onLinkUrlValueChange = actions?.onLinkUrlValueChange ?? props.onLinkUrlValueChange;
   const onSongChange = actions?.onSongChange ?? props.onSongChange;
@@ -117,6 +120,9 @@ export function PostComposer(props: PostComposerProps) {
   );
   const [uncontrolledSongState, setUncontrolledSongState] = React.useState<SongComposerState>(
     () => defaultSongState(song),
+  );
+  const [uncontrolledImageUpload, setUncontrolledImageUpload] = React.useState<File | null>(
+    imageUpload ?? null,
   );
   const [identityMode, setIdentityMode] = React.useState<IdentityMode>(
     identity?.identityMode ?? "public",
@@ -152,6 +158,7 @@ export function PostComposer(props: PostComposerProps) {
   );
   const [prevRoomKind, setPrevRoomKind] = React.useState<LiveRoomKind>(liveState.roomKind);
   const activeSongMode = songMode ?? uncontrolledSongMode;
+  const activeImageUpload = imageUpload === undefined ? uncontrolledImageUpload : imageUpload;
   const songState = song ?? uncontrolledSongState;
   const monetizationState = monetization ?? uncontrolledMonetizationState;
   const charityContributionState = charityContribution ?? uncontrolledCharityContribution;
@@ -187,6 +194,13 @@ export function PostComposer(props: PostComposerProps) {
     }
     onSongChange?.(next);
   }, [onSongChange, song, songState]);
+
+  const setImageUploadWithCallback = React.useCallback((next: File | null) => {
+    if (imageUpload === undefined) {
+      setUncontrolledImageUpload(next);
+    }
+    onImageUploadChange?.(next);
+  }, [imageUpload, onImageUploadChange]);
 
   const updateDerivativeState = React.useCallback((updater: (current: DerivativeStepState | undefined) => DerivativeStepState | undefined) => {
     const next = updater(derivativeState);
@@ -258,6 +272,10 @@ export function PostComposer(props: PostComposerProps) {
   React.useEffect(() => {
     setUncontrolledSongState(defaultSongState(song));
   }, [song]);
+
+  React.useEffect(() => {
+    setUncontrolledImageUpload(imageUpload ?? null);
+  }, [imageUpload]);
 
   React.useEffect(() => {
     setUncontrolledMonetizationState(defaultMonetizationState(monetization));
@@ -414,29 +432,18 @@ export function PostComposer(props: PostComposerProps) {
             </div>
           ) : null}
 
-          <PostComposerIdentitySections
-            activeTab={activeTab}
-            anonymousEligibleTabs={anonymousEligibleTabs}
-            authorMode={authorMode}
-            identity={identity}
-            identityMode={identityMode}
-            onAuthorModeChange={setAuthorModeWithCallback}
-            onIdentityModeChange={setIdentityModeWithCallback}
-            onSelectedQualifierIdsChange={setSelectedQualifierIdsWithCallback}
-            selectedQualifierIds={selectedQualifierIds}
-          />
-
           <PostComposerPrimaryArea
             activeSongMode={activeSongMode}
             activeTab={activeTab}
             captionValue={captionValue}
             copy={copy}
             derivativeState={derivativeState}
-            linkPreview={linkPreview}
+            imageUploadLabel={activeImageUpload?.name ?? imageUploadLabel}
             linkUrlValue={linkUrlValue}
             liveState={liveState}
             lyricsValue={lyricsValue}
             onCaptionValueChange={onCaptionValueChange}
+            onImageUploadChange={setImageUploadWithCallback}
             onLinkUrlValueChange={onLinkUrlValueChange}
             onLyricsValueChange={onLyricsValueChange}
             onTextBodyValueChange={onTextBodyValueChange}
@@ -462,7 +469,9 @@ export function PostComposer(props: PostComposerProps) {
             <PostComposerSongAccessSection
               copy={copy}
               monetizationState={monetizationState}
+              songState={songState}
               updateMonetizationState={updateMonetizationState}
+              updateSongState={updateSongState}
             />
           ) : null}
 
@@ -475,25 +484,49 @@ export function PostComposer(props: PostComposerProps) {
             />
           ) : null}
 
-          {activeTab !== "live" ? (
-            <PostComposerAudienceSection
-              audience={audienceState}
-              copy={copy}
-              updateAudience={updateAudienceState}
+          {Boolean(identity?.availableQualifiers?.some((q) => !q.suppressedByClubGate)) &&
+            authorMode !== "agent" &&
+            identityMode === "anonymous" &&
+            identity?.allowQualifiersOnAnonymousPosts !== false &&
+            identity ? (
+            <QualifierSection
+              identity={identity}
+              onSelectedQualifierIdsChange={setSelectedQualifierIdsWithCallback}
+              selectedQualifierIds={selectedQualifierIds}
             />
           ) : null}
           </>
         </CardContent>
 
-        <CardFooter className={cn("justify-end gap-3 border-t border-border-soft p-5", isMobile && "border-t-0 px-0 pb-0 pt-2")}>
-          {submitError ? <FormNote tone="warning">{submitError}</FormNote> : null}
-          <Button
-            disabled={submitDisabled}
-            loading={submitLoading}
-            onClick={onSubmit}
-          >
-            {submitLabel ?? copy.actions.post}
-          </Button>
+        <CardFooter className={cn("flex-wrap justify-between gap-3 border-t border-border-soft p-5", isMobile && "border-t-0 px-0 pb-0 pt-2")}>
+          <div className="flex flex-wrap items-center gap-3">
+            {(Boolean(identity?.agentLabel) || (Boolean(identity?.allowAnonymousIdentity) && anonymousEligibleTabs.includes(activeTab))) && identity ? (
+              <IdentitySection
+                authorMode={authorMode}
+                identity={identity}
+                identityMode={identityMode}
+                onAuthorModeChange={setAuthorModeWithCallback}
+                onIdentityModeChange={setIdentityModeWithCallback}
+              />
+            ) : null}
+            {activeTab !== "live" ? (
+              <PostComposerAudienceSection
+                audience={audienceState}
+                copy={copy}
+                updateAudience={updateAudienceState}
+              />
+            ) : null}
+          </div>
+          <div className="flex items-center gap-3">
+            {submitError ? <FormNote tone="warning">{submitError}</FormNote> : null}
+            <Button
+              disabled={submitDisabled}
+              loading={submitLoading}
+              onClick={onSubmit}
+            >
+              {submitLabel ?? copy.actions.post}
+            </Button>
+          </div>
         </CardFooter>
       </Card>
     </div>

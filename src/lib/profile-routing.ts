@@ -1,6 +1,9 @@
-import type { Profile as ApiProfile } from "@pirate/api-contracts";
+type PublicIdentityHandle = {
+  global_handle: { label: string };
+  primary_public_handle?: { label: string } | null;
+};
 
-export function getProfileHandleLabel(profile: Pick<ApiProfile, "global_handle" | "primary_public_handle">): string {
+export function getProfileHandleLabel(profile: PublicIdentityHandle): string {
   return profile.primary_public_handle?.label ?? profile.global_handle.label;
 }
 
@@ -9,7 +12,7 @@ export function buildPublicProfilePath(handleLabel: string): string {
 }
 
 export function buildPublicProfilePathForProfile(
-  profile: Pick<ApiProfile, "global_handle" | "primary_public_handle">,
+  profile: PublicIdentityHandle,
 ): string {
   return buildPublicProfilePath(getProfileHandleLabel(profile));
 }

@@ -5,6 +5,7 @@ import type { ApiPublicAgentResolution } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
 import { CardShell, PageContainer } from "@/components/primitives/layout-shell";
+import { buildPublicProfilePath, getProfileHandleLabel } from "@/lib/profile-routing";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
@@ -86,7 +87,7 @@ export function PublicAgentRoutePage({
 
   const handle = resolution.agent.handle.label_display;
   const displayName = resolution.agent.display_name ?? handle;
-  const ownerHandle = resolution.owner.global_handle.label;
+  const ownerHandle = getProfileHandleLabel(resolution.owner);
 
   return (
     <PageContainer className="px-4 py-6" size="narrow">
@@ -94,10 +95,13 @@ export function PublicAgentRoutePage({
         <h1 className="text-4xl font-semibold tracking-tight text-foreground">{displayName}</h1>
         <p className="mt-2 text-lg text-muted-foreground">{handle}</p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <span className="inline-flex items-center rounded-full border border-border-soft bg-muted/40 px-4 py-2.5 text-base text-muted-foreground">
+          <a
+            className="inline-flex items-center rounded-full border border-border-soft bg-muted/40 px-4 py-2.5 text-base text-muted-foreground hover:bg-muted"
+            href={buildPublicProfilePath(ownerHandle)}
+          >
             <strong className="me-2 text-foreground">{ownerHandle}</strong>
             {copy.ownerLabel}
-          </span>
+          </a>
           <span className="inline-flex items-center rounded-full border border-border-soft bg-muted/40 px-4 py-2.5 text-base text-muted-foreground">
             <strong className="me-2 text-foreground">{resolution.agent.ownership_provider ?? "agent"}</strong>
             {copy.providerLabel}

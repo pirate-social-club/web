@@ -50,7 +50,7 @@ export function createCommunitiesApi(request: ApiRequest) {
         body: JSON.stringify(body),
       }),
     uploadMedia: (
-      input: { kind: "avatar" | "banner"; file: File },
+      input: { kind: "avatar" | "banner" | "post_image"; file: File },
     ): Promise<ApiCommunityMediaUploadResponse> => {
       const body = new FormData();
       body.set("kind", input.kind);

@@ -12,15 +12,12 @@ export const baseComposer: PostComposerProps = {
   titleCountLabel: "29/300",
   textBodyValue:
     "Keep it close to Reddit: title first, content next, extras collapsed. Pirate-specific flows should only appear when the content actually calls for them.",
-  audience: {
-    visibility: "public",
-  },
   identity: {
     allowAnonymousIdentity: true,
     allowQualifiersOnAnonymousPosts: true,
     identityMode: "public",
     publicHandle: "@saint-pablo",
-    anonymousLabel: "anon_mercury-17",
+    anonymousLabel: "anon_amber-anchor-00",
     availableQualifiers: [
       {
         qualifierId: "qlf_unique_human",

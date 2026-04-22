@@ -154,7 +154,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "fields": {
           "audio": "Audio",
           "body": "Body",
-          "canvasVideo": "Canvas video",
+          "canvasVideo": "Canvas video (9:16)",
           "caption": "Caption",
           "commentary": "Commentary",
           "coverArt": "Cover art",
@@ -171,6 +171,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "video": "Video",
           "vocalStem": "Vocal stem",
           "previewClip": "Preview clip",
+          "previewStartSeconds": "Preview start (seconds)",
           "charity": "Charity"
         },
         "identity": {
@@ -202,6 +203,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "sourceTrackSearch": "Search Pirate / Story assets",
           "title": "Title",
           "unlockPrice": "1.00",
+          "previewStartSeconds": "0",
           "url": "https://"
         },
         "sections": {
@@ -615,7 +617,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "removeAvatar": "Remove avatar",
         "removeCover": "Remove cover",
         "renameHandle": "Rename handle",
-        "renameRequiresPaidUpgrade": "This rename requires a paid upgrade.",
+        "renameRequiresPaidUpgrade": "Paid handle changes are not available yet.",
         "renamingHandle": "Renaming handle...",
         "replaceAvatar": "Replace avatar",
         "replaceCover": "Replace cover",
@@ -1206,7 +1208,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "fields": {
           "audio": "الصوت",
           "body": "المحتوى",
-          "canvasVideo": "فيديو الغلاف المتحرك",
+          "canvasVideo": "فيديو الغلاف المتحرك (9:16)",
           "caption": "التعليق",
           "commentary": "التعليق",
           "coverArt": "صورة الغلاف",
@@ -1223,6 +1225,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "video": "الفيديو",
           "vocalStem": "المسار الصوتي",
           "previewClip": "مقطع المعاينة",
+          "previewStartSeconds": "بداية المعاينة (ثوانٍ)",
           "charity": "Charity"
         },
         "identity": {
@@ -1254,6 +1257,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "sourceTrackSearch": "ابحث في أصول Pirate / Story",
           "title": "العنوان",
           "unlockPrice": "1.00",
+          "previewStartSeconds": "0",
           "url": "https://"
         },
         "sections": {
@@ -1668,7 +1672,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "removeAvatar": "أزل الصورة الشخصية",
         "removeCover": "أزل الغلاف",
         "renameHandle": "أعد تسمية المعرّف",
-        "renameRequiresPaidUpgrade": "يتطلب هذا التغيير ترقية مدفوعة.",
+        "renameRequiresPaidUpgrade": "تغييرات المعرّف المدفوعة غير متاحة بعد.",
         "renamingHandle": "جارٍ تغيير المعرّف...",
         "replaceAvatar": "استبدل الصورة الشخصية",
         "replaceCover": "استبدل الغلاف",
@@ -2258,7 +2262,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "fields": {
           "audio": "音频",
           "body": "正文",
-          "canvasVideo": "Canvas 视频",
+          "canvasVideo": "Canvas 视频 (9:16)",
           "caption": "说明",
           "commentary": "评论",
           "coverArt": "封面图",
@@ -2275,6 +2279,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "video": "视频",
           "vocalStem": "人声分轨",
           "previewClip": "预览片段",
+          "previewStartSeconds": "预览开始（秒）",
           "charity": "Charity"
         },
         "identity": {
@@ -2306,6 +2311,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "sourceTrackSearch": "搜索 Pirate / Story 资产",
           "title": "标题",
           "unlockPrice": "1.00",
+          "previewStartSeconds": "0",
           "url": "https://"
         },
         "sections": {
@@ -2720,7 +2726,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "removeAvatar": "移除头像",
         "removeCover": "移除封面",
         "renameHandle": "重命名用户名",
-        "renameRequiresPaidUpgrade": "这次修改需要付费升级。",
+        "renameRequiresPaidUpgrade": "付费用户名更改暂不可用。",
         "renamingHandle": "正在重命名用户名...",
         "replaceAvatar": "更换头像",
         "replaceCover": "更换封面",

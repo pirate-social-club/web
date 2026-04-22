@@ -31,6 +31,8 @@ const OWNER_PRIVATE_KEY = process.env.STORY_CONTRACT_OWNER_PRIVATE_KEY?.trim()
   : null;
 const CDR_CONTRACT_ADDRESS = "0xcccccc0000000000000000000000000000000005" as Hex;
 const CDR_READ_GAS_MARGIN_WEI = parseEther("0.01");
+const PREVIEW_POLL_INTERVAL_MS = 2_000;
+const PREVIEW_POLL_ATTEMPTS = 30;
 const HTTP_AGENT = new Agent({
   headersTimeout: 10 * 60 * 1_000,
   bodyTimeout: 10 * 60 * 1_000,
@@ -40,16 +42,39 @@ function step(label: string): void {
   console.error(`[live-paid-song-e2e] ${label}`);
 }
 
-function makeSyntheticAudioBytes(seed: string, byteLength: number): Uint8Array {
-  const encoder = new TextEncoder();
-  const seedBytes = encoder.encode(seed);
-  const bytes = new Uint8Array(byteLength);
-  // Keep the payload deterministic while still looking like a binary file.
-  bytes.set([0x49, 0x44, 0x33, 0x04, 0x00, 0x00], 0);
-  for (let index = 6; index < byteLength; index += 1) {
-    bytes[index] = (seedBytes[index % seedBytes.length]! + index * 17) % 256;
-  }
-  return bytes;
+function makeSyntheticWavBytes(durationSeconds = 2): Uint8Array {
+  const sampleRate = 8000;
+  const channelCount = 1;
+  const bytesPerSample = 2;
+  const sampleCount = sampleRate * durationSeconds;
+  const dataSize = sampleCount * channelCount * bytesPerSample;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+  const writeAscii = (offset: number, text: string) => {
+    for (let index = 0; index < text.length; index += 1) {
+      view.setUint8(offset + index, text.charCodeAt(index));
+    }
+  };
+
+  writeAscii(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeAscii(8, "WAVE");
+  writeAscii(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channelCount, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * channelCount * bytesPerSample, true);
+  view.setUint16(32, channelCount * bytesPerSample, true);
+  view.setUint16(34, bytesPerSample * 8, true);
+  writeAscii(36, "data");
+  view.setUint32(40, dataSize, true);
+
+  return new Uint8Array(buffer);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function mintUpstreamJwt(sub: string, walletAddress: string): Promise<string> {
@@ -352,6 +377,33 @@ async function createUpload(
   });
 }
 
+async function waitForPreviewReady(
+  communityId: string,
+  bundleId: string,
+  token: string,
+): Promise<void> {
+  for (let attempt = 0; attempt <= PREVIEW_POLL_ATTEMPTS; attempt += 1) {
+    const bundle = await expectOkJson<{
+      preview_status: "pending" | "completed" | "failed";
+      preview_error?: string | null;
+      preview_audio?: { storage_ref?: string | null } | null;
+    }>(`/communities/${communityId}/song-artifacts/${bundleId}`, {
+      token,
+    });
+
+    if (bundle.preview_status === "completed" && bundle.preview_audio?.storage_ref) {
+      return;
+    }
+    if (bundle.preview_status === "failed") {
+      throw new Error(`Song preview generation failed: ${bundle.preview_error || "unknown error"}`);
+    }
+    if (attempt < PREVIEW_POLL_ATTEMPTS) {
+      await sleep(PREVIEW_POLL_INTERVAL_MS);
+    }
+  }
+  throw new Error("Song preview generation timed out after 60 seconds");
+}
+
 function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
   if (a.byteLength !== b.byteLength) return false;
   for (let index = 0; index < a.byteLength; index += 1) {
@@ -361,7 +413,6 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 async function main(): Promise<void> {
-  const runSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   step("exchange seller session");
   const seller = await exchangeSession(`seller-${Date.now()}`, SELLER_PRIVATE_KEY);
   step("exchange buyer session");
@@ -381,8 +432,7 @@ async function main(): Promise<void> {
   step("complete buyer verification");
   await completeVerification(buyer.accessToken);
 
-  const primaryBytes = makeSyntheticAudioBytes(`paid-cdr-primary:${runSeed}`, 256 * 1024);
-  const previewBytes = primaryBytes.slice(0, 48 * 1024);
+  const primaryBytes = makeSyntheticWavBytes();
   const lyrics = "Late train, low light, cold river, no explicit content.";
 
   step("create community");
@@ -409,15 +459,9 @@ async function main(): Promise<void> {
   step("create upload intents");
   const primaryUpload = await createUpload(communityId, seller.accessToken, {
     artifact_kind: "primary_audio",
-    mime_type: "audio/mpeg",
-    filename: "paid-cdr-primary.mp3",
+    mime_type: "audio/wav",
+    filename: "paid-cdr-primary.wav",
     size_bytes: primaryBytes.byteLength,
-  });
-  const previewUpload = await createUpload(communityId, seller.accessToken, {
-    artifact_kind: "preview_audio",
-    mime_type: "audio/mpeg",
-    filename: "paid-cdr-preview.mp3",
-    size_bytes: previewBytes.byteLength,
   });
 
   step("upload bytes");
@@ -425,13 +469,7 @@ async function main(): Promise<void> {
     token: seller.accessToken,
     method: "PUT",
     bytes: primaryBytes,
-    contentType: "audio/mpeg",
-  });
-  await expectOkJson(`/communities/${communityId}/song-artifact-uploads/${previewUpload.song_artifact_upload_id}/content`, {
-    token: seller.accessToken,
-    method: "PUT",
-    bytes: previewBytes,
-    contentType: "audio/mpeg",
+    contentType: "audio/wav",
   });
 
   step("create bundle");
@@ -441,10 +479,13 @@ async function main(): Promise<void> {
     token: seller.accessToken,
     json: {
       primary_audio: { song_artifact_upload_id: primaryUpload.song_artifact_upload_id },
-      preview_audio: { song_artifact_upload_id: previewUpload.song_artifact_upload_id },
+      preview_window: { start_ms: 0, duration_ms: 30_000 },
       lyrics,
     },
   });
+
+  step("wait for generated preview");
+  await waitForPreviewReady(communityId, bundle.song_artifact_bundle_id, seller.accessToken);
 
   step("publish locked song");
   const post = await expectOkJson<{

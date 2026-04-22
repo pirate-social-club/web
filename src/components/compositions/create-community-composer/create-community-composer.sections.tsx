@@ -21,7 +21,7 @@ import type {
 } from "./create-community-composer.types";
 
 export const ISO_ALPHA_2 = /^[A-Z]{2}$/;
-export const acceptedCommunityImageTypes = "image/png,image/jpeg,image/webp,image/gif";
+export const acceptedCommunityImageTypes = "image/png,image/jpeg,image/webp,image/gif,image/avif";
 
 
 

@@ -7,13 +7,13 @@ import { FormSectionHeading } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
 import { OptionCard } from "@/components/primitives/option-card";
+import { AudienceSelect } from "./post-composer-audience-select";
 import { Avatar } from "@/components/primitives/avatar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 import { fallbackSourceOptions } from "./post-composer-config";
 import { FieldLabel } from "./post-composer-fields";
-import { IdentitySection, QualifierSection } from "./post-composer-identity-section";
 import {
   References,
   SearchReferencePicker,
@@ -21,23 +21,20 @@ import {
   dedupeReferences,
 } from "./post-composer-references";
 import type {
-  AuthorMode,
   CharityContributionState,
   CommunityCharityPartner,
   ComposerAudienceState,
-  ComposerIdentityState,
   ComposerReference,
-  ComposerTab,
   DerivativeStepState,
-  IdentityMode,
   MonetizationState,
-  PostAudience,
+  SongComposerState,
 } from "./post-composer.types";
 
 type DerivativeStateUpdater = (
   updater: (current: DerivativeStepState | undefined) => DerivativeStepState | undefined,
 ) => void;
 type MonetizationStateUpdater = (updater: (current: MonetizationState) => MonetizationState) => void;
+type SongStateUpdater = (updater: (current: SongComposerState) => SongComposerState) => void;
 type AudienceStateUpdater = (updater: (current: ComposerAudienceState) => ComposerAudienceState) => void;
 type CharityContributionUpdater = (updater: (current: CharityContributionState) => CharityContributionState) => void;
 
@@ -48,58 +45,12 @@ function buildAvatarFallback(name: string): string {
   return `${tokens[0][0] ?? ""}${tokens[1][0] ?? ""}`.toUpperCase();
 }
 
-export function PostComposerIdentitySections({
-  activeTab,
-  anonymousEligibleTabs,
-  authorMode,
-  identity,
-  identityMode,
-  onAuthorModeChange,
-  onIdentityModeChange,
-  onSelectedQualifierIdsChange,
-  selectedQualifierIds,
-}: {
-  activeTab: ComposerTab;
-  anonymousEligibleTabs: ComposerTab[];
-  authorMode: AuthorMode;
-  identity?: ComposerIdentityState;
-  identityMode: IdentityMode;
-  onAuthorModeChange: (next: AuthorMode) => void;
-  onIdentityModeChange: (next: IdentityMode) => void;
-  onSelectedQualifierIdsChange: (next: string[]) => void;
-  selectedQualifierIds: string[];
-}) {
-  const currentIdentity = identity;
-  const shouldShowIdentity =
-    Boolean(currentIdentity?.agentLabel)
-    || (Boolean(currentIdentity?.allowAnonymousIdentity) && anonymousEligibleTabs.includes(activeTab));
-  const shouldShowQualifiers =
-    Boolean(currentIdentity?.availableQualifiers?.some((qualifier) => !qualifier.suppressedByClubGate)) &&
-    authorMode !== "agent" &&
-    identityMode === "anonymous" &&
-    currentIdentity?.allowQualifiersOnAnonymousPosts !== false;
-
-  return (
-    <>
-      {shouldShowIdentity && currentIdentity ? (
-        <IdentitySection
-          authorMode={authorMode}
-          identity={currentIdentity}
-          identityMode={identityMode}
-          onAuthorModeChange={onAuthorModeChange}
-          onIdentityModeChange={onIdentityModeChange}
-        />
-      ) : null}
-
-      {shouldShowQualifiers && currentIdentity ? (
-        <QualifierSection
-          identity={currentIdentity}
-          onSelectedQualifierIdsChange={onSelectedQualifierIdsChange}
-          selectedQualifierIds={selectedQualifierIds}
-        />
-      ) : null}
-    </>
-  );
+function normalizeSecondsInput(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) {
+    return "";
+  }
+  return String(Math.min(Number.parseInt(digits, 10), 86_400));
 }
 
 export function PostComposerDerivativeSection({
@@ -183,7 +134,9 @@ export function PostComposerDerivativeSection({
 export function PostComposerSongAccessSection({
   copy,
   monetizationState,
+  songState,
   updateMonetizationState,
+  updateSongState,
 }: {
   copy: {
     access: Record<string, string>;
@@ -192,7 +145,9 @@ export function PostComposerSongAccessSection({
     sections: Record<string, string>;
   };
   monetizationState: MonetizationState;
+  songState: SongComposerState;
   updateMonetizationState: MonetizationStateUpdater;
+  updateSongState: SongStateUpdater;
 }) {
   const isMobile = useIsMobile();
   return (
@@ -240,6 +195,22 @@ export function PostComposerSongAccessSection({
                 }
                 placeholder={copy.placeholders.unlockPrice}
                 value={monetizationState.priceUsd ?? ""}
+              />
+            </div>
+
+            <div>
+              <FieldLabel label={copy.fields.previewStartSeconds} />
+              <Input
+                className="h-12"
+                inputMode="numeric"
+                onChange={(event) =>
+                  updateSongState((current) => ({
+                    ...current,
+                    previewStartSeconds: normalizeSecondsInput(event.target.value),
+                  }))
+                }
+                placeholder={copy.placeholders.previewStartSeconds}
+                value={songState.previewStartSeconds ?? ""}
               />
             </div>
 
@@ -362,44 +333,24 @@ export function PostComposerAudienceSection({
   };
   updateAudience: AudienceStateUpdater;
 }) {
-  const audienceOptions: Array<{
-    value: PostAudience;
-    title: string;
-    description: string;
-  }> = [
-    {
-      value: "public",
-      title: copy.audience.public,
-      description: copy.audience.publicDescription,
-    },
-    {
-      value: "members_only",
-      title: copy.audience.private,
-      description: copy.audience.privateDescription,
-    },
-  ];
-
   return (
-    <section className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
-      <FormSectionHeading title={copy.sections.audience} />
-      <div className="space-y-3">
-        {audienceOptions.map((option) => {
-          const disabled = option.value === "public" && audience.publicOptionEnabled === false;
-
-          return (
-            <OptionCard
-              key={option.value}
-              description={option.description}
-              disabled={disabled}
-              disabledHint={disabled ? audience.publicOptionDisabledReason : undefined}
-              selected={audience.visibility === option.value}
-              title={option.title}
-              onClick={() => updateAudience((current) => ({ ...current, visibility: option.value }))}
-            />
-          );
-        })}
-      </div>
-    </section>
+    <div className="flex items-center gap-3">
+      <span className="text-base text-muted-foreground">
+        {copy.sections.audience}
+      </span>
+      <AudienceSelect
+        labels={{
+          public: copy.audience.public,
+          publicDescription: copy.audience.publicDescription,
+          community: copy.audience.community,
+          communityDescription: copy.audience.communityDescription,
+        }}
+        publicOptionDisabledReason={audience.publicOptionDisabledReason}
+        publicOptionEnabled={audience.publicOptionEnabled}
+        value={audience.visibility}
+        onChange={(value) => updateAudience((current) => ({ ...current, visibility: value }))}
+      />
+    </div>
   );
 }
 

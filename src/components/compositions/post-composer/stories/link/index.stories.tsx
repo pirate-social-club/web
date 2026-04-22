@@ -23,11 +23,6 @@ export const PasteUrl: Story = {
       mode="link"
       captionValue="Worth posting for the production notes alone."
       linkUrlValue="https://032c.com/magazine/kanye-west-tour-design"
-      linkPreview={{
-        domain: "032c.com",
-        title: "Inside the Visual Language of the Yeezus Tour",
-        imageSrc: "https://picsum.photos/seed/yeezus-link/320/180",
-      }}
     />
   ),
 };

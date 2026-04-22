@@ -36,7 +36,7 @@ function CreatePostComposer({
 
   return (
     <PostComposer
-      availableTabs={["text", "link", "song"]}
+      availableTabs={["text", "image", "link", "song"]}
       canCreateSongPost
       clubName={`c/${state.community.display_name}`}
       draft={{
@@ -56,6 +56,8 @@ function CreatePostComposer({
           availableQualifiers: state.availableIdentityQualifiers,
           selectedQualifierIds: state.selectedQualifierIds,
         },
+        imageUpload: state.imageUpload,
+        imageUploadLabel: state.imageUploadLabel,
         linkUrlValue: state.linkUrl,
         lyricsValue: state.lyrics,
         mode: state.composerMode,
@@ -73,6 +75,7 @@ function CreatePostComposer({
         onCharityContributionChange: state.setCharityContribution,
         onDerivativeStepChange: state.setDerivativeStep,
         onIdentityModeChange: state.setIdentityMode,
+        onImageUploadChange: state.setImageUpload,
         onLinkUrlValueChange: state.setLinkUrl,
         onLyricsValueChange: state.setLyrics,
         onModeChange: state.setComposerMode,

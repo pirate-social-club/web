@@ -9,6 +9,13 @@ function buildCommunityPath(communityId: string, routeSlug: string | null): stri
   return `/c/${encodeURIComponent(routeSlug || communityId)}`;
 }
 
+function getPublicIdentityHandleLabel(input: {
+  global_handle: { label: string };
+  primary_public_handle?: { label: string } | null;
+}): string {
+  return input.primary_public_handle?.label ?? input.global_handle.label;
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -55,7 +62,6 @@ function buildMetaDescription({
 
 export function renderPublicProfilePage({
   appOrigin,
-  canonicalHandle,
   canonicalUrl,
   communities,
   copy,
@@ -65,7 +71,6 @@ export function renderPublicProfilePage({
   profile,
 }: {
   appOrigin: string;
-  canonicalHandle: string;
   canonicalUrl: string;
   communities: PublicProfileResolution["created_communities"];
   copy: RoutesMessages["publicProfile"];
@@ -79,14 +84,14 @@ export function renderPublicProfilePage({
   const avatar = profile.avatar_ref?.trim() || "";
   const cover = profile.cover_ref?.trim() || "";
   const joined = formatJoinedLabel(profile.created_at, localeTag);
-  const tagline = displayHandle === canonicalHandle ? displayHandle : canonicalHandle;
+  const tagline = displayHandle;
   const initials = escapeHtml(displayName.slice(0, 2).toUpperCase() || "P");
   const safeDisplayName = escapeHtml(displayName);
   const safeHandle = escapeHtml(displayHandle);
   const safeTagline = escapeHtml(tagline);
   const safeBio = escapeHtml(bio);
   const safeHost = escapeHtml(host);
-  const safeOpenInPirateHref = `${appOrigin}/u/${encodeURIComponent(canonicalHandle)}`;
+  const safeOpenInPirateHref = `${appOrigin}/u/${encodeURIComponent(displayHandle)}`;
   const metaDescription = buildMetaDescription({
     bio,
     communityCount: communities.length,
@@ -267,7 +272,7 @@ export function renderPublicAgentPage({
 }): Response {
   const handle = agentResolution.agent.handle.label_display;
   const displayName = agentResolution.agent.display_name?.trim() || handle;
-  const ownerHandle = agentResolution.owner.global_handle.label;
+  const ownerHandle = getPublicIdentityHandleLabel(agentResolution.owner);
   const safeDisplayName = escapeHtml(displayName);
   const safeHandle = escapeHtml(handle);
   const safeOwnerHandle = escapeHtml(ownerHandle);
@@ -305,7 +310,7 @@ export function renderPublicAgentPage({
         <h1>${safeDisplayName}</h1>
         <div class="handle">${safeHandle}</div>
         <div class="meta">
-          <div class="pill"><strong>${safeOwnerHandle}</strong>Owner</div>
+          <a class="pill" href="${appOrigin}/u/${encodeURIComponent(ownerHandle)}"><strong>${safeOwnerHandle}</strong>Owner</a>
           <div class="pill"><strong>${escapeHtml(agentResolution.agent.ownership_provider ?? "agent")}</strong>Provider</div>
         </div>
         <a class="cta" href="${escapeHtml(safeOpenHref)}">Open in Pirate</a>

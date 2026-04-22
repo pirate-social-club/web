@@ -29,7 +29,7 @@ export const PublicHandleOnly: Story = {
         allowAnonymousIdentity: true,
         identityMode: "public",
         publicHandle: "@saint-pablo",
-        anonymousLabel: "anon_mercury-17",
+        anonymousLabel: "anon_amber-anchor-00",
         availableQualifiers: [],
       }}
     />
@@ -46,7 +46,7 @@ export const QualifiersDropdown: Story = {
         allowQualifiersOnAnonymousPosts: true,
         identityMode: "anonymous",
         publicHandle: "@saint-pablo",
-        anonymousLabel: "anon_mercury-17",
+        anonymousLabel: "anon_amber-anchor-00",
         availableQualifiers: [
           {
             qualifierId: "qlf_unique_human",
@@ -103,7 +103,7 @@ export const GateSuppressesQualifier: Story = {
         allowAnonymousIdentity: true,
         identityMode: "anonymous",
         publicHandle: "@saint-pablo",
-        anonymousLabel: "anon_america-17",
+        anonymousLabel: "anon_lunar-echo-42",
         availableQualifiers: [
           {
             qualifierId: "qlf_unique_human",
@@ -144,7 +144,7 @@ export const AnonymousWithoutQualifierDisclosure: Story = {
         allowQualifiersOnAnonymousPosts: false,
         identityMode: "anonymous",
         publicHandle: "@saint-pablo",
-        anonymousLabel: "anon_mercury-17",
+        anonymousLabel: "anon_amber-anchor-00",
         availableQualifiers: [
           {
             qualifierId: "qlf_unique_human",
@@ -173,8 +173,8 @@ export const AnonymousWithoutQualifierDisclosure: Story = {
   ),
 };
 
-export const PrivateInRestrictedCommunity: Story = {
-  name: "Private In Restricted Community",
+export const CommunityInRestrictedCommunity: Story = {
+  name: "Community In Restricted Community",
   render: () => (
     <PostComposer
       {...baseComposer}
@@ -193,8 +193,8 @@ export const PrivateInRestrictedCommunity: Story = {
   ),
 };
 
-export const PrivateInPublicCommunity: Story = {
-  name: "Private In Public Community",
+export const CommunityInPublicCommunity: Story = {
+  name: "Community In Public Community",
   render: () => (
     <PostComposer
       {...baseComposer}

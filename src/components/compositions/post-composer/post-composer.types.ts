@@ -99,8 +99,7 @@ export interface SongComposerState {
   primaryAudioLabel?: string;
   coverUpload?: File | null;
   coverLabel?: string;
-  previewAudioUpload?: File | null;
-  previewAudioLabel?: string;
+  previewStartSeconds?: string;
   canvasVideoUpload?: File | null;
   canvasVideoLabel?: string;
   instrumentalAudioUpload?: File | null;
@@ -154,6 +153,8 @@ export interface PostComposerDraftState {
   titleCountLabel?: string;
   textBodyValue?: string;
   captionValue?: string;
+  imageUpload?: File | null;
+  imageUploadLabel?: string;
   lyricsValue?: string;
   linkUrlValue?: string;
   linkPreview?: LinkPreviewState;
@@ -170,6 +171,7 @@ export interface PostComposerDraftState {
 
 export interface PostComposerDraftActions {
   onCaptionValueChange?: (value: string) => void;
+  onImageUploadChange?: (file: File | null) => void;
   onTextBodyValueChange?: (value: string) => void;
   onTitleValueChange?: (value: string) => void;
   onLyricsValueChange?: (value: string) => void;

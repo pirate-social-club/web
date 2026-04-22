@@ -101,7 +101,7 @@ function MediaControlCard({
         </div>
         <div className="flex flex-wrap gap-3">
           <HiddenFileInput
-            accept="image/png,image/jpeg,image/webp,image/gif"
+            accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
             fileLabel={selectLabel}
             onSelect={onSelect}
           />

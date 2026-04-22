@@ -67,7 +67,6 @@ function apiProfileToPublicProfileProps(
 ): PublicProfileProps {
   const profile = resolution.profile;
   const publicHandle = getProfileHandleLabel(profile);
-  const canonicalHandle = profile.global_handle.label;
 
   return {
     avatarSrc: profile.avatar_ref ?? undefined,
@@ -89,11 +88,11 @@ function apiProfileToPublicProfileProps(
         }),
       },
     ],
-    openInPirateHref: `${appOrigin}${buildPublicProfilePath(canonicalHandle)}`,
+    openInPirateHref: `${appOrigin}${buildPublicProfilePath(publicHandle)}`,
     posts: [],
     scrobbles: [],
     songs: [],
-    tagline: publicHandle === canonicalHandle ? undefined : canonicalHandle,
+    tagline: undefined,
     videos: [],
   };
 }
@@ -126,17 +125,20 @@ export function PublicProfileRoutePage({
   const { error, loading, resolution } = usePublicProfile(handleLabel);
 
   React.useEffect(() => {
-    if (!resolution || !hostSuffix || resolution.is_canonical || typeof window === "undefined") {
-      return;
-    }
-
-    const nextHost = `${resolution.resolved_handle_label.replace(/\.pirate$/i, "")}.${hostSuffix}`;
-    if (window.location.hostname.toLowerCase() === nextHost.toLowerCase()) {
+    if (!resolution || resolution.is_canonical || typeof window === "undefined") {
       return;
     }
 
     const nextUrl = new URL(window.location.href);
-    nextUrl.hostname = nextHost;
+    if (hostSuffix && resolution.resolved_handle_label.toLowerCase().endsWith(".pirate")) {
+      const nextHost = `${resolution.resolved_handle_label.replace(/\.pirate$/i, "")}.${hostSuffix}`;
+      if (window.location.hostname.toLowerCase() === nextHost.toLowerCase()) {
+        return;
+      }
+      nextUrl.hostname = nextHost;
+    } else {
+      nextUrl.pathname = buildPublicProfilePath(resolution.resolved_handle_label);
+    }
     window.location.replace(nextUrl.toString());
   }, [hostSuffix, resolution]);
 

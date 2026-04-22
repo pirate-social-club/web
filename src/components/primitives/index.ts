@@ -23,6 +23,7 @@ export * from "./option-card";
 export * from "./pill-button";
 export * from "./pirate-brand-mark";
 export * from "./prefix-input";
+export * from "./radio-indicator";
 export * from "./radio-group";
 export * from "./scrubber";
 export * from "./search-trigger";

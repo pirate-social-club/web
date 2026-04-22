@@ -27,13 +27,13 @@ export function SettingsRow({
   value?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-20 items-center gap-4 border-b border-border px-5 py-4 last:border-b-0">
+    <div className="flex min-h-20 flex-col items-start gap-2 border-b border-border px-5 py-4 last:border-b-0 sm:flex-row sm:items-center sm:gap-4">
       <div className="min-w-0 flex-1 space-y-1">
         <div className="text-base font-medium text-foreground">{label}</div>
         {note ? <div className="text-base text-muted-foreground">{note}</div> : null}
       </div>
       {value ? (
-        <div className="min-w-0 flex-1 text-start text-base text-muted-foreground">
+        <div className="min-w-0 max-w-full flex-1 text-start text-base text-muted-foreground">
           {value}
         </div>
       ) : null}

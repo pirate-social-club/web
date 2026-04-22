@@ -22,14 +22,12 @@ import {
   FieldLabel,
   LabeledFormattedTextarea,
   LabeledTextarea,
-  LinkPreviewCard,
   UploadField,
 } from "./post-composer-fields";
 import { LiveTabContent } from "./post-composer-live-tab";
 import type {
   ComposerTab,
   DerivativeStepState,
-  LinkPreviewState,
   LiveComposerState,
   SongComposerState,
   SongMode,
@@ -37,17 +35,21 @@ import type {
 
 type SongStateUpdater = (updater: (current: SongComposerState) => SongComposerState) => void;
 
+const acceptedImageMimeTypes = "image/jpeg,image/png,image/webp,image/gif,image/avif";
+const acceptedImageFormatLabel = "JPG, PNG, WebP, GIF, or AVIF";
+
 export function PostComposerPrimaryArea({
   activeSongMode,
   activeTab,
   captionValue,
   copy,
   derivativeState,
-  linkPreview,
+  imageUploadLabel,
   linkUrlValue,
   liveState,
   lyricsValue,
   onCaptionValueChange,
+  onImageUploadChange,
   onLinkUrlValueChange,
   onLyricsValueChange,
   onTextBodyValueChange,
@@ -70,11 +72,12 @@ export function PostComposerPrimaryArea({
     live: Record<string, string>;
   };
   derivativeState?: DerivativeStepState;
-  linkPreview?: LinkPreviewState;
+  imageUploadLabel?: string;
   linkUrlValue: string;
   liveState: LiveComposerState;
   lyricsValue: string;
   onCaptionValueChange?: (value: string) => void;
+  onImageUploadChange?: (file: File | null) => void;
   onLinkUrlValueChange?: (value: string) => void;
   onLyricsValueChange?: (value: string) => void;
   onTextBodyValueChange?: (value: string) => void;
@@ -99,12 +102,20 @@ export function PostComposerPrimaryArea({
     case "image":
       return (
         <div className="space-y-3">
-          <UploadField accept="image/*" copy={copy} label={copy.fields.image} />
+          <UploadField
+            accept={acceptedImageMimeTypes}
+            copy={copy}
+            label={copy.fields.image}
+            onChange={(files) => onImageUploadChange?.(files?.[0] ?? null)}
+            placeholderLabel={acceptedImageFormatLabel}
+            selectedLabel={imageUploadLabel}
+          />
           <LabeledTextarea
             className="min-h-28"
-            defaultValue={captionValue}
             label={copy.fields.caption}
+            onChange={onCaptionValueChange}
             placeholder={copy.placeholders.caption}
+            value={captionValue}
           />
         </div>
       );
@@ -139,7 +150,6 @@ export function PostComposerPrimaryArea({
             placeholder={copy.placeholders.commentary}
             value={captionValue}
           />
-          {linkPreview ? <LinkPreviewCard {...linkPreview} /> : null}
         </div>
       );
     case "song":
@@ -186,7 +196,7 @@ export function PostComposerPrimaryArea({
               selectedLabel={songState.primaryAudioUpload?.name ?? songState.primaryAudioLabel}
             />
             <UploadField
-              accept="image/*"
+              accept={acceptedImageMimeTypes}
               copy={copy}
               label={copy.fields.coverArt}
               onChange={(files) =>
@@ -230,19 +240,6 @@ export function PostComposerPrimaryArea({
               />
             </div>
             <div className="grid gap-3 md:grid-cols-2">
-              <UploadField
-                accept="audio/*"
-                copy={copy}
-                label={copy.fields.previewClip}
-                onChange={(files) =>
-                  updateSongState((current) => ({
-                    ...current,
-                    previewAudioUpload: files?.[0] ?? null,
-                    previewAudioLabel: files?.[0]?.name ?? current.previewAudioLabel,
-                  }))
-                }
-                selectedLabel={songState.previewAudioUpload?.name ?? songState.previewAudioLabel}
-              />
               <UploadField
                 accept="video/*"
                 copy={copy}

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { At, Handshake } from "@phosphor-icons/react";
 
 import {
   Accordion,
@@ -31,6 +30,8 @@ import {
 import { OptionCard } from "@/components/primitives/option-card";
 import { PrefixInput } from "@/components/primitives/prefix-input";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
+import handshakeLogoUrl from "../../../../handshake-logo.png";
+import spacesLogoUrl from "../../../../spaces-protocol-logo.jpeg";
 
 import type {
   NamespaceFamily,
@@ -48,12 +49,12 @@ const namespaceFamilyMeta: Record<
   hns: {
     externalExample: "kanye",
     rootInputPrefix: ".",
-    icon: <Handshake className="size-5" />,
+    icon: <img alt="" className="size-full object-cover" src={handshakeLogoUrl} />,
   },
   spaces: {
     externalExample: "kanye",
     rootInputPrefix: "@",
-    icon: <At className="size-5" />,
+    icon: <img alt="" className="size-full object-cover" src={spacesLogoUrl} />,
   },
 };
 
@@ -162,9 +163,9 @@ export function VerifyNamespaceModalView({
   const mc = copy.moderation.namespaceVerification;
   const family = copy.moderation.namespaceVerification.family;
   const meta = namespaceFamilyMeta[activeFamily];
-  const familyLabels: Record<NamespaceFamily, { label: string; detail: string; rootInputLabel: string }> = {
-    hns: { label: family.handshakeLabel, detail: family.handshakeDetail, rootInputLabel: family.handshakeRootLabel },
-    spaces: { label: family.spacesLabel, detail: family.spacesDetail, rootInputLabel: family.spacesRootLabel },
+  const familyLabels: Record<NamespaceFamily, { label: string; rootInputLabel: string }> = {
+    hns: { label: family.handshakeLabel, rootInputLabel: family.handshakeRootLabel },
+    spaces: { label: family.spacesLabel, rootInputLabel: family.spacesRootLabel },
   };
   const hasRootInput = rootLabel.trim().replace(/^[@.]/, "").length > 0;
 
@@ -190,7 +191,6 @@ export function VerifyNamespaceModalView({
                   return (
                     <OptionCard
                       key={f}
-                      description={labels.detail}
                       icon={option.icon}
                       selected={f === activeFamily}
                       title={labels.label}
@@ -211,11 +211,6 @@ export function VerifyNamespaceModalView({
                 />
               </div>
 
-              {isHns ? (
-                <FormNote>
-                  {mc.hnsSetupNote}
-                </FormNote>
-              ) : null}
             </>
           ) : null}
 

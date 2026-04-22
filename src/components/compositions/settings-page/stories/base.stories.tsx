@@ -211,19 +211,6 @@ export const ProfileHandleAvailableFree: Story = {
   },
 };
 
-export const ProfileHandleAvailablePaid: Story = {
-  args: {
-    profile: {
-      ...baseArgs.profile,
-      handleFlow: makeMockHandleFlow({
-        draft: "blackbeard",
-        preview: "blackbeard.pirate",
-        state: { kind: "available", freeRenameRemaining: false },
-      }),
-    },
-  },
-};
-
 export const ProfileHandleUnavailable: Story = {
   args: {
     profile: {

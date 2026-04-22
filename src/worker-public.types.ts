@@ -10,7 +10,7 @@ export type PublicProfileResolution = {
     global_handle: {
       label: string;
     };
-    primary_public_handle?: {
+    primary_public_handle: {
       label: string;
     } | null;
   };
@@ -44,6 +44,9 @@ export type PublicAgentResolution = {
     global_handle: {
       label: string;
     };
+    primary_public_handle: {
+      label: string;
+    } | null;
   };
 };
 

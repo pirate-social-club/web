@@ -147,7 +147,7 @@
     "fields": {
       "audio": "Audio",
       "body": "Body",
-      "canvasVideo": "Canvas video",
+      "canvasVideo": "Canvas video (9:16)",
       "caption": "Caption",
       "commentary": "Commentary",
       "coverArt": "Cover art",
@@ -164,6 +164,7 @@
       "video": "Video",
       "vocalStem": "Vocal stem",
       "previewClip": "Preview clip",
+      "previewStartSeconds": "Preview start (seconds)",
       "charity": "Charity"
     },
     "identity": {
@@ -195,6 +196,7 @@
       "sourceTrackSearch": "Search Pirate / Story assets",
       "title": "Title",
       "unlockPrice": "1.00",
+      "previewStartSeconds": "0",
       "url": "https://"
     },
     "sections": {
@@ -608,7 +610,7 @@
     "removeAvatar": "Remove avatar",
     "removeCover": "Remove cover",
     "renameHandle": "Rename handle",
-    "renameRequiresPaidUpgrade": "This rename requires a paid upgrade.",
+    "renameRequiresPaidUpgrade": "Paid handle changes are not available yet.",
     "renamingHandle": "Renaming handle...",
     "replaceAvatar": "Replace avatar",
     "replaceCover": "Replace cover",

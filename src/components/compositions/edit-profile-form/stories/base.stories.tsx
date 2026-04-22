@@ -114,17 +114,6 @@ export const HandleFieldAvailable: Story = {
   ),
 };
 
-export const HandleFieldPaid: Story = {
-  render: () => (
-    <GlobalHandleField
-      currentHandle="pampa_of_argentina.pirate"
-      handleFlow={makeMockHandleFlow({
-        state: { kind: "available", freeRenameRemaining: false },
-      })}
-    />
-  ),
-};
-
 export const HandleFieldConflict: Story = {
   render: () => (
     <GlobalHandleField
@@ -216,7 +205,7 @@ export const DesktopDialogWithHandleFlow: Story = {
       handleFlow={makeMockHandleFlow({
         draft: "captain",
         preview: "captain.pirate",
-        state: { kind: "available", freeRenameRemaining: false },
+        state: { kind: "available", freeRenameRemaining: true },
       })}
     >
       <Button>Edit profile</Button>
@@ -265,7 +254,7 @@ export const MobileSheetWithHandleFlow: Story = {
           handleFlow={makeMockHandleFlow({
             draft: "captain",
             preview: "captain.pirate",
-            state: { kind: "available", freeRenameRemaining: false },
+            state: { kind: "available", freeRenameRemaining: true },
           })}
         />
       </SheetContent>

@@ -161,14 +161,17 @@ export function GlobalHandleField({
 
       {state.kind === "available" && (
         <div className="space-y-3">
-          <FormNote tone="default">{copy.handleAvailableMessage}</FormNote>
-          {!state.freeRenameRemaining && (
+          {state.freeRenameRemaining ? (
+            <FormNote tone="default">{copy.handleAvailableMessage}</FormNote>
+          ) : (
             <FormNote tone="warning">{copy.renameRequiresPaidUpgrade}</FormNote>
           )}
           <div className="flex items-center gap-3">
-            <Button onClick={() => void submitRename()} size="sm">
-              {copy.renameHandle}
-            </Button>
+            {state.freeRenameRemaining ? (
+              <Button onClick={() => void submitRename()} size="sm">
+                {copy.renameHandle}
+              </Button>
+            ) : null}
             {expandable && (
               <Button onClick={handleCancel} size="sm" variant="ghost">
                 {copy.cancelHandleChangeLabel}

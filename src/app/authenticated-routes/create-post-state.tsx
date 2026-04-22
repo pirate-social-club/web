@@ -46,6 +46,22 @@ type AvailableSigningAgent = {
   privateKeyPem: string;
 };
 
+const SONG_PREVIEW_DURATION_MS = 30_000;
+const SONG_PREVIEW_POLL_INTERVAL_MS = 2_000;
+const SONG_PREVIEW_POLL_ATTEMPTS = 30;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function parsePreviewStartMs(value: string | undefined): number | null {
+  const parsed = Number.parseInt(String(value ?? "").trim(), 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+  return parsed * 1000;
+}
+
 async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<AvailableSigningAgent | null> {
   for (const agent of agents) {
     if (agent.status !== "active" || !agent.current_ownership) {
@@ -91,6 +107,8 @@ export function useCreatePostState(communityId: string) {
     charityContribution,
     composerMode,
     derivativeStep,
+    imageUpload,
+    imageUploadLabel,
     identityMode,
     linkUrl,
     lyrics,
@@ -111,6 +129,8 @@ export function useCreatePostState(communityId: string) {
     setCharityContribution,
     setComposerMode,
     setDerivativeStep,
+    setImageUpload,
+    setImageUploadLabel,
     setIdentityMode,
     setLinkUrl,
     setLyrics,
@@ -135,11 +155,11 @@ export function useCreatePostState(communityId: string) {
     lyrics,
     primary: songState.primaryAudioUpload ? { name: songState.primaryAudioUpload.name, size: songState.primaryAudioUpload.size, lastModified: songState.primaryAudioUpload.lastModified } : null,
     cover: songState.coverUpload ? { name: songState.coverUpload.name, size: songState.coverUpload.size, lastModified: songState.coverUpload.lastModified } : null,
-    preview: songState.previewAudioUpload ? { name: songState.previewAudioUpload.name, size: songState.previewAudioUpload.size, lastModified: songState.previewAudioUpload.lastModified } : null,
+    previewStartSeconds: songState.previewStartSeconds ?? "0",
     canvas: songState.canvasVideoUpload ? { name: songState.canvasVideoUpload.name, size: songState.canvasVideoUpload.size, lastModified: songState.canvasVideoUpload.lastModified } : null,
     instrumental: songState.instrumentalAudioUpload ? { name: songState.instrumentalAudioUpload.name, size: songState.instrumentalAudioUpload.size, lastModified: songState.instrumentalAudioUpload.lastModified } : null,
     vocal: songState.vocalAudioUpload ? { name: songState.vocalAudioUpload.name, size: songState.vocalAudioUpload.size, lastModified: songState.vocalAudioUpload.lastModified } : null,
-  }), [lyrics, songState.canvasVideoUpload, songState.coverUpload, songState.instrumentalAudioUpload, songState.previewAudioUpload, songState.primaryAudioUpload, songState.vocalAudioUpload]);
+  }), [lyrics, songState.canvasVideoUpload, songState.coverUpload, songState.instrumentalAudioUpload, songState.previewStartSeconds, songState.primaryAudioUpload, songState.vocalAudioUpload]);
   const previousSongBundleInputFingerprint = React.useRef(songBundleInputFingerprint);
 
   React.useEffect(() => {
@@ -262,7 +282,14 @@ export function useCreatePostState(communityId: string) {
   const canSubmitText = title.trim().length > 0 && body.trim().length > 0;
   const canSubmitSong = Boolean(songState.primaryAudioUpload && lyrics.trim());
   const canSubmitLink = linkUrl.trim().length > 0;
-  const canSubmit = composerMode === "song" ? canSubmitSong : composerMode === "link" ? canSubmitLink : canSubmitText;
+  const canSubmitImage = title.trim().length > 0 && Boolean(imageUpload);
+  const canSubmit = composerMode === "song"
+    ? canSubmitSong
+    : composerMode === "link"
+      ? canSubmitLink
+      : composerMode === "image"
+        ? canSubmitImage
+        : canSubmitText;
   const paidSongPriceUsd = composerMode === "song" && monetizationState.visible ? parseUsdInput(monetizationState.priceUsd ?? monetizationState.priceLabel) : null;
   const paidSongPriceInvalid = composerMode === "song" && monetizationState.visible && paidSongPriceUsd == null;
   const submitState = resolveComposerSubmitState({ canSubmit, composerMode, derivativeStep, monetizationState, paidSongPriceInvalid, submitError });
@@ -297,8 +324,26 @@ export function useCreatePostState(communityId: string) {
     return moderationResult?.analysis_state ?? null;
   }, []);
 
+  const waitForSongPreview = React.useCallback(async (bundle: ApiSongArtifactBundle): Promise<ApiSongArtifactBundle> => {
+    let current = bundle;
+    for (let attempt = 0; attempt <= SONG_PREVIEW_POLL_ATTEMPTS; attempt += 1) {
+      if (current.preview_status === "completed" && current.preview_audio?.storage_ref) {
+        return current;
+      }
+      if (current.preview_status === "failed") {
+        throw new Error(current.preview_error || "Song preview generation failed.");
+      }
+      if (attempt === SONG_PREVIEW_POLL_ATTEMPTS) {
+        break;
+      }
+      await sleep(SONG_PREVIEW_POLL_INTERVAL_MS);
+      current = await api.communities.getSongArtifactBundle(communityId, current.song_artifact_bundle_id);
+    }
+    throw new Error("Song preview is still processing. Try again in a moment.");
+  }, [api.communities, communityId]);
+
   const uploadSongArtifact = React.useCallback(async (
-    artifactKind: "primary_audio" | "cover_art" | "preview_audio" | "canvas_video" | "instrumental_audio" | "vocal_audio",
+    artifactKind: "primary_audio" | "cover_art" | "canvas_video" | "instrumental_audio" | "vocal_audio",
     file: File | null | undefined,
   ) => {
     if (!file) return null;
@@ -346,15 +391,17 @@ export function useCreatePostState(communityId: string) {
       if (composerMode === "song") {
         if (monetizationState.visible && paidSongPriceUsd == null) throw new Error("Enter a valid unlock price before publishing this song.");
         if (isLockedSong && !monetizationState.rightsAttested) throw new Error("Confirm you have the rights to sell this song before publishing it.");
+        const previewStartMs = isLockedSong ? parsePreviewStartMs(songState.previewStartSeconds) : null;
+        if (isLockedSong && previewStartMs == null) throw new Error("Choose where the 30 second preview starts.");
         const selectedSourceRefs = derivativeStep?.references?.map((reference) => reference.id) ?? [];
         if (derivativeStep?.required && selectedSourceRefs.length === 0) throw new Error("Attach a source track before publishing this remix");
 
         let bundleId = pendingSongBundleId;
+        let bundleForPublish: ApiSongArtifactBundle | null = null;
         if (!bundleId) {
           const primaryAudio = await uploadSongArtifact("primary_audio", songState.primaryAudioUpload);
           if (!primaryAudio) throw new Error("Primary audio is required");
           const coverArt = await uploadSongArtifact("cover_art", songState.coverUpload);
-          const previewAudio = await uploadSongArtifact("preview_audio", songState.previewAudioUpload);
           const canvasVideo = await uploadSongArtifact("canvas_video", songState.canvasVideoUpload);
           const instrumentalAudio = await uploadSongArtifact("instrumental_audio", songState.instrumentalAudioUpload);
           const vocalAudio = await uploadSongArtifact("vocal_audio", songState.vocalAudioUpload);
@@ -362,12 +409,13 @@ export function useCreatePostState(communityId: string) {
             primary_audio: { song_artifact_upload_id: primaryAudio.song_artifact_upload_id },
             lyrics: lyrics.trim(),
             cover_art: coverArt ? { song_artifact_upload_id: coverArt.song_artifact_upload_id } : null,
-            preview_audio: previewAudio ? { song_artifact_upload_id: previewAudio.song_artifact_upload_id } : null,
+            preview_window: isLockedSong ? { start_ms: previewStartMs ?? 0, duration_ms: SONG_PREVIEW_DURATION_MS } : null,
             canvas_video: canvasVideo ? { song_artifact_upload_id: canvasVideo.song_artifact_upload_id } : null,
             instrumental_audio: instrumentalAudio ? { song_artifact_upload_id: instrumentalAudio.song_artifact_upload_id } : null,
             vocal_audio: vocalAudio ? { song_artifact_upload_id: vocalAudio.song_artifact_upload_id } : null,
           });
           bundleId = bundle.song_artifact_bundle_id;
+          bundleForPublish = bundle;
 
           if (resolveBundleAnalysisState(bundle) === "allow_with_required_reference") {
             const matchedReferences = buildMatchedSourceReferences(bundle);
@@ -386,6 +434,12 @@ export function useCreatePostState(communityId: string) {
               : "This audio matches an existing song. Attach a source track, then submit again as a remix.");
             return;
           }
+        }
+        if (isLockedSong) {
+          bundleForPublish = await waitForSongPreview(
+            bundleForPublish ?? await api.communities.getSongArtifactBundle(communityId, bundleId),
+          );
+          bundleId = bundleForPublish.song_artifact_bundle_id;
         }
 
         const songRequest = buildSongPostRequest({
@@ -417,6 +471,34 @@ export function useCreatePostState(communityId: string) {
           if (!listingRequest) throw new Error("The song published, but the paid listing payload was not created.");
           await api.communities.createListing(communityId, listingRequest);
         }
+      } else if (composerMode === "image") {
+        if (!imageUpload) throw new Error("Choose an image before creating this post.");
+        const uploadedImage = await api.communities.uploadMedia({
+          kind: "post_image",
+          file: imageUpload,
+        });
+        const imageRequest: CreatePostRequest = {
+          idempotency_key: crypto.randomUUID(),
+          post_type: "image" as const,
+          identity_mode: resolvedIdentityMode,
+          anonymous_scope: anonymousScope,
+          disclosed_qualifier_ids: disclosedQualifierIds,
+          translation_policy: "machine_allowed",
+          title: title.trim(),
+          caption: caption.trim() || undefined,
+          media_refs: [{
+            storage_ref: uploadedImage.media_ref,
+            mime_type: uploadedImage.mime_type,
+            size_bytes: uploadedImage.size_bytes,
+          }],
+          visibility: audience.visibility,
+        };
+        result = await api.communities.createPost(
+          communityId,
+          authorMode === "agent"
+            ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, imageRequest)
+            : imageRequest,
+        );
       } else if (composerMode === "link") {
         const linkRequest: CreatePostRequest = {
           idempotency_key: crypto.randomUUID(),
@@ -464,10 +546,15 @@ export function useCreatePostState(communityId: string) {
     }
   }, [
     api, audience.visibility, authorMode, body, buildMatchedSourceReferences, caption, community, communityId, composerMode, derivativeStep, eligibility?.status,
-    identityMode, linkUrl, lyrics, monetizationState, paidSongPriceUsd, pendingSongBundleId, pricingPolicy?.regional_pricing_enabled,
+    identityMode, imageUpload, linkUrl, lyrics, monetizationState, paidSongPriceUsd, pendingSongBundleId, pricingPolicy?.regional_pricing_enabled,
     charityContribution.percentagePct, charityPartner?.partnerId,
-    resolveBundleAnalysisState, selectedQualifierIds, signAgentAuthoredBody, songMode, songState, submitState.disabled, title, uploadSongArtifact,
+    resolveBundleAnalysisState, selectedQualifierIds, signAgentAuthoredBody, songMode, songState, submitState.disabled, title, uploadSongArtifact, waitForSongPreview,
   ]);
+
+  const setImageUploadWithLabel = React.useCallback((file: File | null) => {
+    setImageUpload(file);
+    setImageUploadLabel(file?.name);
+  }, [setImageUpload, setImageUploadLabel]);
 
   return {
     availableIdentityQualifiers,
@@ -481,6 +568,8 @@ export function useCreatePostState(communityId: string) {
     eligibility,
     authorMode,
     identityMode,
+    imageUpload,
+    imageUploadLabel,
     availableAgent,
     audience,
     linkUrl,
@@ -502,6 +591,7 @@ export function useCreatePostState(communityId: string) {
     setComposerMode,
     setDerivativeStep,
     setAuthorMode,
+    setImageUpload: setImageUploadWithLabel,
     setIdentityMode,
     setLinkUrl,
     setLyrics,

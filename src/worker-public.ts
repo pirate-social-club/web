@@ -35,6 +35,13 @@ const RESERVED_PUBLIC_PROFILE_HOSTS = new Set([
 
 const PUBLIC_PROFILE_HOST_SUFFIXES = ["pirate", "clawitzer", "localhost"];
 
+function getPublicIdentityHandleLabel(input: {
+  global_handle: { label: string };
+  primary_public_handle?: { label: string } | null;
+}): string {
+  return input.primary_public_handle?.label ?? input.global_handle.label;
+}
+
 function extractPublicProfileHost(
   hostname: string,
 ): { handleLabel: string; hostSuffix: string; identityKind: "profile" | "agent" } | null {
@@ -200,7 +207,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   if (!resolution.is_canonical) {
     const nextUrl = new URL(request.url);
 
-    if (target.kind === "host") {
+    if (target.kind === "host" && resolution.resolved_handle_label.toLowerCase().endsWith(".pirate")) {
       nextUrl.hostname = `${resolution.resolved_handle_label.replace(/\.pirate$/i, "")}.${target.hostSuffix}`;
     } else {
       nextUrl.pathname = `/u/${encodeURIComponent(resolution.resolved_handle_label)}`;
@@ -211,12 +218,10 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   const html = renderPublicProfilePage({
     appOrigin,
-    canonicalHandle: resolution.profile.global_handle.label,
     canonicalUrl: url.toString(),
     communities: resolution.created_communities,
     copy,
-    displayHandle:
-      resolution.profile.primary_public_handle?.label ?? resolution.profile.global_handle.label,
+    displayHandle: getPublicIdentityHandleLabel(resolution.profile),
     host: url.hostname,
     localeTag,
     profile: resolution.profile,

@@ -193,6 +193,10 @@ export function PirateAuthProvider({
       walletList: ["detected_wallets", "rabby_wallet", "metamask", "coinbase_wallet", "wallet_connect"],
     },
     loginMethods: ["wallet", "email", "google", "apple", "twitter", "discord", "github", "passkey"],
+    loginMethodsAndOrder: {
+      primary: ["google", "twitter"],
+      overflow: ["email", "apple", "discord", "github", "wallet_connect"],
+    },
     embeddedWallets: {
       ethereum: {
         createOnLogin: "off",

@@ -149,6 +149,10 @@ export function formatGateRequirement(
       if (locale === "ar") return "يتطلب درجة Passport";
       if (locale === "zh") return "需要 Passport 分数";
       return "Requires Passport score";
+    case "sanctions_clear":
+      if (locale === "ar") return "يتطلب فحص العقوبات عبر Passport";
+      if (locale === "zh") return "需要 Passport 制裁筛查";
+      return "Requires Passport sanctions screening";
     case "erc721_holding": {
       const label = gate.contract_address ? shortenAddress(gate.contract_address) : null;
       if (locale === "ar") {
@@ -249,6 +253,13 @@ export function getVerificationCapabilitiesForProvider(
   return Array.from(uniqueCapabilities);
 }
 
+export function getPassportPromptCapabilities(
+  input: { missing_capabilities?: readonly string[] | null },
+): MissingCapability[] {
+  return (input.missing_capabilities ?? [])
+    .filter((capability): capability is MissingCapability => capability === "wallet_score" || capability === "sanctions_clear");
+}
+
 export function getVerificationRequirementsForGates(
   gates: MembershipGateSummary[] | null | undefined,
 ): VerificationRequirement[] {
@@ -301,23 +312,37 @@ export function getVerificationPromptCopy(
   }
 
   if (provider === "passport") {
+    const needsSanctionsClear = capabilities.includes("sanctions_clear");
+    const needsWalletScore = capabilities.includes("wallet_score");
     if (locale === "ar") {
       return {
-        title: "درجة Passport مطلوبة",
-        description: "ارفع درجة Passport ثم عد للانضمام.",
+        title: needsSanctionsClear && !needsWalletScore ? "فحص Passport مطلوب" : "درجة Passport مطلوبة",
+        description: needsSanctionsClear && !needsWalletScore
+          ? "أكمل فحص العقوبات في Passport ثم عد للانضمام."
+          : needsSanctionsClear
+            ? "أكمل فحوصات Passport المطلوبة ثم عد للانضمام."
+            : "ارفع درجة Passport ثم عد للانضمام.",
         actionLabel: "فتح Passport",
       };
     }
     if (locale === "zh") {
       return {
-        title: "需要 Passport 分数",
-        description: "提高 Passport 分数后回来加入。",
+        title: needsSanctionsClear && !needsWalletScore ? "需要 Passport 筛查" : "需要 Passport 分数",
+        description: needsSanctionsClear && !needsWalletScore
+          ? "完成 Passport 制裁筛查后回来加入。"
+          : needsSanctionsClear
+            ? "完成所需 Passport 检查后回来加入。"
+            : "提高 Passport 分数后回来加入。",
         actionLabel: "打开 Passport",
       };
     }
     return {
-      title: "Passport score required",
-      description: "Improve your Passport score, then come back to join.",
+      title: needsSanctionsClear && !needsWalletScore ? "Passport screening required" : "Passport score required",
+      description: needsSanctionsClear && !needsWalletScore
+        ? "Complete Passport sanctions screening, then come back to join."
+        : needsSanctionsClear
+          ? "Complete the required Passport checks, then come back to join."
+          : "Improve your Passport score, then come back to join.",
       actionLabel: "Open Passport",
     };
   }
@@ -423,6 +448,7 @@ export function getVerificationPromptCopy(
         case "gender": return "علامة الجنس في وثيقة Self";
         case "unique_human": return "إثبات أنك إنسان";
         case "wallet_score": return "درجة Passport";
+        case "sanctions_clear": return "فحص العقوبات عبر Passport";
       }
     }
     if (locale === "zh") {
@@ -433,6 +459,7 @@ export function getVerificationPromptCopy(
         case "gender": return "Self 证件性别标记";
         case "unique_human": return "真人状态";
         case "wallet_score": return "Passport 分数";
+        case "sanctions_clear": return "Passport 制裁筛查";
       }
     }
     switch (capability) {
@@ -442,6 +469,7 @@ export function getVerificationPromptCopy(
       case "gender": return "Self document marker";
       case "unique_human": return "unique human status";
       case "wallet_score": return "Passport score";
+      case "sanctions_clear": return "Passport sanctions screening";
     }
   });
 

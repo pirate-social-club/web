@@ -17,7 +17,7 @@ import { CommunityPageShell } from "@/components/compositions/community-page-she
 import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { getGateFailureMessage, getJoinCtaLabel, getPassportPromptCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -190,7 +190,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       if (provider === "very") {
         await startVeryVerification();
       } else if (provider === "passport") {
-        setJoinError(getVerificationPromptCopy("passport", ["wallet_score"], { locale }).description);
+        setJoinError(getVerificationPromptCopy("passport", getPassportPromptCapabilities(eligibility), { locale }).description);
       } else {
         await startSelfVerification();
       }
@@ -211,7 +211,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           if (provider === "very") {
             await startVeryVerification();
           } else if (provider === "passport") {
-            setJoinError(getVerificationPromptCopy("passport", ["wallet_score"], { locale }).description);
+            setJoinError(getVerificationPromptCopy("passport", getPassportPromptCapabilities(details), { locale }).description);
           } else {
             await startSelfVerification({
               missingCapabilities: details.missing_capabilities,
@@ -287,7 +287,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   }) => {
     if (gate.eligibility.status === "verification_required") {
       const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-      const passportPrompt = getVerificationPromptCopy("passport", ["wallet_score"], { locale });
+      const passportPrompt = getVerificationPromptCopy("passport", getPassportPromptCapabilities(gate.eligibility), { locale });
       return {
         description: provider === "passport"
           ? passportPrompt.description

@@ -20,7 +20,7 @@ import { isApiNotFoundError, type ApiError } from "@/lib/api/client";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getErrorMessage } from "@/lib/error-utils";
-import { getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { getPassportPromptCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { logger } from "@/lib/logger";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
@@ -379,7 +379,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     }
 
     const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-    const passportPrompt = getVerificationPromptCopy("passport", ["wallet_score"], { locale });
+    const passportPrompt = getVerificationPromptCopy("passport", getPassportPromptCapabilities(gate.eligibility), { locale });
     return {
       description: provider === "passport"
         ? passportPrompt.description

@@ -15,6 +15,7 @@ import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import {
   getJoinCtaLabel,
+  getPassportPromptCapabilities,
   getVerificationPromptCopy,
 } from "@/lib/identity-gates";
 import { logger } from "@/lib/logger";
@@ -83,7 +84,7 @@ function createDefaultBlockedModalState({
   switch (gate.eligibility.status) {
     case "verification_required":
       if (gate.eligibility.suggested_verification_provider === "passport") {
-        const passportPrompt = getVerificationPromptCopy("passport", ["wallet_score"], { locale: interactionCopy.locale });
+        const passportPrompt = getVerificationPromptCopy("passport", getPassportPromptCapabilities(gate.eligibility), { locale: interactionCopy.locale });
         return {
           description: passportPrompt.description,
           primaryAction: {

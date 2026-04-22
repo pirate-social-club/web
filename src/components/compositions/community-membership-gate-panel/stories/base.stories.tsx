@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { CommunityMembershipGatePanel } from "../community-membership-gate-panel";
+import { getVerificationPromptCopy } from "@/lib/identity-gates";
 
 const meta = {
   title: "Compositions/CommunityMembershipGatePanel",
@@ -149,6 +150,56 @@ export const MultipleMissingCapabilities: Story = {
         missing_capabilities: ["nationality", "age_over_18", "unique_human"],
         suggested_verification_provider: "self",
         suggested_verification_intent: "community_join",
+      }}
+    />
+  ),
+};
+
+export const PassportScoreRequired: Story = {
+  name: "States / Passport Score Required",
+  args: { gates: [] },
+  render: () => (
+    <CommunityMembershipGatePanel
+      gates={[{ gate_type: "wallet_score", minimum_score: 20 }]}
+      eligibility={{
+        community_id: "community_passport_score",
+        membership_mode: "gated",
+        human_verification_lane: "self",
+        joinable_now: false,
+        status: "verification_required",
+        membership_gate_summaries: [{ gate_type: "wallet_score", minimum_score: 20 }],
+        missing_capabilities: ["wallet_score"],
+        suggested_verification_provider: "passport",
+        suggested_verification_intent: null,
+      }}
+      verificationPrompt={{
+        ...getVerificationPromptCopy("passport", ["wallet_score"]),
+        href: "https://app.passport.xyz/",
+      }}
+    />
+  ),
+};
+
+export const PassportSanctionsScreeningRequired: Story = {
+  name: "States / Passport Sanctions Screening Required",
+  args: { gates: [] },
+  render: () => (
+    <CommunityMembershipGatePanel
+      gates={[{ gate_type: "sanctions_clear" }]}
+      eligibility={{
+        community_id: "community_passport_sanctions",
+        membership_mode: "gated",
+        human_verification_lane: "self",
+        joinable_now: false,
+        status: "verification_required",
+        membership_gate_summaries: [{ gate_type: "sanctions_clear" }],
+        missing_capabilities: ["sanctions_clear"],
+        suggested_verification_provider: "passport",
+        suggested_verification_intent: null,
+      }}
+      verificationPrompt={{
+        ...getVerificationPromptCopy("passport", ["sanctions_clear"]),
+        href: "https://app.passport.xyz/",
       }}
     />
   ),

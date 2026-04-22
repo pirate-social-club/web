@@ -59,6 +59,11 @@ describe("formatGateRequirement", () => {
     const gate: MembershipGateSummary = { gate_type: "wallet_score", minimum_score: 20 };
     expect(formatGateRequirement(gate)).toBe("Requires Passport score 20+");
   });
+
+  test("formats sanctions screening gate", () => {
+    const gate: MembershipGateSummary = { gate_type: "sanctions_clear" };
+    expect(formatGateRequirement(gate)).toBe("Requires Passport sanctions screening");
+  });
 });
 
 describe("getJoinCtaLabel", () => {
@@ -126,6 +131,10 @@ describe("getVerificationPromptCopy", () => {
 
   test("describes Passport score remediation", () => {
     expect(getVerificationPromptCopy("passport", ["wallet_score"]).title).toBe("Passport score required");
+  });
+
+  test("describes Passport sanctions screening remediation", () => {
+    expect(getVerificationPromptCopy("passport", ["sanctions_clear"]).title).toBe("Passport screening required");
   });
 });
 

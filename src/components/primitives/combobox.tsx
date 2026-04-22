@@ -137,15 +137,15 @@ const ComboboxItem = React.forwardRef<
   <ComboboxPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-pointer select-none items-start gap-3 px-4 py-3 text-base text-popover-foreground outline-none transition-colors data-[highlighted]:bg-muted data-[selected]:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-pointer select-none items-center gap-3 px-4 py-2.5 text-base text-popover-foreground outline-none transition-colors data-[highlighted]:bg-muted data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     {...props}
   >
-    <div className="min-w-0 flex-1">{children}</div>
-    <ComboboxPrimitive.ItemIndicator className="mt-0.5 inline-flex size-5 items-center justify-center rounded-full border border-primary bg-primary/10 text-primary data-[selected=false]:border-border-soft data-[selected=false]:bg-transparent data-[selected=false]:text-transparent">
-      <Check className="size-3.5" weight="bold" />
+    <ComboboxPrimitive.ItemIndicator className="absolute start-2.5 flex size-5 items-center justify-center text-primary data-[selected=false]:hidden">
+      <Check className="size-4" weight="bold" />
     </ComboboxPrimitive.ItemIndicator>
+    <div className="min-w-0 flex-1 pl-6">{children}</div>
   </ComboboxPrimitive.Item>
 ));
 ComboboxItem.displayName = ComboboxPrimitive.Item.displayName;
@@ -172,7 +172,25 @@ ComboboxLabel.displayName = ComboboxPrimitive.GroupLabel.displayName;
 
 const ComboboxCollection = ComboboxPrimitive.Collection;
 const ComboboxSeparator = ComboboxPrimitive.Separator;
-const ComboboxTrigger = ComboboxPrimitive.Trigger;
+const ComboboxTrigger = React.forwardRef<
+  React.ElementRef<typeof ComboboxPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof ComboboxPrimitive.Trigger>
+>(({ className, children, ...props }, ref) => (
+  <ComboboxPrimitive.Trigger
+    ref={ref}
+    className={cn(
+      "flex h-11 w-full items-center justify-between rounded-full border border-input bg-background px-4 py-2 text-base shadow-sm transition-[color,box-shadow,border-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground",
+      className,
+    )}
+    {...props}
+  >
+    <span className="truncate">{children}</span>
+    <span aria-hidden="true" className="ms-2 shrink-0 text-base text-muted-foreground">
+      ▾
+    </span>
+  </ComboboxPrimitive.Trigger>
+));
+ComboboxTrigger.displayName = ComboboxPrimitive.Trigger.displayName;
 
 export {
   Combobox,

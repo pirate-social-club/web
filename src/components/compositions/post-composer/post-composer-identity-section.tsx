@@ -1,17 +1,12 @@
 import * as React from "react";
-import { Checkbox } from "@/components/primitives/checkbox";
-import { Label } from "@/components/primitives/label";
+
 import {
   Combobox,
-  ComboboxChip,
-  ComboboxChips,
-  ComboboxChipsInput,
   ComboboxContent,
   ComboboxEmpty,
-  ComboboxInput,
   ComboboxItem,
   ComboboxList,
-  ComboboxValue,
+  ComboboxTrigger,
 } from "@/components/primitives/combobox";
 import { FormSectionHeading } from "@/components/primitives/form-layout";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -21,6 +16,7 @@ import type {
   ComposerIdentityState,
   IdentityMode,
 } from "./post-composer.types";
+import { IdentitySelect, type IdentityOption } from "./post-composer-identity-select";
 
 export function IdentitySection({
   authorMode,
@@ -37,48 +33,25 @@ export function IdentitySection({
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").createPost;
-  const handleLabel = identity.publicHandle ?? "@handle";
-  const anonymousLabel = identity.anonymousLabel ?? "anon_club";
-  const agentLabel = identity.agentLabel ?? "Agent";
-  const headingDescription = authorMode === "agent"
-    ? agentLabel
-    : identityMode === "anonymous"
-    ? anonymousLabel
-    : handleLabel;
+  const currentOption: IdentityOption = authorMode === "agent" ? "agent" : identityMode;
+
+  function handleChange(option: IdentityOption) {
+    if (option === "agent") {
+      onAuthorModeChange("agent");
+      onIdentityModeChange("public");
+    } else {
+      onAuthorModeChange("human");
+      onIdentityModeChange(option);
+    }
+  }
 
   return (
-    <section className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
-      <FormSectionHeading
-        description={headingDescription}
-        title={copy.sections.postAs}
-      />
-      {identity.agentLabel ? (
-        <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-3">
-          <Checkbox
-            checked={authorMode === "agent"}
-            className="mt-0.5"
-            id="post-as-agent"
-            onCheckedChange={(next) => onAuthorModeChange(next === true ? "agent" : "human")}
-          />
-          <div className="space-y-1">
-            <Label htmlFor="post-as-agent">Post as agent</Label>
-          </div>
-        </div>
-      ) : null}
-      {identity.allowAnonymousIdentity && authorMode !== "agent" ? (
-        <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-3">
-          <Checkbox
-            checked={identityMode === "anonymous"}
-            className="mt-0.5"
-            id="post-anonymously"
-            onCheckedChange={(next) => onIdentityModeChange(next === true ? "anonymous" : "public")}
-          />
-          <div className="space-y-1">
-            <Label htmlFor="post-anonymously">{copy.identity.postAnonymously}</Label>
-          </div>
-        </div>
-      ) : null}
-    </section>
+    <IdentitySelect
+      identity={identity}
+      postAsLabel={copy.sections.postAs}
+      value={currentOption}
+      onChange={handleChange}
+    />
   );
 }
 
@@ -108,48 +81,33 @@ export function QualifierSection({
       <FormSectionHeading description={helpText} title={copy.sections.qualifiers} />
 
       {availableQualifiers.length > 0 ? (
-        <div className="space-y-3">
-          <Combobox
-            multiple
-            autoHighlight
-            items={availableQualifiers}
-            value={activeQualifiers}
-            itemToStringLabel={(qualifier) => qualifier.label}
-            itemToStringValue={(qualifier) => qualifier.qualifierId}
-            onValueChange={(value) =>
-              onSelectedQualifierIdsChange(value.map((qualifier) => qualifier.qualifierId))
-            }
-          >
-            <ComboboxChips>
-              <ComboboxValue>
-                {(values) => (
-                  <>
-                    {values.map((qualifier: (typeof availableQualifiers)[number]) => (
-                      <ComboboxChip key={qualifier.qualifierId}>{qualifier.label}</ComboboxChip>
-                    ))}
-                    <ComboboxChipsInput
-                      aria-label={copy.identity.searchQualifiers}
-                      placeholder={activeQualifiers.length > 0 ? copy.identity.searchQualifiers : copy.identity.addQualifiers}
-                    />
-                  </>
-                )}
-              </ComboboxValue>
-            </ComboboxChips>
-            <ComboboxContent>
-              <ComboboxEmpty>{copy.empty.noQualifiers}</ComboboxEmpty>
-              <ComboboxList>
-                {(qualifier) => (
-                  <ComboboxItem key={qualifier.qualifierId} value={qualifier}>
-                    <p className="text-base font-medium text-foreground">{qualifier.label}</p>
-                    {qualifier.description ? (
-                      <p className="text-base text-muted-foreground">{qualifier.description}</p>
-                    ) : null}
-                  </ComboboxItem>
-                )}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
-        </div>
+        <Combobox
+          multiple
+          autoHighlight
+          items={availableQualifiers}
+          value={activeQualifiers}
+          itemToStringLabel={(qualifier) => qualifier.label}
+          itemToStringValue={(qualifier) => qualifier.qualifierId}
+          onValueChange={(value) =>
+            onSelectedQualifierIdsChange(value.map((qualifier) => qualifier.qualifierId))
+          }
+        >
+          <ComboboxTrigger>
+            {activeQualifiers.length === 0
+              ? copy.identity.addQualifiers
+              : activeQualifiers.map((q) => q.label).join(", ")}
+          </ComboboxTrigger>
+          <ComboboxContent>
+            <ComboboxEmpty>{copy.empty.noQualifiers}</ComboboxEmpty>
+            <ComboboxList>
+              {(qualifier) => (
+                <ComboboxItem key={qualifier.qualifierId} value={qualifier}>
+                  {qualifier.label}
+                </ComboboxItem>
+              )}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
       ) : null}
 
       {availableQualifiers.length === 0 ? (

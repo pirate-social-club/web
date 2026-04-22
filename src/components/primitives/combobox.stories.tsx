@@ -11,6 +11,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  ComboboxTrigger,
   ComboboxValue,
 } from "./combobox";
 
@@ -64,6 +65,32 @@ export const Multiple: Story = {
               )}
             </ComboboxValue>
           </ComboboxChips>
+          <ComboboxContent>
+            <ComboboxEmpty>No items found.</ComboboxEmpty>
+            <ComboboxList>
+              {(item) => (
+                <ComboboxItem key={item} value={item}>
+                  {item}
+                </ComboboxItem>
+              )}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
+      </div>
+    );
+  },
+};
+
+export const DropdownMultiselect: Story = {
+  render: () => {
+    const [value, setValue] = React.useState<string[]>([frameworks[0]]);
+
+    return (
+      <div className="w-[240px]">
+        <Combobox multiple items={frameworks} value={value} onValueChange={setValue}>
+          <ComboboxTrigger>
+            {value.length === 0 ? "Select frameworks" : value.join(", ")}
+          </ComboboxTrigger>
           <ComboboxContent>
             <ComboboxEmpty>No items found.</ComboboxEmpty>
             <ComboboxList>

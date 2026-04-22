@@ -2,16 +2,8 @@
 
 import * as React from "react";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/primitives/accordion";
 import { Button } from "@/components/primitives/button";
-import { CopyField } from "@/components/primitives/copy-field";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
-import { Input } from "@/components/primitives/input";
 import { OptionCard } from "@/components/primitives/option-card";
 import { PrefixInput } from "@/components/primitives/prefix-input";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
@@ -19,7 +11,7 @@ import {
   NamespaceVerificationHnsPanel,
 } from "@/components/compositions/namespace-verification/namespace-verification-hns-ui";
 import {
-  NamespaceVerificationChallengeMessage,
+  NamespaceVerificationSpacesPanel,
 } from "@/components/compositions/namespace-verification/namespace-verification-shared";
 import { useNamespaceVerificationFlow } from "@/components/compositions/namespace-verification/use-namespace-verification-flow";
 import handshakeLogoUrl from "../../../../handshake-logo.png";
@@ -160,43 +152,14 @@ export function CommunityNamespaceVerificationPage({
         ) : null}
 
         {(flow.isChallengeReady || flow.isVerifying) && flow.isSpaces && flow.challengePayload ? (
-          <section className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5 md:py-5">
-            <FormNote>{mc.signatureNote}</FormNote>
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <div className="text-base text-muted-foreground">{mc.digestLabel}</div>
-                <CopyField value={flow.challengePayload.digest} />
-              </div>
-              <div className="space-y-1.5">
-                <FormFieldLabel label={mc.signatureLabel} />
-                <Input
-                  disabled={flow.busy}
-                  onChange={(event) => {
-                    flow.actions.setSignature(event.target.value);
-                  }}
-                  placeholder={mc.signaturePlaceholder}
-                  value={flow.signature}
-                />
-              </div>
-            </div>
-            <Accordion collapsible type="single">
-              <AccordionItem className="border-b-0" value="details">
-                <AccordionTrigger className="py-1 text-base text-muted-foreground hover:no-underline">
-                  {mc.challengeDetails}
-                </AccordionTrigger>
-                <AccordionContent className="pb-0">
-                    <NamespaceVerificationChallengeMessage value={flow.challengePayload.message} />
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            <button
-              className="text-base text-muted-foreground transition-colors hover:text-foreground"
-              onClick={flow.actions.reset}
-              type="button"
-            >
-              {mc.verifyDifferent}
-            </button>
-          </section>
+          <NamespaceVerificationSpacesPanel
+            busy={flow.busy}
+            challengePayload={flow.challengePayload}
+            className="rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5 md:py-5"
+            onAbandon={flow.actions.reset}
+            onSignatureChange={flow.actions.setSignature}
+            signature={flow.signature}
+          />
         ) : null}
 
         {flow.isVerified ? (

@@ -2,16 +2,8 @@
 
 import * as React from "react";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/primitives/accordion";
 import { Button } from "@/components/primitives/button";
-import { CopyField } from "@/components/primitives/copy-field";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
-import { Input } from "@/components/primitives/input";
 import {
   Modal,
   ModalContent,
@@ -25,7 +17,7 @@ import {
   getHnsVerificationMode,
 } from "@/components/compositions/namespace-verification/namespace-verification-hns-ui";
 import {
-  NamespaceVerificationChallengeMessage,
+  NamespaceVerificationSpacesPanel,
 } from "@/components/compositions/namespace-verification/namespace-verification-shared";
 import { OptionCard } from "@/components/primitives/option-card";
 import { PrefixInput } from "@/components/primitives/prefix-input";
@@ -243,41 +235,14 @@ export function VerifyNamespaceModalView({
           ) : null}
 
           {(isChallengeReady || isVerifying) && isSpaces && challengePayload ? (
-            <div className="space-y-4">
-              <FormNote>{mc.signatureNote}</FormNote>
-              <div className="space-y-3">
-                <div>
-                  <p className="mb-1.5 text-base text-muted-foreground">{mc.digestLabel}</p>
-                  <CopyField value={challengePayload.digest} />
-                </div>
-                <div>
-                  <FormFieldLabel className="mb-1.5" label={mc.signatureLabel} />
-                  <Input
-                    disabled={busy}
-                    onChange={(event) => onSignatureChange(event.target.value)}
-                    placeholder={mc.signaturePlaceholderModal}
-                    value={signature}
-                  />
-                </div>
-              </div>
-              <Accordion collapsible type="single">
-                <AccordionItem className="border-b-0" value="details">
-                  <AccordionTrigger className="py-1 text-base text-muted-foreground hover:no-underline">
-                    {mc.challengeDetails}
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-0">
-                    <NamespaceVerificationChallengeMessage value={challengePayload.message} />
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-              <button
-                className="text-base text-muted-foreground hover:text-foreground"
-                type="button"
-                onClick={onAbandon}
-              >
-                {mc.verifyDifferent}
-              </button>
-            </div>
+            <NamespaceVerificationSpacesPanel
+              busy={busy}
+              challengePayload={challengePayload}
+              modal
+              onAbandon={onAbandon}
+              onSignatureChange={onSignatureChange}
+              signature={signature}
+            />
           ) : null}
 
           {isVerified ? (

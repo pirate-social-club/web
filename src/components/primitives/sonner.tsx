@@ -36,6 +36,15 @@ export function Toaster() {
   return (
     <Sonner
       closeButton
+      mobileOffset={{
+        bottom: "calc(env(safe-area-inset-bottom) + 1rem)",
+        left: "1rem",
+        right: "1rem",
+      }}
+      offset={{
+        bottom: "calc(env(safe-area-inset-bottom) + 1rem)",
+        right: "1rem",
+      }}
       position="bottom-right"
       richColors
       theme={theme}

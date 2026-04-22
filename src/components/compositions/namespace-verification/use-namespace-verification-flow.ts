@@ -260,10 +260,17 @@ export function useNamespaceVerificationFlow({
     };
 
     if (activeFamily === "spaces" && challengePayload && signature.trim()) {
-      completeInput.signaturePayload = {
-        signature: signature.trim(),
-        signer_pubkey: challengePayload.root_pubkey,
-      };
+      try {
+        const signedEvent = JSON.parse(signature.trim()) as Record<string, unknown>;
+        completeInput.signaturePayload = {
+          signed_event: signedEvent,
+        };
+      } catch {
+        completeInput.signaturePayload = {
+          signature: signature.trim(),
+          signer_pubkey: challengePayload.root_pubkey,
+        };
+      }
     }
 
     return callbacksRef.current

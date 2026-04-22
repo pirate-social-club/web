@@ -869,14 +869,16 @@
       "doneLabel": "Done",
       "resuming": "Resuming verification...",
       "signingStepLabels": [
-        "git clone",
-        "cd",
-        "run this"
+        "Download event JSON",
+        "Sign in Akron",
+        "Upload signed JSON"
       ],
+      "downloadEventJson": "Download event JSON",
+      "akronSignInstruction": "Akron -> Sign Nostr event -> select Space -> choose downloaded JSON -> save.",
+      "uploadSignedEventJson": "Upload signed JSON",
+      "signedEventLoaded": "Signed JSON loaded",
       "digestLabel": "Digest",
       "signatureLabel": "Signature",
-      "signaturePlaceholder": "Paste output signature",
-      "signaturePlaceholderModal": "Paste output signature",
       "challengeDetails": "Challenge details",
       "verifyDifferent": "Verify a different namespace",
       "rootVerified": "Root verified.",

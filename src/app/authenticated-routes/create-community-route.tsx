@@ -163,6 +163,14 @@ export function CreateCommunityPage() {
 
 export function toSpacesChallengePayload(value: Record<string, unknown> | null | undefined): SpacesChallengePayload | null {
   if (!value) return null;
+  const nostrEvent = value.nostr_event && typeof value.nostr_event === "object"
+    ? value.nostr_event as Record<string, unknown>
+    : null;
+  const nostrTags = Array.isArray(nostrEvent?.tags)
+    ? nostrEvent.tags
+      .map((tag) => Array.isArray(tag) && tag.every((part) => typeof part === "string") ? tag as string[] : null)
+      .filter((tag): tag is string[] => Array.isArray(tag))
+    : null;
   if (
     value.kind !== "schnorr_sign" ||
     typeof value.domain !== "string" ||
@@ -185,6 +193,19 @@ export function toSpacesChallengePayload(value: Record<string, unknown> | null |
     expires_at: value.expires_at,
     message: value.message,
     digest: value.digest,
+    signing_method: value.signing_method === "akron_nostr_event" ? "akron_nostr_event" : undefined,
+    nostr_event: nostrEvent &&
+      typeof nostrEvent.created_at === "number" &&
+      typeof nostrEvent.kind === "number" &&
+      typeof nostrEvent.content === "string" &&
+      nostrTags
+      ? {
+        created_at: nostrEvent.created_at,
+        kind: nostrEvent.kind,
+        tags: nostrTags,
+        content: nostrEvent.content,
+      }
+      : undefined,
   };
 }
 

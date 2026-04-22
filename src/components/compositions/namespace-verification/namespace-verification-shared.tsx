@@ -1,13 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { DownloadSimple, UploadSimple } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
-import { FormFieldLabel } from "@/components/primitives/form-layout";
-import { Input } from "@/components/primitives/input";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 import { cn } from "@/lib/utils";
-import { buildSpacesSigningHelperSteps } from "./spaces-signing-helper";
 
 import type {
   NamespaceFamily,
@@ -112,11 +110,43 @@ export function NamespaceVerificationChallengeMessage({ value }: { value: string
   );
 }
 
+function buildSpacesNostrEvent(challengePayload: SpacesChallengePayload) {
+  if (challengePayload.nostr_event) {
+    return challengePayload.nostr_event;
+  }
+  const root = `@${challengePayload.root_label}`;
+  return {
+    created_at: Math.floor(new Date(challengePayload.issued_at).getTime() / 1000),
+    kind: 27235,
+    tags: [
+      ["space", root],
+      ["pirate", "namespace-verification"],
+      ["domain", challengePayload.domain],
+      ["nonce", challengePayload.nonce],
+      ["root", root],
+    ],
+    content: challengePayload.message,
+  };
+}
+
+function downloadJson(filename: string, value: unknown) {
+  const blob = new Blob([`${JSON.stringify(value, null, 2)}\n`], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 type NamespaceVerificationSpacesPanelProps = {
   busy: boolean;
   challengePayload: SpacesChallengePayload;
   className?: string;
-  modal?: boolean;
   onAbandon: () => void;
   onSignatureChange: (value: string) => void;
   signature: string;
@@ -126,41 +156,89 @@ export function NamespaceVerificationSpacesPanel({
   busy,
   challengePayload,
   className,
-  modal = false,
   onAbandon,
   onSignatureChange,
   signature,
 }: NamespaceVerificationSpacesPanelProps) {
   const { copy } = useRouteMessages();
   const mc = copy.moderation.namespaceVerification;
-  const signingHelperSteps = React.useMemo(
-    () => buildSpacesSigningHelperSteps(challengePayload),
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const unsignedEvent = React.useMemo(
+    () => buildSpacesNostrEvent(challengePayload),
     [challengePayload],
+  );
+  const signedEventLoaded = signature.trim().length > 0;
+
+  const handleDownload = React.useCallback(() => {
+    downloadJson(`pirate-space-${challengePayload.root_label}-verify.json`, unsignedEvent);
+  }, [challengePayload.root_label, unsignedEvent]);
+
+  const handleSignedFileChange = React.useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0] ?? null;
+      if (!file) return;
+      void file.text().then((text) => {
+        onSignatureChange(text);
+      });
+      event.target.value = "";
+    },
+    [onSignatureChange],
   );
 
   return (
     <div className={cn("space-y-4", className)}>
       <ol className="space-y-4">
-        {signingHelperSteps.map((step, index) => (
-          <li className="space-y-2" key={step}>
-            <div className="text-base font-medium text-foreground">
-              {index + 1}. {mc.signingStepLabels[index] ?? mc.signingStepLabels[2]}
-            </div>
-            <NamespaceVerificationChallengeMessage value={step} />
-          </li>
-        ))}
-      </ol>
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <FormFieldLabel label={mc.signatureLabel} />
-          <Input
+        <li className="space-y-2">
+          <div className="text-base font-medium text-foreground">
+            1. {mc.signingStepLabels[0]}
+          </div>
+          <Button
             disabled={busy}
-            onChange={(event) => onSignatureChange(event.target.value)}
-            placeholder={modal ? mc.signaturePlaceholderModal : mc.signaturePlaceholder}
-            value={signature}
+            leadingIcon={<DownloadSimple className="size-5" />}
+            onClick={handleDownload}
+            variant="outline"
+          >
+            {mc.downloadEventJson}
+          </Button>
+        </li>
+        <li className="space-y-2">
+          <div className="text-base font-medium text-foreground">
+            2. {mc.signingStepLabels[1]}
+          </div>
+          <div className="rounded-lg border border-input bg-background p-3 text-base leading-6 text-muted-foreground">
+            {mc.akronSignInstruction}
+          </div>
+        </li>
+        <li className="space-y-2">
+          <div className="text-base font-medium text-foreground">
+            3. {mc.signingStepLabels[2]}
+          </div>
+          <input
+            accept="application/json,.json"
+            className="hidden"
+            disabled={busy}
+            onChange={handleSignedFileChange}
+            ref={fileInputRef}
+            type="file"
           />
-        </div>
-      </div>
+          <Button
+            disabled={busy}
+            leadingIcon={<UploadSimple className="size-5" />}
+            onClick={() => fileInputRef.current?.click()}
+            variant={signedEventLoaded ? "secondary" : "outline"}
+          >
+            {signedEventLoaded ? mc.signedEventLoaded : mc.uploadSignedEventJson}
+          </Button>
+        </li>
+        {signature.trim() && !signature.trim().startsWith("{") ? (
+          <li className="space-y-2">
+            <div className="text-base font-medium text-foreground">
+              {mc.signatureLabel}
+            </div>
+            <NamespaceVerificationChallengeMessage value={signature} />
+          </li>
+        ) : null}
+      </ol>
       <button
         className="text-base text-muted-foreground transition-colors hover:text-foreground"
         onClick={onAbandon}

@@ -238,7 +238,6 @@ export function VerifyNamespaceModalView({
             <NamespaceVerificationSpacesPanel
               busy={busy}
               challengePayload={challengePayload}
-              modal
               onAbandon={onAbandon}
               onSignatureChange={onSignatureChange}
               signature={signature}

@@ -39,6 +39,13 @@ export type SpacesChallengePayload = {
   expires_at: string;
   message: string;
   digest: string;
+  signing_method?: "akron_nostr_event";
+  nostr_event?: {
+    created_at: number;
+    kind: number;
+    tags: string[][];
+    content: string;
+  };
 };
 
 export type NamespaceVerificationStartResult = {
@@ -70,7 +77,7 @@ export interface NamespaceVerificationCallbacks {
     namespaceVerificationSessionId: string;
     family: NamespaceFamily;
     restartChallenge?: boolean;
-    signaturePayload?: { signature: string; signer_pubkey?: string } | null;
+    signaturePayload?: { signature?: string; signer_pubkey?: string; signed_event?: Record<string, unknown> } | null;
   }) => Promise<NamespaceVerificationCompleteResult>;
   onGetSession: (input: {
     namespaceVerificationSessionId: string;

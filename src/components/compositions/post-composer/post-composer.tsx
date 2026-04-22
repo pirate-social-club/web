@@ -419,7 +419,7 @@ export function PostComposer(props: PostComposerProps) {
           </Tabs>
         </CardHeader>
 
-        <CardContent className={cn("space-y-5 p-5", isMobile && "space-y-5 px-0 pb-0 pt-0")}>
+        <CardContent className={cn("space-y-5 p-5", isMobile && "space-y-5 px-0 pb-0 pt-3")}>
           <>
           {activeTab !== "link" ? (
             <div>

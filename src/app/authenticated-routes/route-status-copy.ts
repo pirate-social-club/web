@@ -5,11 +5,13 @@ export type RouteStatusCopyKey =
   | "create-community"
   | "create-post"
   | "home"
+  | "inbox"
   | "moderation"
   | "onboarding"
   | "post"
   | "profile"
-  | "settings";
+  | "settings"
+  | "your-communities";
 
 const ROUTE_STATUS_COPY: Record<RouteStatusCopyKey, {
   auth: string;
@@ -65,6 +67,12 @@ const ROUTE_STATUS_COPY: Record<RouteStatusCopyKey, {
       emptyYourCommunitiesTitle: "No communities yet",
     },
   },
+  "inbox": {
+    auth: "Sign in to view your inbox.",
+    failure: "The inbox could not be loaded right now.",
+    incomplete: "The inbox response was incomplete. Try loading it again.",
+    title: "Inbox",
+  },
   "moderation": {
     auth: "Sign in to access mod tools.",
     failure: "This moderation page could not be loaded right now.",
@@ -97,6 +105,12 @@ const ROUTE_STATUS_COPY: Record<RouteStatusCopyKey, {
     failure: "The settings page could not be loaded right now.",
     incomplete: "The settings response was incomplete. Try loading it again.",
     title: "Settings",
+  },
+  "your-communities": {
+    auth: "Sign in to view your communities.",
+    failure: "Your communities could not be loaded right now.",
+    incomplete: "Your communities response was incomplete. Try loading it again.",
+    title: "Your Communities",
   },
 };
 

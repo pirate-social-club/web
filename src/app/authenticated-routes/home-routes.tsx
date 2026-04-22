@@ -24,8 +24,8 @@ import { sortHomeFeedEntries } from "./feed-sorting";
 import { toHomeFeedItem } from "./post-presentation";
 import { submitOptimisticPostVote, updateHomeFeedEntryPostVote } from "./post-vote";
 import { buildFeedSortOptions, buildTopTimeRangeOptions, getErrorMessage, useRouteContentLocale, useRouteMessages, useClientHydrated } from "./route-core";
-import { getRouteFailureDescription } from "./route-status-copy";
-import { EmptyFeedState, RouteLoadFailureState, StackPageShell } from "./route-shell";
+import { getRouteAuthDescription, getRouteFailureDescription } from "./route-status-copy";
+import { AuthRequiredRouteState, EmptyFeedState, RouteLoadFailureState, StackPageShell } from "./route-shell";
 import { useSongPlayback } from "./song-commerce";
 import { useCommunityInteractionGate } from "./community-interaction-gate";
 
@@ -213,10 +213,20 @@ export function HomePage() {
 
 export function YourCommunitiesPage() {
   const { copy } = useRouteMessages();
+  const session = useSession();
   const { communities, error, loading } = useSidebarCommunities();
   const createCommunityLabel = copy.home.createCommunityLabel;
   const emptyYourCommunitiesBody = copy.home.emptyYourCommunitiesBody;
   const emptyYourCommunitiesTitle = copy.home.emptyYourCommunitiesTitle;
+
+  if (!session) {
+    return (
+      <AuthRequiredRouteState
+        description={getRouteAuthDescription("your-communities")}
+        title={copy.yourCommunities.title}
+      />
+    );
+  }
 
   if (loading && communities.length === 0) {
     return (

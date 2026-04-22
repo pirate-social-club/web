@@ -8,16 +8,31 @@ import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { clearUnreadNotificationActivityCount, decrementOpenNotificationTaskCount } from "@/lib/notifications/use-notification-summary";
+import { useSession } from "@/lib/api/session-store";
 import { NotificationInboxPage, resolveNotificationActivityHref } from "@/components/compositions/notification-inbox-page/notification-inbox-page";
+
+import { getRouteAuthDescription } from "./route-status-copy";
+import { AuthRequiredRouteState } from "./route-shell";
+import { useRouteMessages } from "./route-core";
 
 export function InboxPlaceholderPage() {
   const api = useApi();
+  const session = useSession();
+  const { copy } = useRouteMessages();
   const [tasks, setTasks] = React.useState<ApiNotificationTasksResponse>({ items: [] });
   const [feed, setFeed] = React.useState<ApiNotificationFeedResponse>({ items: [], next_cursor: null });
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     let cancelled = false;
+
+    if (!session) {
+      setTasks({ items: [] });
+      setFeed({ items: [], next_cursor: null });
+      setLoading(false);
+      return () => { cancelled = true; };
+    }
+
     setLoading(true);
 
     async function load() {
@@ -61,7 +76,11 @@ export function InboxPlaceholderPage() {
 
     void load();
     return () => { cancelled = true; };
-  }, [api]);
+  }, [api, session]);
+
+  if (!session) {
+    return <AuthRequiredRouteState description={getRouteAuthDescription("inbox")} title={copy.inbox.title} />;
+  }
 
   return (
     <NotificationInboxPage

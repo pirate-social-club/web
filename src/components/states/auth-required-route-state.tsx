@@ -27,7 +27,7 @@ export function AuthRequiredRouteState({
 
   if (configured && loadError) {
     return (
-      <StackPageShell title={title}>
+      <StackPageShell headerVariant="plain" title={title}>
         <StatusCard
           title="Authentication unavailable"
           description={`${description} Check the console for Privy loader errors.`}
@@ -38,7 +38,7 @@ export function AuthRequiredRouteState({
   }
 
   return (
-    <StackPageShell title={title}>
+    <StackPageShell headerVariant="plain" title={title}>
       <StatusCard
         title="Sign in"
         description={description}

@@ -17,19 +17,21 @@ export type { CommunityPickerItem } from "./post-composer.types";
 export function ShellPill({
   avatarSrc,
   children,
+  className,
   communities,
   emptyLabel,
   onSelectCommunity,
 }: {
   avatarSrc?: string;
   children: React.ReactNode;
+  className?: string;
   communities?: CommunityPickerItem[];
   emptyLabel?: string;
   onSelectCommunity?: (communityId: string) => void;
 }) {
   if (!communities || !onSelectCommunity) {
     return (
-      <div className="inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground">
+      <div className={cn("inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground", className)}>
         {avatarSrc ? (
           <img alt="" className="size-8 rounded-full object-cover" src={avatarSrc} />
         ) : (
@@ -47,7 +49,7 @@ export function ShellPill({
     <DropdownMenuPrimitive.Root>
       <DropdownMenuPrimitive.Trigger asChild>
         <button
-          className="inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring"
+          className={cn("inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring", className)}
           type="button"
         >
           {avatarSrc ? (

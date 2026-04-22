@@ -368,12 +368,13 @@ export function PostComposer(props: PostComposerProps) {
   };
 
   return (
-    <div className={cn("w-full space-y-4", isMobile && "space-y-3")}>
+    <div className={cn("w-full space-y-4", isMobile && "space-y-5")}>
       {!isMobile ? <CardTitle className="text-3xl">{copy.title}</CardTitle> : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className={cn("flex flex-wrap items-center justify-between gap-3", isMobile && "w-full")}>
         <ShellPill
           avatarSrc={clubAvatarSrc}
+          className={cn(isMobile && "h-14 w-full justify-between rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3")}
           communities={communityPickerItems}
           emptyLabel={communityPickerEmptyLabel ?? routesCopy.common.noRecentCommunities}
           onSelectCommunity={onSelectCommunity}
@@ -418,7 +419,7 @@ export function PostComposer(props: PostComposerProps) {
           </Tabs>
         </CardHeader>
 
-        <CardContent className={cn("space-y-5 p-5", isMobile && "space-y-4 px-0 pb-0 pt-1")}>
+        <CardContent className={cn("space-y-5 p-5", isMobile && "space-y-5 px-0 pb-0 pt-0")}>
           <>
           {activeTab !== "link" ? (
             <div>
@@ -498,7 +499,7 @@ export function PostComposer(props: PostComposerProps) {
           </>
         </CardContent>
 
-        <CardFooter className={cn("flex-wrap justify-between gap-3 border-t border-border-soft p-5", isMobile && "border-t-0 px-0 pb-0 pt-2")}>
+        <CardFooter className={cn("flex-wrap justify-between gap-3 border-t border-border-soft p-5", isMobile && "border-t-0 px-0 pb-0 pt-1")}>
           <div className="flex flex-wrap items-center gap-3">
             {(Boolean(identity?.agentLabel) || (Boolean(identity?.allowAnonymousIdentity) && anonymousEligibleTabs.includes(activeTab))) && identity ? (
               <IdentitySection

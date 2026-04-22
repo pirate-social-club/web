@@ -135,7 +135,7 @@ export function CreatePostPage({ communityId }: { communityId: string }) {
       return (
         <div className="min-h-screen w-full bg-background text-foreground">
           <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
-          <section className="flex min-w-0 flex-1 flex-col px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
+          <section className="flex min-w-0 flex-1 flex-col px-4 pb-8 pt-[calc(env(safe-area-inset-top)+5rem)]">
             <StatusCard title={membershipRequiredTitle} description={membershipRequiredDescription} tone="warning" />
           </section>
         </div>
@@ -158,7 +158,7 @@ export function CreatePostPage({ communityId }: { communityId: string }) {
       return (
         <div className="min-h-screen w-full bg-background text-foreground">
           <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
-          <section className="flex min-w-0 flex-1 flex-col px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
+          <section className="flex min-w-0 flex-1 flex-col px-4 pb-8 pt-[calc(env(safe-area-inset-top)+5rem)]">
             <StatusCard title={verifyRequiredTitle} description={verifyRequiredDescription} tone="warning" actions={actions} />
           </section>
         </div>
@@ -178,7 +178,7 @@ export function CreatePostPage({ communityId }: { communityId: string }) {
     return (
       <div className="min-h-screen w-full bg-background text-foreground">
         <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
-        <section className="flex min-w-0 flex-1 flex-col px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
+        <section className="flex min-w-0 flex-1 flex-col px-4 pb-8 pt-[calc(env(safe-area-inset-top)+5rem)]">
           <CreatePostComposer copy={copy} state={state} />
         </section>
       </div>

@@ -49,6 +49,8 @@ export interface SettingsPageProps {
     postAuthorLabel: string;
     saveDisabled?: boolean;
     submitState: SettingsSubmitState;
+    publicHandlesSubmitState: SettingsSubmitState;
+    publicHandlesSaveDisabled?: boolean;
     handleFlow?: Pick<
       UseGlobalHandleFlowReturn,
       "draft" | "preview" | "state" | "setDraft" | "checkAvailability" | "submitRename" | "resetState"
@@ -61,6 +63,7 @@ export interface SettingsPageProps {
     onDisplayNameChange?: (value: string) => void;
     onPrimaryHandleChange?: (handleId: string | null) => void;
     onSave?: () => void;
+    onPublicHandlesSave?: () => void;
   };
   wallet: {
     connectedWallets: SettingsConnectedWallet[];

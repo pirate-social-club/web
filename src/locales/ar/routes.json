@@ -627,7 +627,9 @@
     "publicHandlesSection": "المعرّفات العامة",
     "pirateHandleSection": "معرّف بايرت",
     "changeHandleLabel": "تغيير",
-    "cancelHandleChangeLabel": "إلغاء"
+    "cancelHandleChangeLabel": "إلغاء",
+    "handleInvalidMessage": "يجب أن يكون المعرّف بين 3 و30 حرفًا، ويحتوي فقط على أحرف صغيرة وأرقام وشرطات.",
+    "savePublicHandles": "احفظ المعرّفات العامة"
   },
   "notFound": {
     "body": "النسخة الأولى من الهيكل تثبّت فقط مجموعة صغيرة من المسارات: الرئيسية، الخلاصات، المجتمعات، المنشورات، الملفات الشخصية، الإعداد، عنصر نائب للوارد، وإنشاء مجتمع.",

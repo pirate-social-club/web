@@ -316,6 +316,19 @@ export function ProfileTab({
           onValueChange={profile.onPrimaryHandleChange}
           value={profile.primaryHandleId}
         />
+        <div className="flex items-center justify-end gap-3">
+          {profile.publicHandlesSubmitState.kind === "error" ? (
+            <div className="me-auto text-base text-destructive">{profile.publicHandlesSubmitState.message}</div>
+          ) : null}
+          <Button
+            disabled={profile.publicHandlesSaveDisabled}
+            loading={profile.publicHandlesSubmitState.kind === "saving"}
+            onClick={() => profile.onPublicHandlesSave?.()}
+            type="button"
+          >
+            {copy.savePublicHandles}
+          </Button>
+        </div>
       </SettingsSection>
     </div>
   );

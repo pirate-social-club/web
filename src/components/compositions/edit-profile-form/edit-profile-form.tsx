@@ -102,6 +102,15 @@ export function GlobalHandleField({
     }
   };
 
+  const prevHandleRef = React.useRef(currentHandle);
+  React.useEffect(() => {
+    if (expandable && currentHandle !== prevHandleRef.current) {
+      prevHandleRef.current = currentHandle;
+      setIsExpanded(false);
+      setDraft("");
+    }
+  }, [currentHandle, expandable, setDraft]);
+
   const isBusy = state.kind === "checking" || state.kind === "saving";
 
   if (!isExpanded) {
@@ -170,6 +179,17 @@ export function GlobalHandleField({
       )}
 
       {state.kind === "unavailable" && (
+        <div className="space-y-3">
+          <FormNote tone="destructive">{state.reason}</FormNote>
+          {expandable && (
+            <Button onClick={handleCancel} size="sm" variant="ghost">
+              {copy.cancelHandleChangeLabel}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {state.kind === "invalid" && (
         <div className="space-y-3">
           <FormNote tone="destructive">{state.reason}</FormNote>
           {expandable && (

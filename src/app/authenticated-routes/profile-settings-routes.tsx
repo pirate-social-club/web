@@ -81,6 +81,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const [coverRemoved, setCoverRemoved] = React.useState(false);
   const [displayNameError, setDisplayNameError] = React.useState<string | undefined>(undefined);
   const [profileSubmitState, setProfileSubmitState] = React.useState<SettingsSubmitState>({ kind: "idle" });
+  const [publicHandlesSubmitState, setPublicHandlesSubmitState] = React.useState<SettingsSubmitState>({ kind: "idle" });
   const [preferencesSubmitState, setPreferencesSubmitState] = React.useState<SettingsSubmitState>({ kind: "idle" });
   const ownedAgentsMessages = React.useMemo(() => ({
     agentRegisteredToast: copy.ownedAgents.agentRegisteredToast,
@@ -115,6 +116,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     setCoverRemoved(false);
     setDisplayNameError(undefined);
     setProfileSubmitState({ kind: "idle" });
+    setPublicHandlesSubmitState({ kind: "idle" });
     setPreferencesSubmitState({ kind: "idle" });
   }, [locale, profile]);
 
@@ -163,8 +165,8 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     || coverFile !== null
     || (avatarRemoved && profile.avatar_ref != null)
     || (coverRemoved && profile.cover_ref != null)
-    || selectedPrimaryHandleId !== profilePrimaryHandleId
   );
+  const publicHandlesHasChanges = profile == null ? false : selectedPrimaryHandleId !== profilePrimaryHandleId;
   const preferencesChanged = profile == null ? false : preferredLocale !== (isUiLocaleCode(profile.preferred_locale ?? "") ? profile.preferred_locale : locale);
 
   const handleProfileSave = React.useCallback(async () => {
@@ -189,16 +191,12 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         avatar_ref: avatarRef,
         cover_ref: coverRef,
       });
-      const finalProfile = selectedPrimaryHandleId !== profilePrimaryHandleId
-        ? await api.profiles.setPrimaryPublicHandle(selectedPrimaryHandleId)
-        : updatedProfile;
 
-      updateSessionProfile(finalProfile);
+      updateSessionProfile(updatedProfile);
       setAvatarFile(null);
       setCoverFile(null);
-      setAvatarRemoved(finalProfile.avatar_ref == null);
-      setCoverRemoved(finalProfile.cover_ref == null);
-      setSelectedPrimaryHandleId(finalProfile.primary_public_handle?.linked_handle_id ?? null);
+      setAvatarRemoved(updatedProfile.avatar_ref == null);
+      setCoverRemoved(updatedProfile.cover_ref == null);
       setProfileSubmitState({ kind: "idle" });
       toast.success(copy.settings.profileUpdated);
     } catch (e: unknown) {
@@ -206,6 +204,23 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
       setProfileSubmitState({ kind: "error", message: apiErr?.message ?? copy.settings.saveProfileError });
     }
   }, [api, avatarFile, avatarRemoved, bio, copy.settings.displayNameRequired, copy.settings.profileUpdated, copy.settings.saveProfileError, coverFile, coverRemoved, displayName, profile, profilePrimaryHandleId, selectedPrimaryHandleId]);
+
+  const handlePublicHandlesSave = React.useCallback(async () => {
+    if (!profile) return;
+    if (selectedPrimaryHandleId === profilePrimaryHandleId) return;
+
+    setPublicHandlesSubmitState({ kind: "saving" });
+    try {
+      const updatedProfile = await api.profiles.setPrimaryPublicHandle(selectedPrimaryHandleId);
+      updateSessionProfile(updatedProfile);
+      setSelectedPrimaryHandleId(updatedProfile.primary_public_handle?.linked_handle_id ?? null);
+      setPublicHandlesSubmitState({ kind: "idle" });
+      toast.success(copy.settings.profileUpdated);
+    } catch (e: unknown) {
+      const apiErr = e as ApiError;
+      setPublicHandlesSubmitState({ kind: "error", message: apiErr?.message ?? copy.settings.saveProfileError });
+    }
+  }, [api, copy.settings.profileUpdated, copy.settings.saveProfileError, profile, profilePrimaryHandleId, selectedPrimaryHandleId]);
 
   const handlePreferencesSave = React.useCallback(async () => {
     if (!profile) return;
@@ -262,11 +277,14 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         onCoverRemove: () => { setCoverFile(null); setCoverRemoved(true); setProfileSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },
         onCoverSelect: (file) => { setCoverFile(file); setCoverRemoved(false); setProfileSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },
         onDisplayNameChange: (next) => { setDisplayName(next); setDisplayNameError(undefined); setProfileSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },
-        onPrimaryHandleChange: (handleId) => { setSelectedPrimaryHandleId(handleId); setProfileSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },
+        onPrimaryHandleChange: (handleId) => { setSelectedPrimaryHandleId(handleId); setPublicHandlesSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },
         onSave: handleProfileSave,
+        onPublicHandlesSave: handlePublicHandlesSave,
         pendingAvatarLabel: avatarFile?.name,
         pendingCoverLabel: coverFile?.name,
         postAuthorLabel,
+        publicHandlesSaveDisabled: !publicHandlesHasChanges || publicHandlesSubmitState.kind === "saving",
+        publicHandlesSubmitState,
         saveDisabled: !profileHasChanges || profileSubmitState.kind === "saving",
         submitState: profileSubmitState,
       }}

@@ -634,7 +634,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "publicHandlesSection": "Public handles",
         "pirateHandleSection": "Pirate handle",
         "changeHandleLabel": "Change",
-        "cancelHandleChangeLabel": "Cancel"
+        "cancelHandleChangeLabel": "Cancel",
+        "handleInvalidMessage": "Handles must be 3–30 characters and can only contain lowercase letters, numbers, and hyphens.",
+        "savePublicHandles": "Save public handles"
       },
       "notFound": {
         "body": "The first scaffold only locks a small set of routes: home, feeds, communities, posts, profiles, onboarding, inbox placeholder, and community create.",
@@ -1684,7 +1686,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "publicHandlesSection": "المعرّفات العامة",
         "pirateHandleSection": "معرّف بايرت",
         "changeHandleLabel": "تغيير",
-        "cancelHandleChangeLabel": "إلغاء"
+        "cancelHandleChangeLabel": "إلغاء",
+        "handleInvalidMessage": "يجب أن يكون المعرّف بين 3 و30 حرفًا، ويحتوي فقط على أحرف صغيرة وأرقام وشرطات.",
+        "savePublicHandles": "احفظ المعرّفات العامة"
       },
       "notFound": {
         "body": "النسخة الأولى من الهيكل تثبّت فقط مجموعة صغيرة من المسارات: الرئيسية، الخلاصات، المجتمعات، المنشورات، الملفات الشخصية، الإعداد، عنصر نائب للوارد، وإنشاء مجتمع.",
@@ -2734,7 +2738,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "publicHandlesSection": "公开用户名",
         "pirateHandleSection": "Pirate 用户名",
         "changeHandleLabel": "更改",
-        "cancelHandleChangeLabel": "取消"
+        "cancelHandleChangeLabel": "取消",
+        "handleInvalidMessage": "用户名必须为 3–30 个字符，且只能包含小写字母、数字和连字符。",
+        "savePublicHandles": "保存公开用户名"
       },
       "notFound": {
         "body": "当前脚手架只固定了一小部分路由：首页、信息流、社区、帖子、个人资料、引导、收件箱占位页和创建社区。",

@@ -105,6 +105,9 @@ const baseArgs: SettingsPageProps = {
     primaryHandleId: "lnk_ens_blackbeard",
     postAuthorLabel: "captainblackbeard.pirate",
     submitState: { kind: "idle" },
+    publicHandlesSubmitState: { kind: "idle" },
+    publicHandlesSaveDisabled: false,
+    onPublicHandlesSave: () => {},
   },
   wallet: {
     primaryAddress: "0x42a5f77f2d06c9a7e304817b3c177b91e0c2f3a8",
@@ -229,6 +232,19 @@ export const ProfileHandleUnavailable: Story = {
         draft: "blackbeard",
         preview: "blackbeard.pirate",
         state: { kind: "unavailable", reason: "This handle is already taken." },
+      }),
+    },
+  },
+};
+
+export const ProfileHandleInvalid: Story = {
+  args: {
+    profile: {
+      ...baseArgs.profile,
+      handleFlow: makeMockHandleFlow({
+        draft: "b",
+        preview: "b.pirate",
+        state: { kind: "invalid", reason: "Handles must be 3–30 characters and can only contain lowercase letters, numbers, and hyphens." },
       }),
     },
   },

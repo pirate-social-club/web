@@ -627,7 +627,9 @@
     "publicHandlesSection": "公开用户名",
     "pirateHandleSection": "Pirate 用户名",
     "changeHandleLabel": "更改",
-    "cancelHandleChangeLabel": "取消"
+    "cancelHandleChangeLabel": "取消",
+    "handleInvalidMessage": "用户名必须为 3–30 个字符，且只能包含小写字母、数字和连字符。",
+    "savePublicHandles": "保存公开用户名"
   },
   "notFound": {
     "body": "当前脚手架只固定了一小部分路由：首页、信息流、社区、帖子、个人资料、引导、收件箱占位页和创建社区。",

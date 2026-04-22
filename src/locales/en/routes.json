@@ -627,7 +627,9 @@
     "publicHandlesSection": "Public handles",
     "pirateHandleSection": "Pirate handle",
     "changeHandleLabel": "Change",
-    "cancelHandleChangeLabel": "Cancel"
+    "cancelHandleChangeLabel": "Cancel",
+    "handleInvalidMessage": "Handles must be 3–30 characters and can only contain lowercase letters, numbers, and hyphens.",
+    "savePublicHandles": "Save public handles"
   },
   "notFound": {
     "body": "The first scaffold only locks a small set of routes: home, feeds, communities, posts, profiles, onboarding, inbox placeholder, and community create.",

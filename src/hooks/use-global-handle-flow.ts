@@ -12,6 +12,7 @@ export type HandleRenameState =
   | { kind: "idle" }
   | { kind: "available"; freeRenameRemaining: boolean }
   | { kind: "unavailable"; reason: string }
+  | { kind: "invalid"; reason: string }
   | { kind: "checking" }
   | { kind: "saving" }
   | { kind: "error"; message: string }
@@ -63,6 +64,8 @@ export function useGlobalHandleFlow({
     if (isNoop || !isValidSyntax) {
       if (!normalized) {
         setState({ kind: "idle" });
+      } else {
+        setState({ kind: "invalid", reason: copy.handleInvalidMessage });
       }
       return;
     }

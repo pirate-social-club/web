@@ -343,6 +343,7 @@ describe("composition smoke tests", () => {
           }],
           postAuthorLabel: "captainblackbeard.pirate",
           submitState: { kind: "idle" },
+          publicHandlesSubmitState: { kind: "idle" },
         }}
         wallet={{
           connectedWallets: [
@@ -392,6 +393,7 @@ describe("composition smoke tests", () => {
           }],
           postAuthorLabel: "captainblackbeard.pirate",
           submitState: { kind: "idle" },
+          publicHandlesSubmitState: { kind: "idle" },
         }}
         wallet={{
           connectedWallets: [],

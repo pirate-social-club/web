@@ -70,7 +70,9 @@
     "inboxLabel": "الوارد",
     "primaryNavAriaLabel": "التنقل الرئيسي",
     "profileAriaLabel": "الملف الشخصي",
-    "profileLabel": "الملف الشخصي"
+    "profileLabel": "الملف الشخصي",
+    "walletAriaLabel": "المحفظة",
+    "walletLabel": "المحفظة"
   },
   "rootError": {
     "description": "حدث خطأ أثناء تحميل Pirate. أعد تحميل الصفحة ثم حاول مرة أخرى.",

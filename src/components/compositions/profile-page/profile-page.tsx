@@ -3,6 +3,7 @@
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/primitives/tabs";
 import { useUiLocale } from "@/lib/ui-locale";
+import { resolveLocaleLanguageTag } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import type { ProfilePageProps } from "./profile-page.types";
@@ -24,24 +25,30 @@ export function ProfilePage({
   const { isRtl, locale } = useUiLocale();
   const isMobile = useIsMobile();
   const copy = getLocaleMessages(locale, "routes").profile;
+  const localeTag = resolveLocaleLanguageTag(locale);
 
   return (
     <div className={cn("w-full min-h-screen bg-background text-foreground", className)}>
       <div className={cn("flex w-full flex-col gap-6 pb-10", isMobile && "gap-4 pb-6")}>
-        <ProfileHero onEditProfile={onEditProfile} profile={profile} />
+        <ProfileHero
+          localeTag={localeTag}
+          onEditProfile={onEditProfile}
+          profile={profile}
+          stats={rightRail.stats}
+        />
 
         <Tabs className={cn("flex flex-col gap-6", isMobile && "gap-4")} defaultValue={defaultTab}>
           <TabsList
             className={cn(
               "h-auto w-full gap-2 overflow-x-auto rounded-[var(--radius-3xl)] bg-muted/80 p-1.5",
-              isMobile && "rounded-none border-b border-border-soft bg-transparent p-0",
+              isMobile && "grid grid-cols-4 gap-0 overflow-visible rounded-none border-b border-border-soft bg-transparent p-0",
               isRtl ? "justify-end" : "justify-start",
             )}
           >
-            <TabsTrigger className={cn("min-w-fit", isMobile && "rounded-none border-b-2 border-transparent px-0 py-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none")} value="overview">{copy.overviewTab}</TabsTrigger>
-            <TabsTrigger className={cn("min-w-fit", isMobile && "rounded-none border-b-2 border-transparent px-0 py-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none")} value="posts">{copy.postsTab}</TabsTrigger>
-            <TabsTrigger className={cn("min-w-fit", isMobile && "rounded-none border-b-2 border-transparent px-0 py-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none")} value="comments">{copy.commentsTab}</TabsTrigger>
-            <TabsTrigger className={cn("min-w-fit", isMobile && "rounded-none border-b-2 border-transparent px-0 py-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none")} value="scrobbles">{copy.scrobblesTab}</TabsTrigger>
+            <TabsTrigger className={cn("min-w-fit", isMobile && "min-w-0 rounded-none border-b-2 border-transparent px-1 py-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none")} value="overview">{copy.overviewTab}</TabsTrigger>
+            <TabsTrigger className={cn("min-w-fit", isMobile && "min-w-0 rounded-none border-b-2 border-transparent px-1 py-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none")} value="posts">{copy.postsTab}</TabsTrigger>
+            <TabsTrigger className={cn("min-w-fit", isMobile && "min-w-0 rounded-none border-b-2 border-transparent px-1 py-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none")} value="comments">{copy.commentsTab}</TabsTrigger>
+            <TabsTrigger className={cn("min-w-fit", isMobile && "min-w-0 rounded-none border-b-2 border-transparent px-1 py-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none")} value="scrobbles">{copy.scrobblesTab}</TabsTrigger>
           </TabsList>
 
           <div className={cn("flex flex-col gap-6 xl:items-start", isRtl ? "xl:flex-row-reverse" : "xl:flex-row")}>
@@ -61,7 +68,7 @@ export function ProfilePage({
             </div>
 
             <ProfileRightRail
-              className="xl:w-[21rem] xl:shrink-0 xl:sticky xl:top-6 xl:self-start"
+              className="hidden md:flex xl:w-[21rem] xl:shrink-0 xl:sticky xl:top-6 xl:self-start"
               profile={profile}
               rightRail={rightRail}
             />

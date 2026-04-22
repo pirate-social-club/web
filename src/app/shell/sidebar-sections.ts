@@ -201,6 +201,7 @@ export function activeMobileNav(
   route: AppRoute,
 ): ComponentProps<typeof MobileFooterNav>["activeItem"] {
   if (route.kind === "inbox") return "inbox";
+  if (route.kind === "settings" && route.section === "wallet") return "wallet";
   if (route.kind === "create-post" || route.kind === "create-post-global") return "create";
   if (route.kind === "me" || route.kind === "public-profile" || route.kind === "public-agent") return "profile";
   return "home";

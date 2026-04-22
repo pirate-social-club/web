@@ -70,7 +70,9 @@
     "inboxLabel": "收件箱",
     "primaryNavAriaLabel": "主导航",
     "profileAriaLabel": "个人资料",
-    "profileLabel": "我的"
+    "profileLabel": "我的",
+    "walletAriaLabel": "钱包",
+    "walletLabel": "钱包"
   },
   "rootError": {
     "description": "加载 Pirate 时出了问题。请刷新页面后重试。",

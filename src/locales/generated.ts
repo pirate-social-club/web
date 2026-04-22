@@ -1048,7 +1048,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "inboxLabel": "Inbox",
         "primaryNavAriaLabel": "Primary",
         "profileAriaLabel": "Profile",
-        "profileLabel": "Profile"
+        "profileLabel": "Profile",
+        "walletAriaLabel": "Wallet",
+        "walletLabel": "Wallet"
       },
       "rootError": {
         "description": "Something went wrong while loading Pirate. Reload the page and try again.",
@@ -2110,7 +2112,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "inboxLabel": "الوارد",
         "primaryNavAriaLabel": "التنقل الرئيسي",
         "profileAriaLabel": "الملف الشخصي",
-        "profileLabel": "الملف الشخصي"
+        "profileLabel": "الملف الشخصي",
+        "walletAriaLabel": "المحفظة",
+        "walletLabel": "المحفظة"
       },
       "rootError": {
         "description": "حدث خطأ أثناء تحميل Pirate. أعد تحميل الصفحة ثم حاول مرة أخرى.",
@@ -3172,7 +3176,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "inboxLabel": "收件箱",
         "primaryNavAriaLabel": "主导航",
         "profileAriaLabel": "个人资料",
-        "profileLabel": "我的"
+        "profileLabel": "我的",
+        "walletAriaLabel": "钱包",
+        "walletLabel": "钱包"
       },
       "rootError": {
         "description": "加载 Pirate 时出了问题。请刷新页面后重试。",

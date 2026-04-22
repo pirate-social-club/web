@@ -5,6 +5,7 @@ import {
   Bell,
   House,
   Plus,
+  Wallet,
 } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
@@ -14,10 +15,11 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 
-type FooterNavItemId = "home" | "create" | "inbox" | "profile";
+type FooterNavItemId = "home" | "wallet" | "create" | "inbox" | "profile";
 
 const FOOTER_ITEMS = [
   { id: "home", icon: House },
+  { id: "wallet", icon: Wallet },
   { id: "create", icon: Plus },
   { id: "inbox", icon: Bell },
 ] as const;
@@ -30,6 +32,8 @@ export interface MobileFooterNavLabels {
   primaryNavAriaLabel?: string;
   profile?: string;
   profileAriaLabel?: string;
+  wallet?: string;
+  walletAriaLabel?: string;
 }
 
 export interface MobileFooterNavProps {
@@ -44,6 +48,7 @@ export interface MobileFooterNavProps {
   onHomeClick?: () => void;
   onInboxClick?: () => void;
   onProfileClick?: () => void;
+  onWalletClick?: () => void;
   showInboxDot?: boolean;
   userAvatarSrc?: string | null;
 }
@@ -60,6 +65,7 @@ export function MobileFooterNav({
   onHomeClick,
   onInboxClick,
   onProfileClick,
+  onWalletClick,
   showInboxDot = false,
   userAvatarSrc,
 }: MobileFooterNavProps) {
@@ -73,6 +79,8 @@ export function MobileFooterNav({
     primaryNavAriaLabel = copy.mobileFooter.primaryNavAriaLabel,
     profile = copy.mobileFooter.profileLabel,
     profileAriaLabel = profile,
+    wallet = copy.mobileFooter.walletLabel,
+    walletAriaLabel = wallet,
   } = labels ?? {};
   const detectedMobile = useIsMobile();
   const isMobile = forceMobile ?? detectedMobile;
@@ -87,6 +95,7 @@ export function MobileFooterNav({
 
   const clickById: Record<Exclude<FooterNavItemId, "profile">, (() => void) | undefined> = {
     home: onHomeClick,
+    wallet: onWalletClick,
     create: onCreateClick,
     inbox: onInboxClick,
   };
@@ -94,6 +103,13 @@ export function MobileFooterNav({
     create,
     home,
     inbox,
+    wallet,
+  };
+  const ariaLabelById: Record<Exclude<FooterNavItemId, "profile">, string> = {
+    create,
+    home,
+    inbox: inboxAriaLabel,
+    wallet: walletAriaLabel,
   };
 
   return (
@@ -101,7 +117,7 @@ export function MobileFooterNav({
       aria-label={primaryNavAriaLabel}
       className={cn("fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md", className)}
     >
-      <div className="grid h-[4.5rem] grid-cols-4 items-center px-2">
+      <div className="grid h-[4.5rem] grid-cols-5 items-center px-2">
         {FOOTER_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = activeItem === item.id;
@@ -109,7 +125,7 @@ export function MobileFooterNav({
           return (
             <button
               aria-current={active ? "page" : undefined}
-              aria-label={item.id === "inbox" ? inboxAriaLabel : labelById[item.id]}
+              aria-label={ariaLabelById[item.id]}
               className={cn(
                 "relative mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors",
                 item.id === "create" && disableCreateAction ? "cursor-not-allowed opacity-50" : null,

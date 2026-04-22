@@ -6,7 +6,11 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
-import type { ProfileData } from "./profile-page.types";
+import type { ProfileData, ProfileSidebarStat } from "./profile-page.types";
+
+function formatStatValue(value: string | number, localeTag: string) {
+  return typeof value === "number" ? value.toLocaleString(localeTag) : value;
+}
 
 function ProfileHeroActions({
   onEditProfile,
@@ -52,11 +56,15 @@ function ProfileHeroActions({
 }
 
 export function ProfileHero({
+  localeTag,
   onEditProfile,
   profile,
+  stats = [],
 }: {
+  localeTag?: string;
   onEditProfile?: () => void;
   profile: ProfileData;
+  stats?: ProfileSidebarStat[];
 }) {
   const isMobile = useIsMobile();
   const bannerStyle = profile.bannerSrc
@@ -103,6 +111,18 @@ export function ProfileHero({
                     </div>
                   ))}
                 </div>
+              ) : null}
+              {stats.length ? (
+                <dl className="grid grid-cols-3 gap-x-4 gap-y-3 pt-1 md:hidden">
+                  {stats.map((stat) => (
+                    <div className="min-w-0" key={stat.label}>
+                      <dt className="text-base text-muted-foreground">{stat.label}</dt>
+                      <dd className="truncate text-lg font-semibold tracking-tight text-foreground">
+                        {formatStatValue(stat.value, localeTag ?? "en-US")}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
               ) : null}
             </div>
           </div>

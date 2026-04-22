@@ -70,7 +70,9 @@
     "inboxLabel": "Inbox",
     "primaryNavAriaLabel": "Primary",
     "profileAriaLabel": "Profile",
-    "profileLabel": "Profile"
+    "profileLabel": "Profile",
+    "walletAriaLabel": "Wallet",
+    "walletLabel": "Wallet"
   },
   "rootError": {
     "description": "Something went wrong while loading Pirate. Reload the page and try again.",

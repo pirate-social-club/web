@@ -106,11 +106,14 @@ export function AppShellMobileNav({
         primaryNavAriaLabel: copy.mobileFooter.primaryNavAriaLabel,
         profile: copy.mobileFooter.profileLabel,
         profileAriaLabel: copy.mobileFooter.profileAriaLabel,
+        wallet: copy.mobileFooter.walletLabel,
+        walletAriaLabel: copy.mobileFooter.walletAriaLabel,
       }}
       onCreateClick={createPostPath ? () => navigate(createPostPath) : undefined}
       onHomeClick={() => navigate("/")}
       onInboxClick={() => navigate("/inbox")}
       onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
+      onWalletClick={() => session ? navigate("/settings/wallet") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
       showInboxDot={hasUnread}
       userAvatarSrc={avatarSrc}
     />

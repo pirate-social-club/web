@@ -117,6 +117,62 @@ function getEligibilityText(eligibility: JoinEligibility | null | undefined): {
   }
 }
 
+function formatPassportScore(score: number): string {
+  return Number.isInteger(score) ? String(score) : score.toFixed(1).replace(/\.0$/u, "");
+}
+
+function getRequiredPassportScore(eligibility: JoinEligibility | null | undefined): number | null {
+  if (typeof eligibility?.wallet_score_status?.required_score === "number") {
+    return eligibility.wallet_score_status.required_score;
+  }
+  let requiredScore: number | null = null;
+  for (const gate of eligibility?.membership_gate_summaries ?? []) {
+    if (gate.gate_type === "wallet_score" && typeof gate.minimum_score === "number") {
+      requiredScore = requiredScore == null ? gate.minimum_score : Math.max(requiredScore, gate.minimum_score);
+    }
+  }
+  return requiredScore;
+}
+
+function getPassportPrompt(
+  eligibility: JoinEligibility | null | undefined,
+): VerificationPrompt | null {
+  if (!eligibility) return null;
+  const shouldShowPassportPrompt = (
+    eligibility.status === "verification_required"
+    && eligibility.suggested_verification_provider === "passport"
+  ) || (
+    eligibility.status === "gate_failed"
+    && eligibility.failure_reason === "wallet_score_too_low"
+  );
+  if (!shouldShowPassportPrompt) return null;
+
+  const capabilities = getPassportPromptCapabilities(eligibility);
+  const activeCapabilities: JoinEligibility["missing_capabilities"] = capabilities.length > 0 ? capabilities : ["wallet_score"];
+  const copy = getVerificationPromptCopy("passport", activeCapabilities);
+  const requiredScore = getRequiredPassportScore(eligibility);
+  if (requiredScore == null) {
+    return { ...copy, href: "https://app.passport.xyz/" };
+  }
+
+  const requiredScoreLabel = formatPassportScore(requiredScore);
+  const currentScore = eligibility.wallet_score_status?.current_score;
+  const needsSanctionsClear = activeCapabilities.includes("sanctions_clear");
+  const scoreDescription = typeof currentScore === "number"
+    ? `Your score is ${formatPassportScore(currentScore)}. Need ${requiredScoreLabel}+ to join.`
+    : `No Passport score found. Need ${requiredScoreLabel}+ to join.`;
+  const description = needsSanctionsClear
+    ? `${scoreDescription} Complete Passport screening too.`
+    : scoreDescription;
+
+  return {
+    title: `Passport score ${requiredScoreLabel}+ required`,
+    description,
+    actionLabel: copy.actionLabel,
+    href: "https://app.passport.xyz/",
+  };
+}
+
 export function CommunityMembershipGatePanel({
   gates,
   eligibility,
@@ -132,13 +188,8 @@ export function CommunityMembershipGatePanel({
   if (gates.length === 0) return null;
 
   const passportPrompt: VerificationPrompt | null = !verificationPrompt
-    && eligibility?.status === "verification_required"
-    && eligibility.suggested_verification_provider === "passport"
-      ? {
-        ...getVerificationPromptCopy("passport", getPassportPromptCapabilities(eligibility)),
-        href: "https://app.passport.xyz/",
-      }
-      : null;
+    ? getPassportPrompt(eligibility)
+    : null;
   const activePrompt = verificationPrompt ?? passportPrompt;
   const eligibilityText = getEligibilityText(eligibility);
   const title = activePrompt?.title ?? (joinRequested ? "Request submitted" : eligibilityText.title);

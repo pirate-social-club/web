@@ -120,15 +120,6 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     setPreferencesSubmitState({ kind: "idle" });
   }, [locale, profile]);
 
-  const handleFlow = useGlobalHandleFlow({
-    currentHandleLabel: profile?.global_handle?.label ?? "",
-    onRenamed: async () => {
-      const refreshedProfile = await api.profiles.getMe();
-      updateSessionProfile(refreshedProfile);
-      toast.success(copy.profile.handleUpdated);
-    },
-  });
-
   React.useEffect(() => {
     if (!profile || activeTab !== "profile") return;
     const primaryWalletAttachmentId = session?.user.primary_wallet_attachment_id ?? null;
@@ -268,7 +259,6 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         currentHandle,
         displayName,
         displayNameError,
-        handleFlow,
         linkedHandles,
         primaryHandleId: selectedPrimaryHandleId,
         onAvatarRemove: () => { setAvatarFile(null); setAvatarRemoved(true); setProfileSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },

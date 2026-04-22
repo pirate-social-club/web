@@ -300,13 +300,22 @@ export function ProfileTab({
         </Card>
       </SettingsSection>
 
-      {profile.handleFlow && profile.currentHandle ? (
+      {profile.currentHandle ? (
         <SettingsSection title={copy.pirateHandleSection}>
-          <GlobalHandleField
-            currentHandle={profile.currentHandle}
-            expandable
-            handleFlow={profile.handleFlow}
-          />
+          {profile.handleFlow ? (
+            <GlobalHandleField
+              currentHandle={profile.currentHandle}
+              expandable
+              handleFlow={profile.handleFlow}
+            />
+          ) : (
+            <Card className="overflow-hidden border-border bg-card shadow-none">
+              <SettingsRow
+                label={copy.currentHandleLabel}
+                value={profile.currentHandle}
+              />
+            </Card>
+          )}
         </SettingsSection>
       ) : null}
 

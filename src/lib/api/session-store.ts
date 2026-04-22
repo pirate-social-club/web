@@ -20,6 +20,7 @@ const listeners = new Set<SessionListener>();
 let cachedSession: StoredSession | null = null;
 let hydrated = false;
 let sessionClearCallback: (() => Promise<void> | void) | null = null;
+let sessionClearInProgress = false;
 
 function decodeBase64Url(value: string): string | null {
   if (typeof window === "undefined") return null;
@@ -120,6 +121,7 @@ export function setSession(response: SessionExchangeResponse): StoredSession {
     walletAttachments: response.wallet_attachments,
     storedAt: new Date().toISOString(),
   };
+  sessionClearInProgress = false;
   cachedSession = session;
   writeToStorage(session);
   notifyAll();
@@ -149,12 +151,22 @@ export function updateSessionProfile(
 }
 
 export function clearSession(): void {
+  sessionClearInProgress = true;
   cachedSession = null;
   writeToStorage(null);
   notifyAll();
-  void Promise.resolve(sessionClearCallback?.()).catch((error) => {
-    logger.error("[auth] failed to clear upstream session", error);
-  });
+  void Promise.resolve(sessionClearCallback?.())
+    .catch((error) => {
+      logger.error("[auth] failed to clear upstream session", error);
+    })
+    .finally(() => {
+      sessionClearInProgress = false;
+      notifyAll();
+    });
+}
+
+export function isSessionClearInProgress(): boolean {
+  return sessionClearInProgress;
 }
 
 export function setSessionClearCallback(
@@ -175,6 +187,14 @@ export function useSession(): StoredSession | null {
     subscribeToSession,
     getStoredSession,
     () => null,
+  );
+}
+
+export function useSessionClearInProgress(): boolean {
+  return React.useSyncExternalStore(
+    subscribeToSession,
+    isSessionClearInProgress,
+    () => false,
   );
 }
 

@@ -12,6 +12,7 @@ import {
   isSessionAccessTokenExpiringSoon,
   setSessionClearCallback,
   setSession,
+  useSessionClearInProgress,
   useSession,
 } from "@/lib/api/session-store";
 import { logger } from "@/lib/logger";
@@ -41,6 +42,7 @@ export function PrivyAuthBridge({
 }: PrivyAuthBridgeProps) {
   const api = useApi();
   const session = useSession();
+  const sessionClearInProgress = useSessionClearInProgress();
   const { isOpen } = useModalStatus();
   const { ready, authenticated, login, getAccessToken, logout } = usePrivy();
   const [busy, setBusy] = React.useState(false);
@@ -55,15 +57,17 @@ export function PrivyAuthBridge({
   }, []);
 
   React.useEffect(() => {
-    logger.info("[auth-bridge] state", { mountId: mountIdRef.current, ready, authenticated, busy, exchangeRequested, hasSession: !!session });
-  }, [ready, authenticated, busy, exchangeRequested, session]);
+    logger.info("[auth-bridge] state", { mountId: mountIdRef.current, ready, authenticated, busy, exchangeRequested, hasSession: !!session, sessionClearInProgress });
+  }, [ready, authenticated, busy, exchangeRequested, session, sessionClearInProgress]);
   const retryCountRef = React.useRef(0);
   const retryUntilRef = React.useRef(0);
   const wasOpenRef = React.useRef(false);
   const authStateRef = React.useRef({ authenticated, ready });
+  const sessionClearInProgressRef = React.useRef(sessionClearInProgress);
   const liveStateRef = React.useRef({ busy: false, authenticated: false, login: login as (() => void) | null, session: false });
 
   authStateRef.current = { authenticated, ready };
+  sessionClearInProgressRef.current = sessionClearInProgress;
   liveStateRef.current = { busy, authenticated, login: login as (() => void) | null, session: !!session };
 
   const isInRetryCooldown = React.useCallback((): boolean => {
@@ -90,6 +94,11 @@ export function PrivyAuthBridge({
     silent?: boolean;
     navigateOnFirstSession?: boolean;
   }): Promise<boolean> => {
+    if (sessionClearInProgressRef.current) {
+      setExchangeRequested(false);
+      return false;
+    }
+
     const hadSession = !!session;
     setBusy(true);
     logger.info("[auth-bridge] exchange start", { mountId: mountIdRef.current, hadSession, silent: options?.silent });
@@ -125,7 +134,7 @@ export function PrivyAuthBridge({
     } catch (error) {
       const apiError = error as ApiError;
       logger.info("[auth-bridge] exchange failed", { mountId: mountIdRef.current, message: apiError?.message ?? String(error), silent: options?.silent });
-      if (!options?.silent) {
+      if (!options?.silent && !sessionClearInProgressRef.current) {
         toast.error(apiError?.message ?? "Privy authentication failed");
       }
 
@@ -161,10 +170,11 @@ export function PrivyAuthBridge({
   React.useEffect(() => {
     api.setRefreshAuthCallback(async () => {
       const authState = ready ? { authenticated, ready } : await waitForAuthBootstrap();
-      if (!authState.ready || !authState.authenticated || isInRetryCooldown()) {
+      if (!authState.ready || !authState.authenticated || sessionClearInProgress || isInRetryCooldown()) {
         logger.info("[auth] client refresh declined", {
           ready: authState.ready,
           authenticated: authState.authenticated,
+          sessionClearInProgress,
           cooldown: isInRetryCooldown(),
         });
         return false;
@@ -179,7 +189,7 @@ export function PrivyAuthBridge({
     return () => {
       api.setRefreshAuthCallback(null);
     };
-  }, [api, authenticated, exchangePrivySession, isInRetryCooldown, ready, waitForAuthBootstrap]);
+  }, [api, authenticated, exchangePrivySession, isInRetryCooldown, ready, sessionClearInProgress, waitForAuthBootstrap]);
 
   React.useEffect(() => {
     onBusyChange?.(busy);
@@ -211,15 +221,15 @@ export function PrivyAuthBridge({
   }, [authenticated, busy, exchangeRequested, isOpen, onModalClosed, session]);
 
   React.useEffect(() => {
-    if (!authenticated) {
+    if (!authenticated || sessionClearInProgress) {
       setExchangeRequested(false);
       retryCountRef.current = 0;
       retryUntilRef.current = 0;
     }
-  }, [authenticated]);
+  }, [authenticated, sessionClearInProgress]);
 
   React.useEffect(() => {
-    if (!ready || !authenticated || exchangeRequested || busy || isInRetryCooldown()) {
+    if (!ready || !authenticated || sessionClearInProgress || exchangeRequested || busy || isInRetryCooldown()) {
       return;
     }
 
@@ -228,18 +238,23 @@ export function PrivyAuthBridge({
       setExchangeRequested(true);
       setBusy(true);
     }
-  }, [authenticated, busy, exchangeRequested, isInRetryCooldown, ready, session]);
+  }, [authenticated, busy, exchangeRequested, isInRetryCooldown, ready, session, sessionClearInProgress]);
 
   React.useEffect(() => {
     if (!exchangeRequested) {
       return;
     }
 
+    if (sessionClearInProgress) {
+      setExchangeRequested(false);
+      return;
+    }
+
     void exchangePrivySession();
-  }, [exchangePrivySession, exchangeRequested]);
+  }, [exchangePrivySession, exchangeRequested, sessionClearInProgress]);
 
   React.useEffect(() => {
-    if (!ready || !authenticated || !session) {
+    if (!ready || !authenticated || sessionClearInProgress || !session) {
       return;
     }
 
@@ -265,7 +280,7 @@ export function PrivyAuthBridge({
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [authenticated, isInRetryCooldown, ready, session]);
+  }, [authenticated, isInRetryCooldown, ready, session, sessionClearInProgress]);
 
   React.useEffect(() => {
     if (!ready) {
@@ -277,6 +292,10 @@ export function PrivyAuthBridge({
       const { busy: b, authenticated: a, login: l, session: s } = liveStateRef.current;
       logger.info("[auth-bridge] connect called", { mountId: mountIdRef.current, busy: b, authenticated: a, hasSession: !!s });
       if (b) {
+        return;
+      }
+
+      if (sessionClearInProgress) {
         return;
       }
 
@@ -293,7 +312,7 @@ export function PrivyAuthBridge({
     return () => {
       onConnectReady?.(null);
     };
-  }, [onConnectReady, ready]);
+  }, [onConnectReady, ready, sessionClearInProgress]);
 
   React.useEffect(() => {
     if (retryCountRef.current < MAX_RETRY_COUNT || !ready || !authenticated) {

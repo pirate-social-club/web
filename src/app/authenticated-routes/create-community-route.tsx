@@ -14,16 +14,22 @@ import type {
   IdentityGateDraft,
 } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
+import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
 import { FormNote } from "@/components/primitives/form-layout";
 import { PageContainer } from "@/components/primitives/layout-shell";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 import { DEFAULT_COMMUNITY_RULES } from "./moderation-helpers";
 import { serializeIdentityGateDrafts } from "./community-gate-rule-serialization";
+import { useRouteMessages } from "./route-core";
 
 export function CreateCommunityPage() {
   const api = useApi();
   const session = useSession();
+  const isMobile = useIsMobile();
   const { connect } = usePiratePrivyRuntime();
+  const { copy } = useRouteMessages();
+  const pageTitle = copy.createCommunity.title;
   const creatorVerificationState = session?.onboarding
     ? { uniqueHumanVerified: session.onboarding.unique_human_verification_status === "verified", ageOver18Verified: false }
     : { uniqueHumanVerified: false, ageOver18Verified: false };
@@ -99,6 +105,24 @@ export function CreateCommunityPage() {
       throw new Error(apiError?.message ?? "Community creation failed");
     }
   }, [api, connect, creatorVerificationState.ageOver18Verified, creatorVerificationState.uniqueHumanVerified, handleStartVeryVerification, session, verificationError]);
+
+  if (isMobile) {
+    return (
+      <div className="min-h-screen w-full bg-background text-foreground">
+        <MobilePageHeader onCloseClick={() => navigate("/")} title={pageTitle} />
+        <section className="flex min-w-0 flex-1 flex-col px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
+          <PageContainer>
+            {verificationError ? <FormNote tone="warning">{verificationError}</FormNote> : null}
+            <CreateCommunityComposer
+              creatorVerificationState={creatorVerificationState}
+              deferCreatorVerification
+              onCreate={handleCreate}
+            />
+          </PageContainer>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-6">

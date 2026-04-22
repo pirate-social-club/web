@@ -73,8 +73,8 @@ function NotificationShell({
   const codeItems = buildCodeItems(copy.appSidebar);
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities);
   const resourceItems = buildResourceItems(copy.appSidebar);
-  const isMobileCreatePostRoute = isMobileLayout && (route.kind === "create-post" || route.kind === "create-post-global");
-  const useStandaloneRouteShell = isCommunityModerationRoute || isMobileCreatePostRoute;
+  const isMobileStandaloneRoute = isMobileLayout && (route.kind === "create-post" || route.kind === "create-post-global" || route.kind === "create-community");
+  const useStandaloneRouteShell = isCommunityModerationRoute || isMobileStandaloneRoute;
 
   return (
     <SidebarProvider
@@ -87,7 +87,7 @@ function NotificationShell({
       } as React.CSSProperties}
     >
       <>
-        {isMobileCreatePostRoute ? null : <AppShellHeader copy={copy} route={route} hasUnread={notificationSummary.has_unread} />}
+        {isMobileStandaloneRoute ? null : <AppShellHeader copy={copy} route={route} hasUnread={notificationSummary.has_unread} />}
         <div className="flex min-h-0 w-full flex-1">
           {useStandaloneRouteShell ? (
             <main className="flex min-h-0 w-full flex-1">
@@ -118,7 +118,7 @@ function NotificationShell({
                       : <LazyAuthenticatedRouteRenderer route={route} />}
                   </React.Suspense>
                 </main>
-                {isMobileCreatePostRoute ? null : <AppShellMobileNav copy={copy} route={route} hasUnread={notificationSummary.has_unread} />}
+                {isMobileStandaloneRoute ? null : <AppShellMobileNav copy={copy} route={route} hasUnread={notificationSummary.has_unread} />}
               </SidebarInset>
             </>
           )}

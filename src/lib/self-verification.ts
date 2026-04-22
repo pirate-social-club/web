@@ -22,21 +22,39 @@ export function parseSelfCallback(url: URL): SelfVerificationResult {
 
 export function getSelfVerificationLaunchHref(launch: SelfAppLaunch | null | undefined): string | null {
   const endpoint = launch?.endpoint?.trim();
-  const sessionId = launch?.session_id?.trim();
   const scope = launch?.scope?.trim();
+  const userId = launch?.user_id?.trim();
 
-  if (!endpoint || !sessionId || !scope) {
+  if (!launch || !endpoint || !scope || !userId) {
     return null;
   }
 
-  const url = new URL(endpoint);
-  url.searchParams.set("session_id", sessionId);
-  url.searchParams.set("scope", scope);
+  const selfApp = {
+    appName: launch.app_name,
+    ...(launch.logo_base64 ? { logoBase64: launch.logo_base64 } : {}),
+    endpoint,
+    endpointType: launch.endpoint_type,
+    scope,
+    userId,
+    userIdType: launch.user_id_type,
+    disclosures: {
+      ...(launch.disclosures.issuing_state ? { issuing_state: true } : {}),
+      ...(launch.disclosures.name ? { name: true } : {}),
+      ...(launch.disclosures.passport_number ? { passport_number: true } : {}),
+      ...(launch.disclosures.nationality ? { nationality: true } : {}),
+      ...(launch.disclosures.date_of_birth ? { date_of_birth: true } : {}),
+      ...(launch.disclosures.gender ? { gender: true } : {}),
+      ...(launch.disclosures.expiry_date ? { expiry_date: true } : {}),
+      ...(launch.disclosures.ofac ? { ofac: true } : {}),
+      ...(launch.disclosures.excluded_countries?.length ? { excludedCountries: launch.disclosures.excluded_countries } : {}),
+      ...(typeof launch.disclosures.minimum_age === "number" ? { minimumAge: launch.disclosures.minimum_age } : {}),
+    },
+    ...(launch.deeplink_callback ? { deeplinkCallback: launch.deeplink_callback } : {}),
+    ...(launch.version ? { version: launch.version } : { version: 2 }),
+    ...(launch.user_defined_data ? { userDefinedData: launch.user_defined_data } : {}),
+  };
 
-  const deeplinkCallback = launch?.deeplink_callback?.trim();
-  if (deeplinkCallback) {
-    url.searchParams.set("deeplink_callback", deeplinkCallback);
-  }
-
+  const url = new URL("https://redirect.self.xyz");
+  url.searchParams.set("selfApp", JSON.stringify(selfApp));
   return url.toString();
 }

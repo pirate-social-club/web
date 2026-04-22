@@ -26,8 +26,8 @@ export function buildSpacesSigningHelperSteps(
   ].join("\n");
 
   return [
-    "git clone https://github.com/pirate-social-club/core.git pirate-core",
-    "cd pirate-core",
+    "git clone https://github.com/pirate-social-club/pirate-spaces-signer.git",
+    "cd pirate-spaces-signer",
     signCommand,
   ];
 }

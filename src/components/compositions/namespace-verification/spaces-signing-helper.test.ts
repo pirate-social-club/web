@@ -12,7 +12,7 @@ describe("Spaces signing helper command", () => {
       digest: "63e92442ace712086059ec808d23e3ac39de9e74bd4cda9621452c91c3853488",
     });
 
-    expect(command).toContain("git clone https://github.com/pirate-social-club/core.git pirate-core");
+    expect(command).toContain("git clone https://github.com/pirate-social-club/pirate-spaces-signer.git");
     expect(command).toContain("bun install");
     expect(command).toContain("SPACES_NATIVE_ALLOW_BUILD_FALLBACK=true bun services/verifier/spaces/scripts/sign-digest.ts");
     expect(command).toContain("--space @xn--t77hga");
@@ -26,8 +26,8 @@ describe("Spaces signing helper command", () => {
     });
 
     expect(steps).toHaveLength(3);
-    expect(steps[0]).toBe("git clone https://github.com/pirate-social-club/core.git pirate-core");
-    expect(steps[1]).toBe("cd pirate-core");
+    expect(steps[0]).toBe("git clone https://github.com/pirate-social-club/pirate-spaces-signer.git");
+    expect(steps[1]).toBe("cd pirate-spaces-signer");
     expect(steps[2]).toContain("SPACES_NATIVE_ALLOW_BUILD_FALLBACK=true bun services/verifier/spaces/scripts/sign-digest.ts");
   });
 

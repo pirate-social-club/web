@@ -2,11 +2,12 @@
 
 import * as React from "react";
 
+import { FlatTabsList, FlatTabsTrigger } from "@/components/compositions/flat-tabs/flat-tabs";
 import { Button } from "@/components/primitives/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/primitives/card";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/primitives/tabs";
+import { Tabs } from "@/components/primitives/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
@@ -393,20 +394,17 @@ export function PostComposer(props: PostComposerProps) {
               onModeChange?.(nextTab);
             }}
           >
-            <TabsList
-              className={cn(
-                "h-auto w-full rounded-none border-b border-border-soft bg-transparent p-0",
-                isMobile && "border-b-0",
-                useEqualWidthMobileTabs ? "grid grid-cols-4 gap-0 overflow-visible" : isMobile && "overflow-x-auto",
-                isRtl ? "justify-end" : "justify-start",
-              )}
+            <FlatTabsList
+              className={cn(isMobile && "border-b-0")}
+              columns={useEqualWidthMobileTabs ? orderedVisibleTabs.length : undefined}
+              isRtl={isRtl}
             >
               {orderedVisibleTabs.map((tab) => (
-                <TabsTrigger
+                <FlatTabsTrigger
                   key={tab}
                   value={tab}
                   className={cn(
-                    "rounded-none border-b-2 border-transparent px-5 py-4 text-base font-semibold data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                    "px-5",
                     isMobile && "px-4 py-3 whitespace-nowrap",
                     useEqualWidthMobileTabs && "min-w-0 px-1",
                   )}
@@ -415,9 +413,9 @@ export function PostComposer(props: PostComposerProps) {
                     {tabMeta[tab].icon}
                     <span className={cn(useEqualWidthMobileTabs && "truncate")}>{tabLabels[tab]}</span>
                   </span>
-                </TabsTrigger>
+                </FlatTabsTrigger>
               ))}
-            </TabsList>
+            </FlatTabsList>
           </Tabs>
         </CardHeader>
 

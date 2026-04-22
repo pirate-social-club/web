@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { CommunityHero } from "@/components/compositions/community-page-shell/community-hero";
+import { FlatTabBar, FlatTabButton } from "@/components/compositions/flat-tabs/flat-tabs";
 import {
   CommunitySidebar,
   CommunitySidebarDetails,
@@ -80,7 +81,7 @@ export function CommunityPageShell({
 
   const hero = (
     <CommunityHero
-      actions={isMobile ? undefined : headerAction}
+      actions={headerAction}
       avatarSrc={avatarSrc}
       bannerSrc={bannerSrc}
       communityId={communityId}
@@ -94,42 +95,8 @@ export function CommunityPageShell({
     return (
       <section className={cn("mx-auto flex w-full min-w-0 max-w-[78rem] flex-col gap-4", className)}>
         <div className="min-w-0">{hero}</div>
-        {headerAction ? (
-          <div className="px-3">
-            <div className="[&>div]:justify-start [&>div]:gap-2 [&_button]:h-8 [&_button]:px-3.5 [&_button]:text-base [&_button]:font-medium [&_button]:shadow-none [&_svg]:size-4">
-              {headerAction}
-            </div>
-          </div>
-        ) : null}
-        <div className="px-3">
-          <div className="flex items-center justify-between gap-4 border-b border-border-soft pb-2">
-            <div className="flex items-center gap-4">
-              <button
-                className={cn(
-                  "inline-flex h-9 items-center border-b-2 px-0 text-base font-semibold transition-colors",
-                  mobileView === "feed"
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-                onClick={() => setMobileView("feed")}
-                type="button"
-              >
-                {copy.community.feedTab}
-              </button>
-              <button
-                className={cn(
-                  "inline-flex h-9 items-center border-b-2 px-0 text-base font-semibold transition-colors",
-                  mobileView === "about"
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-                onClick={() => setMobileView("about")}
-                type="button"
-              >
-                {copy.community.aboutTab}
-              </button>
-            </div>
-            {mobileView === "feed" && activeSort && availableSorts && availableSorts.length > 0 ? (
+        <FlatTabBar
+          actions={mobileView === "feed" && activeSort && availableSorts && availableSorts.length > 0 ? (
               <Select onValueChange={(value) => onSortChange?.(value as FeedSort)} value={activeSort}>
                 <SelectTrigger className="h-9 w-auto min-w-0 rounded-none border-0 bg-transparent px-0 py-0 text-base font-medium text-muted-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[placeholder]:text-muted-foreground">
                   <SelectValue aria-label={activeSortLabel} />
@@ -142,11 +109,18 @@ export function CommunityPageShell({
                   ))}
                 </SelectContent>
               </Select>
-            ) : <div />}
-          </div>
-        </div>
+            ) : null}
+          columns={2}
+        >
+          <FlatTabButton active={mobileView === "feed"} onClick={() => setMobileView("feed")}>
+            {copy.community.feedTab}
+          </FlatTabButton>
+          <FlatTabButton active={mobileView === "about"} onClick={() => setMobileView("about")}>
+            {copy.community.aboutTab}
+          </FlatTabButton>
+        </FlatTabBar>
         {mobileView === "feed" ? (
-          <div className="px-3">
+          <div>
             <Feed
               activeSort={activeSort}
               controls={controls}
@@ -156,7 +130,7 @@ export function CommunityPageShell({
             />
           </div>
         ) : (
-          <div className="px-3">
+          <div>
             <CommunitySidebarDetails
               charity={sidebar.charity}
               description={sidebar.description}

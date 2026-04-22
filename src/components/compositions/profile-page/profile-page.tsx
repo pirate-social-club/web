@@ -1,7 +1,8 @@
 "use client";
 
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/primitives/tabs";
+import { FlatTabsList, FlatTabsTrigger } from "@/components/compositions/flat-tabs/flat-tabs";
+import { Tabs, TabsContent } from "@/components/primitives/tabs";
 import { useUiLocale } from "@/lib/ui-locale";
 import { resolveLocaleLanguageTag } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
@@ -38,18 +39,12 @@ export function ProfilePage({
         />
 
         <Tabs className={cn("flex flex-col gap-6", isMobile && "gap-4")} defaultValue={defaultTab}>
-          <TabsList
-            className={cn(
-              "h-auto w-full gap-2 overflow-x-auto rounded-[var(--radius-3xl)] bg-muted/80 p-1.5",
-              isMobile && "grid grid-cols-4 gap-0 overflow-visible rounded-none border-b border-border-soft bg-transparent p-0",
-              isRtl ? "justify-end" : "justify-start",
-            )}
-          >
-            <TabsTrigger className={cn("min-w-fit", isMobile && "min-w-0 rounded-none border-b-2 border-transparent px-1 py-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none")} value="overview">{copy.overviewTab}</TabsTrigger>
-            <TabsTrigger className={cn("min-w-fit", isMobile && "min-w-0 rounded-none border-b-2 border-transparent px-1 py-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none")} value="posts">{copy.postsTab}</TabsTrigger>
-            <TabsTrigger className={cn("min-w-fit", isMobile && "min-w-0 rounded-none border-b-2 border-transparent px-1 py-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none")} value="comments">{copy.commentsTab}</TabsTrigger>
-            <TabsTrigger className={cn("min-w-fit", isMobile && "min-w-0 rounded-none border-b-2 border-transparent px-1 py-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none")} value="scrobbles">{copy.scrobblesTab}</TabsTrigger>
-          </TabsList>
+          <FlatTabsList columns={isMobile ? 4 : undefined} isRtl={isRtl}>
+            <FlatTabsTrigger className={!isMobile ? "min-w-fit px-5" : undefined} value="overview">{copy.overviewTab}</FlatTabsTrigger>
+            <FlatTabsTrigger className={!isMobile ? "min-w-fit px-5" : undefined} value="posts">{copy.postsTab}</FlatTabsTrigger>
+            <FlatTabsTrigger className={!isMobile ? "min-w-fit px-5" : undefined} value="comments">{copy.commentsTab}</FlatTabsTrigger>
+            <FlatTabsTrigger className={!isMobile ? "min-w-fit px-5" : undefined} value="scrobbles">{copy.scrobblesTab}</FlatTabsTrigger>
+          </FlatTabsList>
 
           <div className={cn("flex flex-col gap-6 xl:items-start", isRtl ? "xl:flex-row-reverse" : "xl:flex-row")}>
             <div className="min-w-0 xl:flex-1">

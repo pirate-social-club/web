@@ -118,6 +118,7 @@ export function PirateAuthProvider({
   const [busy, setBusy] = React.useState(false);
   const [connectedWallets, setConnectedWallets] = React.useState<PirateConnectedEvmWallet[]>([]);
   const [pendingConnect, setPendingConnect] = React.useState(false);
+  const [connectMountRequested, setConnectMountRequested] = React.useState(false);
   const [loadedConnect, setLoadedConnect] = React.useState<(() => void) | null>(null);
   const [ProviderComponent, setProviderComponent] = React.useState<PrivyProviderComponent | null>(null);
   const [BridgeComponent, setBridgeComponent] = React.useState<PrivyAuthBridgeComponent | null>(null);
@@ -133,13 +134,14 @@ export function PirateAuthProvider({
   const shouldLoadPrivy = !!appId && (
     !deferPrivyUntilConnect
     || pendingConnect
+    || connectMountRequested
     || !!session
     || refreshWindowReached
   );
 
   React.useEffect(() => {
-    logger.info("[auth-provider] shouldLoadPrivy changed", { shouldLoadPrivy, deferPrivyUntilConnect, hasSession: !!session, refreshWindowReached, pendingConnect });
-  }, [shouldLoadPrivy, deferPrivyUntilConnect, session, refreshWindowReached, pendingConnect]);
+    logger.info("[auth-provider] shouldLoadPrivy changed", { shouldLoadPrivy, deferPrivyUntilConnect, hasSession: !!session, refreshWindowReached, pendingConnect, connectMountRequested });
+  }, [shouldLoadPrivy, deferPrivyUntilConnect, session, refreshWindowReached, pendingConnect, connectMountRequested]);
 
   React.useEffect(() => {
     logger.info("[auth-provider] privyReady changed", { privyReady });
@@ -203,6 +205,7 @@ export function PirateAuthProvider({
 
   const unloadPrivy = React.useCallback(() => {
     setPendingConnect(false);
+    setConnectMountRequested(false);
     setBusy(false);
   }, []);
 
@@ -329,6 +332,7 @@ export function PirateAuthProvider({
     }
 
     setPendingConnect(true);
+    setConnectMountRequested(true);
   }, [appId, loadedConnect]);
 
   const handleConnectReady = React.useCallback((next: (() => void) | null) => {
@@ -343,6 +347,15 @@ export function PirateAuthProvider({
     setPendingConnect(false);
     loadedConnect();
   }, [loadedConnect, pendingConnect]);
+
+  React.useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    setPendingConnect(false);
+    setConnectMountRequested(false);
+  }, [session]);
 
   const runtimeState = React.useMemo<PrivyRuntimeState>(() => ({
     busy: busy || pendingConnect,
@@ -361,6 +374,7 @@ export function PirateAuthProvider({
     connectedWallets,
     loadError,
     pendingConnect,
+    connectMountRequested,
     privyReady,
     shouldLoadPrivy,
     walletsReady,

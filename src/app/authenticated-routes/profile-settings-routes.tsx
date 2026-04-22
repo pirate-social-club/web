@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
-import { updateSessionProfile, useSession } from "@/lib/api/session-store";
+import { clearSession, updateSessionProfile, useSession } from "@/lib/api/session-store";
 import { ApiError } from "@/lib/api/client";
 import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -228,6 +228,11 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     }
   }, [api, copy.settings.preferencesUpdated, copy.settings.savePreferencesError, preferredLocale, profile, setLocale]);
 
+  const handleLogout = React.useCallback(() => {
+    clearSession();
+    navigate("/");
+  }, []);
+
   if (!profile) {
     return <AuthRequiredRouteState description={getRouteAuthDescription("settings")} title={pageTitle} />;
   }
@@ -248,6 +253,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
             setPreferencesSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev);
           }
         },
+        onLogout: handleLogout,
         onSave: handlePreferencesSave,
         saveDisabled: !preferencesChanged || preferencesSubmitState.kind === "saving",
         submitState: preferencesSubmitState,

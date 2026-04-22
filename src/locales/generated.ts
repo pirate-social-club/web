@@ -572,6 +572,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verifiedAt": "{provider} · verified {date}"
       },
       "settings": {
+        "accountSection": "Account",
         "ageStatusLabel": "Age status",
         "ageVerified": "18+ verified",
         "appearanceSection": "Appearance",
@@ -606,6 +607,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "localeEnglish": "English",
         "localeMandarin": "Mandarin",
         "localePseudo": "Pseudo",
+        "logOutAction": "Log out",
+        "logOutLabel": "Log out",
         "newHandleLabel": "New handle",
         "noConnectedWallets": "No connected wallets yet.",
         "notVerified": "Not verified",
@@ -1631,6 +1634,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verifiedAt": "{provider} · تم التحقق في {date}"
       },
       "settings": {
+        "accountSection": "الحساب",
         "ageStatusLabel": "حالة العمر",
         "ageVerified": "تم التحقق من 18+",
         "appearanceSection": "المظهر",
@@ -1666,6 +1670,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "localeEnglish": "الإنجليزية",
         "localeMandarin": "الماندرين",
         "localePseudo": "الزائفة",
+        "logOutAction": "تسجيل الخروج",
+        "logOutLabel": "تسجيل الخروج",
         "newHandleLabel": "المعرّف الجديد",
         "noConnectedWallets": "لا توجد محافظ متصلة بعد.",
         "notVerified": "غير متحقق",
@@ -2690,6 +2696,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verifiedAt": "{provider} · 已验证于 {date}"
       },
       "settings": {
+        "accountSection": "账号",
         "ageStatusLabel": "年龄状态",
         "ageVerified": "已完成 18+ 验证",
         "appearanceSection": "外观",
@@ -2725,6 +2732,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "localeEnglish": "英语",
         "localeMandarin": "中文",
         "localePseudo": "伪本地化",
+        "logOutAction": "退出登录",
+        "logOutLabel": "退出登录",
         "newHandleLabel": "新用户名",
         "noConnectedWallets": "还没有已连接的钱包。",
         "notVerified": "未验证",

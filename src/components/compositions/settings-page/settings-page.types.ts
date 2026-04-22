@@ -76,6 +76,7 @@ export interface SettingsPageProps {
     saveDisabled?: boolean;
     submitState: SettingsSubmitState;
     onLocaleChange?: (value: string) => void;
+    onLogout?: () => void;
     onSave?: () => void;
   };
   agents: {

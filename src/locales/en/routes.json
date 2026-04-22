@@ -565,6 +565,7 @@
     "verifiedAt": "{provider} · verified {date}"
   },
   "settings": {
+    "accountSection": "Account",
     "ageStatusLabel": "Age status",
     "ageVerified": "18+ verified",
     "appearanceSection": "Appearance",
@@ -599,6 +600,8 @@
     "localeEnglish": "English",
     "localeMandarin": "Mandarin",
     "localePseudo": "Pseudo",
+    "logOutAction": "Log out",
+    "logOutLabel": "Log out",
     "newHandleLabel": "New handle",
     "noConnectedWallets": "No connected wallets yet.",
     "notVerified": "Not verified",

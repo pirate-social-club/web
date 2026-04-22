@@ -64,6 +64,19 @@ export function PreferencesTab({
           </Card>
         </SettingsSection>
       ) : null}
+
+      <SettingsSection title={copy.accountSection}>
+        <Card className="overflow-hidden border-border bg-card shadow-none">
+          <SettingsRow
+            label={copy.logOutLabel}
+            trailing={(
+              <Button onClick={() => preferences.onLogout?.()} type="button" variant="outline">
+                {copy.logOutAction}
+              </Button>
+            )}
+          />
+        </Card>
+      </SettingsSection>
     </div>
   );
 }

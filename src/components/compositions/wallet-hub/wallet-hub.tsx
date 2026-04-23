@@ -83,19 +83,15 @@ function WalletHeaderCard({
 }
 
 function TokenRow({ token }: { token: WalletHubToken }) {
-  const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").wallet;
   return (
     <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-      <div className="truncate text-base font-medium text-foreground">${token.symbol}</div>
-      <div className="shrink-0 text-base text-foreground">{token.balance ?? copy.balanceLater}</div>
+      <div className="truncate text-base font-medium text-foreground">{token.symbol}</div>
+      <div className="shrink-0 text-base text-foreground">{token.balance}</div>
     </div>
   );
 }
 
 function ChainSectionCard({ section }: { section: WalletHubChainSection }) {
-  const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").wallet;
   return (
     <Card className="border-border bg-card shadow-none">
       <div className="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
@@ -106,17 +102,11 @@ function ChainSectionCard({ section }: { section: WalletHubChainSection }) {
           </div>
         </div>
 
-        {section.tokens.length > 0 ? (
-          <div className="divide-y divide-border">
-            {section.tokens.map((token) => (
-              <TokenRow key={token.id} token={token} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-base text-muted-foreground">
-            {section.availability === "ready" ? copy.noAssetsYet : copy.later}
-          </div>
-        )}
+        <div className="divide-y divide-border">
+          {section.tokens.map((token) => (
+            <TokenRow key={token.id} token={token} />
+          ))}
+        </div>
       </div>
     </Card>
   );
@@ -129,24 +119,30 @@ export function WalletHub({
   onChangeWallet,
   chainSections,
 }: WalletHubProps) {
+  const visibleChainSections = chainSections.filter((section) => section.tokens.length > 0);
+
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+    <div className="mx-auto flex w-full max-w-[78rem] flex-col gap-5 py-0">
       {title ? (
         <div className="text-base font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {title}
         </div>
       ) : null}
 
-      <WalletHeaderCard
-        onChangeWallet={onChangeWallet}
-        walletAddress={walletAddress}
-        walletLabel={walletLabel}
-      />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]">
+        <WalletHeaderCard
+          onChangeWallet={onChangeWallet}
+          walletAddress={walletAddress}
+          walletLabel={walletLabel}
+        />
 
-      <div className="space-y-4">
-        {chainSections.map((section) => (
-          <ChainSectionCard key={section.chainId} section={section} />
-        ))}
+        {visibleChainSections.length > 0 ? (
+          <div className="space-y-4">
+            {visibleChainSections.map((section) => (
+              <ChainSectionCard key={section.chainId} section={section} />
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ export type RouteStatusCopyKey =
   | "post"
   | "profile"
   | "settings"
+  | "wallet"
   | "your-communities";
 
 const ROUTE_STATUS_COPY: Record<RouteStatusCopyKey, {
@@ -105,6 +106,12 @@ const ROUTE_STATUS_COPY: Record<RouteStatusCopyKey, {
     failure: "The settings page could not be loaded right now.",
     incomplete: "The settings response was incomplete. Try loading it again.",
     title: "Settings",
+  },
+  "wallet": {
+    auth: "Sign in to view your wallet.",
+    failure: "The wallet could not be loaded right now.",
+    incomplete: "The wallet response was incomplete. Try loading it again.",
+    title: "Wallet",
   },
   "your-communities": {
     auth: "Sign in to view your communities.",

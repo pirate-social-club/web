@@ -1,6 +1,15 @@
 "use client";
 
 import * as React from "react";
+import {
+  createPublicClient,
+  defineChain,
+  formatUnits,
+  getAddress,
+  http,
+  isAddress,
+} from "viem";
+import { mainnet, sepolia } from "viem/chains";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
@@ -18,6 +27,7 @@ import { WalletHub } from "@/components/compositions/wallet-hub/wallet-hub";
 import type { SettingsSubmitState, SettingsTab } from "@/components/compositions/settings-page/settings-page.types";
 import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet-hub/wallet-hub.types";
 import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
+import { getPirateNetworkConfig } from "@/lib/network-config";
 
 import { getRouteAuthDescription } from "./route-status-copy";
 import { AuthRequiredRouteState } from "./route-shell";
@@ -32,32 +42,73 @@ import {
 } from "./profile-settings-mapping";
 import { useSettingsOwnedAgents } from "./use-settings-owned-agents";
 
-const WALLET_HUB_CHAINS: Array<{
+type WalletBalanceChain = {
   chainId: WalletHubChainId;
+  evmChainId: number;
+  nativeSymbol: string;
+  rpcUrl: string;
   title: string;
-  namespaces: string[];
-}> = [
-  { chainId: "ethereum", title: "Ethereum", namespaces: ["eip155:1"] },
-  { chainId: "base", title: "Base", namespaces: ["eip155:8453"] },
-  { chainId: "story", title: "Story", namespaces: ["eip155:1514", "eip155:1513"] },
-  { chainId: "tempo", title: "Tempo", namespaces: ["eip155:4321"] },
-  { chainId: "solana", title: "Solana", namespaces: ["solana:mainnet"] },
-  { chainId: "bitcoin", title: "Bitcoin", namespaces: ["bip122:000000000019d6689c085ae165831e93"] },
-];
+};
 
-function buildWalletHubChainSections(
-  walletAttachments: NonNullable<ReturnType<typeof useSession>>["walletAttachments"],
-): WalletHubChainSection[] {
-  return WALLET_HUB_CHAINS.map((chain) => {
-    const connected = walletAttachments.some((wallet) => chain.namespaces.includes(wallet.chain_namespace));
+function buildWalletBalanceChains(): WalletBalanceChain[] {
+  const networkConfig = getPirateNetworkConfig();
+  const ethereumChain = networkConfig.base.network === "base-mainnet" ? mainnet : sepolia;
+  const ethereumRpcUrl = networkConfig.efp.rpcUrlsByChainId[ethereumChain.id] ?? ethereumChain.rpcUrls.default.http[0];
 
-    return {
-      chainId: chain.chainId,
-      title: chain.title,
-      availability: connected ? "ready" : "later",
-      tokens: [],
-    };
-  });
+  const chains: WalletBalanceChain[] = [
+    {
+      chainId: "ethereum",
+      evmChainId: ethereumChain.id,
+      nativeSymbol: "ETH",
+      rpcUrl: ethereumRpcUrl,
+      title: ethereumChain.id === mainnet.id ? "Ethereum" : "Ethereum Sepolia",
+    },
+    {
+      chainId: "base",
+      evmChainId: networkConfig.base.chainId,
+      nativeSymbol: "ETH",
+      rpcUrl: networkConfig.base.rpcUrl,
+      title: networkConfig.base.label,
+    },
+    {
+      chainId: "story",
+      evmChainId: networkConfig.story.chainId,
+      nativeSymbol: "IP",
+      rpcUrl: networkConfig.story.rpcUrl,
+      title: networkConfig.story.label,
+    },
+  ];
+
+  return chains.filter((chain) => chain.rpcUrl.trim().length > 0);
+}
+
+function formatNativeBalance(balance: bigint, decimals = 18): string {
+  const formatted = formatUnits(balance, decimals);
+  const [whole, fraction = ""] = formatted.split(".");
+  const trimmedFraction = fraction.slice(0, 4).replace(/0+$/u, "");
+  return trimmedFraction ? `${whole}.${trimmedFraction}` : whole;
+}
+
+function buildWalletHubChainSections({
+  balancesByChainId,
+  chains,
+  loading,
+}: {
+  balancesByChainId: Record<number, string>;
+  chains: WalletBalanceChain[];
+  loading: boolean;
+}): WalletHubChainSection[] {
+  return chains.map((chain) => ({
+    chainId: chain.chainId,
+    title: chain.title,
+    availability: "ready",
+    tokens: [{
+      id: `${chain.evmChainId}:${chain.nativeSymbol}`,
+      symbol: chain.nativeSymbol,
+      name: chain.nativeSymbol,
+      balance: balancesByChainId[chain.evmChainId] ?? (loading ? "..." : "Unavailable"),
+    }],
+  }));
 }
 
 export function CurrentUserProfilePage() {
@@ -100,9 +151,12 @@ export function CurrentUserWalletPage() {
   const walletAttachments = session?.walletAttachments ?? [];
   const { connect } = usePiratePrivyRuntime();
   const pageTitle = copy.wallet.title;
+  const balanceChains = React.useMemo(() => buildWalletBalanceChains(), []);
+  const [balancesByChainId, setBalancesByChainId] = React.useState<Record<number, string>>({});
+  const [balancesLoading, setBalancesLoading] = React.useState(false);
 
   if (!profile) {
-    return <AuthRequiredRouteState description={getRouteAuthDescription("settings")} title={pageTitle} />;
+    return <AuthRequiredRouteState description={getRouteAuthDescription("wallet")} title={pageTitle} />;
   }
 
   const primaryWallet = walletAttachments.find((wallet) => wallet.is_primary)
@@ -113,13 +167,74 @@ export function CurrentUserWalletPage() {
   const walletLabel = primaryWallet
     ? formatWalletChainLabel(primaryWallet.chain_namespace)
     : copy.wallet.noWalletConnected;
+  const normalizedPrimaryAddress = primaryAddress && isAddress(primaryAddress)
+    ? getAddress(primaryAddress)
+    : null;
+
+  React.useEffect(() => {
+    if (!normalizedPrimaryAddress) {
+      setBalancesByChainId({});
+      setBalancesLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setBalancesLoading(true);
+
+    void Promise.allSettled(balanceChains.map(async (chain) => {
+      const publicClient = createPublicClient({
+        chain: defineChain({
+          id: chain.evmChainId,
+          name: chain.title,
+          nativeCurrency: {
+            decimals: 18,
+            name: chain.nativeSymbol,
+            symbol: chain.nativeSymbol,
+          },
+          rpcUrls: {
+            default: {
+              http: [chain.rpcUrl],
+            },
+          },
+        }),
+        transport: http(chain.rpcUrl),
+      });
+      const balance = await publicClient.getBalance({ address: normalizedPrimaryAddress });
+      return [chain.evmChainId, formatNativeBalance(balance)] as const;
+    }))
+      .then((results) => {
+        if (cancelled) return;
+        const entries: Array<readonly [number, string]> = [];
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            entries.push(result.value);
+          } else {
+            logger.warn("[wallet] balance fetch failed", result.reason);
+          }
+        }
+        setBalancesByChainId(Object.fromEntries(entries));
+      })
+      .finally(() => {
+        if (!cancelled) setBalancesLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [balanceChains, normalizedPrimaryAddress]);
 
   return (
     <WalletHub
-      walletAddress={primaryAddress}
+      walletAddress={normalizedPrimaryAddress ?? primaryAddress}
       walletLabel={walletLabel}
       onChangeWallet={connect ?? undefined}
-      chainSections={buildWalletHubChainSections(walletAttachments)}
+      chainSections={normalizedPrimaryAddress
+        ? buildWalletHubChainSections({
+          balancesByChainId,
+          chains: balanceChains,
+          loading: balancesLoading,
+        })
+        : []}
     />
   );
 }

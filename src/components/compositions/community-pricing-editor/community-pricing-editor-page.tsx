@@ -31,7 +31,7 @@ import {
 } from "@/components/primitives/combobox";
 import { cn } from "@/lib/utils";
 import { COUNTRIES, getCountryName } from "@/lib/countries";
-import { useRouteMessages } from "@/app/authenticated-routes/route-core";
+import { formatUsdLabel, parseUsdInput, useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 export type PricingTier = {
   id: string;
@@ -73,6 +73,17 @@ function adjustmentToPercent(value: number): number {
 
 function percentToAdjustment(value: number): number {
   return 1 + value / 100;
+}
+
+function formatPreviewPrice(
+  basePriceUsd: number | null,
+  adjustmentValue: number,
+  localeTag: string,
+): string | undefined {
+  if (basePriceUsd == null) {
+    return undefined;
+  }
+  return formatUsdLabel(basePriceUsd * adjustmentValue, localeTag);
 }
 
 function generateTierKey(name: string, existingKeys: string[]): string {
@@ -158,6 +169,7 @@ function TierRow({
   onUpdate,
   onAddCountry,
   onRemoveCountry,
+  previewPriceLabel,
 }: {
   tier: PricingTier;
   isDefault: boolean;
@@ -167,13 +179,14 @@ function TierRow({
   onUpdate?: (patch: Partial<PricingTier>) => void;
   onAddCountry?: (countryCode: string) => void;
   onRemoveCountry?: (countryCode: string) => void;
+  previewPriceLabel?: string;
 }) {
   const { copy } = useRouteMessages();
   const mc = copy.moderation.pricing;
 
   return (
     <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
-      <div className="grid flex-1 gap-3 md:grid-cols-3">
+      <div className="grid flex-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,auto)]">
         <div>
           <FormFieldLabel label={mc.groupNameLabel} />
           <Input
@@ -204,16 +217,22 @@ function TierRow({
             </span>
           </div>
         </div>
-        <div className="flex items-end justify-end">
-          <Button
-            className="size-10 shrink-0"
-            disabled={isDefault}
-            onClick={onRemove}
-            size="icon"
-            variant="secondary"
-          >
-            <Trash className="size-4" />
-          </Button>
+        <div>
+          <FormFieldLabel label={mc.previewPriceLabel} />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex h-10 min-w-0 flex-1 items-center rounded-[var(--radius-md)] border border-border-soft bg-background px-3 font-medium">
+              {previewPriceLabel ?? "-"}
+            </div>
+            <Button
+              className="size-10 shrink-0"
+              disabled={isDefault}
+              onClick={onRemove}
+              size="icon"
+              variant="secondary"
+            >
+              <Trash className="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -263,8 +282,13 @@ export function CommunityPricingEditorPage({
   saveDisabled = false,
   saveLoading = false,
 }: CommunityPricingEditorPageProps) {
-  const { copy } = useRouteMessages();
+  const { copy, localeTag } = useRouteMessages();
   const mc = copy.moderation.pricing;
+  const [basePricePreviewInput, setBasePricePreviewInput] = React.useState("10.00");
+  const basePricePreviewUsd = React.useMemo(
+    () => parseUsdInput(basePricePreviewInput),
+    [basePricePreviewInput],
+  );
 
   const assignedByTier = React.useMemo(() => {
     const map = new Map<string, { code: string; name: string }[]>();
@@ -363,6 +387,21 @@ export function CommunityPricingEditorPage({
 
       {regionalPricingEnabled ? (
         <>
+          <div className="grid gap-2 sm:max-w-xs">
+            <FormFieldLabel label={mc.basePricePreviewLabel} />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                $
+              </span>
+              <Input
+                className="h-10 pl-7"
+                inputMode="decimal"
+                onChange={(event) => setBasePricePreviewInput(event.target.value)}
+                value={basePricePreviewInput}
+              />
+            </div>
+          </div>
+
           <div className="space-y-4">
             <FormSectionHeading title={mc.priceGroupsTitle} />
             {tiers.map((tier) => (
@@ -385,6 +424,11 @@ export function CommunityPricingEditorPage({
                     ),
                   )
                 }
+                previewPriceLabel={formatPreviewPrice(
+                  basePricePreviewUsd,
+                  tier.adjustment_value,
+                  localeTag,
+                )}
                 tier={tier}
               />
             ))}

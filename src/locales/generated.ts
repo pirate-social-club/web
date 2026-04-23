@@ -746,8 +746,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "existingListingsNote": "Enabling regional pricing affects new listings only. Existing listings keep their current setting.",
           "groupNameLabel": "Group",
           "groupNamePlaceholder": "Standard",
+          "basePricePreviewLabel": "Base price preview",
           "priceAdjustmentLabel": "Price adjustment",
           "priceAdjustmentPlaceholder": "0",
+          "previewPriceLabel": "Preview price",
           "countriesLabel": "Countries"
         },
         "gates": {
@@ -1828,8 +1830,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "existingListingsNote": "Enabling regional pricing affects new listings only. Existing listings keep their current setting.",
           "groupNameLabel": "Group",
           "groupNamePlaceholder": "Standard",
+          "basePricePreviewLabel": "Base price preview",
           "priceAdjustmentLabel": "Price adjustment",
           "priceAdjustmentPlaceholder": "0",
+          "previewPriceLabel": "Preview price",
           "countriesLabel": "Countries"
         },
         "gates": {
@@ -2910,8 +2914,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "existingListingsNote": "Enabling regional pricing affects new listings only. Existing listings keep their current setting.",
           "groupNameLabel": "Group",
           "groupNamePlaceholder": "Standard",
+          "basePricePreviewLabel": "Base price preview",
           "priceAdjustmentLabel": "Price adjustment",
           "priceAdjustmentPlaceholder": "0",
+          "previewPriceLabel": "Preview price",
           "countriesLabel": "Countries"
         },
         "gates": {

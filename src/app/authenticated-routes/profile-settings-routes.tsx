@@ -26,7 +26,6 @@ import { SettingsPage } from "@/components/compositions/settings-page/settings-p
 import { WalletHub } from "@/components/compositions/wallet-hub/wallet-hub";
 import type { SettingsSubmitState, SettingsTab } from "@/components/compositions/settings-page/settings-page.types";
 import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet-hub/wallet-hub.types";
-import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 
 import { getRouteAuthDescription } from "./route-status-copy";
@@ -149,7 +148,6 @@ export function CurrentUserWalletPage() {
   const session = useSession();
   const profile = session?.profile ?? null;
   const walletAttachments = session?.walletAttachments ?? [];
-  const { connect } = usePiratePrivyRuntime();
   const pageTitle = copy.wallet.title;
   const balanceChains = React.useMemo(() => buildWalletBalanceChains(), []);
   const [balancesByChainId, setBalancesByChainId] = React.useState<Record<number, string>>({});
@@ -227,7 +225,6 @@ export function CurrentUserWalletPage() {
     <WalletHub
       walletAddress={normalizedPrimaryAddress ?? primaryAddress}
       walletLabel={walletLabel}
-      onChangeWallet={connect ?? undefined}
       chainSections={normalizedPrimaryAddress
         ? buildWalletHubChainSections({
           balancesByChainId,

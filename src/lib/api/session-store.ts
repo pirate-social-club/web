@@ -23,13 +23,14 @@ let sessionClearCallback: (() => Promise<void> | void) | null = null;
 let sessionClearInProgress = false;
 
 function decodeBase64Url(value: string): string | null {
-  if (typeof window === "undefined") return null;
+  const atobFn = typeof window !== "undefined" ? window.atob : globalThis.atob;
+  if (!atobFn) return null;
 
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
   const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
 
   try {
-    return window.atob(padded);
+    return atobFn(padded);
   } catch {
     return null;
   }
@@ -50,10 +51,19 @@ function notifyAll(): void {
   }
 }
 
-function readFromStorage(): StoredSession | null {
-  if (typeof window === "undefined") return null;
+function getLocalStorage(): Storage | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function readFromStorage(): StoredSession | null {
+  const storage = getLocalStorage();
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(STORAGE_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as StoredSession;
   } catch {
@@ -62,12 +72,13 @@ function readFromStorage(): StoredSession | null {
 }
 
 function writeToStorage(session: StoredSession | null): void {
-  if (typeof window === "undefined") return;
+  const storage = getLocalStorage();
+  if (!storage) return;
   try {
     if (session) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      storage.setItem(STORAGE_KEY, JSON.stringify(session));
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      storage.removeItem(STORAGE_KEY);
     }
   } catch (error) {
     logger.warn("[auth] failed to persist session", error);
@@ -79,6 +90,12 @@ export function getStoredSession(): StoredSession | null {
     cachedSession = readFromStorage();
     hydrated = true;
   }
+
+  if (isSessionAccessTokenExpired(cachedSession)) {
+    cachedSession = null;
+    writeToStorage(null);
+  }
+
   return cachedSession;
 }
 
@@ -110,6 +127,13 @@ export function isSessionAccessTokenExpiringSoon(
   const expiryMs = getSessionAccessTokenExpiryMs(session);
   if (!expiryMs) return false;
   return expiryMs - Date.now() <= withinMs;
+}
+
+export function isSessionAccessTokenExpired(
+  session: StoredSession | null | undefined,
+): boolean {
+  const expiryMs = getSessionAccessTokenExpiryMs(session);
+  return expiryMs !== null && expiryMs <= Date.now();
 }
 
 export function setSession(response: SessionExchangeResponse): StoredSession {
@@ -184,6 +208,14 @@ export function setSessionClearCallback(
   callback: (() => Promise<void> | void) | null,
 ): void {
   sessionClearCallback = callback;
+}
+
+export function __resetSessionStoreForTests(): void {
+  listeners.clear();
+  cachedSession = null;
+  hydrated = false;
+  sessionClearCallback = null;
+  sessionClearInProgress = false;
 }
 
 export function subscribeToSession(listener: SessionListener): () => void {

@@ -20,6 +20,7 @@ import {
 import { SidebarProvider } from "@/components/compositions/sidebar/sidebar";
 import { PostThread } from "@/components/compositions/post-thread/post-thread";
 import { SettingsPage } from "@/components/compositions/settings-page/settings-page";
+import { WalletHub } from "@/components/compositions/wallet-hub/wallet-hub";
 import { UiLocaleProvider } from "@/lib/ui-locale";
 
 const primaryItems = [
@@ -356,6 +357,42 @@ describe("composition smoke tests", () => {
     expect(markup).toContain("Settings");
     expect(markup).toContain("Profile");
     expect(markup).toContain("Save profile");
+  });
+
+  test("renders the wallet hub", () => {
+    const markup = render(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <WalletHub
+          chainSections={[
+            {
+              availability: "ready",
+              chainId: "ethereum",
+              title: "Ethereum",
+              tokens: [{ id: "eth", name: "Ether", symbol: "ETH", balance: "1.28" }],
+            },
+            {
+              availability: "ready",
+              chainId: "base",
+              title: "Base",
+              tokens: [{ id: "base-eth", name: "Ether", symbol: "ETH", balance: "0.64" }],
+            },
+            {
+              availability: "ready",
+              chainId: "story",
+              title: "Story",
+              tokens: [{ id: "story-ip", name: "IP", symbol: "IP", balance: "18.20" }],
+            },
+          ]}
+          walletAddress="0x42a5f77f2d06c9a7e304817b3c177b91e0c2f3a8"
+          walletLabel="Connected EVM wallet"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Wallet");
+    expect(markup).toContain("Ethereum");
+    expect(markup).toContain("Base");
+    expect(markup).toContain("Story");
   });
 
   test("renders the settings agents tab", () => {

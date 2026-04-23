@@ -11,7 +11,7 @@ declare global {
   interface Window {
     twttr?: {
       widgets?: {
-        load: (element?: HTMLElement | null) => void;
+        load: (element?: HTMLElement | null) => Promise<unknown> | void;
       };
     };
   }
@@ -109,6 +109,8 @@ export function PostEmbedPreview({ content, className }: { content: EmbedContent
 
 export function OfficialOEmbed({ content, className }: { content: EmbedContent; className?: string }) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const [hydrated, setHydrated] = React.useState(false);
+  const [failed, setFailed] = React.useState(false);
 
   React.useEffect(() => {
     if (content.provider !== "x" || content.state !== "embed" || !content.oembedHtml) {
@@ -116,16 +118,64 @@ export function OfficialOEmbed({ content, className }: { content: EmbedContent; 
     }
 
     let cancelled = false;
+    setHydrated(false);
+    setFailed(false);
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+    container.innerHTML = content.oembedHtml;
+
+    const markHydrated = () => {
+      const iframe = container.querySelector<HTMLIFrameElement>(
+        "iframe[title='X Post'], iframe[src*='platform.twitter.com/embed/Tweet.html']",
+      );
+      if (!iframe) return false;
+
+      iframe.style.maxWidth = "100%";
+      iframe.style.width = "100%";
+      iframe.style.borderRadius = "0.5rem";
+      iframe.style.display = "block";
+      setHydrated(true);
+      return true;
+    };
+    const requestMarkHydrated = (attempt = 0) => {
+      if (cancelled || markHydrated()) return;
+      if (attempt < 12) {
+        window.setTimeout(() => requestMarkHydrated(attempt + 1), 250);
+      }
+    };
+    let observer: MutationObserver | null = null;
+    observer = new MutationObserver(() => {
+      if (markHydrated()) {
+        observer?.disconnect();
+      }
+    });
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+    });
+
     void ensureXWidgetsScript()
       .then(() => {
         if (!cancelled) {
-          window.twttr?.widgets?.load(containerRef.current);
+          return Promise.resolve(window.twttr?.widgets?.load(container)).then(() => {
+            if (!cancelled) {
+              requestMarkHydrated();
+            }
+          });
         }
+        return undefined;
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) {
+          setFailed(true);
+        }
+      });
 
     return () => {
       cancelled = true;
+      observer?.disconnect();
     };
   }, [content.oembedHtml, content.provider, content.state]);
 
@@ -133,12 +183,27 @@ export function OfficialOEmbed({ content, className }: { content: EmbedContent; 
     return <PostEmbedPreview content={content} className={className} />;
   }
 
+  if (failed) {
+    return <PostEmbedPreview content={content} className={className} />;
+  }
+
   return (
-    <div
-      className={cn("w-full overflow-hidden rounded-lg", className)}
-      data-post-card-interactive="true"
-      ref={containerRef}
-      dangerouslySetInnerHTML={{ __html: content.oembedHtml }}
-    />
+    <div className={cn("grid w-full", className)}>
+      {!hydrated ? (
+        <div
+          aria-hidden="true"
+          className="col-start-1 row-start-1 min-h-[22rem] w-full rounded-lg border border-border-soft bg-[#15202b]"
+        />
+      ) : null}
+      <div
+        aria-hidden={!hydrated}
+        className={cn(
+          "col-start-1 row-start-1 w-full overflow-hidden rounded-lg bg-[#15202b] transition-opacity",
+          hydrated ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        data-post-card-interactive="true"
+        ref={containerRef}
+      />
+    </div>
   );
 }

@@ -1,4 +1,7 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { Agent } from "undici";
 
@@ -16,7 +19,22 @@ import { decodeBase64 } from "./_lib/base64";
 const execFileAsync = promisify(execFile);
 
 const API_BASE = "http://127.0.0.1:8787";
-const API_CWD = "/home/t42/Documents/pirate-v2/pirate-api/services/api";
+const scriptDir = fileURLToPath(new URL(".", import.meta.url));
+const API_CWD = [
+  process.env.PIRATE_API_DIR,
+  resolve(scriptDir, "../../api/services/api"),
+  resolve(scriptDir, "../../pirate-v2/pirate-api/services/api"),
+].find((candidate) => candidate && existsSync(candidate));
+const CORE_CWD = [
+  process.env.PIRATE_CORE_REPO,
+  resolve(scriptDir, "../../pirate-v2"),
+].find((candidate) => candidate && existsSync(candidate));
+if (!API_CWD) {
+  throw new Error("Could not locate Pirate API checkout. Set PIRATE_API_DIR.");
+}
+if (!CORE_CWD) {
+  throw new Error("Could not locate Pirate core repo. Set PIRATE_CORE_REPO.");
+}
 const SELLER_PRIVATE_KEY = "0x59c6995e998f97a5a0044966f0945382dbd5666b7e51f3d8d9a0c1f1e8f2a3b4" as Hex;
 const BUYER_PRIVATE_KEY = "0x8b3a350cf5c34c9194ca3a545d8b3b77d6c7b94d1d13d0d9f5e6f7a8b9c0d1e2" as Hex;
 const STORY_RUNTIME_PRIVATE_KEY = process.env.STORY_RUNTIME_PRIVATE_KEY?.trim()
@@ -122,7 +140,7 @@ async function ensureLocalPrimaryWalletAttachment(input: {
     `--user-id=${input.userId}`,
     `--wallet-address=${input.walletAddress}`,
   ], {
-    cwd: "/home/t42/Documents/pirate-v2",
+    cwd: CORE_CWD,
     env: process.env,
   });
   const walletAttachmentId = stdout.trim();

@@ -1,16 +1,29 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { createPublicClient, createWalletClient, defineChain, http, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { toBytes, toHex } from "viem";
 
-import { readDevVars, readWranglerVars } from "../../pirate-api/services/api/scripts/_lib/dev-vars";
-import { fetchSongArtifactBytes } from "../../pirate-api/services/api/src/lib/song-artifacts/song-artifact-storage";
-import type { Env } from "../../pirate-api/services/api/src/types";
+import { readDevVars, readWranglerVars } from "../../api/services/api/scripts/_lib/dev-vars";
+import { fetchSongArtifactBytes } from "../../api/services/api/src/lib/song-artifacts/song-artifact-storage";
+import type { Env } from "../../api/services/api/src/types";
 import { initWasm } from "../src/lib/story/vendor/piplabs/crypto";
 import { cdrAbi, contractAddresses } from "../src/lib/story/vendor/piplabs/contracts";
 import { CDRClient } from "../src/lib/story/vendor/piplabs/sdk/client";
 import { uuidToLabel } from "../src/lib/story/vendor/piplabs/sdk/label";
 import { decodeBase64 } from "./_lib/base64";
+
+const scriptDir = fileURLToPath(new URL(".", import.meta.url));
+const API_SERVICE_ROOT = [
+  process.env.PIRATE_API_DIR,
+  resolve(scriptDir, "../../api/services/api"),
+  resolve(scriptDir, "../../pirate-v2/pirate-api/services/api"),
+].find((candidate) => candidate && existsSync(candidate));
+if (!API_SERVICE_ROOT) {
+  throw new Error("Could not locate Pirate API checkout. Set PIRATE_API_DIR.");
+}
 
 function readFlag(flagName: string): string | null {
   const prefix = `${flagName}=`;
@@ -91,8 +104,8 @@ async function main(): Promise<void> {
   const fromBlockRaw = readFlag("--from-block");
 
   const env = {
-    ...readWranglerVars("/home/t42/Documents/pirate-v2/pirate-api/services/api/wrangler.jsonc", "development"),
-    ...readDevVars("/home/t42/Documents/pirate-v2/pirate-api/services/api/.dev.vars"),
+    ...readWranglerVars(resolve(API_SERVICE_ROOT, "wrangler.jsonc"), "development"),
+    ...readDevVars(resolve(API_SERVICE_ROOT, ".dev.vars")),
     ...process.env,
   } as Env;
 

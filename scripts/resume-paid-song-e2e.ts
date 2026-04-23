@@ -1,4 +1,7 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import { privateKeyToAccount } from "viem/accounts";
@@ -10,7 +13,15 @@ import { initWasm } from "../src/lib/story/vendor/piplabs/crypto";
 const execFileAsync = promisify(execFile);
 
 const API_BASE = "http://127.0.0.1:8787";
-const API_CWD = "/home/t42/Documents/pirate-v2/pirate-api/services/api";
+const scriptDir = fileURLToPath(new URL(".", import.meta.url));
+const API_CWD = [
+  process.env.PIRATE_API_DIR,
+  resolve(scriptDir, "../../api/services/api"),
+  resolve(scriptDir, "../../pirate-v2/pirate-api/services/api"),
+].find((candidate) => candidate && existsSync(candidate));
+if (!API_CWD) {
+  throw new Error("Could not locate Pirate API checkout. Set PIRATE_API_DIR.");
+}
 const BUYER_PRIVATE_KEY = "0x8b3a350cf5c34c9194ca3a545d8b3b77d6c7b94d1d13d0d9f5e6f7a8b9c0d1e2" as Hex;
 
 function readFlag(flagName: string): string | null {

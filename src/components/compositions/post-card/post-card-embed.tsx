@@ -125,6 +125,9 @@ export function OfficialOEmbed({ content, className }: { content: EmbedContent; 
       return;
     }
     container.innerHTML = content.oembedHtml;
+    const blockquote = container.querySelector<HTMLElement>("blockquote.twitter-tweet");
+    blockquote?.setAttribute("data-dnt", "true");
+    blockquote?.setAttribute("data-theme", "dark");
 
     const markHydrated = () => {
       const iframe = container.querySelector<HTMLIFrameElement>(
@@ -132,10 +135,22 @@ export function OfficialOEmbed({ content, className }: { content: EmbedContent; 
       );
       if (!iframe) return false;
 
-      iframe.style.maxWidth = "100%";
-      iframe.style.width = "100%";
-      iframe.style.borderRadius = "0.5rem";
+      const renderedTweet = iframe.parentElement;
+      if (renderedTweet instanceof HTMLElement) {
+        renderedTweet.style.margin = "0";
+        renderedTweet.style.maxWidth = "100%";
+        renderedTweet.style.width = "100%";
+        renderedTweet.style.overflow = "hidden";
+        renderedTweet.style.borderRadius = "0.5rem";
+        renderedTweet.style.backgroundColor = "#15202b";
+      }
+
+      iframe.style.border = "0";
+      iframe.style.clipPath = "inset(1px round 0.5rem)";
       iframe.style.display = "block";
+      iframe.style.maxWidth = "calc(100% + 2px)";
+      iframe.style.transform = "translateX(-1px)";
+      iframe.style.width = "calc(100% + 2px)";
       setHydrated(true);
       return true;
     };

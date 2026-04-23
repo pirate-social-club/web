@@ -117,16 +117,31 @@ function CountryPicker({
   }, [excludedCodes]);
 
   return (
-    <Combobox items={available} onValueChange={(value) => onSelect(getCountryCodeFromComboboxValue(value))}>
+    <Combobox
+      items={available}
+      onValueChange={(value) => onSelect(getCountryCodeFromComboboxValue(value))}
+    >
       <ComboboxTrigger className="h-10 w-full sm:max-w-xs">
         <span className="text-muted-foreground">Add country…</span>
       </ComboboxTrigger>
-      <ComboboxContent>
-        <ComboboxInput placeholder="Search country" />
-        <ComboboxEmpty>No countries found.</ComboboxEmpty>
-        <ComboboxList>
+      <ComboboxContent
+        className="rounded-[calc(var(--radius-lg)+0.125rem)] border-border-soft bg-card p-1 shadow-[var(--shadow-lg)]"
+        collisionAvoidance={{ side: "none", align: "shift", fallbackAxisSide: "none" }}
+        side="bottom"
+        sideOffset={4}
+      >
+        <ComboboxInput
+          className="h-10 rounded-[var(--radius-md)] border-0 bg-muted/45 px-3 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          placeholder="Search country"
+        />
+        <ComboboxEmpty className="px-3 py-3">No countries found.</ComboboxEmpty>
+        <ComboboxList className="max-h-52 py-1 [scrollbar-color:var(--border)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent">
           {(country) => (
-            <ComboboxItem key={country.code} value={country.code}>
+            <ComboboxItem
+              className="rounded-[var(--radius-md)] px-3 py-2.5 data-[highlighted]:bg-muted/80 [&>div]:pl-0"
+              key={country.code}
+              value={country.code}
+            >
               {country.name}
             </ComboboxItem>
           )}

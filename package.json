@@ -30,6 +30,7 @@
     "types": "bun run locales:generate && tsc --noEmit"
   },
   "dependencies": {
+    "@pirate/api-contracts": "file:../api/services/contracts",
     "@base-ui/react": "^1.3.0",
     "@dicebear/collection": "^9.4.2",
     "@dicebear/core": "^9.4.2",

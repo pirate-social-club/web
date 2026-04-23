@@ -1,25 +1,13 @@
 import type { DocumentProps } from "rwsdk/router";
 import type { RequestInfo } from "rwsdk/worker";
 
+import type { AppContext } from "@/app/app-context";
 import {
   resolveLocaleDirection,
   resolveLocaleLanguageTag,
-  type UiDirection,
-  type UiLocaleCode,
 } from "@/lib/ui-locale-core";
 
 import stylesUrl from "@/styles/tokens.css?url";
-
-type ThemeMode = "dark" | "light" | "system";
-
-type AppContext = {
-  appOrigin?: string;
-  canonicalUrl?: string;
-  dir?: UiDirection;
-  isIndexable?: boolean;
-  locale?: UiLocaleCode;
-  theme?: ThemeMode;
-};
 
 export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = ({
   children,

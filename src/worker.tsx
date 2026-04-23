@@ -2,6 +2,7 @@ import { render, route } from "rwsdk/router";
 import { defineApp, type RequestInfo } from "rwsdk/worker";
 
 import { PirateApp } from "@/app";
+import type { AppContext, ThemeMode } from "@/app/app-context";
 import { COMMUNITY_MODERATION_SECTIONS, SETTINGS_SECTIONS } from "@/app/route-definitions";
 import { LegalDocumentPage } from "@/components/legal/legal-document-page";
 import { Document } from "@/app/document";
@@ -26,22 +27,8 @@ import { resolveEffectiveRequestUrl } from "@/lib/hns-forwarded-origin";
 import {
   resolveLocaleDirection,
   resolveRequestLocale,
-  type UiDirection,
-  type UiLocaleCode,
 } from "@/lib/ui-locale-core";
 import { applyFrameDenyHeader } from "@/lib/security-headers";
-
-type ThemeMode = "dark" | "light" | "system";
-
-type AppContext = {
-  appOrigin?: string;
-  canonicalUrl?: string;
-  dir?: UiDirection;
-  effectiveUrl?: string;
-  isIndexable?: boolean;
-  locale?: UiLocaleCode;
-  theme?: ThemeMode;
-};
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
 

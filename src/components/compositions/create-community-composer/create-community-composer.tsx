@@ -13,6 +13,13 @@ import {
 import { Input } from "@/components/primitives/input";
 import { CheckboxCard } from "@/components/primitives/checkbox-card";
 import { OptionCard } from "@/components/primitives/option-card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/primitives/select";
 import { Stepper } from "@/components/primitives/stepper";
 import { Textarea } from "@/components/primitives/textarea";
 import { toast } from "@/components/primitives/sonner";
@@ -48,12 +55,22 @@ import type {
   ComposerStep,
   CreateCommunityComposerProps,
   CommunityDefaultAgeGatePolicy,
+  CommunityDatabaseRegion,
   CommunityMembershipMode,
   IdentityGateDraft,
 } from "./create-community-composer.types";
 import { CourtyardWalletGateBuilder } from "./courtyard-wallet-gate-builder";
 
 const EMPTY_GATE_DRAFTS: IdentityGateDraft[] = [];
+const DATABASE_REGION_OPTIONS: CommunityDatabaseRegion[] = [
+  "auto",
+  "aws-us-east-1",
+  "aws-us-east-2",
+  "aws-us-west-2",
+  "aws-eu-west-1",
+  "aws-ap-south-1",
+  "aws-ap-northeast-1",
+];
 
 function logCreateCommunityGateDebug(event: string, data: Record<string, unknown>) {
   logger.debug("[CreateCommunityComposer]", event, data);
@@ -83,6 +100,7 @@ export function CreateCommunityComposer({
   avatarRef = "",
   bannerRef = "",
   displayName = "",
+  databaseRegion = "auto",
   description = "",
   gateDrafts = EMPTY_GATE_DRAFTS,
   membershipMode = "open",
@@ -111,6 +129,8 @@ export function CreateCommunityComposer({
   const [activeAvatarFile, setActiveAvatarFile] = React.useState<File | null>(null);
   const [activeBannerFile, setActiveBannerFile] = React.useState<File | null>(null);
   const [activeDisplayName, setActiveDisplayName] = React.useState(displayName ?? "");
+  const [activeDatabaseRegion, setActiveDatabaseRegion] =
+    React.useState<CommunityDatabaseRegion>(databaseRegion);
   const [activeDescription, setActiveDescription] = React.useState(description ?? "");
   const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
   const minimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
@@ -241,6 +261,7 @@ export function CreateCommunityComposer({
   React.useEffect(() => { setActiveMembershipMode(membershipMode); }, [membershipMode]);
   React.useEffect(() => { setActiveAvatarRef(avatarRef); }, [avatarRef]);
   React.useEffect(() => { setActiveBannerRef(bannerRef); }, [bannerRef]);
+  React.useEffect(() => { setActiveDatabaseRegion(databaseRegion); }, [databaseRegion]);
   React.useEffect(() => {
     logCreateCommunityGateDebug("syncGateDraftsFromProps", {
       gateDrafts,
@@ -298,6 +319,7 @@ export function CreateCommunityComposer({
       bannerFile: activeBannerFile,
       bannerRef: activeBannerRef.trim() || null,
       displayName: activeDisplayName.trim(),
+      databaseRegion: activeDatabaseRegion,
       description: activeDescription.trim() || null,
       membershipMode: activeMembershipMode,
       defaultAgeGatePolicy: effectiveDefaultAgeGatePolicy,
@@ -318,6 +340,7 @@ export function CreateCommunityComposer({
     activeBannerFile,
     activeBannerRef,
     activeDisplayName,
+    activeDatabaseRegion,
     activeDescription,
     activeMembershipMode,
     activeDefaultAgeGatePolicy,
@@ -371,6 +394,15 @@ export function CreateCommunityComposer({
     request: cc.membershipRequestLabel,
     gated: cc.membershipGatedLabel,
   })[activeMembershipMode];
+  const databaseRegionLabel = ({
+    auto: cc.databaseRegionAuto,
+    "aws-us-east-1": cc.databaseRegionUsEast,
+    "aws-us-east-2": cc.databaseRegionUsCentral,
+    "aws-us-west-2": cc.databaseRegionUsWest,
+    "aws-eu-west-1": cc.databaseRegionEurope,
+    "aws-ap-south-1": cc.databaseRegionIndia,
+    "aws-ap-northeast-1": cc.databaseRegionJapan,
+  })[activeDatabaseRegion];
   const gateRequirementSummary = activeGateDrafts.length > 0
     ? activeGateDrafts
         .map((draft) =>
@@ -472,6 +504,33 @@ export function CreateCommunityComposer({
                       placeholder={cc.descriptionPlaceholder}
                       value={activeDescription}
                     />
+                  </div>
+
+                  <div>
+                    <FieldLabel label={cc.databaseRegionLabel} />
+                    <Select
+                      onValueChange={(value) => setActiveDatabaseRegion(value as CommunityDatabaseRegion)}
+                      value={activeDatabaseRegion}
+                    >
+                      <SelectTrigger className="h-12 rounded-[var(--radius-lg)]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DATABASE_REGION_OPTIONS.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {({
+                              auto: cc.databaseRegionAuto,
+                              "aws-us-east-1": cc.databaseRegionUsEast,
+                              "aws-us-east-2": cc.databaseRegionUsCentral,
+                              "aws-us-west-2": cc.databaseRegionUsWest,
+                              "aws-eu-west-1": cc.databaseRegionEurope,
+                              "aws-ap-south-1": cc.databaseRegionIndia,
+                              "aws-ap-northeast-1": cc.databaseRegionJapan,
+                            })[option]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -773,6 +832,7 @@ export function CreateCommunityComposer({
               }
               copy={cc}
               creatorVerificationMessage={creatorVerificationMessage}
+              databaseRegionLabel={databaseRegionLabel}
               description={activeDescription}
               displayName={activeDisplayName}
               gateRequirementSummary={gateRequirementSummary}

@@ -5,6 +5,14 @@ export type { CommunityMembershipMode, CourtyardWalletInventoryGroup };
 export type CommunityDefaultAgeGatePolicy = "none" | "18_plus";
 export type CommunityReadAccessMode = "public" | "members_only";
 export type AnonymousIdentityScope = "community_stable" | "thread_stable" | "post_ephemeral";
+export type CommunityDatabaseRegion =
+  | "auto"
+  | "aws-us-east-1"
+  | "aws-us-east-2"
+  | "aws-us-west-2"
+  | "aws-eu-west-1"
+  | "aws-ap-south-1"
+  | "aws-ap-northeast-1";
 
 export type IdentityGateDraft =
   | {
@@ -70,6 +78,7 @@ export interface CreateCommunityComposerProps {
   avatarRef?: string;
   bannerRef?: string;
   displayName?: string;
+  databaseRegion?: CommunityDatabaseRegion;
   description?: string;
   gateDrafts?: IdentityGateDraft[];
   membershipMode?: CommunityMembershipMode;
@@ -87,6 +96,7 @@ export interface CreateCommunityComposerProps {
     bannerFile: File | null;
     bannerRef: string | null;
     displayName: string;
+    databaseRegion: CommunityDatabaseRegion;
     description: string | null;
     membershipMode: CommunityMembershipMode;
     defaultAgeGatePolicy: CommunityDefaultAgeGatePolicy;

@@ -7,6 +7,15 @@ import type {
 
 export type ApiCreateCommunityRequest = {
   display_name: string;
+  database_region?:
+    | "auto"
+    | "aws-us-east-1"
+    | "aws-us-east-2"
+    | "aws-us-west-2"
+    | "aws-eu-west-1"
+    | "aws-ap-south-1"
+    | "aws-ap-northeast-1"
+    | null;
   description?: string | null;
   avatar_ref?: string | null;
   banner_ref?: string | null;

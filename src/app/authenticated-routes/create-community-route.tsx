@@ -47,6 +47,7 @@ export function CreateCommunityPage() {
       avatar_ref: avatarRef,
       banner_ref: bannerRef,
       display_name: input.displayName,
+      database_region: input.databaseRegion,
       description: input.description,
       membership_mode: input.membershipMode,
       default_age_gate_policy: input.defaultAgeGatePolicy,

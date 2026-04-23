@@ -9,6 +9,7 @@ const baseComposer: CreateCommunityComposerProps = {
   displayName: "American Voices",
   description:
     "A national-interest community where verified context matters, but moderation still needs a safe anonymous layer.",
+  databaseRegion: "auto",
   membershipMode: "open",
   defaultAgeGatePolicy: "none",
   allowAnonymousIdentity: true,
@@ -88,6 +89,17 @@ export const ReviewWithNationalityGate: Story = {
 export const ReviewStep: Story = {
   name: "Flow / Review",
   render: () => <CreateCommunityComposer {...baseComposer} initialStep={3} />,
+};
+
+export const ReviewWithIndiaRegion: Story = {
+  name: "Flow / Review With India Region",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      databaseRegion="aws-ap-south-1"
+      initialStep={3}
+    />
+  ),
 };
 
 export const CreatorNotEligible: Story = {

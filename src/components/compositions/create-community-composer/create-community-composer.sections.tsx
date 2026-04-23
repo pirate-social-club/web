@@ -199,6 +199,7 @@ export function CommunityReviewStep({
   bannerLabel,
   copy,
   creatorVerificationMessage,
+  databaseRegionLabel,
   description,
   displayName,
   gateRequirementSummary,
@@ -211,6 +212,7 @@ export function CommunityReviewStep({
   bannerLabel: string;
   copy: Record<string, string>;
   creatorVerificationMessage: string | null;
+  databaseRegionLabel: string;
   description: string;
   displayName: string;
   gateRequirementSummary: string | null;
@@ -223,6 +225,7 @@ export function CommunityReviewStep({
         <div className="md:col-span-2">
           <ReviewField label={copy.reviewDescription} value={description || "\u2014"} />
         </div>
+        <ReviewField label={copy.reviewDataRegion} value={databaseRegionLabel} />
         <ReviewField label={copy.reviewAvatar} value={avatarLabel} />
         <ReviewField label={copy.reviewBanner} value={bannerLabel} />
       </ReviewSection>

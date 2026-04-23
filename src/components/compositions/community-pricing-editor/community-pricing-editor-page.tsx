@@ -49,12 +49,10 @@ export type CountryAssignment = {
 export interface CommunityPricingEditorPageProps {
   className?: string;
   regionalPricingEnabled: boolean;
-  verificationProviderRequirement: "self" | null;
   defaultTierKey: string | null;
   tiers: PricingTier[];
   countryAssignments: CountryAssignment[];
   onRegionalPricingEnabledChange?: (value: boolean) => void;
-  onVerificationProviderRequirementChange?: (value: "self" | null) => void;
   onDefaultTierKeyChange?: (value: string) => void;
   onTiersChange?: (value: PricingTier[]) => void;
   onCountryAssignmentsChange?: (value: CountryAssignment[]) => void;
@@ -252,12 +250,10 @@ function TierRow({
 export function CommunityPricingEditorPage({
   className,
   regionalPricingEnabled,
-  verificationProviderRequirement,
   defaultTierKey,
   tiers,
   countryAssignments,
   onRegionalPricingEnabledChange,
-  onVerificationProviderRequirementChange,
   onDefaultTierKeyChange,
   onTiersChange,
   onCountryAssignmentsChange,
@@ -367,25 +363,6 @@ export function CommunityPricingEditorPage({
 
       {regionalPricingEnabled ? (
         <>
-          <div className="space-y-4">
-            <FormSectionHeading title={mc.verificationTitle} />
-            <Select
-              onValueChange={(value) =>
-                onVerificationProviderRequirementChange?.(
-                  value === "self" ? "self" : null,
-                )
-              }
-              value={verificationProviderRequirement ?? "self"}
-            >
-              <SelectTrigger className="h-12 w-full sm:max-w-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="self">self.xyz</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="space-y-4">
             <FormSectionHeading title={mc.priceGroupsTitle} />
             {tiers.map((tier) => (

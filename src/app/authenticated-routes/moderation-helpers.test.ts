@@ -41,4 +41,22 @@ describe("pricing policy moderation helpers", () => {
     expect(new Set(countryCodes).size).toBe(countryCodes.length);
     expect(validatePricingPolicyDraft(starter)).toBeNull();
   });
+
+  test("starter pricing policy discounts nationality-gated local countries", () => {
+    const starter = buildStarterPricingPolicyDraft({ localCountryCodes: ["ECU"] });
+
+    expect(starter.tiers.find((tier) => tier.tier_key === "local_members")).toEqual({
+      id: "starter-local_members",
+      tier_key: "local_members",
+      display_name: "Local members",
+      adjustment_type: "multiplier",
+      adjustment_value: 0.55,
+    });
+    expect(starter.countryAssignments.find((assignment) => assignment.country_code === "EC")).toEqual({
+      country_code: "EC",
+      tier_key: "local_members",
+    });
+    expect(starter.countryAssignments.filter((assignment) => assignment.country_code === "EC")).toHaveLength(1);
+    expect(validatePricingPolicyDraft(starter)).toBeNull();
+  });
 });

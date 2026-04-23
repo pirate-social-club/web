@@ -17,9 +17,11 @@ import { CommunityRulesEditorPage } from "@/components/compositions/community-ru
 import { CommunityAgentPolicyPage } from "@/components/compositions/community-agent-policy/community-agent-policy";
 import { CommunitySafetyPage } from "@/components/compositions/community-safety-page/community-safety-page";
 import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
+import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
+import { normalizeCountryCode } from "@/lib/countries";
 import { isValidCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 
 import { CommunityModerationGuard, getCommunityModerationTitle } from "./moderation-data";
@@ -76,6 +78,22 @@ function useIsModerationMobileLayout() {
   }, []);
 
   return isMobileLayout;
+}
+
+function getNationalityGateCountryCodes(gateDrafts: IdentityGateDraft[]): string[] {
+  const countryCodes = new Set<string>();
+  for (const draft of gateDrafts) {
+    if (draft.gateType !== "nationality") {
+      continue;
+    }
+    for (const value of draft.requiredValues) {
+      const normalized = normalizeCountryCode(value);
+      if (normalized) {
+        countryCodes.add(normalized.alpha2);
+      }
+    }
+  }
+  return Array.from(countryCodes);
 }
 
 function MobileModerationSectionLayout({
@@ -159,6 +177,13 @@ export function CommunityModerationPage({
   const isMobile = useIsModerationMobileLayout();
   const state = useCommunityModerationState(communityId);
   const { copy } = useRouteMessages();
+  const pricingLocalCountryCodes = React.useMemo(
+    () => getNationalityGateCountryCodes(state.gateDrafts),
+    [state.gateDrafts],
+  );
+  const applyPricingStarterTemplate = () => {
+    state.applyStarterPricingTemplate({ localCountryCodes: pricingLocalCountryCodes });
+  };
   const title = getCommunityModerationTitle(section, copy.moderation);
   const moderationIndexPath = buildCommunityModerationIndexPath(communityId);
   const blocked = CommunityModerationGuard({
@@ -280,7 +305,7 @@ export function CommunityModerationPage({
                   return;
                 }
                 if (state.pricingTiers.length === 0 && state.countryAssignments.length === 0 && !state.defaultTierKey) {
-                  state.applyStarterPricingTemplate();
+                  applyPricingStarterTemplate();
                   return;
                 }
                 if (!state.verificationProviderRequirement) {
@@ -289,14 +314,12 @@ export function CommunityModerationPage({
               }}
               onSave={state.handleSavePricing}
               onTiersChange={state.setPricingTiers}
-              onUseStarterTemplate={state.applyStarterPricingTemplate}
-              onVerificationProviderRequirementChange={state.setVerificationProviderRequirement}
+              onUseStarterTemplate={applyPricingStarterTemplate}
               regionalPricingEnabled={state.regionalPricingEnabled}
               saveDisabled={state.savingPricing || state.pricingValidationError != null}
               saveLoading={state.savingPricing}
               saveNote={state.pricingValidationError}
               tiers={state.pricingTiers}
-              verificationProviderRequirement={state.verificationProviderRequirement}
             />
           );
     } else if (section === "donations") {

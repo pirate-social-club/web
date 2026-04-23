@@ -191,10 +191,8 @@ function ModerationShellStory({
           onSave={() => undefined}
           onTiersChange={() => {}}
           onUseStarterTemplate={() => undefined}
-          onVerificationProviderRequirementChange={() => {}}
           regionalPricingEnabled={false}
           tiers={[]}
-          verificationProviderRequirement={null}
         />
       ) : activeView === "donations" ? (
         <CommunityDonationsEditorPage

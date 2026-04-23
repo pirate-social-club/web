@@ -3,6 +3,7 @@ import * as React from "react";
 
 import { CommunityPricingEditorPage } from "@/components/compositions/community-pricing-editor/community-pricing-editor-page";
 import type { PricingTier, CountryAssignment } from "@/components/compositions/community-pricing-editor/community-pricing-editor-page";
+import { buildStarterPricingPolicyDraft } from "@/app/authenticated-routes/moderation-helpers";
 
 const meta = {
   title: "Compositions/Moderation/Pricing",
@@ -33,7 +34,6 @@ const baseArgs = {
   defaultTierKey: "standard",
   regionalPricingEnabled: false,
   tiers: defaultTiers,
-  verificationProviderRequirement: null,
 } satisfies React.ComponentProps<typeof CommunityPricingEditorPage>;
 
 function InteractiveStory({
@@ -48,10 +48,15 @@ function InteractiveStory({
   const [enabled, setEnabled] = React.useState(initialEnabled);
   const [tiers, setTiers] = React.useState(initialTiers);
   const [assignments, setAssignments] = React.useState(initialAssignments);
-  const [defaultKey, setDefaultKey] = React.useState(initialTiers[0]?.tier_key ?? "standard");
-  const [verificationProviderRequirement, setVerificationProviderRequirement] = React.useState<"self" | null>(
-    initialEnabled ? "self" : null,
-  );
+  const [defaultKey, setDefaultKey] = React.useState<string | null>(initialTiers[0]?.tier_key ?? null);
+
+  function useStarterTemplate() {
+    const starter = buildStarterPricingPolicyDraft({ localCountryCodes: ["EC"] });
+    setEnabled(starter.regionalPricingEnabled);
+    setTiers(starter.tiers);
+    setAssignments(starter.countryAssignments);
+    setDefaultKey(starter.defaultTierKey);
+  }
 
   return (
     <CommunityPricingEditorPage
@@ -59,20 +64,24 @@ function InteractiveStory({
       defaultTierKey={defaultKey}
       onCountryAssignmentsChange={setAssignments}
       onDefaultTierKeyChange={setDefaultKey}
-      onRegionalPricingEnabledChange={setEnabled}
+      onRegionalPricingEnabledChange={(value) => {
+        setEnabled(value);
+        if (value && tiers.length === 0 && assignments.length === 0 && !defaultKey) {
+          useStarterTemplate();
+        }
+      }}
       onSave={() => undefined}
-      onVerificationProviderRequirementChange={setVerificationProviderRequirement}
       onTiersChange={setTiers}
+      onUseStarterTemplate={useStarterTemplate}
       regionalPricingEnabled={enabled}
       tiers={tiers}
-      verificationProviderRequirement={verificationProviderRequirement}
     />
   );
 }
 
 export const Disabled: Story = {
   args: baseArgs,
-  render: () => <InteractiveStory initialAssignments={[]} initialEnabled={false} initialTiers={defaultTiers} />,
+  render: () => <InteractiveStory initialAssignments={[]} initialEnabled={false} initialTiers={[]} />,
 };
 
 export const Enabled: Story = {
@@ -80,7 +89,6 @@ export const Enabled: Story = {
     ...baseArgs,
     countryAssignments: defaultAssignments,
     regionalPricingEnabled: true,
-    verificationProviderRequirement: "self",
   },
   render: () => <InteractiveStory initialAssignments={defaultAssignments} initialEnabled initialTiers={defaultTiers} />,
 };
@@ -90,7 +98,6 @@ export const EmptyPolicy: Story = {
     ...baseArgs,
     regionalPricingEnabled: true,
     tiers: [{ id: "t1", tier_key: "standard", display_name: "Standard", adjustment_type: "multiplier", adjustment_value: 1 }],
-    verificationProviderRequirement: "self",
   },
   render: () => <InteractiveStory initialAssignments={[]} initialEnabled initialTiers={[{ id: "t1", tier_key: "standard", display_name: "Standard", adjustment_type: "multiplier", adjustment_value: 1 }]} />,
 };

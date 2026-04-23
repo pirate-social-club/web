@@ -196,8 +196,10 @@ export function useCommunityCommerceState({
       });
   }, [api.communities, community, countryAssignments, defaultTierKey, pricingTiers, pricingValidationError, regionalPricingEnabled, savingPricing, verificationProviderRequirement]);
 
-  const applyStarterPricingTemplate = React.useCallback(() => {
-    const starter = buildStarterPricingPolicyDraft();
+  const applyStarterPricingTemplate = React.useCallback((input?: {
+    localCountryCodes?: string[];
+  }) => {
+    const starter = buildStarterPricingPolicyDraft(input);
     setRegionalPricingEnabled(starter.regionalPricingEnabled);
     setVerificationProviderRequirement(starter.verificationProviderRequirement);
     setDefaultTierKey(starter.defaultTierKey);

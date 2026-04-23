@@ -258,10 +258,6 @@ export function CreateCommunityComposer({
       : []),
   ];
 
-  React.useEffect(() => { setActiveMembershipMode(membershipMode); }, [membershipMode]);
-  React.useEffect(() => { setActiveAvatarRef(avatarRef); }, [avatarRef]);
-  React.useEffect(() => { setActiveBannerRef(bannerRef); }, [bannerRef]);
-  React.useEffect(() => { setActiveDatabaseRegion(databaseRegion); }, [databaseRegion]);
   React.useEffect(() => {
     logCreateCommunityGateDebug("syncGateDraftsFromProps", {
       gateDrafts,
@@ -291,11 +287,6 @@ export function CreateCommunityComposer({
     setCourtyardInventoryEnabled(Boolean(nextCourtyardInventoryGate));
     setCourtyardInventoryDraft(nextCourtyardInventoryGate ?? createDefaultCourtyardInventoryDraft());
   }, [gateDraftsSyncKey]);
-  React.useEffect(() => { setActiveDefaultAgeGatePolicy(defaultAgeGatePolicy); }, [defaultAgeGatePolicy]);
-  React.useEffect(() => { setActiveAllowAnonymousIdentity(allowAnonymousIdentity); }, [allowAnonymousIdentity]);
-  React.useEffect(() => {
-    if (anonymousIdentityScopeProp) setActiveAnonymousScope(anonymousIdentityScopeProp);
-  }, [anonymousIdentityScopeProp]);
 
   const handleStepClick = React.useCallback((step: number) => {
     if (step >= 1 && step <= activeStep) setActiveStep(step as ComposerStep);

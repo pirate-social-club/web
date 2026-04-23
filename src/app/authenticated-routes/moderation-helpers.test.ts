@@ -4,6 +4,7 @@ import {
   buildStarterPricingPolicyDraft,
   validatePricingPolicyDraft,
 } from "./moderation-helpers";
+import { COUNTRIES } from "@/lib/countries";
 
 describe("pricing policy moderation helpers", () => {
   test("rejects duplicate country assignments across price groups", () => {
@@ -39,7 +40,23 @@ describe("pricing policy moderation helpers", () => {
 
     expect(new Set(tierKeys).size).toBe(tierKeys.length);
     expect(new Set(countryCodes).size).toBe(countryCodes.length);
+    expect(countryCodes.length).toBe(COUNTRIES.length);
+    expect(COUNTRIES.every((country) => countryCodes.includes(country.code))).toBe(true);
     expect(validatePricingPolicyDraft(starter)).toBeNull();
+  });
+
+  test("starter pricing policy uses a ten-times high-to-low spread", () => {
+    const starter = buildStarterPricingPolicyDraft();
+    const tierByKey = new Map(starter.tiers.map((tier) => [tier.tier_key, tier]));
+    const assignmentByCountry = new Map(
+      starter.countryAssignments.map((assignment) => [assignment.country_code, assignment]),
+    );
+    const denmarkTier = tierByKey.get(assignmentByCountry.get("DK")?.tier_key ?? "");
+    const indiaTier = tierByKey.get(assignmentByCountry.get("IN")?.tier_key ?? "");
+
+    expect(denmarkTier?.adjustment_value).toBe(1);
+    expect(indiaTier?.adjustment_value).toBe(0.1);
+    expect((denmarkTier?.adjustment_value ?? 0) / (indiaTier?.adjustment_value ?? 1)).toBe(10);
   });
 
   test("starter pricing policy discounts nationality-gated local countries", () => {
@@ -50,7 +67,7 @@ describe("pricing policy moderation helpers", () => {
       tier_key: "local_members",
       display_name: "Local members",
       adjustment_type: "multiplier",
-      adjustment_value: 0.55,
+      adjustment_value: 0.08,
     });
     expect(starter.countryAssignments.find((assignment) => assignment.country_code === "EC")).toEqual({
       country_code: "EC",

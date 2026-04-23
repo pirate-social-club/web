@@ -727,7 +727,7 @@
       "addPriceGroup": "Add price group",
       "defaultTierTitle": "Default group",
       "selectDefaultTierPlaceholder": "Select default group",
-      "starterTemplateNote": "The default map starts from broad pricing bands. Review every group before saving.",
+      "starterTemplateNote": "The default map assigns every country across broad pricing bands. Review every group before saving.",
       "existingListingsNote": "Enabling regional pricing affects new listings only. Existing listings keep their current setting.",
       "groupNameLabel": "Group",
       "groupNamePlaceholder": "Standard",

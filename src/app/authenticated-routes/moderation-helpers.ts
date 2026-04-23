@@ -10,7 +10,7 @@ import type { CommunityLinkEditorItem } from "@/components/compositions/communit
 import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import type { PricingTier, CountryAssignment as PricingCountryAssignment } from "@/components/compositions/community-pricing-editor/community-pricing-editor-page";
 import { createDefaultCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
-import { normalizeCountryCode } from "@/lib/countries";
+import { COUNTRIES, normalizeCountryCode } from "@/lib/countries";
 import { serializeExistingCommunityGateRuleForUpdate, type SerializedGateRule } from "./community-gate-rule-serialization";
 import {
   createDefaultCommunitySafetyAdultContentPolicy,
@@ -312,6 +312,117 @@ function isValidPricingTierKey(value: string): boolean {
   return /^[a-z0-9][a-z0-9_-]*$/u.test(value);
 }
 
+const STARTER_PRICING_TIER_BY_COUNTRY_CODE: Record<string, string> = {
+  AD: "high_income",
+  CH: "high_income",
+  DK: "high_income",
+  FO: "high_income",
+  IS: "high_income",
+  LI: "high_income",
+  LU: "high_income",
+  MC: "high_income",
+  NO: "high_income",
+  SM: "high_income",
+  US: "high_income",
+
+  BG: "reduced",
+  CY: "reduced",
+  CZ: "reduced",
+  EE: "reduced",
+  ES: "reduced",
+  GR: "reduced",
+  HR: "reduced",
+  HU: "reduced",
+  IT: "reduced",
+  LT: "reduced",
+  LV: "reduced",
+  MT: "reduced",
+  PL: "reduced",
+  PT: "reduced",
+  RO: "reduced",
+  SI: "reduced",
+  SK: "reduced",
+
+  AL: "lower",
+  AR: "lower",
+  BA: "lower",
+  BR: "lower",
+  BW: "lower",
+  CL: "lower",
+  CN: "lower",
+  CO: "lower",
+  CR: "lower",
+  DO: "lower",
+  EC: "lower",
+  GE: "lower",
+  ID: "lower",
+  JO: "lower",
+  KZ: "lower",
+  LK: "lower",
+  MA: "lower",
+  MD: "lower",
+  ME: "lower",
+  MK: "lower",
+  MX: "lower",
+  MY: "lower",
+  PA: "lower",
+  PE: "lower",
+  RS: "lower",
+  TH: "lower",
+  TN: "lower",
+  TR: "lower",
+  UA: "lower",
+  UY: "lower",
+  XK: "lower",
+  ZA: "lower",
+
+  AF: "lowest",
+  BD: "lowest",
+  BF: "lowest",
+  BI: "lowest",
+  BJ: "lowest",
+  BO: "lowest",
+  CD: "lowest",
+  CF: "lowest",
+  CG: "lowest",
+  CI: "lowest",
+  CM: "lowest",
+  EG: "lowest",
+  ET: "lowest",
+  GH: "lowest",
+  GM: "lowest",
+  GN: "lowest",
+  GW: "lowest",
+  HT: "lowest",
+  IN: "lowest",
+  KE: "lowest",
+  KH: "lowest",
+  LA: "lowest",
+  LR: "lowest",
+  MG: "lowest",
+  ML: "lowest",
+  MM: "lowest",
+  MZ: "lowest",
+  NE: "lowest",
+  NG: "lowest",
+  NP: "lowest",
+  PH: "lowest",
+  PK: "lowest",
+  RW: "lowest",
+  SL: "lowest",
+  SN: "lowest",
+  SO: "lowest",
+  SS: "lowest",
+  TD: "lowest",
+  TG: "lowest",
+  TZ: "lowest",
+  UG: "lowest",
+  VN: "lowest",
+  YE: "lowest",
+  ZM: "lowest",
+  ZW: "lowest",
+};
+
 export function validatePricingPolicyDraft(input: {
   countryAssignments: PricingCountryAssignment[];
   defaultTierKey: string | null;
@@ -366,32 +477,16 @@ export function buildStarterPricingPolicyDraft(input: {
       .map((code) => normalizeCountryCode(code)?.alpha2)
       .filter((code): code is string => Boolean(code)),
   ));
-  const baseCountryAssignments: PricingCountryAssignment[] = [
-    { country_code: "DK", tier_key: "high_income" }, { country_code: "NO", tier_key: "high_income" }, { country_code: "CH", tier_key: "high_income" },
-    { country_code: "LU", tier_key: "high_income" }, { country_code: "IS", tier_key: "high_income" }, { country_code: "US", tier_key: "standard" },
-    { country_code: "CA", tier_key: "standard" }, { country_code: "AU", tier_key: "standard" }, { country_code: "NZ", tier_key: "standard" },
-    { country_code: "GB", tier_key: "standard" }, { country_code: "IE", tier_key: "standard" }, { country_code: "DE", tier_key: "standard" },
-    { country_code: "AT", tier_key: "standard" }, { country_code: "BE", tier_key: "standard" }, { country_code: "NL", tier_key: "standard" },
-    { country_code: "SE", tier_key: "standard" }, { country_code: "FI", tier_key: "standard" }, { country_code: "FR", tier_key: "reduced" },
-    { country_code: "IT", tier_key: "reduced" }, { country_code: "ES", tier_key: "reduced" }, { country_code: "PT", tier_key: "reduced" },
-    { country_code: "GR", tier_key: "reduced" }, { country_code: "CY", tier_key: "reduced" }, { country_code: "SI", tier_key: "reduced" },
-    { country_code: "EE", tier_key: "reduced" }, { country_code: "LT", tier_key: "reduced" }, { country_code: "LV", tier_key: "reduced" },
-    { country_code: "CZ", tier_key: "reduced" }, { country_code: "SK", tier_key: "reduced" }, { country_code: "MT", tier_key: "reduced" },
-    { country_code: "PL", tier_key: "lower" }, { country_code: "HU", tier_key: "lower" }, { country_code: "HR", tier_key: "lower" },
-    { country_code: "RO", tier_key: "lower" }, { country_code: "BG", tier_key: "lower" }, { country_code: "TR", tier_key: "lower" },
-    { country_code: "BR", tier_key: "lower" }, { country_code: "MX", tier_key: "lower" }, { country_code: "CL", tier_key: "lower" },
-    { country_code: "CR", tier_key: "lower" }, { country_code: "ZA", tier_key: "lower" }, { country_code: "MY", tier_key: "lower" },
-    { country_code: "TH", tier_key: "lower" }, { country_code: "IN", tier_key: "lowest" }, { country_code: "ID", tier_key: "lowest" },
-    { country_code: "PH", tier_key: "lowest" }, { country_code: "VN", tier_key: "lowest" }, { country_code: "NG", tier_key: "lowest" },
-    { country_code: "PK", tier_key: "lowest" }, { country_code: "EG", tier_key: "lowest" }, { country_code: "MA", tier_key: "lowest" },
-    { country_code: "AR", tier_key: "lowest" }, { country_code: "CO", tier_key: "lowest" }, { country_code: "PE", tier_key: "lowest" },
-  ];
+  const baseCountryAssignments: PricingCountryAssignment[] = COUNTRIES.map((country) => ({
+    country_code: country.code,
+    tier_key: STARTER_PRICING_TIER_BY_COUNTRY_CODE[country.code] ?? "standard",
+  }));
   const tiers: PricingTier[] = [
-    { id: "starter-high_income", tier_key: "high_income", display_name: "High income", adjustment_type: "multiplier", adjustment_value: 1.15 },
-    { id: "starter-standard", tier_key: "standard", display_name: "Standard", adjustment_type: "multiplier", adjustment_value: 1 },
-    { id: "starter-reduced", tier_key: "reduced", display_name: "Reduced", adjustment_type: "multiplier", adjustment_value: 0.85 },
-    { id: "starter-lower", tier_key: "lower", display_name: "Lower", adjustment_type: "multiplier", adjustment_value: 0.7 },
-    { id: "starter-lowest", tier_key: "lowest", display_name: "Lowest", adjustment_type: "multiplier", adjustment_value: 0.55 },
+    { id: "starter-high_income", tier_key: "high_income", display_name: "High income", adjustment_type: "multiplier", adjustment_value: 1 },
+    { id: "starter-standard", tier_key: "standard", display_name: "Standard", adjustment_type: "multiplier", adjustment_value: 0.65 },
+    { id: "starter-reduced", tier_key: "reduced", display_name: "Reduced", adjustment_type: "multiplier", adjustment_value: 0.4 },
+    { id: "starter-lower", tier_key: "lower", display_name: "Lower", adjustment_type: "multiplier", adjustment_value: 0.25 },
+    { id: "starter-lowest", tier_key: "lowest", display_name: "Lowest", adjustment_type: "multiplier", adjustment_value: 0.1 },
   ];
   const localCountrySet = new Set(localCountryCodes);
   const countryAssignments = localCountryCodes.length === 0
@@ -411,7 +506,7 @@ export function buildStarterPricingPolicyDraft(input: {
     tiers: localCountryCodes.length === 0
       ? tiers
       : [
-        { id: "starter-local_members", tier_key: "local_members", display_name: "Local members", adjustment_type: "multiplier", adjustment_value: 0.55 },
+        { id: "starter-local_members", tier_key: "local_members", display_name: "Local members", adjustment_type: "multiplier", adjustment_value: 0.08 },
         ...tiers,
       ],
     verificationProviderRequirement: "self" as const,

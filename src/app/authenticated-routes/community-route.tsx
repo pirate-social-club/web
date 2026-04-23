@@ -11,7 +11,7 @@ import { PublicCommunityRoutePage } from "@/app/public-community-route";
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
-import { isApiAuthError, isApiNotFoundError, type ApiError } from "@/lib/api/client";
+import { getApiErrorMessage, isApiAuthError, isApiNotFoundError, type ApiError } from "@/lib/api/client";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community-membership-gate-panel/community-membership-gate-panel";
 import { CommunityPageShell } from "@/components/compositions/community-page-shell/community-page-shell";
 import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
@@ -145,8 +145,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       writePendingSelfJoinSession({ communityId, requestedCapabilities, verificationSessionId: result.verification_session_id });
       return { started: true };
     } catch (e: unknown) {
-      const apiError = e as ApiError;
-      const message = apiError?.message ?? "Could not start self verification";
+      const message = getApiErrorMessage(e, "Could not start self verification");
       setSelfError(message);
       if (showToastOnError) {
         toast.error(message);
@@ -176,8 +175,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         setJoinError("Verification succeeded but you still do not meet this community's requirements.");
       }
     } catch (e: unknown) {
-      const apiError = e as ApiError;
-      setSelfError(apiError?.message ?? "Verification completion failed");
+      setSelfError(getApiErrorMessage(e, "Verification completion failed"));
     } finally {
       setSelfLoading(false);
     }
@@ -249,8 +247,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       setViewerFollowing(result.following);
       setFollowerCount(result.follower_count ?? null);
     } catch (e: unknown) {
-      const apiError = e as ApiError;
-      toast.error(apiError?.message ?? "Follow failed");
+      toast.error(getApiErrorMessage(e, "Follow failed"));
     } finally {
       setFollowLoading(false);
     }

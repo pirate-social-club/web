@@ -61,6 +61,18 @@ export function isApiNotFoundError(error: unknown): error is ApiError {
   return error instanceof ApiError && error.status === 404;
 }
 
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+
+  return fallback;
+}
+
 export const DEFAULT_BASE_URL = "http://127.0.0.1:8787";
 
 export class ApiClient {

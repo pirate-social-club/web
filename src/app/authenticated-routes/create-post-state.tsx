@@ -16,7 +16,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
-import type { ApiError } from "@/lib/api/client";
+import { getApiErrorMessage } from "@/lib/api/client";
 import type {
   CommunityCharityPartner,
   ComposerAudienceState,
@@ -540,8 +540,7 @@ export function useCreatePostState(communityId: string) {
 
       navigate(`/p/${result.post_id}`);
     } catch (error: unknown) {
-      const apiError = error as ApiError;
-      setSubmitError(apiError?.message ?? "Could not create post");
+      setSubmitError(getApiErrorMessage(error, "Could not create post"));
     } finally {
       setSubmitting(false);
     }

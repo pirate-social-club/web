@@ -16,7 +16,7 @@ import { CommunityPageShell } from "@/components/compositions/community-page-she
 import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
-import { isApiNotFoundError, type ApiError } from "@/lib/api/client";
+import { getApiErrorMessage, isApiNotFoundError } from "@/lib/api/client";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -269,8 +269,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       });
       return { started: true };
     } catch (error: unknown) {
-      const apiError = error as ApiError;
-      const message = apiError?.message ?? copy.publicCommunity.verificationStartFailed;
+      const message = getApiErrorMessage(error, copy.publicCommunity.verificationStartFailed);
       setSelfError(message);
       logger.warn("[public-community] self session failed", {
         communityId,
@@ -327,14 +326,14 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
             toast.success(copy.publicCommunity.verificationCompleted);
           })
           .catch((error: unknown) => {
-            const apiError = error as ApiError;
-            setSelfError(apiError?.message ?? copy.publicCommunity.verificationCompletionFailed);
+            const message = getApiErrorMessage(error, copy.publicCommunity.verificationCompletionFailed);
+            setSelfError(message);
             logger.warn("[public-community] self verification completion failed", {
               communityId,
-              message: apiError?.message ?? String(error),
+              message,
               verificationSessionId: pendingSession.verificationSessionId,
             });
-            toast.error(apiError?.message ?? copy.publicCommunity.verificationCompletionFailed);
+            toast.error(message);
           })
           .finally(() => {
             setSelfLoading(false);

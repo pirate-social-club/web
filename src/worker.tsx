@@ -44,6 +44,7 @@ type AppContext = {
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
 
+const CSP_HEADER = "Content-Security-Policy";
 const CSP_REPORT_ONLY_HEADER = "Content-Security-Policy-Report-Only";
 
 function buildContentSecurityPolicy(nonce: string): string {
@@ -122,7 +123,10 @@ function applyCspHeaders(headers: Headers, nonce: string): void {
   }
 
   applyFrameDenyHeader(headers);
-  headers.set(CSP_REPORT_ONLY_HEADER, buildContentSecurityPolicy(nonce));
+  headers.set(
+    import.meta.env.VITE_CSP_REPORT_ONLY === "true" ? CSP_REPORT_ONLY_HEADER : CSP_HEADER,
+    buildContentSecurityPolicy(nonce),
+  );
 }
 
 function parseThemeCookie(cookieHeader: string | null): ThemeMode {

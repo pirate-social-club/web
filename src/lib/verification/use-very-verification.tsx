@@ -5,7 +5,7 @@ import { createVeryWidget } from "@veryai/widget";
 import type { OnboardingStatus, VerificationIntent, VerificationSession } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
-import type { ApiError } from "@/lib/api/client";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { updateSessionOnboarding } from "@/lib/api/session-store";
 import { logger } from "@/lib/logger";
 import { installVeryBridgeFetchProxy } from "@/lib/verification/very-bridge-fetch-proxy";
@@ -47,8 +47,7 @@ export function useVeryVerification(input: {
     try {
       await onVerified?.(status);
     } catch (error: unknown) {
-      const apiError = error as ApiError;
-      setVerificationError(apiError?.message ?? "Post-verification step failed");
+      setVerificationError(getApiErrorMessage(error, "Post-verification step failed"));
     }
     return status;
   }, [api, onVerified]);
@@ -84,8 +83,7 @@ export function useVeryVerification(input: {
           setVerificationSessionId(null);
           setVerificationError(null);
         } catch (error: unknown) {
-          const apiError = error as ApiError;
-          setVerificationError(apiError?.message ?? "Could not complete Very verification");
+          setVerificationError(getApiErrorMessage(error, "Could not complete Very verification"));
         } finally {
           setVerificationLoading(false);
           cleanupWidget();
@@ -115,8 +113,7 @@ export function useVeryVerification(input: {
       await openVeryWidget(result);
       return { started: true };
     } catch (error: unknown) {
-      const apiError = error as ApiError;
-      setVerificationError(apiError?.message ?? (error instanceof Error ? error.message : "Could not start Very verification"));
+      setVerificationError(getApiErrorMessage(error, "Could not start Very verification"));
       setVerificationLoading(false);
       return { started: false };
     } finally {

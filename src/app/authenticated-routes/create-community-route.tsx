@@ -8,7 +8,7 @@ import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
-import type { ApiError } from "@/lib/api/client";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import type { SpacesChallengePayload } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
 import type { CreateCommunityComposerProps } from "@/components/compositions/create-community-composer/create-community-composer.types";
@@ -129,8 +129,7 @@ export function CreateCommunityPage() {
     try {
       return await createCommunityFromInput(input);
     } catch (e: unknown) {
-      const apiError = e as ApiError;
-      throw new Error(apiError?.message ?? "Community creation failed");
+      throw new Error(getApiErrorMessage(e, "Community creation failed"));
     }
   }, [connect, createCommunityFromInput, creatorVerificationState.ageOver18Verified, creatorVerificationState.uniqueHumanVerified, handleStartVeryVerification, session]);
 

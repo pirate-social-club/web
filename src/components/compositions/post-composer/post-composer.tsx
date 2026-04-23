@@ -266,31 +266,6 @@ export function PostComposer(props: PostComposerProps) {
   }, [mode, visibleTabs]);
 
   React.useEffect(() => {
-    setUncontrolledSongMode(songMode ?? "original");
-  }, [songMode]);
-
-  React.useEffect(() => {
-    setUncontrolledSongState(defaultSongState(song));
-  }, [song]);
-
-  React.useEffect(() => {
-    setUncontrolledImageUpload(imageUpload ?? null);
-  }, [imageUpload]);
-
-  React.useEffect(() => {
-    setUncontrolledMonetizationState(defaultMonetizationState(monetization));
-  }, [monetization]);
-
-  React.useEffect(() => {
-    setUncontrolledCharityContribution(defaultCharityContributionState(charityContribution));
-  }, [charityContribution]);
-
-  React.useEffect(() => {
-    setUncontrolledAudienceState(defaultAudienceState(audience));
-  }, [audience]);
-
-  React.useEffect(() => {
-    setUncontrolledDerivativeState(derivativeStep);
     setDerivativePickerKey(0);
   }, [derivativeStep]);
 

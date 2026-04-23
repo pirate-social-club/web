@@ -134,7 +134,7 @@ export type PostCardContent =
     }
   | {
       type: "embed";
-      provider: "x";
+      provider: "x" | "youtube";
       state: "pending" | "preview" | "embed" | "unavailable";
       renderMode: "preview" | "official";
       canonicalUrl: string;
@@ -149,6 +149,10 @@ export type PostCardContent =
         hasMedia?: boolean | null;
         mediaUrl?: string | null;
         createdAt?: string | null;
+        title?: string | null;
+        thumbnailUrl?: string | null;
+        thumbnailWidth?: number | null;
+        thumbnailHeight?: number | null;
       } | null;
       oembedHtml?: string | null;
     }

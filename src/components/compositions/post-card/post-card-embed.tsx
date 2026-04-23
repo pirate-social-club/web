@@ -64,19 +64,47 @@ function formatXSource(preview: EmbedContent["preview"]): string {
   return "X";
 }
 
-export function PostEmbedPreview({ content, className }: { content: EmbedContent; className?: string }) {
+function formatEmbedSource(content: EmbedContent): string {
   const preview = content.preview;
-  const unavailable = content.state === "unavailable";
-  const text = unavailable
-    ? "This X post is unavailable."
-    : preview?.text?.trim() || "X post";
+  if (content.provider === "youtube") {
+    const author = preview?.authorName?.trim();
+    if (author) return `${author} on YouTube`;
+    return "YouTube";
+  }
+
+  return formatXSource(preview);
+}
+
+function resolveEmbedText(content: EmbedContent): string {
+  if (content.state === "unavailable") {
+    return content.provider === "youtube"
+      ? "This YouTube video is unavailable."
+      : "This X post is unavailable.";
+  }
+
+  if (content.provider === "youtube") {
+    return content.preview?.title?.trim() || "YouTube video";
+  }
+
+  return content.preview?.text?.trim() || "X post";
+}
+
+function resolveEmbedImage(content: EmbedContent): string | null {
+  return content.provider === "youtube"
+    ? content.preview?.thumbnailUrl ?? null
+    : content.preview?.mediaUrl ?? null;
+}
+
+export function PostEmbedPreview({ content, className }: { content: EmbedContent; className?: string }) {
+  const text = resolveEmbedText(content);
+  const imageSrc = resolveEmbedImage(content);
 
   return (
     <div className={cn("w-full space-y-2 text-start", className)}>
       <a
         className={cn(
           "grid w-full items-stretch gap-3 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-          preview?.mediaUrl ? "grid-cols-[minmax(0,7fr)_minmax(5rem,3fr)]" : "grid-cols-1",
+          imageSrc ? "grid-cols-[minmax(0,7fr)_minmax(5rem,3fr)]" : "grid-cols-1",
         )}
         data-post-card-interactive="true"
         href={content.canonicalUrl}
@@ -87,23 +115,40 @@ export function PostEmbedPreview({ content, className }: { content: EmbedContent
               {text}
             </p>
             <div className={cn("flex min-w-0 items-center gap-1.5 text-muted-foreground", postCardType.meta)}>
-              <span className="truncate">{formatXSource(preview)}</span>
+              <span className="truncate">{formatEmbedSource(content)}</span>
               <ArrowSquareOut className="size-4 shrink-0" />
             </div>
           </div>
         </div>
-        {preview?.mediaUrl ? (
+        {imageSrc ? (
           <div className="min-h-20 overflow-hidden rounded-lg">
             <img
               alt=""
               aria-hidden="true"
               className="size-full object-cover"
-              src={preview.mediaUrl}
+              src={imageSrc}
             />
           </div>
         ) : null}
       </a>
     </div>
+  );
+}
+
+function OfficialYouTubeEmbed({ content, className }: { content: EmbedContent; className?: string }) {
+  if (content.provider !== "youtube" || content.state !== "embed" || !content.oembedHtml) {
+    return <PostEmbedPreview content={content} className={className} />;
+  }
+
+  return (
+    <div
+      className={cn(
+        "aspect-video w-full overflow-hidden rounded-lg border border-border-soft bg-black [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0",
+        className,
+      )}
+      data-post-card-interactive="true"
+      dangerouslySetInnerHTML={{ __html: content.oembedHtml }}
+    />
   );
 }
 
@@ -193,6 +238,10 @@ export function OfficialOEmbed({ content, className }: { content: EmbedContent; 
       observer?.disconnect();
     };
   }, [content.oembedHtml, content.provider, content.state]);
+
+  if (content.provider === "youtube") {
+    return <OfficialYouTubeEmbed content={content} className={className} />;
+  }
 
   if (content.state !== "embed" || !content.oembedHtml) {
     return <PostEmbedPreview content={content} className={className} />;

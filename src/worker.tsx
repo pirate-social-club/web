@@ -75,6 +75,8 @@ function buildContentSecurityPolicy(nonce: string): string {
       "https://syndication.twitter.com",
       "https://x.com",
       "https://twitter.com",
+      "https://www.youtube.com",
+      "https://www.youtube-nocookie.com",
     ].join(" "),
     [
       "connect-src",

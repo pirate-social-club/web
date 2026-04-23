@@ -178,6 +178,60 @@ export const XEmbedUnavailable: Story = {
   ),
 };
 
+export const YouTubeEmbedPreview: Story = {
+  name: "Embed / YouTube Preview",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Tour visuals worth watching"
+      content={{
+        type: "embed",
+        body: "The staging breakdown is the useful part here.",
+        canonicalUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        originalUrl: "https://youtu.be/dQw4w9WgXcQ",
+        preview: {
+          authorName: "Rick Astley",
+          authorUrl: "https://www.youtube.com/@RickAstley",
+          thumbnailHeight: 360,
+          thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+          thumbnailWidth: 480,
+          title: "Never Gonna Give You Up",
+        },
+        provider: "youtube",
+        renderMode: "preview",
+        state: "embed",
+      }}
+      engagement={{ ...basePost.engagement, score: 412, commentCount: 38 }}
+    />
+  ),
+};
+
+export const YouTubeEmbedOfficial: Story = {
+  name: "Embed / YouTube Official",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Official YouTube embed"
+      content={{
+        type: "embed",
+        body: "This should stay native in the feed and become the player on detail.",
+        canonicalUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        oembedHtml: `<iframe title="Never Gonna Give You Up" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`,
+        originalUrl: "https://youtu.be/dQw4w9WgXcQ",
+        preview: {
+          authorName: "Rick Astley",
+          thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+          title: "Never Gonna Give You Up",
+        },
+        provider: "youtube",
+        renderMode: "official",
+        state: "embed",
+      }}
+      engagement={{ ...basePost.engagement, score: 624, commentCount: 74 }}
+    />
+  ),
+};
+
 // ============================================================================
 // ENGAGEMENT STATES
 // ============================================================================

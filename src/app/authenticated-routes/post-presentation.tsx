@@ -268,6 +268,29 @@ function toCommunityPostContent(
           state: embed.state,
         };
       }
+      if (post.embeds?.[0]?.provider === "youtube") {
+        const embed = post.embeds[0];
+        return {
+          type: "embed",
+          body: resolvedBody || undefined,
+          bodyDir: translatedTextPresentation.dir,
+          bodyLang: translatedTextPresentation.lang,
+          canonicalUrl: embed.canonical_url,
+          oembedHtml: embed.oembed_html,
+          originalUrl: embed.original_url,
+          preview: {
+            authorName: embed.preview?.author_name,
+            authorUrl: embed.preview?.author_url,
+            thumbnailHeight: embed.preview?.thumbnail_height,
+            thumbnailUrl: embed.preview?.thumbnail_url,
+            thumbnailWidth: embed.preview?.thumbnail_width,
+            title: embed.preview?.title,
+          },
+          provider: "youtube",
+          renderMode: opts?.embedMode ?? "preview",
+          state: embed.state,
+        };
+      }
       return {
         type: "link",
         body: resolvedBody || undefined,

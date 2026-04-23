@@ -59,6 +59,23 @@ describe("pricing policy moderation helpers", () => {
     expect((denmarkTier?.adjustment_value ?? 0) / (indiaTier?.adjustment_value ?? 1)).toBe(10);
   });
 
+  test("starter pricing policy keeps major developed economies at full price", () => {
+    const starter = buildStarterPricingPolicyDraft();
+    const tierByKey = new Map(starter.tiers.map((tier) => [tier.tier_key, tier]));
+    const assignmentByCountry = new Map(
+      starter.countryAssignments.map((assignment) => [assignment.country_code, assignment]),
+    );
+    const fullPriceCountryCodes = [
+      "AE", "AT", "AU", "BE", "CA", "DE", "FI", "FR", "GB", "IE",
+      "IL", "JP", "KR", "KW", "NL", "NO", "NZ", "QA", "SA", "SE", "SG", "US",
+    ];
+
+    expect(fullPriceCountryCodes.every((countryCode) => {
+      const tier = tierByKey.get(assignmentByCountry.get(countryCode)?.tier_key ?? "");
+      return tier?.tier_key === "high_income" && tier.adjustment_value === 1;
+    })).toBe(true);
+  });
+
   test("starter pricing policy discounts nationality-gated local countries", () => {
     const starter = buildStarterPricingPolicyDraft({ localCountryCodes: ["ECU"] });
 

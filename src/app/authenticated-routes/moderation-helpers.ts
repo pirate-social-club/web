@@ -312,116 +312,41 @@ function isValidPricingTierKey(value: string): boolean {
   return /^[a-z0-9][a-z0-9_-]*$/u.test(value);
 }
 
-const STARTER_PRICING_TIER_BY_COUNTRY_CODE: Record<string, string> = {
-  AD: "high_income",
-  CH: "high_income",
-  DK: "high_income",
-  FO: "high_income",
-  IS: "high_income",
-  LI: "high_income",
-  LU: "high_income",
-  MC: "high_income",
-  NO: "high_income",
-  SM: "high_income",
-  US: "high_income",
+type StarterPricingTierKey = "high_income" | "standard" | "reduced" | "lower" | "lowest";
 
-  BG: "reduced",
-  CY: "reduced",
-  CZ: "reduced",
-  EE: "reduced",
-  ES: "reduced",
-  GR: "reduced",
-  HR: "reduced",
-  HU: "reduced",
-  IT: "reduced",
-  LT: "reduced",
-  LV: "reduced",
-  MT: "reduced",
-  PL: "reduced",
-  PT: "reduced",
-  RO: "reduced",
-  SI: "reduced",
-  SK: "reduced",
-
-  AL: "lower",
-  AR: "lower",
-  BA: "lower",
-  BR: "lower",
-  BW: "lower",
-  CL: "lower",
-  CN: "lower",
-  CO: "lower",
-  CR: "lower",
-  DO: "lower",
-  EC: "lower",
-  GE: "lower",
-  ID: "lower",
-  JO: "lower",
-  KZ: "lower",
-  LK: "lower",
-  MA: "lower",
-  MD: "lower",
-  ME: "lower",
-  MK: "lower",
-  MX: "lower",
-  MY: "lower",
-  PA: "lower",
-  PE: "lower",
-  RS: "lower",
-  TH: "lower",
-  TN: "lower",
-  TR: "lower",
-  UA: "lower",
-  UY: "lower",
-  XK: "lower",
-  ZA: "lower",
-
-  AF: "lowest",
-  BD: "lowest",
-  BF: "lowest",
-  BI: "lowest",
-  BJ: "lowest",
-  BO: "lowest",
-  CD: "lowest",
-  CF: "lowest",
-  CG: "lowest",
-  CI: "lowest",
-  CM: "lowest",
-  EG: "lowest",
-  ET: "lowest",
-  GH: "lowest",
-  GM: "lowest",
-  GN: "lowest",
-  GW: "lowest",
-  HT: "lowest",
-  IN: "lowest",
-  KE: "lowest",
-  KH: "lowest",
-  LA: "lowest",
-  LR: "lowest",
-  MG: "lowest",
-  ML: "lowest",
-  MM: "lowest",
-  MZ: "lowest",
-  NE: "lowest",
-  NG: "lowest",
-  NP: "lowest",
-  PH: "lowest",
-  PK: "lowest",
-  RW: "lowest",
-  SL: "lowest",
-  SN: "lowest",
-  SO: "lowest",
-  SS: "lowest",
-  TD: "lowest",
-  TG: "lowest",
-  TZ: "lowest",
-  UG: "lowest",
-  VN: "lowest",
-  YE: "lowest",
-  ZM: "lowest",
-  ZW: "lowest",
+const STARTER_PRICING_COUNTRY_CODES_BY_TIER: Record<StarterPricingTierKey, string[]> = {
+  high_income: [
+    "AD", "AE", "AG", "AI", "AQ", "AS", "AT", "AU", "AW", "AX", "BB", "BE", "BH", "BL", "BM", "BN", "BQ", "BS", "BV", "CA",
+    "CC", "CH", "CK", "CW", "CX", "CY", "DE", "DK", "FK", "FI", "FO", "FR", "GB", "GF", "GG", "GI", "GL", "GP", "GS", "GU", "HK",
+    "HM", "IE", "IL", "IM", "IO", "IS", "JE", "JP", "KR", "KW", "KY", "LI", "LU", "MC", "MF", "MO", "MP", "MQ", "MS", "NC",
+    "NF", "NL", "NO", "NU", "NZ", "OM", "PF", "PM", "PN", "PR", "QA", "RE", "SA", "SE", "SG", "SH", "SJ", "SM", "SX", "TC",
+    "TF", "TK", "TW", "UM", "US", "VA", "VG", "VI", "WF", "YT",
+  ],
+  standard: [
+    "AR", "AZ", "BG", "BR", "BW", "BY", "CL", "CN", "CR", "CZ", "DM", "EE", "ES", "GD", "GR", "HR", "HU", "IT", "KN", "KZ",
+    "LC", "LT", "LV", "MT", "MU", "MV", "MX", "MY", "PA", "PL", "PT", "RO", "RU", "SC", "SK", "SI", "TH", "TR", "TT", "UY",
+    "VC", "ZA",
+  ],
+  reduced: [
+    "AL", "AM", "BA", "BZ", "CO", "CU", "DO", "DZ", "EC", "FJ", "FM", "GA", "GE", "GQ", "GT", "GY", "ID", "IR", "IQ", "JM",
+    "JO", "LB", "LK", "LY", "MA", "MD", "ME", "MH", "MK", "MN", "NA", "NR", "PE", "PS", "PW", "PY", "RS", "SB", "SR", "SV",
+    "TN", "TM", "TO", "UA", "UZ", "VE", "VU", "WS", "XK",
+  ],
+  lower: [
+    "AO", "BO", "BT", "CV", "DJ", "HN", "KG", "KI", "LS", "MR", "NI", "PG", "SZ", "TJ", "TL", "TV",
+  ],
+  lowest: [
+    "AF", "BD", "BF", "BI", "BJ", "CD", "CF", "CG", "CI", "CM", "EG", "EH", "ER", "ET", "GH", "GM", "GN", "GW", "HT", "IN",
+    "KE", "KH", "KM", "KP", "LA", "LR", "MG", "ML", "MM", "MW", "MZ", "NE", "NG", "NP", "PH", "PK", "RW", "SD", "SL", "SN",
+    "SO", "SS", "ST", "SY", "TD", "TG", "TZ", "UG", "VN", "YE", "ZM", "ZW",
+  ],
 };
+
+const STARTER_PRICING_TIER_BY_COUNTRY_CODE = Object.fromEntries(
+  Object.entries(STARTER_PRICING_COUNTRY_CODES_BY_TIER).flatMap(([tierKey, countryCodes]) =>
+    countryCodes.map((countryCode) => [countryCode, tierKey]),
+  ),
+) as Record<string, StarterPricingTierKey | undefined>;
 
 export function validatePricingPolicyDraft(input: {
   countryAssignments: PricingCountryAssignment[];
@@ -477,10 +402,16 @@ export function buildStarterPricingPolicyDraft(input: {
       .map((code) => normalizeCountryCode(code)?.alpha2)
       .filter((code): code is string => Boolean(code)),
   ));
-  const baseCountryAssignments: PricingCountryAssignment[] = COUNTRIES.map((country) => ({
-    country_code: country.code,
-    tier_key: STARTER_PRICING_TIER_BY_COUNTRY_CODE[country.code] ?? "standard",
-  }));
+  const baseCountryAssignments: PricingCountryAssignment[] = COUNTRIES.map((country) => {
+    const tierKey = STARTER_PRICING_TIER_BY_COUNTRY_CODE[country.code];
+    if (!tierKey) {
+      throw new Error(`Missing starter pricing tier for ${country.code}.`);
+    }
+    return {
+      country_code: country.code,
+      tier_key: tierKey,
+    };
+  });
   const tiers: PricingTier[] = [
     { id: "starter-high_income", tier_key: "high_income", display_name: "High income", adjustment_type: "multiplier", adjustment_value: 1 },
     { id: "starter-standard", tier_key: "standard", display_name: "Standard", adjustment_type: "multiplier", adjustment_value: 0.65 },

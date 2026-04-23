@@ -18,6 +18,168 @@ declare global {
 }
 
 let xWidgetsLoadPromise: Promise<void> | null = null;
+const YOUTUBE_EMBED_HOSTS = new Set(["www.youtube.com", "www.youtube-nocookie.com"]);
+const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:"]);
+const YOUTUBE_IFRAME_ALLOW = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+
+type SafeYouTubeEmbed = {
+  src: string;
+  title: string;
+};
+
+function decodeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&amp;/gu, "&")
+    .replace(/&quot;/gu, "\"")
+    .replace(/&#39;|&apos;/gu, "'")
+    .replace(/&lt;/gu, "<")
+    .replace(/&gt;/gu, ">");
+}
+
+function extractHtmlAttribute(html: string, tagName: string, attributeName: string): string | null {
+  const tagMatch = new RegExp(`<${tagName}\\b[^>]*>`, "iu").exec(html);
+  const tag = tagMatch?.[0];
+  if (!tag) return null;
+
+  const attributeMatch = new RegExp(`\\s${attributeName}\\s*=\\s*("([^"]*)"|'([^']*)')`, "iu").exec(tag);
+  const value = attributeMatch?.[2] ?? attributeMatch?.[3];
+  return typeof value === "string" ? decodeHtmlAttribute(value) : null;
+}
+
+function resolveSafeYouTubeSrc(value: string | null): string | null {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value, "https://www.youtube.com");
+    if (
+      url.protocol !== "https:"
+      || url.username
+      || url.password
+      || !YOUTUBE_EMBED_HOSTS.has(url.hostname)
+      || !url.pathname.startsWith("/embed/")
+    ) {
+      return null;
+    }
+
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+export function resolveSafeYouTubeEmbed(oembedHtml: string): SafeYouTubeEmbed | null {
+  if (typeof DOMParser !== "undefined") {
+    const document = new DOMParser().parseFromString(oembedHtml, "text/html");
+    const iframe = document.body.querySelector("iframe");
+    const src = resolveSafeYouTubeSrc(iframe?.getAttribute("src") ?? null);
+    if (!src) return null;
+
+    const title = iframe?.getAttribute("title")?.trim();
+    return {
+      src,
+      title: title || "YouTube video",
+    };
+  }
+
+  const src = resolveSafeYouTubeSrc(extractHtmlAttribute(oembedHtml, "iframe", "src"));
+  if (!src) return null;
+
+  return {
+    src,
+    title: extractHtmlAttribute(oembedHtml, "iframe", "title")?.trim() || "YouTube video",
+  };
+}
+
+function isSafeLinkHref(value: string | null): string | null {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    return SAFE_LINK_PROTOCOLS.has(url.protocol) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeXNode(node: Node, document: Document): Node | null {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return document.createTextNode(node.textContent ?? "");
+  }
+
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return null;
+  }
+
+  const element = node as Element;
+  const tagName = element.tagName.toLowerCase();
+  if (tagName === "br") {
+    return document.createElement("br");
+  }
+
+  if (tagName === "p") {
+    const paragraph = document.createElement("p");
+    const dir = element.getAttribute("dir");
+    const lang = element.getAttribute("lang");
+    if (dir === "ltr" || dir === "rtl" || dir === "auto") {
+      paragraph.setAttribute("dir", dir);
+    }
+    if (lang?.trim()) {
+      paragraph.setAttribute("lang", lang.trim().slice(0, 35));
+    }
+    for (const child of Array.from(element.childNodes)) {
+      const sanitized = sanitizeXNode(child, document);
+      if (sanitized) paragraph.append(sanitized);
+    }
+    return paragraph;
+  }
+
+  if (tagName === "a") {
+    const href = isSafeLinkHref(element.getAttribute("href"));
+    if (!href) return document.createTextNode(element.textContent ?? "");
+
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    for (const child of Array.from(element.childNodes)) {
+      const sanitized = sanitizeXNode(child, document);
+      if (sanitized) anchor.append(sanitized);
+    }
+    if (!anchor.textContent?.trim()) {
+      anchor.textContent = href;
+    }
+    return anchor;
+  }
+
+  const fragment = document.createDocumentFragment();
+  for (const child of Array.from(element.childNodes)) {
+    const sanitized = sanitizeXNode(child, document);
+    if (sanitized) fragment.append(sanitized);
+  }
+  return fragment;
+}
+
+export function sanitizeXEmbedHtml(oembedHtml: string): string | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const template = document.createElement("template");
+  template.innerHTML = oembedHtml;
+  const sourceBlockquote = template.content.querySelector("blockquote.twitter-tweet");
+  if (!sourceBlockquote) {
+    return null;
+  }
+
+  const safeDocument = document.implementation?.createHTMLDocument("") ?? document;
+  const blockquote = safeDocument.createElement("blockquote");
+  blockquote.className = "twitter-tweet";
+
+  for (const child of Array.from(sourceBlockquote.childNodes)) {
+    const sanitized = sanitizeXNode(child, safeDocument);
+    if (sanitized) blockquote.append(sanitized);
+  }
+
+  return blockquote.textContent?.trim() ? blockquote.outerHTML : null;
+}
 
 function ensureXWidgetsScript(): Promise<void> {
   if (typeof window === "undefined") {
@@ -139,6 +301,10 @@ function OfficialYouTubeEmbed({ content, className }: { content: EmbedContent; c
   if (content.provider !== "youtube" || content.state !== "embed" || !content.oembedHtml) {
     return <PostEmbedPreview content={content} className={className} />;
   }
+  const embed = resolveSafeYouTubeEmbed(content.oembedHtml);
+  if (!embed) {
+    return <PostEmbedPreview content={content} className={className} />;
+  }
 
   return (
     <div
@@ -147,8 +313,16 @@ function OfficialYouTubeEmbed({ content, className }: { content: EmbedContent; c
         className,
       )}
       data-post-card-interactive="true"
-      dangerouslySetInnerHTML={{ __html: content.oembedHtml }}
-    />
+    >
+      <iframe
+        allow={YOUTUBE_IFRAME_ALLOW}
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="strict-origin-when-cross-origin"
+        src={embed.src}
+        title={embed.title}
+      />
+    </div>
   );
 }
 
@@ -169,7 +343,13 @@ export function OfficialOEmbed({ content, className }: { content: EmbedContent; 
     if (!container) {
       return;
     }
-    container.innerHTML = content.oembedHtml;
+    const sanitizedHtml = sanitizeXEmbedHtml(content.oembedHtml);
+    if (!sanitizedHtml) {
+      setFailed(true);
+      return;
+    }
+
+    container.innerHTML = sanitizedHtml;
     const blockquote = container.querySelector<HTMLElement>("blockquote.twitter-tweet");
     blockquote?.setAttribute("data-dnt", "true");
     blockquote?.setAttribute("data-theme", "dark");

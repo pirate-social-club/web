@@ -297,6 +297,7 @@ describe("useCommunityCommerceState", () => {
       result.current.setVerificationProviderRequirement("self");
       result.current.setDefaultTierKey("tier_1");
       result.current.setPricingTiers([{
+        id: "test-tier",
         tier_key: " tier_1 ",
         display_name: " Tier 1 ",
         adjustment_type: "multiplier",

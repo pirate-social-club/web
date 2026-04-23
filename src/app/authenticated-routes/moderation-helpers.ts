@@ -292,8 +292,9 @@ export function getPreservedCommunityGateRules(community: ApiCommunity): Seriali
 
 export function getPricingTierDrafts(policy: ApiCommunityPricingPolicy | null): PricingTier[] {
   return policy?.tiers.map((tier) => ({
+    id: `tier-${tier.tier_key}`,
     tier_key: tier.tier_key,
-    display_name: tier.display_name ?? null,
+    display_name: tier.display_name ?? "",
     adjustment_type: tier.adjustment_type,
     adjustment_value: tier.adjustment_value,
   })) ?? [];
@@ -317,25 +318,34 @@ export function validatePricingPolicyDraft(input: {
   tiers: PricingTier[];
 }): string | null {
   if (!input.regionalPricingEnabled) return null;
-  if (input.tiers.length === 0) return "Add at least one pricing tier.";
+  if (input.tiers.length === 0) return "Add at least one price group.";
 
+  const seenNames = new Set<string>();
   const seenTierKeys = new Set<string>();
   for (const tier of input.tiers) {
+    const name = tier.display_name.trim();
+    if (!name) return "Each price group needs a name.";
+    if (seenNames.has(name.toLowerCase())) return "Group names must be unique.";
+    seenNames.add(name.toLowerCase());
+
     const tierKey = tier.tier_key.trim();
-    if (!tierKey) return "Each pricing tier needs a key.";
-    if (!isValidPricingTierKey(tierKey)) return "Tier keys must use lowercase letters, numbers, hyphens, or underscores.";
-    if (seenTierKeys.has(tierKey)) return "Tier keys must be unique.";
-    if (!(tier.adjustment_value > 0)) return "Tier adjustments must be greater than zero.";
+    if (!tierKey) return "Each price group needs a key.";
+    if (!isValidPricingTierKey(tierKey)) return "Group keys must use lowercase letters, numbers, hyphens, or underscores.";
+    if (seenTierKeys.has(tierKey)) return "Group keys must be unique.";
+    if (!(tier.adjustment_value > 0)) return "Price adjustments must be greater than zero.";
     seenTierKeys.add(tierKey);
   }
 
-  if (!input.defaultTierKey || !seenTierKeys.has(input.defaultTierKey)) return "Choose a default tier.";
+  if (!input.defaultTierKey || !seenTierKeys.has(input.defaultTierKey)) return "Choose a default group.";
 
+  const seenCountryCodes = new Set<string>();
   for (const assignment of input.countryAssignments) {
-    const countryCode = assignment.country_code.trim();
-    if (!countryCode) return "Each country assignment needs a country code.";
-    if (!/^[A-Z]{2}$/u.test(countryCode)) return "Country codes must use two uppercase letters.";
-    if (!seenTierKeys.has(assignment.tier_key)) return "Each country assignment must point to an existing tier.";
+    const countryCode = assignment.country_code.trim().toUpperCase();
+    if (!countryCode) return "Each country assignment needs a country.";
+    if (!/^[A-Z]{2}$/u.test(countryCode)) return "Invalid country code.";
+    if (seenCountryCodes.has(countryCode)) return "Each country can only be assigned to one price group.";
+    if (!seenTierKeys.has(assignment.tier_key.trim())) return "Each country must belong to a group.";
+    seenCountryCodes.add(countryCode);
   }
 
   return null;
@@ -350,33 +360,33 @@ export function buildStarterPricingPolicyDraft(): {
 } {
   return {
     countryAssignments: [
-      { country_code: "DK", tier_key: "tier_1" }, { country_code: "NO", tier_key: "tier_1" }, { country_code: "CH", tier_key: "tier_1" },
-      { country_code: "LU", tier_key: "tier_1" }, { country_code: "IS", tier_key: "tier_1" }, { country_code: "US", tier_key: "tier_2" },
-      { country_code: "CA", tier_key: "tier_2" }, { country_code: "AU", tier_key: "tier_2" }, { country_code: "NZ", tier_key: "tier_2" },
-      { country_code: "GB", tier_key: "tier_2" }, { country_code: "IE", tier_key: "tier_2" }, { country_code: "DE", tier_key: "tier_2" },
-      { country_code: "AT", tier_key: "tier_2" }, { country_code: "BE", tier_key: "tier_2" }, { country_code: "NL", tier_key: "tier_2" },
-      { country_code: "SE", tier_key: "tier_2" }, { country_code: "FI", tier_key: "tier_2" }, { country_code: "FR", tier_key: "tier_3" },
-      { country_code: "IT", tier_key: "tier_3" }, { country_code: "ES", tier_key: "tier_3" }, { country_code: "PT", tier_key: "tier_3" },
-      { country_code: "GR", tier_key: "tier_3" }, { country_code: "CY", tier_key: "tier_3" }, { country_code: "SI", tier_key: "tier_3" },
-      { country_code: "EE", tier_key: "tier_3" }, { country_code: "LT", tier_key: "tier_3" }, { country_code: "LV", tier_key: "tier_3" },
-      { country_code: "CZ", tier_key: "tier_3" }, { country_code: "SK", tier_key: "tier_3" }, { country_code: "MT", tier_key: "tier_3" },
-      { country_code: "PL", tier_key: "tier_4" }, { country_code: "HU", tier_key: "tier_4" }, { country_code: "HR", tier_key: "tier_4" },
-      { country_code: "RO", tier_key: "tier_4" }, { country_code: "BG", tier_key: "tier_4" }, { country_code: "TR", tier_key: "tier_4" },
-      { country_code: "BR", tier_key: "tier_4" }, { country_code: "MX", tier_key: "tier_4" }, { country_code: "CL", tier_key: "tier_4" },
-      { country_code: "CR", tier_key: "tier_4" }, { country_code: "ZA", tier_key: "tier_4" }, { country_code: "MY", tier_key: "tier_4" },
-      { country_code: "TH", tier_key: "tier_4" }, { country_code: "IN", tier_key: "tier_5" }, { country_code: "ID", tier_key: "tier_5" },
-      { country_code: "PH", tier_key: "tier_5" }, { country_code: "VN", tier_key: "tier_5" }, { country_code: "NG", tier_key: "tier_5" },
-      { country_code: "PK", tier_key: "tier_5" }, { country_code: "EG", tier_key: "tier_5" }, { country_code: "MA", tier_key: "tier_5" },
-      { country_code: "AR", tier_key: "tier_5" }, { country_code: "CO", tier_key: "tier_5" }, { country_code: "PE", tier_key: "tier_5" },
+      { country_code: "DK", tier_key: "high_income" }, { country_code: "NO", tier_key: "high_income" }, { country_code: "CH", tier_key: "high_income" },
+      { country_code: "LU", tier_key: "high_income" }, { country_code: "IS", tier_key: "high_income" }, { country_code: "US", tier_key: "standard" },
+      { country_code: "CA", tier_key: "standard" }, { country_code: "AU", tier_key: "standard" }, { country_code: "NZ", tier_key: "standard" },
+      { country_code: "GB", tier_key: "standard" }, { country_code: "IE", tier_key: "standard" }, { country_code: "DE", tier_key: "standard" },
+      { country_code: "AT", tier_key: "standard" }, { country_code: "BE", tier_key: "standard" }, { country_code: "NL", tier_key: "standard" },
+      { country_code: "SE", tier_key: "standard" }, { country_code: "FI", tier_key: "standard" }, { country_code: "FR", tier_key: "reduced" },
+      { country_code: "IT", tier_key: "reduced" }, { country_code: "ES", tier_key: "reduced" }, { country_code: "PT", tier_key: "reduced" },
+      { country_code: "GR", tier_key: "reduced" }, { country_code: "CY", tier_key: "reduced" }, { country_code: "SI", tier_key: "reduced" },
+      { country_code: "EE", tier_key: "reduced" }, { country_code: "LT", tier_key: "reduced" }, { country_code: "LV", tier_key: "reduced" },
+      { country_code: "CZ", tier_key: "reduced" }, { country_code: "SK", tier_key: "reduced" }, { country_code: "MT", tier_key: "reduced" },
+      { country_code: "PL", tier_key: "lower" }, { country_code: "HU", tier_key: "lower" }, { country_code: "HR", tier_key: "lower" },
+      { country_code: "RO", tier_key: "lower" }, { country_code: "BG", tier_key: "lower" }, { country_code: "TR", tier_key: "lower" },
+      { country_code: "BR", tier_key: "lower" }, { country_code: "MX", tier_key: "lower" }, { country_code: "CL", tier_key: "lower" },
+      { country_code: "CR", tier_key: "lower" }, { country_code: "ZA", tier_key: "lower" }, { country_code: "MY", tier_key: "lower" },
+      { country_code: "TH", tier_key: "lower" }, { country_code: "IN", tier_key: "lowest" }, { country_code: "ID", tier_key: "lowest" },
+      { country_code: "PH", tier_key: "lowest" }, { country_code: "VN", tier_key: "lowest" }, { country_code: "NG", tier_key: "lowest" },
+      { country_code: "PK", tier_key: "lowest" }, { country_code: "EG", tier_key: "lowest" }, { country_code: "MA", tier_key: "lowest" },
+      { country_code: "AR", tier_key: "lowest" }, { country_code: "CO", tier_key: "lowest" }, { country_code: "PE", tier_key: "lowest" },
     ],
-    defaultTierKey: "tier_2",
+    defaultTierKey: "standard",
     regionalPricingEnabled: true,
     tiers: [
-      { tier_key: "tier_1", display_name: "Tier 1", adjustment_type: "multiplier", adjustment_value: 1.15 },
-      { tier_key: "tier_2", display_name: "Tier 2", adjustment_type: "multiplier", adjustment_value: 1 },
-      { tier_key: "tier_3", display_name: "Tier 3", adjustment_type: "multiplier", adjustment_value: 0.85 },
-      { tier_key: "tier_4", display_name: "Tier 4", adjustment_type: "multiplier", adjustment_value: 0.7 },
-      { tier_key: "tier_5", display_name: "Tier 5", adjustment_type: "multiplier", adjustment_value: 0.55 },
+      { id: "starter-high_income", tier_key: "high_income", display_name: "High income", adjustment_type: "multiplier", adjustment_value: 1.15 },
+      { id: "starter-standard", tier_key: "standard", display_name: "Standard", adjustment_type: "multiplier", adjustment_value: 1 },
+      { id: "starter-reduced", tier_key: "reduced", display_name: "Reduced", adjustment_type: "multiplier", adjustment_value: 0.85 },
+      { id: "starter-lower", tier_key: "lower", display_name: "Lower", adjustment_type: "multiplier", adjustment_value: 0.7 },
+      { id: "starter-lowest", tier_key: "lowest", display_name: "Lowest", adjustment_type: "multiplier", adjustment_value: 0.55 },
     ],
     verificationProviderRequirement: "self" as const,
   };

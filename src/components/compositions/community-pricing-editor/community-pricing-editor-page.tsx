@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Minus, Plus, Trash } from "@phosphor-icons/react";
+import { Plus, Trash, X } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
 import { CommunityModerationSaveFooter } from "@/components/compositions/community-moderation-shell/community-moderation-save-footer";
@@ -20,12 +20,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/primitives/select";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxTrigger,
+} from "@/components/primitives/combobox";
 import { cn } from "@/lib/utils";
+import { COUNTRIES, getCountryName } from "@/lib/countries";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 export type PricingTier = {
+  id: string;
   tier_key: string;
-  display_name?: string | null;
+  display_name: string;
   adjustment_type: "multiplier";
   adjustment_value: number;
 };
@@ -55,10 +66,173 @@ export interface CommunityPricingEditorPageProps {
 }
 
 function formatTierLabel(tier: PricingTier): string {
-  return tier.display_name?.trim() || tier.tier_key;
+  return tier.display_name.trim() || "Untitled group";
 }
 
+function adjustmentToPercent(value: number): number {
+  return Math.round((value - 1) * 100);
+}
 
+function percentToAdjustment(value: number): number {
+  return 1 + value / 100;
+}
+
+function generateTierKey(name: string, existingKeys: string[]): string {
+  let base = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (!base) base = "group";
+  let key = base;
+  let counter = 1;
+  while (existingKeys.includes(key)) {
+    key = `${base}_${counter}`;
+    counter++;
+  }
+  return key;
+}
+
+function getCountryCodeFromComboboxValue(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value && typeof value === "object" && "code" in value) {
+    const code = (value as { code?: unknown }).code;
+    return typeof code === "string" ? code : "";
+  }
+  return "";
+}
+
+function CountryPicker({
+  excludedCodes,
+  onSelect,
+}: {
+  excludedCodes: string[];
+  onSelect: (code: string) => void;
+}) {
+  const available = React.useMemo(() => {
+    const excluded = new Set(excludedCodes.map((c) => c.trim().toUpperCase()));
+    return COUNTRIES.filter((c) => !excluded.has(c.code));
+  }, [excludedCodes]);
+
+  return (
+    <Combobox items={available} onValueChange={(value) => onSelect(getCountryCodeFromComboboxValue(value))}>
+      <ComboboxTrigger className="h-10 w-full sm:max-w-xs">
+        <span className="text-muted-foreground">Add country…</span>
+      </ComboboxTrigger>
+      <ComboboxContent>
+        <ComboboxInput placeholder="Search country" />
+        <ComboboxEmpty>No countries found.</ComboboxEmpty>
+        <ComboboxList>
+          {(country) => (
+            <ComboboxItem key={country.code} value={country.code}>
+              {country.name}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
+}
+
+function TierRow({
+  tier,
+  isDefault,
+  assignedCountries,
+  excludedCountryCodes,
+  onRemove,
+  onUpdate,
+  onAddCountry,
+  onRemoveCountry,
+}: {
+  tier: PricingTier;
+  isDefault: boolean;
+  assignedCountries: { code: string; name: string }[];
+  excludedCountryCodes: string[];
+  onRemove?: () => void;
+  onUpdate?: (patch: Partial<PricingTier>) => void;
+  onAddCountry?: (countryCode: string) => void;
+  onRemoveCountry?: (countryCode: string) => void;
+}) {
+  const { copy } = useRouteMessages();
+  const mc = copy.moderation.pricing;
+
+  return (
+    <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
+      <div className="grid flex-1 gap-3 md:grid-cols-3">
+        <div>
+          <FormFieldLabel label={mc.groupNameLabel} />
+          <Input
+            className="h-10"
+            onChange={(event) => onUpdate?.({ display_name: event.target.value })}
+            placeholder={mc.groupNamePlaceholder}
+            value={tier.display_name}
+          />
+        </div>
+        <div>
+          <FormFieldLabel label={mc.priceAdjustmentLabel} />
+          <div className="relative">
+            <Input
+              className="h-10 pr-8"
+              inputMode="numeric"
+              onChange={(event) => {
+                const parsed = parseInt(event.target.value, 10);
+                if (!Number.isNaN(parsed)) {
+                  onUpdate?.({ adjustment_value: percentToAdjustment(parsed) });
+                }
+              }}
+              placeholder={mc.priceAdjustmentPlaceholder}
+              type="number"
+              value={adjustmentToPercent(tier.adjustment_value)}
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              %
+            </span>
+          </div>
+        </div>
+        <div className="flex items-end justify-end">
+          <Button
+            className="size-10 shrink-0"
+            disabled={isDefault}
+            onClick={onRemove}
+            size="icon"
+            variant="secondary"
+          >
+            <Trash className="size-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div>
+        <FormFieldLabel label={mc.countriesLabel} />
+        {assignedCountries.length > 0 ? (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {assignedCountries.map((country) => (
+              <span
+                key={country.code}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-muted px-3 py-1.5 text-base"
+              >
+                {country.name}
+                <button
+                  className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                  onClick={() => onRemoveCountry?.(country.code)}
+                  type="button"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <CountryPicker
+          excludedCodes={excludedCountryCodes}
+          onSelect={(code) => onAddCountry?.(code)}
+        />
+      </div>
+    </div>
+  );
+}
 
 export function CommunityPricingEditorPage({
   className,
@@ -81,130 +255,76 @@ export function CommunityPricingEditorPage({
   const { copy } = useRouteMessages();
   const mc = copy.moderation.pricing;
 
-  function TierRow({
-    tier,
-    isDefault,
-    onRemove,
-    onUpdate,
-  }: {
-    tier: PricingTier;
-    isDefault: boolean;
-    onRemove?: () => void;
-    onUpdate?: (patch: Partial<PricingTier>) => void;
-  }) {
-    return (
-      <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3 md:flex-row md:items-start">
-        <div className="grid flex-1 gap-3 md:grid-cols-4">
-          <div>
-            <FormFieldLabel label={mc.tierNameLabel} />
-            <Input
-              className="h-10"
-              onChange={(event) => onUpdate?.({ display_name: event.target.value })}
-              placeholder={mc.tierNamePlaceholder}
-              value={tier.display_name ?? ""}
-            />
-          </div>
-          <div>
-            <FormFieldLabel label={mc.internalKeyLabel} />
-            <Input
-              className="h-10"
-              disabled={isDefault}
-              onChange={(event) => onUpdate?.({ tier_key: event.target.value })}
-              placeholder={mc.internalKeyPlaceholder}
-              value={tier.tier_key}
-            />
-          </div>
-          <div>
-            <FormFieldLabel label={mc.multiplierLabel} />
-            <Input
-              className="h-10"
-              inputMode="decimal"
-              onChange={(event) => {
-                const parsed = parseFloat(event.target.value);
-                if (!Number.isNaN(parsed)) {
-                  onUpdate?.({ adjustment_value: parsed });
-                }
-              }}
-              placeholder={mc.multiplierPlaceholder}
-              value={tier.adjustment_value || ""}
-            />
-          </div>
-          <div />
-        </div>
-        <Button
-          className="size-10 shrink-0 self-end md:mt-5"
-          disabled={isDefault}
-          onClick={onRemove}
-          size="icon"
-          variant="secondary"
-        >
-          <Trash className="size-4" />
-        </Button>
-      </div>
-    );
+  const assignedByTier = React.useMemo(() => {
+    const map = new Map<string, { code: string; name: string }[]>();
+    for (const tier of tiers) {
+      map.set(tier.tier_key, []);
+    }
+    for (const assignment of countryAssignments) {
+      const list = map.get(assignment.tier_key) ?? [];
+      const countryCode = assignment.country_code.trim().toUpperCase();
+      const name = getCountryName(countryCode);
+      if (name) {
+        list.push({ code: countryCode, name });
+      }
+      map.set(assignment.tier_key, list);
+    }
+    return map;
+  }, [tiers, countryAssignments]);
+  const assignedCountryCodes = React.useMemo(
+    () => countryAssignments.map((assignment) => assignment.country_code.trim().toUpperCase()),
+    [countryAssignments],
+  );
+
+  function handleAddCountry(tierKey: string, countryCode: string) {
+    const normalizedCountryCode = countryCode.trim().toUpperCase();
+    if (
+      !normalizedCountryCode
+      || countryAssignments.some(
+        (assignment) => assignment.country_code.trim().toUpperCase() === normalizedCountryCode,
+      )
+    ) {
+      return;
+    }
+    onCountryAssignmentsChange?.([
+      ...countryAssignments,
+      { country_code: normalizedCountryCode, tier_key: tierKey },
+    ]);
   }
 
-  function CountryRow({
-    assignment,
-    tiers,
-    onUpdate,
-    onRemove,
-  }: {
-    assignment: CountryAssignment;
-    tiers: PricingTier[];
-    onUpdate?: (patch: Partial<CountryAssignment>) => void;
-    onRemove?: () => void;
-  }) {
-    return (
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="w-full sm:w-20">
-          <Input
-            className="h-10 uppercase"
-            maxLength={2}
-            onChange={(event) =>
-              onUpdate?.({ country_code: event.target.value.toUpperCase() })
-            }
-            placeholder={mc.countryCodePlaceholder}
-            value={assignment.country_code}
-          />
-        </div>
-        <Select
-          onValueChange={(value) => onUpdate?.({ tier_key: value })}
-          value={assignment.tier_key}
-        >
-          <SelectTrigger className="h-10 w-full flex-1">
-            <SelectValue placeholder={mc.selectTierPlaceholder} />
-          </SelectTrigger>
-          <SelectContent>
-            {tiers.map((tier) => (
-              <SelectItem key={tier.tier_key} value={tier.tier_key}>
-                {formatTierLabel(tier)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          className="size-10 shrink-0 self-end sm:self-auto"
-          onClick={onRemove}
-          size="icon"
-          variant="secondary"
-        >
-          <Minus className="size-4" />
-        </Button>
-      </div>
+  function handleRemoveCountry(tierKey: string, countryCode: string) {
+    const normalizedCountryCode = countryCode.trim().toUpperCase();
+    onCountryAssignmentsChange?.(
+      countryAssignments.filter(
+        (a) =>
+          !(
+            a.tier_key === tierKey
+            && a.country_code.trim().toUpperCase() === normalizedCountryCode
+          ),
+      ),
     );
   }
-  const tierKeys = tiers.map((t) => t.tier_key);
 
   return (
-    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
+    <section
+      className={cn(
+        "mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8",
+        className,
+      )}
+    >
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
+          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">
+            {mc.title}
+          </h1>
         </div>
         {onUseStarterTemplate ? (
-          <Button className="w-full sm:w-auto" onClick={onUseStarterTemplate} variant="secondary">
-            Load starter template
+          <Button
+            className="w-full sm:w-auto"
+            onClick={onUseStarterTemplate}
+            variant="secondary"
+          >
+            {mc.loadStarterTemplate}
           </Button>
         ) : null}
       </div>
@@ -216,12 +336,16 @@ export function CommunityPricingEditorPage({
           checked={regionalPricingEnabled}
           className="mt-0.5"
           id="regional-pricing-enabled"
-          onCheckedChange={(next) => onRegionalPricingEnabledChange?.(next === true)}
+          onCheckedChange={(next) =>
+            onRegionalPricingEnabledChange?.(next === true)
+          }
         />
         <div className="space-y-1">
-          <Label htmlFor="regional-pricing-enabled">{mc.regionalPricingLabel}</Label>
+          <Label htmlFor="regional-pricing-enabled">
+            {mc.regionalPricingLabel}
+          </Label>
           <div className="text-base text-muted-foreground">
-            Buyers without verified nationality pay the default price.
+            {mc.regionalPricingDescription}
           </div>
         </div>
       </div>
@@ -232,7 +356,9 @@ export function CommunityPricingEditorPage({
             <FormSectionHeading title={mc.verificationTitle} />
             <Select
               onValueChange={(value) =>
-                onVerificationProviderRequirementChange?.(value === "self" ? "self" : null)
+                onVerificationProviderRequirementChange?.(
+                  value === "self" ? "self" : null,
+                )
               }
               value={verificationProviderRequirement ?? "self"}
             >
@@ -246,19 +372,25 @@ export function CommunityPricingEditorPage({
           </div>
 
           <div className="space-y-4">
-            <FormSectionHeading
-              title={mc.tiersTitle}
-            />
-            {tiers.map((tier, index) => (
+            <FormSectionHeading title={mc.priceGroupsTitle} />
+            {tiers.map((tier) => (
               <TierRow
+                assignedCountries={assignedByTier.get(tier.tier_key) ?? []}
+                excludedCountryCodes={assignedCountryCodes}
                 isDefault={tier.tier_key === defaultTierKey}
-                key={tier.tier_key || index}
+                key={tier.id}
+                onAddCountry={(code) => handleAddCountry(tier.tier_key, code)}
                 onRemove={() =>
-                  onTiersChange?.(tiers.filter((_, i) => i !== index))
+                  onTiersChange?.(tiers.filter((t) => t.id !== tier.id))
+                }
+                onRemoveCountry={(code) =>
+                  handleRemoveCountry(tier.tier_key, code)
                 }
                 onUpdate={(patch) =>
                   onTiersChange?.(
-                    tiers.map((t, i) => (i === index ? { ...t, ...patch } : t)),
+                    tiers.map((t) =>
+                      t.id === tier.id ? { ...t, ...patch } : t,
+                    ),
                   )
                 }
                 tier={tier}
@@ -266,28 +398,26 @@ export function CommunityPricingEditorPage({
             ))}
             <Button
               className="w-full sm:w-auto"
-              onClick={() =>
-                onTiersChange?.([
-                  ...tiers,
-                  {
-                    tier_key: `tier_${tiers.length + 1}`,
-                    display_name: `Tier ${tiers.length + 1}`,
-                    adjustment_type: "multiplier",
-                    adjustment_value: 0.5,
-                  },
-                ])
-              }
+              onClick={() => {
+                const existingKeys = tiers.map((t) => t.tier_key);
+                const newTier: PricingTier = {
+                  id: Math.random().toString(36).slice(2),
+                  tier_key: generateTierKey("New group", existingKeys),
+                  display_name: "",
+                  adjustment_type: "multiplier",
+                  adjustment_value: 1,
+                };
+                onTiersChange?.([...tiers, newTier]);
+              }}
               variant="secondary"
             >
               <Plus className="me-2 size-4" />
-              Add tier
+              {mc.addPriceGroup}
             </Button>
           </div>
 
           <div className="space-y-4">
-            <FormSectionHeading
-              title={mc.defaultTierTitle}
-            />
+            <FormSectionHeading title={mc.defaultTierTitle} />
             <Select
               onValueChange={onDefaultTierKeyChange}
               value={defaultTierKey ?? undefined}
@@ -297,7 +427,7 @@ export function CommunityPricingEditorPage({
               </SelectTrigger>
               <SelectContent>
                 {tiers.map((tier) => (
-                  <SelectItem key={tier.tier_key} value={tier.tier_key}>
+                  <SelectItem key={tier.id} value={tier.tier_key}>
                     {formatTierLabel(tier)}
                   </SelectItem>
                 ))}
@@ -305,50 +435,8 @@ export function CommunityPricingEditorPage({
             </Select>
           </div>
 
-          <div className="space-y-4">
-            <FormSectionHeading
-              title={mc.countryAssignmentsTitle}
-            />
-            {countryAssignments.map((assignment, index) => (
-              <CountryRow
-                assignment={assignment}
-                key={`${assignment.country_code}-${index}`}
-                onRemove={() =>
-                  onCountryAssignmentsChange?.(
-                    countryAssignments.filter((_, i) => i !== index),
-                  )
-                }
-                onUpdate={(patch) =>
-                  onCountryAssignmentsChange?.(
-                    countryAssignments.map((a, i) =>
-                      i === index ? { ...a, ...patch } : a,
-                    ),
-                  )
-                }
-                tiers={tiers}
-              />
-            ))}
-            <Button
-              className="w-full sm:w-auto"
-              onClick={() =>
-                onCountryAssignmentsChange?.([
-                  ...countryAssignments,
-                  { country_code: "", tier_key: defaultTierKey || tierKeys[0] || "" },
-                ])
-              }
-              variant="secondary"
-            >
-              <Plus className="me-2 size-4" />
-              Add country
-            </Button>
-          </div>
-
-          <FormNote tone="muted">
-            The starter template uses broad regional bands with Denmark in the highest tier. Review every tier before saving.
-          </FormNote>
-          <FormNote tone="muted">
-            Enabling regional pricing affects new listings only. Existing listings keep their current setting.
-          </FormNote>
+          <FormNote tone="muted">{mc.starterTemplateNote}</FormNote>
+          <FormNote tone="muted">{mc.existingListingsNote}</FormNote>
         </>
       ) : null}
 

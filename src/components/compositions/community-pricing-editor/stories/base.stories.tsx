@@ -17,20 +17,20 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const defaultTiers: PricingTier[] = [
-  { tier_key: "default", display_name: "Default", adjustment_type: "multiplier", adjustment_value: 1 },
-  { tier_key: "tier_2", display_name: "Tier 2", adjustment_type: "multiplier", adjustment_value: 0.85 },
-  { tier_key: "tier_3", display_name: "Tier 3", adjustment_type: "multiplier", adjustment_value: 0.7 },
+  { id: "t1", tier_key: "standard", display_name: "Standard", adjustment_type: "multiplier", adjustment_value: 1 },
+  { id: "t2", tier_key: "reduced", display_name: "Reduced", adjustment_type: "multiplier", adjustment_value: 0.85 },
+  { id: "t3", tier_key: "lower", display_name: "Lower", adjustment_type: "multiplier", adjustment_value: 0.7 },
 ];
 
 const defaultAssignments: CountryAssignment[] = [
-  { country_code: "US", tier_key: "default" },
-  { country_code: "IN", tier_key: "tier_2" },
-  { country_code: "BR", tier_key: "tier_3" },
+  { country_code: "US", tier_key: "standard" },
+  { country_code: "IN", tier_key: "reduced" },
+  { country_code: "BR", tier_key: "lower" },
 ];
 
 const baseArgs = {
   countryAssignments: [],
-  defaultTierKey: "default",
+  defaultTierKey: "standard",
   regionalPricingEnabled: false,
   tiers: defaultTiers,
   verificationProviderRequirement: null,
@@ -48,7 +48,7 @@ function InteractiveStory({
   const [enabled, setEnabled] = React.useState(initialEnabled);
   const [tiers, setTiers] = React.useState(initialTiers);
   const [assignments, setAssignments] = React.useState(initialAssignments);
-  const [defaultKey, setDefaultKey] = React.useState(initialTiers[0]?.tier_key ?? "default");
+  const [defaultKey, setDefaultKey] = React.useState(initialTiers[0]?.tier_key ?? "standard");
   const [verificationProviderRequirement, setVerificationProviderRequirement] = React.useState<"self" | null>(
     initialEnabled ? "self" : null,
   );
@@ -89,8 +89,8 @@ export const EmptyPolicy: Story = {
   args: {
     ...baseArgs,
     regionalPricingEnabled: true,
-    tiers: [{ tier_key: "default", display_name: "Default", adjustment_type: "multiplier", adjustment_value: 1 }],
+    tiers: [{ id: "t1", tier_key: "standard", display_name: "Standard", adjustment_type: "multiplier", adjustment_value: 1 }],
     verificationProviderRequirement: "self",
   },
-  render: () => <InteractiveStory initialAssignments={[]} initialEnabled initialTiers={[{ tier_key: "default", display_name: "Default", adjustment_type: "multiplier", adjustment_value: 1 }]} />,
+  render: () => <InteractiveStory initialAssignments={[]} initialEnabled initialTiers={[{ id: "t1", tier_key: "standard", display_name: "Standard", adjustment_type: "multiplier", adjustment_value: 1 }]} />,
 };

@@ -369,7 +369,7 @@
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "What is this community for?",
       "databaseRegionLabel": "Data region",
-      "databaseRegionAuto": "Recommended",
+      "databaseRegionAuto": "Platform default",
       "databaseRegionUsEast": "US East",
       "databaseRegionUsCentral": "US Central",
       "databaseRegionUsWest": "US West",

@@ -10,11 +10,9 @@ import { PageContainer } from "@/components/primitives/layout-shell";
 import { useApi } from "@/lib/api";
 import { updateSessionOnboarding, updateSessionProfile, useSession } from "@/lib/api/session-store";
 import { resolveOnboardingPhase } from "@/lib/onboarding";
-import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { type OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type { ImportJobState, RedditVerificationState } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap";
-import { OnboardingVerificationGate } from "@/components/compositions/onboarding-verification-gate/onboarding-verification-gate";
 
 import { getErrorMessage, useClientHydrated, useRouteMessages } from "./route-core";
 import { getRouteAuthDescription, getRouteFailureDescription } from "./route-status-copy";
@@ -74,25 +72,6 @@ export function OnboardingPage() {
   const [importJob, setImportJob] = React.useState<ImportJobState>({ status: "not_started" });
   const [generatedHandle, setGeneratedHandle] = React.useState("");
   const [actionLoading, setActionLoading] = React.useState(false);
-  const uniqueHumanVerified = onboardingStatus?.unique_human_verification_status === "verified";
-  const {
-    startVerification,
-    verificationError,
-    verificationLoading,
-    verificationState,
-  } = useVeryVerification({
-    onVerified: (status) => {
-      setOnboardingStatus(status);
-      const nextPhase = resolveOnboardingPhase(status);
-      if (!nextPhase) {
-        navigate("/");
-        return;
-      }
-      setPhase(nextPhase);
-    },
-    verified: uniqueHumanVerified,
-    verificationIntent: "profile_verification",
-  });
 
   React.useEffect(() => {
     let cancelled = false;
@@ -255,21 +234,6 @@ export function OnboardingPage() {
 
   if (!session) {
     return <AuthRequiredRouteState description={getRouteAuthDescription("onboarding")} title={copy.onboarding.title} />;
-  }
-
-  if (onboardingStatus && onboardingStatus.unique_human_verification_status !== "verified") {
-    return (
-      <section className="flex min-w-0 flex-1 flex-col gap-6">
-        <PageContainer>
-          <OnboardingVerificationGate
-            onVerify={() => void startVerification()}
-            verificationError={verificationError}
-            verificationLoading={verificationLoading}
-            verificationState={verificationState === "verified" ? "not_started" : verificationState}
-          />
-        </PageContainer>
-      </section>
-    );
   }
 
   return (

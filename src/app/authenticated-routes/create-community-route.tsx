@@ -4,16 +4,18 @@ import * as React from "react";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
-import { useSession } from "@/lib/api/session-store";
+import { updateSessionUser, useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import { getApiErrorMessage } from "@/lib/api/client";
-import { useVeryVerification } from "@/lib/verification/use-very-verification";
+import { useSelfVerification } from "@/lib/verification/use-self-verification";
+import { useUiLocale } from "@/lib/ui-locale";
 import type { SpacesChallengePayload } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
 import type { CreateCommunityComposerProps } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
 import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
+import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { toast } from "@/components/primitives/sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -28,12 +30,13 @@ export function CreateCommunityPage() {
   const api = useApi();
   const session = useSession();
   const isMobile = useIsMobile();
+  const { locale } = useUiLocale();
   const { connect } = usePiratePrivyRuntime();
   const { copy } = useRouteMessages();
   const pageTitle = copy.createCommunity.title;
-  const creatorVerificationState = session?.onboarding
+  const creatorVerificationState = session
     ? {
-        uniqueHumanVerified: session.onboarding.community_creation_ready || session.onboarding.unique_human_verification_status === "verified",
+        uniqueHumanVerified: session.user.verification_capabilities.unique_human.state === "verified",
         ageOver18Verified: session.user.verification_capabilities.age_over_18.state === "verified",
       }
     : { uniqueHumanVerified: false, ageOver18Verified: false };
@@ -68,23 +71,29 @@ export function CreateCommunityPage() {
     return { communityId: result.community.community_id };
   }, [api]);
   const {
-    startVerification: handleStartVeryVerification,
-    verificationError,
-  } = useVeryVerification({
-    verified: creatorVerificationState.uniqueHumanVerified,
-    verificationIntent: "community_creation",
-    onVerified: async (status) => {
+    handleModalOpenChange: handleSelfModalOpenChangeBase,
+    selfError,
+    selfLoading,
+    selfModalOpen,
+    selfPrompt,
+    startVerification: startSelfVerification,
+  } = useSelfVerification({
+    completeErrorMessage: "Verification completion failed",
+    locale,
+    onVerified: async () => {
+      const refreshedUser = await api.users.getMe();
+      updateSessionUser(refreshedUser);
       const input = pendingCreateInputRef.current;
-      logger.info("[create-community] Very verification callback", {
+      logger.info("[create-community] Self verification callback", {
         hasPendingInput: !!input,
-        communityCreationReady: status.community_creation_ready,
-        uniqueHumanVerificationStatus: status.unique_human_verification_status,
+        ageOver18Verified: refreshedUser.verification_capabilities.age_over_18.state,
       });
       if (!input) return;
-      if (!status.community_creation_ready && status.unique_human_verification_status !== "verified") {
-        throw new Error("Verification completed, but community creation is not ready yet");
-      }
-      if (input.defaultAgeGatePolicy === "18_plus" && !creatorVerificationState.ageOver18Verified) {
+
+      if (
+        input.defaultAgeGatePolicy === "18_plus"
+        && refreshedUser.verification_capabilities.age_over_18.state !== "verified"
+      ) {
         throw new Error("Verify 18+ status before creating an 18+ community");
       }
 
@@ -97,12 +106,22 @@ export function CreateCommunityPage() {
         }
       }
     },
+    startErrorMessage: "Could not start age verification",
+    storageKey: "pirate_pending_self_create_community",
+    verificationIntent: "community_creation",
   });
   React.useEffect(() => {
-    if (verificationError) {
-      toast.error(verificationError, { id: "create-community-verification-error" });
+    if (selfError) {
+      toast.error(selfError, { id: "create-community-verification-error" });
     }
-  }, [verificationError]);
+  }, [selfError]);
+
+  const handleSelfModalOpenChange = React.useCallback((open: boolean) => {
+    handleSelfModalOpenChangeBase(open);
+    if (!open) {
+      pendingCreateInputRef.current = null;
+    }
+  }, [handleSelfModalOpenChangeBase]);
 
   const handleCreate = React.useCallback(async (input: CreateCommunityInput) => {
     if (!session) {
@@ -114,12 +133,12 @@ export function CreateCommunityPage() {
       return;
     }
 
-    if (
-      !creatorVerificationState.uniqueHumanVerified ||
-      input.defaultAgeGatePolicy === "18_plus" && !creatorVerificationState.ageOver18Verified
-    ) {
+    if (input.defaultAgeGatePolicy === "18_plus" && !creatorVerificationState.ageOver18Verified) {
       pendingCreateInputRef.current = input;
-      const result = await handleStartVeryVerification();
+      const result = await startSelfVerification({
+        requestedCapabilities: ["age_over_18"],
+        unavailableMessage: "Age verification is required to create an 18+ community.",
+      });
       if (!result.started && pendingCreateInputRef.current === input) {
         pendingCreateInputRef.current = null;
       }
@@ -131,7 +150,21 @@ export function CreateCommunityPage() {
     } catch (e: unknown) {
       throw new Error(getApiErrorMessage(e, "Community creation failed"));
     }
-  }, [connect, createCommunityFromInput, creatorVerificationState.ageOver18Verified, creatorVerificationState.uniqueHumanVerified, handleStartVeryVerification, session]);
+  }, [connect, createCommunityFromInput, creatorVerificationState.ageOver18Verified, session, startSelfVerification]);
+
+  const selfVerificationModal = (
+    <SelfVerificationModal
+      actionLabel={selfPrompt?.actionLabel ?? copy.createCommunity.startVerification}
+      description={selfPrompt?.description ?? copy.createCommunity.verifyDescription}
+      error={selfError}
+      href={selfPrompt?.href ?? null}
+      loading={selfLoading}
+      onOpenChange={handleSelfModalOpenChange}
+      open={selfModalOpen}
+      qrValue={selfPrompt?.qrValue ?? null}
+      title={selfPrompt?.title ?? copy.createCommunity.verifyStartTitle}
+    />
+  );
 
   if (isMobile) {
     return (
@@ -144,20 +177,24 @@ export function CreateCommunityPage() {
             onCreate={handleCreate}
           />
         </section>
+        {selfVerificationModal}
       </div>
     );
   }
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col gap-6">
-      <PageContainer size="wide">
-        <CreateCommunityComposer
-          creatorVerificationState={creatorVerificationState}
-          deferCreatorVerification
-          onCreate={handleCreate}
-        />
-      </PageContainer>
-    </section>
+    <>
+      <section className="flex min-w-0 flex-1 flex-col gap-6">
+        <PageContainer size="wide">
+          <CreateCommunityComposer
+            creatorVerificationState={creatorVerificationState}
+            deferCreatorVerification
+            onCreate={handleCreate}
+          />
+        </PageContainer>
+      </section>
+      {selfVerificationModal}
+    </>
   );
 }
 

@@ -139,6 +139,17 @@ export function updateSessionOnboarding(
   notifyAll();
 }
 
+export function updateSessionUser(
+  user: StoredSession["user"],
+): void {
+  const current = getStoredSession();
+  if (!current) return;
+  current.user = user;
+  cachedSession = current;
+  writeToStorage(current);
+  notifyAll();
+}
+
 export function updateSessionProfile(
   profile: StoredSession["profile"],
 ): void {

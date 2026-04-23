@@ -322,6 +322,7 @@
     "progressLabel": "Onboarding",
     "downloadAndroid": "Download",
     "downloadIos": "Download",
+    "downloadPrompt": "Need the Very app?",
     "reopenVerification": "Reopen verification",
     "stepCount": "{current}/{total}",
     "suggestedCommunitiesAction": "Suggested Communities",
@@ -334,7 +335,7 @@
     "verifyAction": "Verify",
     "verifyPendingDescription": "Complete the palm scan in the Very.org app.",
     "verifyPendingTitle": "Verify",
-    "verifyStartDescription": "Install Very.org, then scan your palm. The photo is not saved or stored.",
+    "verifyStartDescription": "Use Very to scan your palm. The photo is not saved or stored.",
     "verifyStartTitle": "Prove you're human"
   },
   "inbox": {

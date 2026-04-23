@@ -329,6 +329,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "progressLabel": "Onboarding",
         "downloadAndroid": "Download",
         "downloadIos": "Download",
+        "downloadPrompt": "Need the Very app?",
         "reopenVerification": "Reopen verification",
         "stepCount": "{current}/{total}",
         "suggestedCommunitiesAction": "Suggested Communities",
@@ -341,7 +342,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verifyAction": "Verify",
         "verifyPendingDescription": "Complete the palm scan in the Very.org app.",
         "verifyPendingTitle": "Verify",
-        "verifyStartDescription": "Install Very.org, then scan your palm. The photo is not saved or stored.",
+        "verifyStartDescription": "Use Very to scan your palm. The photo is not saved or stored.",
         "verifyStartTitle": "Prove you're human"
       },
       "inbox": {
@@ -1415,6 +1416,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "progressLabel": "الإعداد",
         "downloadAndroid": "تنزيل",
         "downloadIos": "تنزيل",
+        "downloadPrompt": "هل تحتاج إلى تطبيق Very؟",
         "reopenVerification": "أعد فتح التحقق",
         "stepCount": "{current}/{total}",
         "suggestedCommunitiesAction": "مجتمعات مقترحة",
@@ -1427,7 +1429,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verifyAction": "تحقق",
         "verifyPendingDescription": "أكمل مسح راحة اليد في تطبيق Very.org.",
         "verifyPendingTitle": "تحقق",
-        "verifyStartDescription": "ثبّت تطبيق Very.org، ثم امسح راحة يدك. لا يتم حفظ الصورة أو تخزينها.",
+        "verifyStartDescription": "استخدم Very لمسح راحة يدك. لا يتم حفظ الصورة أو تخزينها.",
         "verifyStartTitle": "أثبت أنك إنسان"
       },
       "inbox": {
@@ -2501,6 +2503,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "progressLabel": "引导流程",
         "downloadAndroid": "下载",
         "downloadIos": "下载",
+        "downloadPrompt": "需要 Very 应用吗？",
         "reopenVerification": "重新打开验证",
         "stepCount": "{current}/{total}",
         "suggestedCommunitiesAction": "推荐社区",
@@ -2513,7 +2516,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verifyAction": "验证",
         "verifyPendingDescription": "在 Very.org 应用中完成掌纹扫描。",
         "verifyPendingTitle": "验证",
-        "verifyStartDescription": "安装 Very.org，然后扫描手掌。照片不会被保存或存储。",
+        "verifyStartDescription": "使用 Very 扫描手掌。照片不会被保存或存储。",
         "verifyStartTitle": "证明你是真人"
       },
       "inbox": {

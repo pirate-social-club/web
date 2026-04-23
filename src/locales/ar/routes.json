@@ -322,6 +322,7 @@
     "progressLabel": "الإعداد",
     "downloadAndroid": "تنزيل",
     "downloadIos": "تنزيل",
+    "downloadPrompt": "هل تحتاج إلى تطبيق Very؟",
     "reopenVerification": "أعد فتح التحقق",
     "stepCount": "{current}/{total}",
     "suggestedCommunitiesAction": "مجتمعات مقترحة",
@@ -334,7 +335,7 @@
     "verifyAction": "تحقق",
     "verifyPendingDescription": "أكمل مسح راحة اليد في تطبيق Very.org.",
     "verifyPendingTitle": "تحقق",
-    "verifyStartDescription": "ثبّت تطبيق Very.org، ثم امسح راحة يدك. لا يتم حفظ الصورة أو تخزينها.",
+    "verifyStartDescription": "استخدم Very لمسح راحة يدك. لا يتم حفظ الصورة أو تخزينها.",
     "verifyStartTitle": "أثبت أنك إنسان"
   },
   "inbox": {

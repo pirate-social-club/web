@@ -219,11 +219,9 @@ function TokenIcon({ chainId, token }: { chainId: WalletHubChainId; token: Walle
 
 function TokenRow({
   chainId,
-  chainTitle,
   token,
 }: {
   chainId: WalletHubChainId;
-  chainTitle: string;
   token: WalletHubToken;
 }) {
   return (
@@ -232,9 +230,7 @@ function TokenRow({
         <TokenIcon chainId={chainId} token={token} />
         <div className="min-w-0">
           <div className="truncate text-base font-medium text-foreground">{token.symbol}</div>
-          <div className="truncate text-base text-muted-foreground">
-            {token.name === chainTitle ? token.name : `${token.name} on ${chainTitle}`}
-          </div>
+          <div className="truncate text-base text-muted-foreground">{token.name}</div>
         </div>
       </div>
       <div className="shrink-0 text-base font-medium text-foreground">{token.balance}</div>
@@ -263,23 +259,16 @@ function NetworkCard({
       type="button"
     >
       <div className="space-y-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <ChainIcon chainId={getWalletFamilyChainIcon(family.id)} className="size-12" />
-            <div className="min-w-0">
-              <div className="truncate text-xl font-semibold text-foreground">{family.title}</div>
-              <div className="text-base text-muted-foreground">
-                {family.assets.length > 0 ? `${family.assets.length} assets` : "No assets yet"}
-              </div>
-            </div>
-          </div>
-        </div>
+        <span className="sr-only">{family.title}</span>
         <div className="flex min-h-14 items-center justify-center">
-          <ChainIcon chainId={getWalletFamilyChainIcon(family.id)} className="size-20" />
+          <ChainIcon chainId={getWalletFamilyChainIcon(family.id)} className="size-24" />
         </div>
       </div>
-      <div className="min-w-0 truncate border-t border-border-soft pt-3 font-mono text-base text-muted-foreground">
-        {family.address ? shortenWalletAddress(family.address) : "No wallet connected"}
+      <div className="flex items-center gap-2 border-t border-border-soft pt-3">
+        <div className="min-w-0 flex-1 truncate font-mono text-base text-muted-foreground">
+          {family.address ? shortenWalletAddress(family.address) : "No wallet connected"}
+        </div>
+        <Copy className="size-4 shrink-0 text-muted-foreground" />
       </div>
     </button>
   );
@@ -325,16 +314,7 @@ export function WalletHub({
           </section>
 
           <section className="space-y-3">
-            <div className="flex items-center justify-between gap-4">
-              <div className="text-xl font-semibold text-foreground">
-                Assets
-              </div>
-              {selectedFamily?.address ? (
-                <div className="hidden min-w-[18rem] max-w-[28rem] lg:block">
-                  <CopyAddressField value={selectedFamily.address} />
-                </div>
-              ) : null}
-            </div>
+            <div className="text-xl font-semibold text-foreground">Assets</div>
 
             <Card className="overflow-hidden border-border bg-card shadow-none">
               {selectedFamily?.assets.length ? (
@@ -342,7 +322,6 @@ export function WalletHub({
                   {selectedFamily.assets.map((token) => (
                     <TokenRow
                       chainId={token.chainId}
-                      chainTitle={token.chainTitle}
                       key={`${token.chainId}:${token.id}`}
                       token={token}
                     />
@@ -354,12 +333,6 @@ export function WalletHub({
                 </div>
               )}
             </Card>
-
-            {selectedFamily?.address ? (
-              <div className="lg:hidden">
-                <CopyAddressField value={selectedFamily.address} />
-              </div>
-            ) : null}
           </section>
         </>
       ) : (

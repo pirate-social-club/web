@@ -391,8 +391,9 @@ describe("composition smoke tests", () => {
 
     expect(markup).toContain("Wallet");
     expect(markup).toContain("Ethereum");
-    expect(markup).toContain("Base");
-    expect(markup).toContain("Story");
+    expect(markup).toContain("Networks");
+    expect(markup).toContain("Assets");
+    expect(markup).toContain("IP");
   });
 
   test("renders the settings agents tab", () => {

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  MagnifyingGlass,
   X,
 } from "@phosphor-icons/react";
 
@@ -21,7 +20,6 @@ import {
   SidebarSeparator,
 } from "@/components/compositions/sidebar/sidebar";
 import { cn } from "@/lib/utils";
-import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 type ModNavIcon = React.ComponentType<{ className?: string; weight?: "regular" | "fill" | "bold" }>;
 
@@ -55,7 +53,6 @@ export function CommunityModerationShell({
   onExitClick,
   sections,
 }: CommunityModerationShellProps) {
-  const { copy } = useRouteMessages();
   return (
     <SidebarProvider className={cn("min-h-screen bg-background text-foreground", className)}>
       <Sidebar className="w-[18rem]" collapsible="none">
@@ -65,7 +62,7 @@ export function CommunityModerationShell({
               <div className="mb-5 flex items-center gap-2">
                 {onExitClick ? (
                   <IconButton
-                    aria-label={copy.common.close}
+                    aria-label="Close"
                     className="-ms-1"
                     onClick={onExitClick}
                     size="sm"
@@ -81,10 +78,6 @@ export function CommunityModerationShell({
                   src={communityAvatarSrc ?? undefined}
                 />
                 <div className="min-w-0 text-base font-semibold">{communityLabel}</div>
-              </div>
-              <div className="mb-2 flex h-12 items-center gap-3 rounded-full border border-border-soft bg-card px-4 text-muted-foreground">
-                <MagnifyingGlass className="size-5" />
-                <span className="text-base">{copy.moderation.shell.searchToolsPlaceholder}</span>
               </div>
             </SidebarGroupContent>
           </SidebarGroup>

@@ -27,7 +27,6 @@ export const CREATE_COMMUNITY_SAMPLE: CreateCommunitySample = {
   defaultAgeGatePolicy: "none",
   allowAnonymousIdentity: true,
   creatorVerificationState: {
-    uniqueHumanVerified: true,
     ageOver18Verified: true,
   },
 };

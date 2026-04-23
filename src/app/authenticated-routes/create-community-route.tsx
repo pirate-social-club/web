@@ -36,10 +36,9 @@ export function CreateCommunityPage() {
   const pageTitle = copy.createCommunity.title;
   const creatorVerificationState = session
     ? {
-        uniqueHumanVerified: session.user.verification_capabilities.unique_human.state === "verified",
         ageOver18Verified: session.user.verification_capabilities.age_over_18.state === "verified",
       }
-    : { uniqueHumanVerified: false, ageOver18Verified: false };
+    : { ageOver18Verified: false };
   const pendingCreateInputRef = React.useRef<CreateCommunityInput | null>(null);
   const createCommunityFromInput = React.useCallback(async (input: CreateCommunityInput) => {
     const avatarRef = input.avatarFile ? (await api.communities.uploadMedia({ kind: "avatar", file: input.avatarFile })).media_ref : input.avatarRef;

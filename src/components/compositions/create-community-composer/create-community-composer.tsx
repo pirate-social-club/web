@@ -198,7 +198,6 @@ export function CreateCommunityComposer({
     [gateDrafts],
   );
 
-  const creatorUniqueHumanVerified = creatorVerificationState?.uniqueHumanVerified ?? false;
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? false;
   const hasAdultMinimumAgeGate =
     activeMembershipMode === "gated"
@@ -211,7 +210,7 @@ export function CreateCommunityComposer({
 
   const creatorAgeRequirementMet =
     effectiveDefaultAgeGatePolicy !== "18_plus" || creatorAgeOver18Verified;
-  const creatorCanCreate = deferCreatorVerification || (creatorUniqueHumanVerified && creatorAgeRequirementMet);
+  const creatorCanCreate = deferCreatorVerification || creatorAgeRequirementMet;
   const { copy } = useRouteMessages();
   const cc = copy.createCommunity.composer;
 
@@ -443,11 +442,9 @@ export function CreateCommunityComposer({
   );
   const creatorVerificationMessage = deferCreatorVerification
     ? null
-    : !creatorUniqueHumanVerified
-      ? cc.uniqueHumanRequired
-      : !creatorAgeRequirementMet
-        ? cc.ageVerificationRequired
-        : null;
+    : !creatorAgeRequirementMet
+      ? cc.ageVerificationRequired
+      : null;
 
   return (
     <div className={cn("mx-auto w-full max-w-[72rem] space-y-4", isMobile && "mx-0 max-w-none space-y-5")}>

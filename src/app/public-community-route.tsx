@@ -9,21 +9,19 @@ import { toCommunityFeedItem } from "@/app/authenticated-route-renderer";
 import { navigate } from "@/app/router";
 import { loadProfilesByUserId } from "@/app/authenticated-routes/community-data";
 import { useCommunityFeedPosts } from "@/app/authenticated-routes/community-feed-data";
-import { clearPendingSelfJoinSession, readPendingSelfJoinSession, writePendingSelfJoinSession } from "@/app/authenticated-routes/community-session-helpers";
 import { submitOptimisticPostVote, updateCommunityPostVote } from "@/app/authenticated-routes/post-vote";
 import { type FeedSort } from "@/components/compositions/feed/feed";
 import { CommunityPageShell } from "@/components/compositions/community-page-shell/community-page-shell";
 import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
-import { getApiErrorMessage, isApiNotFoundError } from "@/lib/api/client";
+import { isApiNotFoundError } from "@/lib/api/client";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getPassportPromptCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
-import { logger } from "@/lib/logger";
+import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
-import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
@@ -198,11 +196,6 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     uiLocale: locale,
   });
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
-  const [selfSession, setSelfSession] = React.useState<Awaited<ReturnType<typeof api.verification.startSession>> | null>(null);
-  const [selfRequestedCapabilities, setSelfRequestedCapabilities] = React.useState<ApiJoinEligibility["missing_capabilities"]>([]);
-  const [selfLoading, setSelfLoading] = React.useState(false);
-  const [selfError, setSelfError] = React.useState<string | null>(null);
-  const [selfModalOpen, setSelfModalOpen] = React.useState(false);
   const {
     startVerification: startVeryVerification,
     verificationLoading: veryLoading,
@@ -215,6 +208,24 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       toast.success(copy.publicCommunity.verificationCompleted);
     },
   });
+  const {
+    handleModalOpenChange: handleSelfModalOpenChange,
+    selfError,
+    selfLoading,
+    selfModalOpen,
+    selfPrompt,
+    startVerification: startSelfVerificationFlow,
+  } = useSelfVerification({
+    completeErrorMessage: copy.publicCommunity.verificationCompletionFailed,
+    locale,
+    onVerified: () => {
+      invalidateCommunityGate(communityId);
+      toast.success(copy.publicCommunity.verificationCompleted);
+    },
+    startErrorMessage: copy.publicCommunity.verificationStartFailed,
+    storageKey: `pirate_pending_self_join_session:${communityId}`,
+    verificationIntent: "community_join",
+  });
 
   React.useEffect(() => {
     if (veryError) {
@@ -224,142 +235,27 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
 
   const startSelfVerification = React.useCallback(async ({
     eligibility,
-    source,
   }: {
     eligibility: Pick<ApiJoinEligibility, "membership_gate_summaries" | "missing_capabilities">;
-    source: "vote_modal";
   }) => {
     const requestedCapabilities = getVerificationCapabilitiesForProvider(eligibility, "self");
     const verificationRequirements = getVerificationRequirementsForGates(eligibility.membership_gate_summaries);
     if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
       const message = copy.publicCommunity.verificationMissingSelf;
-      setSelfError(message);
-      logger.warn("[public-community] self verification unavailable", {
-        communityId,
-        missingCapabilities: eligibility.missing_capabilities,
-        source,
-      });
       toast.error(message);
       return { started: false };
     }
 
-    setSelfLoading(true);
-    setSelfError(null);
-    try {
-      const result = await api.verification.startSession({
-        provider: "self",
-        requested_capabilities: requestedCapabilities,
-        verification_requirements: verificationRequirements,
-        verification_intent: "community_join",
-      });
-      setSelfRequestedCapabilities(requestedCapabilities);
-      setSelfSession(result);
-      setSelfModalOpen(true);
-      writePendingSelfJoinSession({
-        communityId,
-        requestedCapabilities,
-        verificationSessionId: result.verification_session_id,
-      });
-
-      logger.info("[public-community] self session started", {
-        communityId,
-        requestedCapabilities,
-        source,
-        verificationSessionId: result.verification_session_id,
-      });
-      return { started: true };
-    } catch (error: unknown) {
-      const message = getApiErrorMessage(error, copy.publicCommunity.verificationStartFailed);
-      setSelfError(message);
-      logger.warn("[public-community] self session failed", {
-        communityId,
-        message,
-        source,
-      });
-      toast.error(message);
-      return { started: false };
-    } finally {
-      setSelfLoading(false);
+    const result = await startSelfVerificationFlow({
+      requestedCapabilities,
+      unavailableMessage: copy.publicCommunity.verificationMissingSelf,
+      verificationRequirements,
+    });
+    if (!result.started && result.error) {
+      toast.error(result.error);
     }
-  }, [api, communityId]);
-
-  React.useEffect(() => {
-    function handleSelfCallback() {
-      const url = new URL(window.location.href);
-      if (!url.searchParams.has("proof") && !url.searchParams.has("error") && url.searchParams.get("expired") !== "true") {
-        return;
-      }
-
-      const pendingSession = readPendingSelfJoinSession(communityId);
-      if (!pendingSession || pendingSession.communityId !== communityId) {
-        logger.warn("[public-community] self callback missing pending session", { communityId });
-        setSelfSession(null);
-        setSelfRequestedCapabilities([]);
-        setSelfModalOpen(false);
-        setSelfError(copy.publicCommunity.verificationSessionLost);
-        toast.error(copy.publicCommunity.verificationSessionLost);
-        clearPendingSelfJoinSession(communityId);
-        window.history.replaceState({}, "", window.location.pathname);
-        return;
-      }
-
-      setSelfRequestedCapabilities(pendingSession.requestedCapabilities);
-      const result = parseSelfCallback(url);
-      if (result.status === "completed") {
-        logger.info("[public-community] self callback received proof", {
-          communityId,
-          verificationSessionId: pendingSession.verificationSessionId,
-        });
-        setSelfLoading(true);
-        void api.verification.completeSession(pendingSession.verificationSessionId, { proof: result.proof })
-          .then(() => {
-            logger.info("[public-community] self verification completed", {
-              communityId,
-              verificationSessionId: pendingSession.verificationSessionId,
-            });
-            setSelfSession(null);
-            setSelfRequestedCapabilities([]);
-            setSelfModalOpen(false);
-            setSelfError(null);
-            clearPendingSelfJoinSession(communityId);
-            invalidateCommunityGate(communityId);
-            toast.success(copy.publicCommunity.verificationCompleted);
-          })
-          .catch((error: unknown) => {
-            const message = getApiErrorMessage(error, copy.publicCommunity.verificationCompletionFailed);
-            setSelfError(message);
-            logger.warn("[public-community] self verification completion failed", {
-              communityId,
-              message,
-              verificationSessionId: pendingSession.verificationSessionId,
-            });
-            toast.error(message);
-          })
-          .finally(() => {
-            setSelfLoading(false);
-            window.history.replaceState({}, "", window.location.pathname);
-          });
-        return;
-      }
-
-      setSelfSession(null);
-      setSelfRequestedCapabilities([]);
-      setSelfModalOpen(false);
-      setSelfError(result.status === "expired" ? copy.publicCommunity.verificationExpired : result.reason);
-      logger.warn("[public-community] self callback did not complete", {
-        communityId,
-        reason: result.status === "failed" ? result.reason : "expired",
-        verificationSessionId: pendingSession.verificationSessionId,
-      });
-      clearPendingSelfJoinSession(communityId);
-      toast.error(result.status === "expired" ? copy.publicCommunity.verificationExpired : result.reason);
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-
-    window.addEventListener("popstate", handleSelfCallback);
-    handleSelfCallback();
-    return () => window.removeEventListener("popstate", handleSelfCallback);
-  }, [api, communityId, copy.publicCommunity, invalidateCommunityGate]);
+    return result;
+  }, [copy.publicCommunity.verificationMissingSelf, startSelfVerificationFlow]);
 
   const buildBlockedModalState = React.useCallback(({ action, closeModal, gate }: {
     action: "reply_comment" | "reply_post" | "vote_comment" | "vote_post";
@@ -400,7 +296,6 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
           } else {
             const result = await startSelfVerification({
               eligibility: gate.eligibility,
-              source: "vote_modal",
             });
             if (result.started) {
               closeModal();
@@ -463,12 +358,6 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     return <PublicCommunityNotFound communityId={communityId} />;
   }
 
-  const selfPrompt = selfSession ? {
-    ...getVerificationPromptCopy("self", selfRequestedCapabilities, { locale }),
-    href: getSelfVerificationLaunchHref(selfSession.launch?.self_app),
-    qrValue: getSelfVerificationLaunchHref(selfSession.launch?.self_app),
-  } : null;
-
   return (
     <>
       {gateModal}
@@ -479,15 +368,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
           error={selfError}
           href={selfPrompt.href}
           loading={selfLoading}
-          onOpenChange={(open) => {
-            setSelfModalOpen(open);
-            if (!open) {
-              setSelfSession(null);
-              setSelfRequestedCapabilities([]);
-              setSelfError(null);
-              clearPendingSelfJoinSession(communityId);
-            }
-          }}
+          onOpenChange={handleSelfModalOpenChange}
           open={selfModalOpen}
           qrValue={selfPrompt.qrValue}
           title={selfPrompt.title}

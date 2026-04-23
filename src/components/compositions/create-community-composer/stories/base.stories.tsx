@@ -14,7 +14,6 @@ const baseComposer: CreateCommunityComposerProps = {
   defaultAgeGatePolicy: "none",
   allowAnonymousIdentity: true,
   creatorVerificationState: {
-    uniqueHumanVerified: true,
     ageOver18Verified: true,
   },
 };
@@ -108,7 +107,6 @@ export const CreatorNotEligible: Story = {
     <CreateCommunityComposer
       {...baseComposer}
       creatorVerificationState={{
-        uniqueHumanVerified: false,
         ageOver18Verified: false,
       }}
     />
@@ -211,7 +209,6 @@ export const AdultOnlyMissingAgeProof: Story = {
       {...baseComposer}
       defaultAgeGatePolicy="18_plus"
       creatorVerificationState={{
-        uniqueHumanVerified: true,
         ageOver18Verified: false,
       }}
       initialStep={2}

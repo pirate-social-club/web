@@ -70,7 +70,6 @@ export type IdentityGateDraft =
 export type ComposerStep = 1 | 2 | 3;
 
 export interface CreatorVerificationState {
-  uniqueHumanVerified: boolean;
   ageOver18Verified: boolean;
 }
 

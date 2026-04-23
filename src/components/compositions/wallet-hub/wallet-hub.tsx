@@ -30,6 +30,15 @@ import type {
   WalletHubToken,
 } from "./wallet-hub.types";
 
+type WalletFamilyId = "ethereum" | "tempo" | "solana" | "bitcoin";
+
+type WalletFamily = {
+  id: WalletFamilyId;
+  address: string | null;
+  assets: Array<WalletHubToken & { chainId: WalletHubChainId; chainTitle: string }>;
+  title: string;
+};
+
 const TOKEN_ICON_BY_SYMBOL: Partial<Record<string, IconComponent>> = {
   BTC: TokenBTC,
   ETH: TokenETH,
@@ -77,37 +86,94 @@ function CopyAddressField({ value }: { value: string }) {
   );
 }
 
-function WalletHeaderCard({
+function shortenWalletAddress(value: string) {
+  if (value.length <= 18) return value;
+  return `${value.slice(0, 10)}...${value.slice(-6)}`;
+}
+
+function getWalletFamilyId(chainId: WalletHubChainId): WalletFamilyId {
+  if (chainId === "ethereum" || chainId === "base" || chainId === "story") {
+    return "ethereum";
+  }
+
+  return chainId;
+}
+
+function getWalletFamilyTitle(id: WalletFamilyId) {
+  if (id === "ethereum") return "Ethereum";
+  if (id === "tempo") return "Tempo";
+  if (id === "solana") return "Solana";
+  return "Bitcoin";
+}
+
+function getWalletFamilyChainIcon(id: WalletFamilyId): WalletHubChainId {
+  if (id === "ethereum") return "ethereum";
+  if (id === "tempo") return "tempo";
+  if (id === "solana") return "solana";
+  return "bitcoin";
+}
+
+function buildWalletFamilies({
+  chainSections,
   walletAddress,
+}: {
+  chainSections: WalletHubChainSection[];
+  walletAddress?: string | null;
+}): WalletFamily[] {
+  const grouped = new Map<WalletFamilyId, WalletFamily>();
+
+  for (const section of chainSections) {
+    const familyId = getWalletFamilyId(section.chainId);
+    const existing = grouped.get(familyId);
+
+    if (!existing) {
+      grouped.set(familyId, {
+        id: familyId,
+        title: getWalletFamilyTitle(familyId),
+        address: walletAddress ?? null,
+        assets: section.tokens.map((token) => ({
+          ...token,
+          chainId: section.chainId,
+          chainTitle: section.title,
+        })),
+      });
+      continue;
+    }
+
+    existing.assets.push(...section.tokens.map((token) => ({
+      ...token,
+      chainId: section.chainId,
+      chainTitle: section.title,
+    })));
+  }
+
+  const familyOrder: WalletFamilyId[] = ["ethereum", "tempo", "solana", "bitcoin"];
+  return familyOrder.flatMap((familyId) => {
+    const family = grouped.get(familyId);
+    return family ? [family] : [];
+  });
+}
+
+function WalletHeader({
+  title,
   walletLabel,
   onChangeWallet,
-}: Pick<WalletHubProps, "walletAddress" | "walletLabel" | "onChangeWallet">) {
+}: Pick<WalletHubProps, "title" | "walletLabel" | "onChangeWallet">) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").wallet;
-  const hasWallet = Boolean(walletAddress);
+
   return (
-    <Card className="overflow-hidden border-border bg-card shadow-none">
-      <div className="border-b border-border-soft bg-muted/25 px-5 py-5 sm:px-6 sm:py-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">{copy.title}</h1>
-            <div className="text-base text-muted-foreground">{walletLabel ?? copy.evmWallet}</div>
-          </div>
-          {onChangeWallet ? (
-            <Button onClick={onChangeWallet} variant="secondary">
-              {copy.changeWallet}
-            </Button>
-          ) : null}
-        </div>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="space-y-2">
+        <h1 className="text-4xl font-semibold tracking-tight text-foreground">{title ?? copy.title}</h1>
+        <div className="text-base text-muted-foreground">{walletLabel ?? copy.evmWallet}</div>
       </div>
-      <div className="px-5 py-5 sm:px-6 sm:py-6">
-        {hasWallet ? (
-          <CopyAddressField value={walletAddress as string} />
-        ) : (
-          <div className="text-lg font-semibold text-foreground">{copy.noWalletConnected}</div>
-        )}
-      </div>
-    </Card>
+      {onChangeWallet ? (
+        <Button className="self-start" onClick={onChangeWallet} variant="secondary">
+          {copy.changeWallet}
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
@@ -151,39 +217,71 @@ function TokenIcon({ chainId, token }: { chainId: WalletHubChainId; token: Walle
   );
 }
 
-function TokenRow({ chainId, token }: { chainId: WalletHubChainId; token: WalletHubToken }) {
+function TokenRow({
+  chainId,
+  chainTitle,
+  token,
+}: {
+  chainId: WalletHubChainId;
+  chainTitle: string;
+  token: WalletHubToken;
+}) {
   return (
-    <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+    <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
         <TokenIcon chainId={chainId} token={token} />
         <div className="min-w-0">
           <div className="truncate text-base font-medium text-foreground">{token.symbol}</div>
-          <div className="truncate text-base text-muted-foreground">{token.name}</div>
+          <div className="truncate text-base text-muted-foreground">
+            {token.name === chainTitle ? token.name : `${token.name} on ${chainTitle}`}
+          </div>
         </div>
       </div>
-      <div className="shrink-0 text-base text-foreground">{token.balance}</div>
+      <div className="shrink-0 text-base font-medium text-foreground">{token.balance}</div>
     </div>
   );
 }
 
-function ChainSectionCard({ section }: { section: WalletHubChainSection }) {
+function NetworkCard({
+  active,
+  family,
+  onSelect,
+}: {
+  active: boolean;
+  family: WalletFamily;
+  onSelect: (familyId: WalletFamilyId) => void;
+}) {
   return (
-    <Card className="border-border bg-card shadow-none">
-      <div className="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
-        <div className="flex items-center gap-3">
-          <ChainIcon chainId={section.chainId} />
-          <div className="min-w-0">
-            <h2 className="text-xl font-semibold text-foreground">{section.title}</h2>
+    <button
+      className={cn(
+        "flex min-h-44 flex-col justify-between rounded-[var(--radius-xl)] border bg-card p-4 text-left transition-colors sm:p-5",
+        active
+          ? "border-primary bg-[color-mix(in_oklab,var(--primary)_8%,var(--card))]"
+          : "border-border hover:border-border-soft hover:bg-muted/18",
+      )}
+      onClick={() => onSelect(family.id)}
+      type="button"
+    >
+      <div className="space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <ChainIcon chainId={getWalletFamilyChainIcon(family.id)} className="size-12" />
+            <div className="min-w-0">
+              <div className="truncate text-xl font-semibold text-foreground">{family.title}</div>
+              <div className="text-base text-muted-foreground">
+                {family.assets.length > 0 ? `${family.assets.length} assets` : "No assets yet"}
+              </div>
+            </div>
           </div>
         </div>
-
-        <div className="divide-y divide-border">
-          {section.tokens.map((token) => (
-            <TokenRow chainId={section.chainId} key={token.id} token={token} />
-          ))}
+        <div className="flex min-h-14 items-center justify-center">
+          <ChainIcon chainId={getWalletFamilyChainIcon(family.id)} className="size-20" />
         </div>
       </div>
-    </Card>
+      <div className="min-w-0 truncate border-t border-border-soft pt-3 font-mono text-base text-muted-foreground">
+        {family.address ? shortenWalletAddress(family.address) : "No wallet connected"}
+      </div>
+    </button>
   );
 }
 
@@ -194,31 +292,81 @@ export function WalletHub({
   onChangeWallet,
   chainSections,
 }: WalletHubProps) {
-  const visibleChainSections = chainSections.filter((section) => section.tokens.length > 0);
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").wallet;
+  const walletFamilies = React.useMemo(() => buildWalletFamilies({ chainSections, walletAddress }), [chainSections, walletAddress]);
+  const [selectedFamilyId, setSelectedFamilyId] = React.useState<WalletFamilyId | null>(walletFamilies[0]?.id ?? null);
+  const selectedFamily = walletFamilies.find((family) => family.id === selectedFamilyId) ?? walletFamilies[0] ?? null;
+
+  React.useEffect(() => {
+    if (!walletFamilies.some((family) => family.id === selectedFamilyId)) {
+      setSelectedFamilyId(walletFamilies[0]?.id ?? null);
+    }
+  }, [selectedFamilyId, walletFamilies]);
 
   return (
-    <div className="mx-auto flex w-full max-w-[78rem] flex-col gap-5 py-0">
-      {title ? (
-        <div className="text-base font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          {title}
-        </div>
-      ) : null}
+    <div className="mx-auto flex w-full max-w-[86rem] flex-col gap-6 py-0">
+      <WalletHeader onChangeWallet={onChangeWallet} title={title} walletLabel={walletLabel} />
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]">
-        <WalletHeaderCard
-          onChangeWallet={onChangeWallet}
-          walletAddress={walletAddress}
-          walletLabel={walletLabel}
-        />
+      {walletFamilies.length > 0 ? (
+        <>
+          <section className="space-y-3">
+            <div className="text-xl font-semibold text-foreground">Networks</div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
+              {walletFamilies.map((family) => (
+                <NetworkCard
+                  active={family.id === selectedFamily?.id}
+                  family={family}
+                  key={family.id}
+                  onSelect={setSelectedFamilyId}
+                />
+              ))}
+            </div>
+          </section>
 
-        {visibleChainSections.length > 0 ? (
-          <div className="space-y-4">
-            {visibleChainSections.map((section) => (
-              <ChainSectionCard key={section.chainId} section={section} />
-            ))}
-          </div>
-        ) : null}
-      </div>
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="text-xl font-semibold text-foreground">
+                Assets
+              </div>
+              {selectedFamily?.address ? (
+                <div className="hidden min-w-[18rem] max-w-[28rem] lg:block">
+                  <CopyAddressField value={selectedFamily.address} />
+                </div>
+              ) : null}
+            </div>
+
+            <Card className="overflow-hidden border-border bg-card shadow-none">
+              {selectedFamily?.assets.length ? (
+                <div className="divide-y divide-border-soft">
+                  {selectedFamily.assets.map((token) => (
+                    <TokenRow
+                      chainId={token.chainId}
+                      chainTitle={token.chainTitle}
+                      key={`${token.chainId}:${token.id}`}
+                      token={token}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="px-5 py-10 text-base text-muted-foreground sm:px-6">
+                  No assets yet.
+                </div>
+              )}
+            </Card>
+
+            {selectedFamily?.address ? (
+              <div className="lg:hidden">
+                <CopyAddressField value={selectedFamily.address} />
+              </div>
+            ) : null}
+          </section>
+        </>
+      ) : (
+        <Card className="border-border bg-card px-5 py-10 text-base text-muted-foreground shadow-none sm:px-6">
+          {walletAddress ? <CopyAddressField value={walletAddress} /> : copy.noWalletConnected}
+        </Card>
+      )}
     </div>
   );
 }

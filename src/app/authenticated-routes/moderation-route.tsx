@@ -308,9 +308,6 @@ export function CommunityModerationPage({
                   applyPricingStarterTemplate();
                   return;
                 }
-                if (!state.verificationProviderRequirement) {
-                  state.setVerificationProviderRequirement("self");
-                }
               }}
               onSave={state.handleSavePricing}
               onTiersChange={state.setPricingTiers}

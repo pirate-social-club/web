@@ -175,8 +175,8 @@ function TokenIcon({ chainId, token }: { chainId: WalletHubChainId; token: Walle
         ) : null}
         {!isStoryAsset && !TokenIconComponent ? <SymbolFallback label={symbol} /> : null}
       </div>
-      <div className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center overflow-hidden rounded-full border-2 border-card bg-background">
-        <ChainIcon chainId={chainId} className="size-3.5" framed={false} />
+      <div className="absolute -bottom-0.5 -right-0.5 grid size-6.5 place-items-center overflow-hidden rounded-full border-2 border-card bg-background">
+        <ChainIcon chainId={chainId} className="size-4.5" framed={false} />
       </div>
     </div>
   );
@@ -226,7 +226,10 @@ function NetworkCard({
       <div className="space-y-5">
         <span className="sr-only">{family.title}</span>
         <div className="flex min-h-14 items-center justify-center">
-          <ChainIcon chainId={getWalletFamilyChainIcon(family.id)} className="size-20" framed={false} />
+          <ChainIcon
+            chainId={getWalletFamilyChainIcon(family.id)}
+            className="size-20 border border-border-soft bg-muted/20"
+          />
         </div>
       </div>
     </button>

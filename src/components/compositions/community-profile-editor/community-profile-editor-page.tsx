@@ -119,6 +119,7 @@ function MediaControlCard({
 export interface CommunityProfileEditorPageProps {
   avatarSrc?: string;
   bannerSrc?: string;
+  className?: string;
   description: string;
   displayName: string;
   displayNameError?: string;
@@ -139,6 +140,7 @@ export interface CommunityProfileEditorPageProps {
 export function CommunityProfileEditorPage({
   avatarSrc,
   bannerSrc,
+  className,
   description,
   displayName,
   displayNameError,
@@ -172,7 +174,7 @@ export function CommunityProfileEditorPage({
   const bannerPreview = useObjectUrl(pendingBannerFile);
 
   return (
-    <div className="space-y-8">
+    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
       <section className="space-y-4">
         <h2 className="text-xl font-semibold text-foreground">{mc.appearanceTitle}</h2>
         <div className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
@@ -261,6 +263,6 @@ export function CommunityProfileEditorPage({
           </div>
         </Card>
       </section>
-    </div>
+    </section>
   );
 }

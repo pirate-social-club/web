@@ -3,9 +3,11 @@
 import * as React from "react";
 import {
   MagnifyingGlass,
+  X,
 } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
+import { IconButton } from "@/components/primitives/icon-button";
 import {
   Sidebar,
   SidebarContent,
@@ -60,7 +62,18 @@ export function CommunityModerationShell({
         <SidebarContent className="gap-4 px-0 pb-4 pt-5">
           <SidebarGroup className="px-4 py-0">
             <SidebarGroupContent>
-              <div className="mb-5 flex items-center gap-3">
+              <div className="mb-5 flex items-center gap-2">
+                {onExitClick ? (
+                  <IconButton
+                    aria-label={copy.common.close}
+                    className="-ms-1"
+                    onClick={onExitClick}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    <X className="size-5" weight="bold" />
+                  </IconButton>
+                ) : null}
                 <Avatar
                   className="h-10 w-10"
                   fallback={communityLabel}
@@ -117,7 +130,11 @@ export function CommunityModerationShell({
         </SidebarContent>
       </Sidebar>
       <SidebarInset className="min-h-screen bg-background">
-        <main className="min-w-0 px-8 py-8">{children}</main>
+        <main className="min-w-0 px-8 py-8">
+          <div className="mx-auto w-full max-w-[64rem]">
+            {children}
+          </div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

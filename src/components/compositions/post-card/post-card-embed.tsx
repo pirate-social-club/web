@@ -51,10 +51,17 @@ function ensureXWidgetsScript(): Promise<void> {
   return xWidgetsLoadPromise;
 }
 
-function formatXAuthor(preview: EmbedContent["preview"]): string {
+function formatXSource(preview: EmbedContent["preview"]): string {
   const author = preview?.authorName?.trim();
-  if (author) return author;
-  return "X post";
+  if (author) return `${author} on X`;
+
+  try {
+    const authorUrl = new URL(preview?.authorUrl ?? "");
+    const handle = authorUrl.pathname.split("/").filter(Boolean)[0];
+    if (handle) return `@${handle} on X`;
+  } catch {}
+
+  return "X";
 }
 
 export function PostEmbedPreview({ content, className }: { content: EmbedContent; className?: string }) {
@@ -80,7 +87,7 @@ export function PostEmbedPreview({ content, className }: { content: EmbedContent
               {text}
             </p>
             <div className={cn("flex min-w-0 items-center gap-1.5 text-muted-foreground", postCardType.meta)}>
-              <span className="truncate">{formatXAuthor(preview)}</span>
+              <span className="truncate">{formatXSource(preview)}</span>
               <ArrowSquareOut className="size-4 shrink-0" />
             </div>
           </div>

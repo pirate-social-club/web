@@ -2,24 +2,20 @@
 
 import * as React from "react";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
-import type { GateFailureDetails as ApiGateFailureDetails } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
-import type { VerificationSession } from "@pirate/api-contracts";
 import { Plus } from "@phosphor-icons/react";
 
 import { PublicCommunityRoutePage } from "@/app/public-community-route";
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
-import { getApiErrorMessage, isApiAuthError, isApiNotFoundError, type ApiError } from "@/lib/api/client";
+import { getApiErrorMessage, isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community-membership-gate-panel/community-membership-gate-panel";
 import { CommunityPageShell } from "@/components/compositions/community-page-shell/community-page-shell";
 import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel, getPassportPromptCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
-import { useVeryVerification } from "@/lib/verification/use-very-verification";
-import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
+import { getGateFailureMessage, getJoinCtaLabel, getPassportPromptCapabilities, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { useUiLocale } from "@/lib/ui-locale";
 
 import { useCommunityPageData } from "./community-data";
@@ -29,7 +25,6 @@ import {
   getCommunityActionLabel,
   getNamespaceActionLabel,
 } from "./community-sidebar-helpers";
-import { clearPendingSelfJoinSession, readPendingSelfJoinSession, writePendingSelfJoinSession } from "./community-session-helpers";
 import {
   buildCommunityModerationPath,
   buildDefaultCommunityModerationPath,
@@ -42,6 +37,7 @@ import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "
 import { useSongPurchase } from "./song-purchase";
 import { useSongCommerceState, useSongPlayback } from "./song-commerce";
 import { useCommunityInteractionGate } from "./community-interaction-gate";
+import { useCommunityJoinVerification } from "./use-community-join-verification";
 
 export function CommunityPage({ communityId }: { communityId: string }) {
   const api = useApi();
@@ -59,32 +55,31 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(communityId, commerceEnabled);
   const buySong = useSongPurchase({ commerceEnabled, refreshSongCommerce });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
-  const [joinLoading, setJoinLoading] = React.useState(false);
-  const [joinError, setJoinError] = React.useState<string | null>(null);
-  const [joinRequested, setJoinRequested] = React.useState(false);
   const [followLoading, setFollowLoading] = React.useState(false);
   const [viewerFollowing, setViewerFollowing] = React.useState(false);
   const [followerCount, setFollowerCount] = React.useState<number | null>(null);
-  const [selfSession, setSelfSession] = React.useState<VerificationSession | null>(null);
-  const [selfRequestedCapabilities, setSelfRequestedCapabilities] = React.useState<ApiJoinEligibility["missing_capabilities"]>([]);
-  const [selfLoading, setSelfLoading] = React.useState(false);
-  const [selfError, setSelfError] = React.useState<string | null>(null);
-  const [selfModalOpen, setSelfModalOpen] = React.useState(false);
+  const markViewerJoined = React.useCallback(() => {
+    setViewerFollowing(true);
+  }, []);
   const {
-    startVerification: startVeryVerification,
-    verificationLoading: veryLoading,
-    verificationError: veryError,
-  } = useVeryVerification({
-    verified: false,
-    verificationIntent: "community_join",
-    onVerified: async () => {
-      const updatedEligibility = await refetchEligibility();
-      if (updatedEligibility.status === "joinable" || updatedEligibility.status === "requestable") {
-        const joinResult = await api.communities.join(communityId);
-        if (joinResult.status === "requested") setJoinRequested(true);
-        await refetchEligibility();
-      }
-    },
+    handleJoin,
+    handleSelfModalOpenChange,
+    joinError,
+    joinLoading,
+    joinRequested,
+    selfError,
+    selfLoading,
+    selfModalOpen,
+    selfPrompt,
+    startSelfVerification,
+    startVeryVerification,
+    veryLoading,
+  } = useCommunityJoinVerification({
+    communityId,
+    eligibility,
+    locale,
+    onJoined: markViewerJoined,
+    refetchEligibility,
   });
   const ownsCommunity = session?.user?.user_id === community?.created_by_user_id;
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
@@ -108,136 +103,6 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     });
   }, [buySong, communityId]);
 
-  const startSelfVerification = React.useCallback(async ({ showToastOnError = false, missingCapabilities, membershipGateSummaries }: {
-    showToastOnError?: boolean;
-    missingCapabilities?: string[] | null;
-    membershipGateSummaries?: ApiJoinEligibility["membership_gate_summaries"] | null;
-  } = {}) => {
-    const rawCapabilities = missingCapabilities ?? eligibility?.missing_capabilities ?? [];
-    const activeGateSummaries = membershipGateSummaries ?? eligibility?.membership_gate_summaries ?? [];
-    const verificationRequirements = getVerificationRequirementsForGates(activeGateSummaries);
-    const requestedCapabilities = getVerificationCapabilitiesForProvider(
-      { missing_capabilities: rawCapabilities.filter((c): c is ApiJoinEligibility["missing_capabilities"][number] => ["unique_human", "age_over_18", "minimum_age", "nationality", "gender"].includes(c as string)) },
-      "self",
-    );
-    if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
-      const message = "This community is missing the Self verification details needed to continue.";
-      setSelfError(message);
-      if (showToastOnError) {
-        toast.error(message);
-      }
-      return { launched: false, started: false };
-    }
-
-    setSelfLoading(true);
-    setSelfError(null);
-    setJoinError(null);
-    try {
-      const result = await api.verification.startSession({
-        provider: "self",
-        requested_capabilities: requestedCapabilities,
-        verification_requirements: verificationRequirements,
-        verification_intent: "community_join",
-      });
-      setSelfRequestedCapabilities(requestedCapabilities);
-      setSelfSession(result);
-      setSelfModalOpen(true);
-      writePendingSelfJoinSession({ communityId, requestedCapabilities, verificationSessionId: result.verification_session_id });
-      return { started: true };
-    } catch (e: unknown) {
-      const message = getApiErrorMessage(e, "Could not start self verification");
-      setSelfError(message);
-      if (showToastOnError) {
-        toast.error(message);
-      }
-      return { started: false };
-    } finally {
-      setSelfLoading(false);
-    }
-  }, [api, communityId, eligibility]);
-
-  const completeSelfAndRetryJoin = React.useCallback(async ({ proof, verificationSessionId }: { proof: string; verificationSessionId: string }) => {
-    setSelfLoading(true);
-    setSelfError(null);
-    try {
-      await api.verification.completeSession(verificationSessionId, { proof });
-      setSelfSession(null);
-      setSelfRequestedCapabilities([]);
-      setSelfModalOpen(false);
-      clearPendingSelfJoinSession(communityId);
-      const updatedEligibility = await refetchEligibility();
-
-      if (updatedEligibility.status === "joinable" || updatedEligibility.status === "requestable") {
-        const joinResult = await api.communities.join(communityId);
-        if (joinResult.status === "requested") setJoinRequested(true);
-        await refetchEligibility();
-      } else if (updatedEligibility.status === "gate_failed") {
-        setJoinError("Verification succeeded but you still do not meet this community's requirements.");
-      }
-    } catch (e: unknown) {
-      setSelfError(getApiErrorMessage(e, "Verification completion failed"));
-    } finally {
-      setSelfLoading(false);
-    }
-  }, [api, communityId, refetchEligibility]);
-
-  React.useEffect(() => {
-    if (veryError) {
-      toast.error(veryError);
-    }
-  }, [veryError]);
-
-  const handleJoin = React.useCallback(async () => {
-    setJoinLoading(true);
-    setJoinError(null);
-    if (eligibility?.status === "verification_required") {
-      setJoinLoading(false);
-      const provider = resolveSuggestedVerificationProvider(eligibility);
-      if (provider === "very") {
-        await startVeryVerification();
-      } else if (provider === "passport") {
-        setJoinError(getVerificationPromptCopy("passport", getPassportPromptCapabilities(eligibility), { locale }).description);
-      } else {
-        await startSelfVerification();
-      }
-      return;
-    }
-
-    try {
-      const result = await api.communities.join(communityId);
-      if (result.status === "requested") setJoinRequested(true);
-      if (result.status === "joined") setViewerFollowing(true);
-      await refetchEligibility();
-    } catch (e: unknown) {
-      const apiError = e as ApiError;
-      if (apiError?.code === "gate_failed" && apiError.details) {
-        const details = apiError.details as ApiGateFailureDetails;
-        if (details.failure_reason === "missing_verification") {
-          setJoinLoading(false);
-          const provider = resolveSuggestedVerificationProvider(details);
-          if (provider === "very") {
-            await startVeryVerification();
-          } else if (provider === "passport") {
-            setJoinError(getVerificationPromptCopy("passport", getPassportPromptCapabilities(details), { locale }).description);
-          } else {
-            await startSelfVerification({
-              missingCapabilities: details.missing_capabilities,
-              membershipGateSummaries: details.membership_gate_summaries ?? null,
-            });
-          }
-          return;
-        }
-        const gateFailureMessage = getGateFailureMessage(details, { locale });
-        if (gateFailureMessage) setJoinError(gateFailureMessage);
-        else toast.error(apiError.message);
-      } else {
-        toast.error(apiError?.message ?? "Join failed");
-      }
-    } finally {
-      setJoinLoading(false);
-    }
-  }, [api, communityId, eligibility, locale, refetchEligibility, startSelfVerification, startVeryVerification]);
-
   const handleToggleFollow = React.useCallback(async () => {
     setFollowLoading(true);
     try {
@@ -252,48 +117,6 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       setFollowLoading(false);
     }
   }, [api, communityId, viewerFollowing]);
-
-  React.useEffect(() => {
-    function handleSelfCallback() {
-      const url = new URL(window.location.href);
-      if (!url.searchParams.has("proof") && !url.searchParams.has("error") && url.searchParams.get("expired") !== "true") return;
-
-      const pendingSession = readPendingSelfJoinSession(communityId);
-      if (!pendingSession || pendingSession.communityId !== communityId) {
-        setSelfError("Verification session was lost. Start the ID check again.");
-        setSelfSession(null);
-        setSelfRequestedCapabilities([]);
-        setSelfModalOpen(false);
-        clearPendingSelfJoinSession(communityId);
-        window.history.replaceState({}, "", window.location.pathname);
-        return;
-      }
-
-      setSelfRequestedCapabilities(pendingSession.requestedCapabilities);
-      const result = parseSelfCallback(url);
-      if (result.status === "completed") {
-        void completeSelfAndRetryJoin({ proof: result.proof, verificationSessionId: pendingSession.verificationSessionId });
-      } else if (result.status === "expired") {
-        setSelfError("Verification session expired. Please try again.");
-        setSelfSession(null);
-        setSelfRequestedCapabilities([]);
-        setSelfModalOpen(false);
-        clearPendingSelfJoinSession(communityId);
-      } else {
-        setSelfError(result.reason);
-        setSelfSession(null);
-        setSelfRequestedCapabilities([]);
-        setSelfModalOpen(false);
-        clearPendingSelfJoinSession(communityId);
-      }
-
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-
-    window.addEventListener("popstate", handleSelfCallback);
-    handleSelfCallback();
-    return () => window.removeEventListener("popstate", handleSelfCallback);
-  }, [communityId, completeSelfAndRetryJoin]);
 
   const buildCommunityBlockedModalState = React.useCallback(({ action, closeModal, gate }: {
     action: "reply_comment" | "reply_post" | "vote_comment" | "vote_post";
@@ -446,11 +269,6 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     return <RouteLoadFailureState description={getRouteIncompleteDescription("community")} title={pageTitle} />;
   }
 
-  const selfPrompt = selfSession ? {
-    ...getVerificationPromptCopy("self", selfRequestedCapabilities, { locale }),
-    href: getSelfVerificationLaunchHref(selfSession.launch?.self_app),
-    qrValue: getSelfVerificationLaunchHref(selfSession.launch?.self_app),
-  } : null;
   const canCreatePost = eligibility?.status === "already_joined";
   const feedItems = posts.map((post) => {
     const assetId = post.post.asset_id ?? undefined;
@@ -508,15 +326,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           error={selfError}
           href={selfPrompt.href}
           loading={selfLoading}
-          onOpenChange={(open) => {
-            setSelfModalOpen(open);
-            if (!open) {
-              setSelfSession(null);
-              setSelfRequestedCapabilities([]);
-              setSelfError(null);
-              clearPendingSelfJoinSession(communityId);
-            }
-          }}
+          onOpenChange={handleSelfModalOpenChange}
           open={selfModalOpen}
           qrValue={selfPrompt.qrValue}
           title={selfPrompt.title}

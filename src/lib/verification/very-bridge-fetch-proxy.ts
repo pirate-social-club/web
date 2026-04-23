@@ -11,7 +11,7 @@ function readFetchUrl(input: RequestInfo | URL): string | null {
   return null;
 }
 
-export function resolveVeryBridgeProxyPath(inputUrl: string): string | null {
+export function resolveVeryBridgeProxyPath(inputUrl: string, verificationSessionId?: string | null): string | null {
   let url: URL;
   try {
     url = new URL(inputUrl);
@@ -22,21 +22,25 @@ export function resolveVeryBridgeProxyPath(inputUrl: string): string | null {
   if (url.origin !== VERY_BRIDGE_ORIGIN || !url.pathname.startsWith(VERY_BRIDGE_PATH_PREFIX)) {
     return null;
   }
+  if (!verificationSessionId) {
+    return null;
+  }
 
   const bridgePath = url.pathname.slice(VERY_BRIDGE_PATH_PREFIX.length);
+  const sessionScope = `/verification-sessions/${encodeURIComponent(verificationSessionId)}`;
   if (bridgePath === "sessions") {
-    return "/verification-sessions/very-bridge/sessions";
+    return `${sessionScope}/very-bridge/sessions`;
   }
 
   const sessionMatch = /^session\/([^/]+)$/u.exec(bridgePath);
   if (sessionMatch?.[1]) {
-    return `/verification-sessions/very-bridge/session/${encodeURIComponent(decodeURIComponent(sessionMatch[1]))}`;
+    return `${sessionScope}/very-bridge/session/${encodeURIComponent(decodeURIComponent(sessionMatch[1]))}`;
   }
 
   return null;
 }
 
-export function installVeryBridgeFetchProxy(): () => void {
+export function installVeryBridgeFetchProxy(verificationSessionId?: string | null): () => void {
   if (typeof window === "undefined" || typeof window.fetch !== "function") {
     return () => {};
   }
@@ -44,7 +48,7 @@ export function installVeryBridgeFetchProxy(): () => void {
   const originalFetch = window.fetch;
   const proxiedFetch: typeof window.fetch = async (input, init) => {
     const sourceUrl = readFetchUrl(input);
-    const proxyPath = sourceUrl ? resolveVeryBridgeProxyPath(sourceUrl) : null;
+    const proxyPath = sourceUrl ? resolveVeryBridgeProxyPath(sourceUrl, verificationSessionId) : null;
     if (!sourceUrl || !proxyPath) {
       return originalFetch.call(window, input, init);
     }

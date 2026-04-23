@@ -62,7 +62,7 @@ export function useVeryVerification(input: {
     }
 
     cleanupWidget();
-    bridgeFetchProxyCleanupRef.current = installVeryBridgeFetchProxy();
+    bridgeFetchProxyCleanupRef.current = installVeryBridgeFetchProxy(result.verification_session_id);
     widgetRef.current = createVeryWidget({
       appId: launch.app_id,
       context: launch.context,

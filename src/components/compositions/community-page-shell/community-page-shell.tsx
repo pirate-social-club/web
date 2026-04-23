@@ -39,7 +39,6 @@ export interface CommunityPageShellProps {
   controls?: React.ReactNode;
   emptyState?: FeedEmptyState;
   headerAction?: React.ReactNode;
-  heroDetails?: React.ReactNode;
   items: FeedItem[];
   onSortChange?: (sort: FeedSort) => void;
   routeLabel?: string | null;
@@ -58,7 +57,6 @@ export function CommunityPageShell({
   controls,
   emptyState,
   headerAction,
-  heroDetails,
   items,
   onSortChange,
   routeLabel,
@@ -87,7 +85,6 @@ export function CommunityPageShell({
       avatarSrc={avatarSrc}
       bannerSrc={bannerSrc}
       communityId={communityId}
-      details={heroDetails}
       displayName={title}
       routeLabel={routeLabel}
       routeVerified={routeVerified}

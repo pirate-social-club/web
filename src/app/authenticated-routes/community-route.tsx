@@ -480,29 +480,24 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
       {ownsCommunity ? <Button onClick={() => navigate(buildDefaultCommunityModerationPath(communityId))} variant="secondary">{modToolsLabel}</Button> : null}
-      <Button
-        loading={followLoading}
-        onClick={handleToggleFollow}
-        variant={viewerFollowing || canCreatePost ? "secondary" : "default"}
-      >
-        {viewerFollowing ? copy.community.followingLabel : copy.community.followLabel}
-      </Button>
       {canCreatePost ? (
         <Button leadingIcon={<Plus className="size-5" />} onClick={() => navigate(`/c/${communityId}/submit`)}>{createPostLabel}</Button>
-      ) : eligibility && preview.membership_gate_summaries.length === 0 ? (
-        <Button disabled={eligibility.status !== "joinable" && eligibility.status !== "requestable" && eligibility.status !== "verification_required"} loading={joinLoading} onClick={handleJoin} variant={viewerFollowing ? "default" : "secondary"}>
-          {getCommunityActionLabel(eligibility.status)}
-        </Button>
-      ) : null}
-    </div>
-  );
-
-  const heroDetails = (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-base text-muted-foreground">
-      {followerCount != null ? <span>{copy.community.followersCountLabel.replace("{count}", followerCount.toLocaleString(localeTag))}</span> : null}
-      {preview.member_count != null ? <span>{copy.community.citizensCountLabel.replace("{count}", preview.member_count.toLocaleString(localeTag))}</span> : null}
-      {viewerFollowing ? <span>{copy.community.followingLabel}</span> : null}
-      {canCreatePost ? <span>{copy.community.citizenLabel}</span> : null}
+      ) : (
+        <>
+          <Button
+            loading={followLoading}
+            onClick={handleToggleFollow}
+            variant={viewerFollowing ? "secondary" : "default"}
+          >
+            {viewerFollowing ? copy.community.followingLabel : copy.community.followLabel}
+          </Button>
+          {eligibility && preview.membership_gate_summaries.length === 0 ? (
+            <Button disabled={eligibility.status !== "joinable" && eligibility.status !== "requestable" && eligibility.status !== "verification_required"} loading={joinLoading} onClick={handleJoin} variant={viewerFollowing ? "default" : "secondary"}>
+              {getCommunityActionLabel(eligibility.status)}
+            </Button>
+          ) : null}
+        </>
+      )}
     </div>
   );
 
@@ -552,13 +547,14 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         bannerSrc={community.banner_ref ?? undefined}
         communityId={community.community_id}
         headerAction={headerAction}
-        heroDetails={heroDetails}
         items={feedItems}
         onSortChange={setActiveSort}
         routeLabel={community.route_slug ? `c/${community.route_slug}` : `c/${community.community_id}`}
         routeVerified={Boolean(community.namespace_verification_id)}
         sidebar={{
           ...buildCommunitySidebar(community, locale),
+          followerCount,
+          memberCount: preview.member_count ?? null,
           requirements: buildCommunitySidebarRequirements({
             defaultAgeGatePolicy: community.default_age_gate_policy ?? "none",
             gateSummaries: preview.membership_gate_summaries,

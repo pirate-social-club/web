@@ -79,6 +79,7 @@ export interface CommunitySidebarProps {
   description?: string | null;
   displayName: string;
   flairPolicy?: CommunitySidebarFlairPolicy | null;
+  followerCount?: number | null;
   memberCount?: number | null;
   membershipMode: CommunityMembershipMode;
   moderator?: CommunitySidebarModerator | null;

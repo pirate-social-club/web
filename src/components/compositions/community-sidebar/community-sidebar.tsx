@@ -35,6 +35,7 @@ function CommunitySidebarSections({
   charity,
   description,
   flairPolicy,
+  followerCount,
   memberCount,
   moderator,
   requirements,
@@ -43,7 +44,7 @@ function CommunitySidebarSections({
   showDescriptionSection = false,
 }: Pick<
   CommunitySidebarProps,
-  "charity" | "description" | "flairPolicy" | "memberCount" | "moderator" | "requirements" | "referenceLinks" | "rules"
+  "charity" | "description" | "flairPolicy" | "followerCount" | "memberCount" | "moderator" | "requirements" | "referenceLinks" | "rules"
 > & {
   showDescriptionSection?: boolean;
 }) {
@@ -73,20 +74,30 @@ function CommunitySidebarSections({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-2">
-        {memberCount != null && (
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col">
+      {followerCount != null || memberCount != null ? (
+        <div className="grid grid-cols-2 gap-4">
+          {followerCount != null ? (
+            <div className="flex min-w-0 flex-col">
+              <span className="text-xl font-bold leading-none tabular-nums">
+                {formatMemberCount(followerCount, localeTag)}
+              </span>
+              <span className="mt-0.5 text-base text-muted-foreground/60">
+                {copy.followersLabel}
+              </span>
+            </div>
+          ) : null}
+          {memberCount != null ? (
+            <div className="flex min-w-0 flex-col">
               <span className="text-xl font-bold leading-none tabular-nums">
                 {formatMemberCount(memberCount, localeTag)}
               </span>
               <span className="mt-0.5 text-base text-muted-foreground/60">
-                {copy.membersLabel}
+                {copy.citizensLabel}
               </span>
             </div>
-          </div>
-        )}
-      </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {moderator && (
         <div className="flex flex-col gap-1.5">
@@ -155,6 +166,7 @@ export function CommunitySidebarDetails({
   className,
   description,
   flairPolicy,
+  followerCount,
   memberCount,
   moderator,
   requirements,
@@ -162,7 +174,7 @@ export function CommunitySidebarDetails({
   rules,
 }: Pick<
   CommunitySidebarProps,
-  "charity" | "className" | "description" | "flairPolicy" | "memberCount" | "moderator" | "requirements" | "referenceLinks" | "rules"
+  "charity" | "className" | "description" | "flairPolicy" | "followerCount" | "memberCount" | "moderator" | "requirements" | "referenceLinks" | "rules"
 >) {
   return (
     <div className={cn("rounded-lg bg-card px-4 py-4", className)}>
@@ -171,6 +183,7 @@ export function CommunitySidebarDetails({
           charity={charity}
           description={description}
           flairPolicy={flairPolicy}
+          followerCount={followerCount}
           memberCount={memberCount}
           moderator={moderator}
           referenceLinks={referenceLinks}
@@ -190,6 +203,7 @@ export function CommunitySidebar({
   description,
   displayName,
   flairPolicy,
+  followerCount,
   memberCount,
   moderator,
   requirements,
@@ -218,6 +232,7 @@ export function CommunitySidebar({
         charity={charity}
         description={description}
         flairPolicy={flairPolicy}
+        followerCount={followerCount}
         memberCount={memberCount}
         moderator={moderator}
         referenceLinks={referenceLinks}

@@ -1,10 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { CaretDown, Plus } from "@phosphor-icons/react";
+import { Plus } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
-import { cn } from "@/lib/utils";
 import { CommunityPageShell } from "../community-page-shell";
 import type { CommunitySidebarProps } from "@/components/compositions/community-sidebar/community-sidebar.types";
 import {
@@ -84,8 +82,9 @@ const infinitySidebar: CommunitySidebarProps = {
   createdAt: "2026-04-17T00:00:00Z",
   description: "To infinity and beyond",
   displayName: "Infinity",
+  followerCount: 18400,
   membershipMode: "open",
-  memberCount: null,
+  memberCount: 1270,
 };
 
 const tameImpalaSidebar: CommunitySidebarProps = {
@@ -94,6 +93,7 @@ const tameImpalaSidebar: CommunitySidebarProps = {
   description:
     "Everything about Tame Impala — albums, deep cuts, live sessions, and production talk.",
   displayName: "Tame Impala",
+  followerCount: 92100,
   membershipMode: "open",
   memberCount: 48231,
   referenceLinks: [
@@ -126,40 +126,6 @@ const tameImpalaSidebar: CommunitySidebarProps = {
   ],
 };
 
-function formatCompactCount(value: number): string {
-  return new Intl.NumberFormat("en", {
-    maximumFractionDigits: 1,
-    notation: "compact",
-  }).format(value);
-}
-
-function CommunityStats({
-  citizen,
-  citizens,
-  followers,
-  following,
-}: {
-  citizen?: boolean;
-  citizens: number;
-  followers: number;
-  following?: boolean;
-}) {
-  const items = [
-    `${formatCompactCount(followers)} Followers`,
-    `${formatCompactCount(citizens)} Citizens`,
-    following ? "Following" : null,
-    citizen ? "Citizen" : null,
-  ].filter((item): item is string => Boolean(item));
-
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-base text-muted-foreground">
-      {items.map((item) => (
-        <span key={item}>{item}</span>
-      ))}
-    </div>
-  );
-}
-
 function CommunityRelationshipAction({
   canJoin = true,
   citizen,
@@ -173,94 +139,32 @@ function CommunityRelationshipAction({
   onCitizenChange: (value: boolean) => void;
   onFollowingChange: (value: boolean) => void;
 }) {
-  const primaryLabel = citizen ? "Create Post" : following ? "Following" : "Follow";
-  const primaryVariant = citizen || !following ? "default" : "secondary";
-  const joinDisabled = !canJoin || citizen;
-
-  const joinAsCitizen = React.useCallback(() => {
-    if (!canJoin) return;
-    onCitizenChange(true);
-    onFollowingChange(true);
-  }, [canJoin, onCitizenChange, onFollowingChange]);
+  if (citizen) {
+    return (
+      <Button leadingIcon={<Plus className="size-5" />}>Create Post</Button>
+    );
+  }
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
+    <>
       <Button
-        onClick={() => {
-          if (citizen) return;
-          onFollowingChange(!following);
-        }}
-        variant={primaryVariant}
+        onClick={() => onFollowingChange(!following)}
+        variant={following ? "secondary" : "default"}
       >
-        {primaryLabel}
+        {following ? "Following" : "Follow"}
       </Button>
-      <DropdownMenuPrimitive.Root>
-        <DropdownMenuPrimitive.Trigger asChild>
-          <button
-            aria-label="Community relationship actions"
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground shadow-sm transition-[background-color,box-shadow,color] hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            type="button"
-          >
-            <CaretDown className="size-5" />
-          </button>
-        </DropdownMenuPrimitive.Trigger>
-        <DropdownMenuPrimitive.Portal>
-          <DropdownMenuPrimitive.Content
-            align="end"
-            className="relative z-50 min-w-[13rem] overflow-hidden rounded-[var(--radius-lg)] border border-border bg-popover p-0 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[side=bottom]:translate-y-1"
-            sideOffset={6}
-          >
-            {canJoin || citizen ? (
-              <DropdownMenuItem
-                disabled={joinDisabled}
-                onSelect={joinAsCitizen}
-              >
-                {citizen ? "Citizen" : "Join as citizen"}
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem disabled>
-                Cannot become citizen
-              </DropdownMenuItem>
-            )}
-            {citizen || following ? (
-              <>
-                <DropdownMenuPrimitive.Separator className="h-px bg-border" />
-                <DropdownMenuItem
-                  onSelect={() => onFollowingChange(!following)}
-                >
-                  {following ? "Unfollow home feed" : "Follow"}
-                </DropdownMenuItem>
-              </>
-            ) : null}
-          </DropdownMenuPrimitive.Content>
-        </DropdownMenuPrimitive.Portal>
-      </DropdownMenuPrimitive.Root>
-    </div>
-  );
-}
-
-function DropdownMenuItem({
-  children,
-  className,
-  disabled,
-  onSelect,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  disabled?: boolean;
-  onSelect?: () => void;
-}) {
-  return (
-    <DropdownMenuPrimitive.Item
-      className={cn(
-        "relative w-full cursor-pointer select-none px-3 py-2.5 text-start text-base text-popover-foreground outline-none transition-colors focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-        className,
-      )}
-      disabled={disabled}
-      onSelect={onSelect}
-    >
-      {children}
-    </DropdownMenuPrimitive.Item>
+      {canJoin ? (
+        <Button
+          onClick={() => {
+            onCitizenChange(true);
+            onFollowingChange(true);
+          }}
+          variant={following ? "default" : "secondary"}
+        >
+          Join as citizen
+        </Button>
+      ) : null}
+    </>
   );
 }
 
@@ -304,7 +208,6 @@ export const EmptyCommunity: Story = {
         bannerSrc={infinityBannerPlaceholder}
         communityId="cmt_infinity"
         headerAction={<Button leadingIcon={<Plus className="size-5" />}>Create Post</Button>}
-        heroDetails={<CommunityStats citizen citizens={1270} followers={18400} following />}
         items={[]}
         onSortChange={setActiveSort}
         routeLabel="c/infinity"
@@ -328,7 +231,6 @@ export const CommunityWithPosts: Story = {
         bannerSrc={tameImpalaBannerPlaceholder}
         communityId="cmt_tame_impala"
         headerAction={<Button leadingIcon={<Plus className="size-5" />}>Create Post</Button>}
-        heroDetails={<CommunityStats citizen citizens={48231} followers={92100} following />}
         items={tameImpalaFeedItems}
         onSortChange={setActiveSort}
         routeLabel="c/tameimpala"
@@ -355,19 +257,24 @@ export const FollowingNotCitizen: Story = {
         bannerSrc={tameImpalaBannerPlaceholder}
         communityId="cmt_tame_impala"
         headerAction={(
-          <CommunityRelationshipAction
-            citizen={citizen}
-            following={following}
-            onCitizenChange={setCitizen}
-            onFollowingChange={setFollowing}
-          />
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <CommunityRelationshipAction
+              citizen={citizen}
+              following={following}
+              onCitizenChange={setCitizen}
+              onFollowingChange={setFollowing}
+            />
+          </div>
         )}
-        heroDetails={<CommunityStats citizen={citizen} citizens={48231} followers={92100} following={following} />}
         items={tameImpalaFeedItems}
         onSortChange={setActiveSort}
         routeLabel="c/tameimpala"
         routeVerified
-        sidebar={tameImpalaSidebar}
+        sidebar={{
+          ...tameImpalaSidebar,
+          followerCount: following ? 92100 : 92099,
+          memberCount: citizen ? 48232 : 48231,
+        }}
         title="Tame Impala"
       />
     );
@@ -389,19 +296,24 @@ export const CanFollowCannotJoin: Story = {
         bannerSrc={infinityBannerPlaceholder}
         communityId="cmt_infinity"
         headerAction={(
-          <CommunityRelationshipAction
-            canJoin={false}
-            citizen={citizen}
-            following={following}
-            onCitizenChange={setCitizen}
-            onFollowingChange={setFollowing}
-          />
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <CommunityRelationshipAction
+              canJoin={false}
+              citizen={citizen}
+              following={following}
+              onCitizenChange={setCitizen}
+              onFollowingChange={setFollowing}
+            />
+          </div>
         )}
-        heroDetails={<CommunityStats citizen={citizen} citizens={1270} followers={18400} following={following} />}
         items={[]}
         onSortChange={setActiveSort}
         routeLabel="c/infinity"
-        sidebar={infinitySidebar}
+        sidebar={{
+          ...infinitySidebar,
+          followerCount: following ? 18400 : 18399,
+          memberCount: citizen ? 1271 : 1270,
+        }}
         title="Infinity"
       />
     );

@@ -182,7 +182,6 @@ describe("useCommunityContentPolicyState", () => {
     expect(result.current.links).toHaveLength(1);
     expect(result.current.links[0]?.label).toBe("Site");
     expect(result.current.labelsEnabled).toBe(true);
-    expect(result.current.requireOnTopLevelPosts).toBe(true);
     expect(result.current.labels[0]?.label).toBe("News");
   });
 
@@ -278,7 +277,6 @@ describe("useCommunityContentPolicyState", () => {
         { id: "draft-1", label: " Update ", color: " #00ff00 ", status: "active" },
       ]);
       result.current.setLabelsEnabled(true);
-      result.current.setRequireOnTopLevelPosts(false);
     });
 
     expect(result.current.labelsValidationError).toBeNull();
@@ -293,7 +291,7 @@ describe("useCommunityContentPolicyState", () => {
       communityId: "community-1",
       body: {
         label_enabled: true,
-        require_label_on_top_level_posts: false,
+        require_label_on_top_level_posts: true,
         definitions: [{
           label_id: null,
           label: "Update",

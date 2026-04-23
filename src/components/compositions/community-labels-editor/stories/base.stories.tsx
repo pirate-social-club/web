@@ -37,15 +37,12 @@ const WITH_ARCHIVED: LabelEditorDefinition[] = [
 function LabelsEditorStory({
   initialLabelsEnabled = true,
   initialLabels = SAMPLE_LABELS,
-  initialRequireOnTopLevelPosts = false,
 }: {
   initialLabelsEnabled?: boolean;
   initialLabels?: LabelEditorDefinition[];
-  initialRequireOnTopLevelPosts?: boolean;
 }) {
   const [labelsEnabled, setLabelsEnabled] = React.useState(initialLabelsEnabled);
   const [labels, setLabels] = React.useState<LabelEditorDefinition[]>(initialLabels);
-  const [requireOnTopLevelPosts, setRequireOnTopLevelPosts] = React.useState(initialRequireOnTopLevelPosts);
 
   return (
     <CommunityLabelsEditorPage
@@ -53,8 +50,6 @@ function LabelsEditorStory({
       labelsEnabled={labelsEnabled}
       onLabelsChange={setLabels}
       onLabelsEnabledChange={setLabelsEnabled}
-      onRequireOnTopLevelPostsChange={setRequireOnTopLevelPosts}
-      requireOnTopLevelPosts={requireOnTopLevelPosts}
     />
   );
 }
@@ -65,7 +60,6 @@ const meta = {
   args: {
     labelsEnabled: true,
     labels: SAMPLE_LABELS,
-    requireOnTopLevelPosts: false,
   },
   parameters: {
     layout: "fullscreen",
@@ -112,13 +106,6 @@ export const Disabled: Story = {
       initialLabelsEnabled={false}
       initialLabels={[]}
     />
-  ),
-};
-
-export const RequiredOnPosts: Story = {
-  name: "Required on top-level posts",
-  render: () => (
-    <LabelsEditorStory initialRequireOnTopLevelPosts />
   ),
 };
 

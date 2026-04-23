@@ -249,9 +249,7 @@ export function CommunityModerationPage({
           labelsEnabled={state.labelsEnabled}
           onLabelsChange={state.setLabels}
           onLabelsEnabledChange={state.setLabelsEnabled}
-          onRequireOnTopLevelPostsChange={state.setRequireOnTopLevelPosts}
           onSave={state.handleSaveLabels}
-          requireOnTopLevelPosts={state.requireOnTopLevelPosts}
           saveDisabled={state.savingLabels || state.labelsValidationError != null}
           saveLoading={state.savingLabels}
         />

@@ -73,7 +73,6 @@ export function useCommunityContentPolicyState({
   const [reportReason, setReportReason] = React.useState("");
   const [links, setLinks] = React.useState<CommunityLinkEditorItem[]>([]);
   const [labelsEnabled, setLabelsEnabled] = React.useState(false);
-  const [requireOnTopLevelPosts, setRequireOnTopLevelPosts] = React.useState(false);
   const [labels, setLabels] = React.useState<LabelEditorDefinition[]>([]);
   const [savingRules, setSavingRules] = React.useState(false);
   const [savingLinks, setSavingLinks] = React.useState(false);
@@ -93,7 +92,6 @@ export function useCommunityContentPolicyState({
 
     setLinks(getCommunityLinkDrafts(community));
     setLabelsEnabled(community.label_policy?.label_enabled === true);
-    setRequireOnTopLevelPosts(community.label_policy?.require_label_on_top_level_posts === true);
     setLabels(getCommunityLabelDrafts(community));
   }, [community]);
 
@@ -153,7 +151,7 @@ export function useCommunityContentPolicyState({
     void saveCommunity(
       () => api.communities.updateLabelPolicy(community.community_id, {
         label_enabled: labelsEnabled,
-        require_label_on_top_level_posts: labelsEnabled && requireOnTopLevelPosts,
+        require_label_on_top_level_posts: community.label_policy?.require_label_on_top_level_posts === true,
         definitions: labels.map((label, index) => ({
           label_id: label.id.startsWith("draft-") ? null : label.id,
           label: label.label.trim(),
@@ -167,7 +165,6 @@ export function useCommunityContentPolicyState({
       "Could not save labels.",
     ).then((updatedCommunity) => {
       setLabelsEnabled(updatedCommunity.label_policy?.label_enabled === true);
-      setRequireOnTopLevelPosts(updatedCommunity.label_policy?.require_label_on_top_level_posts === true);
       setLabels(getCommunityLabelDrafts(updatedCommunity));
     }).catch(() => undefined);
   }, [
@@ -176,7 +173,6 @@ export function useCommunityContentPolicyState({
     labels,
     labelsEnabled,
     labelsValidationError,
-    requireOnTopLevelPosts,
     saveCommunity,
     savingLabels,
   ]);
@@ -191,7 +187,6 @@ export function useCommunityContentPolicyState({
     labelsValidationError,
     links,
     reportReason,
-    requireOnTopLevelPosts,
     ruleName,
     savingLabels,
     savingLinks,
@@ -201,7 +196,6 @@ export function useCommunityContentPolicyState({
     setLabelsEnabled,
     setLinks,
     setReportReason,
-    setRequireOnTopLevelPosts,
     setRuleName,
   };
 }

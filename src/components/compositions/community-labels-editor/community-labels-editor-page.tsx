@@ -22,10 +22,8 @@ export interface CommunityLabelsEditorPageProps {
   className?: string;
   labelsEnabled: boolean;
   labels: LabelEditorDefinition[];
-  requireOnTopLevelPosts: boolean;
   onLabelsChange?: (labels: LabelEditorDefinition[]) => void;
   onLabelsEnabledChange?: (value: boolean) => void;
-  onRequireOnTopLevelPostsChange?: (value: boolean) => void;
   onSave?: () => void;
   saveDisabled?: boolean;
   saveLoading?: boolean;
@@ -70,10 +68,8 @@ export function CommunityLabelsEditorPage({
   className,
   labelsEnabled,
   labels,
-  requireOnTopLevelPosts,
   onLabelsChange,
   onLabelsEnabledChange,
-  onRequireOnTopLevelPostsChange,
   onSave,
   saveDisabled = false,
   saveLoading = false,
@@ -148,17 +144,6 @@ export function CommunityLabelsEditorPage({
                 onCheckedChange={(checked) => onLabelsEnabledChange?.(checked === true)}
               />
             </div>
-            {labelsEnabled ? (
-              <div className="space-y-3 border-t border-border-soft pt-4">
-                <div className="flex items-center justify-between gap-3">
-                  <FormSectionHeading title={mc.requireOnTopLevelPosts} />
-                  <Checkbox
-                    checked={requireOnTopLevelPosts}
-                    onCheckedChange={(checked) => onRequireOnTopLevelPostsChange?.(checked === true)}
-                  />
-                </div>
-              </div>
-            ) : null}
           </div>
         </div>
 

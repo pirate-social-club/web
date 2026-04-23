@@ -180,8 +180,6 @@ function ModerationShellStory({
           labelsEnabled={labelsEnabled}
           onLabelsChange={setLabels}
           onLabelsEnabledChange={setLabelsEnabled}
-          onRequireOnTopLevelPostsChange={() => {}}
-          requireOnTopLevelPosts={false}
         />
       ) : activeView === "pricing" ? (
         <CommunityPricingEditorPage

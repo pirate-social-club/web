@@ -137,14 +137,14 @@ export const XEmbedOfficial: Story = {
       title={undefined}
       content={{
         type: "embed",
-        canonicalUrl: "https://x.com/pirate/status/1234567890123456789",
-        oembedHtml: `<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Embedding should stay fast in the feed and expand only when someone asks for the official post.</p>&mdash; Pirate <a href="https://x.com/pirate/status/1234567890123456789">April 23, 2026</a></blockquote>`,
-        originalUrl: "https://x.com/pirate/status/1234567890123456789",
+        canonicalUrl: "https://twitter.com/Interior/status/463440424141459456",
+        oembedHtml: `<blockquote class="twitter-tweet" data-theme="dark"><p lang="en" dir="ltr">Sunsets don&#39;t get much better than this one over <a href="https://twitter.com/GrandTetonNPS?ref_src=twsrc%5Etfw">@GrandTetonNPS</a>. <a href="https://twitter.com/hashtag/nature?src=hash&amp;ref_src=twsrc%5Etfw">#nature</a> <a href="https://twitter.com/hashtag/sunset?src=hash&amp;ref_src=twsrc%5Etfw">#sunset</a> <a href="http://t.co/YuKy2rcjyU">pic.x.com/YuKy2rcjyU</a></p>&mdash; US Department of the Interior (@Interior) <a href="https://twitter.com/Interior/status/463440424141459456?ref_src=twsrc%5Etfw">May 5, 2014</a></blockquote>`,
+        originalUrl: "https://x.com/Interior/status/463440424141459456",
         preview: {
-          authorName: "Pirate",
-          authorUrl: "https://x.com/pirate",
+          authorName: "US Department of the Interior",
+          authorUrl: "https://twitter.com/Interior",
           hasMedia: false,
-          text: "Embedding should stay fast in the feed and expand only when someone asks for the official post.",
+          text: "Sunsets don't get much better than this one over @GrandTetonNPS. #nature #sunset",
         },
         provider: "x",
         renderMode: "official",

@@ -11,6 +11,7 @@ export interface CommunityHeroProps {
   bannerSrc?: string | null;
   className?: string;
   communityId: string;
+  details?: React.ReactNode;
   displayName: string;
   routeLabel?: string | null;
   routeVerified?: boolean;
@@ -22,6 +23,7 @@ export function CommunityHero({
   bannerSrc,
   className,
   communityId,
+  details,
   displayName,
   routeLabel,
   routeVerified = false,
@@ -44,6 +46,7 @@ export function CommunityHero({
       coverClassName="bg-[#22120b] md:h-60"
       coverOverlay={<div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45" />}
       coverSrc={resolvedBannerSrc}
+      details={details}
       subtitle={secondaryLabel}
       title={primaryLabel}
     />

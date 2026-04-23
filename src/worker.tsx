@@ -190,7 +190,9 @@ const app = defineApp<AppRequestInfo>([
     route("/p/:postId", AppRoutePage),
     route("/inbox", AppRoutePage),
     route("/me", AppRoutePage),
+    route("/wallet", AppRoutePage),
     route("/settings", AppRoutePage),
+    route("/settings/wallet", AppRoutePage),
     ...SETTINGS_SECTIONS.map((section) =>
       route(`/settings/${section}`, AppRoutePage)
     ),

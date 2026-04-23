@@ -13,7 +13,8 @@
     "profileAriaLabel": "Open profile",
     "searchAriaLabel": "Search Pirate",
     "searchPlaceholder": "Search Pirate",
-    "searchUnavailableToast": "Search is not scaffolded yet."
+    "searchUnavailableToast": "Search is not scaffolded yet.",
+    "walletAriaLabel": "Wallet"
   },
   "appSidebar": {
     "brandLabel": "Pirate",

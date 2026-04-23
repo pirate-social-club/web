@@ -57,6 +57,7 @@ export function AppShellHeader({
         profileAriaLabel: copy.appHeader.profileAriaLabel,
         searchAriaLabel: copy.appHeader.searchAriaLabel,
         searchPlaceholder: copy.appHeader.searchPlaceholder,
+        walletAriaLabel: copy.appHeader.walletAriaLabel,
       }}
       onBackClick={mobileBackPath ? () => navigate(mobileBackPath) : undefined}
       onCreateClick={createPostPath ? () => navigate(createPostPath) : undefined}
@@ -65,11 +66,13 @@ export function AppShellHeader({
       onConnectClick={() => connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
       onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
       onSearchClick={() => showSearchUnavailable(copy.appHeader.searchUnavailableToast)}
+      onWalletClick={() => session ? navigate("/wallet") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
       showCreateAction={clientReady && !!session}
       showNotificationsAction={clientReady && !!session}
       showNotificationsDot={hasUnread}
       showConnectAction={showConnectAction}
       showProfileAction={clientReady}
+      showWalletAction={clientReady && !!session}
       useSidebarTrigger={useAppSidebarTrigger}
       userAvatarSrc={avatarSrc}
     />
@@ -113,7 +116,7 @@ export function AppShellMobileNav({
       onHomeClick={() => navigate("/")}
       onInboxClick={() => navigate("/inbox")}
       onProfileClick={() => session ? navigate("/me") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
-      onWalletClick={() => session ? navigate("/settings/wallet") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
+      onWalletClick={() => session ? navigate("/wallet") : connect ? connect() : showConnectUnavailable(copy.appHeader.connectUnavailableToast)}
       showInboxDot={hasUnread}
       userAvatarSrc={avatarSrc}
     />

@@ -4,7 +4,7 @@ import type {
   AgentRegistrationState,
 } from "@/components/compositions/owned-agents-panel/owned-agents-panel.types";
 
-export type SettingsTab = "profile" | "wallet" | "preferences" | "agents";
+export type SettingsTab = "profile" | "preferences" | "agents";
 
 export interface SettingsHandle {
   handleId: string | null;
@@ -13,12 +13,6 @@ export interface SettingsHandle {
   note?: string;
   primary?: boolean;
   verificationState: "verified" | "unverified" | "stale";
-}
-
-export interface SettingsConnectedWallet {
-  address: string;
-  chainLabel: string;
-  isPrimary?: boolean;
 }
 
 export interface SettingsLocaleOption {
@@ -64,10 +58,6 @@ export interface SettingsPageProps {
     onPrimaryHandleChange?: (handleId: string | null) => void;
     onSave?: () => void;
     onPublicHandlesSave?: () => void;
-  };
-  wallet: {
-    connectedWallets: SettingsConnectedWallet[];
-    primaryAddress?: string;
   };
   preferences: {
     ageStatusLabel?: string;

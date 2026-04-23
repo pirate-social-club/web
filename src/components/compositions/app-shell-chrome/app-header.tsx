@@ -7,6 +7,7 @@ import {
   List,
   Plus,
   Square,
+  Wallet,
 } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
@@ -46,6 +47,7 @@ export interface AppHeaderLabels {
   profileAriaLabel?: string;
   searchAriaLabel?: string;
   searchPlaceholder?: string;
+  walletAriaLabel?: string;
 }
 
 export interface AppHeaderProps {
@@ -69,11 +71,13 @@ export interface AppHeaderProps {
   onNotificationsClick?: () => void;
   onProfileClick?: () => void;
   onSearchClick?: () => void;
+  onWalletClick?: () => void;
   showCreateAction?: boolean;
   showNotificationsDot?: boolean;
   showNotificationsAction?: boolean;
   showConnectAction?: boolean;
   showProfileAction?: boolean;
+  showWalletAction?: boolean;
   useSidebarTrigger?: boolean;
   userAvatarSrc?: string | null;
 }
@@ -98,11 +102,13 @@ export function AppHeader({
   onMenuClick,
   onNotificationsClick,
   onProfileClick,
+  onWalletClick,
   showCreateAction = true,
   showNotificationsDot = false,
   showNotificationsAction = true,
   showConnectAction = false,
   showProfileAction = true,
+  showWalletAction = false,
   useSidebarTrigger = false,
   userAvatarSrc,
 }: AppHeaderProps) {
@@ -114,59 +120,66 @@ export function AppHeader({
     notificationsAriaLabel = "Notifications",
     openNavigationAriaLabel = "Open navigation",
     profileAriaLabel = "Open profile",
+    walletAriaLabel = "Wallet",
   } = labels ?? {};
   const detectedMobile = useIsMobile();
   const isMobile = forceMobile ?? detectedMobile;
-  const actions: React.ReactNode[] = [];
-  if (showCreateAction) {
-    actions.push(
-      <IconButton
-        aria-label={createLabel}
-        className="relative"
-        disabled={disableCreateAction}
-        onClick={onCreateClick}
-        title={createActionTitle}
-        variant="ghost"
-        key="create"
-      >
-        <CreatePostGlyph />
-      </IconButton>,
-    );
-  }
-  if (showNotificationsAction) {
-    actions.push(
-      <IconButton
-        aria-label={notificationsAriaLabel}
-        className="relative"
-        onClick={onNotificationsClick}
-        variant="ghost"
-        key="notifications"
-      >
-        <Bell className="size-6" weight="regular" />
-        {showNotificationsDot ? (
-          <span className="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-primary" />
-        ) : null}
-      </IconButton>,
-    );
-  }
-  if (showProfileAction && !showConnectAction) {
-    actions.push(
-      <IconButton
-        aria-label={profileAriaLabel}
-        className="p-0"
-        onClick={onProfileClick}
-        variant="ghost"
-        key="profile"
-      >
-        <Avatar
-          className="h-11 w-11 bg-card text-base"
-          fallback={avatarFallback}
-          size="sm"
-          src={userAvatarSrc ?? undefined}
-        />
-      </IconButton>,
-    );
-  }
+  const createAction = showCreateAction ? (
+    <IconButton
+      aria-label={createLabel}
+      className="relative"
+      disabled={disableCreateAction}
+      onClick={onCreateClick}
+      title={createActionTitle}
+      variant="ghost"
+      key="create"
+    >
+      <CreatePostGlyph />
+    </IconButton>
+  ) : null;
+  const notificationsAction = showNotificationsAction ? (
+    <IconButton
+      aria-label={notificationsAriaLabel}
+      className="relative"
+      onClick={onNotificationsClick}
+      variant="ghost"
+      key="notifications"
+    >
+      <Bell className="size-6" weight="regular" />
+      {showNotificationsDot ? (
+        <span className="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-primary" />
+      ) : null}
+    </IconButton>
+  ) : null;
+  const walletAction = showWalletAction ? (
+    <IconButton
+      aria-label={walletAriaLabel}
+      className="relative"
+      onClick={onWalletClick}
+      variant="ghost"
+      key="wallet"
+    >
+      <Wallet className="size-6" weight="regular" />
+    </IconButton>
+  ) : null;
+  const profileAction = showProfileAction && !showConnectAction ? (
+    <IconButton
+      aria-label={profileAriaLabel}
+      className="p-0"
+      onClick={onProfileClick}
+      variant="ghost"
+      key="profile"
+    >
+      <Avatar
+        className="h-11 w-11 bg-card text-base"
+        fallback={avatarFallback}
+        size="sm"
+        src={userAvatarSrc ?? undefined}
+      />
+    </IconButton>
+  ) : null;
+  const desktopActions = [createAction, notificationsAction, walletAction, profileAction].filter(Boolean);
+  const mobileActions = [notificationsAction, walletAction, profileAction].filter(Boolean);
   const brand = (
     <button
       aria-label={homeAriaLabel}
@@ -204,6 +217,10 @@ export function AppHeader({
               <Button className="h-11 px-4" onClick={onConnectClick}>
                 {connectLabel}
               </Button>
+            ) : mobileActions.length > 0 ? (
+              <div className="flex items-center justify-end gap-1">
+                {mobileActions}
+              </div>
             ) : <div className="h-11 w-11" aria-hidden="true" />)}
           </div>
         </div>
@@ -224,7 +241,7 @@ export function AppHeader({
               {connectLabel}
             </Button>
           ) : null}
-          {actions}
+          {desktopActions}
         </div>
       </div>
     </header>

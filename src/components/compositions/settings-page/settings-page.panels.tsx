@@ -5,5 +5,4 @@ export {
   PreferencesTab,
   ProfileTab,
   SettingsTabNav,
-  WalletTab,
 } from "./panels";

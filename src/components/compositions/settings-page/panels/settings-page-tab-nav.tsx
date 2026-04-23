@@ -19,7 +19,6 @@ export function SettingsTabNav({
   const copy = getLocaleMessages(locale, "routes").settings;
   const tabLabels: Record<SettingsTab, string> = {
     profile: copy.profileTab,
-    wallet: copy.walletTab,
     preferences: copy.preferencesTab,
     agents: "Agents",
   };
@@ -31,7 +30,7 @@ export function SettingsTabNav({
       aria-label={copy.sectionsLabel}
       className={cn("border-b border-border-soft", isMobile ? "overflow-visible" : "overflow-x-auto")}
     >
-      <div className={cn("flex min-w-max gap-8", isMobile && "grid min-w-0 grid-cols-4 gap-0")}>
+      <div className={cn("flex min-w-max gap-8", isMobile && "grid min-w-0 grid-cols-3 gap-0")}>
         {tabs.map((tab) => (
           <button
             aria-current={tab === activeTab ? "page" : undefined}

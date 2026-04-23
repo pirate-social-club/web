@@ -1,4 +1,4 @@
-export const SETTINGS_SECTIONS = ["profile", "wallet", "preferences", "agents"] as const;
+export const SETTINGS_SECTIONS = ["profile", "preferences", "agents"] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 export const COMMUNITY_MODERATION_SECTIONS = [

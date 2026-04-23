@@ -26,7 +26,7 @@ export interface WalletHubChainSection {
 export interface WalletHubProps {
   title?: string;
   walletLabel?: string;
-  walletAddress: string;
+  walletAddress?: string | null;
   onChangeWallet?: () => void;
   chainSections: WalletHubChainSection[];
 }

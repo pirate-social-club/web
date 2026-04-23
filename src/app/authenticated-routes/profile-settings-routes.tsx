@@ -14,7 +14,10 @@ import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import { toast } from "@/components/primitives/sonner";
 import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profile-page/profile-page";
 import { SettingsPage } from "@/components/compositions/settings-page/settings-page";
+import { WalletHub } from "@/components/compositions/wallet-hub/wallet-hub";
 import type { SettingsSubmitState, SettingsTab } from "@/components/compositions/settings-page/settings-page.types";
+import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet-hub/wallet-hub.types";
+import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 
 import { getRouteAuthDescription } from "./route-status-copy";
 import { AuthRequiredRouteState } from "./route-shell";
@@ -28,6 +31,34 @@ import {
   mapProfileLinkedHandles,
 } from "./profile-settings-mapping";
 import { useSettingsOwnedAgents } from "./use-settings-owned-agents";
+
+const WALLET_HUB_CHAINS: Array<{
+  chainId: WalletHubChainId;
+  title: string;
+  namespaces: string[];
+}> = [
+  { chainId: "ethereum", title: "Ethereum", namespaces: ["eip155:1"] },
+  { chainId: "base", title: "Base", namespaces: ["eip155:8453"] },
+  { chainId: "story", title: "Story", namespaces: ["eip155:1514", "eip155:1513"] },
+  { chainId: "tempo", title: "Tempo", namespaces: ["eip155:4321"] },
+  { chainId: "solana", title: "Solana", namespaces: ["solana:mainnet"] },
+  { chainId: "bitcoin", title: "Bitcoin", namespaces: ["bip122:000000000019d6689c085ae165831e93"] },
+];
+
+function buildWalletHubChainSections(
+  walletAttachments: NonNullable<ReturnType<typeof useSession>>["walletAttachments"],
+): WalletHubChainSection[] {
+  return WALLET_HUB_CHAINS.map((chain) => {
+    const connected = walletAttachments.some((wallet) => chain.namespaces.includes(wallet.chain_namespace));
+
+    return {
+      chainId: chain.chainId,
+      title: chain.title,
+      availability: connected ? "ready" : "later",
+      tokens: [],
+    };
+  });
+}
 
 export function CurrentUserProfilePage() {
   const { copy, localeTag } = useRouteMessages();
@@ -58,6 +89,37 @@ export function CurrentUserProfilePage() {
         handleFlow.clearDraft();
         navigate(buildSettingsPath("profile"));
       }}
+    />
+  );
+}
+
+export function CurrentUserWalletPage() {
+  const { copy } = useRouteMessages();
+  const session = useSession();
+  const profile = session?.profile ?? null;
+  const walletAttachments = session?.walletAttachments ?? [];
+  const { connect } = usePiratePrivyRuntime();
+  const pageTitle = copy.wallet.title;
+
+  if (!profile) {
+    return <AuthRequiredRouteState description={getRouteAuthDescription("settings")} title={pageTitle} />;
+  }
+
+  const primaryWallet = walletAttachments.find((wallet) => wallet.is_primary)
+    ?? walletAttachments.find((wallet) => wallet.wallet_address === profile.primary_wallet_address)
+    ?? walletAttachments[0]
+    ?? null;
+  const primaryAddress = profile.primary_wallet_address ?? primaryWallet?.wallet_address ?? null;
+  const walletLabel = primaryWallet
+    ? formatWalletChainLabel(primaryWallet.chain_namespace)
+    : copy.wallet.noWalletConnected;
+
+  return (
+    <WalletHub
+      walletAddress={primaryAddress}
+      walletLabel={walletLabel}
+      onChangeWallet={connect ?? undefined}
+      chainSections={buildWalletHubChainSections(walletAttachments)}
     />
   );
 }
@@ -285,14 +347,6 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         submitState: profileSubmitState,
       }}
       title={pageTitle}
-      wallet={{
-        connectedWallets: walletAttachments.map((wallet) => ({
-          address: wallet.wallet_address,
-          chainLabel: formatWalletChainLabel(wallet.chain_namespace),
-          isPrimary: wallet.is_primary,
-        })),
-        primaryAddress: profile.primary_wallet_address ?? undefined,
-      }}
       agents={agents}
     />
   );

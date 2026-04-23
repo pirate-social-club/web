@@ -13,7 +13,8 @@
     "profileAriaLabel": "打开个人资料",
     "searchAriaLabel": "搜索 Pirate",
     "searchPlaceholder": "搜索 Pirate",
-    "searchUnavailableToast": "搜索功能暂未开放。"
+    "searchUnavailableToast": "搜索功能暂未开放。",
+    "walletAriaLabel": "钱包"
   },
   "appSidebar": {
     "brandLabel": "Pirate",

@@ -345,16 +345,6 @@ describe("composition smoke tests", () => {
           submitState: { kind: "idle" },
           publicHandlesSubmitState: { kind: "idle" },
         }}
-        wallet={{
-          connectedWallets: [
-            {
-              address: "0x42a5f77f2d06c9a7e304817b3c177b91e0c2f3a8",
-              chainLabel: "Ethereum",
-              isPrimary: true,
-            },
-          ],
-          primaryAddress: "0x42a5f77f2d06c9a7e304817b3c177b91e0c2f3a8",
-        }}
         agents={{
           items: [],
           canRegister: false,
@@ -394,9 +384,6 @@ describe("composition smoke tests", () => {
           postAuthorLabel: "captainblackbeard.pirate",
           submitState: { kind: "idle" },
           publicHandlesSubmitState: { kind: "idle" },
-        }}
-        wallet={{
-          connectedWallets: [],
         }}
         agents={{
           items: [{

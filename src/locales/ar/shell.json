@@ -13,7 +13,8 @@
     "profileAriaLabel": "افتح الملف الشخصي",
     "searchAriaLabel": "ابحث في بايرت",
     "searchPlaceholder": "ابحث في بايرت",
-    "searchUnavailableToast": "البحث غير متاح بعد."
+    "searchUnavailableToast": "البحث غير متاح بعد.",
+    "walletAriaLabel": "المحفظة"
   },
   "appSidebar": {
     "brandLabel": "Pirate",

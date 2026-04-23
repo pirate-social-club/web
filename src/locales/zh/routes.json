@@ -942,6 +942,7 @@
     "copyAddress": "Copy address",
     "evmWallet": "EVM wallet",
     "changeWallet": "Change wallet",
+    "noWalletConnected": "No wallet connected",
     "balanceLater": "Later",
     "noAssetsYet": "No assets yet.",
     "later": "Later."

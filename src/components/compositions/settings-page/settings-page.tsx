@@ -8,7 +8,6 @@ import {
   PreferencesTab,
   ProfileTab,
   SettingsTabNav,
-  WalletTab,
 } from "./settings-page.panels";
 import type { SettingsPageProps } from "./settings-page.types";
 
@@ -19,7 +18,6 @@ export function SettingsPage({
   preferences,
   profile,
   title,
-  wallet,
 }: SettingsPageProps) {
   const { locale } = useUiLocale();
   const isMobile = useIsMobile();
@@ -35,7 +33,6 @@ export function SettingsPage({
 
       <div>
         {activeTab === "profile" ? <ProfileTab profile={profile} /> : null}
-        {activeTab === "wallet" ? <WalletTab wallet={wallet} /> : null}
         {activeTab === "preferences" ? <PreferencesTab preferences={preferences} /> : null}
         {activeTab === "agents" ? <AgentsTab agents={agents} /> : null}
       </div>

@@ -50,8 +50,10 @@ function HeaderOnlyStory({
           searchPlaceholder: forceMobile
             ? copy.appHeader.searchPlaceholder
             : copy.storybook.standaloneDesktopSearchPlaceholder,
+          walletAriaLabel: copy.appHeader.walletAriaLabel,
         }}
         showNotificationsDot={showNotificationsDot}
+        showWalletAction
       />
       <div className={forceMobile ? "px-3 pb-24 pt-[calc(env(safe-area-inset-top)+5rem)]" : "mx-auto max-w-5xl px-6 py-10"}>
         <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5 text-base text-muted-foreground md:p-8">
@@ -107,7 +109,9 @@ function MobileChromeStory() {
           profileAriaLabel: copy.appHeader.profileAriaLabel,
           searchAriaLabel: copy.appHeader.searchAriaLabel,
           searchPlaceholder: copy.appHeader.searchPlaceholder,
+          walletAriaLabel: copy.appHeader.walletAriaLabel,
         }}
+        showWalletAction
       />
       <div className="space-y-3 px-3 pb-28 pt-[calc(env(safe-area-inset-top)+5rem)]">
         <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5 text-base text-muted-foreground">

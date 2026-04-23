@@ -55,9 +55,10 @@ function WalletHeaderCard({
 }: Pick<WalletHubProps, "walletAddress" | "walletLabel" | "onChangeWallet">) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").wallet;
+  const hasWallet = Boolean(walletAddress);
   return (
-    <Card className="border-border bg-card shadow-none">
-      <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
+    <Card className="overflow-hidden border-border bg-card shadow-none">
+      <div className="border-b border-border-soft bg-muted/25 px-5 py-5 sm:px-6 sm:py-6">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">{copy.title}</h1>
@@ -69,8 +70,13 @@ function WalletHeaderCard({
             </Button>
           ) : null}
         </div>
-
-        <CopyAddressField value={walletAddress} />
+      </div>
+      <div className="px-5 py-5 sm:px-6 sm:py-6">
+        {hasWallet ? (
+          <CopyAddressField value={walletAddress as string} />
+        ) : (
+          <div className="text-lg font-semibold text-foreground">{copy.noWalletConnected}</div>
+        )}
       </div>
     </Card>
   );
@@ -124,7 +130,7 @@ export function WalletHub({
   chainSections,
 }: WalletHubProps) {
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
       {title ? (
         <div className="text-base font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {title}

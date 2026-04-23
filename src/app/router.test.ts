@@ -92,6 +92,17 @@ describe("public profile host routing", () => {
     });
   });
 
+  test("matches wallet as a primary route and keeps the old settings URL compatible", () => {
+    expectJson(matchRoute("/wallet"), {
+      kind: "wallet",
+      path: "/wallet",
+    });
+    expectJson(matchRoute("/settings/wallet"), {
+      kind: "wallet",
+      path: "/wallet",
+    });
+  });
+
   test("matches post routes from path routes", () => {
     expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c"), {
       kind: "post",

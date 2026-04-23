@@ -109,20 +109,6 @@ const baseArgs: SettingsPageProps = {
     publicHandlesSaveDisabled: false,
     onPublicHandlesSave: () => {},
   },
-  wallet: {
-    primaryAddress: "0x42a5f77f2d06c9a7e304817b3c177b91e0c2f3a8",
-    connectedWallets: [
-      {
-        address: "0x42a5f77f2d06c9a7e304817b3c177b91e0c2f3a8",
-        chainLabel: "Ethereum",
-        isPrimary: true,
-      },
-      {
-        address: "0x11f4845ef4bb010f8aebf2772836e2d33f5e4cc1",
-        chainLabel: "Base",
-      },
-    ],
-  },
   preferences: {
     ageStatusLabel: "18+ verified",
     locale: "en",
@@ -151,12 +137,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Profile: Story = {};
-
-export const Wallet: Story = {
-  args: {
-    activeTab: "wallet",
-  },
-};
 
 export const Preferences: Story = {
   args: {

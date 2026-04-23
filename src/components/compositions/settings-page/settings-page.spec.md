@@ -25,7 +25,7 @@
     - selectable linked handles (Pirate, ENS, etc.)
     - primary byline selector
     - stale handle refresh actions
-- `/settings/wallet`
+- `/wallet`
   - primary wallet address
   - connected wallets
 - `/settings/preferences`

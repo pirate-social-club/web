@@ -12,6 +12,7 @@ export type AppRoute =
   | { kind: "public-profile"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "public-agent"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "your-communities"; path: "/your-communities" }
+  | { kind: "wallet"; path: "/wallet" }
   | { kind: "settings"; path: string; section: SettingsSection }
   | { kind: "create-post"; path: string; communityId: string }
   | { kind: "create-post-global"; path: "/submit" }
@@ -99,6 +100,10 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
     return { kind: "your-communities", path: normalized };
   }
 
+  if (normalized === "/wallet") {
+    return { kind: "wallet", path: normalized };
+  }
+
   if (normalized === "/settings") {
     return { kind: "settings", path: normalized, section: "profile" };
   }
@@ -124,6 +129,10 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   }
 
   const segments = normalized.split("/").filter(Boolean);
+
+  if (segments.length === 2 && segments[0] === "settings" && segments[1] === "wallet") {
+    return { kind: "wallet", path: "/wallet" };
+  }
 
   if (segments.length === 2 && segments[0] === "settings") {
     if (SETTINGS_SECTIONS.includes(segments[1] as SettingsSection)) {

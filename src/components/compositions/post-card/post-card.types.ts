@@ -123,13 +123,13 @@ export type PostCardContent =
   | {
       type: "link";
       href: string;
+      body?: string;
+      bodyDir?: "ltr" | "rtl" | "auto";
+      bodyLang?: string;
       previewTitle?: string;
       previewTitleDir?: "ltr" | "rtl" | "auto";
       previewTitleLang?: string;
       linkLabel?: string;
-      linkCaption?: string;
-      linkCaptionDir?: "ltr" | "rtl" | "auto";
-      linkCaptionLang?: string;
       previewImageSrc?: string;
     }
   | {
@@ -139,6 +139,9 @@ export type PostCardContent =
       renderMode: "preview" | "official";
       canonicalUrl: string;
       originalUrl?: string;
+      body?: string;
+      bodyDir?: "ltr" | "rtl" | "auto";
+      bodyLang?: string;
       preview?: {
         authorName?: string | null;
         authorUrl?: string | null;

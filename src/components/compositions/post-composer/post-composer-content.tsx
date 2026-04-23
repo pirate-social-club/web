@@ -146,9 +146,9 @@ export function PostComposerPrimaryArea({
           <LabeledFormattedTextarea
             className="min-h-28"
             label={copy.fields.commentary}
-            onChange={onCaptionValueChange}
+            onChange={onTextBodyValueChange}
             placeholder={copy.placeholders.commentary}
-            value={captionValue}
+            value={textBodyValue}
           />
         </div>
       );

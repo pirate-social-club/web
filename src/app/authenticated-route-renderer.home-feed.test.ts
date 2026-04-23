@@ -196,6 +196,23 @@ describe("toHomeFeedItem", () => {
 
     expect(item.post.onComment).toBe(onComment);
   });
+
+  test("maps link post title and body onto the card", () => {
+    const entry = createEntry();
+    entry.post.post.post_type = "link";
+    entry.post.post.title = "A real link title";
+    entry.post.post.body = "My commentary on the link.";
+    entry.post.post.link_url = "https://example.com/story";
+    entry.post.post.link_og_title = "Publisher preview title";
+
+    const item = toHomeFeedItem(entry, {});
+
+    expect(item.post.title).toBe("A real link title");
+    expect(item.post.content.type).toBe("link");
+    if (item.post.content.type !== "link") throw new Error("expected link content");
+    expect(item.post.content.body).toBe("My commentary on the link.");
+    expect(item.post.content.previewTitle).toBe("Publisher preview title");
+  });
 });
 
 describe("toCommunityFeedItem", () => {

@@ -83,6 +83,14 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
     case "link":
       return (
         <div className={cn("w-full space-y-2 text-start", className)}>
+          {content.body ? (
+            <FormattedText
+              className={cn(postCardType.body, "max-w-[72ch] text-foreground")}
+              dir={content.bodyDir ?? "auto"}
+              lang={content.bodyLang}
+              value={content.body}
+            />
+          ) : null}
           <a
             className={cn(
               "grid w-full items-stretch gap-3 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -121,20 +129,24 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
               </div>
             ) : null}
           </a>
-          {content.linkCaption ? (
-            <FormattedText
-              className={cn(postCardType.caption, "text-foreground")}
-              dir={content.linkCaptionDir ?? "auto"}
-              lang={content.linkCaptionLang}
-              value={content.linkCaption}
-            />
-          ) : null}
         </div>
       );
     case "embed":
-      return content.renderMode === "official"
-        ? <OfficialOEmbed content={content} className={className} />
-        : <PostEmbedPreview content={content} className={className} />;
+      return (
+        <div className={cn("w-full space-y-2 text-start", className)}>
+          {content.body ? (
+            <FormattedText
+              className={cn(postCardType.body, "max-w-[72ch] text-foreground")}
+              dir={content.bodyDir ?? "auto"}
+              lang={content.bodyLang}
+              value={content.body}
+            />
+          ) : null}
+          {content.renderMode === "official"
+            ? <OfficialOEmbed content={content} />
+            : <PostEmbedPreview content={content} />}
+        </div>
+      );
     case "song":
       return (
         <React.Suspense fallback={<SongPostContentFallback className={className} />}>

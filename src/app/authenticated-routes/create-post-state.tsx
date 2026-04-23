@@ -507,8 +507,9 @@ export function useCreatePostState(communityId: string) {
           anonymous_scope: anonymousScope,
           disclosed_qualifier_ids: disclosedQualifierIds,
           translation_policy: "machine_allowed",
+          title: title.trim() || undefined,
+          body: body.trim() || undefined,
           link_url: linkUrl.trim(),
-          caption: caption.trim() || undefined,
           visibility: audience.visibility,
         };
         result = await api.communities.createPost(

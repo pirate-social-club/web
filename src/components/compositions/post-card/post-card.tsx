@@ -60,7 +60,7 @@ export function PostCard({
   onMenuAction,
   className,
 }: PostCardProps) {
-  const effectiveTitleHref = titleHref ?? (content.type !== "link" ? postHref : undefined);
+  const effectiveTitleHref = titleHref ?? postHref;
 
   const titleElement = title ? (
     effectiveTitleHref ? (

@@ -421,18 +421,16 @@ export function PostComposer(props: PostComposerProps) {
 
         <CardContent className={cn("space-y-5 p-5", isMobile && "space-y-5 px-0 pb-0 pt-3")}>
           <>
-          {activeTab !== "link" ? (
-            <div>
-              <FieldLabel label={copy.fields.title} />
-              <Input
-                className="h-14"
-                maxLength={300}
-                onChange={(event) => onTitleValueChange?.(event.target.value)}
-                placeholder={copy.placeholders.title}
-                value={titleValue}
-              />
-            </div>
-          ) : null}
+          <div>
+            <FieldLabel label={copy.fields.title} />
+            <Input
+              className="h-14"
+              maxLength={300}
+              onChange={(event) => onTitleValueChange?.(event.target.value)}
+              placeholder={copy.placeholders.title}
+              value={titleValue}
+            />
+          </div>
 
           <PostComposerPrimaryArea
             activeSongMode={activeSongMode}

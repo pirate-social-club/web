@@ -249,6 +249,9 @@ function toCommunityPostContent(
         const embed = post.embeds[0];
         return {
           type: "embed",
+          body: resolvedBody || undefined,
+          bodyDir: translatedTextPresentation.dir,
+          bodyLang: translatedTextPresentation.lang,
           canonicalUrl: embed.canonical_url,
           oembedHtml: embed.oembed_html,
           originalUrl: embed.original_url,
@@ -267,10 +270,10 @@ function toCommunityPostContent(
       }
       return {
         type: "link",
+        body: resolvedBody || undefined,
+        bodyDir: translatedTextPresentation.dir,
+        bodyLang: translatedTextPresentation.lang,
         href: post.link_url ?? "#",
-        linkCaption: resolvedCaption,
-        linkCaptionDir: translatedTextPresentation.dir,
-        linkCaptionLang: translatedTextPresentation.lang,
         linkLabel: post.link_url ?? undefined,
         previewTitle: post.link_og_title ?? undefined,
         previewImageSrc: post.link_og_image_url ?? undefined,
@@ -363,7 +366,7 @@ export function toCommunityFeedItem(
       onVote: opts?.onVote,
       postHref: `/p/${post.post_id}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
-      title: post.post_type === "link" ? undefined : postResponse.translated_title ?? post.title ?? undefined,
+      title: postResponse.translated_title ?? post.title ?? undefined,
       titleDir: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined,
       titleLang: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined,
       titleHref: `/p/${post.post_id}`,
@@ -412,7 +415,7 @@ export function toHomeFeedItem(
       onVote: opts?.onVote,
       postHref: `/p/${post.post_id}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
-      title: post.post_type === "link" ? undefined : postResponse.translated_title ?? post.title ?? undefined,
+      title: postResponse.translated_title ?? post.title ?? undefined,
       titleDir: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined,
       titleLang: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined,
       titleHref: `/p/${post.post_id}`,
@@ -456,11 +459,9 @@ export function toThreadPostCard(
     onVote: opts?.onVote,
     postHref: `/p/${post.post_id}`,
     qualifierLabels: resolvePostQualifierLabels(postResponse),
-    title: post.post_type === "link"
-      ? undefined
-      : opts?.preferOriginalText
-        ? post.title ?? undefined
-        : postResponse.translated_title ?? post.title ?? undefined,
+    title: opts?.preferOriginalText
+      ? post.title ?? undefined
+      : postResponse.translated_title ?? post.title ?? undefined,
     titleDir: !opts?.preferOriginalText && postResponse.translation_state === "ready"
       ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
       : undefined,

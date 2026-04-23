@@ -21,8 +21,9 @@ export const PasteUrl: Story = {
     <PostComposer
       {...baseComposer}
       mode="link"
-      captionValue="Worth posting for the production notes alone."
       linkUrlValue="https://032c.com/magazine/kanye-west-tour-design"
+      textBodyValue="Worth posting for the production notes alone."
+      titleValue="A sharp look at tour design"
     />
   ),
 };

@@ -320,6 +320,8 @@
       "redditUsername": "technohippie"
     },
     "progressLabel": "引导流程",
+    "downloadAndroid": "下载",
+    "downloadIos": "下载",
     "reopenVerification": "重新打开验证",
     "stepCount": "{current}/{total}",
     "suggestedCommunitiesAction": "推荐社区",
@@ -330,10 +332,10 @@
     },
     "title": "完成设置",
     "verifyAction": "验证",
-    "verifyPendingDescription": "完成掌纹扫描后继续。",
+    "verifyPendingDescription": "在 Very.org 应用中完成掌纹扫描。",
     "verifyPendingTitle": "验证",
-    "verifyStartDescription": "扫描手掌以继续。不会保存数据。",
-    "verifyStartTitle": "验证"
+    "verifyStartDescription": "安装 Very.org，然后扫描手掌。照片不会被保存或存储。",
+    "verifyStartTitle": "证明你是真人"
   },
   "inbox": {
     "body": "在通知或消息系统成为真实产品界面前，先把 `/inbox` 保持为中性的占位页。",

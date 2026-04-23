@@ -320,6 +320,8 @@
       "redditUsername": "technohippie"
     },
     "progressLabel": "الإعداد",
+    "downloadAndroid": "تنزيل",
+    "downloadIos": "تنزيل",
     "reopenVerification": "أعد فتح التحقق",
     "stepCount": "{current}/{total}",
     "suggestedCommunitiesAction": "مجتمعات مقترحة",
@@ -330,10 +332,10 @@
     },
     "title": "أكمل الإعداد",
     "verifyAction": "تحقق",
-    "verifyPendingDescription": "أكمل مسح راحة اليد للمتابعة.",
+    "verifyPendingDescription": "أكمل مسح راحة اليد في تطبيق Very.org.",
     "verifyPendingTitle": "تحقق",
-    "verifyStartDescription": "امسح راحة يدك للمتابعة. لا يتم حفظ البيانات.",
-    "verifyStartTitle": "تحقق"
+    "verifyStartDescription": "ثبّت تطبيق Very.org، ثم امسح راحة يدك. لا يتم حفظ الصورة أو تخزينها.",
+    "verifyStartTitle": "أثبت أنك إنسان"
   },
   "inbox": {
     "body": "أبقِ `/inbox` كعنصر نائب محايد حتى يتم تحديد الإشعارات أو المراسلة كسطوح منتج حقيقية.",

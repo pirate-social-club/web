@@ -320,6 +320,8 @@
       "redditUsername": "technohippie"
     },
     "progressLabel": "Onboarding",
+    "downloadAndroid": "Download",
+    "downloadIos": "Download",
     "reopenVerification": "Reopen verification",
     "stepCount": "{current}/{total}",
     "suggestedCommunitiesAction": "Suggested Communities",
@@ -330,10 +332,10 @@
     },
     "title": "Finish setup",
     "verifyAction": "Verify",
-    "verifyPendingDescription": "Complete your palm scan to continue.",
+    "verifyPendingDescription": "Complete the palm scan in the Very.org app.",
     "verifyPendingTitle": "Verify",
-    "verifyStartDescription": "Scan your palm to continue. No data is saved.",
-    "verifyStartTitle": "Verify"
+    "verifyStartDescription": "Install Very.org, then scan your palm. The photo is not saved or stored.",
+    "verifyStartTitle": "Prove you're human"
   },
   "inbox": {
     "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",

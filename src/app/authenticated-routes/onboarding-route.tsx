@@ -74,6 +74,7 @@ export function OnboardingPage() {
   const [importJob, setImportJob] = React.useState<ImportJobState>({ status: "not_started" });
   const [generatedHandle, setGeneratedHandle] = React.useState("");
   const [actionLoading, setActionLoading] = React.useState(false);
+  const automaticVeryStartRef = React.useRef(false);
   const uniqueHumanVerified = onboardingStatus?.unique_human_verification_status === "verified";
   const {
     startVerification,
@@ -93,6 +94,15 @@ export function OnboardingPage() {
     verified: uniqueHumanVerified,
     verificationIntent: "profile_verification",
   });
+
+  React.useEffect(() => {
+    if (!onboardingStatus || onboardingStatus.unique_human_verification_status === "verified") return;
+    if (automaticVeryStartRef.current) return;
+    if (verificationLoading || verificationState !== "not_started") return;
+
+    automaticVeryStartRef.current = true;
+    void startVerification();
+  }, [onboardingStatus, startVerification, verificationLoading, verificationState]);
 
   React.useEffect(() => {
     let cancelled = false;

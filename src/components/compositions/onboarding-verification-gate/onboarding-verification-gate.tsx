@@ -25,7 +25,7 @@ export function OnboardingVerificationGate({
   return (
     <div className="mx-auto w-full max-w-2xl">
       <div className="space-y-7 py-2 text-center sm:rounded-lg sm:border sm:border-border sm:bg-card sm:p-8">
-        <div className="mx-auto flex size-20 items-center justify-center rounded-full border border-red-500/35 bg-red-500/5 text-red-500">
+        <div className="mx-auto flex size-20 items-center justify-center rounded-full border border-border bg-muted/40 text-foreground">
           <HandPalm className="size-12" weight="regular" />
         </div>
 

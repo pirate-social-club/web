@@ -2,18 +2,10 @@
 
 import * as React from "react";
 import {
-  Gavel,
-  Heart,
-  LinkSimple,
-  Lock,
   MagnifyingGlass,
-  Robot,
-  SealCheck,
-  Shield,
 } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
-import { PirateBrandMark } from "@/components/primitives/pirate-brand-mark";
 import {
   Sidebar,
   SidebarContent,
@@ -68,12 +60,6 @@ export function CommunityModerationShell({
         <SidebarContent className="gap-4 px-0 pb-4 pt-5">
           <SidebarGroup className="px-4 py-0">
             <SidebarGroupContent>
-              <div className="mb-6 flex items-center gap-3 px-1">
-                <PirateBrandMark className="h-9 w-9 shrink-0" decorative={false} />
-                <span className="truncate text-lg font-semibold leading-none tracking-[0.18em] text-foreground">
-                  PIRATE
-                </span>
-              </div>
               <div className="mb-5 flex items-center gap-3">
                 <Avatar
                   className="h-10 w-10"

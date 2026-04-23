@@ -55,6 +55,8 @@ export interface AppHeaderProps {
   disableCreateAction?: boolean;
   forceMobile?: boolean;
   hideBrand?: boolean;
+  hideDesktopBrand?: boolean;
+  hideMobileBrand?: boolean;
   labels?: AppHeaderLabels;
   mobileLeadingContent?: React.ReactNode;
   mobileCenterContent?: React.ReactNode;
@@ -83,6 +85,8 @@ export function AppHeader({
   disableCreateAction = false,
   forceMobile,
   hideBrand = false,
+  hideDesktopBrand = false,
+  hideMobileBrand = false,
   labels,
   mobileLeadingContent,
   mobileCenterContent,
@@ -193,7 +197,7 @@ export function AppHeader({
             )
           )}
           <div className="min-w-0 justify-self-start">
-            {mobileCenterContent ?? (hideBrand ? null : brand)}
+            {mobileCenterContent ?? (hideBrand || hideMobileBrand ? null : brand)}
           </div>
           <div className="justify-self-end">
             {mobileTrailingContent ?? (showConnectAction ? (
@@ -211,7 +215,7 @@ export function AppHeader({
     <header className={cn("sticky top-0 z-30 border-b border-border-soft bg-background/95 backdrop-blur-xl", className)}>
       <div className="grid h-[4.5rem] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 lg:px-8">
         <div className="min-w-0 text-start">
-          {hideBrand ? null : brand}
+          {hideBrand || hideDesktopBrand ? null : brand}
         </div>
 
         <div className="flex min-w-0 items-center justify-end gap-1.5">

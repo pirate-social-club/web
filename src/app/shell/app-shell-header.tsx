@@ -39,14 +39,14 @@ export function AppShellHeader({
   const createPostPath = resolveCreatePostPath(route);
   const mobileBackPath = resolveMobileBackPath(route);
   const disableCreateAction = !clientReady;
-  const hideHeaderBrand = route.kind === "community-moderation" || route.kind === "community-moderation-index";
+  const isCommunityModerationRoute = route.kind === "community-moderation" || route.kind === "community-moderation-index";
   const useAppSidebarTrigger = route.kind !== "community-moderation" && route.kind !== "community-moderation-index";
 
   return (
     <AppHeader
       avatarFallback={avatarFallback}
       disableCreateAction={disableCreateAction}
-      hideBrand={hideHeaderBrand}
+      hideMobileBrand={isCommunityModerationRoute}
       labels={{
         backAriaLabel: copy.appHeader.backAriaLabel,
         connectLabel: copy.appHeader.connectLabel,

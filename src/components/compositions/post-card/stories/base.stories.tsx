@@ -103,6 +103,81 @@ export const LinkPost: Story = {
   ),
 };
 
+export const XEmbedPreview: Story = {
+  name: "Embed / X Preview",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title={undefined}
+      content={{
+        type: "embed",
+        canonicalUrl: "https://x.com/pirate/status/1234567890123456789",
+        originalUrl: "https://x.com/pirate/status/1234567890123456789",
+        preview: {
+          authorName: "Pirate",
+          authorUrl: "https://x.com/pirate",
+          hasMedia: true,
+          mediaUrl: "https://picsum.photos/seed/pirate-x-embed/240/240",
+          text: "Embedding should stay fast in the feed and expand only when someone asks for the official post.",
+        },
+        provider: "x",
+        renderMode: "preview",
+        state: "embed",
+      }}
+      engagement={{ ...basePost.engagement, score: 984, commentCount: 61 }}
+    />
+  ),
+};
+
+export const XEmbedOfficial: Story = {
+  name: "Embed / X Official",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title={undefined}
+      content={{
+        type: "embed",
+        canonicalUrl: "https://x.com/pirate/status/1234567890123456789",
+        oembedHtml: `<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Embedding should stay fast in the feed and expand only when someone asks for the official post.</p>&mdash; Pirate <a href="https://x.com/pirate/status/1234567890123456789">April 23, 2026</a></blockquote>`,
+        originalUrl: "https://x.com/pirate/status/1234567890123456789",
+        preview: {
+          authorName: "Pirate",
+          authorUrl: "https://x.com/pirate",
+          hasMedia: false,
+          text: "Embedding should stay fast in the feed and expand only when someone asks for the official post.",
+        },
+        provider: "x",
+        renderMode: "official",
+        state: "embed",
+      }}
+      engagement={{ ...basePost.engagement, score: 984, commentCount: 61 }}
+    />
+  ),
+};
+
+export const XEmbedUnavailable: Story = {
+  name: "Embed / X Unavailable",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title={undefined}
+      content={{
+        type: "embed",
+        canonicalUrl: "https://x.com/pirate/status/1234567890123456789",
+        originalUrl: "https://x.com/pirate/status/1234567890123456789",
+        preview: {
+          authorName: "Pirate",
+          hasMedia: false,
+        },
+        provider: "x",
+        renderMode: "preview",
+        state: "unavailable",
+      }}
+      engagement={{ ...basePost.engagement, score: 12, commentCount: 4 }}
+    />
+  ),
+};
+
 // ============================================================================
 // ENGAGEMENT STATES
 // ============================================================================

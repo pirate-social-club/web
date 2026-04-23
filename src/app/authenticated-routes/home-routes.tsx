@@ -185,7 +185,7 @@ export function HomePage() {
                 <button className="flex w-full items-center gap-3 px-5 py-3 text-start" key={community.community_id} onClick={() => navigate(`/c/${community.route_slug ?? community.community_id}`)} type="button">
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-base font-medium text-foreground">{community.display_name}</div>
-                    {community.member_count != null ? <div className="text-base text-muted-foreground">{copy.home.membersLabel.replace("{count}", community.member_count.toLocaleString(localeTag))}</div> : null}
+                    {community.follower_count != null ? <div className="text-base text-muted-foreground">{copy.home.followersLabel.replace("{count}", community.follower_count.toLocaleString(localeTag))}</div> : null}
                   </div>
                 </button>
               ))}

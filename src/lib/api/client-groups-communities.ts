@@ -3,6 +3,7 @@ import type {
   AssetAccessResponse,
   Community,
   CommunityCreateAcceptedResponse,
+  CommunityFollowResponse,
   CommunityListing,
   CommunityListingListResponse,
   CommunityMoneyPolicy,
@@ -147,6 +148,16 @@ export function createCommunitiesApi(request: ApiRequest) {
       request<{ community_id: string; status: string }>(
         `/communities/${encodeURIComponent(communityId)}/join`,
         { method: "POST", body: JSON.stringify({}) },
+      ),
+    follow: (communityId: string): Promise<CommunityFollowResponse> =>
+      request<CommunityFollowResponse>(
+        `/communities/${encodeURIComponent(communityId)}/follow`,
+        { method: "PUT", body: JSON.stringify({}) },
+      ),
+    unfollow: (communityId: string): Promise<CommunityFollowResponse> =>
+      request<CommunityFollowResponse>(
+        `/communities/${encodeURIComponent(communityId)}/follow`,
+        { method: "DELETE" },
       ),
     preview: (communityId: string, opts?: { locale?: string | null }): Promise<CommunityPreview> => {
       return request<CommunityPreview>(buildQueryPath(

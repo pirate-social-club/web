@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Check, Copy } from "@phosphor-icons/react";
 import {
   NetworkBase,
   NetworkBitcoin,
+  NetworkCosmosHub,
   NetworkEthereum,
   NetworkSolana,
   NetworkTempo,
@@ -17,7 +17,7 @@ import {
 
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
-import { Input } from "@/components/primitives/input";
+import { CopyField } from "@/components/primitives/copy-field";
 import storyProtocolLogoUrl from "@/assets/story-protocol-logo.jpg";
 import { cn } from "@/lib/utils";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -30,12 +30,12 @@ import type {
   WalletHubToken,
 } from "./wallet-hub.types";
 
-type WalletFamilyId = "ethereum" | "tempo" | "solana" | "bitcoin";
+type WalletFamilyId = "ethereum" | "tempo" | "solana" | "bitcoin" | "cosmos";
 
 type WalletFamily = {
   id: WalletFamilyId;
   address: string | null;
-  assets: Array<WalletHubToken & { chainId: WalletHubChainId; chainTitle: string }>;
+  assets: Array<WalletHubToken & { chainId: WalletHubChainId }>;
   title: string;
 };
 
@@ -50,46 +50,11 @@ const TOKEN_ICON_BY_SYMBOL: Partial<Record<string, IconComponent>> = {
 const CHAIN_ICON_BY_CHAIN_ID: Partial<Record<WalletHubChainId, IconComponent>> = {
   base: NetworkBase,
   bitcoin: NetworkBitcoin,
+  cosmos: NetworkCosmosHub,
   ethereum: NetworkEthereum,
   solana: NetworkSolana,
   tempo: NetworkTempo,
 };
-
-function CopyAddressField({ value }: { value: string }) {
-  const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").wallet;
-  const [copied, setCopied] = React.useState(false);
-
-  const handleCopy = React.useCallback(async () => {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
-  }, [value]);
-
-  return (
-    <div className="flex items-center gap-2">
-      <Input
-        aria-label={copy.walletAddressLabel}
-        className="font-mono text-base tracking-[0.01em]"
-        readOnly
-        value={value}
-      />
-      <Button
-        aria-label={copied ? copy.copied : copy.copyAddress}
-        onClick={handleCopy}
-        size="icon"
-        variant="secondary"
-      >
-        {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
-      </Button>
-    </div>
-  );
-}
-
-function shortenWalletAddress(value: string) {
-  if (value.length <= 18) return value;
-  return `${value.slice(0, 10)}...${value.slice(-6)}`;
-}
 
 function getWalletFamilyId(chainId: WalletHubChainId): WalletFamilyId {
   if (chainId === "ethereum" || chainId === "base" || chainId === "story") {
@@ -103,14 +68,16 @@ function getWalletFamilyTitle(id: WalletFamilyId) {
   if (id === "ethereum") return "Ethereum";
   if (id === "tempo") return "Tempo";
   if (id === "solana") return "Solana";
-  return "Bitcoin";
+  if (id === "bitcoin") return "Bitcoin";
+  return "Cosmos";
 }
 
 function getWalletFamilyChainIcon(id: WalletFamilyId): WalletHubChainId {
   if (id === "ethereum") return "ethereum";
   if (id === "tempo") return "tempo";
   if (id === "solana") return "solana";
-  return "bitcoin";
+  if (id === "bitcoin") return "bitcoin";
+  return "cosmos";
 }
 
 function buildWalletFamilies({
@@ -134,7 +101,6 @@ function buildWalletFamilies({
         assets: section.tokens.map((token) => ({
           ...token,
           chainId: section.chainId,
-          chainTitle: section.title,
         })),
       });
       continue;
@@ -143,11 +109,10 @@ function buildWalletFamilies({
     existing.assets.push(...section.tokens.map((token) => ({
       ...token,
       chainId: section.chainId,
-      chainTitle: section.title,
     })));
   }
 
-  const familyOrder: WalletFamilyId[] = ["ethereum", "tempo", "solana", "bitcoin"];
+  const familyOrder: WalletFamilyId[] = ["ethereum", "bitcoin", "solana", "tempo", "cosmos"];
   return familyOrder.flatMap((familyId) => {
     const family = grouped.get(familyId);
     return family ? [family] : [];
@@ -181,7 +146,7 @@ function StoryProtocolLogo({ className }: { className?: string }) {
   return (
     <img
       alt=""
-      className={cn("size-full object-cover", className)}
+      className={cn("size-full object-contain", className)}
       draggable={false}
       src={storyProtocolLogoUrl}
     />
@@ -203,15 +168,15 @@ function TokenIcon({ chainId, token }: { chainId: WalletHubChainId; token: Walle
 
   return (
     <div className="relative size-12 shrink-0">
-      <div className="grid size-12 place-items-center overflow-hidden rounded-full border border-border bg-background">
-        {isStoryAsset ? <StoryProtocolLogo /> : null}
+      <div className="grid size-12 place-items-center overflow-hidden rounded-full border border-border bg-background p-1.5">
+        {isStoryAsset ? <StoryProtocolLogo className="size-9" /> : null}
         {!isStoryAsset && TokenIconComponent ? (
           <TokenIconComponent aria-hidden="true" className="size-9" variant="branded" />
         ) : null}
         {!isStoryAsset && !TokenIconComponent ? <SymbolFallback label={symbol} /> : null}
       </div>
       <div className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center overflow-hidden rounded-full border-2 border-card bg-background">
-        <ChainIcon chainId={chainId} className="size-full" />
+        <ChainIcon chainId={chainId} className="size-3.5" framed={false} />
       </div>
     </div>
   );
@@ -261,14 +226,8 @@ function NetworkCard({
       <div className="space-y-5">
         <span className="sr-only">{family.title}</span>
         <div className="flex min-h-14 items-center justify-center">
-          <ChainIcon chainId={getWalletFamilyChainIcon(family.id)} className="size-24" />
+          <ChainIcon chainId={getWalletFamilyChainIcon(family.id)} className="size-20" framed={false} />
         </div>
-      </div>
-      <div className="flex items-center gap-2 border-t border-border-soft pt-3">
-        <div className="min-w-0 flex-1 truncate font-mono text-base text-muted-foreground">
-          {family.address ? shortenWalletAddress(family.address) : "No wallet connected"}
-        </div>
-        <Copy className="size-4 shrink-0 text-muted-foreground" />
       </div>
     </button>
   );
@@ -301,7 +260,7 @@ export function WalletHub({
         <>
           <section className="space-y-3">
             <div className="text-xl font-semibold text-foreground">Networks</div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               {walletFamilies.map((family) => (
                 <NetworkCard
                   active={family.id === selectedFamily?.id}
@@ -311,6 +270,7 @@ export function WalletHub({
                 />
               ))}
             </div>
+            {selectedFamily?.address ? <CopyField className="max-w-xl" value={selectedFamily.address} /> : null}
           </section>
 
           <section className="space-y-3">
@@ -337,7 +297,7 @@ export function WalletHub({
         </>
       ) : (
         <Card className="border-border bg-card px-5 py-10 text-base text-muted-foreground shadow-none sm:px-6">
-          {walletAddress ? <CopyAddressField value={walletAddress} /> : copy.noWalletConnected}
+          {walletAddress ? <CopyField value={walletAddress} /> : copy.noWalletConnected}
         </Card>
       )}
     </div>
@@ -347,19 +307,38 @@ export function WalletHub({
 function ChainIcon({
   chainId,
   className,
+  framed = true,
 }: {
   chainId: WalletHubChainId;
   className?: string;
+  framed?: boolean;
 }) {
   const ChainIconComponent = CHAIN_ICON_BY_CHAIN_ID[chainId];
+  const content = (
+    <>
+      {chainId === "story" ? <StoryProtocolLogo className={framed ? "size-[72%]" : "size-full"} /> : null}
+      {chainId !== "story" && ChainIconComponent ? (
+        <ChainIconComponent
+          aria-hidden="true"
+          className={framed ? "size-[72%]" : "size-full"}
+          variant="branded"
+        />
+      ) : null}
+      {chainId !== "story" && !ChainIconComponent ? <SymbolFallback label={chainId} /> : null}
+    </>
+  );
+
+  if (!framed) {
+    return (
+      <div className={cn("grid shrink-0 place-items-center", className)}>
+        {content}
+      </div>
+    );
+  }
 
   return (
     <div className={cn("grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-background", className)}>
-      {chainId === "story" ? <StoryProtocolLogo /> : null}
-      {chainId !== "story" && ChainIconComponent ? (
-        <ChainIconComponent aria-hidden="true" className="size-full" variant="branded" />
-      ) : null}
-      {chainId !== "story" && !ChainIconComponent ? <SymbolFallback label={chainId} /> : null}
+      {content}
     </div>
   );
 }

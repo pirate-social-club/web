@@ -4,7 +4,8 @@ export type WalletHubChainId =
   | "story"
   | "tempo"
   | "solana"
-  | "bitcoin";
+  | "bitcoin"
+  | "cosmos";
 
 export type WalletHubChainAvailability = "ready" | "later";
 

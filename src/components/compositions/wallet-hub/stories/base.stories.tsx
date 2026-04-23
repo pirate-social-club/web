@@ -52,6 +52,12 @@ const baseArgs: WalletHubProps = {
       availability: "later",
       tokens: [],
     },
+    {
+      chainId: "cosmos",
+      title: "Cosmos",
+      availability: "later",
+      tokens: [],
+    },
   ],
 };
 
@@ -117,6 +123,12 @@ export const Deferred: Story = {
       {
         chainId: "bitcoin",
         title: "Bitcoin",
+        availability: "later",
+        tokens: [],
+      },
+      {
+        chainId: "cosmos",
+        title: "Cosmos",
         availability: "later",
         tokens: [],
       },

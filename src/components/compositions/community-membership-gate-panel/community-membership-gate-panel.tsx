@@ -192,9 +192,16 @@ export function CommunityMembershipGatePanel({
     ? getPassportPrompt(eligibility)
     : null;
   const activePrompt = verificationPrompt ?? passportPrompt;
+  const isVeryVerificationRequired = !activePrompt
+    && eligibility?.status === "verification_required"
+    && eligibility.suggested_verification_provider === "very";
   const eligibilityText = getEligibilityText(eligibility);
-  const title = activePrompt?.title ?? (joinRequested ? "Request submitted" : eligibilityText.title);
-  const description = activePrompt?.description
+  const title = isVeryVerificationRequired
+    ? "Verify with VeryAI"
+    : activePrompt?.title ?? (joinRequested ? "Request submitted" : eligibilityText.title);
+  const description = isVeryVerificationRequired
+    ? null
+    : activePrompt?.description
     ?? (joinRequested ? "Your join request has been submitted." : joinError ?? eligibilityText.description);
   const showEligibilityAction = eligibility
     && !activePrompt
@@ -204,9 +211,6 @@ export function CommunityMembershipGatePanel({
     && eligibility.status !== "banned";
   const showPromptAction = activePrompt?.href;
   const descriptionTone = joinError ? "text-amber-700" : "text-muted-foreground";
-  const showVeryDownloadLinks = !activePrompt
-    && eligibility?.status === "verification_required"
-    && eligibility.suggested_verification_provider === "very";
 
   return (
     <CardShell className="px-5 py-5">
@@ -240,8 +244,12 @@ export function CommunityMembershipGatePanel({
         </div>
       ) : null}
 
-      {showVeryDownloadLinks ? (
-        <VerificationAppDownloadLinks app="very" className="mt-4 max-w-sm space-y-3" />
+      {isVeryVerificationRequired ? (
+        <VerificationAppDownloadLinks
+          app="very"
+          className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-muted-foreground"
+          variant="inline"
+        />
       ) : null}
 
       {verificationLoading || onCancelVerification || verificationError ? (

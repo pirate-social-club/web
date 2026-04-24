@@ -50,3 +50,11 @@ export const MobileVery: Story = {
     viewport: { defaultViewport: "mobile1" },
   },
 };
+
+export const InlineVery: Story = {
+  name: "Inline / Very",
+  args: {
+    app: "very",
+    variant: "inline",
+  },
+};

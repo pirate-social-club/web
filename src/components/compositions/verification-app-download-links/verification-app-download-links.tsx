@@ -11,11 +11,27 @@ import {
 export function VerificationAppDownloadLinks({
   app,
   className,
+  variant = "buttons",
 }: {
   app: VerificationMobileApp;
   className?: string;
+  variant?: "buttons" | "inline";
 }) {
   const config = VERIFICATION_MOBILE_APP_DOWNLOADS[app];
+
+  if (variant === "inline") {
+    return (
+      <div className={className ?? "flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-muted-foreground"}>
+        <span>Need {config.appName}?</span>
+        <a className="font-medium text-foreground underline-offset-4 hover:underline" href={config.iosUrl} rel="noopener noreferrer" target="_blank">
+          iOS
+        </a>
+        <a className="font-medium text-foreground underline-offset-4 hover:underline" href={config.androidUrl} rel="noopener noreferrer" target="_blank">
+          Android
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className={className ?? ""}>

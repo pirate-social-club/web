@@ -197,7 +197,7 @@ export function CommunityMembershipGatePanel({
     && eligibility.suggested_verification_provider === "very";
   const eligibilityText = getEligibilityText(eligibility);
   const title = isVeryVerificationRequired
-    ? "Verify with VeryAI"
+    ? "Scan your palm to join"
     : activePrompt?.title ?? (joinRequested ? "Request submitted" : eligibilityText.title);
   const description = isVeryVerificationRequired
     ? null
@@ -232,7 +232,12 @@ export function CommunityMembershipGatePanel({
         ) : null}
 
         {showEligibilityAction ? (
-          <Button className="w-full shrink-0 md:w-auto" loading={joinLoading} onClick={onJoin}>
+          <Button
+            className={isVeryVerificationRequired ? "h-12 w-full shrink-0 px-7 text-base md:w-auto" : "w-full shrink-0 md:w-auto"}
+            loading={joinLoading}
+            onClick={onJoin}
+            size={isVeryVerificationRequired ? "lg" : "default"}
+          >
             {getJoinCtaLabel(eligibility)}
           </Button>
         ) : null}
@@ -247,7 +252,7 @@ export function CommunityMembershipGatePanel({
       {isVeryVerificationRequired ? (
         <VerificationAppDownloadLinks
           app="very"
-          className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-muted-foreground"
+          className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-muted-foreground"
           variant="inline"
         />
       ) : null}

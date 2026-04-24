@@ -22,12 +22,12 @@ export function VerificationAppDownloadLinks({
   if (variant === "inline") {
     return (
       <div className={className ?? "flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-muted-foreground"}>
-        <span>Need {config.appName}?</span>
+        <span>Download {config.appName} app:</span>
         <a className="font-medium text-foreground underline-offset-4 hover:underline" href={config.iosUrl} rel="noopener noreferrer" target="_blank">
-          iOS
+          iOS App Store
         </a>
         <a className="font-medium text-foreground underline-offset-4 hover:underline" href={config.androidUrl} rel="noopener noreferrer" target="_blank">
-          Android
+          Google Play
         </a>
       </div>
     );

@@ -6,6 +6,7 @@ import { ArrowSquareOut } from "@phosphor-icons/react";
 import QRCode from "qrcode";
 
 import { Button } from "@/components/primitives/button";
+import { VerificationAppDownloadLinks } from "@/components/compositions/verification-app-download-links/verification-app-download-links";
 import { FormNote } from "@/components/primitives/form-layout";
 import { CardShell } from "@/components/primitives/layout-shell";
 import { Spinner } from "@/components/primitives/spinner";
@@ -203,6 +204,9 @@ export function CommunityMembershipGatePanel({
     && eligibility.status !== "banned";
   const showPromptAction = activePrompt?.href;
   const descriptionTone = joinError ? "text-amber-700" : "text-muted-foreground";
+  const showVeryDownloadLinks = !activePrompt
+    && eligibility?.status === "verification_required"
+    && eligibility.suggested_verification_provider === "very";
 
   return (
     <CardShell className="px-5 py-5">
@@ -234,6 +238,10 @@ export function CommunityMembershipGatePanel({
         <div className="mt-4">
           <VerificationQr value={activePrompt.qrValue} />
         </div>
+      ) : null}
+
+      {showVeryDownloadLinks ? (
+        <VerificationAppDownloadLinks app="very" className="mt-4 max-w-sm space-y-3" />
       ) : null}
 
       {verificationLoading || onCancelVerification || verificationError ? (

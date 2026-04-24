@@ -23,11 +23,10 @@ const scriptDir = fileURLToPath(new URL(".", import.meta.url));
 const API_CWD = [
   process.env.PIRATE_API_DIR,
   resolve(scriptDir, "../../api/services/api"),
-  resolve(scriptDir, "../../pirate-v2/pirate-api/services/api"),
-].find((candidate) => candidate && existsSync(candidate));
+  ].find((candidate) => candidate && existsSync(candidate));
 const CORE_CWD = [
   process.env.PIRATE_CORE_REPO,
-  resolve(scriptDir, "../../pirate-v2"),
+  resolve(scriptDir, "../../core"),
 ].find((candidate) => candidate && existsSync(candidate));
 if (!API_CWD) {
   throw new Error("Could not locate Pirate API checkout. Set PIRATE_API_DIR.");

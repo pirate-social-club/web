@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/primitives/button";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Spinner } from "@/components/primitives/spinner";
+import { VerificationAppDownloadLinks } from "@/components/compositions/verification-app-download-links/verification-app-download-links";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 
@@ -113,12 +114,13 @@ export function SelfVerificationModal({
             </div>
           ) : null}
           {error ? <FormNote tone="warning">{error}</FormNote> : null}
+          {isMobile ? <VerificationAppDownloadLinks app="self" /> : null}
         </div>
 
         <ModalFooter className="mt-1 gap-3">
           {isMobile && href ? (
             <Button asChild className="w-full">
-              <a href={href} rel="noopener noreferrer" target="_blank">
+              <a href={href}>
                 {actionLabel}
               </a>
             </Button>

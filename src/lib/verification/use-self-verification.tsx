@@ -10,7 +10,15 @@ import type {
 import { useApi } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api/client";
 import { getVerificationPromptCopy } from "@/lib/identity-gates";
-import { getSelfVerificationLaunchHref, parseSelfCallback } from "@/lib/self-verification";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  buildSelfVerificationCallbackHref,
+  getSelfCallbackCleanHref,
+  getSelfCallbackSessionId,
+  getSelfVerificationLaunchHref,
+  hasSelfCallbackParams,
+  parseSelfCallback,
+} from "@/lib/self-verification";
 
 type PendingSelfVerificationSession = {
   requestedCapabilities: VerificationSession["requested_capabilities"];
@@ -104,6 +112,7 @@ export function useSelfVerification(input: {
     storageKey,
     verificationIntent,
   } = input;
+  const isMobile = useIsMobile();
   const [selfSession, setSelfSession] = React.useState<VerificationSession | null>(null);
   const [requestedCapabilities, setRequestedCapabilities] = React.useState<VerificationSession["requested_capabilities"]>([]);
   const [selfLoading, setSelfLoading] = React.useState(false);
@@ -170,7 +179,7 @@ export function useSelfVerification(input: {
   React.useEffect(() => {
     function handleSelfCallback() {
       const url = new URL(window.location.href);
-      if (!url.searchParams.has("proof") && !url.searchParams.has("error") && url.searchParams.get("expired") !== "true") {
+      if (!hasSelfCallbackParams(url)) {
         return;
       }
 
@@ -181,29 +190,41 @@ export function useSelfVerification(input: {
         setRequestedCapabilities([]);
         setSelfModalOpen(false);
         clearPendingSelfVerificationSession(storageKey);
-        window.history.replaceState({}, "", window.location.pathname);
+        window.history.replaceState({}, "", getSelfCallbackCleanHref(url));
         return;
       }
 
       setRequestedCapabilities(pendingSession.requestedCapabilities);
       const result = parseSelfCallback(url);
+      const callbackSessionId = getSelfCallbackSessionId(url);
+      const verificationSessionId = callbackSessionId || pendingSession.verificationSessionId;
+      if (callbackSessionId && callbackSessionId !== pendingSession.verificationSessionId) {
+        setSelfError("Verification session was lost. Start the ID check again.");
+        setSelfSession(null);
+        setRequestedCapabilities([]);
+        setSelfModalOpen(false);
+        clearPendingSelfVerificationSession(storageKey);
+        window.history.replaceState({}, "", getSelfCallbackCleanHref(url));
+        return;
+      }
+
       if (result.status === "expired") {
         setSelfError("Verification session expired. Please try again.");
         setSelfSession(null);
         setRequestedCapabilities([]);
         setSelfModalOpen(false);
         clearPendingSelfVerificationSession(storageKey);
-        window.history.replaceState({}, "", window.location.pathname);
+        window.history.replaceState({}, "", getSelfCallbackCleanHref(url));
         return;
       }
 
-      if (result.status !== "completed") {
+      if (result.status !== "completed" && result.reason !== "no_proof_returned") {
         setSelfError(result.reason);
         setSelfSession(null);
         setRequestedCapabilities([]);
         setSelfModalOpen(false);
         clearPendingSelfVerificationSession(storageKey);
-        window.history.replaceState({}, "", window.location.pathname);
+        window.history.replaceState({}, "", getSelfCallbackCleanHref(url));
         return;
       }
 
@@ -214,8 +235,35 @@ export function useSelfVerification(input: {
       completionInFlightRef.current = true;
       setSelfLoading(true);
       setSelfError(null);
-      void api.verification.completeSession(pendingSession.verificationSessionId, { proof: result.proof })
+      const completionPromise = result.status === "completed"
+        ? api.verification.completeSession(verificationSessionId, { proof: result.proof })
+        : api.verification.getSession(verificationSessionId);
+
+      void completionPromise
         .then(async (session) => {
+          if (session.status === "pending") {
+            setSelfSession(session);
+            setSelfModalOpen(true);
+            setSelfError(null);
+            return;
+          }
+          if (session.status === "expired") {
+            setSelfSession(null);
+            setRequestedCapabilities([]);
+            setSelfModalOpen(false);
+            clearPendingSelfVerificationSession(storageKey);
+            setSelfError("Verification session expired. Please try again.");
+            return;
+          }
+          if (session.status !== "verified") {
+            setSelfSession(null);
+            setRequestedCapabilities([]);
+            setSelfModalOpen(false);
+            clearPendingSelfVerificationSession(storageKey);
+            setSelfError(session.failure_reason || completeErrorMessage);
+            return;
+          }
+
           setSelfSession(null);
           setRequestedCapabilities([]);
           setSelfModalOpen(false);
@@ -231,7 +279,7 @@ export function useSelfVerification(input: {
         .finally(() => {
           completionInFlightRef.current = false;
           setSelfLoading(false);
-          window.history.replaceState({}, "", window.location.pathname);
+          window.history.replaceState({}, "", getSelfCallbackCleanHref(url));
         });
     }
 
@@ -245,13 +293,18 @@ export function useSelfVerification(input: {
       return null;
     }
 
-    const href = getSelfVerificationLaunchHref(selfSession.launch?.self_app);
+    const launch = selfSession.launch?.self_app;
+    const deeplinkCallback = isMobile && typeof window !== "undefined"
+      ? buildSelfVerificationCallbackHref(window.location.href, selfSession.verification_session_id)
+      : null;
+    const href = getSelfVerificationLaunchHref(launch, { deeplinkCallback });
+    const qrValue = getSelfVerificationLaunchHref(launch);
     return {
       ...getVerificationPromptCopy("self", requestedCapabilities, { locale }),
       href,
-      qrValue: href,
+      qrValue,
     };
-  }, [locale, requestedCapabilities, selfSession]);
+  }, [isMobile, locale, requestedCapabilities, selfSession]);
 
   return {
     handleModalOpenChange,

@@ -154,6 +154,27 @@ export const MultipleMissingCapabilities: Story = {
   ),
 };
 
+export const VeryVerificationRequired: Story = {
+  name: "States / Very Verification Required",
+  args: { gates: [] },
+  render: () => (
+    <CommunityMembershipGatePanel
+      gates={[{ gate_type: "unique_human" }]}
+      eligibility={{
+        community_id: "community_very",
+        membership_mode: "gated",
+        human_verification_lane: "very",
+        joinable_now: false,
+        status: "verification_required",
+        membership_gate_summaries: [{ gate_type: "unique_human" }],
+        missing_capabilities: ["unique_human"],
+        suggested_verification_provider: "very",
+        suggested_verification_intent: "community_join",
+      }}
+    />
+  ),
+};
+
 export const PassportScoreRequired: Story = {
   name: "States / Passport Score Required",
   args: { gates: [] },
@@ -248,6 +269,30 @@ export const Mobile: Story = {
         membership_gate_summaries: [{ gate_type: "nationality", required_value: "US" }],
         missing_capabilities: ["nationality"],
         suggested_verification_provider: "self",
+        suggested_verification_intent: "community_join",
+      }}
+    />
+  ),
+};
+
+export const MobileVeryVerificationRequired: Story = {
+  name: "Mobile / Very Verification Required",
+  args: { gates: [] },
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <CommunityMembershipGatePanel
+      gates={[{ gate_type: "unique_human" }]}
+      eligibility={{
+        community_id: "community_mobile_very",
+        membership_mode: "gated",
+        human_verification_lane: "very",
+        joinable_now: false,
+        status: "verification_required",
+        membership_gate_summaries: [{ gate_type: "unique_human" }],
+        missing_capabilities: ["unique_human"],
+        suggested_verification_provider: "very",
         suggested_verification_intent: "community_join",
       }}
     />

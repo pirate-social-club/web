@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
-import { getSelfVerificationLaunchHref, parseSelfCallback } from "./self-verification";
+import {
+  buildSelfVerificationCallbackHref,
+  getSelfCallbackCleanHref,
+  getSelfCallbackSessionId,
+  getSelfVerificationLaunchHref,
+  hasSelfCallbackParams,
+  parseSelfCallback,
+} from "./self-verification";
 
 describe("self verification helpers", () => {
   test("builds a universal launch href from Self session data", () => {
@@ -77,6 +84,25 @@ describe("self verification helpers", () => {
     expect(selfApp.deeplinkCallback).toBe("https://pirate.localhost/c/cmt_123?from=self");
   });
 
+  test("overrides Self launch callback for mobile web return flow", () => {
+    const href = getSelfVerificationLaunchHref({
+      app_name: "Pirate",
+      deeplink_callback: "https://api.pirate.test/unused",
+      disclosures: { nationality: true },
+      endpoint: "https://api.pirate.test/verification-sessions/ver_123/self-callback",
+      endpoint_type: "https",
+      scope: "community_join",
+      session_id: "ss_123",
+      user_id: "00000000-0000-4000-8000-000000000001",
+      user_id_type: "uuid",
+    }, {
+      deeplinkCallback: "https://pirate.localhost/c/cmt_123?self_verification_session_id=ver_123",
+    });
+    const url = new URL(href ?? "");
+    const selfApp = JSON.parse(url.searchParams.get("selfApp") ?? "{}") as { deeplinkCallback?: string };
+    expect(selfApp.deeplinkCallback).toBe("https://pirate.localhost/c/cmt_123?self_verification_session_id=ver_123");
+  });
+
   test("returns null when launch data is incomplete", () => {
     expect(getSelfVerificationLaunchHref(null)).toBeNull();
     expect(getSelfVerificationLaunchHref({
@@ -113,5 +139,32 @@ describe("self verification helpers", () => {
       reason: "declined",
       status: "failed",
     });
+  });
+
+  test("extracts a proof from callback hash parameters", () => {
+    expect(parseSelfCallback(new URL("https://pirate.localhost/c/cmt_123#proof=proof_123"))).toEqual({
+      proof: "proof_123",
+      status: "completed",
+    });
+    expect(parseSelfCallback(new URL("https://pirate.localhost/c/cmt_123#/verify?proof=proof_456"))).toEqual({
+      proof: "proof_456",
+      status: "completed",
+    });
+  });
+
+  test("builds and cleans mobile callback URLs", () => {
+    const callbackHref = buildSelfVerificationCallbackHref(
+      "https://pirate.localhost/c/cmt_123?tab=join&proof=old#proof=old",
+      "ver_123",
+    );
+    expect(callbackHref).toBe("https://pirate.localhost/c/cmt_123?tab=join&self_verification_session_id=ver_123");
+    expect(getSelfCallbackCleanHref(new URL(`${callbackHref}&proof=proof_123`))).toBe("/c/cmt_123?tab=join");
+  });
+
+  test("detects callback params and session ids directly", () => {
+    const url = new URL("https://pirate.localhost/c/cmt_123?tab=join#self_verification_session_id=ver_123");
+    expect(hasSelfCallbackParams(url)).toBe(true);
+    expect(getSelfCallbackSessionId(url)).toBe("ver_123");
+    expect(hasSelfCallbackParams(new URL("https://pirate.localhost/c/cmt_123?tab=join"))).toBe(false);
   });
 });

@@ -274,7 +274,7 @@ export const HighEngagement: Story = {
       title="Announcing pirate v2 - the next generation of music discovery"
       content={{
         type: "image",
-        src: "https://picsum.photos/seed/pirate-v2/600/400",
+        src: "https://picsum.photos/seed/pirateweb/600/400",
         alt: "Feature announcement graphic",
       }}
       engagement={{ score: 12400, commentCount: 832, saved: true }}

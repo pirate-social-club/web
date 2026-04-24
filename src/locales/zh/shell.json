@@ -62,7 +62,10 @@
       { "id": "terms-of-service", "label": "服务条款" },
       { "id": "privacy-policy", "label": "隐私政策" }
     ],
-    "yourCommunitiesLabel": "你的社区"
+    "yourCommunitiesLabel": "你的社区",
+    "feedSortBestLabel": "热门",
+    "feedSortNewLabel": "最新",
+    "feedSortTopLabel": "热门"
   },
   "mobileFooter": {
     "createLabel": "发布",

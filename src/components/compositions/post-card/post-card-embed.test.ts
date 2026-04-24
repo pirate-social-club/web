@@ -54,6 +54,7 @@ describe("post card embed hardening", () => {
   test("accepts YouTube embed iframes from allowed hosts", () => {
     const embed = resolveSafeYouTubeEmbed(
       `<iframe title="Video" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0" onload="bad()"></iframe>`,
+      "YouTube video",
     );
 
     expect(embed).toEqual({
@@ -63,9 +64,9 @@ describe("post card embed hardening", () => {
   });
 
   test("rejects YouTube iframe HTML from unexpected hosts and paths", () => {
-    expect(resolveSafeYouTubeEmbed(`<iframe src="https://evil.example/embed/dQw4w9WgXcQ"></iframe>`)).toBeNull();
-    expect(resolveSafeYouTubeEmbed(`<iframe src="https://www.youtube.com/watch?v=dQw4w9WgXcQ"></iframe>`)).toBeNull();
-    expect(resolveSafeYouTubeEmbed(`<iframe src="javascript:alert(1)"></iframe>`)).toBeNull();
+    expect(resolveSafeYouTubeEmbed(`<iframe src="https://evil.example/embed/dQw4w9WgXcQ"></iframe>`, "YouTube video")).toBeNull();
+    expect(resolveSafeYouTubeEmbed(`<iframe src="https://www.youtube.com/watch?v=dQw4w9WgXcQ"></iframe>`, "YouTube video")).toBeNull();
+    expect(resolveSafeYouTubeEmbed(`<iframe src="javascript:alert(1)"></iframe>`, "YouTube video")).toBeNull();
   });
 
   test("sanitizes X blockquote HTML before widget hydration", () => {

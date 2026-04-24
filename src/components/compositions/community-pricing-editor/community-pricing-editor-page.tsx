@@ -64,8 +64,8 @@ export interface CommunityPricingEditorPageProps {
   saveLoading?: boolean;
 }
 
-function formatTierLabel(tier: PricingTier): string {
-  return tier.display_name.trim() || "Untitled group";
+function formatTierLabel(tier: PricingTier, fallback: string): string {
+  return tier.display_name.trim() || fallback;
 }
 
 function adjustmentToPercent(value: number): number {
@@ -117,9 +117,15 @@ function getCountryCodeFromComboboxValue(value: unknown): string {
 function CountryPicker({
   excludedCodes,
   onSelect,
+  addCountryLabel,
+  searchPlaceholder,
+  emptyLabel,
 }: {
   excludedCodes: string[];
   onSelect: (code: string) => void;
+  addCountryLabel: string;
+  searchPlaceholder: string;
+  emptyLabel: string;
 }) {
   const available = React.useMemo(() => {
     const excluded = new Set(excludedCodes.map((c) => c.trim().toUpperCase()));
@@ -132,7 +138,7 @@ function CountryPicker({
       onValueChange={(value) => onSelect(getCountryCodeFromComboboxValue(value))}
     >
       <ComboboxTrigger className="h-10 w-full sm:max-w-xs">
-        <span className="text-muted-foreground">Add country…</span>
+        <span className="text-muted-foreground">{addCountryLabel}</span>
       </ComboboxTrigger>
       <ComboboxContent
         className="rounded-[var(--radius-xl)] border-border-soft bg-card p-1 shadow-[var(--shadow-lg)]"
@@ -142,9 +148,9 @@ function CountryPicker({
       >
         <ComboboxInput
           className="h-10 rounded-[var(--radius-md)] border-0 bg-muted/45 px-3 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-          placeholder="Search country"
+          placeholder={searchPlaceholder}
         />
-        <ComboboxEmpty className="px-3 py-3">No countries found.</ComboboxEmpty>
+        <ComboboxEmpty className="px-3 py-3">{emptyLabel}</ComboboxEmpty>
         <ComboboxList className="max-h-52 py-1 [scrollbar-color:var(--border)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent">
           {(country) => (
             <ComboboxItem
@@ -259,8 +265,11 @@ function TierRow({
           </div>
         ) : null}
         <CountryPicker
+          addCountryLabel={mc.addCountry}
+          emptyLabel={mc.noCountriesFound}
           excludedCodes={excludedCountryCodes}
           onSelect={(code) => onAddCountry?.(code)}
+          searchPlaceholder={mc.searchCountryPlaceholder}
         />
       </div>
     </div>
@@ -439,7 +448,7 @@ export function CommunityPricingEditorPage({
                 const existingKeys = tiers.map((t) => t.tier_key);
                 const newTier: PricingTier = {
                   id: Math.random().toString(36).slice(2),
-                  tier_key: generateTierKey("New group", existingKeys),
+                  tier_key: generateTierKey(mc.newGroup, existingKeys),
                   display_name: "",
                   adjustment_type: "multiplier",
                   adjustment_value: 1,
@@ -465,7 +474,7 @@ export function CommunityPricingEditorPage({
               <SelectContent>
                 {tiers.map((tier) => (
                   <SelectItem key={tier.id} value={tier.tier_key}>
-                    {formatTierLabel(tier)}
+                    {formatTierLabel(tier, mc.untitledGroup)}
                   </SelectItem>
                 ))}
               </SelectContent>

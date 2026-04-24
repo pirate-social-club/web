@@ -12,11 +12,13 @@ import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getApiErrorMessage, isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community-membership-gate-panel/community-membership-gate-panel";
+import { CommunityJoinRequestModal } from "@/components/compositions/community-join-request-modal/community-join-request-modal";
 import { CommunityPageShell } from "@/components/compositions/community-page-shell/community-page-shell";
 import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
 import { getGateFailureMessage, getJoinCtaLabel, getPassportPromptCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 
 import { useCommunityPageData } from "./community-data";
@@ -27,8 +29,8 @@ import {
   getNamespaceActionLabel,
 } from "./community-sidebar-helpers";
 import {
+  buildCommunityModerationEntryPath,
   buildCommunityModerationPath,
-  buildDefaultCommunityModerationPath,
 } from "./moderation-helpers";
 import { toCommunityFeedItem } from "./post-presentation";
 import { submitOptimisticPostVote, updateCommunityPostVote } from "./post-vote";
@@ -43,6 +45,7 @@ import { useCommunityJoinVerification } from "./use-community-join-verification"
 export function CommunityPage({ communityId }: { communityId: string }) {
   const api = useApi();
   const session = useSession();
+  const isMobileWeb = useIsMobile();
   const { locale } = useUiLocale();
   const { copy, localeTag } = useRouteMessages();
   const pageTitle = copy.community.title;
@@ -82,7 +85,14 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     onJoined: markViewerJoined,
     refetchEligibility,
   });
+  const [joinRequestModalOpen, setJoinRequestModalOpen] = React.useState(false);
+  const [joinRequestSubmitting, setJoinRequestSubmitting] = React.useState(false);
+  const [joinRequestError, setJoinRequestError] = React.useState<string | null>(null);
   const ownsCommunity = session?.user?.user_id === community?.created_by_user_id;
+  const moderationEntryPath = React.useMemo(
+    () => buildCommunityModerationEntryPath(communityId, isMobileWeb),
+    [communityId, isMobileWeb],
+  );
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const { gateModal, invalidateCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: contentLocale,
@@ -94,6 +104,42 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     setViewerFollowing(Boolean(preview?.viewer_following));
     setFollowerCount(preview?.follower_count ?? null);
   }, [preview?.community_id, preview?.follower_count, preview?.viewer_following]);
+
+  const handleJoinRequestModalOpenChange = React.useCallback((open: boolean) => {
+    setJoinRequestModalOpen(open);
+    if (open) {
+      setJoinRequestError(null);
+    }
+  }, []);
+
+  const openJoinRequestModal = React.useCallback(() => {
+    setJoinRequestError(null);
+    setJoinRequestModalOpen(true);
+  }, []);
+
+  const handlePrimaryJoinAction = React.useCallback(async () => {
+    if (eligibility?.status === "requestable") {
+      openJoinRequestModal();
+      return;
+    }
+    await handleJoin();
+  }, [eligibility?.status, handleJoin, openJoinRequestModal]);
+
+  const handleJoinRequestSubmit = React.useCallback(async (note: string) => {
+    setJoinRequestSubmitting(true);
+    setJoinRequestError(null);
+    try {
+      const result = await handleJoin({ note });
+      if (result === "requested" || result === "joined") {
+        invalidateCommunityGate(communityId);
+        setJoinRequestModalOpen(false);
+      } else if (result === "failed") {
+        setJoinRequestError("Could not submit your request. Try again.");
+      }
+    } finally {
+      setJoinRequestSubmitting(false);
+    }
+  }, [communityId, handleJoin, invalidateCommunityGate]);
 
   const handleBuySong = React.useCallback(async (listing: ApiCommunityListing, titleText: string) => {
     await buySong({
@@ -194,6 +240,11 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           label: ctaLabel,
           loading: joinLoading,
           onClick: async () => {
+            if (gate.eligibility.status === "requestable") {
+              openJoinRequestModal();
+              closeModal();
+              return;
+            }
             await handleJoin();
             invalidateCommunityGate(gate.preview.community_id);
             closeModal();
@@ -212,6 +263,18 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       };
     }
 
+    if (gate.eligibility.status === "pending_request") {
+      return {
+        description: "The moderators will review your request.",
+        requirements: gate.preview.membership_gate_summaries,
+        secondaryAction: {
+          label: copy.interactionGate.close,
+          onClick: closeModal,
+        },
+        title: "Request pending",
+      };
+    }
+
     return {
       description: gate.eligibility.status === "banned"
         ? copy.interactionGate.bannedDescription
@@ -227,7 +290,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         ? copy.interactionGate.cantVoteHereTitle
         : copy.interactionGate.cantReplyHereTitle,
     };
-  }, [copy.createCommunity.startVerification, copy.interactionGate, handleJoin, invalidateCommunityGate, joinLoading, locale, selfLoading, startSelfVerification, startVeryVerification, veryLoading]);
+  }, [copy.createCommunity.startVerification, copy.interactionGate, handleJoin, invalidateCommunityGate, joinLoading, locale, openJoinRequestModal, selfLoading, startSelfVerification, startVeryVerification, veryLoading]);
 
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
     if (!preview || !eligibility) return;
@@ -292,13 +355,15 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       {
         onComment: () => navigate(`/p/${post.post.post_id}`),
         onVote: (direction) => void voteOnPost(post.post.post_id, direction),
+        showOriginalLabel: copy.common.showOriginal,
+        showTranslationLabel: copy.common.showTranslation,
       },
     );
   });
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
-      {ownsCommunity ? <Button onClick={() => navigate(buildDefaultCommunityModerationPath(communityId))} variant="secondary">{modToolsLabel}</Button> : null}
+      {ownsCommunity ? <Button onClick={() => navigate(moderationEntryPath)} variant="secondary">{modToolsLabel}</Button> : null}
       {canCreatePost ? (
         <Button leadingIcon={<Plus className="size-5" />} onClick={() => navigate(`/c/${communityId}/submit`)}>{createPostLabel}</Button>
       ) : (
@@ -311,7 +376,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
             {viewerFollowing ? copy.community.followingLabel : copy.community.followLabel}
           </Button>
           {eligibility && preview.membership_gate_summaries.length === 0 ? (
-            <Button disabled={eligibility.status !== "joinable" && eligibility.status !== "requestable" && eligibility.status !== "verification_required"} loading={joinLoading} onClick={handleJoin} variant={viewerFollowing ? "default" : "secondary"}>
+            <Button disabled={eligibility.status !== "joinable" && eligibility.status !== "requestable" && eligibility.status !== "verification_required"} loading={joinLoading} onClick={handlePrimaryJoinAction} variant={viewerFollowing ? "default" : "secondary"}>
               {getCommunityActionLabel(eligibility.status)}
             </Button>
           ) : null}
@@ -324,6 +389,14 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     <>
       {gateModal}
       {purchaseModal}
+      <CommunityJoinRequestModal
+        communityName={community.display_name}
+        error={joinRequestError}
+        onOpenChange={handleJoinRequestModalOpenChange}
+        onSubmit={handleJoinRequestSubmit}
+        open={joinRequestModalOpen}
+        submitting={joinRequestSubmitting || joinLoading}
+      />
       {selfPrompt ? (
         <SelfVerificationModal
           actionLabel={selfPrompt.actionLabel}
@@ -347,7 +420,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           joinRequested={joinRequested}
           verificationError={selfError}
           verificationLoading={selfLoading}
-          onJoin={handleJoin}
+          onJoin={handlePrimaryJoinAction}
         />
       ) : null}
         <CommunityPageShell

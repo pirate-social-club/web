@@ -2,6 +2,9 @@
 
 import * as React from "react";
 
+import { Button } from "@/components/primitives/button";
+import { Type } from "@/components/primitives/type";
+import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { PostCardHeader } from "./post-card-header";
 import { PostCardMedia } from "./post-card-media";
@@ -41,6 +44,17 @@ function deriveUnlockFromContent(
   return undefined;
 }
 
+function formatSourceLanguage(sourceLanguage: string | null | undefined, locale: string): string | null {
+  const normalized = String(sourceLanguage ?? "").trim();
+  if (!normalized) return null;
+
+  try {
+    return new Intl.DisplayNames([locale], { type: "language" }).of(normalized) ?? normalized;
+  } catch {
+    return normalized;
+  }
+}
+
 export function PostCard({
   viewContext = "home",
   identityPresentation,
@@ -54,15 +68,28 @@ export function PostCard({
   titleHref,
   postHref,
   content,
+  sourceLanguage,
+  isViewingOriginal = false,
+  showOriginalLabel,
+  showTranslationLabel,
   engagement,
   menuItems,
   onVote,
   onComment,
   onShare,
+  onToggleOriginal,
   onMenuAction,
   className,
 }: PostCardProps) {
+  const { locale } = useUiLocale();
   const effectiveTitleHref = titleHref ?? postHref;
+  const sourceLanguageLabel = formatSourceLanguage(sourceLanguage, locale);
+  const canToggleOriginal = Boolean(
+    sourceLanguageLabel
+    && onToggleOriginal
+    && showOriginalLabel
+    && showTranslationLabel,
+  );
 
   const titleElement = title ? (
     effectiveTitleHref ? (
@@ -137,6 +164,21 @@ export function PostCard({
 
         {titleElement}
         <PostCardMedia content={content} />
+        {canToggleOriginal ? (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-start">
+            <Type as="span" variant="caption" className="text-muted-foreground">
+              {isViewingOriginal ? "Original text" : `Translated from ${sourceLanguageLabel}`}
+            </Type>
+            <Button
+              className="h-auto px-2 py-1"
+              onClick={onToggleOriginal}
+              size="sm"
+              variant="ghost"
+            >
+              {isViewingOriginal ? showTranslationLabel : showOriginalLabel}
+            </Button>
+          </div>
+        ) : null}
 
         <PostCardEngagementBar
           engagement={engagement}

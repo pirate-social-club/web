@@ -79,7 +79,7 @@ export function InboxPlaceholderPage() {
   }, [api, session]);
 
   if (!session) {
-    return <AuthRequiredRouteState description={getRouteAuthDescription("inbox")} title={copy.inbox.title} />;
+    return <AuthRequiredRouteState description={getRouteAuthDescription("inbox")} hideTitleOnMobile title={copy.inbox.title} />;
   }
 
   return (
@@ -101,7 +101,9 @@ export function InboxPlaceholderPage() {
         const href = resolveNotificationActivityHref(item);
         if (href) navigate(href);
       }}
-      onVerifyTask={(task) => navigate(`/c/${task.subject_id}/mod/namespace`)}
+      onVerifyTask={(task) => navigate(task.type === "membership_review"
+        ? `/c/${task.subject_id}/mod/requests`
+        : `/c/${task.subject_id}/mod/namespace`)}
       tasks={tasks.items}
     />
   );

@@ -14,9 +14,9 @@ import type { SaveCommunityAction } from "./community-moderation-save";
 import { useCommunitySafetyState } from "./use-community-safety-state";
 
 const { document, window } = parseHTML("<!DOCTYPE html><html><body></body></html>");
-(globalThis as any).document = document;
-(globalThis as any).window = window;
-(globalThis as any).navigator = window.navigator;
+Object.defineProperty(globalThis, "document", { configurable: true, value: document });
+Object.defineProperty(globalThis, "window", { configurable: true, value: window });
+Object.defineProperty(globalThis, "navigator", { configurable: true, value: window.navigator });
 
 type SafetyBody = {
   adult_content_policy: ReturnType<typeof createDefaultCommunitySafetyAdultContentPolicy>;

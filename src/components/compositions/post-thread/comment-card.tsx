@@ -1,12 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { ArrowFatDown, ArrowFatUp, ChatCircle } from "@phosphor-icons/react";
+import { ChatCircle } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
 import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
-import { triggerCommentTapHaptic, triggerLikeToggleHaptic } from "@/lib/haptics";
+import { Type } from "@/components/primitives/type";
+import { VotePill } from "@/components/primitives/vote-pill";
+import { postCardType } from "@/components/compositions/post-card/post-card.styles";
+import { triggerCommentTapHaptic } from "@/lib/haptics";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
@@ -23,98 +26,11 @@ function parseScoreLabel(scoreLabel: string | undefined): number {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-function formatScore(score: number): string {
-  if (score >= 1000) {
-    return `${(score / 1000).toFixed(1)}k`;
-  }
-  if (score < 0) return score.toString();
-  return score > 0 ? score.toString() : "0";
-}
-
 function commentBody(body: string | undefined, status: PostThreadCommentStatus | undefined): string {
   if (status === "deleted") return "[deleted]";
   if (status === "removed") return "Removed by moderators.";
   if (status === "hidden") return "Hidden by moderators.";
   return body ?? "";
-}
-
-function InlineVoteGroup({
-  score,
-  viewerVote,
-  onVote,
-  upvoteLabel,
-  downvoteLabel,
-}: {
-  score: number;
-  viewerVote?: "up" | "down" | null;
-  onVote?: (direction: "up" | "down") => void;
-  upvoteLabel?: string;
-  downvoteLabel?: string;
-}) {
-  const canVote = Boolean(onVote);
-
-  return (
-    <div className="flex items-center gap-0.5">
-      <button
-        className={cn(
-          "inline-flex size-7 items-center justify-center rounded transition-colors",
-          canVote
-            ? "text-muted-foreground hover:bg-muted hover:text-foreground"
-            : "cursor-default text-muted-foreground/40",
-          viewerVote === "up" && "text-primary hover:bg-primary/10",
-        )}
-        disabled={!canVote}
-        onClick={() => {
-          if (canVote) {
-            triggerLikeToggleHaptic(viewerVote !== "up");
-            onVote!("up");
-          }
-        }}
-        aria-label={upvoteLabel}
-        type="button"
-      >
-        <ArrowFatUp
-          className={cn("size-5", viewerVote === "up" && "fill-current")}
-          weight={viewerVote === "up" ? "fill" : "regular"}
-        />
-      </button>
-
-      <span
-        className={cn(
-          "min-w-[1.5rem] text-center text-sm font-semibold tabular-nums",
-          viewerVote === "up" && "text-primary",
-          viewerVote === "down" && "text-destructive",
-          !viewerVote && "text-muted-foreground",
-        )}
-      >
-        {formatScore(score)}
-      </span>
-
-      <button
-        className={cn(
-          "inline-flex size-7 items-center justify-center rounded transition-colors",
-          canVote
-            ? "text-muted-foreground hover:bg-muted hover:text-foreground"
-            : "cursor-default text-muted-foreground/40",
-          viewerVote === "down" && "text-destructive hover:bg-destructive/10",
-        )}
-        disabled={!canVote}
-        onClick={() => {
-          if (canVote) {
-            triggerLikeToggleHaptic(viewerVote !== "down");
-            onVote!("down");
-          }
-        }}
-        aria-label={downvoteLabel}
-        type="button"
-      >
-        <ArrowFatDown
-          className={cn("size-5", viewerVote === "down" && "fill-current")}
-          weight={viewerVote === "down" ? "fill" : "regular"}
-        />
-      </button>
-    </div>
-  );
 }
 
 export interface CommentCardProps {
@@ -180,6 +96,11 @@ export function CommentCard({
     Boolean(showOriginalLabel) &&
     Boolean(showTranslationLabel);
   const canReply = status === "published" && Boolean(onReplySubmit);
+  const handleVote = React.useCallback((direction: "up" | "down" | null) => {
+    if (direction) {
+      onVote?.(direction);
+    }
+  }, [onVote]);
 
   const handleReplySubmit = React.useCallback(async () => {
     const trimmed = replyBody.trim();
@@ -202,7 +123,7 @@ export function CommentCard({
   return (
     <div className={cn("min-w-0 flex-1", className)}>
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+      <Type as="div" variant="caption" className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
         {authorHref ? (
           <a
             className="font-semibold text-foreground hover:underline"
@@ -224,14 +145,15 @@ export function CommentCard({
         ) : null}
         <span aria-hidden="true">·</span>
         <span>{timestampLabel}</span>
-      </div>
+      </Type>
 
       {/* Body */}
       {resolvedBody ? (
         <div className="mt-2 space-y-2">
           <FormattedText
             className={cn(
-              "text-base leading-relaxed text-foreground",
+              postCardType.body,
+              "text-foreground",
               status && status !== "published" && "text-muted-foreground",
             )}
             dir={bodyDir}
@@ -247,17 +169,17 @@ export function CommentCard({
       ) : null}
 
       {/* Action row */}
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <InlineVoteGroup
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <VotePill
           downvoteLabel={commonCopy.downvoteComment}
-          onVote={onVote}
+          onVote={handleVote}
           score={parseScoreLabel(scoreLabel)}
           upvoteLabel={commonCopy.upvoteComment}
           viewerVote={viewerVote}
         />
         {canReply ? (
           <button
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
             onClick={() => {
               triggerCommentTapHaptic();
               setReplyOpen((value) => !value);
@@ -265,7 +187,7 @@ export function CommentCard({
             type="button"
           >
             <ChatCircle className="size-4" />
-            {replyActionLabel}
+            <Type as="span" variant="label">{replyActionLabel}</Type>
           </button>
         ) : null}
       </div>

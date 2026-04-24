@@ -10,9 +10,26 @@ import { __resetSessionStoreForTests } from "@/lib/api/session-store";
 import { usePost } from "./post-state";
 
 const { document, window } = parseHTML("<!DOCTYPE html><html><body></body></html>");
-(globalThis as any).document = document;
-(globalThis as any).window = window;
-(globalThis as any).navigator = window.navigator;
+Object.defineProperty(globalThis, "document", { configurable: true, value: document });
+Object.defineProperty(globalThis, "window", { configurable: true, value: window });
+Object.defineProperty(globalThis, "navigator", { configurable: true, value: window.navigator });
+Object.defineProperty(window, "matchMedia", {
+  configurable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  }),
+});
+Object.defineProperty(window, "location", {
+  configurable: true,
+  value: new URL("https://app.pirate.sc/post/pst_test"),
+});
 
 const labels = {
   cancelReplyLabel: "Cancel",

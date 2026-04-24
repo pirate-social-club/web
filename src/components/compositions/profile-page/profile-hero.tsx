@@ -2,6 +2,7 @@
 
 import { IdentityHero } from "@/components/compositions/identity-hero/identity-hero";
 import { Button } from "@/components/primitives/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import type { ProfileData, ProfileSidebarStat } from "./profile-page.types";
@@ -23,12 +24,9 @@ function ProfileHeroActions({
 
   if (profile.viewerContext === "self") {
     return (
-      <>
+      <div>
         <Button className="flex-1 sm:flex-none" onClick={onEditProfile}>{copy.editProfile}</Button>
-        <Button className="flex-1 sm:flex-none" variant="secondary">
-          {copy.shareProfile}
-        </Button>
-      </>
+      </div>
     );
   }
 
@@ -65,6 +63,7 @@ export function ProfileHero({
   profile: ProfileData;
   stats?: ProfileSidebarStat[];
 }) {
+  const isMobile = useIsMobile();
   const details = (
     <>
       {profile.meta?.length ? (
@@ -101,7 +100,7 @@ export function ProfileHero({
       avatarSrc={profile.avatarSrc}
       coverSrc={profile.bannerSrc}
       details={details}
-      subtitle={profile.tagline ?? profile.handle}
+      subtitle={isMobile ? undefined : profile.tagline ?? profile.handle}
       title={profile.displayName}
     />
   );

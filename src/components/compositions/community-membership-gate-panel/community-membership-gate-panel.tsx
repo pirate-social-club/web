@@ -47,6 +47,8 @@ function getEligibilityText(eligibility: JoinEligibility | null | undefined): {
       return { title: "Ready to join", description: "You meet this community's access requirements." };
     case "requestable":
       return { title: "Request access", description: "Ask the moderators to approve your membership." };
+    case "pending_request":
+      return { title: "Request submitted", description: "The moderators will review your request." };
     case "verification_required":
       return { title: "Verification required", description: "Complete verification to join." };
     case "gate_failed":

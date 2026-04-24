@@ -21,7 +21,7 @@ import type {
   ComposerAudienceState,
 } from "@/components/compositions/post-composer/post-composer.types";
 
-import { useCreatePostDraftState } from "./create-post-draft-state";
+import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
 import { formatQualifierLabel } from "./post-presentation";
 import { parseUsdInput } from "./route-core";
 import { resolveComposerSubmitState } from "./song-submit";
@@ -72,7 +72,7 @@ async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<Ava
   return null;
 }
 
-export function useCreatePostState(communityId: string) {
+export function useCreatePostState(communityId: string, initialDraft?: Partial<CreatePostDraftState>) {
   const api = useApi();
   const session = useSession();
   const { locale } = useUiLocale();
@@ -81,7 +81,7 @@ export function useCreatePostState(communityId: string) {
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
   const [pricingPolicy, setPricingPolicy] = React.useState<ApiCommunityPricingPolicy | null>(null);
   const [loadError, setLoadError] = React.useState<unknown>(null);
-  const { actions: draftActions, state: draft } = useCreatePostDraftState();
+  const { actions: draftActions, state: draft } = useCreatePostDraftState(initialDraft);
   const {
     audience,
     authorMode,

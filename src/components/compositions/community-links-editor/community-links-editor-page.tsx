@@ -86,7 +86,7 @@ export function CommunityLinksEditorPage({
         </div>
         <Button className="w-full sm:w-auto" onClick={onAddLink} variant="secondary">
           <Plus className="size-5" />
-          Add link
+          {mc.addLink}
         </Button>
       </div>
 
@@ -128,7 +128,7 @@ export function CommunityLinksEditorPage({
                 <Input
                   className="h-12 px-4 py-2"
                   onChange={(event) => onLinkChange?.(link.id, { url: event.target.value })}
-                  placeholder="https://"
+                  placeholder={mc.urlPlaceholder}
                   value={link.url}
                 />
               </div>
@@ -149,7 +149,7 @@ export function CommunityLinksEditorPage({
 
         {links.length === 0 ? (
           <Type as="div" variant="caption" className="rounded-[var(--radius-2_5xl)] border border-dashed border-border-soft bg-card px-5 py-8 ">
-            No links yet.
+            {mc.emptyState}
           </Type>
         ) : null}
       </div>

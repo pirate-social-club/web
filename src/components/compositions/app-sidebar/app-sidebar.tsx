@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Flag, House, Plus, type Icon } from "@phosphor-icons/react";
+import { ArrowFatUp, ClockCounterClockwise, Fire, Flag, House, Plus, type Icon } from "@phosphor-icons/react";
 
+import { navigate } from "@/app/router";
 import { Avatar } from "@/components/primitives/avatar";
 import {
   Accordion,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
+import { dispatchHomeFeedSortChange, getCurrentHomeFeedSort, HOME_FEED_SORT_CHANGE_EVENT, type HomeFeedSort } from "@/lib/home-feed-sort";
 
 type SidebarIcon = Icon;
 
@@ -65,6 +67,8 @@ const DEFAULT_PRIMARY_ITEMS: readonly AppSidebarPrimaryItem[] = [
   { id: "your-communities", icon: Flag, label: "Your Communities" },
   { id: "create-community", icon: Plus, label: "Create Community" },
 ];
+
+
 
 function SidebarSectionBlock({
   activeItemId,
@@ -243,12 +247,37 @@ export function AppSidebar({
   const { dir, locale } = useUiLocale();
   const { isMobile, setOpenMobile } = useSidebar();
   const copy = getLocaleMessages(locale, "shell");
+  const mobileHomeFeedSortItems = React.useMemo(() => [
+    { id: "best" as HomeFeedSort, icon: Fire, label: copy.appSidebar.feedSortBestLabel },
+    { id: "new" as HomeFeedSort, icon: ClockCounterClockwise, label: copy.appSidebar.feedSortNewLabel },
+    { id: "top" as HomeFeedSort, icon: ArrowFatUp, label: copy.appSidebar.feedSortTopLabel },
+  ], [copy.appSidebar.feedSortBestLabel, copy.appSidebar.feedSortNewLabel, copy.appSidebar.feedSortTopLabel]);
+  const [homeFeedSort, setHomeFeedSort] = React.useState<HomeFeedSort>(() => getCurrentHomeFeedSort());
   const handleItemSelect = React.useCallback((onSelect?: () => void) => {
     onSelect?.();
     if (isMobile) {
       setOpenMobile(false);
     }
   }, [isMobile, setOpenMobile]);
+  const handleHomeFeedSortSelect = React.useCallback((sort: HomeFeedSort) => {
+    dispatchHomeFeedSortChange(sort);
+    navigate("/");
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [isMobile, setOpenMobile]);
+
+  React.useEffect(() => {
+    const handleSortChange = (event: Event) => {
+      const sort = (event as CustomEvent<HomeFeedSort>).detail;
+      if (sort === "best" || sort === "new" || sort === "top") {
+        setHomeFeedSort(sort);
+      }
+    };
+
+    window.addEventListener(HOME_FEED_SORT_CHANGE_EVENT, handleSortChange);
+    return () => window.removeEventListener(HOME_FEED_SORT_CHANGE_EVENT, handleSortChange);
+  }, []);
   const resolvedPrimaryItems = (primaryItems ?? DEFAULT_PRIMARY_ITEMS).map((item) => {
     if (item.id === "home") return { ...item, label: copy.appSidebar.homeLabel };
     if (item.id === "your-communities") return { ...item, label: copy.appSidebar.yourCommunitiesLabel };
@@ -274,6 +303,33 @@ export function AppSidebar({
       {...props}
     >
       <SidebarContent className="gap-3 overflow-y-auto px-0 pb-4 pt-3">
+        {isMobile ? (
+          <SidebarGroup className="px-4 pt-1">
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                {mobileHomeFeedSortItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = item.id === homeFeedSort;
+
+                  return (
+                    <SidebarMenuItem key={item.id}>
+                      <SidebarMenuButton
+                        className={topLevelRowClassName}
+                        isActive={active}
+                        onClick={() => handleHomeFeedSortSelect(item.id)}
+                        tooltip={item.label}
+                      >
+                        <Icon className="size-5" weight={active ? "fill" : "regular"} />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
+
         <SidebarGroup className="px-4 pt-1">
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">

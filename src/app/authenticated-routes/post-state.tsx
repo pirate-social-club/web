@@ -97,14 +97,19 @@ export function usePost(
   const [readMode, setReadMode] = React.useState<PostReadMode>(hasSession ? "authenticated" : "public");
   const [commentSort, setCommentSort] = React.useState<"best" | "new" | "old" | "top">("best");
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
+  const loadedCommentSortKeyRef = React.useRef<string | null>(null);
   const { gateModal, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: locale,
     routeKind: "post",
     uiLocale,
   });
 
-  const loadTopLevelComments = React.useCallback(async (communityId: string, nextReadMode: PostReadMode) => {
-    const nextCommentNodes = await loadThreadCommentTree(api, communityId, postId, locale, nextReadMode === "authenticated", commentSort);
+  const loadTopLevelComments = React.useCallback(async (
+    communityId: string,
+    nextReadMode: PostReadMode,
+    sort: "best" | "new" | "old" | "top",
+  ) => {
+    const nextCommentNodes = await loadThreadCommentTree(api, communityId, postId, locale, nextReadMode === "authenticated", sort);
     const nextAuthorProfilesByUserId = await loadProfilesByUserId(
       api,
       collectThreadCommentAuthorUserIds(nextCommentNodes),
@@ -112,13 +117,13 @@ export function usePost(
     );
 
     return { authorProfilesByUserId: nextAuthorProfilesByUserId, commentNodes: nextCommentNodes };
-  }, [api, commentSort, locale, postId, session]);
+  }, [api, locale, postId, session]);
 
   const refreshTopLevelComments = React.useCallback(async (communityId: string) => {
-    const nextThreadState = await loadTopLevelComments(communityId, readMode);
+    const nextThreadState = await loadTopLevelComments(communityId, readMode, commentSort);
     setAuthorProfilesByUserId((current) => ({ ...current, ...nextThreadState.authorProfilesByUserId }));
     setCommentNodes((current) => mergeThreadCommentNodes(current, nextThreadState.commentNodes));
-  }, [loadTopLevelComments, readMode]);
+  }, [commentSort, loadTopLevelComments, readMode]);
 
   const signAgentAuthoredCommentBody = React.useCallback(async (path: string, body: { body: string }) => {
     if (!availableAgent) {
@@ -330,7 +335,7 @@ export function usePost(
           (hasSession
             ? api.communities.preview(p.post.community_id, { locale })
             : api.publicCommunities.get(p.post.community_id, { locale })).catch(() => null),
-          loadTopLevelComments(p.post.community_id, nextReadMode),
+          loadTopLevelComments(p.post.community_id, nextReadMode, commentSort),
           hasSession ? api.agents.list().catch(() => null) : Promise.resolve(null),
         ]);
         const authorProfilesByUserId = await loadProfilesByUserId(
@@ -353,6 +358,7 @@ export function usePost(
         setAuthorProfile(p.post.identity_mode === "public" && p.post.author_user_id ? authorProfilesByUserId[p.post.author_user_id] ?? null : null);
         setCommentNodes(commentTree.commentNodes);
         setAuthorProfilesByUserId({ ...commentTree.authorProfilesByUserId, ...authorProfilesByUserId });
+        loadedCommentSortKeyRef.current = `${p.post.community_id}:${nextReadMode}:${commentSort}`;
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -363,7 +369,29 @@ export function usePost(
       });
 
     return () => { cancelled = true; };
-  }, [api, hasSession, loadTopLevelComments, locale, postId, session, commentSort]);
+  }, [api, hasSession, loadTopLevelComments, locale, postId, session]);
+
+  React.useEffect(() => {
+    if (!post || !community || loading) return;
+
+    const sortKey = `${community.community_id}:${readMode}:${commentSort}`;
+    if (loadedCommentSortKeyRef.current === sortKey) return;
+
+    let cancelled = false;
+    void loadTopLevelComments(community.community_id, readMode, commentSort)
+      .then((nextThreadState) => {
+        if (cancelled) return;
+        setAuthorProfilesByUserId((current) => ({ ...current, ...nextThreadState.authorProfilesByUserId }));
+        setCommentNodes(nextThreadState.commentNodes);
+        loadedCommentSortKeyRef.current = sortKey;
+      })
+      .catch((nextError: unknown) => {
+        if (cancelled) return;
+        toast.error(getErrorMessage(nextError, "Could not sort comments."));
+      });
+
+    return () => { cancelled = true; };
+  }, [commentSort, community, loadTopLevelComments, loading, post, readMode]);
 
   const comments = React.useMemo(() => commentNodes.map((node) => mapThreadCommentNode(
     node,

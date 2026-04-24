@@ -156,11 +156,15 @@ function createPostDraftReducer(state: CreatePostDraftState, action: DraftAction
   }
 }
 
-export function useCreatePostDraftState(): {
+export function useCreatePostDraftState(initial?: Partial<CreatePostDraftState>): {
   actions: CreatePostDraftActions;
   state: CreatePostDraftState;
 } {
-  const [state, dispatch] = React.useReducer(createPostDraftReducer, undefined, createInitialDraftState);
+  const [state, dispatch] = React.useReducer(
+    createPostDraftReducer,
+    initial,
+    (initialArg) => ({ ...createInitialDraftState(), ...initialArg }),
+  );
 
   const actions = React.useMemo<CreatePostDraftActions>(() => ({
     resetCharityContribution: () => dispatch({ type: "setCharityContribution", value: defaultCharityContributionState() }),

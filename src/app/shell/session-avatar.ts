@@ -18,3 +18,22 @@ export function resolveSessionAvatarFallback(
 
   return defaultLabel;
 }
+
+export function resolveSessionHeaderHandle(
+  session: ReturnType<typeof useSession>,
+  defaultLabel: string,
+) {
+  const primaryPublicHandle = session?.profile?.primary_public_handle?.label?.trim();
+
+  if (primaryPublicHandle) {
+    return primaryPublicHandle;
+  }
+
+  const globalHandle = session?.profile?.global_handle?.label?.trim();
+
+  if (globalHandle) {
+    return globalHandle;
+  }
+
+  return defaultLabel;
+}

@@ -2,6 +2,8 @@ import * as React from "react";
 import { ArrowSquareOut } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/app/authenticated-routes/route-core";
+import type { RoutesMessages } from "@/locales";
 import { postCardType } from "./post-card.styles";
 import type { PostCardContent } from "./post-card.types";
 
@@ -67,7 +69,7 @@ function resolveSafeYouTubeSrc(value: string | null): string | null {
   }
 }
 
-export function resolveSafeYouTubeEmbed(oembedHtml: string): SafeYouTubeEmbed | null {
+export function resolveSafeYouTubeEmbed(oembedHtml: string, fallbackTitle: string): SafeYouTubeEmbed | null {
   if (typeof DOMParser !== "undefined") {
     const document = new DOMParser().parseFromString(oembedHtml, "text/html");
     const iframe = document.body.querySelector("iframe");
@@ -77,7 +79,7 @@ export function resolveSafeYouTubeEmbed(oembedHtml: string): SafeYouTubeEmbed | 
     const title = iframe?.getAttribute("title")?.trim();
     return {
       src,
-      title: title || "YouTube video",
+      title: title || fallbackTitle,
     };
   }
 
@@ -86,7 +88,7 @@ export function resolveSafeYouTubeEmbed(oembedHtml: string): SafeYouTubeEmbed | 
 
   return {
     src,
-    title: extractHtmlAttribute(oembedHtml, "iframe", "title")?.trim() || "YouTube video",
+    title: extractHtmlAttribute(oembedHtml, "iframe", "title")?.trim() || fallbackTitle,
   };
 }
 
@@ -213,42 +215,42 @@ function ensureXWidgetsScript(): Promise<void> {
   return xWidgetsLoadPromise;
 }
 
-function formatXSource(preview: EmbedContent["preview"]): string {
+function formatXSource(preview: EmbedContent["preview"], onXLabel = "on X"): string {
   const author = preview?.authorName?.trim();
-  if (author) return `${author} on X`;
+  if (author) return `${author} ${onXLabel}`;
 
   try {
     const authorUrl = new URL(preview?.authorUrl ?? "");
     const handle = authorUrl.pathname.split("/").filter(Boolean)[0];
-    if (handle) return `@${handle} on X`;
+    if (handle) return `@${handle} ${onXLabel}`;
   } catch {}
 
   return "X";
 }
 
-function formatEmbedSource(content: EmbedContent): string {
+function formatEmbedSource(content: EmbedContent, copy: RoutesMessages["common"]): string {
   const preview = content.preview;
   if (content.provider === "youtube") {
     const author = preview?.authorName?.trim();
-    if (author) return `${author} on YouTube`;
+    if (author) return `${author} ${copy.onYouTube}`;
     return "YouTube";
   }
 
-  return formatXSource(preview);
+  return formatXSource(preview, copy.onYouTube);
 }
 
-function resolveEmbedText(content: EmbedContent): string {
+function resolveEmbedText(content: EmbedContent, copy: RoutesMessages["common"]): string {
   if (content.state === "unavailable") {
     return content.provider === "youtube"
-      ? "This YouTube video is unavailable."
-      : "This X post is unavailable.";
+      ? copy.youtubeVideoUnavailable
+      : copy.xPostUnavailable;
   }
 
   if (content.provider === "youtube") {
-    return content.preview?.title?.trim() || "YouTube video";
+    return content.preview?.title?.trim() || copy.youtubeVideo;
   }
 
-  return content.preview?.text?.trim() || "X post";
+  return content.preview?.text?.trim() || copy.xPost;
 }
 
 function resolveEmbedImage(content: EmbedContent): string | null {
@@ -258,7 +260,8 @@ function resolveEmbedImage(content: EmbedContent): string | null {
 }
 
 export function PostEmbedPreview({ content, className }: { content: EmbedContent; className?: string }) {
-  const text = resolveEmbedText(content);
+  const { copy } = useRouteMessages();
+  const text = resolveEmbedText(content, copy.common);
   const imageSrc = resolveEmbedImage(content);
 
   return (
@@ -277,7 +280,7 @@ export function PostEmbedPreview({ content, className }: { content: EmbedContent
               {text}
             </p>
             <div className={cn("flex min-w-0 items-center gap-1.5 text-muted-foreground", postCardType.meta)}>
-              <span className="truncate">{formatEmbedSource(content)}</span>
+              <span className="truncate">{formatEmbedSource(content, copy.common)}</span>
               <ArrowSquareOut className="size-4 shrink-0" />
             </div>
           </div>
@@ -298,10 +301,11 @@ export function PostEmbedPreview({ content, className }: { content: EmbedContent
 }
 
 function OfficialYouTubeEmbed({ content, className }: { content: EmbedContent; className?: string }) {
+  const { copy } = useRouteMessages();
   if (content.provider !== "youtube" || content.state !== "embed" || !content.oembedHtml) {
     return <PostEmbedPreview content={content} className={className} />;
   }
-  const embed = resolveSafeYouTubeEmbed(content.oembedHtml);
+  const embed = resolveSafeYouTubeEmbed(content.oembedHtml, copy.common.youtubeVideo);
   if (!embed) {
     return <PostEmbedPreview content={content} className={className} />;
   }

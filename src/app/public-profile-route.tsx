@@ -3,16 +3,16 @@
 import * as React from "react";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
-import { PublicProfilePage } from "@/components/compositions/public-profile-page/public-profile-page";
-import type { PublicProfileProps } from "@/components/compositions/public-profile-page/public-profile-page.types";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
-import { buildCommunityPath } from "@/lib/community-routing";
+import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useUiLocale, resolveLocaleLanguageTag } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
-import { buildPublicProfilePath, formatProfileDisplayHandle, getProfileHandleLabel } from "@/lib/profile-routing";
-import { buildNationalityBadgeLabel } from "@/components/compositions/post-card/post-card-nationality";
+import { buildPublicProfilePath } from "@/lib/profile-routing";
+import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
+import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profile-page/profile-page";
+import { apiProfileToProps } from "./authenticated-routes/profile-settings-mapping";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
 
 type PublicProfileResolution = {
@@ -60,47 +60,6 @@ function usePublicProfile(handleLabel: string) {
   return { error, loading, resolution };
 }
 
-function apiProfileToPublicProfileProps(
-  resolution: PublicProfileResolution,
-  appOrigin: string,
-  labels: { joinedLabel: string },
-  localeTag: string,
-): PublicProfileProps {
-  const profile = resolution.profile;
-  const publicHandle = getProfileHandleLabel(profile);
-  const displayHandle = formatProfileDisplayHandle(publicHandle);
-
-  return {
-    avatarSrc: profile.avatar_ref ?? undefined,
-    nationalityBadgeCountryCode: profile.nationality_badge_country ?? undefined,
-    nationalityBadgeLabel: profile.nationality_badge_country ? buildNationalityBadgeLabel(profile.nationality_badge_country, localeTag) : undefined,
-    bannerSrc: profile.cover_ref ?? undefined,
-    bio: profile.bio ?? undefined,
-    communities: resolution.created_communities.map((community) => ({
-      label: community.display_name,
-      href: `${appOrigin}${buildCommunityPath(community.community_id, community.route_slug)}`,
-    })),
-    displayName: profile.display_name ?? displayHandle,
-    defaultTab: "about",
-    handle: displayHandle,
-    meta: [
-      {
-        label: labels.joinedLabel,
-        value: new Date(profile.created_at).toLocaleDateString(localeTag, {
-          month: "short",
-          year: "numeric",
-        }),
-      },
-    ],
-    openInPirateHref: `${appOrigin}${buildPublicProfilePath(publicHandle)}`,
-    posts: [],
-    scrobbles: [],
-    songs: [],
-    tagline: undefined,
-    videos: [],
-  };
-}
-
 function PublicProfileNotFound({ path, title, description }: { path: string; title: string; description: string }) {
   return (
     <PublicRouteMessageState
@@ -115,18 +74,21 @@ function PublicProfileErrorState({ description, title }: { description: string; 
 }
 
 export function PublicProfileRoutePage({
-  appOrigin,
   handleLabel,
   hostSuffix,
 }: {
-  appOrigin: string;
   handleLabel: string;
   hostSuffix?: string | null;
 }) {
   const { locale } = useUiLocale();
   const localeTag = resolveLocaleLanguageTag(locale);
-  const copy = getLocaleMessages(locale, "routes").publicProfile;
+  const copy = getLocaleMessages(locale, "routes");
+  const publicCopy = copy.publicProfile;
+  const profileCopy = copy.profile;
+  const session = useSession();
   const { error, loading, resolution } = usePublicProfile(handleLabel);
+  const ownProfile = Boolean(session?.profile.user_id && resolution?.profile.user_id === session.profile.user_id);
+  const followState = useProfileFollowState(resolution?.profile.primary_wallet_address ?? null, ownProfile);
 
   React.useEffect(() => {
     if (!resolution || resolution.is_canonical || typeof window === "undefined") {
@@ -154,17 +116,17 @@ export function PublicProfileRoutePage({
     if (isApiNotFoundError(error)) {
       return (
         <PublicProfileNotFound
-          description={copy.notFoundDescription}
+          description={publicCopy.notFoundDescription}
           path={hostSuffix ? `https://${handleLabel}.${hostSuffix}` : buildPublicProfilePath(handleLabel)}
-          title={copy.notFoundTitle}
+          title={publicCopy.notFoundTitle}
         />
       );
     }
 
     return (
       <PublicProfileErrorState
-        description={getErrorMessage(error, copy.errorDescription)}
-        title={copy.errorTitle}
+        description={getErrorMessage(error, publicCopy.errorDescription)}
+        title={publicCopy.errorTitle}
       />
     );
   }
@@ -172,12 +134,20 @@ export function PublicProfileRoutePage({
   if (!resolution) {
     return (
       <PublicProfileNotFound
-        description={copy.notFoundDescription}
+        description={publicCopy.notFoundDescription}
         path={hostSuffix ? `https://${handleLabel}.${hostSuffix}` : buildPublicProfilePath(handleLabel)}
-        title={copy.notFoundTitle}
+        title={publicCopy.notFoundTitle}
       />
     );
   }
 
-  return <PublicProfilePage {...apiProfileToPublicProfileProps(resolution, appOrigin, { joinedLabel: copy.joinedLabel }, localeTag)} />;
+  return (
+    <ProfilePageComposition
+      {...apiProfileToProps(resolution.profile, ownProfile, {
+        followersLabel: profileCopy.followersLabel,
+        followingLabel: profileCopy.followingLabel,
+        joinedStatLabel: copy.common.joinedStatLabel,
+      }, followState, localeTag)}
+    />
+  );
 }

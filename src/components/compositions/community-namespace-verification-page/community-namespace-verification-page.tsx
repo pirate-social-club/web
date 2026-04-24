@@ -7,6 +7,8 @@ import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
 import { OptionCard } from "@/components/primitives/option-card";
 import { PrefixInput } from "@/components/primitives/prefix-input";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import {
   NamespaceVerificationHnsPanel,
 } from "@/components/compositions/namespace-verification/namespace-verification-hns-ui";
@@ -60,6 +62,7 @@ export function CommunityNamespaceVerificationPage({
   onVerified,
 }: CommunityNamespaceVerificationPageProps) {
   const { copy } = useRouteMessages();
+  const isMobile = useIsMobile();
   const mc = copy.moderation.namespaceVerification;
   const family = copy.moderation.namespaceVerification.family;
   const familyLabels: Record<NamespaceFamily, { label: string; rootInputLabel: string }> = {
@@ -79,9 +82,48 @@ export function CommunityNamespaceVerificationPage({
   });
 
   const meta = namespaceFamilyMeta[flow.activeFamily];
+  const hasFooterActions = (
+    flow.isDnsSetupRequired ||
+    flow.isChallengePending ||
+    flow.isFailed ||
+    flow.isExpired ||
+    flow.isIdle ||
+    flow.isStarting ||
+    flow.isChallengeReady ||
+    flow.isVerifying
+  ) && !flow.isVerified;
+  const primaryButtonClassName = cn(isMobile && "w-full");
+  const footerActions = (
+    <>
+      {flow.isDnsSetupRequired ? (
+        <Button className={primaryButtonClassName} loading={flow.isStarting} onClick={flow.actions.restart}>{mc.checkSetup}</Button>
+      ) : null}
+      {flow.isChallengePending ? (
+        <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.verify}>{flow.isSpaces ? mc.checkSetup : mc.verifyAction}</Button>
+      ) : null}
+      {(flow.isFailed || flow.isExpired) ? (
+        <>
+          {flow.isFailed && flow.isHns ? (
+            <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.verify}>{mc.verifyAction}</Button>
+          ) : null}
+          <Button className={primaryButtonClassName} onClick={flow.actions.restart}>{flow.isHns ? mc.getChallenge : mc.newChallenge}</Button>
+        </>
+      ) : null}
+      {(flow.isIdle || flow.isStarting) ? (
+        <Button className={primaryButtonClassName} disabled={!flow.canStart} loading={flow.isStarting} onClick={flow.actions.start}>
+          {flow.isHns ? mc.continueLabel : mc.getChallenge}
+        </Button>
+      ) : null}
+      {(flow.isChallengeReady || flow.isVerifying) ? (
+        <Button className={primaryButtonClassName} disabled={!flow.canSubmitSignature} loading={flow.isVerifying} onClick={flow.actions.verify}>
+          {flow.isSpaces ? mc.checkSetup : mc.verifyAction}
+        </Button>
+      ) : null}
+    </>
+  );
 
   return (
-    <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
+    <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", isMobile && hasFooterActions && "pb-28")}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="flex min-w-0 items-start gap-4">
           <div className="min-w-0 space-y-2">
@@ -182,40 +224,19 @@ export function CommunityNamespaceVerificationPage({
         ) : null}
       </div>
 
-      <div className="flex flex-col-reverse gap-3 border-t border-border-soft pt-6 sm:flex-row sm:justify-end">
-        {flow.isDnsSetupRequired ? (
-          <>
-            <Button onClick={flow.actions.reset} variant="outline">{mc.cancelLabel}</Button>
-            <Button loading={flow.isStarting} onClick={flow.actions.restart}>{mc.checkSetup}</Button>
-          </>
-        ) : null}
-        {flow.isChallengePending ? (
-          <>
-            <Button onClick={flow.actions.reset} variant="outline">{mc.cancelLabel}</Button>
-            <Button loading={flow.isVerifying} onClick={flow.actions.verify}>{flow.isSpaces ? mc.checkSetup : mc.verifyAction}</Button>
-          </>
-        ) : null}
-        {(flow.isFailed || flow.isExpired) ? (
-          <>
-            <Button onClick={flow.actions.reset} variant="outline">{mc.cancelLabel}</Button>
-            {flow.isFailed && flow.isHns ? <Button loading={flow.isVerifying} onClick={flow.actions.verify}>{mc.verifyAction}</Button> : null}
-            <Button onClick={flow.actions.restart}>{flow.isHns ? mc.getChallenge : mc.newChallenge}</Button>
-          </>
-        ) : null}
-        {(flow.isIdle || flow.isStarting) ? (
-          <>
-            <Button onClick={flow.actions.reset} variant="outline">{mc.cancelLabel}</Button>
-            <Button disabled={!flow.canStart} loading={flow.isStarting} onClick={flow.actions.start}>
-              {flow.isHns ? mc.continueLabel : mc.getChallenge}
-            </Button>
-          </>
-        ) : null}
-        {(flow.isChallengeReady || flow.isVerifying) ? (
-          <Button disabled={!flow.canSubmitSignature} loading={flow.isVerifying} onClick={flow.actions.verify}>
-            {flow.isSpaces ? mc.checkSetup : mc.verifyAction}
-          </Button>
-        ) : null}
-      </div>
+      {hasFooterActions && isMobile ? (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
+          <div className="flex items-center justify-end gap-3 px-4">
+            {footerActions}
+          </div>
+        </div>
+      ) : null}
+
+      {hasFooterActions && !isMobile ? (
+        <div className="flex flex-col-reverse gap-3 border-t border-border-soft pt-6 sm:flex-row sm:justify-end">
+          {footerActions}
+        </div>
+      ) : null}
     </section>
   );
 }

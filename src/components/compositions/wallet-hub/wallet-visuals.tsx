@@ -5,7 +5,6 @@ import {
   NetworkBitcoin,
   NetworkEthereum,
   NetworkOptimism,
-  NetworkSolana,
   NetworkTempo,
   TokenBTC,
   TokenDAI,
@@ -21,6 +20,7 @@ import { BadgedCircle } from "@/components/primitives/badged-circle";
 import cosmosIconUrl from "@/assets/wallet-icons/cosmos.png";
 import ipIconUrl from "@/assets/wallet-icons/ip.png";
 import sentinelIconUrl from "@/assets/wallet-icons/sentinel.png";
+import solanaIconUrl from "@/assets/wallet-icons/solana.png";
 import storyIconUrl from "@/assets/wallet-icons/story.png";
 import { cn } from "@/lib/utils";
 
@@ -43,7 +43,6 @@ const CHAIN_ICON_BY_CHAIN_ID: Partial<Record<WalletHubChainId, IconComponent>> =
   bitcoin: NetworkBitcoin,
   ethereum: NetworkEthereum,
   optimism: NetworkOptimism,
-  solana: NetworkSolana,
   tempo: NetworkTempo,
 };
 
@@ -55,6 +54,7 @@ const LOCAL_TOKEN_ICON_BY_SYMBOL: Partial<Record<string, string>> = {
 
 const LOCAL_CHAIN_ICON_BY_CHAIN_ID: Partial<Record<WalletHubChainId, string>> = {
   cosmos: cosmosIconUrl,
+  solana: solanaIconUrl,
   story: storyIconUrl,
 };
 
@@ -70,16 +70,16 @@ function LocalIcon({
   return (
     <img
       alt=""
-      className={cn("size-full object-contain", invert && "invert", className)}
+      className={cn("block size-full object-contain", invert && "invert", className)}
       draggable={false}
       src={src}
     />
   );
 }
 
-export function WalletIconFallback({ label }: { label: string }) {
+export function WalletIconFallback({ label, className }: { label: string; className?: string }) {
   return (
-    <div className="grid size-full place-items-center bg-muted text-base font-semibold text-foreground">
+    <div className={cn("grid size-full place-items-center bg-muted text-base font-semibold text-foreground", className)}>
       {label.slice(0, 1).toUpperCase()}
     </div>
   );
@@ -98,17 +98,9 @@ export function ChainIcon({
   const localChainIcon = LOCAL_CHAIN_ICON_BY_CHAIN_ID[chainId];
   const content = (
     <>
-      {localChainIcon && chainId === "cosmos" ? (
-        <span className={cn("relative overflow-hidden", framed ? "size-11" : "size-full")}>
-          <LocalIcon
-            className={cn(framed ? "absolute left-1/2 top-0 size-10 -translate-x-1/2" : "size-full")}
-            src={localChainIcon}
-          />
-        </span>
-      ) : null}
-      {localChainIcon && chainId !== "cosmos" ? (
+      {localChainIcon ? (
         <LocalIcon
-          className={framed ? "size-[72%]" : "size-full"}
+          className={framed ? "size-[74%]" : "size-full"}
           src={localChainIcon}
         />
       ) : null}
@@ -140,31 +132,72 @@ export function ChainIcon({
 
 export function TokenChainIcon({
   chainId,
+  showChainBadge = false,
   token,
+  size = "md",
 }: {
   chainId: WalletHubChainId;
+  showChainBadge?: boolean;
   token: Pick<WalletHubToken, "name" | "symbol">;
+  size?: "sm" | "md";
 }) {
   const symbol = token.symbol.toUpperCase();
   const localTokenIcon = LOCAL_TOKEN_ICON_BY_SYMBOL[symbol];
   const TokenIconComponent = TOKEN_ICON_BY_SYMBOL[symbol];
   const isStoryAsset = chainId === "story" || symbol === "IP" || symbol === "WIP";
 
+  const isFallback = !localTokenIcon && !TokenIconComponent;
+
+  const config = size === "sm"
+    ? {
+        circle: "size-10",
+        inner: "size-10",
+        pad: isFallback ? "p-0" : "p-1",
+        badgeSize: 16,
+        badgePadding: 2,
+        badgeIcon: "size-4",
+        tokenIcon: "size-7",
+      }
+    : {
+        circle: "size-12",
+        inner: "size-12",
+        pad: isFallback ? "p-0" : "p-1.5",
+        badgeSize: 18,
+        badgePadding: 3,
+        badgeIcon: "size-4.5",
+        tokenIcon: "size-8",
+      };
+
+  const tokenIcon = (
+    <div className={cn(
+      "grid place-items-center overflow-hidden rounded-full border border-border [&_svg]:block",
+      config.inner,
+      config.pad,
+      isFallback ? "bg-black" : "bg-white",
+    )}>
+      {localTokenIcon ? <LocalIcon className={config.tokenIcon} src={localTokenIcon} /> : null}
+      {!localTokenIcon && TokenIconComponent ? (
+        <TokenIconComponent aria-hidden="true" className={config.tokenIcon} variant="branded" />
+      ) : null}
+      {!localTokenIcon && !TokenIconComponent ? (
+        <WalletIconFallback label={symbol} className="bg-black text-white" />
+      ) : null}
+    </div>
+  );
+
+  if (!showChainBadge) {
+    return tokenIcon;
+  }
+
   return (
     <BadgedCircle
-      badge={<ChainIcon chainId={chainId} className="size-4.5" framed={false} />}
+      badge={<ChainIcon chainId={chainId} className={config.badgeIcon} framed={false} />}
       badgeFrameClassName="border border-white/70"
-      badgePadding={3}
-      badgeSize={18}
-      className="size-12"
+      badgePadding={config.badgePadding}
+      badgeSize={config.badgeSize}
+      className={config.circle}
     >
-      <div className="grid size-12 place-items-center overflow-hidden rounded-full border border-border bg-white p-1.5">
-        {localTokenIcon ? <LocalIcon className={isStoryAsset ? "size-8" : "size-9"} src={localTokenIcon} /> : null}
-        {!localTokenIcon && TokenIconComponent ? (
-          <TokenIconComponent aria-hidden="true" className="size-9" variant="branded" />
-        ) : null}
-        {!localTokenIcon && !TokenIconComponent ? <WalletIconFallback label={symbol} /> : null}
-      </div>
+      {tokenIcon}
     </BadgedCircle>
   );
 }

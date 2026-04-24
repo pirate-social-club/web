@@ -18,7 +18,30 @@ const sizeClasses: Record<AvatarSize, string> = {
 
 export function isRetryableImageSrc(src: string): boolean {
   const normalized = src.trim().toLowerCase();
-  return normalized !== "" && !normalized.startsWith("data:");
+  return isRenderableImageSrc(normalized) && !normalized.startsWith("data:");
+}
+
+export function isRenderableImageSrc(src: string): boolean {
+  const trimmed = src.trim();
+  const normalized = trimmed.toLowerCase();
+
+  if (!trimmed) {
+    return false;
+  }
+
+  if (
+    normalized.startsWith("data:")
+    || normalized.startsWith("blob:")
+    || normalized.startsWith("http://")
+    || normalized.startsWith("https://")
+    || normalized.startsWith("/")
+    || normalized.startsWith("./")
+    || normalized.startsWith("../")
+  ) {
+    return true;
+  }
+
+  return !/^[a-z][a-z0-9+.-]*:/iu.test(trimmed);
 }
 
 export function buildRetriedImageSrc(src: string): string {
@@ -65,21 +88,15 @@ export function Avatar({
   }, [fallback, fallbackIcon, normalizedFallbackSrc]);
   const [imageFailed, setImageFailed] = React.useState(false);
   const [retriedPrimarySrc, setRetriedPrimarySrc] = React.useState<string | null>(null);
-  const [currentSrc, setCurrentSrc] = React.useState(
-    normalizedPrimarySrc || normalizedFallbackSrc || generatedFallbackSrc,
-  );
+  const primarySrc = isRenderableImageSrc(normalizedPrimarySrc) ? normalizedPrimarySrc : "";
+  const alternateSrc = isRenderableImageSrc(normalizedFallbackSrc) ? normalizedFallbackSrc : generatedFallbackSrc;
+  const [currentSrc, setCurrentSrc] = React.useState(primarySrc || alternateSrc);
 
   React.useEffect(() => {
-    logger.info("[avatar] source update", {
-      fallback,
-      generatedFallbackSrcPresent: Boolean(generatedFallbackSrc),
-      normalizedFallbackSrc,
-      normalizedPrimarySrc,
-    });
     setImageFailed(false);
     setRetriedPrimarySrc(null);
-    setCurrentSrc(normalizedPrimarySrc || normalizedFallbackSrc || generatedFallbackSrc);
-  }, [generatedFallbackSrc, normalizedFallbackSrc, normalizedPrimarySrc]);
+    setCurrentSrc(primarySrc || alternateSrc);
+  }, [alternateSrc, primarySrc]);
 
   const canRenderImage = Boolean(currentSrc) && !imageFailed;
 
@@ -95,19 +112,10 @@ export function Avatar({
         <img
           alt={fallback}
           className="h-full w-full object-cover"
-          onLoad={() => {
-            logger.info("[avatar] image loaded", {
-              currentSrc,
-              fallback,
-              imageFailed,
-              normalizedPrimarySrc,
-              retriedPrimarySrc,
-            });
-          }}
           onError={() => {
             const currentPrimarySrc = retriedPrimarySrc ?? normalizedPrimarySrc;
 
-            logger.error("[avatar] image failed", {
+            logger.warn("[avatar] image failed", {
               currentPrimarySrc,
               currentSrc,
               fallback,
@@ -118,38 +126,25 @@ export function Avatar({
             });
 
             if (
-              normalizedPrimarySrc
-              && currentSrc === normalizedPrimarySrc
+              primarySrc
+              && currentSrc === primarySrc
               && retriedPrimarySrc == null
-              && isRetryableImageSrc(normalizedPrimarySrc)
+              && isRetryableImageSrc(primarySrc)
             ) {
-              const nextPrimarySrc = buildRetriedImageSrc(normalizedPrimarySrc);
-              logger.info("[avatar] retrying primary image", {
-                fallback,
-                normalizedPrimarySrc,
-                nextPrimarySrc,
-              });
+              const nextPrimarySrc = buildRetriedImageSrc(primarySrc);
               setRetriedPrimarySrc(nextPrimarySrc);
               setCurrentSrc(nextPrimarySrc);
               return;
             }
 
             if (currentPrimarySrc && currentSrc === currentPrimarySrc) {
-              const nextFallbackSrc = normalizedFallbackSrc || generatedFallbackSrc;
+              const nextFallbackSrc = alternateSrc;
 
               if (nextFallbackSrc && nextFallbackSrc !== currentSrc) {
-                logger.info("[avatar] falling back to alternate source", {
-                  fallback,
-                  nextFallbackSrc,
-                });
                 setCurrentSrc(nextFallbackSrc);
                 return;
               }
             }
-            logger.info("[avatar] marking image failed", {
-              fallback,
-              currentSrc,
-            });
             setImageFailed(true);
           }}
           src={currentSrc}

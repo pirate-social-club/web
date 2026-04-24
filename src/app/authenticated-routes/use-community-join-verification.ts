@@ -38,6 +38,12 @@ type UseCommunityJoinVerificationInput = {
   refetchEligibility: () => Promise<ApiJoinEligibility>;
 };
 
+type JoinAttemptOptions = {
+  note?: string | null;
+};
+
+type JoinAttemptResult = "blocked" | "failed" | "joined" | "requested";
+
 const SELF_CAPABILITIES = ["unique_human", "age_over_18", "minimum_age", "nationality", "gender"];
 
 function isSelfCapability(value: string): value is ApiJoinEligibility["missing_capabilities"][number] {
@@ -65,7 +71,7 @@ export function useCommunityJoinVerification({
     verificationIntent: "community_join",
     onVerified: async () => {
       const updatedEligibility = await refetchEligibility();
-      if (updatedEligibility.status === "joinable" || updatedEligibility.status === "requestable") {
+      if (updatedEligibility.status === "joinable") {
         const joinResult = await api.communities.join(communityId);
         if (joinResult.status === "requested") setJoinRequested(true);
         await refetchEligibility();
@@ -85,7 +91,7 @@ export function useCommunityJoinVerification({
     locale,
     onVerified: async () => {
       const updatedEligibility = await refetchEligibility();
-      if (updatedEligibility.status === "joinable" || updatedEligibility.status === "requestable") {
+      if (updatedEligibility.status === "joinable") {
         const joinResult = await api.communities.join(communityId);
         if (joinResult.status === "requested") {
           setJoinRequested(true);
@@ -139,7 +145,7 @@ export function useCommunityJoinVerification({
     }
   }, [veryError]);
 
-  const handleJoin = React.useCallback(async () => {
+  const handleJoin = React.useCallback(async (options: JoinAttemptOptions = {}): Promise<JoinAttemptResult> => {
     setJoinLoading(true);
     setJoinError(null);
     trackAnalyticsEvent({
@@ -157,14 +163,15 @@ export function useCommunityJoinVerification({
       } else {
         await startSelfVerification();
       }
-      return;
+      return "blocked";
     }
 
     try {
-      const result = await api.communities.join(communityId);
+      const result = await api.communities.join(communityId, { note: options.note ?? null });
       if (result.status === "requested") setJoinRequested(true);
       if (result.status === "joined") onJoined?.();
       await refetchEligibility();
+      return result.status === "requested" ? "requested" : "joined";
     } catch (error: unknown) {
       const apiError = error as ApiError;
       if (apiError?.code === "gate_failed" && apiError.details) {
@@ -182,7 +189,7 @@ export function useCommunityJoinVerification({
               membershipGateSummaries: details.membership_gate_summaries ?? null,
             });
           }
-          return;
+          return "blocked";
         }
 
         const gateFailureMessage = getGateFailureMessage(details, { locale });
@@ -194,6 +201,7 @@ export function useCommunityJoinVerification({
       } else {
         toast.error(apiError?.message ?? "Join failed");
       }
+      return "failed";
     } finally {
       setJoinLoading(false);
     }

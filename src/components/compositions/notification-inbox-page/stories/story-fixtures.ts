@@ -43,6 +43,24 @@ export const payoutSetupTask: UserTask = {
   updated_at: iso(120),
 };
 
+export const membershipReviewTask: UserTask = {
+  task_id: "tsk_membership_review",
+  user_id: "usr_owner_1",
+  type: "membership_review",
+  subject_type: "community",
+  subject_id: "gld_community_3",
+  status: "open",
+  priority: 8,
+  payload: {
+    community_display_name: "Signal Room",
+    request_count: 2,
+  },
+  resolved_at: null,
+  dismissed_at: null,
+  created_at: iso(45),
+  updated_at: iso(10),
+};
+
 export const commentReplyUnread: NotificationFeedItem = {
   event: {
     event_id: "nev_reply_1",

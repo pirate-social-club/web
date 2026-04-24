@@ -42,7 +42,16 @@
     "topWeek": "This week",
     "topYear": "This year",
     "upvote": "Upvote",
-    "upvoteComment": "Upvote comment"
+    "upvoteComment": "Upvote comment",
+    "youtubeVideo": "YouTube video",
+    "xPost": "X post",
+    "youtubeVideoUnavailable": "This YouTube video is unavailable.",
+    "xPostUnavailable": "This X post is unavailable.",
+    "onYouTube": "on YouTube",
+    "downloadAppPrompt": "Download {appName} app:",
+    "downloadFor": "Download {appName} for {platform}",
+    "appStore": "App Store",
+    "googlePlay": "Google Play"
   },
   "home": {
     "createCommunityLabel": "Create community",
@@ -93,6 +102,16 @@
     "rulesLabel": "Rules",
     "tagsLabel": "Tags",
     "title": "Community"
+  },
+  "joinRequest": {
+    "title": "Request to join",
+    "description": "Tell the moderators why you want to join.",
+    "submittedTitle": "Request submitted",
+    "submittedDescription": "The moderators will review your request.",
+    "messageOptional": "Message (Optional)",
+    "whyJoinPlaceholder": "Why {communityName}?",
+    "submit": "Submit",
+    "done": "Done"
   },
   "interactionGate": {
     "blockedReplyDescription": "This community's requirements block you from replying right now.",
@@ -283,6 +302,25 @@
     }
   },
   "onboarding": {
+    "redditImport": {
+      "title": "Verify Reddit",
+      "subtitle": "Bring your Reddit activity to Pirate for better names and recommendations.",
+      "activityReady": "Your Reddit activity is ready.",
+      "importedUser": "Imported u/{username}",
+      "importedScore": "Imported Reddit score",
+      "topSubreddits": "Top subreddits",
+      "notFound": "Not found",
+      "loading": "Loading...",
+      "pasteIntoProfile": "Paste into your",
+      "redditProfileDescription": "Reddit profile description"
+    },
+    "claimDomain": {
+      "title": "Claim Domain",
+      "subtitle": "Pirate domains are URLs that can be sold or traded. Choose wisely.",
+      "domainLabel": "Domain",
+      "available": "Available",
+      "notAvailable": "Not available"
+    },
     "actions": {
       "generateHandle": "Generate a new handle",
       "checkAgain": "Check again",
@@ -479,6 +517,7 @@
     "connectWalletToFollow": "Connect your wallet to follow people.",
     "editProfile": "Edit profile",
     "emptyActivity": "No activity yet.",
+    "emptyState": "Nothing here yet.",
     "emptyPosts": "No posts yet.",
     "emptyScrobbles": "No scrobbles yet.",
     "emptyWallet": "No wallet connected.",
@@ -740,6 +779,7 @@
       "labelLabel": "Label",
       "displayNamePlaceholder": "Display name",
       "urlLabel": "URL",
+      "urlPlaceholder": "https://",
       "emptyState": "No links yet."
     },
     "pricing": {
@@ -751,6 +791,11 @@
       "addPriceGroup": "Add price group",
       "defaultTierTitle": "Default group",
       "selectDefaultTierPlaceholder": "Select default group",
+      "untitledGroup": "Untitled group",
+      "searchCountryPlaceholder": "Search country",
+      "newGroup": "New group",
+      "addCountry": "Add country…",
+      "noCountriesFound": "No countries found.",
       "starterTemplateNote": "The default map assigns every country across broad pricing bands. Review every group before saving.",
       "existingListingsNote": "Enabling regional pricing affects new listings only. Existing listings keep their current setting.",
       "groupNameLabel": "Group",

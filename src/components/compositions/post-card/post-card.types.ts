@@ -213,11 +213,16 @@ export interface PostCardProps {
   titleHref?: string;
   postHref?: string;
   content: PostCardContent;
+  sourceLanguage?: string | null;
+  isViewingOriginal?: boolean;
+  showOriginalLabel?: string;
+  showTranslationLabel?: string;
   engagement: PostCardEngagement;
   menuItems?: PostCardMenuItem[];
   onVote?: (direction: "up" | "down" | null) => void;
   onComment?: () => void;
   onShare?: () => void;
+  onToggleOriginal?: () => void;
   onMenuAction?: (key: string) => void;
   className?: string;
 }

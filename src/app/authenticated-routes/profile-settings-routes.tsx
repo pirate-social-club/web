@@ -39,7 +39,6 @@ import {
   apiProfileToProps,
   buildSettingsLocaleOptions,
   buildSettingsPath,
-  formatWalletChainLabel,
   getSelectedProfileHandleLabel,
   mapProfileLinkedHandles,
 } from "./profile-settings-mapping";
@@ -73,6 +72,11 @@ type WalletBalanceToken =
   };
 
 const TEMPO_PATH_USD_ADDRESS = "0x20c0000000000000000000000000000000000000" as const;
+const ETHEREUM_MAINNET_USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as const;
+const ETHEREUM_MAINNET_USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7" as const;
+const ETHEREUM_SEPOLIA_USDC_ADDRESS = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" as const;
+const BASE_MAINNET_USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+const BASE_SEPOLIA_USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e" as const;
 
 function buildWalletBalanceChains(): WalletBalanceChain[] {
   const networkConfig = getPirateNetworkConfig();
@@ -80,6 +84,49 @@ function buildWalletBalanceChains(): WalletBalanceChain[] {
   const optimismChain = networkConfig.base.network === "base-mainnet" ? optimism : optimismSepolia;
   const ethereumRpcUrl = networkConfig.efp.rpcUrlsByChainId[ethereumChain.id] ?? ethereumChain.rpcUrls.default.http[0];
   const optimismRpcUrl = networkConfig.efp.rpcUrlsByChainId[optimismChain.id] ?? optimismChain.rpcUrls.default.http[0];
+  const ethereumStablecoins: WalletBalanceToken[] = ethereumChain.id === mainnet.id
+    ? [
+      {
+        address: ETHEREUM_MAINNET_USDC_ADDRESS,
+        id: "eth-usdc",
+        kind: "erc20",
+        name: "USD Coin",
+        priceId: "usd-coin",
+        symbol: "USDC",
+        usdPrice: 1,
+      },
+      {
+        address: ETHEREUM_MAINNET_USDT_ADDRESS,
+        id: "eth-usdt",
+        kind: "erc20",
+        name: "Tether USD",
+        priceId: "tether",
+        symbol: "USDT",
+        usdPrice: 1,
+      },
+    ]
+    : [
+      {
+        address: ETHEREUM_SEPOLIA_USDC_ADDRESS,
+        id: "eth-sepolia-usdc",
+        kind: "erc20",
+        name: "USD Coin",
+        priceId: "usd-coin",
+        symbol: "USDC",
+        usdPrice: 1,
+      },
+    ];
+  const baseStablecoins: WalletBalanceToken[] = [
+    {
+      address: networkConfig.base.network === "base-mainnet" ? BASE_MAINNET_USDC_ADDRESS : BASE_SEPOLIA_USDC_ADDRESS,
+      id: networkConfig.base.network === "base-mainnet" ? "base-usdc" : "base-sepolia-usdc",
+      kind: "erc20",
+      name: "USD Coin",
+      priceId: "usd-coin",
+      symbol: "USDC",
+      usdPrice: 1,
+    },
+  ];
 
   const chains: WalletBalanceChain[] = [
     {
@@ -87,21 +134,27 @@ function buildWalletBalanceChains(): WalletBalanceChain[] {
       evmChainId: ethereumChain.id,
       rpcUrl: ethereumRpcUrl,
       title: ethereumChain.id === mainnet.id ? "Ethereum" : "Ethereum Sepolia",
-      tokens: [{ id: "eth", kind: "native", name: "ETH", priceId: "ethereum", symbol: "ETH" }],
+      tokens: [
+        { id: "eth", kind: "native", name: "Ether", priceId: "ethereum", symbol: "ETH" },
+        ...ethereumStablecoins,
+      ],
     },
     {
       chainId: "base",
       evmChainId: networkConfig.base.chainId,
       rpcUrl: networkConfig.base.rpcUrl,
       title: networkConfig.base.label,
-      tokens: [{ id: "base-eth", kind: "native", name: "ETH", priceId: "ethereum", symbol: "ETH" }],
+      tokens: [
+        { id: "base-eth", kind: "native", name: "Ether", priceId: "ethereum", symbol: "ETH" },
+        ...baseStablecoins,
+      ],
     },
     {
       chainId: "optimism",
       evmChainId: optimismChain.id,
       rpcUrl: optimismRpcUrl,
       title: optimismChain.id === optimism.id ? "Optimism" : "Optimism Sepolia",
-      tokens: [{ id: "op-eth", kind: "native", name: "ETH", priceId: "ethereum", symbol: "ETH" }],
+      tokens: [{ id: "op-eth", kind: "native", name: "Ether", priceId: "ethereum", symbol: "ETH" }],
     },
     {
       chainId: "story",
@@ -124,6 +177,27 @@ function buildWalletBalanceChains(): WalletBalanceChain[] {
         symbol: "pathUSD",
         usdPrice: 1,
       }],
+    },
+    {
+      chainId: "bitcoin",
+      evmChainId: null,
+      rpcUrl: null,
+      title: "Bitcoin",
+      tokens: [{ id: "btc", kind: "native", name: "Bitcoin", priceId: "bitcoin", symbol: "BTC" }],
+    },
+    {
+      chainId: "solana",
+      evmChainId: null,
+      rpcUrl: null,
+      title: "Solana",
+      tokens: [{ id: "sol", kind: "native", name: "Solana", priceId: "solana", symbol: "SOL" }],
+    },
+    {
+      chainId: "cosmos",
+      evmChainId: null,
+      rpcUrl: null,
+      title: "Cosmos",
+      tokens: [{ id: "atom", kind: "native", name: "Cosmos Hub", priceId: "cosmos", symbol: "ATOM" }],
     },
   ];
 
@@ -154,12 +228,14 @@ function buildWalletHubChainSections({
     chainId: chain.chainId,
     title: chain.title,
     availability: "ready",
-    walletAddress,
+    walletAddress: chain.evmChainId === null ? null : walletAddress,
     tokens: chain.tokens.map((token) => ({
       id: `${chain.evmChainId}:${token.id}`,
       symbol: token.symbol,
       name: token.name,
-      balance: balancesByTokenId[`${chain.evmChainId}:${token.id}`] ?? (loading ? "..." : "Unavailable"),
+      balance: chain.evmChainId === null
+        ? "0"
+        : balancesByTokenId[`${chain.evmChainId}:${token.id}`] ?? (loading ? "..." : "Unavailable"),
       priceId: token.priceId ?? undefined,
       usdPrice: token.usdPrice ?? (token.priceId ? pricesById[token.priceId] ?? null : null),
     })),
@@ -206,7 +282,7 @@ export function CurrentUserProfilePage() {
   });
 
   if (!profile) {
-    return <AuthRequiredRouteState description={getRouteAuthDescription("profile")} title={pageTitle} />;
+    return <AuthRequiredRouteState description={getRouteAuthDescription("profile")} hideTitleOnMobile title={pageTitle} />;
   }
 
   return (
@@ -244,9 +320,6 @@ export function CurrentUserWalletPage() {
     ?? walletAttachments[0]
     ?? null;
   const primaryAddress = profile?.primary_wallet_address ?? primaryWallet?.wallet_address ?? null;
-  const walletLabel = primaryWallet
-    ? formatWalletChainLabel(primaryWallet.chain_namespace)
-    : copy.wallet.noWalletConnected;
   const normalizedPrimaryAddress = primaryAddress && isAddress(primaryAddress)
     ? getAddress(primaryAddress)
     : null;
@@ -362,13 +435,12 @@ export function CurrentUserWalletPage() {
   }, [priceIds]);
 
   if (!profile) {
-    return <AuthRequiredRouteState description={getRouteAuthDescription("wallet")} title={pageTitle} />;
+    return <AuthRequiredRouteState description={getRouteAuthDescription("wallet")} hideTitleOnMobile title={pageTitle} />;
   }
 
   return (
     <WalletHub
       walletAddress={normalizedPrimaryAddress ?? primaryAddress}
-      walletLabel={walletLabel}
       chainSections={normalizedPrimaryAddress
         ? buildWalletHubChainSections({
           balancesByTokenId,

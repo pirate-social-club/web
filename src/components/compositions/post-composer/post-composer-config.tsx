@@ -1,15 +1,10 @@
 import * as React from "react";
 import {
-  CaretDown,
   Image as ImageIcon,
   Link,
-  List,
-  DotsThree,
   Microphone,
   MusicNote,
-  Plus,
-  SquaresFour,
-  Tag,
+  TextT,
   VideoCamera,
 } from "@phosphor-icons/react";
 import type {
@@ -24,7 +19,7 @@ import type {
 } from "./post-composer.types";
 
 export const tabMeta: Record<ComposerTab, { label: string; icon: React.ReactNode }> = {
-  text: { label: "Text", icon: <SquaresFour className="size-5" /> },
+  text: { label: "Text", icon: <TextT className="size-5" /> },
   image: { label: "Image", icon: <ImageIcon className="size-5" /> },
   video: { label: "Video", icon: <VideoCamera className="size-5" /> },
   link: { label: "Link", icon: <Link className="size-5" /> },

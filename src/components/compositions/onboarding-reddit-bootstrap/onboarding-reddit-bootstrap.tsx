@@ -52,29 +52,31 @@ function formatOptionalNumber(value: number | null | undefined, localeTag: strin
 function RedditImportSummary({
   localeTag,
   summary,
+  copy,
 }: {
   localeTag: string;
   summary?: RedditImportSummaryState | null;
+  copy: OnboardingCopy;
 }) {
-  const karma = formatOptionalNumber(summary?.globalKarma, localeTag);
+  const importedRedditScore = formatOptionalNumber(summary?.importedRedditScore, localeTag);
   const topSubreddits = summary?.topSubreddits?.slice(0, 3) ?? [];
 
   return (
     <div className="space-y-4 rounded-md border border-border bg-background p-4">
       <div className="space-y-1">
         <p className="text-base font-semibold text-foreground">
-          Imported u/{summary?.redditUsername ?? "reddit"}
+          {formatMessage(copy.redditImport.importedUser, { username: summary?.redditUsername ?? "reddit" })}
         </p>
-        <p className="text-base text-muted-foreground">Your Reddit activity is ready.</p>
+        <p className="text-base text-muted-foreground">{copy.redditImport.activityReady}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-[minmax(8rem,0.4fr)_1fr]">
         <div>
-          <p className="text-base text-muted-foreground">Karma</p>
-          <p className="mt-1 text-lg font-semibold text-foreground">{karma ?? "Not found"}</p>
+          <p className="text-base text-muted-foreground">{copy.redditImport.importedScore}</p>
+          <p className="mt-1 text-lg font-semibold text-foreground">{importedRedditScore ?? copy.redditImport.notFound}</p>
         </div>
         <div>
-          <p className="text-base text-muted-foreground">Top subreddits</p>
+          <p className="text-base text-muted-foreground">{copy.redditImport.topSubreddits}</p>
           {topSubreddits.length > 0 ? (
             <div className="mt-2 flex flex-wrap gap-2">
               {topSubreddits.map((entry) => (
@@ -84,7 +86,7 @@ function RedditImportSummary({
               ))}
             </div>
           ) : (
-            <p className="mt-1 text-base text-muted-foreground">Not found</p>
+            <p className="mt-1 text-base text-muted-foreground">{copy.redditImport.notFound}</p>
           )}
         </div>
       </div>
@@ -212,12 +214,12 @@ function ImportKarmaPhase({
       || isCodeReady
       || isImportDone
     );
-  const headerTitle = isCodeReady ? "Verify Reddit" : copy.importKarmaAction;
+  const headerTitle = isCodeReady ? copy.redditImport.title : copy.importKarmaAction;
   const headerSubtitle = isCodeReady
     ? undefined
     : isImportDone
-      ? "Your Reddit activity is ready."
-      : "Bring your Reddit karma to Pirate for better names and recommendations.";
+      ? copy.redditImport.activityReady
+      : copy.redditImport.subtitle;
 
   return (
     <div className="space-y-6">
@@ -241,7 +243,7 @@ function ImportKarmaPhase({
           {isImporting ? (
             <FormNote>
               <Spinner className="me-2 inline size-4" />
-              Loading...
+              {copy.redditImport.loading}
             </FormNote>
           ) : null}
           {!isImporting && fieldError ? (
@@ -257,14 +259,14 @@ function ImportKarmaPhase({
               label={formatMessage(copy.fields.redditCode, { surface: surfaceLabel })}
             />
             <FormNote>
-              Paste into your{" "}
+              {copy.redditImport.pasteIntoProfile}{" "}
               <a
                 className="inline-flex items-center gap-1 underline underline-offset-4"
                 href="https://www.reddit.com/settings/profile"
                 rel="noreferrer"
                 target="_blank"
               >
-                Reddit profile description
+                {copy.redditImport.redditProfileDescription}
                 <ArrowSquareOut className="size-4" />
               </a>
             </FormNote>
@@ -277,7 +279,7 @@ function ImportKarmaPhase({
       ) : null}
 
       {isImportDone ? (
-        <RedditImportSummary localeTag={localeTag} summary={redditImportSummary} />
+        <RedditImportSummary copy={copy} localeTag={localeTag} summary={redditImportSummary} />
       ) : null}
 
       {isVerified && !isImportDone && !isImporting ? (
@@ -310,7 +312,7 @@ function ChooseNamePhase({
 }: {
   busy?: boolean;
   phaseError?: string | null;
-  handleSuggestion?: { suggestedLabel: string; availability: string };
+  handleSuggestion?: { suggestedLabel: string; availability: string; reason?: string };
   nextLabel?: string;
   onGenerateHandle: () => void;
   handleValue: string;
@@ -327,12 +329,12 @@ function ChooseNamePhase({
     <div className="space-y-6">
       <OnboardingCardHeader
         icon={<Flag className="size-7" />}
-        subtitle="Pirate domains are URLs that can be sold or traded. Choose wisely."
-        title="Claim Domain"
+        subtitle={copy.claimDomain.subtitle}
+        title={copy.claimDomain.title}
       />
 
       <div className="space-y-2">
-        <FormFieldLabel label="Domain" />
+        <FormFieldLabel label={copy.claimDomain.domainLabel} />
         <div className="flex items-center gap-2">
           <div className="relative flex-1" dir="ltr">
             <Input
@@ -365,12 +367,12 @@ function ChooseNamePhase({
             {handleSuggestion.availability === "available" ? (
               <>
                 <Check className="size-4" weight="bold" />
-                Available
+                {handleSuggestion.reason ?? copy.claimDomain.available}
               </>
             ) : (
               <>
                 <X className="size-4" weight="bold" />
-                Not available
+                {handleSuggestion.reason ?? copy.claimDomain.notAvailable}
               </>
             )}
           </FormNote>
@@ -381,7 +383,7 @@ function ChooseNamePhase({
         ) : null}
       </div>
 
-      <Footer copy={copy} nextDisabled={!canContinue} nextLabel={nextLabel ?? "Claim Domain"} nextLoading={busy} onNext={onContinue} />
+      <Footer copy={copy} nextDisabled={!canContinue} nextLabel={nextLabel ?? copy.claimDomain.title} nextLoading={busy} onNext={onContinue} />
     </div>
   );
 }

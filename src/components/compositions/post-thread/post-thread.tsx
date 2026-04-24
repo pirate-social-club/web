@@ -2,15 +2,16 @@ import * as React from "react";
 import { Minus, Plus } from "@phosphor-icons/react";
 
 import { PostCard } from "@/components/compositions/post-card/post-card";
+import { ResponsiveOptionSelect } from "@/components/compositions/responsive-option-select/responsive-option-select";
 import { Button } from "@/components/primitives/button";
 import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
-import { PillButton } from "@/components/primitives/pill-button";
 import { triggerNavigationTapHaptic } from "@/lib/haptics";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import { CommentCard } from "./comment-card";
-import type { PostThreadComment, PostThreadProps } from "./post-thread.types";
+import type { CommentSort, PostThreadComment, PostThreadProps } from "./post-thread.types";
 import { Type } from "@/components/primitives/type";
 
 function getCommentKey(comment: PostThreadComment, fallbackDepth: number): string {
@@ -138,14 +139,82 @@ function CommentNode({
   );
 }
 
+type FlatCommentItem = {
+  comment: PostThreadComment;
+  depth: number;
+};
+
+function flattenComments(comments: PostThreadComment[]): FlatCommentItem[] {
+  const result: FlatCommentItem[] = [];
+
+  function walk(items: PostThreadComment[], depth: number) {
+    for (const item of items) {
+      result.push({ comment: item, depth });
+      if (item.children && item.children.length > 0) {
+        walk(item.children, depth + 1);
+      }
+    }
+  }
+
+  walk(comments, 0);
+  return result;
+}
+
+function flatCommentPadding(depth: number): string {
+  if (depth >= 4) return "ps-3";
+  if (depth >= 2) return "ps-4";
+  if (depth >= 1) return "ps-5";
+  return "";
+}
+
+function FlatCommentRow({ item }: { item: FlatCommentItem }) {
+  const { comment, depth } = item;
+
+  return (
+    <article
+      className={cn(
+        "pb-3",
+        depth > 0 && "border-l border-border-soft pt-3",
+        depth === 0 && "border-b border-border-soft",
+        flatCommentPadding(depth),
+      )}
+    >
+      <CommentCard
+        authorLabel={comment.authorLabel}
+        authorHref={comment.authorHref}
+        metadataLabel={comment.metadataLabel}
+        scoreLabel={comment.scoreLabel}
+        timestampLabel={comment.timestampLabel}
+        body={comment.body}
+        bodyDir={comment.bodyDir}
+        bodyLang={comment.bodyLang}
+        originalBody={comment.originalBody}
+        status={comment.status}
+        viewerVote={comment.viewerVote}
+        onVote={comment.onVote}
+        showOriginalLabel={comment.showOriginalLabel}
+        showTranslationLabel={comment.showTranslationLabel}
+        replyActionLabel={comment.replyActionLabel}
+        replyPlaceholder={comment.replyPlaceholder}
+        cancelReplyLabel={comment.cancelReplyLabel}
+        submitReplyLabel={comment.submitReplyLabel}
+        onReplySubmit={comment.onReplySubmit}
+      />
+
+      {comment.moreRepliesLabel ? (
+        <div className="pt-2">
+          <Button size="sm" variant="ghost" onClick={comment.onLoadMoreReplies}>
+            {comment.moreRepliesLabel}
+          </Button>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 export function PostThread({
   post,
   postOriginal,
-  postShowOriginalLabel,
-  postShowTranslationLabel,
-  commentsHeading = "Comments",
-  commentsHeadingDir,
-  commentsHeadingLang,
   commentsBody,
   comments,
   replies,
@@ -163,15 +232,19 @@ export function PostThread({
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes");
   const items = comments ?? replies ?? [];
+  const isMobile = useIsMobile();
   const [showOriginalPost, setShowOriginalPost] = React.useState(false);
   const [rootReplyOpen, setRootReplyOpen] = React.useState(false);
   const [rootReplyBody, setRootReplyBody] = React.useState("");
   const [rootReplyBusy, setRootReplyBusy] = React.useState(false);
   const activePost = showOriginalPost && postOriginal ? postOriginal : post;
-  const canToggleOriginalPost = Boolean(postOriginal && postShowOriginalLabel && postShowTranslationLabel);
+  const canToggleOriginalPost = Boolean(postOriginal);
   const canReplyAtRoot = Boolean(onRootReplySubmit);
-  const resolvedCommentsHeading = commentsHeading === "Comments" ? copy.common.commentsHeading : commentsHeading;
   const resolvedEmptyCommentsLabel = emptyCommentsLabel === "No comments yet." ? copy.common.noComments : emptyCommentsLabel;
+  const resolvedRootReplyPlaceholder = rootReplyPlaceholder || rootReplyActionLabel || copy.common.replyAction;
+  const activeSort = commentSort ?? availableCommentSorts?.[0]?.value;
+
+  const flatItems = React.useMemo(() => flattenComments(items), [items]);
 
   React.useEffect(() => {
     setShowOriginalPost(false);
@@ -197,61 +270,41 @@ export function PostThread({
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="overflow-hidden border-b border-border-soft">
-        <PostCard {...activePost} className="border-b-0" />
-        {canToggleOriginalPost ? (
-          <div className="border-t border-border-soft px-4 py-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowOriginalPost((value) => !value)}
-            >
-              {showOriginalPost ? postShowTranslationLabel : postShowOriginalLabel}
-            </Button>
-          </div>
-        ) : null}
+      <div className="overflow-hidden">
+        <PostCard
+          {...activePost}
+          className="border-b-0"
+          isViewingOriginal={showOriginalPost}
+          onToggleOriginal={canToggleOriginalPost ? () => setShowOriginalPost((value) => !value) : activePost.onToggleOriginal}
+        />
       </div>
 
       <section>
-        <div className="flex items-center justify-between gap-3 px-4 py-2">
-          <div className="text-sm font-medium text-foreground" dir={commentsHeadingDir ?? "auto"} lang={commentsHeadingLang}>
-            {resolvedCommentsHeading}
-          </div>
-          {canReplyAtRoot ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setRootReplyOpen((value) => !value)}
-            >
-              {rootReplyActionLabel}
-            </Button>
-          ) : null}
-        </div>
-        {availableCommentSorts && availableCommentSorts.length > 0 ? (
-          <div className="flex gap-2 overflow-x-auto px-4 pb-2">
-            {availableCommentSorts.map((sort) => (
-              <PillButton
-                key={sort.value}
-                onClick={() => onCommentSortChange?.(sort.value)}
-                tone={sort.value === commentSort ? "selected" : "default"}
-              >
-                {sort.label}
-              </PillButton>
-            ))}
+        {canReplyAtRoot && !rootReplyOpen ? (
+          <div className="px-4 pb-5">
+            <input
+              aria-label={rootReplyActionLabel ?? copy.common.replyAction}
+              className="h-12 w-full rounded-full border border-border-soft bg-background px-4 text-base text-foreground shadow-sm outline-none transition-[color,box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-border focus-visible:ring-1 focus-visible:ring-border-soft"
+              onClick={() => setRootReplyOpen(true)}
+              onFocus={() => setRootReplyOpen(true)}
+              placeholder={resolvedRootReplyPlaceholder}
+              readOnly
+              type="text"
+            />
           </div>
         ) : null}
         {commentsBody ? (
           <Type as="p" variant="caption" className="px-4 pb-2">{commentsBody}</Type>
         ) : null}
         {rootReplyOpen ? (
-          <div className="mx-4 mb-3 space-y-3 border border-border-soft bg-background/60 p-3 md:rounded-[var(--radius-lg)]">
+          <div className="mx-4 mb-5 space-y-3">
             <FormattedTextarea
               className="min-h-28"
               onChange={setRootReplyBody}
               placeholder={rootReplyPlaceholder}
               value={rootReplyBody}
             />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-end gap-2">
               <Button
                 size="sm"
                 variant="secondary"
@@ -272,15 +325,30 @@ export function PostThread({
             </div>
           </div>
         ) : null}
+        {availableCommentSorts && availableCommentSorts.length > 0 && activeSort ? (
+          <div className="flex justify-start px-4 pb-3">
+            <ResponsiveOptionSelect<CommentSort>
+              ariaLabel="Sort comments"
+              drawerTitle={copy.common.commentsHeading}
+              onValueChange={onCommentSortChange}
+              options={availableCommentSorts}
+              value={activeSort}
+            />
+          </div>
+        ) : null}
 
         {items.length > 0 ? (
           <div className="px-4">
-            {items.map((comment, index) => (
-              <CommentNode comment={comment} depth={0} key={getCommentKey(comment, index)} />
-            ))}
+            {isMobile
+              ? items.map((comment, index) => (
+                  <CommentNode comment={comment} depth={0} key={getCommentKey(comment, index)} />
+                ))
+              : flatItems.map((item, index) => (
+                  <FlatCommentRow item={item} key={getCommentKey(item.comment, index)} />
+                ))}
           </div>
         ) : (
-          <div className="px-4 py-5 text-sm text-muted-foreground">{resolvedEmptyCommentsLabel}</div>
+          <Type as="div" variant="caption" className="px-4 py-5">{resolvedEmptyCommentsLabel}</Type>
         )}
       </section>
     </div>

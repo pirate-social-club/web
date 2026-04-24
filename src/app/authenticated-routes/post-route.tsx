@@ -5,9 +5,13 @@ import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contra
 
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { useSession } from "@/lib/api/session-store";
+import { navigate } from "@/app/router";
+import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
 import { ContentRailShell } from "@/components/compositions/content-rail-shell/content-rail-shell";
 import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
 import { PostThread } from "@/components/compositions/post-thread/post-thread";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { buildCommunityPath } from "@/lib/community-routing";
 import { useUiLocale } from "@/lib/ui-locale";
 
 import { buildCommunityPreviewSidebar } from "./community-sidebar-helpers";
@@ -20,8 +24,37 @@ import { useSongPurchaseFlow } from "./song-purchase";
 import { useSongCommerceState, useSongPlayback } from "./song-commerce";
 import { usePost } from "./post-state";
 
+function closeMobileThread(fallbackPath: string) {
+  if (typeof window !== "undefined" && window.history.length > 1) {
+    window.history.back();
+    return;
+  }
+
+  navigate(fallbackPath);
+}
+
+function MobileThreadShell({
+  children,
+  fallbackPath,
+  title,
+}: {
+  children: React.ReactNode;
+  fallbackPath: string;
+  title: string;
+}) {
+  return (
+    <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
+      <MobilePageHeader onCloseClick={() => closeMobileThread(fallbackPath)} title={title} />
+      <section className="min-w-0 flex-1 px-0 pt-[calc(env(safe-area-inset-top)+4rem)]">
+        {children}
+      </section>
+    </div>
+  );
+}
+
 export function PostPage({ postId }: { postId: string }) {
   const session = useSession();
+  const isMobile = useIsMobile();
   const { locale } = useUiLocale();
   const { copy } = useRouteMessages();
   const pageTitle = getRouteTitle("post") ?? "Post";
@@ -39,7 +72,12 @@ export function PostPage({ postId }: { postId: string }) {
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
   const { post, community, authorProfile, comments, createTopLevelComment, error, gateModal, loading, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
-  const commerceEnabled = Boolean(session?.user?.user_id && community?.community_id);
+  const commerceEnabled = Boolean(
+    session?.user?.user_id
+      && community?.community_id
+      && post?.post.post_type === "song"
+      && post.post.asset_id,
+  );
   const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(community?.community_id ?? "", commerceEnabled);
   const { buySong, purchaseModal } = useSongPurchaseFlow({ commerceEnabled, refreshSongCommerce });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
@@ -54,16 +92,42 @@ export function PostPage({ postId }: { postId: string }) {
   }, [buySong]);
 
   if (loading) {
+    if (isMobile) {
+      return (
+        <MobileThreadShell fallbackPath="/" title={pageTitle}>
+          <FullPageSpinner />
+        </MobileThreadShell>
+      );
+    }
     return <FullPageSpinner />;
   }
 
   if (error) {
-    if (isApiAuthError(error)) return <AuthRequiredRouteState description={getRouteAuthDescription("post")} title={pageTitle} />;
-    if (isApiNotFoundError(error)) return <NotFoundPage path={`/p/${postId}`} />;
-    return <RouteLoadFailureState description={getErrorMessage(error, getRouteFailureDescription("post"))} title={pageTitle} />;
+    const errorBody = isApiAuthError(error)
+      ? <AuthRequiredRouteState description={getRouteAuthDescription("post")} title={isMobile ? "" : pageTitle} />
+      : isApiNotFoundError(error)
+        ? <NotFoundPage path={`/p/${postId}`} />
+        : <RouteLoadFailureState description={getErrorMessage(error, getRouteFailureDescription("post"))} title={isMobile ? "" : pageTitle} />;
+
+    if (isMobile) {
+      return (
+        <MobileThreadShell fallbackPath="/" title={pageTitle}>
+          {errorBody}
+        </MobileThreadShell>
+      );
+    }
+
+    return errorBody;
   }
 
   if (!post) {
+    if (isMobile) {
+      return (
+        <MobileThreadShell fallbackPath="/" title={pageTitle}>
+          <RouteLoadFailureState description={getRouteIncompleteDescription("post")} title="" />
+        </MobileThreadShell>
+      );
+    }
     return <RouteLoadFailureState description={getRouteIncompleteDescription("post")} title={pageTitle} />;
   }
 
@@ -79,16 +143,25 @@ export function PostPage({ postId }: { postId: string }) {
       purchase: threadPurchase,
     }
     : undefined;
-  const localizedPostCard = toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, { onVote: voteOnPost });
+  const localizedPostCard = toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
+    onVote: voteOnPost,
+    showOriginalLabel: copy.common.showOriginal,
+    showTranslationLabel: copy.common.showTranslation,
+  });
   const originalPostCard = shouldShowOriginalPost(post)
-    ? toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, { onVote: voteOnPost, preferOriginalText: true })
+    ? toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
+      onVote: voteOnPost,
+      preferOriginalText: true,
+      showOriginalLabel: copy.common.showOriginal,
+      showTranslationLabel: copy.common.showTranslation,
+    })
     : undefined;
-
-  return (
+  const communityPath = community ? buildCommunityPath(community.community_id) : "/";
+  const threadBody = (
     <>
       {gateModal}
       {purchaseModal}
-      <ContentRailShell rail={community ? <CommunitySidebar {...buildCommunityPreviewSidebar(community, locale)} /> : undefined}>
+      <ContentRailShell rail={!isMobile && community ? <CommunitySidebar {...buildCommunityPreviewSidebar(community, locale)} /> : undefined}>
         <PostThread
           availableCommentSorts={[
             { label: copy.common.bestTab, value: "best" },
@@ -105,8 +178,6 @@ export function PostPage({ postId }: { postId: string }) {
           onRootReplySubmit={createTopLevelComment}
           post={localizedPostCard}
           postOriginal={originalPostCard}
-          postShowOriginalLabel={originalPostCard ? copy.common.showOriginal : undefined}
-          postShowTranslationLabel={originalPostCard ? copy.common.showTranslation : undefined}
           comments={comments}
           rootReplyActionLabel={copy.common.replyAction}
           rootReplyCancelLabel={copy.common.cancelReply}
@@ -115,5 +186,17 @@ export function PostPage({ postId }: { postId: string }) {
         />
       </ContentRailShell>
     </>
+  );
+
+  if (isMobile) {
+    return (
+      <MobileThreadShell fallbackPath={communityPath} title={pageTitle}>
+        {threadBody}
+      </MobileThreadShell>
+    );
+  }
+
+  return (
+    threadBody
   );
 }

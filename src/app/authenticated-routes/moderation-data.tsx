@@ -31,6 +31,8 @@ export function getCommunityModerationTitle(
       return copy.nav.donations;
     case "pricing":
       return copy.nav.pricing;
+    case "requests":
+      return "Requests";
     case "gates":
       return copy.nav.gates;
     case "safety":

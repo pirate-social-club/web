@@ -5,11 +5,13 @@ export function StatusCard({
   title,
   description,
   actions,
+  flatOnMobile = false,
   tone = "default",
 }: {
   title: string;
   description: string;
   actions?: ReactNode;
+  flatOnMobile?: boolean;
   tone?: "default" | "success" | "warning";
 }) {
   const toneClassName = tone === "success"
@@ -17,9 +19,14 @@ export function StatusCard({
     : tone === "warning"
       ? "border-amber-500/20 bg-amber-500/5"
       : "border-border-soft bg-card";
+  const desktopToneClassName = tone === "success"
+    ? "md:bg-emerald-500/5"
+    : tone === "warning"
+      ? "md:bg-amber-500/5"
+      : "md:bg-card";
 
   return (
-    <div className={`rounded-[var(--radius-3xl)] border px-5 py-5 ${toneClassName}`}>
+    <div className={`rounded-[var(--radius-3xl)] border px-5 py-5 ${toneClassName} ${flatOnMobile ? `-mx-3 rounded-none border-x-0 bg-transparent px-3 shadow-none md:mx-0 md:rounded-[var(--radius-3xl)] md:border-x md:px-5 ${desktopToneClassName}` : ""}`}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1.5">
           <Type as="p" variant="body-strong" className="">{title}</Type>

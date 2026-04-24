@@ -33,6 +33,8 @@ export type PostPresentationOptions = {
   onVote?: PostCardProps["onVote"];
   onComment?: PostCardProps["onComment"];
   preferOriginalText?: boolean;
+  showOriginalLabel?: string;
+  showTranslationLabel?: string;
 };
 
 export function formatQualifierLabel(qualifierTemplateId: string): string {
@@ -214,6 +216,51 @@ function resolveTranslatedTextPresentation(resolvedLocale: string | null | undef
   return {};
 }
 
+type RenderedTranslationField = "title" | "body" | "caption";
+
+function renderedTranslationFields(post: ApiPost["post"]): RenderedTranslationField[] {
+  switch (post.post_type) {
+    case "image":
+      return ["title", "caption"];
+    case "link":
+      return ["title", "body"];
+    case "song":
+    case "video":
+      return ["title"];
+    case "text":
+    default:
+      return ["title", "body"];
+  }
+}
+
+function hasVisibleTranslationDifference(translated: string | null | undefined, original: string | null | undefined): boolean {
+  return translated != null && translated !== original;
+}
+
+function canShowOriginalToggle(postResponse: ApiPost, opts?: Pick<PostPresentationOptions, "showOriginalLabel" | "showTranslationLabel">): boolean {
+  return shouldShowOriginalPost(postResponse)
+    && Boolean(postResponse.post.source_language)
+    && Boolean(opts?.showOriginalLabel)
+    && Boolean(opts?.showTranslationLabel);
+}
+
+function withTranslationToggleProps(
+  card: PostCardProps,
+  postResponse: ApiPost,
+  opts?: Pick<PostPresentationOptions, "showOriginalLabel" | "showTranslationLabel">,
+): PostCardProps {
+  if (!canShowOriginalToggle(postResponse, opts)) {
+    return card;
+  }
+
+  return {
+    ...card,
+    showOriginalLabel: opts?.showOriginalLabel,
+    showTranslationLabel: opts?.showTranslationLabel,
+    sourceLanguage: postResponse.post.source_language,
+  };
+}
+
 function toCommunityPostContent(
   postResponse: ApiPost,
   songOptions?: SongPresentationOptions,
@@ -366,9 +413,7 @@ export function toCommunityFeedItem(
   const { post } = postResponse;
   const authorProfile = post.author_user_id ? authorProfiles[post.author_user_id] ?? undefined : undefined;
 
-  return {
-    id: post.post_id,
-    post: {
+  const localizedPost = withTranslationToggleProps({
       byline: {
         author: {
           kind: "user",
@@ -402,6 +447,23 @@ export function toCommunityFeedItem(
       titleHref: `/p/${post.post_id}`,
       viewContext: "community",
     },
+    postResponse,
+    opts,
+  );
+  const originalPost = canShowOriginalToggle(postResponse, opts)
+    ? withTranslationToggleProps({
+      ...localizedPost,
+      content: toCommunityPostContent(postResponse, songOptions, { preferOriginalText: true }),
+      title: post.title ?? undefined,
+      titleDir: undefined,
+      titleLang: undefined,
+    }, postResponse, opts)
+    : undefined;
+
+  return {
+    id: post.post_id,
+    post: localizedPost,
+    postOriginal: originalPost,
   };
 }
 
@@ -415,9 +477,7 @@ export function toHomeFeedItem(
   const { post } = postResponse;
   const authorProfile = post.author_user_id ? authorProfiles[post.author_user_id] ?? undefined : undefined;
 
-  return {
-    id: post.post_id,
-    post: {
+  const localizedPost = withTranslationToggleProps({
       byline: {
         author: {
           kind: "user",
@@ -441,7 +501,7 @@ export function toHomeFeedItem(
         score: getPostScore(postResponse),
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
-      identityPresentation: post.identity_mode === "anonymous" ? "anonymous_with_community" : "author_with_community",
+      identityPresentation: "community_primary",
       authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
       authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
         ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)
@@ -456,6 +516,23 @@ export function toHomeFeedItem(
       titleHref: `/p/${post.post_id}`,
       viewContext: "home",
     },
+    postResponse,
+    opts,
+  );
+  const originalPost = canShowOriginalToggle(postResponse, opts)
+    ? withTranslationToggleProps({
+      ...localizedPost,
+      content: toCommunityPostContent(postResponse, songOptions, { preferOriginalText: true }),
+      title: post.title ?? undefined,
+      titleDir: undefined,
+      titleLang: undefined,
+    }, postResponse, opts)
+    : undefined;
+
+  return {
+    id: post.post_id,
+    post: localizedPost,
+    postOriginal: originalPost,
   };
 }
 
@@ -468,7 +545,7 @@ export function toThreadPostCard(
 ): PostCardProps {
   const { post } = postResponse;
 
-  return {
+  return withTranslationToggleProps({
     byline: {
       author: {
         kind: "user",
@@ -510,7 +587,7 @@ export function toThreadPostCard(
       : undefined,
     titleHref: `/p/${post.post_id}`,
     viewContext: "home",
-  };
+  }, postResponse, opts);
 }
 
 export function shouldShowOriginalPost(postResponse: ApiPost): boolean {
@@ -518,9 +595,16 @@ export function shouldShowOriginalPost(postResponse: ApiPost): boolean {
     return false;
   }
 
-  return (postResponse.translated_body ?? null) !== (postResponse.post.body ?? null)
-    || (postResponse.translated_title ?? null) !== (postResponse.post.title ?? null)
-    || (postResponse.translated_caption ?? null) !== (postResponse.post.caption ?? null);
+  return renderedTranslationFields(postResponse.post).some((field) => {
+    switch (field) {
+      case "title":
+        return hasVisibleTranslationDifference(postResponse.translated_title, postResponse.post.title);
+      case "body":
+        return hasVisibleTranslationDifference(postResponse.translated_body, postResponse.post.body);
+      case "caption":
+        return hasVisibleTranslationDifference(postResponse.translated_caption, postResponse.post.caption);
+    }
+  });
 }
 
 function formatCommunityLabel(displayName: string): string {

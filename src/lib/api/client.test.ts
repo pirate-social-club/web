@@ -75,6 +75,28 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("sends join request notes as JSON", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({ community_id: "cmt_test", status: "requested" });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.join("cmt_test", { note: "I would like to join." });
+
+      const capturedRequest = requireRequest(request);
+      expect(await capturedRequest.json()).toEqual({ note: "I would like to join." });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("sends profile media uploads as multipart form data", async () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

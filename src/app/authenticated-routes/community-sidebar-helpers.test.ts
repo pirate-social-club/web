@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildCommunityPreviewSidebar, buildCommunitySidebarRequirements } from "./community-sidebar-helpers";
+import { buildCommunityPreviewSidebar, buildCommunitySidebarRequirements, getCommunityActionLabel } from "./community-sidebar-helpers";
 
 describe("buildCommunitySidebarRequirements", () => {
   test("localizes nationality requirements for Arabic", () => {
@@ -88,5 +88,11 @@ describe("buildCommunityPreviewSidebar", () => {
     expect(sidebar.description).toBe("Descripcion traducida");
     expect(sidebar.memberCount).toBe(12);
     expect(sidebar.referenceLinks?.[0]?.metadata.displayName).toBe("Centro traducido");
+  });
+});
+
+describe("getCommunityActionLabel", () => {
+  test("labels pending membership requests", () => {
+    expect(getCommunityActionLabel("pending_request")).toBe("Request pending");
   });
 });

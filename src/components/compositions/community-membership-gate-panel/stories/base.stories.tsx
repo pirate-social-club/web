@@ -125,6 +125,27 @@ export const Requestable: Story = {
   ),
 };
 
+export const PendingRequest: Story = {
+  name: "States / Pending Request",
+  args: { gates: [] },
+  render: () => (
+    <CommunityMembershipGatePanel
+      gates={[{ gate_type: "gender", required_value: "F" }]}
+      eligibility={{
+        community_id: "community_requestable",
+        membership_mode: "request",
+        human_verification_lane: "self",
+        joinable_now: false,
+        status: "pending_request",
+        membership_gate_summaries: [{ gate_type: "gender", required_value: "F" }],
+        missing_capabilities: [],
+        suggested_verification_provider: "self",
+        suggested_verification_intent: "community_join",
+      }}
+    />
+  ),
+};
+
 export const MultipleMissingCapabilities: Story = {
   name: "States / Multiple Missing Capabilities",
   args: { gates: [] },

@@ -298,6 +298,9 @@ export type HandleUpgradeQuoteResponse = {
   price_usd: number;
   eligible: boolean;
   reason?: string | null;
+  benefit_source?: "verified_reddit_username" | "reddit_reputation" | null;
+  reputation_discount_usd?: number | null;
+  claim_reason?: string | null;
 };
 
 export type RenameHandleResponse = {

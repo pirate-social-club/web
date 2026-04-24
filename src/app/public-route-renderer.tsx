@@ -19,15 +19,6 @@ export function renderPublicRoute(
     case "public-profile":
       return (
         <PublicProfileRoutePage
-          appOrigin={route.hostSuffix == null
-            ? typeof window !== "undefined"
-              ? `${window.location.protocol}//${window.location.host}`
-              : "https://pirate.sc"
-            : route.hostSuffix === "localhost"
-              ? typeof window !== "undefined"
-                ? `${window.location.protocol}//localhost${window.location.port ? `:${window.location.port}` : ""}`
-                : "http://localhost:5173"
-              : "https://pirate.sc"}
           handleLabel={route.handleLabel}
           hostSuffix={route.hostSuffix}
         />

@@ -49,6 +49,93 @@ export const TextPost: Story = {
   render: () => <PostCard {...basePost} />,
 };
 
+export const TranslatedTextPost: Story = {
+  name: "Translation: Text Post",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{ type: "text", body: "What is everyone listening to this week? I want to find more live recordings." }}
+      onToggleOriginal={() => undefined}
+      showOriginalLabel="Show original"
+      showTranslationLabel="Show translation"
+      sourceLanguage="ja"
+      title="What is everyone listening to this week?"
+      titleDir="auto"
+    />
+  ),
+};
+
+export const TranslatedImagePost: Story = {
+  name: "Translation: Image Caption",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        type: "image",
+        src: "https://picsum.photos/seed/pirate-translated-caption/600/400",
+        alt: "Crowd at a small venue",
+        caption: "The room was full before the opener started.",
+      }}
+      engagement={{ ...basePost.engagement, score: 830, commentCount: 64 }}
+      onToggleOriginal={() => undefined}
+      showOriginalLabel="Show original"
+      showTranslationLabel="Show translation"
+      sourceLanguage="es"
+      title="Small venue, huge sound"
+    />
+  ),
+};
+
+export const SameLanguagePost: Story = {
+  name: "Translation: Same Language",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{ type: "text", body: "No translation row appears when the rendered text is already the original." }}
+      sourceLanguage="en"
+      title="Same-language content"
+    />
+  ),
+};
+
+export const PendingTranslationPost: Story = {
+  name: "Translation: Pending",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{ type: "text", body: "The original renders while translation is pending, so there is no toggle." }}
+      title="Pending translation"
+    />
+  ),
+};
+
+export const ToggleToOriginal: Story = {
+  name: "Translation: Toggle To Original",
+  render: function ToggleToOriginalStory() {
+    const [showOriginal, setShowOriginal] = React.useState(false);
+
+    return (
+      <PostCard
+        {...basePost}
+        content={{
+          type: "text",
+          body: showOriginal
+            ? "今週は何を聴いていますか？おすすめのライブ録音を探しています。"
+            : "What are you listening to this week? Looking for live recording recommendations.",
+          bodyDir: showOriginal ? "auto" : undefined,
+          bodyLang: showOriginal ? "ja" : undefined,
+        }}
+        isViewingOriginal={showOriginal}
+        onToggleOriginal={() => setShowOriginal((value) => !value)}
+        showOriginalLabel="Show original"
+        showTranslationLabel="Show translation"
+        sourceLanguage="ja"
+        title={showOriginal ? "今週は何を聴いていますか？" : "What are you listening to this week?"}
+      />
+    );
+  },
+};
+
 export const PublicAuthorNationalityBadge: Story = {
   name: "Public Author / Nationality Badge",
   render: () => (

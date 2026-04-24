@@ -5,6 +5,7 @@ import { NotificationInboxPage } from "@/components/compositions/notification-in
 import {
   commentReplyRead,
   commentReplyUnread,
+  membershipReviewTask,
   namespaceVerificationTask,
   payoutSetupTask,
   postCommentedUnread,
@@ -82,6 +83,14 @@ export const Mixed: Story = {
     <StatefulStory
       activityItems={[commentReplyUnread, postCommentedUnread, commentReplyRead]}
       initialTasks={[namespaceVerificationTask, payoutSetupTask]}
+    />
+  ),
+};
+
+export const MembershipReviewTask: Story = {
+  render: () => (
+    <StatefulStory
+      initialTasks={[membershipReviewTask]}
     />
   ),
 };

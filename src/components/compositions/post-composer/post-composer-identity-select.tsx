@@ -2,12 +2,7 @@
 
 import * as React from "react";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/primitives/select";
+import { ResponsiveOptionSelect } from "@/components/compositions/responsive-option-select/responsive-option-select";
 import { cn } from "@/lib/utils";
 import type { ComposerIdentityState } from "./post-composer.types";
 import { Type } from "@/components/primitives/type";
@@ -56,30 +51,16 @@ export function IdentitySelect({
   return (
     <div className="flex items-center gap-2">
       <Type as="span" variant="caption" className="">{postAsLabel}</Type>
-      <Select
+      <ResponsiveOptionSelect<IdentityOption>
+        ariaLabel={postAsLabel}
+        drawerTitle={postAsLabel}
+        onValueChange={onChange}
+        options={options}
+        selectAlign="start"
+        triggerClassName={cn("h-auto min-w-0 py-1.5")}
+        triggerContent={<span className="truncate">{selected.label}</span>}
         value={selected.value}
-        onValueChange={(v) => onChange(v as IdentityOption)}
-      >
-        <SelectTrigger
-          aria-label={postAsLabel}
-          className={cn(
-            "h-auto w-auto min-w-0 gap-2 rounded-full border-border-soft bg-card px-3 py-1.5 text-base font-medium shadow-none transition-colors hover:bg-muted",
-          )}
-        >
-          <span className="truncate">{selected.label}</span>
-        </SelectTrigger>
-        <SelectContent align="start">
-          {options.map((option) => (
-            <SelectItem
-              key={option.value}
-              value={option.value}
-              className="py-2.5"
-            >
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      />
     </div>
   );
 }

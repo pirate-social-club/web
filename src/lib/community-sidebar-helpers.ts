@@ -282,6 +282,7 @@ export function getCommunitySidebarRules(community: ApiCommunity | null): Commun
 
 export function getCommunityActionLabel(status: ApiJoinEligibility["status"]): string {
   if (status === "requestable") return "Request to Join";
+  if (status === "pending_request") return "Request pending";
   if (status === "verification_required") return "Verify to Join";
   if (status === "already_joined") return "Joined";
   if (status === "banned") return "Unavailable";

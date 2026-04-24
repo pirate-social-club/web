@@ -76,11 +76,23 @@ describe("public profile host routing", () => {
       communityId: "community-123",
       section: "pricing",
     });
+    expectJson(matchRoute("/c/community-123/mod/requests"), {
+      kind: "community-moderation",
+      path: "/c/community-123/mod/requests",
+      communityId: "community-123",
+      section: "requests",
+    });
     expectJson(matchRoute("/c/community-123/mod/agents"), {
       kind: "community-moderation",
       path: "/c/community-123/mod/agents",
       communityId: "community-123",
       section: "agents",
+    });
+    expectJson(matchRoute("/c/community-123/mod/machine-access"), {
+      kind: "community-moderation",
+      path: "/c/community-123/mod/machine-access",
+      communityId: "community-123",
+      section: "machine-access",
     });
   });
 

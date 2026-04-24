@@ -82,6 +82,11 @@ describe("getJoinCtaLabel", () => {
     expect(getJoinCtaLabel(e)).toBe("Request to Join");
   });
 
+  test("returns Request submitted for pending_request", () => {
+    const e = { status: "pending_request" } as JoinEligibility;
+    expect(getJoinCtaLabel(e)).toBe("Request submitted");
+  });
+
   test("returns Verify to Join for verification_required", () => {
     const e = { status: "verification_required" } as JoinEligibility;
     expect(getJoinCtaLabel(e)).toBe("Verify to Join");
@@ -102,6 +107,11 @@ describe("isJoinCtaActionable", () => {
   test("actionable for requestable", () => {
     const e = { status: "requestable" } as JoinEligibility;
     expect(isJoinCtaActionable(e)).toBe(true);
+  });
+
+  test("not actionable for pending_request", () => {
+    const e = { status: "pending_request" } as JoinEligibility;
+    expect(isJoinCtaActionable(e)).toBe(false);
   });
 
   test("actionable for verification_required", () => {

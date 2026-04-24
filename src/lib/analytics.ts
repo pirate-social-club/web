@@ -49,8 +49,16 @@ function compactProperties(properties: AnalyticsProperties | undefined): Record<
   return compacted;
 }
 
+function analyticsEnabled(): boolean {
+  if (import.meta.env.VITE_ENABLE_ANALYTICS === "true") {
+    return true;
+  }
+
+  return !import.meta.env.DEV;
+}
+
 export function trackAnalyticsEvent(input: TrackAnalyticsEventInput): void {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !analyticsEnabled()) {
     return;
   }
 

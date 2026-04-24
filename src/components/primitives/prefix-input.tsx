@@ -6,7 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const prefixInputVariants = cva(
-  "flex items-center overflow-hidden rounded-full border border-input bg-background shadow-sm transition-[color,box-shadow,border-color] focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background",
+  "flex items-center overflow-hidden rounded-full border border-input bg-background shadow-sm transition-[color,box-shadow,border-color] focus-within:border-border focus-within:ring-1 focus-within:ring-border-soft",
   {
     variants: {
       size: {

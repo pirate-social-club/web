@@ -9,9 +9,9 @@ import type { SaveCommunityAction } from "./community-moderation-save";
 import { useCommunityAgentPolicyState } from "./use-community-agent-policy-state";
 
 const { document, window } = parseHTML("<!DOCTYPE html><html><body></body></html>");
-(globalThis as any).document = document;
-(globalThis as any).window = window;
-(globalThis as any).navigator = window.navigator;
+Object.defineProperty(globalThis, "document", { configurable: true, value: document });
+Object.defineProperty(globalThis, "window", { configurable: true, value: window });
+Object.defineProperty(globalThis, "navigator", { configurable: true, value: window.navigator });
 
 type AgentBody = {
   agent_posting_policy: "disallow" | "allow";

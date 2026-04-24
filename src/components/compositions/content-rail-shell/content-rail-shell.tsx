@@ -22,7 +22,7 @@ export function ContentRailShell({
   railClassName,
 }: ContentRailShellProps) {
   return (
-    <section className={cn("mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-5", className)}>
+    <section className={cn("mx-auto flex w-full min-w-0 max-w-[65.5rem] flex-col gap-5", className)}>
       {header ? <div className="min-w-0">{header}</div> : null}
       <div className="flex min-w-0 flex-col gap-6 xl:flex-row xl:items-start">
         <div className={cn("min-w-0 xl:flex-1", contentClassName)}>{children}</div>

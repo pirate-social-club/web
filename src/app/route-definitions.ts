@@ -8,9 +8,11 @@ export const COMMUNITY_MODERATION_SECTIONS = [
   "labels",
   "donations",
   "pricing",
+  "requests",
   "namespace",
   "gates",
   "safety",
   "agents",
+  "machine-access",
 ] as const;
 export type CommunityModerationSectionName = (typeof COMMUNITY_MODERATION_SECTIONS)[number];

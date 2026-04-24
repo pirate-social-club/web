@@ -7,6 +7,8 @@ import type {
   CommunityListing,
   CommunityListingListResponse,
   CommunityMoneyPolicy,
+  MembershipRequestListResponse,
+  MembershipRequestSummary,
   CommunityPreview,
   CommunityPricingPolicy,
   CommunityPurchase,
@@ -158,10 +160,13 @@ export function createCommunitiesApi(request: ApiRequest) {
         method: "PUT",
         body: JSON.stringify(body),
       }),
-    join: (communityId: string): Promise<{ community_id: string; status: string }> =>
+    join: (
+      communityId: string,
+      body?: { note?: string | null },
+    ): Promise<{ community_id: string; status: string }> =>
       request<{ community_id: string; status: string }>(
         `/communities/${encodeURIComponent(communityId)}/join`,
-        { method: "POST", body: JSON.stringify({}) },
+        { method: "POST", body: JSON.stringify(body ?? {}) },
       ),
     follow: (communityId: string): Promise<CommunityFollowResponse> =>
       request<CommunityFollowResponse>(
@@ -182,6 +187,26 @@ export function createCommunitiesApi(request: ApiRequest) {
     getJoinEligibility: (communityId: string): Promise<JoinEligibility> =>
       request<JoinEligibility>(
         `/communities/${encodeURIComponent(communityId)}/join-eligibility`,
+      ),
+    listMembershipRequests: (communityId: string): Promise<MembershipRequestListResponse> =>
+      request<MembershipRequestListResponse>(
+        `/communities/${encodeURIComponent(communityId)}/membership-requests`,
+      ),
+    approveMembershipRequest: (
+      communityId: string,
+      membershipRequestId: string,
+    ): Promise<MembershipRequestSummary> =>
+      request<MembershipRequestSummary>(
+        `/communities/${encodeURIComponent(communityId)}/membership-requests/${encodeURIComponent(membershipRequestId)}/approve`,
+        { method: "POST", body: JSON.stringify({}) },
+      ),
+    rejectMembershipRequest: (
+      communityId: string,
+      membershipRequestId: string,
+    ): Promise<MembershipRequestSummary> =>
+      request<MembershipRequestSummary>(
+        `/communities/${encodeURIComponent(communityId)}/membership-requests/${encodeURIComponent(membershipRequestId)}/reject`,
+        { method: "POST", body: JSON.stringify({}) },
       ),
     getMoneyPolicy: (communityId: string): Promise<CommunityMoneyPolicy> =>
       request<CommunityMoneyPolicy>(

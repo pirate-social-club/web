@@ -28,7 +28,7 @@ export function CommunityModerationSaveFooter({
   return (
     <div
       className={cn(
-        "sticky bottom-0 z-20 mt-auto border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-4 backdrop-blur-xl",
+        "community-moderation-save-footer sticky bottom-0 z-20 mt-auto border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-4 backdrop-blur-xl",
         className,
       )}
     >

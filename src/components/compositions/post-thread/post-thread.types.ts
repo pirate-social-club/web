@@ -37,8 +37,6 @@ export interface PostThreadComment {
 export interface PostThreadProps {
   post: PostCardProps;
   postOriginal?: PostCardProps;
-  postShowOriginalLabel?: string;
-  postShowTranslationLabel?: string;
   commentsHeading?: string;
   commentsHeadingDir?: "ltr" | "rtl" | "auto";
   commentsHeadingLang?: string;

@@ -13,11 +13,13 @@ import { useApi } from "@/lib/api";
 import { clearSession, useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
+import { getCurrentHomeFeedSort, HOME_FEED_SORT_CHANGE_EVENT, setCurrentHomeFeedSort, type HomeFeedSort } from "@/lib/home-feed-sort";
 import { useSidebarCommunities } from "@/lib/owned-communities";
 import { useUiLocale } from "@/lib/ui-locale";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
+import { PageContainer } from "@/components/primitives/layout-shell";
 import { Spinner } from "@/components/primitives/spinner";
 import { Feed, type FeedSort, TopTimeRangeControl } from "@/components/compositions/feed/feed";
 
@@ -45,7 +47,7 @@ export function HomePage() {
   const emptyHomeTitle = copy.home.emptyHomeTitle;
   const emptyHomeVerifyBody = copy.home.emptyHomeVerifyBody;
   const verifyToPostLabel = copy.home.verifyToPostLabel;
-  const [activeSort, setActiveSort] = React.useState<FeedSort>("best");
+  const [activeSort, setActiveSort] = React.useState<FeedSort>(() => getCurrentHomeFeedSort());
   const [topTimeRange, setTopTimeRange] = React.useState("day");
   const [feedEntries, setFeedEntries] = React.useState<ApiHomeFeedItem[]>([]);
   const [topCommunities, setTopCommunities] = React.useState<ApiHomeFeedCommunitySummary[]>([]);
@@ -81,7 +83,9 @@ export function HomePage() {
           nextFeedEntries.map((entry) => entry.post.post.identity_mode === "public" ? entry.post.post.author_user_id : null).filter((userId): userId is string => Boolean(userId)),
           session?.profile ? { [session.user.user_id]: session.profile } : {},
         );
-        const songCommunityIds = [...new Set(nextFeedEntries.filter((entry) => entry.post.post.post_type === "song").map((entry) => entry.community.community_id))];
+        const songCommunityIds = session
+          ? [...new Set(nextFeedEntries.filter((entry) => entry.post.post.post_type === "song").map((entry) => entry.community.community_id))]
+          : [];
         const commerceByCommunity = await Promise.all(songCommunityIds.map(async (communityId) => {
           const [listings, purchases] = await Promise.all([
             api.communities.listListings(communityId).then((response) => response.items).catch(() => []),
@@ -116,6 +120,22 @@ export function HomePage() {
 
     return () => { cancelled = true; };
   }, [api, contentLocale, hydrated, session]);
+
+  React.useEffect(() => {
+    setCurrentHomeFeedSort(activeSort);
+  }, [activeSort]);
+
+  React.useEffect(() => {
+    const handleSortChange = (event: Event) => {
+      const sort = (event as CustomEvent<HomeFeedSort>).detail;
+      if (sort === "best" || sort === "new" || sort === "top") {
+        setActiveSort(sort);
+      }
+    };
+
+    window.addEventListener(HOME_FEED_SORT_CHANGE_EVENT, handleSortChange);
+    return () => window.removeEventListener(HOME_FEED_SORT_CHANGE_EVENT, handleSortChange);
+  }, []);
 
   const sortedFeedEntries = React.useMemo(() => sortHomeFeedEntries(feedEntries, {
     sort: activeSort,
@@ -162,6 +182,8 @@ export function HomePage() {
       {
         onComment: () => navigate(`/p/${entry.post.post.post_id}`),
         onVote: (direction) => void voteOnPost(entry.post.post.post_id, direction),
+        showOriginalLabel: copy.common.showOriginal,
+        showTranslationLabel: copy.common.showTranslation,
       },
     );
   });
@@ -173,42 +195,44 @@ export function HomePage() {
   return (
     <>
       {gateModal}
-      <section className="flex min-w-0 flex-1 flex-col gap-6">
+      <PageContainer className="flex min-w-0 flex-1 flex-col gap-6" size="rail">
         <Feed
-        activeSort={activeSort}
-        aside={topCommunities.length > 0 ? (
-          <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
-            <div className="border-b border-border-soft px-5 py-4">
-              <Type as="div" variant="h4">{copy.home.railTitle}</Type>
+          activeSort={activeSort}
+          aside={topCommunities.length > 0 ? (
+            <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
+              <div className="border-b border-border-soft px-5 py-4">
+                <Type as="div" variant="h4">{copy.home.railTitle}</Type>
+              </div>
+              <div className="divide-y divide-border-soft">
+                {topCommunities.map((community) => (
+                  <button className="flex w-full items-center gap-3 px-5 py-3 text-start" key={community.community_id} onClick={() => navigate(`/c/${community.route_slug ?? community.community_id}`)} type="button">
+                    <div className="min-w-0 flex-1">
+                      <Type as="div" variant="label" className="truncate">{community.display_name}</Type>
+                      {community.follower_count != null ? <div className="text-base text-muted-foreground">{copy.home.followersLabel.replace("{count}", community.follower_count.toLocaleString(localeTag))}</div> : null}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="divide-y divide-border-soft">
-              {topCommunities.map((community) => (
-                <button className="flex w-full items-center gap-3 px-5 py-3 text-start" key={community.community_id} onClick={() => navigate(`/c/${community.route_slug ?? community.community_id}`)} type="button">
-                  <div className="min-w-0 flex-1">
-                    <Type as="div" variant="label" className="truncate">{community.display_name}</Type>
-                    {community.follower_count != null ? <div className="text-base text-muted-foreground">{copy.home.followersLabel.replace("{count}", community.follower_count.toLocaleString(localeTag))}</div> : null}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : undefined}
-        availableSorts={sortOptions}
-        controls={activeSort === "top" ? <TopTimeRangeControl onValueChange={setTopTimeRange} options={topTimeRangeOptions} value={topTimeRange} /> : undefined}
-        emptyState={{
-          action: session ? (
-            <Button onClick={() => navigate(needsPostingVerification ? "/onboarding" : "/communities/new")} variant="secondary">
-              {needsPostingVerification ? verifyToPostLabel : createCommunityLabel}
-            </Button>
-          ) : undefined,
-          body: needsPostingVerification ? emptyHomeVerifyBody : emptyHomeBody,
-          title: emptyHomeTitle,
-        }}
-        items={feedItems}
-        loading={loading}
-        onSortChange={setActiveSort}
+          ) : undefined}
+          availableSorts={sortOptions}
+          controls={activeSort === "top" ? <TopTimeRangeControl onValueChange={setTopTimeRange} options={topTimeRangeOptions} value={topTimeRange} /> : undefined}
+          emptyState={{
+            action: session ? (
+              <Button onClick={() => navigate(needsPostingVerification ? "/onboarding" : "/communities/new")} variant="secondary">
+                {needsPostingVerification ? verifyToPostLabel : createCommunityLabel}
+              </Button>
+            ) : undefined,
+            body: needsPostingVerification ? emptyHomeVerifyBody : emptyHomeBody,
+            title: emptyHomeTitle,
+          }}
+          hideMobileHeaderControls
+          items={feedItems}
+          listClassName="-mx-3 border-t-0 md:mx-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
+          loading={loading}
+          onSortChange={setActiveSort}
         />
-      </section>
+      </PageContainer>
     </>
   );
 }
@@ -279,46 +303,48 @@ export function YourCommunitiesPage() {
   }
 
   return (
-    <StackPageShell
-      actions={<Button onClick={() => navigate("/communities/new")} variant="secondary">{createCommunityLabel}</Button>}
-      title={copy.yourCommunities.title}
-    >
-      {communities.length === 0 ? (
-        <EmptyFeedState message={`${emptyYourCommunitiesTitle}. ${emptyYourCommunitiesBody}`} />
-      ) : (
-        <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
-          {communities.map((community, index) => (
-            <button
-              className={cn(
-                "flex w-full items-center gap-3 px-5 py-4 text-start",
-                index === communities.length - 1 ? undefined : "border-b border-border-soft",
-              )}
-              key={community.communityId}
-              onClick={() => navigate(buildCommunityPath(community.communityId, community.routeSlug))}
-              type="button"
-            >
-              <Avatar
-                className="size-11 border-border-soft"
-                fallback={community.displayName}
-                src={community.avatarSrc ?? undefined}
-              />
-              <div className="min-w-0 flex-1">
-                <Type as="div" variant="body-strong" className="truncate">{community.displayName}</Type>
-                <div className="truncate text-base text-muted-foreground">
-                  {community.routeSlug ? `c/${community.routeSlug}` : community.communityId}
+    <PageContainer className="min-w-0 flex-1">
+      <StackPageShell
+        actions={<Button onClick={() => navigate("/communities/new")} variant="secondary">{createCommunityLabel}</Button>}
+        title={copy.yourCommunities.title}
+      >
+        {communities.length === 0 ? (
+          <EmptyFeedState message={`${emptyYourCommunitiesTitle}. ${emptyYourCommunitiesBody}`} />
+        ) : (
+          <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
+            {communities.map((community, index) => (
+              <button
+                className={cn(
+                  "flex w-full items-center gap-3 px-5 py-4 text-start",
+                  index === communities.length - 1 ? undefined : "border-b border-border-soft",
+                )}
+                key={community.communityId}
+                onClick={() => navigate(buildCommunityPath(community.communityId, community.routeSlug))}
+                type="button"
+              >
+                <Avatar
+                  className="size-11 border-border-soft"
+                  fallback={community.displayName}
+                  src={community.avatarSrc ?? undefined}
+                />
+                <div className="min-w-0 flex-1">
+                  <Type as="div" variant="body-strong" className="truncate">{community.displayName}</Type>
+                  <div className="truncate text-base text-muted-foreground">
+                    {community.routeSlug ? `c/${community.routeSlug}` : community.communityId}
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </StackPageShell>
+              </button>
+            ))}
+          </div>
+        )}
+      </StackPageShell>
+    </PageContainer>
   );
 }
 
 export function NotFoundBody({ title, description, body, backHomeLabel }: { title: string; description: string; body: string; backHomeLabel: string }) {
   return (
-    <section className="flex min-w-0 flex-1 flex-col gap-6">
+    <PageContainer className="flex min-w-0 flex-1 flex-col gap-6">
       <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-5 md:px-6 md:py-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="flex flex-col gap-2">
@@ -331,6 +357,6 @@ export function NotFoundBody({ title, description, body, backHomeLabel }: { titl
         </div>
       </div>
       <EmptyFeedState message={body} />
-    </section>
+    </PageContainer>
   );
 }

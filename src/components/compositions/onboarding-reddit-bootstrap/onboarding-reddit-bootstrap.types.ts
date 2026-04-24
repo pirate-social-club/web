@@ -52,7 +52,7 @@ export interface SubredditEntry {
 
 export interface RedditImportSummaryState {
   redditUsername: string;
-  globalKarma?: number | null;
+  importedRedditScore?: number | null;
   topSubreddits?: SubredditEntry[];
   coverageNote?: string | null;
   suggestedCommunities?: Array<{

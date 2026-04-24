@@ -21,7 +21,7 @@ function deriveIdentityPresentation(
   identityPresentation?: PostCardIdentityPresentation,
 ): PostCardIdentityPresentation {
   if (identityPresentation) return identityPresentation;
-  return viewContext === "home" ? "author_with_community" : "author_primary";
+  return viewContext === "home" || viewContext === "profile" ? "community_primary" : "author_primary";
 }
 
 function resolveIdentities(
@@ -37,7 +37,7 @@ function resolveIdentities(
     case "community_primary":
       return {
         primaryIdentity: community ?? author,
-        secondaryIdentity: community && author ? author : undefined,
+        secondaryIdentity: undefined,
       };
     case "author_with_community":
       return {
@@ -134,11 +134,12 @@ function PostCardBylineContent({
 }) {
   const { timestampLabel } = byline;
 
-  if (byline.agentAuthor) {
+  const resolvedPresentation = deriveIdentityPresentation(viewContext, identityPresentation);
+
+  if (byline.agentAuthor && resolvedPresentation !== "community_primary") {
     return <AgentByline byline={byline} />;
   }
 
-  const resolvedPresentation = deriveIdentityPresentation(viewContext, identityPresentation);
   const { primaryIdentity, secondaryIdentity } = resolveIdentities(byline, resolvedPresentation);
   const qualifierText = qualifierLabels?.filter(Boolean).join(" · ");
 
@@ -208,7 +209,9 @@ export function PostCardHeader({
   const resolvedPresentation = deriveIdentityPresentation(viewContext, identityPresentation);
   const { primaryIdentity, secondaryIdentity } = resolveIdentities(byline, resolvedPresentation);
   const avatarIdentity = byline.agentAuthor
-    ? byline.author ?? primaryIdentity ?? secondaryIdentity
+    ? resolvedPresentation === "community_primary"
+      ? primaryIdentity ?? secondaryIdentity
+      : byline.author ?? primaryIdentity ?? secondaryIdentity
     : primaryIdentity ?? secondaryIdentity;
   const shouldShowAuthorNationalityBadge = Boolean(
     authorNationalityBadgeCountry

@@ -53,6 +53,11 @@ export function createProfilesApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify({ desired_label: desiredLabel }),
       }),
+    claimRedditHandle: (desiredLabel: string): Promise<RenameHandleResponse> =>
+      request("/profiles/me/global-handle/reddit-claim", {
+        method: "POST",
+        body: JSON.stringify({ desired_label: desiredLabel }),
+      }),
     quoteHandleUpgrade: (desiredLabel: string): Promise<HandleUpgradeQuoteResponse> =>
       request("/profiles/me/global-handle/upgrade-quote", {
         method: "POST",

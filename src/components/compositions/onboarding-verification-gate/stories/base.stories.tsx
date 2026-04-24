@@ -14,7 +14,7 @@ const meta = {
   },
   decorators: [
     (Story: () => React.ReactNode) => (
-      <div style={{ width: "min(100vw - 32px, 980px)" }}>
+      <div className="flex justify-center px-4">
         <Story />
       </div>
     ),

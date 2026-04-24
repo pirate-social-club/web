@@ -188,7 +188,7 @@ export function AppHeader({
       onClick={onHomeClick}
       type="button"
     >
-      <PirateBrandMark className="h-9 w-9 shrink-0" decorative={false} />
+      <PirateBrandMark className="h-11 w-11 shrink-0" decorative={false} />
       <Type as="span" variant="h4" className="truncate">PIRATE</Type>
     </button>
   );
@@ -196,24 +196,26 @@ export function AppHeader({
   if (isMobile) {
     return (
       <header className={cn("fixed inset-x-0 top-0 z-40 border-b border-border-soft bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur-md", className)}>
-        <div className="grid h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3">
-          {mobileLeadingContent ?? (
-            useSidebarTrigger ? (
-              <SidebarMenuToggleButton ariaLabel={openNavigationAriaLabel} />
-            ) : onBackClick ? (
-              <IconButton aria-label={backAriaLabel} onClick={onBackClick} variant="ghost">
-                <ArrowLeft className="size-6" weight="bold" />
-              </IconButton>
-            ) : (
-              <IconButton aria-label={openNavigationAriaLabel} onClick={onMenuClick} variant="ghost">
-                <List className="size-6" weight="bold" />
-              </IconButton>
-            )
-          )}
+        <div className="grid h-16 grid-cols-[minmax(0,1fr)_minmax(0,auto)_minmax(0,1fr)] items-center gap-2 px-3">
           <div className="min-w-0 justify-self-start">
+            {mobileLeadingContent ?? (
+              useSidebarTrigger ? (
+                <SidebarMenuToggleButton ariaLabel={openNavigationAriaLabel} />
+              ) : onBackClick ? (
+                <IconButton aria-label={backAriaLabel} onClick={onBackClick} variant="ghost">
+                  <ArrowLeft className="size-6" weight="bold" />
+                </IconButton>
+              ) : (
+                <IconButton aria-label={openNavigationAriaLabel} onClick={onMenuClick} variant="ghost">
+                  <List className="size-6" weight="bold" />
+                </IconButton>
+              )
+            )}
+          </div>
+          <div className="min-w-0 max-w-56 justify-self-center text-center">
             {mobileCenterContent ?? (hideBrand || hideMobileBrand ? null : brand)}
           </div>
-          <div className="justify-self-end">
+          <div className="min-w-0 justify-self-end">
             {mobileTrailingContent ?? (showConnectAction ? (
               <Button className="h-11 px-4" onClick={onConnectClick}>
                 {connectLabel}
@@ -230,7 +232,7 @@ export function AppHeader({
   }
 
   return (
-    <header className={cn("sticky top-0 z-30 border-b border-border-soft bg-background/95 backdrop-blur-xl", className)}>
+    <header className={cn("sticky top-0 z-30 border-b border-border-soft bg-background/95 backdrop-blur-xl", forceMobile === undefined && "hidden md:block", className)}>
       <div className="grid h-[var(--header-height)] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 lg:px-8">
         <div className="min-w-0 text-start">
           {hideBrand || hideDesktopBrand ? null : brand}

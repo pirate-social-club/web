@@ -7,6 +7,7 @@ import { toCommunityFeedItem, toHomeFeedItem, type HomeFeedEntry } from "./authe
 import { applyPostVote } from "./authenticated-routes/post-vote";
 import { buildSongListingRequest, buildSongPostRequest, resolveComposerSubmitState } from "./authenticated-routes/song-submit";
 import { createThreadCommentNode, mergeThreadCommentNodes, type ThreadCommentNode } from "./authenticated-routes/thread-state";
+import type { CreatePostDraftState } from "./authenticated-routes/create-post-draft-state";
 
 function lazyRouteModule<TModule extends Record<string, unknown>>(
   loader: () => Promise<TModule>,
@@ -94,7 +95,7 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
     case "create-post-global":
       return (
         <LazyCreatePostGlobalPage
-          renderCreatePost={(communityId: string) => <LazyCreatePostPage communityId={communityId} />}
+          renderCreatePost={(communityId: string, initialDraft?: Partial<CreatePostDraftState>) => <LazyCreatePostPage communityId={communityId} initialDraft={initialDraft} />}
         />
       );
     case "create-post":

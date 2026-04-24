@@ -40,6 +40,8 @@ export function MobilePageHeader({
       mobileCenterContent={<Type as="div" variant="h4" className="truncate ">{title}</Type>}
       mobileTrailingContent={trailingAction}
       onBackClick={onBackClick}
+      showNotificationsAction={false}
+      showProfileAction={false}
     />
   );
 }

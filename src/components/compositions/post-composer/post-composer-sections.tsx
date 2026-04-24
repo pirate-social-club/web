@@ -335,15 +335,11 @@ export function PostComposerAudienceSection({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-base text-muted-foreground">
-        {copy.sections.audience}
-      </span>
       <AudienceSelect
         labels={{
           public: copy.audience.public,
-          publicDescription: copy.audience.publicDescription,
           community: copy.audience.community,
-          communityDescription: copy.audience.communityDescription,
+          title: copy.sections.audience,
         }}
         publicOptionDisabledReason={audience.publicOptionDisabledReason}
         publicOptionEnabled={audience.publicOptionEnabled}

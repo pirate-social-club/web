@@ -115,7 +115,13 @@ function NotificationShell({
   const codeItems = buildCodeItems(copy.appSidebar);
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities);
   const resourceItems = buildResourceItems(copy.appSidebar);
-  const isMobileStandaloneRoute = isMobileLayout && (route.kind === "create-post" || route.kind === "create-post-global" || route.kind === "create-community");
+  const isMobileStandaloneRoute = isMobileLayout && (
+    route.kind === "post"
+    || route.kind === "create-post"
+    || route.kind === "create-post-global"
+    || route.kind === "create-community"
+  );
+  const isPublicRoute = route.kind === "public-profile" || route.kind === "public-agent";
   const useStandaloneRouteShell = isCommunityModerationRoute || isMobileStandaloneRoute;
 
   return (
@@ -155,7 +161,7 @@ function NotificationShell({
               <SidebarInset className="min-h-0">
                 <main className="flex w-full flex-1 px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.5rem)] md:px-5 md:pb-8 md:pt-6 lg:px-8">
                   <React.Suspense fallback={<RouteContentFallback route={route} />}>
-                    {(route.kind === "community" || route.kind === "post") && !session
+                    {isPublicRoute || ((route.kind === "community" || route.kind === "post") && !session)
                       ? <LazyPublicRouteRenderer route={route} />
                       : <LazyAuthenticatedRouteRenderer route={route} />}
                   </React.Suspense>
@@ -180,6 +186,14 @@ export function PirateAppShell({ initialHost, initialPath }: { initialHost?: str
   const copy = getLocaleMessages(effectiveLocale, "shell");
   const isCommunityModerationRoute = route.kind === "community-moderation" || route.kind === "community-moderation-index";
   const isPublicProfileRoute = route.kind === "public-profile" || route.kind === "public-agent";
+  const useStandalonePublicProfileShell = isPublicProfileRoute && !session;
+  const shouldDeferPrivyUntilConnect =
+    route.kind === "create-community"
+    || (!session && (
+      route.kind === "home"
+      || route.kind === "community"
+      || route.kind === "post"
+    ));
   const primaryItems = buildPrimaryItems(copy.appSidebar);
 
   return (
@@ -190,7 +204,7 @@ export function PirateAppShell({ initialHost, initialPath }: { initialHost?: str
     >
       <ApiProvider initialHost={initialHost}>
         <AnalyticsRouteTracker route={route} />
-        {isPublicProfileRoute ? (
+        {useStandalonePublicProfileShell ? (
           <>
             <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
               <PageContainer>
@@ -202,7 +216,7 @@ export function PirateAppShell({ initialHost, initialPath }: { initialHost?: str
             <Toaster />
           </>
         ) : (
-          <PirateAuthProvider deferPrivyUntilConnect={route.kind === "create-community"}>
+          <PirateAuthProvider deferPrivyUntilConnect={shouldDeferPrivyUntilConnect}>
             <SessionRevalidator>
               <NotificationShell
                 copy={copy}

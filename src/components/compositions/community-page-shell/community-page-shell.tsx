@@ -17,13 +17,7 @@ import {
   type FeedSort,
   type FeedSortOption,
 } from "@/components/compositions/feed/feed";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/primitives/select";
+import { ResponsiveOptionSelect } from "@/components/compositions/responsive-option-select/responsive-option-select";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
@@ -70,10 +64,15 @@ export function CommunityPageShell({
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes");
   const [mobileView, setMobileView] = React.useState<"feed" | "about">("feed");
-  const activeSortLabel = React.useMemo(
-    () => availableSorts?.find((sort) => sort.value === activeSort)?.label ?? copy.common.bestTab,
-    [activeSort, availableSorts, copy.common.bestTab],
-  );
+  const sortControl = activeSort && availableSorts && availableSorts.length > 0 ? (
+    <ResponsiveOptionSelect<FeedSort>
+      ariaLabel="Sort feed"
+      drawerTitle={copy.community.feedTab}
+      onValueChange={onSortChange}
+      options={availableSorts}
+      value={activeSort}
+    />
+  ) : null;
 
   React.useEffect(() => {
     if (!isMobile && mobileView !== "feed") {
@@ -98,20 +97,7 @@ export function CommunityPageShell({
       <section className={cn("mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-4", className)}>
         <div className="min-w-0">{hero}</div>
         <FlatTabBar
-          actions={mobileView === "feed" && activeSort && availableSorts && availableSorts.length > 0 ? (
-              <Select onValueChange={(value) => onSortChange?.(value as FeedSort)} value={activeSort}>
-                <SelectTrigger className="h-9 w-auto min-w-0 rounded-none border-0 bg-transparent px-0 py-0 text-base font-medium text-muted-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[placeholder]:text-muted-foreground">
-                  <SelectValue aria-label={activeSortLabel} />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  {availableSorts.map((sort) => (
-                    <SelectItem key={sort.value} value={sort.value}>
-                      {sort.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : null}
+          actions={mobileView === "feed" ? sortControl : null}
           columns={2}
         >
           <FlatTabButton active={mobileView === "feed"} onClick={() => setMobileView("feed")}>
@@ -128,6 +114,7 @@ export function CommunityPageShell({
               controls={controls}
               emptyState={emptyState}
               items={items}
+              listClassName="-mx-3 border-t-0 md:border-t"
               loading={loading}
               onSortChange={onSortChange}
             />
@@ -136,8 +123,10 @@ export function CommunityPageShell({
           <div>
             <CommunitySidebarDetails
               charity={sidebar.charity}
+              className="-mx-3 rounded-none bg-transparent px-3 py-0"
               description={sidebar.description}
               flairPolicy={sidebar.flairPolicy}
+              followerCount={sidebar.followerCount}
               memberCount={sidebar.memberCount}
               moderator={sidebar.moderator}
               referenceLinks={sidebar.referenceLinks}
@@ -158,8 +147,12 @@ export function CommunityPageShell({
     >
       <Feed
         activeSort={activeSort}
-        availableSorts={availableSorts}
-        controls={controls}
+        controls={sortControl || controls ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {sortControl}
+            {controls}
+          </div>
+        ) : undefined}
         emptyState={emptyState}
         items={items}
         loading={loading}

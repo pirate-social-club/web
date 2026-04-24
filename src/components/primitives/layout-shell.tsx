@@ -19,13 +19,15 @@ export function PageContainer({
   size = "default",
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
-  size?: "default" | "narrow" | "wide";
+  size?: "default" | "feed" | "narrow" | "rail" | "wide";
 }) {
-  const sizeClassName = size === "wide"
-    ? "max-w-7xl"
-    : size === "narrow"
-      ? "max-w-4xl"
-      : "max-w-5xl";
+  const sizeClassName = {
+    default: "max-w-5xl",
+    feed: "max-w-[46rem]",
+    narrow: "max-w-4xl",
+    rail: "max-w-[65.5rem]",
+    wide: "max-w-7xl",
+  }[size];
 
   return (
     <div

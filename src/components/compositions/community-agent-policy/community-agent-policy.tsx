@@ -174,7 +174,7 @@ export function CommunityAgentPolicyPage({
           </div>
         </div>
         <Button
-          className="w-full sm:w-auto"
+          className="community-moderation-inline-save-action w-full sm:w-auto"
           disabled={saveDisabled}
           loading={submitState.kind === "saving"}
           onClick={onSave}

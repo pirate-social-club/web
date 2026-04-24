@@ -351,16 +351,17 @@ export function PostComposer(props: PostComposerProps) {
       <div className={cn("flex flex-wrap items-center justify-between gap-3", isMobile && "w-full")}>
         <ShellPill
           avatarSrc={clubAvatarSrc}
-          className={cn(isMobile && "h-14 w-full justify-between rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3")}
+          className={cn(isMobile && "h-14 w-full justify-between rounded-full border border-border-soft bg-card px-4 py-3")}
           communities={communityPickerItems}
           emptyLabel={communityPickerEmptyLabel ?? routesCopy.common.noRecentCommunities}
           onSelectCommunity={onSelectCommunity}
+          pickerTitle={routesCopy.common.chooseCommunity}
         >
           {clubName}
         </ShellPill>
       </div>
 
-      <Card className={cn("overflow-hidden bg-background shadow-none", isMobile && "border-0 bg-transparent")}>
+      <Card className={cn("overflow-hidden bg-background shadow-none", isMobile && "border-0 bg-transparent overflow-visible")}>
         <CardHeader className={cn("border-b border-border-soft px-0 pb-0 pt-0", isMobile && "border-b-0")}>
           <Tabs
             value={activeTab}
@@ -395,10 +396,10 @@ export function PostComposer(props: PostComposerProps) {
           </Tabs>
         </CardHeader>
 
-        <CardContent className={cn("space-y-5 p-5", isMobile && "space-y-5 px-0 pb-0 pt-3")}>
+        <CardContent className={cn("space-y-5 p-5", isMobile && "space-y-5 px-0 pb-4 pt-3")}>
           <>
           <div>
-            <FieldLabel label={copy.fields.title} />
+            {!isMobile ? <FieldLabel label={copy.fields.title} /> : null}
             <Input
               className="h-14"
               maxLength={300}
@@ -474,7 +475,7 @@ export function PostComposer(props: PostComposerProps) {
           </>
         </CardContent>
 
-        <CardFooter className={cn("flex-wrap justify-between gap-3 border-t border-border-soft p-5", isMobile && "border-t-0 px-0 pb-0 pt-1")}>
+        <CardFooter className={cn("flex-wrap justify-between gap-3 border-t border-border-soft p-5", isMobile && "border-t-0 px-0 pb-0 pt-3")}>
           <div className="flex flex-wrap items-center gap-3">
             {(Boolean(identity?.agentLabel) || (Boolean(identity?.allowAnonymousIdentity) && anonymousEligibleTabs.includes(activeTab))) && identity ? (
               <IdentitySection
@@ -493,18 +494,38 @@ export function PostComposer(props: PostComposerProps) {
               />
             ) : null}
           </div>
-          <div className="flex items-center gap-3">
-            {submitError ? <FormNote tone="warning">{submitError}</FormNote> : null}
-            <Button
-              disabled={submitDisabled}
-              loading={submitLoading}
-              onClick={onSubmit}
-            >
-              {submitLabel ?? copy.actions.post}
-            </Button>
-          </div>
+          {!isMobile ? (
+            <div className="ms-auto flex items-center gap-3">
+              {submitError ? <FormNote tone="warning">{submitError}</FormNote> : null}
+              <Button
+                disabled={submitDisabled}
+                loading={submitLoading}
+                onClick={onSubmit}
+                size="lg"
+              >
+                {submitLabel ?? copy.actions.post}
+              </Button>
+            </div>
+          ) : null}
         </CardFooter>
       </Card>
+
+      {isMobile && submit ? (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
+          <div className="flex items-center justify-end gap-3 px-4">
+            {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
+            <Button
+              className="w-full"
+              disabled={submit.disabled}
+              loading={submit.loading}
+              onClick={submit.onSubmit}
+              size="lg"
+            >
+              {submit.label ?? copy.actions.post}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -2,7 +2,8 @@ import * as React from "react";
 
 import { PostCard } from "@/components/compositions/post-card/post-card";
 import { PostCardSkeleton } from "@/components/compositions/post-card/post-card-skeleton";
-import { PillButton, pillButtonVariants } from "@/components/primitives/pill-button";
+import { ResponsiveOptionSelect } from "@/components/compositions/responsive-option-select/responsive-option-select";
+import { pillButtonVariants } from "@/components/primitives/pill-button";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ export interface FeedSortOption {
 export interface FeedItem {
   id: string;
   post: PostCardProps;
+  postOriginal?: PostCardProps;
 }
 
 export interface FeedEmptyState {
@@ -44,10 +46,12 @@ export interface FeedProps {
   headerAction?: React.ReactNode;
   controls?: React.ReactNode;
   emptyState?: FeedEmptyState;
+  hideMobileHeaderControls?: boolean;
   loading?: boolean;
   loadingCount?: number;
   aside?: React.ReactNode;
   className?: string;
+  listClassName?: string;
 }
 
 export interface TopTimeRangeOption {
@@ -140,22 +144,49 @@ export function Feed({
   headerAction,
   controls,
   emptyState,
+  hideMobileHeaderControls = false,
   loading = false,
   loadingCount = 3,
   aside,
   className,
+  listClassName,
 }: FeedProps) {
   const hasItems = items.length > 0;
   const showHeadingBlock = Boolean(eyebrow || title || subtitle || headerAction);
-  const showHeaderControls = availableSorts.length > 0 || controls;
+  const showSortControl = Boolean(activeSort && availableSorts.length > 0);
+  const showHeaderControls = showSortControl || controls;
+  const showMobileHeaderControls = showHeaderControls && !hideMobileHeaderControls;
   const showLoadingOnly = loading && !hasItems;
   const showLoadingTail = loading && hasItems;
+  const [originalPostIds, setOriginalPostIds] = React.useState<Set<string>>(() => new Set());
+
+  React.useEffect(() => {
+    setOriginalPostIds((current) => {
+      const itemIdsWithOriginals = new Set(items.filter((item) => item.postOriginal).map((item) => item.id));
+      const next = new Set<string>();
+      for (const id of current) {
+        if (itemIdsWithOriginals.has(id)) {
+          next.add(id);
+        }
+      }
+      return next.size === current.size ? current : next;
+    });
+  }, [items]);
 
   return (
     <section className={cn("min-w-0", className)}>
       <div className="flex gap-6">
         <div className="min-w-0 flex-1">
-          <div className={cn("flex flex-col", showHeadingBlock || showHeaderControls ? "mb-4 gap-4 md:mb-5" : undefined)}>
+          <div
+            className={cn(
+              "flex flex-col",
+              showHeadingBlock || showMobileHeaderControls
+                ? "mb-4 gap-4 md:mb-5"
+                : showHeaderControls
+                  ? "md:mb-5 md:gap-4"
+                  : undefined,
+            )}
+          >
             {showHeadingBlock ? (
               <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div className="space-y-2 text-start">
@@ -180,41 +211,55 @@ export function Feed({
             ) : null}
 
             {showHeaderControls ? (
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                {availableSorts.length > 0 ? (
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {availableSorts.map((sort) => (
-                      <PillButton
-                        key={sort.value}
-                        onClick={() => onSortChange?.(sort.value)}
-                        tone={sort.value === activeSort ? "selected" : "default"}
-                      >
-                        {sort.label}
-                      </PillButton>
-                    ))}
-                  </div>
+              <div className={cn(
+                "flex-col gap-3 md:flex md:flex-row-reverse md:items-center md:justify-between",
+                showMobileHeaderControls ? "flex" : "hidden",
+              )}>
+                {showSortControl ? (
+                  <ResponsiveOptionSelect
+                    ariaLabel="Sort feed"
+                    className="self-end md:self-auto"
+                    drawerTitle="Sort"
+                    onValueChange={onSortChange}
+                    options={availableSorts}
+                    value={activeSort}
+                  />
                 ) : null}
-                {controls ? <div className="flex flex-wrap gap-2">{controls}</div> : null}
+                {controls ? <div className="flex flex-wrap gap-2 md:me-auto">{controls}</div> : null}
               </div>
             ) : null}
           </div>
 
           {showLoadingOnly ? <FeedLoadingState /> : null}
           {!loading && !hasItems && emptyState ? (
-            <div className="overflow-hidden border-y border-border-soft md:rounded-[var(--radius-2xl)] md:border md:bg-card">
+            <div className={cn("overflow-hidden border-y border-border-soft md:rounded-[var(--radius-2xl)] md:border md:bg-card", listClassName)}>
               <FeedEmpty emptyState={emptyState} />
             </div>
           ) : null}
           {hasItems ? (
-            <div className="overflow-hidden border-y border-border-soft md:rounded-[var(--radius-2xl)] md:border md:bg-card">
+            <div className={cn("overflow-hidden border-y border-border-soft md:rounded-[var(--radius-2xl)] md:border md:bg-card", listClassName)}>
               {items.map((item, index) => {
-                const { className: postClassName, ...post } = item.post;
+                const isViewingOriginal = Boolean(item.postOriginal && originalPostIds.has(item.id));
+                const activePost = isViewingOriginal && item.postOriginal ? item.postOriginal : item.post;
+                const { className: postClassName, ...post } = activePost;
 
                 return (
                   <PostCard
                     {...post}
                     className={cn(index === items.length - 1 ? "border-b-0" : undefined, postClassName)}
+                    isViewingOriginal={isViewingOriginal}
                     key={item.id}
+                    onToggleOriginal={item.postOriginal
+                      ? () => setOriginalPostIds((current) => {
+                        const next = new Set(current);
+                        if (next.has(item.id)) {
+                          next.delete(item.id);
+                        } else {
+                          next.add(item.id);
+                        }
+                        return next;
+                      })
+                      : post.onToggleOriginal}
                   />
                 );
               })}

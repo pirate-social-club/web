@@ -395,10 +395,8 @@ describe("composition smoke tests", () => {
       </UiLocaleProvider>,
     );
 
-    expect(markup).toContain("Wallet");
     expect(markup).toContain("Ethereum");
-    expect(markup).toContain("Networks");
-    expect(markup).toContain("Assets");
+    expect(markup).toContain("0x42a5");
     expect(markup).toContain("1.28");
     expect(markup).toContain("ETH");
   });

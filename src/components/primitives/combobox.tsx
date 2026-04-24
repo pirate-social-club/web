@@ -19,7 +19,7 @@ const ComboboxInput = React.forwardRef<
   <ComboboxPrimitive.Input
     ref={ref}
     className={cn(
-      "flex h-11 w-full rounded-full border border-input bg-background px-4 py-2 text-base shadow-sm transition-[color,box-shadow,border-color] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+      "flex h-11 w-full rounded-full border border-input bg-background px-4 py-2 text-base shadow-sm transition-[color,box-shadow,border-color] outline-none placeholder:text-muted-foreground focus-visible:border-border focus-visible:ring-1 focus-visible:ring-border-soft disabled:cursor-not-allowed disabled:opacity-50",
       className,
     )}
     {...props}
@@ -34,7 +34,7 @@ const ComboboxChips = React.forwardRef<
   <ComboboxPrimitive.Chips
     ref={ref}
     className={cn(
-      "flex min-h-11 w-full flex-wrap items-center gap-2 rounded-[var(--radius-2_5xl)] border border-input bg-background px-3 py-2 shadow-sm transition-[color,box-shadow,border-color] focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background",
+      "flex min-h-11 w-full flex-wrap items-center gap-2 rounded-[var(--radius-2_5xl)] border border-input bg-background px-3 py-2 shadow-sm transition-[color,box-shadow,border-color] focus-within:border-border focus-within:ring-1 focus-within:ring-border-soft",
       className,
     )}
     {...props}
@@ -179,7 +179,7 @@ const ComboboxTrigger = React.forwardRef<
   <ComboboxPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-11 w-full items-center justify-between rounded-full border border-input bg-background px-4 py-2 text-base shadow-sm transition-[color,box-shadow,border-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground",
+      "flex h-11 w-full items-center justify-between rounded-full border border-input bg-background px-4 py-2 text-base shadow-sm transition-[color,box-shadow,border-color] focus-visible:border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-soft disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground",
       className,
     )}
     {...props}

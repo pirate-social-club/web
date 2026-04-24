@@ -30,7 +30,9 @@ export const Sizes: Story = {
   render: () => (
     <div className="w-[min(72rem,90vw)] space-y-4">
       <PageContainer className="rounded-lg border border-border-soft bg-card p-4" size="narrow">Narrow</PageContainer>
+      <PageContainer className="rounded-lg border border-border-soft bg-card p-4" size="feed">Feed</PageContainer>
       <PageContainer className="rounded-lg border border-border-soft bg-card p-4" size="default">Default</PageContainer>
+      <PageContainer className="rounded-lg border border-border-soft bg-card p-4" size="rail">Rail</PageContainer>
       <PageContainer className="rounded-lg border border-border-soft bg-card p-4" size="wide">Wide</PageContainer>
     </div>
   ),

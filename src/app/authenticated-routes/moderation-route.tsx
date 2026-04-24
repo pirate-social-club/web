@@ -2,12 +2,14 @@
 
 import * as React from "react";
 import { isAddress } from "viem";
+import type { MembershipRequestSummary } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { CommunityDonationsEditorPage } from "@/components/compositions/community-donations-editor/community-donations-editor-page";
 import { CommunityGatesEditorPage } from "@/components/compositions/community-gates-editor/community-gates-editor-page";
 import { CommunityLabelsEditorPage } from "@/components/compositions/community-labels-editor/community-labels-editor-page";
 import { CommunityLinksEditorPage, createEmptyCommunityLinkEditorItem } from "@/components/compositions/community-links-editor/community-links-editor-page";
+import { CommunityMembershipRequestsPage } from "@/components/compositions/community-membership-requests-page/community-membership-requests-page";
 import { CommunityModerationIndexPage as CommunityModerationIndexPageView } from "@/components/compositions/community-moderation-index-page/community-moderation-index-page";
 import { CommunityModerationShell } from "@/components/compositions/community-moderation-shell/community-moderation-shell";
 import { CommunityProfileEditorPage } from "@/components/compositions/community-profile-editor/community-profile-editor-page";
@@ -19,6 +21,7 @@ import { CommunityMachineAccessPage } from "@/components/compositions/community-
 import { CommunitySafetyPage } from "@/components/compositions/community-safety-page/community-safety-page";
 import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
 import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
+import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
@@ -100,16 +103,22 @@ function getNationalityGateCountryCodes(gateDrafts: IdentityGateDraft[]): string
 function MobileModerationSectionLayout({
   children,
   communityId,
+  trailingAction,
   title,
 }: {
   children: React.ReactNode;
   communityId: string;
+  trailingAction?: React.ReactNode;
   title: string;
 }) {
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
-      <MobilePageHeader onBackClick={() => navigate(buildCommunityModerationIndexPath(communityId))} title={title} />
-      <section className="flex min-w-0 flex-1 flex-col gap-4 px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)] md:px-6 md:py-6">
+      <MobilePageHeader
+        onBackClick={() => navigate(buildCommunityModerationIndexPath(communityId))}
+        title={title}
+        trailingAction={trailingAction}
+      />
+      <section className="flex min-w-0 flex-1 flex-col gap-4 px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)] md:px-6 md:py-6 [&_.community-moderation-inline-save-action]:hidden [&_.community-moderation-save-footer]:hidden">
         <div className="min-w-0">{children}</div>
       </section>
     </div>
@@ -178,6 +187,9 @@ export function CommunityModerationPage({
   const isMobile = useIsModerationMobileLayout();
   const state = useCommunityModerationState(communityId);
   const { copy } = useRouteMessages();
+  const [membershipRequests, setMembershipRequests] = React.useState<MembershipRequestSummary[]>([]);
+  const [membershipRequestsLoading, setMembershipRequestsLoading] = React.useState(false);
+  const [processingMembershipRequestId, setProcessingMembershipRequestId] = React.useState<string | null>(null);
   const pricingLocalCountryCodes = React.useMemo(
     () => getNationalityGateCountryCodes(state.gateDrafts),
     [state.gateDrafts],
@@ -195,11 +207,77 @@ export function CommunityModerationPage({
     showInlineTitle: !isMobile,
     title,
   });
+  const hasBlockedState = Boolean(blocked);
 
   let content = blocked;
+  let mobileTrailingAction: React.ReactNode | undefined;
+  const setMobileSaveAction = ({
+    disabled = false,
+    label = copy.moderation.saveFooter.defaultSaveLabel,
+    loading = false,
+    onSave,
+  }: {
+    disabled?: boolean;
+    label?: string;
+    loading?: boolean;
+    onSave?: () => void;
+  }) => {
+    if (!isMobile || hasBlockedState) {
+      return;
+    }
+
+    mobileTrailingAction = (
+      <Button className="h-11 px-4" disabled={disabled} loading={loading} onClick={onSave}>
+        {label}
+      </Button>
+    );
+  };
+
+  React.useEffect(() => {
+    let cancelled = false;
+    if (section !== "requests" || hasBlockedState) {
+      return () => { cancelled = true; };
+    }
+
+    setMembershipRequestsLoading(true);
+    void api.communities.listMembershipRequests(communityId)
+      .then((result) => {
+        if (!cancelled) setMembershipRequests(result.items);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Could not load requests.");
+      })
+      .finally(() => {
+        if (!cancelled) setMembershipRequestsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [api, communityId, hasBlockedState, section]);
+
+  const reviewMembershipRequest = React.useCallback(async (
+    requestId: string,
+    decision: "approved" | "rejected",
+  ) => {
+    setProcessingMembershipRequestId(requestId);
+    try {
+      const result = decision === "approved"
+        ? await api.communities.approveMembershipRequest(communityId, requestId)
+        : await api.communities.rejectMembershipRequest(communityId, requestId);
+      setMembershipRequests((current) => current.filter((request) => request.membership_request_id !== result.membership_request_id));
+    } catch {
+      toast.error(decision === "approved" ? "Could not approve request." : "Could not reject request.");
+    } finally {
+      setProcessingMembershipRequestId(null);
+    }
+  }, [api, communityId]);
 
   if (!content && state.community) {
     if (section === "profile") {
+      setMobileSaveAction({
+        disabled: state.savingProfile || !state.profileHasChanges,
+        loading: state.savingProfile,
+        onSave: state.handleSaveProfile,
+      });
       content = (
         <CommunityProfileEditorPage
           avatarSrc={state.profileAvatarRemoved ? undefined : (state.community.avatar_ref ?? undefined)}
@@ -238,6 +316,11 @@ export function CommunityModerationPage({
         />
       );
     } else if (section === "rules") {
+      setMobileSaveAction({
+        disabled: !state.ruleName.trim() || !state.description.trim() || state.savingRules,
+        loading: state.savingRules,
+        onSave: state.handleSaveRules,
+      });
       content = (
         <CommunityRulesEditorPage
           description={state.description}
@@ -253,6 +336,11 @@ export function CommunityModerationPage({
         />
       );
     } else if (section === "links") {
+      setMobileSaveAction({
+        disabled: state.savingLinks || state.links.some((link) => !link.url.trim()),
+        loading: state.savingLinks,
+        onSave: state.handleSaveLinks,
+      });
       content = (
         <CommunityLinksEditorPage
           links={state.links}
@@ -269,6 +357,11 @@ export function CommunityModerationPage({
         />
       );
     } else if (section === "labels") {
+      setMobileSaveAction({
+        disabled: state.savingLabels || state.labelsValidationError != null,
+        loading: state.savingLabels,
+        onSave: state.handleSaveLabels,
+      });
       content = (
         <CommunityLabelsEditorPage
           labels={state.labels}
@@ -281,6 +374,13 @@ export function CommunityModerationPage({
         />
       );
     } else if (section === "pricing") {
+      if (!state.pricingPolicyLoading && !state.pricingPolicyError) {
+        setMobileSaveAction({
+          disabled: state.savingPricing || state.pricingValidationError != null,
+          loading: state.savingPricing,
+          onSave: state.handleSavePricing,
+        });
+      }
       content = state.pricingPolicyLoading
         ? (
           <FullPageSpinner />
@@ -321,6 +421,11 @@ export function CommunityModerationPage({
             />
           );
     } else if (section === "donations") {
+      setMobileSaveAction({
+        disabled: state.savingDonations || (state.endaomentUrl.trim().length > 0 && !state.partnerPreview),
+        loading: state.savingDonations,
+        onSave: state.handleSaveDonations,
+      });
       content = (
         <CommunityDonationsEditorPage
           endaomentUrl={state.endaomentUrl}
@@ -344,7 +449,28 @@ export function CommunityModerationPage({
           saveLoading={state.savingDonations}
         />
       );
+    } else if (section === "requests") {
+      content = (
+        <CommunityMembershipRequestsPage
+          loading={membershipRequestsLoading}
+          onApprove={(request) => void reviewMembershipRequest(request.membership_request_id, "approved")}
+          onReject={(request) => void reviewMembershipRequest(request.membership_request_id, "rejected")}
+          processingRequestId={processingMembershipRequestId}
+          requests={membershipRequests}
+        />
+      );
     } else if (section === "gates") {
+      setMobileSaveAction({
+        disabled: state.savingGates
+          || (state.membershipMode === "gated" && state.gateDrafts.length === 0 && state.preservedGateRuleCount === 0)
+          || state.gateDrafts.some((draft) => (
+            draft.gateType === "erc721_holding" && !isAddress(draft.contractAddress.trim())
+            || draft.gateType === "erc721_inventory_match" && !isValidCourtyardInventoryDraft(draft)
+            || draft.gateType === "wallet_score" && (!Number.isFinite(draft.minimumScore) || draft.minimumScore < 0 || draft.minimumScore > 100)
+          )),
+        loading: state.savingGates,
+        onSave: state.handleSaveGates,
+      });
       content = (
         <CommunityGatesEditorPage
           allowAnonymousIdentity={state.allowAnonymousIdentity}
@@ -372,6 +498,11 @@ export function CommunityModerationPage({
         />
       );
     } else if (section === "safety") {
+      setMobileSaveAction({
+        disabled: state.savingSafety,
+        loading: state.savingSafety,
+        onSave: state.handleSaveSafety,
+      });
       content = (
         <CommunitySafetyPage
           adultContentPolicy={state.adultContentPolicy}
@@ -389,6 +520,11 @@ export function CommunityModerationPage({
         />
       );
     } else if (section === "agents") {
+      setMobileSaveAction({
+        disabled: state.savingAgents,
+        loading: state.agentSubmitState.kind === "saving",
+        onSave: state.handleSaveAgents,
+      });
       content = (
         <CommunityAgentPolicyPage
           onSave={state.handleSaveAgents}
@@ -399,6 +535,11 @@ export function CommunityModerationPage({
         />
       );
     } else if (section === "machine-access") {
+      setMobileSaveAction({
+        disabled: state.savingMachineAccess || state.loadingMachineAccess || !state.machineAccessDirty,
+        loading: state.savingMachineAccess,
+        onSave: state.handleSaveMachineAccess,
+      });
       content = (
         <CommunityMachineAccessPage
           onSave={state.handleSaveMachineAccess}
@@ -434,7 +575,7 @@ export function CommunityModerationPage({
 
   if (isMobile) {
     return (
-      <MobileModerationSectionLayout communityId={communityId} title={title}>
+      <MobileModerationSectionLayout communityId={communityId} title={title} trailingAction={mobileTrailingAction}>
         {content}
       </MobileModerationSectionLayout>
     );

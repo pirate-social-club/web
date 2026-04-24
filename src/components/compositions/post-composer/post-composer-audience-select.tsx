@@ -3,15 +3,8 @@
 import * as React from "react";
 import { Globe, Users } from "@phosphor-icons/react";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/primitives/select";
-import { cn } from "@/lib/utils";
+import { ResponsiveOptionSelect } from "@/components/compositions/responsive-option-select/responsive-option-select";
 import type { PostAudience } from "./post-composer.types";
-import { Type } from "@/components/primitives/type";
 
 export interface AudienceSelectProps {
   value: PostAudience;
@@ -20,9 +13,8 @@ export interface AudienceSelectProps {
   publicOptionDisabledReason?: string;
   labels: {
     public: string;
-    publicDescription: string;
     community: string;
-    communityDescription: string;
+    title: string;
   };
 }
 
@@ -37,63 +29,35 @@ export function AudienceSelect({
     {
       value: "public" as const,
       label: labels.public,
-      description: labels.publicDescription,
-      icon: Globe,
+      icon: <Globe className="size-5 text-muted-foreground" />,
       disabled: publicOptionEnabled === false,
+      disabledReason: publicOptionDisabledReason,
     },
     {
       value: "members_only" as const,
       label: labels.community,
-      description: labels.communityDescription,
-      icon: Users,
+      icon: <Users className="size-5 text-muted-foreground" />,
       disabled: false,
     },
   ] as const;
 
   const selected = options.find((o) => o.value === value) ?? options[1];
-  const SelectedIcon = selected.icon;
 
   return (
-    <Select
+    <ResponsiveOptionSelect<PostAudience>
+      ariaLabel={labels.title}
+      drawerTitle={labels.title}
+      onValueChange={onChange}
+      options={options}
+      selectAlign="start"
+      size="lg"
+      triggerContent={(
+        <span className="flex min-w-0 items-center gap-2">
+          {selected.icon}
+          <span className="truncate">{selected.label}</span>
+        </span>
+      )}
       value={value}
-      onValueChange={(v) => onChange(v as PostAudience)}
-    >
-      <SelectTrigger
-        className={cn(
-          "h-auto w-auto gap-2 rounded-full border-border-soft bg-card px-3 py-1.5 text-base font-medium shadow-none transition-colors hover:bg-muted",
-        )}
-      >
-        <SelectedIcon className="size-5 text-muted-foreground" />
-        <span>{selected.label}</span>
-      </SelectTrigger>
-      <SelectContent align="start">
-        {options.map((option) => {
-          const Icon = option.icon;
-          return (
-            <SelectItem
-              key={option.value}
-              value={option.value}
-              disabled={option.disabled}
-              className="items-start py-3"
-            >
-              <div className="flex items-start gap-3">
-                <Icon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
-                <div className="space-y-0.5">
-                  <div className="font-medium">{option.label}</div>
-                  <Type as="div" variant="caption" className="">
-                    {option.description}
-                  </Type>
-                  {option.disabled && publicOptionDisabledReason ? (
-                    <div className="text-base text-warning">
-                      {publicOptionDisabledReason}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </SelectItem>
-          );
-        })}
-      </SelectContent>
-    </Select>
+    />
   );
 }

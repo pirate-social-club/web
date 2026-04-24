@@ -2,13 +2,22 @@ import * as React from "react";
 import {
   CaretDown,
   Image as ImageIcon,
-  Tag,
+  Users,
 } from "@phosphor-icons/react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Avatar } from "@/components/primitives/avatar";
 import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
 import { FormFieldLabel } from "@/components/primitives/form-layout";
+import { Input } from "@/components/primitives/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/primitives/sheet";
 import { Textarea } from "@/components/primitives/textarea";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import type { CommunityPickerItem } from "./post-composer.types";
 import { Type } from "@/components/primitives/type";
@@ -22,6 +31,7 @@ export function ShellPill({
   communities,
   emptyLabel,
   onSelectCommunity,
+  pickerTitle = "Choose a community",
 }: {
   avatarSrc?: string;
   children: React.ReactNode;
@@ -29,7 +39,19 @@ export function ShellPill({
   communities?: CommunityPickerItem[];
   emptyLabel?: string;
   onSelectCommunity?: (communityId: string) => void;
+  pickerTitle?: string;
 }) {
+  const isMobile = useIsMobile();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const filteredCommunities = React.useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+    if (!communities || normalizedQuery.length === 0) return communities ?? [];
+    return communities.filter((community) =>
+      community.displayName.toLocaleLowerCase().includes(normalizedQuery),
+    );
+  }, [communities, query]);
+
   if (!communities || !onSelectCommunity) {
     return (
       <div className={cn("inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground", className)}>
@@ -37,12 +59,75 @@ export function ShellPill({
           <img alt="" className="size-8 rounded-full object-cover" src={avatarSrc} />
         ) : (
           <div className="grid size-8 place-items-center rounded-full bg-background text-muted-foreground">
-            <Tag className="size-5" />
+            <Users className="size-5" />
           </div>
         )}
-        <span className="min-w-0 flex-1 truncate text-center">{children}</span>
+        <span className="min-w-0 flex-1 truncate text-start">{children}</span>
         <CaretDown className="size-5 text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetTrigger asChild>
+          <button
+            className={cn("inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring", className)}
+            type="button"
+          >
+            {avatarSrc ? (
+              <img alt="" className="size-8 rounded-full object-cover" src={avatarSrc} />
+            ) : (
+              <div className="grid size-8 place-items-center rounded-full bg-background text-muted-foreground">
+                <Users className="size-5" />
+              </div>
+            )}
+            <span className="min-w-0 flex-1 truncate text-start">{children}</span>
+            <CaretDown className="size-5 text-muted-foreground" />
+          </button>
+        </SheetTrigger>
+        <SheetContent className="flex !w-full !max-w-none flex-col gap-4 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-5 sm:!max-w-none" side="right">
+          <SheetHeader className="pe-12 text-start">
+            <SheetTitle>{pickerTitle}</SheetTitle>
+          </SheetHeader>
+          <Input
+            aria-label={pickerTitle}
+            className="h-12"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={pickerTitle}
+            value={query}
+          />
+          <div className="-mx-4 min-h-0 flex-1 overflow-y-auto border-t border-border-soft">
+            {filteredCommunities.length === 0 ? (
+              <Type as="div" variant="caption" className="px-4 py-5">
+                {emptyLabel ?? "No recent communities."}
+              </Type>
+            ) : (
+              filteredCommunities.map((community) => (
+                <button
+                  className="grid w-full grid-cols-[2.75rem_1fr] items-center gap-3 border-b border-border-soft px-4 py-3 text-start text-base text-foreground outline-none transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                  key={community.communityId}
+                  onClick={() => {
+                    onSelectCommunity(community.communityId);
+                    setMobileOpen(false);
+                    setQuery("");
+                  }}
+                  type="button"
+                >
+                  <Avatar
+                    className="h-11 w-11 bg-card text-base"
+                    fallback={community.displayName.slice(0, 2).toUpperCase()}
+                    size="sm"
+                    src={community.avatarSrc ?? undefined}
+                  />
+                  <span className="truncate">{community.displayName}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     );
   }
 
@@ -57,10 +142,10 @@ export function ShellPill({
             <img alt="" className="size-8 rounded-full object-cover" src={avatarSrc} />
           ) : (
             <div className="grid size-8 place-items-center rounded-full bg-background text-muted-foreground">
-              <Tag className="size-5" />
+              <Users className="size-5" />
             </div>
           )}
-          <span className="min-w-0 flex-1 truncate text-center">{children}</span>
+          <span className="min-w-0 flex-1 truncate text-start">{children}</span>
           <CaretDown className="size-5 text-muted-foreground" />
         </button>
       </DropdownMenuPrimitive.Trigger>

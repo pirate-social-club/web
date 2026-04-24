@@ -62,7 +62,10 @@
       { "id": "terms-of-service", "label": "شروط الخدمة" },
       { "id": "privacy-policy", "label": "سياسة الخصوصية" }
     ],
-    "yourCommunitiesLabel": "مجتمعاتك"
+    "yourCommunitiesLabel": "مجتمعاتك",
+    "feedSortBestLabel": "الرائج",
+    "feedSortNewLabel": "الجديد",
+    "feedSortTopLabel": "الأعلى"
   },
   "mobileFooter": {
     "createLabel": "أنشئ",

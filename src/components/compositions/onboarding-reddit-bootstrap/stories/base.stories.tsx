@@ -19,7 +19,7 @@ const base: OnboardingRedditBootstrapProps = {
 
 const importedSummary = {
   redditUsername: "technohippie",
-  globalKarma: 42000,
+  importedRedditScore: 42000,
   topSubreddits: [
     { subreddit: "hiphopheads", karma: 12000, posts: 44, rankSource: "karma" as const },
     { subreddit: "indieheads", karma: 6200, posts: 18, rankSource: "karma" as const },
@@ -37,7 +37,7 @@ const importedSummary = {
 
 const emptyArchiveSummary = {
   redditUsername: "quietreader",
-  globalKarma: null,
+  importedRedditScore: null,
   topSubreddits: [],
   coverageNote: null,
 };

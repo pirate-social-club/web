@@ -11,6 +11,13 @@ rtk bun run ui:audit
 
 Use Storybook validation when component stories change. Avoid `rtk bun run build` by default; use the lighter Vite checks from the workspace instructions unless a full production build is required.
 
+## Browser Automation
+
+- Use `agent-browser` sparingly on local dev pages.
+- Do not run multiple `agent-browser` commands in parallel. Open/wait/snapshot/screenshot actions must be serialized so only one browser automation command is active at a time.
+- Prefer a single snapshot or screenshot after the page is loaded, then inspect code locally. Avoid repeated screenshots or long concurrent waits unless the user explicitly asks for deeper browser testing.
+- Before starting a dev server or browser session, check whether one is already running. Stop any dev server or browser session started for the task when it is no longer needed.
+
 ## UI Rules
 
 - Do not use `text-xs` or `text-sm` in app UI or stories.

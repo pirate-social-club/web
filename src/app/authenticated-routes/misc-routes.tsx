@@ -8,10 +8,12 @@ import type { CommunityPickerItem } from "@/components/compositions/post-compose
 import { PostComposer } from "@/components/compositions/post-composer/post-composer";
 import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
 import { Button } from "@/components/primitives/button";
+import { PageContainer } from "@/components/primitives/layout-shell";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { interpolateMessage, useRouteMessages } from "./route-core";
 import { EmptyFeedState, StackPageShell } from "./route-shell";
+import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
 
 export function NotFoundPage({ path }: { path: string }) {
   const { copy } = useRouteMessages();
@@ -30,12 +32,13 @@ export function NotFoundPage({ path }: { path: string }) {
 export function CreatePostGlobalPage({
   renderCreatePost,
 }: {
-  renderCreatePost: (communityId: string) => React.ReactNode;
+  renderCreatePost: (communityId: string, initialDraft?: Partial<CreatePostDraftState>) => React.ReactNode;
 }) {
   const { copy } = useRouteMessages();
   const isMobile = useIsMobile();
   const knownCommunities = useKnownCommunities();
   const [selectedCommunityId, setSelectedCommunityId] = React.useState<string | null>(null);
+  const { actions, state } = useCreatePostDraftState();
   const pickerItems: CommunityPickerItem[] = React.useMemo(
     () => knownCommunities.map((c) => ({
       communityId: c.communityId,
@@ -46,8 +49,50 @@ export function CreatePostGlobalPage({
   );
 
   if (selectedCommunityId) {
-    return <>{renderCreatePost(selectedCommunityId)}</>;
+    return <>{renderCreatePost(selectedCommunityId, state)}</>;
   }
+
+  const composerDraft = {
+    mode: state.composerMode,
+    titleValue: state.title,
+    textBodyValue: state.body,
+    captionValue: state.caption,
+    linkUrlValue: state.linkUrl,
+    lyricsValue: state.lyrics,
+    imageUpload: state.imageUpload,
+    imageUploadLabel: state.imageUploadLabel,
+    song: state.songState,
+    songMode: state.songMode,
+    monetization: state.monetizationState,
+    charityContribution: state.charityContribution,
+    derivativeStep: state.derivativeStep,
+    audience: state.audience,
+    identity: {
+      authorMode: state.authorMode,
+      identityMode: state.identityMode,
+      selectedQualifierIds: state.selectedQualifierIds,
+    },
+  };
+
+  const composerActions = {
+    onModeChange: actions.setComposerMode,
+    onTitleValueChange: actions.setTitle,
+    onTextBodyValueChange: actions.setBody,
+    onCaptionValueChange: actions.setCaption,
+    onLinkUrlValueChange: actions.setLinkUrl,
+    onLyricsValueChange: actions.setLyrics,
+    onImageUploadChange: actions.setImageUpload,
+    onImageUploadLabelChange: actions.setImageUploadLabel,
+    onSongChange: actions.setSongState,
+    onSongModeChange: actions.setSongMode,
+    onMonetizationChange: actions.setMonetizationState,
+    onCharityContributionChange: actions.setCharityContribution,
+    onDerivativeStepChange: actions.setDerivativeStep,
+    onAudienceChange: actions.setAudience,
+    onIdentityModeChange: actions.setIdentityMode,
+    onAuthorModeChange: actions.setAuthorMode,
+    onSelectedQualifierIdsChange: actions.setSelectedQualifierIds,
+  };
 
   if (isMobile) {
     return (
@@ -60,10 +105,15 @@ export function CreatePostGlobalPage({
             clubName={copy.common.chooseCommunity}
             communityPickerEmptyLabel={copy.common.noRecentCommunities}
             communityPickerItems={pickerItems}
-            mode="text"
+            draft={composerDraft}
+            actions={composerActions}
             onSelectCommunity={setSelectedCommunityId}
-            submitDisabled
-            submitLabel={copy.createPost.actions.post}
+            submit={{
+              disabled: true,
+              loading: false,
+              label: copy.createPost.actions.post,
+              onSubmit: () => {},
+            }}
           />
         </section>
       </div>
@@ -71,16 +121,23 @@ export function CreatePostGlobalPage({
   }
 
   return (
-    <PostComposer
-      availableTabs={["text", "image", "link", "song"]}
-      canCreateSongPost
-      clubName={copy.common.chooseCommunity}
-      communityPickerEmptyLabel={copy.common.noRecentCommunities}
-      communityPickerItems={pickerItems}
-      mode="text"
-      onSelectCommunity={setSelectedCommunityId}
-      submitDisabled
-      submitLabel={copy.createPost.actions.post}
-    />
+    <PageContainer className="min-w-0" size="feed">
+      <PostComposer
+        availableTabs={["text", "image", "link", "song"]}
+        canCreateSongPost
+        clubName={copy.common.chooseCommunity}
+        communityPickerEmptyLabel={copy.common.noRecentCommunities}
+        communityPickerItems={pickerItems}
+        draft={composerDraft}
+        actions={composerActions}
+        onSelectCommunity={setSelectedCommunityId}
+        submit={{
+          disabled: true,
+          loading: false,
+          label: copy.createPost.actions.post,
+          onSubmit: () => {},
+        }}
+      />
+    </PageContainer>
   );
 }

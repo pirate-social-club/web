@@ -80,9 +80,11 @@ function Panel({
   const isMobile = useIsMobile();
   return (
     <Card className={cn("overflow-hidden", isMobile && "border-0 bg-transparent shadow-none")}>
-      <div className={cn("border-b border-border px-5 py-4", isMobile && "px-0")}>
-        <Type as="h2" variant="h4" className="text-start">{title}</Type>
-      </div>
+      {isMobile ? null : (
+        <div className="border-b border-border px-5 py-4">
+          <Type as="h2" variant="h4" className="text-start">{title}</Type>
+        </div>
+      )}
       {hasContent ? children : (
         <div className={cn("text-start px-5 py-8 text-base leading-7 text-muted-foreground", isMobile && "px-0")}>
           {emptyCopy}
@@ -102,7 +104,35 @@ function FeedEmptyState({ copy }: { copy: string }) {
 }
 
 function FeedStack({ children }: { children: React.ReactNode }) {
-  return <div className="space-y-3">{children}</div>;
+  const isMobile = useIsMobile();
+  return (
+    <div className={cn(
+      "space-y-3",
+      isMobile && "overflow-hidden border-y border-border-soft space-y-0",
+    )}>
+      {children}
+    </div>
+  );
+}
+
+function MobileFlatCard({
+  children,
+  isLast,
+}: {
+  children: React.ReactNode;
+  isLast: boolean;
+}) {
+  return (
+    <Card
+      className={cn(
+        "overflow-hidden",
+        "rounded-none border-x-0 border-t-0 bg-transparent shadow-none md:rounded-[var(--radius-lg)] md:border md:bg-card md:shadow-[var(--shadow-md)]",
+        isLast && "border-b-0 md:border",
+      )}
+    >
+      {children}
+    </Card>
+  );
 }
 
 function isInteractiveTarget(target: EventTarget | null, currentTarget: HTMLElement): boolean {
@@ -120,13 +150,20 @@ function toSongItemProps(scrobble: ProfileScrobbleItem) {
   return songItem;
 }
 
-function CommentRow({ comment }: { comment: ProfileCommentItem }) {
+function CommentRow({
+  comment,
+  isLast = false,
+}: {
+  comment: ProfileCommentItem;
+  isLast?: boolean;
+}) {
   const isClickable = Boolean(comment.postHref);
 
   return (
     <article
       className={cn(
-        "px-5 py-4 text-start transition-colors",
+        "border-b border-border-soft px-5 py-4 text-start transition-colors md:border-b-0",
+        isLast && "border-b-0",
         isClickable && "cursor-pointer hover:bg-muted/20 focus-visible:bg-muted/20",
       )}
       onClick={(event) => {
@@ -206,23 +243,25 @@ export function VerificationRows({
 function ActivityRows({ items }: { items: ProfileActivityItem[] }) {
   return (
     <FeedStack>
-      {items.map((item) => {
+      {items.map((item, index) => {
+        const isLast = index === items.length - 1;
+
         if (item.kind === "post") {
           return (
-            <Card className="overflow-hidden" key={item.id}>
+            <MobileFlatCard isLast={isLast} key={item.id}>
               <PostCard className="border-b-0" {...item.post.post} />
-            </Card>
+            </MobileFlatCard>
           );
         }
 
         if (item.kind === "comment") {
-          return <CommentRow key={item.id} comment={item.comment} />;
+          return <CommentRow isLast={isLast} key={item.id} comment={item.comment} />;
         }
 
         return (
-          <Card className="overflow-hidden" key={item.id}>
+          <MobileFlatCard isLast={isLast} key={item.id}>
             <SongItem {...toSongItemProps(item.scrobble)} />
-          </Card>
+          </MobileFlatCard>
         );
       })}
     </FeedStack>
@@ -232,7 +271,7 @@ function ActivityRows({ items }: { items: ProfileActivityItem[] }) {
 export function OverviewPanel({ items }: { items: ProfileActivityItem[] }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").profile;
-  if (items.length === 0) return <FeedEmptyState copy={copy.emptyActivity} />;
+  if (items.length === 0) return <FeedEmptyState copy={copy.emptyState} />;
   return <ActivityRows items={items} />;
 }
 
@@ -243,14 +282,14 @@ export function PostsPanel({
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").profile;
-  if (posts.length === 0) return <FeedEmptyState copy={copy.emptyPosts} />;
+  if (posts.length === 0) return <FeedEmptyState copy={copy.emptyState} />;
 
   return (
     <FeedStack>
-      {posts.map((post) => (
-        <Card className="overflow-hidden" key={post.postId}>
+      {posts.map((post, index) => (
+        <MobileFlatCard isLast={index === posts.length - 1} key={post.postId}>
           <PostCard className="border-b-0" {...post.post} />
-        </Card>
+        </MobileFlatCard>
       ))}
     </FeedStack>
   );
@@ -262,23 +301,27 @@ export function CommentsPanel({
   comments: NonNullable<ProfilePageProps["comments"]>;
 }) {
   const { locale } = useUiLocale();
-  const routeCopy = getLocaleMessages(locale, "routes");
+  const copy = getLocaleMessages(locale, "routes").profile;
   const isMobile = useIsMobile();
 
   if (comments.length === 0) {
     return (
       <div className={cn("text-start px-5 py-8 text-base leading-7 text-muted-foreground", isMobile && "px-0")}>
-        {routeCopy.common.noComments}
+        {copy.emptyState}
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {comments.map((comment) => (
-        <CommentRow key={comment.commentId} comment={comment} />
+    <FeedStack>
+      {comments.map((comment, index) => (
+        <CommentRow
+          isLast={index === comments.length - 1}
+          key={comment.commentId}
+          comment={comment}
+        />
       ))}
-    </div>
+    </FeedStack>
   );
 }
 
@@ -289,11 +332,19 @@ export function ScrobblesPanel({
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").profile;
+  const isMobile = useIsMobile();
   return (
-    <Panel emptyCopy={copy.emptyScrobbles} hasContent={scrobbles.length > 0} title={copy.scrobblesTab}>
+    <Panel emptyCopy={copy.emptyState} hasContent={scrobbles.length > 0} title={copy.scrobblesTab}>
       <FeedStack>
-        {scrobbles.map((scrobble) => (
-          <Card className="overflow-hidden" key={scrobble.scrobbleId}>
+        {scrobbles.map((scrobble, index) => (
+          <Card
+            className={cn(
+              "overflow-hidden",
+              isMobile && "rounded-none border-x-0 border-t-0 bg-transparent shadow-none",
+              isMobile && index === scrobbles.length - 1 && "border-b-0",
+            )}
+            key={scrobble.scrobbleId}
+          >
             <SongItem {...toSongItemProps(scrobble)} />
           </Card>
         ))}
@@ -313,12 +364,13 @@ export function WalletPanel({
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").profile;
+  const isMobile = useIsMobile();
   const chainSections = (walletChainSections ?? profileAssetsToChainSections(walletAssets, walletAddress)) as ProfileWalletChainSection[];
   const hasWalletContent = Boolean(walletAddress) || chainSections.length > 0;
 
   return (
-    <Panel emptyCopy={copy.emptyWallet} hasContent={hasWalletContent} title={copy.walletTitle}>
-      <div className="space-y-3 p-3 sm:p-4">
+    <Panel emptyCopy={copy.emptyState} hasContent={hasWalletContent} title={copy.walletTitle}>
+      <div className={cn("space-y-3 p-3 sm:p-4", isMobile && "space-y-0 p-0")}>
         {chainSections.length ? (
           chainSections.map((section) => (
             <WalletChainCard
@@ -328,7 +380,7 @@ export function WalletPanel({
             />
           ))
         ) : walletAddress ? (
-          <Card className="border-border bg-background/40 p-4 shadow-none">
+          <Card className={cn("border-border bg-background/40 p-4 shadow-none", isMobile && "rounded-none border-x-0 bg-transparent px-0")}>
             <CopyField value={walletAddress} />
           </Card>
         ) : null}
@@ -390,10 +442,11 @@ function WalletChainCard({
   section: ProfileWalletChainSection;
 }) {
   const address = section.walletAddress ?? fallbackAddress;
+  const isMobile = useIsMobile();
 
   return (
-    <Card className="overflow-hidden border-border bg-background/40 shadow-none">
-      <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <Card className={cn("overflow-hidden border-border bg-background/40 shadow-none", isMobile && "rounded-none border-x-0 bg-transparent")}>
+      <div className={cn("flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between", isMobile && "px-0")}>
         <div className="flex min-w-0 items-center gap-3">
           <ChainIcon chainId={section.chainId} className="size-12" />
           <div className="min-w-0">
@@ -456,7 +509,7 @@ function WalletTokenRow({
   })}` : null);
 
   return (
-    <div className="flex items-center justify-between gap-4 px-5 py-4">
+    <div className="flex items-center justify-between gap-4 px-0 py-4 md:px-5">
       <div className="flex min-w-0 items-center gap-3">
         <WalletAssetIcon chainId={chainId} token={token} />
         <div className="min-w-0">

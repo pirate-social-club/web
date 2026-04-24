@@ -181,7 +181,7 @@ export function CreateCommunityPage() {
   return (
     <>
       <section className="flex min-w-0 flex-1 flex-col gap-6">
-        <PageContainer size="wide">
+        <PageContainer size="rail">
           <CreateCommunityComposer
             creatorVerificationState={creatorVerificationState}
             deferCreatorVerification

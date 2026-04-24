@@ -1,12 +1,20 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  buildCommunityModerationEntryPath,
   buildStarterPricingPolicyDraft,
   validatePricingPolicyDraft,
 } from "./moderation-helpers";
 import { COUNTRIES } from "@/lib/countries";
 
 describe("pricing policy moderation helpers", () => {
+  test("uses the moderation index as the mobile web entry point", () => {
+    expect(buildCommunityModerationEntryPath("cmt_74675bfb653a43809b1238fd6d271867", true))
+      .toBe("/c/cmt_74675bfb653a43809b1238fd6d271867/mod");
+    expect(buildCommunityModerationEntryPath("cmt_74675bfb653a43809b1238fd6d271867", false))
+      .toBe("/c/cmt_74675bfb653a43809b1238fd6d271867/mod/profile");
+  });
+
   test("rejects duplicate country assignments across price groups", () => {
     expect(validatePricingPolicyDraft({
       countryAssignments: [

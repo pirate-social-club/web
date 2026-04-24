@@ -38,10 +38,12 @@ export function FlatTabsList({
 export function FlatTabsTrigger({
   children,
   className,
+  title,
   value,
 }: {
   children: React.ReactNode;
   className?: string;
+  title?: string;
   value: string;
 }) {
   return (
@@ -50,6 +52,7 @@ export function FlatTabsTrigger({
         "min-w-0 rounded-none border-b-2 border-transparent px-1 py-4 text-base font-semibold data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none",
         className,
       )}
+      title={title}
       value={value}
     >
       {children}

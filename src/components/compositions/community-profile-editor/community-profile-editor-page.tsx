@@ -247,7 +247,7 @@ export function CommunityProfileEditorPage({
               value={description}
             />
           </div>
-          <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
+          <div className="community-moderation-inline-save-action flex items-center justify-end gap-3 border-t border-border pt-5">
             {onBackClick ? (
               <Button onClick={onBackClick} type="button" variant="ghost">
                 Back

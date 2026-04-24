@@ -16,6 +16,7 @@ import {
   getSessionAccessTokenExpiryMs,
   useSession,
 } from "@/lib/api/session-store";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { logger } from "@/lib/logger";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 
@@ -325,6 +326,11 @@ export function PirateAuthProvider({
     if (!appId) {
       return;
     }
+
+    trackAnalyticsEvent({
+      eventName: "auth_started",
+      properties: { provider: "privy" },
+    });
 
     if (loadedConnect) {
       loadedConnect();

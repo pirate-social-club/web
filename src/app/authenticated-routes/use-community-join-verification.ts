@@ -15,6 +15,7 @@ import {
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { toast } from "@/components/primitives/sonner";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 
@@ -141,6 +142,11 @@ export function useCommunityJoinVerification({
   const handleJoin = React.useCallback(async () => {
     setJoinLoading(true);
     setJoinError(null);
+    trackAnalyticsEvent({
+      eventName: "community_join_requested",
+      communityId,
+      properties: { status: eligibility?.status ?? "unknown" },
+    });
     if (eligibility?.status === "verification_required") {
       setJoinLoading(false);
       const provider = resolveSuggestedVerificationProvider(eligibility);

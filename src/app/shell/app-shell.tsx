@@ -9,6 +9,7 @@ import { SidebarInset, SidebarProvider } from "@/components/compositions/sidebar
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { Toaster } from "@/components/primitives/sonner";
 import { ApiProvider, useSessionRevalidation } from "@/lib/api";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { useSession } from "@/lib/api/session-store";
 import { PirateAuthProvider } from "@/lib/auth/privy-provider";
 import { useNotificationSummary } from "@/lib/notifications/use-notification-summary";
@@ -52,6 +53,47 @@ function SessionRevalidator({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AnalyticsRouteTracker({ route }: { route: AppRoute }) {
+  React.useEffect(() => {
+    const pathname = typeof window !== "undefined" ? window.location.pathname : route.path;
+    trackAnalyticsEvent({
+      eventName: "page_viewed",
+      properties: { pathname },
+    });
+
+    if (route.kind === "home") {
+      trackAnalyticsEvent({ eventName: "home_feed_viewed" });
+    } else if (route.kind === "community") {
+      trackAnalyticsEvent({
+        eventName: "community_viewed",
+        communityId: route.communityId,
+      });
+    } else if (route.kind === "post") {
+      trackAnalyticsEvent({
+        eventName: "thread_viewed",
+        postId: route.postId,
+      });
+    } else if (route.kind === "create-post") {
+      trackAnalyticsEvent({
+        eventName: "post_composer_opened",
+        communityId: route.communityId,
+        properties: { entrypoint: "community" },
+      });
+    } else if (route.kind === "create-post-global") {
+      trackAnalyticsEvent({
+        eventName: "post_composer_opened",
+        properties: { entrypoint: "global" },
+      });
+    } else if (route.kind === "create-community") {
+      trackAnalyticsEvent({ eventName: "community_create_started" });
+    } else if (route.kind === "inbox") {
+      trackAnalyticsEvent({ eventName: "notification_inbox_viewed" });
+    }
+  }, [route]);
+
+  return null;
+}
+
 function NotificationShell({
   copy,
   effectiveDir,
@@ -91,7 +133,7 @@ function NotificationShell({
         <div className="flex min-h-0 w-full flex-1">
           {useStandaloneRouteShell ? (
             <main className="flex min-h-0 w-full flex-1">
-              <React.Suspense fallback={<RouteContentFallback />}>
+              <React.Suspense fallback={<RouteContentFallback route={route} />}>
                 <LazyAuthenticatedRouteRenderer route={route} />
               </React.Suspense>
             </main>
@@ -112,7 +154,7 @@ function NotificationShell({
               />
               <SidebarInset className="min-h-0">
                 <main className="flex w-full flex-1 px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.5rem)] md:px-5 md:pb-8 md:pt-6 lg:px-8">
-                  <React.Suspense fallback={<RouteContentFallback />}>
+                  <React.Suspense fallback={<RouteContentFallback route={route} />}>
                     {(route.kind === "community" || route.kind === "post") && !session
                       ? <LazyPublicRouteRenderer route={route} />
                       : <LazyAuthenticatedRouteRenderer route={route} />}
@@ -147,11 +189,12 @@ export function PirateAppShell({ initialHost, initialPath }: { initialHost?: str
       title={copy.rootError.title}
     >
       <ApiProvider initialHost={initialHost}>
+        <AnalyticsRouteTracker route={route} />
         {isPublicProfileRoute ? (
           <>
             <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
               <PageContainer>
-                <React.Suspense fallback={<RouteContentFallback />}>
+                <React.Suspense fallback={<RouteContentFallback route={route} />}>
                   {route.kind === "public-profile" || route.kind === "public-agent" ? <LazyPublicRouteRenderer route={route} /> : null}
                 </React.Suspense>
               </PageContainer>

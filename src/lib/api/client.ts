@@ -29,6 +29,7 @@ import type {
   JsonErrorResponse,
   RefreshAuthCallback,
 } from "./client-internal";
+import { getAnalyticsIdentity } from "../analytics-identity";
 import { logger } from "../logger";
 
 export class ApiError extends Error {
@@ -175,19 +176,33 @@ export class ApiClient {
 
   private async request<T>(
     path: string,
-    init?: RequestInit & { tokenRequired?: boolean; replayedAfterRefresh?: boolean },
+    init?: RequestInit & {
+      tokenRequired?: boolean;
+      tokenOptional?: boolean;
+      replayedAfterRefresh?: boolean;
+      replayedWithoutOptionalToken?: boolean;
+    },
   ): Promise<T> {
-    const tokenRequired = init?.tokenRequired ?? true;
+    const tokenOptional = init?.tokenOptional ?? false;
+    const tokenRequired = init?.tokenRequired ?? !tokenOptional;
     const replayedAfterRefresh = init?.replayedAfterRefresh ?? false;
+    const replayedWithoutOptionalToken = init?.replayedWithoutOptionalToken ?? false;
     const {
       tokenRequired: _tokenRequired,
+      tokenOptional: _tokenOptional,
       replayedAfterRefresh: _replayedAfterRefresh,
+      replayedWithoutOptionalToken: _replayedWithoutOptionalToken,
       ...fetchInit
     } = init ?? {};
     const body = fetchInit.body;
     const usesFormData = typeof FormData !== "undefined" && body instanceof FormData;
     const headers: Record<string, string> = usesFormData ? {} : { "Content-Type": "application/json" };
-    let token = tokenRequired ? this.getToken() : null;
+    if (typeof window !== "undefined") {
+      const identity = getAnalyticsIdentity();
+      headers["x-pirate-anonymous-id"] = identity.anonymousId;
+      headers["x-pirate-session-id"] = identity.sessionId;
+    }
+    let token = tokenRequired || tokenOptional ? this.getToken() : null;
 
     if (tokenRequired) {
       if (!token) {
@@ -203,8 +218,12 @@ export class ApiClient {
       }
     }
 
+    if (tokenOptional && token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
     const method = init?.method ?? "GET";
-    logger.info("[api-client] request", { method, path, tokenRequired });
+    logger.info("[api-client] request", { method, path, tokenOptional, tokenRequired });
 
     let res: Response;
     try {
@@ -254,6 +273,21 @@ export class ApiClient {
               replayedAfterRefresh: true,
             });
           }
+        }
+
+        if (
+          tokenOptional &&
+          !replayedWithoutOptionalToken &&
+          res.status === 401 &&
+          body.code === "auth_error"
+        ) {
+          logger.info("[auth] optional token rejected, replaying without auth", { method, path });
+          return this.request<T>(path, {
+            ...init,
+            tokenOptional: false,
+            tokenRequired: false,
+            replayedWithoutOptionalToken: true,
+          });
         }
 
         logger.error("[api-client] request failed", {

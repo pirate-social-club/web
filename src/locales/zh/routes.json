@@ -687,6 +687,7 @@
       "gates": "Gates",
       "safety": "Safety",
       "agents": "Agents",
+      "machineAccess": "机器访问",
       "namespace": "Namespace verification",
       "communitySection": "Community",
       "accessSection": "Access",
@@ -933,6 +934,32 @@
         "copied": "Copied",
         "copyMessage": "Copy message"
       }
+    },
+    "machineAccess": {
+      "title": "机器访问",
+      "defaultNotice": "公开且人类可见的界面默认可被结构化读取。",
+      "surfacesTitle": "例外",
+      "communityIdentityLabel": "社区身份",
+      "communityStatsLabel": "社区统计",
+      "threadCardsLabel": "主题卡片",
+      "threadBodiesLabel": "主题正文",
+      "topCommentsLabel": "热门评论",
+      "eventsLabel": "事件",
+      "limitsTitle": "运行限制",
+      "anonymousRateLabel": "匿名代理",
+      "authenticatedRateLabel": "已认证代理",
+      "topCommentsLimitLabel": "每个主题的热门评论数",
+      "lowRateTier": "低",
+      "standardRateTier": "标准",
+      "allowedUsesTitle": "允许的用途",
+      "summarizationLabel": "摘要",
+      "analyticsLabel": "分析",
+      "aiTrainingLabel": "AI 训练",
+      "allowedLabel": "允许",
+      "prohibitedLabel": "禁止",
+      "memberOnlyNotice": "会员专属内容保持相同门槛，并要求认证访问。",
+      "killSwitchNotice": "平台可在滥用响应期间按社区或界面关闭访问。",
+      "policyOriginDefault": "这些是继承的默认值。仅在此社区需要例外时保存。"
     }
   },
   "wallet": {

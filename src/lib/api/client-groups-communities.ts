@@ -30,6 +30,8 @@ import type {
 import type {
   ApiCommunityDonationPolicyResponse,
   ApiCommunityGatesUpdateRequest,
+  ApiCommunityMachineAccessPolicy,
+  ApiCommunityMachineAccessPolicyUpdate,
   ApiCommunityMediaUploadResponse,
   ApiCommunityRuleInput,
   ApiCommunitySafetyUpdateRequest,
@@ -111,6 +113,18 @@ export function createCommunitiesApi(request: ApiRequest) {
     getDonationPolicy: (communityId: string): Promise<ApiCommunityDonationPolicyResponse> =>
       request<ApiCommunityDonationPolicyResponse>(
         `/communities/${encodeURIComponent(communityId)}/donation-policy`,
+      ),
+    getMachineAccessPolicy: (communityId: string): Promise<ApiCommunityMachineAccessPolicy> =>
+      request<ApiCommunityMachineAccessPolicy>(
+        `/communities/${encodeURIComponent(communityId)}/machine-access-policy`,
+      ),
+    updateMachineAccessPolicy: (
+      communityId: string,
+      body: ApiCommunityMachineAccessPolicyUpdate,
+    ): Promise<ApiCommunityMachineAccessPolicy> =>
+      request<ApiCommunityMachineAccessPolicy>(
+        `/communities/${encodeURIComponent(communityId)}/machine-access-policy`,
+        { method: "PATCH", body: JSON.stringify(body) },
       ),
     resolveDonationPartner: (
       communityId: string,

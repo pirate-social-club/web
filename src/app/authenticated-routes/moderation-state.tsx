@@ -16,6 +16,7 @@ import { useCommunityAccessState } from "./use-community-access-state";
 import { useCommunityAgentPolicyState } from "./use-community-agent-policy-state";
 import { useCommunityCommerceState } from "./use-community-commerce-state";
 import { useCommunityContentPolicyState } from "./use-community-content-policy-state";
+import { useCommunityMachineAccessState } from "./use-community-machine-access-state";
 import { useCommunityProfileState } from "./use-community-profile-state";
 import { useCommunitySafetyState } from "./use-community-safety-state";
 
@@ -111,6 +112,7 @@ export function useCommunityModerationState(communityId: string) {
   const access = useCommunityAccessState({ community, saveCommunity });
   const safety = useCommunitySafetyState({ community, saveCommunity });
   const agents = useCommunityAgentPolicyState({ community, saveCommunity });
+  const machineAccess = useCommunityMachineAccessState({ community });
 
   return {
     activeNamespaceSessionId,
@@ -125,6 +127,7 @@ export function useCommunityModerationState(communityId: string) {
     ...access,
     ...safety,
     ...agents,
+    ...machineAccess,
     ...profile,
     ...contentPolicy,
     ...commerce,

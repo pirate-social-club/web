@@ -37,6 +37,8 @@ export function getCommunityModerationTitle(
       return copy.nav.safety;
     case "agents":
       return copy.nav.agents;
+    case "machine-access":
+      return copy.nav.machineAccess;
     case "namespace":
     default:
       return copy.nav.namespace;

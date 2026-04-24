@@ -15,6 +15,7 @@ import { CommunityNamespaceVerificationPage } from "@/components/compositions/co
 import { CommunityPricingEditorPage } from "@/components/compositions/community-pricing-editor/community-pricing-editor-page";
 import { CommunityRulesEditorPage } from "@/components/compositions/community-rules-editor/community-rules-editor-page";
 import { CommunityAgentPolicyPage } from "@/components/compositions/community-agent-policy/community-agent-policy";
+import { CommunityMachineAccessPage } from "@/components/compositions/community-machine-access/community-machine-access";
 import { CommunitySafetyPage } from "@/components/compositions/community-safety-page/community-safety-page";
 import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
 import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
@@ -395,6 +396,16 @@ export function CommunityModerationPage({
           saveDisabled={state.savingAgents}
           settings={state.agentSettings}
           submitState={state.agentSubmitState}
+        />
+      );
+    } else if (section === "machine-access") {
+      content = (
+        <CommunityMachineAccessPage
+          onSave={state.handleSaveMachineAccess}
+          onSettingsChange={state.setMachineAccessSettings}
+          saveDisabled={state.savingMachineAccess || state.loadingMachineAccess || !state.machineAccessDirty}
+          settings={state.machineAccessSettings}
+          submitState={state.machineAccessSubmitState}
         />
       );
     } else {

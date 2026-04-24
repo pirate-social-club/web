@@ -250,6 +250,36 @@ export type DonationPolicyUpdateInput = {
   donation_partner?: ApiDonationPartnerSummaryInput | null;
 };
 
+export type ApiCommunityMachineAccessPolicy = {
+  community_id: string;
+  policy_origin: "default" | "explicit";
+  access_mode: "structured_api" | "structured_api_enhanced";
+  included_surfaces: {
+    community_identity: true;
+    community_stats: boolean;
+    thread_cards: boolean;
+    thread_bodies: boolean;
+    top_comments: boolean;
+    events: boolean;
+  };
+  allowed_uses: {
+    summarization: true;
+    analytics: true;
+    ai_training: "prohibited";
+  };
+  operational_limits: {
+    anonymous_rate_tier: "low";
+    authenticated_rate_tier: "standard";
+    top_comments_limit: number;
+    max_lookback_window: string;
+  };
+  updated_at: string;
+};
+
+export type ApiCommunityMachineAccessPolicyUpdate = {
+  included_surfaces?: Partial<ApiCommunityMachineAccessPolicy["included_surfaces"]>;
+};
+
 export type ProfileUpdateInput = {
   display_name?: string | null;
   avatar_ref?: string | null;

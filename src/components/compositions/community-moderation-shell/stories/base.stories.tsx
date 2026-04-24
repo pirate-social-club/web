@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
-import { CurrencyDollar, Gavel, Heart, ImageSquare, LinkSimple, Lock, Robot, SealCheck, Shield, Tag } from "@phosphor-icons/react";
+import { CurrencyDollar, Database, Gavel, Heart, ImageSquare, LinkSimple, Lock, Robot, SealCheck, Shield, Tag } from "@phosphor-icons/react";
 
 import type { CommunityModerationSection } from "@/app/authenticated-routes/moderation-helpers";
 import { CommunityAgentPolicyPage } from "@/components/compositions/community-agent-policy/community-agent-policy";
+import { CommunityMachineAccessPage } from "@/components/compositions/community-machine-access/community-machine-access";
+import { createDefaultMachineAccessSettings } from "@/components/compositions/community-machine-access/community-machine-access.types";
 import {
   CommunityDonationsEditorPage,
   type DonationPartnerPreview,
@@ -141,6 +143,7 @@ function ModerationShellStory({
           { active: activeView === "gates", icon: Lock, label: "Gates", onSelect: () => setActiveView("gates") },
           { active: activeView === "safety", icon: Shield, label: "Safety", onSelect: () => setActiveView("safety") },
           { active: activeView === "agents", icon: Robot, label: "Agents", onSelect: () => setActiveView("agents") },
+          { active: activeView === "machine-access", icon: Database, label: "Machine access", onSelect: () => setActiveView("machine-access") },
         ],
       }, {
         label: "Verification",
@@ -240,6 +243,11 @@ function ModerationShellStory({
             dailyPostCap: 5,
             dailyReplyCap: 20,
           }}
+          submitState={{ kind: "idle" }}
+        />
+      ) : activeView === "machine-access" ? (
+        <CommunityMachineAccessPage
+          settings={createDefaultMachineAccessSettings()}
           submitState={{ kind: "idle" }}
         />
       ) : (
@@ -421,6 +429,18 @@ export const Agents: Story = {
       initialReportReason="Respect others and be civil"
       initialRuleName="Respect others and be civil"
       initialView="agents"
+    />
+  ),
+};
+
+export const MachineAccess: Story = {
+  name: "Machine access",
+  render: () => (
+    <ModerationShellStory
+      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
+      initialReportReason="Respect others and be civil"
+      initialRuleName="Respect others and be civil"
+      initialView="machine-access"
     />
   ),
 };

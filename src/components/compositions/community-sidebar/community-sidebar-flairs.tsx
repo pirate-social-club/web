@@ -3,6 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import type { CommunitySidebarFlairPolicy } from "./community-sidebar.types";
+import { Type } from "@/components/primitives/type";
 
 const MAX_VISIBLE_FLAIRS = 8;
 
@@ -43,9 +44,9 @@ export function CommunitySidebarFlairs({
         </a>
       ))}
       {remaining > 0 && (
-        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-base text-muted-foreground/60">
+        <Type as="span" variant="caption" className="inline-flex items-center rounded-full px-2.5 py-0.5 /60">
           +{remaining}
-        </span>
+        </Type>
       )}
     </div>
   );

@@ -14,6 +14,8 @@ import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { DEFAULT_STORY_CHECKOUT_ROUTE, executeRoutedStoryCheckout, findConnectedFundingWallet } from "@/lib/commerce/routed-checkout";
 import { getErrorMessage } from "@/lib/error-utils";
 import { toast } from "@/components/primitives/sonner";
+import { SongPurchaseModal } from "@/components/compositions/song-purchase-modal/song-purchase-modal";
+import { formatUsdLabel } from "@/lib/formatting/currency";
 
 type CommunitiesApi = Pick<
   ApiClient["communities"],
@@ -115,4 +117,97 @@ export function useSongPurchase({
     session?.profile.primary_wallet_address,
     session?.user.primary_wallet_attachment_id,
   ]);
+}
+
+type PendingSongPurchase = {
+  communityId: string;
+  listing: ApiCommunityListing;
+  successMessage: SongPurchaseSuccessMessage;
+  titleText: string;
+};
+
+export function useSongPurchaseFlow({
+  commerceEnabled,
+  refreshSongCommerce,
+  selfVerificationHref,
+  selfVerificationSavingsPercent = null,
+  onSelfVerificationClick,
+}: {
+  commerceEnabled: boolean;
+  refreshSongCommerce: () => Promise<void> | void;
+  selfVerificationHref?: string | null;
+  selfVerificationSavingsPercent?: number | null;
+  onSelfVerificationClick?: () => void;
+}) {
+  const api = useApi();
+  const session = useSession();
+  const { connectedWallets } = usePiratePrivyWallets({ enabled: commerceEnabled });
+  const [pendingPurchase, setPendingPurchase] = React.useState<PendingSongPurchase | null>(null);
+  const [purchaseError, setPurchaseError] = React.useState<string | null>(null);
+  const [purchaseProcessing, setPurchaseProcessing] = React.useState(false);
+
+  const closePurchaseModal = React.useCallback((open: boolean) => {
+    if (open) return;
+    if (purchaseProcessing) return;
+    setPendingPurchase(null);
+    setPurchaseError(null);
+  }, [purchaseProcessing]);
+
+  const buySong = React.useCallback((params: PendingSongPurchase) => {
+    setPurchaseError(null);
+    setPendingPurchase(params);
+  }, []);
+
+  const confirmPurchase = React.useCallback(async () => {
+    if (!pendingPurchase || purchaseProcessing) return;
+
+    setPurchaseProcessing(true);
+    setPurchaseError(null);
+    await executeSongPurchase({
+      communities: api.communities,
+      communityId: pendingPurchase.communityId,
+      connectedWallets,
+      listing: pendingPurchase.listing,
+      onError: (message) => {
+        setPurchaseError(message);
+        toast.error(message);
+      },
+      onSuccess: (message) => {
+        toast.success(message);
+        setPendingPurchase(null);
+      },
+      primaryWalletAddress: session?.profile.primary_wallet_address,
+      refreshSongCommerce,
+      settlementWalletAttachmentId: session?.user.primary_wallet_attachment_id,
+      successMessage: pendingPurchase.successMessage,
+      titleText: pendingPurchase.titleText,
+    });
+    setPurchaseProcessing(false);
+  }, [
+    api.communities,
+    connectedWallets,
+    pendingPurchase,
+    purchaseProcessing,
+    refreshSongCommerce,
+    session?.profile.primary_wallet_address,
+    session?.user.primary_wallet_attachment_id,
+  ]);
+
+  const purchaseModal = pendingPurchase
+    ? React.createElement(SongPurchaseModal, {
+      error: purchaseError,
+      fundingAssetLabel: DEFAULT_STORY_CHECKOUT_ROUTE.funding_asset?.display_name ?? "USDC",
+      onConfirm: confirmPurchase,
+      onOpenChange: closePurchaseModal,
+      onSelfVerificationClick,
+      open: true,
+      priceLabel: formatUsdLabel(pendingPurchase.listing.price_usd) ?? "$0.00",
+      processing: purchaseProcessing,
+      selfVerificationHref,
+      selfVerificationSavingsPercent,
+      songTitle: pendingPurchase.titleText,
+    })
+    : null;
+
+  return { buySong, purchaseModal };
 }

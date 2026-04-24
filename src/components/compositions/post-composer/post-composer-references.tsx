@@ -14,6 +14,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { FieldLabel } from "./post-composer-fields";
 import type { ComposerReference, LiveSetlistItemInput } from "./post-composer.types";
+import { Type } from "@/components/primitives/type";
 
 export function References({
   items,
@@ -38,7 +39,7 @@ export function References({
           className="flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3"
         >
           <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-foreground">{item.title}</p>
+            <Type as="p" variant="body-strong" className="truncate ">{item.title}</Type>
             {item.subtitle ? (
               <p className="truncate text-base text-muted-foreground">{item.subtitle}</p>
             ) : null}
@@ -114,7 +115,7 @@ export function SearchReferencePicker({
         <ComboboxList>
           {(item) => (
             <ComboboxItem key={item.id} value={item}>
-              <p className="truncate text-base font-semibold text-foreground">{item.title}</p>
+              <Type as="p" variant="body-strong" className="truncate ">{item.title}</Type>
               {item.subtitle ? (
                 <p className="truncate text-base text-muted-foreground">{item.subtitle}</p>
               ) : null}
@@ -138,7 +139,7 @@ export function SelectedReferenceCard({
   return (
     <div className="flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3">
       <div className="min-w-0">
-        <p className="truncate text-base font-semibold text-foreground">{item.title}</p>
+        <Type as="p" variant="body-strong" className="truncate ">{item.title}</Type>
         {item.subtitle ? (
           <p className="truncate text-base text-muted-foreground">{item.subtitle}</p>
         ) : null}
@@ -190,7 +191,7 @@ export function SetlistItemRow({
   return (
     <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-3">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-base font-semibold text-muted-foreground">{index + 1}</span>
+        <Type as="span" variant="caption" className=" font-semibold">{index + 1}</Type>
         <button
           className="text-muted-foreground hover:text-foreground"
           onClick={() => onRemove(index)}

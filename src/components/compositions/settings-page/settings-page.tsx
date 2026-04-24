@@ -1,5 +1,6 @@
 "use client";
 
+import { Type } from "@/components/primitives/type";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
@@ -26,7 +27,7 @@ export function SettingsPage({
   return (
     <div className={isMobile ? "flex w-full flex-col gap-5 px-4 py-5" : "mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8"}>
       <div className="space-y-1">
-        <h1 className={isMobile ? "text-3xl font-semibold tracking-tight text-foreground" : "text-4xl font-semibold tracking-tight text-foreground"}>{title ?? copy.title}</h1>
+        <Type as="h1" variant={isMobile ? "h1" : "display"}>{title ?? copy.title}</Type>
       </div>
 
       <SettingsTabNav activeTab={activeTab} onTabChange={onTabChange} />

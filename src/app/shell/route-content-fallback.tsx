@@ -1,9 +1,6 @@
-import { Spinner } from "@/components/primitives/spinner";
+import type { AppRoute } from "@/app/router";
+import { RouteLoadingState } from "@/app/route-loading-states";
 
-export function RouteContentFallback() {
-  return (
-    <div className="flex min-h-[40vh] w-full items-center justify-center" aria-busy="true">
-      <Spinner className="size-6" />
-    </div>
-  );
+export function RouteContentFallback({ route }: { route?: AppRoute }) {
+  return <RouteLoadingState route={route} />;
 }

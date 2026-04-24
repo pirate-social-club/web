@@ -4,6 +4,7 @@ import type { LocalizedPostResponse } from "@pirate/api-contracts";
 import type { Profile } from "@pirate/api-contracts";
 
 import { applyPostVote, toCommunityFeedItem, toHomeFeedItem } from "@/app/authenticated-route-renderer";
+import { loadProfilesByUserId } from "@/app/authenticated-routes/community-data";
 
 function createEntry(): HomeFeedItem {
   return {
@@ -74,6 +75,34 @@ function createEntry(): HomeFeedItem {
   };
 }
 
+function createAuthorProfile(overrides: Partial<Profile> = {}): Profile {
+  return {
+    avatar_ref: null,
+    bio: null,
+    cover_ref: null,
+    created_at: "2026-04-18T10:00:00.000Z",
+    display_name: "Blackbeard",
+    global_handle: {
+      free_rename_consumed: false,
+      global_handle_id: "ghl_blackbeard",
+      issuance_source: "generated_signup",
+      issued_at: "2026-04-18T10:00:00.000Z",
+      label: "sable-harbor-4143.pirate",
+      replaced_at: null,
+      status: "active",
+      tier: "generated",
+    },
+    linked_handles: null,
+    preferred_locale: null,
+    primary_public_handle: null,
+    primary_wallet_address: null,
+    updated_at: "2026-04-18T10:00:00.000Z",
+    user_id: "usr_author",
+    verification_capabilities: null,
+    ...overrides,
+  };
+}
+
 describe("toHomeFeedItem", () => {
   test("maps server home feed entries into home cards", () => {
     const item = toHomeFeedItem(createEntry(), {});
@@ -114,30 +143,7 @@ describe("toHomeFeedItem", () => {
 
   test("uses hydrated public handles before raw user id fallback", () => {
     const entry = createEntry();
-    const authorProfile: Profile = {
-      avatar_ref: null,
-      bio: null,
-      cover_ref: null,
-      created_at: "2026-04-18T10:00:00.000Z",
-      display_name: "Blackbeard",
-      global_handle: {
-        free_rename_consumed: false,
-        global_handle_id: "ghl_blackbeard",
-        issuance_source: "generated_signup",
-        issued_at: "2026-04-18T10:00:00.000Z",
-        label: "sable-harbor-4143.pirate",
-        replaced_at: null,
-        status: "active",
-        tier: "generated",
-      },
-      linked_handles: null,
-      preferred_locale: null,
-      primary_public_handle: null,
-      primary_wallet_address: null,
-      updated_at: "2026-04-18T10:00:00.000Z",
-      user_id: "usr_author",
-      verification_capabilities: null,
-    };
+    const authorProfile = createAuthorProfile();
 
     const item = toHomeFeedItem(entry, { usr_author: authorProfile });
 
@@ -146,39 +152,44 @@ describe("toHomeFeedItem", () => {
 
   test("prefers the primary public handle when one is selected", () => {
     const entry = createEntry();
-    const authorProfile: Profile = {
-      avatar_ref: null,
-      bio: null,
-      cover_ref: null,
-      created_at: "2026-04-18T10:00:00.000Z",
-      display_name: "Blackbeard",
-      global_handle: {
-        free_rename_consumed: false,
-        global_handle_id: "ghl_blackbeard",
-        issuance_source: "generated_signup",
-        issued_at: "2026-04-18T10:00:00.000Z",
-        label: "sable-harbor-4143.pirate",
-        replaced_at: null,
-        status: "active",
-        tier: "generated",
-      },
-      linked_handles: null,
-      preferred_locale: null,
+    const authorProfile = createAuthorProfile({
       primary_public_handle: {
         kind: "ens",
         label: "blackbeard.eth",
         linked_handle_id: "lnk_blackbeard_ens",
         verification_state: "verified",
       },
-      primary_wallet_address: null,
-      updated_at: "2026-04-18T10:00:00.000Z",
-      user_id: "usr_author",
-      verification_capabilities: null,
-    };
+    });
 
     const item = toHomeFeedItem(entry, { usr_author: authorProfile });
 
     expect(item.post.byline?.author?.label).toBe("blackbeard.eth");
+  });
+
+  test("renders an ENS primary byline after author profile hydration", async () => {
+    const entry = createEntry();
+    const authorProfile = createAuthorProfile({
+      primary_public_handle: {
+        kind: "ens",
+        label: "blackbeard.eth",
+        linked_handle_id: "lnk_blackbeard_ens",
+        verification_state: "verified",
+      },
+    });
+    const api = {
+      profiles: {
+        getByUserId: async (userId: string) => {
+          expect(userId).toBe("usr_author");
+          return authorProfile;
+        },
+      },
+    } as unknown as Parameters<typeof loadProfilesByUserId>[0];
+
+    const hydratedProfiles = await loadProfilesByUserId(api, [entry.post.post.author_user_id ?? ""]);
+    const item = toHomeFeedItem(entry, hydratedProfiles);
+
+    expect(item.post.byline?.author?.label).toBe("blackbeard.eth");
+    expect(item.post.byline?.author?.href).toBe("/u/blackbeard.eth");
   });
 
   test("passes through an onVote handler when the container provides one", () => {

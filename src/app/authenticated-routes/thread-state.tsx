@@ -88,10 +88,11 @@ export async function loadThreadCommentTree(
   postId: string,
   locale: string,
   canMutate = true,
+  sort: "best" | "new" | "old" | "top" = "best",
 ): Promise<ThreadCommentNode[]> {
   const topLevelComments = await listAllCommentPages((cursor) => canMutate
-    ? api.communities.listComments(communityId, postId, { cursor, limit: THREAD_COMMENT_PAGE_LIMIT, locale, sort: "best" })
-    : api.publicComments.listPostComments(postId, { cursor, limit: THREAD_COMMENT_PAGE_LIMIT, locale, sort: "best" }));
+    ? api.communities.listComments(communityId, postId, { cursor, limit: THREAD_COMMENT_PAGE_LIMIT, locale, sort })
+    : api.publicComments.listPostComments(postId, { cursor, limit: THREAD_COMMENT_PAGE_LIMIT, locale, sort }));
 
   return topLevelComments.map((item) => createThreadCommentNode(item));
 }

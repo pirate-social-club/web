@@ -10,6 +10,7 @@ export interface SettingsHandle {
   handleId: string | null;
   kind: "pirate" | "ens";
   label: string;
+  metadata?: Record<string, unknown> | null;
   note?: string;
   primary?: boolean;
   verificationState: "verified" | "unverified" | "stale";
@@ -31,11 +32,18 @@ export interface SettingsPageProps {
   title?: string;
   profile: {
     avatarSrc?: string;
+    avatarSource?: "ens" | "upload" | "none" | null;
     bio: string;
+    bioSource?: "ens" | "manual" | "none" | null;
     coverSrc?: string;
+    coverSource?: "ens" | "upload" | "none" | null;
     currentHandle: string;
     displayName: string;
     displayNameError?: string;
+    ensHandleLabel?: string;
+    canUseEnsAvatar?: boolean;
+    canUseEnsBio?: boolean;
+    canUseEnsCover?: boolean;
     linkedHandles: SettingsHandle[];
     primaryHandleId?: string | null;
     pendingAvatarLabel?: string;
@@ -51,9 +59,12 @@ export interface SettingsPageProps {
     >;
     onAvatarRemove?: () => void;
     onAvatarSelect?: (file: File | null) => void;
+    onAvatarUseEns?: () => void;
     onBioChange?: (value: string) => void;
+    onBioUseEns?: () => void;
     onCoverRemove?: () => void;
     onCoverSelect?: (file: File | null) => void;
+    onCoverUseEns?: () => void;
     onDisplayNameChange?: (value: string) => void;
     onPrimaryHandleChange?: (handleId: string | null) => void;
     onSave?: () => void;
@@ -63,10 +74,15 @@ export interface SettingsPageProps {
     ageStatusLabel?: string;
     locale: string;
     localeOptions: SettingsLocaleOption[];
+    nationalityBadgeCountryCode?: string | null;
+    nationalityBadgeCountryLabel?: string;
+    nationalityBadgeDisabled?: boolean;
+    nationalityBadgeEnabled?: boolean;
     saveDisabled?: boolean;
     submitState: SettingsSubmitState;
     onLocaleChange?: (value: string) => void;
     onLogout?: () => void;
+    onNationalityBadgeChange?: (enabled: boolean) => void;
     onSave?: () => void;
   };
   agents: {

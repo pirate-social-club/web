@@ -1,6 +1,7 @@
 "use client";
 
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
+import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { MembershipGateSummary as ApiMembershipGateSummary } from "@pirate/api-contracts";
 
@@ -204,6 +205,60 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       verified: link.verified,
     })),
     rules: getCommunitySidebarRules(community),
+  };
+}
+
+export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, locale?: string | null) {
+  const charityHref = preview.donation_partner?.provider_partner_ref
+    ? `https://app.endaoment.org/orgs/${preview.donation_partner.provider_partner_ref}`
+    : undefined;
+
+  return {
+    avatarSrc: preview.avatar_ref ?? undefined,
+    charity: preview.donation_policy_mode !== "none" && preview.donation_partner
+      ? {
+        avatarSrc: preview.donation_partner.image_url ?? undefined,
+        href: charityHref,
+        name: preview.donation_partner.display_name,
+      }
+      : null,
+    createdAt: preview.created_at,
+    description: resolveCommunityLocalizedText(preview, "community.description", preview.description),
+    displayName: preview.display_name,
+    memberCount: preview.member_count ?? undefined,
+    membershipMode: preview.membership_mode,
+    requirements: buildCommunitySidebarRequirements({
+      gateSummaries: preview.membership_gate_summaries,
+      locale,
+    }),
+    referenceLinks: preview.reference_links?.map((link) => ({
+      communityReferenceLinkId: link.community_reference_link_id,
+      label: resolveCommunityLocalizedText(
+        preview,
+        `community.reference_link.${link.community_reference_link_id}.label`,
+        link.label,
+      ) || null,
+      linkStatus: link.link_status,
+      metadata: {
+        displayName: resolveCommunityLocalizedText(
+          preview,
+          `community.reference_link.${link.community_reference_link_id}.metadata.display_name`,
+          link.metadata.display_name,
+        ) || null,
+        imageUrl: link.metadata.image_url ?? null,
+      },
+      platform: link.platform,
+      position: link.position,
+      url: link.url,
+      verified: link.verified,
+    })),
+    rules: preview.rules.map((rule) => ({
+      body: resolveCommunityLocalizedText(preview, `community.rule.${rule.rule_id}.body`, rule.body),
+      position: rule.position,
+      ruleId: rule.rule_id,
+      status: rule.status,
+      title: resolveCommunityLocalizedText(preview, `community.rule.${rule.rule_id}.title`, rule.title),
+    })),
   };
 }
 

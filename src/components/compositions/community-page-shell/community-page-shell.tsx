@@ -40,6 +40,7 @@ export interface CommunityPageShellProps {
   emptyState?: FeedEmptyState;
   headerAction?: React.ReactNode;
   items: FeedItem[];
+  loading?: boolean;
   onSortChange?: (sort: FeedSort) => void;
   routeLabel?: string | null;
   routeVerified?: boolean;
@@ -58,6 +59,7 @@ export function CommunityPageShell({
   emptyState,
   headerAction,
   items,
+  loading = false,
   onSortChange,
   routeLabel,
   routeVerified,
@@ -93,7 +95,7 @@ export function CommunityPageShell({
 
   if (isMobile) {
     return (
-      <section className={cn("mx-auto flex w-full min-w-0 max-w-[78rem] flex-col gap-4", className)}>
+      <section className={cn("mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-4", className)}>
         <div className="min-w-0">{hero}</div>
         <FlatTabBar
           actions={mobileView === "feed" && activeSort && availableSorts && availableSorts.length > 0 ? (
@@ -126,6 +128,7 @@ export function CommunityPageShell({
               controls={controls}
               emptyState={emptyState}
               items={items}
+              loading={loading}
               onSortChange={onSortChange}
             />
           </div>
@@ -159,6 +162,7 @@ export function CommunityPageShell({
         controls={controls}
         emptyState={emptyState}
         items={items}
+        loading={loading}
         onSortChange={onSortChange}
       />
     </ContentRailShell>

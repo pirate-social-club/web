@@ -15,7 +15,7 @@ export function VerificationAppDownloadLinks({
 }: {
   app: VerificationMobileApp;
   className?: string;
-  variant?: "buttons" | "inline";
+  variant?: "buttons" | "full" | "inline";
 }) {
   const config = VERIFICATION_MOBILE_APP_DOWNLOADS[app];
 
@@ -35,17 +35,17 @@ export function VerificationAppDownloadLinks({
 
   return (
     <div className={className ?? ""}>
-      <div className="grid grid-cols-2 gap-3">
-        <Button asChild className="w-full" variant="secondary">
+      <div className={variant === "full" ? "grid grid-cols-1 gap-3 sm:grid-cols-2" : "grid grid-cols-2 gap-3"}>
+        <Button asChild className={variant === "full" ? "h-14 w-full px-5" : "w-full"} variant={variant === "full" ? "outline" : "secondary"}>
           <a aria-label={`Download ${config.appName} for iOS`} href={config.iosUrl} rel="noopener noreferrer" target="_blank">
-            <AppleLogo className="size-5" weight="fill" />
-            <span>iOS</span>
+            <AppleLogo className={variant === "full" ? "size-6" : "size-5"} weight="fill" />
+            <span>{variant === "full" ? "App Store" : "iOS"}</span>
           </a>
         </Button>
-        <Button asChild className="w-full" variant="secondary">
+        <Button asChild className={variant === "full" ? "h-14 w-full px-5" : "w-full"} variant={variant === "full" ? "outline" : "secondary"}>
           <a aria-label={`Download ${config.appName} for Android`} href={config.androidUrl} rel="noopener noreferrer" target="_blank">
-            <AndroidLogo className="size-5" weight="fill" />
-            <span>Android</span>
+            <AndroidLogo className={variant === "full" ? "size-6" : "size-5"} weight="fill" />
+            <span>{variant === "full" ? "Google Play" : "Android"}</span>
           </a>
         </Button>
       </div>

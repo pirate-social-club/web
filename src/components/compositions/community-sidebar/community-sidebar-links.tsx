@@ -73,7 +73,7 @@ export function CommunitySidebarLinks({
             <span className="min-w-0 flex-1 truncate">{label}</span>
             {link.verified && (
               <SealCheck
-                className="size-5 shrink-0 text-blue-500"
+                className="size-5 shrink-0 text-info"
                 weight="fill"
               />
             )}

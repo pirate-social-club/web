@@ -12,6 +12,7 @@ import type {
   StartVerificationSessionRequest,
   User,
   VerificationSession,
+  Job,
 } from "@pirate/api-contracts";
 
 import { buildQueryPath, type ApiRequest } from "./client-internal";
@@ -38,13 +39,17 @@ export function createUsersApi(request: ApiRequest) {
 export function createOnboardingApi(request: ApiRequest) {
   return {
     getStatus: (): Promise<OnboardingStatus> => request<OnboardingStatus>("/onboarding/status"),
+    dismiss: (): Promise<OnboardingStatus> =>
+      request<OnboardingStatus>("/onboarding/dismiss", {
+        method: "POST",
+      }),
     startRedditVerification: (redditUsername: string): Promise<RedditVerification> =>
       request<RedditVerification>("/onboarding/reddit-verification", {
         method: "POST",
         body: JSON.stringify({ reddit_username: redditUsername }),
       }),
-    startRedditImport: (redditUsername: string): Promise<{ job_id: string }> =>
-      request<{ job_id: string }>("/onboarding/reddit-imports", {
+    startRedditImport: (redditUsername: string): Promise<{ job: Job }> =>
+      request<{ job: Job }>("/onboarding/reddit-imports", {
         method: "POST",
         body: JSON.stringify({ reddit_username: redditUsername }),
       }),
@@ -128,7 +133,7 @@ export function createFeedApi(request: ApiRequest) {
         locale: opts?.locale,
         sort: opts?.sort,
         time_range: opts?.timeRange,
-      }));
+      }), { tokenOptional: true });
     },
   };
 }

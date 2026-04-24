@@ -50,6 +50,18 @@ export interface SubredditEntry {
   rankSource?: "karma" | "posts" | "source_order";
 }
 
+export interface RedditImportSummaryState {
+  redditUsername: string;
+  globalKarma?: number | null;
+  topSubreddits?: SubredditEntry[];
+  coverageNote?: string | null;
+  suggestedCommunities?: Array<{
+    communityId: string;
+    name: string;
+    reason: string;
+  }>;
+}
+
 export interface HandleSuggestion {
   suggestedLabel: string;
   source: "verified_reddit_username";
@@ -79,6 +91,7 @@ export interface OnboardingRedditBootstrapProps {
   phase: OnboardingPhase;
   reddit: RedditVerificationState;
   importJob: ImportJobState;
+  redditImportSummary?: RedditImportSummaryState | null;
   handleSuggestion?: HandleSuggestion;
   actions?: OnboardingActions;
   callbacks?: OnboardingCallbacks;

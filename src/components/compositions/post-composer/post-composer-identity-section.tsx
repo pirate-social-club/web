@@ -16,6 +16,7 @@ import type {
   IdentityMode,
 } from "./post-composer.types";
 import { IdentitySelect, type IdentityOption } from "./post-composer-identity-select";
+import { Type } from "@/components/primitives/type";
 
 export function IdentitySection({
   authorMode,
@@ -105,9 +106,9 @@ export function QualifierSection({
       ) : null}
 
       {availableQualifiers.length === 0 ? (
-        <div className="rounded-[var(--radius-lg)] border border-dashed border-border-soft px-4 py-4 text-base text-muted-foreground">
+        <Type as="div" variant="caption" className="rounded-[var(--radius-lg)] border border-dashed border-border-soft px-4 py-4 ">
           {copy.empty.noOptionalQualifiers}
-        </div>
+        </Type>
       ) : null}
     </section>
   );

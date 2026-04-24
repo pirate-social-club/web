@@ -2,12 +2,16 @@
 
 import * as React from "react";
 
+import { AvatarWithBadge } from "@/components/compositions/avatar-badge";
 import { Avatar } from "@/components/primitives/avatar";
 import { cn } from "@/lib/utils";
+import { Type } from "@/components/primitives/type";
 
 export interface IdentityHeroProps {
   actions?: React.ReactNode;
   avatarFallback: string;
+  avatarBadgeCountryCode?: string | null;
+  avatarBadgeLabel?: string;
   avatarSrc?: string | null;
   className?: string;
   coverClassName?: string;
@@ -20,6 +24,8 @@ export interface IdentityHeroProps {
 
 export function IdentityHero({
   actions,
+  avatarBadgeCountryCode,
+  avatarBadgeLabel,
   avatarFallback,
   avatarSrc,
   className,
@@ -59,21 +65,33 @@ export function IdentityHero({
       <div className="relative z-10 flex flex-col gap-4 px-0 pb-4 pt-0 md:px-5 md:pb-6 lg:px-8 lg:pb-8">
         <div className="-mt-10 flex flex-col gap-4 md:-mt-12 md:flex-row md:items-end md:justify-between md:gap-5">
           <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-end md:gap-5">
-            <Avatar
-              className="relative z-10 size-20 border-4 border-background bg-card shadow-none md:size-24 md:shadow-[var(--shadow-lg)] lg:size-28"
-              fallback={avatarFallback}
-              size="lg"
-              src={avatarSrc?.trim() || undefined}
-            />
+            {avatarBadgeCountryCode && avatarBadgeLabel ? (
+              <AvatarWithBadge
+                avatarClassName="relative z-10 size-20 border-4 border-background bg-card shadow-none md:size-24 md:shadow-[var(--shadow-lg)] lg:size-28"
+                badgeCountryCode={avatarBadgeCountryCode}
+                badgeLabel={avatarBadgeLabel}
+                badgeSize={42}
+                fallback={avatarFallback}
+                size="lg"
+                src={avatarSrc?.trim() || undefined}
+              />
+            ) : (
+              <Avatar
+                className="relative z-10 size-20 border-4 border-background bg-card shadow-none md:size-24 md:shadow-[var(--shadow-lg)] lg:size-28"
+                fallback={avatarFallback}
+                size="lg"
+                src={avatarSrc?.trim() || undefined}
+              />
+            )}
             <div className="min-w-0 space-y-2 md:pb-1.5">
               <div className="space-y-1">
-                <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                <Type as="h1" variant="h1" className="truncate text-2xl md:text-3xl">
                   {title}
-                </h1>
+                </Type>
                 {subtitle ? (
-                  <div className="truncate text-base text-muted-foreground">
+                  <Type as="div" variant="caption" className="truncate ">
                     {subtitle}
-                  </div>
+                  </Type>
                 ) : null}
               </div>
               {details}

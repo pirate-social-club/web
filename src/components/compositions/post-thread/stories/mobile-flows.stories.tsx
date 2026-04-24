@@ -9,7 +9,11 @@ import { PostThread } from "../post-thread";
 import { ReplyContextCard } from "../reply-context-card";
 import type { PostThreadComment } from "../post-thread.types";
 
-const threadPost = POSTS_BY_ID.pst_01_weekly_listening;
+const threadPost = {
+  ...POSTS_BY_ID.pst_01_weekly_listening,
+  authorNationalityBadgeCountry: "US",
+  authorNationalityBadgeLabel: "Verified United States nationality",
+};
 
 const mobileThreadComments: PostThreadComment[] = [
   {
@@ -36,11 +40,33 @@ const mobileThreadComments: PostThreadComment[] = [
     authorLabel: "u/dialsanddrums",
     authorHref: "#",
     body: "A focused reply route can pin the parent comment, lift the keyboard immediately, and avoid the footer fighting for space.",
-    highlighted: true,
     scoreLabel: "53",
     timestampLabel: "15m",
   },
 ];
+
+function withCommentVoting(
+  comments: PostThreadComment[],
+  viewerVotes: Record<string, "up" | "down" | null>,
+  onVote: (commentId: string, direction: "up" | "down") => void,
+): PostThreadComment[] {
+  return comments.map((comment) => {
+    const commentId = comment.commentId ?? "";
+
+    return {
+      ...comment,
+      cancelReplyLabel: "Cancel",
+      children: comment.children ? withCommentVoting(comment.children, viewerVotes, onVote) : undefined,
+      onVote: commentId ? (direction) => onVote(commentId, direction) : undefined,
+      onReplySubmit: () => "submitted" as const,
+      replyActionLabel: "Reply",
+      replyPlaceholder: "Write a reply",
+      status: comment.status ?? "published",
+      submitReplyLabel: "Reply",
+      viewerVote: viewerVotes[commentId] ?? null,
+    };
+  });
+}
 
 const meta = {
   title: "Compositions/PostThread/MobileFlows",
@@ -55,17 +81,32 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const ThreadRead: Story = {
-  render: () => (
-    <MobileThreadScreen title="c/yeezy">
-      <div className="space-y-3 pb-4">
-        <PostThread
-          comments={mobileThreadComments}
-          commentsHeading="Comments"
-          post={threadPost}
-        />
-      </div>
-    </MobileThreadScreen>
-  ),
+  render: function ThreadReadStory() {
+    const [viewerVotes, setViewerVotes] = React.useState<Record<string, "up" | "down" | null>>({
+      "mobile-thread-1": "up",
+      "mobile-thread-1-1": null,
+      "mobile-thread-2": null,
+    });
+
+    const comments = withCommentVoting(mobileThreadComments, viewerVotes, (commentId, direction) => {
+      setViewerVotes((current) => ({
+        ...current,
+        [commentId]: direction,
+      }));
+    });
+
+    return (
+      <MobileThreadScreen title="c/yeezy">
+        <div className="space-y-3 pb-4">
+          <PostThread
+            comments={comments}
+            commentsHeading="Comments"
+            post={threadPost}
+          />
+        </div>
+      </MobileThreadScreen>
+    );
+  },
 };
 
 export const ReplyToPost: Story = {

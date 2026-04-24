@@ -44,6 +44,8 @@ function deriveUnlockFromContent(
 export function PostCard({
   viewContext = "home",
   identityPresentation,
+  authorNationalityBadgeCountry,
+  authorNationalityBadgeLabel,
   byline,
   qualifierLabels,
   title,
@@ -122,6 +124,8 @@ export function PostCard({
         )}
       >
         <PostCardHeader
+          authorNationalityBadgeCountry={authorNationalityBadgeCountry}
+          authorNationalityBadgeLabel={authorNationalityBadgeLabel}
           byline={byline}
           identityPresentation={identityPresentation}
           menuItems={menuItems}

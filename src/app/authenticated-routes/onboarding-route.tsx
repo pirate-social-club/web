@@ -58,6 +58,10 @@ function markImportQueued(
   setOnboardingStatus(status ? { ...status, reddit_import_status: "queued" } : status);
 }
 
+function normalizeHandleLabel(value: string): string {
+  return value.trim().replace(/\.pirate$/i, "").toLowerCase();
+}
+
 export function OnboardingPage() {
   const { copy } = useRouteMessages();
   const api = useApi();
@@ -211,6 +215,19 @@ export function OnboardingPage() {
     }
     setActionLoading(true);
     setError(null);
+
+    const currentHandle = session?.profile?.global_handle?.label ?? "";
+    if (normalizeHandleLabel(generatedHandle) === normalizeHandleLabel(currentHandle)) {
+      void api.onboarding.dismiss()
+        .then((status) => {
+          updateSessionOnboarding(status);
+          navigate("/");
+        })
+        .catch((e: unknown) => setError(e instanceof Error ? e.message : "Could not finish onboarding"))
+        .finally(() => setActionLoading(false));
+      return;
+    }
+
     void api.profiles.renameHandle(generatedHandle.replace(/\.pirate$/, ""))
       .then(() => api.profiles.getMe().then((profile) => updateSessionProfile(profile)))
       .then(() => {
@@ -219,7 +236,20 @@ export function OnboardingPage() {
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : copy.onboarding.errors.renameFailed))
       .finally(() => setActionLoading(false));
-  }, [actionLoading, api, copy.onboarding.errors.chooseHandle, copy.onboarding.errors.renameFailed, generatedHandle, onboardingStatus]);
+  }, [actionLoading, api, copy.onboarding.errors.chooseHandle, copy.onboarding.errors.renameFailed, generatedHandle, onboardingStatus, session?.profile?.global_handle?.label]);
+
+  const handleSkipOnboarding = React.useCallback(() => {
+    if (actionLoading) return;
+    setActionLoading(true);
+    setError(null);
+    void api.onboarding.dismiss()
+      .then((status) => {
+        updateSessionOnboarding(status);
+        navigate("/");
+      })
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Could not skip onboarding"))
+      .finally(() => setActionLoading(false));
+  }, [actionLoading, api]);
 
   if (loading) {
     return <FullPageSpinner />;
@@ -244,7 +274,7 @@ export function OnboardingPage() {
           callbacks={{
             onUsernameChange: (value) => { setRedditUsername(value); setRedditVerification((prev) => ({ ...prev, usernameValue: value })); },
             onImportKarmaNext: handleImportKarmaNext,
-            onImportKarmaSkip: () => navigate("/"),
+            onImportKarmaSkip: handleSkipOnboarding,
             onHandleChange: (value) => setGeneratedHandle(value),
             onGenerateHandle: () => {},
             onChooseNameContinue: handleChooseNameContinue,

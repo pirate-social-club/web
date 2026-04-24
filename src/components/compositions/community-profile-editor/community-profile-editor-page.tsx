@@ -6,6 +6,7 @@ import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { FormNote } from "@/components/primitives/form-layout";
+import { Type } from "@/components/primitives/type";
 import { Input } from "@/components/primitives/input";
 import { Textarea } from "@/components/primitives/textarea";
 import { cn } from "@/lib/utils";
@@ -88,7 +89,7 @@ function MediaControlCard({
     <Card className="overflow-hidden border-border bg-card shadow-none">
       <div className="space-y-4 px-5 py-5">
         <div className="space-y-1">
-          <h3 className="text-base font-semibold text-foreground">{title}</h3>
+          <Type as="h3" variant="body-strong">{title}</Type>
           {selectedLabel ? <div className="truncate text-base text-muted-foreground">{selectedLabel}</div> : null}
         </div>
         <div
@@ -174,9 +175,9 @@ export function CommunityProfileEditorPage({
   const bannerPreview = useObjectUrl(pendingBannerFile);
 
   return (
-    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
+    <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold text-foreground">{mc.appearanceTitle}</h2>
+        <Type as="h2" variant="h3">{mc.appearanceTitle}</Type>
         <div className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
           <MediaControlCard
             canRemove={Boolean(avatarSrc || pendingAvatarFile)}
@@ -221,7 +222,7 @@ export function CommunityProfileEditorPage({
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold text-foreground">{mc.profileTitle}</h2>
+        <Type as="h2" variant="h3">{mc.profileTitle}</Type>
         <Card className="space-y-5 border-border bg-card px-5 py-5 shadow-none">
           <div className="space-y-2">
             <label className="text-base font-medium text-foreground" htmlFor="community-profile-display-name">

@@ -117,7 +117,7 @@ export function MobileFooterNav({
       aria-label={primaryNavAriaLabel}
       className={cn("fixed inset-x-0 bottom-0 z-40 border-t border-border-soft bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md", className)}
     >
-      <div className="grid h-[4.5rem] grid-cols-5 items-center px-2">
+      <div className="grid h-[var(--header-height)] grid-cols-5 items-center px-2">
         {FOOTER_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = activeItem === item.id;

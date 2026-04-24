@@ -9,6 +9,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 
 import type { OnboardingVerificationGateProps } from "./onboarding-verification-gate.types";
+import { Type } from "@/components/primitives/type";
 
 const VERY_DOWNLOADS = VERIFICATION_MOBILE_APP_DOWNLOADS.very;
 
@@ -30,9 +31,9 @@ export function OnboardingVerificationGate({
         </div>
 
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">
+          <Type as="h2" variant="h3" className="">
             {copy.verifyStartTitle}
-          </h2>
+          </Type>
           <p className="mx-auto max-w-xl text-base leading-7 text-muted-foreground">
             {isPending
               ? copy.verifyPendingDescription
@@ -54,7 +55,7 @@ export function OnboardingVerificationGate({
         </Button>
 
         <div className="space-y-3">
-          <p className="text-base text-muted-foreground">{copy.downloadPrompt}</p>
+          <Type as="p" variant="caption" className="">{copy.downloadPrompt}</Type>
           <div className="mx-auto grid w-full max-w-sm grid-cols-2 gap-3 sm:max-w-xl">
             <Button asChild className="w-full" variant="secondary">
               <a href={VERY_DOWNLOADS.iosUrl} rel="noopener noreferrer" target="_blank">

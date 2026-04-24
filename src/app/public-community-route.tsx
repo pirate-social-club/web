@@ -16,7 +16,6 @@ import { SelfVerificationModal } from "@/components/compositions/self-verificati
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
-import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getPassportPromptCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
@@ -24,10 +23,11 @@ import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
-import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
+import { PublicRouteMessageState } from "./public-route-states";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
-import { buildCommunitySidebarRequirements } from "@/lib/community-sidebar-helpers";
+import { buildCommunityPreviewSidebar } from "@/lib/community-sidebar-helpers";
 import { buildFeedSortOptions } from "@/lib/feed-sort-options";
+import { CommunityRouteLoadingState } from "./route-loading-states";
 
 function usePublicCommunityPageData(communityId: string, localeTag: string, activeSort: FeedSort) {
   const api = useApi();
@@ -121,42 +121,11 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
     authorProfiles,
     error: previewError ?? postsError,
     loading: previewLoading || postsLoading,
+    postsLoading,
     posts,
     preview,
+    previewLoading,
     setPosts,
-  };
-}
-
-function buildPreviewSidebar(preview: ApiCommunityPreview, locale: string) {
-  const charityHref = preview.donation_partner?.provider_partner_ref
-    ? `https://app.endaoment.org/orgs/${preview.donation_partner.provider_partner_ref}`
-    : undefined;
-
-  return {
-    avatarSrc: preview.avatar_ref ?? undefined,
-    charity: preview.donation_policy_mode !== "none" && preview.donation_partner
-      ? {
-        avatarSrc: preview.donation_partner.image_url ?? undefined,
-        href: charityHref,
-        name: preview.donation_partner.display_name,
-      }
-      : null,
-    createdAt: preview.created_at,
-    description: resolveCommunityLocalizedText(preview, "community.description", preview.description),
-    displayName: preview.display_name,
-    memberCount: preview.member_count ?? undefined,
-    membershipMode: preview.membership_mode,
-    requirements: buildCommunitySidebarRequirements({
-      gateSummaries: preview.membership_gate_summaries,
-      locale,
-    }),
-    rules: (preview.rules ?? []).map((rule) => ({
-      ruleId: rule.rule_id,
-      title: resolveCommunityLocalizedText(preview, `community.rule.${rule.rule_id}.title`, rule.title),
-      body: resolveCommunityLocalizedText(preview, `community.rule.${rule.rule_id}.body`, rule.body),
-      position: rule.position,
-      status: rule.status,
-    })),
   };
 }
 
@@ -189,7 +158,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       : [...navigator.languages, navigator.language].filter(Boolean),
   }), [locale]);
   const [activeSort, setActiveSort] = React.useState<FeedSort>("best");
-  const { authorProfiles, error, loading, posts, preview, setPosts } = usePublicCommunityPageData(communityId, contentLocale, activeSort);
+  const { authorProfiles, error, posts, postsLoading, preview, previewLoading, setPosts } = usePublicCommunityPageData(communityId, contentLocale, activeSort);
   const { gateModal, invalidateCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: contentLocale,
     routeKind: "public-community",
@@ -274,15 +243,18 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     }
 
     const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-    const passportPrompt = getVerificationPromptCopy("passport", getPassportPromptCapabilities(gate.eligibility), { locale });
+    const verificationPrompt = getVerificationPromptCopy(
+      provider,
+      provider === "passport"
+        ? getPassportPromptCapabilities(gate.eligibility)
+        : getVerificationCapabilitiesForProvider(gate.eligibility, provider),
+      { locale },
+    );
     return {
-      description: provider === "passport"
-        ? passportPrompt.description
-        : action === "vote_post" || action === "vote_comment"
-          ? copy.interactionGate.verifyToVoteDescription
-          : copy.interactionGate.verifyToReplyDescription,
+      description: verificationPrompt.description,
+      icon: provider === "passport" ? null : provider,
       primaryAction: {
-        label: provider === "passport" ? passportPrompt.actionLabel : copy.createCommunity.startVerification,
+        label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
         loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
         onClick: async () => {
           if (provider === "very") {
@@ -309,7 +281,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         onClick: closeModal,
       },
       title: provider === "passport"
-        ? passportPrompt.title
+        ? verificationPrompt.title
         : action === "vote_post" || action === "vote_comment"
           ? copy.interactionGate.verifyToVoteTitle
           : copy.interactionGate.verifyToReplyTitle,
@@ -338,8 +310,8 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     });
   }, [api.posts.vote, buildBlockedModalState, posts, runGatedCommunityAction, setPosts]);
 
-  if (loading) {
-    return <PublicRouteLoadingState />;
+  if (previewLoading && !preview) {
+    return <CommunityRouteLoadingState />;
   }
 
   if (error) {
@@ -367,10 +339,8 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
           description={selfPrompt.description}
           error={selfError}
           href={selfPrompt.href}
-          loading={selfLoading}
           onOpenChange={handleSelfModalOpenChange}
           open={selfModalOpen}
-          qrValue={selfPrompt.qrValue}
           title={selfPrompt.title}
         />
       ) : null}
@@ -388,9 +358,10 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
           onComment: () => navigate(`/p/${post.post.post_id}`),
           onVote: (direction) => void voteOnPost(post.post.post_id, direction),
         }))}
+        loading={postsLoading}
         onSortChange={setActiveSort}
         routeLabel={`c/${communityId}`}
-        sidebar={buildPreviewSidebar(preview, locale)}
+        sidebar={buildCommunityPreviewSidebar(preview, locale)}
         title={preview.display_name}
         />
       </section>

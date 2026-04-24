@@ -10,6 +10,7 @@ import {
 } from "@/components/primitives/select";
 import { cn } from "@/lib/utils";
 import type { ComposerIdentityState } from "./post-composer.types";
+import { Type } from "@/components/primitives/type";
 
 export type IdentityOption = "public" | "anonymous" | "agent";
 
@@ -54,7 +55,7 @@ export function IdentitySelect({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-base text-muted-foreground">{postAsLabel}</span>
+      <Type as="span" variant="caption" className="">{postAsLabel}</Type>
       <Select
         value={selected.value}
         onValueChange={(v) => onChange(v as IdentityOption)}

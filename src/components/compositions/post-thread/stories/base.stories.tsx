@@ -5,9 +5,35 @@ import { POSTS_BY_ID } from "@/app/mocks";
 import { PostThread } from "../post-thread";
 import type { PostThreadComment } from "../post-thread.types";
 
-const threadPost = POSTS_BY_ID.pst_01_weekly_listening;
+const threadPost = {
+  ...POSTS_BY_ID.pst_01_weekly_listening,
+  authorNationalityBadgeCountry: "US",
+  authorNationalityBadgeLabel: "Verified United States nationality",
+};
 
-const comments: PostThreadComment[] = [
+function withCommentVoting(
+  comments: PostThreadComment[],
+  viewerVotes: Record<string, "up" | "down" | null>,
+  onVote: (commentId: string, direction: "up" | "down") => void,
+): PostThreadComment[] {
+  return comments.map((comment) => {
+    const commentId = comment.commentId ?? "";
+    return {
+      ...comment,
+      cancelReplyLabel: "Cancel",
+      children: comment.children ? withCommentVoting(comment.children, viewerVotes, onVote) : undefined,
+      onVote: commentId ? (direction) => onVote(commentId, direction) : undefined,
+      onReplySubmit: () => "submitted" as const,
+      replyActionLabel: "Reply",
+      replyPlaceholder: "Write a reply",
+      status: comment.status ?? "published",
+      submitReplyLabel: "Reply",
+      viewerVote: viewerVotes[commentId] ?? null,
+    };
+  });
+}
+
+const baseComments: PostThreadComment[] = [
   {
     commentId: "comment_1",
     authorLabel: "u/synthline",
@@ -32,7 +58,6 @@ const comments: PostThreadComment[] = [
             timestampLabel: "13m",
             scoreLabel: "12 score",
             body: "That is exactly why these weekly posts work. The replies become the actual listening log.",
-            highlighted: true,
           },
           {
             commentId: "comment_1_1_2",
@@ -94,9 +119,9 @@ const meta = {
   component: PostThread,
   args: {
     post: threadPost,
+    comments: baseComments,
     commentsHeading: "Comments",
     commentsBody: "Top-level comments land first. Branches expand only when someone asks for them.",
-    comments,
   },
   parameters: {
     layout: "fullscreen",
@@ -116,10 +141,80 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  render: function DefaultStory() {
+    const [viewerVotes, setViewerVotes] = React.useState<Record<string, "up" | "down" | null>>({
+      comment_1: null,
+      comment_1_1: "up",
+      comment_1_1_1: null,
+      comment_1_1_2: null,
+      comment_2: null,
+      comment_2_1: null,
+      comment_2_1_1: null,
+      comment_2_1_1_1: null,
+    });
+    const [sort, setSort] = React.useState<"best" | "new" | "old" | "top">("best");
+
+    const comments = withCommentVoting(baseComments, viewerVotes, (commentId, direction) => {
+      setViewerVotes((current) => ({
+        ...current,
+        [commentId]: direction,
+      }));
+    });
+
+    return (
+      <PostThread
+        availableCommentSorts={[
+          { label: "Best", value: "best" },
+          { label: "New", value: "new" },
+          { label: "Top", value: "top" },
+          { label: "Old", value: "old" },
+        ]}
+        commentSort={sort}
+        comments={comments}
+        commentsBody="Top-level comments land first. Branches expand only when someone asks for them."
+        commentsHeading="Comments"
+        onCommentSortChange={setSort}
+        post={threadPost}
+      />
+    );
+  },
+};
 
 export const NoRepliesYet: Story = {
   args: {
     comments: [],
+  },
+};
+
+function makeDeepThread(depth: number, maxDepth: number): PostThreadComment {
+  const id = `deep_${depth}`;
+  const comment: PostThreadComment = {
+    commentId: id,
+    authorLabel: `u/deep_${depth}`,
+    authorHref: "#",
+    timestampLabel: `${maxDepth - depth}m`,
+    scoreLabel: `${maxDepth - depth + 1} score`,
+    body: depth === maxDepth
+      ? "This is the deepest comment in the thread. Beyond this point the UI truncates and offers a 'Continue this thread' link instead of nesting further."
+      : `Comment at depth ${depth}. Each level indents slightly with a thread line on the left.`,
+    replyActionLabel: "Reply",
+    replyPlaceholder: "Write a reply",
+    cancelReplyLabel: "Cancel",
+    submitReplyLabel: "Reply",
+    onReplySubmit: () => "submitted",
+  };
+
+  if (depth < maxDepth) {
+    comment.children = [makeDeepThread(depth + 1, maxDepth)];
+  }
+
+  return comment;
+}
+
+export const DeeplyNested: Story = {
+  args: {
+    comments: [makeDeepThread(0, 10)],
+    commentsBody: "Nested up to 10 levels deep. After depth 8 the tree truncates with a 'Continue this thread' link.",
   },
 };

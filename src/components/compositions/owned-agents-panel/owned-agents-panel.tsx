@@ -5,6 +5,7 @@ import { Robot, SealCheck, Trash } from "@phosphor-icons/react";
 import { Button } from "@/components/primitives/button";
 import { CopyField } from "@/components/primitives/copy-field";
 import { FormNote } from "@/components/primitives/form-layout";
+import { Type } from "@/components/primitives/type";
 import { Input } from "@/components/primitives/input";
 import { Textarea } from "@/components/primitives/textarea";
 import {
@@ -237,7 +238,7 @@ function EmptyState({
       <div className="grid size-14 place-items-center rounded-full bg-muted text-muted-foreground">
         <Robot className="size-6" weight="duotone" />
       </div>
-      <p className="text-base font-semibold text-foreground">{copy.emptyTitle}</p>
+      <Type as="p" variant="body-strong" className="">{copy.emptyTitle}</Type>
       {loading ? <p className="text-muted-foreground">{copy.loadingLabel}</p> : null}
     </div>
   );
@@ -441,7 +442,7 @@ export function OwnedAgentsPanel({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold tracking-tight text-foreground">{copy.agentsTitle}</h2>
+        <Type as="h2" variant="h3">{copy.agentsTitle}</Type>
       </div>
 
       {canRegister && registrationState.kind !== "awaiting_owner" && registrationState.kind !== "pairing_code" ? (

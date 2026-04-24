@@ -38,6 +38,7 @@ export interface PirateNetworkConfig {
   appEnvironment: PirateAppEnvironment;
   base: PirateChainConfig & { network: PirateBaseNetwork };
   story: PirateChainConfig & { network: PirateStoryNetwork };
+  tempo: PirateChainConfig & { network: "tempo-moderato" };
   efp: PirateEfpDeploymentConfig;
   operators: {
     chipotleAllowed: boolean;
@@ -153,6 +154,16 @@ function resolveStoryConfig(storyNetwork: PirateStoryNetwork): PirateNetworkConf
   };
 }
 
+function resolveTempoConfig(): PirateNetworkConfig["tempo"] {
+  return {
+    network: "tempo-moderato",
+    chainId: 42431,
+    explorerUrl: "https://explore.tempo.xyz",
+    label: "Tempo Moderato",
+    rpcUrl: readEnv("VITE_TEMPO_MODERATO_RPC_URL") ?? "https://rpc.moderato.tempo.xyz",
+  };
+}
+
 function resolveEfpConfig(efpEnvironment: PirateEfpEnvironment): PirateNetworkConfig["efp"] {
   if (efpEnvironment === "mainnet") {
     return {
@@ -205,6 +216,7 @@ export function getPirateNetworkConfig(): PirateNetworkConfig {
     appEnvironment,
     base: resolveBaseConfig(baseNetwork),
     story: resolveStoryConfig(storyNetwork),
+    tempo: resolveTempoConfig(),
     efp: resolveEfpConfig(efpEnvironment),
     operators: {
       chipotleAllowed: appEnvironment !== "dev",

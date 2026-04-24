@@ -32,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { COUNTRIES, getCountryName } from "@/lib/countries";
 import { formatUsdLabel, parseUsdInput, useRouteMessages } from "@/app/authenticated-routes/route-core";
+import { Type } from "@/components/primitives/type";
 
 export type PricingTier = {
   id: string;
@@ -134,7 +135,7 @@ function CountryPicker({
         <span className="text-muted-foreground">Add country…</span>
       </ComboboxTrigger>
       <ComboboxContent
-        className="rounded-[calc(var(--radius-lg)+0.125rem)] border-border-soft bg-card p-1 shadow-[var(--shadow-lg)]"
+        className="rounded-[var(--radius-xl)] border-border-soft bg-card p-1 shadow-[var(--shadow-lg)]"
         collisionAvoidance={{ side: "none", align: "shift", fallbackAxisSide: "none" }}
         side="bottom"
         sideOffset={4}
@@ -343,15 +344,15 @@ export function CommunityPricingEditorPage({
   return (
     <section
       className={cn(
-        "mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8",
+        "mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8",
         className,
       )}
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">
+          <Type as="h1" variant="h1" className="md:text-4xl">
             {mc.title}
-          </h1>
+          </Type>
         </div>
         {onUseStarterTemplate ? (
           <Button
@@ -379,9 +380,9 @@ export function CommunityPricingEditorPage({
           <Label htmlFor="regional-pricing-enabled">
             {mc.regionalPricingLabel}
           </Label>
-          <div className="text-base text-muted-foreground">
+          <Type as="div" variant="caption" className="">
             {mc.regionalPricingDescription}
-          </div>
+          </Type>
         </div>
       </div>
 

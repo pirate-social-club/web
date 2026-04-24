@@ -1,33 +1,23 @@
 import * as React from "react";
-import { CaretDown, CaretUp } from "@phosphor-icons/react";
+import { Minus, Plus } from "@phosphor-icons/react";
 
 import { PostCard } from "@/components/compositions/post-card/post-card";
 import { Button } from "@/components/primitives/button";
-import { FormattedText } from "@/components/primitives/formatted-text";
 import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
-import { IconButton } from "@/components/primitives/icon-button";
-import { triggerCommentTapHaptic, triggerLikeToggleHaptic, triggerNavigationTapHaptic } from "@/lib/haptics";
+import { PillButton } from "@/components/primitives/pill-button";
+import { triggerNavigationTapHaptic } from "@/lib/haptics";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
+import { CommentCard } from "./comment-card";
 import type { PostThreadComment, PostThreadProps } from "./post-thread.types";
+import { Type } from "@/components/primitives/type";
 
 function getCommentKey(comment: PostThreadComment, fallbackDepth: number): string {
   return comment.commentId ?? comment.replyId ?? `${comment.authorLabel}-${comment.timestampLabel}-${fallbackDepth}`;
 }
 
-function commentBody(comment: PostThreadComment): string {
-  if (comment.status === "deleted") return "[deleted]";
-  if (comment.status === "removed") return "Removed by moderators.";
-  if (comment.status === "hidden") return "Hidden by moderators.";
-  return comment.body ?? "";
-}
-
-function branchPadding(depth: number): string {
-  if (depth >= 4) return "ps-3 sm:ps-4";
-  if (depth >= 2) return "ps-4 sm:ps-5";
-  return "ps-5 sm:ps-6";
-}
+const MAX_COMMENT_DEPTH = 8;
 
 function CommentNode({
   comment,
@@ -41,215 +31,109 @@ function CommentNode({
   const children = comment.children ?? [];
   const hasBranch = children.length > 0 || Boolean(comment.moreRepliesLabel);
   const [collapsed, setCollapsed] = React.useState(Boolean(comment.initiallyCollapsed));
-  const [showOriginal, setShowOriginal] = React.useState(false);
-  const [replyOpen, setReplyOpen] = React.useState(false);
-  const [replyBody, setReplyBody] = React.useState("");
-  const [replyBusy, setReplyBusy] = React.useState(false);
-  const body = showOriginal && comment.originalBody ? comment.originalBody : commentBody(comment);
-  const canToggleOriginal = comment.status === "published"
-    && Boolean(comment.originalBody)
-    && comment.originalBody !== comment.body
-    && Boolean(comment.showOriginalLabel)
-    && Boolean(comment.showTranslationLabel);
-  const canReply = comment.status === "published" && Boolean(comment.onReplySubmit);
+  const truncateDeepNesting = depth >= MAX_COMMENT_DEPTH && hasBranch;
 
-  const handleReplySubmit = React.useCallback(async () => {
-    const trimmed = replyBody.trim();
-    if (!trimmed || !comment.onReplySubmit) {
-      return;
-    }
-    try {
-      setReplyBusy(true);
-      const result = await comment.onReplySubmit({ body: trimmed, authorMode: "human" });
-      if (result === "blocked") {
-        return;
-      }
-      setReplyBody("");
-      setReplyOpen(false);
-    } finally {
-      setReplyBusy(false);
-    }
-  }, [comment, replyBody]);
+  const handleToggleCollapse = React.useCallback(() => {
+    if (!hasBranch) return;
+    triggerNavigationTapHaptic();
+    setCollapsed((value) => !value);
+  }, [hasBranch]);
 
   return (
-    <article className="space-y-3 px-4 py-4">
-      <div
-        className={cn(
-          "px-0 py-0 transition-colors md:rounded-[var(--radius-lg)] md:px-4 md:py-3",
-          comment.highlighted && "bg-primary/10 md:ring-1 md:ring-primary/30",
-          !comment.highlighted && depth === 0 && "md:bg-muted/20",
-          !comment.highlighted && depth > 0 && "bg-transparent",
+    <article className={cn("flex gap-2", depth > 0 && "pt-3")}>
+      {/* Left thread/collapse column */}
+      <div className="flex w-5 flex-col items-center">
+        {hasBranch ? (
+          <button
+            className={cn(
+              "inline-flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+              collapsed
+                ? "border-border bg-transparent text-muted-foreground hover:border-foreground hover:text-foreground"
+                : "border-border bg-transparent text-muted-foreground hover:border-foreground hover:text-foreground",
+            )}
+            onClick={handleToggleCollapse}
+            aria-label={collapsed ? commonCopy.expandReplies : commonCopy.collapseReplies}
+            type="button"
+          >
+            {collapsed ? (
+              <Plus className="size-3" weight="bold" />
+            ) : (
+              <Minus className="size-3" weight="bold" />
+            )}
+          </button>
+        ) : (
+          <div className="size-5 shrink-0" />
         )}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 space-y-2">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base leading-[1.25] text-muted-foreground">
-              {comment.authorHref ? (
-                <a className="font-semibold text-foreground hover:underline" href={comment.authorHref}>
-                  <bdi>{comment.authorLabel}</bdi>
-                </a>
-              ) : (
-                <span className="font-semibold text-foreground"><bdi>{comment.authorLabel}</bdi></span>
-              )}
-              {comment.metadataLabel ? (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span>{comment.metadataLabel}</span>
-                </>
-              ) : null}
-              <span aria-hidden="true">·</span>
-              <span>{comment.timestampLabel}</span>
-              {comment.scoreLabel ? (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span>{comment.scoreLabel}</span>
-                </>
-              ) : null}
-            </div>
 
-            {body ? (
-              <div className="space-y-2">
-                <FormattedText
-                  className={cn(
-                    "text-base leading-7 text-foreground",
-                    comment.status && comment.status !== "published" && "text-muted-foreground",
-                  )}
-                  dir={comment.bodyDir ?? "auto"}
-                  lang={comment.bodyLang}
-                  value={body}
-                />
-                {canToggleOriginal ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setShowOriginal((value) => !value)}
-                  >
-                    {showOriginal ? comment.showTranslationLabel : comment.showOriginalLabel}
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
+        {/* Vertical thread line extending down to children */}
+        {hasBranch && !collapsed ? (
+          <div className="mt-1 w-px flex-1 bg-border" />
+        ) : null}
+      </div>
 
-            {(comment.onVote || canReply) ? (
-              <div className="flex flex-wrap items-center gap-2">
-                {comment.onVote ? (
-                  <>
-                    <IconButton
-                      aria-label={commonCopy.upvoteComment}
-                      size="sm"
-                      variant={comment.viewerVote === "up" ? "secondary" : "ghost"}
-                      onClick={() => {
-                        triggerLikeToggleHaptic(comment.viewerVote !== "up");
-                        comment.onVote?.("up");
-                      }}
-                    >
-                      <CaretUp className="size-5" />
-                    </IconButton>
-                    <IconButton
-                      aria-label={commonCopy.downvoteComment}
-                      size="sm"
-                      variant={comment.viewerVote === "down" ? "secondary" : "ghost"}
-                      onClick={() => {
-                        triggerLikeToggleHaptic(comment.viewerVote !== "down");
-                        comment.onVote?.("down");
-                      }}
-                    >
-                      <CaretDown className="size-5" />
-                    </IconButton>
-                  </>
-                ) : null}
-                {canReply ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      triggerCommentTapHaptic();
-                      setReplyOpen((value) => !value);
-                    }}
-                  >
-                    {comment.replyActionLabel}
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
+      {/* Right content */}
+      <div className="min-w-0 flex-1 pb-3">
+        <CommentCard
+          authorLabel={comment.authorLabel}
+          authorHref={comment.authorHref}
+          metadataLabel={comment.metadataLabel}
+          scoreLabel={comment.scoreLabel}
+          timestampLabel={comment.timestampLabel}
+          body={comment.body}
+          bodyDir={comment.bodyDir}
+          bodyLang={comment.bodyLang}
+          originalBody={comment.originalBody}
+          status={comment.status}
+          viewerVote={comment.viewerVote}
+          onVote={comment.onVote}
+          showOriginalLabel={comment.showOriginalLabel}
+          showTranslationLabel={comment.showTranslationLabel}
+          replyActionLabel={comment.replyActionLabel}
+          replyPlaceholder={comment.replyPlaceholder}
+          cancelReplyLabel={comment.cancelReplyLabel}
+          submitReplyLabel={comment.submitReplyLabel}
+          onReplySubmit={comment.onReplySubmit}
+        />
 
-            {replyOpen ? (
-              <div className="space-y-3 border border-border-soft bg-background/60 p-3 md:rounded-[var(--radius-lg)]">
-              <FormattedTextarea
-                className="min-h-28"
-                onChange={setReplyBody}
-                placeholder={comment.replyPlaceholder}
-                value={replyBody}
-              />
-              <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      setReplyOpen(false);
-                      setReplyBody("");
-                    }}
-                  >
-                    {comment.cancelReplyLabel}
-                  </Button>
-                  <Button
-                    disabled={replyBusy || !replyBody.trim()}
-                    size="sm"
-                    onClick={() => void handleReplySubmit()}
-                  >
-                    {comment.submitReplyLabel}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          {children.length > 0 ? (
-            <IconButton
-              aria-label={collapsed ? commonCopy.expandReplies : commonCopy.collapseReplies}
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                triggerNavigationTapHaptic();
-                setCollapsed((value) => !value);
-              }}
-            >
-              {collapsed ? <CaretDown className="size-5" /> : <CaretUp className="size-5" />}
-            </IconButton>
-          ) : null}
-        </div>
-
+        {/* Collapsed summary */}
         {hasBranch && collapsed ? (
           <div className="mt-3">
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => {
-                triggerNavigationTapHaptic();
-                setCollapsed(false);
-              }}
+              onClick={handleToggleCollapse}
             >
               {comment.moreRepliesLabel ?? commonCopy.showRepliesCount.replace("{count}", String(children.length))}
             </Button>
           </div>
         ) : null}
+
+        {/* Children branch */}
+        {hasBranch && !collapsed && !truncateDeepNesting ? (
+          <div className="mt-2">
+            {children.map((child) => (
+              <CommentNode comment={child} depth={depth + 1} key={getCommentKey(child, depth + 1)} />
+            ))}
+
+            {comment.moreRepliesLabel ? (
+              <div className="pt-2">
+                <Button size="sm" variant="ghost" onClick={comment.onLoadMoreReplies}>
+                  {comment.moreRepliesLabel}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Deep nesting truncation */}
+        {truncateDeepNesting ? (
+          <div className="mt-3">
+            <Button size="sm" variant="ghost" onClick={comment.onLoadMoreReplies}>
+              Continue this thread →
+            </Button>
+          </div>
+        ) : null}
       </div>
-
-      {hasBranch && !collapsed ? (
-        <div className={cn("space-y-0 border-s border-border-soft", branchPadding(depth))}>
-          {children.map((child) => (
-            <CommentNode comment={child} depth={depth + 1} key={getCommentKey(child, depth + 1)} />
-          ))}
-
-          {comment.moreRepliesLabel ? (
-            <div className="px-4 pb-4 pt-1">
-              <Button size="sm" variant="ghost" onClick={comment.onLoadMoreReplies}>
-                {comment.moreRepliesLabel}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
     </article>
   );
 }
@@ -271,6 +155,9 @@ export function PostThread({
   rootReplyCancelLabel,
   rootReplySubmitLabel,
   onRootReplySubmit,
+  commentSort,
+  availableCommentSorts,
+  onCommentSortChange,
   className,
 }: PostThreadProps) {
   const { locale } = useUiLocale();
@@ -310,7 +197,7 @@ export function PostThread({
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="overflow-hidden border-y border-border-soft md:rounded-[var(--radius-2xl)] md:border md:bg-card">
+      <div className="overflow-hidden border-b border-border-soft">
         <PostCard {...activePost} className="border-b-0" />
         {canToggleOriginalPost ? (
           <div className="border-t border-border-soft px-4 py-2">
@@ -325,64 +212,75 @@ export function PostThread({
         ) : null}
       </div>
 
-      <section className="overflow-hidden border-y border-border-soft md:rounded-[var(--radius-2xl)] md:border md:bg-card">
-        <div className="border-b border-border-soft px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-base font-medium text-foreground" dir={commentsHeadingDir ?? "auto"} lang={commentsHeadingLang}>
-              {resolvedCommentsHeading}
-            </div>
-            {canReplyAtRoot ? (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setRootReplyOpen((value) => !value)}
-              >
-                {rootReplyActionLabel}
-              </Button>
-            ) : null}
+      <section>
+        <div className="flex items-center justify-between gap-3 px-4 py-2">
+          <div className="text-sm font-medium text-foreground" dir={commentsHeadingDir ?? "auto"} lang={commentsHeadingLang}>
+            {resolvedCommentsHeading}
           </div>
-          {commentsBody ? (
-            <p className="mt-2 text-base leading-[1.4] text-muted-foreground">{commentsBody}</p>
-          ) : null}
-          {rootReplyOpen ? (
-            <div className="mt-3 space-y-3 border border-border-soft bg-background/60 p-3 md:rounded-[var(--radius-lg)]">
-              <FormattedTextarea
-                className="min-h-28"
-                onChange={setRootReplyBody}
-                placeholder={rootReplyPlaceholder}
-                value={rootReplyBody}
-              />
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    setRootReplyOpen(false);
-                    setRootReplyBody("");
-                  }}
-                >
-                  {rootReplyCancelLabel}
-                </Button>
-                <Button
-                  disabled={rootReplyBusy || !rootReplyBody.trim()}
-                  size="sm"
-                  onClick={() => void handleRootReplySubmit()}
-                >
-                  {rootReplySubmitLabel}
-                </Button>
-              </div>
-            </div>
+          {canReplyAtRoot ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setRootReplyOpen((value) => !value)}
+            >
+              {rootReplyActionLabel}
+            </Button>
           ) : null}
         </div>
+        {availableCommentSorts && availableCommentSorts.length > 0 ? (
+          <div className="flex gap-2 overflow-x-auto px-4 pb-2">
+            {availableCommentSorts.map((sort) => (
+              <PillButton
+                key={sort.value}
+                onClick={() => onCommentSortChange?.(sort.value)}
+                tone={sort.value === commentSort ? "selected" : "default"}
+              >
+                {sort.label}
+              </PillButton>
+            ))}
+          </div>
+        ) : null}
+        {commentsBody ? (
+          <Type as="p" variant="caption" className="px-4 pb-2">{commentsBody}</Type>
+        ) : null}
+        {rootReplyOpen ? (
+          <div className="mx-4 mb-3 space-y-3 border border-border-soft bg-background/60 p-3 md:rounded-[var(--radius-lg)]">
+            <FormattedTextarea
+              className="min-h-28"
+              onChange={setRootReplyBody}
+              placeholder={rootReplyPlaceholder}
+              value={rootReplyBody}
+            />
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setRootReplyOpen(false);
+                  setRootReplyBody("");
+                }}
+              >
+                {rootReplyCancelLabel}
+              </Button>
+              <Button
+                disabled={rootReplyBusy || !rootReplyBody.trim()}
+                size="sm"
+                onClick={() => void handleRootReplySubmit()}
+              >
+                {rootReplySubmitLabel}
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         {items.length > 0 ? (
-          <div className="divide-y divide-border-soft">
+          <div className="px-4">
             {items.map((comment, index) => (
               <CommentNode comment={comment} depth={0} key={getCommentKey(comment, index)} />
             ))}
           </div>
         ) : (
-          <div className="px-4 py-5 text-base leading-[1.4] text-muted-foreground">{resolvedEmptyCommentsLabel}</div>
+          <div className="px-4 py-5 text-sm text-muted-foreground">{resolvedEmptyCommentsLabel}</div>
         )}
       </section>
     </div>

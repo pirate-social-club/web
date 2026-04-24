@@ -4,6 +4,7 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 
 import { cn } from "@/lib/utils";
+import { typeVariants } from "@/components/primitives/type";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
@@ -96,7 +97,7 @@ const ModalTitle = React.forwardRef<
   const isMobile = useModalIsMobile();
   const Comp = isMobile ? SheetTitle : DialogTitle;
 
-  return <Comp className={cn(className)} ref={ref} {...props} />;
+  return <Comp className={cn(typeVariants({ variant: "h3" }), className)} ref={ref} {...props} />;
 });
 ModalTitle.displayName = "ModalTitle";
 

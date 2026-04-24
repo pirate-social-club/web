@@ -1,27 +1,15 @@
 "use client";
 
 import * as React from "react";
-import {
-  NetworkBase,
-  NetworkBitcoin,
-  NetworkCosmosHub,
-  NetworkEthereum,
-  NetworkSolana,
-  NetworkTempo,
-  TokenBTC,
-  TokenETH,
-  TokenSOL,
-  TokenUSDC,
-  type IconComponent,
-} from "@web3icons/react";
 
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
+import { Type } from "@/components/primitives/type";
 import { CopyField } from "@/components/primitives/copy-field";
-import storyProtocolLogoUrl from "@/assets/story-protocol-logo.jpg";
 import { cn } from "@/lib/utils";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
+import { ChainIcon, TokenChainIcon } from "./wallet-visuals";
 
 import type {
   WalletHubChainId,
@@ -39,29 +27,19 @@ type WalletFamily = {
   title: string;
 };
 
-const TOKEN_ICON_BY_SYMBOL: Partial<Record<string, IconComponent>> = {
-  BTC: TokenBTC,
-  ETH: TokenETH,
-  SOL: TokenSOL,
-  USDC: TokenUSDC,
-  WETH: TokenETH,
-};
-
-const CHAIN_ICON_BY_CHAIN_ID: Partial<Record<WalletHubChainId, IconComponent>> = {
-  base: NetworkBase,
-  bitcoin: NetworkBitcoin,
-  cosmos: NetworkCosmosHub,
-  ethereum: NetworkEthereum,
-  solana: NetworkSolana,
-  tempo: NetworkTempo,
-};
-
 function getWalletFamilyId(chainId: WalletHubChainId): WalletFamilyId {
-  if (chainId === "ethereum" || chainId === "base" || chainId === "story") {
-    return "ethereum";
+  switch (chainId) {
+    case "ethereum":
+    case "base":
+    case "optimism":
+    case "story":
+      return "ethereum";
+    case "tempo":
+    case "solana":
+    case "bitcoin":
+    case "cosmos":
+      return chainId;
   }
-
-  return chainId;
 }
 
 function getWalletFamilyTitle(id: WalletFamilyId) {
@@ -97,13 +75,17 @@ function buildWalletFamilies({
       grouped.set(familyId, {
         id: familyId,
         title: getWalletFamilyTitle(familyId),
-        address: walletAddress ?? null,
+        address: section.walletAddress ?? walletAddress ?? null,
         assets: section.tokens.map((token) => ({
           ...token,
           chainId: section.chainId,
         })),
       });
       continue;
+    }
+
+    if (!existing.address && (section.walletAddress || walletAddress)) {
+      existing.address = section.walletAddress ?? walletAddress ?? null;
     }
 
     existing.assets.push(...section.tokens.map((token) => ({
@@ -130,8 +112,8 @@ function WalletHeader({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="space-y-2">
-        <h1 className="text-4xl font-semibold tracking-tight text-foreground">{title ?? copy.title}</h1>
-        <div className="text-base text-muted-foreground">{walletLabel ?? copy.evmWallet}</div>
+        <Type as="h1" variant="display">{title ?? copy.title}</Type>
+        <Type as="div" variant="body" className="text-muted-foreground">{walletLabel ?? copy.evmWallet}</Type>
       </div>
       {onChangeWallet ? (
         <Button className="self-start" onClick={onChangeWallet} variant="secondary">
@@ -142,44 +124,35 @@ function WalletHeader({
   );
 }
 
-function StoryProtocolLogo({ className }: { className?: string }) {
-  return (
-    <img
-      alt=""
-      className={cn("size-full object-contain", className)}
-      draggable={false}
-      src={storyProtocolLogoUrl}
-    />
-  );
+function formatUsdValue(token: WalletHubToken) {
+  if (token.fiatValue) return token.fiatValue;
+  if (!token.balance || typeof token.usdPrice !== "number") return null;
+  const balance = Number.parseFloat(token.balance.replace(/,/g, ""));
+  if (!Number.isFinite(balance)) return null;
+  return new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" }).format(balance * token.usdPrice);
 }
 
-function SymbolFallback({ label }: { label: string }) {
-  return (
-    <div className="grid size-full place-items-center bg-muted text-base font-semibold text-foreground">
-      {label.slice(0, 1).toUpperCase()}
-    </div>
-  );
-}
+const TOKEN_ORDER_BY_SYMBOL: Record<string, number> = {
+  ETH: 0,
+  IP: 1,
+  WIP: 2,
+  PATHUSD: 3,
+  USDC: 4,
+  USDT: 5,
+  DAI: 6,
+  WBTC: 7,
+  BTC: 8,
+  SOL: 9,
+  LINK: 10,
+};
 
-function TokenIcon({ chainId, token }: { chainId: WalletHubChainId; token: WalletHubToken }) {
-  const symbol = token.symbol.toUpperCase();
-  const TokenIconComponent = TOKEN_ICON_BY_SYMBOL[symbol];
-  const isStoryAsset = chainId === "story" || symbol === "IP" || symbol === "WIP";
-
-  return (
-    <div className="relative size-12 shrink-0">
-      <div className="grid size-12 place-items-center overflow-hidden rounded-full border border-border bg-background p-1.5">
-        {isStoryAsset ? <StoryProtocolLogo className="size-9" /> : null}
-        {!isStoryAsset && TokenIconComponent ? (
-          <TokenIconComponent aria-hidden="true" className="size-9" variant="branded" />
-        ) : null}
-        {!isStoryAsset && !TokenIconComponent ? <SymbolFallback label={symbol} /> : null}
-      </div>
-      <div className="absolute -bottom-0.5 -right-0.5 grid size-6.5 place-items-center overflow-hidden rounded-full border-2 border-card bg-background">
-        <ChainIcon chainId={chainId} className="size-4.5" framed={false} />
-      </div>
-    </div>
-  );
+function sortWalletAssets(assets: WalletFamily["assets"]) {
+  return [...assets].sort((a, b) => {
+    const aOrder = TOKEN_ORDER_BY_SYMBOL[a.symbol.toUpperCase()] ?? 100;
+    const bOrder = TOKEN_ORDER_BY_SYMBOL[b.symbol.toUpperCase()] ?? 100;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return a.symbol.localeCompare(b.symbol);
+  });
 }
 
 function TokenRow({
@@ -189,16 +162,20 @@ function TokenRow({
   chainId: WalletHubChainId;
   token: WalletHubToken;
 }) {
+  const fiatValue = formatUsdValue(token);
+
   return (
-    <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(8rem,11rem)_minmax(7rem,10rem)] items-center gap-4 px-5 py-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
-        <TokenIcon chainId={chainId} token={token} />
+        <TokenChainIcon chainId={chainId} token={token} />
         <div className="min-w-0">
-          <div className="truncate text-base font-medium text-foreground">{token.symbol}</div>
-          <div className="truncate text-base text-muted-foreground">{token.name}</div>
+          <Type as="div" variant="label" className="truncate ">{token.symbol}</Type>
         </div>
       </div>
-      <div className="shrink-0 text-base font-medium text-foreground">{token.balance}</div>
+      <Type as="div" variant="body" className="truncate text-left text-muted-foreground">
+        {token.balance ? `${token.balance} ${token.symbol}` : token.symbol}
+      </Type>
+      <Type as="div" variant="body" className="truncate text-right text-foreground">{fiatValue ?? ""}</Type>
     </div>
   );
 }
@@ -215,23 +192,30 @@ function NetworkCard({
   return (
     <button
       className={cn(
-        "flex min-h-44 flex-col justify-between rounded-[var(--radius-xl)] border bg-card p-4 text-left transition-colors sm:p-5",
+        "flex min-h-56 flex-col items-center justify-between gap-4 rounded-[var(--radius-xl)] border bg-card p-4 text-center transition-colors sm:p-5",
         active
-          ? "border-primary bg-[color-mix(in_oklab,var(--primary)_8%,var(--card))]"
+          ? "border-primary bg-primary-subtle"
           : "border-border hover:border-border-soft hover:bg-muted/18",
       )}
       onClick={() => onSelect(family.id)}
       type="button"
     >
-      <div className="space-y-5">
-        <span className="sr-only">{family.title}</span>
+      <div className="space-y-4">
         <div className="flex min-h-14 items-center justify-center">
           <ChainIcon
             chainId={getWalletFamilyChainIcon(family.id)}
-            className="size-20 border border-border-soft bg-muted/20"
+            className="size-20 border border-border-soft"
           />
         </div>
+        <Type as="div" variant="h4">{family.title}</Type>
       </div>
+      {family.address ? (
+        <CopyField
+          className="h-12 w-full px-4 pe-2"
+          onClick={(event) => event.stopPropagation()}
+          value={family.address}
+        />
+      ) : null}
     </button>
   );
 }
@@ -248,6 +232,7 @@ export function WalletHub({
   const walletFamilies = React.useMemo(() => buildWalletFamilies({ chainSections, walletAddress }), [chainSections, walletAddress]);
   const [selectedFamilyId, setSelectedFamilyId] = React.useState<WalletFamilyId | null>(walletFamilies[0]?.id ?? null);
   const selectedFamily = walletFamilies.find((family) => family.id === selectedFamilyId) ?? walletFamilies[0] ?? null;
+  const selectedAssets = React.useMemo(() => sortWalletAssets(selectedFamily?.assets ?? []), [selectedFamily?.assets]);
 
   React.useEffect(() => {
     if (!walletFamilies.some((family) => family.id === selectedFamilyId)) {
@@ -262,7 +247,6 @@ export function WalletHub({
       {walletFamilies.length > 0 ? (
         <>
           <section className="space-y-3">
-            <div className="text-xl font-semibold text-foreground">Networks</div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               {walletFamilies.map((family) => (
                 <NetworkCard
@@ -273,16 +257,13 @@ export function WalletHub({
                 />
               ))}
             </div>
-            {selectedFamily?.address ? <CopyField className="max-w-xl" value={selectedFamily.address} /> : null}
           </section>
 
-          <section className="space-y-3">
-            <div className="text-xl font-semibold text-foreground">Assets</div>
-
+          <section>
             <Card className="overflow-hidden border-border bg-card shadow-none">
-              {selectedFamily?.assets.length ? (
+              {selectedAssets.length ? (
                 <div className="divide-y divide-border-soft">
-                  {selectedFamily.assets.map((token) => (
+                  {selectedAssets.map((token) => (
                     <TokenRow
                       chainId={token.chainId}
                       key={`${token.chainId}:${token.id}`}
@@ -292,56 +273,17 @@ export function WalletHub({
                 </div>
               ) : (
                 <div className="px-5 py-10 text-base text-muted-foreground sm:px-6">
-                  No assets yet.
+                  <Type as="div" variant="body" className="text-muted-foreground">No assets yet.</Type>
                 </div>
               )}
             </Card>
           </section>
         </>
       ) : (
-        <Card className="border-border bg-card px-5 py-10 text-base text-muted-foreground shadow-none sm:px-6">
+        <Card className="border-border bg-card px-5 py-10 text-muted-foreground shadow-none sm:px-6">
           {walletAddress ? <CopyField value={walletAddress} /> : copy.noWalletConnected}
         </Card>
       )}
-    </div>
-  );
-}
-
-function ChainIcon({
-  chainId,
-  className,
-  framed = true,
-}: {
-  chainId: WalletHubChainId;
-  className?: string;
-  framed?: boolean;
-}) {
-  const ChainIconComponent = CHAIN_ICON_BY_CHAIN_ID[chainId];
-  const content = (
-    <>
-      {chainId === "story" ? <StoryProtocolLogo className={framed ? "size-[72%]" : "size-full"} /> : null}
-      {chainId !== "story" && ChainIconComponent ? (
-        <ChainIconComponent
-          aria-hidden="true"
-          className={framed ? "size-[72%]" : "size-full"}
-          variant="branded"
-        />
-      ) : null}
-      {chainId !== "story" && !ChainIconComponent ? <SymbolFallback label={chainId} /> : null}
-    </>
-  );
-
-  if (!framed) {
-    return (
-      <div className={cn("grid shrink-0 place-items-center", className)}>
-        {content}
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn("grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-background", className)}>
-      {content}
     </div>
   );
 }

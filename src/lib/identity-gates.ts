@@ -305,20 +305,20 @@ export function getVerificationPromptCopy(
     if (locale === "ar") {
       return {
         title: "تحقق بالهوية",
-        description: "أكمل فحص الهوية للمتابعة.",
+        description: "استخدم تطبيق VeryAI لمسح راحة يدك، ثم عد إلى Pirate للمتابعة. ستظهر روابط التنزيل عند الحاجة.",
         actionLabel: "تحقق بالهوية",
       };
     }
     if (locale === "zh") {
       return {
         title: "使用身份证件验证",
-        description: "完成身份验证后继续。",
+        description: "使用 VeryAI app 扫描掌纹，然后回到 Pirate 继续。需要时会显示下载链接。",
         actionLabel: "使用身份证件验证",
       };
     }
     return {
       title: "Verify with ID",
-      description: "Complete ID check to continue.",
+      description: "Use the VeryAI app to scan your palm, then return to Pirate to continue. Download links appear if you need the app.",
       actionLabel: "Verify with ID",
     };
   }
@@ -365,21 +365,21 @@ export function getVerificationPromptCopy(
     if (locale === "ar") {
       return {
         title: "تحقق بالهوية",
-        description: "أكمل فحص الهوية للمتابعة.",
+        description: "استخدم تطبيق Self للتحقق من وثيقتك بخصوصية، ثم عد إلى Pirate للمتابعة. ستظهر روابط التنزيل عند الحاجة.",
         actionLabel: "تحقق بالهوية",
       };
     }
     if (locale === "zh") {
       return {
         title: "使用身份证件验证",
-        description: "完成身份验证后继续。",
+        description: "使用 Self app 私密验证你的证件，然后回到 Pirate 继续。需要时会显示下载链接。",
         actionLabel: "使用身份证件验证",
       };
     }
     return {
       title: "Verify with ID",
-      description: "Complete ID check to continue.",
-      actionLabel: "Verify with ID",
+      description: "Self.xyz lets you prove facts like age and nationality without sharing your name, photo, or document details with anyone.",
+      actionLabel: "Open Self.xyz",
     };
   }
 
@@ -390,62 +390,62 @@ export function getVerificationPromptCopy(
         if (locale === "ar") {
           return {
             title: "تحقق بالهوية",
-            description: visibleCapabilities[0] === "minimum_age" ? "أكد العمر بالهوية." : "أكد أن عمرك 18+ بالهوية.",
+            description: visibleCapabilities[0] === "minimum_age" ? "استخدم تطبيق Self لتأكيد العمر بالهوية، ثم عد إلى Pirate للمتابعة." : "استخدم تطبيق Self لتأكيد أن عمرك 18+، ثم عد إلى Pirate للمتابعة.",
             actionLabel: "تحقق بالهوية",
           };
         }
         if (locale === "zh") {
           return {
             title: "使用身份证件验证",
-            description: visibleCapabilities[0] === "minimum_age" ? "使用证件确认年龄。" : "使用证件确认你已满 18 岁。",
+            description: visibleCapabilities[0] === "minimum_age" ? "使用 Self app 通过证件确认年龄，然后回到 Pirate 继续。" : "使用 Self app 确认你已满 18 岁，然后回到 Pirate 继续。",
             actionLabel: "使用身份证件验证",
           };
         }
         return {
           title: "Verify with ID",
-          description: visibleCapabilities[0] === "minimum_age" ? "Confirm age with ID." : "Confirm you are 18+ with ID.",
-          actionLabel: "Verify with ID",
+          description: visibleCapabilities[0] === "minimum_age" ? "Self.xyz lets you prove your age without sharing your name, photo, or document details with anyone." : "Self.xyz lets you prove you are over 18 without sharing your name, photo, or document details with anyone.",
+          actionLabel: "Open Self.xyz",
         };
       case "nationality":
         if (locale === "ar") {
           return {
             title: "تحقق بالهوية",
-            description: "أكد الجنسية بالهوية.",
+            description: "استخدم تطبيق Self لتأكيد الجنسية بالهوية، ثم عد إلى Pirate للمتابعة.",
             actionLabel: "تحقق بالهوية",
           };
         }
         if (locale === "zh") {
           return {
             title: "使用身份证件验证",
-            description: "使用证件确认国籍。",
+            description: "使用 Self app 通过证件确认国籍，然后回到 Pirate 继续。",
             actionLabel: "使用身份证件验证",
           };
         }
         return {
           title: "Verify with ID",
-          description: "Confirm nationality with ID.",
-          actionLabel: "Verify with ID",
+          description: "Self.xyz lets you prove your nationality without sharing your name, photo, or document details with anyone.",
+          actionLabel: "Open Self.xyz",
         };
       case "gender":
       case "sanctions_clear":
         if (locale === "ar") {
           return {
             title: "تحقق بالهوية",
-            description: visibleCapabilities[0] === "sanctions_clear" ? "أكمل فحص العقوبات بالهوية." : "أكمل فحص الهوية للمتابعة.",
+            description: visibleCapabilities[0] === "sanctions_clear" ? "استخدم تطبيق Self لإكمال فحص العقوبات بالهوية، ثم عد إلى Pirate للمتابعة." : "استخدم تطبيق Self للتحقق من وثيقتك بخصوصية، ثم عد إلى Pirate للمتابعة.",
             actionLabel: "تحقق بالهوية",
           };
         }
         if (locale === "zh") {
           return {
             title: "使用身份证件验证",
-            description: visibleCapabilities[0] === "sanctions_clear" ? "使用证件完成制裁筛查。" : "完成身份验证后继续。",
+            description: visibleCapabilities[0] === "sanctions_clear" ? "使用 Self app 通过证件完成制裁筛查，然后回到 Pirate 继续。" : "使用 Self app 私密验证你的证件，然后回到 Pirate 继续。",
             actionLabel: "使用身份证件验证",
           };
         }
         return {
           title: "Verify with ID",
-          description: visibleCapabilities[0] === "sanctions_clear" ? "Complete sanctions screening with ID." : "Complete ID check to continue.",
-          actionLabel: "Verify with ID",
+          description: visibleCapabilities[0] === "sanctions_clear" ? "Self.xyz lets you complete the required screening without sharing your name, photo, or document details with anyone." : "Self.xyz lets you prove facts from your ID without sharing your name, photo, or document details with anyone.",
+          actionLabel: "Open Self.xyz",
         };
       default:
         break;
@@ -489,21 +489,21 @@ export function getVerificationPromptCopy(
   if (locale === "ar") {
     return {
       title: "تحقق بالهوية",
-      description: `أكد ${joinWithAnd(capabilityLabels, locale)} بالهوية.`,
+      description: `استخدم تطبيق Self لتأكيد ${joinWithAnd(capabilityLabels, locale)} بالهوية، ثم عد إلى Pirate للمتابعة.`,
       actionLabel: "تحقق بالهوية",
     };
   }
   if (locale === "zh") {
     return {
       title: "使用身份证件验证",
-      description: `使用证件确认${joinWithAnd(capabilityLabels, locale)}。`,
+      description: `使用 Self app 通过证件确认${joinWithAnd(capabilityLabels, locale)}，然后回到 Pirate 继续。`,
       actionLabel: "使用身份证件验证",
     };
   }
   return {
     title: "Verify with ID",
-    description: `Confirm ${joinWithAnd(capabilityLabels, locale)} with ID.`,
-    actionLabel: "Verify with ID",
+    description: `Self.xyz lets you prove ${joinWithAnd(capabilityLabels, locale)} without sharing your name, photo, or document details with anyone.`,
+    actionLabel: "Open Self.xyz",
   };
 }
 

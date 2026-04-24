@@ -2,31 +2,33 @@
 
 import * as React from "react";
 import {
+  ArrowSquareOut,
   ArrowsClockwise,
-  Spinner,
+  Check,
+  Flag,
+  RedditLogo,
+  X,
 } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
 import { Card, CardContent } from "@/components/primitives/card";
+import { Chip } from "@/components/primitives/chip";
 import { CopyField } from "@/components/primitives/copy-field";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
-import { StepProgress } from "@/components/primitives/stepper";
+import { Spinner } from "@/components/primitives/spinner";
+import { Type } from "@/components/primitives/type";
 import { resolveLocaleLanguageTag, useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import type { RoutesMessages } from "@/locales";
 
 import type {
   ImportJobState,
-  OnboardingPhase,
   OnboardingRedditBootstrapProps,
+  RedditImportSummaryState,
   RedditVerificationState,
 } from "./onboarding-reddit-bootstrap.types";
 
-const ONBOARDING_PHASES = [
-  "import_karma",
-  "choose_name",
-] as const satisfies readonly OnboardingPhase[];
 type OnboardingCopy = RoutesMessages["onboarding"];
 
 function formatMessage(template: string, replacements: Record<string, string>) {
@@ -42,19 +44,83 @@ function extractVerificationCode(hint: string | undefined): string | null {
   return hint.trim() || null;
 }
 
-function formatLastChecked(value: string | undefined, localeTag: string): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(localeTag, {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(date);
+function formatOptionalNumber(value: number | null | undefined, localeTag: string): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return new Intl.NumberFormat(localeTag).format(value);
 }
 
-function phaseToStep(phase: OnboardingPhase): number {
-  return ONBOARDING_PHASES.indexOf(phase) + 1;
+function RedditImportSummary({
+  localeTag,
+  summary,
+}: {
+  localeTag: string;
+  summary?: RedditImportSummaryState | null;
+}) {
+  const karma = formatOptionalNumber(summary?.globalKarma, localeTag);
+  const topSubreddits = summary?.topSubreddits?.slice(0, 3) ?? [];
+
+  return (
+    <div className="space-y-4 rounded-md border border-border bg-background p-4">
+      <div className="space-y-1">
+        <p className="text-base font-semibold text-foreground">
+          Imported u/{summary?.redditUsername ?? "reddit"}
+        </p>
+        <p className="text-base text-muted-foreground">Your Reddit activity is ready.</p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-[minmax(8rem,0.4fr)_1fr]">
+        <div>
+          <p className="text-base text-muted-foreground">Karma</p>
+          <p className="mt-1 text-lg font-semibold text-foreground">{karma ?? "Not found"}</p>
+        </div>
+        <div>
+          <p className="text-base text-muted-foreground">Top subreddits</p>
+          {topSubreddits.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {topSubreddits.map((entry) => (
+                <Chip disabled key={entry.subreddit} size="sm" variant="outline">
+                  r/{entry.subreddit}
+                </Chip>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-1 text-base text-muted-foreground">Not found</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OnboardingCardHeader({
+  icon,
+  subtitle,
+  title,
+}: {
+  icon?: React.ReactNode;
+  subtitle?: string;
+  title: string;
+}) {
+  return (
+    <div className="space-y-3 text-start">
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden="true"
+          className="grid size-12 shrink-0 place-items-center rounded-full border border-border-soft bg-muted/45 text-foreground"
+        >
+          {icon ?? <RedditLogo className="size-7" weight="fill" />}
+        </span>
+        <Type as="h2" variant="h2" className="min-w-0 leading-7 sm:leading-8">
+          {title}
+        </Type>
+      </div>
+      {subtitle ? (
+        <Type as="p" variant="caption" className="w-full max-w-none sm:text-lg">
+          {subtitle}
+        </Type>
+      ) : null}
+    </div>
+  );
 }
 
 function Footer({
@@ -75,18 +141,17 @@ function Footer({
   copy: OnboardingCopy;
 }) {
   return (
-    <div className="flex flex-col-reverse gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
+    <div className={onSkip ? "grid gap-3 pt-3 sm:grid-cols-2" : "grid gap-3 pt-3"}>
       {onSkip ? (
-        <Button className="w-full sm:w-auto" onClick={onSkip} variant="outline">
+        <Button className="h-14 w-full text-lg" onClick={onSkip} variant="outline">
           {skipLabel ?? copy.actions.skip}
         </Button>
-      ) : <div />}
+      ) : null}
       <Button
-        className="w-full sm:max-w-xs sm:flex-1"
+        className="h-14 w-full text-lg"
         disabled={nextDisabled}
         loading={nextLoading}
         onClick={onNext}
-        size="lg"
       >
         {nextLabel ?? copy.actions.next}
       </Button>
@@ -99,6 +164,7 @@ function ImportKarmaPhase({
   phaseError,
   reddit,
   importJob,
+  redditImportSummary,
   canSkip,
   nextLabel,
   skipLabel,
@@ -112,6 +178,7 @@ function ImportKarmaPhase({
   phaseError?: string | null;
   reddit: RedditVerificationState;
   importJob: ImportJobState;
+  redditImportSummary?: RedditImportSummaryState | null;
   canSkip: boolean;
   nextLabel?: string;
   skipLabel?: string;
@@ -127,8 +194,9 @@ function ImportKarmaPhase({
   const isCodeReady = reddit.verificationState === "code_ready" && reddit.verificationHint;
   const isImporting = importJob.status === "running" || importJob.status === "queued";
   const isImportDone = importJob.status === "succeeded" || importJob.status === "partial_success";
+  const showUsernameField = !isCodeReady && (!isVerified || isImporting);
   const verificationCode = extractVerificationCode(reddit.verificationHint);
-  const lastCheckedLabel = formatLastChecked(reddit.lastCheckedAt, localeTag);
+  const fieldError = phaseError ?? (isFailed ? reddit.errorTitle : null);
   const resolvedNextLabel = isImportDone
     ? copy.actions.continue
     : isVerified
@@ -143,18 +211,26 @@ function ImportKarmaPhase({
       (reddit.verificationState === "not_started" && reddit.usernameValue.trim().length > 0)
       || isCodeReady
       || isImportDone
-    )
+    );
+  const headerTitle = isCodeReady ? "Verify Reddit" : copy.importKarmaAction;
+  const headerSubtitle = isCodeReady
+    ? undefined
+    : isImportDone
+      ? "Your Reddit activity is ready."
+      : "Bring your Reddit karma to Pirate for better names and recommendations.";
 
   return (
     <div className="space-y-6">
-      {!isVerified && (
+      <OnboardingCardHeader subtitle={headerSubtitle} title={headerTitle} />
+
+      {showUsernameField ? (
         <div className="space-y-2">
           <FormFieldLabel label={copy.fields.redditUsername} />
           <div className="relative" dir="ltr">
             <span className="absolute start-4 top-1/2 -translate-y-1/2 text-base text-muted-foreground">u/</span>
             <Input
               className="ps-8 text-start"
-              disabled={busy || !!isCodeReady || isChecking}
+              disabled={busy || !!isCodeReady || isChecking || isImporting}
               dir="ltr"
               onChange={(e) => onUsernameChange?.(e.target.value)}
               placeholder={copy.placeholders.redditUsername}
@@ -162,54 +238,51 @@ function ImportKarmaPhase({
               value={reddit.usernameValue}
             />
           </div>
+          {isImporting ? (
+            <FormNote>
+              <Spinner className="me-2 inline size-4" />
+              Loading...
+            </FormNote>
+          ) : null}
+          {!isImporting && fieldError ? (
+            <FormNote tone="warning">{fieldError}</FormNote>
+          ) : null}
         </div>
-      )}
+      ) : null}
 
       {isCodeReady && reddit.verificationHint ? (
         <div className="space-y-2">
-          <FormFieldLabel
-            label={formatMessage(copy.fields.redditCode, { surface: surfaceLabel })}
-          />
-          <FormNote>
-            {copy.notes.addCodeToProfile}
-            {" "}
-            <a
-              className="underline underline-offset-4"
-              href="https://www.reddit.com/settings/profile"
-              rel="noreferrer"
-              target="_blank"
-            >
-              reddit.com/settings/profile
-            </a>
-          </FormNote>
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <FormFieldLabel
+              label={formatMessage(copy.fields.redditCode, { surface: surfaceLabel })}
+            />
+            <FormNote>
+              Paste into your{" "}
+              <a
+                className="inline-flex items-center gap-1 underline underline-offset-4"
+                href="https://www.reddit.com/settings/profile"
+                rel="noreferrer"
+                target="_blank"
+              >
+                Reddit profile description
+                <ArrowSquareOut className="size-4" />
+              </a>
+            </FormNote>
+          </div>
           <CopyField value={verificationCode ?? reddit.verificationHint} />
-          <FormNote tone="default">
-            {busy
-              ? copy.notes.checkingRedditNow
-              : lastCheckedLabel
-                ? formatMessage(copy.notes.checkedRedditAt, { time: lastCheckedLabel })
-                : copy.notes.saveProfileThenCheckAgain}
-          </FormNote>
+          {fieldError ? (
+            <FormNote tone="warning">{fieldError}</FormNote>
+          ) : null}
         </div>
       ) : null}
 
-      {isFailed && reddit.errorTitle ? (
-        <FormNote tone="warning">{reddit.errorTitle}</FormNote>
+      {isImportDone ? (
+        <RedditImportSummary localeTag={localeTag} summary={redditImportSummary} />
       ) : null}
 
-      {phaseError ? (
-        <FormNote tone="warning">{phaseError}</FormNote>
+      {isVerified && !isImportDone && !isImporting ? (
+        <FormNote>{copy.notes.startingImport}</FormNote>
       ) : null}
-
-      {isVerified && !isImportDone && (
-        <FormNote>
-          {isImporting ? (
-            <><Spinner className="me-2 inline size-4" />{copy.notes.importing}</>
-          ) : (
-            copy.notes.startingImport
-          )}
-        </FormNote>
-      )}
 
       <Footer
         nextDisabled={!canNext}
@@ -252,8 +325,14 @@ function ChooseNamePhase({
 
   return (
     <div className="space-y-6">
+      <OnboardingCardHeader
+        icon={<Flag className="size-7" />}
+        subtitle="Pirate domains are URLs that can be sold or traded. Choose wisely."
+        title="Claim Domain"
+      />
+
       <div className="space-y-2">
-        <FormFieldLabel label={copy.fields.handle} />
+        <FormFieldLabel label="Domain" />
         <div className="flex items-center gap-2">
           <div className="relative flex-1" dir="ltr">
             <Input
@@ -277,21 +356,32 @@ function ChooseNamePhase({
             <ArrowsClockwise className="size-5" />
           </Button>
         </div>
+
+        {handleSuggestion ? (
+          <FormNote
+            className="inline-flex items-center gap-2"
+            tone={handleSuggestion.availability === "available" ? "default" : "warning"}
+          >
+            {handleSuggestion.availability === "available" ? (
+              <>
+                <Check className="size-4" weight="bold" />
+                Available
+              </>
+            ) : (
+              <>
+                <X className="size-4" weight="bold" />
+                Not available
+              </>
+            )}
+          </FormNote>
+        ) : null}
+
+        {phaseError ? (
+          <FormNote tone="warning">{phaseError}</FormNote>
+        ) : null}
       </div>
 
-      {handleSuggestion ? (
-        <FormNote>
-          {handleSuggestion.availability === "available"
-            ? formatMessage(copy.notes.handleAvailable, { handle: handleSuggestion.suggestedLabel })
-            : formatMessage(copy.notes.handleTaken, { handle: handleSuggestion.suggestedLabel })}
-        </FormNote>
-      ) : null}
-
-      {phaseError ? (
-        <FormNote tone="warning">{phaseError}</FormNote>
-      ) : null}
-
-      <Footer copy={copy} nextDisabled={!canContinue} nextLabel={nextLabel} nextLoading={busy} onNext={onContinue} />
+      <Footer copy={copy} nextDisabled={!canContinue} nextLabel={nextLabel ?? "Claim Domain"} nextLoading={busy} onNext={onContinue} />
     </div>
   );
 }
@@ -304,6 +394,7 @@ export function OnboardingRedditBootstrap({
   phase,
   reddit,
   importJob,
+  redditImportSummary,
   handleSuggestion,
   actions = {},
   callbacks,
@@ -311,26 +402,9 @@ export function OnboardingRedditBootstrap({
   const { locale } = useUiLocale();
   const localeTag = resolveLocaleLanguageTag(locale);
   const copy = getLocaleMessages(locale, "routes").onboarding;
-  const currentStep = phaseToStep(phase);
-  const numberFormatter = new Intl.NumberFormat(localeTag);
-  const steps = [
-    { label: copy.importKarmaAction },
-    { label: copy.chooseNameAction },
-  ];
-  const stepCountLabel = formatMessage(copy.stepCount, {
-    current: numberFormatter.format(currentStep),
-    total: numberFormatter.format(ONBOARDING_PHASES.length),
-  });
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6">
-      <StepProgress
-        currentStep={currentStep}
-        progressLabel={copy.progressLabel}
-        stepCountLabel={stepCountLabel}
-        steps={steps}
-      />
-
+    <div className="mx-auto w-full max-w-2xl">
       <Card className="overflow-hidden border-border shadow-none">
         <CardContent className="p-5">
           {phase === "import_karma" ? (
@@ -338,6 +412,7 @@ export function OnboardingRedditBootstrap({
               busy={busy}
               canSkip={canSkip}
               importJob={importJob}
+              redditImportSummary={redditImportSummary}
               nextLabel={actions.primaryLabel}
               onNext={callbacks?.onImportKarmaNext ?? (() => {})}
               onSkip={callbacks?.onImportKarmaSkip ?? (() => {})}

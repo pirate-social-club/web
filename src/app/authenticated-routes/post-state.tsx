@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { Community as ApiCommunity, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
+import type { CommunityPreview as ApiCommunityPreview, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
@@ -87,7 +87,7 @@ export function usePost(
   const session = useSession();
   const { locale: uiLocale } = useUiLocale();
   const [post, setPost] = React.useState<ApiPost | null>(null);
-  const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
+  const [community, setCommunity] = React.useState<ApiCommunityPreview | null>(null);
   const [authorProfile, setAuthorProfile] = React.useState<ApiProfile | null>(null);
   const [availableAgent, setAvailableAgent] = React.useState<AvailableSigningAgent | null>(null);
   const [commentNodes, setCommentNodes] = React.useState<ThreadCommentNode[]>([]);
@@ -95,6 +95,7 @@ export function usePost(
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
   const [readMode, setReadMode] = React.useState<PostReadMode>(hasSession ? "authenticated" : "public");
+  const [commentSort, setCommentSort] = React.useState<"best" | "new" | "old" | "top">("best");
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const { gateModal, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: locale,
@@ -103,7 +104,7 @@ export function usePost(
   });
 
   const loadTopLevelComments = React.useCallback(async (communityId: string, nextReadMode: PostReadMode) => {
-    const nextCommentNodes = await loadThreadCommentTree(api, communityId, postId, locale, nextReadMode === "authenticated");
+    const nextCommentNodes = await loadThreadCommentTree(api, communityId, postId, locale, nextReadMode === "authenticated", commentSort);
     const nextAuthorProfilesByUserId = await loadProfilesByUserId(
       api,
       collectThreadCommentAuthorUserIds(nextCommentNodes),
@@ -111,7 +112,7 @@ export function usePost(
     );
 
     return { authorProfilesByUserId: nextAuthorProfilesByUserId, commentNodes: nextCommentNodes };
-  }, [api, locale, postId, session]);
+  }, [api, commentSort, locale, postId, session]);
 
   const refreshTopLevelComments = React.useCallback(async (communityId: string) => {
     const nextThreadState = await loadTopLevelComments(communityId, readMode);
@@ -147,8 +148,8 @@ export function usePost(
 
     try {
       const repliesPage = readMode === "authenticated"
-        ? await api.comments.listReplies(commentId, { cursor: currentNode.hasLoadedReplies ? currentNode.nextRepliesCursor : null, limit: THREAD_COMMENT_PAGE_LIMIT, locale, sort: "best" })
-        : await api.publicComments.listReplies(commentId, { cursor: currentNode.hasLoadedReplies ? currentNode.nextRepliesCursor : null, limit: THREAD_COMMENT_PAGE_LIMIT, locale, sort: "best" });
+        ? await api.comments.listReplies(commentId, { cursor: currentNode.hasLoadedReplies ? currentNode.nextRepliesCursor : null, limit: THREAD_COMMENT_PAGE_LIMIT, locale, sort: commentSort })
+        : await api.publicComments.listReplies(commentId, { cursor: currentNode.hasLoadedReplies ? currentNode.nextRepliesCursor : null, limit: THREAD_COMMENT_PAGE_LIMIT, locale, sort: commentSort });
       const nextProfiles = await loadProfilesByUserId(api, collectCommentAuthorUserIds(repliesPage.items), session?.profile ? { [session.user.user_id]: session.profile } : {});
       setAuthorProfilesByUserId((current) => ({ ...current, ...nextProfiles }));
       setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({
@@ -163,7 +164,7 @@ export function usePost(
       setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({ ...node, loadingReplies: false })));
       toast.error(getErrorMessage(nextError, "Could not load replies."));
     }
-  }, [api, readMode, commentNodes, locale, session]);
+  }, [api, commentSort, readMode, commentNodes, locale, session]);
 
   const createTopLevelComment = React.useCallback(async (input: { body: string; authorMode: "human" | "agent" }): Promise<PostThreadSubmitResult> => {
     if (!post) return "blocked";
@@ -326,7 +327,9 @@ export function usePost(
     void loadPost()
       .then(async ({ post: p, readMode: nextReadMode }) => {
         const [communityResult, commentTree, ownedAgentsResult] = await Promise.all([
-          (hasSession ? api.communities.get(p.post.community_id) : Promise.resolve(null)).catch(() => null),
+          (hasSession
+            ? api.communities.preview(p.post.community_id, { locale })
+            : api.publicCommunities.get(p.post.community_id, { locale })).catch(() => null),
           loadTopLevelComments(p.post.community_id, nextReadMode),
           hasSession ? api.agents.list().catch(() => null) : Promise.resolve(null),
         ]);
@@ -360,7 +363,7 @@ export function usePost(
       });
 
     return () => { cancelled = true; };
-  }, [api, hasSession, loadTopLevelComments, locale, postId, session]);
+  }, [api, hasSession, loadTopLevelComments, locale, postId, session, commentSort]);
 
   const comments = React.useMemo(() => commentNodes.map((node) => mapThreadCommentNode(
     node,
@@ -387,5 +390,7 @@ export function usePost(
     gateModal,
     loading,
     voteOnPost,
+    commentSort,
+    setCommentSort,
   };
 }

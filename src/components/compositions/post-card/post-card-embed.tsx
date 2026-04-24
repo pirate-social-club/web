@@ -367,7 +367,7 @@ export function OfficialOEmbed({ content, className }: { content: EmbedContent; 
         renderedTweet.style.width = "100%";
         renderedTweet.style.overflow = "hidden";
         renderedTweet.style.borderRadius = "0.5rem";
-        renderedTweet.style.backgroundColor = "#15202b";
+        renderedTweet.style.backgroundColor = "var(--card)";
       }
 
       iframe.style.border = "0";
@@ -436,13 +436,13 @@ export function OfficialOEmbed({ content, className }: { content: EmbedContent; 
       {!hydrated ? (
         <div
           aria-hidden="true"
-          className="col-start-1 row-start-1 min-h-[22rem] w-full rounded-lg border border-border-soft bg-[#15202b]"
+          className="col-start-1 row-start-1 min-h-[22rem] w-full rounded-lg border border-border-soft bg-card"
         />
       ) : null}
       <div
         aria-hidden={!hydrated}
         className={cn(
-          "col-start-1 row-start-1 w-full overflow-hidden rounded-lg bg-[#15202b] transition-opacity",
+          "col-start-1 row-start-1 w-full overflow-hidden rounded-lg bg-card transition-opacity",
           hydrated ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         data-post-card-interactive="true"

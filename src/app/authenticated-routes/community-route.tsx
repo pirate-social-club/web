@@ -6,6 +6,7 @@ import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contract
 import { Plus } from "@phosphor-icons/react";
 
 import { PublicCommunityRoutePage } from "@/app/public-community-route";
+import { CommunityRouteLoadingState } from "@/app/route-loading-states";
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
@@ -15,7 +16,7 @@ import { CommunityPageShell } from "@/components/compositions/community-page-she
 import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel, getPassportPromptCapabilities, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { getGateFailureMessage, getJoinCtaLabel, getPassportPromptCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { useUiLocale } from "@/lib/ui-locale";
 
 import { useCommunityPageData } from "./community-data";
@@ -33,8 +34,8 @@ import { toCommunityFeedItem } from "./post-presentation";
 import { submitOptimisticPostVote, updateCommunityPostVote } from "./post-vote";
 import { buildFeedSortOptions, getErrorMessage, useRouteContentLocale, useRouteMessages } from "./route-core";
 import { getRouteAuthDescription, getRouteFailureDescription, getRouteIncompleteDescription } from "./route-status-copy";
-import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "./route-shell";
-import { useSongPurchase } from "./song-purchase";
+import { AuthRequiredRouteState, RouteLoadFailureState } from "./route-shell";
+import { useSongPurchaseFlow } from "./song-purchase";
 import { useSongCommerceState, useSongPlayback } from "./song-commerce";
 import { useCommunityInteractionGate } from "./community-interaction-gate";
 import { useCommunityJoinVerification } from "./use-community-join-verification";
@@ -53,7 +54,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const { authorProfiles, community, preview, eligibility, error, loading, posts, refetchEligibility, setPosts } = useCommunityPageData(communityId, contentLocale, activeSort);
   const commerceEnabled = Boolean(session?.user?.user_id) && eligibility?.status === "already_joined";
   const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(communityId, commerceEnabled);
-  const buySong = useSongPurchase({ commerceEnabled, refreshSongCommerce });
+  const { buySong, purchaseModal } = useSongPurchaseFlow({ commerceEnabled, refreshSongCommerce });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const [followLoading, setFollowLoading] = React.useState(false);
   const [viewerFollowing, setViewerFollowing] = React.useState(false);
@@ -132,15 +133,18 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   }) => {
     if (gate.eligibility.status === "verification_required") {
       const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-      const passportPrompt = getVerificationPromptCopy("passport", getPassportPromptCapabilities(gate.eligibility), { locale });
+      const verificationPrompt = getVerificationPromptCopy(
+        provider,
+        provider === "passport"
+          ? getPassportPromptCapabilities(gate.eligibility)
+          : getVerificationCapabilitiesForProvider(gate.eligibility, provider),
+        { locale },
+      );
       return {
-        description: provider === "passport"
-          ? passportPrompt.description
-          : action === "vote_post" || action === "vote_comment"
-            ? copy.interactionGate.verifyToVoteDescription
-            : copy.interactionGate.verifyToReplyDescription,
+        description: verificationPrompt.description,
+        icon: provider === "passport" ? null : provider,
         primaryAction: {
-          label: provider === "passport" ? passportPrompt.actionLabel : copy.createCommunity.startVerification,
+          label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
           loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
           onClick: async () => {
             if (provider === "very") {
@@ -169,7 +173,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           onClick: closeModal,
         },
         title: provider === "passport"
-          ? passportPrompt.title
+          ? verificationPrompt.title
           : action === "vote_post" || action === "vote_comment"
             ? copy.interactionGate.verifyToVoteTitle
             : copy.interactionGate.verifyToReplyTitle,
@@ -256,7 +260,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   }, [api.posts.vote, buildCommunityBlockedModalState, communityId, eligibility, posts, preview, runGatedCommunityAction, setPosts]);
 
   if (loading) {
-    return <FullPageSpinner />;
+    return <CommunityRouteLoadingState />;
   }
   if (error) {
     if (isApiNotFoundError(error)) {
@@ -319,16 +323,15 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   return (
     <>
       {gateModal}
+      {purchaseModal}
       {selfPrompt ? (
         <SelfVerificationModal
           actionLabel={selfPrompt.actionLabel}
           description={selfPrompt.description}
           error={selfError}
           href={selfPrompt.href}
-          loading={selfLoading}
           onOpenChange={handleSelfModalOpenChange}
           open={selfModalOpen}
-          qrValue={selfPrompt.qrValue}
           title={selfPrompt.title}
         />
       ) : null}

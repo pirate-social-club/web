@@ -55,7 +55,7 @@ export function CommunityModerationShell({
 }: CommunityModerationShellProps) {
   return (
     <SidebarProvider className={cn("min-h-screen bg-background text-foreground", className)}>
-      <Sidebar className="w-[18rem]" collapsible="none">
+      <Sidebar className="w-72" collapsible="none">
         <SidebarContent className="gap-4 px-0 pb-4 pt-5">
           <SidebarGroup className="px-4 py-0">
             <SidebarGroupContent>
@@ -85,7 +85,7 @@ export function CommunityModerationShell({
           {sections.map((section, index) => (
             <React.Fragment key={section.label}>
               <SidebarGroup className="gap-0 px-4 py-0">
-                <div className="px-2 pb-2 text-base uppercase tracking-[0.08em] text-muted-foreground/55">
+                <div className="px-2 pb-2 text-base uppercase tracking-widest text-muted-foreground/55">
                   {section.label}
                 </div>
                 <SidebarGroupContent>
@@ -124,7 +124,7 @@ export function CommunityModerationShell({
       </Sidebar>
       <SidebarInset className="min-h-screen bg-background">
         <main className="min-w-0 px-8 py-8">
-          <div className="mx-auto w-full max-w-[64rem]">
+          <div className="mx-auto w-full max-w-5xl">
             {children}
           </div>
         </main>

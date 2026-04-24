@@ -41,7 +41,7 @@ export function CommunityHero({
       avatarFallback={displayName}
       avatarSrc={avatarSrc}
       className={className}
-      coverClassName="bg-[#22120b] md:h-60"
+      coverClassName="bg-background md:h-60"
       coverOverlay={<div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45" />}
       coverSrc={resolvedBannerSrc}
       subtitle={secondaryLabel}

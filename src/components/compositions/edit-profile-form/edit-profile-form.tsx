@@ -1,5 +1,6 @@
 "use client";
 
+import { Type } from "@/components/primitives/type";
 import * as React from "react";
 import { Warning } from "@phosphor-icons/react";
 
@@ -117,9 +118,9 @@ export function GlobalHandleField({
     return (
       <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border bg-background">
         <div className="flex min-h-16 flex-col items-start gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div className="text-base font-medium text-muted-foreground">{copy.currentHandleLabel}</div>
+          <Type as="div" variant="caption" className="">{copy.currentHandleLabel}</Type>
           <div className="flex items-center gap-4">
-            <div className="min-w-0 max-w-full truncate text-base font-medium text-foreground">{currentHandle}</div>
+            <Type as="div" variant="label" className="min-w-0 max-w-full truncate ">{currentHandle}</Type>
             <Button onClick={() => setIsExpanded(true)} size="sm" variant="secondary">
               {copy.changeHandleLabel}
             </Button>
@@ -134,8 +135,8 @@ export function GlobalHandleField({
       {!expandable && <FormSectionHeading title={copy.handleNotePirate} />}
       <div className="overflow-hidden rounded-[var(--radius-xl)] border border-border bg-background">
         <div className="flex min-h-16 flex-col items-start gap-1 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div className="text-base font-medium text-muted-foreground">{copy.currentHandleLabel}</div>
-          <div className="min-w-0 max-w-full truncate text-base font-medium text-foreground sm:text-end">{currentHandle}</div>
+          <Type as="div" variant="caption" className="">{copy.currentHandleLabel}</Type>
+          <Type as="div" variant="label" className="min-w-0 max-w-full truncate  sm:text-end">{currentHandle}</Type>
         </div>
         <div className="space-y-2 px-4 py-4">
           <FormFieldLabel htmlFor="handle-input" label={copy.newHandleLabel} />
@@ -294,7 +295,7 @@ export function EditProfileForm({
       <div className="flex items-center gap-4">
         <Avatar fallback={currentDisplayName} size="lg" src={currentAvatarSrc} />
         <div>
-          <h2 className="text-lg font-semibold text-foreground">{copy.editProfileTitle}</h2>
+          <Type as="h2" variant="h4">{copy.editProfileTitle}</Type>
           {currentHandle ? (
             <p className="text-base text-muted-foreground">{currentHandle}</p>
           ) : null}

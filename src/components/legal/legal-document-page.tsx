@@ -23,7 +23,7 @@ export function LegalDocumentPage({
   return (
     <main className="min-h-screen bg-background px-4 py-6 text-foreground md:px-6 md:py-8">
       <div className="mx-auto w-full max-w-4xl">
-        <div className="overflow-hidden rounded-[2rem] border border-border bg-card shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+        <div className="overflow-hidden rounded-[var(--radius-4xl)] border border-border bg-card shadow-xl">
           <div className="border-b border-border bg-gradient-to-br from-background via-background to-primary/10 px-5 py-5 md:px-8 md:py-6">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
               <HeaderLink href="/" label="Home" />

@@ -30,7 +30,7 @@ export function CommunitySidebarModerator({
       href={`/${moderator.handle}`}
     >
       <Avatar
-        className="border-border-on-dark bg-white/10 text-white"
+        className="border-border bg-foreground/10 text-foreground"
         fallback={buildAvatarFallback(moderator.displayName)}
         size="sm"
         src={moderator.avatarSrc?.trim() || undefined}

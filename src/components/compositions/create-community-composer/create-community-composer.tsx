@@ -1,5 +1,6 @@
 "use client";
 
+import { Type } from "@/components/primitives/type";
 import * as React from "react";
 import { isAddress } from "viem";
 
@@ -447,11 +448,11 @@ export function CreateCommunityComposer({
       : null;
 
   return (
-    <div className={cn("mx-auto w-full max-w-[72rem] space-y-4", isMobile && "mx-0 max-w-none space-y-5")}>
-      <h2 className="hidden text-3xl font-semibold tracking-tight md:block">{cc.title}</h2>
+    <div className={cn("mx-auto w-full max-w-6xl space-y-4", isMobile && "mx-0 max-w-none space-y-5")}>
+      <Type as="h2" variant="h1" className="hidden md:block">{cc.title}</Type>
       {creatorVerificationMessage ? (
         <div className="rounded-[var(--radius-lg)] border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-          <p className="text-base font-semibold text-foreground">{cc.verificationRequired}</p>
+          <Type as="p" variant="body-strong" className="">{cc.verificationRequired}</Type>
           <FormNote className="mt-1">{creatorVerificationMessage}</FormNote>
         </div>
       ) : null}
@@ -523,7 +524,7 @@ export function CreateCommunityComposer({
                 </div>
 
                 <div className="hidden rounded-[var(--radius-lg)] border border-border-soft bg-card px-5 py-5 lg:block">
-                  <h3 className="mb-4 text-lg font-semibold tracking-tight text-foreground">{cc.preview}</h3>
+                  <Type as="h3" variant="h4" className="mb-4">{cc.preview}</Type>
                   <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border-soft bg-background">
                     <div
                       className="h-36 w-full border-b border-border-soft bg-cover bg-center"
@@ -775,7 +776,7 @@ export function CreateCommunityComposer({
 
                   {activeAllowAnonymousIdentity ? (
                     <div className="space-y-3 border-s border-border-soft ps-4">
-                      <p className="text-base font-medium text-foreground">{cc.anonymousScopeLabel}</p>
+                      <Type as="p" variant="label" className="">{cc.anonymousScopeLabel}</Type>
                       <div className="space-y-2">
                         {([
                           { key: "community_stable" as const, label: cc.anonymousCommunityStableLabel, detail: cc.anonymousCommunityStableDetail },

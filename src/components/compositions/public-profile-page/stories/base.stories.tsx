@@ -127,11 +127,13 @@ const scrobbles: PublicProfileScrobbleItem[] = [
 
 const baseArgs = {
   displayName: "Pampa_of_Argentina",
-  handle: "pampa_of_argentina.pirate",
-  tagline: "u/Pampa_of_Argentina",
+  handle: "u/pampa_of_argentina.pirate",
+  tagline: undefined,
   bio: "Buenos Aires, bookstores, football, and a listening history that should probably count as public infrastructure.",
   avatarSrc:
     "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=300&q=80",
+  nationalityBadgeCountryCode: "AR",
+  nationalityBadgeLabel: "Verified Argentina nationality",
   bannerSrc:
     "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1600&q=80",
   meta: [
@@ -200,7 +202,7 @@ export const About: Story = {
 export const Minimal: Story = {
   args: {
     displayName: "new_user",
-    handle: "new_user.pirate",
+    handle: "u/new_user.pirate",
     tagline: undefined,
     bio: undefined,
     avatarSrc: undefined,

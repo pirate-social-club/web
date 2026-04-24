@@ -6,6 +6,7 @@ import { getLocaleMessages } from "@/locales";
 
 import { AppHeader } from "../app-header";
 import { MobileFooterNav } from "../mobile-footer-nav";
+import { Type } from "@/components/primitives/type";
 
 const meta = {
   title: "Compositions/AppShellChrome",
@@ -56,9 +57,9 @@ function HeaderOnlyStory({
         showWalletAction
       />
       <div className={forceMobile ? "px-3 pb-24 pt-[calc(env(safe-area-inset-top)+5rem)]" : "mx-auto max-w-5xl px-6 py-10"}>
-        <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5 text-base text-muted-foreground md:p-8">
+        <Type as="div" variant="caption" className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5  md:p-8">
           {forceMobile ? bodyCopy.mobileHeaderBody : bodyCopy.desktopHeaderBody}
-        </div>
+        </Type>
       </div>
     </div>
   );
@@ -71,9 +72,9 @@ function FooterOnlyStory({ showInboxDot = false }: { showInboxDot?: boolean }) {
 
   return (
     <div className="min-h-screen bg-background px-3 pb-28 pt-6">
-      <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5 text-base text-muted-foreground">
+      <Type as="div" variant="caption" className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5 ">
         {bodyCopy.mobileFooterBody}
-      </div>
+      </Type>
       <MobileFooterNav
         activeItem="inbox"
         forceMobile
@@ -114,12 +115,12 @@ function MobileChromeStory() {
         showWalletAction
       />
       <div className="space-y-3 px-3 pb-28 pt-[calc(env(safe-area-inset-top)+5rem)]">
-        <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5 text-base text-muted-foreground">
+        <Type as="div" variant="caption" className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5 ">
           {bodyCopy.mobileChromeLead}
-        </div>
-        <div className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5 text-base text-muted-foreground">
+        </Type>
+        <Type as="div" variant="caption" className="rounded-[var(--radius-xl)] border border-border-soft bg-card p-5 ">
           {bodyCopy.mobileChromeFollow}
-        </div>
+        </Type>
       </div>
       <MobileFooterNav
         activeItem="home"

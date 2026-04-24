@@ -10,6 +10,7 @@ import { FormFieldLabel, FormSectionHeading } from "@/components/primitives/form
 import { Input } from "@/components/primitives/input";
 import { cn } from "@/lib/utils";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
+import { Type } from "@/components/primitives/type";
 
 export interface LabelEditorDefinition {
   id: string;
@@ -129,13 +130,13 @@ export function CommunityLabelsEditorPage({
   }, [labels, onLabelsChange]);
 
   return (
-    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
+    <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
       <div className="space-y-2">
-        <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
+        <Type as="h1" variant="h1" className="md:text-4xl">{mc.title}</Type>
       </div>
 
       <div className="space-y-6">
-        <div className="rounded-[1.75rem] border border-border-soft bg-card p-5">
+        <div className="rounded-[var(--radius-2_5xl)] border border-border-soft bg-card p-5">
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <FormSectionHeading title={mc.enableLabel} />
@@ -167,7 +168,7 @@ export function CommunityLabelsEditorPage({
                 const hasInvalidColor = !isValidHexColor(def.color);
 
                 return (
-                  <div className="rounded-[1.75rem] border border-border-soft bg-card p-4 md:p-5" key={def.id}>
+                  <div className="rounded-[var(--radius-2_5xl)] border border-border-soft bg-card p-4 md:p-5" key={def.id}>
                     <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_9rem_auto] md:items-end">
                       <div className="space-y-2">
                         <FormFieldLabel label={mc.nameLabel} />
@@ -241,9 +242,9 @@ export function CommunityLabelsEditorPage({
               })}
 
               {activeLabels.length === 0 ? (
-                <div className="rounded-[1.75rem] border border-dashed border-border-soft bg-card px-5 py-8 text-base text-muted-foreground">
+                <Type as="div" variant="caption" className="rounded-[var(--radius-2_5xl)] border border-dashed border-border-soft bg-card px-5 py-8 ">
                   No labels defined.
-                </div>
+                </Type>
               ) : null}
             </div>
 
@@ -256,7 +257,7 @@ export function CommunityLabelsEditorPage({
                 <div className="flex flex-col gap-2">
                   {archivedLabels.map((def) => (
                     <div
-                      className="flex items-center justify-between gap-3 rounded-[1.25rem] border border-border-soft bg-card px-4 py-3 opacity-60"
+                      className="flex items-center justify-between gap-3 rounded-[var(--radius-1_5xl)] border border-border-soft bg-card px-4 py-3 opacity-60"
                       key={def.id}
                     >
                       <div className="flex items-center gap-3">

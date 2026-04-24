@@ -13,6 +13,7 @@ import type {
   CommunityMachineAccessSettings,
   MachineAccessSurface,
 } from "./community-machine-access.types";
+import { Type } from "@/components/primitives/type";
 
 function SurfaceRow({
   checked,
@@ -102,9 +103,9 @@ export function CommunityMachineAccessPage({
   }
 
   return (
-    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
+    <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
       <div className="space-y-2">
-        <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
+        <Type as="h1" variant="h1" className="md:text-4xl">{mc.title}</Type>
         <FormNote>{mc.defaultNotice}</FormNote>
       </div>
 
@@ -113,7 +114,7 @@ export function CommunityMachineAccessPage({
       ) : null}
 
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">{mc.surfacesTitle}</h2>
+        <Type as="h2" variant="h2" className="">{mc.surfacesTitle}</Type>
         <div className="space-y-3">
           {surfaceRows.map((row) => (
             <SurfaceRow
@@ -129,7 +130,7 @@ export function CommunityMachineAccessPage({
       </section>
 
       <section className="space-y-4 border-t border-border-soft pt-6 md:pt-8">
-        <h2 className="text-2xl font-semibold tracking-tight">{mc.limitsTitle}</h2>
+        <Type as="h2" variant="h2" className="">{mc.limitsTitle}</Type>
         <div className="space-y-3">
           <StaticRow label={mc.anonymousRateLabel} value={mc.lowRateTier} />
           <StaticRow label={mc.authenticatedRateLabel} value={mc.standardRateTier} />
@@ -138,7 +139,7 @@ export function CommunityMachineAccessPage({
       </section>
 
       <section className="space-y-4 border-t border-border-soft pt-6 md:pt-8">
-        <h2 className="text-2xl font-semibold tracking-tight">{mc.allowedUsesTitle}</h2>
+        <Type as="h2" variant="h2" className="">{mc.allowedUsesTitle}</Type>
         <div className="space-y-3">
           <StaticRow label={mc.summarizationLabel} value={mc.allowedLabel} />
           <StaticRow label={mc.analyticsLabel} value={mc.allowedLabel} />

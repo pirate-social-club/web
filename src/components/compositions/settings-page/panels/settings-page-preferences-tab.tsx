@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/primitives/select";
+import { Switch } from "@/components/primitives/switch";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ export function PreferencesTab({
   const { locale } = useUiLocale();
   const isMobile = useIsMobile();
   const copy = getLocaleMessages(locale, "routes").settings;
+  const hasIdentityRows = Boolean(preferences.ageStatusLabel || preferences.nationalityBadgeCountryLabel);
   return (
     <div className="space-y-8">
       <SettingsSection title={copy.languageSection}>
@@ -60,10 +62,26 @@ export function PreferencesTab({
         </Card>
       </SettingsSection>
 
-      {preferences.ageStatusLabel ? (
+      {hasIdentityRows ? (
         <SettingsSection title={copy.identitySection}>
           <Card className={cn("overflow-hidden border-border bg-card shadow-none", isMobile && "border-0 bg-transparent")}>
-            <SettingsRow label={copy.ageStatusLabel} value={preferences.ageStatusLabel} />
+            {preferences.ageStatusLabel ? (
+              <SettingsRow label={copy.ageStatusLabel} value={preferences.ageStatusLabel} />
+            ) : null}
+            {preferences.nationalityBadgeCountryLabel ? (
+              <SettingsRow
+                label={copy.nationalityBadgeLabel}
+                trailing={(
+                  <Switch
+                    aria-label={copy.nationalityBadgeLabel}
+                    checked={preferences.nationalityBadgeEnabled}
+                    disabled={preferences.nationalityBadgeDisabled}
+                    onCheckedChange={preferences.onNationalityBadgeChange}
+                  />
+                )}
+                value={preferences.nationalityBadgeCountryLabel}
+              />
+            ) : null}
           </Card>
         </SettingsSection>
       ) : null}

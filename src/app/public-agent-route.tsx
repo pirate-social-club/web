@@ -9,6 +9,8 @@ import { buildPublicProfilePath, getProfileHandleLabel } from "@/lib/profile-rou
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
+import { Type } from "@/components/primitives/type";
+import { typeVariants } from "@/components/primitives/type";
 
 function usePublicAgent(handleLabel: string) {
   const api = useApi();
@@ -92,8 +94,8 @@ export function PublicAgentRoutePage({
   return (
     <PageContainer className="px-4 py-6" size="narrow">
       <CardShell className="p-7">
-        <h1 className="text-4xl font-semibold tracking-tight text-foreground">{displayName}</h1>
-        <p className="mt-2 text-lg text-muted-foreground">{handle}</p>
+        <Type as="h1" variant="display">{displayName}</Type>
+        <Type as="p" variant="caption" className="mt-2">{handle}</Type>
         <div className="mt-6 flex flex-wrap gap-3">
           <a
             className="inline-flex items-center rounded-full border border-border-soft bg-muted/40 px-4 py-2.5 text-base text-muted-foreground hover:bg-muted"
@@ -102,10 +104,10 @@ export function PublicAgentRoutePage({
             <strong className="me-2 text-foreground">{ownerHandle}</strong>
             {copy.ownerLabel}
           </a>
-          <span className="inline-flex items-center rounded-full border border-border-soft bg-muted/40 px-4 py-2.5 text-base text-muted-foreground">
+          <Type as="span" variant="caption" className="inline-flex items-center rounded-full border border-border-soft bg-muted/40 px-4 py-2.5 ">
             <strong className="me-2 text-foreground">{resolution.agent.ownership_provider ?? "agent"}</strong>
             {copy.providerLabel}
-          </span>
+          </Type>
         </div>
       </CardShell>
     </PageContainer>

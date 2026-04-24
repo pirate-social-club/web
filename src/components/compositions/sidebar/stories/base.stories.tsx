@@ -27,6 +27,7 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "../sidebar";
+import { Type } from "@/components/primitives/type";
 
 const meta = {
   title: "Compositions/Sidebar",
@@ -45,7 +46,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const sectionLabelClassName =
-  "px-4 pb-1.5 pt-3 text-base font-normal uppercase tracking-[0.06em] text-sidebar-foreground/32 hover:no-underline";
+  "px-4 pb-1.5 pt-3 text-base font-normal uppercase tracking-widest text-sidebar-foreground/32 hover:no-underline";
 
 const navRowClassName = "h-12 rounded-xl px-4 text-base font-medium";
 
@@ -109,9 +110,9 @@ function DemoSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton className="h-12 rounded-xl px-4" size="lg" tooltip={copy.appSidebar.brandLabel}>
               <PirateBrandMark className="h-10 w-10 shrink-0" decorative={false} />
-              <div className="grid flex-1 text-start text-lg leading-tight">
+              <Type as="div" variant="h4" className="grid flex-1 text-start  leading-tight">
                 <span className="truncate font-semibold">{copy.appSidebar.brandLabel}</span>
-              </div>
+              </Type>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

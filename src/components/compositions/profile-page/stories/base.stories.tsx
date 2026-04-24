@@ -10,6 +10,7 @@ import type {
   ProfilePostItem,
   ProfileScrobbleItem,
 } from "../profile-page.types";
+import type { WalletHubChainSection } from "@/components/compositions/wallet-hub/wallet-hub.types";
 
 const profilePosts: ProfilePostItem[] = [
   {
@@ -79,6 +80,8 @@ const profilePosts: ProfilePostItem[] = [
 const comments: ProfileCommentItem[] = [
   {
     commentId: "comment_1",
+    authorLabel: "u/Pampa_of_Argentina",
+    authorHref: "#",
     body:
       "The best version of profile comments probably looks like a compact reply feed. You still need the community and the post title, otherwise the comment feels detached from context.",
     communityLabel: "c/pirate-build",
@@ -87,9 +90,13 @@ const comments: ProfileCommentItem[] = [
     postHref: "#",
     scoreLabel: "148 score",
     timestampLabel: "12m",
+    viewerVote: "up",
+    onVote: () => {},
   },
   {
     commentId: "comment_2",
+    authorLabel: "u/Pampa_of_Argentina",
+    authorHref: "#",
     body:
       "If scrobbles matter to Pirate, they should sit beside posts and comments in the profile IA, not inside a buried integrations tab.",
     communityLabel: "c/lastfm",
@@ -98,9 +105,13 @@ const comments: ProfileCommentItem[] = [
     postHref: "#",
     scoreLabel: "74 score",
     timestampLabel: "4h",
+    viewerVote: null,
+    onVote: () => {},
   },
   {
     commentId: "comment_3",
+    authorLabel: "u/Pampa_of_Argentina",
+    authorHref: "#",
     body:
       "I would keep follow and message in the right rail on desktop, then move them into the header block on mobile so the first screen still carries the primary action.",
     communityLabel: "c/design",
@@ -109,6 +120,8 @@ const comments: ProfileCommentItem[] = [
     postHref: "#",
     scoreLabel: "33 score",
     timestampLabel: "1d",
+    viewerVote: "down",
+    onVote: () => {},
   },
 ];
 
@@ -155,25 +168,87 @@ const overviewItems: ProfileActivityItem[] = [
   { kind: "post", id: "overview_post_2", post: profilePosts[1] },
 ];
 
+const walletChainSections: WalletHubChainSection[] = [
+  {
+    chainId: "ethereum",
+    title: "Ethereum",
+    availability: "ready",
+    walletAddress: "0xc74e2d06c9a7e304817b3c177b91e0c1f4873",
+    tokens: [
+      { id: "eth", symbol: "ETH", name: "Ethereum", balance: "4.1267", fiatValue: "$10,943.82" },
+      { id: "usdc", symbol: "USDC", name: "USD Coin", balance: "512.36", fiatValue: "$512.36" },
+      { id: "usdt", symbol: "USDT", name: "Tether USD", balance: "250.00", fiatValue: "$250.00" },
+      { id: "dai", symbol: "DAI", name: "Dai Stablecoin", balance: "120.00", fiatValue: "$120.00" },
+      { id: "wbtc", symbol: "WBTC", name: "Wrapped Bitcoin", balance: "0.0125", fiatValue: "$869.82" },
+      { id: "link", symbol: "LINK", name: "Chainlink", balance: "35.72", fiatValue: "$388.99" },
+    ],
+  },
+  {
+    chainId: "story",
+    title: "Story",
+    availability: "ready",
+    walletAddress: "0xc74e2d06c9a7e304817b3c177b91e0c1f4873",
+    tokens: [
+      { id: "ip", symbol: "IP", name: "Story", balance: "96.40", fiatValue: "$173.52" },
+      { id: "wip", symbol: "WIP", name: "Wrapped IP", balance: "18.20", fiatValue: "$32.76" },
+    ],
+  },
+  {
+    chainId: "bitcoin",
+    title: "Bitcoin",
+    availability: "ready",
+    walletAddress: "bc1qflgh4s9q8qg7d8e83a5fd",
+    tokens: [
+      { id: "btc", symbol: "BTC", name: "Bitcoin", balance: "0.2864", fiatValue: "$19,910.87" },
+    ],
+  },
+  {
+    chainId: "solana",
+    title: "Solana",
+    availability: "ready",
+    walletAddress: "8Bv3n4Jcw7pQZsVJwX7nXcK",
+    tokens: [
+      { id: "sol", symbol: "SOL", name: "Solana", balance: "22.40", fiatValue: "$3,280.48" },
+      { id: "usdc-sol", symbol: "USDC", name: "USD Coin", balance: "840.15", fiatValue: "$840.15" },
+    ],
+  },
+  {
+    chainId: "tempo",
+    title: "Tempo",
+    availability: "ready",
+    walletAddress: "tempo1q90p4q7kkd8a56a2z7p",
+    tokens: [
+      { id: "tempo-pathusd", symbol: "pathUSD", name: "pathUSD", balance: "1,204.11", fiatValue: "$1,204.11" },
+    ],
+  },
+  {
+    chainId: "cosmos",
+    title: "Cosmos",
+    availability: "ready",
+    walletAddress: "cosmos1cv8e7h3lt5x0r3d5z",
+    tokens: [
+      { id: "atom", symbol: "ATOM", name: "Cosmos Hub", balance: "91.50", fiatValue: "$626.78" },
+    ],
+  },
+];
+
 const baseArgs: ProfilePageProps = {
   profile: {
     displayName: "Pampa_of_Argentina",
-    handle: "pampa_of_argentina.pirate",
-    tagline: "u/Pampa_of_Argentina",
+    handle: "u/pampa_of_argentina.pirate",
     bio:
       "Buenos Aires, bookstores, football, and a listening history that should probably count as public infrastructure.",
     avatarSrc: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=300&q=80",
+    nationalityBadgeCountryCode: "AR",
+    nationalityBadgeLabel: "Verified Argentina nationality",
     bannerSrc: "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1600&q=80",
-    meta: [
-      { label: "Posts", value: "126" },
-      { label: "Comments", value: "894" },
-      { label: "Scrobbles", value: "14.8K" },
-    ],
     viewerContext: "public",
     viewerFollows: false,
     canMessage: true,
   },
   rightRail: {
+    description:
+      "Buenos Aires, bookstores, football, and a listening history that should probably count as public infrastructure.",
     stats: [
       { label: "Karma", value: 20028 },
       { label: "Contributions", value: 1352 },
@@ -181,6 +256,13 @@ const baseArgs: ProfilePageProps = {
       { label: "Followers", value: 842 },
     ],
     walletAddress: "0x42a5f77f2d06c9a7e304817b3c177b91e0c2f3a8",
+    walletChainSections,
+    walletAssets: [
+      { assetId: "eth", chainId: "ethereum", label: "ETH", symbol: "ETH", name: "Ethereum", value: "1.284 ETH", fiatValue: "$3,407.21" },
+      { assetId: "base-eth", chainId: "base", label: "ETH", symbol: "ETH", name: "Base", value: "0.382 ETH", fiatValue: "$1,013.94" },
+      { assetId: "usdc", chainId: "base", label: "USDC", symbol: "USDC", name: "USD Coin", value: "2,450.00 USDC", fiatValue: "$2,450.00" },
+      { assetId: "usdt", chainId: "optimism", label: "USDT", symbol: "USDT", name: "Tether USD", value: "250.00 USDT", fiatValue: "$250.00" },
+    ],
     verificationItems: [
       { label: "Palm Scan", value: "Verified" },
       { label: "Wallet Score", value: "19.8" },
@@ -231,6 +313,28 @@ export const Comments: Story = {
 export const Scrobbles: Story = {
   args: {
     defaultTab: "scrobbles",
+  },
+};
+
+export const Wallet: Story = {
+  args: {
+    defaultTab: "wallet",
+  },
+};
+
+export const EnsPrimary: Story = {
+  args: {
+    profile: {
+      ...baseArgs.profile,
+      displayName: "Blackbeard",
+      handle: "blackbeard.eth",
+      bio: "ENS primary profile with imported avatar, cover, and bio metadata.",
+      tagline: undefined,
+    },
+    rightRail: {
+      ...baseArgs.rightRail,
+      description: "ENS primary profile with imported avatar, cover, and bio metadata.",
+    },
   },
 };
 

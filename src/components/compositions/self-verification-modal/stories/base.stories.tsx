@@ -11,15 +11,13 @@ const meta = {
   title: "Compositions/SelfVerificationModal",
   component: SelfVerificationModal,
   args: {
-    actionLabel: "Open Self",
-    description: "Use Self to verify your document privately and return to Pirate when the check is complete.",
+    actionLabel: "Open Self.xyz",
+    description: "Self.xyz lets you prove facts like age and nationality without sharing your name, photo, or document details with anyone.",
     error: null,
     href: SELF_LAUNCH_HREF,
-    loading: false,
     onOpenChange: () => {},
     open: true,
-    qrValue: SELF_LAUNCH_HREF,
-    title: "Verify with Self",
+    title: "Verify with ID",
   },
   decorators: [
     (Story: () => React.ReactNode) => (
@@ -36,10 +34,10 @@ type Story = StoryObj<typeof meta>;
 
 function ModalStory({
   error = null,
-  loading = false,
+  forceMobile = false,
 }: {
   error?: string | null;
-  loading?: boolean;
+  forceMobile?: boolean;
 }) {
   const [open, setOpen] = React.useState(true);
 
@@ -47,22 +45,21 @@ function ModalStory({
     <>
       {!open ? <Button onClick={() => setOpen(true)}>Reopen verification</Button> : null}
       <SelfVerificationModal
-        actionLabel="Open Self"
-        description="Use Self to verify your document privately and return to Pirate when the check is complete."
+        actionLabel="Open Self.xyz"
+        description="Self.xyz lets you prove facts like age and nationality without sharing your name, photo, or document details with anyone."
         error={error}
+        forceMobile={forceMobile}
         href={SELF_LAUNCH_HREF}
-        loading={loading}
         onOpenChange={setOpen}
         open={open}
-        qrValue={SELF_LAUNCH_HREF}
-        title="Verify with Self"
+        title="Verify with ID"
       />
     </>
   );
 }
 
-export const DesktopQr: Story = {
-  name: "Desktop / QR",
+export const DesktopLaunch: Story = {
+  name: "Desktop / Provider launch",
   parameters: {
     viewport: { defaultViewport: "desktop" },
   },
@@ -74,15 +71,15 @@ export const MobileDeeplink: Story = {
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
-  render: () => <ModalStory />,
+  render: () => <ModalStory forceMobile />,
 };
 
-export const MobileLoading: Story = {
-  name: "Mobile / Processing",
+export const MobileInstallLinks: Story = {
+  name: "Mobile / Install links",
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
-  render: () => <ModalStory loading />,
+  render: () => <ModalStory forceMobile />,
 };
 
 export const MobileError: Story = {
@@ -90,5 +87,5 @@ export const MobileError: Story = {
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
-  render: () => <ModalStory error="Verification session expired. Please try again." />,
+  render: () => <ModalStory error="Verification session expired. Please try again." forceMobile />,
 };

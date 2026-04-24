@@ -1,85 +1,28 @@
 "use client";
 
-import * as React from "react";
-import QRCode from "qrcode";
-
 import {
   Modal,
   ModalContent,
   ModalDescription,
-  ModalFooter,
   ModalHeader,
   ModalTitle,
 } from "@/components/compositions/modal/modal";
+import { VerificationIconBadge } from "@/components/compositions/verification-modal-header/verification-modal-header";
 import { Button } from "@/components/primitives/button";
+import { cn } from "@/lib/utils";
+import { Type, typeVariants } from "@/components/primitives/type";
 import { FormNote } from "@/components/primitives/form-layout";
-import { Spinner } from "@/components/primitives/spinner";
 import { VerificationAppDownloadLinks } from "@/components/compositions/verification-app-download-links/verification-app-download-links";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
-
-function VerificationQr({ value }: { value: string }) {
-  const [src, setSrc] = React.useState<string | null>(null);
-  const [error, setError] = React.useState(false);
-
-  React.useEffect(() => {
-    let cancelled = false;
-
-    void QRCode.toDataURL(value, {
-      errorCorrectionLevel: "M",
-      margin: 1,
-      width: 320,
-    })
-      .then((nextSrc: string) => {
-        if (cancelled) return;
-        setSrc(nextSrc);
-        setError(false);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setSrc(null);
-        setError(true);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [value]);
-
-  if (error) {
-    return <FormNote tone="warning">Could not render the verification QR code.</FormNote>;
-  }
-
-  if (!src) {
-    return (
-      <div className="flex min-h-72 items-center justify-center rounded-[var(--radius-lg)] border border-border-soft bg-card">
-        <Spinner className="size-5" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex justify-center rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
-      <img
-        alt="Self verification QR code"
-        className="size-72 max-w-full rounded-[var(--radius-md)]"
-        height={288}
-        src={src}
-        width={288}
-      />
-    </div>
-  );
-}
 
 export interface SelfVerificationModalProps {
   actionLabel: string;
   description: string;
   error?: string | null;
+  forceMobile?: boolean;
   href?: string | null;
-  loading?: boolean;
   onOpenChange: (open: boolean) => void;
   open: boolean;
-  qrValue?: string | null;
   title: string;
 }
 
@@ -87,48 +30,58 @@ export function SelfVerificationModal({
   actionLabel,
   description,
   error,
+  forceMobile,
   href,
-  loading,
   onOpenChange,
   open,
-  qrValue,
   title,
 }: SelfVerificationModalProps) {
-  const isMobile = useIsMobile();
   const { dir } = useUiLocale();
+  const hasPrimaryAction = Boolean(href);
 
   return (
-    <Modal onOpenChange={onOpenChange} open={open}>
-      <ModalContent className="max-h-[90vh] overflow-y-auto gap-5 px-5 py-5 sm:max-w-lg sm:gap-6 sm:px-6" dir={dir} mobileSide="bottom">
-        <ModalHeader className="gap-3 text-start">
-          <ModalTitle dir="auto">{title}</ModalTitle>
-          <ModalDescription dir="auto">{description}</ModalDescription>
+    <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
+      <ModalContent
+        className="flex max-h-[90vh] flex-col overflow-y-auto px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 sm:max-w-2xl sm:px-8 sm:pb-8 sm:pt-8"
+        dir={dir}
+        mobileSide="bottom"
+      >
+        <ModalHeader className="space-y-5 pr-10 text-start">
+          <div className="flex items-center gap-4">
+            <VerificationIconBadge className="size-16" icon="self" iconClassName="size-8" />
+            <ModalTitle className={cn(typeVariants({ variant: "h1" }), "min-w-0 leading-tight")} dir="auto">
+              {title}
+            </ModalTitle>
+          </div>
+          <ModalDescription className={cn(typeVariants({ variant: "body" }), "w-full leading-8 text-foreground")} dir="auto">
+            {description}
+          </ModalDescription>
         </ModalHeader>
 
-        <div className="space-y-4">
-          {!isMobile && qrValue ? <VerificationQr value={qrValue} /> : null}
-          {loading ? (
-            <div className="flex items-center gap-2">
-              <Spinner className="size-4" />
-              <span className="text-base text-muted-foreground">Processing verification...</span>
-            </div>
-          ) : null}
+        <div className="mt-8 space-y-6">
           {error ? <FormNote tone="warning">{error}</FormNote> : null}
-          {isMobile ? <VerificationAppDownloadLinks app="self" /> : null}
-        </div>
-
-        <ModalFooter className="mt-1 gap-3">
-          {isMobile && href ? (
-            <Button asChild className="w-full">
-              <a href={href}>
+          {hasPrimaryAction ? (
+            <Button asChild className="h-14 w-full">
+              <a href={href ?? undefined}>
                 {actionLabel}
               </a>
             </Button>
-          ) : null}
-          <Button className={isMobile ? "w-full" : undefined} onClick={() => onOpenChange(false)} variant="ghost">
-            Cancel
-          </Button>
-        </ModalFooter>
+          ) : (
+            <Button className="h-12 w-full" onClick={() => onOpenChange(false)} variant="secondary">
+              Cancel
+            </Button>
+          )}
+
+          <div className="flex items-center gap-4">
+            <span aria-hidden="true" className="h-px flex-1 bg-border-soft" />
+            <Type as="p" className="shrink-0 text-muted-foreground" variant="caption">
+              Don't have the app?
+            </Type>
+            <span aria-hidden="true" className="h-px flex-1 bg-border-soft" />
+          </div>
+
+          <VerificationAppDownloadLinks app="self" variant="full" />
+        </div>
       </ModalContent>
     </Modal>
   );

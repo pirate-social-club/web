@@ -1,3 +1,4 @@
+import { Type } from "@/components/primitives/type";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
@@ -107,30 +108,24 @@ export function LegalMarkdown({
         if (block.type === "heading") {
           if (block.level === 1) {
             return (
-              <h1
-                className="text-4xl font-semibold tracking-tight text-foreground md:text-5xl"
-                key={`block-${index}`}
-              >
+              <Type as="h1" variant="display" key={`block-${index}`}>
                 {block.text}
-              </h1>
+              </Type>
             );
           }
 
           if (block.level === 2) {
             return (
-              <h2
-                className="pt-3 text-2xl font-semibold tracking-tight text-foreground"
-                key={`block-${index}`}
-              >
+              <Type as="h2" variant="h2" className="pt-3" key={`block-${index}`}>
                 {block.text}
-              </h2>
+              </Type>
             );
           }
 
           return (
-            <h3 className="text-lg font-semibold text-foreground" key={`block-${index}`}>
+            <Type as="h3" variant="h4" key={`block-${index}`}>
               {block.text}
-            </h3>
+            </Type>
           );
         }
 

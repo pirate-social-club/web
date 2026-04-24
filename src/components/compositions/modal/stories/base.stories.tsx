@@ -10,6 +10,7 @@ import {
   ModalHeader,
   ModalTitle,
 } from "@/components/compositions/modal/modal";
+import { Type } from "@/components/primitives/type";
 
 const meta = {
   title: "Compositions/Modal",
@@ -59,7 +60,7 @@ function ModalShell({
             <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-border" />
           ) : null}
           <ModalHeader className="pr-10 text-left">
-            <ModalTitle className="text-balance text-[1.6rem] leading-tight tracking-tight sm:text-[1.85rem]">
+            <ModalTitle className="text-balance text-2xl leading-tight tracking-tight sm:text-3xl">
               {title}
             </ModalTitle>
             <ModalDescription className="max-w-[34ch] text-base leading-7">
@@ -148,27 +149,27 @@ export const PurchaseFlow: Story = {
     <ModalShell
       body={(
         <div className="mt-6 grid gap-4">
-          <div className="rounded-[1.25rem] border border-border bg-muted/35 p-4">
+          <div className="rounded-[var(--radius-1_5xl)] border border-border bg-muted/35 p-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-base font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
                   Needed now
                 </p>
                 <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">$0.50</p>
               </div>
-              <span className="text-base font-medium text-muted-foreground">Instant unlock</span>
+              <Type as="span" variant="caption" className="">Instant unlock</Type>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-base font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
                 Track price
               </p>
               <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.50</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-base font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
                 Wallet balance
               </p>
               <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.00</p>
@@ -198,8 +199,8 @@ export const PurchaseFlowMobile: Story = {
     <ModalShell
       body={(
         <div className="mt-6 grid gap-3.5">
-          <div className="rounded-[1.25rem] border border-border bg-muted/35 p-4">
-            <p className="text-base font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <div className="rounded-[var(--radius-1_5xl)] border border-border bg-muted/35 p-4">
+            <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
               Needed now
             </p>
             <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">$0.50</p>
@@ -207,13 +208,13 @@ export const PurchaseFlowMobile: Story = {
 
           <div className="grid gap-3">
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-base font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
                 Track price
               </p>
               <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.50</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-base font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
                 Wallet balance
               </p>
               <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.00</p>

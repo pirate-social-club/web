@@ -24,7 +24,7 @@ export function CommunitySidebarCharity({
   const content = (
     <>
       <Avatar
-        className="border-border-on-dark bg-white/10 text-white"
+        className="border-border bg-foreground/10 text-foreground"
         fallback={buildAvatarFallback(charity.name)}
         size="sm"
         src={charity.avatarSrc?.trim() || undefined}

@@ -55,4 +55,21 @@ describe("onboarding flow state", () => {
     expect(resolveOnboardingPhase(status)).toBeNull();
     expect(isOnboardingComplete(status)).toBe(true);
   });
+
+  test("marks onboarding complete when the user dismisses without consuming cleanup rename", () => {
+    const status = {
+      community_creation_ready: true,
+      cleanup_rename_available: true,
+      generated_handle_assigned: true,
+      missing_requirements: [],
+      namespace_verification_status: "not_started" as const,
+      onboarding_dismissed_at: "2026-04-24T12:00:00.000Z",
+      reddit_import_status: "not_started" as const,
+      reddit_verification_status: "not_started" as const,
+      unique_human_verification_status: "verified" as const,
+    };
+
+    expect(resolveOnboardingPhase(status)).toBeNull();
+    expect(isOnboardingComplete(status)).toBe(true);
+  });
 });

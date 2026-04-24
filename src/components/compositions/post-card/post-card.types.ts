@@ -204,6 +204,8 @@ export interface PostCardProps {
   viewContext?: PostCardViewContext;
   identityPresentation?: PostCardIdentityPresentation;
   byline: PostCardByline;
+  authorNationalityBadgeCountry?: string | null;
+  authorNationalityBadgeLabel?: string;
   qualifierLabels?: string[];
   title?: string;
   titleDir?: "ltr" | "rtl" | "auto";

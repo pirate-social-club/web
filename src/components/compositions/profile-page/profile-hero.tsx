@@ -5,6 +5,7 @@ import { Button } from "@/components/primitives/button";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import type { ProfileData, ProfileSidebarStat } from "./profile-page.types";
+import { Type } from "@/components/primitives/type";
 
 function formatStatValue(value: string | number, localeTag: string) {
   return typeof value === "number" ? value.toLocaleString(localeTag) : value;
@@ -66,9 +67,6 @@ export function ProfileHero({
 }) {
   const details = (
     <>
-      {profile.bio ? (
-        <p className="max-w-3xl text-base leading-7 text-muted-foreground">{profile.bio}</p>
-      ) : null}
       {profile.meta?.length ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-base text-muted-foreground">
           {profile.meta.map((item) => (
@@ -84,9 +82,9 @@ export function ProfileHero({
           {stats.map((stat) => (
             <div className="min-w-0" key={stat.label}>
               <dt className="text-base text-muted-foreground">{stat.label}</dt>
-              <dd className="truncate text-lg font-semibold tracking-tight text-foreground">
+              <Type as="dd" variant="h4" className="truncate">
                 {formatStatValue(stat.value, localeTag ?? "en-US")}
-              </dd>
+              </Type>
             </div>
           ))}
         </dl>
@@ -97,6 +95,8 @@ export function ProfileHero({
   return (
     <IdentityHero
       actions={<ProfileHeroActions onEditProfile={onEditProfile} profile={profile} />}
+      avatarBadgeCountryCode={profile.nationalityBadgeCountryCode}
+      avatarBadgeLabel={profile.nationalityBadgeLabel}
       avatarFallback={profile.displayName}
       avatarSrc={profile.avatarSrc}
       coverSrc={profile.bannerSrc}

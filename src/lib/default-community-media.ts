@@ -48,7 +48,7 @@ export function buildDefaultCommunityAvatarSrc(input: {
       <rect width="128" height="128" rx="64" fill="url(#g)" />
       <circle cx="96" cy="32" r="18" fill="rgba(255,255,255,0.18)" />
       <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle"
-            fill="rgba(255,255,255,0.96)" font-family="Inter, Arial, sans-serif"
+            fill="rgba(255,255,255,0.96)" font-family="system-ui, Arial, sans-serif"
             font-size="44" font-weight="700" letter-spacing="1">${initials}</text>
     </svg>`,
   );

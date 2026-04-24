@@ -1,5 +1,6 @@
 export {
   buildCommunitySidebar,
+  buildCommunityPreviewSidebar,
   buildCommunitySidebarRequirements,
   getCommunityActionLabel,
   getCommunitySidebarRules,

@@ -7,6 +7,7 @@ import { navigate } from "@/app/router";
 import {
   CommunityInteractionGateModal,
   type CommunityInteractionGateAction,
+  type CommunityInteractionGateModalProps,
 } from "@/components/compositions/community-interaction-gate-modal/community-interaction-gate-modal";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
@@ -16,7 +17,9 @@ import { buildCommunityPath } from "@/lib/community-routing";
 import {
   getJoinCtaLabel,
   getPassportPromptCapabilities,
+  getVerificationCapabilitiesForProvider,
   getVerificationPromptCopy,
+  resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { logger } from "@/lib/logger";
 import { interpolateMessage } from "@/lib/route-messages";
@@ -43,6 +46,7 @@ type InteractionGateCopy = ReturnType<typeof getLocaleMessages<"routes">>["inter
 
 type ModalState = {
   description: string;
+  icon?: CommunityInteractionGateModalProps["icon"];
   primaryAction?: CommunityInteractionGateAction | null;
   requirements: CommunityGateData["preview"]["membership_gate_summaries"];
   secondaryAction?: CommunityInteractionGateAction | null;
@@ -83,15 +87,40 @@ function createDefaultBlockedModalState({
 
   switch (gate.eligibility.status) {
     case "verification_required":
-      if (gate.eligibility.suggested_verification_provider === "passport") {
-        const passportPrompt = getVerificationPromptCopy("passport", getPassportPromptCapabilities(gate.eligibility), { locale: interactionCopy.locale });
+      {
+        const provider = resolveSuggestedVerificationProvider(gate.eligibility);
+        if (provider === "passport") {
+          const passportPrompt = getVerificationPromptCopy("passport", getPassportPromptCapabilities(gate.eligibility), { locale: interactionCopy.locale });
+          return {
+            description: passportPrompt.description,
+            primaryAction: {
+              label: passportPrompt.actionLabel,
+              onClick: () => {
+                window.open("https://app.passport.xyz/", "_blank", "noopener,noreferrer");
+                closeModal();
+              },
+            },
+            requirements: gate.preview.membership_gate_summaries,
+            secondaryAction: {
+              label: interactionCopy.close,
+              onClick: closeModal,
+            },
+            title: passportPrompt.title,
+          };
+        }
+        const verificationPrompt = getVerificationPromptCopy(
+          provider,
+          getVerificationCapabilitiesForProvider(gate.eligibility, provider),
+          { locale: interactionCopy.locale },
+        );
         return {
-          description: passportPrompt.description,
+          description: verificationPrompt.description,
+          icon: provider,
           primaryAction: {
-            label: passportPrompt.actionLabel,
+            label: verificationPrompt.actionLabel || interactionCopy.taskVerify,
             onClick: () => {
-              window.open("https://app.passport.xyz/", "_blank", "noopener,noreferrer");
               closeModal();
+              openCommunity();
             },
           },
           requirements: gate.preview.membership_gate_summaries,
@@ -99,29 +128,11 @@ function createDefaultBlockedModalState({
             label: interactionCopy.close,
             onClick: closeModal,
           },
-          title: passportPrompt.title,
+          title: isVoteAction
+            ? interactionCopy.verifyToVoteTitle
+            : interactionCopy.verifyToReplyTitle,
         };
       }
-      return {
-        description: isVoteAction
-          ? interactionCopy.verifyToVoteDescription
-          : interactionCopy.verifyToReplyDescription,
-        primaryAction: {
-          label: interactionCopy.taskVerify,
-          onClick: () => {
-            closeModal();
-            openCommunity();
-          },
-        },
-        requirements: gate.preview.membership_gate_summaries,
-        secondaryAction: {
-          label: interactionCopy.close,
-          onClick: closeModal,
-        },
-        title: isVoteAction
-          ? interactionCopy.verifyToVoteTitle
-          : interactionCopy.verifyToReplyTitle,
-      };
     case "joinable":
     case "requestable": {
       const ctaLabel = getJoinCtaLabel(gate.eligibility, { locale: interactionCopy.locale });
@@ -384,6 +395,7 @@ export function useCommunityInteractionGate({
   const gateModal = modalState ? (
     <CommunityInteractionGateModal
       description={modalState.description}
+      icon={modalState.icon}
       onOpenChange={(open) => {
         if (!open) closeModal();
       }}

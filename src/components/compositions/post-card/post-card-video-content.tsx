@@ -200,7 +200,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
       {ui.showOwned && (
         <span
           className={cn(
-            "inline-flex items-center gap-1.5 font-medium text-green-600",
+            "inline-flex items-center gap-1.5 font-medium text-success",
             postCardType.label,
           )}
         >

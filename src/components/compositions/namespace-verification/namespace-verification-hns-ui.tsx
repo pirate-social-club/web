@@ -7,6 +7,7 @@ import { FormNote } from "@/components/primitives/form-layout";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 import type { NamespaceVerificationModalState } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
+import { Type } from "@/components/primitives/type";
 
 export type HnsVerificationMode =
   | "dns_setup_required"
@@ -74,7 +75,7 @@ export function NamespaceVerificationHnsPanel({
 
       {nameservers.length > 0 ? (
         <div className="space-y-3">
-          <div className="text-base text-muted-foreground">{mc.nameserversLabel}</div>
+          <Type as="div" variant="caption" className="">{mc.nameserversLabel}</Type>
           <div className="space-y-2">
             {nameservers.map((value) => (
               <CopyField key={value} value={value} />
@@ -84,15 +85,15 @@ export function NamespaceVerificationHnsPanel({
       ) : null}
 
       {mode === "dns_setup_required" ? (
-        <div className="text-base text-muted-foreground">
+        <Type as="div" variant="caption" className="">
           Update the root&apos;s `NS` records where you manage the Handshake parent. After that, Pirate will show the TXT record here.
-        </div>
+        </Type>
       ) : null}
 
       {mode === "pirate_managed" ? (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <div className="text-base text-muted-foreground">{mc.challengeLabel}</div>
+            <Type as="div" variant="caption" className="">{mc.challengeLabel}</Type>
             <CopyField value={challengeName} />
           </div>
         </div>
@@ -101,11 +102,11 @@ export function NamespaceVerificationHnsPanel({
       {mode === "owner_managed_txt" && challengeHost && challengeTxtValue ? (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <div className="text-base text-muted-foreground">{mc.hostLabel}</div>
+            <Type as="div" variant="caption" className="">{mc.hostLabel}</Type>
             <CopyField value={challengeHost} />
           </div>
           <div className="space-y-1.5">
-            <div className="text-base text-muted-foreground">{mc.valueLabel}</div>
+            <Type as="div" variant="caption" className="">{mc.valueLabel}</Type>
             <CopyField value={challengeTxtValue} />
           </div>
         </div>

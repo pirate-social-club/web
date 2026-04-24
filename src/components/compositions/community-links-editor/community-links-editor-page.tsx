@@ -17,6 +17,7 @@ import {
 import type { ReferenceLinkPlatform } from "@/components/compositions/community-sidebar/community-sidebar.types";
 import { cn } from "@/lib/utils";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
+import { Type } from "@/components/primitives/type";
 
 const PLATFORM_OPTIONS: Array<{ label: string; value: ReferenceLinkPlatform }> = [
   { value: "official_website", label: "Website" },
@@ -78,10 +79,10 @@ export function CommunityLinksEditorPage({
   const { copy } = useRouteMessages();
   const mc = copy.moderation.links;
   return (
-    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
+    <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
+          <Type as="h1" variant="h1" className="md:text-4xl">{mc.title}</Type>
         </div>
         <Button className="w-full sm:w-auto" onClick={onAddLink} variant="secondary">
           <Plus className="size-5" />
@@ -91,7 +92,7 @@ export function CommunityLinksEditorPage({
 
       <div className="flex flex-col gap-4">
         {links.map((link) => (
-          <div className="rounded-[1.75rem] border border-border-soft bg-card p-4 md:p-5" key={link.id}>
+          <div className="rounded-[var(--radius-2_5xl)] border border-border-soft bg-card p-4 md:p-5" key={link.id}>
             <div className="grid gap-4 md:grid-cols-[12rem_minmax(0,0.8fr)_minmax(0,1.4fr)_auto] md:items-end">
               <div className="space-y-2">
                 <FormFieldLabel label={mc.platformLabel} />
@@ -147,9 +148,9 @@ export function CommunityLinksEditorPage({
         ))}
 
         {links.length === 0 ? (
-          <div className="rounded-[1.75rem] border border-dashed border-border-soft bg-card px-5 py-8 text-base text-muted-foreground">
+          <Type as="div" variant="caption" className="rounded-[var(--radius-2_5xl)] border border-dashed border-border-soft bg-card px-5 py-8 ">
             No links yet.
-          </div>
+          </Type>
         ) : null}
       </div>
 

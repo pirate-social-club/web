@@ -283,9 +283,13 @@ export type ApiCommunityMachineAccessPolicyUpdate = {
 export type ProfileUpdateInput = {
   display_name?: string | null;
   avatar_ref?: string | null;
+  avatar_source?: "ens" | "upload" | "none" | null;
   cover_ref?: string | null;
+  cover_source?: "ens" | "upload" | "none" | null;
   bio?: string | null;
+  bio_source?: "ens" | "manual" | "none" | null;
   preferred_locale?: string | null;
+  display_verified_nationality_badge?: boolean | null;
 };
 
 export type HandleUpgradeQuoteResponse = {

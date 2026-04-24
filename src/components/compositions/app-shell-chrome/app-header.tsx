@@ -17,6 +17,7 @@ import { PirateBrandMark } from "@/components/primitives/pirate-brand-mark";
 import { useSidebar } from "@/components/compositions/sidebar/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { Type } from "@/components/primitives/type";
 
 function CreatePostGlyph() {
   return (
@@ -188,7 +189,7 @@ export function AppHeader({
       type="button"
     >
       <PirateBrandMark className="h-9 w-9 shrink-0" decorative={false} />
-      <span className="truncate text-lg font-semibold leading-none tracking-[0.18em] text-foreground">PIRATE</span>
+      <Type as="span" variant="h4" className="truncate">PIRATE</Type>
     </button>
   );
 
@@ -230,7 +231,7 @@ export function AppHeader({
 
   return (
     <header className={cn("sticky top-0 z-30 border-b border-border-soft bg-background/95 backdrop-blur-xl", className)}>
-      <div className="grid h-[4.5rem] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 lg:px-8">
+      <div className="grid h-[var(--header-height)] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 lg:px-8">
         <div className="min-w-0 text-start">
           {hideBrand || hideDesktopBrand ? null : brand}
         </div>

@@ -35,6 +35,7 @@ export const PROFILES: Record<string, ProfileSummary> = {
     comments: [
       createProfileComment({
         commentId: "cmt_01_profile_route_shell",
+        authorLabel: "u/suspicious-code-7234.pirate",
         body: "The self profile should earn its own layout decisions. Reusing the public follow rail was fast, but it was wrong.",
         communityLabel: "c/builders",
         communityHref: `/c/${COMMUNITY_IDS.builders}`,
@@ -45,6 +46,7 @@ export const PROFILES: Record<string, ProfileSummary> = {
       }),
       createProfileComment({
         commentId: "cmt_01_profile_storybook",
+        authorLabel: "u/suspicious-code-7234.pirate",
         body: "Storybook should carry both the composition and the route shell. Otherwise mobile chrome regressions slip through.",
         communityLabel: "c/producers-only",
         communityHref: `/c/${COMMUNITY_IDS.producersOnly}`,
@@ -95,6 +97,7 @@ export const PROFILES: Record<string, ProfileSummary> = {
     comments: [
       createProfileComment({
         commentId: "cmt_01_kevin_mix",
+        authorLabel: "u/kevinparker.pirate",
         body: "If the rough mix is doing the emotional work already, the final version should protect that instead of polishing it flat.",
         communityLabel: "c/tameimpala",
         communityHref: `/c/${COMMUNITY_IDS.tameImpala}`,
@@ -145,6 +148,7 @@ export const PROFILES: Record<string, ProfileSummary> = {
     comments: [
       createProfileComment({
         commentId: "cmt_01_shipit_contracts",
+        authorLabel: "u/shipit.pirate",
         body: "If the route contract is still speculative, keep the UI honest and ship the smallest shape that won’t need to be undone.",
         communityLabel: "c/builders",
         communityHref: `/c/${COMMUNITY_IDS.builders}`,

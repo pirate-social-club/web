@@ -88,6 +88,7 @@ function buildContentSecurityPolicy(nonce: string): string {
       "https://sepolia.optimism.io",
       "https://mainnet.storyrpc.io",
       "https://aeneid.storyrpc.io",
+      "https://rpc.moderato.tempo.xyz",
       "https://g.w.lavanet.xyz",
       "https://api.very.org",
       "https://bridge.very.org",

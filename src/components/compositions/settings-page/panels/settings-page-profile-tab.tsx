@@ -9,6 +9,7 @@ import { Card } from "@/components/primitives/card";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { RadioGroup, RadioGroupItem } from "@/components/primitives/radio-group";
+import { Type } from "@/components/primitives/type";
 import { Textarea } from "@/components/primitives/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -97,7 +98,7 @@ function MediaControlCard({
     <Card className={cn("overflow-hidden border-border bg-card shadow-none", isMobile && "border-0 bg-transparent")}>
       <div className={cn("space-y-4 px-5 py-5", isMobile && "px-0 py-0")}>
         <div className="space-y-1">
-          <h3 className="text-base font-semibold text-foreground">{title}</h3>
+          <Type as="h3" variant="body-strong">{title}</Type>
           {selectedLabel ? <div className="truncate text-base text-muted-foreground">{selectedLabel}</div> : null}
         </div>
         <div
@@ -179,7 +180,7 @@ function HandleSelector({
           >
             <div className="flex w-full items-center justify-between gap-4">
               <div className="min-w-0 space-y-1">
-                <div className="truncate text-base font-medium text-foreground">{handle.label}</div>
+                <Type as="div" variant="label" className="truncate ">{handle.label}</Type>
                 <div className="truncate text-base text-muted-foreground">{formatHandleNote(handle, copy)}</div>
               </div>
               <div className="shrink-0 text-base text-muted-foreground">

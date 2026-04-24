@@ -4,12 +4,14 @@ import * as React from "react";
 import {
   createPublicClient,
   defineChain,
+  erc20Abi,
   formatUnits,
   getAddress,
   http,
   isAddress,
+  type Address,
 } from "viem";
-import { mainnet, sepolia } from "viem/chains";
+import { mainnet, optimism, optimismSepolia, sepolia } from "viem/chains";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
@@ -18,6 +20,7 @@ import { ApiError } from "@/lib/api/client";
 import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
 import { type UiLocaleCode, isUiLocaleCode } from "@/lib/ui-locale-core";
+import { getCountryDisplayName, normalizeCountryCode } from "@/lib/countries";
 import { useGlobalHandleFlow } from "@/hooks/use-global-handle-flow";
 import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import { toast } from "@/components/primitives/sonner";
@@ -26,6 +29,7 @@ import { SettingsPage } from "@/components/compositions/settings-page/settings-p
 import { WalletHub } from "@/components/compositions/wallet-hub/wallet-hub";
 import type { SettingsSubmitState, SettingsTab } from "@/components/compositions/settings-page/settings-page.types";
 import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet-hub/wallet-hub.types";
+import type { ProfileUpdateInput } from "@/lib/api/client-api-types";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 
 import { getRouteAuthDescription } from "./route-status-copy";
@@ -43,42 +47,87 @@ import { useSettingsOwnedAgents } from "./use-settings-owned-agents";
 
 type WalletBalanceChain = {
   chainId: WalletHubChainId;
-  evmChainId: number;
-  nativeSymbol: string;
-  rpcUrl: string;
+  evmChainId: number | null;
+  rpcUrl: string | null;
   title: string;
+  tokens: WalletBalanceToken[];
 };
+
+type WalletBalanceToken =
+  | {
+    id: string;
+    kind: "native";
+    name: string;
+    priceId: string | null;
+    symbol: string;
+    usdPrice?: number;
+  }
+  | {
+    address: Address;
+    id: string;
+    kind: "erc20";
+    name: string;
+    priceId: string | null;
+    symbol: string;
+    usdPrice?: number;
+  };
+
+const TEMPO_PATH_USD_ADDRESS = "0x20c0000000000000000000000000000000000000" as const;
 
 function buildWalletBalanceChains(): WalletBalanceChain[] {
   const networkConfig = getPirateNetworkConfig();
   const ethereumChain = networkConfig.base.network === "base-mainnet" ? mainnet : sepolia;
+  const optimismChain = networkConfig.base.network === "base-mainnet" ? optimism : optimismSepolia;
   const ethereumRpcUrl = networkConfig.efp.rpcUrlsByChainId[ethereumChain.id] ?? ethereumChain.rpcUrls.default.http[0];
+  const optimismRpcUrl = networkConfig.efp.rpcUrlsByChainId[optimismChain.id] ?? optimismChain.rpcUrls.default.http[0];
 
   const chains: WalletBalanceChain[] = [
     {
       chainId: "ethereum",
       evmChainId: ethereumChain.id,
-      nativeSymbol: "ETH",
       rpcUrl: ethereumRpcUrl,
       title: ethereumChain.id === mainnet.id ? "Ethereum" : "Ethereum Sepolia",
+      tokens: [{ id: "eth", kind: "native", name: "ETH", priceId: "ethereum", symbol: "ETH" }],
     },
     {
       chainId: "base",
       evmChainId: networkConfig.base.chainId,
-      nativeSymbol: "ETH",
       rpcUrl: networkConfig.base.rpcUrl,
       title: networkConfig.base.label,
+      tokens: [{ id: "base-eth", kind: "native", name: "ETH", priceId: "ethereum", symbol: "ETH" }],
+    },
+    {
+      chainId: "optimism",
+      evmChainId: optimismChain.id,
+      rpcUrl: optimismRpcUrl,
+      title: optimismChain.id === optimism.id ? "Optimism" : "Optimism Sepolia",
+      tokens: [{ id: "op-eth", kind: "native", name: "ETH", priceId: "ethereum", symbol: "ETH" }],
     },
     {
       chainId: "story",
       evmChainId: networkConfig.story.chainId,
-      nativeSymbol: "IP",
       rpcUrl: networkConfig.story.rpcUrl,
       title: networkConfig.story.label,
+      tokens: [{ id: "story-ip", kind: "native", name: "IP", priceId: "story", symbol: "IP" }],
+    },
+    {
+      chainId: "tempo",
+      evmChainId: networkConfig.tempo.chainId,
+      rpcUrl: networkConfig.tempo.rpcUrl,
+      title: networkConfig.tempo.label,
+      tokens: [{
+        address: TEMPO_PATH_USD_ADDRESS,
+        id: "tempo-pathusd",
+        kind: "erc20",
+        name: "pathUSD",
+        priceId: null,
+        symbol: "pathUSD",
+        usdPrice: 1,
+      }],
     },
   ];
 
-  return chains.filter((chain) => chain.rpcUrl.trim().length > 0);
+  return chains.filter((chain) => chain.rpcUrl === null || chain.rpcUrl.trim().length > 0);
 }
 
 function formatNativeBalance(balance: bigint, decimals = 18): string {
@@ -89,25 +138,57 @@ function formatNativeBalance(balance: bigint, decimals = 18): string {
 }
 
 function buildWalletHubChainSections({
-  balancesByChainId,
+  balancesByTokenId,
   chains,
   loading,
+  pricesById,
+  walletAddress,
 }: {
-  balancesByChainId: Record<number, string>;
+  balancesByTokenId: Record<string, string>;
   chains: WalletBalanceChain[];
   loading: boolean;
+  pricesById: Record<string, number>;
+  walletAddress: string | null;
 }): WalletHubChainSection[] {
   return chains.map((chain) => ({
     chainId: chain.chainId,
     title: chain.title,
     availability: "ready",
-    tokens: [{
-      id: `${chain.evmChainId}:${chain.nativeSymbol}`,
-      symbol: chain.nativeSymbol,
-      name: chain.nativeSymbol,
-      balance: balancesByChainId[chain.evmChainId] ?? (loading ? "..." : "Unavailable"),
-    }],
+    walletAddress,
+    tokens: chain.tokens.map((token) => ({
+      id: `${chain.evmChainId}:${token.id}`,
+      symbol: token.symbol,
+      name: token.name,
+      balance: balancesByTokenId[`${chain.evmChainId}:${token.id}`] ?? (loading ? "..." : "Unavailable"),
+      priceId: token.priceId ?? undefined,
+      usdPrice: token.usdPrice ?? (token.priceId ? pricesById[token.priceId] ?? null : null),
+    })),
   }));
+}
+
+function parseCoinGeckoPrices(value: unknown, priceIds: string[]): Record<string, number> {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  const record = value as Record<string, unknown>;
+  const prices: Record<string, number> = {};
+
+  for (const priceId of priceIds) {
+    const coin = record[priceId];
+    if (!coin || typeof coin !== "object") continue;
+    const usd = (coin as Record<string, unknown>).usd;
+    if (typeof usd === "number" && Number.isFinite(usd)) {
+      prices[priceId] = usd;
+    }
+  }
+
+  return prices;
+}
+
+function metadataString(metadata: Record<string, unknown> | null | undefined, key: string): string | null {
+  const value = metadata?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 export function CurrentUserProfilePage() {
@@ -150,18 +231,19 @@ export function CurrentUserWalletPage() {
   const walletAttachments = session?.walletAttachments ?? [];
   const pageTitle = copy.wallet.title;
   const balanceChains = React.useMemo(() => buildWalletBalanceChains(), []);
-  const [balancesByChainId, setBalancesByChainId] = React.useState<Record<number, string>>({});
+  const priceIds = React.useMemo(
+    () => Array.from(new Set(balanceChains.flatMap((chain) => chain.tokens.flatMap((token) => token.priceId ? [token.priceId] : [])))),
+    [balanceChains],
+  );
+  const [balancesByTokenId, setBalancesByTokenId] = React.useState<Record<string, string>>({});
   const [balancesLoading, setBalancesLoading] = React.useState(false);
-
-  if (!profile) {
-    return <AuthRequiredRouteState description={getRouteAuthDescription("wallet")} title={pageTitle} />;
-  }
+  const [pricesById, setPricesById] = React.useState<Record<string, number>>({});
 
   const primaryWallet = walletAttachments.find((wallet) => wallet.is_primary)
-    ?? walletAttachments.find((wallet) => wallet.wallet_address === profile.primary_wallet_address)
+    ?? walletAttachments.find((wallet) => wallet.wallet_address === profile?.primary_wallet_address)
     ?? walletAttachments[0]
     ?? null;
-  const primaryAddress = profile.primary_wallet_address ?? primaryWallet?.wallet_address ?? null;
+  const primaryAddress = profile?.primary_wallet_address ?? primaryWallet?.wallet_address ?? null;
   const walletLabel = primaryWallet
     ? formatWalletChainLabel(primaryWallet.chain_namespace)
     : copy.wallet.noWalletConnected;
@@ -171,7 +253,7 @@ export function CurrentUserWalletPage() {
 
   React.useEffect(() => {
     if (!normalizedPrimaryAddress) {
-      setBalancesByChainId({});
+      setBalancesByTokenId({});
       setBalancesLoading(false);
       return;
     }
@@ -179,15 +261,19 @@ export function CurrentUserWalletPage() {
     let cancelled = false;
     setBalancesLoading(true);
 
-    void Promise.allSettled(balanceChains.map(async (chain) => {
+    const chainsWithRpc = balanceChains.filter((chain): chain is WalletBalanceChain & { evmChainId: number; rpcUrl: string } => (
+      chain.evmChainId !== null && typeof chain.rpcUrl === "string" && chain.rpcUrl.trim().length > 0
+    ));
+
+    void Promise.allSettled(chainsWithRpc.flatMap((chain) => chain.tokens.map(async (token) => {
       const publicClient = createPublicClient({
         chain: defineChain({
           id: chain.evmChainId,
           name: chain.title,
           nativeCurrency: {
             decimals: 18,
-            name: chain.nativeSymbol,
-            symbol: chain.nativeSymbol,
+            name: "USD",
+            symbol: chain.chainId === "tempo" ? "USD" : token.symbol,
           },
           rpcUrls: {
             default: {
@@ -197,12 +283,30 @@ export function CurrentUserWalletPage() {
         }),
         transport: http(chain.rpcUrl),
       });
-      const balance = await publicClient.getBalance({ address: normalizedPrimaryAddress });
-      return [chain.evmChainId, formatNativeBalance(balance)] as const;
-    }))
+      const tokenKey = `${chain.evmChainId}:${token.id}`;
+      if (token.kind === "native") {
+        const balance = await publicClient.getBalance({ address: normalizedPrimaryAddress });
+        return [tokenKey, formatNativeBalance(balance)] as const;
+      }
+
+      const [balance, decimals] = await Promise.all([
+        publicClient.readContract({
+          abi: erc20Abi,
+          address: token.address,
+          functionName: "balanceOf",
+          args: [normalizedPrimaryAddress],
+        }),
+        publicClient.readContract({
+          abi: erc20Abi,
+          address: token.address,
+          functionName: "decimals",
+        }),
+      ]);
+      return [tokenKey, formatNativeBalance(balance, decimals)] as const;
+    })))
       .then((results) => {
         if (cancelled) return;
-        const entries: Array<readonly [number, string]> = [];
+        const entries: Array<readonly [string, string]> = [];
         for (const result of results) {
           if (result.status === "fulfilled") {
             entries.push(result.value);
@@ -210,7 +314,7 @@ export function CurrentUserWalletPage() {
             logger.warn("[wallet] balance fetch failed", result.reason);
           }
         }
-        setBalancesByChainId(Object.fromEntries(entries));
+        setBalancesByTokenId(Object.fromEntries(entries));
       })
       .finally(() => {
         if (!cancelled) setBalancesLoading(false);
@@ -221,15 +325,57 @@ export function CurrentUserWalletPage() {
     };
   }, [balanceChains, normalizedPrimaryAddress]);
 
+  React.useEffect(() => {
+    if (priceIds.length === 0) {
+      setPricesById({});
+      return;
+    }
+
+    let cancelled = false;
+    const searchParams = new URLSearchParams({
+      ids: priceIds.join(","),
+      vs_currencies: "usd",
+    });
+
+    void fetch(`https://api.coingecko.com/api/v3/simple/price?${searchParams.toString()}`)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`CoinGecko price request failed with ${response.status}`);
+        }
+        return response.json() as Promise<unknown>;
+      })
+      .then((json) => {
+        if (!cancelled) {
+          setPricesById(parseCoinGeckoPrices(json, priceIds));
+        }
+      })
+      .catch((error) => {
+        logger.warn("[wallet] price fetch failed", error);
+        if (!cancelled) {
+          setPricesById({});
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [priceIds]);
+
+  if (!profile) {
+    return <AuthRequiredRouteState description={getRouteAuthDescription("wallet")} title={pageTitle} />;
+  }
+
   return (
     <WalletHub
       walletAddress={normalizedPrimaryAddress ?? primaryAddress}
       walletLabel={walletLabel}
       chainSections={normalizedPrimaryAddress
         ? buildWalletHubChainSections({
-          balancesByChainId,
+          balancesByTokenId,
           chains: balanceChains,
           loading: balancesLoading,
+          pricesById,
+          walletAddress: normalizedPrimaryAddress ?? primaryAddress,
         })
         : []}
     />
@@ -248,6 +394,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const [displayName, setDisplayName] = React.useState("");
   const [bio, setBio] = React.useState("");
   const [preferredLocale, setPreferredLocale] = React.useState<UiLocaleCode>("en");
+  const [nationalityBadgeEnabled, setNationalityBadgeEnabled] = React.useState(false);
   const [selectedPrimaryHandleId, setSelectedPrimaryHandleId] = React.useState<string | null>(null);
   const [avatarFile, setAvatarFile] = React.useState<File | null>(null);
   const [coverFile, setCoverFile] = React.useState<File | null>(null);
@@ -283,6 +430,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     setDisplayName(profile.display_name ?? "");
     setBio(profile.bio ?? "");
     setPreferredLocale(isUiLocaleCode(nextPreferredLocale ?? "") ? nextPreferredLocale as UiLocaleCode : locale);
+    setNationalityBadgeEnabled(Boolean(profile.display_verified_nationality_badge));
     setSelectedPrimaryHandleId(profile.primary_public_handle?.linked_handle_id ?? null);
     setAvatarFile(null);
     setCoverFile(null);
@@ -321,8 +469,18 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const profilePrimaryHandleId = profile?.primary_public_handle?.linked_handle_id ?? null;
   const currentHandle = profile?.global_handle?.label ? profile.global_handle.label.replace(/\.pirate$/i, "").concat(".pirate") : "";
   const linkedHandles = profile ? mapProfileLinkedHandles(profile) : [];
+  const verifiedEnsHandle = linkedHandles.find((handle) => handle.kind === "ens" && handle.verificationState === "verified") ?? null;
+  const ensAvatarRef = metadataString(verifiedEnsHandle?.metadata, "avatar");
+  const ensCoverRef = metadataString(verifiedEnsHandle?.metadata, "header");
+  const ensBio = metadataString(verifiedEnsHandle?.metadata, "description");
   const postAuthorLabel = profile ? getSelectedProfileHandleLabel(profile, selectedPrimaryHandleId) : currentHandle;
   const settingsLocaleOptions = React.useMemo(() => buildSettingsLocaleOptions(copy), [copy]);
+  const verifiedNationality = session?.user.verification_capabilities?.nationality;
+  const verifiedNationalityCode = verifiedNationality?.state === "verified" && verifiedNationality.provider === "self"
+    ? normalizeCountryCode(verifiedNationality.value)?.alpha2 ?? null
+    : null;
+  const verifiedNationalityName = verifiedNationalityCode ? getCountryDisplayName(verifiedNationalityCode, locale) : null;
+  const effectiveNationalityBadgeEnabled = Boolean(verifiedNationalityCode && nationalityBadgeEnabled);
   const profileHasChanges = profile == null ? false : (
     displayName.trim() !== (profile.display_name ?? "").trim()
     || bio !== (profile.bio ?? "")
@@ -332,7 +490,10 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     || (coverRemoved && profile.cover_ref != null)
   );
   const publicHandlesHasChanges = profile == null ? false : selectedPrimaryHandleId !== profilePrimaryHandleId;
-  const preferencesChanged = profile == null ? false : preferredLocale !== (isUiLocaleCode(profile.preferred_locale ?? "") ? profile.preferred_locale : locale);
+  const preferencesChanged = profile == null ? false : (
+    preferredLocale !== (isUiLocaleCode(profile.preferred_locale ?? "") ? profile.preferred_locale : locale)
+    || effectiveNationalityBadgeEnabled !== Boolean(profile.display_verified_nationality_badge)
+  );
 
   const handleProfileSave = React.useCallback(async () => {
     if (!profile) return;
@@ -345,17 +506,23 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     setDisplayNameError(undefined);
     setProfileSubmitState({ kind: "saving" });
     try {
-      let avatarRef = avatarRemoved ? null : profile.avatar_ref ?? null;
-      let coverRef = coverRemoved ? null : profile.cover_ref ?? null;
-      if (avatarFile) avatarRef = (await api.profiles.uploadMedia({ kind: "avatar", file: avatarFile })).media_ref;
-      if (coverFile) coverRef = (await api.profiles.uploadMedia({ kind: "cover", file: coverFile })).media_ref;
+      const payload: ProfileUpdateInput = { display_name: trimmedDisplayName };
+      const nextBio = bio.trim() ? bio : null;
+      if (nextBio !== (profile.bio ?? null)) {
+        payload.bio = nextBio;
+      }
+      if (avatarRemoved) {
+        payload.avatar_source = "none";
+      } else if (avatarFile) {
+        payload.avatar_ref = (await api.profiles.uploadMedia({ kind: "avatar", file: avatarFile })).media_ref;
+      }
+      if (coverRemoved) {
+        payload.cover_source = "none";
+      } else if (coverFile) {
+        payload.cover_ref = (await api.profiles.uploadMedia({ kind: "cover", file: coverFile })).media_ref;
+      }
 
-      const updatedProfile = await api.profiles.updateMe({
-        display_name: trimmedDisplayName,
-        bio: bio.trim() ? bio : null,
-        avatar_ref: avatarRef,
-        cover_ref: coverRef,
-      });
+      const updatedProfile = await api.profiles.updateMe(payload);
 
       updateSessionProfile(updatedProfile);
       setAvatarFile(null);
@@ -368,7 +535,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
       const apiErr = e as ApiError;
       setProfileSubmitState({ kind: "error", message: apiErr?.message ?? copy.settings.saveProfileError });
     }
-  }, [api, avatarFile, avatarRemoved, bio, copy.settings.displayNameRequired, copy.settings.profileUpdated, copy.settings.saveProfileError, coverFile, coverRemoved, displayName, profile, profilePrimaryHandleId, selectedPrimaryHandleId]);
+  }, [api, avatarFile, avatarRemoved, bio, copy.settings.displayNameRequired, copy.settings.profileUpdated, copy.settings.saveProfileError, coverFile, coverRemoved, displayName, profile]);
 
   const handlePublicHandlesSave = React.useCallback(async () => {
     if (!profile) return;
@@ -391,7 +558,10 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     if (!profile) return;
     setPreferencesSubmitState({ kind: "saving" });
     try {
-      const updatedProfile = await api.profiles.updateMe({ preferred_locale: preferredLocale });
+      const updatedProfile = await api.profiles.updateMe({
+        preferred_locale: preferredLocale,
+        display_verified_nationality_badge: effectiveNationalityBadgeEnabled,
+      });
       updateSessionProfile(updatedProfile);
       setLocale(preferredLocale);
       setPreferencesSubmitState({ kind: "idle" });
@@ -400,7 +570,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
       const apiErr = e as ApiError;
       setPreferencesSubmitState({ kind: "error", message: apiErr?.message ?? copy.settings.savePreferencesError });
     }
-  }, [api, copy.settings.preferencesUpdated, copy.settings.savePreferencesError, preferredLocale, profile, setLocale]);
+  }, [api, copy.settings.preferencesUpdated, copy.settings.savePreferencesError, effectiveNationalityBadgeEnabled, preferredLocale, profile, setLocale]);
 
   const handleLogout = React.useCallback(() => {
     clearSession();
@@ -421,6 +591,12 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
           : copy.settings.notVerified,
         locale: preferredLocale,
         localeOptions: settingsLocaleOptions,
+        nationalityBadgeCountryCode: verifiedNationalityCode,
+        nationalityBadgeCountryLabel: verifiedNationalityName
+          ? copy.settings.nationalityVerified.replace("{country}", verifiedNationalityName)
+          : copy.settings.notVerified,
+        nationalityBadgeDisabled: !verifiedNationalityCode,
+        nationalityBadgeEnabled: effectiveNationalityBadgeEnabled,
         onLocaleChange: (next) => {
           if (isUiLocaleCode(next)) {
             setPreferredLocale(next);
@@ -428,24 +604,79 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
           }
         },
         onLogout: handleLogout,
+        onNationalityBadgeChange: (enabled) => {
+          setNationalityBadgeEnabled(enabled);
+          setPreferencesSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev);
+        },
         onSave: handlePreferencesSave,
         saveDisabled: !preferencesChanged || preferencesSubmitState.kind === "saving",
         submitState: preferencesSubmitState,
       }}
       profile={{
         avatarSrc: avatarRemoved ? undefined : profile.avatar_ref ?? undefined,
+        avatarSource: avatarRemoved ? "none" : profile.avatar_source ?? null,
         bio,
+        bioSource: bio !== (profile.bio ?? "") ? "manual" : profile.bio_source ?? null,
+        canUseEnsAvatar: Boolean(ensAvatarRef),
+        canUseEnsBio: Boolean(ensBio),
+        canUseEnsCover: Boolean(ensCoverRef),
         coverSrc: coverRemoved ? undefined : profile.cover_ref ?? undefined,
+        coverSource: coverRemoved ? "none" : profile.cover_source ?? null,
         currentHandle,
         displayName,
         displayNameError,
+        ensHandleLabel: verifiedEnsHandle?.label,
         linkedHandles,
         primaryHandleId: selectedPrimaryHandleId,
         onAvatarRemove: () => { setAvatarFile(null); setAvatarRemoved(true); setProfileSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },
         onAvatarSelect: (file) => { setAvatarFile(file); setAvatarRemoved(false); setProfileSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },
+        onAvatarUseEns: async () => {
+          if (!ensAvatarRef) return;
+          setProfileSubmitState({ kind: "saving" });
+          try {
+            const updatedProfile = await api.profiles.updateMe({ avatar_source: "ens" });
+            updateSessionProfile(updatedProfile);
+            setAvatarFile(null);
+            setAvatarRemoved(false);
+            setProfileSubmitState({ kind: "idle" });
+            toast.success(copy.settings.profileUpdated);
+          } catch (e: unknown) {
+            const apiErr = e as ApiError;
+            setProfileSubmitState({ kind: "error", message: apiErr?.message ?? copy.settings.saveProfileError });
+          }
+        },
         onBioChange: (next) => { setBio(next); setProfileSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },
+        onBioUseEns: async () => {
+          if (!ensBio) return;
+          setProfileSubmitState({ kind: "saving" });
+          try {
+            const updatedProfile = await api.profiles.updateMe({ bio_source: "ens" });
+            updateSessionProfile(updatedProfile);
+            setBio(updatedProfile.bio ?? "");
+            setProfileSubmitState({ kind: "idle" });
+            toast.success(copy.settings.profileUpdated);
+          } catch (e: unknown) {
+            const apiErr = e as ApiError;
+            setProfileSubmitState({ kind: "error", message: apiErr?.message ?? copy.settings.saveProfileError });
+          }
+        },
         onCoverRemove: () => { setCoverFile(null); setCoverRemoved(true); setProfileSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },
         onCoverSelect: (file) => { setCoverFile(file); setCoverRemoved(false); setProfileSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },
+        onCoverUseEns: async () => {
+          if (!ensCoverRef) return;
+          setProfileSubmitState({ kind: "saving" });
+          try {
+            const updatedProfile = await api.profiles.updateMe({ cover_source: "ens" });
+            updateSessionProfile(updatedProfile);
+            setCoverFile(null);
+            setCoverRemoved(false);
+            setProfileSubmitState({ kind: "idle" });
+            toast.success(copy.settings.profileUpdated);
+          } catch (e: unknown) {
+            const apiErr = e as ApiError;
+            setProfileSubmitState({ kind: "error", message: apiErr?.message ?? copy.settings.saveProfileError });
+          }
+        },
         onDisplayNameChange: (next) => { setDisplayName(next); setDisplayNameError(undefined); setProfileSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },
         onPrimaryHandleChange: (handleId) => { setSelectedPrimaryHandleId(handleId); setPublicHandlesSubmitState((prev) => prev.kind === "error" ? { kind: "idle" } : prev); },
         onSave: handleProfileSave,

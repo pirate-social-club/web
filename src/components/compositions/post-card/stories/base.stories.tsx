@@ -10,7 +10,7 @@ const basePost: PostCardProps = {
   viewContext: "home",
   byline: {
     community: { kind: "community", label: "c/tameimpala", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=10" },
-    author: { kind: "user", label: "u/kevin.tameimpala", href: "#" },
+    author: { kind: "user", label: "u/kevin.tameimpala", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=5" },
     timestampLabel: "9d",
   },
   title: "What's everyone listening to this week?",
@@ -47,6 +47,45 @@ type Story = StoryObj<typeof meta>;
 export const TextPost: Story = {
   name: "Text Post",
   render: () => <PostCard {...basePost} />,
+};
+
+export const PublicAuthorNationalityBadge: Story = {
+  name: "Public Author / Nationality Badge",
+  render: () => (
+    <PostCard
+      {...basePost}
+      authorNationalityBadgeCountry="US"
+      authorNationalityBadgeLabel="Verified United States nationality"
+    />
+  ),
+};
+
+export const AnonymousWithoutNationalityBadge: Story = {
+  name: "Anonymous / Badge Hidden",
+  render: () => (
+    <PostCard
+      {...basePost}
+      authorNationalityBadgeCountry="US"
+      authorNationalityBadgeLabel="Verified United States nationality"
+      byline={{
+        ...basePost.byline,
+        author: { kind: "user", label: "anon_signal-anchor-17" },
+      }}
+      identityPresentation="anonymous_with_community"
+    />
+  ),
+};
+
+export const DuplicateNationalityQualifier: Story = {
+  name: "Nationality Qualifier / Badge Suppressed",
+  render: () => (
+    <PostCard
+      {...basePost}
+      authorNationalityBadgeCountry="US"
+      authorNationalityBadgeLabel="Verified United States nationality"
+      qualifierLabels={["US National"]}
+    />
+  ),
 };
 
 export const ImagePost: Story = {

@@ -14,6 +14,7 @@ import { Label } from "@/components/primitives/label";
 import { RadioGroup, RadioGroupItem } from "@/components/primitives/radio-group";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { Type } from "@/components/primitives/type";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
 
 import type {
@@ -42,7 +43,7 @@ export function Section({
       {title.trim() || hint ? (
         <div className="space-y-1.5">
           {title.trim() ? (
-            <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+            <Type as="h3" variant="h4">{title}</Type>
           ) : null}
           {hint ? <FormNote>{hint}</FormNote> : null}
         </div>
@@ -122,7 +123,7 @@ export function ReviewField({
   return (
     <div className="space-y-0.5">
       <p className="text-base text-muted-foreground">{label}</p>
-      <p className="text-base font-medium text-foreground">{value || "\u2014"}</p>
+      <Type as="p" variant="label" className="">{value || "\u2014"}</Type>
     </div>
   );
 }
@@ -138,7 +139,7 @@ export function ReviewSection({
 
   return (
     <div className={cn("space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
-      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      <Type as="h3" variant="body-strong">{title}</Type>
       <div className="grid gap-3 md:grid-cols-2">{children}</div>
     </div>
   );

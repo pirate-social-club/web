@@ -13,6 +13,7 @@ function InteractiveSettingsStory(args: SettingsPageProps) {
   const [displayName, setDisplayName] = React.useState(args.profile.displayName);
   const [bio, setBio] = React.useState(args.profile.bio);
   const [locale, setLocale] = React.useState(args.preferences.locale);
+  const [nationalityBadgeEnabled, setNationalityBadgeEnabled] = React.useState(args.preferences.nationalityBadgeEnabled ?? false);
   const [primaryHandleId, setPrimaryHandleId] = React.useState<string | null>(
     args.profile.primaryHandleId ?? null,
   );
@@ -27,6 +28,9 @@ function InteractiveSettingsStory(args: SettingsPageProps) {
         setDraft: setHandleDraft,
       }
     : undefined;
+  const selectedPostAuthorLabel = args.profile.linkedHandles.find((handle) => (
+    (handle.handleId ?? "pirate") === (primaryHandleId ?? "pirate")
+  ))?.label ?? args.profile.currentHandle;
 
   return (
     <SettingsPage
@@ -36,7 +40,9 @@ function InteractiveSettingsStory(args: SettingsPageProps) {
       preferences={{
         ...args.preferences,
         locale,
+        nationalityBadgeEnabled,
         onLocaleChange: setLocale,
+        onNationalityBadgeChange: setNationalityBadgeEnabled,
       }}
       profile={{
         ...args.profile,
@@ -44,6 +50,7 @@ function InteractiveSettingsStory(args: SettingsPageProps) {
         displayName,
         handleFlow,
         primaryHandleId,
+        postAuthorLabel: selectedPostAuthorLabel,
         onBioChange: setBio,
         onDisplayNameChange: setDisplayName,
         onPrimaryHandleChange: setPrimaryHandleId,
@@ -74,10 +81,14 @@ const baseArgs: SettingsPageProps = {
   },
   profile: {
     avatarSrc: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=300&q=80",
+    avatarSource: "ens",
     bio: "Making internet-native spaces for music and culture.",
+    bioSource: "ens",
     coverSrc: "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1600&q=80",
+    coverSource: "ens",
     currentHandle: "captainblackbeard.pirate",
     displayName: "Blackbeard",
+    ensHandleLabel: "blackbeard.eth",
     handleFlow: makeMockHandleFlow(),
     linkedHandles: [
       {
@@ -91,6 +102,13 @@ const baseArgs: SettingsPageProps = {
         handleId: "lnk_ens_blackbeard",
         kind: "ens",
         label: "blackbeard.eth",
+        metadata: {
+          avatar: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=300&q=80",
+          description: "Making internet-native spaces for music and culture.",
+          header: "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1600&q=80",
+          social: { github: "blackbeard", twitter: "blackbeard" },
+          url: "https://blackbeard.example",
+        },
         primary: true,
         verificationState: "verified",
       },
@@ -103,7 +121,7 @@ const baseArgs: SettingsPageProps = {
       },
     ],
     primaryHandleId: "lnk_ens_blackbeard",
-    postAuthorLabel: "captainblackbeard.pirate",
+    postAuthorLabel: "blackbeard.eth",
     submitState: { kind: "idle" },
     publicHandlesSubmitState: { kind: "idle" },
     publicHandlesSaveDisabled: false,
@@ -112,6 +130,10 @@ const baseArgs: SettingsPageProps = {
   preferences: {
     ageStatusLabel: "18+ verified",
     locale: "en",
+    nationalityBadgeCountryCode: "GB",
+    nationalityBadgeCountryLabel: "United Kingdom verified",
+    nationalityBadgeEnabled: false,
+    nationalityBadgeDisabled: false,
     localeOptions: [
       { label: "English", value: "en" },
       { label: "Arabic", value: "ar" },
@@ -138,9 +160,66 @@ type Story = StoryObj<typeof meta>;
 
 export const Profile: Story = {};
 
+export const ProfileEnsImported: Story = {};
+
+export const ProfileUploadedAvatarOverridesEns: Story = {
+  args: {
+    profile: {
+      ...baseArgs.profile,
+      avatarSrc: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=300&q=80",
+      avatarSource: "upload",
+      bio: "This bio was edited on Pirate after ENS import.",
+      bioSource: "manual",
+      canUseEnsAvatar: true,
+      canUseEnsBio: true,
+      canUseEnsCover: true,
+      postAuthorLabel: "blackbeard.eth",
+    },
+  },
+};
+
+export const ProfileEnsRemoved: Story = {
+  args: {
+    profile: {
+      ...baseArgs.profile,
+      avatarSrc: undefined,
+      avatarSource: "none",
+      coverSrc: undefined,
+      coverSource: "none",
+      canUseEnsAvatar: true,
+      canUseEnsCover: true,
+      postAuthorLabel: "blackbeard.eth",
+    },
+  },
+};
+
 export const Preferences: Story = {
   args: {
     activeTab: "preferences",
+  },
+};
+
+export const PreferencesNationalityBadgeEnabled: Story = {
+  args: {
+    activeTab: "preferences",
+    preferences: {
+      ...baseArgs.preferences,
+      nationalityBadgeEnabled: true,
+    },
+  },
+};
+
+export const PreferencesNationalityBadgeUnavailable: Story = {
+  args: {
+    activeTab: "preferences",
+    preferences: {
+      ...baseArgs.preferences,
+      ageStatusLabel: undefined,
+      nationalityBadgeCountryCode: null,
+      nationalityBadgeCountryLabel: "Not verified",
+      nationalityBadgeDisabled: true,
+      nationalityBadgeEnabled: false,
+    },
   },
 };
 

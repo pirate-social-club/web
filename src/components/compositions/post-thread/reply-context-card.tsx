@@ -1,3 +1,5 @@
+import { Type } from "@/components/primitives/type";
+
 export interface ReplyContextCardProps {
   authorLabel: string;
   body: string;
@@ -14,8 +16,8 @@ export function ReplyContextCard({
   return (
     <section className="border-b border-border-soft pb-3">
       <div className="space-y-2">
-        {eyebrow ? <div className="text-base text-muted-foreground">{eyebrow}</div> : null}
-        <div className="flex flex-wrap items-center gap-2 text-base text-muted-foreground/85">
+        {eyebrow ? <Type as="div" variant="caption" className="">{eyebrow}</Type> : null}
+        <Type as="div" variant="caption" className="flex flex-wrap items-center gap-2 /85">
           <span className="font-medium text-foreground">{authorLabel}</span>
           {metadata ? (
             <>
@@ -23,7 +25,7 @@ export function ReplyContextCard({
               <span>{metadata}</span>
             </>
           ) : null}
-        </div>
+        </Type>
         <p className="text-base leading-7 text-foreground/92">{body}</p>
       </div>
     </section>

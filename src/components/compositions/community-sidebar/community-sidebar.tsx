@@ -20,6 +20,7 @@ import { CommunitySidebarLinks } from "./community-sidebar-links";
 import { CommunitySidebarModerator } from "./community-sidebar-moderator";
 import { CommunitySidebarRules } from "./community-sidebar-rules";
 import type { CommunitySidebarProps } from "./community-sidebar.types";
+import { Type } from "@/components/primitives/type";
 
 function formatMemberCount(count: number, localeTag: string): string {
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
@@ -29,7 +30,7 @@ function formatMemberCount(count: number, localeTag: string): string {
 }
 
 const SECTION_LABEL =
-  "py-3 text-base font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/55 hover:no-underline";
+  "py-3 text-base font-semibold uppercase tracking-widest text-sidebar-foreground/55 hover:no-underline";
 
 function CommunitySidebarSections({
   charity,
@@ -70,7 +71,7 @@ function CommunitySidebarSections({
       {showDescriptionSection && description ? (
         <div className="flex flex-col gap-1.5">
           <div className={SECTION_LABEL}>{copy.aboutTab}</div>
-          <p className="text-base leading-snug text-muted-foreground">{description}</p>
+          <Type as="p" variant="caption" className="">{description}</Type>
         </div>
       ) : null}
 
@@ -78,22 +79,22 @@ function CommunitySidebarSections({
         <div className="grid grid-cols-2 gap-4">
           {followerCount != null ? (
             <div className="flex min-w-0 flex-col">
-              <span className="text-xl font-bold leading-none tabular-nums">
+              <Type as="span" variant="h3" className="leading-none tabular-nums">
                 {formatMemberCount(followerCount, localeTag)}
-              </span>
-              <span className="mt-0.5 text-base text-muted-foreground/60">
+              </Type>
+              <Type as="span" variant="caption" className="mt-0.5 /60">
                 {copy.followersLabel}
-              </span>
+              </Type>
             </div>
           ) : null}
           {memberCount != null ? (
             <div className="flex min-w-0 flex-col">
-              <span className="text-xl font-bold leading-none tabular-nums">
+              <Type as="span" variant="h3" className="leading-none tabular-nums">
                 {formatMemberCount(memberCount, localeTag)}
-              </span>
-              <span className="mt-0.5 text-base text-muted-foreground/60">
+              </Type>
+              <Type as="span" variant="caption" className="mt-0.5 /60">
                 {copy.citizensLabel}
-              </span>
+              </Type>
             </div>
           ) : null}
         </div>
@@ -220,11 +221,11 @@ export function CommunitySidebar({
           size="md"
           src={avatarSrc?.trim() || undefined}
         />
-        <h2 className="min-w-0 text-lg font-semibold leading-tight">{displayName}</h2>
+        <Type as="h2" variant="h4" className="min-w-0">{displayName}</Type>
         {description && (
-          <p className="col-span-2 min-w-0 text-base leading-snug text-muted-foreground">
+          <Type as="p" variant="caption" className="col-span-2 min-w-0 ">
             {description}
-          </p>
+          </Type>
         )}
       </div>
 
@@ -261,7 +262,7 @@ export function CommunitySidebar({
     <SidebarProvider>
       <aside
         className={cn(
-          "sticky top-[4.5rem] w-full shrink-0",
+          "sticky top-[var(--header-height)] w-full shrink-0",
           "max-h-[calc(100dvh-4.5rem-3rem)] overflow-y-auto",
           className,
         )}

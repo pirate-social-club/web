@@ -7,6 +7,7 @@ import { NumericStepper } from "./create-community-composer.sections";
 import { OptionCard } from "@/components/primitives/option-card";
 import { Spinner } from "@/components/primitives/spinner";
 import type { CourtyardWalletInventoryGroup } from "@/lib/courtyard-inventory-gates";
+import { Type } from "@/components/primitives/type";
 
 export type CourtyardWalletGateBuilderProps = {
   groups: CourtyardWalletInventoryGroup[] | null;
@@ -76,7 +77,7 @@ export function CourtyardWalletGateBuilder({
 
       {selectedGroup && (
         <div className="space-y-2 border-t border-border-soft pt-4">
-          <p className="text-base font-medium text-foreground">{quantityLabel}</p>
+          <Type as="p" variant="label" className="">{quantityLabel}</Type>
           <NumericStepper
             max={Math.min(100, selectedGroup.count)}
             min={1}

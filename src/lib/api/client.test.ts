@@ -366,6 +366,42 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("falls back to anonymous home feed when an optional token is rejected", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      if (requests.length === 1) {
+        return Response.json({
+          code: "auth_error",
+          message: "Authentication failed",
+          retryable: false,
+        }, { status: 401 });
+      }
+      return Response.json({
+        items: [],
+        next_cursor: null,
+        top_communities: [],
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "stale-session-token",
+      });
+
+      await client.feed.home({ locale: "en" });
+
+      expect(requests).toHaveLength(2);
+      expect(requests[0]?.headers.get("authorization")).toBe("Bearer stale-session-token");
+      expect(requests[1]?.headers.get("authorization")).toBe(null);
+      expect(requests[1]?.url).toBe("http://pirate.test/feed/home?locale=en");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("loads public communities without auth headers", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

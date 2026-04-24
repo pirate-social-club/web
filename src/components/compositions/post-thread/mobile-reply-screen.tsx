@@ -42,7 +42,7 @@ export function MobileReplyScreen({
           <Textarea
             autoFocus
             className={cn(
-              "min-h-[20rem] flex-1 resize-none rounded-none border-0 bg-transparent px-0 py-0 leading-7 shadow-none",
+              "min-h-80 flex-1 resize-none rounded-none border-0 bg-transparent px-0 py-0 leading-7 shadow-none",
               "focus-visible:ring-0 focus-visible:ring-offset-0",
             )}
             onChange={(event) => onBodyChange(event.target.value)}

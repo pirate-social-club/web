@@ -9,6 +9,7 @@ import { FormFieldLabel } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { cn } from "@/lib/utils";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
+import { Type } from "@/components/primitives/type";
 
 export type DonationPolicyMode = "none" | "optional_creator_sidecar";
 
@@ -42,7 +43,7 @@ function PartnerPreviewCard({
   onClear?: () => void;
 }) {
   return (
-    <div className="flex items-center gap-4 rounded-[1.75rem] border border-border-soft bg-card p-4 md:p-5">
+    <div className="flex items-center gap-4 rounded-[var(--radius-2_5xl)] border border-border-soft bg-card p-4 md:p-5">
       {partner.imageUrl ? (
         <img
           alt={partner.displayName}
@@ -56,7 +57,7 @@ function PartnerPreviewCard({
       )}
       <div className="min-w-0 flex-1">
         <div className="text-base font-semibold">{partner.displayName}</div>
-        <div className="text-base text-muted-foreground">{partner.provider}</div>
+        <Type as="div" variant="caption" className="">{partner.provider}</Type>
       </div>
       <Button
         className="size-12"
@@ -86,15 +87,15 @@ export function CommunityDonationsEditorPage({
   const { copy } = useRouteMessages();
   const mc = copy.moderation.donations;
   return (
-    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
+    <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
+          <Type as="h1" variant="h1" className="md:text-4xl">{mc.title}</Type>
         </div>
       </div>
 
       <div className="space-y-4">
-        <div className="rounded-[1.75rem] border border-border-soft bg-card p-4 md:p-5">
+        <div className="rounded-[var(--radius-2_5xl)] border border-border-soft bg-card p-4 md:p-5">
           <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
             <div className="space-y-2">
               <FormFieldLabel label={mc.charityUrlLabel} />

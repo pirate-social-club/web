@@ -1,9 +1,11 @@
 import * as React from "react";
 
+import { AvatarWithBadge } from "@/components/compositions/avatar-badge";
 import { Avatar } from "@/components/primitives/avatar";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
+import { buildNationalityBadgeLabel, nationalityMatchesQualifier } from "./post-card-nationality";
 import { postCardType } from "./post-card.styles";
 import { PostCardActionMenu } from "./post-card-action-menu";
 import type {
@@ -180,6 +182,8 @@ export interface PostCardHeaderProps {
   viewContext: PostCardViewContext;
   identityPresentation?: PostCardIdentityPresentation;
   byline: PostCardByline;
+  authorNationalityBadgeCountry?: string | null;
+  authorNationalityBadgeLabel?: string;
   qualifierLabels?: string[];
   saved?: boolean;
   menuItems?: PostCardMenuItem[];
@@ -190,6 +194,8 @@ export interface PostCardHeaderProps {
 export function PostCardHeader({
   viewContext,
   identityPresentation,
+  authorNationalityBadgeCountry,
+  authorNationalityBadgeLabel,
   byline,
   qualifierLabels,
   saved,
@@ -204,16 +210,42 @@ export function PostCardHeader({
   const avatarIdentity = byline.agentAuthor
     ? byline.author ?? primaryIdentity ?? secondaryIdentity
     : primaryIdentity ?? secondaryIdentity;
+  const shouldShowAuthorNationalityBadge = Boolean(
+    authorNationalityBadgeCountry
+    && !byline.agentAuthor
+    && byline.author
+    && avatarIdentity === byline.author
+    && resolvedPresentation !== "anonymous_primary"
+    && resolvedPresentation !== "anonymous_with_community"
+    && !nationalityMatchesQualifier({
+      countryCode: authorNationalityBadgeCountry,
+      locale,
+      qualifierLabels,
+    }),
+  );
 
   const AvatarElement = (
-    <Avatar
-      fallback={avatarIdentity?.label ?? ""}
-      size="sm"
-      src={avatarIdentity?.avatarSrc}
-      className={cn(
-        avatarIdentity?.href && "cursor-pointer transition-opacity hover:opacity-80"
-      )}
-    />
+    shouldShowAuthorNationalityBadge ? (
+      <AvatarWithBadge
+        avatarClassName={cn(
+          avatarIdentity?.href && "cursor-pointer transition-opacity hover:opacity-80"
+        )}
+        badgeCountryCode={authorNationalityBadgeCountry}
+        badgeLabel={authorNationalityBadgeLabel ?? buildNationalityBadgeLabel(authorNationalityBadgeCountry ?? "", locale)}
+        fallback={avatarIdentity?.label ?? ""}
+        size="md"
+        src={avatarIdentity?.avatarSrc}
+      />
+    ) : (
+      <Avatar
+        fallback={avatarIdentity?.label ?? ""}
+        size="md"
+        src={avatarIdentity?.avatarSrc}
+        className={cn(
+          avatarIdentity?.href && "cursor-pointer transition-opacity hover:opacity-80"
+        )}
+      />
+    )
   );
 
   return (

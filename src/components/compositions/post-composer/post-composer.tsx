@@ -1,5 +1,6 @@
 "use client";
 
+import { Type } from "@/components/primitives/type";
 import * as React from "react";
 
 import { FlatTabsList, FlatTabsTrigger } from "@/components/compositions/flat-tabs/flat-tabs";
@@ -345,7 +346,7 @@ export function PostComposer(props: PostComposerProps) {
 
   return (
     <div className={cn("w-full space-y-4", isMobile && "space-y-5")}>
-      {!isMobile ? <CardTitle className="text-3xl">{copy.title}</CardTitle> : null}
+      {!isMobile ? <Type as="h1" variant="h1">{copy.title}</Type> : null}
 
       <div className={cn("flex flex-wrap items-center justify-between gap-3", isMobile && "w-full")}>
         <ShellPill

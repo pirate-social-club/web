@@ -1,14 +1,13 @@
 "use client";
 
-import * as React from "react";
 import type { JoinEligibility, MembershipGateSummary } from "@pirate/api-contracts";
 import { ArrowSquareOut } from "@phosphor-icons/react";
-import QRCode from "qrcode";
 
+import { ActionCalloutPanel } from "@/components/compositions/action-callout-panel/action-callout-panel";
+import { VerificationIconBadge } from "@/components/compositions/verification-modal-header/verification-modal-header";
 import { Button } from "@/components/primitives/button";
 import { VerificationAppDownloadLinks } from "@/components/compositions/verification-app-download-links/verification-app-download-links";
 import { FormNote } from "@/components/primitives/form-layout";
-import { CardShell } from "@/components/primitives/layout-shell";
 import { Spinner } from "@/components/primitives/spinner";
 import {
   getJoinCtaLabel,
@@ -16,15 +15,13 @@ import {
   getVerificationPromptCopy,
   isJoinCtaActionable,
 } from "@/lib/identity-gates";
-import { useUiLocale } from "@/lib/ui-locale";
-import { getLocaleMessages } from "@/locales";
+import { Type } from "@/components/primitives/type";
 
 type VerificationPrompt = {
   title: string;
   description: string;
   actionLabel: string;
   href?: string | null;
-  qrValue?: string | null;
 };
 
 export interface CommunityMembershipGatePanelProps {
@@ -39,61 +36,6 @@ export interface CommunityMembershipGatePanelProps {
   onJoin?: () => void;
   onCancelVerification?: () => void;
   revealRequirementValues?: boolean;
-}
-
-function VerificationQr({ value }: { value: string }) {
-  const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").common;
-  const [src, setSrc] = React.useState<string | null>(null);
-  const [error, setError] = React.useState(false);
-
-  React.useEffect(() => {
-    let cancelled = false;
-
-    void QRCode.toDataURL(value, {
-      errorCorrectionLevel: "M",
-      margin: 1,
-      width: 320,
-    })
-      .then((nextSrc: string) => {
-        if (cancelled) return;
-        setSrc(nextSrc);
-        setError(false);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setSrc(null);
-        setError(true);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [value]);
-
-  if (error) {
-    return <FormNote tone="warning">{copy.qrRenderError}</FormNote>;
-  }
-
-  if (!src) {
-    return (
-      <div className="flex min-h-64 items-center justify-center rounded-[var(--radius-lg)] border border-border-soft bg-card">
-        <Spinner className="size-5" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex justify-center rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
-      <img
-        alt={copy.selfVerificationQrCode}
-        className="size-64 max-w-full rounded-[var(--radius-md)]"
-        height={256}
-        src={src}
-        width={256}
-      />
-    </div>
-  );
 }
 
 function getEligibilityText(eligibility: JoinEligibility | null | undefined): {
@@ -196,11 +138,18 @@ export function CommunityMembershipGatePanel({
     && eligibility?.status === "verification_required"
     && eligibility.suggested_verification_provider === "very";
   const eligibilityText = getEligibilityText(eligibility);
+  const isInlineVerificationRequired = !activePrompt
+    && eligibility?.status === "verification_required"
+    && !isVeryVerificationRequired;
   const title = isVeryVerificationRequired
     ? "Scan your palm to join"
+    : isInlineVerificationRequired
+      ? "Verify your identity to join"
     : activePrompt?.title ?? (joinRequested ? "Request submitted" : eligibilityText.title);
   const description = isVeryVerificationRequired
     ? null
+    : isInlineVerificationRequired
+      ? "Complete the ID check, then return to join."
     : activePrompt?.description
     ?? (joinRequested ? "Your join request has been submitted." : joinError ?? eligibilityText.description);
   const showEligibilityAction = eligibility
@@ -210,60 +159,49 @@ export function CommunityMembershipGatePanel({
     && eligibility.status !== "already_joined"
     && eligibility.status !== "banned";
   const showPromptAction = activePrompt?.href;
-  const descriptionTone = joinError ? "text-amber-700" : "text-muted-foreground";
+  const descriptionTone = joinError ? "text-warning" : "text-muted-foreground";
+  const verificationIcon = isVeryVerificationRequired
+    ? "very"
+    : isInlineVerificationRequired
+      ? "self"
+      : null;
+  const action = showPromptAction ? (
+    <Button asChild className="h-14 w-full shrink-0 px-9 text-lg shadow-sm md:w-auto md:min-w-44" size="lg" variant="secondary">
+      <a className="gap-2" href={activePrompt.href ?? undefined} rel="noopener noreferrer" target="_blank">
+        <span>{activePrompt.actionLabel}</span>
+        <ArrowSquareOut className="size-5" />
+      </a>
+    </Button>
+  ) : showEligibilityAction ? (
+    <Button
+      className="h-14 w-full shrink-0 px-9 text-lg shadow-sm md:w-auto md:min-w-44"
+      loading={joinLoading}
+      onClick={onJoin}
+      size="lg"
+    >
+      {getJoinCtaLabel(eligibility)}
+    </Button>
+  ) : null;
 
   return (
-    <CardShell className="px-5 py-5">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0 space-y-1.5">
-          <p className="text-lg font-semibold leading-7 text-foreground">{title}</p>
-          {description ? (
-            <p className={`text-base leading-6 ${descriptionTone}`}>{description}</p>
-          ) : null}
-        </div>
-
-        {showPromptAction ? (
-          <Button asChild className="w-full shrink-0 md:w-auto" variant="secondary">
-            <a className="gap-2" href={activePrompt.href ?? undefined} rel="noopener noreferrer" target="_blank">
-              <span>{activePrompt.actionLabel}</span>
-              <ArrowSquareOut className="size-5" />
-            </a>
-          </Button>
-        ) : null}
-
-        {showEligibilityAction ? (
-          <Button
-            className={isVeryVerificationRequired ? "h-12 w-full shrink-0 px-7 text-base md:w-auto" : "w-full shrink-0 md:w-auto"}
-            loading={joinLoading}
-            onClick={onJoin}
-            size={isVeryVerificationRequired ? "lg" : "default"}
-          >
-            {getJoinCtaLabel(eligibility)}
-          </Button>
-        ) : null}
-      </div>
-
-      {activePrompt?.qrValue ? (
-        <div className="mt-4">
-          <VerificationQr value={activePrompt.qrValue} />
-        </div>
-      ) : null}
-
+    <ActionCalloutPanel
+      action={action}
+      description={description}
+      descriptionClassName={descriptionTone}
+      icon={verificationIcon ? <VerificationIconBadge icon={verificationIcon} /> : null}
+      title={title}
+    >
       {isVeryVerificationRequired ? (
-        <VerificationAppDownloadLinks
-          app="very"
-          className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-muted-foreground"
-          variant="inline"
-        />
+        <VerificationAppDownloadLinks app="very" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-muted-foreground" variant="inline" />
       ) : null}
 
       {verificationLoading || onCancelVerification || verificationError ? (
         <div className="mt-4 flex flex-col gap-3">
           {verificationLoading ? (
-            <div className="flex items-center gap-2 text-base text-muted-foreground">
+            <Type as="div" variant="caption" className="flex items-center gap-2 ">
               <Spinner className="size-4" />
               <span>Processing verification...</span>
-            </div>
+            </Type>
           ) : null}
           {onCancelVerification ? (
             <Button className="w-fit" variant="ghost" onClick={onCancelVerification}>
@@ -273,6 +211,6 @@ export function CommunityMembershipGatePanel({
           {verificationError ? <FormNote tone="warning">{verificationError}</FormNote> : null}
         </div>
       ) : null}
-    </CardShell>
+    </ActionCalloutPanel>
   );
 }

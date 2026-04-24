@@ -11,6 +11,7 @@ import { FormFieldLabel } from "@/components/primitives/form-layout";
 import { Textarea } from "@/components/primitives/textarea";
 import { cn } from "@/lib/utils";
 import type { CommunityPickerItem } from "./post-composer.types";
+import { Type } from "@/components/primitives/type";
 
 export type { CommunityPickerItem } from "./post-composer.types";
 
@@ -68,7 +69,7 @@ export function ShellPill({
           align="start"
           sideOffset={4}
           className={cn(
-            "relative z-50 max-h-96 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[12rem] overflow-hidden rounded-[var(--radius-lg)] border border-border bg-popover p-0 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "relative z-50 max-h-96 w-[var(--radix-dropdown-menu-trigger-width)] min-w-48 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-popover p-0 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           )}
         >
@@ -283,7 +284,7 @@ export function LinkPreviewCard({
       >
         <div className="flex min-h-20 min-w-0 items-center px-4 py-3">
           <div className="min-w-0 space-y-1">
-            {title ? <p className="line-clamp-2 text-base font-semibold text-foreground">{title}</p> : null}
+            {title ? <Type as="p" variant="body-strong" className="line-clamp-2 ">{title}</Type> : null}
             <p className="truncate text-base text-muted-foreground">{domain}</p>
           </div>
         </div>

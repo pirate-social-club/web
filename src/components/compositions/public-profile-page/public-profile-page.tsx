@@ -1,6 +1,7 @@
 "use client";
 
 import { Avatar } from "@/components/primitives/avatar";
+import { AvatarWithBadge } from "@/components/compositions/avatar-badge";
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";
@@ -14,6 +15,7 @@ import type {
   PublicProfileProps,
   PublicProfileTab,
 } from "./public-profile-page.types";
+import { Type } from "@/components/primitives/type";
 
 function PublicHero({ profile }: { profile: PublicProfileProps }) {
   const bannerStyle = profile.bannerSrc
@@ -32,20 +34,32 @@ function PublicHero({ profile }: { profile: PublicProfileProps }) {
       />
       <div className="flex flex-col gap-5 px-5 pb-6 pt-5 lg:px-8 lg:pb-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-          <Avatar
-            className="-mt-16 size-24 border-background bg-card shadow-[var(--shadow-lg)]"
-            fallback={profile.displayName}
-            size="lg"
-            src={profile.avatarSrc}
-          />
+          {profile.nationalityBadgeCountryCode && profile.nationalityBadgeLabel ? (
+            <AvatarWithBadge
+              avatarClassName="-mt-16 size-24 border-background bg-card shadow-[var(--shadow-lg)]"
+              badgeCountryCode={profile.nationalityBadgeCountryCode}
+              badgeLabel={profile.nationalityBadgeLabel}
+              badgeSize={36}
+              fallback={profile.displayName}
+              size="lg"
+              src={profile.avatarSrc}
+            />
+          ) : (
+            <Avatar
+              className="-mt-16 size-24 border-background bg-card shadow-[var(--shadow-lg)]"
+              fallback={profile.displayName}
+              size="lg"
+              src={profile.avatarSrc}
+            />
+          )}
           <div className="space-y-2">
             <div className="space-y-1">
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+              <Type as="h1" variant="h1" className="">
                 {profile.displayName}
-              </h1>
-              <div className="text-base text-muted-foreground">
+              </Type>
+              <Type as="div" variant="caption" className="">
                 {profile.tagline ?? profile.handle}
-              </div>
+              </Type>
             </div>
             {profile.bio ? (
               <p className="max-w-3xl text-base leading-7 text-muted-foreground">
@@ -167,7 +181,7 @@ function AboutPanel({
       {bio && communities?.length ? <Separator /> : null}
       {communities?.length ? (
         <div className="px-5 py-5">
-          <div className="mb-3 text-lg font-semibold text-foreground">{copy.communitiesTitle}</div>
+          <Type as="div" variant="h4" className="mb-3 ">{copy.communitiesTitle}</Type>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             {communities.map((c) =>
               c.href ? (

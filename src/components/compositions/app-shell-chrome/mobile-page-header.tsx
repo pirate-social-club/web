@@ -7,6 +7,7 @@ import { IconButton } from "@/components/primitives/icon-button";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { AppHeader } from "./app-header";
+import { Type } from "@/components/primitives/type";
 
 export interface MobilePageHeaderProps {
   title: string;
@@ -36,7 +37,7 @@ export function MobilePageHeader({
           <X className="size-6" weight="bold" />
         </IconButton>
       ) : undefined}
-      mobileCenterContent={<div className="truncate text-lg font-semibold">{title}</div>}
+      mobileCenterContent={<Type as="div" variant="h4" className="truncate ">{title}</Type>}
       mobileTrailingContent={trailingAction}
       onBackClick={onBackClick}
     />

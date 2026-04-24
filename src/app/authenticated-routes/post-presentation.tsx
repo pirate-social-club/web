@@ -2,6 +2,7 @@
 
 import type { CommentListItem as ApiCommentListItem } from "@pirate/api-contracts";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
+import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contracts";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
 import type { CommunityPurchase as ApiCommunityPurchase } from "@pirate/api-contracts";
 import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
@@ -11,6 +12,7 @@ import type { Profile as ApiProfile } from "@pirate/api-contracts";
 import { buildPublicProfilePathForProfile, getProfileHandleLabel } from "@/lib/profile-routing";
 import type { FeedItem } from "@/components/compositions/feed/feed";
 import type { PostCardProps, SongContentSpec } from "@/components/compositions/post-card/post-card.types";
+import { buildNationalityBadgeLabel } from "@/components/compositions/post-card/post-card-nationality";
 
 import type { SongPlaybackController, SongPlaybackDescriptor } from "./song-commerce";
 import { formatRelativeTimestamp, formatUsdLabel } from "./route-core";
@@ -371,6 +373,7 @@ export function toCommunityFeedItem(
         author: {
           kind: "user",
           label: resolvePostAuthorLabel(post, authorProfile),
+          avatarSrc: post.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
           href: post.identity_mode === "public" && post.author_user_id && authorProfile
             ? buildPublicProfilePathForProfile(authorProfile)
             : undefined,
@@ -385,6 +388,10 @@ export function toCommunityFeedItem(
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
       identityPresentation: post.identity_mode === "anonymous" ? "anonymous_primary" : "author_primary",
+      authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
+      authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
+        ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)
+        : undefined,
       onComment: opts?.onComment,
       onVote: opts?.onVote,
       postHref: `/p/${post.post_id}`,
@@ -415,6 +422,7 @@ export function toHomeFeedItem(
         author: {
           kind: "user",
           label: resolvePostAuthorLabel(post, authorProfile),
+          avatarSrc: post.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
           href: post.identity_mode === "public" && post.author_user_id && authorProfile
             ? buildPublicProfilePathForProfile(authorProfile)
             : undefined,
@@ -434,6 +442,10 @@ export function toHomeFeedItem(
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
       identityPresentation: post.identity_mode === "anonymous" ? "anonymous_with_community" : "author_with_community",
+      authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
+      authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
+        ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)
+        : undefined,
       onComment: opts?.onComment,
       onVote: opts?.onVote,
       postHref: `/p/${post.post_id}`,
@@ -449,7 +461,7 @@ export function toHomeFeedItem(
 
 export function toThreadPostCard(
   postResponse: ApiPost,
-  community: ApiCommunity | null,
+  community: Pick<ApiCommunity, "community_id" | "display_name"> | Pick<ApiCommunityPreview, "community_id" | "display_name"> | null,
   authorProfile?: ApiProfile,
   songOptions?: SongPresentationOptions,
   opts?: PostPresentationOptions,
@@ -461,6 +473,7 @@ export function toThreadPostCard(
       author: {
         kind: "user",
         label: resolvePostAuthorLabel(post, authorProfile),
+        avatarSrc: post.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
         href: post.identity_mode === "public" && post.author_user_id && authorProfile
           ? buildPublicProfilePathForProfile(authorProfile)
           : undefined,
@@ -478,6 +491,10 @@ export function toThreadPostCard(
       viewerVote: toViewerVote(postResponse.viewer_vote),
     },
     identityPresentation: post.identity_mode === "anonymous" ? "anonymous_primary" : "author_with_community",
+    authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
+    authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
+      ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)
+      : undefined,
     onComment: opts?.onComment,
     onVote: opts?.onVote,
     postHref: `/p/${post.post_id}`,

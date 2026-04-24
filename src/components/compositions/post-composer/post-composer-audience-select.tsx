@@ -11,6 +11,7 @@ import {
 } from "@/components/primitives/select";
 import { cn } from "@/lib/utils";
 import type { PostAudience } from "./post-composer.types";
+import { Type } from "@/components/primitives/type";
 
 export interface AudienceSelectProps {
   value: PostAudience;
@@ -79,11 +80,11 @@ export function AudienceSelect({
                 <Icon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
                 <div className="space-y-0.5">
                   <div className="font-medium">{option.label}</div>
-                  <div className="text-base text-muted-foreground">
+                  <Type as="div" variant="caption" className="">
                     {option.description}
-                  </div>
+                  </Type>
                   {option.disabled && publicOptionDisabledReason ? (
-                    <div className="text-base text-amber-700">
+                    <div className="text-base text-warning">
                       {publicOptionDisabledReason}
                     </div>
                   ) : null}

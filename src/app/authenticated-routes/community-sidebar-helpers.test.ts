@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildCommunitySidebarRequirements } from "./community-sidebar-helpers";
+import { buildCommunityPreviewSidebar, buildCommunitySidebarRequirements } from "./community-sidebar-helpers";
 
 describe("buildCommunitySidebarRequirements", () => {
   test("localizes nationality requirements for Arabic", () => {
@@ -31,5 +31,62 @@ describe("buildCommunitySidebarRequirements", () => {
     expect(buildCommunitySidebarRequirements({
       gateSummaries: [{ gate_type: "erc721_holding", contract_address: "0x1111111111111111111111111111111111111111" }],
     })).toEqual(["Ethereum NFT holder"]);
+  });
+});
+
+describe("buildCommunityPreviewSidebar", () => {
+  test("uses localized preview text when ready", () => {
+    const sidebar = buildCommunityPreviewSidebar({
+      community_id: "cmt_test",
+      display_name: "Pirate Club",
+      description: "Canonical description",
+      localized_text: {
+        resolved_locale: "es",
+        items: [{
+          field_key: "community.description",
+          source_hash: "hash",
+          machine_translated: true,
+          translated_value: "Descripcion traducida",
+          translation_state: "ready",
+        }, {
+          field_key: "community.reference_link.crl_site.metadata.display_name",
+          source_hash: "hash",
+          machine_translated: true,
+          translated_value: "Centro traducido",
+          translation_state: "ready",
+        }],
+      },
+      avatar_ref: null,
+      banner_ref: null,
+      membership_mode: "open",
+      human_verification_lane: "self",
+      member_count: 12,
+      follower_count: 20,
+      donation_policy_mode: "none",
+      donation_partner_id: null,
+      donation_partner: null,
+      reference_links: [{
+        community_reference_link_id: "crl_site",
+        platform: "official_website",
+        url: "https://pirate.test/community",
+        label: "Official site",
+        link_status: "active",
+        verified: true,
+        metadata: {
+          display_name: "Canonical hub",
+          image_url: null,
+        },
+        position: 0,
+      }],
+      membership_gate_summaries: [],
+      rules: [],
+      viewer_membership_status: "member",
+      viewer_following: true,
+      created_at: "2026-04-24T00:00:00.000Z",
+    });
+
+    expect(sidebar.description).toBe("Descripcion traducida");
+    expect(sidebar.memberCount).toBe(12);
+    expect(sidebar.referenceLinks?.[0]?.metadata.displayName).toBe("Centro traducido");
   });
 });

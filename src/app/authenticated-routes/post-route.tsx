@@ -10,13 +10,13 @@ import { CommunitySidebar } from "@/components/compositions/community-sidebar/co
 import { PostThread } from "@/components/compositions/post-thread/post-thread";
 import { useUiLocale } from "@/lib/ui-locale";
 
-import { buildCommunitySidebar } from "./community-sidebar-helpers";
+import { buildCommunityPreviewSidebar } from "./community-sidebar-helpers";
 import { NotFoundPage } from "./misc-routes";
 import { toThreadPostCard, shouldShowOriginalPost } from "./post-presentation";
 import { getErrorMessage, useRouteContentLocale, useRouteMessages } from "./route-core";
 import { getRouteAuthDescription, getRouteFailureDescription, getRouteIncompleteDescription, getRouteTitle } from "./route-status-copy";
 import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "./route-shell";
-import { useSongPurchase } from "./song-purchase";
+import { useSongPurchaseFlow } from "./song-purchase";
 import { useSongCommerceState, useSongPlayback } from "./song-commerce";
 import { usePost } from "./post-state";
 
@@ -38,10 +38,10 @@ export function PostPage({ postId }: { postId: string }) {
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, comments, createTopLevelComment, error, gateModal, loading, voteOnPost } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, comments, createTopLevelComment, error, gateModal, loading, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const commerceEnabled = Boolean(session?.user?.user_id && community?.community_id);
   const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(community?.community_id ?? "", commerceEnabled);
-  const buySong = useSongPurchase({ commerceEnabled, refreshSongCommerce });
+  const { buySong, purchaseModal } = useSongPurchaseFlow({ commerceEnabled, refreshSongCommerce });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
 
   const handleBuySong = React.useCallback(async (listing: ApiCommunityListing, titleText: string, nextCommunityId: string) => {
@@ -87,12 +87,21 @@ export function PostPage({ postId }: { postId: string }) {
   return (
     <>
       {gateModal}
-      <ContentRailShell rail={community ? <CommunitySidebar {...buildCommunitySidebar(community, locale)} /> : undefined}>
+      {purchaseModal}
+      <ContentRailShell rail={community ? <CommunitySidebar {...buildCommunityPreviewSidebar(community, locale)} /> : undefined}>
         <PostThread
+          availableCommentSorts={[
+            { label: copy.common.bestTab, value: "best" },
+            { label: copy.common.newTab, value: "new" },
+            { label: copy.common.topTab, value: "top" },
+            { label: copy.common.oldTab ?? "Old", value: "old" },
+          ]}
+          commentSort={commentSort}
           commentsHeading={copy.common.commentsHeading}
           commentsHeadingDir={contentLocale === "ar" ? "rtl" : undefined}
           commentsHeadingLang={contentLocale === "ar" ? "ar" : undefined}
           emptyCommentsLabel={copy.common.noComments}
+          onCommentSortChange={setCommentSort}
           onRootReplySubmit={createTopLevelComment}
           post={localizedPostCard}
           postOriginal={originalPostCard}

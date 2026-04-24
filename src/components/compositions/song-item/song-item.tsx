@@ -11,10 +11,11 @@ import {
 } from "@/components/primitives/item";
 import { cn } from "@/lib/utils";
 import type { SongItemProps } from "./song-item.types";
+import { Type } from "@/components/primitives/type";
 
 function SongItemMeta({ items }: { items: NonNullable<SongItemProps["metaItems"]> }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-muted-foreground">
+    <Type as="div" variant="caption" className="flex flex-wrap items-center gap-x-2 gap-y-1 ">
       {items.map((item, index) => (
         <React.Fragment key={`${item.label}-${index}`}>
           {index > 0 ? <span aria-hidden>·</span> : null}
@@ -27,7 +28,7 @@ function SongItemMeta({ items }: { items: NonNullable<SongItemProps["metaItems"]
           )}
         </React.Fragment>
       ))}
-    </div>
+    </Type>
   );
 }
 

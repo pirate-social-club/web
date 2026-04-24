@@ -29,7 +29,6 @@ type SelfPrompt = {
   actionLabel: string;
   description: string;
   href: string | null;
-  qrValue: string | null;
   title: string;
 };
 
@@ -298,11 +297,9 @@ export function useSelfVerification(input: {
       ? buildSelfVerificationCallbackHref(window.location.href, selfSession.verification_session_id)
       : null;
     const href = getSelfVerificationLaunchHref(launch, { deeplinkCallback });
-    const qrValue = getSelfVerificationLaunchHref(launch);
     return {
       ...getVerificationPromptCopy("self", requestedCapabilities, { locale }),
       href,
-      qrValue,
     };
   }, [isMobile, locale, requestedCapabilities, selfSession]);
 

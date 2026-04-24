@@ -11,7 +11,8 @@ import { buildCommunityPath } from "@/lib/community-routing";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useUiLocale, resolveLocaleLanguageTag } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
-import { buildPublicProfilePath, getProfileHandleLabel } from "@/lib/profile-routing";
+import { buildPublicProfilePath, formatProfileDisplayHandle, getProfileHandleLabel } from "@/lib/profile-routing";
+import { buildNationalityBadgeLabel } from "@/components/compositions/post-card/post-card-nationality";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
 
 type PublicProfileResolution = {
@@ -67,18 +68,21 @@ function apiProfileToPublicProfileProps(
 ): PublicProfileProps {
   const profile = resolution.profile;
   const publicHandle = getProfileHandleLabel(profile);
+  const displayHandle = formatProfileDisplayHandle(publicHandle);
 
   return {
     avatarSrc: profile.avatar_ref ?? undefined,
+    nationalityBadgeCountryCode: profile.nationality_badge_country ?? undefined,
+    nationalityBadgeLabel: profile.nationality_badge_country ? buildNationalityBadgeLabel(profile.nationality_badge_country, localeTag) : undefined,
     bannerSrc: profile.cover_ref ?? undefined,
     bio: profile.bio ?? undefined,
     communities: resolution.created_communities.map((community) => ({
       label: community.display_name,
       href: `${appOrigin}${buildCommunityPath(community.community_id, community.route_slug)}`,
     })),
-    displayName: profile.display_name ?? publicHandle,
+    displayName: profile.display_name ?? displayHandle,
     defaultTab: "about",
-    handle: publicHandle,
+    handle: displayHandle,
     meta: [
       {
         label: labels.joinedLabel,

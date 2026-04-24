@@ -15,6 +15,7 @@ import {
 } from "@/components/primitives/select";
 import { cn } from "@/lib/utils";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
+import { Type } from "@/components/primitives/type";
 
 export type CommunitySafetyModerationDecisionLevel = "allow" | "review" | "disallow";
 export type CommunitySafetyEscalationDecisionLevel = "review" | "disallow";
@@ -107,7 +108,7 @@ function Section({
   return (
     <section className={cn("space-y-4", className)}>
       <div className="space-y-1">
-        <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+        <Type as="h2" variant="h2" className="">{title}</Type>
         {note ? <FormNote>{note}</FormNote> : null}
       </div>
       {children}
@@ -155,7 +156,7 @@ function PolicySelectRow<T extends string>({
     <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between">
       <div className="text-base font-medium leading-6">{label}</div>
       <Select onValueChange={(next) => onValueChange(next as T)} value={value}>
-        <SelectTrigger className="h-12 w-full rounded-[var(--radius-lg)] md:w-[12rem]">
+        <SelectTrigger className="h-12 w-full rounded-[var(--radius-lg)] md:w-48">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -221,13 +222,13 @@ export function CommunitySafetyPage({
     { label: mc.disallowOption, value: "disallow" },
   ];
   return (
-    <section className={cn("mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8", className)}>
+    <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
       <div className="flex min-w-0 items-start gap-4">
         <div className="min-w-0 space-y-2">
-          <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
-          <p className="text-base text-muted-foreground">
+          <Type as="h1" variant="h1" className="md:text-4xl">{mc.title}</Type>
+          <Type as="p" variant="caption" className="">
             Tune how the OpenAI moderation pass feeds community filtering and review.
-          </p>
+          </Type>
         </div>
       </div>
 

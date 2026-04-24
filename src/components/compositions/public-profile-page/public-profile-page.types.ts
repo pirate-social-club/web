@@ -28,6 +28,8 @@ export interface PublicProfileProps {
   tagline?: string;
   bio?: string;
   avatarSrc?: string;
+  nationalityBadgeCountryCode?: string | null;
+  nationalityBadgeLabel?: string;
   bannerSrc?: string;
   meta?: { label: string; value: string }[];
   communities?: PublicProfileCommunity[];

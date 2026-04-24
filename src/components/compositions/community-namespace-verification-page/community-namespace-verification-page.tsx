@@ -20,6 +20,7 @@ import spacesLogoUrl from "../../../../spaces-protocol-logo.jpeg";
 import type {
   NamespaceFamily,
 } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
+import { Type } from "@/components/primitives/type";
 
 const namespaceFamilyMeta: Record<NamespaceFamily, {
   externalExample: string;
@@ -80,11 +81,11 @@ export function CommunityNamespaceVerificationPage({
   const meta = namespaceFamilyMeta[flow.activeFamily];
 
   return (
-    <section className="mx-auto flex w-full max-w-[64rem] flex-col gap-6 md:gap-8">
+    <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="flex min-w-0 items-start gap-4">
           <div className="min-w-0 space-y-2">
-            <h1 className="text-[1.875rem] font-semibold tracking-tight md:text-[2.25rem]">{mc.title}</h1>
+            <Type as="h1" variant="h1" className=" md:text-4xl">{mc.title}</Type>
             <p className="text-base text-muted-foreground">
               {mc.description}
             </p>
@@ -162,7 +163,7 @@ export function CommunityNamespaceVerificationPage({
 
         {flow.isVerified ? (
           <div className="rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5">
-            <div className="text-base font-semibold text-foreground">{mc.rootVerified}</div>
+            <Type as="div" variant="body-strong" className="">{mc.rootVerified}</Type>
           </div>
         ) : null}
 

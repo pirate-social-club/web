@@ -72,7 +72,6 @@ export function CreateCommunityPage() {
   const {
     handleModalOpenChange: handleSelfModalOpenChangeBase,
     selfError,
-    selfLoading,
     selfModalOpen,
     selfPrompt,
     startVerification: startSelfVerification,
@@ -157,10 +156,8 @@ export function CreateCommunityPage() {
       description={selfPrompt?.description ?? copy.createCommunity.verifyDescription}
       error={selfError}
       href={selfPrompt?.href ?? null}
-      loading={selfLoading}
       onOpenChange={handleSelfModalOpenChange}
       open={selfModalOpen}
-      qrValue={selfPrompt?.qrValue ?? null}
       title={selfPrompt?.title ?? copy.createCommunity.verifyStartTitle}
     />
   );

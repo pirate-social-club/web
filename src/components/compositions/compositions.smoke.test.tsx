@@ -378,6 +378,12 @@ describe("composition smoke tests", () => {
             },
             {
               availability: "ready",
+              chainId: "optimism",
+              title: "Optimism",
+              tokens: [{ id: "op-eth", name: "Ether", symbol: "ETH", balance: "0.18" }],
+            },
+            {
+              availability: "ready",
               chainId: "story",
               title: "Story",
               tokens: [{ id: "story-ip", name: "IP", symbol: "IP", balance: "18.20" }],
@@ -393,7 +399,8 @@ describe("composition smoke tests", () => {
     expect(markup).toContain("Ethereum");
     expect(markup).toContain("Networks");
     expect(markup).toContain("Assets");
-    expect(markup).toContain("IP");
+    expect(markup).toContain("1.28");
+    expect(markup).toContain("ETH");
   });
 
   test("renders the settings agents tab", () => {

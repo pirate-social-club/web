@@ -29,6 +29,7 @@ import type {
   NamespaceFamily,
   SpacesChallengePayload,
 } from "./verify-namespace-modal.types";
+import { Type } from "@/components/primitives/type";
 
 const namespaceFamilyMeta: Record<
   NamespaceFamily,
@@ -168,7 +169,7 @@ export function VerifyNamespaceModalView({
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
       <ModalContent className="border-border bg-background p-6 sm:w-[min(100%-2rem,34rem)] sm:max-w-[34rem]">
         <ModalHeader className="pe-10 text-start">
-          <ModalTitle className="text-[1.6rem] leading-tight tracking-tight sm:text-[1.85rem]">
+          <ModalTitle className="text-2xl leading-tight tracking-tight sm:text-3xl">
             {mc.title}
           </ModalTitle>
           <ModalDescription className="max-w-[34ch] text-base leading-7">
@@ -244,7 +245,7 @@ export function VerifyNamespaceModalView({
 
           {isVerified ? (
             <div className="rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3">
-              <p className="text-base font-medium text-foreground">{mc.rootVerified}</p>
+              <Type as="p" variant="label" className="">{mc.rootVerified}</Type>
             </div>
           ) : null}
 

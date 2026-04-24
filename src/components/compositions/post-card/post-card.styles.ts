@@ -1,8 +1,8 @@
 export const postCardType = {
-  meta: "text-base leading-[1.25]",
-  body: "text-base leading-[1.4]",
-  title: "text-lg leading-[1.3]",
-  label: "text-base leading-[1.25]",
-  caption: "text-base leading-[1.3]",
-  stat: "text-base leading-[1.2]",
+  meta: "text-base leading-tight",
+  body: "text-base leading-snug",
+  title: "text-lg leading-snug",
+  label: "text-base leading-tight",
+  caption: "text-base leading-snug",
+  stat: "text-base leading-tight",
 } as const;

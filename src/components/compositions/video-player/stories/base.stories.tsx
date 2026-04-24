@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { VideoPlayer } from "../video-player";
+import { Type } from "@/components/primitives/type";
 
 const meta = {
   title: "Compositions/VideoPlayer",
@@ -73,7 +74,7 @@ export const OnEndCallback: Story = {
           title="Studio Session"
           onEnded={() => setEnded(true)}
         />
-        {ended && <p className="text-base text-muted-foreground">Video ended</p>}
+        {ended && <Type as="p" variant="caption" className="">Video ended</Type>}
       </div>
     );
   },

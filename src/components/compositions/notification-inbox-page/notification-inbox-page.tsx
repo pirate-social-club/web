@@ -13,6 +13,7 @@ import { Separator } from "@/components/primitives/separator";
 import { useUiLocale } from "@/lib/ui-locale";
 import { resolveLocaleLanguageTag } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
+import { Type } from "@/components/primitives/type";
 
 function payloadString(
   payload: Record<string, unknown> | null | undefined,
@@ -88,7 +89,7 @@ function SectionCard({
   return (
     <Card className="overflow-hidden">
       <div className="border-b border-border-soft px-5 py-4">
-        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        <Type as="h2" variant="h4">{title}</Type>
       </div>
       {children}
     </Card>
@@ -143,7 +144,7 @@ export function NotificationInboxPage({
                       {index > 0 ? <Separator /> : null}
                       <div className="flex items-center gap-4 px-5 py-4">
                         <div className="min-w-0 flex-1">
-                          <p className="text-base font-medium text-foreground">{formatTaskLabel(task.type, copy)}</p>
+                          <Type as="p" variant="label" className="">{formatTaskLabel(task.type, copy)}</Type>
                           {task.payload?.community_display_name ? (
                             <p className="text-base text-muted-foreground">{String(task.payload.community_display_name)}</p>
                           ) : null}

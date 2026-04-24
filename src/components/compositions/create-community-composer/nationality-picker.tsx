@@ -16,6 +16,7 @@ import {
 } from "@/components/primitives/combobox";
 import { COUNTRIES, findCountry, type Country } from "@/lib/countries";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
+import { Type } from "@/components/primitives/type";
 
 export interface NationalityPickerProps {
   value: string | null;
@@ -48,7 +49,7 @@ export function NationalityPicker({
         <ComboboxList className="py-0">
           {(country) => (
             <ComboboxItem key={country.code} value={country}>
-              <p className="text-base font-semibold text-foreground">{country.name}</p>
+              <Type as="p" variant="body-strong" className="">{country.name}</Type>
               <p className="text-base text-muted-foreground">{country.code}</p>
             </ComboboxItem>
           )}
@@ -108,7 +109,7 @@ export function NationalityMultiPicker({
         <ComboboxList className="py-0">
           {(country) => (
             <ComboboxItem key={country.code} value={country}>
-              <p className="text-base font-semibold text-foreground">{country.name}</p>
+              <Type as="p" variant="body-strong" className="">{country.name}</Type>
               <p className="text-base text-muted-foreground">{country.code}</p>
             </ComboboxItem>
           )}

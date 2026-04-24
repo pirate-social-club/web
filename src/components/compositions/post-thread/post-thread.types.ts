@@ -2,6 +2,7 @@ import type { PostCardProps } from "@/components/compositions/post-card/post-car
 
 export type PostThreadAuthorMode = "human" | "agent";
 export type PostThreadSubmitResult = "blocked" | "submitted";
+export type CommentSort = "best" | "new" | "old" | "top";
 
 export type PostThreadCommentStatus = "published" | "hidden" | "removed" | "deleted";
 
@@ -19,7 +20,6 @@ export interface PostThreadComment {
   originalBody?: string;
   status?: PostThreadCommentStatus;
   metadataLabel?: string;
-  highlighted?: boolean;
   initiallyCollapsed?: boolean;
   moreRepliesLabel?: string;
   replyActionLabel?: string;
@@ -51,5 +51,8 @@ export interface PostThreadProps {
   rootReplyCancelLabel?: string;
   rootReplySubmitLabel?: string;
   onRootReplySubmit?: (input: { body: string; authorMode: PostThreadAuthorMode }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
+  commentSort?: CommentSort;
+  availableCommentSorts?: { label: string; value: CommentSort }[];
+  onCommentSortChange?: (sort: CommentSort) => void;
   className?: string;
 }

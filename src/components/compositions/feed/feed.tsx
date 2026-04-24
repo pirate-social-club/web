@@ -10,8 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/primitives/select";
+import { Spinner } from "@/components/primitives/spinner";
 import type { PostCardProps } from "@/components/compositions/post-card/post-card.types";
 import { cn } from "@/lib/utils";
+import { Type } from "@/components/primitives/type";
 
 export type FeedSort = "best" | "new" | "top";
 
@@ -76,7 +78,7 @@ export function TopTimeRangeControl({
       <SelectTrigger
         className={cn(
           pillButtonVariants({ tone: "default" }),
-          "w-full min-w-[10rem] justify-between bg-card py-0 pe-3 ps-4 shadow-none md:w-[11rem]",
+          "w-full min-w-40 justify-between bg-card py-0 pe-3 ps-4 shadow-none md:w-44",
         )}
       >
         <SelectValue />
@@ -109,12 +111,20 @@ function FeedEmpty({ emptyState }: { emptyState: FeedEmptyState }) {
   return (
     <div className="px-5 py-8 md:px-6">
       <div className="max-w-2xl space-y-2 text-start">
-        <h2 className="text-lg font-semibold text-foreground">{emptyState.title}</h2>
+        <Type as="h2" variant="h4">{emptyState.title}</Type>
         {emptyState.body ? (
           <p className="text-base leading-7 text-muted-foreground">{emptyState.body}</p>
         ) : null}
         {emptyState.action ? <div className="pt-2">{emptyState.action}</div> : null}
       </div>
+    </div>
+  );
+}
+
+function FeedLoadingState() {
+  return (
+    <div className="flex min-h-72 items-center justify-center" aria-busy="true">
+      <Spinner className="size-6" />
     </div>
   );
 }
@@ -150,14 +160,14 @@ export function Feed({
               <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div className="space-y-2 text-start">
                   {eyebrow ? (
-                    <div className="text-base uppercase tracking-[0.12em] text-muted-foreground">
+                    <div className="text-base uppercase tracking-widest text-muted-foreground">
                       {eyebrow}
                     </div>
                   ) : null}
                   {title ? (
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                    <Type as="h1" variant="h1" className="text-2xl md:text-3xl">
                       {title}
-                    </h1>
+                    </Type>
                   ) : null}
                   {subtitle ? (
                     <p className="max-w-3xl text-base leading-7 text-muted-foreground">
@@ -189,7 +199,7 @@ export function Feed({
             ) : null}
           </div>
 
-          {showLoadingOnly ? <FeedLoadingRows count={loadingCount} /> : null}
+          {showLoadingOnly ? <FeedLoadingState /> : null}
           {!loading && !hasItems && emptyState ? (
             <div className="overflow-hidden border-y border-border-soft md:rounded-[var(--radius-2xl)] md:border md:bg-card">
               <FeedEmpty emptyState={emptyState} />

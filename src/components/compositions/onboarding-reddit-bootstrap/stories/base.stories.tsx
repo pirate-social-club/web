@@ -17,6 +17,31 @@ const base: OnboardingRedditBootstrapProps = {
   },
 };
 
+const importedSummary = {
+  redditUsername: "technohippie",
+  globalKarma: 42000,
+  topSubreddits: [
+    { subreddit: "hiphopheads", karma: 12000, posts: 44, rankSource: "karma" as const },
+    { subreddit: "indieheads", karma: 6200, posts: 18, rankSource: "karma" as const },
+    { subreddit: "vinyl", karma: 2100, posts: 12, rankSource: "karma" as const },
+  ],
+  suggestedCommunities: [
+    {
+      communityId: "cmt_hiphop",
+      name: "Hip Hop",
+      reason: "Based on your Reddit history",
+    },
+  ],
+  coverageNote: null,
+};
+
+const emptyArchiveSummary = {
+  redditUsername: "quietreader",
+  globalKarma: null,
+  topSubreddits: [],
+  coverageNote: null,
+};
+
 const meta = {
   title: "Compositions/OnboardingRedditBootstrap",
   component: OnboardingRedditBootstrap,
@@ -35,12 +60,12 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const ImportKarmaEmpty: Story = {
-  name: "Import Karma / Empty",
+  name: "Import Reddit / Empty",
   render: () => <OnboardingRedditBootstrap {...base} />,
 };
 
 export const ImportKarmaUsernameEntered: Story = {
-  name: "Import Karma / Username Entered",
+  name: "Import Reddit / Username Entered",
   render: () => (
     <OnboardingRedditBootstrap
       {...base}
@@ -53,7 +78,7 @@ export const ImportKarmaUsernameEntered: Story = {
 };
 
 export const ImportKarmaCodeReady: Story = {
-  name: "Import Karma / Code Ready",
+  name: "Import Reddit / Code Ready",
   render: () => (
     <OnboardingRedditBootstrap
       {...base}
@@ -68,7 +93,7 @@ export const ImportKarmaCodeReady: Story = {
 };
 
 export const ImportKarmaChecking: Story = {
-  name: "Import Karma / Checking",
+  name: "Import Reddit / Checking",
   render: () => (
     <OnboardingRedditBootstrap
       {...base}
@@ -83,7 +108,7 @@ export const ImportKarmaChecking: Story = {
 };
 
 export const ImportKarmaImporting: Story = {
-  name: "Import Karma / Importing",
+  name: "Import Reddit / Importing",
   render: () => (
     <OnboardingRedditBootstrap
       {...base}
@@ -100,7 +125,7 @@ export const ImportKarmaImporting: Story = {
 };
 
 export const ImportKarmaDone: Story = {
-  name: "Import Karma / Done",
+  name: "Import Reddit / Imported Summary",
   render: () => (
     <OnboardingRedditBootstrap
       {...base}
@@ -112,12 +137,31 @@ export const ImportKarmaDone: Story = {
       importJob={{
         status: "succeeded",
       }}
+      redditImportSummary={importedSummary}
+    />
+  ),
+};
+
+export const ImportKarmaDoneNoArchiveData: Story = {
+  name: "Import Reddit / No Archive Data",
+  render: () => (
+    <OnboardingRedditBootstrap
+      {...base}
+      reddit={{
+        usernameValue: "quietreader",
+        verifiedUsername: "quietreader",
+        verificationState: "verified",
+      }}
+      importJob={{
+        status: "succeeded",
+      }}
+      redditImportSummary={emptyArchiveSummary}
     />
   ),
 };
 
 export const ImportKarmaFailed: Story = {
-  name: "Import Karma / Verification Failed",
+  name: "Import Reddit / Verification Failed",
   render: () => (
     <OnboardingRedditBootstrap
       {...base}
@@ -131,7 +175,7 @@ export const ImportKarmaFailed: Story = {
 };
 
 export const ImportKarmaRateLimited: Story = {
-  name: "Import Karma / Rate Limited",
+  name: "Import Reddit / Rate Limited",
   render: () => (
     <OnboardingRedditBootstrap
       {...base}
@@ -148,7 +192,7 @@ export const ImportKarmaRateLimited: Story = {
 };
 
 export const ImportKarmaSourceError: Story = {
-  name: "Import Karma / Source Error",
+  name: "Import Reddit / Source Error",
   render: () => (
     <OnboardingRedditBootstrap
       {...base}
@@ -247,7 +291,7 @@ export const MobileCodeReady: Story = {
 };
 
 export const ImportKarmaArabic: Story = {
-  name: "Import Karma / Arabic",
+  name: "Import Reddit / Arabic",
   globals: {
     direction: "auto",
     locale: "ar",
@@ -301,6 +345,27 @@ export const MobileCodeReadyArabic: Story = {
         verificationHint: "pirate-verify=a3f7c9e2",
         codePlacementSurface: "profile",
       }}
+    />
+  ),
+};
+
+export const MobileImportedSummary: Story = {
+  name: "Mobile / Imported Summary",
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <OnboardingRedditBootstrap
+      {...base}
+      reddit={{
+        usernameValue: "technohippie",
+        verifiedUsername: "technohippie",
+        verificationState: "verified",
+      }}
+      importJob={{
+        status: "succeeded",
+      }}
+      redditImportSummary={importedSummary}
     />
   ),
 };

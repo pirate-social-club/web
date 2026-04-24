@@ -15,6 +15,7 @@ import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { useSidebarCommunities } from "@/lib/owned-communities";
 import { useUiLocale } from "@/lib/ui-locale";
+import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
 import { Spinner } from "@/components/primitives/spinner";
@@ -178,13 +179,13 @@ export function HomePage() {
         aside={topCommunities.length > 0 ? (
           <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
             <div className="border-b border-border-soft px-5 py-4">
-              <div className="text-lg font-semibold text-foreground">{copy.home.railTitle}</div>
+              <Type as="div" variant="h4">{copy.home.railTitle}</Type>
             </div>
             <div className="divide-y divide-border-soft">
               {topCommunities.map((community) => (
                 <button className="flex w-full items-center gap-3 px-5 py-3 text-start" key={community.community_id} onClick={() => navigate(`/c/${community.route_slug ?? community.community_id}`)} type="button">
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-base font-medium text-foreground">{community.display_name}</div>
+                    <Type as="div" variant="label" className="truncate">{community.display_name}</Type>
                     {community.follower_count != null ? <div className="text-base text-muted-foreground">{copy.home.followersLabel.replace("{count}", community.follower_count.toLocaleString(localeTag))}</div> : null}
                   </div>
                 </button>
@@ -227,12 +228,12 @@ function YourCommunitiesAuthState() {
 
   return (
     <section className="flex min-h-[calc(100svh-11rem)] min-w-0 flex-1 items-center justify-center px-1">
-      <div className="w-full max-w-[24rem] rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-6 shadow-[var(--shadow-md)]">
+      <div className="w-full max-w-sm rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-6 shadow-[var(--shadow-md)]">
         <div className="flex flex-col items-start gap-5 text-start">
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <Type as="h1" variant="h2">
               {copy.yourCommunities.title}
-            </h1>
+            </Type>
             <p className="text-base leading-7 text-muted-foreground">
               {copy.yourCommunities.signedOutBody}
             </p>
@@ -302,7 +303,7 @@ export function YourCommunitiesPage() {
                 src={community.avatarSrc ?? undefined}
               />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-base font-semibold text-foreground">{community.displayName}</div>
+                <Type as="div" variant="body-strong" className="truncate">{community.displayName}</Type>
                 <div className="truncate text-base text-muted-foreground">
                   {community.routeSlug ? `c/${community.routeSlug}` : community.communityId}
                 </div>
@@ -321,7 +322,7 @@ export function NotFoundBody({ title, description, body, backHomeLabel }: { titl
       <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-5 md:px-6 md:py-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{title}</h1>
+            <Type as="h1" variant="h1" className="text-2xl md:text-3xl">{title}</Type>
             <p className="max-w-3xl text-base leading-7 text-muted-foreground">{description}</p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-3">

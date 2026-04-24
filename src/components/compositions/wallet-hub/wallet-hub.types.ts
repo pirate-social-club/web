@@ -1,6 +1,7 @@
 export type WalletHubChainId =
   | "ethereum"
   | "base"
+  | "optimism"
   | "story"
   | "tempo"
   | "solana"
@@ -14,12 +15,16 @@ export interface WalletHubToken {
   symbol: string;
   name: string;
   balance?: string;
+  fiatValue?: string;
+  priceId?: string;
+  usdPrice?: number | null;
 }
 
 export interface WalletHubChainSection {
   chainId: WalletHubChainId;
   title: string;
   availability: WalletHubChainAvailability;
+  walletAddress?: string | null;
   tokens: WalletHubToken[];
   note?: string;
 }

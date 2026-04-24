@@ -2,6 +2,8 @@ import type { Profile as ApiProfile, UserAgent as ApiUserAgent } from "@pirate/a
 
 import { ApiError } from "@/lib/api/client";
 import type { SettingsHandle, SettingsPageProps, SettingsTab } from "@/components/compositions/settings-page/settings-page.types";
+import { buildNationalityBadgeLabel } from "@/components/compositions/post-card/post-card-nationality";
+import { formatProfileDisplayHandle } from "@/lib/profile-routing";
 
 export type PendingAgentRegistration = {
   sessionId: string;
@@ -74,13 +76,16 @@ export function apiProfileToProps(
   localeTag: string,
 ) {
   const handle = profile.primary_public_handle?.label ?? profile.global_handle?.label ?? "";
+  const displayHandle = formatProfileDisplayHandle(handle);
 
   return {
     profile: {
-      displayName: profile.display_name ?? handle,
-      handle,
+      displayName: profile.display_name ?? displayHandle,
+      handle: displayHandle,
       bio: profile.bio ?? "",
       avatarSrc: profile.avatar_ref ?? undefined,
+      nationalityBadgeCountryCode: profile.nationality_badge_country ?? undefined,
+      nationalityBadgeLabel: profile.nationality_badge_country ? buildNationalityBadgeLabel(profile.nationality_badge_country, localeTag) : undefined,
       bannerSrc: profile.cover_ref ?? undefined,
       meta: [],
       viewerContext: ownProfile ? ("self" as const) : ("public" as const),
@@ -97,6 +102,7 @@ export function apiProfileToProps(
         { label: labels.followingLabel, value: followState.followingCount },
         { label: labels.joinedStatLabel, value: new Date(profile.created_at).toLocaleDateString(localeTag, { month: "short", year: "numeric" }) },
       ],
+      description: profile.bio ?? undefined,
       walletAddress: profile.primary_wallet_address ?? undefined,
     },
     overviewItems: [],
@@ -119,6 +125,7 @@ export function mapProfileLinkedHandles(profile: ApiProfile): SettingsHandle[] {
     handleId: handle.kind === "pirate" ? null : handle.linked_handle_id,
     kind: handle.kind,
     label: handle.label,
+    metadata: handle.metadata ?? null,
     primary: handle.kind === "pirate" ? primaryLinkedHandleId == null : primaryLinkedHandleId === handle.linked_handle_id,
     verificationState: handle.verification_state,
   }));

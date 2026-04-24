@@ -8,7 +8,9 @@ export type RefreshAuthCallback = () => Promise<boolean>;
 
 export type ApiRequestInit = RequestInit & {
   tokenRequired?: boolean;
+  tokenOptional?: boolean;
   replayedAfterRefresh?: boolean;
+  replayedWithoutOptionalToken?: boolean;
 };
 
 export type ApiRequest = <T>(path: string, init?: ApiRequestInit) => Promise<T>;

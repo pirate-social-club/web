@@ -7,6 +7,7 @@ import type { CommunityModerationNavSection } from "@/components/compositions/co
 import { Button } from "@/components/primitives/button";
 import { cn } from "@/lib/utils";
 import { useRouteMessages } from "@/app/authenticated-routes/route-core";
+import { Type } from "@/components/primitives/type";
 
 export interface CommunityModerationIndexPageProps {
   className?: string;
@@ -36,9 +37,9 @@ export function CommunityModerationIndexPage({
             </div>
           ) : null}
           {showTitle ? (
-            <h1 className="text-[2rem] font-semibold tracking-tight text-foreground md:text-[2.25rem]">
+            <Type as="h1" variant="h1" className="md:text-4xl">
               {copy.moderation.index.title}
-            </h1>
+            </Type>
           ) : null}
         </div>
 
@@ -59,7 +60,7 @@ export function CommunityModerationIndexPage({
                     onClick={item.onSelect}
                     type="button"
                   >
-                    <span className="min-w-0 text-base font-medium text-foreground">{item.label}</span>
+                    <Type as="span" variant="label" className="min-w-0 ">{item.label}</Type>
                     <CaretRight className="size-5 shrink-0 text-muted-foreground" />
                   </button>
                 ))}
@@ -72,7 +73,7 @@ export function CommunityModerationIndexPage({
   }
 
   return (
-    <section className={cn("mx-auto flex w-full max-w-[40rem] flex-col gap-6", className)}>
+    <section className={cn("mx-auto flex w-full max-w-2xl flex-col gap-6", className)}>
       <div className={cn("flex flex-col gap-4", !showTitle && !onBackClick && "hidden")}>
         {onBackClick ? (
           <div>
@@ -82,9 +83,9 @@ export function CommunityModerationIndexPage({
           </div>
         ) : null}
         {showTitle ? (
-          <h1 className="text-[2rem] font-semibold tracking-tight text-foreground md:text-[2.25rem]">
+          <Type as="h1" variant="h1" className="md:text-4xl">
             Mod tools
-          </h1>
+          </Type>
         ) : null}
       </div>
 
@@ -105,7 +106,7 @@ export function CommunityModerationIndexPage({
                   onClick={item.onSelect}
                   type="button"
                 >
-                  <span className="min-w-0 text-base font-medium text-foreground">{item.label}</span>
+                  <Type as="span" variant="label" className="min-w-0 ">{item.label}</Type>
                   <CaretRight className="size-5 shrink-0 text-muted-foreground" />
                 </button>
               ))}

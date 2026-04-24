@@ -3,6 +3,7 @@ import * as React from "react";
 import { COMMUNITY_RECORDS, HOME_POSTS, YOUR_COMMUNITIES_POSTS } from "@/app/mocks";
 import { PillButton } from "@/components/primitives/pill-button";
 import type { FeedItem, FeedSortOption } from "../feed";
+import { Type } from "@/components/primitives/type";
 export { TopTimeRangeControl, topTimeRangeOptions } from "../feed";
 export function toFeedItems(posts: typeof HOME_POSTS): FeedItem[] {
   return posts.map((post) => ({
@@ -21,12 +22,12 @@ export function StoryRail({
   return (
     <div className="overflow-hidden rounded-[var(--radius-3xl)] border border-border-soft bg-card">
       <div className="border-b border-border-soft px-5 py-4">
-        <div className="text-lg font-semibold text-foreground">{title}</div>
+        <Type as="div" variant="h4" className="">{title}</Type>
       </div>
       <div className="divide-y divide-border-soft">
         {items.map((item) => (
           <div className="px-5 py-4" key={item.id}>
-            <div className="text-base font-medium text-foreground">{item.label}</div>
+            <Type as="div" variant="label" className="">{item.label}</Type>
             <div className="text-base text-muted-foreground">{item.meta}</div>
           </div>
         ))}

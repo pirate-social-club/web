@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { Type } from "@/components/primitives/type";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +17,7 @@ export function SettingsSection({
 
   return (
     <section className={cn("space-y-4", isMobile && "space-y-3")}>
-      <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+      <Type as="h2" variant="h3">{title}</Type>
       {children}
     </section>
   );
@@ -41,14 +42,14 @@ export function SettingsRow({
       isMobile && "px-0",
     )}>
       <div className="min-w-0 flex-1 space-y-1">
-        <div className="text-base font-medium text-foreground">{label}</div>
+        <Type as="div" variant="label" className="">{label}</Type>
         {note ? <div className="text-base text-muted-foreground">{note}</div> : null}
+        {value ? (
+          <div className="min-w-0 max-w-full text-start text-base text-muted-foreground">
+            {value}
+          </div>
+        ) : null}
       </div>
-      {value ? (
-        <div className="min-w-0 max-w-full flex-1 text-start text-base text-muted-foreground">
-          {value}
-        </div>
-      ) : null}
       {trailing ? <div className="shrink-0 text-muted-foreground">{trailing}</div> : null}
     </div>
   );

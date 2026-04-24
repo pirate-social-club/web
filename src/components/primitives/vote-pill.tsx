@@ -22,9 +22,21 @@ export interface VotePillProps {
   onVote?: (direction: "up" | "down" | null) => void;
   allowClear?: boolean;
   className?: string;
+  downvoteLabel?: string;
+  size?: "default" | "compact";
+  upvoteLabel?: string;
 }
 
-export function VotePill({ score, viewerVote, onVote, allowClear = false, className }: VotePillProps) {
+export function VotePill({
+  score,
+  viewerVote,
+  onVote,
+  allowClear = false,
+  className,
+  downvoteLabel,
+  size = "default",
+  upvoteLabel,
+}: VotePillProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
   const handleVote = React.useCallback((direction: "up" | "down") => {
@@ -39,7 +51,9 @@ export function VotePill({ score, viewerVote, onVote, allowClear = false, classN
   return (
     <div
       className={cn(
-        "inline-flex h-9 items-center gap-0 rounded-xl border border-border-soft bg-background px-0.5 transition-colors",
+        "inline-grid items-center gap-0 rounded-full border border-border-soft bg-background transition-colors",
+        size === "default" && "h-11 grid-cols-[2.5rem_2rem_2.5rem] px-1",
+        size === "compact" && "h-9 grid-cols-[2rem_1.75rem_2rem] px-0.5",
         viewerVote === "up" && "border-primary/18 bg-primary/6",
         viewerVote === "down" && "border-destructive/18 bg-destructive/6",
         className,
@@ -48,21 +62,32 @@ export function VotePill({ score, viewerVote, onVote, allowClear = false, classN
     >
       <button
         className={cn(
-          "inline-flex size-8 items-center justify-center rounded-[10px] transition-colors",
+          "inline-flex items-center justify-center justify-self-center rounded-full transition-colors",
+          size === "default" && "size-10",
+          size === "compact" && "size-8",
           viewerVote === "up"
             ? "text-primary hover:bg-primary/10"
             : "text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground",
         )}
         onClick={() => handleVote("up")}
         type="button"
-        aria-label={copy.upvote}
+        aria-label={upvoteLabel ?? copy.upvote}
       >
-        <ArrowFatUp className={cn("size-[20px]", viewerVote === "up" && "fill-current")} />
+        <ArrowFatUp
+          className={cn(
+            size === "default" && "size-[23px]",
+            size === "compact" && "size-[20px]",
+            viewerVote === "up" && "fill-current",
+          )}
+          weight={viewerVote === "up" ? "fill" : "regular"}
+        />
       </button>
 
       <span
         className={cn(
-          "min-w-[1.75rem] text-center text-base font-semibold tabular-nums",
+          "text-center text-base font-semibold tabular-nums",
+          size === "default" && "w-8",
+          size === "compact" && "w-7",
           viewerVote === "up" && "text-primary",
           viewerVote === "down" && "text-destructive",
           !viewerVote && "text-muted-foreground",
@@ -73,16 +98,25 @@ export function VotePill({ score, viewerVote, onVote, allowClear = false, classN
 
       <button
         className={cn(
-          "inline-flex size-8 items-center justify-center rounded-[10px] transition-colors",
+          "inline-flex items-center justify-center justify-self-center rounded-full transition-colors",
+          size === "default" && "size-10",
+          size === "compact" && "size-8",
           viewerVote === "down"
             ? "text-destructive hover:bg-destructive/10"
             : "text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground",
         )}
         onClick={() => handleVote("down")}
         type="button"
-        aria-label={copy.downvote}
+        aria-label={downvoteLabel ?? copy.downvote}
       >
-        <ArrowFatDown className={cn("size-[20px]", viewerVote === "down" && "fill-current")} />
+        <ArrowFatDown
+          className={cn(
+            size === "default" && "size-[23px]",
+            size === "compact" && "size-[20px]",
+            viewerVote === "down" && "fill-current",
+          )}
+          weight={viewerVote === "down" ? "fill" : "regular"}
+        />
       </button>
     </div>
   );

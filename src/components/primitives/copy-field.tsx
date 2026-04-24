@@ -6,6 +6,7 @@ import { Check, Copy } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
+import { inputVariants } from "./input";
 
 type CopyFieldProps = React.HTMLAttributes<HTMLDivElement> & {
   value: string;
@@ -24,7 +25,8 @@ const CopyField = React.forwardRef<HTMLDivElement, CopyFieldProps>(
     return (
       <div
         className={cn(
-          "flex h-12 overflow-hidden items-center gap-2 rounded-lg border border-input bg-background px-4 shadow-sm",
+          inputVariants({ size: "lg" }),
+          "items-center gap-2 overflow-hidden pe-2",
           className,
         )}
         ref={ref}

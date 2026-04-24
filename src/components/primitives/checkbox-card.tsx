@@ -75,7 +75,7 @@ export const CheckboxCard = React.forwardRef<
             </p>
           ) : null}
           {disabled && disabledHint ? (
-            <p className="text-base leading-6 text-amber-700">{disabledHint}</p>
+            <p className="text-base leading-6 text-warning">{disabledHint}</p>
           ) : null}
         </div>
       </button>

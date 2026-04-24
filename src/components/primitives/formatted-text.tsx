@@ -67,7 +67,7 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
 
 function renderParagraph(lines: string[], key: string) {
   return (
-    <p className="leading-[1.4] text-inherit" key={key}>
+    <p className="leading-snug text-inherit" key={key}>
       {renderInline(lines.join(" "), key)}
     </p>
   );
@@ -121,7 +121,7 @@ export function FormattedText({
         index += 1;
       }
       blocks.push(
-        <ul className="list-disc space-y-1 ps-6 leading-[1.4] text-inherit" key={`ul-block-${index}`}>
+        <ul className="list-disc space-y-1 ps-6 leading-snug text-inherit" key={`ul-block-${index}`}>
           {items}
         </ul>,
       );
@@ -136,7 +136,7 @@ export function FormattedText({
         index += 1;
       }
       blocks.push(
-        <ol className="list-decimal space-y-1 ps-6 leading-[1.4] text-inherit" key={`ol-block-${index}`}>
+        <ol className="list-decimal space-y-1 ps-6 leading-snug text-inherit" key={`ol-block-${index}`}>
           {items}
         </ol>,
       );

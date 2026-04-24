@@ -19,6 +19,12 @@
     --muted-foreground: oklch(0.65 0.01 250);
     --destructive: oklch(0.60 0.22 25);
     --destructive-foreground: oklch(1 0 0);
+    --warning: oklch(0.75 0.14 85);
+    --warning-foreground: oklch(0.18 0 0);
+    --success: oklch(0.70 0.15 145);
+    --success-foreground: oklch(0.18 0 0);
+    --info: oklch(0.70 0.15 250);
+    --info-foreground: oklch(0.18 0 0);
     --border: oklch(0.30 0.004 250);
     --border-soft: oklch(0.26 0 0);
     --input: oklch(0.36 0.004 250);
@@ -49,6 +55,10 @@
     --radius-3xl: 24px;
     --radius-4xl: 32px;
     --radius-full: 9999px;
+    --header-height: 4.5rem;
+    --radius-1_5xl: 20px;
+    --radius-2_5xl: 28px;
+    --primary-subtle: color-mix(in oklab, var(--primary) 8%, var(--card));
     --shadow-sm: 0 8px 22px rgb(0 0 0 / 0.06);
     --shadow-md: 0 12px 30px rgb(0 0 0 / 0.08);
     --shadow-lg: 0 18px 44px rgb(0 0 0 / 0.16);
@@ -71,6 +81,12 @@
     --muted-foreground: oklch(0.55 0.01 250);
     --destructive: oklch(0.25 0.02 250);
     --destructive-foreground: oklch(0.98 0.002 250);
+    --warning: oklch(0.55 0.12 85);
+    --warning-foreground: oklch(1 0 0);
+    --success: oklch(0.50 0.14 145);
+    --success-foreground: oklch(1 0 0);
+    --info: oklch(0.50 0.14 250);
+    --info-foreground: oklch(1 0 0);
     --border: oklch(0.88 0.005 250);
     --border-soft: oklch(0.92 0.003 250);
     --input: oklch(0.76 0.01 250);
@@ -101,6 +117,12 @@
     --color-muted-foreground: var(--muted-foreground);
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-info: var(--info);
+    --color-info-foreground: var(--info-foreground);
     --color-border: var(--border);
     --color-border-soft: var(--border-soft);
     --color-input: var(--input);
@@ -120,6 +142,8 @@
     --font-mono: var(--font-mono);
 
     --color-surface-skeleton: var(--surface-skeleton);
+    --color-primary-subtle: var(--primary-subtle);
+    --spacing-header: var(--header-height);
   }
 
   * {

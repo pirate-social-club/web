@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { typeVariants } from "./type";
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
@@ -28,7 +29,7 @@ CardHeader.displayName = "CardHeader";
 const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
     <h2
-      className={cn("text-xl font-semibold tracking-tight text-balance", className)}
+      className={cn(typeVariants({ variant: "h3" }), "text-balance", className)}
       ref={ref}
       {...props}
     />
@@ -40,7 +41,7 @@ const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p className={cn("text-base leading-6 text-muted-foreground", className)} ref={ref} {...props} />
+  <p className={cn(typeVariants({ variant: "caption" }), className)} ref={ref} {...props} />
 ));
 CardDescription.displayName = "CardDescription";
 

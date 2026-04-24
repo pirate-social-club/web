@@ -22,7 +22,7 @@ export function PageContainer({
   size?: "default" | "narrow" | "wide";
 }) {
   const sizeClassName = size === "wide"
-    ? "max-w-[78rem]"
+    ? "max-w-7xl"
     : size === "narrow"
       ? "max-w-4xl"
       : "max-w-5xl";

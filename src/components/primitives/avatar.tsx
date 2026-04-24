@@ -10,7 +10,7 @@ import { Skeleton } from "./skeleton";
 type AvatarSize = "xs" | "sm" | "md" | "lg";
 
 const sizeClasses: Record<AvatarSize, string> = {
-  xs: "h-5 w-5 text-[11px]",
+  xs: "h-6 w-6",
   sm: "h-9 w-9 text-base",
   md: "h-12 w-12 text-base",
   lg: "h-14 w-14 text-base",

@@ -91,13 +91,13 @@ function StepProgress({
 
   return (
     <nav aria-label="Progress" className={cn("space-y-2", className)}>
-      {(progressLabel || stepCountLabel) ? (
-        <div className="flex items-center justify-between gap-3 text-base text-muted-foreground">
-          {progressLabel ? <span>{progressLabel}</span> : <span aria-hidden="true" />}
-          {stepCountLabel ? <span className="tabular-nums">{stepCountLabel}</span> : null}
-        </div>
+      {progressLabel ? (
+        <div className="text-base text-muted-foreground">{progressLabel}</div>
       ) : null}
-      <div className="text-lg font-semibold text-foreground">{currentLabel}</div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-lg font-semibold text-foreground">{currentLabel}</div>
+        {stepCountLabel ? <div className="text-base tabular-nums text-muted-foreground">{stepCountLabel}</div> : null}
+      </div>
       <div className="h-1.5 rounded-full bg-muted">
         <div
           className="h-full rounded-full bg-foreground transition-[width]"

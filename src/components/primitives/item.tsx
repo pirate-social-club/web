@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { typeVariants } from "./type";
 
 export type ItemVariant = "default" | "outline" | "muted";
 export type ItemSize = "default" | "sm" | "dense";
@@ -82,7 +83,7 @@ export function ItemContent({ className, ...props }: React.HTMLAttributes<HTMLDi
 export function ItemTitle({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex w-fit items-center gap-2 text-base font-semibold leading-[1.3]", className)}
+      className={cn("flex w-fit items-center gap-2", typeVariants({ variant: "label" }), className)}
       {...props}
     />
   );
@@ -95,7 +96,8 @@ export function ItemDescription({
   return (
     <p
       className={cn(
-        "m-0 overflow-hidden text-base font-normal leading-[1.35] text-muted-foreground [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]",
+        "m-0 overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]",
+        typeVariants({ variant: "caption" }),
         className,
       )}
       {...props}

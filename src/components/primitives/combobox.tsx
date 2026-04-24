@@ -34,7 +34,7 @@ const ComboboxChips = React.forwardRef<
   <ComboboxPrimitive.Chips
     ref={ref}
     className={cn(
-      "flex min-h-11 w-full flex-wrap items-center gap-2 rounded-[28px] border border-input bg-background px-3 py-2 shadow-sm transition-[color,box-shadow,border-color] focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background",
+      "flex min-h-11 w-full flex-wrap items-center gap-2 rounded-[var(--radius-2_5xl)] border border-input bg-background px-3 py-2 shadow-sm transition-[color,box-shadow,border-color] focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background",
       className,
     )}
     {...props}
@@ -49,7 +49,7 @@ const ComboboxChipsInput = React.forwardRef<
   <ComboboxPrimitive.Input
     ref={ref}
     className={cn(
-      "min-w-[8rem] flex-1 bg-transparent py-1 text-base outline-none placeholder:text-muted-foreground",
+      "min-w-32 flex-1 bg-transparent py-1 text-base outline-none placeholder:text-muted-foreground",
       className,
     )}
     {...props}

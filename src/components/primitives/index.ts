@@ -1,6 +1,7 @@
 export * from "./accordion";
 export * from "./action-menu";
 export * from "./avatar";
+export * from "./badged-circle";
 export * from "./button";
 export * from "./card";
 export * from "./checkbox";
@@ -34,7 +35,9 @@ export * from "./skeleton";
 export * from "./sonner";
 export * from "./spinner";
 export * from "./stepper";
+export * from "./switch";
 export * from "./tabs";
 export * from "./textarea";
 export * from "./tooltip";
+export * from "./type";
 export * from "./vote-pill";

@@ -5,9 +5,10 @@ import * as LabelPrimitive from "@radix-ui/react-label";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
+import { typeVariants } from "./type";
 
 const labelVariants = cva(
-  "text-base font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+  [typeVariants({ variant: "label" }), "peer-disabled:cursor-not-allowed peer-disabled:opacity-70"],
   {
     variants: {
       tone: {

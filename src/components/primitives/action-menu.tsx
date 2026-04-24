@@ -74,7 +74,7 @@ export function ActionMenu({
       </SheetTrigger>
       <SheetContent side="bottom" className="rounded-t-[var(--radius-xl)] px-0 pb-6 pt-4">
         <SheetHeader className="px-4 text-start">
-          <SheetTitle className="text-base leading-[1.3]">Actions</SheetTitle>
+          <SheetTitle className="text-base leading-snug">Actions</SheetTitle>
         </SheetHeader>
         <div className="mt-4">
           {items.map((item) => (
@@ -82,7 +82,7 @@ export function ActionMenu({
               {item.separatorBefore ? <div className="my-2 h-px bg-border" /> : null}
               <button
                 className={cn(
-                  "grid w-full grid-cols-[1.25rem_1fr] items-center gap-3 px-4 py-3 text-start text-base leading-[1.35] text-foreground",
+                  "grid w-full grid-cols-[1.25rem_1fr] items-center gap-3 px-4 py-3 text-start text-base leading-snug text-foreground",
                   !item.icon && "grid-cols-[1fr]",
                   item.destructive && "text-destructive",
                   item.disabled && "pointer-events-none opacity-50",
@@ -126,7 +126,7 @@ export function ActionMenu({
           align={align}
           sideOffset={4}
           className={cn(
-            "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-[var(--radius-lg)] border border-border bg-popover p-0 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "relative z-50 max-h-96 min-w-32 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-popover p-0 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
             contentClassName,
           )}

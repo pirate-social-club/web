@@ -88,6 +88,87 @@ function checkNoSmallText() {
   };
 }
 
+function checkNoHardcodedColors() {
+  const offenders = [];
+  const bannedPatterns = [
+    /\bbg-\[#/,
+    /\btext-\[#/,
+    /\bborder-\[#/,
+    /\bring-\[#/,
+    /\bshadow-\[.*rgba\(/,
+    /\bbg-\[color-mix\(/,
+    /style\.backgroundColor\s*=\s*["']#/,
+  ];
+
+  for (const filePath of walk(srcDir)) {
+    if (!filePath.endsWith(".tsx") && !filePath.endsWith(".ts")) continue;
+
+    const lines = fs.readFileSync(filePath, "utf8").split("\n");
+    lines.forEach((line, index) => {
+      for (const pattern of bannedPatterns) {
+        if (pattern.test(line)) {
+          offenders.push(`${relative(filePath)}:${index + 1}`);
+          break;
+        }
+      }
+    });
+  }
+
+  return {
+    label: "color/no-hardcoded-colors",
+    passed: offenders.length === 0,
+    details: offenders,
+  };
+}
+
+function checkNoArbitrarySpacing() {
+  const offenders = [];
+  const bannedPatterns = [
+    /\brounded-\[1\.75rem\]/,
+    /\brounded-\[1\.25rem\]/,
+    /\brounded-\[2rem\]/,
+    /\brounded-\[0\.4rem\]/,
+    /\brounded-\[28px\]/,
+    /\bmax-w-\[64rem\]/,
+    /\bmax-w-\[72rem\]/,
+    /\bmax-w-\[78rem\]/,
+    /\bmax-w-\[40rem\]/,
+    /\bmax-w-\[24rem\]/,
+    /\bw-\[12rem\]/,
+    /\bw-\[18rem\]/,
+    /\bxl:w-\[21rem\]/,
+    /\bmin-w-\[8rem\]/,
+    /\bmin-w-\[10rem\]/,
+    /\bmin-w-\[12rem\]/,
+    /\bmin-h-\[18rem\]/,
+    /\bmin-h-\[20rem\]/,
+    /\bh-\[4\.5rem\]/,
+    /\btop-\[4\.5rem\]/,
+    /\bh-\[1px\]/,
+    /\bw-\[1px\]/,
+  ];
+
+  for (const filePath of walk(srcDir)) {
+    if (!filePath.endsWith(".tsx") && !filePath.endsWith(".ts")) continue;
+
+    const lines = fs.readFileSync(filePath, "utf8").split("\n");
+    lines.forEach((line, index) => {
+      for (const pattern of bannedPatterns) {
+        if (pattern.test(line)) {
+          offenders.push(`${relative(filePath)}:${index + 1}`);
+          break;
+        }
+      }
+    });
+  }
+
+  return {
+    label: "spacing/no-arbitrary-spacing",
+    passed: offenders.length === 0,
+    details: offenders,
+  };
+}
+
 function checkCompositionFolderRule() {
   const offenders = fs
     .readdirSync(compositionsDir)
@@ -131,6 +212,8 @@ function checkStaleMarkers() {
 const checks = [
   checkPrimitiveStoryCoverage(),
   checkNoSmallText(),
+  checkNoHardcodedColors(),
+  checkNoArbitrarySpacing(),
   checkCompositionFolderRule(),
   checkStaleMarkers(),
 ];

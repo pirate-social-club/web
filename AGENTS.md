@@ -19,6 +19,30 @@ Use Storybook validation when component stories change. Avoid `rtk bun run build
 - Prefer icon-only circle buttons for obvious tool actions.
 - Keep steppers above the card, not inside it.
 
+## Typography Rules
+
+- Use the `Type` primitive for all text surfaces. Do not freestyle `text-*`, `font-*`, `leading-*`, or `tracking-*` utilities directly in compositions or pages.
+- Allowed type variants: `display`, `h1`, `h2`, `h3`, `h4`, `body`, `body-strong`, `label`, `caption`, `overline`.
+- Do not use arbitrary font sizes (`text-[...]`), arbitrary leading (`leading-[...]`), or arbitrary tracking (`tracking-[...]`).
+- Do not use hardcoded Tailwind palette colors for text (`text-amber-700`, `text-green-600`, `text-blue-500`, etc.). Use semantic tokens (`text-warning`, `text-success`, `text-info`).
+- Body text is always `text-base` (16px). No exceptions.
+
+## Color Theme Rules
+
+- Use semantic color tokens only (`bg-primary`, `text-muted-foreground`, `border-border-soft`, `shadow-lg`, etc.).
+- No hardcoded hex/rgb/hsl in component markup or inline styles. Exception: standalone generated strings (OG images, SVGs, mock data).
+- No arbitrary color values (`bg-[...]`, `text-[...]`, `border-[...]`, `shadow-[...rgba(...)]`) except CSS variable references (`var(--sidebar-width)`).
+- Use `bg-primary-subtle` for low-tint primary backgrounds instead of `bg-[color-mix(...)]`.
+- Use shadow tokens (`shadow-sm`, `shadow-md`, `shadow-lg`, `shadow-xl`) instead of one-off `rgba(...)` shadows.
+
+## Spacing Rules
+
+- Prefer standard Tailwind spacing scale over arbitrary values (`w-48` instead of `w-[12rem]`, `max-w-5xl` instead of `max-w-[64rem]`).
+- Use semantic radius tokens (`rounded-[var(--radius-lg)]`, `rounded-[var(--radius-xl)]`, etc.) instead of arbitrary `rounded-[1.75rem]` or `rounded-[28px]`.
+- Use `--header-height` CSS variable for chrome dimensions (`h-[var(--header-height)]`, `top-[var(--header-height)]`).
+- 1px dividers use `h-px` / `w-px`, not `h-[1px]` / `w-[1px]`.
+- Exceptions that may remain arbitrary: viewport calculations (`calc(100dvh - ...)`), safe-area insets (`env(safe-area-inset-bottom)`), character-based widths (`max-w-[72ch]`), and third-party embed dimensions.
+
 ## Storybook Coverage
 
 - Primitive: default plus meaningful variants.

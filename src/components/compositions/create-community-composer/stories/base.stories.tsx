@@ -9,7 +9,7 @@ const baseComposer: CreateCommunityComposerProps = {
   displayName: "American Voices",
   description:
     "A national-interest community where verified context matters, but moderation still needs a safe anonymous layer.",
-  databaseRegion: "auto",
+  databaseRegion: "aws-us-east-1",
   membershipMode: "open",
   defaultAgeGatePolicy: "none",
   allowAnonymousIdentity: true,

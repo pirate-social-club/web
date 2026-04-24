@@ -64,7 +64,6 @@ import { CourtyardWalletGateBuilder } from "./courtyard-wallet-gate-builder";
 
 const EMPTY_GATE_DRAFTS: IdentityGateDraft[] = [];
 const DATABASE_REGION_OPTIONS: CommunityDatabaseRegion[] = [
-  "auto",
   "aws-us-east-1",
   "aws-us-east-2",
   "aws-us-west-2",
@@ -101,7 +100,7 @@ export function CreateCommunityComposer({
   avatarRef = "",
   bannerRef = "",
   displayName = "",
-  databaseRegion = "auto",
+  databaseRegion = "aws-us-east-1",
   description = "",
   gateDrafts = EMPTY_GATE_DRAFTS,
   membershipMode = "open",
@@ -386,7 +385,7 @@ export function CreateCommunityComposer({
     gated: cc.membershipGatedLabel,
   })[activeMembershipMode];
   const databaseRegionLabel = ({
-    auto: cc.databaseRegionAuto,
+    auto: cc.databaseRegionUsEast,
     "aws-us-east-1": cc.databaseRegionUsEast,
     "aws-us-east-2": cc.databaseRegionUsCentral,
     "aws-us-west-2": cc.databaseRegionUsWest,
@@ -508,7 +507,7 @@ export function CreateCommunityComposer({
                         {DATABASE_REGION_OPTIONS.map((option) => (
                           <SelectItem key={option} value={option}>
                             {({
-                              auto: cc.databaseRegionAuto,
+                              auto: cc.databaseRegionUsEast,
                               "aws-us-east-1": cc.databaseRegionUsEast,
                               "aws-us-east-2": cc.databaseRegionUsCentral,
                               "aws-us-west-2": cc.databaseRegionUsWest,

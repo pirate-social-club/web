@@ -7,7 +7,7 @@ import type {
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 
-import { executeSongPurchase } from "./song-purchase";
+import { executeSongPurchase, resolveQuoteDiscountPercent } from "./song-purchase";
 
 function createListing(): ApiCommunityListing {
   return {
@@ -173,5 +173,18 @@ describe("executeSongPurchase", () => {
     expect(calls.failPurchase).toEqual(["quote-1"]);
     expect(calls.settlePurchase).toHaveLength(0);
     expect(errors).toEqual(["This quote requires an unsupported checkout chain."]);
+  });
+});
+
+describe("resolveQuoteDiscountPercent", () => {
+  test("computes one-decimal discount percentage from quote prices", () => {
+    expect(resolveQuoteDiscountPercent({ base_price_usd: 5, final_price_usd: 4 })).toBe(20);
+    expect(resolveQuoteDiscountPercent({ base_price_usd: 3.99, final_price_usd: 2.99 })).toBe(25.1);
+  });
+
+  test("returns null when quote has no discount", () => {
+    expect(resolveQuoteDiscountPercent({ base_price_usd: 5, final_price_usd: 5 })).toBeNull();
+    expect(resolveQuoteDiscountPercent({ base_price_usd: 5, final_price_usd: 6 })).toBeNull();
+    expect(resolveQuoteDiscountPercent({ base_price_usd: 0, final_price_usd: 0 })).toBeNull();
   });
 });

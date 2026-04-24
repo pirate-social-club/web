@@ -1,6 +1,7 @@
 "use client";
 
 import { MusicNote } from "@phosphor-icons/react";
+import type * as React from "react";
 
 import {
   Modal,
@@ -16,6 +17,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 
 export interface SongPurchaseModalProps {
+  confirmedDiscountPercent?: number | null;
   error?: string | null;
   forceMobile?: boolean;
   fundingAssetLabel: string;
@@ -25,7 +27,6 @@ export interface SongPurchaseModalProps {
   open: boolean;
   priceLabel: string;
   processing?: boolean;
-  selfVerificationHref?: string | null;
   selfVerificationSavingsPercent?: number | null;
   songTitle: string;
 }
@@ -35,7 +36,7 @@ function SummaryRow({
   value,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
 }) {
   return (
     <div className="flex items-center justify-between gap-4 py-3">
@@ -54,6 +55,7 @@ function formatSavingsPercent(value: number): string {
 }
 
 export function SongPurchaseModal({
+  confirmedDiscountPercent,
   error,
   forceMobile,
   fundingAssetLabel,
@@ -63,12 +65,12 @@ export function SongPurchaseModal({
   open,
   priceLabel,
   processing = false,
-  selfVerificationHref,
   selfVerificationSavingsPercent,
   songTitle,
 }: SongPurchaseModalProps) {
   const { dir } = useUiLocale();
-  const hasSelfVerificationNudge = typeof selfVerificationSavingsPercent === "number" && selfVerificationSavingsPercent > 0;
+  const hasConfirmedDiscount = typeof confirmedDiscountPercent === "number" && confirmedDiscountPercent > 0;
+  const hasSelfVerificationNudge = !hasConfirmedDiscount && typeof selfVerificationSavingsPercent === "number" && selfVerificationSavingsPercent > 0;
   const selfVerificationLabel = hasSelfVerificationNudge
     ? `Save up to ${formatSavingsPercent(selfVerificationSavingsPercent)}% with Self.xyz`
     : null;
@@ -100,6 +102,9 @@ export function SongPurchaseModal({
         <div className="mt-8 space-y-6">
           <div className="divide-y divide-border-soft border-y border-border-soft">
             <SummaryRow label="Price" value={priceLabel} />
+            {hasConfirmedDiscount ? (
+              <SummaryRow label="Self.xyz discount" value={`${formatSavingsPercent(confirmedDiscountPercent)}% off`} />
+            ) : null}
             <SummaryRow label="Pay with" value={fundingAssetLabel} />
           </div>
 
@@ -108,11 +113,7 @@ export function SongPurchaseModal({
               <Type as="p" className="min-w-0" variant="body-strong">
                 {selfVerificationLabel}
               </Type>
-              {selfVerificationHref ? (
-                <Button asChild className="w-full sm:w-auto" size="sm" variant="outline">
-                  <a href={selfVerificationHref}>Verify</a>
-                </Button>
-              ) : onSelfVerificationClick ? (
+              {onSelfVerificationClick ? (
                 <Button className="w-full sm:w-auto" onClick={onSelfVerificationClick} size="sm" variant="outline">
                   Verify
                 </Button>

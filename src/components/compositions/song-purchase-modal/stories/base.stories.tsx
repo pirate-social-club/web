@@ -33,13 +33,17 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function ModalStory({
+  confirmedDiscountPercent = null,
   error = null,
   forceMobile = false,
+  priceLabel = "$3.99",
   processing = false,
   showSelfVerificationNudge = true,
 }: {
+  confirmedDiscountPercent?: number | null;
   error?: string | null;
   forceMobile?: boolean;
+  priceLabel?: string;
   processing?: boolean;
   showSelfVerificationNudge?: boolean;
 }) {
@@ -49,6 +53,7 @@ function ModalStory({
     <>
       {!open ? <Button onClick={() => setOpen(true)}>Reopen purchase</Button> : null}
       <SongPurchaseModal
+        confirmedDiscountPercent={confirmedDiscountPercent}
         error={error}
         forceMobile={forceMobile}
         fundingAssetLabel="USDC on Base Sepolia"
@@ -56,9 +61,9 @@ function ModalStory({
         onOpenChange={setOpen}
         onSelfVerificationClick={() => {}}
         open={open}
-        priceLabel="$3.99"
+        priceLabel={priceLabel}
         processing={processing}
-        selfVerificationSavingsPercent={showSelfVerificationNudge ? 20 : null}
+        selfVerificationSavingsPercent={showSelfVerificationNudge && !confirmedDiscountPercent ? 20 : null}
         songTitle="Midnight Waves"
       />
     </>
@@ -94,7 +99,7 @@ export const Verified: Story = {
   parameters: {
     viewport: { defaultViewport: "desktop" },
   },
-  render: () => <ModalStory showSelfVerificationNudge={false} />,
+  render: () => <ModalStory confirmedDiscountPercent={20} priceLabel="$3.19" showSelfVerificationNudge={false} />,
 };
 
 export const Error: Story = {

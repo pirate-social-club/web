@@ -196,6 +196,10 @@ export function getJoinCtaLabel(
       if (locale === "ar") return "اطلب الانضمام";
       if (locale === "zh") return "申请加入";
       return "Request to Join";
+    case "pending_request":
+      if (locale === "ar") return "تم إرسال الطلب";
+      if (locale === "zh") return "申请已提交";
+      return "Request submitted";
     case "verification_required":
       if (locale === "ar") return "تحقق للانضمام";
       if (locale === "zh") return "验证后加入";
@@ -317,9 +321,9 @@ export function getVerificationPromptCopy(
       };
     }
     return {
-      title: "Verify with ID",
+      title: "Verify with palm scan",
       description: "Use the VeryAI app to scan your palm, then return to Pirate to continue. Download links appear if you need the app.",
-      actionLabel: "Verify with ID",
+      actionLabel: "Verify with palm scan",
     };
   }
 
@@ -379,7 +383,7 @@ export function getVerificationPromptCopy(
     return {
       title: "Verify with ID",
       description: "Self.xyz lets you prove facts like age and nationality without sharing your name, photo, or document details with anyone.",
-      actionLabel: "Open Self.xyz",
+      actionLabel: "Verify with ID",
     };
   }
 
@@ -404,7 +408,7 @@ export function getVerificationPromptCopy(
         return {
           title: "Verify with ID",
           description: visibleCapabilities[0] === "minimum_age" ? "Self.xyz lets you prove your age without sharing your name, photo, or document details with anyone." : "Self.xyz lets you prove you are over 18 without sharing your name, photo, or document details with anyone.",
-          actionLabel: "Open Self.xyz",
+          actionLabel: "Verify with ID",
         };
       case "nationality":
         if (locale === "ar") {
@@ -424,7 +428,7 @@ export function getVerificationPromptCopy(
         return {
           title: "Verify with ID",
           description: "Self.xyz lets you prove your nationality without sharing your name, photo, or document details with anyone.",
-          actionLabel: "Open Self.xyz",
+          actionLabel: "Verify with ID",
         };
       case "gender":
       case "sanctions_clear":
@@ -445,7 +449,7 @@ export function getVerificationPromptCopy(
         return {
           title: "Verify with ID",
           description: visibleCapabilities[0] === "sanctions_clear" ? "Self.xyz lets you complete the required screening without sharing your name, photo, or document details with anyone." : "Self.xyz lets you prove facts from your ID without sharing your name, photo, or document details with anyone.",
-          actionLabel: "Open Self.xyz",
+          actionLabel: "Verify with ID",
         };
       default:
         break;
@@ -503,7 +507,7 @@ export function getVerificationPromptCopy(
   return {
     title: "Verify with ID",
     description: `Self.xyz lets you prove ${joinWithAnd(capabilityLabels, locale)} without sharing your name, photo, or document details with anyone.`,
-    actionLabel: "Open Self.xyz",
+    actionLabel: "Verify with ID",
   };
 }
 

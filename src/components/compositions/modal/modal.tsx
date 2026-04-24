@@ -51,20 +51,23 @@ function Modal({ forceMobile, ...props }: ModalProps) {
 
 interface ModalContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  hideCloseButton?: boolean;
+  hideCloseButtonOnMobile?: boolean;
   mobileSide?: "top" | "bottom" | "left" | "right";
 }
 
 const ModalContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   ModalContentProps
->(({ className, mobileSide = "bottom", ...props }, ref) => {
+>(({ className, hideCloseButton = false, hideCloseButtonOnMobile = false, mobileSide = "bottom", ...props }, ref) => {
   const isMobile = useModalIsMobile();
+  const shouldHideCloseButton = hideCloseButton || (isMobile && hideCloseButtonOnMobile);
 
   if (isMobile) {
-    return <SheetContent className={className} ref={ref} side={mobileSide} {...props} />;
+    return <SheetContent className={className} hideCloseButton={shouldHideCloseButton} ref={ref} side={mobileSide} {...props} />;
   }
 
-  return <DialogContent className={className} ref={ref} {...props} />;
+  return <DialogContent className={className} hideCloseButton={shouldHideCloseButton} ref={ref} {...props} />;
 });
 ModalContent.displayName = "ModalContent";
 

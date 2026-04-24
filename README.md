@@ -9,6 +9,7 @@ React 19 + Vite + Cloudflare Workers (rwsdk). Tailwind CSS v4 + Radix UI. Bun fo
 ```bash
 bun install
 bun run types          # typecheck (run first)
+bun run ui:audit       # component hygiene and stale-marker checks
 bun run locales:generate
 bun run dev            # dev server on :5173
 bun run test

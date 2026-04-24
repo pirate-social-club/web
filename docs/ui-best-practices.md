@@ -22,8 +22,11 @@ This repo optimizes for clear, restrained UI.
 
 ## Stories
 
-- every exported primitive should have at least one story
-- stories should use repo typography rules
+- primitive: default plus meaningful variants
+- form/control: default, disabled, error, and mobile where layout can change
+- composition/flow: default, loading, error or empty, and mobile
+- RTL stories are required only when text direction can change layout
+- stories must use repo typography rules
 - prefer stories that show realistic states over decorative permutations
 
 ## Tests

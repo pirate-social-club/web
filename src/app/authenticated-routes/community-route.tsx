@@ -186,9 +186,10 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           : getVerificationCapabilitiesForProvider(gate.eligibility, provider),
         { locale },
       );
+      const verificationIcon = provider === "passport" ? "passport" : provider === "very" ? "very" : "self";
       return {
         description: verificationPrompt.description,
-        icon: provider === "passport" ? null : provider,
+        icon: verificationIcon as "passport" | "self" | "very",
         primaryAction: {
           label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
           loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
@@ -214,10 +215,6 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           },
         },
         requirements: gate.preview.membership_gate_summaries,
-        secondaryAction: {
-          label: copy.interactionGate.close,
-          onClick: closeModal,
-        },
         title: provider === "passport"
           ? verificationPrompt.title
           : action === "vote_post" || action === "vote_comment"
@@ -226,51 +223,49 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       };
     }
 
-    if (gate.eligibility.status === "joinable" || gate.eligibility.status === "requestable") {
+    if (gate.eligibility.status === "requestable") {
+      openJoinRequestModal();
+      return null;
+    }
+
+    if (gate.eligibility.status === "joinable") {
       const ctaLabel = getJoinCtaLabel(gate.eligibility, { locale });
+      const isVoteAction = action === "vote_post" || action === "vote_comment";
+      const isEnglish = !locale.toLowerCase().startsWith("ar") && !locale.toLowerCase().startsWith("zh");
       return {
         description: (
-          action === "vote_post" || action === "vote_comment"
+          isVoteAction
             ? copy.interactionGate.joinToVoteDescription
             : copy.interactionGate.joinToReplyDescription
         )
           .replace("{joinLabel}", ctaLabel)
           .replace("{communityName}", gate.preview.display_name),
+        icon: "join" as const,
         primaryAction: {
           label: ctaLabel,
           loading: joinLoading,
           onClick: async () => {
-            if (gate.eligibility.status === "requestable") {
-              openJoinRequestModal();
-              closeModal();
-              return;
-            }
             await handleJoin();
             invalidateCommunityGate(gate.preview.community_id);
             closeModal();
           },
         },
         requirements: gate.preview.membership_gate_summaries,
-        secondaryAction: {
-          label: copy.interactionGate.close,
-          onClick: closeModal,
-        },
-        title: (
-          action === "vote_post" || action === "vote_comment"
-            ? copy.interactionGate.joinToVoteTitle
-            : copy.interactionGate.joinToReplyTitle
-        ).replace("{joinLabel}", ctaLabel),
+        title: isEnglish
+          ? `Join to ${isVoteAction ? "Vote" : "Reply"}`
+          : (
+            isVoteAction
+              ? copy.interactionGate.joinToVoteTitle
+              : copy.interactionGate.joinToReplyTitle
+          ).replace("{joinLabel}", ctaLabel),
       };
     }
 
     if (gate.eligibility.status === "pending_request") {
       return {
         description: "The moderators will review your request.",
+        icon: "pending" as const,
         requirements: gate.preview.membership_gate_summaries,
-        secondaryAction: {
-          label: copy.interactionGate.close,
-          onClick: closeModal,
-        },
         title: "Request pending",
       };
     }
@@ -281,11 +276,8 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         : action === "vote_post" || action === "vote_comment"
           ? copy.interactionGate.blockedVoteDescription
           : copy.interactionGate.blockedReplyDescription,
+      icon: "blocked" as const,
       requirements: gate.preview.membership_gate_summaries,
-      secondaryAction: {
-        label: copy.interactionGate.close,
-        onClick: closeModal,
-      },
       title: action === "vote_post" || action === "vote_comment"
         ? copy.interactionGate.cantVoteHereTitle
         : copy.interactionGate.cantReplyHereTitle,

@@ -1,20 +1,20 @@
 "use client";
 
 import type { MembershipGateSummary } from "@pirate/api-contracts";
+import { CheckCircle, Circle } from "@phosphor-icons/react";
 
 import {
   Modal,
-  ModalContent,
-  ModalDescription,
   ModalFooter,
-  ModalHeader,
-  ModalTitle,
 } from "@/components/compositions/modal/modal";
+import {
+  StandardModalContent,
+  StandardModalHeader,
+} from "@/components/compositions/modal/standard-modal-layout";
 import { VerificationIconBadge, type VerificationModalIconKind } from "@/components/compositions/verification-modal-header/verification-modal-header";
 import { Button } from "@/components/primitives/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { typeVariants } from "@/components/primitives/type";
 import { formatGateRequirement } from "@/lib/identity-gates";
 import { useUiLocale } from "@/lib/ui-locale";
 
@@ -23,6 +23,8 @@ export interface CommunityInteractionGateAction {
   loading?: boolean;
   onClick: () => void | Promise<void>;
 }
+
+export type CommunityInteractionGateRequirementStatus = "met" | "unmet" | "unknown";
 
 export interface CommunityInteractionGateModalProps {
   open: boolean;
@@ -33,6 +35,7 @@ export interface CommunityInteractionGateModalProps {
   hideCloseButtonOnMobile?: boolean;
   hideSecondaryActionOnMobile?: boolean;
   requirements?: MembershipGateSummary[];
+  requirementStatuses?: CommunityInteractionGateRequirementStatus[];
   primaryAction?: CommunityInteractionGateAction | null;
   secondaryAction?: CommunityInteractionGateAction | null;
 }
@@ -46,53 +49,60 @@ export function CommunityInteractionGateModal({
   hideCloseButtonOnMobile = false,
   hideSecondaryActionOnMobile = false,
   requirements,
+  requirementStatuses,
   primaryAction,
   secondaryAction,
 }: CommunityInteractionGateModalProps) {
-  const { dir, locale } = useUiLocale();
+  const { locale } = useUiLocale();
   const isMobile = useIsMobile();
   const visibleSecondaryAction = hideSecondaryActionOnMobile && isMobile ? null : secondaryAction;
+  const requirementProvider = icon === "self" || icon === "very" || icon === "passport" ? icon : null;
   const items = (requirements ?? [])
-    .map((gate) => formatGateRequirement(gate, { locale }))
-    .filter(Boolean);
+    .map((gate, index) => ({
+      label: formatGateRequirement(gate, { locale, provider: requirementProvider }),
+      status: requirementStatuses?.[index] ?? "unknown",
+    }))
+    .filter((item) => Boolean(item.label));
   const actionCount = Number(Boolean(primaryAction)) + Number(Boolean(visibleSecondaryAction));
   const hasActions = actionCount > 0;
   const hasTwoActions = actionCount === 2;
 
   return (
     <Modal onOpenChange={onOpenChange} open={open}>
-      <ModalContent
-        className="flex max-h-[90vh] min-h-[17rem] flex-col overflow-y-auto px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 sm:min-h-72 sm:max-w-lg sm:px-6 sm:pb-6 sm:pt-6"
-        dir={dir}
+      <StandardModalContent
         hideCloseButtonOnMobile={hideCloseButtonOnMobile}
-        mobileSide="bottom"
       >
-        <ModalHeader className="space-y-3 pr-10 text-start">
-          <div className="flex items-center gap-3">
-            {icon ? <VerificationIconBadge icon={icon} /> : null}
-            <ModalTitle className={cn(typeVariants({ variant: "h2" }), "min-w-0 leading-7 sm:leading-8")} dir="auto">
-              {title}
-            </ModalTitle>
-          </div>
-          <ModalDescription className="max-w-[42ch] text-base leading-7" dir="auto">
-            {description}
-          </ModalDescription>
-        </ModalHeader>
+        <StandardModalHeader
+          description={description}
+          icon={icon ? <VerificationIconBadge className="size-16" icon={icon} iconClassName="size-8" /> : null}
+          title={title}
+        />
 
-        {items.length > 0 ? (
-          <div className="mt-5 space-y-2 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 sm:mt-6">
+        {items.length > 1 ? (
+          <div className="mt-5 space-y-2 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 sm:mt-6" role="list">
             {items.map((item, index) => (
-              <p className="text-base leading-6 text-foreground" dir="auto" key={`${item}-${index}`}>
-                {item}
-              </p>
+              <div className="flex items-start gap-2 text-base leading-6 text-foreground" dir="auto" key={`${item.label}-${index}`} role="listitem">
+                {item.status === "met" ? (
+                  <CheckCircle aria-label="Met" className="mt-0.5 size-5 shrink-0 text-success" weight="fill" />
+                ) : (
+                  <Circle aria-label={item.status === "unmet" ? "Not met" : "Required"} className="mt-0.5 size-5 shrink-0 text-muted-foreground" weight="regular" />
+                )}
+                <span className="min-w-0">{item.label}</span>
+              </div>
             ))}
           </div>
         ) : null}
 
-        <ModalFooter className={`flex-col gap-3 ${hasActions ? "mt-auto pt-8 sm:pt-10" : "mt-auto"} ${hasTwoActions ? "sm:grid sm:grid-cols-2 sm:justify-stretch" : "sm:flex sm:justify-end"}`}>
+        <ModalFooter
+          className={cn(
+            "grid grid-cols-1 gap-3 sm:justify-stretch",
+            hasActions ? "mt-auto pt-8 sm:pt-10" : "mt-auto",
+            hasTwoActions ? "sm:grid-cols-2" : null,
+          )}
+        >
           {visibleSecondaryAction ? (
             <Button
-              className={`h-12 w-full ${hasTwoActions ? "" : "sm:w-2/5"}`}
+              className="h-12 w-full"
               loading={visibleSecondaryAction.loading}
               onClick={() => void visibleSecondaryAction.onClick()}
               variant="secondary"
@@ -102,7 +112,7 @@ export function CommunityInteractionGateModal({
           ) : null}
           {primaryAction ? (
             <Button
-              className={`h-12 w-full ${hasTwoActions ? "" : "sm:w-2/5"}`}
+              className="h-12 w-full"
               loading={primaryAction.loading}
               onClick={() => void primaryAction.onClick()}
             >
@@ -110,7 +120,7 @@ export function CommunityInteractionGateModal({
             </Button>
           ) : null}
         </ModalFooter>
-      </ModalContent>
+      </StandardModalContent>
     </Modal>
   );
 }

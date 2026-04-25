@@ -52,7 +52,7 @@ export function StandardModalIconBadge({
   return (
     <span
       aria-hidden="true"
-      className={cn("grid size-16 shrink-0 place-items-center rounded-full border border-border-soft bg-muted/45 text-foreground", className)}
+      className={cn("grid size-14 shrink-0 place-items-center rounded-full border border-border-soft bg-muted/45 text-foreground sm:size-16", className)}
     >
       {children}
     </span>
@@ -72,11 +72,11 @@ export function StandardModalHeader({
     <ModalHeader className="space-y-5 pr-10 text-start">
       <div className="flex items-center gap-4">
         {icon}
-        <ModalTitle className={cn(typeVariants({ variant: "h1" }), "min-w-0 leading-tight")} dir="auto">
+        <ModalTitle className={cn(typeVariants({ variant: "h1" }), "min-w-0 text-2xl leading-8 sm:text-3xl sm:leading-tight")} dir="auto">
           {title}
         </ModalTitle>
       </div>
-      <ModalDescription className={cn(typeVariants({ variant: "body" }), "w-full leading-8 text-foreground")} dir="auto">
+      <ModalDescription className={cn(typeVariants({ variant: "body" }), "w-full leading-7 text-muted-foreground sm:leading-8")} dir="auto">
         {description}
       </ModalDescription>
     </ModalHeader>

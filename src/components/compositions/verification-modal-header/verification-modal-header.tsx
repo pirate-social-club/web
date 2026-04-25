@@ -1,15 +1,20 @@
 "use client";
 
 import type { Icon } from "@phosphor-icons/react";
-import { Fingerprint, IdentificationCard } from "@phosphor-icons/react";
+import { CheckCircle, Clock, Gauge, HandPalm, IdentificationCard, UserPlus, WarningCircle } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
 
-export type VerificationModalIconKind = "self" | "very";
+export type VerificationModalIconKind = "blocked" | "join" | "passport" | "pending" | "ready" | "self" | "very";
 
 const iconByKind: Record<VerificationModalIconKind, Icon> = {
+  blocked: WarningCircle,
+  join: UserPlus,
+  passport: Gauge,
+  pending: Clock,
+  ready: CheckCircle,
   self: IdentificationCard,
-  very: Fingerprint,
+  very: HandPalm,
 };
 
 export function VerificationIconBadge({

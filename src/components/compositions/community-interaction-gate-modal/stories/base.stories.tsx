@@ -3,6 +3,7 @@ import * as React from "react";
 import type { MembershipGateSummary } from "@pirate/api-contracts";
 
 import { Button } from "@/components/primitives/button";
+import { CommunityJoinRequestModal } from "@/components/compositions/community-join-request-modal/community-join-request-modal";
 
 import { CommunityInteractionGateModal, type CommunityInteractionGateModalProps } from "../community-interaction-gate-modal";
 
@@ -20,14 +21,13 @@ const passportRequirements: MembershipGateSummary[] = [
 
 const failedRequirements: MembershipGateSummary[] = [
   { gate_type: "nationality", required_value: "ET" },
-  { gate_type: "unique_human" },
 ];
 
 const meta = {
   title: "Compositions/CommunityInteractionGateModal",
   component: CommunityInteractionGateModal,
   args: {
-    description: "Join in Verified Citizens before you vote.",
+    description: "Join Local Transit before you vote.",
     onOpenChange: () => {},
     open: true,
     title: "Join to vote",
@@ -60,41 +60,42 @@ function GateModalStory(props: Omit<CommunityInteractionGateModalProps, "onOpenC
   );
 }
 
+function RequestableToReplyStory() {
+  const [requestOpen, setRequestOpen] = React.useState(true);
+
+  return (
+    <>
+      {!requestOpen ? <Button onClick={() => setRequestOpen(true)}>Request to Join</Button> : null}
+      <CommunityJoinRequestModal
+        communityName="Neighborhood Planning"
+        onOpenChange={setRequestOpen}
+        onSubmit={() => {}}
+        open={requestOpen}
+      />
+    </>
+  );
+}
+
 export const JoinableToVote: Story = {
   name: "States / Joinable to vote",
   render: () => (
     <GateModalStory
-      description="Join in Verified Citizens before you vote."
+      description="You meet this community's requirements. Join to vote."
+      icon="join"
       primaryAction={{
-        label: "Join in Verified Citizens",
+        label: "Join",
         onClick: () => {},
       }}
-      secondaryAction={{
-        label: "Close",
-        onClick: () => {},
-      }}
-      title="Join to vote"
+      requirements={selfRequirements}
+      requirementStatuses={["met"]}
+      title="Join to Vote"
     />
   ),
 };
 
 export const RequestableToReply: Story = {
   name: "States / Requestable to reply",
-  render: () => (
-    <GateModalStory
-      description="Request to Join in Mods Only before you reply."
-      primaryAction={{
-        label: "Request to Join in Mods Only",
-        onClick: () => {},
-      }}
-      requirements={[]}
-      secondaryAction={{
-        label: "Close",
-        onClick: () => {},
-      }}
-      title="Request to Join to reply"
-    />
-  ),
+  render: () => <RequestableToReplyStory />,
 };
 
 export const VerificationRequiredSelf: Story = {
@@ -102,18 +103,13 @@ export const VerificationRequiredSelf: Story = {
   render: () => (
     <GateModalStory
       description="Self.xyz lets you prove you are over 18 without sharing your name, photo, or document details with anyone."
-      hideCloseButtonOnMobile
-      hideSecondaryActionOnMobile
       icon="self"
       primaryAction={{
         label: "Verify with ID",
         onClick: () => {},
       }}
       requirements={selfRequirements}
-      secondaryAction={{
-        label: "Close",
-        onClick: () => {},
-      }}
+      requirementStatuses={["unmet"]}
       title="Verify to vote"
     />
   ),
@@ -123,19 +119,14 @@ export const VerificationRequiredVery: Story = {
   name: "States / Verification required Very",
   render: () => (
     <GateModalStory
-      description="Use the VeryAI app to scan your palm, then return to Pirate to continue."
-      hideCloseButtonOnMobile
-      hideSecondaryActionOnMobile
+      description="Scan your palm once with VeryAI to join any community that requires it. The photo is not saved anywhere."
       icon="very"
       primaryAction={{
         label: "Verify with palm scan",
         onClick: () => {},
       }}
       requirements={veryRequirements}
-      secondaryAction={{
-        label: "Close",
-        onClick: () => {},
-      }}
+      requirementStatuses={["unmet"]}
       title="Verify to vote"
     />
   ),
@@ -145,18 +136,14 @@ export const VerificationRequiredPassport: Story = {
   name: "States / Verification required Passport",
   render: () => (
     <GateModalStory
-      description="Improve your Passport score, then come back to join."
-      hideCloseButtonOnMobile
-      hideSecondaryActionOnMobile
+      description="Your wallet needs a score of 20+ to enter this community. Visit app.passport.xyz to improve it."
+      icon="passport"
       primaryAction={{
         label: "Open Passport",
         onClick: () => {},
       }}
       requirements={passportRequirements}
-      secondaryAction={{
-        label: "Close",
-        onClick: () => {},
-      }}
+      requirementStatuses={["unmet"]}
       title="Passport score required"
     />
   ),
@@ -167,10 +154,7 @@ export const PendingRequest: Story = {
   render: () => (
     <GateModalStory
       description="The moderators will review your request."
-      secondaryAction={{
-        label: "Close",
-        onClick: () => {},
-      }}
+      icon="pending"
       title="Request pending"
     />
   ),
@@ -180,16 +164,10 @@ export const GateFailed: Story = {
   name: "States / Gate failed",
   render: () => (
     <GateModalStory
-      description="This community's requirements block you from voting right now."
-      primaryAction={{
-        label: "Open Verified Citizens",
-        onClick: () => {},
-      }}
+      description="Your verified ID does not match this community's requirements."
+      icon="blocked"
       requirements={failedRequirements}
-      secondaryAction={{
-        label: "Close",
-        onClick: () => {},
-      }}
+      requirementStatuses={["unmet"]}
       title="You can't vote here"
     />
   ),
@@ -199,7 +177,8 @@ export const ReadyAfterVerification: Story = {
   name: "States / Ready after verification",
   render: () => (
     <GateModalStory
-      description="You can now vote in Verified Citizens."
+      description="You can now vote in Local Transit."
+      icon="ready"
       primaryAction={{
         label: "Vote now",
         onClick: () => {},
@@ -217,18 +196,13 @@ export const MobileVerificationRequiredSelf: Story = {
   render: () => (
     <GateModalStory
       description="Self.xyz lets you prove you are over 18 without sharing your name, photo, or document details with anyone."
-      hideCloseButtonOnMobile
-      hideSecondaryActionOnMobile
       icon="self"
       primaryAction={{
         label: "Verify with ID",
         onClick: () => {},
       }}
       requirements={selfRequirements}
-      secondaryAction={{
-        label: "Close",
-        onClick: () => {},
-      }}
+      requirementStatuses={["unmet"]}
       title="Verify to vote"
     />
   ),

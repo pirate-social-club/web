@@ -26,13 +26,20 @@ describe("namespace label canonicalization", () => {
     expect(result.routePath).toBe("/c/example");
   });
 
-  test("allows literal ASCII xn labels even when they do not decode to display Unicode", () => {
-    const result = canonicalizeNamespaceRootLabel("spaces", "xn--238746723487");
+  test("allows canonical literal ASCII xn labels", () => {
+    const result = canonicalizeNamespaceRootLabel("spaces", "xn--t77hga");
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.rootLabel).toBe("xn--238746723487");
-    expect(result.namespaceKey).toBe("@xn--238746723487");
+    expect(result.rootLabel).toBe("xn--t77hga");
+    expect(result.namespaceKey).toBe("@xn--t77hga");
+  });
+
+  test("rejects literal ASCII xn labels that are not canonical IDNA", () => {
+    const result = canonicalizeNamespaceRootLabel("spaces", "xn--238746723487");
+
+    expect(result.ok).toBe(false);
+    expect(result.empty).toBe(false);
   });
 
   test("rejects non-IDNA Unicode labels", () => {

@@ -42,7 +42,7 @@ const resourceIcons = {
 } satisfies Record<ResourceLinkId, typeof House>;
 
 function buildCreatePostPath(communityId: string): string {
-  return `/c/${encodeURIComponent(communityId)}/submit`;
+  return `${buildCommunityPath(communityId)}/submit`;
 }
 
 export function resolveCreatePostPath(route: AppRoute): string | null {

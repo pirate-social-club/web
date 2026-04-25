@@ -11,6 +11,7 @@ import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getApiErrorMessage, isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
+import { buildCommunityPath } from "@/lib/community-routing";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community-membership-gate-panel/community-membership-gate-panel";
 import { CommunityJoinRequestModal } from "@/components/compositions/community-join-request-modal/community-join-request-modal";
 import { CommunityPageShell } from "@/components/compositions/community-page-shell/community-page-shell";
@@ -89,6 +90,12 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const [joinRequestSubmitting, setJoinRequestSubmitting] = React.useState(false);
   const [joinRequestError, setJoinRequestError] = React.useState<string | null>(null);
   const ownsCommunity = session?.user?.user_id === community?.created_by_user_id;
+  const communityCreatePostPath = React.useMemo(
+    () => community
+      ? `${buildCommunityPath(community.community_id, community.route_slug)}/submit`
+      : `${buildCommunityPath(communityId)}/submit`,
+    [community, communityId],
+  );
   const moderationEntryPath = React.useMemo(
     () => buildCommunityModerationEntryPath(communityId, isMobileWeb),
     [communityId, isMobileWeb],
@@ -357,7 +364,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     <div className="flex flex-wrap items-center justify-end gap-3">
       {ownsCommunity ? <Button onClick={() => navigate(moderationEntryPath)} variant="secondary">{modToolsLabel}</Button> : null}
       {canCreatePost ? (
-        <Button leadingIcon={<Plus className="size-5" />} onClick={() => navigate(`/c/${communityId}/submit`)}>{createPostLabel}</Button>
+        <Button leadingIcon={<Plus className="size-5" />} onClick={() => navigate(communityCreatePostPath)}>{createPostLabel}</Button>
       ) : (
         <>
           <Button

@@ -156,7 +156,7 @@ export function PostPage({ postId }: { postId: string }) {
       showTranslationLabel: copy.common.showTranslation,
     })
     : undefined;
-  const communityPath = community ? buildCommunityPath(community.community_id) : "/";
+  const communityPath = community ? buildCommunityPath(community.community_id, community.route_slug) : "/";
   const threadBody = (
     <>
       {gateModal}

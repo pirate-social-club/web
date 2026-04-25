@@ -9,6 +9,7 @@ import type { DonationPartnerPreview } from "@/components/compositions/community
 import type { CommunityLinkEditorItem } from "@/components/compositions/community-links-editor/community-links-editor-page";
 import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
 import type { PricingTier, CountryAssignment as PricingCountryAssignment } from "@/components/compositions/community-pricing-editor/community-pricing-editor-page";
+import { buildCommunityPath } from "@/lib/community-routing";
 import { createDefaultCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 import { COUNTRIES, normalizeCountryCode } from "@/lib/countries";
 import { serializeExistingCommunityGateRuleForUpdate, type SerializedGateRule } from "./community-gate-rule-serialization";
@@ -35,14 +36,14 @@ export type CommunityModerationSection = "profile" | "rules" | "links" | "labels
 export const DEFAULT_COMMUNITY_MODERATION_SECTION: CommunityModerationSection = "profile";
 
 export function buildCommunityModerationIndexPath(communityId: string): string {
-  return `/c/${encodeURIComponent(communityId)}/mod`;
+  return `${buildCommunityPath(communityId)}/mod`;
 }
 
 export function buildCommunityModerationPath(
   communityId: string,
   section: CommunityModerationSection,
 ): string {
-  return `/c/${encodeURIComponent(communityId)}/mod/${section}`;
+  return `${buildCommunityPath(communityId)}/mod/${section}`;
 }
 
 export function buildDefaultCommunityModerationPath(communityId: string): string {

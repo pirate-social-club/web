@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   buildCommunityModerationEntryPath,
+  buildCommunityModerationPath,
   buildStarterPricingPolicyDraft,
   validatePricingPolicyDraft,
 } from "./moderation-helpers";
@@ -13,6 +14,11 @@ describe("pricing policy moderation helpers", () => {
       .toBe("/c/cmt_74675bfb653a43809b1238fd6d271867/mod");
     expect(buildCommunityModerationEntryPath("cmt_74675bfb653a43809b1238fd6d271867", false))
       .toBe("/c/cmt_74675bfb653a43809b1238fd6d271867/mod/profile");
+  });
+
+  test("canonicalizes emoji community handles in moderation paths", () => {
+    expect(buildCommunityModerationEntryPath("@🇵🇸", true)).toBe("/c/@xn--t77hga/mod");
+    expect(buildCommunityModerationPath("@🇵🇸", "links")).toBe("/c/@xn--t77hga/mod/links");
   });
 
   test("rejects duplicate country assignments across price groups", () => {

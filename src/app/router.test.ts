@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { extractPublicProfileHost, matchRoute } from "./router";
+import { canonicalizeRoutePathname, extractPublicProfileHost, matchRoute } from "./router";
 
 function expectJson(actual: unknown, expected: unknown): void {
   expect(JSON.stringify(actual)).toBe(JSON.stringify(expected));
@@ -121,5 +121,25 @@ describe("public profile host routing", () => {
       path: "/p/pst_cf89c73fe60641debd05c939252a870c",
       postId: "pst_cf89c73fe60641debd05c939252a870c",
     });
+  });
+});
+
+describe("canonicalizeRoutePathname", () => {
+  test("normalizes percent-encoded emoji community handles to punycode", () => {
+    expect(canonicalizeRoutePathname("/c/@%F0%9F%87%B5%F0%9F%87%B8")).toBe("/c/@xn--t77hga");
+  });
+
+  test("normalizes raw emoji community handles to punycode", () => {
+    expect(canonicalizeRoutePathname("/c/@🇵🇸")).toBe("/c/@xn--t77hga");
+  });
+
+  test("preserves community route suffixes when normalizing", () => {
+    expect(canonicalizeRoutePathname("/c/@%F0%9F%87%B5%F0%9F%87%B8/submit")).toBe("/c/@xn--t77hga/submit");
+    expect(canonicalizeRoutePathname("/c/@%F0%9F%87%B5%F0%9F%87%B8/mod/links")).toBe("/c/@xn--t77hga/mod/links");
+  });
+
+  test("leaves existing canonical and non-community routes unchanged", () => {
+    expect(canonicalizeRoutePathname("/c/@xn--t77hga")).toBe("/c/@xn--t77hga");
+    expect(canonicalizeRoutePathname("/u/%F0%9F%87%B5%F0%9F%87%B8")).toBe("/u/%F0%9F%87%B5%F0%9F%87%B8");
   });
 });

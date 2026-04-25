@@ -6,6 +6,10 @@ import {
   type CommunityModerationSectionName,
   type SettingsSection,
 } from "@/app/route-definitions";
+import {
+  canonicalizeCommunityRouteSegment,
+  encodeCommunityRouteSegment,
+} from "@/lib/community-routing";
 
 export type AppRoute =
   | { kind: "home"; path: "/" }
@@ -208,9 +212,53 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   return { kind: "not-found", path: normalized };
 }
 
+export function canonicalizeRoutePathname(pathname: string, hostname?: string): string {
+  const normalized = normalizePathname(pathname);
+  const route = matchRoute(normalized, hostname);
+  return getCanonicalCommunityRoutePathname(route) ?? normalized;
+}
+
+function getCanonicalCommunityRoutePathname(route: AppRoute): string | null {
+  if (
+    route.kind !== "community" &&
+    route.kind !== "create-post" &&
+    route.kind !== "community-moderation-index" &&
+    route.kind !== "community-moderation"
+  ) {
+    return null;
+  }
+
+  const canonicalCommunityId = canonicalizeCommunityRouteSegment(route.communityId);
+  if (canonicalCommunityId === route.communityId) {
+    return null;
+  }
+
+  const communityPath = `/c/${encodeCommunityRouteSegment(canonicalCommunityId)}`;
+  if (route.kind === "create-post") {
+    return `${communityPath}/submit`;
+  }
+  if (route.kind === "community-moderation-index") {
+    return `${communityPath}/mod`;
+  }
+  if (route.kind === "community-moderation") {
+    return `${communityPath}/mod/${route.section}`;
+  }
+
+  return communityPath;
+}
+
+function replaceCurrentPathname(pathname: string): void {
+  window.history.replaceState({}, "", `${pathname}${window.location.search}${window.location.hash}`);
+}
+
 function getCurrentRoute(): AppRoute {
-  const pathname = normalizePathname(window.location.pathname);
+  let pathname = normalizePathname(window.location.pathname);
   const hostname = window.location.hostname.toLowerCase();
+  const canonicalPathname = canonicalizeRoutePathname(pathname, hostname);
+  if (canonicalPathname !== pathname) {
+    replaceCurrentPathname(canonicalPathname);
+    pathname = canonicalPathname;
+  }
 
   if (pathname === cachedPathname && hostname === cachedHostname) {
     return cachedRoute;
@@ -249,7 +297,10 @@ export function navigate(path: string): void {
 export function useRoute(initialPathname?: string, initialHostname?: string): AppRoute {
   const initialRoute = React.useMemo(() => {
     if (typeof window !== "undefined") {
-      cachedPathname = normalizePathname(window.location.pathname);
+      cachedPathname = canonicalizeRoutePathname(window.location.pathname, window.location.hostname);
+      if (cachedPathname !== normalizePathname(window.location.pathname)) {
+        replaceCurrentPathname(cachedPathname);
+      }
       cachedHostname = window.location.hostname.toLowerCase();
       cachedRoute = matchRoute(cachedPathname, cachedHostname);
       return cachedRoute;

@@ -2,6 +2,13 @@ import type { UiDirection, UiLocaleCode } from "@/lib/ui-locale-core";
 
 export type ThemeMode = "dark" | "light" | "system";
 
+export type SeoMetadata = {
+  description?: string | null;
+  imageUrl?: string | null;
+  title?: string | null;
+  type?: "article" | "profile" | "website";
+};
+
 export type AppContext = {
   appOrigin?: string;
   canonicalUrl?: string;
@@ -9,5 +16,6 @@ export type AppContext = {
   effectiveUrl?: string;
   isIndexable?: boolean;
   locale?: UiLocaleCode;
+  seoMetadata?: SeoMetadata | null;
   theme?: ThemeMode;
 };

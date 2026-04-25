@@ -54,7 +54,7 @@ export function IdentityHero({
         {normalizedCoverSrc ? (
           <img
             alt=""
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover object-center"
             draggable={false}
             src={normalizedCoverSrc}
           />

@@ -943,12 +943,12 @@
       "doneLabel": "完成",
       "resuming": "继续验证中...",
       "publishStepLabels": [
-        "git clone",
-        "cd",
+        "检查 Go",
+        "找到钱包导出文件",
         "运行此命令"
       ],
-      "publisherInstallCommand": "git clone https://github.com/pirate-social-club/pirate-spaces-publisher.git",
-      "publisherCdCommand": "cd pirate-spaces-publisher",
+      "publisherInstallCommand": "go version\n\n如果显示“command not found”，请从 https://go.dev/dl/ 安装 Go，然后重新打开终端。",
+      "publisherCdCommand": "找到你的 Spaces 钱包导出 JSON 文件。只保存在自己的电脑上，不要上传。在 macOS 上，可以把文件拖进终端来粘贴完整路径。",
       "digestLabel": "摘要",
       "challengeDetails": "挑战详情",
       "verifyDifferent": "验证不同的命名空间",

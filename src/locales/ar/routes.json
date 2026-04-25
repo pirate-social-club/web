@@ -969,12 +969,12 @@
       "doneLabel": "تم",
       "resuming": "استئناف التحقق...",
       "publishStepLabels": [
-        "git clone",
-        "cd",
+        "تحقق من Go",
+        "اعثر على ملف المحفظة",
         "شغّل هذا"
       ],
-      "publisherInstallCommand": "git clone https://github.com/pirate-social-club/pirate-spaces-publisher.git",
-      "publisherCdCommand": "cd pirate-spaces-publisher",
+      "publisherInstallCommand": "go version\n\nإذا ظهرت رسالة \"command not found\"، ثبّت Go من https://go.dev/dl/ ثم أعد فتح Terminal.",
+      "publisherCdCommand": "اعثر على ملف Spaces wallet export بصيغة JSON. أبقه على جهازك ولا ترفعه. على macOS، اسحب الملف إلى Terminal للصق مساره الكامل.",
       "digestLabel": "الملخص",
       "challengeDetails": "تفاصيل التحدي",
       "verifyDifferent": "التحقق من مساحة اسم مختلفة",

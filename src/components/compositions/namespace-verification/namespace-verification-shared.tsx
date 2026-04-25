@@ -111,13 +111,18 @@ export function NamespaceVerificationChallengeMessage({ value }: { value: string
 
 function buildSpacesPublishCommand(challengePayload: SpacesChallengePayload) {
   const root = `@${challengePayload.root_label}`;
+  const publisher = "github.com/pirate-social-club/pirate-spaces-publisher@v0.1.0";
   return [
-    `go run . publish ${root} \\`,
-    `  --web ${challengePayload.web_url} \\`,
-    `  --freedom ${challengePayload.freedom_url} \\`,
-    `  --txt ${challengePayload.txt_key}=${challengePayload.txt_value} \\`,
-    "  --wallet-export /path/to/wallet-export.json",
+    `go run ${publisher} publish ${shellQuote(root)} \\`,
+    "  --wallet-export '/full/path/to/your-wallet-export.json' \\",
+    `  --web ${shellQuote(challengePayload.web_url)} \\`,
+    `  --freedom ${shellQuote(challengePayload.freedom_url)} \\`,
+    `  --txt ${shellQuote(`${challengePayload.txt_key}=${challengePayload.txt_value}`)}`,
   ].join("\n");
+}
+
+function shellQuote(value: string) {
+  return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
 type NamespaceVerificationSpacesPanelProps = {

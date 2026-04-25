@@ -969,12 +969,12 @@
       "doneLabel": "Done",
       "resuming": "Resuming verification...",
       "publishStepLabels": [
-        "git clone",
-        "cd",
+        "Check Go",
+        "Find wallet export",
         "Run this"
       ],
-      "publisherInstallCommand": "git clone https://github.com/pirate-social-club/pirate-spaces-publisher.git",
-      "publisherCdCommand": "cd pirate-spaces-publisher",
+      "publisherInstallCommand": "go version\n\nIf this prints \"command not found\", install Go from https://go.dev/dl/ and reopen Terminal.",
+      "publisherCdCommand": "Find your Spaces wallet export JSON. Keep it on your computer and do not upload it. On macOS, drag the file into Terminal to paste its full path.",
       "digestLabel": "Digest",
       "challengeDetails": "Challenge details",
       "verifyDifferent": "Verify a different namespace",

@@ -31,6 +31,7 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
   const pageTitle = seo?.title?.trim() || "Pirate Social Club";
   const pageDescription = seo?.description?.trim() || null;
   const pageImageUrl = seo?.imageUrl?.trim() || null;
+  const pageUrl = seo?.url?.trim() || canonicalUrl;
   const ogType = seo?.type ?? "website";
   const ogLocale = resolveOpenGraphLocale(locale);
   const twitterCard = pageImageUrl ? "summary_large_image" : "summary";
@@ -57,7 +58,7 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
         <meta property="og:locale" content={ogLocale} />
         <meta property="og:title" content={pageTitle} />
         {pageDescription ? <meta property="og:description" content={pageDescription} /> : null}
-        {canonicalUrl ? <meta property="og:url" content={canonicalUrl} /> : null}
+        {pageUrl ? <meta property="og:url" content={pageUrl} /> : null}
         <meta property="og:site_name" content="Pirate" />
         {pageImageUrl ? <meta property="og:image" content={pageImageUrl} /> : null}
         <meta name="twitter:card" content={twitterCard} />

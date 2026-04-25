@@ -51,6 +51,7 @@ type PublicPostResponse = LocalizedPostResponse & {
 const CSP_HEADER = "Content-Security-Policy";
 const CSP_REPORT_ONLY_HEADER = "Content-Security-Policy-Report-Only";
 const META_DESCRIPTION_MAX_LENGTH = 180;
+const SHARE_LOCALE_QUERY_KEYS = ["locale", "lang"] as const;
 
 function buildContentSecurityPolicy(nonce: string): string {
   const directives: string[] = [
@@ -138,6 +139,37 @@ function applyCspHeaders(headers: Headers, nonce: string): void {
 function parseThemeCookie(cookieHeader: string | null): ThemeMode {
   const match = cookieHeader?.match(/(?:^|;\s*)theme=(dark|light|system)(?:;|$)/);
   return (match?.[1] as ThemeMode | undefined) ?? "dark";
+}
+
+function resolveLocaleQueryOverride(url: URL): Exclude<UiLocaleCode, "pseudo"> | null {
+  for (const key of SHARE_LOCALE_QUERY_KEYS) {
+    const value = url.searchParams.get(key)?.trim().toLowerCase();
+    if (!value) {
+      continue;
+    }
+    if (value === "ar" || value.startsWith("ar-")) return "ar";
+    if (value === "zh" || value.startsWith("zh-")) return "zh";
+    if (value === "en" || value.startsWith("en-")) return "en";
+  }
+
+  return null;
+}
+
+function resolveRequestUiLocale(
+  url: URL,
+  acceptLanguageHeader: string | null,
+): Exclude<UiLocaleCode, "pseudo"> {
+  return resolveLocaleQueryOverride(url) ?? resolveRequestLocale(acceptLanguageHeader);
+}
+
+function buildOpenGraphUrl(canonicalUrl: string, locale: UiLocaleCode, hasLocaleOverride: boolean): string {
+  if (!hasLocaleOverride) {
+    return canonicalUrl;
+  }
+
+  const url = new URL(canonicalUrl);
+  url.searchParams.set("locale", resolveLocaleLanguageTag(locale));
+  return url.toString();
 }
 
 function normalizeMetaText(value: string | null | undefined): string | null {
@@ -426,7 +458,8 @@ const app = defineApp<AppRequestInfo>([
     const effectiveUrl = resolveEffectiveRequestUrl(request);
     const url = new URL(effectiveUrl);
     const discovery = getDiscoveryContext(effectiveUrl);
-    const locale = resolveRequestLocale(request.headers.get("accept-language"));
+    const hasLocaleOverride = resolveLocaleQueryOverride(url) !== null;
+    const locale = resolveRequestUiLocale(url, request.headers.get("accept-language"));
     const route = matchRoute(url.pathname, url.hostname);
 
     ctx.effectiveUrl = effectiveUrl;
@@ -435,12 +468,18 @@ const app = defineApp<AppRequestInfo>([
     ctx.locale = locale;
     ctx.dir = resolveLocaleDirection(locale);
     ctx.isIndexable = discovery.isIndexable;
-    ctx.seoMetadata = await resolveRouteSeoMetadata({
+    const seoMetadata = await resolveRouteSeoMetadata({
       apiOrigin: discovery.apiOrigin,
       appOrigin: discovery.appOrigin,
       locale,
       route,
     });
+    ctx.seoMetadata = seoMetadata
+      ? {
+          ...seoMetadata,
+          url: buildOpenGraphUrl(discovery.canonicalUrl, locale, hasLocaleOverride),
+        }
+      : null;
     ctx.theme = parseThemeCookie(request.headers.get("cookie"));
     applyDiscoveryHeaders(response.headers, discovery);
     applyCspHeaders(response.headers, rw.nonce);

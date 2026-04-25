@@ -7,6 +7,7 @@ export type SeoMetadata = {
   imageUrl?: string | null;
   title?: string | null;
   type?: "article" | "profile" | "website";
+  url?: string | null;
 };
 
 export type AppContext = {

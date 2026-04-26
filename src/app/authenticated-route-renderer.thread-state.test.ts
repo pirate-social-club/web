@@ -34,6 +34,7 @@ function createCommentListItem(input: {
       descendant_count: input.descendantCount,
       downvote_count: 0,
       direct_reply_count: input.directReplyCount,
+      idempotency_key: `comment-${input.commentId}`,
       identity_mode: "anonymous",
       last_reply_at: null,
       parent_comment_id: input.parentCommentId ?? null,

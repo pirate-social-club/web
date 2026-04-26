@@ -13,22 +13,27 @@ export const GENERATED_LOCALE_CATALOGS = {
         "close": "Close",
         "commentsHeading": "Comments",
         "collapseReplies": "Collapse replies",
+        "collapseThread": "Collapse thread",
         "createAction": "Create",
         "cancelReply": "Cancel",
         "downvote": "Downvote",
         "downvoteComment": "Downvote comment",
         "expandReplies": "Expand replies",
+        "expandThread": "Expand thread",
         "joinedStatLabel": "Joined",
         "loadMoreReplies": "Load more replies",
         "loadReplies": "Load replies",
         "loading": "Loading...",
         "loadingReplies": "Loading replies...",
+        "continueThread": "Continue this thread",
         "newTab": "New",
         "oldTab": "Old",
         "noComments": "No comments yet.",
         "noRecentCommunities": "No recent communities.",
         "ownedBy": "owned by",
         "replyAction": "Reply",
+        "replyCount": "{count} replies",
+        "replyCountOne": "1 reply",
         "replyPlaceholder": "Write a reply",
         "showOriginal": "Show original",
         "showRepliesCount": "Show {count} replies",
@@ -145,11 +150,11 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "createPost": {
         "access": {
-          "paidDescription": "Preview in feed. Full track unlocks after purchase.",
+          "paidDescription": "Preview in feed. Full media unlocks after purchase.",
           "paidUnlock": "Paid unlock",
           "public": "Public",
-          "publicDescription": "Anyone can play the full track.",
-          "rightsAttested": "I have the rights to publish and monetize this track.",
+          "publicDescription": "Anyone can play the full media.",
+          "rightsAttested": "I have the rights to publish and monetize this media.",
           "useRegionalPricing": "Use community regional pricing"
         },
         "actions": {
@@ -170,6 +175,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "replace": "Replace"
         },
         "derivative": {
+          "acceptSourceTerms": "I understand and accept the selected source license terms for this remix.",
+          "licenseSource": "Source license",
+          "licenseUpstreamRoyalty": "Upstream royalty",
+          "licenseParentIp": "Story parent IP",
+          "licenseTermsId": "License terms",
+          "licenseNewRemixTerms": "New remix terms",
           "searchSourceTracks": "Search source tracks"
         },
         "empty": {
@@ -186,6 +197,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "caption": "Caption",
           "commentary": "Commentary",
           "coverArt": "Cover art",
+          "coverFrame": "Cover frame",
           "genre": "Genre",
           "image": "Image",
           "instrumentalStem": "Instrumental stem",
@@ -210,6 +222,30 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "labels": {
           "source": "Source"
+        },
+        "assetLicense": {
+          "song": {
+            "non-commercial": "Non-commercial only",
+            "non-commercialDescription": "Listeners can use the song privately, but not for commercial releases.",
+            "commercial-use": "Commercial use",
+            "commercial-useDescription": "Others can monetize with the original song, but cannot release remixes.",
+            "commercial-remix": "Commercial remix",
+            "commercial-remixDescription": "Others can monetize and publish remixes of your song.",
+            "revenueShare": "Revenue share",
+            "revenueShareDescription": "Choose the share derivative remix revenue owes back to this original track.",
+            "revenueShareRange": "0% to 100%"
+          },
+          "video": {
+            "non-commercial": "Non-commercial only",
+            "non-commercialDescription": "Viewers can use the video privately, but not for commercial releases.",
+            "commercial-use": "Commercial use",
+            "commercial-useDescription": "Others can monetize with the original video, but cannot publish derivative videos.",
+            "commercial-remix": "Commercial derivative",
+            "commercial-remixDescription": "Others can monetize and publish derivative videos using your work.",
+            "revenueShare": "Revenue share",
+            "revenueShareDescription": "Choose the share derivative video revenue owes back to this original video.",
+            "revenueShareRange": "0% to 100%"
+          }
         },
         "membershipRequiredDescription": "Only community members can publish posts here.",
         "membershipRequiredTitle": "Join this community before posting",
@@ -239,7 +275,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "audience": "Audience",
           "postAs": "Post as",
           "qualifiers": "Qualifiers",
-          "sourceTrack": "Source track"
+          "sourceTrack": "Source track",
+          "license": "License"
         },
         "setlist": {
           "cannotFindTrack": "Can't find the track?",
@@ -311,13 +348,11 @@ export const GENERATED_LOCALE_CATALOGS = {
       "onboarding": {
         "redditImport": {
           "title": "Verify Reddit",
-          "subtitle": "Bring your Reddit activity to Pirate for better names and recommendations.",
-          "activityReady": "Your Reddit activity is ready.",
-          "importedUser": "Imported u/{username}",
-          "importedScore": "Imported Reddit score",
-          "topSubreddits": "Top subreddits",
+          "subtitle": "Provide your Reddit username to get a better domain on .pirate and personalized recommendations.",
+          "doneTitle": "Karma imported",
+          "doneSubtitle": "You're eligible for a {domainLength}-letter .pirate domain.",
           "notFound": "Not found",
-          "loading": "Loading...",
+          "loading": "Importing...",
           "pasteIntoProfile": "Paste into your",
           "redditProfileDescription": "Reddit profile description"
         },
@@ -329,6 +364,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "notAvailable": "Not available"
         },
         "actions": {
+          "back": "Back",
           "generateHandle": "Generate a new handle",
           "checkAgain": "Check again",
           "continue": "Continue",
@@ -347,7 +383,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "redditCode": "Verification code",
           "redditUsername": "Username"
         },
-        "importKarmaAction": "Import Reddit",
+        "importKarmaAction": "Import Reddit Karma",
         "notes": {
           "addCodeToProfile": "Paste into your Reddit profile description",
           "checkedRedditAt": "Code not visible yet. Checked at {time}.",
@@ -385,8 +421,11 @@ export const GENERATED_LOCALE_CATALOGS = {
       "inbox": {
         "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",
         "description": "This route is scaffolded so the mobile nav can point somewhere truthful while inbox behavior is still undefined.",
+        "chatsTab": "Chats",
+        "emptyChatsState": "No chats yet",
         "emptyState": "No notifications yet",
         "loading": "Loading...",
+        "notificationsTab": "Notifications",
         "recentActivity": "Recent activity",
         "someone": "Someone",
         "taskActionNeeded": "Action needed",
@@ -596,6 +635,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "advanced": "Advanced",
         "agentRegisteredToast": "Agent registered",
         "agentsTitle": "Agents",
+        "activeAgentExistsDescription": "Public v0 allows one active OpenClaw agent per verified human.",
+        "activeAgentExistsTitle": "Agent already connected",
         "checkStatus": "Check status",
         "completeAgentRegistrationError": "Could not complete agent registration.",
         "connectAction": "Connect OpenClaw",
@@ -619,6 +660,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "openClawKey": "Open ClawKey",
         "ownedAgentsLoadError": "Could not load agents.",
         "ownedAgentsLocalTablesError": "Local API is missing agent tables. Restart pirate-api dev server.",
+        "pairingStepInstallPlugin": "Install the Pirate Connector if it is not already installed:",
         "pairingStepInstall": "In OpenClaw with Pirate Connector installed, say: connect to Pirate with code {code}",
         "pairingStepOpen": "Then open the ClawKey link OpenClaw sends you.",
         "pasteChallengePlaceholder": "Paste OpenClaw challenge JSON",
@@ -630,6 +672,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "saveHandleError": "Could not save agent handle.",
         "saveNameAction": "Save name",
         "saveNameError": "Could not save agent name.",
+        "verificationRequiredAction": "Verify now",
+        "verificationRequiredDescription": "To connect OpenClaw, Pirate needs to know there is a real person responsible for the agent.",
+        "verificationRequiredTitle": "Verify first",
         "verifiedAt": "{provider} · verified {date}"
       },
       "settings": {
@@ -650,6 +695,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "coverSourceEns": "Using ENS cover from {handle}",
         "coverSourceNone": "No cover selected",
         "coverSourceUpload": "Uploaded cover",
+        "coverSizeHint": "1500×500 recommended",
         "coverTitle": "Cover",
         "currentHandleLabel": "Current handle",
         "displayNameLabel": "Display name",
@@ -883,6 +929,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "removeCover": "Remove cover",
           "replaceCover": "Replace cover",
           "uploadCover": "Upload cover",
+          "coverSizeHint": "1500×500 recommended",
           "coverTitle": "Cover photo",
           "profileTitle": "Profile",
           "nameLabel": "Name",
@@ -976,12 +1023,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "doneLabel": "Done",
           "resuming": "Resuming verification...",
           "publishStepLabels": [
-            "git clone",
-            "cd",
+            "Check Go",
+            "Find wallet export",
             "Run this"
           ],
-          "publisherInstallCommand": "git clone https://github.com/pirate-social-club/pirate-spaces-publisher.git",
-          "publisherCdCommand": "cd pirate-spaces-publisher",
+          "publisherInstallCommand": "go version\n\nIf this prints \"command not found\", install Go from https://go.dev/dl/ and reopen Terminal.",
+          "publisherCdCommand": "Find your Spaces wallet export JSON. Keep it on your computer and do not upload it. On macOS, drag the file into Terminal to paste its full path.",
           "digestLabel": "Digest",
           "challengeDetails": "Challenge details",
           "verifyDifferent": "Verify a different namespace",
@@ -1059,6 +1106,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "appSidebar": {
         "brandLabel": "Pirate",
+        "agentsLabel": "Your Agents",
         "createCommunityLabel": "Create Community",
         "homeAriaLabel": "Go to home",
         "homeLabel": "Home",
@@ -1189,22 +1237,27 @@ export const GENERATED_LOCALE_CATALOGS = {
         "close": "إغلاق",
         "commentsHeading": "التعليقات",
         "collapseReplies": "طيّ الردود",
+        "collapseThread": "طيّ النقاش",
         "createAction": "أنشئ",
         "cancelReply": "إلغاء",
         "downvote": "تصويت سلبي",
         "downvoteComment": "تصويت سلبي على التعليق",
         "expandReplies": "وسّع الردود",
+        "expandThread": "وسّع النقاش",
         "joinedStatLabel": "انضم",
         "loadMoreReplies": "حمّل المزيد من الردود",
         "loadReplies": "حمّل الردود",
         "loading": "جارٍ التحميل...",
         "loadingReplies": "جارٍ تحميل الردود...",
+        "continueThread": "تابع هذا النقاش",
         "newTab": "الجديد",
         "oldTab": "قديم",
         "noComments": "لا توجد تعليقات بعد.",
         "noRecentCommunities": "لا توجد مجتمعات حديثة.",
         "ownedBy": "مملوك بواسطة",
         "replyAction": "رد",
+        "replyCount": "{count} من الردود",
+        "replyCountOne": "رد واحد",
         "replyPlaceholder": "اكتب ردًا",
         "showOriginal": "أظهر الأصل",
         "showRepliesCount": "أظهر {count} من الردود",
@@ -1346,6 +1399,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "replace": "استبدل"
         },
         "derivative": {
+          "acceptSourceTerms": "أفهم وأقبل شروط ترخيص المصدر المحدد لهذا الريمكس.",
+          "licenseSource": "ترخيص المصدر",
+          "licenseUpstreamRoyalty": "حقوق المنبع",
+          "licenseParentIp": "IP الأصل على Story",
+          "licenseTermsId": "معرّف شروط الترخيص",
+          "licenseNewRemixTerms": "شروط الريمكس الجديدة",
           "searchSourceTracks": "ابحث عن المسارات المصدر"
         },
         "empty": {
@@ -1362,6 +1421,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "caption": "التعليق",
           "commentary": "التعليق",
           "coverArt": "صورة الغلاف",
+          "coverFrame": "إطار الغلاف",
           "genre": "النوع",
           "image": "الصورة",
           "instrumentalStem": "مسار الآلات",
@@ -1386,6 +1446,30 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "labels": {
           "source": "المصدر"
+        },
+        "assetLicense": {
+          "song": {
+            "non-commercial": "غير تجاري فقط",
+            "non-commercialDescription": "يمكن للمستمعين استخدام الأغنية بشكل خاص، لكن ليس في الإصدارات التجارية.",
+            "commercial-use": "استخدام تجاري",
+            "commercial-useDescription": "يمكن للآخرين تحقيق دخل باستخدام الأغنية الأصلية، لكن لا يمكنهم إصدار ريمكسات.",
+            "commercial-remix": "ريمكس تجاري",
+            "commercial-remixDescription": "يمكن للآخرين تحقيق دخل ونشر ريمكسات لأغنيتك.",
+            "revenueShare": "حصة الإيرادات",
+            "revenueShareDescription": "اختر الحصة التي تدين بها إيرادات الريمكس المشتقة لهذا المسار الأصلي.",
+            "revenueShareRange": "0% إلى 100%"
+          },
+          "video": {
+            "non-commercial": "غير تجاري فقط",
+            "non-commercialDescription": "يمكن للمشاهدين استخدام الفيديو بشكل خاص، لكن ليس في الإصدارات التجارية.",
+            "commercial-use": "استخدام تجاري",
+            "commercial-useDescription": "يمكن للآخرين تحقيق دخل باستخدام الفيديو الأصلي، لكن لا يمكنهم نشر فيديوهات مشتقة.",
+            "commercial-remix": "اشتقاق تجاري",
+            "commercial-remixDescription": "يمكن للآخرين تحقيق دخل ونشر فيديوهات مشتقة باستخدام عملك.",
+            "revenueShare": "حصة الإيرادات",
+            "revenueShareDescription": "اختر الحصة التي تدين بها إيرادات الفيديوهات المشتقة لهذا الفيديو الأصلي.",
+            "revenueShareRange": "0% إلى 100%"
+          }
         },
         "membershipRequiredDescription": "يمكن لأعضاء المجتمع فقط نشر المنشورات هنا.",
         "membershipRequiredTitle": "انضم إلى هذا المجتمع قبل النشر",
@@ -1415,7 +1499,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "audience": "الجمهور",
           "postAs": "انشر باسم",
           "qualifiers": "المؤهلات",
-          "sourceTrack": "المسار المصدر"
+          "sourceTrack": "المسار المصدر",
+          "license": "الترخيص"
         },
         "setlist": {
           "cannotFindTrack": "ألا تجد المسار؟",
@@ -1487,13 +1572,11 @@ export const GENERATED_LOCALE_CATALOGS = {
       "onboarding": {
         "redditImport": {
           "title": "تحقق من Reddit",
-          "subtitle": "أحضر نشاطك على Reddit إلى Pirate للحصول على أسماء وتوصيات أفضل.",
-          "activityReady": "نشاطك على Reddit جاهز.",
-          "importedUser": "تم استيراد u/{username}",
-          "importedScore": "درجة Reddit المستوردة",
-          "topSubreddits": "أبرز subreddits",
+          "subtitle": "قدّم اسم مستخدم Reddit الخاص بك لتحصل على نطاق أفضل على .pirate وتوصيات مخصصة.",
+          "doneTitle": "تم الاستيراد!",
+          "doneSubtitle": "تم استيراد الكارما الخاصة بك. أنت مؤهل لنطاق .pirate بطول {domainLength} أحرف.",
           "notFound": "غير موجود",
-          "loading": "جارٍ التحميل...",
+          "loading": "جارٍ الاستيراد...",
           "pasteIntoProfile": "ألصق في",
           "redditProfileDescription": "وصف ملفك الشخصي على Reddit"
         },
@@ -1505,6 +1588,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "notAvailable": "غير متاح"
         },
         "actions": {
+          "back": "رجوع",
           "generateHandle": "أنشئ اسمًا جديدًا",
           "checkAgain": "تحقق مرة أخرى",
           "continue": "تابع",
@@ -1523,7 +1607,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "redditCode": "رمز ريديت {surface}",
           "redditUsername": "اسم مستخدم Reddit"
         },
-        "importKarmaAction": "استورد الكارما",
+        "importKarmaAction": "استورد كارما Reddit",
         "notes": {
           "addCodeToProfile": "أضف هذا الرمز إلى وصف ملفك الشخصي على Reddit:",
           "checkedRedditAt": "تم فحص Reddit عند {time}. الرمز غير ظاهر بعد. احفظ ملفك الشخصي، وانتظر بضع ثوانٍ، ثم اضغط على \"تحقق مرة أخرى\".",
@@ -1561,8 +1645,11 @@ export const GENERATED_LOCALE_CATALOGS = {
       "inbox": {
         "body": "أبقِ `/inbox` كعنصر نائب محايد حتى يتم تحديد الإشعارات أو المراسلة كسطوح منتج حقيقية.",
         "description": "تم تجهيز هذا المسار حتى يشير إليه تنقل الهاتف بصدق بينما لا يزال سلوك الوارد غير محدد.",
+        "chatsTab": "الدردشات",
+        "emptyChatsState": "لا توجد دردشات بعد",
         "emptyState": "لا توجد إشعارات بعد",
         "loading": "جارٍ التحميل...",
+        "notificationsTab": "الإشعارات",
         "recentActivity": "النشاط الأخير",
         "someone": "شخص ما",
         "taskActionNeeded": "إجراء مطلوب",
@@ -1772,6 +1859,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "advanced": "متقدم",
         "agentRegisteredToast": "تم تسجيل الوكيل",
         "agentsTitle": "الوكلاء",
+        "activeAgentExistsDescription": "يسمح الإصدار العام v0 بوكيل OpenClaw نشط واحد لكل إنسان تم التحقق منه.",
+        "activeAgentExistsTitle": "الوكيل متصل بالفعل",
         "checkStatus": "تحقق من الحالة",
         "completeAgentRegistrationError": "تعذر إكمال تسجيل الوكيل.",
         "connectAction": "اربط OpenClaw",
@@ -1795,6 +1884,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "openClawKey": "افتح ClawKey",
         "ownedAgentsLoadError": "تعذر تحميل الوكلاء.",
         "ownedAgentsLocalTablesError": "تفتقد واجهة API المحلية جداول الوكلاء. أعد تشغيل خادم pirate-api للتطوير.",
+        "pairingStepInstallPlugin": "ثبّت Pirate Connector إذا لم يكن مثبتًا بالفعل:",
         "pairingStepInstall": "في OpenClaw مع تثبيت Pirate Connector، قل: connect to Pirate with code {code}",
         "pairingStepOpen": "ثم افتح رابط ClawKey الذي يرسله OpenClaw.",
         "pasteChallengePlaceholder": "ألصق JSON لتحدي OpenClaw",
@@ -1806,6 +1896,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "saveHandleError": "تعذر حفظ معرّف الوكيل.",
         "saveNameAction": "احفظ الاسم",
         "saveNameError": "تعذر حفظ اسم الوكيل.",
+        "verificationRequiredAction": "تحقق الآن",
+        "verificationRequiredDescription": "لربط OpenClaw، يحتاج Pirate إلى معرفة أن هناك شخصًا حقيقيًا مسؤولًا عن الوكيل.",
+        "verificationRequiredTitle": "تحقق أولًا",
         "verifiedAt": "{provider} · تم التحقق في {date}"
       },
       "settings": {
@@ -1826,6 +1919,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "coverSourceEns": "يستخدم غلاف ENS من {handle}",
         "coverSourceNone": "لم يتم اختيار غلاف",
         "coverSourceUpload": "غلاف مرفوع",
+        "coverSizeHint": "1500×500 (مُوصى به)",
         "coverTitle": "الغلاف",
         "currentHandleLabel": "المعرّف الحالي",
         "displayNameLabel": "اسم العرض",
@@ -2059,6 +2153,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "removeCover": "إزالة الغلاف",
           "replaceCover": "استبدال الغلاف",
           "uploadCover": "رفع غلاف",
+          "coverSizeHint": "1500×500 (مُوصى به)",
           "coverTitle": "صورة الغلاف",
           "profileTitle": "الملف الشخصي",
           "nameLabel": "الاسم",
@@ -2152,12 +2247,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "doneLabel": "تم",
           "resuming": "استئناف التحقق...",
           "publishStepLabels": [
-            "git clone",
-            "cd",
+            "تحقق من Go",
+            "اعثر على ملف المحفظة",
             "شغّل هذا"
           ],
-          "publisherInstallCommand": "git clone https://github.com/pirate-social-club/pirate-spaces-publisher.git",
-          "publisherCdCommand": "cd pirate-spaces-publisher",
+          "publisherInstallCommand": "go version\n\nإذا ظهرت رسالة \"command not found\"، ثبّت Go من https://go.dev/dl/ ثم أعد فتح Terminal.",
+          "publisherCdCommand": "اعثر على ملف Spaces wallet export بصيغة JSON. أبقه على جهازك ولا ترفعه. على macOS، اسحب الملف إلى Terminal للصق مساره الكامل.",
           "digestLabel": "الملخص",
           "challengeDetails": "تفاصيل التحدي",
           "verifyDifferent": "التحقق من مساحة اسم مختلفة",
@@ -2235,6 +2330,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "appSidebar": {
         "brandLabel": "Pirate",
+        "agentsLabel": "وكلاؤك",
         "createCommunityLabel": "أنشئ مجتمعًا",
         "homeAriaLabel": "اذهب إلى الصفحة الرئيسية",
         "homeLabel": "الرئيسية",
@@ -2365,22 +2461,27 @@ export const GENERATED_LOCALE_CATALOGS = {
         "close": "关闭",
         "commentsHeading": "评论",
         "collapseReplies": "收起回复",
+        "collapseThread": "收起讨论串",
         "createAction": "发布",
         "cancelReply": "取消",
         "downvote": "反对",
         "downvoteComment": "给评论点踩",
         "expandReplies": "展开回复",
+        "expandThread": "展开讨论串",
         "joinedStatLabel": "加入时间",
         "loadMoreReplies": "加载更多回复",
         "loadReplies": "加载回复",
         "loading": "加载中...",
         "loadingReplies": "正在加载回复...",
+        "continueThread": "继续此讨论串",
         "newTab": "最新",
         "oldTab": "最早",
         "noComments": "还没有评论。",
         "noRecentCommunities": "还没有最近访问的社区。",
         "ownedBy": "归属于",
         "replyAction": "回复",
+        "replyCount": "{count} 条回复",
+        "replyCountOne": "1 条回复",
         "replyPlaceholder": "写回复",
         "showOriginal": "显示原文",
         "showRepliesCount": "显示 {count} 条回复",
@@ -2522,6 +2623,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "replace": "替换"
         },
         "derivative": {
+          "acceptSourceTerms": "我理解并接受此混音所选来源的许可证条款。",
+          "licenseSource": "来源许可证",
+          "licenseUpstreamRoyalty": "上游版税",
+          "licenseParentIp": "Story 父级 IP",
+          "licenseTermsId": "许可证条款 ID",
+          "licenseNewRemixTerms": "新混音条款",
           "searchSourceTracks": "搜索源曲目"
         },
         "empty": {
@@ -2538,6 +2645,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "caption": "说明",
           "commentary": "评论",
           "coverArt": "封面图",
+          "coverFrame": "封面帧",
           "genre": "流派",
           "image": "图片",
           "instrumentalStem": "伴奏分轨",
@@ -2562,6 +2670,30 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "labels": {
           "source": "来源"
+        },
+        "assetLicense": {
+          "song": {
+            "non-commercial": "仅限非商业",
+            "non-commercialDescription": "听众可以私下使用这首歌，但不能用于商业发行。",
+            "commercial-use": "商业使用",
+            "commercial-useDescription": "他人可以通过原曲获利，但不能发行混音版本。",
+            "commercial-remix": "商业混音",
+            "commercial-remixDescription": "他人可以通过你的歌曲获利并发布混音版本。",
+            "revenueShare": "收入分成",
+            "revenueShareDescription": "选择衍生混音收入需要回流给这首原曲的比例。",
+            "revenueShareRange": "0% 到 100%"
+          },
+          "video": {
+            "non-commercial": "仅限非商业",
+            "non-commercialDescription": "观众可以私下使用这个视频，但不能用于商业发行。",
+            "commercial-use": "商业使用",
+            "commercial-useDescription": "他人可以通过原始视频获利，但不能发布衍生视频。",
+            "commercial-remix": "商业衍生",
+            "commercial-remixDescription": "他人可以使用你的作品获利并发布衍生视频。",
+            "revenueShare": "收入分成",
+            "revenueShareDescription": "选择衍生视频收入需要回流给这个原始视频的比例。",
+            "revenueShareRange": "0% 到 100%"
+          }
         },
         "membershipRequiredDescription": "只有社区成员才能在这里发帖。",
         "membershipRequiredTitle": "发帖前先加入这个社区",
@@ -2591,7 +2723,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "audience": "受众",
           "postAs": "发布身份",
           "qualifiers": "资格标签",
-          "sourceTrack": "源曲目"
+          "sourceTrack": "源曲目",
+          "license": "许可证"
         },
         "setlist": {
           "cannotFindTrack": "找不到这首歌？",
@@ -2663,13 +2796,11 @@ export const GENERATED_LOCALE_CATALOGS = {
       "onboarding": {
         "redditImport": {
           "title": "验证 Reddit",
-          "subtitle": "将你在 Reddit 上的活动带到 Pirate，以获取更好的名称和推荐。",
-          "activityReady": "你的 Reddit 活动已准备就绪。",
-          "importedUser": "已导入 u/{username}",
-          "importedScore": "导入的 Reddit 积分",
-          "topSubreddits": "热门 subreddit",
+          "subtitle": "提供你的 Reddit 用户名，以获得更好的 .pirate 域名和个性化推荐。",
+          "doneTitle": "已导入！",
+          "doneSubtitle": "你的 karma 已导入。你可以领取 {domainLength} 字符的 .pirate 域名。",
           "notFound": "未找到",
-          "loading": "加载中...",
+          "loading": "正在导入...",
           "pasteIntoProfile": "粘贴到你的",
           "redditProfileDescription": "Reddit 个人资料简介"
         },
@@ -2681,6 +2812,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "notAvailable": "不可用"
         },
         "actions": {
+          "back": "返回",
           "generateHandle": "生成新名称",
           "checkAgain": "重新检查",
           "continue": "继续",
@@ -2699,7 +2831,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "redditCode": "Reddit {surface} 验证码",
           "redditUsername": "Reddit 用户名"
         },
-        "importKarmaAction": "导入 Karma",
+        "importKarmaAction": "导入 Reddit Karma",
         "notes": {
           "addCodeToProfile": "把这段代码添加到你的 Reddit 个人资料简介中：",
           "checkedRedditAt": "已在 {time} 检查 Reddit。代码还没有显示出来。保存个人资料后，等待几秒，再点击“重新检查”。",
@@ -2737,8 +2869,11 @@ export const GENERATED_LOCALE_CATALOGS = {
       "inbox": {
         "body": "在通知或消息系统成为真实产品界面前，先把 `/inbox` 保持为中性的占位页。",
         "description": "这个路由已搭好外壳，这样移动端导航就能指向一个真实存在的位置，同时保留收件箱行为的后续定义空间。",
+        "chatsTab": "聊天",
+        "emptyChatsState": "还没有聊天",
         "emptyState": "还没有通知",
         "loading": "加载中...",
+        "notificationsTab": "通知",
         "recentActivity": "最近动态",
         "someone": "有人",
         "taskActionNeeded": "需要处理",
@@ -2948,6 +3083,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "advanced": "高级",
         "agentRegisteredToast": "代理已注册",
         "agentsTitle": "代理",
+        "activeAgentExistsDescription": "公开 v0 每个已验证真人只能有一个已激活的 OpenClaw 代理。",
+        "activeAgentExistsTitle": "代理已连接",
         "checkStatus": "检查状态",
         "completeAgentRegistrationError": "无法完成代理注册。",
         "connectAction": "连接 OpenClaw",
@@ -2971,6 +3108,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "openClawKey": "打开 ClawKey",
         "ownedAgentsLoadError": "无法加载代理。",
         "ownedAgentsLocalTablesError": "本地 API 缺少代理表。请重启 pirate-api 开发服务器。",
+        "pairingStepInstallPlugin": "如果尚未安装，请先安装 Pirate Connector：",
         "pairingStepInstall": "在已安装 Pirate Connector 的 OpenClaw 中输入：connect to Pirate with code {code}",
         "pairingStepOpen": "然后打开 OpenClaw 发送给你的 ClawKey 链接。",
         "pasteChallengePlaceholder": "粘贴 OpenClaw challenge JSON",
@@ -2982,6 +3120,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "saveHandleError": "无法保存代理标识。",
         "saveNameAction": "保存名称",
         "saveNameError": "无法保存代理名称。",
+        "verificationRequiredAction": "立即验证",
+        "verificationRequiredDescription": "要连接 OpenClaw，Pirate 需要确认有真人为这个代理负责。",
+        "verificationRequiredTitle": "先验证",
         "verifiedAt": "{provider} · 已验证于 {date}"
       },
       "settings": {
@@ -3002,6 +3143,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "coverSourceEns": "使用来自 {handle} 的 ENS 封面",
         "coverSourceNone": "未选择封面",
         "coverSourceUpload": "已上传封面",
+        "coverSizeHint": "1500×500 推荐",
         "coverTitle": "封面",
         "currentHandleLabel": "当前用户名",
         "displayNameLabel": "显示名称",
@@ -3235,6 +3377,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "removeCover": "移除封面",
           "replaceCover": "更换封面",
           "uploadCover": "上传封面",
+          "coverSizeHint": "1500×500 推荐",
           "coverTitle": "封面照片",
           "profileTitle": "个人资料",
           "nameLabel": "名称",
@@ -3302,12 +3445,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "doneLabel": "完成",
           "resuming": "继续验证中...",
           "publishStepLabels": [
-            "git clone",
-            "cd",
+            "检查 Go",
+            "找到钱包导出文件",
             "运行此命令"
           ],
-          "publisherInstallCommand": "git clone https://github.com/pirate-social-club/pirate-spaces-publisher.git",
-          "publisherCdCommand": "cd pirate-spaces-publisher",
+          "publisherInstallCommand": "go version\n\n如果显示“command not found”，请从 https://go.dev/dl/ 安装 Go，然后重新打开终端。",
+          "publisherCdCommand": "找到你的 Spaces 钱包导出 JSON 文件。只保存在自己的电脑上，不要上传。在 macOS 上，可以把文件拖进终端来粘贴完整路径。",
           "digestLabel": "摘要",
           "challengeDetails": "挑战详情",
           "verifyDifferent": "验证不同的命名空间",
@@ -3411,6 +3554,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "appSidebar": {
         "brandLabel": "Pirate",
+        "agentsLabel": "你的代理",
         "createCommunityLabel": "创建社区",
         "homeAriaLabel": "返回首页",
         "homeLabel": "首页",

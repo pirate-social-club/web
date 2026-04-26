@@ -6,22 +6,27 @@
     "close": "إغلاق",
     "commentsHeading": "التعليقات",
     "collapseReplies": "طيّ الردود",
+    "collapseThread": "طيّ النقاش",
     "createAction": "أنشئ",
     "cancelReply": "إلغاء",
     "downvote": "تصويت سلبي",
     "downvoteComment": "تصويت سلبي على التعليق",
     "expandReplies": "وسّع الردود",
+    "expandThread": "وسّع النقاش",
     "joinedStatLabel": "انضم",
     "loadMoreReplies": "حمّل المزيد من الردود",
     "loadReplies": "حمّل الردود",
     "loading": "جارٍ التحميل...",
     "loadingReplies": "جارٍ تحميل الردود...",
+    "continueThread": "تابع هذا النقاش",
     "newTab": "الجديد",
     "oldTab": "قديم",
     "noComments": "لا توجد تعليقات بعد.",
     "noRecentCommunities": "لا توجد مجتمعات حديثة.",
     "ownedBy": "مملوك بواسطة",
     "replyAction": "رد",
+    "replyCount": "{count} من الردود",
+    "replyCountOne": "رد واحد",
     "replyPlaceholder": "اكتب ردًا",
     "showOriginal": "أظهر الأصل",
     "showRepliesCount": "أظهر {count} من الردود",
@@ -163,6 +168,12 @@
       "replace": "استبدل"
     },
     "derivative": {
+      "acceptSourceTerms": "أفهم وأقبل شروط ترخيص المصدر المحدد لهذا الريمكس.",
+      "licenseSource": "ترخيص المصدر",
+      "licenseUpstreamRoyalty": "حقوق المنبع",
+      "licenseParentIp": "IP الأصل على Story",
+      "licenseTermsId": "معرّف شروط الترخيص",
+      "licenseNewRemixTerms": "شروط الريمكس الجديدة",
       "searchSourceTracks": "ابحث عن المسارات المصدر"
     },
     "empty": {
@@ -179,6 +190,7 @@
       "caption": "التعليق",
       "commentary": "التعليق",
       "coverArt": "صورة الغلاف",
+      "coverFrame": "إطار الغلاف",
       "genre": "النوع",
       "image": "الصورة",
       "instrumentalStem": "مسار الآلات",
@@ -203,6 +215,30 @@
     },
     "labels": {
       "source": "المصدر"
+    },
+    "assetLicense": {
+      "song": {
+        "non-commercial": "غير تجاري فقط",
+        "non-commercialDescription": "يمكن للمستمعين استخدام الأغنية بشكل خاص، لكن ليس في الإصدارات التجارية.",
+        "commercial-use": "استخدام تجاري",
+        "commercial-useDescription": "يمكن للآخرين تحقيق دخل باستخدام الأغنية الأصلية، لكن لا يمكنهم إصدار ريمكسات.",
+        "commercial-remix": "ريمكس تجاري",
+        "commercial-remixDescription": "يمكن للآخرين تحقيق دخل ونشر ريمكسات لأغنيتك.",
+        "revenueShare": "حصة الإيرادات",
+        "revenueShareDescription": "اختر الحصة التي تدين بها إيرادات الريمكس المشتقة لهذا المسار الأصلي.",
+        "revenueShareRange": "0% إلى 100%"
+      },
+      "video": {
+        "non-commercial": "غير تجاري فقط",
+        "non-commercialDescription": "يمكن للمشاهدين استخدام الفيديو بشكل خاص، لكن ليس في الإصدارات التجارية.",
+        "commercial-use": "استخدام تجاري",
+        "commercial-useDescription": "يمكن للآخرين تحقيق دخل باستخدام الفيديو الأصلي، لكن لا يمكنهم نشر فيديوهات مشتقة.",
+        "commercial-remix": "اشتقاق تجاري",
+        "commercial-remixDescription": "يمكن للآخرين تحقيق دخل ونشر فيديوهات مشتقة باستخدام عملك.",
+        "revenueShare": "حصة الإيرادات",
+        "revenueShareDescription": "اختر الحصة التي تدين بها إيرادات الفيديوهات المشتقة لهذا الفيديو الأصلي.",
+        "revenueShareRange": "0% إلى 100%"
+      }
     },
     "membershipRequiredDescription": "يمكن لأعضاء المجتمع فقط نشر المنشورات هنا.",
     "membershipRequiredTitle": "انضم إلى هذا المجتمع قبل النشر",
@@ -232,7 +268,8 @@
       "audience": "الجمهور",
       "postAs": "انشر باسم",
       "qualifiers": "المؤهلات",
-      "sourceTrack": "المسار المصدر"
+      "sourceTrack": "المسار المصدر",
+      "license": "الترخيص"
     },
     "setlist": {
       "cannotFindTrack": "ألا تجد المسار؟",
@@ -304,13 +341,11 @@
   "onboarding": {
     "redditImport": {
       "title": "تحقق من Reddit",
-      "subtitle": "أحضر نشاطك على Reddit إلى Pirate للحصول على أسماء وتوصيات أفضل.",
-      "activityReady": "نشاطك على Reddit جاهز.",
-      "importedUser": "تم استيراد u/{username}",
-      "importedScore": "درجة Reddit المستوردة",
-      "topSubreddits": "أبرز subreddits",
+      "subtitle": "قدّم اسم مستخدم Reddit الخاص بك لتحصل على نطاق أفضل على .pirate وتوصيات مخصصة.",
+      "doneTitle": "تم الاستيراد!",
+      "doneSubtitle": "تم استيراد الكارما الخاصة بك. أنت مؤهل لنطاق .pirate بطول {domainLength} أحرف.",
       "notFound": "غير موجود",
-      "loading": "جارٍ التحميل...",
+      "loading": "جارٍ الاستيراد...",
       "pasteIntoProfile": "ألصق في",
       "redditProfileDescription": "وصف ملفك الشخصي على Reddit"
     },
@@ -322,6 +357,7 @@
       "notAvailable": "غير متاح"
     },
     "actions": {
+      "back": "رجوع",
       "generateHandle": "أنشئ اسمًا جديدًا",
       "checkAgain": "تحقق مرة أخرى",
       "continue": "تابع",
@@ -340,7 +376,7 @@
       "redditCode": "رمز ريديت {surface}",
       "redditUsername": "اسم مستخدم Reddit"
     },
-    "importKarmaAction": "استورد الكارما",
+    "importKarmaAction": "استورد كارما Reddit",
     "notes": {
       "addCodeToProfile": "أضف هذا الرمز إلى وصف ملفك الشخصي على Reddit:",
       "checkedRedditAt": "تم فحص Reddit عند {time}. الرمز غير ظاهر بعد. احفظ ملفك الشخصي، وانتظر بضع ثوانٍ، ثم اضغط على \"تحقق مرة أخرى\".",
@@ -378,8 +414,11 @@
   "inbox": {
     "body": "أبقِ `/inbox` كعنصر نائب محايد حتى يتم تحديد الإشعارات أو المراسلة كسطوح منتج حقيقية.",
     "description": "تم تجهيز هذا المسار حتى يشير إليه تنقل الهاتف بصدق بينما لا يزال سلوك الوارد غير محدد.",
+    "chatsTab": "الدردشات",
+    "emptyChatsState": "لا توجد دردشات بعد",
     "emptyState": "لا توجد إشعارات بعد",
     "loading": "جارٍ التحميل...",
+    "notificationsTab": "الإشعارات",
     "recentActivity": "النشاط الأخير",
     "someone": "شخص ما",
     "taskActionNeeded": "إجراء مطلوب",
@@ -589,6 +628,8 @@
     "advanced": "متقدم",
     "agentRegisteredToast": "تم تسجيل الوكيل",
     "agentsTitle": "الوكلاء",
+    "activeAgentExistsDescription": "يسمح الإصدار العام v0 بوكيل OpenClaw نشط واحد لكل إنسان تم التحقق منه.",
+    "activeAgentExistsTitle": "الوكيل متصل بالفعل",
     "checkStatus": "تحقق من الحالة",
     "completeAgentRegistrationError": "تعذر إكمال تسجيل الوكيل.",
     "connectAction": "اربط OpenClaw",
@@ -612,6 +653,7 @@
     "openClawKey": "افتح ClawKey",
     "ownedAgentsLoadError": "تعذر تحميل الوكلاء.",
     "ownedAgentsLocalTablesError": "تفتقد واجهة API المحلية جداول الوكلاء. أعد تشغيل خادم pirate-api للتطوير.",
+    "pairingStepInstallPlugin": "ثبّت Pirate Connector إذا لم يكن مثبتًا بالفعل:",
     "pairingStepInstall": "في OpenClaw مع تثبيت Pirate Connector، قل: connect to Pirate with code {code}",
     "pairingStepOpen": "ثم افتح رابط ClawKey الذي يرسله OpenClaw.",
     "pasteChallengePlaceholder": "ألصق JSON لتحدي OpenClaw",
@@ -623,6 +665,9 @@
     "saveHandleError": "تعذر حفظ معرّف الوكيل.",
     "saveNameAction": "احفظ الاسم",
     "saveNameError": "تعذر حفظ اسم الوكيل.",
+    "verificationRequiredAction": "تحقق الآن",
+    "verificationRequiredDescription": "لربط OpenClaw، يحتاج Pirate إلى معرفة أن هناك شخصًا حقيقيًا مسؤولًا عن الوكيل.",
+    "verificationRequiredTitle": "تحقق أولًا",
     "verifiedAt": "{provider} · تم التحقق في {date}"
   },
   "settings": {
@@ -643,6 +688,7 @@
     "coverSourceEns": "يستخدم غلاف ENS من {handle}",
     "coverSourceNone": "لم يتم اختيار غلاف",
     "coverSourceUpload": "غلاف مرفوع",
+    "coverSizeHint": "1500×500 (مُوصى به)",
     "coverTitle": "الغلاف",
     "currentHandleLabel": "المعرّف الحالي",
     "displayNameLabel": "اسم العرض",
@@ -876,6 +922,7 @@
       "removeCover": "إزالة الغلاف",
       "replaceCover": "استبدال الغلاف",
       "uploadCover": "رفع غلاف",
+      "coverSizeHint": "1500×500 (مُوصى به)",
       "coverTitle": "صورة الغلاف",
       "profileTitle": "الملف الشخصي",
       "nameLabel": "الاسم",
@@ -969,12 +1016,12 @@
       "doneLabel": "تم",
       "resuming": "استئناف التحقق...",
       "publishStepLabels": [
-        "git clone",
-        "cd",
+        "تحقق من Go",
+        "اعثر على ملف المحفظة",
         "شغّل هذا"
       ],
-      "publisherInstallCommand": "git clone https://github.com/pirate-social-club/pirate-spaces-publisher.git",
-      "publisherCdCommand": "cd pirate-spaces-publisher",
+      "publisherInstallCommand": "go version\n\nإذا ظهرت رسالة \"command not found\"، ثبّت Go من https://go.dev/dl/ ثم أعد فتح Terminal.",
+      "publisherCdCommand": "اعثر على ملف Spaces wallet export بصيغة JSON. أبقه على جهازك ولا ترفعه. على macOS، اسحب الملف إلى Terminal للصق مساره الكامل.",
       "digestLabel": "الملخص",
       "challengeDetails": "تفاصيل التحدي",
       "verifyDifferent": "التحقق من مساحة اسم مختلفة",

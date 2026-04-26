@@ -2,7 +2,7 @@ import type { PostCardProps } from "@/components/compositions/post-card/post-car
 
 export type PostThreadAuthorMode = "human" | "agent";
 export type PostThreadSubmitResult = "blocked" | "submitted";
-export type CommentSort = "best" | "new" | "old" | "top";
+export type CommentSort = "best" | "new" | "top";
 
 export type PostThreadCommentStatus = "published" | "hidden" | "removed" | "deleted";
 
@@ -21,6 +21,11 @@ export interface PostThreadComment {
   status?: PostThreadCommentStatus;
   metadataLabel?: string;
   initiallyCollapsed?: boolean;
+  replyCount?: number;
+  loadedReplyCount?: number;
+  canLoadMoreReplies?: boolean;
+  loadMoreRepliesLabel?: string;
+  loadingReplies?: boolean;
   moreRepliesLabel?: string;
   replyActionLabel?: string;
   replyPlaceholder?: string;

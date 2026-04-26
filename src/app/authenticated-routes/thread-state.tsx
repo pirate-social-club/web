@@ -88,7 +88,7 @@ export async function loadThreadCommentTree(
   postId: string,
   locale: string,
   canMutate = true,
-  sort: "best" | "new" | "old" | "top" = "best",
+  sort: "best" | "new" | "top" = "best",
 ): Promise<ThreadCommentNode[]> {
   const topLevelComments = await listAllCommentPages((cursor) => canMutate
     ? api.communities.listComments(communityId, postId, { cursor, limit: THREAD_COMMENT_PAGE_LIMIT, locale, sort })
@@ -147,10 +147,15 @@ export function toThreadComment(
     showTranslationLabel: string;
   },
   opts?: {
+    canLoadMoreReplies?: boolean;
+    loadedReplyCount?: number;
+    loadingReplies?: boolean;
+    loadMoreRepliesLabel?: string;
     moreRepliesLabel?: string;
     onLoadMoreReplies?: () => void;
     onReplySubmit?: (input: { body: string; authorMode: "human" | "agent" }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
     onVote?: (direction: "up" | "down") => void;
+    replyCount?: number;
   },
   children?: PostThreadComment[],
 ): PostThreadComment {
@@ -176,15 +181,20 @@ export function toThreadComment(
     body: defaultBody,
     bodyDir: textDirection,
     bodyLang: textLang,
+    canLoadMoreReplies: opts?.canLoadMoreReplies,
     children,
     commentId: comment.comment_id,
     cancelReplyLabel: opts?.onReplySubmit ? labels.cancelReplyLabel : undefined,
+    loadedReplyCount: opts?.loadedReplyCount,
+    loadingReplies: opts?.loadingReplies,
+    loadMoreRepliesLabel: opts?.loadMoreRepliesLabel,
     moreRepliesLabel: opts?.moreRepliesLabel,
     onLoadMoreReplies: opts?.onLoadMoreReplies,
     onReplySubmit: opts?.onReplySubmit,
     onVote: opts?.onVote,
     originalBody,
     replyActionLabel: opts?.onReplySubmit ? labels.replyActionLabel : undefined,
+    replyCount: opts?.replyCount,
     replyPlaceholder: opts?.onReplySubmit ? labels.replyPlaceholder : undefined,
     scoreLabel: String(comment.score),
     submitReplyLabel: opts?.onReplySubmit ? labels.submitReplyLabel : undefined,
@@ -220,6 +230,10 @@ function buildThreadMoreRepliesLabel(
   return undefined;
 }
 
+function canLoadThreadMoreReplies(node: ThreadCommentNode): boolean {
+  return node.loadingReplies || node.item.comment.direct_reply_count > node.children.length;
+}
+
 export function mapThreadCommentNode(
   node: ThreadCommentNode,
   authorProfiles: Record<string, ApiProfile | null>,
@@ -228,12 +242,19 @@ export function mapThreadCommentNode(
   onReplySubmit?: (commentId: string, input: { body: string; authorMode: "human" | "agent" }) => Promise<PostThreadSubmitResult | void>,
   onVote?: (commentId: string, direction: "up" | "down") => void,
 ): PostThreadComment {
+  const loadMoreRepliesLabel = buildThreadMoreRepliesLabel(node, labels);
+
   return toThreadComment(
     node.item,
     authorProfiles,
     labels,
     {
-      moreRepliesLabel: buildThreadMoreRepliesLabel(node, labels),
+      canLoadMoreReplies: canLoadThreadMoreReplies(node),
+      replyCount: node.item.comment.direct_reply_count,
+      loadedReplyCount: node.children.length,
+      loadingReplies: node.loadingReplies,
+      loadMoreRepliesLabel,
+      moreRepliesLabel: loadMoreRepliesLabel,
       onLoadMoreReplies: node.item.comment.direct_reply_count > 0
         ? () => onLoadReplies(node.item.comment.comment_id)
         : undefined,

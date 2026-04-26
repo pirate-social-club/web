@@ -23,7 +23,13 @@ export type AnalyticsEventName =
   | "donation_selected"
   | "notification_inbox_viewed"
   | "notification_opened"
-  | "notification_marked_read";
+  | "notification_marked_read"
+  | "pwa_install_promo_viewed"
+  | "pwa_install_prompt_opened"
+  | "pwa_install_prompt_accepted"
+  | "pwa_install_prompt_dismissed"
+  | "pwa_install_promo_dismissed"
+  | "pwa_installed";
 
 type AnalyticsProperties = Record<string, string | number | boolean | null | undefined>;
 

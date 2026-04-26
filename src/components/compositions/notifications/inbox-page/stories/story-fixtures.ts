@@ -1,9 +1,11 @@
 import type {
   NotificationFeedItem,
+  RoyaltyActivityItem,
+  RoyaltyClaimRecord,
   UserTask,
 } from "@pirate/api-contracts";
 
-const now = Date.parse("2026-04-19T12:00:00.000Z");
+const now = Date.now();
 
 function iso(minutesAgo: number): string {
   return new Date(now - minutesAgo * 60_000).toISOString();
@@ -19,6 +21,7 @@ export const namespaceVerificationTask: UserTask = {
   priority: 10,
   payload: {
     community_display_name: "Infinity Mirror",
+    target_path: "/c/gld_community_1/mod/namespace",
   },
   resolved_at: null,
   dismissed_at: null,
@@ -26,21 +29,56 @@ export const namespaceVerificationTask: UserTask = {
   updated_at: iso(240),
 };
 
-export const payoutSetupTask: UserTask = {
-  task_id: "tsk_payout_stub",
+export const uniqueHumanVerificationTask: UserTask = {
+  task_id: "synth:unique_human:usr_owner_1",
   user_id: "usr_owner_1",
-  type: "payout_setup_required",
-  subject_type: "community",
-  subject_id: "gld_community_2",
+  type: "unique_human_verification_required",
+  subject_type: "user",
+  subject_id: "usr_owner_1",
   status: "open",
-  priority: 3,
+  priority: 100,
   payload: {
-    community_display_name: "Night Signal",
+    target_path: "/onboarding?verify=human",
+    verification_provider: "very",
   },
   resolved_at: null,
   dismissed_at: null,
-  created_at: iso(600),
-  updated_at: iso(120),
+  created_at: iso(15),
+  updated_at: iso(15),
+};
+
+export const profileCompletionTask: UserTask = {
+  task_id: "tsk_profile_completion",
+  user_id: "usr_owner_1",
+  type: "profile_completion_suggested",
+  subject_type: "profile",
+  subject_id: "usr_owner_1",
+  status: "open",
+  priority: 1,
+  payload: {
+    target_path: "/settings/profile",
+  },
+  resolved_at: null,
+  dismissed_at: null,
+  created_at: iso(180),
+  updated_at: iso(180),
+};
+
+export const globalHandleCleanupTask: UserTask = {
+  task_id: "tsk_global_handle_cleanup",
+  user_id: "usr_owner_1",
+  type: "global_handle_cleanup_suggested",
+  subject_type: "profile",
+  subject_id: "usr_owner_1",
+  status: "open",
+  priority: 2,
+  payload: {
+    target_path: "/settings/profile",
+  },
+  resolved_at: null,
+  dismissed_at: null,
+  created_at: iso(90),
+  updated_at: iso(90),
 };
 
 export const membershipReviewTask: UserTask = {
@@ -53,13 +91,67 @@ export const membershipReviewTask: UserTask = {
   priority: 8,
   payload: {
     community_display_name: "Signal Room",
+    applicant_user_id: "usr_applicant_1",
+    applicant_handle: "signalhunter",
+    membership_request_id: "mreq_signal_1",
     request_count: 2,
+    target_path: "/c/gld_community_3/mod/requests",
   },
   resolved_at: null,
   dismissed_at: null,
   created_at: iso(45),
   updated_at: iso(10),
 };
+
+export const royaltyActivityItems: RoyaltyActivityItem[] = [
+  {
+    event_id: "nev_royalty_1",
+    community_id: "gld_community_1",
+    asset_id: "ast_midnight_waves",
+    title: "Midnight Waves",
+    story_ip_id: "0x1111111111111111111111111111111111111111",
+    amount_wip_wei: "6200000000000000000",
+    buyer_wallet_address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+    tx_hash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    purchase_id: "pur_midnight_waves",
+    created_at: iso(6),
+    read_at: null,
+  },
+  {
+    event_id: "nev_royalty_2",
+    community_id: "gld_community_2",
+    asset_id: "ast_basement_session",
+    title: "Basement Session",
+    story_ip_id: "0x2222222222222222222222222222222222222222",
+    amount_wip_wei: "4000000000000000000",
+    buyer_wallet_address: "0x8f3a35Cc6634C0532925a3b844Bc454e4438b12c",
+    tx_hash: "0xabcdef7890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    purchase_id: "pur_basement_session",
+    created_at: iso(48),
+    read_at: iso(45),
+  },
+];
+
+export const royaltyClaimItems: RoyaltyClaimRecord[] = [
+  {
+    claim_id: "rcl_story_claim_1",
+    user_id: "usr_owner_1",
+    tx_hash: "0x3333333333333333333333333333333333333333333333333333333333333333",
+    wallet_address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+    chain_id: 1514,
+    claimable_wip_wei_at_submission: "10200000000000000000",
+    ip_ids: [
+      "0x1111111111111111111111111111111111111111",
+      "0x2222222222222222222222222222222222222222",
+    ],
+    auto_unwrap_ip_tokens: true,
+    status: "confirmed",
+    verified_at: iso(88),
+    verification_error: null,
+    claimed_at: iso(90),
+    created_at: iso(90),
+  },
+];
 
 export const commentReplyUnread: NotificationFeedItem = {
   event: {
@@ -74,6 +166,7 @@ export const commentReplyUnread: NotificationFeedItem = {
       community_id: "gld_community_1",
       community_display_name: "Infinity Mirror",
       actor_display_name: "modmatrix",
+      actor_avatar_url: "https://i.pravatar.cc/100?img=11",
       comment_excerpt: "This remix finally clicked once the drums stopped fighting the vocal.",
       post_title: "late night edits that actually worked",
       target_path: "/p/pst_root_1",
@@ -103,6 +196,7 @@ export const postCommentedUnread: NotificationFeedItem = {
       community_id: "gld_community_2",
       community_display_name: "Night Signal",
       actor_display_name: "echoghost",
+      actor_avatar_url: "https://i.pravatar.cc/100?img=23",
       comment_excerpt: "This belongs on the front page. The hook is absurd.",
       post_title: "first take from the basement session",
       target_path: "/p/pst_root_2",
@@ -131,6 +225,7 @@ export const commentReplyRead: NotificationFeedItem = {
       community_id: "gld_community_1",
       community_display_name: "Infinity Mirror",
       actor_display_name: "phaseangel",
+      actor_avatar_url: "https://i.pravatar.cc/100?img=15",
       comment_excerpt: "Kept the original version linked below in case anyone wants the raw mix.",
       post_title: "draft stems for tomorrow's drop",
       target_path: "/p/pst_root_3",

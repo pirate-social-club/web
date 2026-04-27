@@ -10,15 +10,17 @@ import { navigate } from "@/app/router";
 import { loadProfilesByUserId } from "@/app/authenticated-routes/community-data";
 import { useCommunityFeedPosts } from "@/app/authenticated-routes/community-feed-data";
 import { submitOptimisticPostVote, updateCommunityPostVote } from "@/app/authenticated-routes/post-vote";
-import { type FeedSort } from "@/components/compositions/feed/feed";
-import { CommunityPageShell } from "@/components/compositions/community-page-shell/community-page-shell";
-import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
+import { type FeedSort } from "@/components/compositions/posts/feed/feed";
+import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
+import { formatCommunityRouteLabel } from "@/lib/community-routing";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getPassportPromptCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { forgetKnownCommunity } from "@/lib/known-communities-store";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -202,6 +204,12 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     }
   }, [veryError]);
 
+  React.useEffect(() => {
+    if (isApiNotFoundError(error)) {
+      forgetKnownCommunity(communityId);
+    }
+  }, [communityId, error]);
+
   const startSelfVerification = React.useCallback(async ({
     eligibility,
   }: {
@@ -219,9 +227,13 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       requestedCapabilities,
       unavailableMessage: copy.publicCommunity.verificationMissingSelf,
       verificationRequirements,
+      skipModal: true,
     });
     if (!result.started && result.error) {
       toast.error(result.error);
+    }
+    if (result.started && result.href) {
+      window.location.href = result.href;
     }
     return result;
   }, [copy.publicCommunity.verificationMissingSelf, startSelfVerificationFlow]);
@@ -253,28 +265,33 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     return {
       description: verificationPrompt.description,
       icon: provider === "passport" ? null : provider,
-      primaryAction: {
-        label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
-        loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
-        onClick: async () => {
-          if (provider === "very") {
-            const result = await startVeryVerification();
-            if (result.started) {
-              closeModal();
-            }
-          } else if (provider === "passport") {
-            window.open("https://app.passport.xyz/", "_blank", "noopener,noreferrer");
-            closeModal();
-          } else {
-            const result = await startSelfVerification({
-              eligibility: gate.eligibility,
-            });
-            if (result.started) {
-              closeModal();
-            }
+      primaryAction: provider === "passport"
+        ? {
+            href: "https://app.passport.xyz/",
+            label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
+            onClick: closeModal,
+            rel: "noopener noreferrer",
+            target: "_blank",
           }
-        },
-      },
+        : {
+            label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
+            loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
+            onClick: async () => {
+              if (provider === "very") {
+                const result = await startVeryVerification();
+                if (result.started) {
+                  closeModal();
+                }
+              } else {
+                const result = await startSelfVerification({
+                  eligibility: gate.eligibility,
+                });
+                if (result.started) {
+                  closeModal();
+                }
+              }
+            },
+          },
       requirements: gate.preview.membership_gate_summaries,
       secondaryAction: {
         label: copy.interactionGate.close,
@@ -360,7 +377,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         }))}
         loading={postsLoading}
         onSortChange={setActiveSort}
-        routeLabel={`c/${communityId}`}
+        routeLabel={formatCommunityRouteLabel(preview.community_id, communityId)}
         sidebar={buildCommunityPreviewSidebar(preview, locale)}
         title={preview.display_name}
         />

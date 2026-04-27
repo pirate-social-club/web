@@ -5,8 +5,15 @@ import * as React from "react";
 import type { AppRoute } from "@/app/router";
 import { toCommunityFeedItem, toHomeFeedItem, type HomeFeedEntry } from "./authenticated-routes/post-presentation";
 import { applyPostVote } from "./authenticated-routes/post-vote";
-import { buildSongListingRequest, buildSongPostRequest, resolveComposerSubmitState } from "./authenticated-routes/song-submit";
-import { createThreadCommentNode, mergeThreadCommentNodes, type ThreadCommentNode } from "./authenticated-routes/thread-state";
+import { buildAssetListingRequest, resolveComposerSubmitState } from "./authenticated-routes/asset-submit";
+import { buildSongPostRequest } from "./authenticated-routes/song-submit";
+import {
+  buildThreadCommentTreeFromItems,
+  createThreadCommentNode,
+  loadThreadCommentTree,
+  mergeThreadCommentNodes,
+  type ThreadCommentNode,
+} from "./authenticated-routes/thread-state";
 import type { CreatePostDraftState } from "./authenticated-routes/create-post-draft-state";
 
 function lazyRouteModule<TModule extends Record<string, unknown>>(
@@ -52,6 +59,14 @@ const LazyInboxPlaceholderPage = lazyRouteModule(
   () => import("./authenticated-routes/inbox-route"),
   "InboxPlaceholderPage",
 );
+const LazyAdvertisePage = lazyRouteModule(
+  () => import("./authenticated-routes/misc-routes"),
+  "AdvertisePage",
+);
+const LazyChatPage = lazyRouteModule(
+  () => import("./authenticated-routes/chat/chat-route"),
+  "ChatPage",
+);
 const LazyCurrentUserProfilePage = lazyRouteModule(
   () => import("./authenticated-routes/profile-settings-routes"),
   "CurrentUserProfilePage",
@@ -59,6 +74,10 @@ const LazyCurrentUserProfilePage = lazyRouteModule(
 const LazyCurrentUserSettingsPage = lazyRouteModule(
   () => import("./authenticated-routes/profile-settings-routes"),
   "CurrentUserSettingsPage",
+);
+const LazyCurrentUserSettingsIndexPage = lazyRouteModule(
+  () => import("./authenticated-routes/profile-settings-routes"),
+  "CurrentUserSettingsIndexPage",
 );
 const LazyCurrentUserWalletPage = lazyRouteModule(
   () => import("./authenticated-routes/profile-settings-routes"),
@@ -75,9 +94,11 @@ const LazyNotFoundPage = lazyRouteModule(
 
 export {
   applyPostVote,
-  buildSongListingRequest,
+  buildAssetListingRequest,
+  buildThreadCommentTreeFromItems,
   buildSongPostRequest,
   createThreadCommentNode,
+  loadThreadCommentTree,
   mergeThreadCommentNodes,
   resolveComposerSubmitState,
   toCommunityFeedItem,
@@ -90,6 +111,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
   switch (route.kind) {
     case "home":
       return <LazyHomePage />;
+    case "popular":
+      return <LazyHomePage initialSort="best" />;
     case "your-communities":
       return <LazyYourCommunitiesPage />;
     case "create-post-global":
@@ -112,10 +135,22 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyPostPage postId={route.postId} />;
     case "inbox":
       return <LazyInboxPlaceholderPage />;
+    case "advertise":
+      return <LazyAdvertisePage />;
+    case "chat":
+      return <LazyChatPage mode={{ kind: "list" }} />;
+    case "chat-new":
+      return <LazyChatPage mode={{ kind: "new" }} />;
+    case "chat-conversation":
+      return <LazyChatPage mode={{ kind: "conversation", conversationId: route.conversationId }} />;
+    case "chat-target":
+      return <LazyChatPage mode={{ kind: "target", target: route.target }} />;
     case "me":
       return <LazyCurrentUserProfilePage />;
     case "wallet":
       return <LazyCurrentUserWalletPage />;
+    case "settings-index":
+      return <LazyCurrentUserSettingsIndexPage />;
     case "settings":
       return <LazyCurrentUserSettingsPage activeTab={route.section} />;
     case "onboarding":

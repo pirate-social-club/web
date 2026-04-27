@@ -10,7 +10,6 @@ import {
   namespaceVerificationTask,
   profileCompletionTask,
   royaltyActivityItems,
-  royaltyClaimItems,
   uniqueHumanVerificationTask,
   postCommentedUnread,
 } from "./story-fixtures";
@@ -36,7 +35,6 @@ function StatefulStory({
         setTasks((current) => current.filter((t) => t.task_id !== task.task_id));
       }}
       royaltyActivityItems={royaltyActivityItems}
-      royaltyClaimItems={royaltyClaimItems}
       tasks={tasks}
       installPromoPreviewState={installPromoPreviewState}
     />
@@ -93,6 +91,17 @@ export const Mixed: Story = {
     <StatefulStory
       activityItems={[commentReplyUnread, postCommentedUnread, commentReplyRead]}
       initialTasks={[uniqueHumanVerificationTask, namespaceVerificationTask, profileCompletionTask, globalHandleCleanupTask, membershipReviewTask]}
+    />
+  ),
+};
+
+export const InstallSuggestionTask: Story = {
+  name: "Install suggestion task",
+  render: () => (
+    <StatefulStory
+      activityItems={[commentReplyUnread]}
+      initialTasks={[uniqueHumanVerificationTask, profileCompletionTask]}
+      installPromoPreviewState="default"
     />
   ),
 };

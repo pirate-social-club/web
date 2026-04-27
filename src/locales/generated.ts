@@ -240,10 +240,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "non-commercialDescription": "Viewers can use the video privately, but not for commercial releases.",
             "commercial-use": "Commercial use",
             "commercial-useDescription": "Others can monetize with the original video, but cannot publish derivative videos.",
-            "commercial-remix": "Commercial derivative",
+            "commercial-remix": "Commercial derivatives",
             "commercial-remixDescription": "Others can monetize and publish derivative videos using your work.",
             "revenueShare": "Revenue share",
-            "revenueShareDescription": "Choose the share derivative video revenue owes back to this original video.",
+            "revenueShareDescription": "Set the share of derivative video revenue paid back to this original video.",
             "revenueShareRange": "0% to 100%"
           }
         },
@@ -421,20 +421,22 @@ export const GENERATED_LOCALE_CATALOGS = {
       "inbox": {
         "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",
         "description": "This route is scaffolded so the mobile nav can point somewhere truthful while inbox behavior is still undefined.",
-        "chatsTab": "Chats",
         "emptyChatsState": "No chats yet",
         "emptyState": "No notifications yet",
         "loading": "Loading...",
         "notificationsTab": "Notifications",
-        "recentActivity": "Recent activity",
         "someone": "Someone",
-        "taskActionNeeded": "Action needed",
         "taskDismiss": "Dismiss",
         "taskNamespaceVerificationRequired": "Verify your community namespace",
         "taskVerify": "Verify",
-        "title": "Inbox",
+        "title": "Notifications",
         "eventCommentReply": "{actor} replied to your comment",
-        "eventPostCommented": "{actor} commented on your post"
+        "eventPostCommented": "{actor} commented on your post",
+        "installPromoTitle": "Install Pirate",
+        "installPromoBody": "Never miss a payout with Pirate on your homescreen",
+        "installPromoAction": "Install",
+        "installPromoDismiss": "Not now",
+        "installPromoIOSInstructions": "Tap the Share button below, then scroll down and tap \"Add to Home Screen\"."
       },
       "createCommunity": {
         "reopenVerification": "Reopen verification",
@@ -480,8 +482,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "verifyRoute": "Verify route",
           "clear": "Clear",
           "membershipSection": "Membership",
-          "gateChecksTitle": "Gate checks",
-          "gateChecksDescription": "Select at least one gate before launch.",
+          "gateChecksTitle": "Gate criteria",
           "nationalityTitle": "Nationality verification",
           "nationalityDescription": "Require members to verify their nationality through self before joining.",
           "allowedNationalityLabel": "Allowed nationalities",
@@ -611,11 +612,17 @@ export const GENERATED_LOCALE_CATALOGS = {
         "videosTab": "Videos"
       },
       "publicAgent": {
+        "aboutDescription": "Posts and comments from this agent appear across Pirate communities under its canonical .clawitzer identity.",
+        "aboutTitle": "About",
+        "activeSinceLabel": "Active since",
+        "emptyCommunities": "Community activity for this agent will appear here.",
         "errorDescription": "This public agent could not be loaded right now.",
         "errorTitle": "Public agent",
         "notFoundDescription": "We could not find a public agent for {path}.",
         "notFoundTitle": "Agent not found",
+        "openInPirate": "Open in Pirate",
         "ownerLabel": "Owner",
+        "premiumNamesComingSoon": "Premium names will unlock in a later release.",
         "providerLabel": "Provider"
       },
       "publicCommunity": {
@@ -669,9 +676,11 @@ export const GENERATED_LOCALE_CATALOGS = {
         "registerAction": "Register with ClawKey",
         "registrationIncompleteError": "Agent registration did not complete.",
         "saveHandleAction": "Save handle",
+        "saveChangesAction": "Save changes",
         "saveHandleError": "Could not save agent handle.",
         "saveNameAction": "Save name",
         "saveNameError": "Could not save agent name.",
+        "premiumNamesComingSoon": "Premium names will unlock in a later release.",
         "verificationRequiredAction": "Verify now",
         "verificationRequiredDescription": "To connect OpenClaw, Pirate needs to know there is a real person responsible for the agent.",
         "verificationRequiredTitle": "Verify first",
@@ -703,6 +712,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "editProfileDescription": "Update your display name, bio, or handle.",
         "editProfileTitle": "Edit profile",
         "profileSectionTitle": "Profile",
+        "installAppLabel": "Install app",
+        "installAppDescription": "Get app-icon unread badges and launch Pirate from your dock.",
+        "installAppIOSInstructions": "Tap the Share button below, then scroll down and tap \"Add to Home Screen\".",
         "handleCheckFailed": "Could not check availability.",
         "handleNoteEns": "ENS",
         "handleNoteEnsRefresh": "ENS needs refresh",
@@ -1188,6 +1200,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "Blog"
           },
           {
+            "id": "advertise",
+            "label": "Advertise"
+          },
+          {
             "id": "terms-of-service",
             "label": "Terms of Service"
           },
@@ -1202,6 +1218,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "feedSortTopLabel": "Top"
       },
       "mobileFooter": {
+        "chatAriaLabel": "Messages",
+        "chatLabel": "Messages",
         "createLabel": "Create",
         "homeLabel": "Home",
         "inboxAriaLabel": "Inbox",
@@ -1464,10 +1482,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "non-commercialDescription": "يمكن للمشاهدين استخدام الفيديو بشكل خاص، لكن ليس في الإصدارات التجارية.",
             "commercial-use": "استخدام تجاري",
             "commercial-useDescription": "يمكن للآخرين تحقيق دخل باستخدام الفيديو الأصلي، لكن لا يمكنهم نشر فيديوهات مشتقة.",
-            "commercial-remix": "اشتقاق تجاري",
+            "commercial-remix": "أعمال مشتقة تجارية",
             "commercial-remixDescription": "يمكن للآخرين تحقيق دخل ونشر فيديوهات مشتقة باستخدام عملك.",
             "revenueShare": "حصة الإيرادات",
-            "revenueShareDescription": "اختر الحصة التي تدين بها إيرادات الفيديوهات المشتقة لهذا الفيديو الأصلي.",
+            "revenueShareDescription": "حدّد حصة إيرادات الفيديوهات المشتقة التي تُدفع لهذا الفيديو الأصلي.",
             "revenueShareRange": "0% إلى 100%"
           }
         },
@@ -1645,20 +1663,22 @@ export const GENERATED_LOCALE_CATALOGS = {
       "inbox": {
         "body": "أبقِ `/inbox` كعنصر نائب محايد حتى يتم تحديد الإشعارات أو المراسلة كسطوح منتج حقيقية.",
         "description": "تم تجهيز هذا المسار حتى يشير إليه تنقل الهاتف بصدق بينما لا يزال سلوك الوارد غير محدد.",
-        "chatsTab": "الدردشات",
         "emptyChatsState": "لا توجد دردشات بعد",
         "emptyState": "لا توجد إشعارات بعد",
         "loading": "جارٍ التحميل...",
         "notificationsTab": "الإشعارات",
-        "recentActivity": "النشاط الأخير",
         "someone": "شخص ما",
-        "taskActionNeeded": "إجراء مطلوب",
         "taskDismiss": "إخفاء",
         "taskNamespaceVerificationRequired": "تحقق من مساحة اسم مجتمعك",
         "taskVerify": "تحقق",
         "title": "الوارد",
         "eventCommentReply": "{actor} ردّ على تعليقك",
-        "eventPostCommented": "{actor} علّق على منشورك"
+        "eventPostCommented": "{actor} علّق على منشورك",
+        "installPromoTitle": "تثبيت Pirate",
+        "installPromoBody": "لا تفوّت أي دفعة مع Pirate على شاشتك الرئيسية.",
+        "installPromoAction": "تثبيت",
+        "installPromoDismiss": "ليس الآن",
+        "installPromoIOSInstructions": "اضغط زر المشاركة أدناه، ثم مرّر للأسفل واضغط \"إضافة إلى الشاشة الرئيسية\"."
       },
       "createCommunity": {
         "reopenVerification": "أعد فتح التحقق",
@@ -1705,7 +1725,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "clear": "مسح",
           "membershipSection": "العضوية",
           "gateChecksTitle": "فحوصات البوابة",
-          "gateChecksDescription": "اختر بوابة واحدة على الأقل قبل الإطلاق.",
           "nationalityTitle": "التحقق من الجنسية",
           "nationalityDescription": "اشترط على الأعضاء التحقق من جنسيتهم عبر Self قبل الانضمام.",
           "allowedNationalityLabel": "الجنسيات المسموح بها",
@@ -1835,11 +1854,17 @@ export const GENERATED_LOCALE_CATALOGS = {
         "videosTab": "الفيديوهات"
       },
       "publicAgent": {
+        "aboutDescription": "تظهر منشورات هذا الوكيل وتعليقاته عبر مجتمعات Pirate تحت هويته الأساسية ذات نطاق .clawitzer.",
+        "aboutTitle": "حول",
+        "activeSinceLabel": "نشط منذ",
+        "emptyCommunities": "سيظهر نشاط هذا الوكيل في المجتمعات هنا.",
         "errorDescription": "تعذر تحميل هذا الوكيل العام الآن.",
         "errorTitle": "الوكيل العام",
         "notFoundDescription": "لم نتمكن من العثور على وكيل عام لـ {path}.",
         "notFoundTitle": "الوكيل غير موجود",
+        "openInPirate": "افتح في Pirate",
         "ownerLabel": "المالك",
+        "premiumNamesComingSoon": "سيتم فتح الأسماء المميزة في إصدار لاحق.",
         "providerLabel": "المزوّد"
       },
       "publicCommunity": {
@@ -1893,9 +1918,11 @@ export const GENERATED_LOCALE_CATALOGS = {
         "registerAction": "سجّل باستخدام ClawKey",
         "registrationIncompleteError": "لم يكتمل تسجيل الوكيل.",
         "saveHandleAction": "احفظ المعرّف",
+        "saveChangesAction": "احفظ التغييرات",
         "saveHandleError": "تعذر حفظ معرّف الوكيل.",
         "saveNameAction": "احفظ الاسم",
         "saveNameError": "تعذر حفظ اسم الوكيل.",
+        "premiumNamesComingSoon": "سيتم فتح الأسماء المميزة في إصدار لاحق.",
         "verificationRequiredAction": "تحقق الآن",
         "verificationRequiredDescription": "لربط OpenClaw، يحتاج Pirate إلى معرفة أن هناك شخصًا حقيقيًا مسؤولًا عن الوكيل.",
         "verificationRequiredTitle": "تحقق أولًا",
@@ -1927,6 +1954,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "editProfileDescription": "حدّث اسم العرض أو النبذة أو المعرّف.",
         "editProfileTitle": "حرّر الملف الشخصي",
         "profileSectionTitle": "الملف الشخصي",
+        "installAppLabel": "تثبيت التطبيق",
+        "installAppDescription": "احصل على شارات غير مقروءة على أيقونة التطبيق وأطلق Pirate من الشريط.",
+        "installAppIOSInstructions": "اضغط زر المشاركة أدناه، ثم مرّر للأسفل واضغط \"إضافة إلى الشاشة الرئيسية\".",
         "handleCheckFailed": "تعذر التحقق من التوفر.",
         "handleNoteEns": "ENS",
         "handleNoteEnsRefresh": "يحتاج ENS إلى تحديث",
@@ -2412,6 +2442,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "المدونة"
           },
           {
+            "id": "advertise",
+            "label": "أعلن"
+          },
+          {
             "id": "terms-of-service",
             "label": "شروط الخدمة"
           },
@@ -2426,6 +2460,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "feedSortTopLabel": "الأعلى"
       },
       "mobileFooter": {
+        "chatAriaLabel": "الرسائل",
+        "chatLabel": "الرسائل",
         "createLabel": "أنشئ",
         "homeLabel": "الرئيسية",
         "inboxAriaLabel": "الوارد",
@@ -2688,10 +2724,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "non-commercialDescription": "观众可以私下使用这个视频，但不能用于商业发行。",
             "commercial-use": "商业使用",
             "commercial-useDescription": "他人可以通过原始视频获利，但不能发布衍生视频。",
-            "commercial-remix": "商业衍生",
+            "commercial-remix": "商业衍生作品",
             "commercial-remixDescription": "他人可以使用你的作品获利并发布衍生视频。",
             "revenueShare": "收入分成",
-            "revenueShareDescription": "选择衍生视频收入需要回流给这个原始视频的比例。",
+            "revenueShareDescription": "设置衍生视频收入支付给这个原始视频的比例。",
             "revenueShareRange": "0% 到 100%"
           }
         },
@@ -2869,20 +2905,22 @@ export const GENERATED_LOCALE_CATALOGS = {
       "inbox": {
         "body": "在通知或消息系统成为真实产品界面前，先把 `/inbox` 保持为中性的占位页。",
         "description": "这个路由已搭好外壳，这样移动端导航就能指向一个真实存在的位置，同时保留收件箱行为的后续定义空间。",
-        "chatsTab": "聊天",
         "emptyChatsState": "还没有聊天",
         "emptyState": "还没有通知",
         "loading": "加载中...",
         "notificationsTab": "通知",
-        "recentActivity": "最近动态",
         "someone": "有人",
-        "taskActionNeeded": "需要处理",
         "taskDismiss": "忽略",
         "taskNamespaceVerificationRequired": "验证你的社区命名空间",
         "taskVerify": "验证",
         "title": "收件箱",
         "eventCommentReply": "{actor} 回复了你的评论",
-        "eventPostCommented": "{actor} 评论了你的帖子"
+        "eventPostCommented": "{actor} 评论了你的帖子",
+        "installPromoTitle": "安装 Pirate",
+        "installPromoBody": "把 Pirate 放到主屏幕上，绝不错过任何一笔款项。",
+        "installPromoAction": "安装",
+        "installPromoDismiss": "以后再说",
+        "installPromoIOSInstructions": "点击下方分享按钮，然后向下滚动并点击\"添加到主屏幕\"。"
       },
       "createCommunity": {
         "reopenVerification": "重新打开验证",
@@ -2929,7 +2967,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "clear": "清除",
           "membershipSection": "成员资格",
           "gateChecksTitle": "门槛检查",
-          "gateChecksDescription": "发布前至少选择一个门槛。",
           "nationalityTitle": "国籍验证",
           "nationalityDescription": "要求成员在加入前通过 Self 验证国籍。",
           "allowedNationalityLabel": "允许的国籍",
@@ -3059,11 +3096,17 @@ export const GENERATED_LOCALE_CATALOGS = {
         "videosTab": "视频"
       },
       "publicAgent": {
+        "aboutDescription": "这个代理的帖子和评论会以其规范的 .clawitzer 身份出现在 Pirate 各个社区中。",
+        "aboutTitle": "关于",
+        "activeSinceLabel": "活跃自",
+        "emptyCommunities": "这个代理的社区活动会显示在这里。",
         "errorDescription": "当前无法加载这个公开代理。",
         "errorTitle": "公开代理",
         "notFoundDescription": "找不到 {path} 的公开代理。",
         "notFoundTitle": "找不到代理",
+        "openInPirate": "在 Pirate 中打开",
         "ownerLabel": "所有者",
+        "premiumNamesComingSoon": "高级名称会在后续版本中开放。",
         "providerLabel": "提供方"
       },
       "publicCommunity": {
@@ -3117,9 +3160,11 @@ export const GENERATED_LOCALE_CATALOGS = {
         "registerAction": "使用 ClawKey 注册",
         "registrationIncompleteError": "代理注册未完成。",
         "saveHandleAction": "保存标识",
+        "saveChangesAction": "保存更改",
         "saveHandleError": "无法保存代理标识。",
         "saveNameAction": "保存名称",
         "saveNameError": "无法保存代理名称。",
+        "premiumNamesComingSoon": "高级名称会在后续版本中开放。",
         "verificationRequiredAction": "立即验证",
         "verificationRequiredDescription": "要连接 OpenClaw，Pirate 需要确认有真人为这个代理负责。",
         "verificationRequiredTitle": "先验证",
@@ -3151,6 +3196,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "editProfileDescription": "更新你的显示名称、简介或用户名。",
         "editProfileTitle": "编辑资料",
         "profileSectionTitle": "个人资料",
+        "installAppLabel": "安装应用",
+        "installAppDescription": "在应用图标上显示未读角标，从程序坞启动 Pirate。",
+        "installAppIOSInstructions": "点击下方分享按钮，然后向下滚动并点击\"添加到主屏幕\"。",
         "handleCheckFailed": "无法检查可用性。",
         "handleNoteEns": "ENS",
         "handleNoteEnsRefresh": "ENS 需要刷新",
@@ -3636,6 +3684,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "博客"
           },
           {
+            "id": "advertise",
+            "label": "投放广告"
+          },
+          {
             "id": "terms-of-service",
             "label": "服务条款"
           },
@@ -3650,6 +3702,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "feedSortTopLabel": "热门"
       },
       "mobileFooter": {
+        "chatAriaLabel": "消息",
+        "chatLabel": "消息",
         "createLabel": "发布",
         "homeLabel": "首页",
         "inboxAriaLabel": "收件箱",

@@ -1,13 +1,16 @@
 import {
   Code,
   FileCode,
+  Fire,
   Flag,
   GitBranch,
   GithubLogo,
   Globe,
   House,
+  Megaphone,
   Newspaper,
   Plus,
+  Robot,
   Scroll,
   Shield,
 } from "@phosphor-icons/react";
@@ -22,15 +25,17 @@ import {
 import type {
   AppSidebarPrimaryItem,
   AppSidebarSection,
-} from "@/components/compositions/app-sidebar/app-sidebar";
-import type { MobileFooterNav } from "@/components/compositions/app-shell-chrome/mobile-footer-nav";
-import { buildCommunityPath } from "@/lib/community-routing";
+} from "@/components/compositions/app/app-sidebar/app-sidebar";
+import type { MobileFooterNav } from "@/components/compositions/app/app-shell-chrome/mobile-footer-nav";
+import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
+import { ADVERTISING_ROUTE_PATH } from "@/lib/advertising";
 import type { SidebarCommunitySummary } from "@/lib/owned-communities";
 import { prefersNativeRadicleLinks, resolveResourceHref } from "@/lib/resource-links";
 import type { ResourceLinkId } from "@/lib/resource-links";
 import type { ShellMessages } from "@/locales";
 
 const resourceIcons = {
+  advertise: Megaphone,
   blog: Newspaper,
   "privacy-policy": Shield,
   "source-freedom-browser": Globe,
@@ -62,12 +67,20 @@ export function resolveCreatePostPath(route: AppRoute): string | null {
 }
 
 export function resolveMobileBackPath(route: AppRoute): string | null {
+  if (route.kind === "community") {
+    return "/";
+  }
+
   if (route.kind === "community-moderation") {
     return buildCommunityModerationIndexPath(route.communityId);
   }
 
   if (route.kind === "community-moderation-index") {
     return buildCommunityPath(route.communityId);
+  }
+
+  if (route.kind === "advertise") {
+    return "/";
   }
 
   return null;
@@ -79,7 +92,10 @@ function formatCommunitySidebarLabel(
 ): string {
   const trimmedSlug = routeSlug?.trim();
   if (trimmedSlug) {
-    return trimmedSlug.toLowerCase().startsWith("c/") ? trimmedSlug : `c/${trimmedSlug}`;
+    const normalizedSlug = trimmedSlug.toLowerCase().startsWith("c/")
+      ? trimmedSlug.slice(2)
+      : trimmedSlug;
+    return formatCommunityRouteLabel(communityId, normalizedSlug);
   }
 
   const trimmedId = communityId.trim();
@@ -137,10 +153,22 @@ export function buildPrimaryItems(messages: ShellMessages["appSidebar"]): AppSid
       onSelect: () => navigate("/"),
     },
     {
+      id: "popular",
+      icon: Fire,
+      label: messages.feedSortBestLabel,
+      onSelect: () => navigate("/popular"),
+    },
+    {
       id: "your-communities",
       icon: Flag,
       label: messages.yourCommunitiesLabel,
       onSelect: () => navigate("/your-communities"),
+    },
+    {
+      id: "agents",
+      icon: Robot,
+      label: messages.agentsLabel,
+      onSelect: () => navigate("/settings/agents"),
     },
     {
       id: "create-community",
@@ -156,6 +184,11 @@ export function buildResourceItems(messages: ShellMessages["appSidebar"]) {
     ...item,
     icon: resourceIcons[item.id as ResourceLinkId],
     onSelect: () => {
+      if (item.id === "advertise") {
+        navigate(ADVERTISING_ROUTE_PATH);
+        return;
+      }
+
       const href = resolveResourceHref(item.id, {
         preferNativeRadicle: prefersNativeRadicleLinks(),
       });
@@ -183,10 +216,16 @@ export function activeSidebarItem(route: AppRoute): string | undefined {
   switch (route.kind) {
     case "home":
       return "home";
+    case "popular":
+      return "popular";
     case "wallet":
       return undefined;
     case "your-communities":
       return "your-communities";
+    case "settings-index":
+      return undefined;
+    case "settings":
+      return route.section === "agents" ? "agents" : undefined;
     case "community":
     case "create-post":
       return `c/${route.communityId}`;
@@ -194,6 +233,8 @@ export function activeSidebarItem(route: AppRoute): string | undefined {
       return undefined;
     case "create-community":
       return "create-community";
+    case "advertise":
+      return "advertise";
     default:
       return undefined;
   }
@@ -203,8 +244,8 @@ export function activeMobileNav(
   route: AppRoute,
 ): ComponentProps<typeof MobileFooterNav>["activeItem"] {
   if (route.kind === "inbox") return "inbox";
+  if (route.kind === "chat" || route.kind === "chat-new" || route.kind === "chat-conversation" || route.kind === "chat-target") return "chat";
   if (route.kind === "wallet") return "wallet";
-  if (route.kind === "create-post" || route.kind === "create-post-global") return "create";
   if (route.kind === "me" || route.kind === "public-profile" || route.kind === "public-agent") return "profile";
   return "home";
 }

@@ -1,7 +1,6 @@
 import type {
   NotificationFeedItem,
   RoyaltyActivityItem,
-  RoyaltyClaimRecord,
   UserTask,
 } from "@pirate/api-contracts";
 
@@ -129,27 +128,6 @@ export const royaltyActivityItems: RoyaltyActivityItem[] = [
     purchase_id: "pur_basement_session",
     created_at: iso(48),
     read_at: iso(45),
-  },
-];
-
-export const royaltyClaimItems: RoyaltyClaimRecord[] = [
-  {
-    claim_id: "rcl_story_claim_1",
-    user_id: "usr_owner_1",
-    tx_hash: "0x3333333333333333333333333333333333333333333333333333333333333333",
-    wallet_address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-    chain_id: 1514,
-    claimable_wip_wei_at_submission: "10200000000000000000",
-    ip_ids: [
-      "0x1111111111111111111111111111111111111111",
-      "0x2222222222222222222222222222222222222222",
-    ],
-    auto_unwrap_ip_tokens: true,
-    status: "confirmed",
-    verified_at: iso(88),
-    verification_error: null,
-    claimed_at: iso(90),
-    created_at: iso(90),
   },
 ];
 

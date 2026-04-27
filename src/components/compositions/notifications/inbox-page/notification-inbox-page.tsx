@@ -5,19 +5,18 @@ import {
   Bell,
   CaretRight,
   ChatCircleText,
-  CheckCircle,
   Coins,
+  DeviceMobile,
   HandPalm,
   IdentificationCard,
+  ShoppingCart,
   UserCircle,
   Users,
-  WarningCircle,
   type Icon,
 } from "@phosphor-icons/react";
 import type {
   NotificationFeedItem,
   RoyaltyActivityItem,
-  RoyaltyClaimRecord,
   UserTask,
 } from "@pirate/api-contracts";
 import { formatUnits, getAddress, isAddress } from "viem";
@@ -33,7 +32,15 @@ import { getPirateNetworkConfig } from "@/lib/network-config";
 import { getLocaleMessages } from "@/locales";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
-import { PwaInstallPromo } from "@/components/compositions/pwa/pwa-install-promo";
+import { trackAnalyticsEvent } from "@/lib/analytics";
+import {
+  dismissPromo,
+  markPromoImpression,
+  readPwaInstallRecord,
+  shouldShowAutoPromo,
+} from "@/lib/pwa/pwa-install-storage";
+import { usePwaInstallPrompt } from "@/lib/pwa/use-pwa-install-prompt";
+import { toast } from "@/components/primitives/sonner";
 
 function payloadString(
   payload: Record<string, unknown> | null | undefined,
@@ -141,6 +148,16 @@ function txHref(txHash: string | null | undefined, chainId = getPirateNetworkCon
 function getMembershipReviewCount(task: UserTask): number | null {
   const value = task.payload?.request_count;
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function unreadCountBucket(count: number | undefined): string | undefined {
+  if (!Number.isFinite(count)) return undefined;
+  const normalized = Math.max(0, Math.floor(count ?? 0));
+  if (normalized === 0) return "0";
+  if (normalized === 1) return "1";
+  if (normalized <= 5) return "2_5";
+  if (normalized <= 20) return "6_20";
+  return "20_plus";
 }
 
 function formatEventLabel(
@@ -253,6 +270,7 @@ function getActivityMedia(item: NotificationFeedItem): React.ReactNode | null {
 
   return (
     <Avatar
+      className="h-10 w-10 border-none"
       fallback={actorName}
       size="sm"
       src={avatarUrl ?? undefined}
@@ -272,11 +290,11 @@ function NotificationIcon({
   weight?: "fill" | "regular" | "bold" | "duotone";
 }) {
   const toneClass: Record<IconTone, string> = {
-    primary: "bg-primary-subtle text-primary",
-    warning: "bg-warning/10 text-warning",
-    success: "bg-success/10 text-success",
-    muted: "bg-muted text-muted-foreground",
-    foreground: "bg-muted/45 text-foreground",
+    primary: "bg-muted text-foreground",
+    warning: "bg-muted text-foreground",
+    success: "bg-muted text-foreground",
+    muted: "bg-muted text-foreground",
+    foreground: "bg-muted text-foreground",
   };
 
   return (
@@ -339,15 +357,10 @@ function NotificationRow({
           >
             {title}
           </Type>
-          {meta ? (
-            <Type as="span" className="shrink-0 text-muted-foreground" variant="caption">
-              {meta}
-            </Type>
-          ) : null}
         </span>
-        {subtext ? (
+        {(subtext || meta) ? (
           <Type as="span" className="block truncate text-muted-foreground" variant="body">
-            {subtext}
+            {[subtext, meta].filter(Boolean).join(" · ")}
           </Type>
         ) : null}
       </span>
@@ -381,20 +394,34 @@ function NotificationRow({
 
 function NotificationTaskList({
   copy,
+  onOpenPwaInstallTask,
   onVerifyTask,
+  showPwaInstallTask,
   tasks,
 }: {
   copy: ReturnType<typeof getLocaleMessages<"routes">>["inbox"];
+  onOpenPwaInstallTask?: () => void;
   onVerifyTask?: (task: UserTask) => void;
+  showPwaInstallTask?: boolean;
   tasks: UserTask[];
 }) {
   return (
     <div>
+      {showPwaInstallTask ? (
+        <div>
+          <NotificationRow
+            icon={DeviceMobile}
+            onClick={onOpenPwaInstallTask}
+            subtext={copy.installPromoBody}
+            title={copy.installPromoTitle}
+          />
+        </div>
+      ) : null}
       {tasks.map((task, index) => {
         const href = resolveNotificationTaskHref(task);
         return (
           <div key={task.task_id}>
-            {index > 0 ? <Separator /> : null}
+            {index > 0 || showPwaInstallTask ? <Separator /> : null}
             <NotificationRow
               icon={getTaskIcon(task)}
               onClick={href && onVerifyTask ? () => onVerifyTask(task) : undefined}
@@ -422,12 +449,7 @@ type NotificationTimelineEntry =
     timestamp: number;
     type: "royalty_activity";
   }
-  | {
-    item: RoyaltyClaimRecord;
-    key: string;
-    timestamp: number;
-    type: "royalty_claim";
-  };
+;
 
 function parseTimestamp(value: string | null | undefined): number {
   if (!value) return 0;
@@ -441,16 +463,13 @@ function NotificationActivityList({
   onOpenActivityItem,
   royaltyActivityItems,
   royaltyActivityLoading,
-  royaltyClaimItems,
-  royaltyClaimLoading,
 }: {
   activityItems: NotificationFeedItem[];
   copy: ReturnType<typeof getLocaleMessages<"routes">>["inbox"];
   onOpenActivityItem?: (item: NotificationFeedItem) => void;
   royaltyActivityItems: RoyaltyActivityItem[];
   royaltyActivityLoading?: boolean;
-  royaltyClaimItems: RoyaltyClaimRecord[];
-  royaltyClaimLoading?: boolean;
+
 }) {
   const timelineItems = React.useMemo<NotificationTimelineEntry[]>(() => {
     const notificationEntries: NotificationTimelineEntry[] = activityItems.map((item) => ({
@@ -465,18 +484,11 @@ function NotificationActivityList({
       timestamp: parseTimestamp(item.created_at),
       type: "royalty_activity",
     }));
-    const royaltyClaimEntries: NotificationTimelineEntry[] = royaltyClaimItems.map((item) => ({
-      item,
-      key: item.claim_id,
-      timestamp: parseTimestamp(item.claimed_at ?? item.created_at),
-      type: "royalty_claim",
-    }));
-
-    return [...notificationEntries, ...royaltyActivityEntries, ...royaltyClaimEntries]
+    return [...notificationEntries, ...royaltyActivityEntries]
       .sort((a, b) => b.timestamp - a.timestamp);
-  }, [activityItems, royaltyActivityItems, royaltyClaimItems]);
+  }, [activityItems, royaltyActivityItems]);
 
-  if (timelineItems.length === 0 && (royaltyActivityLoading || royaltyClaimLoading)) {
+  if (timelineItems.length === 0 && royaltyActivityLoading) {
     return (
       <div className="px-5 py-8 text-center">
         <Type as="p" className="text-muted-foreground" variant="body">Loading notifications...</Type>
@@ -525,7 +537,7 @@ function NotificationActivityList({
             <div key={entry.key}>
               {index > 0 ? <Separator /> : null}
               <NotificationRow
-                icon={Coins}
+                icon={ShoppingCart}
                 meta={relativeTime || null}
                 subtext={buyer ? `Purchased by ${buyer} · ${amountLabel}` : amountLabel}
                 title={entry.item.title?.trim() || "Royalty earned"}
@@ -535,28 +547,7 @@ function NotificationActivityList({
           );
         }
 
-        const txLabel = formatCompactHash(entry.item.tx_hash) ?? entry.item.tx_hash;
-        const relativeTime = formatRelativeShort(entry.item.claimed_at ?? entry.item.created_at);
-        const transactionHref = txHref(entry.item.tx_hash, entry.item.chain_id);
-        const amountLabel = `$${formatWipAmount(entry.item.claimable_wip_wei_at_submission)} $WIP`;
-        const statusLabel = entry.item.status === "confirmed"
-          ? "Claim confirmed"
-          : entry.item.status === "failed"
-            ? "Claim failed"
-            : "Claim submitted";
 
-        return (
-          <div key={entry.key}>
-            {index > 0 ? <Separator /> : null}
-            <NotificationRow
-              href={transactionHref}
-              icon={entry.item.status === "failed" ? WarningCircle : CheckCircle}
-              meta={relativeTime || null}
-              subtext={`Tx ${txLabel} · ${amountLabel}`}
-              title={statusLabel}
-            />
-          </div>
-        );
       })}
     </div>
   );
@@ -569,8 +560,7 @@ export function NotificationInboxPage({
   onVerifyTask,
   royaltyActivityItems = [],
   royaltyActivityLoading = false,
-  royaltyClaimItems = [],
-  royaltyClaimLoading = false,
+
   installPromoUnreadCount = 0,
   installPromoPreviewState,
   tasks,
@@ -582,8 +572,7 @@ export function NotificationInboxPage({
   onVerifyTask?: (task: UserTask) => void;
   royaltyActivityItems?: RoyaltyActivityItem[];
   royaltyActivityLoading?: boolean;
-  royaltyClaimItems?: RoyaltyClaimRecord[];
-  royaltyClaimLoading?: boolean;
+
   installPromoUnreadCount?: number;
   installPromoPreviewState?: "default" | "ios_instructions";
   tasks: UserTask[];
@@ -592,8 +581,62 @@ export function NotificationInboxPage({
   const { locale } = useUiLocale();
   const copy = React.useMemo(() => getLocaleMessages(locale, "routes").inbox, [locale]);
   const isMobile = useIsMobile();
-  const hasTasks = tasks.length > 0;
-  const hasActivity = activityItems.length > 0 || royaltyActivityItems.length > 0 || royaltyClaimItems.length > 0;
+  const pwaPrompt = usePwaInstallPrompt();
+  const [showPwaInstallTask, setShowPwaInstallTask] = React.useState(Boolean(installPromoPreviewState));
+  const pwaInstallTaskViewedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (installPromoPreviewState) {
+      setShowPwaInstallTask(true);
+      return;
+    }
+    if (pwaPrompt.isInstalled || !pwaPrompt.canPrompt) {
+      setShowPwaInstallTask(false);
+      return;
+    }
+    if (showPwaInstallTask) return;
+    if (!shouldShowAutoPromo(readPwaInstallRecord())) return;
+
+    markPromoImpression();
+    setShowPwaInstallTask(true);
+    if (!pwaInstallTaskViewedRef.current) {
+      pwaInstallTaskViewedRef.current = true;
+      trackAnalyticsEvent({
+        eventName: "pwa_install_promo_viewed",
+        properties: { surface: "inbox", trigger: "inbox_task", unread_count_bucket: unreadCountBucket(installPromoUnreadCount) },
+      });
+    }
+  }, [installPromoPreviewState, installPromoUnreadCount, pwaPrompt.canPrompt, pwaPrompt.isInstalled, showPwaInstallTask]);
+
+  const handleOpenPwaInstallTask = React.useCallback(() => {
+    const platform = pwaPrompt.isIOS ? "ios_manual" : "chromium";
+    trackAnalyticsEvent({
+      eventName: "pwa_install_prompt_opened",
+      properties: { surface: "inbox", platform },
+    });
+
+    if (pwaPrompt.isIOS || installPromoPreviewState === "ios_instructions") {
+      pwaPrompt.promptInstallIOS("inbox");
+      toast(copy.installPromoIOSInstructions);
+      return;
+    }
+
+    void pwaPrompt.promptInstall("inbox").then((outcome) => {
+      if (outcome === "accepted") {
+        setShowPwaInstallTask(false);
+      } else if (outcome === "dismissed") {
+        dismissPromo("native_dismissed");
+        setShowPwaInstallTask(false);
+        trackAnalyticsEvent({
+          eventName: "pwa_install_promo_dismissed",
+          properties: { surface: "inbox", dismiss_reason: "native_dismissed" },
+        });
+      }
+    });
+  }, [copy.installPromoIOSInstructions, installPromoPreviewState, pwaPrompt]);
+
+  const hasTasks = tasks.length > 0 || showPwaInstallTask;
+  const hasActivity = activityItems.length > 0 || royaltyActivityItems.length > 0;
   const hasContent = hasTasks || hasActivity;
 
   return (
@@ -614,16 +657,6 @@ export function NotificationInboxPage({
           </div>
         ) : (
           <>
-            <PwaInstallPromo
-              title={copy.installPromoTitle}
-              body={copy.installPromoBody}
-              installLabel={copy.installPromoAction}
-              iosInstructions={copy.installPromoIOSInstructions}
-              surface="inbox"
-              trigger="inbox"
-              unreadCount={installPromoUnreadCount}
-              previewState={installPromoPreviewState}
-            />
             {hasContent ? (
               <>
                 {hasTasks ? (
@@ -631,7 +664,9 @@ export function NotificationInboxPage({
                     <SectionCard flat>
                       <NotificationTaskList
                         copy={copy}
+                        onOpenPwaInstallTask={handleOpenPwaInstallTask}
                         onVerifyTask={onVerifyTask}
+                        showPwaInstallTask={showPwaInstallTask}
                         tasks={tasks}
                       />
                     </SectionCard>
@@ -639,7 +674,9 @@ export function NotificationInboxPage({
                     <div className={cn(hasActivity && "border-b border-border-soft")}>
                       <NotificationTaskList
                         copy={copy}
+                        onOpenPwaInstallTask={handleOpenPwaInstallTask}
                         onVerifyTask={onVerifyTask}
+                        showPwaInstallTask={showPwaInstallTask}
                         tasks={tasks}
                       />
                     </div>
@@ -648,36 +685,22 @@ export function NotificationInboxPage({
                 {hasActivity ? (
                   isMobile ? (
                     <SectionCard flat>
-                      <div className="px-5 py-3">
-                        <Type as="h2" variant="label" className="text-muted-foreground">
-                          Recent activity
-                        </Type>
-                      </div>
                       <NotificationActivityList
                         activityItems={activityItems}
                         copy={copy}
                         onOpenActivityItem={onOpenActivityItem}
                         royaltyActivityItems={royaltyActivityItems}
                         royaltyActivityLoading={royaltyActivityLoading}
-                        royaltyClaimItems={royaltyClaimItems}
-                        royaltyClaimLoading={royaltyClaimLoading}
                       />
                     </SectionCard>
                   ) : (
                     <div>
-                      <div className="px-5 py-3 md:px-6">
-                        <Type as="h2" variant="label" className="text-muted-foreground">
-                          Recent activity
-                        </Type>
-                      </div>
                       <NotificationActivityList
                         activityItems={activityItems}
                         copy={copy}
                         onOpenActivityItem={onOpenActivityItem}
                         royaltyActivityItems={royaltyActivityItems}
                         royaltyActivityLoading={royaltyActivityLoading}
-                        royaltyClaimItems={royaltyClaimItems}
-                        royaltyClaimLoading={royaltyClaimLoading}
                       />
                     </div>
                   )

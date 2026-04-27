@@ -13,6 +13,7 @@ export { toCommunityFeedItem, toHomeFeedItem } from "./post-presentation";
 export { PostPage } from "./post-route";
 export { applyPostVote } from "./post-vote";
 export { CurrentUserProfilePage, CurrentUserSettingsPage } from "./profile-settings-routes";
-export { buildSongListingRequest, buildSongPostRequest, resolveComposerSubmitState } from "./song-submit";
+export { buildAssetListingRequest, resolveComposerSubmitState } from "./asset-submit";
+export { buildSongPostRequest } from "./song-submit";
 export { createThreadCommentNode, mergeThreadCommentNodes } from "./thread-state";
 export type { ThreadCommentNode } from "./thread-state";

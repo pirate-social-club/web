@@ -28,8 +28,8 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
   const nonce = rw.nonce;
   const canonicalUrl = ctx.canonicalUrl ?? null;
   const seo = ctx.seoMetadata ?? null;
-  const pageTitle = seo?.title?.trim() || "Pirate Social Club";
-  const pageDescription = seo?.description?.trim() || null;
+  const pageTitle = seo?.title?.trim() || "Pirate";
+  const pageDescription = seo?.description?.trim() || "Human-first communities. From book clubs to aspiring space colonies";
   const pageImageUrl = seo?.imageUrl?.trim() || null;
   const pageUrl = seo?.url?.trim() || canonicalUrl;
   const ogType = seo?.type ?? "website";
@@ -52,6 +52,11 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#222324" />
+        <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/site.webmanifest" />
         <title>{pageTitle}</title>
         {pageDescription ? <meta name="description" content={pageDescription} /> : null}
         <meta property="og:type" content={ogType} />

@@ -9,6 +9,11 @@ const threadPost = {
   ...POSTS_BY_ID.pst_01_weekly_listening,
   authorNationalityBadgeCountry: "US",
   authorNationalityBadgeLabel: "Verified United States nationality",
+  byline: {
+    ...POSTS_BY_ID.pst_01_weekly_listening.byline,
+    author: { kind: "user" as const, label: "kevin.tameimpala.pirate", href: "#" },
+  },
+  identityPresentation: "community_with_author" as const,
 };
 
 function withCommentVoting(

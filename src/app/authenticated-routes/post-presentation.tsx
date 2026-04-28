@@ -567,7 +567,7 @@ export function toThreadPostCard(
       score: postResponse.upvote_count - postResponse.downvote_count,
       viewerVote: toViewerVote(postResponse.viewer_vote),
     },
-    identityPresentation: post.identity_mode === "anonymous" ? "anonymous_primary" : "author_with_community",
+    identityPresentation: "community_with_author",
     authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
     authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
       ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)

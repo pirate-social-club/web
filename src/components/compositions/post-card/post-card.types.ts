@@ -185,6 +185,7 @@ export type PostCardViewContext = "home" | "community" | "profile";
 export type PostCardIdentityPresentation =
   | "author_primary"
   | "author_with_community"
+  | "community_with_author"
   | "community_primary"
   | "anonymous_primary"
   | "anonymous_with_community";

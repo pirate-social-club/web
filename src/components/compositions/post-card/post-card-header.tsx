@@ -39,6 +39,11 @@ function resolveIdentities(
         primaryIdentity: community ?? author,
         secondaryIdentity: undefined,
       };
+    case "community_with_author":
+      return {
+        primaryIdentity: community ?? author,
+        secondaryIdentity: community && author ? author : undefined,
+      };
     case "author_with_community":
       return {
         primaryIdentity: author ?? community,
@@ -56,6 +61,43 @@ function resolveIdentities(
         secondaryIdentity: undefined,
       };
   }
+}
+
+function CommunityWithAuthorByline({
+  primaryIdentity,
+  secondaryIdentity,
+  qualifierText,
+  timestampLabel,
+}: {
+  primaryIdentity?: PostCardIdentity;
+  secondaryIdentity?: PostCardIdentity;
+  qualifierText?: string;
+  timestampLabel: string;
+}) {
+  return (
+    <div className={cn("flex flex-col items-start gap-0.5 text-start text-muted-foreground", postCardType.meta)}>
+      <InteractiveIdentityLink
+        className="font-semibold text-foreground hover:underline"
+        identity={primaryIdentity}
+      />
+      <div className="flex min-w-0 flex-wrap items-baseline justify-start gap-x-1.5 gap-y-0.5">
+        {secondaryIdentity ? (
+          <InteractiveIdentityLink
+            className="font-medium text-muted-foreground hover:text-foreground hover:underline"
+            identity={secondaryIdentity}
+          />
+        ) : null}
+        {qualifierText ? (
+          <>
+            {secondaryIdentity ? <span aria-hidden="true">·</span> : null}
+            <span><bdi>{qualifierText}</bdi></span>
+          </>
+        ) : null}
+        {(secondaryIdentity || qualifierText) ? <span aria-hidden="true">·</span> : null}
+        <span><bdi>{timestampLabel}</bdi></span>
+      </div>
+    </div>
+  );
 }
 
 function InteractiveIdentityLink({
@@ -136,7 +178,7 @@ function PostCardBylineContent({
 
   const resolvedPresentation = deriveIdentityPresentation(viewContext, identityPresentation);
 
-  if (byline.agentAuthor && resolvedPresentation !== "community_primary") {
+  if (byline.agentAuthor && resolvedPresentation !== "community_primary" && resolvedPresentation !== "community_with_author") {
     return <AgentByline byline={byline} />;
   }
 
@@ -145,6 +187,17 @@ function PostCardBylineContent({
 
   if (!primaryIdentity && !secondaryIdentity) {
     return <div className={cn("text-muted-foreground", postCardType.meta)}>{timestampLabel}</div>;
+  }
+
+  if (resolvedPresentation === "community_with_author") {
+    return (
+      <CommunityWithAuthorByline
+        primaryIdentity={primaryIdentity}
+        qualifierText={qualifierText}
+        secondaryIdentity={secondaryIdentity}
+        timestampLabel={timestampLabel}
+      />
+    );
   }
 
   return (

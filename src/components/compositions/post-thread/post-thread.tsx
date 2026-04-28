@@ -3,6 +3,7 @@ import { Minus, Plus } from "@phosphor-icons/react";
 
 import { PostCard } from "@/components/compositions/post-card/post-card";
 import { ResponsiveOptionSelect } from "@/components/compositions/responsive-option-select/responsive-option-select";
+import { SortControlRow } from "@/components/compositions/sort-control-row/sort-control-row";
 import { Button } from "@/components/primitives/button";
 import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
 import { triggerNavigationTapHaptic } from "@/lib/haptics";
@@ -326,7 +327,7 @@ export function PostThread({
           </div>
         ) : null}
         {availableCommentSorts && availableCommentSorts.length > 0 && activeSort ? (
-          <div className="flex justify-start px-4 pb-3">
+          <SortControlRow className="px-4 py-3">
             <ResponsiveOptionSelect<CommentSort>
               ariaLabel="Sort comments"
               drawerTitle={copy.common.commentsHeading}
@@ -334,7 +335,7 @@ export function PostThread({
               options={availableCommentSorts}
               value={activeSort}
             />
-          </div>
+          </SortControlRow>
         ) : null}
 
         {items.length > 0 ? (

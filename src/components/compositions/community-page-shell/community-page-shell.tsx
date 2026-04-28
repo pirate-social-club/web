@@ -18,6 +18,7 @@ import {
   type FeedSortOption,
 } from "@/components/compositions/feed/feed";
 import { ResponsiveOptionSelect } from "@/components/compositions/responsive-option-select/responsive-option-select";
+import { SortControlRow } from "@/components/compositions/sort-control-row/sort-control-row";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
@@ -96,19 +97,17 @@ export function CommunityPageShell({
     return (
       <section className={cn("mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-4", className)}>
         <div className="min-w-0">{hero}</div>
-        <FlatTabBar
-          actions={mobileView === "feed" ? sortControl : null}
-          columns={2}
-        >
-          <FlatTabButton active={mobileView === "feed"} onClick={() => setMobileView("feed")}>
-            {copy.community.feedTab}
-          </FlatTabButton>
-          <FlatTabButton active={mobileView === "about"} onClick={() => setMobileView("about")}>
-            {copy.community.aboutTab}
-          </FlatTabButton>
-        </FlatTabBar>
-        {mobileView === "feed" ? (
-          <div>
+        <div className="flex flex-col gap-3">
+          <FlatTabBar columns={2}>
+            <FlatTabButton active={mobileView === "feed"} onClick={() => setMobileView("feed")}>
+              {copy.community.feedTab}
+            </FlatTabButton>
+            <FlatTabButton active={mobileView === "about"} onClick={() => setMobileView("about")}>
+              {copy.community.aboutTab}
+            </FlatTabButton>
+          </FlatTabBar>
+          {mobileView === "feed" ? <SortControlRow>{sortControl}</SortControlRow> : null}
+          {mobileView === "feed" ? (
             <Feed
               activeSort={activeSort}
               controls={controls}
@@ -118,9 +117,7 @@ export function CommunityPageShell({
               loading={loading}
               onSortChange={onSortChange}
             />
-          </div>
-        ) : (
-          <div>
+          ) : (
             <CommunitySidebarDetails
               charity={sidebar.charity}
               className="-mx-3 rounded-none bg-transparent px-3 py-0"
@@ -133,8 +130,8 @@ export function CommunityPageShell({
               requirements={sidebar.requirements}
               rules={sidebar.rules}
             />
-          </div>
-        )}
+          )}
+        </div>
       </section>
     );
   }

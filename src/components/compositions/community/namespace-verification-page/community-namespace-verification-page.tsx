@@ -16,8 +16,8 @@ import {
   NamespaceVerificationSpacesPanel,
 } from "@/components/compositions/verification/namespace-verification/namespace-verification-shared";
 import { useNamespaceVerificationFlow } from "@/components/compositions/verification/namespace-verification/use-namespace-verification-flow";
-import handshakeLogoUrl from "../../../../../handshake-logo.png";
-import spacesLogoUrl from "../../../../../spaces-protocol-logo.jpeg";
+import handshakeLogoUrl from "@/assets/namespace-icons/handshake-logo.png";
+import spacesLogoUrl from "@/assets/namespace-icons/spaces-protocol-logo.jpeg";
 
 import type {
   NamespaceFamily,

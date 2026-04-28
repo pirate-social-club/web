@@ -22,8 +22,8 @@ import {
 import { OptionCard } from "@/components/primitives/option-card";
 import { PrefixInput } from "@/components/primitives/prefix-input";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
-import handshakeLogoUrl from "../../../../../handshake-logo.png";
-import spacesLogoUrl from "../../../../../spaces-protocol-logo.jpeg";
+import handshakeLogoUrl from "@/assets/namespace-icons/handshake-logo.png";
+import spacesLogoUrl from "@/assets/namespace-icons/spaces-protocol-logo.jpeg";
 
 import type {
   NamespaceFamily,

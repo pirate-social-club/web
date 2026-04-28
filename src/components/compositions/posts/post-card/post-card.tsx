@@ -146,7 +146,8 @@ export function PostCard({
 
       <div
         className={cn(
-          "pointer-events-none relative z-10 flex w-full flex-col gap-2.5 px-4 py-2.5",
+          "relative z-10 flex w-full flex-col gap-2.5 px-4 py-2.5",
+          isClickable && "pointer-events-none",
           "[&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_input]:pointer-events-auto",
           "[&_select]:pointer-events-auto [&_summary]:pointer-events-auto [&_textarea]:pointer-events-auto",
         )}

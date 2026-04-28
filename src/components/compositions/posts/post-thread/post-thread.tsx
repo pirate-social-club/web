@@ -70,6 +70,7 @@ export function PostThread({
         <PostCard
           {...activePost}
           className="border-b-0"
+          postHref={undefined}
           isViewingOriginal={showOriginalPost}
           onToggleOriginal={canToggleOriginalPost ? () => setShowOriginalPost((value) => !value) : activePost.onToggleOriginal}
         />

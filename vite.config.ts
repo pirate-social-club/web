@@ -51,6 +51,10 @@ export default defineConfig(() => ({
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
   },
+  optimizeDeps: {
+    exclude: ["@xmtp/wasm-bindings", "@xmtp/browser-sdk"],
+    include: ["@xmtp/proto"],
+  },
   environments: {
     ssr: {},
   },

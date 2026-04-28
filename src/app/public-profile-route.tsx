@@ -9,10 +9,11 @@ import { useSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useUiLocale, resolveLocaleLanguageTag } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
-import { buildPublicProfilePath } from "@/lib/profile-routing";
 import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
-import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profile-page/profile-page";
-import { apiProfileToProps } from "./authenticated-routes/profile-settings-mapping";
+import { buildPublicProfilePath } from "@/lib/profile-routing";
+import { useChatLauncher } from "./shell/use-chat-launcher";
+import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profiles/profile-page/profile-page";
+import { apiProfileToProps } from "./authenticated-helpers/profile-settings-mapping";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
 
 type PublicProfileResolution = {
@@ -81,6 +82,7 @@ export function PublicProfileRoutePage({
   hostSuffix?: string | null;
 }) {
   const { locale } = useUiLocale();
+  const chatLauncher = useChatLauncher();
   const localeTag = resolveLocaleLanguageTag(locale);
   const copy = getLocaleMessages(locale, "routes");
   const publicCopy = copy.publicProfile;
@@ -141,6 +143,8 @@ export function PublicProfileRoutePage({
     );
   }
 
+  const messageTarget = !ownProfile ? resolution.profile.primary_wallet_address : null;
+
   return (
     <ProfilePageComposition
       {...apiProfileToProps(resolution.profile, ownProfile, {
@@ -148,6 +152,9 @@ export function PublicProfileRoutePage({
         followingLabel: profileCopy.followingLabel,
         joinedStatLabel: copy.common.joinedStatLabel,
       }, followState, localeTag)}
+      onMessageProfile={messageTarget
+        ? () => chatLauncher.openTarget(messageTarget)
+        : undefined}
     />
   );
 }

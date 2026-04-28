@@ -9,6 +9,7 @@ import { getCountryDisplayName } from "@/lib/countries";
 
 type IdentityGateAudience = "public" | "admin";
 type VerificationProvider = "self" | "very" | "passport";
+type RequirementProviderContext = VerificationProvider | null;
 type MissingCapability = JoinEligibility["missing_capabilities"][number];
 type SupportedCopyLocale = "en" | "ar" | "zh";
 
@@ -82,10 +83,11 @@ function isSelfRequestedCapability(capability: MissingCapability): capability is
 
 export function formatGateRequirement(
   gate: MembershipGateSummary,
-  options?: { audience?: IdentityGateAudience; locale?: string | null },
+  options?: { audience?: IdentityGateAudience; locale?: string | null; provider?: RequirementProviderContext },
 ): string {
   const audience = options?.audience ?? "public";
   const locale = resolveCopyLocale(options?.locale);
+  const provider = options?.provider ?? null;
 
   switch (gate.gate_type) {
     case "nationality": {
@@ -102,11 +104,11 @@ export function formatGateRequirement(
         if (locale === "zh") {
           return `需要国籍验证：${countryLabel}`;
         }
-        return `Requires ${countryLabel} nationality`;
+        return `${countryLabel} nationality`;
       }
       if (locale === "ar") return "يتطلب التحقق من الجنسية";
       if (locale === "zh") return "需要国籍验证";
-      return "Requires nationality verification";
+      return "Nationality verification";
     }
     case "gender": {
       if (locale === "ar") {
@@ -124,40 +126,36 @@ export function formatGateRequirement(
       if (audience === "admin" && gate.required_value) {
         return `Requires Self document marker ${gate.required_value}`;
       }
-      return "Verify with ID";
+      return "ID check";
     }
     case "unique_human":
+      if (provider === "very") {
+        if (locale === "ar") return "يتطلب فحص راحة اليد";
+        if (locale === "zh") return "需要掌纹扫描";
+        return "Palm scan";
+      }
       if (locale === "ar") return "يتطلب التحقق من أنك إنسان";
       if (locale === "zh") return "需要真人验证";
-      return "Requires unique human verification";
+      return "Real person check";
     case "age_over_18":
       if (locale === "ar") return "يتطلب التحقق من أن عمرك 18+";
       if (locale === "zh") return "需要 18+ 验证";
-      return "Requires 18+ verification";
+      return "18+ ID check";
     case "minimum_age": {
       const age = gate.required_minimum_age ?? 18;
       if (locale === "ar") return `يتطلب التحقق من أن عمرك ${age}+`;
       if (locale === "zh") return `需要 ${age}+ 验证`;
-      return `Requires ${age}+ verification`;
+      return `${age}+ ID check`;
     }
     case "wallet_score":
       if (typeof gate.minimum_score === "number") {
         if (locale === "ar") return `يتطلب درجة Passport ${gate.minimum_score}+`;
         if (locale === "zh") return `需要 Passport 分数 ${gate.minimum_score}+`;
-        return `Requires Passport score ${gate.minimum_score}+`;
+        return `Passport Score ${gate.minimum_score}+`;
       }
       if (locale === "ar") return "يتطلب درجة Passport";
       if (locale === "zh") return "需要 Passport 分数";
-      return "Requires Passport score";
-    case "sanctions_clear":
-      if (gate.accepted_providers?.includes("passport") && !gate.accepted_providers.includes("self")) {
-        if (locale === "ar") return "يتطلب فحص العقوبات عبر Passport";
-        if (locale === "zh") return "需要 Passport 制裁筛查";
-        return "Requires Passport sanctions screening";
-      }
-      if (locale === "ar") return "يشمل فحص العقوبات";
-      if (locale === "zh") return "包含制裁筛查";
-      return "Includes sanctions screening";
+      return "Passport Score";
     case "erc721_holding": {
       const label = gate.contract_address ? shortenAddress(gate.contract_address) : null;
       if (locale === "ar") {
@@ -166,19 +164,19 @@ export function formatGateRequirement(
       if (locale === "zh") {
         return label ? `需要持有来自 ${label} 的以太坊 NFT` : "需要持有以太坊 NFT";
       }
-      return label ? `Requires Ethereum NFT from ${label}` : "Requires Ethereum NFT";
+      return label ? `Ethereum NFT from ${label}` : "Ethereum NFT";
     }
     case "erc721_inventory_match": {
       const quantity = gate.min_quantity ?? 1;
       const assetLabel = formatInventoryAssetLabel(gate);
       if (locale === "ar") return `يتطلب ${quantity} من مقتنيات Courtyard: ${assetLabel}`;
       if (locale === "zh") return `需要 ${quantity} 个 Courtyard 藏品：${assetLabel}`;
-      return `Requires ${quantity} Courtyard ${assetLabel}`;
+      return `${quantity} Courtyard ${assetLabel}`;
     }
     default:
       if (locale === "ar") return `يتطلب التحقق من ${gate.gate_type}`;
       if (locale === "zh") return `需要 ${gate.gate_type} 验证`;
-      return `Requires ${gate.gate_type} verification`;
+      return `${gate.gate_type} verification`;
   }
 }
 
@@ -266,7 +264,7 @@ export function getPassportPromptCapabilities(
   input: { missing_capabilities?: readonly string[] | null },
 ): MissingCapability[] {
   return (input.missing_capabilities ?? [])
-    .filter((capability): capability is MissingCapability => capability === "wallet_score" || capability === "sanctions_clear");
+    .filter((capability): capability is MissingCapability => capability === "wallet_score");
 }
 
 export function getVerificationRequirementsForGates(
@@ -279,19 +277,47 @@ export function getVerificationRequirementsForGates(
   if (minimumAges.length > 0) {
     requirements.push({ proof_type: "minimum_age", minimum_age: Math.max(...minimumAges) });
   }
-  if ((gates ?? []).some((gate) =>
-    gate.gate_type === "sanctions_clear"
-    && (gate.accepted_providers?.includes("self") ?? false)
-  )) {
-    requirements.push({ proof_type: "sanctions_clear" });
-  }
   return requirements;
 }
 
 export function resolveSuggestedVerificationProvider(
-  eligibility: Pick<JoinEligibility, "suggested_verification_provider">,
+  eligibility: Pick<JoinEligibility, "suggested_verification_provider"> & {
+    membership_gate_summaries?: MembershipGateSummary[] | null;
+    missing_capabilities?: readonly string[] | null;
+  },
 ): VerificationProvider {
-  return eligibility.suggested_verification_provider ?? "self";
+  if (eligibility.suggested_verification_provider) {
+    return eligibility.suggested_verification_provider;
+  }
+
+  const missingCapabilities = eligibility.missing_capabilities ?? [];
+  const gateSummaries = eligibility.membership_gate_summaries ?? [];
+
+  if (missingCapabilities.some((capability) => capability === "wallet_score")) {
+    return "passport";
+  }
+
+  if (missingCapabilities.some((capability) =>
+    capability === "age_over_18"
+    || capability === "minimum_age"
+    || capability === "nationality"
+    || capability === "gender"
+  )) {
+    return "self";
+  }
+
+  if (missingCapabilities.includes("unique_human")) {
+    const uniqueHumanGates = gateSummaries.filter((gate) => gate.gate_type === "unique_human");
+    if (uniqueHumanGates.some((gate) => gate.accepted_providers?.includes("very") ?? false)) {
+      return "very";
+    }
+    if (uniqueHumanGates.some((gate) => gate.accepted_providers?.includes("self") ?? false)) {
+      return "self";
+    }
+    return "very";
+  }
+
+  return "very";
 }
 
 export function getVerificationPromptCopy(
@@ -322,44 +348,30 @@ export function getVerificationPromptCopy(
     }
     return {
       title: "Verify with palm scan",
-      description: "Use the VeryAI app to scan your palm, then return to Pirate to continue. Download links appear if you need the app.",
+      description: "Scan your palm once with VeryAI to join any community that requires it. The photo is not saved anywhere.",
       actionLabel: "Verify with palm scan",
     };
   }
 
   if (provider === "passport") {
-    const needsSanctionsClear = capabilities.includes("sanctions_clear");
-    const needsWalletScore = capabilities.includes("wallet_score");
     if (locale === "ar") {
       return {
-        title: needsSanctionsClear && !needsWalletScore ? "فحص Passport مطلوب" : "درجة Passport مطلوبة",
-        description: needsSanctionsClear && !needsWalletScore
-          ? "أكمل فحص العقوبات في Passport ثم عد للانضمام."
-          : needsSanctionsClear
-            ? "أكمل فحوصات Passport المطلوبة ثم عد للانضمام."
-            : "ارفع درجة Passport ثم عد للانضمام.",
+        title: "درجة Passport مطلوبة",
+        description: "ارفع درجة Passport ثم عد للانضمام.",
         actionLabel: "فتح Passport",
       };
     }
     if (locale === "zh") {
       return {
-        title: needsSanctionsClear && !needsWalletScore ? "需要 Passport 筛查" : "需要 Passport 分数",
-        description: needsSanctionsClear && !needsWalletScore
-          ? "完成 Passport 制裁筛查后回来加入。"
-          : needsSanctionsClear
-            ? "完成所需 Passport 检查后回来加入。"
-            : "提高 Passport 分数后回来加入。",
+        title: "需要 Passport 分数",
+        description: "提高 Passport 分数后回来加入。",
         actionLabel: "打开 Passport",
       };
     }
     return {
-      title: needsSanctionsClear && !needsWalletScore ? "Passport screening required" : "Passport score required",
-      description: needsSanctionsClear && !needsWalletScore
-        ? "Complete Passport sanctions screening, then come back to join."
-        : needsSanctionsClear
-          ? "Complete the required Passport checks, then come back to join."
-          : "Improve your Passport score, then come back to join.",
-      actionLabel: "Open Passport",
+      title: "Score Too Low",
+      description: "Your wallet needs a Passport score of 20+ to enter this community. Visit app.passport.xyz to improve it.",
+      actionLabel: "Visit Passport.xyz",
     };
   }
 
@@ -431,24 +443,23 @@ export function getVerificationPromptCopy(
           actionLabel: "Verify with ID",
         };
       case "gender":
-      case "sanctions_clear":
         if (locale === "ar") {
           return {
             title: "تحقق بالهوية",
-            description: visibleCapabilities[0] === "sanctions_clear" ? "استخدم تطبيق Self لإكمال فحص العقوبات بالهوية، ثم عد إلى Pirate للمتابعة." : "استخدم تطبيق Self للتحقق من وثيقتك بخصوصية، ثم عد إلى Pirate للمتابعة.",
+            description: "استخدم تطبيق Self للتحقق من وثيقتك بخصوصية، ثم عد إلى Pirate للمتابعة.",
             actionLabel: "تحقق بالهوية",
           };
         }
         if (locale === "zh") {
           return {
             title: "使用身份证件验证",
-            description: visibleCapabilities[0] === "sanctions_clear" ? "使用 Self app 通过证件完成制裁筛查，然后回到 Pirate 继续。" : "使用 Self app 私密验证你的证件，然后回到 Pirate 继续。",
+            description: "使用 Self app 私密验证你的证件，然后回到 Pirate 继续。",
             actionLabel: "使用身份证件验证",
           };
         }
         return {
           title: "Verify with ID",
-          description: visibleCapabilities[0] === "sanctions_clear" ? "Self.xyz lets you complete the required screening without sharing your name, photo, or document details with anyone." : "Self.xyz lets you prove facts from your ID without sharing your name, photo, or document details with anyone.",
+          description: "Self.xyz lets you prove facts from your ID without sharing your name, photo, or document details with anyone.",
           actionLabel: "Verify with ID",
         };
       default:
@@ -465,7 +476,6 @@ export function getVerificationPromptCopy(
         case "gender": return "علامة الجنس في وثيقة Self";
         case "unique_human": return "إثبات أنك إنسان";
         case "wallet_score": return "درجة Passport";
-        case "sanctions_clear": return "فحص العقوبات";
       }
     }
     if (locale === "zh") {
@@ -476,7 +486,6 @@ export function getVerificationPromptCopy(
         case "gender": return "Self 证件性别标记";
         case "unique_human": return "真人状态";
         case "wallet_score": return "Passport 分数";
-        case "sanctions_clear": return "制裁筛查";
       }
     }
     switch (capability) {
@@ -486,7 +495,6 @@ export function getVerificationPromptCopy(
       case "gender": return "Self document marker";
       case "unique_human": return "unique human status";
       case "wallet_score": return "Passport score";
-      case "sanctions_clear": return "sanctions screening";
     }
   });
 
@@ -518,9 +526,9 @@ export function getGateFailureMessage(
   const locale = resolveCopyLocale(options?.locale);
   switch (details.failure_reason) {
     case "nationality_mismatch":
-      if (locale === "ar") return "لا تطابق جنسيتك الموثقة متطلبات هذا المجتمع.";
-      if (locale === "zh") return "你已验证的国籍不符合该社区的要求。";
-      return "Your verified nationality does not match this community's requirement.";
+      if (locale === "ar") return "لا يطابق فحص هويتك متطلبات هذا المجتمع.";
+      if (locale === "zh") return "你的身份验证结果不符合该社区要求。";
+      return "Your verified ID does not match this community's requirement.";
     case "gender_mismatch":
       if (locale === "ar") return "فحص هويتك لا يطابق قاعدة هذا المجتمع.";
       if (locale === "zh") return "你的证件验证结果不符合该社区规则。";

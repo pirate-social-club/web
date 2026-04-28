@@ -18,6 +18,7 @@
   },
   "appSidebar": {
     "brandLabel": "Pirate",
+    "agentsLabel": "وكلاؤك",
     "createCommunityLabel": "أنشئ مجتمعًا",
     "homeAriaLabel": "اذهب إلى الصفحة الرئيسية",
     "homeLabel": "الرئيسية",
@@ -59,6 +60,7 @@
     ],
     "resourceItems": [
       { "id": "blog", "label": "المدونة" },
+      { "id": "advertise", "label": "أعلن" },
       { "id": "terms-of-service", "label": "شروط الخدمة" },
       { "id": "privacy-policy", "label": "سياسة الخصوصية" }
     ],
@@ -68,6 +70,8 @@
     "feedSortTopLabel": "الأعلى"
   },
   "mobileFooter": {
+    "chatAriaLabel": "الرسائل",
+    "chatLabel": "الرسائل",
     "createLabel": "أنشئ",
     "homeLabel": "الرئيسية",
     "inboxAriaLabel": "الوارد",

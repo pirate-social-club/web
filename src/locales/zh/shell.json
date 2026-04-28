@@ -18,6 +18,7 @@
   },
   "appSidebar": {
     "brandLabel": "Pirate",
+    "agentsLabel": "你的代理",
     "createCommunityLabel": "创建社区",
     "homeAriaLabel": "返回首页",
     "homeLabel": "首页",
@@ -59,6 +60,7 @@
     ],
     "resourceItems": [
       { "id": "blog", "label": "博客" },
+      { "id": "advertise", "label": "投放广告" },
       { "id": "terms-of-service", "label": "服务条款" },
       { "id": "privacy-policy", "label": "隐私政策" }
     ],
@@ -68,6 +70,8 @@
     "feedSortTopLabel": "热门"
   },
   "mobileFooter": {
+    "chatAriaLabel": "消息",
+    "chatLabel": "消息",
     "createLabel": "发布",
     "homeLabel": "首页",
     "inboxAriaLabel": "收件箱",

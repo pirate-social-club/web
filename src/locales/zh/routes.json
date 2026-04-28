@@ -6,22 +6,27 @@
     "close": "关闭",
     "commentsHeading": "评论",
     "collapseReplies": "收起回复",
+    "collapseThread": "收起讨论串",
     "createAction": "发布",
     "cancelReply": "取消",
     "downvote": "反对",
     "downvoteComment": "给评论点踩",
     "expandReplies": "展开回复",
+    "expandThread": "展开讨论串",
     "joinedStatLabel": "加入时间",
     "loadMoreReplies": "加载更多回复",
     "loadReplies": "加载回复",
     "loading": "加载中...",
     "loadingReplies": "正在加载回复...",
+    "continueThread": "继续此讨论串",
     "newTab": "最新",
     "oldTab": "最早",
     "noComments": "还没有评论。",
     "noRecentCommunities": "还没有最近访问的社区。",
     "ownedBy": "归属于",
     "replyAction": "回复",
+    "replyCount": "{count} 条回复",
+    "replyCountOne": "1 条回复",
     "replyPlaceholder": "写回复",
     "showOriginal": "显示原文",
     "showRepliesCount": "显示 {count} 条回复",
@@ -163,6 +168,12 @@
       "replace": "替换"
     },
     "derivative": {
+      "acceptSourceTerms": "我理解并接受此混音所选来源的许可证条款。",
+      "licenseSource": "来源许可证",
+      "licenseUpstreamRoyalty": "上游版税",
+      "licenseParentIp": "Story 父级 IP",
+      "licenseTermsId": "许可证条款 ID",
+      "licenseNewRemixTerms": "新混音条款",
       "searchSourceTracks": "搜索源曲目"
     },
     "empty": {
@@ -179,6 +190,7 @@
       "caption": "说明",
       "commentary": "评论",
       "coverArt": "封面图",
+      "coverFrame": "封面帧",
       "genre": "流派",
       "image": "图片",
       "instrumentalStem": "伴奏分轨",
@@ -203,6 +215,30 @@
     },
     "labels": {
       "source": "来源"
+    },
+    "assetLicense": {
+      "song": {
+        "non-commercial": "仅限非商业",
+        "non-commercialDescription": "听众可以私下使用这首歌，但不能用于商业发行。",
+        "commercial-use": "商业使用",
+        "commercial-useDescription": "他人可以通过原曲获利，但不能发行混音版本。",
+        "commercial-remix": "商业混音",
+        "commercial-remixDescription": "他人可以通过你的歌曲获利并发布混音版本。",
+        "revenueShare": "收入分成",
+        "revenueShareDescription": "选择衍生混音收入需要回流给这首原曲的比例。",
+        "revenueShareRange": "0% 到 100%"
+      },
+      "video": {
+        "non-commercial": "仅限非商业",
+        "non-commercialDescription": "观众可以私下使用这个视频，但不能用于商业发行。",
+        "commercial-use": "商业使用",
+        "commercial-useDescription": "他人可以通过原始视频获利，但不能发布衍生视频。",
+        "commercial-remix": "商业衍生作品",
+        "commercial-remixDescription": "他人可以使用你的作品获利并发布衍生视频。",
+        "revenueShare": "收入分成",
+        "revenueShareDescription": "设置衍生视频收入支付给这个原始视频的比例。",
+        "revenueShareRange": "0% 到 100%"
+      }
     },
     "membershipRequiredDescription": "只有社区成员才能在这里发帖。",
     "membershipRequiredTitle": "发帖前先加入这个社区",
@@ -232,7 +268,8 @@
       "audience": "受众",
       "postAs": "发布身份",
       "qualifiers": "资格标签",
-      "sourceTrack": "源曲目"
+      "sourceTrack": "源曲目",
+      "license": "许可证"
     },
     "setlist": {
       "cannotFindTrack": "找不到这首歌？",
@@ -304,13 +341,11 @@
   "onboarding": {
     "redditImport": {
       "title": "验证 Reddit",
-      "subtitle": "将你在 Reddit 上的活动带到 Pirate，以获取更好的名称和推荐。",
-      "activityReady": "你的 Reddit 活动已准备就绪。",
-      "importedUser": "已导入 u/{username}",
-      "importedScore": "导入的 Reddit 积分",
-      "topSubreddits": "热门 subreddit",
+      "subtitle": "提供你的 Reddit 用户名，以获得更好的 .pirate 域名和个性化推荐。",
+      "doneTitle": "已导入！",
+      "doneSubtitle": "你的 karma 已导入。你可以领取 {domainLength} 字符的 .pirate 域名。",
       "notFound": "未找到",
-      "loading": "加载中...",
+      "loading": "正在导入...",
       "pasteIntoProfile": "粘贴到你的",
       "redditProfileDescription": "Reddit 个人资料简介"
     },
@@ -322,6 +357,7 @@
       "notAvailable": "不可用"
     },
     "actions": {
+      "back": "返回",
       "generateHandle": "生成新名称",
       "checkAgain": "重新检查",
       "continue": "继续",
@@ -340,7 +376,7 @@
       "redditCode": "Reddit {surface} 验证码",
       "redditUsername": "Reddit 用户名"
     },
-    "importKarmaAction": "导入 Karma",
+    "importKarmaAction": "导入 Reddit Karma",
     "notes": {
       "addCodeToProfile": "把这段代码添加到你的 Reddit 个人资料简介中：",
       "checkedRedditAt": "已在 {time} 检查 Reddit。代码还没有显示出来。保存个人资料后，等待几秒，再点击“重新检查”。",
@@ -378,17 +414,22 @@
   "inbox": {
     "body": "在通知或消息系统成为真实产品界面前，先把 `/inbox` 保持为中性的占位页。",
     "description": "这个路由已搭好外壳，这样移动端导航就能指向一个真实存在的位置，同时保留收件箱行为的后续定义空间。",
+    "emptyChatsState": "还没有聊天",
     "emptyState": "还没有通知",
     "loading": "加载中...",
-    "recentActivity": "最近动态",
+    "notificationsTab": "通知",
     "someone": "有人",
-    "taskActionNeeded": "需要处理",
     "taskDismiss": "忽略",
     "taskNamespaceVerificationRequired": "验证你的社区命名空间",
     "taskVerify": "验证",
     "title": "收件箱",
     "eventCommentReply": "{actor} 回复了你的评论",
-    "eventPostCommented": "{actor} 评论了你的帖子"
+    "eventPostCommented": "{actor} 评论了你的帖子",
+    "installPromoTitle": "安装 Pirate",
+    "installPromoBody": "把 Pirate 放到主屏幕上，绝不错过任何一笔款项。",
+    "installPromoAction": "安装",
+    "installPromoDismiss": "以后再说",
+    "installPromoIOSInstructions": "点击下方分享按钮，然后向下滚动并点击\"添加到主屏幕\"。"
   },
   "createCommunity": {
     "reopenVerification": "重新打开验证",
@@ -435,7 +476,6 @@
       "clear": "清除",
       "membershipSection": "成员资格",
       "gateChecksTitle": "门槛检查",
-      "gateChecksDescription": "发布前至少选择一个门槛。",
       "nationalityTitle": "国籍验证",
       "nationalityDescription": "要求成员在加入前通过 Self 验证国籍。",
       "allowedNationalityLabel": "允许的国籍",
@@ -565,11 +605,17 @@
     "videosTab": "视频"
   },
   "publicAgent": {
+    "aboutDescription": "这个代理的帖子和评论会以其规范的 .clawitzer 身份出现在 Pirate 各个社区中。",
+    "aboutTitle": "关于",
+    "activeSinceLabel": "活跃自",
+    "emptyCommunities": "这个代理的社区活动会显示在这里。",
     "errorDescription": "当前无法加载这个公开代理。",
     "errorTitle": "公开代理",
     "notFoundDescription": "找不到 {path} 的公开代理。",
     "notFoundTitle": "找不到代理",
+    "openInPirate": "在 Pirate 中打开",
     "ownerLabel": "所有者",
+    "premiumNamesComingSoon": "高级名称会在后续版本中开放。",
     "providerLabel": "提供方"
   },
   "publicCommunity": {
@@ -589,6 +635,8 @@
     "advanced": "高级",
     "agentRegisteredToast": "代理已注册",
     "agentsTitle": "代理",
+    "activeAgentExistsDescription": "公开 v0 每个已验证真人只能有一个已激活的 OpenClaw 代理。",
+    "activeAgentExistsTitle": "代理已连接",
     "checkStatus": "检查状态",
     "completeAgentRegistrationError": "无法完成代理注册。",
     "connectAction": "连接 OpenClaw",
@@ -612,6 +660,7 @@
     "openClawKey": "打开 ClawKey",
     "ownedAgentsLoadError": "无法加载代理。",
     "ownedAgentsLocalTablesError": "本地 API 缺少代理表。请重启 pirate-api 开发服务器。",
+    "pairingStepInstallPlugin": "如果尚未安装，请先安装 Pirate Connector：",
     "pairingStepInstall": "在已安装 Pirate Connector 的 OpenClaw 中输入：connect to Pirate with code {code}",
     "pairingStepOpen": "然后打开 OpenClaw 发送给你的 ClawKey 链接。",
     "pasteChallengePlaceholder": "粘贴 OpenClaw challenge JSON",
@@ -620,9 +669,14 @@
     "registerAction": "使用 ClawKey 注册",
     "registrationIncompleteError": "代理注册未完成。",
     "saveHandleAction": "保存标识",
+    "saveChangesAction": "保存更改",
     "saveHandleError": "无法保存代理标识。",
     "saveNameAction": "保存名称",
     "saveNameError": "无法保存代理名称。",
+    "premiumNamesComingSoon": "高级名称会在后续版本中开放。",
+    "verificationRequiredAction": "立即验证",
+    "verificationRequiredDescription": "要连接 OpenClaw，Pirate 需要确认有真人为这个代理负责。",
+    "verificationRequiredTitle": "先验证",
     "verifiedAt": "{provider} · 已验证于 {date}"
   },
   "settings": {
@@ -643,6 +697,7 @@
     "coverSourceEns": "使用来自 {handle} 的 ENS 封面",
     "coverSourceNone": "未选择封面",
     "coverSourceUpload": "已上传封面",
+    "coverSizeHint": "1500×500 推荐",
     "coverTitle": "封面",
     "currentHandleLabel": "当前用户名",
     "displayNameLabel": "显示名称",
@@ -650,6 +705,9 @@
     "editProfileDescription": "更新你的显示名称、简介或用户名。",
     "editProfileTitle": "编辑资料",
     "profileSectionTitle": "个人资料",
+    "installAppLabel": "安装应用",
+    "installAppDescription": "在应用图标上显示未读角标，从程序坞启动 Pirate。",
+    "installAppIOSInstructions": "点击下方分享按钮，然后向下滚动并点击\"添加到主屏幕\"。",
     "handleCheckFailed": "无法检查可用性。",
     "handleNoteEns": "ENS",
     "handleNoteEnsRefresh": "ENS 需要刷新",
@@ -876,6 +934,7 @@
       "removeCover": "移除封面",
       "replaceCover": "更换封面",
       "uploadCover": "上传封面",
+      "coverSizeHint": "1500×500 推荐",
       "coverTitle": "封面照片",
       "profileTitle": "个人资料",
       "nameLabel": "名称",
@@ -1030,5 +1089,103 @@
     "balanceLater": "稍后",
     "noAssetsYet": "还没有资产。",
     "later": "稍后。"
+  },
+  "routeStatus": {
+    "chat": {
+      "auth": "Sign in to use messages.",
+      "failure": "Messages could not be loaded right now.",
+      "incomplete": "The messages response was incomplete. Try loading it again.",
+      "title": "Messages"
+    },
+    "community": {
+      "auth": "Sign in to view this community.",
+      "failure": "The community could not be loaded right now.",
+      "incomplete": "The community response was incomplete. Try loading it again.",
+      "title": "Community",
+      "createPost": "Create Post",
+      "modTools": "Mod Tools"
+    },
+    "createCommunity": {
+      "auth": "Sign in to create a community.",
+      "failure": "The create community page could not be loaded right now.",
+      "incomplete": "The create community response was incomplete. Try loading it again.",
+      "title": "Create a community",
+      "verifyDescription": "Verify before creating a community.",
+      "verifyPendingDescription": "Complete your palm scan to continue.",
+      "verifyPendingTitle": "Finish verification",
+      "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+      "verifyStartTitle": "Verify",
+      "reopenVerification": "Reopen verification",
+      "startVerification": "Start verification"
+    },
+    "createPost": {
+      "auth": "Sign in to create a post.",
+      "failure": "The post composer could not be loaded right now.",
+      "incomplete": "The community response was incomplete. Try loading the composer again.",
+      "title": "Create post",
+      "backToCommunity": "Back to community",
+      "membershipRequiredDescription": "Only community members can publish posts here.",
+      "membershipRequiredTitle": "Join this community before posting"
+    },
+    "home": {
+      "auth": "Sign in to view your home feed.",
+      "failure": "The home feed could not be loaded right now.",
+      "incomplete": "The home feed response was incomplete. Try loading it again.",
+      "title": "Home",
+      "createCommunity": "Create community",
+      "emptyHomeBody": "Join a community or create one to start building your home feed.",
+      "emptyHomeTitle": "No posts yet",
+      "emptyYourCommunitiesBody": "Communities you create or join show up here.",
+      "emptyYourCommunitiesTitle": "No communities yet"
+    },
+    "inbox": {
+      "auth": "Sign in to view your inbox.",
+      "failure": "The inbox could not be loaded right now.",
+      "incomplete": "The inbox response was incomplete. Try loading it again.",
+      "title": "Inbox"
+    },
+    "moderation": {
+      "auth": "Sign in to access mod tools.",
+      "failure": "This moderation page could not be loaded right now.",
+      "incomplete": "The community response was incomplete.",
+      "title": "Moderator tools",
+      "accessRequiredDescription": "Only community moderators can open this page.",
+      "accessRequiredTitle": "Moderator access required"
+    },
+    "onboarding": {
+      "auth": "Sign in to continue onboarding.",
+      "failure": "The onboarding flow could not be loaded right now.",
+      "incomplete": "The onboarding response was incomplete. Try loading it again."
+    },
+    "post": {
+      "auth": "Sign in to view this post.",
+      "failure": "The post could not be loaded right now.",
+      "incomplete": "The post response was incomplete. Try loading it again.",
+      "title": "Post"
+    },
+    "profile": {
+      "auth": "Sign in to view your profile.",
+      "failure": "The profile could not be loaded right now.",
+      "incomplete": "The profile response was incomplete. Try loading it again.",
+      "title": "Profile"
+    },
+    "settings": {
+      "auth": "Sign in to access settings.",
+      "failure": "The settings page could not be loaded right now.",
+      "incomplete": "The settings response was incomplete. Try loading it again.",
+      "title": "Settings"
+    },
+    "wallet": {
+      "auth": "Sign in to view your wallet.",
+      "failure": "The wallet could not be loaded right now.",
+      "incomplete": "The wallet response was incomplete. Try loading it again.",
+      "title": "Wallet"
+    },
+    "yourCommunities": {
+      "auth": "Sign in to view your communities.",
+      "failure": "Your communities could not be loaded right now.",
+      "incomplete": "Your communities response was incomplete. Try loading it again.",
+      "title": "Your Communities"
+    }
   }
 }

@@ -1,0 +1,236 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import * as React from "react";
+
+import { Button } from "@/components/primitives/button";
+import {
+  Modal,
+  ModalContent,
+  ModalDescription,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+} from "@/components/compositions/system/modal/modal";
+import { Type } from "@/components/primitives/type";
+
+const meta = {
+  title: "Compositions/System/Modal",
+  component: ModalContent,
+  args: {
+    mobileSide: "bottom",
+  },
+} satisfies Meta<typeof ModalContent>;
+
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+function ModalShell({
+  forceMobile,
+  mobileSide,
+  title,
+  description,
+  body,
+  footer,
+}: {
+  forceMobile?: boolean;
+  mobileSide?: "top" | "bottom" | "left" | "right";
+  title: string;
+  description: string;
+  body?: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(true);
+  const isBottomSheet =
+    forceMobile !== false
+    && (mobileSide === undefined || mobileSide === "bottom");
+
+  return (
+    <div className="flex min-h-[720px] items-center justify-center bg-background p-6">
+      {!open ? <Button onClick={() => setOpen(true)}>Reopen modal</Button> : null}
+      <Modal forceMobile={forceMobile} onOpenChange={setOpen} open={open}>
+        <ModalContent
+          className={
+            isBottomSheet
+              ? "border-border bg-background px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3"
+              : "border-border bg-background p-6 sm:w-[min(100%-2rem,34rem)] sm:max-w-[34rem]"
+          }
+          mobileSide={mobileSide}
+        >
+          {isBottomSheet ? (
+            <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-border" />
+          ) : null}
+          <ModalHeader className="pr-10 text-left">
+            <ModalTitle className="text-balance text-2xl leading-tight tracking-tight sm:text-3xl">
+              {title}
+            </ModalTitle>
+            <ModalDescription className="max-w-[34ch] text-base leading-7">
+              {description}
+            </ModalDescription>
+          </ModalHeader>
+          {body}
+          {footer ? (
+            <ModalFooter className="mt-6 border-t border-border/70 pt-4 sm:pt-5">
+              {footer}
+            </ModalFooter>
+          ) : null}
+        </ModalContent>
+      </Modal>
+    </div>
+  );
+}
+
+export const DesktopDialog: Story = {
+  name: "Desktop (Dialog)",
+  parameters: {
+    viewport: { defaultViewport: "desktop" },
+  },
+  render: () => (
+    <ModalShell
+      description="Add a small amount to your wallet to unlock the full track and keep it in your library."
+      forceMobile={false}
+      footer={(
+        <>
+          <Button size="lg" variant="outline">Maybe later</Button>
+          <Button size="lg">Add funds</Button>
+        </>
+      )}
+      title="Unlock this content"
+    />
+  ),
+};
+
+export const MobileSheetBottom: Story = {
+  name: "Mobile (Sheet - bottom)",
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <ModalShell
+      description="Add a small amount to your wallet to unlock the full track and keep it in your library."
+      forceMobile
+      footer={(
+        <>
+          <Button className="w-full" size="lg" variant="outline">Maybe later</Button>
+          <Button className="w-full" size="lg">Add funds</Button>
+        </>
+      )}
+      mobileSide="bottom"
+      title="Unlock this content"
+    />
+  ),
+};
+
+export const MobileSheetRight: Story = {
+  name: "Desktop (Dialog / Compact)",
+  parameters: {
+    viewport: { defaultViewport: "desktop" },
+  },
+  render: () => (
+    <ModalShell
+      description="Add funds to continue."
+      forceMobile={false}
+      footer={(
+        <>
+          <Button size="lg" variant="outline">Cancel</Button>
+          <Button size="lg">Add funds</Button>
+        </>
+      )}
+      title="Unlock this content"
+    />
+  ),
+};
+
+export const PurchaseFlow: Story = {
+  name: "Purchase Flow",
+  parameters: {
+    viewport: { defaultViewport: "desktop" },
+  },
+  render: () => (
+    <ModalShell
+      body={(
+        <div className="mt-6 grid gap-4">
+          <div className="rounded-[var(--radius-1_5xl)] border border-border bg-muted/35 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
+                  Needed now
+                </p>
+                <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">$0.50</p>
+              </div>
+              <Type as="span" variant="caption">Instant unlock</Type>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
+                Track price
+              </p>
+              <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.50</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
+                Wallet balance
+              </p>
+              <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.00</p>
+            </div>
+          </div>
+        </div>
+      )}
+      description="Add funds to continue."
+      forceMobile={false}
+      footer={(
+        <>
+          <Button size="lg" variant="outline">View wallet</Button>
+          <Button size="lg">Add test funds</Button>
+        </>
+      )}
+      title="Add funds to unlock"
+    />
+  ),
+};
+
+export const PurchaseFlowMobile: Story = {
+  name: "Purchase Flow (Mobile)",
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <ModalShell
+      body={(
+        <div className="mt-6 grid gap-3.5">
+          <div className="rounded-[var(--radius-1_5xl)] border border-border bg-muted/35 p-4">
+            <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
+              Needed now
+            </p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">$0.50</p>
+          </div>
+
+          <div className="grid gap-3">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
+                Track price
+              </p>
+              <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.50</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
+                Wallet balance
+              </p>
+              <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.00</p>
+            </div>
+          </div>
+        </div>
+      )}
+      description="Add funds to continue."
+      forceMobile
+      footer={(
+        <>
+          <Button className="w-full" size="lg" variant="outline">View wallet</Button>
+          <Button className="w-full" size="lg">Add test funds</Button>
+        </>
+      )}
+      title="Add funds to unlock"
+    />
+  ),
+};

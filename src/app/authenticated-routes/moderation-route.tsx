@@ -5,22 +5,22 @@ import { isAddress } from "viem";
 import type { MembershipRequestSummary } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
-import { CommunityDonationsEditorPage } from "@/components/compositions/community-donations-editor/community-donations-editor-page";
-import { CommunityGatesEditorPage } from "@/components/compositions/community-gates-editor/community-gates-editor-page";
-import { CommunityLabelsEditorPage } from "@/components/compositions/community-labels-editor/community-labels-editor-page";
-import { CommunityLinksEditorPage, createEmptyCommunityLinkEditorItem } from "@/components/compositions/community-links-editor/community-links-editor-page";
-import { CommunityMembershipRequestsPage } from "@/components/compositions/community-membership-requests-page/community-membership-requests-page";
-import { CommunityModerationIndexPage as CommunityModerationIndexPageView } from "@/components/compositions/community-moderation-index-page/community-moderation-index-page";
-import { CommunityModerationShell } from "@/components/compositions/community-moderation-shell/community-moderation-shell";
-import { CommunityProfileEditorPage } from "@/components/compositions/community-profile-editor/community-profile-editor-page";
-import { CommunityNamespaceVerificationPage } from "@/components/compositions/community-namespace-verification-page/community-namespace-verification-page";
-import { CommunityPricingEditorPage } from "@/components/compositions/community-pricing-editor/community-pricing-editor-page";
-import { CommunityRulesEditorPage } from "@/components/compositions/community-rules-editor/community-rules-editor-page";
-import { CommunityAgentPolicyPage } from "@/components/compositions/community-agent-policy/community-agent-policy";
-import { CommunityMachineAccessPage } from "@/components/compositions/community-machine-access/community-machine-access";
-import { CommunitySafetyPage } from "@/components/compositions/community-safety-page/community-safety-page";
-import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
-import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
+import { CommunityDonationsEditorPage } from "@/components/compositions/community/donations-editor/community-donations-editor-page";
+import { CommunityGatesEditorPage } from "@/components/compositions/community/gates-editor/community-gates-editor-page";
+import { CommunityLabelsEditorPage } from "@/components/compositions/community/labels-editor/community-labels-editor-page";
+import { CommunityLinksEditorPage, createEmptyCommunityLinkEditorItem } from "@/components/compositions/community/links-editor/community-links-editor-page";
+import { CommunityMembershipRequestsPage } from "@/components/compositions/community/membership-requests-page/community-membership-requests-page";
+import { CommunityModerationIndexPage as CommunityModerationIndexPageView } from "@/components/compositions/community/moderation-index-page/community-moderation-index-page";
+import { CommunityModerationShell } from "@/components/compositions/community/moderation-shell/community-moderation-shell";
+import { CommunityProfileEditorPage } from "@/components/compositions/community/profile-editor/community-profile-editor-page";
+import { CommunityNamespaceVerificationPage } from "@/components/compositions/community/namespace-verification-page/community-namespace-verification-page";
+import { CommunityPricingEditorPage } from "@/components/compositions/community/pricing-editor/community-pricing-editor-page";
+import { CommunityRulesEditorPage } from "@/components/compositions/community/rules-editor/community-rules-editor-page";
+import { CommunityAgentPolicyPage } from "@/components/compositions/community/agent-policy/community-agent-policy";
+import { CommunityMachineAccessPage } from "@/components/compositions/community/machine-access/community-machine-access";
+import { CommunitySafetyPage } from "@/components/compositions/community/safety-page/community-safety-page";
+import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
+import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
@@ -28,16 +28,15 @@ import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 import { normalizeCountryCode } from "@/lib/countries";
 import { isValidCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 
-import { CommunityModerationGuard, getCommunityModerationTitle } from "./moderation-data";
+import { CommunityModerationGuard, getCommunityModerationTitle } from "@/app/authenticated-helpers/moderation-route-helpers";
 import {
   buildCommunityModerationIndexPath,
   buildCommunityModerationSections,
   type CommunityModerationSection,
-} from "./moderation-helpers";
-import { getRouteFailureDescription } from "./route-status-copy";
-import { useCommunityModerationState } from "./moderation-state";
-import { useRouteMessages } from "./route-core";
-import { FullPageSpinner, RouteLoadFailureState } from "./route-shell";
+} from "@/app/authenticated-helpers/moderation-helpers";
+import { useCommunityModerationState } from "@/app/authenticated-state/moderation-state";
+import { useRouteMessages } from "@/hooks/use-route-messages";
+import { FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 
 function useIsModerationMobileLayout() {
   const [isMobileLayout, setIsMobileLayout] = React.useState(() => {
@@ -141,6 +140,11 @@ export function CommunityModerationIndexPage({
     session: state.session,
     showInlineTitle: !isMobile,
     title: copy.moderation.index.title,
+    authDescription: copy.routeStatus.moderation.auth,
+    failureDescription: copy.routeStatus.moderation.failure,
+    incompleteDescription: copy.routeStatus.moderation.incomplete,
+    accessRequiredDescription: copy.routeStatus.moderation.accessRequiredDescription,
+    accessRequiredTitle: copy.routeStatus.moderation.accessRequiredTitle,
   });
   const content = blocked ?? (
     <CommunityModerationIndexPageView
@@ -206,6 +210,11 @@ export function CommunityModerationPage({
     session: state.session,
     showInlineTitle: !isMobile,
     title,
+    authDescription: copy.routeStatus.moderation.auth,
+    failureDescription: copy.routeStatus.moderation.failure,
+    incompleteDescription: copy.routeStatus.moderation.incomplete,
+    accessRequiredDescription: copy.routeStatus.moderation.accessRequiredDescription,
+    accessRequiredTitle: copy.routeStatus.moderation.accessRequiredTitle,
   });
   const hasBlockedState = Boolean(blocked);
 
@@ -390,7 +399,7 @@ export function CommunityModerationPage({
             <RouteLoadFailureState
               description={state.pricingPolicyError instanceof Error
                 ? state.pricingPolicyError.message
-                : getRouteFailureDescription("moderation")}
+                : copy.routeStatus.moderation.failure}
               title="Pricing"
             />
           )

@@ -11,6 +11,10 @@ function requireRequest(request: Request | null): Request {
   return request;
 }
 
+function makeTestFile(name: string, type: string): File {
+  return new File([new Uint8Array([1, 2, 3, 4])], name, { type });
+}
+
 describe("ApiClient media uploads", () => {
   test("sends FormData without forcing a JSON content type", async () => {
     let request: Request | null = null;
@@ -34,7 +38,7 @@ describe("ApiClient media uploads", () => {
 
       await client.communities.uploadMedia({
         kind: "avatar",
-        file: new File([new Uint8Array([1, 2, 3, 4])], "avatar.png", { type: "image/png" }),
+        file: makeTestFile("avatar.png", "image/png"),
       });
 
       const capturedRequest = requireRequest(request);
@@ -119,7 +123,7 @@ describe("ApiClient media uploads", () => {
 
       await client.profiles.uploadMedia({
         kind: "cover",
-        file: new File([new Uint8Array([1, 2, 3, 4])], "cover.png", { type: "image/png" }),
+        file: makeTestFile("cover.png", "image/png"),
       });
 
       const capturedRequest = requireRequest(request);
@@ -156,7 +160,7 @@ describe("ApiClient media uploads", () => {
 
       await client.communities.uploadMedia({
         kind: "post_image",
-        file: new File([new Uint8Array([1, 2, 3, 4])], "post.gif", { type: "image/gif" }),
+        file: makeTestFile("post.gif", "image/gif"),
       });
 
       const capturedRequest = requireRequest(request);

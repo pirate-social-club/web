@@ -3,8 +3,9 @@
 import * as React from "react";
 
 import { useApi } from "@/lib/api";
+import { isApiNotFoundError } from "@/lib/api/client";
 import { useSession } from "@/lib/api/session-store";
-import { useKnownCommunities } from "@/lib/known-communities-store";
+import { forgetKnownCommunity, useKnownCommunities } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import { getProfileHandleLabel } from "@/lib/profile-routing";
 
@@ -21,7 +22,7 @@ function sortCommunities(communities: SidebarCommunitySummary[]): SidebarCommuni
 }
 
 function mergeCommunities(
-  knownCommunities: ReturnType<typeof useKnownCommunities>,
+  knownCommunities: SidebarCommunitySummary[],
   ownedCommunities: SidebarCommunitySummary[],
 ): SidebarCommunitySummary[] {
   const merged = new Map<string, SidebarCommunitySummary>();
@@ -50,6 +51,83 @@ function mergeCommunities(
   return sortCommunities([...merged.values()]);
 }
 
+function useValidatedKnownCommunities(ownedCommunities: SidebarCommunitySummary[]): SidebarCommunitySummary[] {
+  const api = useApi();
+  const knownCommunities = useKnownCommunities();
+  const [invalidCommunityIds, setInvalidCommunityIds] = React.useState<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    const knownCommunityIds = new Set(knownCommunities.map((community) => community.communityId));
+    setInvalidCommunityIds((current) => {
+      const next = new Set([...current].filter((communityId) => knownCommunityIds.has(communityId)));
+      return next.size === current.size ? current : next;
+    });
+  }, [knownCommunities]);
+
+  React.useEffect(() => {
+    const ownedCommunityIds = new Set(ownedCommunities.map((community) => community.communityId));
+    const candidates = knownCommunities.filter(
+      (community) => !ownedCommunityIds.has(community.communityId) && !invalidCommunityIds.has(community.communityId),
+    );
+    if (candidates.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void Promise.all(candidates.map(async (community) => {
+      try {
+        await api.publicCommunities.get(community.communityId);
+        return { communityId: community.communityId, valid: true } as const;
+      } catch (error) {
+        if (isApiNotFoundError(error)) {
+          return { communityId: community.communityId, valid: false } as const;
+        }
+        return { communityId: community.communityId, valid: true } as const;
+      }
+    })).then((results) => {
+      if (cancelled) return;
+      const nextInvalidIds = results
+        .filter((result) => !result.valid)
+        .map((result) => result.communityId);
+      if (nextInvalidIds.length === 0) return;
+
+      setInvalidCommunityIds((current) => {
+        const next = new Set(current);
+        for (const communityId of nextInvalidIds) {
+          next.add(communityId);
+        }
+        return next;
+      });
+
+      for (const communityId of nextInvalidIds) {
+        forgetKnownCommunity(communityId);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, invalidCommunityIds, knownCommunities, ownedCommunities]);
+
+  return React.useMemo(
+    () => knownCommunities
+      .filter((community) => !invalidCommunityIds.has(community.communityId))
+      .map((community) => ({
+        avatarSrc: community.avatarSrc,
+        communityId: community.communityId,
+        displayName: community.displayName,
+        routeSlug: null,
+        updatedAt: community.updatedAt,
+      })),
+    [invalidCommunityIds, knownCommunities],
+  );
+}
+
+export function useRecentCommunities(): SidebarCommunitySummary[] {
+  return useValidatedKnownCommunities([]);
+}
+
 export function useSidebarCommunities(): {
   communities: SidebarCommunitySummary[];
   error: unknown;
@@ -59,7 +137,6 @@ export function useSidebarCommunities(): {
 } {
   const api = useApi();
   const session = useSession();
-  const knownCommunities = useKnownCommunities();
   const [ownedCommunities, setOwnedCommunities] = React.useState<SidebarCommunitySummary[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<unknown>(null);
@@ -79,7 +156,7 @@ export function useSidebarCommunities(): {
 
     setLoading(true);
     setError(null);
-    logger.info("[your-communities] loading created communities", { handleLabel });
+    logger.debug("[your-communities] loading created communities", { handleLabel });
 
     void api.publicProfiles.getByHandle(handleLabel)
       .then((result) => {
@@ -93,7 +170,7 @@ export function useSidebarCommunities(): {
           updatedAt: community.created_at,
         })));
 
-        logger.info("[your-communities] loaded created communities", {
+        logger.debug("[your-communities] loaded created communities", {
           count: nextOwnedCommunities.length,
           handleLabel,
         });
@@ -117,6 +194,8 @@ export function useSidebarCommunities(): {
       cancelled = true;
     };
   }, [api, handleLabel]);
+
+  const knownCommunities = useValidatedKnownCommunities(ownedCommunities);
 
   const recentCommunities = React.useMemo(
     () => mergeCommunities(knownCommunities, ownedCommunities),

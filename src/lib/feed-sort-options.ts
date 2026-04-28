@@ -1,4 +1,4 @@
-import type { FeedSortOption, TopTimeRangeOption } from "@/components/compositions/feed/feed";
+import type { FeedSortOption, TopTimeRangeOption } from "@/components/compositions/posts/feed/feed";
 import type { getLocaleMessages } from "@/locales";
 
 type CommonRouteCopy = ReturnType<typeof getLocaleMessages<"routes">>["common"];

@@ -6,23 +6,29 @@ import type { RedditImportSummary as ApiRedditImportSummary } from "@pirate/api-
 import type { RedditVerification as ApiRedditVerification } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
+import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { useApi } from "@/lib/api";
 import { updateSessionOnboarding, updateSessionProfile, useSession } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { resolveOnboardingPhase } from "@/lib/onboarding";
-import { type OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
+import { generateRedditFallbackHandle } from "@/lib/reddit-handle-suggestion";
+import { useVeryVerification } from "@/lib/verification/use-very-verification";
+import { type OnboardingPhase } from "@/components/compositions/onboarding/reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type {
   HandleSuggestion,
   ImportJobState,
   RedditImportSummaryState,
   RedditVerificationState,
-} from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
-import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap";
+} from "@/components/compositions/onboarding/reddit-bootstrap/onboarding-reddit-bootstrap.types";
+import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding/reddit-bootstrap/onboarding-reddit-bootstrap";
+import { OnboardingVerificationGate } from "@/components/compositions/verification/onboarding-verification-gate/onboarding-verification-gate";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-import { getErrorMessage, useClientHydrated, useRouteMessages } from "./route-core";
-import { getRouteAuthDescription, getRouteFailureDescription } from "./route-status-copy";
-import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "./route-shell";
+import { useClientHydrated } from "@/hooks/use-client-hydrated";
+import { useRouteMessages } from "@/hooks/use-route-messages";
+import { getErrorMessage } from "@/lib/error-utils";
+import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 
 function mapRedditVerification(apiResult: ApiRedditVerification, usernameValue: string): RedditVerificationState {
   const stateMap: Record<string, RedditVerificationState["verificationState"]> = {
@@ -69,22 +75,10 @@ function normalizeHandleLabel(value: string): string {
 }
 
 function mapRedditImportSummary(summary: ApiRedditImportSummary): RedditImportSummaryState {
-  const legacySummary = summary as ApiRedditImportSummary & { global_karma?: number | null };
   return {
     redditUsername: summary.reddit_username,
-    importedRedditScore: summary.imported_reddit_score ?? legacySummary.global_karma ?? null,
-    topSubreddits: summary.top_subreddits.map((entry) => ({
-      subreddit: entry.subreddit,
-      karma: entry.karma ?? null,
-      posts: entry.posts ?? null,
-      rankSource: entry.rank_source ?? undefined,
-    })),
+    importedRedditScore: summary.imported_reddit_score ?? null,
     coverageNote: summary.coverage_note ?? null,
-    suggestedCommunities: summary.suggested_communities.map((community) => ({
-      communityId: community.community_id,
-      name: community.name,
-      reason: community.reason,
-    })),
   };
 }
 
@@ -97,10 +91,16 @@ function quoteToHandleSuggestion(username: string, eligible: boolean, reason?: s
   };
 }
 
+function isHumanVerificationRequest(): boolean {
+  return typeof window !== "undefined"
+    && new URLSearchParams(window.location.search).get("verify") === "human";
+}
+
 export function OnboardingPage() {
   const { copy } = useRouteMessages();
   const api = useApi();
   const hydrated = useClientHydrated();
+  const isMobile = useIsMobile();
   const session = useSession();
   const [phase, setPhase] = React.useState<OnboardingPhase>("import_karma");
   const [loading, setLoading] = React.useState(true);
@@ -114,6 +114,19 @@ export function OnboardingPage() {
   const [generatedHandle, setGeneratedHandle] = React.useState("");
   const [actionLoading, setActionLoading] = React.useState(false);
 
+  const quoteHandleCandidate = React.useCallback(async (desiredLabel: string): Promise<boolean> => {
+    const label = desiredLabel.trim().replace(/\.pirate$/iu, "");
+
+    try {
+      const quote = await api.profiles.quoteHandleUpgrade(label);
+      setHandleSuggestion(quoteToHandleSuggestion(label, quote.eligible, quote.reason));
+      return quote.eligible;
+    } catch {
+      setHandleSuggestion(quoteToHandleSuggestion(label, false, "Handle claim needs review"));
+      return false;
+    }
+  }, [api]);
+
   const refreshRedditImportBenefits = React.useCallback(async (preferredUsername?: string | null) => {
     const summary = await api.onboarding.getLatestRedditImport();
     const mappedSummary = mapRedditImportSummary(summary);
@@ -125,15 +138,55 @@ export function OnboardingPage() {
       verifiedUsername: username,
       verificationState: "verified",
     }));
-    setGeneratedHandle(username);
 
-    try {
-      const quote = await api.profiles.quoteHandleUpgrade(username);
-      setHandleSuggestion(quoteToHandleSuggestion(username, quote.eligible, quote.reason));
-    } catch {
-      setHandleSuggestion(quoteToHandleSuggestion(username, false, "Handle claim needs review"));
+    const usernameClaimAvailable = await quoteHandleCandidate(username);
+    if (usernameClaimAvailable) {
+      setGeneratedHandle(username);
+      return;
     }
-  }, [api]);
+
+    const fallbackHandle = generateRedditFallbackHandle(username);
+    setGeneratedHandle(fallbackHandle);
+    await quoteHandleCandidate(fallbackHandle);
+  }, [api, quoteHandleCandidate]);
+
+  const applyOnboardingStatus = React.useCallback((status: OnboardingStatus) => {
+    const nextPhase = resolveOnboardingPhase(status);
+    setOnboardingStatus(status);
+    setImportJob(mapImportJobStatus(status.reddit_import_status));
+    setGeneratedHandle(session?.profile?.global_handle?.label ?? "");
+    if (!nextPhase) {
+      if (isHumanVerificationRequest() && status.unique_human_verification_status !== "verified") {
+        return;
+      }
+      navigate("/");
+      return;
+    }
+    setPhase(nextPhase);
+    if (status.reddit_verification_status === "verified") {
+      setRedditVerification((prev) => ({
+        ...prev,
+        verificationState: "verified",
+      }));
+    }
+    if (status.reddit_import_status === "succeeded") {
+      void refreshRedditImportBenefits().catch(() => {});
+    }
+  }, [refreshRedditImportBenefits, session?.profile?.global_handle?.label]);
+
+  const {
+    startVerification: startHumanVerification,
+    verificationError: humanVerificationError,
+    verificationLoading: humanVerificationLoading,
+    verificationState: humanVerificationState,
+  } = useVeryVerification({
+    onVerified: (status) => {
+      updateSessionOnboarding(status);
+      applyOnboardingStatus(status);
+    },
+    verified: onboardingStatus?.unique_human_verification_status === "verified",
+    verificationIntent: "profile_verification",
+  });
 
   React.useEffect(() => {
     let cancelled = false;
@@ -145,28 +198,13 @@ export function OnboardingPage() {
       return () => { cancelled = true; };
     }
 
-    setLoading(true);
+    applyOnboardingStatus(session.onboarding);
+    setLoading(false);
     void api.onboarding.getStatus()
       .then((status) => {
         if (cancelled) return;
-        const nextPhase = resolveOnboardingPhase(status);
-        setOnboardingStatus(status);
-        setImportJob(mapImportJobStatus(status.reddit_import_status));
-        setGeneratedHandle(session.profile?.global_handle?.label ?? "");
-        if (status.unique_human_verification_status !== "verified") {
-          return;
-        }
-        if (!nextPhase) {
-          navigate("/");
-          return;
-        }
-        setPhase(nextPhase);
-        if (status.reddit_verification_status === "verified") {
-          setRedditVerification({ usernameValue: "", verificationState: "verified" });
-        }
-        if (status.reddit_import_status === "succeeded") {
-          void refreshRedditImportBenefits().catch(() => {});
-        }
+        updateSessionOnboarding(status);
+        applyOnboardingStatus(status);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -177,7 +215,7 @@ export function OnboardingPage() {
       });
 
     return () => { cancelled = true; };
-  }, [api, hydrated, refreshRedditImportBenefits, session, session?.profile?.global_handle?.label]);
+  }, [api, applyOnboardingStatus, hydrated, session]);
 
   React.useEffect(() => {
     if (phase !== "import_karma" || !onboardingStatus) return;
@@ -207,6 +245,8 @@ export function OnboardingPage() {
     return () => clearInterval(interval);
   }, [api, onboardingStatus, phase, refreshRedditImportBenefits]);
 
+  const verificationTaskRequested = hydrated && isHumanVerificationRequest();
+
   const handleImportKarmaNext = React.useCallback(() => {
     if (actionLoading) return;
     setActionLoading(true);
@@ -215,7 +255,7 @@ export function OnboardingPage() {
     const isVerified = redditVerification.verificationState === "verified";
     const isCodeReady = redditVerification.verificationState === "code_ready";
     const isNotStarted = redditVerification.verificationState === "not_started";
-    const isImportDone = importJob.status === "succeeded";
+    const isImportDone = importJob.status === "succeeded" || importJob.status === "partial_success";
 
     if (isImportDone) {
       setPhase("choose_name");
@@ -278,6 +318,18 @@ export function OnboardingPage() {
     setActionLoading(false);
   }, [actionLoading, api, importJob.status, onboardingStatus, redditUsername, redditVerification, refreshRedditImportBenefits]);
 
+  const handleSkipRedditImport = React.useCallback(() => {
+    if (actionLoading) return;
+    setError(null);
+    setPhase("choose_name");
+  }, [actionLoading]);
+
+  const handleChooseNameBack = React.useCallback(() => {
+    if (actionLoading) return;
+    setError(null);
+    setPhase("import_karma");
+  }, [actionLoading]);
+
   const handleChooseNameContinue = React.useCallback(() => {
     if (actionLoading) return;
     if (generatedHandle.trim().length === 0) {
@@ -290,7 +342,7 @@ export function OnboardingPage() {
     const currentHandle = session?.profile?.global_handle?.label ?? "";
     if (normalizeHandleLabel(generatedHandle) === normalizeHandleLabel(currentHandle)) {
       void api.onboarding.dismiss()
-        .then((status) => {
+        .then(async (status) => {
           updateSessionOnboarding(status);
           navigate("/");
         })
@@ -316,7 +368,7 @@ export function OnboardingPage() {
 
     void rename
       .then(() => api.profiles.getMe().then((profile) => updateSessionProfile(profile)))
-      .then(() => {
+      .then(async () => {
         updateSessionOnboarding({ ...onboardingStatus!, cleanup_rename_available: false });
         navigate("/");
       })
@@ -324,56 +376,126 @@ export function OnboardingPage() {
       .finally(() => setActionLoading(false));
   }, [actionLoading, api, copy.onboarding.errors.chooseHandle, copy.onboarding.errors.renameFailed, generatedHandle, onboardingStatus, redditImportSummary, session?.profile?.global_handle?.label]);
 
-  const handleSkipOnboarding = React.useCallback(() => {
-    if (actionLoading) return;
-    setActionLoading(true);
-    setError(null);
-    void api.onboarding.dismiss()
-      .then((status) => {
-        updateSessionOnboarding(status);
-        navigate("/");
-      })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Could not skip onboarding"))
-      .finally(() => setActionLoading(false));
-  }, [actionLoading, api]);
+  const handleGenerateHandle = React.useCallback(() => {
+    const sourceUsername = (redditImportSummary?.redditUsername
+      ?? redditVerification.verifiedUsername
+      ?? redditUsername)
+      || "reddit";
+    const fallbackHandle = generateRedditFallbackHandle(sourceUsername);
+    setGeneratedHandle(fallbackHandle);
+    void quoteHandleCandidate(fallbackHandle);
+  }, [quoteHandleCandidate, redditImportSummary?.redditUsername, redditUsername, redditVerification.verifiedUsername]);
+
+  const importDone = phase === "import_karma"
+    && (importJob.status === "succeeded" || importJob.status === "partial_success");
+  const canSkipRedditImport = phase === "import_karma" && !importDone;
 
   if (loading) {
+    if (isMobile) {
+      return (
+        <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
+          <MobilePageHeader onCloseClick={() => navigate("/")} title="" />
+          <section className="flex min-w-0 flex-1 flex-col items-center justify-center px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
+            <FullPageSpinner />
+          </section>
+        </div>
+      );
+    }
     return <FullPageSpinner />;
   }
 
   if (error && !onboardingStatus) {
     if ((error as { status?: number; code?: string }).status === 401 || (error as { code?: string }).code === "auth_error") {
-      return <AuthRequiredRouteState description={getRouteAuthDescription("onboarding")} title={copy.onboarding.title} />;
+      return <AuthRequiredRouteState description={copy.routeStatus.onboarding.auth} title={copy.onboarding.title} />;
     }
-    return <RouteLoadFailureState description={getErrorMessage(error, getRouteFailureDescription("onboarding"))} title={copy.onboarding.title} />;
+    return <RouteLoadFailureState description={getErrorMessage(error, copy.routeStatus.onboarding.failure)} title={copy.onboarding.title} />;
   }
 
   if (!session) {
-    return <AuthRequiredRouteState description={getRouteAuthDescription("onboarding")} title={copy.onboarding.title} />;
+    if (isMobile) {
+      return (
+        <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
+          <MobilePageHeader onCloseClick={() => navigate("/")} title="" />
+          <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
+            <AuthRequiredRouteState description={copy.routeStatus.onboarding.auth} title="" />
+          </section>
+        </div>
+      );
+    }
+    return <AuthRequiredRouteState description={copy.routeStatus.onboarding.auth} title={copy.onboarding.title} />;
+  }
+
+  const verificationGate = verificationTaskRequested && onboardingStatus?.unique_human_verification_status !== "verified" ? (
+    <OnboardingVerificationGate
+      onVerify={() => void startHumanVerification()}
+      verificationError={humanVerificationError}
+      verificationLoading={humanVerificationLoading}
+      verificationState={humanVerificationState === "pending" ? "pending" : "not_started"}
+    />
+  ) : null;
+
+  if (isMobile) {
+    return (
+      <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
+        <MobilePageHeader
+          onCloseClick={() => navigate("/")}
+          title=""
+          trailingAction={null}
+        />
+        <section className="flex min-w-0 flex-1 flex-col justify-start px-4 pb-32 pt-[calc(env(safe-area-inset-top)+5rem)]">
+          {verificationGate ?? (
+            <OnboardingRedditBootstrap
+              busy={actionLoading}
+              callbacks={{
+                onUsernameChange: (value) => { setRedditUsername(value); setRedditVerification((prev) => ({ ...prev, usernameValue: value })); },
+                onImportKarmaNext: handleImportKarmaNext,
+                onImportKarmaSkip: handleSkipRedditImport,
+                onHandleChange: (value) => setGeneratedHandle(value),
+                onGenerateHandle: handleGenerateHandle,
+                onChooseNameBack: handleChooseNameBack,
+                onChooseNameContinue: handleChooseNameContinue,
+              }}
+              canSkip={canSkipRedditImport}
+              generatedHandle={generatedHandle}
+              handleSuggestion={handleSuggestion}
+              importJob={importJob}
+              layout="mobile"
+              phase={phase}
+              phaseError={onboardingStatus && typeof error === "string" ? error : null}
+              reddit={redditVerification}
+              redditImportSummary={redditImportSummary}
+            />
+          )}
+        </section>
+      </div>
+    );
   }
 
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-6">
       <PageContainer>
-        <OnboardingRedditBootstrap
-          busy={actionLoading}
-          callbacks={{
-            onUsernameChange: (value) => { setRedditUsername(value); setRedditVerification((prev) => ({ ...prev, usernameValue: value })); },
-            onImportKarmaNext: handleImportKarmaNext,
-            onImportKarmaSkip: handleSkipOnboarding,
-            onHandleChange: (value) => setGeneratedHandle(value),
-            onGenerateHandle: () => {},
-            onChooseNameContinue: handleChooseNameContinue,
-          }}
-          canSkip
-          generatedHandle={generatedHandle}
-          handleSuggestion={handleSuggestion}
-          importJob={importJob}
-          phase={phase}
-          phaseError={onboardingStatus && typeof error === "string" ? error : null}
-          reddit={redditVerification}
-          redditImportSummary={redditImportSummary}
-        />
+        {verificationGate ?? (
+          <OnboardingRedditBootstrap
+            busy={actionLoading}
+            callbacks={{
+              onUsernameChange: (value) => { setRedditUsername(value); setRedditVerification((prev) => ({ ...prev, usernameValue: value })); },
+              onImportKarmaNext: handleImportKarmaNext,
+              onImportKarmaSkip: handleSkipRedditImport,
+              onHandleChange: (value) => setGeneratedHandle(value),
+              onGenerateHandle: handleGenerateHandle,
+              onChooseNameBack: handleChooseNameBack,
+              onChooseNameContinue: handleChooseNameContinue,
+            }}
+            canSkip={canSkipRedditImport}
+            generatedHandle={generatedHandle}
+            handleSuggestion={handleSuggestion}
+            importJob={importJob}
+            phase={phase}
+            phaseError={onboardingStatus && typeof error === "string" ? error : null}
+            reddit={redditVerification}
+            redditImportSummary={redditImportSummary}
+          />
+        )}
       </PageContainer>
     </section>
   );

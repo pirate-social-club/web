@@ -6,6 +6,7 @@ import type {
   VerificationRequirement,
   VerificationSession,
 } from "@pirate/api-contracts";
+import type { SelfApp } from "@selfxyz/sdk-common";
 
 import { useApi } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api/client";
@@ -15,6 +16,7 @@ import {
   buildSelfVerificationCallbackHref,
   getSelfCallbackCleanHref,
   getSelfCallbackSessionId,
+  getSelfVerificationApp,
   getSelfVerificationLaunchHref,
   hasSelfCallbackParams,
   parseSelfCallback,
@@ -29,6 +31,7 @@ type SelfPrompt = {
   actionLabel: string;
   description: string;
   href: string | null;
+  selfApp: SelfApp | null;
   title: string;
 };
 
@@ -128,7 +131,8 @@ export function useSelfVerification(input: {
     requestedCapabilities: VerificationSession["requested_capabilities"];
     unavailableMessage: string;
     verificationRequirements?: VerificationRequirement[] | null;
-  }): Promise<{ error?: string; started: boolean }> => {
+    skipModal?: boolean;
+  }): Promise<{ error?: string; started: boolean; href?: string | null; openedModal?: boolean }> => {
     const nextRequestedCapabilities = options.requestedCapabilities.filter((capability): capability is VerificationSession["requested_capabilities"][number] =>
       isSelfRequestedCapability(capability)
     );
@@ -150,20 +154,28 @@ export function useSelfVerification(input: {
       });
       setRequestedCapabilities(result.requested_capabilities);
       setSelfSession(result);
-      setSelfModalOpen(true);
+      const openedModal = !options.skipModal || !isMobile;
+      if (openedModal) {
+        setSelfModalOpen(true);
+      }
       writePendingSelfVerificationSession(storageKey, {
         requestedCapabilities: result.requested_capabilities,
         verificationSessionId: result.verification_session_id,
       });
-      return { started: true };
+      const launch = result.launch?.self_app;
+      const deeplinkCallback = isMobile && typeof window !== "undefined"
+        ? buildSelfVerificationCallbackHref(window.location.href, result.verification_session_id)
+        : null;
+      const href = getSelfVerificationLaunchHref(launch, { deeplinkCallback });
+      return { started: true, href, openedModal };
     } catch (error: unknown) {
       const message = getApiErrorMessage(error, startErrorMessage);
       setSelfError(message);
-      return { error: message, started: false };
+      return { error: message, started: false, href: null };
     } finally {
       setSelfLoading(false);
     }
-  }, [api, startErrorMessage, storageKey, verificationIntent]);
+  }, [api, isMobile, startErrorMessage, storageKey, verificationIntent]);
 
   const handleModalOpenChange = React.useCallback((open: boolean) => {
     setSelfModalOpen(open);
@@ -174,6 +186,100 @@ export function useSelfVerification(input: {
       clearPendingSelfVerificationSession(storageKey);
     }
   }, [storageKey]);
+
+  const completePendingSession = React.useCallback(async (input: {
+    pendingSession: PendingSelfVerificationSession;
+    result?: { status: "completed"; proof: string } | { status: "failed"; reason: string } | { status: "expired" };
+    verificationSessionId?: string;
+  }) => {
+    const verificationSessionId = input.verificationSessionId || input.pendingSession.verificationSessionId;
+
+    if (input.result?.status === "expired") {
+      setSelfError("Verification session expired. Please try again.");
+      setSelfSession(null);
+      setRequestedCapabilities([]);
+      setSelfModalOpen(false);
+      clearPendingSelfVerificationSession(storageKey);
+      return;
+    }
+
+    if (input.result?.status === "failed" && input.result.reason !== "no_proof_returned") {
+      setSelfError(input.result.reason);
+      setSelfSession(null);
+      setRequestedCapabilities([]);
+      setSelfModalOpen(false);
+      clearPendingSelfVerificationSession(storageKey);
+      return;
+    }
+
+    if (completionInFlightRef.current) {
+      return;
+    }
+
+    completionInFlightRef.current = true;
+    setSelfLoading(true);
+    setSelfError(null);
+    try {
+      const session = input.result?.status === "completed"
+        ? await api.verification.completeSession(verificationSessionId, { proof: input.result.proof })
+        : await api.verification.getSession(verificationSessionId);
+
+      if (session.status === "pending") {
+        setSelfSession(session);
+        setSelfModalOpen(true);
+        setSelfError(null);
+        return;
+      }
+      if (session.status === "expired") {
+        setSelfSession(null);
+        setRequestedCapabilities([]);
+        setSelfModalOpen(false);
+        clearPendingSelfVerificationSession(storageKey);
+        setSelfError("Verification session expired. Please try again.");
+        return;
+      }
+      if (session.status !== "verified") {
+        setSelfSession(null);
+        setRequestedCapabilities([]);
+        setSelfModalOpen(false);
+        clearPendingSelfVerificationSession(storageKey);
+        setSelfError(session.failure_reason || completeErrorMessage);
+        return;
+      }
+
+      setSelfSession(null);
+      setRequestedCapabilities([]);
+      setSelfModalOpen(false);
+      clearPendingSelfVerificationSession(storageKey);
+      await onVerifiedRef.current?.({
+        requestedCapabilities: input.pendingSession.requestedCapabilities,
+        session,
+      });
+    } catch (error: unknown) {
+      setSelfError(getApiErrorMessage(error, completeErrorMessage));
+    } finally {
+      completionInFlightRef.current = false;
+      setSelfLoading(false);
+    }
+  }, [api.verification, completeErrorMessage, storageKey]);
+
+  const handleSelfQrSuccess = React.useCallback(() => {
+    const pendingSession = readPendingSelfVerificationSession(storageKey);
+    if (!pendingSession) {
+      setSelfError("Verification session was lost. Start the ID check again.");
+      setSelfSession(null);
+      setRequestedCapabilities([]);
+      setSelfModalOpen(false);
+      clearPendingSelfVerificationSession(storageKey);
+      return;
+    }
+    setRequestedCapabilities(pendingSession.requestedCapabilities);
+    void completePendingSession({ pendingSession });
+  }, [completePendingSession, storageKey]);
+
+  const handleSelfQrError = React.useCallback((error: { error_code?: string; reason?: string }) => {
+    setSelfError(error.reason || error.error_code || completeErrorMessage);
+  }, [completeErrorMessage]);
 
   React.useEffect(() => {
     function handleSelfCallback() {
@@ -207,85 +313,19 @@ export function useSelfVerification(input: {
         return;
       }
 
-      if (result.status === "expired") {
-        setSelfError("Verification session expired. Please try again.");
-        setSelfSession(null);
-        setRequestedCapabilities([]);
-        setSelfModalOpen(false);
-        clearPendingSelfVerificationSession(storageKey);
+      void completePendingSession({
+        pendingSession,
+        result,
+        verificationSessionId,
+      }).finally(() => {
         window.history.replaceState({}, "", getSelfCallbackCleanHref(url));
-        return;
-      }
-
-      if (result.status !== "completed" && result.reason !== "no_proof_returned") {
-        setSelfError(result.reason);
-        setSelfSession(null);
-        setRequestedCapabilities([]);
-        setSelfModalOpen(false);
-        clearPendingSelfVerificationSession(storageKey);
-        window.history.replaceState({}, "", getSelfCallbackCleanHref(url));
-        return;
-      }
-
-      if (completionInFlightRef.current) {
-        return;
-      }
-
-      completionInFlightRef.current = true;
-      setSelfLoading(true);
-      setSelfError(null);
-      const completionPromise = result.status === "completed"
-        ? api.verification.completeSession(verificationSessionId, { proof: result.proof })
-        : api.verification.getSession(verificationSessionId);
-
-      void completionPromise
-        .then(async (session) => {
-          if (session.status === "pending") {
-            setSelfSession(session);
-            setSelfModalOpen(true);
-            setSelfError(null);
-            return;
-          }
-          if (session.status === "expired") {
-            setSelfSession(null);
-            setRequestedCapabilities([]);
-            setSelfModalOpen(false);
-            clearPendingSelfVerificationSession(storageKey);
-            setSelfError("Verification session expired. Please try again.");
-            return;
-          }
-          if (session.status !== "verified") {
-            setSelfSession(null);
-            setRequestedCapabilities([]);
-            setSelfModalOpen(false);
-            clearPendingSelfVerificationSession(storageKey);
-            setSelfError(session.failure_reason || completeErrorMessage);
-            return;
-          }
-
-          setSelfSession(null);
-          setRequestedCapabilities([]);
-          setSelfModalOpen(false);
-          clearPendingSelfVerificationSession(storageKey);
-          await onVerifiedRef.current?.({
-            requestedCapabilities: pendingSession.requestedCapabilities,
-            session,
-          });
-        })
-        .catch((error: unknown) => {
-          setSelfError(getApiErrorMessage(error, completeErrorMessage));
-        })
-        .finally(() => {
-          completionInFlightRef.current = false;
-          setSelfLoading(false);
-          window.history.replaceState({}, "", getSelfCallbackCleanHref(url));
-        });
+      });
     }
 
     window.addEventListener("popstate", handleSelfCallback);
     handleSelfCallback();
     return () => window.removeEventListener("popstate", handleSelfCallback);
-  }, [api, completeErrorMessage, storageKey]);
+  }, [completePendingSession, storageKey]);
 
   const selfPrompt = React.useMemo<SelfPrompt | null>(() => {
     if (!selfSession) {
@@ -296,15 +336,19 @@ export function useSelfVerification(input: {
     const deeplinkCallback = isMobile && typeof window !== "undefined"
       ? buildSelfVerificationCallbackHref(window.location.href, selfSession.verification_session_id)
       : null;
+    const selfApp = getSelfVerificationApp(launch, { deeplinkCallback });
     const href = getSelfVerificationLaunchHref(launch, { deeplinkCallback });
     return {
       ...getVerificationPromptCopy("self", requestedCapabilities, { locale }),
       href,
+      selfApp,
     };
   }, [isMobile, locale, requestedCapabilities, selfSession]);
 
   return {
     handleModalOpenChange,
+    handleSelfQrError,
+    handleSelfQrSuccess,
     selfError,
     selfLoading,
     selfModalOpen,

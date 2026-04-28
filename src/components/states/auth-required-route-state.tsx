@@ -3,7 +3,7 @@
 import { Button } from "@/components/primitives/button";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
-import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
+import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { logger } from "@/lib/logger";
 
 import { FullPageSpinner } from "./full-page-spinner";

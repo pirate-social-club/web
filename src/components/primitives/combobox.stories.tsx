@@ -51,7 +51,7 @@ export const Multiple: Story = {
     const [value, setValue] = React.useState<string[]>([frameworks[0]]);
 
     return (
-      <div className="w-[360px]">
+      <div className="w-96">
         <Combobox multiple items={frameworks} value={value} onValueChange={setValue}>
           <ComboboxChips>
             <ComboboxValue>

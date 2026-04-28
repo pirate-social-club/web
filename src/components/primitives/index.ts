@@ -1,4 +1,5 @@
 export * from "./accordion";
+export * from "./action-banner";
 export * from "./action-menu";
 export * from "./avatar";
 export * from "./badged-circle";
@@ -37,6 +38,7 @@ export * from "./spinner";
 export * from "./stepper";
 export * from "./switch";
 export * from "./tabs";
+export * from "./auto-resize-textarea";
 export * from "./textarea";
 export * from "./tooltip";
 export * from "./type";

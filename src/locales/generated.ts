@@ -13,22 +13,27 @@ export const GENERATED_LOCALE_CATALOGS = {
         "close": "Close",
         "commentsHeading": "Comments",
         "collapseReplies": "Collapse replies",
+        "collapseThread": "Collapse thread",
         "createAction": "Create",
         "cancelReply": "Cancel",
         "downvote": "Downvote",
         "downvoteComment": "Downvote comment",
         "expandReplies": "Expand replies",
+        "expandThread": "Expand thread",
         "joinedStatLabel": "Joined",
         "loadMoreReplies": "Load more replies",
         "loadReplies": "Load replies",
         "loading": "Loading...",
         "loadingReplies": "Loading replies...",
+        "continueThread": "Continue this thread",
         "newTab": "New",
         "oldTab": "Old",
         "noComments": "No comments yet.",
         "noRecentCommunities": "No recent communities.",
         "ownedBy": "owned by",
         "replyAction": "Reply",
+        "replyCount": "{count} replies",
+        "replyCountOne": "1 reply",
         "replyPlaceholder": "Write a reply",
         "showOriginal": "Show original",
         "showRepliesCount": "Show {count} replies",
@@ -112,7 +117,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "joinRequest": {
         "title": "Request to join",
-        "description": "Tell the moderators why you want to join.",
+        "description": "Tell the moderators why you want to join. Include links or proof that show you are eligible.",
         "submittedTitle": "Request submitted",
         "submittedDescription": "The moderators will review your request.",
         "messageOptional": "Message (Optional)",
@@ -128,10 +133,10 @@ export const GENERATED_LOCALE_CATALOGS = {
         "close": "Close",
         "connectToContinue": "Connect to continue.",
         "couldNotCheckRequirements": "Couldn't check this community's interaction requirements.",
-        "joinInCommunity": "{joinLabel} in {communityName}",
-        "joinToReplyDescription": "{joinLabel} in {communityName} before you reply.",
+        "joinInCommunity": "{joinLabel}",
+        "joinToReplyDescription": "{joinLabel} {communityName} before you reply.",
         "joinToReplyTitle": "{joinLabel} to reply",
-        "joinToVoteDescription": "{joinLabel} in {communityName} before you vote.",
+        "joinToVoteDescription": "{joinLabel} {communityName} before you vote.",
         "joinToVoteTitle": "{joinLabel} to vote",
         "openCommunity": "Open {communityName}",
         "readyDescription": "You can interact here.",
@@ -145,11 +150,11 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "createPost": {
         "access": {
-          "paidDescription": "Preview in feed. Full track unlocks after purchase.",
+          "paidDescription": "Preview in feed. Full media unlocks after purchase.",
           "paidUnlock": "Paid unlock",
           "public": "Public",
-          "publicDescription": "Anyone can play the full track.",
-          "rightsAttested": "I have the rights to publish and monetize this track.",
+          "publicDescription": "Anyone can play the full media.",
+          "rightsAttested": "I have the rights to publish and monetize this media.",
           "useRegionalPricing": "Use community regional pricing"
         },
         "actions": {
@@ -170,6 +175,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "replace": "Replace"
         },
         "derivative": {
+          "acceptSourceTerms": "I understand and accept the selected source license terms for this remix.",
+          "licenseSource": "Source license",
+          "licenseUpstreamRoyalty": "Upstream royalty",
+          "licenseParentIp": "Story parent IP",
+          "licenseTermsId": "License terms",
+          "licenseNewRemixTerms": "New remix terms",
           "searchSourceTracks": "Search source tracks"
         },
         "empty": {
@@ -186,6 +197,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "caption": "Caption",
           "commentary": "Commentary",
           "coverArt": "Cover art",
+          "coverFrame": "Cover frame",
           "genre": "Genre",
           "image": "Image",
           "instrumentalStem": "Instrumental stem",
@@ -210,6 +222,30 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "labels": {
           "source": "Source"
+        },
+        "assetLicense": {
+          "song": {
+            "non-commercial": "Non-commercial only",
+            "non-commercialDescription": "Listeners can use the song privately, but not for commercial releases.",
+            "commercial-use": "Commercial use",
+            "commercial-useDescription": "Others can monetize with the original song, but cannot release remixes.",
+            "commercial-remix": "Commercial remix",
+            "commercial-remixDescription": "Others can monetize and publish remixes of your song.",
+            "revenueShare": "Revenue share",
+            "revenueShareDescription": "Choose the share derivative remix revenue owes back to this original track.",
+            "revenueShareRange": "0% to 100%"
+          },
+          "video": {
+            "non-commercial": "Non-commercial only",
+            "non-commercialDescription": "Viewers can use the video privately, but not for commercial releases.",
+            "commercial-use": "Commercial use",
+            "commercial-useDescription": "Others can monetize with the original video, but cannot publish derivative videos.",
+            "commercial-remix": "Commercial derivatives",
+            "commercial-remixDescription": "Others can monetize and publish derivative videos using your work.",
+            "revenueShare": "Revenue share",
+            "revenueShareDescription": "Set the share of derivative video revenue paid back to this original video.",
+            "revenueShareRange": "0% to 100%"
+          }
         },
         "membershipRequiredDescription": "Only community members can publish posts here.",
         "membershipRequiredTitle": "Join this community before posting",
@@ -239,7 +275,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "audience": "Audience",
           "postAs": "Post as",
           "qualifiers": "Qualifiers",
-          "sourceTrack": "Source track"
+          "sourceTrack": "Source track",
+          "license": "License"
         },
         "setlist": {
           "cannotFindTrack": "Can't find the track?",
@@ -311,13 +348,11 @@ export const GENERATED_LOCALE_CATALOGS = {
       "onboarding": {
         "redditImport": {
           "title": "Verify Reddit",
-          "subtitle": "Bring your Reddit activity to Pirate for better names and recommendations.",
-          "activityReady": "Your Reddit activity is ready.",
-          "importedUser": "Imported u/{username}",
-          "importedScore": "Imported Reddit score",
-          "topSubreddits": "Top subreddits",
+          "subtitle": "Provide your Reddit username to get a better domain on .pirate and personalized recommendations.",
+          "doneTitle": "Karma imported",
+          "doneSubtitle": "You're eligible for a {domainLength}-letter .pirate domain.",
           "notFound": "Not found",
-          "loading": "Loading...",
+          "loading": "Importing...",
           "pasteIntoProfile": "Paste into your",
           "redditProfileDescription": "Reddit profile description"
         },
@@ -329,6 +364,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "notAvailable": "Not available"
         },
         "actions": {
+          "back": "Back",
           "generateHandle": "Generate a new handle",
           "checkAgain": "Check again",
           "continue": "Continue",
@@ -347,7 +383,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "redditCode": "Verification code",
           "redditUsername": "Username"
         },
-        "importKarmaAction": "Import Reddit",
+        "importKarmaAction": "Import Reddit Karma",
         "notes": {
           "addCodeToProfile": "Paste into your Reddit profile description",
           "checkedRedditAt": "Code not visible yet. Checked at {time}.",
@@ -385,17 +421,22 @@ export const GENERATED_LOCALE_CATALOGS = {
       "inbox": {
         "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",
         "description": "This route is scaffolded so the mobile nav can point somewhere truthful while inbox behavior is still undefined.",
+        "emptyChatsState": "No chats yet",
         "emptyState": "No notifications yet",
         "loading": "Loading...",
-        "recentActivity": "Recent activity",
+        "notificationsTab": "Notifications",
         "someone": "Someone",
-        "taskActionNeeded": "Action needed",
         "taskDismiss": "Dismiss",
         "taskNamespaceVerificationRequired": "Verify your community namespace",
         "taskVerify": "Verify",
-        "title": "Inbox",
+        "title": "Notifications",
         "eventCommentReply": "{actor} replied to your comment",
-        "eventPostCommented": "{actor} commented on your post"
+        "eventPostCommented": "{actor} commented on your post",
+        "installPromoTitle": "Install Pirate",
+        "installPromoBody": "Never miss a payout with Pirate on your homescreen",
+        "installPromoAction": "Install",
+        "installPromoDismiss": "Not now",
+        "installPromoIOSInstructions": "Tap the Share button below, then scroll down and tap \"Add to Home Screen\"."
       },
       "createCommunity": {
         "reopenVerification": "Reopen verification",
@@ -441,8 +482,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "verifyRoute": "Verify route",
           "clear": "Clear",
           "membershipSection": "Membership",
-          "gateChecksTitle": "Gate checks",
-          "gateChecksDescription": "Select at least one gate before launch.",
+          "gateChecksTitle": "Gate criteria",
           "nationalityTitle": "Nationality verification",
           "nationalityDescription": "Require members to verify their nationality through self before joining.",
           "allowedNationalityLabel": "Allowed nationalities",
@@ -572,11 +612,17 @@ export const GENERATED_LOCALE_CATALOGS = {
         "videosTab": "Videos"
       },
       "publicAgent": {
+        "aboutDescription": "Posts and comments from this agent appear across Pirate communities under its canonical .clawitzer identity.",
+        "aboutTitle": "About",
+        "activeSinceLabel": "Active since",
+        "emptyCommunities": "Community activity for this agent will appear here.",
         "errorDescription": "This public agent could not be loaded right now.",
         "errorTitle": "Public agent",
         "notFoundDescription": "We could not find a public agent for {path}.",
         "notFoundTitle": "Agent not found",
+        "openInPirate": "Open in Pirate",
         "ownerLabel": "Owner",
+        "premiumNamesComingSoon": "Premium names will unlock in a later release.",
         "providerLabel": "Provider"
       },
       "publicCommunity": {
@@ -596,6 +642,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "advanced": "Advanced",
         "agentRegisteredToast": "Agent registered",
         "agentsTitle": "Agents",
+        "activeAgentExistsDescription": "Public v0 allows one active OpenClaw agent per verified human.",
+        "activeAgentExistsTitle": "Agent already connected",
         "checkStatus": "Check status",
         "completeAgentRegistrationError": "Could not complete agent registration.",
         "connectAction": "Connect OpenClaw",
@@ -619,6 +667,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "openClawKey": "Open ClawKey",
         "ownedAgentsLoadError": "Could not load agents.",
         "ownedAgentsLocalTablesError": "Local API is missing agent tables. Restart pirate-api dev server.",
+        "pairingStepInstallPlugin": "Install the Pirate Connector if it is not already installed:",
         "pairingStepInstall": "In OpenClaw with Pirate Connector installed, say: connect to Pirate with code {code}",
         "pairingStepOpen": "Then open the ClawKey link OpenClaw sends you.",
         "pasteChallengePlaceholder": "Paste OpenClaw challenge JSON",
@@ -627,9 +676,14 @@ export const GENERATED_LOCALE_CATALOGS = {
         "registerAction": "Register with ClawKey",
         "registrationIncompleteError": "Agent registration did not complete.",
         "saveHandleAction": "Save handle",
+        "saveChangesAction": "Save changes",
         "saveHandleError": "Could not save agent handle.",
         "saveNameAction": "Save name",
         "saveNameError": "Could not save agent name.",
+        "premiumNamesComingSoon": "Premium names will unlock in a later release.",
+        "verificationRequiredAction": "Verify now",
+        "verificationRequiredDescription": "To connect OpenClaw, Pirate needs to know there is a real person responsible for the agent.",
+        "verificationRequiredTitle": "Verify first",
         "verifiedAt": "{provider} · verified {date}"
       },
       "settings": {
@@ -650,6 +704,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "coverSourceEns": "Using ENS cover from {handle}",
         "coverSourceNone": "No cover selected",
         "coverSourceUpload": "Uploaded cover",
+        "coverSizeHint": "1500×500 recommended",
         "coverTitle": "Cover",
         "currentHandleLabel": "Current handle",
         "displayNameLabel": "Display name",
@@ -657,6 +712,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "editProfileDescription": "Update your display name, bio, or handle.",
         "editProfileTitle": "Edit profile",
         "profileSectionTitle": "Profile",
+        "installAppLabel": "Install app",
+        "installAppDescription": "Get app-icon unread badges and launch Pirate from your dock.",
+        "installAppIOSInstructions": "Tap the Share button below, then scroll down and tap \"Add to Home Screen\".",
         "handleCheckFailed": "Could not check availability.",
         "handleNoteEns": "ENS",
         "handleNoteEnsRefresh": "ENS needs refresh",
@@ -883,6 +941,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "removeCover": "Remove cover",
           "replaceCover": "Replace cover",
           "uploadCover": "Upload cover",
+          "coverSizeHint": "1500×500 recommended",
           "coverTitle": "Cover photo",
           "profileTitle": "Profile",
           "nameLabel": "Name",
@@ -1037,6 +1096,104 @@ export const GENERATED_LOCALE_CATALOGS = {
         "balanceLater": "Later",
         "noAssetsYet": "No assets yet.",
         "later": "Later."
+      },
+      "routeStatus": {
+        "chat": {
+          "auth": "Sign in to use messages.",
+          "failure": "Messages could not be loaded right now.",
+          "incomplete": "The messages response was incomplete. Try loading it again.",
+          "title": "Messages"
+        },
+        "community": {
+          "auth": "Sign in to view this community.",
+          "failure": "The community could not be loaded right now.",
+          "incomplete": "The community response was incomplete. Try loading it again.",
+          "title": "Community",
+          "createPost": "Create Post",
+          "modTools": "Mod Tools"
+        },
+        "createCommunity": {
+          "auth": "Sign in to create a community.",
+          "failure": "The create community page could not be loaded right now.",
+          "incomplete": "The create community response was incomplete. Try loading it again.",
+          "title": "Create a community",
+          "verifyDescription": "Verify before creating a community.",
+          "verifyPendingDescription": "Complete your palm scan to continue.",
+          "verifyPendingTitle": "Finish verification",
+          "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+          "verifyStartTitle": "Verify",
+          "reopenVerification": "Reopen verification",
+          "startVerification": "Start verification"
+        },
+        "createPost": {
+          "auth": "Sign in to create a post.",
+          "failure": "The post composer could not be loaded right now.",
+          "incomplete": "The community response was incomplete. Try loading the composer again.",
+          "title": "Create post",
+          "backToCommunity": "Back to community",
+          "membershipRequiredDescription": "Only community members can publish posts here.",
+          "membershipRequiredTitle": "Join this community before posting"
+        },
+        "home": {
+          "auth": "Sign in to view your home feed.",
+          "failure": "The home feed could not be loaded right now.",
+          "incomplete": "The home feed response was incomplete. Try loading it again.",
+          "title": "Home",
+          "createCommunity": "Create community",
+          "emptyHomeBody": "Join a community or create one to start building your home feed.",
+          "emptyHomeTitle": "No posts yet",
+          "emptyYourCommunitiesBody": "Communities you create or join show up here.",
+          "emptyYourCommunitiesTitle": "No communities yet"
+        },
+        "inbox": {
+          "auth": "Sign in to view your inbox.",
+          "failure": "The inbox could not be loaded right now.",
+          "incomplete": "The inbox response was incomplete. Try loading it again.",
+          "title": "Inbox"
+        },
+        "moderation": {
+          "auth": "Sign in to access mod tools.",
+          "failure": "This moderation page could not be loaded right now.",
+          "incomplete": "The community response was incomplete.",
+          "title": "Moderator tools",
+          "accessRequiredDescription": "Only community moderators can open this page.",
+          "accessRequiredTitle": "Moderator access required"
+        },
+        "onboarding": {
+          "auth": "Sign in to continue onboarding.",
+          "failure": "The onboarding flow could not be loaded right now.",
+          "incomplete": "The onboarding response was incomplete. Try loading it again."
+        },
+        "post": {
+          "auth": "Sign in to view this post.",
+          "failure": "The post could not be loaded right now.",
+          "incomplete": "The post response was incomplete. Try loading it again.",
+          "title": "Post"
+        },
+        "profile": {
+          "auth": "Sign in to view your profile.",
+          "failure": "The profile could not be loaded right now.",
+          "incomplete": "The profile response was incomplete. Try loading it again.",
+          "title": "Profile"
+        },
+        "settings": {
+          "auth": "Sign in to access settings.",
+          "failure": "The settings page could not be loaded right now.",
+          "incomplete": "The settings response was incomplete. Try loading it again.",
+          "title": "Settings"
+        },
+        "wallet": {
+          "auth": "Sign in to view your wallet.",
+          "failure": "The wallet could not be loaded right now.",
+          "incomplete": "The wallet response was incomplete. Try loading it again.",
+          "title": "Wallet"
+        },
+        "yourCommunities": {
+          "auth": "Sign in to view your communities.",
+          "failure": "Your communities could not be loaded right now.",
+          "incomplete": "Your communities response was incomplete. Try loading it again.",
+          "title": "Your Communities"
+        }
       }
     },
     "shell": {
@@ -1059,6 +1216,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "appSidebar": {
         "brandLabel": "Pirate",
+        "agentsLabel": "Your Agents",
         "createCommunityLabel": "Create Community",
         "homeAriaLabel": "Go to home",
         "homeLabel": "Home",
@@ -1140,6 +1298,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "Blog"
           },
           {
+            "id": "advertise",
+            "label": "Advertise"
+          },
+          {
             "id": "terms-of-service",
             "label": "Terms of Service"
           },
@@ -1154,6 +1316,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "feedSortTopLabel": "Top"
       },
       "mobileFooter": {
+        "chatAriaLabel": "Messages",
+        "chatLabel": "Messages",
         "createLabel": "Create",
         "homeLabel": "Home",
         "inboxAriaLabel": "Inbox",
@@ -1189,22 +1353,27 @@ export const GENERATED_LOCALE_CATALOGS = {
         "close": "إغلاق",
         "commentsHeading": "التعليقات",
         "collapseReplies": "طيّ الردود",
+        "collapseThread": "طيّ النقاش",
         "createAction": "أنشئ",
         "cancelReply": "إلغاء",
         "downvote": "تصويت سلبي",
         "downvoteComment": "تصويت سلبي على التعليق",
         "expandReplies": "وسّع الردود",
+        "expandThread": "وسّع النقاش",
         "joinedStatLabel": "انضم",
         "loadMoreReplies": "حمّل المزيد من الردود",
         "loadReplies": "حمّل الردود",
         "loading": "جارٍ التحميل...",
         "loadingReplies": "جارٍ تحميل الردود...",
+        "continueThread": "تابع هذا النقاش",
         "newTab": "الجديد",
         "oldTab": "قديم",
         "noComments": "لا توجد تعليقات بعد.",
         "noRecentCommunities": "لا توجد مجتمعات حديثة.",
         "ownedBy": "مملوك بواسطة",
         "replyAction": "رد",
+        "replyCount": "{count} من الردود",
+        "replyCountOne": "رد واحد",
         "replyPlaceholder": "اكتب ردًا",
         "showOriginal": "أظهر الأصل",
         "showRepliesCount": "أظهر {count} من الردود",
@@ -1346,6 +1515,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "replace": "استبدل"
         },
         "derivative": {
+          "acceptSourceTerms": "أفهم وأقبل شروط ترخيص المصدر المحدد لهذا الريمكس.",
+          "licenseSource": "ترخيص المصدر",
+          "licenseUpstreamRoyalty": "حقوق المنبع",
+          "licenseParentIp": "IP الأصل على Story",
+          "licenseTermsId": "معرّف شروط الترخيص",
+          "licenseNewRemixTerms": "شروط الريمكس الجديدة",
           "searchSourceTracks": "ابحث عن المسارات المصدر"
         },
         "empty": {
@@ -1362,6 +1537,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "caption": "التعليق",
           "commentary": "التعليق",
           "coverArt": "صورة الغلاف",
+          "coverFrame": "إطار الغلاف",
           "genre": "النوع",
           "image": "الصورة",
           "instrumentalStem": "مسار الآلات",
@@ -1386,6 +1562,30 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "labels": {
           "source": "المصدر"
+        },
+        "assetLicense": {
+          "song": {
+            "non-commercial": "غير تجاري فقط",
+            "non-commercialDescription": "يمكن للمستمعين استخدام الأغنية بشكل خاص، لكن ليس في الإصدارات التجارية.",
+            "commercial-use": "استخدام تجاري",
+            "commercial-useDescription": "يمكن للآخرين تحقيق دخل باستخدام الأغنية الأصلية، لكن لا يمكنهم إصدار ريمكسات.",
+            "commercial-remix": "ريمكس تجاري",
+            "commercial-remixDescription": "يمكن للآخرين تحقيق دخل ونشر ريمكسات لأغنيتك.",
+            "revenueShare": "حصة الإيرادات",
+            "revenueShareDescription": "اختر الحصة التي تدين بها إيرادات الريمكس المشتقة لهذا المسار الأصلي.",
+            "revenueShareRange": "0% إلى 100%"
+          },
+          "video": {
+            "non-commercial": "غير تجاري فقط",
+            "non-commercialDescription": "يمكن للمشاهدين استخدام الفيديو بشكل خاص، لكن ليس في الإصدارات التجارية.",
+            "commercial-use": "استخدام تجاري",
+            "commercial-useDescription": "يمكن للآخرين تحقيق دخل باستخدام الفيديو الأصلي، لكن لا يمكنهم نشر فيديوهات مشتقة.",
+            "commercial-remix": "أعمال مشتقة تجارية",
+            "commercial-remixDescription": "يمكن للآخرين تحقيق دخل ونشر فيديوهات مشتقة باستخدام عملك.",
+            "revenueShare": "حصة الإيرادات",
+            "revenueShareDescription": "حدّد حصة إيرادات الفيديوهات المشتقة التي تُدفع لهذا الفيديو الأصلي.",
+            "revenueShareRange": "0% إلى 100%"
+          }
         },
         "membershipRequiredDescription": "يمكن لأعضاء المجتمع فقط نشر المنشورات هنا.",
         "membershipRequiredTitle": "انضم إلى هذا المجتمع قبل النشر",
@@ -1415,7 +1615,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "audience": "الجمهور",
           "postAs": "انشر باسم",
           "qualifiers": "المؤهلات",
-          "sourceTrack": "المسار المصدر"
+          "sourceTrack": "المسار المصدر",
+          "license": "الترخيص"
         },
         "setlist": {
           "cannotFindTrack": "ألا تجد المسار؟",
@@ -1487,13 +1688,11 @@ export const GENERATED_LOCALE_CATALOGS = {
       "onboarding": {
         "redditImport": {
           "title": "تحقق من Reddit",
-          "subtitle": "أحضر نشاطك على Reddit إلى Pirate للحصول على أسماء وتوصيات أفضل.",
-          "activityReady": "نشاطك على Reddit جاهز.",
-          "importedUser": "تم استيراد u/{username}",
-          "importedScore": "درجة Reddit المستوردة",
-          "topSubreddits": "أبرز subreddits",
+          "subtitle": "قدّم اسم مستخدم Reddit الخاص بك لتحصل على نطاق أفضل على .pirate وتوصيات مخصصة.",
+          "doneTitle": "تم الاستيراد!",
+          "doneSubtitle": "تم استيراد الكارما الخاصة بك. أنت مؤهل لنطاق .pirate بطول {domainLength} أحرف.",
           "notFound": "غير موجود",
-          "loading": "جارٍ التحميل...",
+          "loading": "جارٍ الاستيراد...",
           "pasteIntoProfile": "ألصق في",
           "redditProfileDescription": "وصف ملفك الشخصي على Reddit"
         },
@@ -1505,6 +1704,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "notAvailable": "غير متاح"
         },
         "actions": {
+          "back": "رجوع",
           "generateHandle": "أنشئ اسمًا جديدًا",
           "checkAgain": "تحقق مرة أخرى",
           "continue": "تابع",
@@ -1523,7 +1723,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "redditCode": "رمز ريديت {surface}",
           "redditUsername": "اسم مستخدم Reddit"
         },
-        "importKarmaAction": "استورد الكارما",
+        "importKarmaAction": "استورد كارما Reddit",
         "notes": {
           "addCodeToProfile": "أضف هذا الرمز إلى وصف ملفك الشخصي على Reddit:",
           "checkedRedditAt": "تم فحص Reddit عند {time}. الرمز غير ظاهر بعد. احفظ ملفك الشخصي، وانتظر بضع ثوانٍ، ثم اضغط على \"تحقق مرة أخرى\".",
@@ -1561,17 +1761,22 @@ export const GENERATED_LOCALE_CATALOGS = {
       "inbox": {
         "body": "أبقِ `/inbox` كعنصر نائب محايد حتى يتم تحديد الإشعارات أو المراسلة كسطوح منتج حقيقية.",
         "description": "تم تجهيز هذا المسار حتى يشير إليه تنقل الهاتف بصدق بينما لا يزال سلوك الوارد غير محدد.",
+        "emptyChatsState": "لا توجد دردشات بعد",
         "emptyState": "لا توجد إشعارات بعد",
         "loading": "جارٍ التحميل...",
-        "recentActivity": "النشاط الأخير",
+        "notificationsTab": "الإشعارات",
         "someone": "شخص ما",
-        "taskActionNeeded": "إجراء مطلوب",
         "taskDismiss": "إخفاء",
         "taskNamespaceVerificationRequired": "تحقق من مساحة اسم مجتمعك",
         "taskVerify": "تحقق",
         "title": "الوارد",
         "eventCommentReply": "{actor} ردّ على تعليقك",
-        "eventPostCommented": "{actor} علّق على منشورك"
+        "eventPostCommented": "{actor} علّق على منشورك",
+        "installPromoTitle": "تثبيت Pirate",
+        "installPromoBody": "لا تفوّت أي دفعة مع Pirate على شاشتك الرئيسية.",
+        "installPromoAction": "تثبيت",
+        "installPromoDismiss": "ليس الآن",
+        "installPromoIOSInstructions": "اضغط زر المشاركة أدناه، ثم مرّر للأسفل واضغط \"إضافة إلى الشاشة الرئيسية\"."
       },
       "createCommunity": {
         "reopenVerification": "أعد فتح التحقق",
@@ -1618,7 +1823,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "clear": "مسح",
           "membershipSection": "العضوية",
           "gateChecksTitle": "فحوصات البوابة",
-          "gateChecksDescription": "اختر بوابة واحدة على الأقل قبل الإطلاق.",
           "nationalityTitle": "التحقق من الجنسية",
           "nationalityDescription": "اشترط على الأعضاء التحقق من جنسيتهم عبر Self قبل الانضمام.",
           "allowedNationalityLabel": "الجنسيات المسموح بها",
@@ -1748,11 +1952,17 @@ export const GENERATED_LOCALE_CATALOGS = {
         "videosTab": "الفيديوهات"
       },
       "publicAgent": {
+        "aboutDescription": "تظهر منشورات هذا الوكيل وتعليقاته عبر مجتمعات Pirate تحت هويته الأساسية ذات نطاق .clawitzer.",
+        "aboutTitle": "حول",
+        "activeSinceLabel": "نشط منذ",
+        "emptyCommunities": "سيظهر نشاط هذا الوكيل في المجتمعات هنا.",
         "errorDescription": "تعذر تحميل هذا الوكيل العام الآن.",
         "errorTitle": "الوكيل العام",
         "notFoundDescription": "لم نتمكن من العثور على وكيل عام لـ {path}.",
         "notFoundTitle": "الوكيل غير موجود",
+        "openInPirate": "افتح في Pirate",
         "ownerLabel": "المالك",
+        "premiumNamesComingSoon": "سيتم فتح الأسماء المميزة في إصدار لاحق.",
         "providerLabel": "المزوّد"
       },
       "publicCommunity": {
@@ -1772,6 +1982,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "advanced": "متقدم",
         "agentRegisteredToast": "تم تسجيل الوكيل",
         "agentsTitle": "الوكلاء",
+        "activeAgentExistsDescription": "يسمح الإصدار العام v0 بوكيل OpenClaw نشط واحد لكل إنسان تم التحقق منه.",
+        "activeAgentExistsTitle": "الوكيل متصل بالفعل",
         "checkStatus": "تحقق من الحالة",
         "completeAgentRegistrationError": "تعذر إكمال تسجيل الوكيل.",
         "connectAction": "اربط OpenClaw",
@@ -1795,6 +2007,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "openClawKey": "افتح ClawKey",
         "ownedAgentsLoadError": "تعذر تحميل الوكلاء.",
         "ownedAgentsLocalTablesError": "تفتقد واجهة API المحلية جداول الوكلاء. أعد تشغيل خادم pirate-api للتطوير.",
+        "pairingStepInstallPlugin": "ثبّت Pirate Connector إذا لم يكن مثبتًا بالفعل:",
         "pairingStepInstall": "في OpenClaw مع تثبيت Pirate Connector، قل: connect to Pirate with code {code}",
         "pairingStepOpen": "ثم افتح رابط ClawKey الذي يرسله OpenClaw.",
         "pasteChallengePlaceholder": "ألصق JSON لتحدي OpenClaw",
@@ -1803,9 +2016,14 @@ export const GENERATED_LOCALE_CATALOGS = {
         "registerAction": "سجّل باستخدام ClawKey",
         "registrationIncompleteError": "لم يكتمل تسجيل الوكيل.",
         "saveHandleAction": "احفظ المعرّف",
+        "saveChangesAction": "احفظ التغييرات",
         "saveHandleError": "تعذر حفظ معرّف الوكيل.",
         "saveNameAction": "احفظ الاسم",
         "saveNameError": "تعذر حفظ اسم الوكيل.",
+        "premiumNamesComingSoon": "سيتم فتح الأسماء المميزة في إصدار لاحق.",
+        "verificationRequiredAction": "تحقق الآن",
+        "verificationRequiredDescription": "لربط OpenClaw، يحتاج Pirate إلى معرفة أن هناك شخصًا حقيقيًا مسؤولًا عن الوكيل.",
+        "verificationRequiredTitle": "تحقق أولًا",
         "verifiedAt": "{provider} · تم التحقق في {date}"
       },
       "settings": {
@@ -1826,6 +2044,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "coverSourceEns": "يستخدم غلاف ENS من {handle}",
         "coverSourceNone": "لم يتم اختيار غلاف",
         "coverSourceUpload": "غلاف مرفوع",
+        "coverSizeHint": "1500×500 (مُوصى به)",
         "coverTitle": "الغلاف",
         "currentHandleLabel": "المعرّف الحالي",
         "displayNameLabel": "اسم العرض",
@@ -1833,6 +2052,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "editProfileDescription": "حدّث اسم العرض أو النبذة أو المعرّف.",
         "editProfileTitle": "حرّر الملف الشخصي",
         "profileSectionTitle": "الملف الشخصي",
+        "installAppLabel": "تثبيت التطبيق",
+        "installAppDescription": "احصل على شارات غير مقروءة على أيقونة التطبيق وأطلق Pirate من الشريط.",
+        "installAppIOSInstructions": "اضغط زر المشاركة أدناه، ثم مرّر للأسفل واضغط \"إضافة إلى الشاشة الرئيسية\".",
         "handleCheckFailed": "تعذر التحقق من التوفر.",
         "handleNoteEns": "ENS",
         "handleNoteEnsRefresh": "يحتاج ENS إلى تحديث",
@@ -2059,6 +2281,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "removeCover": "إزالة الغلاف",
           "replaceCover": "استبدال الغلاف",
           "uploadCover": "رفع غلاف",
+          "coverSizeHint": "1500×500 (مُوصى به)",
           "coverTitle": "صورة الغلاف",
           "profileTitle": "الملف الشخصي",
           "nameLabel": "الاسم",
@@ -2213,6 +2436,104 @@ export const GENERATED_LOCALE_CATALOGS = {
         "balanceLater": "لاحقًا",
         "noAssetsYet": "لا توجد أصول بعد.",
         "later": "لاحقًا."
+      },
+      "routeStatus": {
+        "chat": {
+          "auth": "Sign in to use messages.",
+          "failure": "Messages could not be loaded right now.",
+          "incomplete": "The messages response was incomplete. Try loading it again.",
+          "title": "Messages"
+        },
+        "community": {
+          "auth": "Sign in to view this community.",
+          "failure": "The community could not be loaded right now.",
+          "incomplete": "The community response was incomplete. Try loading it again.",
+          "title": "Community",
+          "createPost": "Create Post",
+          "modTools": "Mod Tools"
+        },
+        "createCommunity": {
+          "auth": "Sign in to create a community.",
+          "failure": "The create community page could not be loaded right now.",
+          "incomplete": "The create community response was incomplete. Try loading it again.",
+          "title": "Create a community",
+          "verifyDescription": "Verify before creating a community.",
+          "verifyPendingDescription": "Complete your palm scan to continue.",
+          "verifyPendingTitle": "Finish verification",
+          "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+          "verifyStartTitle": "Verify",
+          "reopenVerification": "Reopen verification",
+          "startVerification": "Start verification"
+        },
+        "createPost": {
+          "auth": "Sign in to create a post.",
+          "failure": "The post composer could not be loaded right now.",
+          "incomplete": "The community response was incomplete. Try loading the composer again.",
+          "title": "Create post",
+          "backToCommunity": "Back to community",
+          "membershipRequiredDescription": "Only community members can publish posts here.",
+          "membershipRequiredTitle": "Join this community before posting"
+        },
+        "home": {
+          "auth": "Sign in to view your home feed.",
+          "failure": "The home feed could not be loaded right now.",
+          "incomplete": "The home feed response was incomplete. Try loading it again.",
+          "title": "Home",
+          "createCommunity": "Create community",
+          "emptyHomeBody": "Join a community or create one to start building your home feed.",
+          "emptyHomeTitle": "No posts yet",
+          "emptyYourCommunitiesBody": "Communities you create or join show up here.",
+          "emptyYourCommunitiesTitle": "No communities yet"
+        },
+        "inbox": {
+          "auth": "Sign in to view your inbox.",
+          "failure": "The inbox could not be loaded right now.",
+          "incomplete": "The inbox response was incomplete. Try loading it again.",
+          "title": "Inbox"
+        },
+        "moderation": {
+          "auth": "Sign in to access mod tools.",
+          "failure": "This moderation page could not be loaded right now.",
+          "incomplete": "The community response was incomplete.",
+          "title": "Moderator tools",
+          "accessRequiredDescription": "Only community moderators can open this page.",
+          "accessRequiredTitle": "Moderator access required"
+        },
+        "onboarding": {
+          "auth": "Sign in to continue onboarding.",
+          "failure": "The onboarding flow could not be loaded right now.",
+          "incomplete": "The onboarding response was incomplete. Try loading it again."
+        },
+        "post": {
+          "auth": "Sign in to view this post.",
+          "failure": "The post could not be loaded right now.",
+          "incomplete": "The post response was incomplete. Try loading it again.",
+          "title": "Post"
+        },
+        "profile": {
+          "auth": "Sign in to view your profile.",
+          "failure": "The profile could not be loaded right now.",
+          "incomplete": "The profile response was incomplete. Try loading it again.",
+          "title": "Profile"
+        },
+        "settings": {
+          "auth": "Sign in to access settings.",
+          "failure": "The settings page could not be loaded right now.",
+          "incomplete": "The settings response was incomplete. Try loading it again.",
+          "title": "Settings"
+        },
+        "wallet": {
+          "auth": "Sign in to view your wallet.",
+          "failure": "The wallet could not be loaded right now.",
+          "incomplete": "The wallet response was incomplete. Try loading it again.",
+          "title": "Wallet"
+        },
+        "yourCommunities": {
+          "auth": "Sign in to view your communities.",
+          "failure": "Your communities could not be loaded right now.",
+          "incomplete": "Your communities response was incomplete. Try loading it again.",
+          "title": "Your Communities"
+        }
       }
     },
     "shell": {
@@ -2235,6 +2556,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "appSidebar": {
         "brandLabel": "Pirate",
+        "agentsLabel": "وكلاؤك",
         "createCommunityLabel": "أنشئ مجتمعًا",
         "homeAriaLabel": "اذهب إلى الصفحة الرئيسية",
         "homeLabel": "الرئيسية",
@@ -2316,6 +2638,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "المدونة"
           },
           {
+            "id": "advertise",
+            "label": "أعلن"
+          },
+          {
             "id": "terms-of-service",
             "label": "شروط الخدمة"
           },
@@ -2330,6 +2656,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "feedSortTopLabel": "الأعلى"
       },
       "mobileFooter": {
+        "chatAriaLabel": "الرسائل",
+        "chatLabel": "الرسائل",
         "createLabel": "أنشئ",
         "homeLabel": "الرئيسية",
         "inboxAriaLabel": "الوارد",
@@ -2365,22 +2693,27 @@ export const GENERATED_LOCALE_CATALOGS = {
         "close": "关闭",
         "commentsHeading": "评论",
         "collapseReplies": "收起回复",
+        "collapseThread": "收起讨论串",
         "createAction": "发布",
         "cancelReply": "取消",
         "downvote": "反对",
         "downvoteComment": "给评论点踩",
         "expandReplies": "展开回复",
+        "expandThread": "展开讨论串",
         "joinedStatLabel": "加入时间",
         "loadMoreReplies": "加载更多回复",
         "loadReplies": "加载回复",
         "loading": "加载中...",
         "loadingReplies": "正在加载回复...",
+        "continueThread": "继续此讨论串",
         "newTab": "最新",
         "oldTab": "最早",
         "noComments": "还没有评论。",
         "noRecentCommunities": "还没有最近访问的社区。",
         "ownedBy": "归属于",
         "replyAction": "回复",
+        "replyCount": "{count} 条回复",
+        "replyCountOne": "1 条回复",
         "replyPlaceholder": "写回复",
         "showOriginal": "显示原文",
         "showRepliesCount": "显示 {count} 条回复",
@@ -2522,6 +2855,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "replace": "替换"
         },
         "derivative": {
+          "acceptSourceTerms": "我理解并接受此混音所选来源的许可证条款。",
+          "licenseSource": "来源许可证",
+          "licenseUpstreamRoyalty": "上游版税",
+          "licenseParentIp": "Story 父级 IP",
+          "licenseTermsId": "许可证条款 ID",
+          "licenseNewRemixTerms": "新混音条款",
           "searchSourceTracks": "搜索源曲目"
         },
         "empty": {
@@ -2538,6 +2877,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "caption": "说明",
           "commentary": "评论",
           "coverArt": "封面图",
+          "coverFrame": "封面帧",
           "genre": "流派",
           "image": "图片",
           "instrumentalStem": "伴奏分轨",
@@ -2562,6 +2902,30 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "labels": {
           "source": "来源"
+        },
+        "assetLicense": {
+          "song": {
+            "non-commercial": "仅限非商业",
+            "non-commercialDescription": "听众可以私下使用这首歌，但不能用于商业发行。",
+            "commercial-use": "商业使用",
+            "commercial-useDescription": "他人可以通过原曲获利，但不能发行混音版本。",
+            "commercial-remix": "商业混音",
+            "commercial-remixDescription": "他人可以通过你的歌曲获利并发布混音版本。",
+            "revenueShare": "收入分成",
+            "revenueShareDescription": "选择衍生混音收入需要回流给这首原曲的比例。",
+            "revenueShareRange": "0% 到 100%"
+          },
+          "video": {
+            "non-commercial": "仅限非商业",
+            "non-commercialDescription": "观众可以私下使用这个视频，但不能用于商业发行。",
+            "commercial-use": "商业使用",
+            "commercial-useDescription": "他人可以通过原始视频获利，但不能发布衍生视频。",
+            "commercial-remix": "商业衍生作品",
+            "commercial-remixDescription": "他人可以使用你的作品获利并发布衍生视频。",
+            "revenueShare": "收入分成",
+            "revenueShareDescription": "设置衍生视频收入支付给这个原始视频的比例。",
+            "revenueShareRange": "0% 到 100%"
+          }
         },
         "membershipRequiredDescription": "只有社区成员才能在这里发帖。",
         "membershipRequiredTitle": "发帖前先加入这个社区",
@@ -2591,7 +2955,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "audience": "受众",
           "postAs": "发布身份",
           "qualifiers": "资格标签",
-          "sourceTrack": "源曲目"
+          "sourceTrack": "源曲目",
+          "license": "许可证"
         },
         "setlist": {
           "cannotFindTrack": "找不到这首歌？",
@@ -2663,13 +3028,11 @@ export const GENERATED_LOCALE_CATALOGS = {
       "onboarding": {
         "redditImport": {
           "title": "验证 Reddit",
-          "subtitle": "将你在 Reddit 上的活动带到 Pirate，以获取更好的名称和推荐。",
-          "activityReady": "你的 Reddit 活动已准备就绪。",
-          "importedUser": "已导入 u/{username}",
-          "importedScore": "导入的 Reddit 积分",
-          "topSubreddits": "热门 subreddit",
+          "subtitle": "提供你的 Reddit 用户名，以获得更好的 .pirate 域名和个性化推荐。",
+          "doneTitle": "已导入！",
+          "doneSubtitle": "你的 karma 已导入。你可以领取 {domainLength} 字符的 .pirate 域名。",
           "notFound": "未找到",
-          "loading": "加载中...",
+          "loading": "正在导入...",
           "pasteIntoProfile": "粘贴到你的",
           "redditProfileDescription": "Reddit 个人资料简介"
         },
@@ -2681,6 +3044,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "notAvailable": "不可用"
         },
         "actions": {
+          "back": "返回",
           "generateHandle": "生成新名称",
           "checkAgain": "重新检查",
           "continue": "继续",
@@ -2699,7 +3063,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "redditCode": "Reddit {surface} 验证码",
           "redditUsername": "Reddit 用户名"
         },
-        "importKarmaAction": "导入 Karma",
+        "importKarmaAction": "导入 Reddit Karma",
         "notes": {
           "addCodeToProfile": "把这段代码添加到你的 Reddit 个人资料简介中：",
           "checkedRedditAt": "已在 {time} 检查 Reddit。代码还没有显示出来。保存个人资料后，等待几秒，再点击“重新检查”。",
@@ -2737,17 +3101,22 @@ export const GENERATED_LOCALE_CATALOGS = {
       "inbox": {
         "body": "在通知或消息系统成为真实产品界面前，先把 `/inbox` 保持为中性的占位页。",
         "description": "这个路由已搭好外壳，这样移动端导航就能指向一个真实存在的位置，同时保留收件箱行为的后续定义空间。",
+        "emptyChatsState": "还没有聊天",
         "emptyState": "还没有通知",
         "loading": "加载中...",
-        "recentActivity": "最近动态",
+        "notificationsTab": "通知",
         "someone": "有人",
-        "taskActionNeeded": "需要处理",
         "taskDismiss": "忽略",
         "taskNamespaceVerificationRequired": "验证你的社区命名空间",
         "taskVerify": "验证",
         "title": "收件箱",
         "eventCommentReply": "{actor} 回复了你的评论",
-        "eventPostCommented": "{actor} 评论了你的帖子"
+        "eventPostCommented": "{actor} 评论了你的帖子",
+        "installPromoTitle": "安装 Pirate",
+        "installPromoBody": "把 Pirate 放到主屏幕上，绝不错过任何一笔款项。",
+        "installPromoAction": "安装",
+        "installPromoDismiss": "以后再说",
+        "installPromoIOSInstructions": "点击下方分享按钮，然后向下滚动并点击\"添加到主屏幕\"。"
       },
       "createCommunity": {
         "reopenVerification": "重新打开验证",
@@ -2794,7 +3163,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "clear": "清除",
           "membershipSection": "成员资格",
           "gateChecksTitle": "门槛检查",
-          "gateChecksDescription": "发布前至少选择一个门槛。",
           "nationalityTitle": "国籍验证",
           "nationalityDescription": "要求成员在加入前通过 Self 验证国籍。",
           "allowedNationalityLabel": "允许的国籍",
@@ -2924,11 +3292,17 @@ export const GENERATED_LOCALE_CATALOGS = {
         "videosTab": "视频"
       },
       "publicAgent": {
+        "aboutDescription": "这个代理的帖子和评论会以其规范的 .clawitzer 身份出现在 Pirate 各个社区中。",
+        "aboutTitle": "关于",
+        "activeSinceLabel": "活跃自",
+        "emptyCommunities": "这个代理的社区活动会显示在这里。",
         "errorDescription": "当前无法加载这个公开代理。",
         "errorTitle": "公开代理",
         "notFoundDescription": "找不到 {path} 的公开代理。",
         "notFoundTitle": "找不到代理",
+        "openInPirate": "在 Pirate 中打开",
         "ownerLabel": "所有者",
+        "premiumNamesComingSoon": "高级名称会在后续版本中开放。",
         "providerLabel": "提供方"
       },
       "publicCommunity": {
@@ -2948,6 +3322,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "advanced": "高级",
         "agentRegisteredToast": "代理已注册",
         "agentsTitle": "代理",
+        "activeAgentExistsDescription": "公开 v0 每个已验证真人只能有一个已激活的 OpenClaw 代理。",
+        "activeAgentExistsTitle": "代理已连接",
         "checkStatus": "检查状态",
         "completeAgentRegistrationError": "无法完成代理注册。",
         "connectAction": "连接 OpenClaw",
@@ -2971,6 +3347,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "openClawKey": "打开 ClawKey",
         "ownedAgentsLoadError": "无法加载代理。",
         "ownedAgentsLocalTablesError": "本地 API 缺少代理表。请重启 pirate-api 开发服务器。",
+        "pairingStepInstallPlugin": "如果尚未安装，请先安装 Pirate Connector：",
         "pairingStepInstall": "在已安装 Pirate Connector 的 OpenClaw 中输入：connect to Pirate with code {code}",
         "pairingStepOpen": "然后打开 OpenClaw 发送给你的 ClawKey 链接。",
         "pasteChallengePlaceholder": "粘贴 OpenClaw challenge JSON",
@@ -2979,9 +3356,14 @@ export const GENERATED_LOCALE_CATALOGS = {
         "registerAction": "使用 ClawKey 注册",
         "registrationIncompleteError": "代理注册未完成。",
         "saveHandleAction": "保存标识",
+        "saveChangesAction": "保存更改",
         "saveHandleError": "无法保存代理标识。",
         "saveNameAction": "保存名称",
         "saveNameError": "无法保存代理名称。",
+        "premiumNamesComingSoon": "高级名称会在后续版本中开放。",
+        "verificationRequiredAction": "立即验证",
+        "verificationRequiredDescription": "要连接 OpenClaw，Pirate 需要确认有真人为这个代理负责。",
+        "verificationRequiredTitle": "先验证",
         "verifiedAt": "{provider} · 已验证于 {date}"
       },
       "settings": {
@@ -3002,6 +3384,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "coverSourceEns": "使用来自 {handle} 的 ENS 封面",
         "coverSourceNone": "未选择封面",
         "coverSourceUpload": "已上传封面",
+        "coverSizeHint": "1500×500 推荐",
         "coverTitle": "封面",
         "currentHandleLabel": "当前用户名",
         "displayNameLabel": "显示名称",
@@ -3009,6 +3392,9 @@ export const GENERATED_LOCALE_CATALOGS = {
         "editProfileDescription": "更新你的显示名称、简介或用户名。",
         "editProfileTitle": "编辑资料",
         "profileSectionTitle": "个人资料",
+        "installAppLabel": "安装应用",
+        "installAppDescription": "在应用图标上显示未读角标，从程序坞启动 Pirate。",
+        "installAppIOSInstructions": "点击下方分享按钮，然后向下滚动并点击\"添加到主屏幕\"。",
         "handleCheckFailed": "无法检查可用性。",
         "handleNoteEns": "ENS",
         "handleNoteEnsRefresh": "ENS 需要刷新",
@@ -3235,6 +3621,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "removeCover": "移除封面",
           "replaceCover": "更换封面",
           "uploadCover": "上传封面",
+          "coverSizeHint": "1500×500 推荐",
           "coverTitle": "封面照片",
           "profileTitle": "个人资料",
           "nameLabel": "名称",
@@ -3389,6 +3776,104 @@ export const GENERATED_LOCALE_CATALOGS = {
         "balanceLater": "稍后",
         "noAssetsYet": "还没有资产。",
         "later": "稍后。"
+      },
+      "routeStatus": {
+        "chat": {
+          "auth": "Sign in to use messages.",
+          "failure": "Messages could not be loaded right now.",
+          "incomplete": "The messages response was incomplete. Try loading it again.",
+          "title": "Messages"
+        },
+        "community": {
+          "auth": "Sign in to view this community.",
+          "failure": "The community could not be loaded right now.",
+          "incomplete": "The community response was incomplete. Try loading it again.",
+          "title": "Community",
+          "createPost": "Create Post",
+          "modTools": "Mod Tools"
+        },
+        "createCommunity": {
+          "auth": "Sign in to create a community.",
+          "failure": "The create community page could not be loaded right now.",
+          "incomplete": "The create community response was incomplete. Try loading it again.",
+          "title": "Create a community",
+          "verifyDescription": "Verify before creating a community.",
+          "verifyPendingDescription": "Complete your palm scan to continue.",
+          "verifyPendingTitle": "Finish verification",
+          "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+          "verifyStartTitle": "Verify",
+          "reopenVerification": "Reopen verification",
+          "startVerification": "Start verification"
+        },
+        "createPost": {
+          "auth": "Sign in to create a post.",
+          "failure": "The post composer could not be loaded right now.",
+          "incomplete": "The community response was incomplete. Try loading the composer again.",
+          "title": "Create post",
+          "backToCommunity": "Back to community",
+          "membershipRequiredDescription": "Only community members can publish posts here.",
+          "membershipRequiredTitle": "Join this community before posting"
+        },
+        "home": {
+          "auth": "Sign in to view your home feed.",
+          "failure": "The home feed could not be loaded right now.",
+          "incomplete": "The home feed response was incomplete. Try loading it again.",
+          "title": "Home",
+          "createCommunity": "Create community",
+          "emptyHomeBody": "Join a community or create one to start building your home feed.",
+          "emptyHomeTitle": "No posts yet",
+          "emptyYourCommunitiesBody": "Communities you create or join show up here.",
+          "emptyYourCommunitiesTitle": "No communities yet"
+        },
+        "inbox": {
+          "auth": "Sign in to view your inbox.",
+          "failure": "The inbox could not be loaded right now.",
+          "incomplete": "The inbox response was incomplete. Try loading it again.",
+          "title": "Inbox"
+        },
+        "moderation": {
+          "auth": "Sign in to access mod tools.",
+          "failure": "This moderation page could not be loaded right now.",
+          "incomplete": "The community response was incomplete.",
+          "title": "Moderator tools",
+          "accessRequiredDescription": "Only community moderators can open this page.",
+          "accessRequiredTitle": "Moderator access required"
+        },
+        "onboarding": {
+          "auth": "Sign in to continue onboarding.",
+          "failure": "The onboarding flow could not be loaded right now.",
+          "incomplete": "The onboarding response was incomplete. Try loading it again."
+        },
+        "post": {
+          "auth": "Sign in to view this post.",
+          "failure": "The post could not be loaded right now.",
+          "incomplete": "The post response was incomplete. Try loading it again.",
+          "title": "Post"
+        },
+        "profile": {
+          "auth": "Sign in to view your profile.",
+          "failure": "The profile could not be loaded right now.",
+          "incomplete": "The profile response was incomplete. Try loading it again.",
+          "title": "Profile"
+        },
+        "settings": {
+          "auth": "Sign in to access settings.",
+          "failure": "The settings page could not be loaded right now.",
+          "incomplete": "The settings response was incomplete. Try loading it again.",
+          "title": "Settings"
+        },
+        "wallet": {
+          "auth": "Sign in to view your wallet.",
+          "failure": "The wallet could not be loaded right now.",
+          "incomplete": "The wallet response was incomplete. Try loading it again.",
+          "title": "Wallet"
+        },
+        "yourCommunities": {
+          "auth": "Sign in to view your communities.",
+          "failure": "Your communities could not be loaded right now.",
+          "incomplete": "Your communities response was incomplete. Try loading it again.",
+          "title": "Your Communities"
+        }
       }
     },
     "shell": {
@@ -3411,6 +3896,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "appSidebar": {
         "brandLabel": "Pirate",
+        "agentsLabel": "你的代理",
         "createCommunityLabel": "创建社区",
         "homeAriaLabel": "返回首页",
         "homeLabel": "首页",
@@ -3492,6 +3978,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "博客"
           },
           {
+            "id": "advertise",
+            "label": "投放广告"
+          },
+          {
             "id": "terms-of-service",
             "label": "服务条款"
           },
@@ -3506,6 +3996,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "feedSortTopLabel": "热门"
       },
       "mobileFooter": {
+        "chatAriaLabel": "消息",
+        "chatLabel": "消息",
         "createLabel": "发布",
         "homeLabel": "首页",
         "inboxAriaLabel": "收件箱",

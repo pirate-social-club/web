@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/primitives/checkbox";
 import { cn } from "@/lib/utils";
 
 export interface CheckboxCardProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onChange"> {
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> {
   title: string;
   description?: string;
   checked?: boolean;
@@ -16,7 +16,7 @@ export interface CheckboxCardProps
 }
 
 export const CheckboxCard = React.forwardRef<
-  HTMLButtonElement,
+  HTMLDivElement,
   CheckboxCardProps
 >(
   (
@@ -37,12 +37,25 @@ export const CheckboxCard = React.forwardRef<
       onCheckedChange?.(!checked);
     }, [checked, disabled, onCheckedChange]);
 
+    const handleKeyDown = React.useCallback(
+      (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handleClick();
+        }
+      },
+      [handleClick],
+    );
+
     return (
-      <button
+      <div
         ref={ref}
-        type="button"
-        disabled={disabled}
+        role="checkbox"
+        aria-checked={checked}
+        aria-disabled={disabled}
+        tabIndex={disabled ? -1 : 0}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
         className={cn(
           "flex w-full items-start gap-3 rounded-[var(--radius-lg)] border px-4 py-4 text-start transition-[border-color,background-color]",
           checked
@@ -78,7 +91,7 @@ export const CheckboxCard = React.forwardRef<
             <p className="text-base leading-6 text-warning">{disabledHint}</p>
           ) : null}
         </div>
-      </button>
+      </div>
     );
   },
 );

@@ -4,21 +4,26 @@ import * as React from "react";
 
 import type { AppRoute } from "@/app/router";
 import { navigate, useRoute } from "@/app/router";
-import { AppSidebar, type AppSidebarPrimaryItem } from "@/components/compositions/app-sidebar/app-sidebar";
-import { SidebarInset, SidebarProvider } from "@/components/compositions/sidebar/sidebar";
+import { AppSidebar, type AppSidebarPrimaryItem } from "@/components/compositions/app/app-sidebar/app-sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { Toaster } from "@/components/primitives/sonner";
 import { ApiProvider, useSessionRevalidation } from "@/lib/api";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { useSession } from "@/lib/api/session-store";
-import { PirateAuthProvider } from "@/lib/auth/privy-provider";
+import { PirateAuthProvider } from "@/components/auth/privy-provider";
+import { useAssistantUnreadCount } from "@/lib/chat/chat-assistant-client";
+import { useNotificationBadges } from "@/lib/notifications/use-notification-badges";
 import { useNotificationSummary } from "@/lib/notifications/use-notification-summary";
 import { useSidebarCommunities } from "@/lib/owned-communities";
 import { resolveLocaleDirection } from "@/lib/ui-locale-core";
 import { useUiLocale } from "@/lib/ui-locale";
+import { cn } from "@/lib/utils";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
 
 import { AppShellHeader, AppShellMobileNav } from "./app-shell-header";
+import { ChatOnboardingPrep } from "./chat-onboarding-prep";
+import { DesktopChatWidgetProvider } from "./desktop-chat-widget";
 import { RootErrorBoundary } from "./root-error-boundary";
 import { RouteContentFallback } from "./route-content-fallback";
 import {
@@ -61,7 +66,7 @@ function AnalyticsRouteTracker({ route }: { route: AppRoute }) {
       properties: { pathname },
     });
 
-    if (route.kind === "home") {
+    if (route.kind === "home" || route.kind === "popular") {
       trackAnalyticsEvent({ eventName: "home_feed_viewed" });
     } else if (route.kind === "community") {
       trackAnalyticsEvent({
@@ -111,6 +116,7 @@ function NotificationShell({
 }) {
   const isMobileLayout = useShellMobileLayout();
   const notificationSummary = useNotificationSummary();
+  const unreadChatCount = useAssistantUnreadCount();
   const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
   const codeItems = buildCodeItems(copy.appSidebar);
   const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities);
@@ -120,13 +126,31 @@ function NotificationShell({
     || route.kind === "create-post"
     || route.kind === "create-post-global"
     || route.kind === "create-community"
+    || route.kind === "onboarding"
+    || route.kind === "settings-index"
+    || route.kind === "settings"
+    || route.kind === "chat-target"
+    || route.kind === "chat-conversation"
+    || route.kind === "chat-new"
   );
+  const isChatRoute = route.kind === "chat"
+    || route.kind === "chat-target"
+    || route.kind === "chat-conversation"
+    || route.kind === "chat-new";
   const isPublicRoute = route.kind === "public-profile" || route.kind === "public-agent";
   const useStandaloneRouteShell = isCommunityModerationRoute || isMobileStandaloneRoute;
+  // Temporary: migrated routes own their own page shell padding.
+  // Remove this once all routes are converted.
+  const isMigratedRoute = route.kind === "home" || route.kind === "popular" || route.kind === "wallet";
+  const unreadNotificationCount = notificationSummary.open_task_count + notificationSummary.unread_activity_count;
+  useNotificationBadges(unreadNotificationCount);
 
   return (
     <SidebarProvider
-      className="flex-col"
+      className={cn(
+        "flex-col",
+        isChatRoute && "md:h-svh md:min-h-0 md:overflow-hidden",
+      )}
       defaultOpen
       dir={effectiveDir}
       style={{
@@ -135,9 +159,21 @@ function NotificationShell({
         "--sidebar-width-icon": "3.75rem",
       } as React.CSSProperties}
     >
-      <>
-        {isMobileStandaloneRoute ? null : <AppShellHeader copy={copy} route={route} hasUnread={notificationSummary.has_unread} />}
-        <div className="flex min-h-0 w-full flex-1">
+      <DesktopChatWidgetProvider>
+        {isMobileStandaloneRoute ? null : (
+          <AppShellHeader
+            copy={copy}
+            route={route}
+            unreadChatCount={unreadChatCount}
+            unreadNotificationCount={unreadNotificationCount}
+          />
+        )}
+        <div
+          className={cn(
+            "flex min-h-0 w-full flex-1",
+            isChatRoute && "md:overflow-hidden",
+          )}
+        >
           {useStandaloneRouteShell ? (
             <main className="flex min-h-0 w-full flex-1">
               <React.Suspense fallback={<RouteContentFallback route={route} />}>
@@ -153,6 +189,7 @@ function NotificationShell({
                 codeItems={codeItems}
                 codeLabel={copy.appSidebar.codeLabel}
                 onHomeClick={() => navigate("/")}
+                onNavigate={navigate}
                 primaryItems={primaryItems}
                 resourceItems={resourceItems}
                 resourcesLabel={copy.appSidebar.resourcesLabel}
@@ -160,20 +197,33 @@ function NotificationShell({
                 side="start"
               />
               <SidebarInset className="min-h-0">
-                <main className="flex w-full flex-1 px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.5rem)] md:px-5 md:pb-8 md:pt-6 lg:px-8">
+                <main
+                  className={cn(
+                    "flex min-h-0 w-full flex-1",
+                    !isMigratedRoute && "px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.5rem)] md:px-5 md:pb-8 md:pt-6 lg:px-8",
+                    isChatRoute && "md:overflow-hidden",
+                  )}
+                >
                   <React.Suspense fallback={<RouteContentFallback route={route} />}>
                     {isPublicRoute || ((route.kind === "community" || route.kind === "post") && !session)
                       ? <LazyPublicRouteRenderer route={route} />
                       : <LazyAuthenticatedRouteRenderer route={route} />}
                   </React.Suspense>
                 </main>
-                {isMobileStandaloneRoute ? null : <AppShellMobileNav copy={copy} route={route} hasUnread={notificationSummary.has_unread} />}
+                {isMobileStandaloneRoute ? null : (
+                  <AppShellMobileNav
+                    copy={copy}
+                    route={route}
+                    unreadChatCount={unreadChatCount}
+                    unreadNotificationCount={unreadNotificationCount}
+                  />
+                )}
               </SidebarInset>
             </>
           )}
         </div>
         <Toaster />
-      </>
+      </DesktopChatWidgetProvider>
     </SidebarProvider>
   );
 }
@@ -192,7 +242,9 @@ export function PirateAppShell({ initialHost, initialPath }: { initialHost?: str
     route.kind === "create-community"
     || (!session && (
       route.kind === "home"
+      || route.kind === "popular"
       || route.kind === "community"
+      || route.kind === "wallet"
       || route.kind === "post"
     ));
   const primaryItems = buildPrimaryItems(copy.appSidebar);
@@ -219,6 +271,7 @@ export function PirateAppShell({ initialHost, initialPath }: { initialHost?: str
         ) : (
           <PirateAuthProvider deferPrivyUntilConnect={shouldDeferPrivyUntilConnect}>
             <SessionRevalidator>
+              <ChatOnboardingPrep />
               <NotificationShell
                 copy={copy}
                 effectiveDir={effectiveDir}

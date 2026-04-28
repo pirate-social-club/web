@@ -7,7 +7,7 @@ import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "./skeleton";
 
-type AvatarSize = "xs" | "sm" | "md" | "lg";
+export type AvatarSize = "xs" | "sm" | "md" | "lg";
 
 const sizeClasses: Record<AvatarSize, string> = {
   xs: "h-6 w-6",

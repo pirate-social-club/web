@@ -1,6 +1,6 @@
 import type { OnboardingStatus } from "@pirate/api-contracts";
 
-import type { OnboardingPhase } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
+import type { OnboardingPhase } from "@/components/compositions/onboarding/reddit-bootstrap/onboarding-reddit-bootstrap.types";
 
 export function resolveOnboardingPhase(status: OnboardingStatus): OnboardingPhase | null {
   if (status.onboarding_dismissed_at) return null;

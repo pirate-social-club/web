@@ -3,6 +3,7 @@ import * as React from "react";
 import { logger } from "@/lib/logger";
 
 const STORAGE_KEY = "pirate_known_communities";
+const MAX_KNOWN_COMMUNITIES = 50;
 const EMPTY_KNOWN_COMMUNITIES: KnownCommunity[] = [];
 
 export interface KnownCommunity {
@@ -28,6 +29,16 @@ function sortCommunities(communities: KnownCommunity[]): KnownCommunity[] {
   return [...communities].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
+function normalizeCommunities(communities: KnownCommunity[]): KnownCommunity[] {
+  return sortCommunities(communities).slice(0, MAX_KNOWN_COMMUNITIES);
+}
+
+function syncFromStorage(): void {
+  cachedCommunities = readFromStorage();
+  hydrated = true;
+  notifyAll();
+}
+
 function readFromStorage(): KnownCommunity[] {
   if (typeof window === "undefined") return EMPTY_KNOWN_COMMUNITIES;
 
@@ -49,7 +60,7 @@ function readFromStorage(): KnownCommunity[] {
           && typeof entry.updatedAt === "string",
         ),
       ),
-    );
+    ).slice(0, MAX_KNOWN_COMMUNITIES);
   } catch {
     return EMPTY_KNOWN_COMMUNITIES;
   }
@@ -92,17 +103,43 @@ export function rememberKnownCommunity(input: {
     (community) => community.communityId !== input.communityId,
   );
 
-  cachedCommunities = sortCommunities([nextCommunity, ...existing]);
+  cachedCommunities = normalizeCommunities([nextCommunity, ...existing]);
+  writeToStorage(cachedCommunities);
+  notifyAll();
+}
+
+export function forgetKnownCommunity(communityId: string): void {
+  const trimmedCommunityId = communityId.trim();
+  if (!trimmedCommunityId) return;
+
+  const existing = getKnownCommunities();
+  const nextCommunities = existing.filter((community) => community.communityId !== trimmedCommunityId);
+  if (nextCommunities.length === existing.length) return;
+
+  cachedCommunities = nextCommunities;
   writeToStorage(cachedCommunities);
   notifyAll();
 }
 
 export function subscribeToKnownCommunities(listener: KnownCommunitiesListener): () => void {
   listeners.add(listener);
+  const shouldSubscribeToStorage = listeners.size === 1 && typeof window !== "undefined";
+
+  if (shouldSubscribeToStorage) {
+    window.addEventListener("storage", handleStorageChange);
+  }
 
   return () => {
     listeners.delete(listener);
+    if (listeners.size === 0 && typeof window !== "undefined") {
+      window.removeEventListener("storage", handleStorageChange);
+    }
   };
+}
+
+function handleStorageChange(event: StorageEvent): void {
+  if (event.key !== STORAGE_KEY) return;
+  syncFromStorage();
 }
 
 export function useKnownCommunities(): KnownCommunity[] {
@@ -111,4 +148,10 @@ export function useKnownCommunities(): KnownCommunity[] {
     getKnownCommunities,
     () => EMPTY_KNOWN_COMMUNITIES,
   );
+}
+
+export function __resetKnownCommunitiesForTests(): void {
+  cachedCommunities = [];
+  hydrated = false;
+  listeners.clear();
 }

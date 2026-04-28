@@ -18,6 +18,7 @@
   },
   "appSidebar": {
     "brandLabel": "Pirate",
+    "agentsLabel": "Your Agents",
     "createCommunityLabel": "Create Community",
     "homeAriaLabel": "Go to home",
     "homeLabel": "Home",
@@ -59,6 +60,7 @@
     ],
     "resourceItems": [
       { "id": "blog", "label": "Blog" },
+      { "id": "advertise", "label": "Advertise" },
       { "id": "terms-of-service", "label": "Terms of Service" },
       { "id": "privacy-policy", "label": "Privacy Policy" }
     ],
@@ -68,6 +70,8 @@
     "feedSortTopLabel": "Top"
   },
   "mobileFooter": {
+    "chatAriaLabel": "Messages",
+    "chatLabel": "Messages",
     "createLabel": "Create",
     "homeLabel": "Home",
     "inboxAriaLabel": "Inbox",

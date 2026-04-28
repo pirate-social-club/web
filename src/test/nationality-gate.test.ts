@@ -5,6 +5,7 @@ import {
   getJoinCtaLabel,
   getVerificationPromptCopy,
   isJoinCtaActionable,
+  resolveSuggestedVerificationProvider,
 } from "../lib/identity-gates";
 import type { MembershipGateSummary, JoinEligibility, GateFailureDetails } from "@pirate/api-contracts";
 
@@ -29,14 +30,19 @@ describe("formatGateRequirement", () => {
     expect(formatGateRequirement(gate)).toContain("XX");
   });
 
-  test("formats non-nationality gate generically", () => {
+  test("formats unique human gate without provider jargon", () => {
     const gate: MembershipGateSummary = { gate_type: "unique_human" };
-    expect(formatGateRequirement(gate)).toBe("Requires unique human verification");
+    expect(formatGateRequirement(gate)).toBe("Real person check");
+  });
+
+  test("formats Very unique human gate as palm scan", () => {
+    const gate: MembershipGateSummary = { gate_type: "unique_human" };
+    expect(formatGateRequirement(gate, { provider: "very" })).toBe("Palm scan");
   });
 
   test("formats gender gate generically for public previews", () => {
     const gate: MembershipGateSummary = { gate_type: "gender", required_value: "F" };
-    expect(formatGateRequirement(gate)).toBe("Verify with ID");
+    expect(formatGateRequirement(gate)).toBe("ID check");
   });
 
   test("formats gender gate with exact marker for admin surfaces", () => {
@@ -52,23 +58,14 @@ describe("formatGateRequirement", () => {
       asset_filter_label: "Pokemon Charizard",
       asset_category: "trading_card",
     };
-    expect(formatGateRequirement(gate)).toBe("Requires 3 Courtyard Pokemon Charizard");
+    expect(formatGateRequirement(gate)).toBe("3 Courtyard Pokemon Charizard");
   });
 
   test("formats wallet score gate with threshold", () => {
     const gate: MembershipGateSummary = { gate_type: "wallet_score", minimum_score: 20 };
-    expect(formatGateRequirement(gate)).toBe("Requires Passport score 20+");
+    expect(formatGateRequirement(gate)).toBe("Passport Score 20+");
   });
 
-  test("formats sanctions screening gate", () => {
-    const gate: MembershipGateSummary = { gate_type: "sanctions_clear" };
-    expect(formatGateRequirement(gate)).toBe("Includes sanctions screening");
-  });
-
-  test("formats Passport-only sanctions screening gate", () => {
-    const gate: MembershipGateSummary = { gate_type: "sanctions_clear", accepted_providers: ["passport"] };
-    expect(formatGateRequirement(gate)).toBe("Requires Passport sanctions screening");
-  });
 });
 
 describe("getJoinCtaLabel", () => {
@@ -145,11 +142,26 @@ describe("getVerificationPromptCopy", () => {
   });
 
   test("describes Passport score remediation", () => {
-    expect(getVerificationPromptCopy("passport", ["wallet_score"]).title).toBe("Passport score required");
+    expect(getVerificationPromptCopy("passport", ["wallet_score"]).title).toBe("Score Too Low");
   });
 
-  test("describes Passport sanctions screening remediation", () => {
-    expect(getVerificationPromptCopy("passport", ["sanctions_clear"]).title).toBe("Passport screening required");
+});
+
+describe("resolveSuggestedVerificationProvider", () => {
+  test("defaults unique human remediation to Very when the API does not suggest a provider", () => {
+    expect(resolveSuggestedVerificationProvider({
+      membership_gate_summaries: [],
+      missing_capabilities: ["unique_human"],
+      suggested_verification_provider: null,
+    })).toBe("very");
+  });
+
+  test("keeps document fact remediation on Self", () => {
+    expect(resolveSuggestedVerificationProvider({
+      membership_gate_summaries: [{ gate_type: "nationality", accepted_providers: ["self"] }],
+      missing_capabilities: ["nationality"],
+      suggested_verification_provider: null,
+    })).toBe("self");
   });
 });
 

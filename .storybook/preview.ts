@@ -114,7 +114,7 @@ const preview: Preview = {
     backgrounds: {
       default: "app-bg",
       values: [
-        { name: "app-bg", value: "#222324" },
+        { name: "app-bg", value: "oklch(0.18 0 0)" },
         { name: "dark", value: "#09090b" },
         { name: "light", value: "#ffffff" },
       ],
@@ -122,7 +122,38 @@ const preview: Preview = {
     layout: "centered",
     options: {
       storySort: {
-        order: ["Pages", "Compositions", "Primitives"],
+        order: [
+          "App",
+          [
+            "Shell",
+            "Routes",
+            "Route States",
+          ],
+          "Compositions",
+          [
+            "App",
+            "Community",
+            [
+              "PageShell",
+              "Sidebar",
+              "CreateCommunityComposer",
+              "MembershipGatePanel",
+              "JoinRequestModal",
+              "InteractionGateModal",
+              "ActionCalloutPanel",
+              "Moderation",
+            ],
+            "Notifications",
+            "Onboarding",
+            "Posts",
+            "Profiles",
+            "Settings",
+            "System",
+            "Verification",
+            "Wallet",
+          ],
+          "Primitives",
+        ],
       },
     },
   },

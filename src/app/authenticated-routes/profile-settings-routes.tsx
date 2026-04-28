@@ -1,266 +1,39 @@
 "use client";
 
 import * as React from "react";
-import {
-  createPublicClient,
-  defineChain,
-  erc20Abi,
-  formatUnits,
-  getAddress,
-  http,
-  isAddress,
-  type Address,
-} from "viem";
-import { mainnet, optimism, optimismSepolia, sepolia } from "viem/chains";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
-import { clearSession, updateSessionProfile, useSession } from "@/lib/api/session-store";
+import { clearSession, updateSessionProfile, updateSessionUser, useSession } from "@/lib/api/session-store";
 import { ApiError } from "@/lib/api/client";
 import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
 import { type UiLocaleCode, isUiLocaleCode } from "@/lib/ui-locale-core";
 import { getCountryDisplayName, normalizeCountryCode } from "@/lib/countries";
 import { useGlobalHandleFlow } from "@/hooks/use-global-handle-flow";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import { toast } from "@/components/primitives/sonner";
-import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profile-page/profile-page";
-import { SettingsPage } from "@/components/compositions/settings-page/settings-page";
-import { WalletHub } from "@/components/compositions/wallet-hub/wallet-hub";
-import type { SettingsSubmitState, SettingsTab } from "@/components/compositions/settings-page/settings-page.types";
-import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet-hub/wallet-hub.types";
+import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
+import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profiles/profile-page/profile-page";
+import { SettingsPage } from "@/components/compositions/settings/settings-page/settings-page";
+import type { SettingsSubmitState, SettingsTab } from "@/components/compositions/settings/settings-page/settings-page.types";
 import type { ProfileUpdateInput } from "@/lib/api/client-api-types";
-import { getPirateNetworkConfig } from "@/lib/network-config";
+import { useVeryVerification } from "@/lib/verification/use-very-verification";
 
-import { getRouteAuthDescription } from "./route-status-copy";
-import { AuthRequiredRouteState } from "./route-shell";
-import { useRouteMessages } from "./route-core";
+import { AuthRequiredRouteState } from "@/app/authenticated-helpers/route-shell";
+import { useRouteMessages } from "@/hooks/use-route-messages";
 import {
   apiProfileToProps,
   buildSettingsLocaleOptions,
   buildSettingsPath,
   getSelectedProfileHandleLabel,
   mapProfileLinkedHandles,
-} from "./profile-settings-mapping";
-import { useSettingsOwnedAgents } from "./use-settings-owned-agents";
+} from "@/app/authenticated-helpers/profile-settings-mapping";
+import { useSettingsOwnedAgents } from "@/app/authenticated-state/use-settings-owned-agents";
 
-type WalletBalanceChain = {
-  chainId: WalletHubChainId;
-  evmChainId: number | null;
-  rpcUrl: string | null;
-  title: string;
-  tokens: WalletBalanceToken[];
-};
-
-type WalletBalanceToken =
-  | {
-    id: string;
-    kind: "native";
-    name: string;
-    priceId: string | null;
-    symbol: string;
-    usdPrice?: number;
-  }
-  | {
-    address: Address;
-    id: string;
-    kind: "erc20";
-    name: string;
-    priceId: string | null;
-    symbol: string;
-    usdPrice?: number;
-  };
-
-const TEMPO_PATH_USD_ADDRESS = "0x20c0000000000000000000000000000000000000" as const;
-const ETHEREUM_MAINNET_USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as const;
-const ETHEREUM_MAINNET_USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7" as const;
-const ETHEREUM_SEPOLIA_USDC_ADDRESS = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" as const;
-const BASE_MAINNET_USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
-const BASE_SEPOLIA_USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e" as const;
-
-function buildWalletBalanceChains(): WalletBalanceChain[] {
-  const networkConfig = getPirateNetworkConfig();
-  const ethereumChain = networkConfig.base.network === "base-mainnet" ? mainnet : sepolia;
-  const optimismChain = networkConfig.base.network === "base-mainnet" ? optimism : optimismSepolia;
-  const ethereumRpcUrl = networkConfig.efp.rpcUrlsByChainId[ethereumChain.id] ?? ethereumChain.rpcUrls.default.http[0];
-  const optimismRpcUrl = networkConfig.efp.rpcUrlsByChainId[optimismChain.id] ?? optimismChain.rpcUrls.default.http[0];
-  const ethereumStablecoins: WalletBalanceToken[] = ethereumChain.id === mainnet.id
-    ? [
-      {
-        address: ETHEREUM_MAINNET_USDC_ADDRESS,
-        id: "eth-usdc",
-        kind: "erc20",
-        name: "USD Coin",
-        priceId: "usd-coin",
-        symbol: "USDC",
-        usdPrice: 1,
-      },
-      {
-        address: ETHEREUM_MAINNET_USDT_ADDRESS,
-        id: "eth-usdt",
-        kind: "erc20",
-        name: "Tether USD",
-        priceId: "tether",
-        symbol: "USDT",
-        usdPrice: 1,
-      },
-    ]
-    : [
-      {
-        address: ETHEREUM_SEPOLIA_USDC_ADDRESS,
-        id: "eth-sepolia-usdc",
-        kind: "erc20",
-        name: "USD Coin",
-        priceId: "usd-coin",
-        symbol: "USDC",
-        usdPrice: 1,
-      },
-    ];
-  const baseStablecoins: WalletBalanceToken[] = [
-    {
-      address: networkConfig.base.network === "base-mainnet" ? BASE_MAINNET_USDC_ADDRESS : BASE_SEPOLIA_USDC_ADDRESS,
-      id: networkConfig.base.network === "base-mainnet" ? "base-usdc" : "base-sepolia-usdc",
-      kind: "erc20",
-      name: "USD Coin",
-      priceId: "usd-coin",
-      symbol: "USDC",
-      usdPrice: 1,
-    },
-  ];
-
-  const chains: WalletBalanceChain[] = [
-    {
-      chainId: "ethereum",
-      evmChainId: ethereumChain.id,
-      rpcUrl: ethereumRpcUrl,
-      title: ethereumChain.id === mainnet.id ? "Ethereum" : "Ethereum Sepolia",
-      tokens: [
-        { id: "eth", kind: "native", name: "Ether", priceId: "ethereum", symbol: "ETH" },
-        ...ethereumStablecoins,
-      ],
-    },
-    {
-      chainId: "base",
-      evmChainId: networkConfig.base.chainId,
-      rpcUrl: networkConfig.base.rpcUrl,
-      title: networkConfig.base.label,
-      tokens: [
-        { id: "base-eth", kind: "native", name: "Ether", priceId: "ethereum", symbol: "ETH" },
-        ...baseStablecoins,
-      ],
-    },
-    {
-      chainId: "optimism",
-      evmChainId: optimismChain.id,
-      rpcUrl: optimismRpcUrl,
-      title: optimismChain.id === optimism.id ? "Optimism" : "Optimism Sepolia",
-      tokens: [{ id: "op-eth", kind: "native", name: "Ether", priceId: "ethereum", symbol: "ETH" }],
-    },
-    {
-      chainId: "story",
-      evmChainId: networkConfig.story.chainId,
-      rpcUrl: networkConfig.story.rpcUrl,
-      title: networkConfig.story.label,
-      tokens: [{ id: "story-ip", kind: "native", name: "IP", priceId: "story", symbol: "IP" }],
-    },
-    {
-      chainId: "tempo",
-      evmChainId: networkConfig.tempo.chainId,
-      rpcUrl: networkConfig.tempo.rpcUrl,
-      title: networkConfig.tempo.label,
-      tokens: [{
-        address: TEMPO_PATH_USD_ADDRESS,
-        id: "tempo-pathusd",
-        kind: "erc20",
-        name: "pathUSD",
-        priceId: null,
-        symbol: "pathUSD",
-        usdPrice: 1,
-      }],
-    },
-    {
-      chainId: "bitcoin",
-      evmChainId: null,
-      rpcUrl: null,
-      title: "Bitcoin",
-      tokens: [{ id: "btc", kind: "native", name: "Bitcoin", priceId: "bitcoin", symbol: "BTC" }],
-    },
-    {
-      chainId: "solana",
-      evmChainId: null,
-      rpcUrl: null,
-      title: "Solana",
-      tokens: [{ id: "sol", kind: "native", name: "Solana", priceId: "solana", symbol: "SOL" }],
-    },
-    {
-      chainId: "cosmos",
-      evmChainId: null,
-      rpcUrl: null,
-      title: "Cosmos",
-      tokens: [{ id: "atom", kind: "native", name: "Cosmos Hub", priceId: "cosmos", symbol: "ATOM" }],
-    },
-  ];
-
-  return chains.filter((chain) => chain.rpcUrl === null || chain.rpcUrl.trim().length > 0);
-}
-
-function formatNativeBalance(balance: bigint, decimals = 18): string {
-  const formatted = formatUnits(balance, decimals);
-  const [whole, fraction = ""] = formatted.split(".");
-  const trimmedFraction = fraction.slice(0, 4).replace(/0+$/u, "");
-  return trimmedFraction ? `${whole}.${trimmedFraction}` : whole;
-}
-
-function buildWalletHubChainSections({
-  balancesByTokenId,
-  chains,
-  loading,
-  pricesById,
-  walletAddress,
-}: {
-  balancesByTokenId: Record<string, string>;
-  chains: WalletBalanceChain[];
-  loading: boolean;
-  pricesById: Record<string, number>;
-  walletAddress: string | null;
-}): WalletHubChainSection[] {
-  return chains.map((chain) => ({
-    chainId: chain.chainId,
-    title: chain.title,
-    availability: "ready",
-    walletAddress: chain.evmChainId === null ? null : walletAddress,
-    tokens: chain.tokens.map((token) => ({
-      id: `${chain.evmChainId}:${token.id}`,
-      symbol: token.symbol,
-      name: token.name,
-      balance: chain.evmChainId === null
-        ? "0"
-        : balancesByTokenId[`${chain.evmChainId}:${token.id}`] ?? (loading ? "..." : "Unavailable"),
-      priceId: token.priceId ?? undefined,
-      usdPrice: token.usdPrice ?? (token.priceId ? pricesById[token.priceId] ?? null : null),
-    })),
-  }));
-}
-
-function parseCoinGeckoPrices(value: unknown, priceIds: string[]): Record<string, number> {
-  if (!value || typeof value !== "object") {
-    return {};
-  }
-
-  const record = value as Record<string, unknown>;
-  const prices: Record<string, number> = {};
-
-  for (const priceId of priceIds) {
-    const coin = record[priceId];
-    if (!coin || typeof coin !== "object") continue;
-    const usd = (coin as Record<string, unknown>).usd;
-    if (typeof usd === "number" && Number.isFinite(usd)) {
-      prices[priceId] = usd;
-    }
-  }
-
-  return prices;
-}
+export { CurrentUserWalletPage } from "./wallet-settings-route";
+export { CurrentUserSettingsIndexPage } from "./settings-index-route";
 
 function metadataString(metadata: Record<string, unknown> | null | undefined, key: string): string | null {
   const value = metadata?.[key];
@@ -271,6 +44,7 @@ export function CurrentUserProfilePage() {
   const { copy, localeTag } = useRouteMessages();
   const session = useSession();
   const profile = session?.profile ?? null;
+  const isMobile = useIsMobile();
   const pageTitle = copy.profile.title;
   logger.info("[profile-page] render", { hasProfile: !!profile, hasSession: !!session });
   const followState = useProfileFollowState(profile?.primary_wallet_address ?? null, true);
@@ -282,7 +56,7 @@ export function CurrentUserProfilePage() {
   });
 
   if (!profile) {
-    return <AuthRequiredRouteState description={getRouteAuthDescription("profile")} hideTitleOnMobile title={pageTitle} />;
+    return <AuthRequiredRouteState description={copy.routeStatus.profile.auth} hideTitleOnMobile title={pageTitle} />;
   }
 
   return (
@@ -294,164 +68,19 @@ export function CurrentUserProfilePage() {
       }, followState, localeTag)}
       onEditProfile={() => {
         handleFlow.clearDraft();
-        navigate(buildSettingsPath("profile"));
+        navigate(isMobile ? "/settings" : buildSettingsPath("profile"));
       }}
     />
   );
 }
 
-export function CurrentUserWalletPage() {
-  const { copy } = useRouteMessages();
-  const session = useSession();
-  const profile = session?.profile ?? null;
-  const walletAttachments = session?.walletAttachments ?? [];
-  const pageTitle = copy.wallet.title;
-  const balanceChains = React.useMemo(() => buildWalletBalanceChains(), []);
-  const priceIds = React.useMemo(
-    () => Array.from(new Set(balanceChains.flatMap((chain) => chain.tokens.flatMap((token) => token.priceId ? [token.priceId] : [])))),
-    [balanceChains],
-  );
-  const [balancesByTokenId, setBalancesByTokenId] = React.useState<Record<string, string>>({});
-  const [balancesLoading, setBalancesLoading] = React.useState(false);
-  const [pricesById, setPricesById] = React.useState<Record<string, number>>({});
-
-  const primaryWallet = walletAttachments.find((wallet) => wallet.is_primary)
-    ?? walletAttachments.find((wallet) => wallet.wallet_address === profile?.primary_wallet_address)
-    ?? walletAttachments[0]
-    ?? null;
-  const primaryAddress = profile?.primary_wallet_address ?? primaryWallet?.wallet_address ?? null;
-  const normalizedPrimaryAddress = primaryAddress && isAddress(primaryAddress)
-    ? getAddress(primaryAddress)
-    : null;
-
-  React.useEffect(() => {
-    if (!normalizedPrimaryAddress) {
-      setBalancesByTokenId({});
-      setBalancesLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setBalancesLoading(true);
-
-    const chainsWithRpc = balanceChains.filter((chain): chain is WalletBalanceChain & { evmChainId: number; rpcUrl: string } => (
-      chain.evmChainId !== null && typeof chain.rpcUrl === "string" && chain.rpcUrl.trim().length > 0
-    ));
-
-    void Promise.allSettled(chainsWithRpc.flatMap((chain) => chain.tokens.map(async (token) => {
-      const publicClient = createPublicClient({
-        chain: defineChain({
-          id: chain.evmChainId,
-          name: chain.title,
-          nativeCurrency: {
-            decimals: 18,
-            name: "USD",
-            symbol: chain.chainId === "tempo" ? "USD" : token.symbol,
-          },
-          rpcUrls: {
-            default: {
-              http: [chain.rpcUrl],
-            },
-          },
-        }),
-        transport: http(chain.rpcUrl),
-      });
-      const tokenKey = `${chain.evmChainId}:${token.id}`;
-      if (token.kind === "native") {
-        const balance = await publicClient.getBalance({ address: normalizedPrimaryAddress });
-        return [tokenKey, formatNativeBalance(balance)] as const;
-      }
-
-      const [balance, decimals] = await Promise.all([
-        publicClient.readContract({
-          abi: erc20Abi,
-          address: token.address,
-          functionName: "balanceOf",
-          args: [normalizedPrimaryAddress],
-        }),
-        publicClient.readContract({
-          abi: erc20Abi,
-          address: token.address,
-          functionName: "decimals",
-        }),
-      ]);
-      return [tokenKey, formatNativeBalance(balance, decimals)] as const;
-    })))
-      .then((results) => {
-        if (cancelled) return;
-        const entries: Array<readonly [string, string]> = [];
-        for (const result of results) {
-          if (result.status === "fulfilled") {
-            entries.push(result.value);
-          } else {
-            logger.warn("[wallet] balance fetch failed", result.reason);
-          }
-        }
-        setBalancesByTokenId(Object.fromEntries(entries));
-      })
-      .finally(() => {
-        if (!cancelled) setBalancesLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [balanceChains, normalizedPrimaryAddress]);
-
-  React.useEffect(() => {
-    if (priceIds.length === 0) {
-      setPricesById({});
-      return;
-    }
-
-    let cancelled = false;
-    const searchParams = new URLSearchParams({
-      ids: priceIds.join(","),
-      vs_currencies: "usd",
-    });
-
-    void fetch(`https://api.coingecko.com/api/v3/simple/price?${searchParams.toString()}`)
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`CoinGecko price request failed with ${response.status}`);
-        }
-        return response.json() as Promise<unknown>;
-      })
-      .then((json) => {
-        if (!cancelled) {
-          setPricesById(parseCoinGeckoPrices(json, priceIds));
-        }
-      })
-      .catch((error) => {
-        logger.warn("[wallet] price fetch failed", error);
-        if (!cancelled) {
-          setPricesById({});
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [priceIds]);
-
-  if (!profile) {
-    return <AuthRequiredRouteState description={getRouteAuthDescription("wallet")} hideTitleOnMobile title={pageTitle} />;
-  }
-
-  return (
-    <WalletHub
-      walletAddress={normalizedPrimaryAddress ?? primaryAddress}
-      chainSections={normalizedPrimaryAddress
-        ? buildWalletHubChainSections({
-          balancesByTokenId,
-          chains: balanceChains,
-          loading: balancesLoading,
-          pricesById,
-          walletAddress: normalizedPrimaryAddress ?? primaryAddress,
-        })
-        : []}
-    />
-  );
+function getSettingsSectionTitle(
+  activeTab: SettingsTab,
+  copy: ReturnType<typeof useRouteMessages>["copy"],
+): string {
+  if (activeTab === "profile") return copy.settings.profileTab;
+  if (activeTab === "preferences") return copy.settings.preferencesTab;
+  return "Agents";
 }
 
 export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab }) {
@@ -459,10 +88,14 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const api = useApi();
   const session = useSession();
   const profile = session?.profile ?? null;
+  const isMobile = useIsMobile();
   const walletAttachments = session?.walletAttachments ?? [];
   const { locale, setLocale } = useUiLocale();
   const pageTitle = copy.settings.title;
+  const sectionTitle = getSettingsSectionTitle(activeTab, copy);
   const syncedPrimaryWalletRef = React.useRef<string | null>(null);
+  const hasSession = Boolean(session);
+  const hasProfile = Boolean(profile);
   const [displayName, setDisplayName] = React.useState("");
   const [bio, setBio] = React.useState("");
   const [preferredLocale, setPreferredLocale] = React.useState<UiLocaleCode>("en");
@@ -476,6 +109,19 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   const [profileSubmitState, setProfileSubmitState] = React.useState<SettingsSubmitState>({ kind: "idle" });
   const [publicHandlesSubmitState, setPublicHandlesSubmitState] = React.useState<SettingsSubmitState>({ kind: "idle" });
   const [preferencesSubmitState, setPreferencesSubmitState] = React.useState<SettingsSubmitState>({ kind: "idle" });
+  const uniqueHumanState = session?.user.verification_capabilities?.unique_human?.state ?? null;
+  const canRegisterAgentByVerification = uniqueHumanState === "verified";
+  const {
+    startVerification: startAgentOwnerVerification,
+    verificationError: agentVerificationError,
+  } = useVeryVerification({
+    onVerified: async () => {
+      const refreshedUser = await api.users.getMe();
+      updateSessionUser(refreshedUser);
+    },
+    verified: canRegisterAgentByVerification,
+    verificationIntent: "profile_verification",
+  });
   const ownedAgentsMessages = React.useMemo(() => ({
     agentRegisteredToast: copy.ownedAgents.agentRegisteredToast,
     completeAgentRegistrationError: copy.ownedAgents.completeAgentRegistrationError,
@@ -491,10 +137,24 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   }), [copy.ownedAgents]);
   const agents = useSettingsOwnedAgents({
     api,
-    canRegisterByVerification: session?.user.verification_capabilities?.unique_human?.state === "verified",
+    canRegisterByVerification: canRegisterAgentByVerification,
     enabled: Boolean(profile && activeTab === "agents"),
     messages: ownedAgentsMessages,
+    onStartVerification: () => {
+      void startAgentOwnerVerification();
+    },
   });
+
+  React.useEffect(() => {
+    if (agentVerificationError) {
+      toast.error(agentVerificationError, { id: "agent-owner-verification-error" });
+    }
+  }, [agentVerificationError]);
+
+  React.useEffect(() => {
+    if (activeTab !== "agents") return;
+    logger.info(`[settings:agents] route hasSession=${hasSession} hasProfile=${hasProfile} uniqueHuman=${uniqueHumanState ?? "none"} canRegisterByVerification=${canRegisterAgentByVerification}`);
+  }, [activeTab, canRegisterAgentByVerification, hasProfile, hasSession, uniqueHumanState]);
 
   React.useEffect(() => {
     if (!profile) return;
@@ -649,14 +309,13 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     navigate("/");
   }, []);
 
-  if (!profile) {
-    return <AuthRequiredRouteState description={getRouteAuthDescription("settings")} title={pageTitle} />;
-  }
-
-  return (
+  const content = !profile ? (
+    <AuthRequiredRouteState description={copy.routeStatus.settings.auth} title={sectionTitle} />
+  ) : (
     <SettingsPage
       activeTab={activeTab}
       onTabChange={(tab) => navigate(buildSettingsPath(tab))}
+      showSectionNav={!isMobile}
       preferences={{
         ageStatusLabel: session?.user.verification_capabilities?.age_over_18?.state === "verified"
           ? copy.settings.ageVerified
@@ -761,8 +420,23 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         saveDisabled: !profileHasChanges || profileSubmitState.kind === "saving",
         submitState: profileSubmitState,
       }}
-      title={pageTitle}
-      agents={agents}
+      title={sectionTitle}
+      agents={{ ...agents, showTitle: !isMobile }}
     />
   );
+
+  if (isMobile) {
+    return (
+      <div className="min-h-screen w-full bg-background text-foreground">
+        <MobilePageHeader onBackClick={() => navigate("/settings")} title={sectionTitle} />
+        <section className="flex min-w-0 flex-1 flex-col py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
+          <div className="min-w-0">
+            {content}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  return content;
 }

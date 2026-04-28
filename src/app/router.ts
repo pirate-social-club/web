@@ -6,13 +6,19 @@ import {
   type CommunityModerationSectionName,
   type SettingsSection,
 } from "@/app/route-definitions";
+import {
+  canonicalizeCommunityRouteSegment,
+  encodeCommunityRouteSegment,
+} from "@/lib/community-routing";
 
 export type AppRoute =
   | { kind: "home"; path: "/" }
+  | { kind: "popular"; path: "/popular" }
   | { kind: "public-profile"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "public-agent"; path: string; handleLabel: string; hostSuffix?: string | null }
   | { kind: "your-communities"; path: "/your-communities" }
   | { kind: "wallet"; path: "/wallet" }
+  | { kind: "settings-index"; path: "/settings" }
   | { kind: "settings"; path: string; section: SettingsSection }
   | { kind: "create-post"; path: string; communityId: string }
   | { kind: "create-post-global"; path: "/submit" }
@@ -22,6 +28,11 @@ export type AppRoute =
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
   | { kind: "inbox"; path: "/inbox" }
+  | { kind: "chat"; path: "/chat" }
+  | { kind: "chat-new"; path: "/chat/new" }
+  | { kind: "chat-conversation"; path: string; conversationId: string }
+  | { kind: "chat-target"; path: string; target: string }
+  | { kind: "advertise"; path: "/advertise" }
   | { kind: "me"; path: "/me" }
   | { kind: "onboarding"; path: "/onboarding" }
   | { kind: "not-found"; path: string };
@@ -38,10 +49,11 @@ const RESERVED_PUBLIC_PROFILE_HOSTS = new Set([
   "assets",
   "static",
   "cdn",
+  "chat",
   "dev",
   "staging",
 ]);
-const PUBLIC_PROFILE_HOST_SUFFIXES = ["pirate", "localhost"];
+const PUBLIC_PROFILE_HOST_SUFFIXES = ["pirate", "clawitzer", "localhost"];
 
 let cachedPathname = "/";
 let cachedHostname = "";
@@ -85,7 +97,7 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
 
   if (publicProfileHost) {
     return {
-      kind: "public-profile",
+      kind: publicProfileHost.hostSuffix === "clawitzer" ? "public-agent" : "public-profile",
       path: normalized,
       handleLabel: publicProfileHost.handleLabel,
       hostSuffix: publicProfileHost.hostSuffix,
@@ -94,6 +106,10 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
 
   if (normalized === "/") {
     return { kind: "home", path: "/" };
+  }
+
+  if (normalized === "/popular") {
+    return { kind: "popular", path: "/popular" };
   }
 
   if (normalized === "/your-communities") {
@@ -105,7 +121,7 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   }
 
   if (normalized === "/settings") {
-    return { kind: "settings", path: normalized, section: "profile" };
+    return { kind: "settings-index", path: normalized };
   }
 
   if (normalized === "/communities/new") {
@@ -118,6 +134,18 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
 
   if (normalized === "/inbox") {
     return { kind: "inbox", path: normalized };
+  }
+
+  if (normalized === "/chat") {
+    return { kind: "chat", path: normalized };
+  }
+
+  if (normalized === "/chat/new") {
+    return { kind: "chat-new", path: normalized };
+  }
+
+  if (normalized === "/advertise") {
+    return { kind: "advertise", path: normalized };
   }
 
   if (normalized === "/onboarding") {
@@ -187,6 +215,22 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
     };
   }
 
+  if (segments.length === 3 && segments[0] === "chat" && segments[1] === "c") {
+    return {
+      kind: "chat-conversation",
+      path: normalized,
+      conversationId: decodeURIComponent(segments[2]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "chat" && segments[1] === "to") {
+    return {
+      kind: "chat-target",
+      path: normalized,
+      target: decodeURIComponent(segments[2]),
+    };
+  }
+
   if (segments.length === 2 && segments[0] === "u") {
     return {
       kind: "public-profile",
@@ -208,9 +252,53 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   return { kind: "not-found", path: normalized };
 }
 
+export function canonicalizeRoutePathname(pathname: string, hostname?: string): string {
+  const normalized = normalizePathname(pathname);
+  const route = matchRoute(normalized, hostname);
+  return getCanonicalCommunityRoutePathname(route) ?? normalized;
+}
+
+function getCanonicalCommunityRoutePathname(route: AppRoute): string | null {
+  if (
+    route.kind !== "community" &&
+    route.kind !== "create-post" &&
+    route.kind !== "community-moderation-index" &&
+    route.kind !== "community-moderation"
+  ) {
+    return null;
+  }
+
+  const canonicalCommunityId = canonicalizeCommunityRouteSegment(route.communityId);
+  if (canonicalCommunityId === route.communityId) {
+    return null;
+  }
+
+  const communityPath = `/c/${encodeCommunityRouteSegment(canonicalCommunityId)}`;
+  if (route.kind === "create-post") {
+    return `${communityPath}/submit`;
+  }
+  if (route.kind === "community-moderation-index") {
+    return `${communityPath}/mod`;
+  }
+  if (route.kind === "community-moderation") {
+    return `${communityPath}/mod/${route.section}`;
+  }
+
+  return communityPath;
+}
+
+function replaceCurrentPathname(pathname: string): void {
+  window.history.replaceState({}, "", `${pathname}${window.location.search}${window.location.hash}`);
+}
+
 function getCurrentRoute(): AppRoute {
-  const pathname = normalizePathname(window.location.pathname);
+  let pathname = normalizePathname(window.location.pathname);
   const hostname = window.location.hostname.toLowerCase();
+  const canonicalPathname = canonicalizeRoutePathname(pathname, hostname);
+  if (canonicalPathname !== pathname) {
+    replaceCurrentPathname(canonicalPathname);
+    pathname = canonicalPathname;
+  }
 
   if (pathname === cachedPathname && hostname === cachedHostname) {
     return cachedRoute;
@@ -236,20 +324,28 @@ function subscribeToNavigation(onStoreChange: () => void): () => void {
 }
 
 export function navigate(path: string): void {
-  const nextPath = normalizePathname(path);
+  const nextUrl = new URL(path, window.location.origin);
+  const nextPath = normalizePathname(nextUrl.pathname);
+  const nextHref = `${nextPath}${nextUrl.search}${nextUrl.hash}`;
   const currentPath = normalizePathname(window.location.pathname);
+  const currentHref = `${currentPath}${window.location.search}${window.location.hash}`;
 
-  if (currentPath === nextPath) return;
+  if (currentHref === nextHref) return;
 
-  window.history.pushState({}, "", nextPath);
-  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  window.history.pushState({}, "", nextHref);
+  if (nextPath !== currentPath) {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }
   window.dispatchEvent(new Event(NAVIGATION_EVENT));
 }
 
 export function useRoute(initialPathname?: string, initialHostname?: string): AppRoute {
   const initialRoute = React.useMemo(() => {
     if (typeof window !== "undefined") {
-      cachedPathname = normalizePathname(window.location.pathname);
+      cachedPathname = canonicalizeRoutePathname(window.location.pathname, window.location.hostname);
+      if (cachedPathname !== normalizePathname(window.location.pathname)) {
+        replaceCurrentPathname(cachedPathname);
+      }
       cachedHostname = window.location.hostname.toLowerCase();
       cachedRoute = matchRoute(cachedPathname, cachedHostname);
       return cachedRoute;

@@ -22,11 +22,22 @@ rtk bun run deploy:main
 
 These commands:
 
+- verify the required production Vite env is present
 - build with `vite build`
 - deploy `dist/worker/index.js`
 - use the checked-in [`wrangler.jsonc`](../wrangler.jsonc)
 - attach `dist/client` assets
 - pass `--no-bundle`
+
+Required client env for the main production build:
+
+```bash
+VITE_PRIVY_APP_ID
+VITE_PRIVY_CLIENT_ID
+```
+
+These are read at Vite build time and baked into the browser bundle. A deploy
+machine without them will produce a client where Connect is disabled.
 
 Do not use this for the main worker:
 

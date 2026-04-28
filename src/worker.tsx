@@ -1,13 +1,16 @@
 import { render, route } from "rwsdk/router";
 import { defineApp, type RequestInfo } from "rwsdk/worker";
+import type { CommunityPreview, LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { PirateApp } from "@/app";
-import type { AppContext, ThemeMode } from "@/app/app-context";
+import type { AppContext, SeoMetadata, ThemeMode } from "@/app/app-context";
 import { COMMUNITY_MODERATION_SECTIONS, SETTINGS_SECTIONS } from "@/app/route-definitions";
 import { LegalDocumentPage } from "@/components/legal/legal-document-page";
 import { Document } from "@/app/document";
+import { matchRoute } from "@/app/router";
 import { PRIVACY_POLICY_SOURCE } from "@/legal/privacy-policy";
 import { TERMS_OF_SERVICE_SOURCE } from "@/legal/terms-of-service";
+import type { PublicAgentResolution, PublicProfileResolution } from "@/worker-public.types";
 import {
   applyDiscoveryHeaders,
   buildAgentSkillResponse,
@@ -17,23 +20,43 @@ import {
   buildMarkdownForPage,
   buildMarkdownResponse,
   buildMcpServerCardResponse,
+  buildOAuthAuthorizationServerResponse,
+  buildOAuthProtectedResourceResponse,
   buildOpenApiResponse,
+  buildOpenIdConfigurationResponse,
   buildRobotsResponse,
   buildSitemapResponse,
+  buildWebBotAuthDirectoryResponse,
   getDiscoveryContext,
   markdownRequested,
+  type WebBotAuthEnv,
 } from "@/lib/agent-discovery";
 import { resolveEffectiveRequestUrl } from "@/lib/hns-forwarded-origin";
 import {
   resolveLocaleDirection,
+  resolveLocaleLanguageTag,
   resolveRequestLocale,
+  type UiLocaleCode,
 } from "@/lib/ui-locale-core";
+import { getLocaleMessages } from "@/locales";
 import { applyFrameDenyHeader } from "@/lib/security-headers";
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
 
+type PublicCommunityPreviewResponse = CommunityPreview & {
+  omitted_surfaces?: unknown;
+  links?: unknown;
+};
+
+type PublicPostResponse = LocalizedPostResponse & {
+  omitted_surfaces?: unknown;
+  links?: unknown;
+};
+
 const CSP_HEADER = "Content-Security-Policy";
 const CSP_REPORT_ONLY_HEADER = "Content-Security-Policy-Report-Only";
+const META_DESCRIPTION_MAX_LENGTH = 180;
+const SHARE_LOCALE_QUERY_KEYS = ["locale", "lang"] as const;
 
 function buildContentSecurityPolicy(nonce: string): string {
   const directives: string[] = [
@@ -116,11 +139,305 @@ function applyCspHeaders(headers: Headers, nonce: string): void {
     import.meta.env.VITE_CSP_REPORT_ONLY === "true" ? CSP_REPORT_ONLY_HEADER : CSP_HEADER,
     buildContentSecurityPolicy(nonce),
   );
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 }
 
 function parseThemeCookie(cookieHeader: string | null): ThemeMode {
   const match = cookieHeader?.match(/(?:^|;\s*)theme=(dark|light|system)(?:;|$)/);
   return (match?.[1] as ThemeMode | undefined) ?? "dark";
+}
+
+function resolveLocaleQueryOverride(url: URL): Exclude<UiLocaleCode, "pseudo"> | null {
+  for (const key of SHARE_LOCALE_QUERY_KEYS) {
+    const value = url.searchParams.get(key)?.trim().toLowerCase();
+    if (!value) {
+      continue;
+    }
+    if (value === "ar" || value.startsWith("ar-")) return "ar";
+    if (value === "zh" || value.startsWith("zh-")) return "zh";
+    if (value === "en" || value.startsWith("en-")) return "en";
+  }
+
+  return null;
+}
+
+function resolveRequestUiLocale(
+  url: URL,
+  acceptLanguageHeader: string | null,
+): Exclude<UiLocaleCode, "pseudo"> {
+  return resolveLocaleQueryOverride(url) ?? resolveRequestLocale(acceptLanguageHeader);
+}
+
+function buildOpenGraphUrl(canonicalUrl: string, locale: UiLocaleCode, hasLocaleOverride: boolean): string {
+  if (!hasLocaleOverride) {
+    return canonicalUrl;
+  }
+
+  const url = new URL(canonicalUrl);
+  url.searchParams.set("locale", resolveLocaleLanguageTag(locale));
+  return url.toString();
+}
+
+function normalizeMetaText(value: string | null | undefined): string | null {
+  const normalized = value?.replace(/\s+/g, " ").trim();
+  return normalized ? normalized : null;
+}
+
+function truncateMetaDescription(value: string | null | undefined): string | null {
+  const normalized = normalizeMetaText(value);
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized.length <= META_DESCRIPTION_MAX_LENGTH) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, META_DESCRIPTION_MAX_LENGTH - 1).trimEnd()}...`;
+}
+
+function resolvePublicImageUrl(value: string | null | undefined, appOrigin: string): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const url = trimmed.startsWith("/") ? new URL(trimmed, appOrigin) : new URL(trimmed);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function firstPublicImageUrl(values: Array<string | null | undefined>, appOrigin: string): string | null {
+  for (const value of values) {
+    const imageUrl = resolvePublicImageUrl(value, appOrigin);
+    if (imageUrl) {
+      return imageUrl;
+    }
+  }
+  return null;
+}
+
+function firstPostMediaImageUrl(post: LocalizedPostResponse["post"], appOrigin: string): string | null {
+  for (const media of post.media_refs ?? []) {
+    if (media.mime_type && !media.mime_type.toLowerCase().startsWith("image/")) {
+      continue;
+    }
+    const imageUrl = resolvePublicImageUrl(media.storage_ref, appOrigin);
+    if (imageUrl) {
+      return imageUrl;
+    }
+  }
+  return null;
+}
+
+function buildPublicApiUrl(apiOrigin: string, path: string, locale: UiLocaleCode | null): string {
+  const url = new URL(path, apiOrigin);
+  if (locale && locale !== "pseudo") {
+    url.searchParams.set("locale", resolveLocaleLanguageTag(locale));
+  }
+  return url.toString();
+}
+
+async function fetchPublicJson<T>(apiOrigin: string, path: string, locale: UiLocaleCode | null): Promise<T> {
+  const languageTag = locale && locale !== "pseudo" ? resolveLocaleLanguageTag(locale) : null;
+  const response = await fetch(buildPublicApiUrl(apiOrigin, path, locale), {
+    headers: {
+      accept: "application/json",
+      ...(languageTag ? { "accept-language": languageTag } : {}),
+    },
+    redirect: "manual",
+  });
+  if (!response.ok) {
+    throw new Error(`Public metadata lookup failed with status ${response.status}`);
+  }
+  return await response.json() as T;
+}
+
+function buildCommunitySeoMetadata(input: {
+  appOrigin: string;
+  locale: UiLocaleCode;
+  preview: PublicCommunityPreviewResponse;
+}): SeoMetadata {
+  const copy = getLocaleMessages(input.locale, "routes");
+  const title = `${input.preview.display_name} • Pirate`;
+  const description = truncateMetaDescription(input.preview.description)
+    ?? copy.home.emptyHomeBody;
+  const imageUrl = firstPublicImageUrl([
+    input.preview.banner_ref,
+    input.preview.avatar_ref,
+  ], input.appOrigin);
+
+  return {
+    description,
+    imageUrl,
+    title,
+    type: "website",
+  };
+}
+
+function buildPostSeoMetadata(input: {
+  appOrigin: string;
+  community: PublicCommunityPreviewResponse | null;
+  locale: UiLocaleCode;
+  postResponse: PublicPostResponse;
+}): SeoMetadata {
+  const copy = getLocaleMessages(input.locale, "routes");
+  const post = input.postResponse.post;
+  const titleText = normalizeMetaText(input.postResponse.translated_title ?? post.title)
+    ?? normalizeMetaText(post.link_og_title)
+    ?? copy.post.fallbackTitle;
+  const description = truncateMetaDescription(
+    input.postResponse.translated_body
+      ?? input.postResponse.translated_caption
+      ?? post.body
+      ?? post.caption
+      ?? post.link_og_title
+      ?? input.community?.description
+      ?? null,
+  ) ?? copy.post.description;
+  const imageUrl = firstPostMediaImageUrl(post, input.appOrigin)
+    ?? firstPublicImageUrl([
+      post.link_og_image_url,
+      input.community?.banner_ref,
+      input.community?.avatar_ref,
+    ], input.appOrigin);
+
+  return {
+    description,
+    imageUrl,
+    title: `${titleText} • Pirate`,
+    type: "article",
+  };
+}
+
+function getPublicIdentityHandleLabel(input: {
+  global_handle: { label: string };
+  primary_public_handle?: { label: string } | null;
+}): string {
+  return input.primary_public_handle?.label ?? input.global_handle.label;
+}
+
+function buildProfileSeoMetadata(input: {
+  appOrigin: string;
+  locale: UiLocaleCode;
+  resolution: PublicProfileResolution;
+}): SeoMetadata {
+  const copy = getLocaleMessages(input.locale, "routes").publicProfile;
+  const handle = getPublicIdentityHandleLabel(input.resolution.profile);
+  const displayName = normalizeMetaText(input.resolution.profile.display_name) ?? handle;
+  const communityCount = input.resolution.created_communities.length;
+  const description = truncateMetaDescription(input.resolution.profile.bio)
+    ?? (communityCount > 0
+      ? communityCount === 1
+        ? copy.createdCommunityMeta.replace("{handle}", handle)
+        : copy.createdCommunitiesMeta
+            .replace("{handle}", handle)
+            .replace("{count}", String(communityCount))
+      : copy.defaultMeta.replace("{handle}", handle));
+  const imageUrl = firstPublicImageUrl([
+    input.resolution.profile.cover_ref,
+    input.resolution.profile.avatar_ref,
+  ], input.appOrigin);
+
+  return {
+    description,
+    imageUrl,
+    title: `${displayName} • Pirate`,
+    type: "profile",
+  };
+}
+
+function buildAgentSeoMetadata(input: {
+  locale: UiLocaleCode;
+  resolution: PublicAgentResolution;
+}): SeoMetadata {
+  const copy = getLocaleMessages(input.locale, "routes").publicAgent;
+  const handle = input.resolution.agent.handle.label_display;
+  const displayName = normalizeMetaText(input.resolution.agent.display_name) ?? handle;
+  const ownerHandle = getPublicIdentityHandleLabel(input.resolution.owner);
+  const description = `${handle} ${copy.ownerLabel.toLowerCase()} ${ownerHandle}.`;
+
+  return {
+    description,
+    imageUrl: null,
+    title: `${displayName} • Pirate Agent`,
+    type: "profile",
+  };
+}
+
+async function resolveRouteSeoMetadata(input: {
+  apiOrigin: string;
+  appOrigin: string;
+  locale: UiLocaleCode;
+  route: ReturnType<typeof matchRoute>;
+}): Promise<SeoMetadata | null> {
+  try {
+    if (input.route.kind === "community") {
+      const preview = await fetchPublicJson<PublicCommunityPreviewResponse>(
+        input.apiOrigin,
+        `/public-communities/${encodeURIComponent(input.route.communityId)}`,
+        input.locale,
+      );
+      return buildCommunitySeoMetadata({
+        appOrigin: input.appOrigin,
+        locale: input.locale,
+        preview,
+      });
+    }
+
+    if (input.route.kind === "post") {
+      const postResponse = await fetchPublicJson<PublicPostResponse>(
+        input.apiOrigin,
+        `/public-posts/${encodeURIComponent(input.route.postId)}`,
+        input.locale,
+      );
+      const community = await fetchPublicJson<PublicCommunityPreviewResponse>(
+        input.apiOrigin,
+        `/public-communities/${encodeURIComponent(postResponse.post.community_id)}`,
+        input.locale,
+      ).catch(() => null);
+      return buildPostSeoMetadata({
+        appOrigin: input.appOrigin,
+        community,
+        locale: input.locale,
+        postResponse,
+      });
+    }
+
+    if (input.route.kind === "public-profile") {
+      const resolution = await fetchPublicJson<PublicProfileResolution>(
+        input.apiOrigin,
+        `/public-profiles/${encodeURIComponent(input.route.handleLabel)}`,
+        input.locale,
+      );
+      return buildProfileSeoMetadata({
+        appOrigin: input.appOrigin,
+        locale: input.locale,
+        resolution,
+      });
+    }
+
+    if (input.route.kind === "public-agent") {
+      const resolution = await fetchPublicJson<PublicAgentResolution>(
+        input.apiOrigin,
+        `/public-agents/${encodeURIComponent(input.route.handleLabel)}`,
+        input.locale,
+      );
+      return buildAgentSeoMetadata({
+        locale: input.locale,
+        resolution,
+      });
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function AppRoutePage(requestInfo: AppRequestInfo) {
@@ -145,10 +462,13 @@ function TermsRoutePage() {
 }
 
 const app = defineApp<AppRequestInfo>([
-  ({ ctx, request, response, rw }) => {
+  async ({ ctx, request, response, rw }) => {
     const effectiveUrl = resolveEffectiveRequestUrl(request);
+    const url = new URL(effectiveUrl);
     const discovery = getDiscoveryContext(effectiveUrl);
-    const locale = resolveRequestLocale(request.headers.get("accept-language"));
+    const hasLocaleOverride = resolveLocaleQueryOverride(url) !== null;
+    const locale = resolveRequestUiLocale(url, request.headers.get("accept-language"));
+    const route = matchRoute(url.pathname, url.hostname);
 
     ctx.effectiveUrl = effectiveUrl;
     ctx.appOrigin = discovery.appOrigin;
@@ -156,6 +476,18 @@ const app = defineApp<AppRequestInfo>([
     ctx.locale = locale;
     ctx.dir = resolveLocaleDirection(locale);
     ctx.isIndexable = discovery.isIndexable;
+    const seoMetadata = await resolveRouteSeoMetadata({
+      apiOrigin: discovery.apiOrigin,
+      appOrigin: discovery.appOrigin,
+      locale,
+      route,
+    });
+    ctx.seoMetadata = seoMetadata
+      ? {
+          ...seoMetadata,
+          url: buildOpenGraphUrl(discovery.canonicalUrl, locale, hasLocaleOverride),
+        }
+      : null;
     ctx.theme = parseThemeCookie(request.headers.get("cookie"));
     applyDiscoveryHeaders(response.headers, discovery);
     applyCspHeaders(response.headers, rw.nonce);
@@ -166,12 +498,17 @@ const app = defineApp<AppRequestInfo>([
     route("/openapi.json", ({ ctx, request }) => buildOpenApiResponse(ctx.effectiveUrl ?? request.url)),
     route("/docs/api", ({ ctx, request }) => buildApiDocsResponse(ctx.effectiveUrl ?? request.url, markdownRequested(request))),
     route("/.well-known/api-catalog", ({ ctx, request }) => buildApiCatalogResponse(ctx.effectiveUrl ?? request.url)),
+    route("/.well-known/oauth-protected-resource", ({ ctx, request }) => buildOAuthProtectedResourceResponse(ctx.effectiveUrl ?? request.url)),
+    route("/.well-known/oauth-authorization-server", ({ ctx, request }) => buildOAuthAuthorizationServerResponse(ctx.effectiveUrl ?? request.url)),
+    route("/.well-known/openid-configuration", ({ ctx, request }) => buildOpenIdConfigurationResponse(ctx.effectiveUrl ?? request.url)),
     route("/.well-known/mcp/server-card.json", ({ ctx, request }) => buildMcpServerCardResponse(ctx.effectiveUrl ?? request.url)),
     route("/.well-known/agent-skills/index.json", ({ ctx, request }) => buildAgentSkillsIndexResponse(ctx.effectiveUrl ?? request.url)),
     route("/.well-known/agent-skills/:skillName/SKILL.md", ({ params }) => buildAgentSkillResponse(params.skillName)),
     route("/privacy", PrivacyRoutePage),
     route("/terms", TermsRoutePage),
     route("/", AppRoutePage),
+    route("/popular", AppRoutePage),
+    route("/advertise", AppRoutePage),
     route("/your-communities", AppRoutePage),
     route("/communities/new", AppRoutePage),
     route("/submit", AppRoutePage),
@@ -183,6 +520,10 @@ const app = defineApp<AppRequestInfo>([
     route("/c/:communityId", AppRoutePage),
     route("/p/:postId", AppRoutePage),
     route("/inbox", AppRoutePage),
+    route("/chat", AppRoutePage),
+    route("/chat/new", AppRoutePage),
+    route("/chat/c/:conversationId", AppRoutePage),
+    route("/chat/to/:target", AppRoutePage),
     route("/me", AppRoutePage),
     route("/wallet", AppRoutePage),
     route("/settings", AppRoutePage),
@@ -198,6 +539,11 @@ const app = defineApp<AppRequestInfo>([
 
 export default {
   async fetch(request: Request, env: Env, cf: AppRequestInfo["cf"]) {
+    const initialEffectiveUrl = resolveEffectiveRequestUrl(request);
+    if (new URL(initialEffectiveUrl).pathname === "/.well-known/http-message-signatures-directory") {
+      return buildWebBotAuthDirectoryResponse(request, env as WebBotAuthEnv);
+    }
+
     const response = await app.fetch(request, env, cf);
     if (!markdownRequested(request)) {
       return response;

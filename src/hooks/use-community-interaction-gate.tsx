@@ -1,309 +1,45 @@
 "use client";
 
 import * as React from "react";
-import type { CommunityPreview, JoinEligibility } from "@pirate/api-contracts";
+import type { JoinEligibility } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
-import {
-  CommunityInteractionGateModal,
-  type CommunityInteractionGateAction,
-  type CommunityInteractionGateModalProps,
-} from "@/components/compositions/community-interaction-gate-modal/community-interaction-gate-modal";
-import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
+import { CommunityInteractionGateModal } from "@/components/compositions/community/interaction-gate-modal/community-interaction-gate-modal";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api/client";
 import { useSession } from "@/lib/api/session-store";
-import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
+import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import {
-  getJoinCtaLabel,
-  getPassportPromptCapabilities,
   getVerificationCapabilitiesForProvider,
-  getVerificationPromptCopy,
   getVerificationRequirementsForGates,
-  resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { logger } from "@/lib/logger";
-import { interpolateMessage } from "@/lib/route-messages";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getLocaleMessages } from "@/locales";
+import {
+  COMMUNITY_GATE_CACHE_TTL_MS,
+  SELF_INTERACTION_GATE_STORAGE_KEY,
+  communityGateCache,
+  communityGateRequests,
+  createDefaultBlockedModalState,
+  getGateCacheKey,
+  getReadyActionLabel,
+  getReadyAfterJoinDescription,
+  getRequirementStatuses,
+  resolveCommunityInteractionState,
+  type CommunityGateData,
+  type InteractionResult,
+  type ModalState,
+  type PendingInteraction,
+  type RouteKind,
+  type RunGatedCommunityActionParams,
+} from "./use-community-interaction-gate.helpers";
 
-type RouteKind = "community" | "home" | "post" | "public-community";
-type InteractionAction = "vote_post" | "vote_comment" | "reply_post" | "reply_comment";
-type InteractionResult = "allowed" | "blocked";
-
-type CommunityGateData = {
-  eligibility: JoinEligibility;
-  preview: Pick<CommunityPreview, "community_id" | "display_name" | "membership_gate_summaries">;
-};
-
-type CommunityGateCacheEntry = {
-  expiresAt: number;
-  value: CommunityGateData;
-};
-
-type InteractionGateCopy = ReturnType<typeof getLocaleMessages<"routes">>["interactionGate"] & {
-  locale: string;
-  taskVerify: string;
-};
-
-type ModalState = {
-  description: string;
-  hideCloseButtonOnMobile?: boolean;
-  hideSecondaryActionOnMobile?: boolean;
-  icon?: CommunityInteractionGateModalProps["icon"];
-  primaryAction?: CommunityInteractionGateAction | null;
-  requirements: CommunityGateData["preview"]["membership_gate_summaries"];
-  secondaryAction?: CommunityInteractionGateAction | null;
-  title: string;
-};
-
-type BuildBlockedModalStateArgs = {
-  action: InteractionAction;
-  closeModal: () => void;
-  gate: CommunityGateData;
-  invalidateCommunityGate: (communityId: string) => void;
-  interactionCopy: InteractionGateCopy;
-  openCommunity: () => void;
-  defaultVerificationLoadingProvider?: "self" | "very" | null;
-  startDefaultVerification?: (input: {
-    gate: CommunityGateData;
-    provider: "self" | "very";
-  }) => Promise<{ started: boolean }>;
-};
-
-type PendingInteraction = {
-  action: InteractionAction;
-  communityId: string;
-  gate: CommunityGateData;
-  onAllowed: () => Promise<void> | void;
-  postId?: string;
-};
-
-type RunGatedCommunityActionParams = {
-  action: InteractionAction;
-  buildBlockedModalState?: (args: BuildBlockedModalStateArgs) => ModalState | null;
-  communityId: string;
-  gateData?: CommunityGateData;
-  onAllowed: () => Promise<void> | void;
-  postId?: string;
-  resolveGateData?: () => Promise<CommunityGateData>;
-};
-
-const COMMUNITY_GATE_CACHE_TTL_MS = 60_000;
-const SELF_INTERACTION_GATE_STORAGE_KEY = "pirate_pending_self_interaction_gate_session";
-const communityGateCache = new Map<string, CommunityGateCacheEntry>();
-const communityGateRequests = new Map<string, Promise<CommunityGateData>>();
-
-function getInteractionTaskLabel(action: InteractionAction, options: { locale: string }): string {
-  const normalized = options.locale.toLowerCase();
-  if (action === "vote_post" || action === "vote_comment") {
-    if (normalized.startsWith("ar")) return "التصويت";
-    if (normalized.startsWith("zh")) return "投票";
-    return "vote";
-  }
-  if (normalized.startsWith("ar")) return "الرد";
-  if (normalized.startsWith("zh")) return "回复";
-  return "reply";
-}
-
-function getReadyAfterJoinDescription(gate: CommunityGateData, action: InteractionAction, options: { locale: string }): string {
-  const taskLabel = getInteractionTaskLabel(action, options);
-  const normalized = options.locale.toLowerCase();
-  if (normalized.startsWith("ar")) {
-    return `يمكنك الآن ${taskLabel} في ${gate.preview.display_name}.`;
-  }
-  if (normalized.startsWith("zh")) {
-    return `你现在可以在 ${gate.preview.display_name} ${taskLabel}。`;
-  }
-  return `You can now ${taskLabel} in ${gate.preview.display_name}.`;
-}
-
-function getReadyActionLabel(action: InteractionAction, options: { locale: string }): string {
-  const normalized = options.locale.toLowerCase();
-  if (action === "vote_post" || action === "vote_comment") {
-    if (normalized.startsWith("ar")) return "صوّت الآن";
-    if (normalized.startsWith("zh")) return "立即投票";
-    return "Vote now";
-  }
-  if (normalized.startsWith("ar")) return "رد الآن";
-  if (normalized.startsWith("zh")) return "立即回复";
-  return "Reply now";
-}
-
-function createDefaultBlockedModalState({
-  action,
-  closeModal,
-  gate,
-  interactionCopy,
-  openCommunity,
-  defaultVerificationLoadingProvider,
-  startDefaultVerification,
-}: BuildBlockedModalStateArgs): ModalState {
-  const isVoteAction = action === "vote_post" || action === "vote_comment";
-
-  switch (gate.eligibility.status) {
-    case "verification_required":
-      {
-        const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-        if (provider === "passport") {
-          const passportPrompt = getVerificationPromptCopy("passport", getPassportPromptCapabilities(gate.eligibility), { locale: interactionCopy.locale });
-          return {
-            description: passportPrompt.description,
-            primaryAction: {
-              label: passportPrompt.actionLabel,
-              onClick: () => {
-                window.open("https://app.passport.xyz/", "_blank", "noopener,noreferrer");
-                closeModal();
-              },
-            },
-            requirements: gate.preview.membership_gate_summaries,
-            secondaryAction: {
-              label: interactionCopy.close,
-              onClick: closeModal,
-            },
-            title: passportPrompt.title,
-          };
-        }
-        const verificationPrompt = getVerificationPromptCopy(
-          provider,
-          getVerificationCapabilitiesForProvider(gate.eligibility, provider),
-          { locale: interactionCopy.locale },
-        );
-        return {
-          description: verificationPrompt.description,
-          icon: provider,
-          primaryAction: {
-            label: verificationPrompt.actionLabel || interactionCopy.taskVerify,
-            loading: defaultVerificationLoadingProvider === provider,
-            onClick: async () => {
-              if (startDefaultVerification) {
-                await startDefaultVerification({ gate, provider });
-                return;
-              }
-              closeModal();
-              openCommunity();
-            },
-          },
-          requirements: gate.preview.membership_gate_summaries,
-          secondaryAction: {
-            label: interactionCopy.close,
-            onClick: closeModal,
-          },
-          title: isVoteAction
-            ? interactionCopy.verifyToVoteTitle
-            : interactionCopy.verifyToReplyTitle,
-        };
-      }
-    case "joinable":
-    case "requestable": {
-      const ctaLabel = getJoinCtaLabel(gate.eligibility, { locale: interactionCopy.locale });
-      return {
-        description: interpolateMessage(
-          isVoteAction
-            ? interactionCopy.joinToVoteDescription
-            : interactionCopy.joinToReplyDescription,
-          {
-            communityName: gate.preview.display_name,
-            joinLabel: ctaLabel,
-          },
-        ),
-        primaryAction: {
-          label: interpolateMessage(interactionCopy.joinInCommunity, {
-            communityName: gate.preview.display_name,
-            joinLabel: ctaLabel,
-          }),
-          onClick: () => {
-            closeModal();
-            openCommunity();
-          },
-        },
-        requirements: gate.preview.membership_gate_summaries,
-        secondaryAction: {
-          label: interactionCopy.close,
-          onClick: closeModal,
-        },
-        title: interpolateMessage(
-          isVoteAction
-            ? interactionCopy.joinToVoteTitle
-            : interactionCopy.joinToReplyTitle,
-          { joinLabel: ctaLabel },
-        ),
-      };
-    }
-    case "pending_request":
-      return {
-        description: "The moderators will review your request.",
-        requirements: gate.preview.membership_gate_summaries,
-        secondaryAction: {
-          label: interactionCopy.close,
-          onClick: closeModal,
-        },
-        title: "Request pending",
-      };
-    case "gate_failed":
-    case "banned":
-      return {
-        description: gate.eligibility.status === "banned"
-          ? interactionCopy.bannedDescription
-          : isVoteAction
-            ? interactionCopy.blockedVoteDescription
-            : interactionCopy.blockedReplyDescription,
-        primaryAction: {
-          label: interpolateMessage(interactionCopy.openCommunity, {
-            communityName: gate.preview.display_name,
-          }),
-          onClick: () => {
-            closeModal();
-            openCommunity();
-          },
-        },
-        requirements: gate.preview.membership_gate_summaries,
-        secondaryAction: {
-          label: interactionCopy.close,
-          onClick: closeModal,
-        },
-        title: isVoteAction
-          ? interactionCopy.cantVoteHereTitle
-          : interactionCopy.cantReplyHereTitle,
-      };
-    case "already_joined":
-      return {
-        description: interactionCopy.readyDescription,
-        requirements: gate.preview.membership_gate_summaries,
-        secondaryAction: {
-          label: interactionCopy.close,
-          onClick: closeModal,
-        },
-        title: interactionCopy.readyTitle,
-      };
-  }
-}
-
-function getGateCacheKey(sessionKey: string | null, communityId: string): string {
-  return `${sessionKey ?? "anon"}:${communityId}`;
-}
-
-export function resolveCommunityInteractionState(input: {
-  eligibility: JoinEligibility | null | undefined;
-  hasSession: boolean;
-}): "allowed" | "auth" | Exclude<JoinEligibility["status"], "already_joined"> {
-  if (!input.hasSession) {
-    return "auth";
-  }
-
-  if (!input.eligibility) {
-    return "gate_failed";
-  }
-
-  if (input.eligibility.status === "already_joined") {
-    return "allowed";
-  }
-
-  return input.eligibility.status;
-}
+export { resolveCommunityInteractionState } from "./use-community-interaction-gate.helpers";
 
 export function useCommunityInteractionGate({
   previewLocale,
@@ -413,11 +149,9 @@ export function useCommunityInteractionGate({
         if (joinResult.status === "requested") {
           setModalState({
             description: "The moderators will review your request.",
+            icon: "pending",
             requirements: gate.preview.membership_gate_summaries,
-            secondaryAction: {
-              label: interactionCopy.close,
-              onClick: closeModal,
-            },
+            requirementStatuses: getRequirementStatuses({ ...gate, eligibility: nextEligibility }),
             title: "Request pending",
           });
           return;
@@ -438,6 +172,8 @@ export function useCommunityInteractionGate({
             },
           },
           requirements: [],
+          requirementStatuses: [],
+          icon: "ready",
           title: interactionCopy.readyTitle,
         });
         return;
@@ -446,11 +182,9 @@ export function useCommunityInteractionGate({
       if (nextEligibility.status === "pending_request") {
         setModalState({
           description: "The moderators will review your request.",
+          icon: "pending",
           requirements: gate.preview.membership_gate_summaries,
-          secondaryAction: {
-            label: interactionCopy.close,
-            onClick: closeModal,
-          },
+          requirementStatuses: getRequirementStatuses({ ...gate, eligibility: nextEligibility }),
           title: "Request pending",
         });
         return;
@@ -481,6 +215,8 @@ export function useCommunityInteractionGate({
 
   const {
     handleModalOpenChange: handleSelfModalOpenChange,
+    handleSelfQrError,
+    handleSelfQrSuccess,
     selfError,
     selfLoading,
     selfModalOpen,
@@ -528,14 +264,23 @@ export function useCommunityInteractionGate({
       requestedCapabilities,
       unavailableMessage: "This community is missing the Self verification details needed to continue.",
       verificationRequirements,
+      skipModal: true,
     });
     if (!result.started && result.error) {
       toast.error(result.error);
     }
     if (result.started) {
       closeModal();
+      if (result.openedModal) {
+        return { started: result.started };
+      }
+      if (result.href) {
+        window.location.href = result.href;
+      } else {
+        toast.error("Could not get Self app launch link.");
+      }
     }
-    return result;
+    return { started: result.started };
   }, [closeModal, startSelfVerificationFlow, startVeryVerification]);
 
   const runGatedCommunityAction = React.useCallback(async ({
@@ -601,14 +346,15 @@ export function useCommunityInteractionGate({
     };
 
     const openCommunity = () => navigate(buildCommunityPath(gate.preview.community_id));
-    const builtModalState = buildBlockedModalState?.({
+    const customModalState = buildBlockedModalState?.({
       action,
       closeModal,
       gate,
       invalidateCommunityGate,
       interactionCopy,
       openCommunity,
-    }) ?? createDefaultBlockedModalState({
+    });
+    const builtModalState = customModalState === undefined ? createDefaultBlockedModalState({
       action,
       closeModal,
       gate,
@@ -617,21 +363,16 @@ export function useCommunityInteractionGate({
       openCommunity,
       defaultVerificationLoadingProvider: veryLoading ? "very" : selfLoading ? "self" : null,
       startDefaultVerification,
-    });
-    const nextModalState = gate.eligibility.status === "verification_required"
-      ? {
-          ...builtModalState,
-          hideCloseButtonOnMobile: true,
-          hideSecondaryActionOnMobile: true,
-        }
-      : builtModalState;
+    }) : customModalState;
     logger.info("[interaction-gate] blocked", {
       ...logBase,
       eligibilityStatus: gate.eligibility.status,
       missingCapabilities: gate.eligibility.missing_capabilities,
       requirements: gate.preview.membership_gate_summaries.length,
     });
-    setModalState(nextModalState);
+    if (builtModalState) {
+      setModalState(builtModalState);
+    }
     return "blocked";
   }, [closeModal, connect, interactionCopy, loadCommunityGate, routeKind, session?.accessToken, invalidateCommunityGate, selfLoading, startDefaultVerification, veryLoading]);
 
@@ -647,6 +388,7 @@ export function useCommunityInteractionGate({
       open
       primaryAction={modalState.primaryAction}
       requirements={modalState.requirements}
+      requirementStatuses={modalState.requirementStatuses}
       secondaryAction={modalState.secondaryAction}
       title={modalState.title}
     />
@@ -659,7 +401,10 @@ export function useCommunityInteractionGate({
       error={selfError}
       href={selfPrompt.href}
       onOpenChange={handleSelfModalOpenChange}
+      onQrError={handleSelfQrError}
+      onQrSuccess={handleSelfQrSuccess}
       open={selfModalOpen}
+      selfApp={selfPrompt.selfApp}
       title={selfPrompt.title}
     />
   ) : null;

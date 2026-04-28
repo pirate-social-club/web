@@ -1,4 +1,5 @@
 export type ResourceLinkId =
+  | "advertise"
   | "blog"
   | "terms-of-service"
   | "privacy-policy"
@@ -57,12 +58,14 @@ export function resolveResourceHref(
   options: ResolveResourceHrefOptions = {},
 ): string | null {
   switch (id as ResourceLinkId) {
+    case "advertise":
+      return null;
     case "blog":
       return "https://blog.pirate.sc";
     case "source-github":
       return "https://github.com/pirate";
     case "source-freedom-browser":
-      return "https://github.com/solardev-xyz/freedom-browser";
+      return "https://github.com/pirate-social-club/freedom-browser";
     case "source-radicle-api":
       return resolveRadicleRepositoryHref("api", options);
     case "source-radicle-contracts":

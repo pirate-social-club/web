@@ -3,30 +3,20 @@
 import * as React from "react";
 
 import { navigate } from "@/app/router";
-import { useKnownCommunities } from "@/lib/known-communities-store";
-import type { CommunityPickerItem } from "@/components/compositions/post-composer/post-composer.types";
-import { PostComposer } from "@/components/compositions/post-composer/post-composer";
-import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
-import { Button } from "@/components/primitives/button";
+import { AdCreator } from "@/components/compositions/ads/ad-creator/ad-creator";
+import type { CommunityPickerItem } from "@/components/compositions/posts/post-composer/post-composer.types";
+import { PostComposer } from "@/components/compositions/posts/post-composer/post-composer";
+import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRecentCommunities } from "@/lib/owned-communities";
 
-import { interpolateMessage, useRouteMessages } from "./route-core";
-import { EmptyFeedState, StackPageShell } from "./route-shell";
-import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
+import { useRouteMessages } from "@/hooks/use-route-messages";
+import { NotFoundRouteState } from "@/app/authenticated-helpers/route-shell";
+import { useCreatePostDraftState, type CreatePostDraftState } from "@/app/authenticated-state/create-post-draft-state";
 
 export function NotFoundPage({ path }: { path: string }) {
-  const { copy } = useRouteMessages();
-
-  return (
-    <StackPageShell
-      title={copy.notFound.title}
-      description={interpolateMessage(copy.notFound.description, { path })}
-      actions={<Button onClick={() => navigate("/")} variant="secondary">{copy.common.backHome}</Button>}
-    >
-      <EmptyFeedState message={copy.notFound.body} />
-    </StackPageShell>
-  );
+  return <NotFoundRouteState path={path} />;
 }
 
 export function CreatePostGlobalPage({
@@ -36,7 +26,7 @@ export function CreatePostGlobalPage({
 }) {
   const { copy } = useRouteMessages();
   const isMobile = useIsMobile();
-  const knownCommunities = useKnownCommunities();
+  const knownCommunities = useRecentCommunities();
   const [selectedCommunityId, setSelectedCommunityId] = React.useState<string | null>(null);
   const { actions, state } = useCreatePostDraftState();
   const pickerItems: CommunityPickerItem[] = React.useMemo(
@@ -121,7 +111,7 @@ export function CreatePostGlobalPage({
   }
 
   return (
-    <PageContainer className="min-w-0" size="feed">
+    <PageContainer className="min-w-0" size="rail">
       <PostComposer
         availableTabs={["text", "image", "link", "song"]}
         canCreateSongPost
@@ -140,4 +130,8 @@ export function CreatePostGlobalPage({
       />
     </PageContainer>
   );
+}
+
+export function AdvertisePage() {
+  return <AdCreator />;
 }

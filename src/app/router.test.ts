@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { extractPublicProfileHost, matchRoute } from "./router";
+import { canonicalizeRoutePathname, extractPublicProfileHost, matchRoute } from "./router";
 
 function expectJson(actual: unknown, expected: unknown): void {
   expect(JSON.stringify(actual)).toBe(JSON.stringify(expected));
@@ -15,6 +15,10 @@ describe("public profile host routing", () => {
     expectJson(extractPublicProfileHost("captain.pirate"), {
       handleLabel: "captain",
       hostSuffix: "pirate",
+    });
+    expectJson(extractPublicProfileHost("captain.clawitzer"), {
+      handleLabel: "captain",
+      hostSuffix: "clawitzer",
     });
   });
 
@@ -43,6 +47,15 @@ describe("public profile host routing", () => {
       path: "/u/captain.pirate",
       handleLabel: "captain.pirate",
       hostSuffix: null,
+    });
+  });
+
+  test("matches public agent routes from clawitzer host routes", () => {
+    expectJson(matchRoute("/", "night-signal.clawitzer"), {
+      kind: "public-agent",
+      path: "/",
+      handleLabel: "night-signal",
+      hostSuffix: "clawitzer",
     });
   });
 
@@ -97,10 +110,28 @@ describe("public profile host routing", () => {
   });
 
   test("matches settings agent routes from path routes", () => {
+    expectJson(matchRoute("/settings"), {
+      kind: "settings-index",
+      path: "/settings",
+    });
     expectJson(matchRoute("/settings/agents"), {
       kind: "settings",
       path: "/settings/agents",
       section: "agents",
+    });
+  });
+
+  test("matches popular as a primary feed route", () => {
+    expectJson(matchRoute("/popular"), {
+      kind: "popular",
+      path: "/popular",
+    });
+  });
+
+  test("matches advertise as an authenticated app route", () => {
+    expectJson(matchRoute("/advertise"), {
+      kind: "advertise",
+      path: "/advertise",
     });
   });
 
@@ -121,5 +152,25 @@ describe("public profile host routing", () => {
       path: "/p/pst_cf89c73fe60641debd05c939252a870c",
       postId: "pst_cf89c73fe60641debd05c939252a870c",
     });
+  });
+});
+
+describe("canonicalizeRoutePathname", () => {
+  test("normalizes percent-encoded emoji community handles to punycode", () => {
+    expect(canonicalizeRoutePathname("/c/@%F0%9F%87%B5%F0%9F%87%B8")).toBe("/c/@xn--t77hga");
+  });
+
+  test("normalizes raw emoji community handles to punycode", () => {
+    expect(canonicalizeRoutePathname("/c/@🇵🇸")).toBe("/c/@xn--t77hga");
+  });
+
+  test("preserves community route suffixes when normalizing", () => {
+    expect(canonicalizeRoutePathname("/c/@%F0%9F%87%B5%F0%9F%87%B8/submit")).toBe("/c/@xn--t77hga/submit");
+    expect(canonicalizeRoutePathname("/c/@%F0%9F%87%B5%F0%9F%87%B8/mod/links")).toBe("/c/@xn--t77hga/mod/links");
+  });
+
+  test("leaves existing canonical and non-community routes unchanged", () => {
+    expect(canonicalizeRoutePathname("/c/@xn--t77hga")).toBe("/c/@xn--t77hga");
+    expect(canonicalizeRoutePathname("/u/%F0%9F%87%B5%F0%9F%87%B8")).toBe("/u/%F0%9F%87%B5%F0%9F%87%B8");
   });
 });

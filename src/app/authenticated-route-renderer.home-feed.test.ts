@@ -4,7 +4,7 @@ import type { LocalizedPostResponse } from "@pirate/api-contracts";
 import type { Profile } from "@pirate/api-contracts";
 
 import { applyPostVote, toCommunityFeedItem, toHomeFeedItem } from "@/app/authenticated-route-renderer";
-import { loadProfilesByUserId } from "@/app/authenticated-routes/community-data";
+import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 
 function createEntry(): HomeFeedItem {
   return {
@@ -258,3 +258,4 @@ describe("applyPostVote", () => {
     expect(updated.downvote_count).toBe(2);
   });
 });
+import "@/test/setup-runtime";

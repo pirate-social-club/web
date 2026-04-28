@@ -42,6 +42,8 @@ import { useSongCommerceState, useSongPlayback } from "./song-commerce";
 import { useCommunityInteractionGate } from "./community-interaction-gate";
 import { useCommunityJoinVerification } from "./use-community-join-verification";
 
+const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
+
 export function CommunityPage({ communityId }: { communityId: string }) {
   const api = useApi();
   const session = useSession();
@@ -60,11 +62,27 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const { buySong, purchaseModal } = useSongPurchaseFlow({ commerceEnabled, refreshSongCommerce });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const [followLoading, setFollowLoading] = React.useState(false);
-  const [viewerFollowing, setViewerFollowing] = React.useState(false);
-  const [followerCount, setFollowerCount] = React.useState<number | null>(null);
+  const [followState, setFollowState] = React.useState<{
+    communityId: string;
+    followerCount: number | null;
+    viewerFollowing: boolean;
+  } | null>(null);
+  const previewCommunityId = preview?.community_id ?? null;
+  const viewerFollowing = followState?.communityId === previewCommunityId
+    ? followState.viewerFollowing
+    : Boolean(preview?.viewer_following);
+  const followerCount = followState?.communityId === previewCommunityId
+    ? followState.followerCount
+    : preview?.follower_count ?? null;
   const markViewerJoined = React.useCallback(() => {
-    setViewerFollowing(true);
-  }, []);
+    setFollowState((current) => ({
+      communityId: previewCommunityId ?? communityId,
+      followerCount: current?.communityId === (previewCommunityId ?? communityId)
+        ? current.followerCount
+        : preview?.follower_count ?? null,
+      viewerFollowing: true,
+    }));
+  }, [communityId, preview?.follower_count, previewCommunityId]);
   const {
     handleJoin,
     handleSelfModalOpenChange,
@@ -101,8 +119,12 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   });
 
   React.useEffect(() => {
-    setViewerFollowing(Boolean(preview?.viewer_following));
-    setFollowerCount(preview?.follower_count ?? null);
+    if (!preview) return;
+    setFollowState({
+      communityId: preview.community_id,
+      followerCount: preview.follower_count ?? null,
+      viewerFollowing: Boolean(preview.viewer_following),
+    });
   }, [preview?.community_id, preview?.follower_count, preview?.viewer_following]);
 
   const handleJoinRequestModalOpenChange = React.useCallback((open: boolean) => {
@@ -156,8 +178,11 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       const result = viewerFollowing
         ? await api.communities.unfollow(communityId)
         : await api.communities.follow(communityId);
-      setViewerFollowing(result.following);
-      setFollowerCount(result.follower_count ?? null);
+      setFollowState({
+        communityId: result.community_id,
+        followerCount: result.follower_count ?? null,
+        viewerFollowing: result.following,
+      });
     } catch (e: unknown) {
       toast.error(getApiErrorMessage(e, "Follow failed"));
     } finally {
@@ -337,6 +362,10 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   }
 
   const canCreatePost = eligibility?.status === "already_joined";
+  const joinActionDisabled = !eligibility
+    || (eligibility.status !== "joinable"
+      && eligibility.status !== "requestable"
+      && eligibility.status !== "verification_required");
   const feedItems = posts.map((post) => {
     const assetId = post.post.asset_id ?? undefined;
     return toCommunityFeedItem(
@@ -369,14 +398,15 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       ) : (
         <>
           <Button
+            className={FOLLOW_BUTTON_CLASS_NAME}
             loading={followLoading}
             onClick={handleToggleFollow}
             variant={viewerFollowing ? "secondary" : "default"}
           >
             {viewerFollowing ? copy.community.followingLabel : copy.community.followLabel}
           </Button>
-          {eligibility && preview.membership_gate_summaries.length === 0 ? (
-            <Button disabled={eligibility.status !== "joinable" && eligibility.status !== "requestable" && eligibility.status !== "verification_required"} loading={joinLoading} onClick={handlePrimaryJoinAction} variant={viewerFollowing ? "default" : "secondary"}>
+          {eligibility ? (
+            <Button disabled={joinActionDisabled} loading={joinLoading} onClick={handlePrimaryJoinAction} variant={viewerFollowing ? "default" : "secondary"}>
               {getCommunityActionLabel(eligibility.status)}
             </Button>
           ) : null}

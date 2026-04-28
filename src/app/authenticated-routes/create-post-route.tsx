@@ -20,14 +20,26 @@ import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getSelfVerificationRequestForGates, hasSelfDocumentFactVerificationRequest } from "@/lib/identity-gates";
+import {
+  getGateFailureMessage,
+  getSelfVerificationRequestForGates,
+  hasSelfDocumentFactVerificationRequest,
+} from "@/lib/identity-gates";
 
 import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
 import { NotFoundPage } from "./misc-routes";
-import { resolveAnonymousComposerLabel, resolvePublicIdentityLabel } from "@/app/authenticated-helpers/post-presentation";
+import {
+  resolveAnonymousComposerLabel,
+  resolvePublicIdentityLabel,
+} from "@/app/authenticated-helpers/post-presentation";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { getErrorMessage } from "@/lib/error-utils";
-import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState, StackPageShell } from "@/app/authenticated-helpers/route-shell";
+import {
+  AuthRequiredRouteState,
+  FullPageSpinner,
+  RouteLoadFailureState,
+  StackPageShell,
+} from "@/app/authenticated-helpers/route-shell";
 import { useCreatePostState } from "@/app/authenticated-state/create-post-state";
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
 
@@ -63,11 +75,15 @@ function CreatePostComposer({
         identity: {
           authorMode: state.authorMode,
           allowAnonymousIdentity: state.community.allow_anonymous_identity,
-          allowQualifiersOnAnonymousPosts: state.community.allow_qualifiers_on_anonymous_posts ?? true,
+          allowQualifiersOnAnonymousPosts:
+            state.community.allow_qualifiers_on_anonymous_posts ?? true,
           agentLabel: state.availableAgent?.displayName,
           identityMode: state.identityMode,
-          publicHandle: resolvePublicIdentityLabel(state.session?.profile) ?? "@handle",
-          anonymousLabel: resolveAnonymousComposerLabel(state.community.anonymous_identity_scope),
+          publicHandle:
+            resolvePublicIdentityLabel(state.session?.profile) ?? "@handle",
+          anonymousLabel: resolveAnonymousComposerLabel(
+            state.community.anonymous_identity_scope,
+          ),
           availableQualifiers: state.availableIdentityQualifiers,
           selectedQualifierIds: state.selectedQualifierIds,
         },
@@ -107,9 +123,10 @@ function CreatePostComposer({
       submit={{
         disabled: state.submitState.disabled,
         error: state.submitState.submitError,
-        label: state.composerMode === "song" && state.derivativeStep?.required
-          ? copy.createPost.actions.publishRemix
-          : copy.createPost.actions.post,
+        label:
+          state.composerMode === "song" && state.derivativeStep?.required
+            ? copy.createPost.actions.publishRemix
+            : copy.createPost.actions.post,
         loading: state.submitting || submitLoading,
         onSubmit: () => void onSubmit(),
       }}
@@ -117,7 +134,15 @@ function CreatePostComposer({
   );
 }
 
-export function CreatePostPage({ communityId, initialDraft }: { communityId: string; initialDraft?: Partial<import("@/app/authenticated-state/create-post-draft-state").CreatePostDraftState> }) {
+export function CreatePostPage({
+  communityId,
+  initialDraft,
+}: {
+  communityId: string;
+  initialDraft?: Partial<
+    import("@/app/authenticated-state/create-post-draft-state").CreatePostDraftState
+  >;
+}) {
   const state = useCreatePostState(communityId, initialDraft);
   const isMobile = useIsMobile();
   const { locale } = useUiLocale();
@@ -130,8 +155,11 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
   const pendingSubmitRef = React.useRef(false);
   const latestHandleSubmitRef = React.useRef(state.handleSubmit);
   const [joinRequestModalOpen, setJoinRequestModalOpen] = React.useState(false);
-  const [joinRequestSubmitting, setJoinRequestSubmitting] = React.useState(false);
-  const [joinRequestError, setJoinRequestError] = React.useState<string | null>(null);
+  const [joinRequestSubmitting, setJoinRequestSubmitting] =
+    React.useState(false);
+  const [joinRequestError, setJoinRequestError] = React.useState<string | null>(
+    null,
+  );
 
   React.useEffect(() => {
     latestHandleSubmitRef.current = state.handleSubmit;
@@ -156,7 +184,10 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
       if (!pendingSubmitRef.current) return;
       pendingSubmitRef.current = false;
 
-      if (refreshedUser.verification_capabilities.unique_human.state !== "verified") {
+      if (
+        refreshedUser.verification_capabilities.unique_human.state !==
+        "verified"
+      ) {
         throw new Error("Verify human status before posting.");
       }
 
@@ -173,7 +204,9 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     verificationLoading: veryPostVerificationLoading,
     verificationState: veryPostVerificationState,
   } = useVeryVerification({
-    verified: state.session?.user.verification_capabilities.unique_human.state === "verified",
+    verified:
+      state.session?.user.verification_capabilities.unique_human.state ===
+      "verified",
     verificationIntent: "profile_verification",
     onVerified: async () => {
       const refreshedUser = await api.users.getMe();
@@ -182,7 +215,10 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
       if (!pendingSubmitRef.current) return;
       pendingSubmitRef.current = false;
 
-      if (refreshedUser.verification_capabilities.unique_human.state !== "verified") {
+      if (
+        refreshedUser.verification_capabilities.unique_human.state !==
+        "verified"
+      ) {
         throw new Error("Verify human status before posting.");
       }
 
@@ -196,11 +232,10 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     handleSelfQrError: handleJoinSelfQrError,
     handleSelfQrSuccess: handleJoinSelfQrSuccess,
     joinError,
-	    joinLoading,
-	    joinRequested,
-	    passportLoading,
-	    refreshPassportScore,
-	    veryLoading: joinVeryLoading,
+    joinLoading,
+    joinRequested,
+    passportLoading,
+    veryLoading: joinVeryLoading,
     selfError: joinSelfError,
     selfLoading: joinSelfLoading,
     selfModalOpen: joinSelfModalOpen,
@@ -212,12 +247,15 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     refetchEligibility: state.refetchEligibility,
   });
 
-  const handleJoinRequestModalOpenChange = React.useCallback((open: boolean) => {
-    setJoinRequestModalOpen(open);
-    if (open) {
-      setJoinRequestError(null);
-    }
-  }, []);
+  const handleJoinRequestModalOpenChange = React.useCallback(
+    (open: boolean) => {
+      setJoinRequestModalOpen(open);
+      if (open) {
+        setJoinRequestError(null);
+      }
+    },
+    [],
+  );
 
   const handlePrimaryJoinAction = React.useCallback(async () => {
     if (state.eligibility?.status === "requestable") {
@@ -228,20 +266,23 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     await handleJoin();
   }, [handleJoin, state.eligibility?.status]);
 
-  const handleJoinRequestSubmit = React.useCallback(async (note: string) => {
-    setJoinRequestSubmitting(true);
-    setJoinRequestError(null);
-    try {
-      const result = await handleJoin({ note });
-      if (result === "requested" || result === "joined") {
-        setJoinRequestModalOpen(false);
-      } else if (result === "failed") {
-        setJoinRequestError("Could not submit your request. Try again.");
+  const handleJoinRequestSubmit = React.useCallback(
+    async (note: string) => {
+      setJoinRequestSubmitting(true);
+      setJoinRequestError(null);
+      try {
+        const result = await handleJoin({ note });
+        if (result === "requested" || result === "joined") {
+          setJoinRequestModalOpen(false);
+        } else if (result === "failed") {
+          setJoinRequestError("Could not submit your request. Try again.");
+        }
+      } finally {
+        setJoinRequestSubmitting(false);
       }
-    } finally {
-      setJoinRequestSubmitting(false);
-    }
-  }, [handleJoin]);
+    },
+    [handleJoin],
+  );
 
   React.useEffect(() => {
     if (selfError) {
@@ -251,22 +292,31 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
 
   React.useEffect(() => {
     if (veryPostVerificationError) {
-      toast.error(veryPostVerificationError, { id: "create-post-verification-error" });
+      toast.error(veryPostVerificationError, {
+        id: "create-post-verification-error",
+      });
     }
   }, [veryPostVerificationError]);
 
   const uniqueHumanVerified =
-    state.isCommunityOwner || state.session?.user.verification_capabilities.unique_human.state === "verified";
+    state.isCommunityOwner ||
+    state.session?.user.verification_capabilities.unique_human.state ===
+      "verified";
 
   const selfVerificationRequest = React.useMemo(
-    () => getSelfVerificationRequestForGates({
-      gates: state.community?.membership_gate_summaries ?? [],
-      includeUniqueHuman: true,
-      verificationCapabilities: state.session?.user.verification_capabilities,
-    }),
-    [state.community?.membership_gate_summaries, state.session?.user.verification_capabilities],
+    () =>
+      getSelfVerificationRequestForGates({
+        gates: state.community?.membership_gate_summaries ?? [],
+        includeUniqueHuman: true,
+        verificationCapabilities: state.session?.user.verification_capabilities,
+      }),
+    [
+      state.community?.membership_gate_summaries,
+      state.session?.user.verification_capabilities,
+    ],
   );
-  const needsSelfDocumentFactVerification = hasSelfDocumentFactVerificationRequest(selfVerificationRequest);
+  const needsSelfDocumentFactVerification =
+    hasSelfDocumentFactVerificationRequest(selfVerificationRequest);
 
   const handleSubmit = React.useCallback(async () => {
     if (state.isCommunityOwner) {
@@ -279,7 +329,8 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
       const result = await startSelfVerification({
         requestedCapabilities: selfVerificationRequest.requestedCapabilities,
         unavailableMessage: verifyRequiredDescription,
-        verificationRequirements: selfVerificationRequest.verificationRequirements,
+        verificationRequirements:
+          selfVerificationRequest.verificationRequirements,
       });
       if (!result.started) pendingSubmitRef.current = false;
       return;
@@ -293,13 +344,25 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     }
 
     await state.handleSubmit();
-  }, [needsSelfDocumentFactVerification, selfVerificationRequest, startSelfVerification, startVeryPostVerification, state.handleSubmit, state.isCommunityOwner, uniqueHumanVerified, verifyRequiredDescription]);
+  }, [
+    needsSelfDocumentFactVerification,
+    selfVerificationRequest,
+    startSelfVerification,
+    startVeryPostVerification,
+    state.handleSubmit,
+    state.isCommunityOwner,
+    uniqueHumanVerified,
+    verifyRequiredDescription,
+  ]);
 
   if (state.loading) {
     if (isMobile) {
       return (
         <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
+          <MobilePageHeader
+            onCloseClick={() => navigate(`/c/${communityId}`)}
+            title={pageTitle}
+          />
           <section className="flex min-w-0 flex-1 flex-col items-center justify-center px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
             <FullPageSpinner />
           </section>
@@ -314,20 +377,34 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
       if (isMobile) {
         return (
           <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-            <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
+            <MobilePageHeader
+              onCloseClick={() => navigate(`/c/${communityId}`)}
+              title={pageTitle}
+            />
             <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-              <AuthRequiredRouteState description={copy.routeStatus.createPost.auth} title="" />
+              <AuthRequiredRouteState
+                description={copy.routeStatus.createPost.auth}
+                title=""
+              />
             </section>
           </div>
         );
       }
-      return <AuthRequiredRouteState description={copy.routeStatus.createPost.auth} title={pageTitle} />;
+      return (
+        <AuthRequiredRouteState
+          description={copy.routeStatus.createPost.auth}
+          title={pageTitle}
+        />
+      );
     }
     if (isApiNotFoundError(state.loadError)) {
       if (isMobile) {
         return (
           <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-            <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
+            <MobilePageHeader
+              onCloseClick={() => navigate(`/c/${communityId}`)}
+              title={pageTitle}
+            />
             <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
               <NotFoundPage path={`/c/${communityId}/submit`} />
             </section>
@@ -339,46 +416,79 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     if (isMobile) {
       return (
         <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
+          <MobilePageHeader
+            onCloseClick={() => navigate(`/c/${communityId}`)}
+            title={pageTitle}
+          />
           <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-            <RouteLoadFailureState description={getErrorMessage(state.loadError, copy.routeStatus.createPost.failure)} title="" />
+            <RouteLoadFailureState
+              description={getErrorMessage(
+                state.loadError,
+                copy.routeStatus.createPost.failure,
+              )}
+              title=""
+            />
           </section>
         </div>
       );
     }
-    return <RouteLoadFailureState description={getErrorMessage(state.loadError, copy.routeStatus.createPost.failure)} title={pageTitle} />;
+    return (
+      <RouteLoadFailureState
+        description={getErrorMessage(
+          state.loadError,
+          copy.routeStatus.createPost.failure,
+        )}
+        title={pageTitle}
+      />
+    );
   }
 
   if (!state.community || !state.eligibility) {
     if (isMobile) {
       return (
         <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
+          <MobilePageHeader
+            onCloseClick={() => navigate(`/c/${communityId}`)}
+            title={pageTitle}
+          />
           <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-            <RouteLoadFailureState description={copy.routeStatus.createPost.incomplete} title="" />
+            <RouteLoadFailureState
+              description={copy.routeStatus.createPost.incomplete}
+              title=""
+            />
           </section>
         </div>
       );
     }
-    return <RouteLoadFailureState description={copy.routeStatus.createPost.incomplete} title={pageTitle} />;
+    return (
+      <RouteLoadFailureState
+        description={copy.routeStatus.createPost.incomplete}
+        title={pageTitle}
+      />
+    );
   }
 
-  if (state.eligibility.status !== "already_joined" && !state.isCommunityOwner) {
+  if (
+    state.eligibility.status !== "already_joined" &&
+    !state.isCommunityOwner
+  ) {
     const joinPanel = (
       <CommunityMembershipGatePanel
         eligibility={state.eligibility}
         gates={state.eligibility.membership_gate_summaries}
-        joinError={joinError ?? (state.eligibility.status === "gate_failed" && state.eligibility.failure_reason
-          ? getGateFailureMessage(state.eligibility, { locale })
-          : null)}
-	        joinLoading={joinLoading}
-	        joinRequested={joinRequested}
-	        passportLoading={passportLoading}
-	        verificationError={joinSelfError}
-	        verificationLoading={joinSelfLoading}
-	        onJoin={handlePrimaryJoinAction}
-	        onPassportRefresh={() => void refreshPassportScore()}
-	      />
+        joinError={
+          joinError ??
+          (state.eligibility.status === "gate_failed" &&
+          state.eligibility.failure_reason
+            ? getGateFailureMessage(state.eligibility, { locale })
+            : null)
+        }
+        joinLoading={joinLoading}
+        joinRequested={joinRequested}
+        verificationError={joinSelfError}
+        verificationLoading={joinSelfLoading}
+        onJoin={handlePrimaryJoinAction}
+      />
     );
     const joinRequestModal = (
       <CommunityJoinRequestModal
@@ -405,19 +515,24 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
       />
     ) : null;
     const joinRequiresVeryVerification =
-      state.eligibility.status === "verification_required"
-      && state.eligibility.suggested_verification_provider === "very";
+      state.eligibility.status === "verification_required" &&
+      state.eligibility.suggested_verification_provider === "very";
 
     if (isMobile && joinRequiresVeryVerification) {
       return (
         <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
+          <MobilePageHeader
+            onCloseClick={() => navigate(`/c/${communityId}`)}
+            title={pageTitle}
+          />
           <section className="flex min-w-0 flex-1 flex-col justify-start px-4 pb-32 pt-[calc(env(safe-area-inset-top)+5rem)]">
             <OnboardingVerificationGate
               onVerify={() => void handlePrimaryJoinAction()}
               verificationError={joinError}
               verificationLoading={joinLoading || joinVeryLoading}
-              verificationState={(joinLoading || joinVeryLoading) ? "pending" : "not_started"}
+              verificationState={
+                joinLoading || joinVeryLoading ? "pending" : "not_started"
+              }
             />
           </section>
           {joinRequestModal}
@@ -428,7 +543,10 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     if (isMobile) {
       return (
         <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
+          <MobilePageHeader
+            onCloseClick={() => navigate(`/c/${communityId}`)}
+            title={pageTitle}
+          />
           <section className="flex min-w-0 flex-1 flex-col gap-4 px-4 pb-8 pt-[calc(env(safe-area-inset-top)+5rem)]">
             {joinPanel}
           </section>
@@ -440,8 +558,24 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
 
     return (
       <>
-        <ContentRailShell rail={<CommunitySidebar {...buildCommunityPreviewSidebar(state.community, locale)} />}>
-          <StackPageShell title={pageTitle} actions={<Button onClick={() => navigate(`/c/${communityId}`)} variant="secondary">{backToCommunityLabel}</Button>}>
+        <ContentRailShell
+          rail={
+            <CommunitySidebar
+              {...buildCommunityPreviewSidebar(state.community, locale)}
+            />
+          }
+        >
+          <StackPageShell
+            title={pageTitle}
+            actions={
+              <Button
+                onClick={() => navigate(`/c/${communityId}`)}
+                variant="secondary"
+              >
+                {backToCommunityLabel}
+              </Button>
+            }
+          >
             {joinPanel}
           </StackPageShell>
         </ContentRailShell>
@@ -470,7 +604,10 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     if (!uniqueHumanVerified && !needsSelfDocumentFactVerification) {
       return (
         <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
+          <MobilePageHeader
+            onCloseClick={() => navigate(`/c/${communityId}`)}
+            title={pageTitle}
+          />
           <section className="flex min-w-0 flex-1 flex-col justify-start px-4 pb-32 pt-[calc(env(safe-area-inset-top)+5rem)]">
             <OnboardingVerificationGate
               onVerify={() => {
@@ -481,7 +618,11 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
               }}
               verificationError={veryPostVerificationError}
               verificationLoading={veryPostVerificationLoading}
-              verificationState={veryPostVerificationState === "pending" ? "pending" : "not_started"}
+              verificationState={
+                veryPostVerificationState === "pending"
+                  ? "pending"
+                  : "not_started"
+              }
             />
           </section>
         </div>
@@ -490,9 +631,17 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
 
     return (
       <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-        <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
+        <MobilePageHeader
+          onCloseClick={() => navigate(`/c/${communityId}`)}
+          title={pageTitle}
+        />
         <section className="flex min-w-0 flex-1 flex-col px-4 pb-8 pt-[calc(env(safe-area-inset-top)+5rem)]">
-          <CreatePostComposer copy={copy} state={state} onSubmit={handleSubmit} submitLoading={selfLoading} />
+          <CreatePostComposer
+            copy={copy}
+            state={state}
+            onSubmit={handleSubmit}
+            submitLoading={selfLoading}
+          />
         </section>
         {selfVerificationModal}
       </div>
@@ -501,9 +650,20 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
 
   return (
     <>
-      <ContentRailShell rail={<CommunitySidebar {...buildCommunityPreviewSidebar(state.community, locale)} />}>
+      <ContentRailShell
+        rail={
+          <CommunitySidebar
+            {...buildCommunityPreviewSidebar(state.community, locale)}
+          />
+        }
+      >
         <StackPageShell title="">
-          <CreatePostComposer copy={copy} state={state} onSubmit={handleSubmit} submitLoading={selfLoading} />
+          <CreatePostComposer
+            copy={copy}
+            state={state}
+            onSubmit={handleSubmit}
+            submitLoading={selfLoading}
+          />
         </StackPageShell>
       </ContentRailShell>
       {selfVerificationModal}

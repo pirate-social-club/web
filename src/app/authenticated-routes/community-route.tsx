@@ -12,14 +12,23 @@ import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { getErrorMessage } from "@/lib/error-utils";
-import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
+import {
+  buildCommunityPath,
+  formatCommunityRouteLabel,
+} from "@/lib/community-routing";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import {
+  getGateFailureMessage,
+  getJoinCtaLabel,
+  getVerificationCapabilitiesForProvider,
+  getVerificationPromptCopy,
+  resolveSuggestedVerificationProvider,
+} from "@/lib/identity-gates";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 
@@ -36,13 +45,22 @@ import {
   buildCommunityModerationPath,
 } from "@/app/authenticated-helpers/moderation-helpers";
 import { toCommunityFeedItem } from "@/app/authenticated-helpers/post-presentation";
-import { submitOptimisticPostVote, updateCommunityPostVote } from "@/app/authenticated-helpers/post-vote";
+import {
+  submitOptimisticPostVote,
+  updateCommunityPostVote,
+} from "@/app/authenticated-helpers/post-vote";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { buildFeedSortOptions } from "@/lib/feed-sort-options";
-import { AuthRequiredRouteState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
+import {
+  AuthRequiredRouteState,
+  RouteLoadFailureState,
+} from "@/app/authenticated-helpers/route-shell";
 import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
-import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
+import {
+  useSongCommerceState,
+  useSongPlayback,
+} from "@/app/authenticated-helpers/song-commerce";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
 
@@ -57,15 +75,39 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const pageTitle = copy.community.title;
   const createPostLabel = copy.community.createPostLabel;
   const modToolsLabel = copy.community.modToolsLabel;
-  const sortOptions = React.useMemo(() => buildFeedSortOptions(copy.common), [copy.common]);
+  const sortOptions = React.useMemo(
+    () => buildFeedSortOptions(copy.common),
+    [copy.common],
+  );
   const contentLocale = useRouteContentLocale();
-  const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
-  const { authorProfiles, community, preview, eligibility, error, loading, posts, refetchEligibility, setPosts } = useCommunityPageData(communityId, contentLocale, activeSort);
-  const ownsCommunity = session?.user?.user_id === community?.created_by_user_id;
-  const canCreatePost = ownsCommunity || eligibility?.status === "already_joined";
+  const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">(
+    "best",
+  );
+  const {
+    authorProfiles,
+    community,
+    preview,
+    eligibility,
+    error,
+    loading,
+    posts,
+    refetchEligibility,
+    setPosts,
+  } = useCommunityPageData(communityId, contentLocale, activeSort);
+  const ownsCommunity =
+    session?.user?.user_id === community?.created_by_user_id;
+  const canCreatePost =
+    ownsCommunity || eligibility?.status === "already_joined";
   const commerceEnabled = Boolean(session?.user?.user_id) && canCreatePost;
-  const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(communityId, commerceEnabled);
-  const { buySong, purchaseModal } = useSongPurchaseFlow({ commerceEnabled, refreshSongCommerce });
+  const {
+    listingsByAssetId,
+    purchasesByAssetId,
+    refresh: refreshSongCommerce,
+  } = useSongCommerceState(communityId, commerceEnabled);
+  const { buySong, purchaseModal } = useSongPurchaseFlow({
+    commerceEnabled,
+    refreshSongCommerce,
+  });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const [followLoading, setFollowLoading] = React.useState(false);
   const [followState, setFollowState] = React.useState<{
@@ -74,18 +116,21 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     viewerFollowing: boolean;
   } | null>(null);
   const previewCommunityId = preview?.community_id ?? null;
-  const viewerFollowing = followState?.communityId === previewCommunityId
-    ? followState.viewerFollowing
-    : Boolean(preview?.viewer_following);
-  const followerCount = followState?.communityId === previewCommunityId
-    ? followState.followerCount
-    : preview?.follower_count ?? null;
+  const viewerFollowing =
+    followState?.communityId === previewCommunityId
+      ? followState.viewerFollowing
+      : Boolean(preview?.viewer_following);
+  const followerCount =
+    followState?.communityId === previewCommunityId
+      ? followState.followerCount
+      : (preview?.follower_count ?? null);
   const markViewerJoined = React.useCallback(() => {
     setFollowState((current) => ({
       communityId: previewCommunityId ?? communityId,
-      followerCount: current?.communityId === (previewCommunityId ?? communityId)
-        ? current.followerCount
-        : preview?.follower_count ?? null,
+      followerCount:
+        current?.communityId === (previewCommunityId ?? communityId)
+          ? current.followerCount
+          : (preview?.follower_count ?? null),
       viewerFollowing: true,
     }));
   }, [communityId, preview?.follower_count, previewCommunityId]);
@@ -95,11 +140,10 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     handleSelfQrError,
     handleSelfQrSuccess,
     joinError,
-	    joinLoading,
-	    joinRequested,
-	    passportLoading,
-	    refreshPassportScore,
-	    selfError,
+    joinLoading,
+    joinRequested,
+    passportLoading,
+    selfError,
     selfLoading,
     selfModalOpen,
     selfPrompt,
@@ -114,12 +158,16 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     refetchEligibility,
   });
   const [joinRequestModalOpen, setJoinRequestModalOpen] = React.useState(false);
-  const [joinRequestSubmitting, setJoinRequestSubmitting] = React.useState(false);
-  const [joinRequestError, setJoinRequestError] = React.useState<string | null>(null);
+  const [joinRequestSubmitting, setJoinRequestSubmitting] =
+    React.useState(false);
+  const [joinRequestError, setJoinRequestError] = React.useState<string | null>(
+    null,
+  );
   const communityCreatePostPath = React.useMemo(
-    () => community
-      ? `${buildCommunityPath(community.community_id, community.route_slug)}/submit`
-      : `${buildCommunityPath(communityId)}/submit`,
+    () =>
+      community
+        ? `${buildCommunityPath(community.community_id, community.route_slug)}/submit`
+        : `${buildCommunityPath(communityId)}/submit`,
     [community, communityId],
   );
   const moderationEntryPath = React.useMemo(
@@ -127,11 +175,12 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     [communityId, isMobileWeb],
   );
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
-  const { gateModal, invalidateCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
-    previewLocale: contentLocale,
-    routeKind: "community",
-    uiLocale: locale,
-  });
+  const { gateModal, invalidateCommunityGate, runGatedCommunityAction } =
+    useCommunityInteractionGate({
+      previewLocale: contentLocale,
+      routeKind: "community",
+      uiLocale: locale,
+    });
 
   React.useEffect(() => {
     if (!preview) return;
@@ -140,14 +189,21 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       followerCount: preview.follower_count ?? null,
       viewerFollowing: Boolean(preview.viewer_following),
     });
-  }, [preview?.community_id, preview?.follower_count, preview?.viewer_following]);
+  }, [
+    preview?.community_id,
+    preview?.follower_count,
+    preview?.viewer_following,
+  ]);
 
-  const handleJoinRequestModalOpenChange = React.useCallback((open: boolean) => {
-    setJoinRequestModalOpen(open);
-    if (open) {
-      setJoinRequestError(null);
-    }
-  }, []);
+  const handleJoinRequestModalOpenChange = React.useCallback(
+    (open: boolean) => {
+      setJoinRequestModalOpen(open);
+      if (open) {
+        setJoinRequestError(null);
+      }
+    },
+    [],
+  );
 
   const openJoinRequestModal = React.useCallback(() => {
     setJoinRequestError(null);
@@ -162,31 +218,41 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     await handleJoin();
   }, [eligibility?.status, handleJoin, openJoinRequestModal]);
 
-  const handleJoinRequestSubmit = React.useCallback(async (note: string) => {
-    setJoinRequestSubmitting(true);
-    setJoinRequestError(null);
-    try {
-      const result = await handleJoin({ note });
-      if (result === "requested" || result === "joined") {
-        invalidateCommunityGate(communityId);
-        setJoinRequestModalOpen(false);
-      } else if (result === "failed") {
-        setJoinRequestError("Could not submit your request. Try again.");
+  const handleJoinRequestSubmit = React.useCallback(
+    async (note: string) => {
+      setJoinRequestSubmitting(true);
+      setJoinRequestError(null);
+      try {
+        const result = await handleJoin({ note });
+        if (result === "requested" || result === "joined") {
+          invalidateCommunityGate(communityId);
+          setJoinRequestModalOpen(false);
+        } else if (result === "failed") {
+          setJoinRequestError("Could not submit your request. Try again.");
+        }
+      } finally {
+        setJoinRequestSubmitting(false);
       }
-    } finally {
-      setJoinRequestSubmitting(false);
-    }
-  }, [communityId, handleJoin, invalidateCommunityGate]);
+    },
+    [communityId, handleJoin, invalidateCommunityGate],
+  );
 
-  const handleBuySong = React.useCallback(async (listing: ApiCommunityListing, titleText: string, assetLabel: "song" | "video" = "song") => {
-    await buySong({
-      assetLabel,
-      communityId,
-      listing,
-      successMessage: ({ titleText: nextTitle }) => `${nextTitle} unlocked.`,
-      titleText,
-    });
-  }, [buySong, communityId]);
+  const handleBuySong = React.useCallback(
+    async (
+      listing: ApiCommunityListing,
+      titleText: string,
+      assetLabel: "song" | "video" = "song",
+    ) => {
+      await buySong({
+        assetLabel,
+        communityId,
+        listing,
+        successMessage: ({ titleText: nextTitle }) => `${nextTitle} unlocked.`,
+        titleText,
+      });
+    },
+    [buySong, communityId],
+  );
 
   const handleToggleFollow = React.useCallback(async () => {
     setFollowLoading(true);
@@ -206,159 +272,216 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     }
   }, [api, communityId, viewerFollowing]);
 
-  const buildCommunityBlockedModalState = React.useCallback(({ action, closeModal, gate }: {
-    action: "reply_comment" | "reply_post" | "vote_comment" | "vote_post";
-    closeModal: () => void;
-    gate: {
-      eligibility: ApiJoinEligibility;
-      preview: {
-        community_id: string;
-        display_name: string;
-        membership_gate_summaries: NonNullable<typeof preview>["membership_gate_summaries"];
+  const buildCommunityBlockedModalState = React.useCallback(
+    ({
+      action,
+      closeModal,
+      gate,
+    }: {
+      action: "reply_comment" | "reply_post" | "vote_comment" | "vote_post";
+      closeModal: () => void;
+      gate: {
+        eligibility: ApiJoinEligibility;
+        preview: {
+          community_id: string;
+          display_name: string;
+          membership_gate_summaries: NonNullable<
+            typeof preview
+          >["membership_gate_summaries"];
+        };
       };
-    };
-  }) => {
-	    if (gate.eligibility.status === "verification_required") {
-	      const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-	      if (provider === "passport") {
-	        return undefined;
-	      }
-	      const verificationPrompt = getVerificationPromptCopy(
-	        provider,
-	        getVerificationCapabilitiesForProvider(gate.eligibility, provider),
-        { locale },
-      );
-	      const verificationIcon = provider === "very" ? "very" : "self";
-      return {
-        description: verificationPrompt.description,
-        icon: verificationIcon as "passport" | "self" | "very",
-	        primaryAction: {
-	              label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
-	              loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
-              onClick: async () => {
-                if (provider === "very") {
-                  const result = await startVeryVerification();
-                  if (result.started) {
-                    closeModal();
+    }) => {
+      if (gate.eligibility.status === "verification_required") {
+        const provider = resolveSuggestedVerificationProvider(gate.eligibility);
+        if (provider === "passport") {
+          return undefined;
+        }
+        const verificationPrompt = getVerificationPromptCopy(
+          provider,
+          getVerificationCapabilitiesForProvider(gate.eligibility, provider),
+          { locale },
+        );
+        const verificationIcon = provider === "very" ? "very" : "self";
+        return {
+          description: verificationPrompt.description,
+          icon: verificationIcon as "passport" | "self" | "very",
+          primaryAction: {
+            label:
+              verificationPrompt.actionLabel ||
+              copy.createCommunity.startVerification,
+            loading:
+              provider === "very"
+                ? veryLoading
+                : provider === "self"
+                  ? selfLoading
+                  : false,
+            onClick: async () => {
+              if (provider === "very") {
+                const result = await startVeryVerification();
+                if (result.started) {
+                  closeModal();
+                }
+              } else {
+                const result = await startSelfVerification({
+                  showToastOnError: true,
+                  missingCapabilities: gate.eligibility.missing_capabilities,
+                  membershipGateSummaries:
+                    gate.eligibility.membership_gate_summaries,
+                  skipModal: true,
+                });
+                if (result.started) {
+                  closeModal();
+                  if (result.openedModal) {
+                    return;
                   }
-                } else {
-                  const result = await startSelfVerification({
-                    showToastOnError: true,
-                    missingCapabilities: gate.eligibility.missing_capabilities,
-                    membershipGateSummaries: gate.eligibility.membership_gate_summaries,
-                    skipModal: true,
-                  });
-                  if (result.started) {
-                    closeModal();
-                    if (result.openedModal) {
-                      return;
-                    }
-                    if (result.href) {
-                      window.location.href = result.href;
-                    } else {
-                      toast.error("Could not get Self app launch link.");
-                    }
+                  if (result.href) {
+                    window.location.href = result.href;
+                  } else {
+                    toast.error("Could not get Self app launch link.");
                   }
                 }
-	            },
+              }
             },
-        requirements: gate.preview.membership_gate_summaries,
-	        title: action === "vote_post" || action === "vote_comment"
-	            ? copy.interactionGate.verifyToVoteTitle
-	            : copy.interactionGate.verifyToReplyTitle,
-	      };
-    }
+          },
+          requirements: gate.preview.membership_gate_summaries,
+          title:
+            action === "vote_post" || action === "vote_comment"
+              ? copy.interactionGate.verifyToVoteTitle
+              : copy.interactionGate.verifyToReplyTitle,
+        };
+      }
 
-    if (gate.eligibility.status === "requestable") {
-      openJoinRequestModal();
-      return null;
-    }
+      if (gate.eligibility.status === "requestable") {
+        openJoinRequestModal();
+        return null;
+      }
 
-    if (gate.eligibility.status === "joinable") {
-      const ctaLabel = getJoinCtaLabel(gate.eligibility, { locale });
-      const isVoteAction = action === "vote_post" || action === "vote_comment";
-      const isEnglish = !locale.toLowerCase().startsWith("ar") && !locale.toLowerCase().startsWith("zh");
-      return {
-        description: (
-          isVoteAction
+      if (gate.eligibility.status === "joinable") {
+        const ctaLabel = getJoinCtaLabel(gate.eligibility, { locale });
+        const isVoteAction =
+          action === "vote_post" || action === "vote_comment";
+        const isEnglish =
+          !locale.toLowerCase().startsWith("ar") &&
+          !locale.toLowerCase().startsWith("zh");
+        return {
+          description: (isVoteAction
             ? copy.interactionGate.joinToVoteDescription
             : copy.interactionGate.joinToReplyDescription
-        )
-          .replace("{joinLabel}", ctaLabel)
-          .replace("{communityName}", gate.preview.display_name),
-        icon: "join" as const,
-        primaryAction: {
-          label: ctaLabel,
-          loading: joinLoading,
-          onClick: async () => {
-            await handleJoin();
-            invalidateCommunityGate(gate.preview.community_id);
-            closeModal();
+          )
+            .replace("{joinLabel}", ctaLabel)
+            .replace("{communityName}", gate.preview.display_name),
+          icon: "join" as const,
+          primaryAction: {
+            label: ctaLabel,
+            loading: joinLoading,
+            onClick: async () => {
+              await handleJoin();
+              invalidateCommunityGate(gate.preview.community_id);
+              closeModal();
+            },
+          },
+          requirements: gate.preview.membership_gate_summaries,
+          title: isEnglish
+            ? `Join to ${isVoteAction ? "Vote" : "Reply"}`
+            : (isVoteAction
+                ? copy.interactionGate.joinToVoteTitle
+                : copy.interactionGate.joinToReplyTitle
+              ).replace("{joinLabel}", ctaLabel),
+        };
+      }
+
+      if (gate.eligibility.status === "pending_request") {
+        return {
+          description: "The moderators will review your request.",
+          icon: "pending" as const,
+          requirements: gate.preview.membership_gate_summaries,
+          title: "Request pending",
+        };
+      }
+
+      return {
+        description:
+          gate.eligibility.status === "banned"
+            ? copy.interactionGate.bannedDescription
+            : action === "vote_post" || action === "vote_comment"
+              ? copy.interactionGate.blockedVoteDescription
+              : copy.interactionGate.blockedReplyDescription,
+        icon: "blocked" as const,
+        requirements: gate.preview.membership_gate_summaries,
+        title:
+          action === "vote_post" || action === "vote_comment"
+            ? copy.interactionGate.cantVoteHereTitle
+            : copy.interactionGate.cantReplyHereTitle,
+      };
+    },
+    [
+      copy.createCommunity.startVerification,
+      copy.interactionGate,
+      handleJoin,
+      invalidateCommunityGate,
+      joinLoading,
+      locale,
+      openJoinRequestModal,
+      selfLoading,
+      startSelfVerification,
+      startVeryVerification,
+      veryLoading,
+    ],
+  );
+
+  const voteOnPost = React.useCallback(
+    async (postId: string, direction: "up" | "down" | null) => {
+      if (!preview || !eligibility) return;
+      await runGatedCommunityAction({
+        action: "vote_post",
+        buildBlockedModalState: buildCommunityBlockedModalState,
+        communityId,
+        gateData: {
+          eligibility,
+          preview: {
+            community_id: preview.community_id,
+            display_name: preview.display_name,
+            membership_gate_summaries: preview.membership_gate_summaries,
           },
         },
-        requirements: gate.preview.membership_gate_summaries,
-        title: isEnglish
-          ? `Join to ${isVoteAction ? "Vote" : "Reply"}`
-          : (
-            isVoteAction
-              ? copy.interactionGate.joinToVoteTitle
-              : copy.interactionGate.joinToReplyTitle
-          ).replace("{joinLabel}", ctaLabel),
-      };
-    }
-
-    if (gate.eligibility.status === "pending_request") {
-      return {
-        description: "The moderators will review your request.",
-        icon: "pending" as const,
-        requirements: gate.preview.membership_gate_summaries,
-        title: "Request pending",
-      };
-    }
-
-    return {
-      description: gate.eligibility.status === "banned"
-        ? copy.interactionGate.bannedDescription
-        : action === "vote_post" || action === "vote_comment"
-          ? copy.interactionGate.blockedVoteDescription
-          : copy.interactionGate.blockedReplyDescription,
-      icon: "blocked" as const,
-      requirements: gate.preview.membership_gate_summaries,
-      title: action === "vote_post" || action === "vote_comment"
-        ? copy.interactionGate.cantVoteHereTitle
-        : copy.interactionGate.cantReplyHereTitle,
-    };
-  }, [copy.createCommunity.startVerification, copy.interactionGate, handleJoin, invalidateCommunityGate, joinLoading, locale, openJoinRequestModal, selfLoading, startSelfVerification, startVeryVerification, veryLoading]);
-
-  const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
-    if (!preview || !eligibility) return;
-    await runGatedCommunityAction({
-      action: "vote_post",
-      buildBlockedModalState: buildCommunityBlockedModalState,
-      communityId,
-      gateData: {
-        eligibility,
-        preview: {
-          community_id: preview.community_id,
-          display_name: preview.display_name,
-          membership_gate_summaries: preview.membership_gate_summaries,
+        onAllowed: async () => {
+          const previousPost = posts.find(
+            (postResponse) => postResponse.post.post_id === postId,
+          );
+          await submitOptimisticPostVote({
+            direction,
+            onApply: (nextValue) =>
+              setPosts((current) =>
+                updateCommunityPostVote(current, postId, nextValue),
+              ),
+            onRollback: (restoredPost) =>
+              setPosts((current) =>
+                current.map((postResponse) =>
+                  postResponse.post.post_id === postId
+                    ? restoredPost
+                    : postResponse,
+                ),
+              ),
+            postId,
+            previousPost: previousPost ?? null,
+            requestIdsRef: voteRequestIdsRef,
+            vote: api.posts.vote,
+          });
         },
-      },
-      onAllowed: async () => {
-        const previousPost = posts.find((postResponse) => postResponse.post.post_id === postId);
-        await submitOptimisticPostVote({
-          direction,
-          onApply: (nextValue) => setPosts((current) => updateCommunityPostVote(current, postId, nextValue)),
-          onRollback: (restoredPost) => setPosts((current) => current.map((postResponse) => postResponse.post.post_id === postId ? restoredPost : postResponse)),
-          postId,
-          previousPost: previousPost ?? null,
-          requestIdsRef: voteRequestIdsRef,
-          vote: api.posts.vote,
-        });
-      },
-      postId,
-    });
-  }, [api.posts.vote, buildCommunityBlockedModalState, communityId, eligibility, posts, preview, runGatedCommunityAction, setPosts]);
+        postId,
+      });
+    },
+    [
+      api.posts.vote,
+      buildCommunityBlockedModalState,
+      communityId,
+      eligibility,
+      posts,
+      preview,
+      runGatedCommunityAction,
+      setPosts,
+    ],
+  );
 
   if (loading) {
     return <CommunityRouteLoadingState />;
@@ -367,25 +490,43 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     if (isApiNotFoundError(error)) {
       return <PublicCommunityRoutePage communityId={communityId} />;
     }
-    if (isApiAuthError(error)) return <AuthRequiredRouteState description={copy.routeStatus.community.auth} title={pageTitle} />;
-    return <RouteLoadFailureState description={getErrorMessage(error, copy.routeStatus.community.failure)} title={pageTitle} />;
+    if (isApiAuthError(error))
+      return (
+        <AuthRequiredRouteState
+          description={copy.routeStatus.community.auth}
+          title={pageTitle}
+        />
+      );
+    return (
+      <RouteLoadFailureState
+        description={getErrorMessage(error, copy.routeStatus.community.failure)}
+        title={pageTitle}
+      />
+    );
   }
   if (!preview || !community) {
-    return <RouteLoadFailureState description={copy.routeStatus.community.incomplete} title={pageTitle} />;
+    return (
+      <RouteLoadFailureState
+        description={copy.routeStatus.community.incomplete}
+        title={pageTitle}
+      />
+    );
   }
 
-  const joinActionLabel = eligibility?.status === "already_joined"
-    ? "Joined"
-    : eligibility?.status === "pending_request"
-      ? "Request pending"
-      : eligibility?.status === "requestable"
-        ? "Request to Join"
-        : "Join";
-  const joinActionDisabled = !eligibility
-    || eligibility.status === "already_joined"
-    || eligibility.status === "pending_request"
-    || eligibility.status === "gate_failed"
-    || eligibility.status === "banned";
+  const joinActionLabel =
+    eligibility?.status === "already_joined"
+      ? "Joined"
+      : eligibility?.status === "pending_request"
+        ? "Request pending"
+        : eligibility?.status === "requestable"
+          ? "Request to Join"
+          : "Join";
+  const joinActionDisabled =
+    !eligibility ||
+    eligibility.status === "already_joined" ||
+    eligibility.status === "pending_request" ||
+    eligibility.status === "gate_failed" ||
+    eligibility.status === "banned";
   const feedItems = posts.map((post) => {
     const assetId = post.post.asset_id ?? undefined;
     return toCommunityFeedItem(
@@ -393,17 +534,22 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       authorProfiles,
       post.post.post_type === "song" || post.post.post_type === "video"
         ? {
-          currentUserId: session?.user?.user_id,
-          listing: assetId ? listingsByAssetId[assetId] : undefined,
-          localeTag,
-          onBuy: assetId && listingsByAssetId[assetId] ? () => void handleBuySong(
-            listingsByAssetId[assetId]!,
-            post.post.title ?? (post.post.post_type === "video" ? "video" : "song"),
-            post.post.post_type === "video" ? "video" : "song",
-          ) : undefined,
-          playback: songPlayback,
-          purchase: assetId ? purchasesByAssetId[assetId] : undefined,
-        }
+            currentUserId: session?.user?.user_id,
+            listing: assetId ? listingsByAssetId[assetId] : undefined,
+            localeTag,
+            onBuy:
+              assetId && listingsByAssetId[assetId]
+                ? () =>
+                    void handleBuySong(
+                      listingsByAssetId[assetId]!,
+                      post.post.title ??
+                        (post.post.post_type === "video" ? "video" : "song"),
+                      post.post.post_type === "video" ? "video" : "song",
+                    )
+                : undefined,
+            playback: songPlayback,
+            purchase: assetId ? purchasesByAssetId[assetId] : undefined,
+          }
         : undefined,
       {
         onComment: () => navigate(`/p/${post.post.post_id}`),
@@ -416,7 +562,14 @@ export function CommunityPage({ communityId }: { communityId: string }) {
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
-      {ownsCommunity ? <Button onClick={() => navigate(moderationEntryPath)} variant="secondary">{modToolsLabel}</Button> : null}
+      {ownsCommunity ? (
+        <Button
+          onClick={() => navigate(moderationEntryPath)}
+          variant="secondary"
+        >
+          {modToolsLabel}
+        </Button>
+      ) : null}
       {!ownsCommunity ? (
         <Button
           className={FOLLOW_BUTTON_CLASS_NAME}
@@ -424,13 +577,15 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           onClick={handleToggleFollow}
           variant={viewerFollowing ? "secondary" : "default"}
         >
-          {viewerFollowing ? copy.community.followingLabel : copy.community.followLabel}
+          {viewerFollowing
+            ? copy.community.followingLabel
+            : copy.community.followLabel}
         </Button>
       ) : null}
       {!ownsCommunity ? (
         <Button
           disabled={joinActionDisabled}
-	          loading={joinLoading || veryLoading || selfLoading || passportLoading}
+          loading={joinLoading || veryLoading || selfLoading || passportLoading}
           onClick={handlePrimaryJoinAction}
           variant="secondary"
         >
@@ -438,14 +593,25 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         </Button>
       ) : null}
       {canCreatePost ? (
-        <Button leadingIcon={<Plus className="size-5" />} onClick={() => navigate(communityCreatePostPath)}>{createPostLabel}</Button>
+        <Button
+          leadingIcon={<Plus className="size-5" />}
+          onClick={() => navigate(communityCreatePostPath)}
+        >
+          {createPostLabel}
+        </Button>
       ) : null}
     </div>
   );
-  const routeLabel = formatCommunityRouteLabel(community.community_id, community.route_slug);
+  const routeLabel = formatCommunityRouteLabel(
+    community.community_id,
+    community.route_slug,
+  );
   const previewSidebar = buildCommunityPreviewSidebar(preview, locale);
-  const moderator = previewSidebar.moderator
-    ?? (ownsCommunity ? buildCommunitySidebarModeratorFromProfile(session?.profile) : null);
+  const moderator =
+    previewSidebar.moderator ??
+    (ownsCommunity
+      ? buildCommunitySidebarModeratorFromProfile(session?.profile)
+      : null);
 
   return (
     <>
@@ -474,50 +640,66 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         />
       ) : null}
       <section className="flex min-w-0 flex-1 flex-col gap-6">
-      {preview.membership_gate_summaries.length > 0 && !canCreatePost ? (
-        <CommunityMembershipGatePanel
-          eligibility={eligibility}
-          gates={preview.membership_gate_summaries}
-          joinError={joinError ?? (eligibility?.status === "gate_failed" && eligibility.failure_reason
-            ? getGateFailureMessage(eligibility, { locale })
-            : null)}
-	          joinLoading={joinLoading}
-	          joinRequested={joinRequested}
-	          passportLoading={passportLoading}
-	          verificationError={selfError}
-	          verificationLoading={selfLoading}
-	          onJoin={handlePrimaryJoinAction}
-	          onPassportRefresh={() => void refreshPassportScore()}
-	        />
-      ) : null}
+        {preview.membership_gate_summaries.length > 0 && !canCreatePost ? (
+          <CommunityMembershipGatePanel
+            eligibility={eligibility}
+            gates={preview.membership_gate_summaries}
+            joinError={
+              joinError ??
+              (eligibility?.status === "gate_failed" &&
+              eligibility.failure_reason
+                ? getGateFailureMessage(eligibility, { locale })
+                : null)
+            }
+            joinLoading={joinLoading}
+            joinRequested={joinRequested}
+            verificationError={selfError}
+            verificationLoading={selfLoading}
+            onJoin={handlePrimaryJoinAction}
+          />
+        ) : null}
         <CommunityPageShell
-        activeSort={activeSort}
-        avatarSrc={community.avatar_ref ?? undefined}
-        availableSorts={sortOptions}
-        bannerSrc={community.banner_ref ?? undefined}
-        communityId={community.community_id}
-        headerAction={headerAction}
-        items={feedItems}
-        onSortChange={setActiveSort}
-        routeLabel={routeLabel}
-        routeVerified={Boolean(community.namespace_verification_id)}
-        sidebar={{
-          ...buildCommunitySidebar(community, locale),
-          followerCount,
-          memberCount: preview.member_count ?? null,
-          moderator,
-          requirements: buildCommunitySidebarRequirements({
-            defaultAgeGatePolicy: community.default_age_gate_policy ?? "none",
-            gateSummaries: preview.membership_gate_summaries,
-            locale,
-          }),
-          namespacePanel: ownsCommunity ? {
-            routeLabel,
-            status: community.namespace_verification_id ? "verified" : community.pending_namespace_verification_session_id ? "pending" : "available",
-            onOpen: community.namespace_verification_id ? undefined : () => navigate(buildCommunityModerationPath(communityId, "namespace")),
-          } : null,
-        }}
-        title={community.display_name}
+          activeSort={activeSort}
+          avatarSrc={community.avatar_ref ?? undefined}
+          availableSorts={sortOptions}
+          bannerSrc={community.banner_ref ?? undefined}
+          communityId={community.community_id}
+          headerAction={headerAction}
+          items={feedItems}
+          onSortChange={setActiveSort}
+          routeLabel={routeLabel}
+          routeVerified={Boolean(community.namespace_verification_id)}
+          sidebar={{
+            ...buildCommunitySidebar(community, locale),
+            followerCount,
+            memberCount: preview.member_count ?? null,
+            moderator,
+            requirements: buildCommunitySidebarRequirements({
+              defaultAgeGatePolicy: community.default_age_gate_policy ?? "none",
+              gateSummaries: preview.membership_gate_summaries,
+              locale,
+            }),
+            namespacePanel: ownsCommunity
+              ? {
+                  routeLabel,
+                  status: community.namespace_verification_id
+                    ? "verified"
+                    : community.pending_namespace_verification_session_id
+                      ? "pending"
+                      : "available",
+                  onOpen: community.namespace_verification_id
+                    ? undefined
+                    : () =>
+                        navigate(
+                          buildCommunityModerationPath(
+                            communityId,
+                            "namespace",
+                          ),
+                        ),
+                }
+              : null,
+          }}
+          title={community.display_name}
         />
       </section>
     </>

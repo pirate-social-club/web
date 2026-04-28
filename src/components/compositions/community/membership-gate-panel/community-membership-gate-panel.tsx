@@ -12,12 +12,7 @@ import { Button } from "@/components/primitives/button";
 import { VerificationAppDownloadLinks } from "@/components/compositions/verification/verification-app-download-links/verification-app-download-links";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Spinner } from "@/components/primitives/spinner";
-import {
-  getJoinCtaLabel,
-  getPassportPromptCapabilities,
-  getVerificationPromptCopy,
-  isJoinCtaActionable,
-} from "@/lib/identity-gates";
+import { getJoinCtaLabel, isJoinCtaActionable } from "@/lib/identity-gates";
 import { Type } from "@/components/primitives/type";
 
 type VerificationPrompt = {
@@ -36,9 +31,7 @@ export interface CommunityMembershipGatePanelProps {
   verificationPrompt?: VerificationPrompt | null;
   verificationLoading?: boolean;
   verificationError?: string | null;
-  passportLoading?: boolean;
   onJoin?: () => void;
-  onPassportRefresh?: () => void;
   onCancelVerification?: () => void;
   revealRequirementValues?: boolean;
 }
@@ -88,33 +81,6 @@ function getEligibilityText(eligibility: JoinEligibility | null | undefined): {
   }
 }
 
-function formatPassportScore(score: number): string {
-  return Number.isInteger(score)
-    ? String(score)
-    : score.toFixed(1).replace(/\.0$/u, "");
-}
-
-function getRequiredPassportScore(
-  eligibility: JoinEligibility | null | undefined,
-): number | null {
-  if (typeof eligibility?.wallet_score_status?.required_score === "number") {
-    return eligibility.wallet_score_status.required_score;
-  }
-  let requiredScore: number | null = null;
-  for (const gate of eligibility?.membership_gate_summaries ?? []) {
-    if (
-      gate.gate_type === "wallet_score" &&
-      typeof gate.minimum_score === "number"
-    ) {
-      requiredScore =
-        requiredScore == null
-          ? gate.minimum_score
-          : Math.max(requiredScore, gate.minimum_score);
-    }
-  }
-  return requiredScore;
-}
-
 function getPassportPrompt(
   eligibility: JoinEligibility | null | undefined,
 ): VerificationPrompt | null {
@@ -126,26 +92,11 @@ function getPassportPrompt(
       eligibility.failure_reason === "wallet_score_too_low");
   if (!shouldShowPassportPrompt) return null;
 
-  const capabilities = getPassportPromptCapabilities(eligibility);
-  const activeCapabilities: JoinEligibility["missing_capabilities"] =
-    capabilities.length > 0 ? capabilities : ["wallet_score"];
-  const copy = getVerificationPromptCopy("passport", activeCapabilities);
-  const requiredScore = getRequiredPassportScore(eligibility);
-  if (requiredScore == null) {
-    return { ...copy, href: "https://app.passport.xyz/" };
-  }
-
-  const requiredScoreLabel = formatPassportScore(requiredScore);
-  const currentScore = eligibility.wallet_score_status?.current_score;
-  const scoreDescription =
-    typeof currentScore === "number"
-      ? `Your score is ${formatPassportScore(currentScore)}. Need ${requiredScoreLabel}+ to join.`
-      : `No Passport score found. Need ${requiredScoreLabel}+ to join.`;
-
   return {
-    title: "Passport score required",
-    description: scoreDescription,
-    actionLabel: copy.actionLabel,
+    title: "Higher Score Required",
+    description:
+      "We can't determine that you're a unique human from your wallet activity. Improve your score and try again.",
+    actionLabel: "Visit Passport.xyz",
     href: "https://app.passport.xyz/",
   };
 }
@@ -159,9 +110,7 @@ export function CommunityMembershipGatePanel({
   verificationPrompt,
   verificationLoading,
   verificationError,
-  passportLoading,
   onJoin,
-  onPassportRefresh,
   onCancelVerification,
 }: CommunityMembershipGatePanelProps) {
   const passportPrompt: VerificationPrompt | null = !verificationPrompt
@@ -198,42 +147,14 @@ export function CommunityMembershipGatePanel({
     eligibility.status !== "gate_failed" &&
     eligibility.status !== "already_joined" &&
     eligibility.status !== "banned";
-  const showPassportPromptAction = Boolean(passportPrompt && onPassportRefresh);
-  const showPromptAction = activePrompt?.href && !showPassportPromptAction;
+  const showPromptAction = activePrompt?.href;
   const descriptionTone = joinError ? "text-warning" : "text-muted-foreground";
   const verificationIcon = isVeryVerificationRequired
     ? "very"
     : isInlineVerificationRequired
       ? "self"
       : null;
-  const action = showPassportPromptAction ? (
-    <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
-      <Button
-        className="h-14 w-full shrink-0 px-9 text-lg shadow-sm md:w-auto md:min-w-44"
-        loading={passportLoading}
-        onClick={onPassportRefresh}
-        size="lg"
-      >
-        Check Passport score
-      </Button>
-      <Button
-        asChild
-        className="h-14 w-full shrink-0 px-9 text-lg shadow-sm md:w-auto md:min-w-44"
-        size="lg"
-        variant="secondary"
-      >
-        <a
-          className="gap-2"
-          href="https://app.passport.xyz/"
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          <span>Open Passport</span>
-          <ArrowSquareOut className="size-5" />
-        </a>
-      </Button>
-    </div>
-  ) : showPromptAction ? (
+  const action = showPromptAction ? (
     <Button
       asChild
       className="h-14 w-full shrink-0 px-9 text-lg shadow-sm md:w-auto md:min-w-44"

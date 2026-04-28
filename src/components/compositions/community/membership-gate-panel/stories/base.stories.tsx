@@ -30,7 +30,9 @@ export const NationalityVerificationRequired: Story = {
         human_verification_lane: "self",
         joinable_now: false,
         status: "verification_required",
-        membership_gate_summaries: [{ gate_type: "nationality", required_value: "US" }],
+        membership_gate_summaries: [
+          { gate_type: "nationality", required_value: "US" },
+        ],
         missing_capabilities: ["nationality"],
         suggested_verification_provider: "self",
         suggested_verification_intent: "community_join",
@@ -52,7 +54,9 @@ export const DocumentMarkerVerificationRequired: Story = {
         human_verification_lane: "self",
         joinable_now: false,
         status: "verification_required",
-        membership_gate_summaries: [{ gate_type: "gender", required_value: "F" }],
+        membership_gate_summaries: [
+          { gate_type: "gender", required_value: "F" },
+        ],
         missing_capabilities: ["gender"],
         suggested_verification_provider: "self",
         suggested_verification_intent: "community_join",
@@ -73,7 +77,9 @@ export const DocumentMarkerMismatch: Story = {
         human_verification_lane: "self",
         joinable_now: false,
         status: "gate_failed",
-        membership_gate_summaries: [{ gate_type: "gender", required_value: "F" }],
+        membership_gate_summaries: [
+          { gate_type: "gender", required_value: "F" },
+        ],
         missing_capabilities: [],
         suggested_verification_provider: "self",
         suggested_verification_intent: "community_join",
@@ -95,7 +101,9 @@ export const Joinable: Story = {
         human_verification_lane: "self",
         joinable_now: true,
         status: "joinable",
-        membership_gate_summaries: [{ gate_type: "nationality", required_value: "US" }],
+        membership_gate_summaries: [
+          { gate_type: "nationality", required_value: "US" },
+        ],
         missing_capabilities: [],
         suggested_verification_provider: "self",
         suggested_verification_intent: "community_join",
@@ -116,7 +124,9 @@ export const Requestable: Story = {
         human_verification_lane: "self",
         joinable_now: false,
         status: "requestable",
-        membership_gate_summaries: [{ gate_type: "gender", required_value: "F" }],
+        membership_gate_summaries: [
+          { gate_type: "gender", required_value: "F" },
+        ],
         missing_capabilities: [],
         suggested_verification_provider: "self",
         suggested_verification_intent: "community_join",
@@ -137,7 +147,9 @@ export const PendingRequest: Story = {
         human_verification_lane: "self",
         joinable_now: false,
         status: "pending_request",
-        membership_gate_summaries: [{ gate_type: "gender", required_value: "F" }],
+        membership_gate_summaries: [
+          { gate_type: "gender", required_value: "F" },
+        ],
         missing_capabilities: [],
         suggested_verification_provider: "self",
         suggested_verification_intent: "community_join",
@@ -208,7 +220,9 @@ export const PassportScoreRequired: Story = {
         human_verification_lane: "self",
         joinable_now: false,
         status: "verification_required",
-        membership_gate_summaries: [{ gate_type: "wallet_score", minimum_score: 20 }],
+        membership_gate_summaries: [
+          { gate_type: "wallet_score", minimum_score: 20 },
+        ],
         missing_capabilities: ["wallet_score"],
         suggested_verification_provider: "passport",
         suggested_verification_intent: null,
@@ -235,7 +249,9 @@ export const PassportScoreTooLow: Story = {
         human_verification_lane: "self",
         joinable_now: false,
         status: "gate_failed",
-        membership_gate_summaries: [{ gate_type: "wallet_score", minimum_score: 30 }],
+        membership_gate_summaries: [
+          { gate_type: "wallet_score", minimum_score: 30 },
+        ],
         missing_capabilities: [],
         suggested_verification_provider: "passport",
         suggested_verification_intent: null,
@@ -243,7 +259,7 @@ export const PassportScoreTooLow: Story = {
         wallet_score_status: {
           current_score: 24,
           required_score: 30,
-          passing_score: true,
+          passing_score: false,
           last_score_timestamp: null,
         },
       }}
@@ -266,7 +282,9 @@ export const Mobile: Story = {
         human_verification_lane: "self",
         joinable_now: false,
         status: "verification_required",
-        membership_gate_summaries: [{ gate_type: "nationality", required_value: "US" }],
+        membership_gate_summaries: [
+          { gate_type: "nationality", required_value: "US" },
+        ],
         missing_capabilities: ["nationality"],
         suggested_verification_provider: "self",
         suggested_verification_intent: "community_join",

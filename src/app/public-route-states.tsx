@@ -7,7 +7,7 @@ import { Type } from "@/components/primitives/type";
 export function PublicRouteLoadingState() {
   return (
     <div className="flex min-h-[60vh] w-full flex-1 items-center justify-center">
-      <Spinner className="size-6" debugLabel="public-route-loading" />
+      <Spinner className="size-6" />
     </div>
   );
 }

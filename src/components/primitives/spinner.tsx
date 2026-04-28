@@ -4,21 +4,12 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
 
-export interface SpinnerProps extends React.SVGProps<SVGSVGElement> {
-  debugLabel?: string;
-}
+export interface SpinnerProps extends React.SVGProps<SVGSVGElement> {}
 
 export const Spinner = React.forwardRef<SVGSVGElement, SpinnerProps>(
-  ({ className, debugLabel, ...props }, ref) => {
+  ({ className, ...props }, ref) => {
     const { locale } = useUiLocale();
     const copy = getLocaleMessages(locale, "routes").common;
-
-    React.useEffect(() => {
-      if (debugLabel) {
-        console.info("[loader-debug][Spinner] mount", { debugLabel, t: Math.round(performance.now()) });
-        return () => console.info("[loader-debug][Spinner] unmount", { debugLabel, t: Math.round(performance.now()) });
-      }
-    }, [debugLabel]);
 
     return (
       <svg

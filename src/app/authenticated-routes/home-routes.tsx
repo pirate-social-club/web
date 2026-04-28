@@ -198,7 +198,6 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const [loading, setLoading] = React.useState(true);
   const recentCommunities = useRecentCommunities();
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
-  const homeLoadRequestIdRef = React.useRef(0);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const { gateModal, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: contentLocale,
@@ -208,31 +207,12 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
 
   React.useEffect(() => {
     let cancelled = false;
-    const requestId = ++homeLoadRequestIdRef.current;
-    const startedAt = performance.now();
 
     if (!hydrated) {
-      console.info("[loader-debug][HomePage] load-skipped-unhydrated", {
-        requestId,
-        t: Math.round(startedAt),
-      });
       return () => {
         cancelled = true;
-        console.info("[loader-debug][HomePage] load-cleanup-unhydrated", {
-          requestId,
-          t: Math.round(performance.now()),
-        });
       };
     }
-
-    console.info("[loader-debug][HomePage] load-start", {
-      activeSort,
-      contentLocale,
-      requestId,
-      session: Boolean(session),
-      timeRange: activeSort === "top" ? topTimeRange : null,
-      t: Math.round(startedAt),
-    });
 
     setLoading(true);
     setError(null);
@@ -244,12 +224,6 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     })
       .then(async (result) => {
         const nextFeedEntries = result.items;
-        console.info("[loader-debug][HomePage] feed-response", {
-          elapsedMs: Math.round(performance.now() - startedAt),
-          itemCount: nextFeedEntries.length,
-          requestId,
-          t: Math.round(performance.now()),
-        });
         const nextAuthorProfiles = await loadProfilesByUserId(
           api,
           nextFeedEntries.map((entry) => entry.post.post.identity_mode === "public" ? entry.post.post.author_user_id : null).filter((userId): userId is string => Boolean(userId)),
@@ -270,12 +244,6 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
 
         if (cancelled) return;
 
-        console.info("[loader-debug][HomePage] apply-feed-state", {
-          elapsedMs: Math.round(performance.now() - startedAt),
-          itemCount: nextFeedEntries.length,
-          requestId,
-          t: Math.round(performance.now()),
-        });
         setFeedEntries(nextFeedEntries);
         setAuthorProfiles(nextAuthorProfiles);
         setListingsByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.listings.map((listing) => (
@@ -287,12 +255,6 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
       })
       .catch((nextError: unknown) => {
         if (cancelled) return;
-        console.info("[loader-debug][HomePage] load-error", {
-          elapsedMs: Math.round(performance.now() - startedAt),
-          message: nextError instanceof Error ? nextError.message : String(nextError),
-          requestId,
-          t: Math.round(performance.now()),
-        });
         if ((nextError as { status?: number; code?: string }).status === 401 || (nextError as { code?: string }).code === "auth_error") {
           clearSession();
           return;
@@ -301,34 +263,14 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
       })
       .finally(() => {
         if (!cancelled) {
-          console.info("[loader-debug][HomePage] load-finish", {
-            elapsedMs: Math.round(performance.now() - startedAt),
-            requestId,
-            t: Math.round(performance.now()),
-          });
           setLoading(false);
         }
       });
 
     return () => {
       cancelled = true;
-      console.info("[loader-debug][HomePage] load-cleanup", {
-        elapsedMs: Math.round(performance.now() - startedAt),
-        requestId,
-        t: Math.round(performance.now()),
-      });
     };
   }, [activeSort, api, contentLocale, hydrated, session, topTimeRange]);
-
-  React.useEffect(() => {
-    console.info("[loader-debug][HomePage] render-state", {
-      activeSort,
-      feedEntries: feedEntries.length,
-      hydrated,
-      loading,
-      t: Math.round(performance.now()),
-    });
-  }, [activeSort, feedEntries.length, hydrated, loading]);
 
   React.useEffect(() => {
     setCurrentHomeFeedSort(activeSort);

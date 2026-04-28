@@ -128,14 +128,9 @@ function FeedEmpty({ emptyState }: { emptyState: FeedEmptyState }) {
 }
 
 function FeedLoadingState() {
-  React.useEffect(() => {
-    console.info("[loader-debug][FeedLoadingState] mount", { t: Math.round(performance.now()) });
-    return () => console.info("[loader-debug][FeedLoadingState] unmount", { t: Math.round(performance.now()) });
-  }, []);
-
   return (
     <div className="flex min-h-72 items-center justify-center" aria-busy="true">
-      <Spinner className="size-6" debugLabel="feed-loading" />
+      <Spinner className="size-6" />
     </div>
   );
 }
@@ -168,18 +163,6 @@ export function Feed({
   const showLoadingOnly = loading && !hasItems;
   const showLoadingTail = loading && hasItems;
   const [originalPostIds, setOriginalPostIds] = React.useState<Set<string>>(() => new Set());
-
-  React.useEffect(() => {
-    console.info("[loader-debug][Feed] render-state", {
-      activeSort,
-      hasItems,
-      itemCount: items.length,
-      loading,
-      showLoadingOnly,
-      showLoadingTail,
-      t: Math.round(performance.now()),
-    });
-  }, [activeSort, hasItems, items.length, loading, showLoadingOnly, showLoadingTail]);
 
   React.useEffect(() => {
     setOriginalPostIds((current) => {

@@ -234,6 +234,10 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "createPost": {
         "access": {
+          "imagePaidDescription": "Preview in feed. Full image unlocks after purchase.",
+          "imagePublicDescription": "Anyone can view the full image.",
+          "imageRightsAttested": "I have the rights to publish and monetize this image.",
+          "freeToView": "Free to view",
           "paidDescription": "Preview in feed. Full media unlocks after purchase.",
           "paidUnlock": "Paid unlock",
           "public": "Public",
@@ -245,7 +249,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "useRegionalPricing": "Use community regional pricing"
         },
         "actions": {
+          "back": "Back",
+          "continue": "Continue",
           "post": "Post",
+          "publish": "Publish",
           "publishRemix": "Publish remix"
         },
         "audience": {
@@ -289,6 +296,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "image": "Image",
           "instrumentalStem": "Instrumental stem",
           "lyrics": "Lyrics",
+          "price": "Price",
           "primaryLanguage": "Primary language",
           "secondaryLanguage": "Secondary language",
           "song": "Song",
@@ -361,6 +369,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "access": "Access",
           "audience": "Audience",
           "postAs": "Post as",
+          "postSummary": "Post summary",
+          "preview": "Preview",
+          "publishSettings": "Publish settings",
           "qualifiers": "Qualifiers",
           "sourceTrack": "Source track",
           "license": "License"
@@ -382,6 +393,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "text": "Text",
           "video": "Video"
         },
+        "publishTitle": "Publish post",
         "title": "Create post",
         "upload": {
           "artworkHelp": "Shows in feed, release, and player surfaces.",
@@ -1015,9 +1027,10 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "donations": {
           "title": "Charity",
-          "charityUrlLabel": "Charity URL",
+          "description": "Citizens selling pay-to-access images, songs, and videos can donate a share of proceeds to this community via crypto. 0.5% fee.",
+          "charityUrlLabel": "Endaoment URL",
           "charityUrlPlaceholder": "https://app.endaoment.org/orgs/...",
-          "loadCharity": "Load charity"
+          "loadCharity": "Add"
         },
         "profile": {
           "appearanceTitle": "Appearance",
@@ -1661,6 +1674,10 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "createPost": {
         "access": {
+          "imagePaidDescription": "تظهر معاينة في الخلاصة، وتُفتح الصورة الكاملة بعد الشراء.",
+          "imagePublicDescription": "يمكن لأي شخص عرض الصورة الكاملة.",
+          "imageRightsAttested": "أؤكد أن لدي الحقوق لنشر هذه الصورة وتحقيق الدخل منها.",
+          "freeToView": "مجاني للعرض",
           "paidDescription": "تظهر معاينة في الخلاصة، ويُفتح المسار الكامل بعد الشراء.",
           "paidUnlock": "فتح مدفوع",
           "public": "عام",
@@ -1672,7 +1689,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "useRegionalPricing": "استخدم التسعير الإقليمي للمجتمع"
         },
         "actions": {
+          "back": "رجوع",
+          "continue": "تابع",
           "post": "انشر",
+          "publish": "انشر",
           "publishRemix": "انشر الريمكس"
         },
         "audience": {
@@ -1716,6 +1736,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "image": "الصورة",
           "instrumentalStem": "مسار الآلات",
           "lyrics": "الكلمات",
+          "price": "السعر",
           "primaryLanguage": "اللغة الأساسية",
           "secondaryLanguage": "اللغة الثانوية",
           "song": "الأغنية",
@@ -1788,6 +1809,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "access": "الوصول",
           "audience": "الجمهور",
           "postAs": "انشر باسم",
+          "postSummary": "ملخص المنشور",
+          "preview": "معاينة",
+          "publishSettings": "إعدادات النشر",
           "qualifiers": "المؤهلات",
           "sourceTrack": "المسار المصدر",
           "license": "الترخيص"
@@ -1809,6 +1833,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "text": "نص",
           "video": "فيديو"
         },
+        "publishTitle": "انشر المنشور",
         "title": "أنشئ منشورًا",
         "upload": {
           "artworkHelp": "تظهر في الخلاصة وصفحة الإصدار وواجهة المشغل.",
@@ -2442,9 +2467,10 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "donations": {
           "title": "الجهة الخيرية",
-          "charityUrlLabel": "رابط الجهة الخيرية",
+          "description": "يمكن للمواطنين الذين يبيعون صورًا وأغانٍ ومقاطع فيديو مدفوعة الوصول التبرع بنسبة من العائدات لهذا المجتمع عبر العملات الرقمية. رسوم 0.5%.",
+          "charityUrlLabel": "رابط Endaoment",
           "charityUrlPlaceholder": "https://app.endaoment.org/orgs/...",
-          "loadCharity": "تحميل الجهة الخيرية"
+          "loadCharity": "إضافة"
         },
         "profile": {
           "appearanceTitle": "المظهر",
@@ -3088,6 +3114,10 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "createPost": {
         "access": {
+          "imagePaidDescription": "动态中显示预览，购买后解锁完整图片。",
+          "imagePublicDescription": "任何人都可以查看完整图片。",
+          "imageRightsAttested": "我确认我有权发布并将此图片商业化。",
+          "freeToView": "免费查看",
           "paidDescription": "动态里显示预览，购买后可解锁完整曲目。",
           "paidUnlock": "付费解锁",
           "public": "公开",
@@ -3099,7 +3129,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "useRegionalPricing": "使用社区区域定价"
         },
         "actions": {
+          "back": "返回",
+          "continue": "继续",
           "post": "发布",
+          "publish": "发布",
           "publishRemix": "发布混音"
         },
         "audience": {
@@ -3143,6 +3176,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "image": "图片",
           "instrumentalStem": "伴奏分轨",
           "lyrics": "歌词",
+          "price": "价格",
           "primaryLanguage": "主要语言",
           "secondaryLanguage": "次要语言",
           "song": "歌曲",
@@ -3215,6 +3249,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "access": "访问权限",
           "audience": "受众",
           "postAs": "发布身份",
+          "postSummary": "帖子摘要",
+          "preview": "预览",
+          "publishSettings": "发布设置",
           "qualifiers": "资格标签",
           "sourceTrack": "源曲目",
           "license": "许可证"
@@ -3236,6 +3273,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "text": "文本",
           "video": "视频"
         },
+        "publishTitle": "发布设置",
         "title": "发布帖子",
         "upload": {
           "artworkHelp": "会显示在动态、发布页和播放器界面中。",
@@ -3869,9 +3907,10 @@ export const GENERATED_LOCALE_CATALOGS = {
         },
         "donations": {
           "title": "慈善机构",
-          "charityUrlLabel": "慈善链接",
+          "description": "销售付费访问图片、歌曲和视频的居民可以通过加密货币向该社区捐赠部分收益。手续费 0.5%。",
+          "charityUrlLabel": "Endaoment 链接",
           "charityUrlPlaceholder": "https://app.endaoment.org/orgs/...",
-          "loadCharity": "加载慈善机构"
+          "loadCharity": "添加"
         },
         "profile": {
           "appearanceTitle": "外观",

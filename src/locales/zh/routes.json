@@ -74,7 +74,10 @@
     "verifyToPostLabel": "验证后发帖"
   },
   "yourCommunities": {
+    "emptyJoinedLabel": "你加入的社区会显示在这里。",
+    "followingLabel": "关注",
     "gatedLabel": "受限",
+    "joinedLabel": "已加入",
     "openLabel": "公开",
     "railTitle": "你的空间",
     "signInLabel": "登录",
@@ -143,15 +146,25 @@
   },
   "createPost": {
     "access": {
+      "imagePaidDescription": "动态中显示预览，购买后解锁完整图片。",
+      "imagePublicDescription": "任何人都可以查看完整图片。",
+      "imageRightsAttested": "我确认我有权发布并将此图片商业化。",
+      "freeToView": "免费查看",
       "paidDescription": "动态里显示预览，购买后可解锁完整曲目。",
       "paidUnlock": "付费解锁",
       "public": "公开",
       "publicDescription": "任何人都可以播放完整曲目。",
       "rightsAttested": "我确认我有权发布并将此曲目商业化。",
+      "textPaidDescription": "动态中显示预览，购买后解锁完整帖子。",
+      "textPublicDescription": "任何人都可以阅读完整帖子。",
+      "textRightsAttested": "我确认我有权发布并将此帖子商业化。",
       "useRegionalPricing": "使用社区区域定价"
     },
     "actions": {
+      "back": "返回",
+      "continue": "继续",
       "post": "发布",
+      "publish": "发布",
       "publishRemix": "发布混音"
     },
     "audience": {
@@ -195,6 +208,7 @@
       "image": "图片",
       "instrumentalStem": "伴奏分轨",
       "lyrics": "歌词",
+      "price": "价格",
       "primaryLanguage": "主要语言",
       "secondaryLanguage": "次要语言",
       "song": "歌曲",
@@ -267,6 +281,9 @@
       "access": "访问权限",
       "audience": "受众",
       "postAs": "发布身份",
+      "postSummary": "帖子摘要",
+      "preview": "预览",
+      "publishSettings": "发布设置",
       "qualifiers": "资格标签",
       "sourceTrack": "源曲目",
       "license": "许可证"
@@ -288,6 +305,7 @@
       "text": "文本",
       "video": "视频"
     },
+    "publishTitle": "发布设置",
     "title": "发布帖子",
     "upload": {
       "artworkHelp": "会显示在动态、发布页和播放器界面中。",
@@ -921,9 +939,10 @@
     },
     "donations": {
       "title": "慈善机构",
-      "charityUrlLabel": "慈善链接",
+      "description": "销售付费访问图片、歌曲和视频的居民可以通过加密货币向该社区捐赠部分收益。手续费 0.5%。",
+      "charityUrlLabel": "Endaoment 链接",
       "charityUrlPlaceholder": "https://app.endaoment.org/orgs/...",
-      "loadCharity": "加载慈善机构"
+      "loadCharity": "添加"
     },
     "profile": {
       "appearanceTitle": "外观",

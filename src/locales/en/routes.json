@@ -146,6 +146,10 @@
   },
   "createPost": {
     "access": {
+      "imagePaidDescription": "Preview in feed. Full image unlocks after purchase.",
+      "imagePublicDescription": "Anyone can view the full image.",
+      "imageRightsAttested": "I have the rights to publish and monetize this image.",
+      "freeToView": "Free to view",
       "paidDescription": "Preview in feed. Full media unlocks after purchase.",
       "paidUnlock": "Paid unlock",
       "public": "Public",
@@ -157,7 +161,10 @@
       "useRegionalPricing": "Use community regional pricing"
     },
     "actions": {
+      "back": "Back",
+      "continue": "Continue",
       "post": "Post",
+      "publish": "Publish",
       "publishRemix": "Publish remix"
     },
     "audience": {
@@ -201,6 +208,7 @@
       "image": "Image",
       "instrumentalStem": "Instrumental stem",
       "lyrics": "Lyrics",
+      "price": "Price",
       "primaryLanguage": "Primary language",
       "secondaryLanguage": "Secondary language",
       "song": "Song",
@@ -273,6 +281,9 @@
       "access": "Access",
       "audience": "Audience",
       "postAs": "Post as",
+      "postSummary": "Post summary",
+      "preview": "Preview",
+      "publishSettings": "Publish settings",
       "qualifiers": "Qualifiers",
       "sourceTrack": "Source track",
       "license": "License"
@@ -294,6 +305,7 @@
       "text": "Text",
       "video": "Video"
     },
+    "publishTitle": "Publish post",
     "title": "Create post",
     "upload": {
       "artworkHelp": "Shows in feed, release, and player surfaces.",
@@ -927,9 +939,10 @@
     },
     "donations": {
       "title": "Charity",
-      "charityUrlLabel": "Charity URL",
+      "description": "Citizens selling pay-to-access images, songs, and videos can donate a share of proceeds to this community via crypto. 0.5% fee.",
+      "charityUrlLabel": "Endaoment URL",
       "charityUrlPlaceholder": "https://app.endaoment.org/orgs/...",
-      "loadCharity": "Load charity"
+      "loadCharity": "Add"
     },
     "profile": {
       "appearanceTitle": "Appearance",

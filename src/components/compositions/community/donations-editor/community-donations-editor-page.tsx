@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Trash } from "@phosphor-icons/react";
+import { ArrowSquareOut, Trash } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
-import { CommunityModerationSaveFooter } from "@/components/compositions/community/moderation-shell/community-moderation-save-footer";
-import { FormFieldLabel } from "@/components/primitives/form-layout";
+import { Label } from "@/components/primitives/label";
 import { Input } from "@/components/primitives/input";
 import { cn } from "@/lib/utils";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
@@ -89,48 +88,62 @@ export function CommunityDonationsEditorPage({
   return (
     <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-2">
           <Type as="h1" variant="h1" className="md:text-4xl">{mc.title}</Type>
+          <Type as="p" className="max-w-2xl" variant="caption">
+            {mc.description}
+          </Type>
         </div>
       </div>
 
       <div className="space-y-4">
-        <div className="rounded-[var(--radius-2_5xl)] border border-border-soft bg-card p-4 md:p-5">
-          <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-            <div className="space-y-2">
-              <FormFieldLabel label={mc.charityUrlLabel} />
-              <Input
-                className="h-12 px-4 py-2"
-                onChange={(event) => onEndaomentUrlChange?.(event.target.value)}
-                placeholder={mc.charityUrlPlaceholder}
-                value={endaomentUrl}
-              />
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Label tone="muted">
+                <Type variant="label">{mc.charityUrlLabel}</Type>
+              </Label>
+              <a
+                aria-label="Open Endaoment"
+                className="inline-flex items-center text-muted-foreground transition-colors hover:text-foreground"
+                href="https://app.endaoment.org/explore"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <ArrowSquareOut className="size-4" />
+              </a>
             </div>
-            <Button
-              className="w-full md:w-auto"
-              disabled={!endaomentUrl.trim() || resolving}
-              loading={resolving}
-              onClick={onResolve}
-              variant="secondary"
-            >
-              Load charity
-            </Button>
+            <Input
+              className="h-12 px-4 py-2"
+              onChange={(event) => onEndaomentUrlChange?.(event.target.value)}
+              placeholder={mc.charityUrlPlaceholder}
+              value={endaomentUrl}
+            />
           </div>
-          {resolveError ? (
-            <div className="mt-3 text-base text-destructive">{resolveError}</div>
-          ) : null}
+          <Button
+            className="h-12 w-full md:w-auto"
+            disabled={!endaomentUrl.trim() || resolving}
+            loading={resolving}
+            onClick={onResolve}
+            variant="secondary"
+          >
+            {mc.loadCharity}
+          </Button>
         </div>
+        {resolveError ? (
+          <div className="text-base text-destructive">{resolveError}</div>
+        ) : null}
 
         {partnerPreview ? (
           <PartnerPreviewCard onClear={onClearPartner} partner={partnerPreview} />
         ) : null}
       </div>
 
-      <CommunityModerationSaveFooter
-        disabled={saveDisabled}
-        loading={saveLoading}
-        onSave={onSave}
-      />
+      <div className="flex justify-end">
+        <Button disabled={saveDisabled} loading={saveLoading} onClick={onSave}>
+          {copy.moderation.saveFooter.defaultSaveLabel}
+        </Button>
+      </div>
     </section>
   );
 }

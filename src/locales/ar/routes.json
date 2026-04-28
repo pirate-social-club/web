@@ -74,7 +74,10 @@
     "verifyToPostLabel": "تحقق للنشر"
   },
   "yourCommunities": {
+    "emptyJoinedLabel": "المجتمعات التي تنضم إليها ستظهر هنا.",
+    "followingLabel": "تتابعها",
     "gatedLabel": "مغلق",
+    "joinedLabel": "منضم إليها",
     "openLabel": "مفتوح",
     "railTitle": "مساحاتك",
     "signInLabel": "تسجيل الدخول",
@@ -143,15 +146,25 @@
   },
   "createPost": {
     "access": {
+      "imagePaidDescription": "تظهر معاينة في الخلاصة، وتُفتح الصورة الكاملة بعد الشراء.",
+      "imagePublicDescription": "يمكن لأي شخص عرض الصورة الكاملة.",
+      "imageRightsAttested": "أؤكد أن لدي الحقوق لنشر هذه الصورة وتحقيق الدخل منها.",
+      "freeToView": "مجاني للعرض",
       "paidDescription": "تظهر معاينة في الخلاصة، ويُفتح المسار الكامل بعد الشراء.",
       "paidUnlock": "فتح مدفوع",
       "public": "عام",
       "publicDescription": "يمكن لأي شخص تشغيل المسار الكامل.",
       "rightsAttested": "أؤكد أن لدي الحقوق لنشر هذا المسار وتحقيق الدخل منه.",
+      "textPaidDescription": "تظهر معاينة في الخلاصة، ويُفتح المنشور الكامل بعد الشراء.",
+      "textPublicDescription": "يمكن لأي شخص قراءة المنشور الكامل.",
+      "textRightsAttested": "أؤكد أن لدي الحقوق لنشر هذا المنشور وتحقيق الدخل منه.",
       "useRegionalPricing": "استخدم التسعير الإقليمي للمجتمع"
     },
     "actions": {
+      "back": "رجوع",
+      "continue": "تابع",
       "post": "انشر",
+      "publish": "انشر",
       "publishRemix": "انشر الريمكس"
     },
     "audience": {
@@ -195,6 +208,7 @@
       "image": "الصورة",
       "instrumentalStem": "مسار الآلات",
       "lyrics": "الكلمات",
+      "price": "السعر",
       "primaryLanguage": "اللغة الأساسية",
       "secondaryLanguage": "اللغة الثانوية",
       "song": "الأغنية",
@@ -267,6 +281,9 @@
       "access": "الوصول",
       "audience": "الجمهور",
       "postAs": "انشر باسم",
+      "postSummary": "ملخص المنشور",
+      "preview": "معاينة",
+      "publishSettings": "إعدادات النشر",
       "qualifiers": "المؤهلات",
       "sourceTrack": "المسار المصدر",
       "license": "الترخيص"
@@ -288,6 +305,7 @@
       "text": "نص",
       "video": "فيديو"
     },
+    "publishTitle": "انشر المنشور",
     "title": "أنشئ منشورًا",
     "upload": {
       "artworkHelp": "تظهر في الخلاصة وصفحة الإصدار وواجهة المشغل.",
@@ -921,9 +939,10 @@
     },
     "donations": {
       "title": "الجهة الخيرية",
-      "charityUrlLabel": "رابط الجهة الخيرية",
+      "description": "يمكن للمواطنين الذين يبيعون صورًا وأغانٍ ومقاطع فيديو مدفوعة الوصول التبرع بنسبة من العائدات لهذا المجتمع عبر العملات الرقمية. رسوم 0.5%.",
+      "charityUrlLabel": "رابط Endaoment",
       "charityUrlPlaceholder": "https://app.endaoment.org/orgs/...",
-      "loadCharity": "تحميل الجهة الخيرية"
+      "loadCharity": "إضافة"
     },
     "profile": {
       "appearanceTitle": "المظهر",

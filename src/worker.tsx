@@ -1,4 +1,4 @@
-import { render, route } from "rwsdk/router";
+import { except, render, route } from "rwsdk/router";
 import { defineApp, type RequestInfo } from "rwsdk/worker";
 import type { CommunityPreview, LocalizedPostResponse } from "@pirate/api-contracts";
 
@@ -461,7 +461,62 @@ function TermsRoutePage() {
   return <LegalDocumentPage source={TERMS_OF_SERVICE_SOURCE} />;
 }
 
+function ServerErrorFallback({
+  locale,
+  reloadHref,
+}: {
+  locale: Exclude<UiLocaleCode, "pseudo">;
+  reloadHref: string;
+}) {
+  const copy = getLocaleMessages(locale, "shell").rootError;
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-background px-5 py-10 text-foreground">
+      <div className="flex w-full max-w-md flex-col items-center gap-5 text-center">
+        <div
+          aria-hidden="true"
+          className="flex size-12 items-center justify-center rounded-full border border-border-soft bg-muted text-muted-foreground"
+        >
+          <span className="text-2xl font-semibold leading-none">!</span>
+        </div>
+        <div className="flex flex-col gap-3">
+          <h1 className="text-3xl font-semibold leading-tight">{copy.title}</h1>
+          <p className="text-base leading-7 text-muted-foreground">{copy.description}</p>
+        </div>
+        <a
+          className="inline-flex h-11 items-center justify-center rounded-full bg-secondary px-5 py-2 text-base font-semibold text-secondary-foreground shadow-sm hover:bg-secondary/85"
+          href={reloadHref}
+        >
+          {copy.reloadLabel}
+        </a>
+      </div>
+    </main>
+  );
+}
+
+function resolveServerErrorLocale(
+  locale: UiLocaleCode | undefined,
+  url: URL,
+  acceptLanguageHeader: string | null,
+): Exclude<UiLocaleCode, "pseudo"> {
+  if (locale && locale !== "pseudo") {
+    return locale;
+  }
+
+  return resolveRequestUiLocale(url, acceptLanguageHeader);
+}
+
 const app = defineApp<AppRequestInfo>([
+  except((error, { ctx, request }) => {
+    console.error("[server-error] unhandled route error", {
+      error,
+      url: request.url,
+    });
+
+    const url = new URL(request.url);
+    const locale = resolveServerErrorLocale(ctx.locale, url, request.headers.get("accept-language"));
+    return <ServerErrorFallback locale={locale} reloadHref={`${url.pathname}${url.search}`} />;
+  }),
   async ({ ctx, request, response, rw }) => {
     const effectiveUrl = resolveEffectiveRequestUrl(request);
     const url = new URL(effectiveUrl);

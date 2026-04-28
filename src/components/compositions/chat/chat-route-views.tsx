@@ -35,6 +35,67 @@ function formatTime(timestamp: number): string {
   });
 }
 
+function renderInlineMarkdown(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  const tokenPattern = /(\*\*([^*\n]+)\*\*|`([^`\n]+)`)/g;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = tokenPattern.exec(text)) !== null) {
+    if (match.index > cursor) {
+      nodes.push(text.slice(cursor, match.index));
+    }
+
+    if (match[2]) {
+      nodes.push(<strong key={`strong-${match.index}`} className="font-semibold">{match[2]}</strong>);
+    } else if (match[3]) {
+      nodes.push(
+        <code
+          key={`code-${match.index}`}
+          className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-[0.92em]"
+        >
+          {match[3]}
+        </code>,
+      );
+    }
+
+    cursor = match.index + match[0].length;
+  }
+
+  if (cursor < text.length) {
+    nodes.push(text.slice(cursor));
+  }
+
+  return nodes.length > 0 ? nodes : [text];
+}
+
+function ChatMessageContent({ content }: { content: string }) {
+  const lines = content.split(/\r?\n/);
+
+  return (
+    <div className="grid gap-2 break-words [overflow-wrap:anywhere]">
+      {lines.map((line, index) => {
+        const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+
+        if (bullet) {
+          return (
+            <div className="flex gap-2" key={`${index}-${line}`}>
+              <span aria-hidden className="select-none">•</span>
+              <span className="min-w-0">{renderInlineMarkdown(bullet[1])}</span>
+            </div>
+          );
+        }
+
+        return (
+          <p key={`${index}-${line}`} className="min-w-0">
+            {line ? renderInlineMarkdown(line) : "\u00a0"}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 function formatListTime(timestamp: number): string {
   if (!isValidTimestamp(timestamp)) return "";
 
@@ -415,14 +476,13 @@ export function ThreadView({
                     )}
                   >
                     <Type
-                      as="p"
+                      as="div"
                       variant="body"
                       className={cn(
-                        "break-words [overflow-wrap:anywhere]",
                         message.sender === "user" ? "text-primary-foreground" : undefined,
                       )}
                     >
-                      {message.content}
+                      <ChatMessageContent content={message.content} />
                     </Type>
                     {timestampLabel ? (
                       <Type as="p" variant="caption" className={cn("pt-1", message.sender === "user" && "text-primary-foreground/80")}>

@@ -75,6 +75,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const Comp = asChild ? Slot : "button";
+    const iconOnlyLoading = loading && size === "icon";
 
     return (
       <Comp
@@ -87,9 +88,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {asChild ? children : (
           <>
-            {loading ? <Spinner className="size-4" /> : leadingIcon}
-            {children ? <span className="inline-flex items-center gap-2">{children}</span> : null}
-            {!loading ? trailingIcon : null}
+            {iconOnlyLoading ? (
+              <Spinner className="size-5" />
+            ) : (
+              <>
+                {loading ? <Spinner className="size-4" /> : leadingIcon}
+                {children ? <span className="inline-flex items-center gap-2">{children}</span> : null}
+                {!loading ? trailingIcon : null}
+              </>
+            )}
           </>
         )}
       </Comp>

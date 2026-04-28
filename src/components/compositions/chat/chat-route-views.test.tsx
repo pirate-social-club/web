@@ -4,8 +4,8 @@ import { describe, expect, test } from "bun:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { ConversationList } from "./chat-route-views";
-import type { ChatConversation } from "@/lib/chat/chat-types";
+import { ConversationList, ThreadView } from "./chat-route-views";
+import type { ChatConversation, ChatMessageRecord } from "@/lib/chat/chat-types";
 
 const originalDateNow = Date.now;
 
@@ -63,5 +63,38 @@ describe("ConversationList timestamps", () => {
     } finally {
       Date.now = originalDateNow;
     }
+  });
+});
+
+function renderThread(items: ChatMessageRecord[]) {
+  return renderToStaticMarkup(
+    <ThreadView
+      conversation={conversation({ id: "thread", title: "Thread" })}
+      items={items}
+      onBack={() => undefined}
+      onSend={() => undefined}
+      sending={false}
+    />,
+  );
+}
+
+describe("ThreadView markdown", () => {
+  test("formats common assistant markdown instead of showing raw markers", () => {
+    const markup = renderThread([
+      {
+        content: "**Important**\n- Use `Pirate` chat",
+        conversationId: "thread",
+        createdAt: new Date(2026, 3, 28, 11, 0).getTime(),
+        id: "markdown",
+        sender: "peer",
+      },
+    ]);
+
+    expect(markup).toContain("<strong");
+    expect(markup).toContain("Important</strong>");
+    expect(markup).toContain("<code");
+    expect(markup).toContain("Pirate</code>");
+    expect(markup.includes("**Important**")).toBe(false);
+    expect(markup.includes("`Pirate`")).toBe(false);
   });
 });

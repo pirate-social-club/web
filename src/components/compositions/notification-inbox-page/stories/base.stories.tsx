@@ -3,12 +3,12 @@ import * as React from "react";
 
 import { NotificationInboxPage } from "@/components/compositions/notification-inbox-page/notification-inbox-page";
 import {
-  commentReplyRead,
-  commentReplyUnread,
+  allContractActivityFixtures,
+  allContractTaskFixtures,
+  allLiveActivityFixtures,
+  allLiveTaskFixtures,
   membershipReviewTask,
   namespaceVerificationTask,
-  payoutSetupTask,
-  postCommentedUnread,
 } from "./story-fixtures";
 
 function StatefulStory({
@@ -73,7 +73,7 @@ export const TaskOnly: Story = {
 export const ActivityOnly: Story = {
   render: () => (
     <StatefulStory
-      activityItems={[commentReplyUnread, postCommentedUnread, commentReplyRead]}
+      activityItems={allLiveActivityFixtures}
     />
   ),
 };
@@ -81,8 +81,8 @@ export const ActivityOnly: Story = {
 export const Mixed: Story = {
   render: () => (
     <StatefulStory
-      activityItems={[commentReplyUnread, postCommentedUnread, commentReplyRead]}
-      initialTasks={[namespaceVerificationTask, payoutSetupTask]}
+      activityItems={allLiveActivityFixtures}
+      initialTasks={allLiveTaskFixtures}
     />
   ),
 };
@@ -91,6 +91,15 @@ export const MembershipReviewTask: Story = {
   render: () => (
     <StatefulStory
       initialTasks={[membershipReviewTask]}
+    />
+  ),
+};
+
+export const ContractCoverage: Story = {
+  render: () => (
+    <StatefulStory
+      activityItems={allContractActivityFixtures}
+      initialTasks={allContractTaskFixtures}
     />
   ),
 };

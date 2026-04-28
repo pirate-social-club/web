@@ -36,7 +36,6 @@ export interface CommunityMembershipGatePanelProps {
   verificationError?: string | null;
   onJoin?: () => void;
   onCancelVerification?: () => void;
-  revealRequirementValues?: boolean;
 }
 
 function getEligibilityText(eligibility: JoinEligibility | null | undefined): {

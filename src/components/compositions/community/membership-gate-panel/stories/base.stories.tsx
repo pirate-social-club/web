@@ -19,29 +19,6 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const NationalityVerificationRequired: Story = {
-  name: "States / Nationality Verification Required",
-  args: { gates: [] },
-  render: () => (
-    <CommunityMembershipGatePanel
-      eligibility={{
-        community_id: "community_nationality",
-        membership_mode: "gated",
-        human_verification_lane: "self",
-        joinable_now: false,
-        status: "verification_required",
-        membership_gate_summaries: [
-          { gate_type: "nationality", required_value: "US" },
-        ],
-        missing_capabilities: ["nationality"],
-        suggested_verification_provider: "self",
-        suggested_verification_intent: "community_join",
-      }}
-      gates={[{ gate_type: "nationality", required_value: "US" }]}
-    />
-  ),
-};
-
 export const DocumentMarkerVerificationRequired: Story = {
   name: "States / Document Marker Verification Required",
   args: { gates: [] },
@@ -283,20 +260,6 @@ export const MobileVeryVerificationRequired: Story = {
         suggested_verification_provider: "very",
         suggested_verification_intent: "community_join",
       }}
-    />
-  ),
-};
-
-export const AdminValuePreview: Story = {
-  name: "States / Admin Value Preview",
-  args: { gates: [] },
-  render: () => (
-    <CommunityMembershipGatePanel
-      gates={[
-        { gate_type: "nationality", required_value: "US" },
-        { gate_type: "gender", required_value: "F" },
-      ]}
-      revealRequirementValues
     />
   ),
 };

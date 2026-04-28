@@ -227,7 +227,7 @@ export function CommunitySafetyPage({
         <div className="min-w-0 space-y-2">
           <Type as="h1" variant="h1" className="md:text-4xl">{mc.title}</Type>
           <Type as="p" variant="caption">
-            Tune how the OpenAI moderation pass feeds community filtering and review.
+            Tune the visual moderation pass for uploaded images and video poster frames.
           </Type>
         </div>
       </div>
@@ -237,42 +237,6 @@ export function CommunitySafetyPage({
         title={mc.openAiTitle}
       >
         <div className="space-y-3">
-          <ProviderToggleRow
-            checked={providerSettings.scanTitles}
-            id="community-safety-scan-titles"
-            label={mc.scanTitles}
-            onCheckedChange={(checked) => onProviderSettingsChange?.({
-              ...providerSettings,
-              scanTitles: checked,
-            })}
-          />
-          <ProviderToggleRow
-            checked={providerSettings.scanPostBodies}
-            id="community-safety-scan-post-bodies"
-            label={mc.scanPostBodies}
-            onCheckedChange={(checked) => onProviderSettingsChange?.({
-              ...providerSettings,
-              scanPostBodies: checked,
-            })}
-          />
-          <ProviderToggleRow
-            checked={providerSettings.scanCaptions}
-            id="community-safety-scan-captions"
-            label={mc.scanCaptions}
-            onCheckedChange={(checked) => onProviderSettingsChange?.({
-              ...providerSettings,
-              scanCaptions: checked,
-            })}
-          />
-          <ProviderToggleRow
-            checked={providerSettings.scanLinkPreviewText}
-            id="community-safety-scan-link-preview-text"
-            label={mc.scanLinkPreviewText}
-            onCheckedChange={(checked) => onProviderSettingsChange?.({
-              ...providerSettings,
-              scanLinkPreviewText: checked,
-            })}
-          />
           <ProviderToggleRow
             checked={providerSettings.scanImages}
             id="community-safety-scan-images"

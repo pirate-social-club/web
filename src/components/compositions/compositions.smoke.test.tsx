@@ -313,7 +313,7 @@ describe("composition smoke tests", () => {
     );
 
     expect(markup).toContain("Safety");
-    expect(markup).toContain("OpenAI moderation pass");
+    expect(markup).toContain("Visual moderation pass");
     expect(markup).toContain("Threatening language");
   });
 

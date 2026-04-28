@@ -11,14 +11,16 @@ import { CommunityJoinRequestModal } from "@/components/compositions/community/j
 import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
+import { OnboardingVerificationGate } from "@/components/compositions/verification/onboarding-verification-gate/onboarding-verification-gate";
 import { Button } from "@/components/primitives/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useApi } from "@/lib/api";
 import { updateSessionUser } from "@/lib/api/session-store";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
+import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage } from "@/lib/identity-gates";
+import { getGateFailureMessage, getSelfVerificationRequestForGates } from "@/lib/identity-gates";
 
 import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
 import { NotFoundPage } from "./misc-routes";
@@ -166,6 +168,29 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
   });
 
   const {
+    startVerification: startVeryPostVerification,
+    verificationError: veryPostVerificationError,
+    verificationLoading: veryPostVerificationLoading,
+    verificationState: veryPostVerificationState,
+  } = useVeryVerification({
+    verified: state.session?.user.verification_capabilities.unique_human.state === "verified",
+    verificationIntent: "profile_verification",
+    onVerified: async () => {
+      const refreshedUser = await api.users.getMe();
+      updateSessionUser(refreshedUser);
+
+      if (!pendingSubmitRef.current) return;
+      pendingSubmitRef.current = false;
+
+      if (refreshedUser.verification_capabilities.unique_human.state !== "verified") {
+        throw new Error("Verify human status before posting.");
+      }
+
+      await latestHandleSubmitRef.current();
+    },
+  });
+
+  const {
     handleJoin,
     handleSelfModalOpenChange: handleJoinSelfModalOpenChange,
     handleSelfQrError: handleJoinSelfQrError,
@@ -173,6 +198,7 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     joinError,
     joinLoading,
     joinRequested,
+    veryLoading: joinVeryLoading,
     selfError: joinSelfError,
     selfLoading: joinSelfLoading,
     selfModalOpen: joinSelfModalOpen,
@@ -221,22 +247,45 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     }
   }, [selfError]);
 
+  React.useEffect(() => {
+    if (veryPostVerificationError) {
+      toast.error(veryPostVerificationError, { id: "create-post-verification-error" });
+    }
+  }, [veryPostVerificationError]);
+
   const uniqueHumanVerified =
     state.session?.user.verification_capabilities.unique_human.state === "verified";
 
   const handleSubmit = React.useCallback(async () => {
+    const selfVerificationRequest = getSelfVerificationRequestForGates({
+      gates: state.community?.membership_gate_summaries ?? [],
+      includeUniqueHuman: true,
+      verificationCapabilities: state.session?.user.verification_capabilities,
+    });
+
     if (!uniqueHumanVerified) {
       pendingSubmitRef.current = true;
+      const result = await startVeryPostVerification();
+      if (!result.started) pendingSubmitRef.current = false;
+      return;
+    }
+
+    if (
+      selfVerificationRequest.requestedCapabilities.length > 0
+      || selfVerificationRequest.verificationRequirements.length > 0
+    ) {
+      pendingSubmitRef.current = true;
       const result = await startSelfVerification({
-        requestedCapabilities: ["unique_human"],
+        requestedCapabilities: selfVerificationRequest.requestedCapabilities,
         unavailableMessage: verifyRequiredDescription,
+        verificationRequirements: selfVerificationRequest.verificationRequirements,
       });
       if (!result.started) pendingSubmitRef.current = false;
       return;
     }
 
     await state.handleSubmit();
-  }, [uniqueHumanVerified, startSelfVerification, state.handleSubmit, verifyRequiredDescription]);
+  }, [startSelfVerification, startVeryPostVerification, state.community?.membership_gate_summaries, state.handleSubmit, state.session?.user.verification_capabilities, uniqueHumanVerified, verifyRequiredDescription]);
 
   if (state.loading) {
     if (isMobile) {
@@ -345,6 +394,26 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
         title={joinSelfPrompt.title}
       />
     ) : null;
+    const joinRequiresVeryVerification =
+      state.eligibility.status === "verification_required"
+      && state.eligibility.suggested_verification_provider === "very";
+
+    if (isMobile && joinRequiresVeryVerification) {
+      return (
+        <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
+          <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
+          <section className="flex min-w-0 flex-1 flex-col justify-start px-4 pb-32 pt-[calc(env(safe-area-inset-top)+5rem)]">
+            <OnboardingVerificationGate
+              onVerify={() => void handlePrimaryJoinAction()}
+              verificationError={joinError}
+              verificationLoading={joinLoading || joinVeryLoading}
+              verificationState={(joinLoading || joinVeryLoading) ? "pending" : "not_started"}
+            />
+          </section>
+          {joinRequestModal}
+        </div>
+      );
+    }
 
     if (isMobile) {
       return (
@@ -388,10 +457,31 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
   ) : null;
 
   if (isMobile) {
+    if (!uniqueHumanVerified) {
+      return (
+        <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
+          <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
+          <section className="flex min-w-0 flex-1 flex-col justify-start px-4 pb-32 pt-[calc(env(safe-area-inset-top)+5rem)]">
+            <OnboardingVerificationGate
+              onVerify={() => {
+                pendingSubmitRef.current = true;
+                void startVeryPostVerification().then((result) => {
+                  if (!result.started) pendingSubmitRef.current = false;
+                });
+              }}
+              verificationError={veryPostVerificationError}
+              verificationLoading={veryPostVerificationLoading}
+              verificationState={veryPostVerificationState === "pending" ? "pending" : "not_started"}
+            />
+          </section>
+        </div>
+      );
+    }
+
     return (
       <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
         <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
-        <section className="flex min-w-0 flex-1 flex-col px-4 pb-24 pt-[calc(env(safe-area-inset-top)+5rem)]">
+        <section className="flex min-w-0 flex-1 flex-col px-4 pb-36 pt-[calc(env(safe-area-inset-top)+5rem)]">
           <CreatePostComposer copy={copy} state={state} onSubmit={handleSubmit} submitLoading={selfLoading} />
         </section>
         {selfVerificationModal}

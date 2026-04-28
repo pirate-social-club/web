@@ -1,7 +1,5 @@
 "use client";
 
-import * as React from "react";
-
 import type { AppRoute } from "@/app/router";
 import { Spinner } from "@/components/primitives/spinner";
 

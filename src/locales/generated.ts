@@ -903,7 +903,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "safety": "Safety",
           "agents": "Agents",
           "machineAccess": "Machine access",
-          "namespace": "Namespace verification",
+          "namespace": "Namespace",
           "communitySection": "Community",
           "accessSection": "Access",
           "verificationSection": "Verification"
@@ -2343,7 +2343,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "safety": "الأمان",
           "agents": "الوكلاء",
           "machineAccess": "وصول الآلات",
-          "namespace": "التحقق من مساحة الاسم",
+          "namespace": "مساحة الاسم",
           "communitySection": "المجتمع",
           "accessSection": "الوصول",
           "verificationSection": "التحقق"
@@ -3783,7 +3783,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "safety": "安全",
           "agents": "代理",
           "machineAccess": "机器访问",
-          "namespace": "命名空间验证",
+          "namespace": "命名空间",
           "communitySection": "社区",
           "accessSection": "访问",
           "verificationSection": "验证"

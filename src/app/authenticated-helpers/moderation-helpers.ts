@@ -65,6 +65,7 @@ export function buildCommunityModerationSections(
     label: copy.nav.communitySection,
     items: [
       { active: activeSection === "profile", icon: ImageSquare, label: copy.nav.profile, onSelect: () => navigate(buildCommunityModerationPath(communityId, "profile")) },
+      { active: activeSection === "namespace", icon: SealCheck, label: copy.nav.namespace, onSelect: () => navigate(buildCommunityModerationPath(communityId, "namespace")) },
       { active: activeSection === "rules", icon: Gavel, label: copy.nav.rules, onSelect: () => navigate(buildCommunityModerationPath(communityId, "rules")) },
       { active: activeSection === "links", icon: LinkSimple, label: copy.nav.links, onSelect: () => navigate(buildCommunityModerationPath(communityId, "links")) },
       { active: activeSection === "labels", icon: Tag, label: copy.nav.labels, onSelect: () => navigate(buildCommunityModerationPath(communityId, "labels")) },
@@ -79,11 +80,6 @@ export function buildCommunityModerationSections(
       { active: activeSection === "safety", icon: Shield, label: copy.nav.safety, onSelect: () => navigate(buildCommunityModerationPath(communityId, "safety")) },
       { active: activeSection === "agents", icon: Robot, label: copy.nav.agents, onSelect: () => navigate(buildCommunityModerationPath(communityId, "agents")) },
       { active: activeSection === "machine-access", icon: Database, label: copy.nav.machineAccess, onSelect: () => navigate(buildCommunityModerationPath(communityId, "machine-access")) },
-    ],
-  }, {
-    label: copy.nav.verificationSection,
-    items: [
-      { active: activeSection === "namespace", icon: SealCheck, label: copy.nav.namespace, onSelect: () => navigate(buildCommunityModerationPath(communityId, "namespace")) },
     ],
   }];
 }

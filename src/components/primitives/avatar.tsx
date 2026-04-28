@@ -66,6 +66,7 @@ export function Avatar({
   className,
   fallback,
   fallbackIcon,
+  fallbackSeed,
   fallbackSrc,
   size = "md",
   src,
@@ -73,19 +74,21 @@ export function Avatar({
   className?: string;
   fallback: string;
   fallbackIcon?: React.ReactNode;
+  fallbackSeed?: string;
   fallbackSrc?: string;
   size?: AvatarSize;
   src?: string;
 }) {
   const normalizedPrimarySrc = src?.trim() || "";
   const normalizedFallbackSrc = fallbackSrc?.trim() || "";
+  const generatedFallbackSeed = fallbackSeed?.trim() || fallback;
   const generatedFallbackSrc = React.useMemo(() => {
     if (normalizedFallbackSrc || fallbackIcon) {
       return "";
     }
 
-    return buildDefaultAvatarSrc(fallback);
-  }, [fallback, fallbackIcon, normalizedFallbackSrc]);
+    return buildDefaultAvatarSrc(generatedFallbackSeed);
+  }, [fallbackIcon, generatedFallbackSeed, normalizedFallbackSrc]);
   const [imageFailed, setImageFailed] = React.useState(false);
   const [retriedPrimarySrc, setRetriedPrimarySrc] = React.useState<string | null>(null);
   const primarySrc = isRenderableImageSrc(normalizedPrimarySrc) ? normalizedPrimarySrc : "";

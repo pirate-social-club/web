@@ -294,7 +294,7 @@ export function ConversationList({
                   onClick={() => onSelect(conversation.id)}
                   type="button"
                 >
-                  <Avatar fallback={conversation.title} size="lg" src={conversation.avatarUrl} />
+                  <Avatar fallback={conversation.title} fallbackSeed={conversation.avatarSeed ?? conversation.peerAddress} size="lg" src={conversation.avatarUrl} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <Type as="span" variant="body-strong" className={cn("truncate", conversation.unreadCount > 0 && "font-bold")}>
@@ -455,7 +455,7 @@ export function ThreadView({
               onClick={() => onOpenProfile(profileHref)}
               type="button"
             >
-              {conversation ? <Avatar fallback={conversation.title} size="sm" src={conversation.avatarUrl} /> : null}
+              {conversation ? <Avatar fallback={conversation.title} fallbackSeed={conversation.avatarSeed ?? conversation.peerAddress} size="sm" src={conversation.avatarUrl} /> : null}
               <div className="min-w-0 flex-1">
                 <Type as="h1" variant="h4" className="truncate">
                   {conversation?.title ?? "Conversation"}
@@ -467,7 +467,7 @@ export function ThreadView({
             </button>
           ) : (
             <>
-              {conversation ? <Avatar fallback={conversation.title} size="sm" src={conversation.avatarUrl} /> : null}
+              {conversation ? <Avatar fallback={conversation.title} fallbackSeed={conversation.avatarSeed ?? conversation.peerAddress} size="sm" src={conversation.avatarUrl} /> : null}
               <div className="min-w-0 flex-1">
                 <Type as="h1" variant="h4" className="truncate">
                   {conversation?.title ?? "Conversation"}
@@ -520,7 +520,7 @@ export function ThreadView({
                   >
                     <div
                       className={cn(
-                        "min-w-0 max-w-[78%] rounded-[var(--radius-lg)] px-4 py-3",
+                        "relative min-w-0 max-w-[78%] rounded-[var(--radius-lg)] px-4 py-3",
                         message.sender === "user"
                           ? "bg-primary text-primary-foreground"
                           : "bg-card text-card-foreground",

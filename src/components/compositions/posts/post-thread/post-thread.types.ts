@@ -11,6 +11,8 @@ export interface PostThreadComment {
   replyId?: string;
   authorLabel: string;
   authorHref?: string;
+  authorAvatarSeed?: string;
+  authorAvatarSrc?: string;
   authorCommunityRole?: CommunityAuthorRole | null;
   timestampLabel: string;
   scoreLabel?: string;

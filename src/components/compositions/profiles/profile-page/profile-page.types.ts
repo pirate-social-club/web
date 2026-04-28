@@ -68,6 +68,7 @@ export interface ProfileData {
   handle: string;
   tagline?: string;
   bio?: string;
+  avatarSeed?: string;
   avatarSrc?: string;
   nationalityBadgeCountryCode?: string | null;
   nationalityBadgeLabel?: string;

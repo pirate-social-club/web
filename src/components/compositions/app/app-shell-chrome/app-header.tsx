@@ -97,6 +97,7 @@ export interface AppHeaderProps {
   unreadChatCount?: number;
   unreadNotificationsCount?: number;
   useSidebarTrigger?: boolean;
+  userAvatarSeed?: string | null;
   userAvatarSrc?: string | null;
 }
 
@@ -132,6 +133,7 @@ export function AppHeader({
   unreadChatCount = 0,
   unreadNotificationsCount = 0,
   useSidebarTrigger = false,
+  userAvatarSeed,
   userAvatarSrc,
 }: AppHeaderProps) {
   const {
@@ -229,6 +231,7 @@ export function AppHeader({
       <Avatar
         className="h-11 w-11 bg-card text-base"
         fallback={avatarFallback}
+        fallbackSeed={userAvatarSeed ?? undefined}
         size="sm"
         src={userAvatarSrc ?? undefined}
       />

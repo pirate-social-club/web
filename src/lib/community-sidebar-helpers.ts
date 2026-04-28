@@ -4,8 +4,9 @@ import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { MembershipGateSummary as ApiMembershipGateSummary } from "@pirate/api-contracts";
+import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
-import type { CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
+import type { CommunitySidebarModerator, CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
 
@@ -233,6 +234,28 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
   };
 }
 
+export function buildCommunitySidebarModeratorFromProfile(profile: ApiProfile | null | undefined): CommunitySidebarModerator | null {
+  if (!profile) {
+    return null;
+  }
+
+  const handle = profile.primary_public_handle?.label?.trim()
+    || profile.global_handle.label.trim();
+  const displayName = profile.display_name?.trim() || handle;
+  if (!handle || !displayName) {
+    return null;
+  }
+
+  return {
+    avatarSeed: profile.user_id,
+    avatarSrc: profile.avatar_ref ?? undefined,
+    displayName,
+    handle,
+    nationalityBadgeCountryCode: profile.nationality_badge_country ?? undefined,
+    nationalityBadgeLabel: profile.nationality_badge_country ?? undefined,
+  };
+}
+
 export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, locale?: string | null) {
   const charityHref = preview.donation_partner?.provider_partner_ref
     ? `https://app.endaoment.org/orgs/${preview.donation_partner.provider_partner_ref}`
@@ -254,6 +277,16 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
     followerCount: preview.follower_count ?? undefined,
     memberCount: preview.member_count ?? undefined,
     membershipMode: preview.membership_mode,
+    moderator: preview.moderator
+      ? {
+        avatarSeed: preview.moderator.user_id,
+        avatarSrc: preview.moderator.avatar_ref ?? undefined,
+        displayName: preview.moderator.display_name,
+        handle: preview.moderator.handle,
+        nationalityBadgeCountryCode: preview.moderator.nationality_badge_country ?? undefined,
+        nationalityBadgeLabel: preview.moderator.nationality_badge_country ?? undefined,
+      }
+      : null,
     requirements: buildCommunitySidebarRequirements({
       gateSummaries: preview.membership_gate_summaries,
       locale,

@@ -41,6 +41,7 @@ function PublicHero({ profile }: { profile: PublicProfileProps }) {
               badgeLabel={profile.nationalityBadgeLabel}
               badgeSize={36}
               fallback={profile.displayName}
+              fallbackSeed={profile.avatarSeed}
               size="lg"
               src={profile.avatarSrc}
             />
@@ -48,6 +49,7 @@ function PublicHero({ profile }: { profile: PublicProfileProps }) {
             <Avatar
               className="-mt-16 size-24 border-background bg-card shadow-[var(--shadow-lg)]"
               fallback={profile.displayName}
+              fallbackSeed={profile.avatarSeed}
               size="lg"
               src={profile.avatarSrc}
             />

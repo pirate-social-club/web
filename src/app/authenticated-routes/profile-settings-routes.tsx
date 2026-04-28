@@ -344,6 +344,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         submitState: preferencesSubmitState,
       }}
       profile={{
+        avatarSeed: profile.user_id,
         avatarSrc: avatarRemoved ? undefined : profile.avatar_ref ?? undefined,
         avatarSource: avatarRemoved ? "none" : profile.avatar_source ?? null,
         bio,

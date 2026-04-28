@@ -192,6 +192,8 @@ function CommentTreeNode({
         <CommentCard
           authorLabel={comment.authorLabel}
           authorHref={comment.authorHref}
+          authorAvatarSeed={comment.authorAvatarSeed}
+          authorAvatarSrc={comment.authorAvatarSrc}
           authorCommunityRole={comment.authorCommunityRole}
           metadataLabel={comment.metadataLabel}
           scoreLabel={comment.scoreLabel}

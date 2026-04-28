@@ -41,6 +41,7 @@ export function CommunitySidebarModerator({
         badgeCountryCode={moderator.nationalityBadgeCountryCode}
         badgeLabel={moderator.nationalityBadgeLabel ?? ""}
         fallback={buildAvatarFallback(moderator.displayName)}
+        fallbackSeed={moderator.avatarSeed ?? undefined}
         size="md"
         src={moderator.avatarSrc?.trim() || undefined}
       />

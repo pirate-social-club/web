@@ -10,6 +10,7 @@ import { Type } from "@/components/primitives/type";
 export interface IdentityHeroProps {
   actions?: React.ReactNode;
   avatarFallback: string;
+  avatarFallbackSeed?: string;
   avatarBadgeCountryCode?: string | null;
   avatarBadgeLabel?: string;
   avatarSrc?: string | null;
@@ -27,6 +28,7 @@ export function IdentityHero({
   avatarBadgeCountryCode,
   avatarBadgeLabel,
   avatarFallback,
+  avatarFallbackSeed,
   avatarSrc,
   className,
   coverClassName,
@@ -72,6 +74,7 @@ export function IdentityHero({
                 badgeLabel={avatarBadgeLabel}
                 badgeSize={42}
                 fallback={avatarFallback}
+                fallbackSeed={avatarFallbackSeed}
                 size="lg"
                 src={avatarSrc?.trim() || undefined}
               />
@@ -79,6 +82,7 @@ export function IdentityHero({
               <Avatar
                 className="relative z-10 size-20 border-4 border-background bg-card shadow-none md:size-24 md:shadow-[var(--shadow-lg)] lg:size-28"
                 fallback={avatarFallback}
+                fallbackSeed={avatarFallbackSeed}
                 size="lg"
                 src={avatarSrc?.trim() || undefined}
               />

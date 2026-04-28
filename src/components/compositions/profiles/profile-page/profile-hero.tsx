@@ -105,6 +105,7 @@ export function ProfileHero({
       avatarBadgeCountryCode={profile.nationalityBadgeCountryCode}
       avatarBadgeLabel={profile.nationalityBadgeLabel}
       avatarFallback={profile.displayName}
+      avatarFallbackSeed={profile.avatarSeed}
       avatarSrc={profile.avatarSrc}
       coverClassName="bg-background md:h-60"
       coverOverlay={<div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45" />}

@@ -272,6 +272,7 @@ function getActivityMedia(item: NotificationFeedItem): React.ReactNode | null {
     <Avatar
       className="h-10 w-10 border-none"
       fallback={actorName}
+      fallbackSeed={item.event.actor_user_id ?? undefined}
       size="sm"
       src={avatarUrl ?? undefined}
     />

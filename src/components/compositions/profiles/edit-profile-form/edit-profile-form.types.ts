@@ -18,6 +18,7 @@ export type EditProfileSubmitState =
 
 export type EditProfileFormProps = {
   className?: string;
+  currentAvatarSeed?: string;
   currentAvatarSrc?: string;
   currentBio?: string;
   currentDisplayName: string;

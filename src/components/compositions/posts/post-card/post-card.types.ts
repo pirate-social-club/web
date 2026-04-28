@@ -164,6 +164,7 @@ export type PostCardIdentity = {
   kind: "community" | "user";
   label: string;
   href?: string;
+  avatarSeed?: string;
   avatarSrc?: string;
 };
 

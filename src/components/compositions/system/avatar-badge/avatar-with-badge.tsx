@@ -33,6 +33,7 @@ export interface AvatarWithBadgeProps {
   className?: string;
   fallback: string;
   fallbackIcon?: React.ReactNode;
+  fallbackSeed?: string;
   fallbackSrc?: string;
   size?: AvatarBadgeSize;
   src?: string;
@@ -51,6 +52,7 @@ export function AvatarWithBadge({
   className,
   fallback,
   fallbackIcon,
+  fallbackSeed,
   fallbackSrc,
   size = "md",
   src,
@@ -65,6 +67,7 @@ export function AvatarWithBadge({
         className={cn(avatarClassName, className)}
         fallback={fallback}
         fallbackIcon={fallbackIcon}
+        fallbackSeed={fallbackSeed}
         fallbackSrc={fallbackSrc}
         size={size}
         src={src}
@@ -94,6 +97,7 @@ export function AvatarWithBadge({
         className={avatarClassName}
         fallback={fallback}
         fallbackIcon={fallbackIcon}
+        fallbackSeed={fallbackSeed}
         fallbackSrc={fallbackSrc}
         size={size}
         src={src}

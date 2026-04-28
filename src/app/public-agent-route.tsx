@@ -93,6 +93,7 @@ export function PublicAgentRoutePage({
     <PublicAgentPage
       bio={copy.aboutDescription}
       createdAt={resolution.agent.created_at}
+      avatarSeed={resolution.agent.agent_id ?? handle}
       displayName={displayName}
       handle={handle}
       openInPirateHref={`${appOrigin}/a/${encodeURIComponent(handle)}`}

@@ -229,7 +229,7 @@ export function ProfileTab({
               setPendingAvatarFile(file);
               profile.onAvatarSelect?.(file);
             }}
-            preview={<Avatar className="size-full bg-card" fallback={profile.displayName} size="lg" src={avatarPreview ?? profile.avatarSrc} />}
+            preview={<Avatar className="size-full bg-card" fallback={profile.displayName} fallbackSeed={profile.avatarSeed} size="lg" src={avatarPreview ?? profile.avatarSrc} />}
             removeLabel={copy.removeAvatar}
             selectLabel={profile.avatarSrc || pendingAvatarFile ? copy.replaceAvatar : copy.uploadAvatar}
             selectedLabel={pendingAvatarFile?.name ?? profile.pendingAvatarLabel}

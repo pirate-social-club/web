@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChatCircle } from "@phosphor-icons/react";
 
+import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
 import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
@@ -47,6 +48,8 @@ function CommentAuthorRoleBadge({ role }: { role?: CommunityAuthorRole | null })
 export interface CommentCardProps {
   authorLabel: string;
   authorHref?: string;
+  authorAvatarSeed?: string;
+  authorAvatarSrc?: string;
   authorCommunityRole?: CommunityAuthorRole | null;
   metadataLabel?: string;
   scoreLabel?: string;
@@ -74,6 +77,8 @@ export interface CommentCardProps {
 export function CommentCard({
   authorLabel,
   authorHref,
+  authorAvatarSeed,
+  authorAvatarSrc,
   authorCommunityRole,
   metadataLabel,
   scoreLabel,
@@ -134,106 +139,115 @@ export function CommentCard({
   }, [onReplySubmit, replyBody]);
 
   return (
-    <div className={cn("min-w-0 flex-1", className)}>
-      {/* Header */}
-      <Type as="div" variant="caption" className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
-        {authorHref ? (
-          <a
-            className="font-semibold text-foreground hover:underline"
-            href={authorHref}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <bdi>{authorLabel}</bdi>
-          </a>
-        ) : (
-          <span className="font-semibold text-foreground">
-            <bdi>{authorLabel}</bdi>
-          </span>
-        )}
-        <CommentAuthorRoleBadge role={authorCommunityRole} />
-        {metadataLabel ? (
-          <>
-            <span aria-hidden="true">·</span>
-            <span>{metadataLabel}</span>
-          </>
-        ) : null}
-        <span aria-hidden="true">·</span>
-        <span>{timestampLabel}</span>
-      </Type>
+    <div className={cn("flex min-w-0 flex-1 items-start gap-2", className)}>
+      {authorHref ? (
+        <a className="mt-0.5 shrink-0" href={authorHref} onClick={(e) => e.stopPropagation()}>
+          <Avatar fallback={authorLabel} fallbackSeed={authorAvatarSeed} size="xs" src={authorAvatarSrc} />
+        </a>
+      ) : (
+        <Avatar className="mt-0.5" fallback={authorLabel} fallbackSeed={authorAvatarSeed} size="xs" src={authorAvatarSrc} />
+      )}
+      <div className="min-w-0 flex-1">
+        {/* Header */}
+        <Type as="div" variant="caption" className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+          {authorHref ? (
+            <a
+              className="font-semibold text-foreground hover:underline"
+              href={authorHref}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <bdi>{authorLabel}</bdi>
+            </a>
+          ) : (
+            <span className="font-semibold text-foreground">
+              <bdi>{authorLabel}</bdi>
+            </span>
+          )}
+          <CommentAuthorRoleBadge role={authorCommunityRole} />
+          {metadataLabel ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>{metadataLabel}</span>
+            </>
+          ) : null}
+          <span aria-hidden="true">·</span>
+          <span>{timestampLabel}</span>
+        </Type>
 
-      {/* Body */}
-      {resolvedBody ? (
-        <div className="mt-2 space-y-2">
-          <FormattedText
-            className={cn(
-              postCardType.body,
-              "text-foreground",
-              status && status !== "published" && "text-muted-foreground",
-            )}
-            dir={bodyDir}
-            lang={bodyLang}
-            value={resolvedBody}
+        {/* Body */}
+        {resolvedBody ? (
+          <div className="mt-2 space-y-2">
+            <FormattedText
+              className={cn(
+                postCardType.body,
+                "text-foreground",
+                status && status !== "published" && "text-muted-foreground",
+              )}
+              dir={bodyDir}
+              lang={bodyLang}
+              value={resolvedBody}
+            />
+            {canToggleOriginal ? (
+              <Button size="sm" variant="ghost" onClick={() => setShowOriginal((value) => !value)}>
+                {showOriginal ? showTranslationLabel : showOriginalLabel}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Action row */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          <VotePill
+            downvoteLabel={commonCopy.downvoteComment}
+            onVote={handleVote}
+            score={parseScoreLabel(scoreLabel)}
+            size="compact"
+            upvoteLabel={commonCopy.upvoteComment}
+            variant="bare"
+            viewerVote={viewerVote}
           />
-          {canToggleOriginal ? (
-            <Button size="sm" variant="ghost" onClick={() => setShowOriginal((value) => !value)}>
-              {showOriginal ? showTranslationLabel : showOriginalLabel}
-            </Button>
+          {canReply ? (
+            <button
+              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground"
+              onClick={() => {
+                triggerCommentTapHaptic();
+                setReplyOpen((value) => !value);
+              }}
+              type="button"
+            >
+              <ChatCircle className="size-[18px]" />
+              <Type as="span" variant="label">{replyActionLabel}</Type>
+            </button>
           ) : null}
         </div>
-      ) : null}
 
-      {/* Action row */}
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        <VotePill
-          downvoteLabel={commonCopy.downvoteComment}
-          onVote={handleVote}
-          score={parseScoreLabel(scoreLabel)}
-          size="compact"
-          upvoteLabel={commonCopy.upvoteComment}
-          variant="bare"
-          viewerVote={viewerVote}
-        />
-        {canReply ? (
-          <button
-            className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground"
-            onClick={() => {
-              triggerCommentTapHaptic();
-              setReplyOpen((value) => !value);
-            }}
-            type="button"
-          >
-            <ChatCircle className="size-[18px]" />
-            <Type as="span" variant="label">{replyActionLabel}</Type>
-          </button>
+        {/* Inline reply composer */}
+        {replyOpen ? (
+          <div className="mt-3 space-y-3 border border-border-soft bg-background/60 p-3 md:rounded-[var(--radius-lg)]">
+            <FormattedTextarea
+              className="min-h-28"
+              onChange={setReplyBody}
+              placeholder={replyPlaceholder}
+              value={replyBody}
+            />
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setReplyOpen(false);
+                  setReplyBody("");
+                }}
+              >
+                {cancelReplyLabel}
+              </Button>
+              <Button disabled={replyBusy || !replyBody.trim()} size="sm" onClick={() => void handleReplySubmit()}>
+                {submitReplyLabel}
+              </Button>
+            </div>
+          </div>
         ) : null}
       </div>
-
-      {/* Inline reply composer */}
-      {replyOpen ? (
-        <div className="mt-3 space-y-3 border border-border-soft bg-background/60 p-3 md:rounded-[var(--radius-lg)]">
-          <FormattedTextarea
-            className="min-h-28"
-            onChange={setReplyBody}
-            placeholder={replyPlaceholder}
-            value={replyBody}
-          />
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                setReplyOpen(false);
-                setReplyBody("");
-              }}
-            >
-              {cancelReplyLabel}
-            </Button>
-            <Button disabled={replyBusy || !replyBody.trim()} size="sm" onClick={() => void handleReplySubmit()}>
-              {submitReplyLabel}
-            </Button>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

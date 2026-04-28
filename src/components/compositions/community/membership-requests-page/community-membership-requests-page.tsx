@@ -72,7 +72,7 @@ export function CommunityMembershipRequestsPage({
                         if (!profileHref) event.preventDefault();
                       }}
                     >
-                      <Avatar fallback={applicantLabel} size="md" src={request.applicant_avatar_ref ?? undefined} />
+                      <Avatar fallback={applicantLabel} fallbackSeed={request.applicant_user_id} size="md" src={request.applicant_avatar_ref ?? undefined} />
                       <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                           <Type as="span" className="min-w-0 truncate" variant="body-strong">

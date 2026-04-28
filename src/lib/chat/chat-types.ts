@@ -4,6 +4,7 @@ export type ChatTransport = "xmtp" | "assistant";
 
 export interface ChatConversation {
   assistantKind?: "bedsheet";
+  avatarSeed?: string;
   avatarUrl?: string;
   id: string;
   peerAddress?: `0x${string}`;

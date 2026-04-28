@@ -33,6 +33,7 @@ export interface SettingsPageProps {
   showSectionNav?: boolean;
   title?: string;
   profile: {
+    avatarSeed?: string;
     avatarSrc?: string;
     avatarSource?: "ens" | "upload" | "none" | null;
     bio: string;

@@ -298,6 +298,8 @@ export function toThreadComment(
     : undefined;
 
   return {
+    authorAvatarSeed: comment.identity_mode === "public" ? authorProfile?.user_id ?? comment.author_user_id ?? undefined : undefined,
+    authorAvatarSrc: comment.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
     authorHref: comment.identity_mode === "public" && comment.author_user_id && authorProfile
       ? buildPublicProfilePathForProfile(authorProfile)
       : undefined,

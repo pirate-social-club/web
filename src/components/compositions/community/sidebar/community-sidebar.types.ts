@@ -54,6 +54,7 @@ export interface CommunitySidebarFlairPolicy {
 }
 
 export interface CommunitySidebarModerator {
+  avatarSeed?: string | null;
   avatarSrc?: string | null;
   displayName: string;
   handle: string;

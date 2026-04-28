@@ -479,6 +479,7 @@ export function toCommunityFeedItem(
         author: {
           kind: "user",
           label: resolvePostAuthorLabel(post, authorProfile),
+          avatarSeed: post.identity_mode === "public" ? authorProfile?.user_id ?? post.author_user_id ?? undefined : undefined,
           avatarSrc: post.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
           href: post.identity_mode === "public" && post.author_user_id && authorProfile
             ? buildPublicProfilePathForProfile(authorProfile)
@@ -493,6 +494,7 @@ export function toCommunityFeedItem(
         score: postResponse.upvote_count - postResponse.downvote_count,
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
+      authorCommunityRole: postResponse.author_community_role ?? undefined,
       identityPresentation: post.identity_mode === "anonymous" ? "anonymous_primary" : "author_primary",
       authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
       authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
@@ -543,6 +545,7 @@ export function toThreadPostCard(
       author: {
         kind: "user",
         label: resolvePostAuthorLabel(post, authorProfile),
+        avatarSeed: post.identity_mode === "public" ? authorProfile?.user_id ?? post.author_user_id ?? undefined : undefined,
         avatarSrc: post.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
         href: post.identity_mode === "public" && post.author_user_id && authorProfile
           ? buildPublicProfilePathForProfile(authorProfile)
@@ -560,6 +563,7 @@ export function toThreadPostCard(
       score: postResponse.upvote_count - postResponse.downvote_count,
       viewerVote: toViewerVote(postResponse.viewer_vote),
     },
+    authorCommunityRole: postResponse.author_community_role ?? undefined,
     identityPresentation: "community_with_author",
     authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
     authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country

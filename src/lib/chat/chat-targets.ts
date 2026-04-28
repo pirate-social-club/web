@@ -15,6 +15,7 @@ const PEER_METADATA_MISS_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface ResolvedChatTarget {
   address: `0x${string}`;
+  avatarSeed?: string;
   avatarUrl?: string;
   handle?: string;
   profileHref?: string;
@@ -143,6 +144,7 @@ function resolvedTargetFromPublicProfile(
   const displayHandle = resolution.resolved_handle_label || resolution.profile.global_handle.label;
   return {
     address,
+    avatarSeed: resolution.profile.user_id,
     avatarUrl: resolution.profile.avatar_ref ?? undefined,
     handle: displayHandle,
     profileHref: buildPublicProfilePath(displayHandle),
@@ -190,6 +192,7 @@ export async function resolveChatPeerMetadata(
     }
     const target = {
       address,
+      avatarSeed: address,
       handle: name,
       title: name,
     } satisfies ResolvedChatTarget;
@@ -214,6 +217,7 @@ export async function resolveChatTarget(
   if (address) {
     return {
       address,
+      avatarSeed: address,
       title: shortAddress(address),
     };
   }
@@ -242,6 +246,7 @@ export async function resolveChatTarget(
     }
     const resolved = {
       address: walletAddress,
+      avatarSeed: walletAddress,
       handle: target,
       title: target,
     } satisfies ResolvedChatTarget;

@@ -51,6 +51,7 @@ export function toHomeFeedItem(
         author: {
           kind: "user",
           label: resolvePostAuthorLabel(post, authorProfile),
+          avatarSeed: post.identity_mode === "public" ? authorProfile?.user_id ?? post.author_user_id ?? undefined : undefined,
           avatarSrc: post.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
           href: post.identity_mode === "public" && post.author_user_id && authorProfile
             ? buildPublicProfilePathForProfile(authorProfile)
@@ -75,6 +76,7 @@ export function toHomeFeedItem(
         score: getPostScore(postResponse),
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
+      authorCommunityRole: postResponse.author_community_role ?? undefined,
       identityPresentation: "community_primary",
       authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
       authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country

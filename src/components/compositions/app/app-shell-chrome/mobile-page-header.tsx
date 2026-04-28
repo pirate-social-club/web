@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 export interface MobilePageHeaderProps {
   title: string;
   titleAvatarFallback?: string;
+  titleAvatarSeed?: string;
   titleAvatarSrc?: string | null;
   className?: string;
   onBackClick?: () => void;
@@ -25,6 +26,7 @@ export interface MobilePageHeaderProps {
 export function MobilePageHeader({
   title,
   titleAvatarFallback,
+  titleAvatarSeed,
   titleAvatarSrc,
   className,
   onBackClick,
@@ -40,6 +42,7 @@ export function MobilePageHeader({
         <Avatar
           className="h-8 w-8 shrink-0"
           fallback={titleAvatarFallback ?? title}
+          fallbackSeed={titleAvatarSeed}
           size="sm"
           src={titleAvatarSrc ?? undefined}
         />

@@ -63,6 +63,7 @@ export interface MobileFooterNavProps {
   onWalletClick?: () => void;
   unreadChatCount?: number;
   unreadInboxCount?: number;
+  userAvatarSeed?: string | null;
   userAvatarSrc?: string | null;
 }
 
@@ -79,6 +80,7 @@ export function MobileFooterNav({
   onWalletClick,
   unreadChatCount = 0,
   unreadInboxCount = 0,
+  userAvatarSeed,
   userAvatarSrc,
 }: MobileFooterNavProps) {
   const { locale } = useUiLocale();
@@ -190,6 +192,7 @@ export function MobileFooterNav({
           <Avatar
             className="h-9 w-9 bg-card text-base"
             fallback={avatarFallback}
+            fallbackSeed={userAvatarSeed ?? undefined}
             size="sm"
             src={userAvatarSrc ?? undefined}
           />

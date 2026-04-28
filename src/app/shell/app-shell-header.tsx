@@ -109,6 +109,7 @@ export function AppShellHeader({
   const clientReady = useClientHydrated();
   const chatLauncher = useChatLauncher();
   const avatarFallback = resolveSessionAvatarFallback(session, copy.appHeader.defaultAvatarFallback);
+  const avatarSeed = session?.profile?.user_id;
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
   const showConnectAction = clientReady && !session;
   const createPostPath = resolveCreatePostPath(route);
@@ -185,6 +186,7 @@ export function AppShellHeader({
       showProfileAction={clientReady}
       showWalletAction={clientReady && !!session}
       useSidebarTrigger={useAppSidebarTrigger}
+      userAvatarSeed={avatarSeed}
       userAvatarSrc={avatarSrc}
     />
   );
@@ -205,6 +207,7 @@ export function AppShellMobileNav({
   const { connect } = usePiratePrivyRuntime();
   const clientReady = useClientHydrated();
   const avatarFallback = resolveSessionAvatarFallback(session, copy.appHeader.defaultAvatarFallback);
+  const avatarSeed = session?.profile?.user_id;
   const avatarSrc = session?.profile?.avatar_ref ?? undefined;
 
   return (
@@ -230,6 +233,7 @@ export function AppShellMobileNav({
       onWalletClick={() => navigate("/wallet")}
       unreadChatCount={unreadChatCount}
       unreadInboxCount={unreadNotificationCount}
+      userAvatarSeed={avatarSeed}
       userAvatarSrc={avatarSrc}
     />
   );

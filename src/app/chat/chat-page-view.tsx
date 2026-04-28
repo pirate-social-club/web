@@ -112,6 +112,7 @@ export function ChatPageView({
           onTitleClick={headerProfileHref ? () => chatNavigation.openProfile(headerProfileHref) : undefined}
           title={headerTitle}
           titleAvatarFallback={activeConversation?.title}
+          titleAvatarSeed={activeConversation?.avatarSeed ?? activeConversation?.peerAddress}
           titleAvatarSrc={activeConversation?.avatarUrl}
         />
         <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-background pt-[calc(env(safe-area-inset-top)+4rem)] md:max-w-6xl">

@@ -65,11 +65,13 @@ function resolveIdentities(
 }
 
 function CommunityWithAuthorByline({
+  authorCommunityRole,
   primaryIdentity,
   secondaryIdentity,
   qualifierText,
   timestampLabel,
 }: {
+  authorCommunityRole?: CommunityAuthorRole | null;
   primaryIdentity?: PostCardIdentity;
   secondaryIdentity?: PostCardIdentity;
   qualifierText?: string;
@@ -83,10 +85,13 @@ function CommunityWithAuthorByline({
       />
       <div className="flex min-w-0 flex-wrap items-baseline justify-start gap-x-1.5 gap-y-0.5">
         {secondaryIdentity ? (
-          <InteractiveIdentityLink
-            className="font-medium text-muted-foreground hover:text-foreground hover:underline"
-            identity={secondaryIdentity}
-          />
+          <>
+            <InteractiveIdentityLink
+              className="font-medium text-muted-foreground hover:text-foreground hover:underline"
+              identity={secondaryIdentity}
+            />
+            <AuthorRoleBadge role={authorCommunityRole} />
+          </>
         ) : null}
         {qualifierText ? (
           <>
@@ -212,6 +217,7 @@ function PostCardBylineContent({
   if (resolvedPresentation === "community_with_author") {
     return (
       <CommunityWithAuthorByline
+        authorCommunityRole={authorCommunityRole}
         primaryIdentity={primaryIdentity}
         qualifierText={qualifierText}
         secondaryIdentity={secondaryIdentity}
@@ -312,12 +318,14 @@ export function PostCardHeader({
         badgeCountryCode={authorNationalityBadgeCountry}
         badgeLabel={authorNationalityBadgeLabel ?? buildNationalityBadgeLabel(authorNationalityBadgeCountry ?? "", locale)}
         fallback={avatarIdentity?.label ?? ""}
+        fallbackSeed={avatarIdentity?.avatarSeed}
         size="md"
         src={avatarIdentity?.avatarSrc}
       />
     ) : (
       <Avatar
         fallback={avatarIdentity?.label ?? ""}
+        fallbackSeed={avatarIdentity?.avatarSeed}
         size="md"
         src={avatarIdentity?.avatarSrc}
         className={cn(

@@ -14,9 +14,11 @@ import { cn } from "@/lib/utils";
 import type { PublicAgentPageProps } from "./public-agent-page.types";
 
 function AgentAvatar({
+  avatarSeed,
   avatarSrc,
   displayName,
 }: {
+  avatarSeed?: string;
   avatarSrc?: string;
   displayName: string;
 }) {
@@ -36,6 +38,7 @@ function AgentAvatar({
       <Avatar
         className="-mt-16 size-24 border-background bg-card shadow-[var(--shadow-lg)]"
         fallback={displayName}
+        fallbackSeed={avatarSeed}
         size="lg"
         src={avatarSrc}
       />
@@ -50,9 +53,10 @@ function PublicHero({
   ownerHandle,
   ownerHref,
   ownershipProvider,
+  avatarSeed,
   avatarSrc,
   bannerSrc,
-}: Pick<PublicAgentPageProps, "createdAt" | "displayName" | "handle" | "ownerHandle" | "ownerHref" | "ownershipProvider" | "avatarSrc" | "bannerSrc">) {
+}: Pick<PublicAgentPageProps, "createdAt" | "displayName" | "handle" | "ownerHandle" | "ownerHref" | "ownershipProvider" | "avatarSeed" | "avatarSrc" | "bannerSrc">) {
   const { locale } = useUiLocale();
   const localeTag = resolveLocaleLanguageTag(locale);
   const copy = getLocaleMessages(locale, "routes").publicAgent;
@@ -80,7 +84,7 @@ function PublicHero({
       />
       <div className="flex flex-col gap-5 px-5 pb-6 pt-5 lg:px-8 lg:pb-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-          <AgentAvatar avatarSrc={avatarSrc} displayName={displayName} />
+          <AgentAvatar avatarSeed={avatarSeed ?? handle} avatarSrc={avatarSrc} displayName={displayName} />
           <div className="space-y-3">
             <div className="space-y-1">
               <Type as="h1" variant="h1">

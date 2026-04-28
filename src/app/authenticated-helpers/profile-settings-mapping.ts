@@ -91,6 +91,7 @@ export function apiProfileToProps(
       displayName,
       handle: displayHandle,
       bio: profile.bio ?? "",
+      avatarSeed: profile.user_id,
       avatarSrc: profile.avatar_ref ?? undefined,
       nationalityBadgeCountryCode: profile.nationality_badge_country ?? undefined,
       nationalityBadgeLabel: profile.nationality_badge_country ? buildNationalityBadgeLabel(profile.nationality_badge_country, localeTag) : undefined,

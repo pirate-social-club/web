@@ -249,6 +249,7 @@ export function GlobalHandleField({
 
 export function EditProfileForm({
   className,
+  currentAvatarSeed,
   currentAvatarSrc,
   currentBio = "",
   currentDisplayName,
@@ -293,7 +294,7 @@ export function EditProfileForm({
   return (
     <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit}>
       <div className="flex items-center gap-4">
-        <Avatar fallback={currentDisplayName} size="lg" src={currentAvatarSrc} />
+        <Avatar fallback={currentDisplayName} fallbackSeed={currentAvatarSeed} size="lg" src={currentAvatarSrc} />
         <div>
           <Type as="h2" variant="h4">{copy.editProfileTitle}</Type>
           {currentHandle ? (

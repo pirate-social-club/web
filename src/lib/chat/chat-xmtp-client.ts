@@ -269,6 +269,7 @@ function conversationFromDm(
   const peerAddress = peer.peerAddress ?? target?.address ?? null;
   const fallbackTitle = peerAddress ? shortAddress(peerAddress) : fallbackConversationTitle(peer, dm);
   return {
+    avatarSeed: target?.avatarSeed ?? peerAddress ?? undefined,
     avatarUrl: target?.avatarUrl,
     id: String(dm.id),
     peerAddress: peerAddress ?? undefined,

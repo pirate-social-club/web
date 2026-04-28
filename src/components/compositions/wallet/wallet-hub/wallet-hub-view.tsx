@@ -275,45 +275,55 @@ export function MobileWalletHub({
   recentActivity?: WalletHubActivityItem[];
 }) {
   const assetRows = React.useMemo(() => buildWalletAssetRows(chainSections), [chainSections]);
-  const hasClaimable = claimableWipWei !== "0";
+  const hasClaimable = !!claimableWipWei && claimableWipWei !== "0";
   const actionDisabled = walletActionsPending || isZeroUsdAmount(totalBalanceUsd);
   const showWalletActions = variant === "route" && (Boolean(walletAddress) || walletActionsPending);
+  const balanceSummary = (
+    <>
+      <Type as="div" variant="body" className="text-muted-foreground">
+        Total balance
+      </Type>
+      <Type as="div" variant="h2" className="mt-0.5 text-4xl font-semibold leading-tight">
+        {totalBalanceUsd ?? "$0.00"}
+      </Type>
+      {showWalletActions ? (
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <Button variant="outline" className="h-14 text-base" onClick={onSend} disabled={actionDisabled || !onSend}>
+            Send
+          </Button>
+          <Button variant="outline" className="h-14 text-base" onClick={onReceive} disabled={actionDisabled || !onReceive}>
+            Receive
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
 
   return (
     <div className="flex min-w-0 flex-1 flex-col md:hidden">
       <div className="flex min-w-0 flex-1 flex-col gap-0">
-        <div className="py-4">
-          <Type as="div" variant="body" className="text-muted-foreground">
-            Total balance
-          </Type>
-          <Type as="div" variant="h2" className="mt-0.5 text-4xl font-semibold leading-tight">
-            {totalBalanceUsd ?? "$0.00"}
-          </Type>
-          {showWalletActions ? (
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <Button variant="outline" className="h-14 text-base" onClick={onSend} disabled={actionDisabled || !onSend}>
-                Send
-              </Button>
-              <Button variant="outline" className="h-14 text-base" onClick={onReceive} disabled={actionDisabled || !onReceive}>
-                Receive
+        {variant === "route" ? (
+          <>
+            <div className="py-4">
+              {balanceSummary}
+            </div>
+            <div className="border-t border-border py-4">
+              <Type as="div" variant="body" className="text-muted-foreground">
+                Royalties
+              </Type>
+              <Type as="div" variant="h1" className="mt-0.5 text-4xl font-semibold leading-tight">
+                ${hasClaimable ? formatWipAmount(claimableWipWei) : "0.00"}
+              </Type>
+              <Button className="mt-4 h-14 w-full" onClick={onClaim} loading={claimLoading} disabled={!hasClaimable}>
+                Claim
               </Button>
             </div>
-          ) : null}
-        </div>
-
-        {variant === "route" && hasClaimable ? (
-          <div className="border-t border-border py-4">
-            <Type as="div" variant="body" className="text-muted-foreground">
-              Royalties
-            </Type>
-            <Type as="div" variant="h1" className="mt-0.5 text-4xl font-semibold leading-tight">
-              ${claimableWipWei ? formatWipAmount(claimableWipWei) : "0.00"}
-            </Type>
-            <Button className="mt-4 h-14 w-full" onClick={onClaim} loading={claimLoading}>
-              Claim
-            </Button>
+          </>
+        ) : (
+          <div className="py-4">
+            {balanceSummary}
           </div>
-        ) : null}
+        )}
 
         <FullBleedMobileListSection className="border-y border-border">
           {assetRows.map((asset) => (

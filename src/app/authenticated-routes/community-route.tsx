@@ -11,11 +11,11 @@ import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { getApiErrorMessage, isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
-import { buildCommunityPath } from "@/lib/community-routing";
-import { CommunityMembershipGatePanel } from "@/components/compositions/community-membership-gate-panel/community-membership-gate-panel";
-import { CommunityJoinRequestModal } from "@/components/compositions/community-join-request-modal/community-join-request-modal";
-import { CommunityPageShell } from "@/components/compositions/community-page-shell/community-page-shell";
-import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
+import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
+import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
+import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
+import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
 import { getGateFailureMessage, getJoinCtaLabel, getPassportPromptCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
@@ -26,7 +26,6 @@ import { useCommunityPageData } from "./community-data";
 import {
   buildCommunitySidebar,
   buildCommunitySidebarRequirements,
-  getCommunityActionLabel,
   getNamespaceActionLabel,
 } from "./community-sidebar-helpers";
 import {
@@ -35,8 +34,10 @@ import {
 } from "./moderation-helpers";
 import { toCommunityFeedItem } from "./post-presentation";
 import { submitOptimisticPostVote, updateCommunityPostVote } from "./post-vote";
-import { buildFeedSortOptions, getErrorMessage, useRouteContentLocale, useRouteMessages } from "./route-core";
-import { getRouteAuthDescription, getRouteFailureDescription, getRouteIncompleteDescription } from "./route-status-copy";
+import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
+import { useRouteMessages } from "@/hooks/use-route-messages";
+import { getErrorMessage } from "@/lib/error-utils";
+import { buildFeedSortOptions } from "@/lib/feed-sort-options";
 import { AuthRequiredRouteState, RouteLoadFailureState } from "./route-shell";
 import { useSongPurchaseFlow } from "./song-purchase";
 import { useSongCommerceState, useSongPlayback } from "./song-commerce";
@@ -69,6 +70,8 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const {
     handleJoin,
     handleSelfModalOpenChange,
+    handleSelfQrError,
+    handleSelfQrSuccess,
     joinError,
     joinLoading,
     joinRequested,
@@ -148,8 +151,9 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     }
   }, [communityId, handleJoin, invalidateCommunityGate]);
 
-  const handleBuySong = React.useCallback(async (listing: ApiCommunityListing, titleText: string) => {
+  const handleBuySong = React.useCallback(async (listing: ApiCommunityListing, titleText: string, assetLabel: "song" | "video" = "song") => {
     await buySong({
+      assetLabel,
       communityId,
       listing,
       successMessage: ({ titleText: nextTitle }) => `${nextTitle} unlocked.`,
@@ -197,30 +201,44 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       return {
         description: verificationPrompt.description,
         icon: verificationIcon as "passport" | "self" | "very",
-        primaryAction: {
-          label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
-          loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
-          onClick: async () => {
-            if (provider === "very") {
-              const result = await startVeryVerification();
-              if (result.started) {
-                closeModal();
-              }
-            } else if (provider === "passport") {
-              window.open("https://app.passport.xyz/", "_blank", "noopener,noreferrer");
-              closeModal();
-            } else {
-              const result = await startSelfVerification({
-                showToastOnError: true,
-                missingCapabilities: gate.eligibility.missing_capabilities,
-                membershipGateSummaries: gate.eligibility.membership_gate_summaries,
-              });
-              if (result.started) {
-                closeModal();
-              }
+        primaryAction: provider === "passport"
+          ? {
+              href: "https://app.passport.xyz/",
+              label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
+              onClick: closeModal,
+              rel: "noopener noreferrer",
+              target: "_blank",
             }
-          },
-        },
+          : {
+              label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
+              loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
+              onClick: async () => {
+                if (provider === "very") {
+                  const result = await startVeryVerification();
+                  if (result.started) {
+                    closeModal();
+                  }
+                } else {
+                  const result = await startSelfVerification({
+                    showToastOnError: true,
+                    missingCapabilities: gate.eligibility.missing_capabilities,
+                    membershipGateSummaries: gate.eligibility.membership_gate_summaries,
+                    skipModal: true,
+                  });
+                  if (result.started) {
+                    closeModal();
+                    if (result.openedModal) {
+                      return;
+                    }
+                    if (result.href) {
+                      window.location.href = result.href;
+                    } else {
+                      toast.error("Could not get Self app launch link.");
+                    }
+                  }
+                }
+              },
+            },
         requirements: gate.preview.membership_gate_summaries,
         title: provider === "passport"
           ? verificationPrompt.title
@@ -328,25 +346,41 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     if (isApiNotFoundError(error)) {
       return <PublicCommunityRoutePage communityId={communityId} />;
     }
-    if (isApiAuthError(error)) return <AuthRequiredRouteState description={getRouteAuthDescription("community")} title={pageTitle} />;
-    return <RouteLoadFailureState description={getErrorMessage(error, getRouteFailureDescription("community"))} title={pageTitle} />;
+    if (isApiAuthError(error)) return <AuthRequiredRouteState description={copy.routeStatus.community.auth} title={pageTitle} />;
+    return <RouteLoadFailureState description={getErrorMessage(error, copy.routeStatus.community.failure)} title={pageTitle} />;
   }
   if (!preview || !community) {
-    return <RouteLoadFailureState description={getRouteIncompleteDescription("community")} title={pageTitle} />;
+    return <RouteLoadFailureState description={copy.routeStatus.community.incomplete} title={pageTitle} />;
   }
 
   const canCreatePost = eligibility?.status === "already_joined";
+  const joinActionLabel = eligibility?.status === "already_joined"
+    ? "Joined"
+    : eligibility?.status === "pending_request"
+      ? "Request pending"
+      : eligibility?.status === "requestable"
+        ? "Request to Join"
+        : "Join";
+  const joinActionDisabled = !eligibility
+    || eligibility.status === "already_joined"
+    || eligibility.status === "pending_request"
+    || eligibility.status === "gate_failed"
+    || eligibility.status === "banned";
   const feedItems = posts.map((post) => {
     const assetId = post.post.asset_id ?? undefined;
     return toCommunityFeedItem(
       post,
       authorProfiles,
-      post.post.post_type === "song"
+      post.post.post_type === "song" || post.post.post_type === "video"
         ? {
           currentUserId: session?.user?.user_id,
           listing: assetId ? listingsByAssetId[assetId] : undefined,
           localeTag,
-          onBuy: assetId && listingsByAssetId[assetId] ? () => void handleBuySong(listingsByAssetId[assetId]!, post.post.title ?? "song") : undefined,
+          onBuy: assetId && listingsByAssetId[assetId] ? () => void handleBuySong(
+            listingsByAssetId[assetId]!,
+            post.post.title ?? (post.post.post_type === "video" ? "video" : "song"),
+            post.post.post_type === "video" ? "video" : "song",
+          ) : undefined,
           playback: songPlayback,
           purchase: assetId ? purchasesByAssetId[assetId] : undefined,
         }
@@ -363,26 +397,31 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
       {ownsCommunity ? <Button onClick={() => navigate(moderationEntryPath)} variant="secondary">{modToolsLabel}</Button> : null}
+      {!ownsCommunity ? (
+        <Button
+          loading={followLoading}
+          onClick={handleToggleFollow}
+          variant={viewerFollowing ? "secondary" : "default"}
+        >
+          {viewerFollowing ? copy.community.followingLabel : copy.community.followLabel}
+        </Button>
+      ) : null}
+      {!ownsCommunity ? (
+        <Button
+          disabled={joinActionDisabled}
+          loading={joinLoading || veryLoading || selfLoading}
+          onClick={handlePrimaryJoinAction}
+          variant="secondary"
+        >
+          {joinActionLabel}
+        </Button>
+      ) : null}
       {canCreatePost ? (
         <Button leadingIcon={<Plus className="size-5" />} onClick={() => navigate(communityCreatePostPath)}>{createPostLabel}</Button>
-      ) : (
-        <>
-          <Button
-            loading={followLoading}
-            onClick={handleToggleFollow}
-            variant={viewerFollowing ? "secondary" : "default"}
-          >
-            {viewerFollowing ? copy.community.followingLabel : copy.community.followLabel}
-          </Button>
-          {eligibility && preview.membership_gate_summaries.length === 0 ? (
-            <Button disabled={eligibility.status !== "joinable" && eligibility.status !== "requestable" && eligibility.status !== "verification_required"} loading={joinLoading} onClick={handlePrimaryJoinAction} variant={viewerFollowing ? "default" : "secondary"}>
-              {getCommunityActionLabel(eligibility.status)}
-            </Button>
-          ) : null}
-        </>
-      )}
+      ) : null}
     </div>
   );
+  const routeLabel = formatCommunityRouteLabel(community.community_id, community.route_slug);
 
   return (
     <>
@@ -403,7 +442,10 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           error={selfError}
           href={selfPrompt.href}
           onOpenChange={handleSelfModalOpenChange}
+          onQrError={handleSelfQrError}
+          onQrSuccess={handleSelfQrSuccess}
           open={selfModalOpen}
+          selfApp={selfPrompt.selfApp}
           title={selfPrompt.title}
         />
       ) : null}
@@ -431,7 +473,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         headerAction={headerAction}
         items={feedItems}
         onSortChange={setActiveSort}
-        routeLabel={community.route_slug ? `c/${community.route_slug}` : `c/${community.community_id}`}
+        routeLabel={routeLabel}
         routeVerified={Boolean(community.namespace_verification_id)}
         sidebar={{
           ...buildCommunitySidebar(community, locale),
@@ -443,7 +485,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
             locale,
           }),
           namespacePanel: ownsCommunity ? {
-            routeLabel: community.route_slug ? `c/${community.route_slug}` : `c/${community.community_id}`,
+            routeLabel,
             status: community.namespace_verification_id ? "verified" : community.pending_namespace_verification_session_id ? "pending" : "available",
             onOpen: community.namespace_verification_id ? undefined : () => navigate(buildCommunityModerationPath(communityId, "namespace")),
           } : null,

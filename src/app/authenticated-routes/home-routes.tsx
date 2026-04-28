@@ -18,6 +18,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
+import { StandardRoutePage } from "@/components/compositions/app/page-shell";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { Spinner } from "@/components/primitives/spinner";
 import { Feed, type FeedSort, TopTimeRangeControl } from "@/components/compositions/posts/feed/feed";
@@ -25,8 +26,12 @@ import { Feed, type FeedSort, TopTimeRangeControl } from "@/components/compositi
 import { loadProfilesByUserId } from "./community-data";
 import { toHomeFeedItem } from "./post-presentation";
 import { submitOptimisticPostVote, updateHomeFeedEntryPostVote } from "./post-vote";
-import { buildFeedSortOptions, buildTopTimeRangeOptions, formatRelativeTimestamp, getErrorMessage, useRouteContentLocale, useRouteMessages, useClientHydrated } from "./route-core";
-import { getRouteFailureDescription } from "./route-status-copy";
+import { useClientHydrated } from "@/hooks/use-client-hydrated";
+import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
+import { useRouteMessages } from "@/hooks/use-route-messages";
+import { getErrorMessage } from "@/lib/error-utils";
+import { buildFeedSortOptions, buildTopTimeRangeOptions } from "@/lib/feed-sort-options";
+import { formatRelativeTimestamp } from "@/lib/formatting/time";
 import { EmptyFeedState, RouteLoadFailureState } from "./route-shell";
 import { useSongPlayback } from "./song-commerce";
 import { useCommunityInteractionGate } from "./community-interaction-gate";
@@ -193,6 +198,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const [loading, setLoading] = React.useState(true);
   const recentCommunities = useRecentCommunities();
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
+  const homeLoadRequestIdRef = React.useRef(0);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const { gateModal, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: contentLocale,
@@ -202,8 +208,31 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
 
   React.useEffect(() => {
     let cancelled = false;
+    const requestId = ++homeLoadRequestIdRef.current;
+    const startedAt = performance.now();
 
-    if (!hydrated) return () => { cancelled = true; };
+    if (!hydrated) {
+      console.info("[loader-debug][HomePage] load-skipped-unhydrated", {
+        requestId,
+        t: Math.round(startedAt),
+      });
+      return () => {
+        cancelled = true;
+        console.info("[loader-debug][HomePage] load-cleanup-unhydrated", {
+          requestId,
+          t: Math.round(performance.now()),
+        });
+      };
+    }
+
+    console.info("[loader-debug][HomePage] load-start", {
+      activeSort,
+      contentLocale,
+      requestId,
+      session: Boolean(session),
+      timeRange: activeSort === "top" ? topTimeRange : null,
+      t: Math.round(startedAt),
+    });
 
     setLoading(true);
     setError(null);
@@ -215,6 +244,12 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     })
       .then(async (result) => {
         const nextFeedEntries = result.items;
+        console.info("[loader-debug][HomePage] feed-response", {
+          elapsedMs: Math.round(performance.now() - startedAt),
+          itemCount: nextFeedEntries.length,
+          requestId,
+          t: Math.round(performance.now()),
+        });
         const nextAuthorProfiles = await loadProfilesByUserId(
           api,
           nextFeedEntries.map((entry) => entry.post.post.identity_mode === "public" ? entry.post.post.author_user_id : null).filter((userId): userId is string => Boolean(userId)),
@@ -235,6 +270,12 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
 
         if (cancelled) return;
 
+        console.info("[loader-debug][HomePage] apply-feed-state", {
+          elapsedMs: Math.round(performance.now() - startedAt),
+          itemCount: nextFeedEntries.length,
+          requestId,
+          t: Math.round(performance.now()),
+        });
         setFeedEntries(nextFeedEntries);
         setAuthorProfiles(nextAuthorProfiles);
         setListingsByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.listings.map((listing) => (
@@ -246,6 +287,12 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
       })
       .catch((nextError: unknown) => {
         if (cancelled) return;
+        console.info("[loader-debug][HomePage] load-error", {
+          elapsedMs: Math.round(performance.now() - startedAt),
+          message: nextError instanceof Error ? nextError.message : String(nextError),
+          requestId,
+          t: Math.round(performance.now()),
+        });
         if ((nextError as { status?: number; code?: string }).status === 401 || (nextError as { code?: string }).code === "auth_error") {
           clearSession();
           return;
@@ -253,11 +300,35 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         setError(nextError);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          console.info("[loader-debug][HomePage] load-finish", {
+            elapsedMs: Math.round(performance.now() - startedAt),
+            requestId,
+            t: Math.round(performance.now()),
+          });
+          setLoading(false);
+        }
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      console.info("[loader-debug][HomePage] load-cleanup", {
+        elapsedMs: Math.round(performance.now() - startedAt),
+        requestId,
+        t: Math.round(performance.now()),
+      });
+    };
   }, [activeSort, api, contentLocale, hydrated, session, topTimeRange]);
+
+  React.useEffect(() => {
+    console.info("[loader-debug][HomePage] render-state", {
+      activeSort,
+      feedEntries: feedEntries.length,
+      hydrated,
+      loading,
+      t: Math.round(performance.now()),
+    });
+  }, [activeSort, feedEntries.length, hydrated, loading]);
 
   React.useEffect(() => {
     setCurrentHomeFeedSort(activeSort);
@@ -327,13 +398,13 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   }), [feedEntries, recentCommunities]);
 
   if (error) {
-    return <RouteLoadFailureState description={getErrorMessage(error, getRouteFailureDescription("home"))} title={copy.home.title} />;
+    return <RouteLoadFailureState description={getErrorMessage(error, copy.routeStatus.home.failure)} title={copy.home.title} />;
   }
 
   return (
     <>
       {gateModal}
-      <PageContainer className="flex min-w-0 flex-1 flex-col gap-6" size="rail">
+      <StandardRoutePage size="rail" className="gap-6">
         <Feed
           activeSort={activeSort}
           aside={recentRailPosts.length > 0 ? (
@@ -344,47 +415,91 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
                 </Type>
               </div>
               <div>
-                {recentRailPosts.map((post, index) => (
-                  <a
-                    className={cn(
-                      "flex w-full items-start gap-4 px-5 py-4 text-start transition-colors hover:bg-surface/60",
-                      index === recentRailPosts.length - 1 ? undefined : "border-b border-border-soft",
-                    )}
-                    href={`/p/${post.postId}`}
-                    key={post.postId}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-3">
-                        <Avatar
-                          className="size-8 border-border-soft"
-                          fallback={post.communityDisplayName}
-                          size="xs"
-                          src={post.communityAvatarSrc ?? undefined}
-                        />
-                        <Type as="div" variant="label" className="truncate text-muted-foreground">
-                          {`${formatCommunityRouteLabel(post.communityId, post.communityRouteSlug)} • ${formatRelativeTimestamp(post.postCreatedAt)}`}
+                {recentRailPosts.map((post, index) => {
+                  const communityHref = buildCommunityPath(post.communityId, post.communityRouteSlug);
+                  const postHref = `/p/${post.postId}`;
+
+                  return (
+                    <article
+                      className={cn(
+                        "flex w-full items-start gap-4 px-5 py-4 text-start",
+                        index === recentRailPosts.length - 1 ? undefined : "border-b border-border-soft",
+                      )}
+                      key={post.postId}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <a
+                            className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            href={communityHref}
+                            aria-label={post.communityDisplayName}
+                          >
+                            <Avatar
+                              className="size-8 shrink-0 border-border-soft"
+                              fallback={post.communityDisplayName}
+                              size="xs"
+                              src={post.communityAvatarSrc ?? undefined}
+                            />
+                          </a>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <a
+                                className="group min-w-0 rounded-[var(--radius-md)] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                href={communityHref}
+                              >
+                                <Type as="span" variant="label" className="block truncate transition-colors group-hover:text-link">
+                                  {post.communityDisplayName}
+                                </Type>
+                              </a>
+                              <Type as="span" variant="label" className="shrink-0 text-muted-foreground">
+                                {`• ${formatRelativeTimestamp(post.postCreatedAt)}`}
+                              </Type>
+                            </div>
+                            <a
+                              className="group mt-1 block min-w-0 rounded-[var(--radius-md)] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              href={communityHref}
+                            >
+                              <Type as="span" variant="label" className="block truncate text-muted-foreground transition-colors group-hover:text-foreground">
+                                {formatCommunityRouteLabel(post.communityId, post.communityRouteSlug)}
+                              </Type>
+                            </a>
+                          </div>
+                        </div>
+                        <a
+                          className="group mt-3 block rounded-[var(--radius-md)] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          href={postHref}
+                        >
+                          <Type as="span" variant="body-strong" className="line-clamp-2 leading-7 transition-colors group-hover:text-link">
+                            {post.postTitle}
+                          </Type>
+                        </a>
+                        <Type as="div" variant="body" className="mt-3 flex flex-wrap gap-x-1 text-muted-foreground">
+                          <span className="whitespace-nowrap">{`${formatCompactCount(post.score, localeTag)} upvotes`}</span>
+                          <span aria-hidden="true">·</span>
+                          <a
+                            className="whitespace-nowrap rounded-[var(--radius-sm)] outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                            href={postHref}
+                          >
+                            {`${formatCompactCount(post.commentCount, localeTag)} comments`}
+                          </a>
                         </Type>
                       </div>
-                      <Type as="div" variant="body-strong" className="mt-3 line-clamp-2 leading-7">
-                        {post.postTitle}
-                      </Type>
-                      <Type as="div" variant="body" className="mt-3 whitespace-nowrap text-muted-foreground">
-                        {`${formatCompactCount(post.score, localeTag)} upvotes · ${formatCompactCount(post.commentCount, localeTag)} comments`}
-                      </Type>
-                    </div>
-                    {post.thumbnailSrc ? (
-                      <div className="h-28 w-28 shrink-0 overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-surface-skeleton">
-                        <img
-                          alt=""
-                          className="h-full w-full object-cover"
-                          src={post.thumbnailSrc}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-28 w-28 shrink-0" aria-hidden="true" />
-                    )}
-                  </a>
-                ))}
+                      {post.thumbnailSrc ? (
+                        <a
+                          className="h-28 w-28 shrink-0 overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-surface-skeleton outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring"
+                          href={postHref}
+                          aria-label={post.postTitle}
+                        >
+                          <img
+                            alt=""
+                            className="h-full w-full object-cover"
+                            src={post.thumbnailSrc}
+                          />
+                        </a>
+                      ) : null}
+                    </article>
+                  );
+                })}
               </div>
             </div>
           ) : undefined}
@@ -401,11 +516,12 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           }}
           hideMobileHeaderControls
           items={feedItems}
-          listClassName="-mx-3 border-t-0 md:mx-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
+          fullBleedMobile
+          listClassName="border-t-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
           loading={loading}
           onSortChange={setActiveSort}
         />
-      </PageContainer>
+      </StandardRoutePage>
     </>
   );
 }

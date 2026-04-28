@@ -233,10 +233,10 @@
         "non-commercialDescription": "Viewers can use the video privately, but not for commercial releases.",
         "commercial-use": "Commercial use",
         "commercial-useDescription": "Others can monetize with the original video, but cannot publish derivative videos.",
-        "commercial-remix": "Commercial derivative",
+        "commercial-remix": "Commercial derivatives",
         "commercial-remixDescription": "Others can monetize and publish derivative videos using your work.",
         "revenueShare": "Revenue share",
-        "revenueShareDescription": "Choose the share derivative video revenue owes back to this original video.",
+        "revenueShareDescription": "Set the share of derivative video revenue paid back to this original video.",
         "revenueShareRange": "0% to 100%"
       }
     },
@@ -414,20 +414,22 @@
   "inbox": {
     "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",
     "description": "This route is scaffolded so the mobile nav can point somewhere truthful while inbox behavior is still undefined.",
-    "chatsTab": "Chats",
     "emptyChatsState": "No chats yet",
     "emptyState": "No notifications yet",
     "loading": "Loading...",
     "notificationsTab": "Notifications",
-    "recentActivity": "Recent activity",
     "someone": "Someone",
-    "taskActionNeeded": "Action needed",
     "taskDismiss": "Dismiss",
     "taskNamespaceVerificationRequired": "Verify your community namespace",
     "taskVerify": "Verify",
-    "title": "Inbox",
+    "title": "Notifications",
     "eventCommentReply": "{actor} replied to your comment",
-    "eventPostCommented": "{actor} commented on your post"
+    "eventPostCommented": "{actor} commented on your post",
+    "installPromoTitle": "Install Pirate",
+    "installPromoBody": "Never miss a payout with Pirate on your homescreen",
+    "installPromoAction": "Install",
+    "installPromoDismiss": "Not now",
+    "installPromoIOSInstructions": "Tap the Share button below, then scroll down and tap \"Add to Home Screen\"."
   },
   "createCommunity": {
     "reopenVerification": "Reopen verification",
@@ -473,8 +475,7 @@
       "verifyRoute": "Verify route",
       "clear": "Clear",
       "membershipSection": "Membership",
-      "gateChecksTitle": "Gate checks",
-      "gateChecksDescription": "Select at least one gate before launch.",
+      "gateChecksTitle": "Gate criteria",
       "nationalityTitle": "Nationality verification",
       "nationalityDescription": "Require members to verify their nationality through self before joining.",
       "allowedNationalityLabel": "Allowed nationalities",
@@ -604,11 +605,17 @@
     "videosTab": "Videos"
   },
   "publicAgent": {
+    "aboutDescription": "Posts and comments from this agent appear across Pirate communities under its canonical .clawitzer identity.",
+    "aboutTitle": "About",
+    "activeSinceLabel": "Active since",
+    "emptyCommunities": "Community activity for this agent will appear here.",
     "errorDescription": "This public agent could not be loaded right now.",
     "errorTitle": "Public agent",
     "notFoundDescription": "We could not find a public agent for {path}.",
     "notFoundTitle": "Agent not found",
+    "openInPirate": "Open in Pirate",
     "ownerLabel": "Owner",
+    "premiumNamesComingSoon": "Premium names will unlock in a later release.",
     "providerLabel": "Provider"
   },
   "publicCommunity": {
@@ -662,9 +669,11 @@
     "registerAction": "Register with ClawKey",
     "registrationIncompleteError": "Agent registration did not complete.",
     "saveHandleAction": "Save handle",
+    "saveChangesAction": "Save changes",
     "saveHandleError": "Could not save agent handle.",
     "saveNameAction": "Save name",
     "saveNameError": "Could not save agent name.",
+    "premiumNamesComingSoon": "Premium names will unlock in a later release.",
     "verificationRequiredAction": "Verify now",
     "verificationRequiredDescription": "To connect OpenClaw, Pirate needs to know there is a real person responsible for the agent.",
     "verificationRequiredTitle": "Verify first",
@@ -696,6 +705,9 @@
     "editProfileDescription": "Update your display name, bio, or handle.",
     "editProfileTitle": "Edit profile",
     "profileSectionTitle": "Profile",
+    "installAppLabel": "Install app",
+    "installAppDescription": "Get app-icon unread badges and launch Pirate from your dock.",
+    "installAppIOSInstructions": "Tap the Share button below, then scroll down and tap \"Add to Home Screen\".",
     "handleCheckFailed": "Could not check availability.",
     "handleNoteEns": "ENS",
     "handleNoteEnsRefresh": "ENS needs refresh",
@@ -1077,5 +1089,103 @@
     "balanceLater": "Later",
     "noAssetsYet": "No assets yet.",
     "later": "Later."
+  },
+  "routeStatus": {
+    "chat": {
+      "auth": "Sign in to use messages.",
+      "failure": "Messages could not be loaded right now.",
+      "incomplete": "The messages response was incomplete. Try loading it again.",
+      "title": "Messages"
+    },
+    "community": {
+      "auth": "Sign in to view this community.",
+      "failure": "The community could not be loaded right now.",
+      "incomplete": "The community response was incomplete. Try loading it again.",
+      "title": "Community",
+      "createPost": "Create Post",
+      "modTools": "Mod Tools"
+    },
+    "createCommunity": {
+      "auth": "Sign in to create a community.",
+      "failure": "The create community page could not be loaded right now.",
+      "incomplete": "The create community response was incomplete. Try loading it again.",
+      "title": "Create a community",
+      "verifyDescription": "Verify before creating a community.",
+      "verifyPendingDescription": "Complete your palm scan to continue.",
+      "verifyPendingTitle": "Finish verification",
+      "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+      "verifyStartTitle": "Verify",
+      "reopenVerification": "Reopen verification",
+      "startVerification": "Start verification"
+    },
+    "createPost": {
+      "auth": "Sign in to create a post.",
+      "failure": "The post composer could not be loaded right now.",
+      "incomplete": "The community response was incomplete. Try loading the composer again.",
+      "title": "Create post",
+      "backToCommunity": "Back to community",
+      "membershipRequiredDescription": "Only community members can publish posts here.",
+      "membershipRequiredTitle": "Join this community before posting"
+    },
+    "home": {
+      "auth": "Sign in to view your home feed.",
+      "failure": "The home feed could not be loaded right now.",
+      "incomplete": "The home feed response was incomplete. Try loading it again.",
+      "title": "Home",
+      "createCommunity": "Create community",
+      "emptyHomeBody": "Join a community or create one to start building your home feed.",
+      "emptyHomeTitle": "No posts yet",
+      "emptyYourCommunitiesBody": "Communities you create or join show up here.",
+      "emptyYourCommunitiesTitle": "No communities yet"
+    },
+    "inbox": {
+      "auth": "Sign in to view your inbox.",
+      "failure": "The inbox could not be loaded right now.",
+      "incomplete": "The inbox response was incomplete. Try loading it again.",
+      "title": "Inbox"
+    },
+    "moderation": {
+      "auth": "Sign in to access mod tools.",
+      "failure": "This moderation page could not be loaded right now.",
+      "incomplete": "The community response was incomplete.",
+      "title": "Moderator tools",
+      "accessRequiredDescription": "Only community moderators can open this page.",
+      "accessRequiredTitle": "Moderator access required"
+    },
+    "onboarding": {
+      "auth": "Sign in to continue onboarding.",
+      "failure": "The onboarding flow could not be loaded right now.",
+      "incomplete": "The onboarding response was incomplete. Try loading it again."
+    },
+    "post": {
+      "auth": "Sign in to view this post.",
+      "failure": "The post could not be loaded right now.",
+      "incomplete": "The post response was incomplete. Try loading it again.",
+      "title": "Post"
+    },
+    "profile": {
+      "auth": "Sign in to view your profile.",
+      "failure": "The profile could not be loaded right now.",
+      "incomplete": "The profile response was incomplete. Try loading it again.",
+      "title": "Profile"
+    },
+    "settings": {
+      "auth": "Sign in to access settings.",
+      "failure": "The settings page could not be loaded right now.",
+      "incomplete": "The settings response was incomplete. Try loading it again.",
+      "title": "Settings"
+    },
+    "wallet": {
+      "auth": "Sign in to view your wallet.",
+      "failure": "The wallet could not be loaded right now.",
+      "incomplete": "The wallet response was incomplete. Try loading it again.",
+      "title": "Wallet"
+    },
+    "yourCommunities": {
+      "auth": "Sign in to view your communities.",
+      "failure": "Your communities could not be loaded right now.",
+      "incomplete": "Your communities response was incomplete. Try loading it again.",
+      "title": "Your Communities"
+    }
   }
 }

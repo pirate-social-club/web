@@ -4,11 +4,13 @@ import * as React from "react";
 
 import { navigate } from "@/app/router";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
-import { ContentRailShell } from "@/components/compositions/content-rail-shell/content-rail-shell";
-import { PostComposer } from "@/components/compositions/post-composer/post-composer";
-import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
-import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
-import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
+import { ContentRailShell } from "@/components/compositions/app/content-rail-shell/content-rail-shell";
+import { PostComposer } from "@/components/compositions/posts/post-composer/post-composer";
+import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
+import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
+import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
+import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useApi } from "@/lib/api";
@@ -16,14 +18,16 @@ import { updateSessionUser } from "@/lib/api/session-store";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import { toast } from "@/components/primitives/sonner";
+import { getGateFailureMessage } from "@/lib/identity-gates";
 
-import { buildCommunitySidebar } from "./community-sidebar-helpers";
+import { buildCommunityPreviewSidebar } from "./community-sidebar-helpers";
 import { NotFoundPage } from "./misc-routes";
 import { resolveAnonymousComposerLabel, resolvePublicIdentityLabel } from "./post-presentation";
-import { getErrorMessage, useRouteMessages } from "./route-core";
-import { getRouteAuthDescription, getRouteFailureDescription, getRouteIncompleteDescription } from "./route-status-copy";
-import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState, StackPageShell, StatusCard } from "./route-shell";
+import { useRouteMessages } from "@/hooks/use-route-messages";
+import { getErrorMessage } from "@/lib/error-utils";
+import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState, StackPageShell } from "./route-shell";
 import { useCreatePostState } from "./create-post-state";
+import { useCommunityJoinVerification } from "./use-community-join-verification";
 
 type CreatePostState = ReturnType<typeof useCreatePostState>;
 type RouteCopy = ReturnType<typeof useRouteMessages>["copy"];
@@ -45,7 +49,7 @@ function CreatePostComposer({
 
   return (
     <PostComposer
-      availableTabs={["text", "image", "link", "song"]}
+      availableTabs={["text", "image", "video", "link", "song"]}
       canCreateSongPost
       clubName={`c/${state.community.display_name}`}
       draft={{
@@ -68,6 +72,7 @@ function CreatePostComposer({
         imageUpload: state.imageUpload,
         imageUploadLabel: state.imageUploadLabel,
         linkUrlValue: state.linkUrl,
+        license: state.license,
         lyricsValue: state.lyrics,
         mode: state.composerMode,
         monetization: state.monetizationState,
@@ -75,6 +80,7 @@ function CreatePostComposer({
         songMode: state.songMode,
         textBodyValue: state.body,
         titleValue: state.title,
+        video: state.videoState,
       }}
       actions={{
         onAudienceChange: state.setAudience,
@@ -85,6 +91,7 @@ function CreatePostComposer({
         onIdentityModeChange: state.setIdentityMode,
         onImageUploadChange: state.setImageUpload,
         onLinkUrlValueChange: state.setLinkUrl,
+        onLicenseChange: state.setLicense,
         onLyricsValueChange: state.setLyrics,
         onModeChange: state.setComposerMode,
         onMonetizationChange: state.setMonetizationState,
@@ -93,6 +100,7 @@ function CreatePostComposer({
         onSongModeChange: state.setSongMode,
         onTextBodyValueChange: state.setBody,
         onTitleValueChange: state.setTitle,
+        onVideoChange: state.setVideoState,
       }}
       submit={{
         disabled: state.submitState.disabled,
@@ -115,12 +123,13 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
   const api = useApi();
   const pageTitle = copy.createPost.title;
   const backToCommunityLabel = copy.createPost.backToCommunity;
-  const membershipRequiredTitle = copy.createPost.membershipRequiredTitle;
-  const membershipRequiredDescription = copy.createPost.membershipRequiredDescription;
   const verifyRequiredDescription = copy.createPost.verifyRequiredDescription;
 
   const pendingSubmitRef = React.useRef(false);
   const latestHandleSubmitRef = React.useRef(state.handleSubmit);
+  const [joinRequestModalOpen, setJoinRequestModalOpen] = React.useState(false);
+  const [joinRequestSubmitting, setJoinRequestSubmitting] = React.useState(false);
+  const [joinRequestError, setJoinRequestError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     latestHandleSubmitRef.current = state.handleSubmit;
@@ -128,6 +137,8 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
 
   const {
     handleModalOpenChange: handleSelfModalOpenChange,
+    handleSelfQrError,
+    handleSelfQrSuccess,
     selfError,
     selfLoading,
     selfModalOpen,
@@ -153,6 +164,56 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     storageKey: "pirate_pending_self_create_post",
     verificationIntent: "profile_verification",
   });
+
+  const {
+    handleJoin,
+    handleSelfModalOpenChange: handleJoinSelfModalOpenChange,
+    handleSelfQrError: handleJoinSelfQrError,
+    handleSelfQrSuccess: handleJoinSelfQrSuccess,
+    joinError,
+    joinLoading,
+    joinRequested,
+    selfError: joinSelfError,
+    selfLoading: joinSelfLoading,
+    selfModalOpen: joinSelfModalOpen,
+    selfPrompt: joinSelfPrompt,
+  } = useCommunityJoinVerification({
+    communityId,
+    eligibility: state.eligibility,
+    locale,
+    refetchEligibility: state.refetchEligibility,
+  });
+
+  const handleJoinRequestModalOpenChange = React.useCallback((open: boolean) => {
+    setJoinRequestModalOpen(open);
+    if (open) {
+      setJoinRequestError(null);
+    }
+  }, []);
+
+  const handlePrimaryJoinAction = React.useCallback(async () => {
+    if (state.eligibility?.status === "requestable") {
+      setJoinRequestError(null);
+      setJoinRequestModalOpen(true);
+      return;
+    }
+    await handleJoin();
+  }, [handleJoin, state.eligibility?.status]);
+
+  const handleJoinRequestSubmit = React.useCallback(async (note: string) => {
+    setJoinRequestSubmitting(true);
+    setJoinRequestError(null);
+    try {
+      const result = await handleJoin({ note });
+      if (result === "requested" || result === "joined") {
+        setJoinRequestModalOpen(false);
+      } else if (result === "failed") {
+        setJoinRequestError("Could not submit your request. Try again.");
+      }
+    } finally {
+      setJoinRequestSubmitting(false);
+    }
+  }, [handleJoin]);
 
   React.useEffect(() => {
     if (selfError) {
@@ -198,12 +259,12 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
           <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
             <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
             <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-              <AuthRequiredRouteState description={getRouteAuthDescription("create-post")} title="" />
+              <AuthRequiredRouteState description={copy.routeStatus.createPost.auth} title="" />
             </section>
           </div>
         );
       }
-      return <AuthRequiredRouteState description={getRouteAuthDescription("create-post")} title={pageTitle} />;
+      return <AuthRequiredRouteState description={copy.routeStatus.createPost.auth} title={pageTitle} />;
     }
     if (isApiNotFoundError(state.loadError)) {
       if (isMobile) {
@@ -223,12 +284,12 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
         <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
           <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
           <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-            <RouteLoadFailureState description={getErrorMessage(state.loadError, getRouteFailureDescription("create-post"))} title="" />
+            <RouteLoadFailureState description={getErrorMessage(state.loadError, copy.routeStatus.createPost.failure)} title="" />
           </section>
         </div>
       );
     }
-    return <RouteLoadFailureState description={getErrorMessage(state.loadError, getRouteFailureDescription("create-post"))} title={pageTitle} />;
+    return <RouteLoadFailureState description={getErrorMessage(state.loadError, copy.routeStatus.createPost.failure)} title={pageTitle} />;
   }
 
   if (!state.community || !state.eligibility) {
@@ -237,32 +298,77 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
         <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
           <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
           <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-            <RouteLoadFailureState description={getRouteIncompleteDescription("create-post")} title="" />
+            <RouteLoadFailureState description={copy.routeStatus.createPost.incomplete} title="" />
           </section>
         </div>
       );
     }
-    return <RouteLoadFailureState description={getRouteIncompleteDescription("create-post")} title={pageTitle} />;
+    return <RouteLoadFailureState description={copy.routeStatus.createPost.incomplete} title={pageTitle} />;
   }
 
   if (state.eligibility.status !== "already_joined") {
+    const joinPanel = (
+      <CommunityMembershipGatePanel
+        eligibility={state.eligibility}
+        gates={state.eligibility.membership_gate_summaries}
+        joinError={joinError ?? (state.eligibility.status === "gate_failed" && state.eligibility.failure_reason
+          ? getGateFailureMessage(state.eligibility, { locale })
+          : null)}
+        joinLoading={joinLoading}
+        joinRequested={joinRequested}
+        verificationError={joinSelfError}
+        verificationLoading={joinSelfLoading}
+        onJoin={handlePrimaryJoinAction}
+      />
+    );
+    const joinRequestModal = (
+      <CommunityJoinRequestModal
+        communityName={state.community.display_name}
+        error={joinRequestError}
+        onOpenChange={handleJoinRequestModalOpenChange}
+        onSubmit={handleJoinRequestSubmit}
+        open={joinRequestModalOpen}
+        submitting={joinRequestSubmitting || joinLoading}
+      />
+    );
+    const joinSelfVerificationModal = joinSelfPrompt ? (
+      <SelfVerificationModal
+        actionLabel={joinSelfPrompt.actionLabel}
+        description={joinSelfPrompt.description}
+        error={joinSelfError}
+        href={joinSelfPrompt.href}
+        onOpenChange={handleJoinSelfModalOpenChange}
+        onQrError={handleJoinSelfQrError}
+        onQrSuccess={handleJoinSelfQrSuccess}
+        open={joinSelfModalOpen}
+        selfApp={joinSelfPrompt.selfApp}
+        title={joinSelfPrompt.title}
+      />
+    ) : null;
+
     if (isMobile) {
       return (
         <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
           <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
-          <section className="flex min-w-0 flex-1 flex-col px-4 pb-8 pt-[calc(env(safe-area-inset-top)+5rem)]">
-            <StatusCard title={membershipRequiredTitle} description={membershipRequiredDescription} tone="warning" />
+          <section className="flex min-w-0 flex-1 flex-col gap-4 px-4 pb-8 pt-[calc(env(safe-area-inset-top)+5rem)]">
+            {joinPanel}
           </section>
+          {joinRequestModal}
+          {joinSelfVerificationModal}
         </div>
       );
     }
 
     return (
-      <ContentRailShell rail={<CommunitySidebar {...buildCommunitySidebar(state.community, locale)} />}>
-        <StackPageShell title={pageTitle} actions={<Button onClick={() => navigate(`/c/${communityId}`)} variant="secondary">{backToCommunityLabel}</Button>}>
-          <StatusCard title={membershipRequiredTitle} description={membershipRequiredDescription} tone="warning" />
-        </StackPageShell>
-      </ContentRailShell>
+      <>
+        <ContentRailShell rail={<CommunitySidebar {...buildCommunityPreviewSidebar(state.community, locale)} />}>
+          <StackPageShell title={pageTitle} actions={<Button onClick={() => navigate(`/c/${communityId}`)} variant="secondary">{backToCommunityLabel}</Button>}>
+            {joinPanel}
+          </StackPageShell>
+        </ContentRailShell>
+        {joinRequestModal}
+        {joinSelfVerificationModal}
+      </>
     );
   }
 
@@ -273,7 +379,10 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
       error={selfError}
       href={selfPrompt.href}
       onOpenChange={handleSelfModalOpenChange}
+      onQrError={handleSelfQrError}
+      onQrSuccess={handleSelfQrSuccess}
       open={selfModalOpen}
+      selfApp={selfPrompt.selfApp}
       title={selfPrompt.title}
     />
   ) : null;
@@ -292,7 +401,7 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
 
   return (
     <>
-      <ContentRailShell rail={<CommunitySidebar {...buildCommunitySidebar(state.community, locale)} />}>
+      <ContentRailShell rail={<CommunitySidebar {...buildCommunityPreviewSidebar(state.community, locale)} />}>
         <StackPageShell title="">
           <CreatePostComposer copy={copy} state={state} onSubmit={handleSubmit} submitLoading={selfLoading} />
         </StackPageShell>

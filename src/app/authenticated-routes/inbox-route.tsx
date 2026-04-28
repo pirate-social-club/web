@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import type { RoyaltyActivityItem, RoyaltyClaimRecord } from "@pirate/api-contracts";
-import type { RoyaltyActivityResponse, RoyaltyClaimHistoryResponse } from "@pirate/api-contracts";
+import type { RoyaltyActivityItem } from "@pirate/api-contracts";
+import type { RoyaltyActivityResponse } from "@pirate/api-contracts";
 import type { NotificationFeedResponse as ApiNotificationFeedResponse } from "@pirate/api-contracts";
 import type { NotificationTasksResponse as ApiNotificationTasksResponse } from "@pirate/api-contracts";
 import type { NotificationFeedItem, UserTask } from "@pirate/api-contracts";
@@ -20,17 +20,12 @@ import {
 } from "@/components/compositions/notifications/inbox-page/notification-inbox-page";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
 
-import { getRouteAuthDescription } from "./route-status-copy";
 import { AuthRequiredRouteState } from "./route-shell";
-import { useRouteMessages } from "./route-core";
+import { useRouteMessages } from "@/hooks/use-route-messages";
 
 const EMPTY_ROYALTY_ACTIVITY: RoyaltyActivityResponse = {
   items: [],
   next_cursor: null,
-};
-
-const EMPTY_ROYALTY_CLAIMS: RoyaltyClaimHistoryResponse = {
-  items: [],
 };
 
 type ProfileLink = {
@@ -42,10 +37,6 @@ type NotificationTaskPersistence = "synthetic" | "persisted";
 
 type EnrichedRoyaltyActivityItem = RoyaltyActivityItem & {
   buyerProfile?: ProfileLink | null;
-};
-
-type EnrichedRoyaltyClaimRecord = RoyaltyClaimRecord & {
-  walletProfile?: ProfileLink | null;
 };
 
 function unreadFeedEventIds(feed: ApiNotificationFeedResponse): string[] {
@@ -143,18 +134,13 @@ export function InboxPlaceholderPage() {
   const [feed, setFeed] = React.useState<ApiNotificationFeedResponse>({ items: [], next_cursor: null });
   const [loading, setLoading] = React.useState(true);
   const [royaltyActivity, setRoyaltyActivity] = React.useState<RoyaltyActivityResponse>(EMPTY_ROYALTY_ACTIVITY);
-  const [royaltyClaims, setRoyaltyClaims] = React.useState<RoyaltyClaimHistoryResponse>(EMPTY_ROYALTY_CLAIMS);
   const [royaltiesLoading, setRoyaltiesLoading] = React.useState(false);
   const [royaltyProfilesByWallet, setRoyaltyProfilesByWallet] = React.useState<Record<string, ProfileLink | null>>({});
 
   const refreshRoyalties = React.useCallback(async () => {
     try {
       setRoyaltiesLoading(true);
-      const [activityResult, claimsResult] = await Promise.all([
-        api.royalties.listActivity({ limit: 50 }),
-        api.royalties.listClaims({ limit: 10 }),
-      ]);
-      setRoyaltyClaims(claimsResult);
+      const activityResult = await api.royalties.listActivity({ limit: 50 });
       const unreadEventIds = activityResult.items
         .filter((item) => !item.read_at)
         .map((item) => item.event_id);
@@ -193,7 +179,6 @@ export function InboxPlaceholderPage() {
       setFeed({ items: [], next_cursor: null });
       setLoading(false);
       setRoyaltyActivity(EMPTY_ROYALTY_ACTIVITY);
-      setRoyaltyClaims(EMPTY_ROYALTY_CLAIMS);
       return () => { cancelled = true; };
     }
 
@@ -240,10 +225,8 @@ export function InboxPlaceholderPage() {
       return;
     }
 
-    const walletAddresses = [
-      ...royaltyActivity.items.map((item) => item.buyer_wallet_address),
-      ...royaltyClaims.items.map((item) => item.wallet_address),
-    ]
+    const walletAddresses = royaltyActivity.items
+      .map((item) => item.buyer_wallet_address)
       .map((address) => address?.trim().toLowerCase() ?? "")
       .filter(Boolean);
     const uniqueWallets = Array.from(new Set(walletAddresses))
@@ -280,10 +263,10 @@ export function InboxPlaceholderPage() {
     });
 
     return () => { cancelled = true; };
-  }, [api.publicProfiles, royaltyActivity.items, royaltyClaims.items, royaltyProfilesByWallet, session]);
+  }, [api.publicProfiles, royaltyActivity.items, royaltyProfilesByWallet, session]);
 
   if (!session) {
-    return <AuthRequiredRouteState description={getRouteAuthDescription("inbox")} hideTitleOnMobile title={copy.inbox.title} />;
+    return <AuthRequiredRouteState description={copy.routeStatus.inbox.auth} hideTitleOnMobile title={copy.inbox.title} />;
   }
 
   const activityItems = feed.items.filter((item) => item.event.type !== "xmtp_message");
@@ -292,10 +275,6 @@ export function InboxPlaceholderPage() {
     buyerProfile: item.buyer_wallet_address
       ? royaltyProfilesByWallet[item.buyer_wallet_address.trim().toLowerCase()] ?? null
       : null,
-  }));
-  const enrichedRoyaltyClaimItems: EnrichedRoyaltyClaimRecord[] = royaltyClaims.items.map((item) => ({
-    ...item,
-    walletProfile: royaltyProfilesByWallet[item.wallet_address.trim().toLowerCase()] ?? null,
   }));
   const unreadInstallPromoCount = tasks.items.length + activityItems.filter((item) => !item.receipt.read_at).length;
 
@@ -345,8 +324,7 @@ export function InboxPlaceholderPage() {
         }}
         royaltyActivityItems={enrichedRoyaltyActivityItems}
         royaltyActivityLoading={royaltiesLoading}
-        royaltyClaimItems={enrichedRoyaltyClaimItems}
-        royaltyClaimLoading={royaltiesLoading}
+
         tasks={tasks.items}
         title="Notifications"
       />

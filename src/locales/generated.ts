@@ -1096,6 +1096,104 @@ export const GENERATED_LOCALE_CATALOGS = {
         "balanceLater": "Later",
         "noAssetsYet": "No assets yet.",
         "later": "Later."
+      },
+      "routeStatus": {
+        "chat": {
+          "auth": "Sign in to use messages.",
+          "failure": "Messages could not be loaded right now.",
+          "incomplete": "The messages response was incomplete. Try loading it again.",
+          "title": "Messages"
+        },
+        "community": {
+          "auth": "Sign in to view this community.",
+          "failure": "The community could not be loaded right now.",
+          "incomplete": "The community response was incomplete. Try loading it again.",
+          "title": "Community",
+          "createPost": "Create Post",
+          "modTools": "Mod Tools"
+        },
+        "createCommunity": {
+          "auth": "Sign in to create a community.",
+          "failure": "The create community page could not be loaded right now.",
+          "incomplete": "The create community response was incomplete. Try loading it again.",
+          "title": "Create a community",
+          "verifyDescription": "Verify before creating a community.",
+          "verifyPendingDescription": "Complete your palm scan to continue.",
+          "verifyPendingTitle": "Finish verification",
+          "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+          "verifyStartTitle": "Verify",
+          "reopenVerification": "Reopen verification",
+          "startVerification": "Start verification"
+        },
+        "createPost": {
+          "auth": "Sign in to create a post.",
+          "failure": "The post composer could not be loaded right now.",
+          "incomplete": "The community response was incomplete. Try loading the composer again.",
+          "title": "Create post",
+          "backToCommunity": "Back to community",
+          "membershipRequiredDescription": "Only community members can publish posts here.",
+          "membershipRequiredTitle": "Join this community before posting"
+        },
+        "home": {
+          "auth": "Sign in to view your home feed.",
+          "failure": "The home feed could not be loaded right now.",
+          "incomplete": "The home feed response was incomplete. Try loading it again.",
+          "title": "Home",
+          "createCommunity": "Create community",
+          "emptyHomeBody": "Join a community or create one to start building your home feed.",
+          "emptyHomeTitle": "No posts yet",
+          "emptyYourCommunitiesBody": "Communities you create or join show up here.",
+          "emptyYourCommunitiesTitle": "No communities yet"
+        },
+        "inbox": {
+          "auth": "Sign in to view your inbox.",
+          "failure": "The inbox could not be loaded right now.",
+          "incomplete": "The inbox response was incomplete. Try loading it again.",
+          "title": "Inbox"
+        },
+        "moderation": {
+          "auth": "Sign in to access mod tools.",
+          "failure": "This moderation page could not be loaded right now.",
+          "incomplete": "The community response was incomplete.",
+          "title": "Moderator tools",
+          "accessRequiredDescription": "Only community moderators can open this page.",
+          "accessRequiredTitle": "Moderator access required"
+        },
+        "onboarding": {
+          "auth": "Sign in to continue onboarding.",
+          "failure": "The onboarding flow could not be loaded right now.",
+          "incomplete": "The onboarding response was incomplete. Try loading it again."
+        },
+        "post": {
+          "auth": "Sign in to view this post.",
+          "failure": "The post could not be loaded right now.",
+          "incomplete": "The post response was incomplete. Try loading it again.",
+          "title": "Post"
+        },
+        "profile": {
+          "auth": "Sign in to view your profile.",
+          "failure": "The profile could not be loaded right now.",
+          "incomplete": "The profile response was incomplete. Try loading it again.",
+          "title": "Profile"
+        },
+        "settings": {
+          "auth": "Sign in to access settings.",
+          "failure": "The settings page could not be loaded right now.",
+          "incomplete": "The settings response was incomplete. Try loading it again.",
+          "title": "Settings"
+        },
+        "wallet": {
+          "auth": "Sign in to view your wallet.",
+          "failure": "The wallet could not be loaded right now.",
+          "incomplete": "The wallet response was incomplete. Try loading it again.",
+          "title": "Wallet"
+        },
+        "yourCommunities": {
+          "auth": "Sign in to view your communities.",
+          "failure": "Your communities could not be loaded right now.",
+          "incomplete": "Your communities response was incomplete. Try loading it again.",
+          "title": "Your Communities"
+        }
       }
     },
     "shell": {
@@ -2338,6 +2436,104 @@ export const GENERATED_LOCALE_CATALOGS = {
         "balanceLater": "لاحقًا",
         "noAssetsYet": "لا توجد أصول بعد.",
         "later": "لاحقًا."
+      },
+      "routeStatus": {
+        "chat": {
+          "auth": "Sign in to use messages.",
+          "failure": "Messages could not be loaded right now.",
+          "incomplete": "The messages response was incomplete. Try loading it again.",
+          "title": "Messages"
+        },
+        "community": {
+          "auth": "Sign in to view this community.",
+          "failure": "The community could not be loaded right now.",
+          "incomplete": "The community response was incomplete. Try loading it again.",
+          "title": "Community",
+          "createPost": "Create Post",
+          "modTools": "Mod Tools"
+        },
+        "createCommunity": {
+          "auth": "Sign in to create a community.",
+          "failure": "The create community page could not be loaded right now.",
+          "incomplete": "The create community response was incomplete. Try loading it again.",
+          "title": "Create a community",
+          "verifyDescription": "Verify before creating a community.",
+          "verifyPendingDescription": "Complete your palm scan to continue.",
+          "verifyPendingTitle": "Finish verification",
+          "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+          "verifyStartTitle": "Verify",
+          "reopenVerification": "Reopen verification",
+          "startVerification": "Start verification"
+        },
+        "createPost": {
+          "auth": "Sign in to create a post.",
+          "failure": "The post composer could not be loaded right now.",
+          "incomplete": "The community response was incomplete. Try loading the composer again.",
+          "title": "Create post",
+          "backToCommunity": "Back to community",
+          "membershipRequiredDescription": "Only community members can publish posts here.",
+          "membershipRequiredTitle": "Join this community before posting"
+        },
+        "home": {
+          "auth": "Sign in to view your home feed.",
+          "failure": "The home feed could not be loaded right now.",
+          "incomplete": "The home feed response was incomplete. Try loading it again.",
+          "title": "Home",
+          "createCommunity": "Create community",
+          "emptyHomeBody": "Join a community or create one to start building your home feed.",
+          "emptyHomeTitle": "No posts yet",
+          "emptyYourCommunitiesBody": "Communities you create or join show up here.",
+          "emptyYourCommunitiesTitle": "No communities yet"
+        },
+        "inbox": {
+          "auth": "Sign in to view your inbox.",
+          "failure": "The inbox could not be loaded right now.",
+          "incomplete": "The inbox response was incomplete. Try loading it again.",
+          "title": "Inbox"
+        },
+        "moderation": {
+          "auth": "Sign in to access mod tools.",
+          "failure": "This moderation page could not be loaded right now.",
+          "incomplete": "The community response was incomplete.",
+          "title": "Moderator tools",
+          "accessRequiredDescription": "Only community moderators can open this page.",
+          "accessRequiredTitle": "Moderator access required"
+        },
+        "onboarding": {
+          "auth": "Sign in to continue onboarding.",
+          "failure": "The onboarding flow could not be loaded right now.",
+          "incomplete": "The onboarding response was incomplete. Try loading it again."
+        },
+        "post": {
+          "auth": "Sign in to view this post.",
+          "failure": "The post could not be loaded right now.",
+          "incomplete": "The post response was incomplete. Try loading it again.",
+          "title": "Post"
+        },
+        "profile": {
+          "auth": "Sign in to view your profile.",
+          "failure": "The profile could not be loaded right now.",
+          "incomplete": "The profile response was incomplete. Try loading it again.",
+          "title": "Profile"
+        },
+        "settings": {
+          "auth": "Sign in to access settings.",
+          "failure": "The settings page could not be loaded right now.",
+          "incomplete": "The settings response was incomplete. Try loading it again.",
+          "title": "Settings"
+        },
+        "wallet": {
+          "auth": "Sign in to view your wallet.",
+          "failure": "The wallet could not be loaded right now.",
+          "incomplete": "The wallet response was incomplete. Try loading it again.",
+          "title": "Wallet"
+        },
+        "yourCommunities": {
+          "auth": "Sign in to view your communities.",
+          "failure": "Your communities could not be loaded right now.",
+          "incomplete": "Your communities response was incomplete. Try loading it again.",
+          "title": "Your Communities"
+        }
       }
     },
     "shell": {
@@ -3580,6 +3776,104 @@ export const GENERATED_LOCALE_CATALOGS = {
         "balanceLater": "稍后",
         "noAssetsYet": "还没有资产。",
         "later": "稍后。"
+      },
+      "routeStatus": {
+        "chat": {
+          "auth": "Sign in to use messages.",
+          "failure": "Messages could not be loaded right now.",
+          "incomplete": "The messages response was incomplete. Try loading it again.",
+          "title": "Messages"
+        },
+        "community": {
+          "auth": "Sign in to view this community.",
+          "failure": "The community could not be loaded right now.",
+          "incomplete": "The community response was incomplete. Try loading it again.",
+          "title": "Community",
+          "createPost": "Create Post",
+          "modTools": "Mod Tools"
+        },
+        "createCommunity": {
+          "auth": "Sign in to create a community.",
+          "failure": "The create community page could not be loaded right now.",
+          "incomplete": "The create community response was incomplete. Try loading it again.",
+          "title": "Create a community",
+          "verifyDescription": "Verify before creating a community.",
+          "verifyPendingDescription": "Complete your palm scan to continue.",
+          "verifyPendingTitle": "Finish verification",
+          "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
+          "verifyStartTitle": "Verify",
+          "reopenVerification": "Reopen verification",
+          "startVerification": "Start verification"
+        },
+        "createPost": {
+          "auth": "Sign in to create a post.",
+          "failure": "The post composer could not be loaded right now.",
+          "incomplete": "The community response was incomplete. Try loading the composer again.",
+          "title": "Create post",
+          "backToCommunity": "Back to community",
+          "membershipRequiredDescription": "Only community members can publish posts here.",
+          "membershipRequiredTitle": "Join this community before posting"
+        },
+        "home": {
+          "auth": "Sign in to view your home feed.",
+          "failure": "The home feed could not be loaded right now.",
+          "incomplete": "The home feed response was incomplete. Try loading it again.",
+          "title": "Home",
+          "createCommunity": "Create community",
+          "emptyHomeBody": "Join a community or create one to start building your home feed.",
+          "emptyHomeTitle": "No posts yet",
+          "emptyYourCommunitiesBody": "Communities you create or join show up here.",
+          "emptyYourCommunitiesTitle": "No communities yet"
+        },
+        "inbox": {
+          "auth": "Sign in to view your inbox.",
+          "failure": "The inbox could not be loaded right now.",
+          "incomplete": "The inbox response was incomplete. Try loading it again.",
+          "title": "Inbox"
+        },
+        "moderation": {
+          "auth": "Sign in to access mod tools.",
+          "failure": "This moderation page could not be loaded right now.",
+          "incomplete": "The community response was incomplete.",
+          "title": "Moderator tools",
+          "accessRequiredDescription": "Only community moderators can open this page.",
+          "accessRequiredTitle": "Moderator access required"
+        },
+        "onboarding": {
+          "auth": "Sign in to continue onboarding.",
+          "failure": "The onboarding flow could not be loaded right now.",
+          "incomplete": "The onboarding response was incomplete. Try loading it again."
+        },
+        "post": {
+          "auth": "Sign in to view this post.",
+          "failure": "The post could not be loaded right now.",
+          "incomplete": "The post response was incomplete. Try loading it again.",
+          "title": "Post"
+        },
+        "profile": {
+          "auth": "Sign in to view your profile.",
+          "failure": "The profile could not be loaded right now.",
+          "incomplete": "The profile response was incomplete. Try loading it again.",
+          "title": "Profile"
+        },
+        "settings": {
+          "auth": "Sign in to access settings.",
+          "failure": "The settings page could not be loaded right now.",
+          "incomplete": "The settings response was incomplete. Try loading it again.",
+          "title": "Settings"
+        },
+        "wallet": {
+          "auth": "Sign in to view your wallet.",
+          "failure": "The wallet could not be loaded right now.",
+          "incomplete": "The wallet response was incomplete. Try loading it again.",
+          "title": "Wallet"
+        },
+        "yourCommunities": {
+          "auth": "Sign in to view your communities.",
+          "failure": "Your communities could not be loaded right now.",
+          "incomplete": "Your communities response was incomplete. Try loading it again.",
+          "title": "Your Communities"
+        }
       }
     },
     "shell": {

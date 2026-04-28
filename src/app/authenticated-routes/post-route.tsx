@@ -2,14 +2,16 @@
 
 import * as React from "react";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
+import { Plus } from "@phosphor-icons/react";
 
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { useSession } from "@/lib/api/session-store";
 import { navigate } from "@/app/router";
-import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
-import { ContentRailShell } from "@/components/compositions/content-rail-shell/content-rail-shell";
-import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
-import { PostThread } from "@/components/compositions/post-thread/post-thread";
+import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
+import { ContentRailShell } from "@/components/compositions/app/content-rail-shell/content-rail-shell";
+import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
+import { PostThread } from "@/components/compositions/posts/post-thread/post-thread";
+import { IconButton } from "@/components/primitives/icon-button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -17,8 +19,9 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { buildCommunityPreviewSidebar } from "./community-sidebar-helpers";
 import { NotFoundPage } from "./misc-routes";
 import { toThreadPostCard, shouldShowOriginalPost } from "./post-presentation";
-import { getErrorMessage, useRouteContentLocale, useRouteMessages } from "./route-core";
-import { getRouteAuthDescription, getRouteFailureDescription, getRouteIncompleteDescription, getRouteTitle } from "./route-status-copy";
+import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
+import { useRouteMessages } from "@/hooks/use-route-messages";
+import { getErrorMessage } from "@/lib/error-utils";
 import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "./route-shell";
 import { useSongPurchaseFlow } from "./song-purchase";
 import { useSongCommerceState, useSongPlayback } from "./song-commerce";
@@ -35,16 +38,26 @@ function closeMobileThread(fallbackPath: string) {
 
 function MobileThreadShell({
   children,
+  createPostPath,
   fallbackPath,
   title,
 }: {
   children: React.ReactNode;
+  createPostPath?: string | null;
   fallbackPath: string;
   title: string;
 }) {
   return (
     <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-      <MobilePageHeader onCloseClick={() => closeMobileThread(fallbackPath)} title={title} />
+      <MobilePageHeader
+        onCloseClick={() => closeMobileThread(fallbackPath)}
+        title={title}
+        trailingAction={createPostPath ? (
+          <IconButton aria-label="Create post" onClick={() => navigate(createPostPath)} variant="ghost">
+            <Plus className="size-6" weight="bold" />
+          </IconButton>
+        ) : undefined}
+      />
       <section className="min-w-0 flex-1 px-0 pt-[calc(env(safe-area-inset-top)+4rem)]">
         {children}
       </section>
@@ -57,7 +70,7 @@ export function PostPage({ postId }: { postId: string }) {
   const isMobile = useIsMobile();
   const { locale } = useUiLocale();
   const { copy } = useRouteMessages();
-  const pageTitle = getRouteTitle("post") ?? "Post";
+  const pageTitle = copy.routeStatus.post.title ?? "Post";
   const contentLocale = useRouteContentLocale();
   const translationLabels = React.useMemo(() => ({
     cancelReplyLabel: copy.common.cancelReply,
@@ -75,15 +88,21 @@ export function PostPage({ postId }: { postId: string }) {
   const commerceEnabled = Boolean(
     session?.user?.user_id
       && community?.community_id
-      && post?.post.post_type === "song"
+      && (post?.post.post_type === "song" || post?.post.post_type === "video")
       && post.post.asset_id,
   );
   const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(community?.community_id ?? "", commerceEnabled);
   const { buySong, purchaseModal } = useSongPurchaseFlow({ commerceEnabled, refreshSongCommerce });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
 
-  const handleBuySong = React.useCallback(async (listing: ApiCommunityListing, titleText: string, nextCommunityId: string) => {
+  const handleBuySong = React.useCallback(async (
+    listing: ApiCommunityListing,
+    titleText: string,
+    nextCommunityId: string,
+    assetLabel: "song" | "video" = "song",
+  ) => {
     await buySong({
+      assetLabel,
       communityId: nextCommunityId,
       listing,
       successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} unlocked for ${settlement.purchase_price_usd}.`,
@@ -104,10 +123,10 @@ export function PostPage({ postId }: { postId: string }) {
 
   if (error) {
     const errorBody = isApiAuthError(error)
-      ? <AuthRequiredRouteState description={getRouteAuthDescription("post")} title={isMobile ? "" : pageTitle} />
+      ? <AuthRequiredRouteState description={copy.routeStatus.post.auth} title={isMobile ? "" : pageTitle} />
       : isApiNotFoundError(error)
         ? <NotFoundPage path={`/p/${postId}`} />
-        : <RouteLoadFailureState description={getErrorMessage(error, getRouteFailureDescription("post"))} title={isMobile ? "" : pageTitle} />;
+        : <RouteLoadFailureState description={getErrorMessage(error, copy.routeStatus.post.failure)} title={isMobile ? "" : pageTitle} />;
 
     if (isMobile) {
       return (
@@ -124,21 +143,26 @@ export function PostPage({ postId }: { postId: string }) {
     if (isMobile) {
       return (
         <MobileThreadShell fallbackPath="/" title={pageTitle}>
-          <RouteLoadFailureState description={getRouteIncompleteDescription("post")} title="" />
+          <RouteLoadFailureState description={copy.routeStatus.post.incomplete} title="" />
         </MobileThreadShell>
       );
     }
-    return <RouteLoadFailureState description={getRouteIncompleteDescription("post")} title={pageTitle} />;
+    return <RouteLoadFailureState description={copy.routeStatus.post.incomplete} title={pageTitle} />;
   }
 
   const threadAssetId = post.post.asset_id ?? null;
   const threadListing = threadAssetId ? listingsByAssetId[threadAssetId] : undefined;
   const threadPurchase = threadAssetId ? purchasesByAssetId[threadAssetId] : undefined;
-  const songOptions = post.post.post_type === "song" && community && threadAssetId
+  const songOptions = (post.post.post_type === "song" || post.post.post_type === "video") && community && threadAssetId
     ? {
       currentUserId: session?.user?.user_id,
       listing: threadListing,
-      onBuy: threadListing ? () => void handleBuySong(threadListing, post.post.title ?? "song", community.community_id) : undefined,
+      onBuy: threadListing ? () => void handleBuySong(
+        threadListing,
+        post.post.title ?? (post.post.post_type === "video" ? "video" : "song"),
+        community.community_id,
+        post.post.post_type === "video" ? "video" : "song",
+      ) : undefined,
       playback: songPlayback,
       purchase: threadPurchase,
     }
@@ -156,18 +180,19 @@ export function PostPage({ postId }: { postId: string }) {
       showTranslationLabel: copy.common.showTranslation,
     })
     : undefined;
-  const communityPath = community ? buildCommunityPath(community.community_id, community.route_slug) : "/";
+  const communityPath = community ? buildCommunityPath(community.community_id) : "/";
+  const createPostPath = community ? `${buildCommunityPath(community.community_id)}/submit` : null;
+  const communitySidebarProps = community ? buildCommunityPreviewSidebar(community, locale) : null;
   const threadBody = (
     <>
       {gateModal}
       {purchaseModal}
-      <ContentRailShell rail={!isMobile && community ? <CommunitySidebar {...buildCommunityPreviewSidebar(community, locale)} /> : undefined}>
+      <ContentRailShell rail={!isMobile && communitySidebarProps ? <CommunitySidebar {...communitySidebarProps} /> : undefined}>
         <PostThread
           availableCommentSorts={[
             { label: copy.common.bestTab, value: "best" },
             { label: copy.common.newTab, value: "new" },
             { label: copy.common.topTab, value: "top" },
-            { label: copy.common.oldTab ?? "Old", value: "old" },
           ]}
           commentSort={commentSort}
           commentsHeading={copy.common.commentsHeading}
@@ -190,7 +215,7 @@ export function PostPage({ postId }: { postId: string }) {
 
   if (isMobile) {
     return (
-      <MobileThreadShell fallbackPath={communityPath} title={pageTitle}>
+      <MobileThreadShell createPostPath={session ? createPostPath : null} fallbackPath={communityPath} title={pageTitle}>
         {threadBody}
       </MobileThreadShell>
     );

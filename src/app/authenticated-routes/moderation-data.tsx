@@ -6,12 +6,11 @@ import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import { useApi } from "@/lib/api";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { useSession } from "@/lib/api/session-store";
-import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
+import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 
 import type { CommunityModerationSection } from "./moderation-helpers";
 import { NotFoundPage } from "./misc-routes";
-import { getErrorMessage } from "./route-core";
-import { getRouteAuthDescription, getRouteFailureDescription, getRouteIncompleteDescription, getRouteString } from "./route-status-copy";
+import { getErrorMessage } from "@/lib/error-utils";
 import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState, StackPageShell, StatusCard } from "./route-shell";
 
 export function getCommunityModerationTitle(
@@ -101,6 +100,11 @@ export function CommunityModerationGuard({
   session,
   showInlineTitle = true,
   title,
+  authDescription,
+  failureDescription,
+  incompleteDescription,
+  accessRequiredDescription,
+  accessRequiredTitle,
 }: {
   community: ApiCommunity | null;
   error: unknown;
@@ -108,6 +112,11 @@ export function CommunityModerationGuard({
   session: ReturnType<typeof useSession>;
   showInlineTitle?: boolean;
   title: string;
+  authDescription: string;
+  failureDescription: string;
+  incompleteDescription: string;
+  accessRequiredDescription: string;
+  accessRequiredTitle: string;
 }) {
   if (loading) {
     return <FullPageSpinner />;
@@ -115,7 +124,7 @@ export function CommunityModerationGuard({
 
   if (error) {
     if (isApiAuthError(error)) {
-      return <AuthRequiredRouteState description={getRouteAuthDescription("moderation")} title={showInlineTitle ? title : ""} />;
+      return <AuthRequiredRouteState description={authDescription} title={showInlineTitle ? title : ""} />;
     }
 
     if (isApiNotFoundError(error)) {
@@ -124,22 +133,22 @@ export function CommunityModerationGuard({
 
     return (
       <RouteLoadFailureState
-        description={getErrorMessage(error, getRouteFailureDescription("moderation"))}
+        description={getErrorMessage(error, failureDescription)}
         title={showInlineTitle ? title : ""}
       />
     );
   }
 
   if (!community) {
-    return <RouteLoadFailureState description={getRouteIncompleteDescription("moderation")} title={showInlineTitle ? title : ""} />;
+    return <RouteLoadFailureState description={incompleteDescription} title={showInlineTitle ? title : ""} />;
   }
 
   if (session?.user?.user_id !== community.created_by_user_id) {
     return (
       <StackPageShell title={showInlineTitle ? title : ""}>
         <StatusCard
-          description={getRouteString("moderation", "accessRequiredDescription", "Only community moderators can open this page.")}
-          title={getRouteString("moderation", "accessRequiredTitle", "Moderator access required")}
+          description={accessRequiredDescription}
+          title={accessRequiredTitle}
           tone="warning"
         />
       </StackPageShell>

@@ -94,8 +94,7 @@ function getPassportPrompt(
 
   return {
     title: "Higher Score Required",
-    description:
-      "We can't determine that you're a unique human from your wallet activity. Improve your score and try again.",
+    description: "Are you human? Improve your wallet score and try again.",
     actionLabel: "Visit Passport.xyz",
     href: "https://app.passport.xyz/",
   };
@@ -148,7 +147,6 @@ export function CommunityMembershipGatePanel({
     eligibility.status !== "already_joined" &&
     eligibility.status !== "banned";
   const showPromptAction = activePrompt?.href;
-  const descriptionTone = joinError ? "text-warning" : "text-muted-foreground";
   const verificationIcon = isVeryVerificationRequired
     ? "very"
     : isInlineVerificationRequired
@@ -186,7 +184,6 @@ export function CommunityMembershipGatePanel({
     <ActionCalloutPanel
       action={action}
       description={description}
-      descriptionClassName={descriptionTone}
       icon={
         verificationIcon ? (
           <VerificationIconBadge icon={verificationIcon} />

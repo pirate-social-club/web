@@ -29,18 +29,18 @@ export function ActionCalloutPanel({
         <div
           className={cn(
             "min-w-0",
-            icon ? "flex items-start gap-3" : "space-y-1.5",
+            icon ? "flex items-start gap-4" : "space-y-2",
           )}
         >
           {icon}
-          <div className={cn("min-w-0", icon && "space-y-1.5")}>
+          <div className={cn("min-w-0", icon && "space-y-2")}>
             <Type as="p" variant="h4" className="leading-7">
               {title}
             </Type>
             {description ? (
               <p
                 className={cn(
-                  "text-base leading-6 text-muted-foreground",
+                  "text-base leading-7 text-muted-foreground",
                   descriptionClassName,
                 )}
               >

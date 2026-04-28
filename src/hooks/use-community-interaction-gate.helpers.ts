@@ -202,7 +202,7 @@ function getPassportPromptDescription(
   if (normalized.startsWith("ar") || normalized.startsWith("zh"))
     return fallback;
 
-  return "We can't determine that you're a unique human from your wallet activity. Improve your score and try again.";
+  return "Are you human? Improve your wallet score and try again.";
 }
 
 function getJoinGateTitle(

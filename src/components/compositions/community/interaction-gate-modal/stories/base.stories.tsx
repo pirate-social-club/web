@@ -145,7 +145,7 @@ export const VerificationRequiredPassport: Story = {
   name: "States / Verification required Passport",
   render: () => (
     <GateModalStory
-      description="We can't determine that you're a unique human from your wallet activity. Improve your score and try again."
+      description="Are you human? Improve your wallet score and try again."
       icon="passport"
       primaryAction={{
         href: "https://app.passport.xyz/",
@@ -226,7 +226,7 @@ export const MobileVerificationRequiredPassport: Story = {
   },
   render: () => (
     <GateModalStory
-      description="We can't determine that you're a unique human from your wallet activity. Improve your score and try again."
+      description="Are you human? Improve your wallet score and try again."
       icon="passport"
       primaryAction={{
         href: "https://app.passport.xyz/",

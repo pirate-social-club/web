@@ -16,7 +16,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { useUiLocale } from "@/lib/ui-locale";
 
-import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
+import { buildCommunityPreviewSidebar, buildCommunitySidebarModeratorFromProfile } from "@/app/authenticated-helpers/community-sidebar-helpers";
 import { NotFoundPage } from "./misc-routes";
 import { toThreadPostCard, shouldShowOriginalPost } from "@/app/authenticated-helpers/post-presentation";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
@@ -84,7 +84,7 @@ export function PostPage({ postId }: { postId: string }) {
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, comments, createTopLevelComment, error, gateModal, loading, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, communityOwnerUserId, authorProfile, comments, createTopLevelComment, error, gateModal, loading, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const commerceEnabled = Boolean(
     session?.user?.user_id
       && community?.community_id
@@ -183,11 +183,18 @@ export function PostPage({ postId }: { postId: string }) {
   const communityPath = community ? buildCommunityPath(community.community_id) : "/";
   const createPostPath = community ? `${buildCommunityPath(community.community_id)}/submit` : null;
   const communitySidebarProps = community ? buildCommunityPreviewSidebar(community, locale) : null;
+  const moderator = communitySidebarProps?.moderator
+    ?? (communityOwnerUserId && communityOwnerUserId === session?.user.user_id
+      ? buildCommunitySidebarModeratorFromProfile(session.profile)
+      : null);
+  const threadSidebarProps = communitySidebarProps
+    ? { ...communitySidebarProps, moderator }
+    : null;
   const threadBody = (
     <>
       {gateModal}
       {purchaseModal}
-      <ContentRailShell rail={!isMobile && communitySidebarProps ? <CommunitySidebar {...communitySidebarProps} /> : undefined}>
+      <ContentRailShell rail={!isMobile && threadSidebarProps ? <CommunitySidebar {...threadSidebarProps} /> : undefined}>
         <PostThread
           availableCommentSorts={[
             { label: copy.common.bestTab, value: "best" },

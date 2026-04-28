@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import type { CommunityPreview as ApiCommunityPreview, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
+import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
@@ -88,6 +89,7 @@ export function usePost(
   const { locale: uiLocale } = useUiLocale();
   const [post, setPost] = React.useState<ApiPost | null>(null);
   const [community, setCommunity] = React.useState<ApiCommunityPreview | null>(null);
+  const [communityOwnerUserId, setCommunityOwnerUserId] = React.useState<string | null>(null);
   const [authorProfile, setAuthorProfile] = React.useState<ApiProfile | null>(null);
   const [availableAgent, setAvailableAgent] = React.useState<AvailableSigningAgent | null>(null);
   const [commentNodes, setCommentNodes] = React.useState<ThreadCommentNode[]>([]);
@@ -319,6 +321,7 @@ export function usePost(
     setError(null);
     setCommentNodes([]);
     setAuthorProfilesByUserId({});
+    setCommunityOwnerUserId(null);
     setReadMode(hasSession ? "authenticated" : "public");
 
     const loadPost = async (): Promise<{ post: ApiPost; readMode: PostReadMode }> => {
@@ -356,6 +359,9 @@ export function usePost(
           loadTopLevelComments(p.post.community_id, nextReadMode, commentSort),
           hasSession ? api.agents.list().catch(() => null) : Promise.resolve(null),
         ]);
+        const ownerCommunityResult = hasSession && communityResult && !communityResult.moderator
+          ? await api.communities.get(p.post.community_id, { locale }).catch((): ApiCommunity | null => null)
+          : null;
         const authorProfilesByUserId = await loadProfilesByUserId(
           api,
           [...(p.post.identity_mode === "public" && p.post.author_user_id ? [p.post.author_user_id] : [])],
@@ -364,6 +370,7 @@ export function usePost(
         if (cancelled) return;
         setPost(p);
         setCommunity(communityResult);
+        setCommunityOwnerUserId(ownerCommunityResult?.created_by_user_id ?? null);
         setReadMode(nextReadMode);
         setAvailableAgent(ownedAgentsResult ? await resolveAvailableSigningAgent(ownedAgentsResult.items) : null);
         if (p.post.identity_mode === "public" && p.post.author_user_id && !authorProfilesByUserId[p.post.author_user_id]) {
@@ -428,6 +435,7 @@ export function usePost(
   return {
     post,
     community,
+    communityOwnerUserId,
     authorProfile,
     comments,
     availableAgent,

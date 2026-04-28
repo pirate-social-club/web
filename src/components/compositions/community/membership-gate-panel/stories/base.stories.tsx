@@ -237,36 +237,6 @@ export const PassportScoreRequired: Story = {
   ),
 };
 
-export const PassportScoreTooLow: Story = {
-  name: "States / Passport Score Too Low",
-  args: { gates: [] },
-  render: () => (
-    <CommunityMembershipGatePanel
-      gates={[{ gate_type: "wallet_score", minimum_score: 30 }]}
-      eligibility={{
-        community_id: "community_passport_score_low",
-        membership_mode: "gated",
-        human_verification_lane: "self",
-        joinable_now: false,
-        status: "gate_failed",
-        membership_gate_summaries: [
-          { gate_type: "wallet_score", minimum_score: 30 },
-        ],
-        missing_capabilities: [],
-        suggested_verification_provider: "passport",
-        suggested_verification_intent: null,
-        failure_reason: "wallet_score_too_low",
-        wallet_score_status: {
-          current_score: 24,
-          required_score: 30,
-          passing_score: false,
-          last_score_timestamp: null,
-        },
-      }}
-    />
-  ),
-};
-
 export const Mobile: Story = {
   name: "Mobile layout",
   args: { gates: [] },

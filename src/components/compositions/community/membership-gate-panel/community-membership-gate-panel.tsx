@@ -7,7 +7,10 @@ import type {
 import { ArrowSquareOut } from "@phosphor-icons/react";
 
 import { ActionCalloutPanel } from "@/components/compositions/community/action-callout-panel/action-callout-panel";
-import { VerificationIconBadge } from "@/components/compositions/verification/verification-modal-header/verification-modal-header";
+import {
+  VerificationIconBadge,
+  type VerificationModalIconKind,
+} from "@/components/compositions/verification/verification-modal-header/verification-modal-header";
 import { Button } from "@/components/primitives/button";
 import { VerificationAppDownloadLinks } from "@/components/compositions/verification/verification-app-download-links/verification-app-download-links";
 import { FormNote } from "@/components/primitives/form-layout";
@@ -100,6 +103,32 @@ function getPassportPrompt(
   };
 }
 
+function getPanelIcon(input: {
+  eligibility: JoinEligibility | null | undefined;
+  isInlineVerificationRequired: boolean;
+  isVeryVerificationRequired: boolean;
+  passportPrompt: VerificationPrompt | null;
+}): VerificationModalIconKind | null {
+  if (input.passportPrompt) return "passport";
+  if (input.isVeryVerificationRequired) return "very";
+  if (input.isInlineVerificationRequired) return "self";
+
+  switch (input.eligibility?.status) {
+    case "joinable":
+    case "requestable":
+      return "join";
+    case "pending_request":
+      return "pending";
+    case "already_joined":
+      return "ready";
+    case "gate_failed":
+    case "banned":
+      return "blocked";
+    default:
+      return null;
+  }
+}
+
 export function CommunityMembershipGatePanel({
   gates,
   eligibility,
@@ -147,11 +176,12 @@ export function CommunityMembershipGatePanel({
     eligibility.status !== "already_joined" &&
     eligibility.status !== "banned";
   const showPromptAction = activePrompt?.href;
-  const verificationIcon = isVeryVerificationRequired
-    ? "very"
-    : isInlineVerificationRequired
-      ? "self"
-      : null;
+  const panelIcon = getPanelIcon({
+    eligibility,
+    isInlineVerificationRequired,
+    isVeryVerificationRequired,
+    passportPrompt,
+  });
   const action = showPromptAction ? (
     <Button
       asChild
@@ -184,11 +214,7 @@ export function CommunityMembershipGatePanel({
     <ActionCalloutPanel
       action={action}
       description={description}
-      icon={
-        verificationIcon ? (
-          <VerificationIconBadge icon={verificationIcon} />
-        ) : null
-      }
+      icon={panelIcon ? <VerificationIconBadge icon={panelIcon} /> : null}
       title={title}
     >
       {isVeryVerificationRequired ? (

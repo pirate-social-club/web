@@ -1,6 +1,6 @@
-# Pirate Social Club Web
+# Pirate Web
 
-Active web UI for Pirate Social Club.
+Active web UI for Pirate.
 
 React 19 + Vite + Cloudflare Workers (rwsdk). Tailwind CSS v4 + Radix UI. Bun for installs and scripts.
 

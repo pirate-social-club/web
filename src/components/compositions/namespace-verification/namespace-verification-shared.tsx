@@ -111,7 +111,7 @@ export function NamespaceVerificationChallengeMessage({ value }: { value: string
 
 function buildSpacesPublishCommand(challengePayload: SpacesChallengePayload) {
   const root = `@${challengePayload.root_label}`;
-  const publisher = "github.com/pirate-social-club/pirate-spaces-publisher@v0.1.0";
+  const publisher = "github.com/pirate/pirate-spaces-publisher@v0.1.0";
   return [
     `go run ${publisher} publish ${shellQuote(root)} \\`,
     "  --wallet-export '/full/path/to/your-wallet-export.json' \\",

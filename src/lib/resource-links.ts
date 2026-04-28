@@ -60,7 +60,7 @@ export function resolveResourceHref(
     case "blog":
       return "https://blog.pirate.sc";
     case "source-github":
-      return "https://github.com/pirate-social-club";
+      return "https://github.com/pirate";
     case "source-freedom-browser":
       return "https://github.com/solardev-xyz/freedom-browser";
     case "source-radicle-api":

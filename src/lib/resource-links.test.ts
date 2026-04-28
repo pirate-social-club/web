@@ -10,7 +10,7 @@ describe("resolveResourceHref", () => {
   });
 
   test("resolves source links", () => {
-    expect(resolveResourceHref("source-github")).toBe("https://github.com/pirate-social-club");
+    expect(resolveResourceHref("source-github")).toBe("https://github.com/pirate");
     expect(resolveResourceHref("source-freedom-browser")).toBe(
       "https://github.com/solardev-xyz/freedom-browser",
     );

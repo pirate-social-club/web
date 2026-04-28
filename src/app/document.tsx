@@ -37,7 +37,7 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#222324" />
-        <title>Pirate Social Club</title>
+        <title>Pirate</title>
         {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
         {!ctx.isIndexable ? <meta name="robots" content="noindex, nofollow" /> : null}
         <link rel="stylesheet" href={stylesUrl} />

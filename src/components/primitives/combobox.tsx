@@ -145,7 +145,7 @@ const ComboboxItem = React.forwardRef<
     <ComboboxPrimitive.ItemIndicator className="absolute start-2.5 flex size-5 items-center justify-center text-primary data-[selected=false]:hidden">
       <Check className="size-4" weight="bold" />
     </ComboboxPrimitive.ItemIndicator>
-    <div className="min-w-0 flex-1 pl-6">{children}</div>
+    <div className="min-w-0 flex-1 ps-6">{children}</div>
   </ComboboxPrimitive.Item>
 ));
 ComboboxItem.displayName = ComboboxPrimitive.Item.displayName;

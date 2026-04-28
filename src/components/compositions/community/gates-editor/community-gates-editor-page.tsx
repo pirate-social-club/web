@@ -266,7 +266,7 @@ export function CommunityGatesEditorPage({
             />
 
             {nationalityGate ? (
-              <div className="space-y-2 border-l-2 border-primary pl-4">
+              <div className="space-y-2 border-s-2 border-primary ps-4">
                 <FormFieldLabel label={mc.allowedNationalityLabel} />
                 <NationalityMultiPicker
                   onChange={(codes) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
@@ -298,7 +298,7 @@ export function CommunityGatesEditorPage({
             />
 
             {minimumAgeGate ? (
-              <div className="space-y-2 border-l-2 border-primary pl-4">
+              <div className="space-y-2 border-s-2 border-primary ps-4">
                 <FormFieldLabel label={mc.minimumAgeLabel} />
                 <NumericStepper
                   max={125}
@@ -333,7 +333,7 @@ export function CommunityGatesEditorPage({
             />
 
             {walletScoreGate ? (
-              <div className="space-y-2 border-l-2 border-primary pl-4">
+              <div className="space-y-2 border-s-2 border-primary ps-4">
                 <FormFieldLabel label={mc.walletScoreLabel} />
                 <NumericStepper
                   max={100}
@@ -368,7 +368,7 @@ export function CommunityGatesEditorPage({
             />
 
             {erc721Gate ? (
-              <div className="space-y-2 border-l-2 border-primary pl-4">
+              <div className="space-y-2 border-s-2 border-primary ps-4">
                 <FormFieldLabel label={mc.collectionContractLabel} />
                 <Input
                   className="h-12 rounded-[var(--radius-lg)]"

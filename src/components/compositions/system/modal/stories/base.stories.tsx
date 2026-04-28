@@ -59,7 +59,7 @@ function ModalShell({
           {isBottomSheet ? (
             <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-border" />
           ) : null}
-          <ModalHeader className="pr-10 text-left">
+          <ModalHeader className="pe-10 text-start">
             <ModalTitle className="text-balance text-2xl leading-tight tracking-tight sm:text-3xl">
               {title}
             </ModalTitle>

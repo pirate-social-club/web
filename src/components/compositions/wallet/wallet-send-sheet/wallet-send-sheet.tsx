@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   ArrowLeft,
+  ArrowRight,
   CheckCircle,
   Copy,
   MagnifyingGlass,
@@ -22,6 +23,7 @@ import { Button } from "@/components/primitives/button";
 import { Input } from "@/components/primitives/input";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
+import { useUiLocale } from "@/lib/ui-locale";
 import { ChainIcon, TokenChainIcon } from "../wallet-hub/wallet-visuals";
 import {
   formatShortAddress,
@@ -50,9 +52,11 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
 }
 
 function StepBackButton({ onClick }: { onClick: () => void }) {
+  const { isRtl } = useUiLocale();
+
   return (
     <Button aria-label="Back" className="size-10" onClick={onClick} size="icon" variant="ghost">
-      <ArrowLeft aria-hidden="true" className="size-5" />
+      {isRtl ? <ArrowRight aria-hidden="true" className="size-5" /> : <ArrowLeft aria-hidden="true" className="size-5" />}
     </Button>
   );
 }
@@ -101,7 +105,7 @@ function AssetStep({
   return (
     <div className="mt-5 space-y-4">
       <label className="relative block">
-        <MagnifyingGlass aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
+        <MagnifyingGlass aria-hidden="true" className="pointer-events-none absolute start-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
         <Input
           className="ps-11"
           onChange={(event) => setQuery(event.target.value)}

@@ -33,6 +33,10 @@ function formatJoinedLabel(createdAt: string, localeTag: string): string {
   });
 }
 
+function resolveHtmlDir(localeTag: string): "ltr" | "rtl" {
+  return localeTag.toLowerCase().startsWith("ar") ? "rtl" : "ltr";
+}
+
 function buildMetaDescription({
   bio,
   communityCount,
@@ -114,9 +118,10 @@ export function renderPublicProfilePage({
   const avatarMarkup = avatar
     ? `<img class="avatar-image" src="${escapeHtml(avatar)}" alt="${safeDisplayName}" />`
     : `<div class="avatar-fallback">${initials}</div>`;
+  const htmlDir = resolveHtmlDir(localeTag);
 
   return `<!doctype html>
-<html lang="${escapeHtml(localeTag)}" class="dark" data-theme="dark">
+<html lang="${escapeHtml(localeTag)}" dir="${htmlDir}" class="dark" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -246,9 +251,12 @@ export function renderPublicProfileErrorPage(
   title: string,
   description: string,
   status = 500,
+  localeTag = "en",
 ): Response {
+  const htmlDir = resolveHtmlDir(localeTag);
+
   return new Response(
-    `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(title)}</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0e0f11;color:#f4f4f5;font-family:ui-sans-serif,system-ui,sans-serif;padding:24px}main{max-width:720px;text-align:center;border:1px solid rgba(255,255,255,.08);background:#17191c;border-radius:28px;padding:32px}h1{margin:0 0 12px;font-size:34px;letter-spacing:-.04em}p{margin:0;color:#b3b6bd;font-size:18px;line-height:1.6}</style></head><body><main><h1>${escapeHtml(title)}</h1><p>${escapeHtml(description)}</p></main></body></html>`,
+    `<!doctype html><html lang="${escapeHtml(localeTag)}" dir="${htmlDir}"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(title)}</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0e0f11;color:#f4f4f5;font-family:ui-sans-serif,system-ui,sans-serif;padding:24px}main{max-width:720px;text-align:center;border:1px solid rgba(255,255,255,.08);background:#17191c;border-radius:28px;padding:32px}h1{margin:0 0 12px;font-size:34px;letter-spacing:-.04em}p{margin:0;color:#b3b6bd;font-size:18px;line-height:1.6}</style></head><body><main><h1>${escapeHtml(title)}</h1><p>${escapeHtml(description)}</p></main></body></html>`,
     {
       headers: {
         "content-type": "text/html; charset=utf-8",
@@ -264,11 +272,13 @@ export function renderPublicAgentPage({
   appOrigin,
   canonicalUrl,
   host,
+  localeTag = "en",
 }: {
   agentResolution: PublicAgentResolution;
   appOrigin: string;
   canonicalUrl: string;
   host: string;
+  localeTag?: string;
 }): Response {
   const handle = agentResolution.agent.handle.label_display;
   const displayName = agentResolution.agent.display_name?.trim() || handle;
@@ -279,17 +289,18 @@ export function renderPublicAgentPage({
   const safeHost = escapeHtml(host);
   const safeCanonicalUrl = escapeHtml(canonicalUrl);
   const safeOpenHref = `${appOrigin}/a/${encodeURIComponent(handle)}`;
-  const createdLabel = new Date(agentResolution.agent.created_at).toLocaleDateString("en-US", {
+  const createdLabel = new Date(agentResolution.agent.created_at).toLocaleDateString(localeTag, {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
   const safeCreatedLabel = escapeHtml(createdLabel);
   const safeProvider = escapeHtml(agentResolution.agent.ownership_provider ?? "agent");
+  const htmlDir = resolveHtmlDir(localeTag);
 
   return new Response(
     `<!doctype html>
-<html lang="en" class="dark" data-theme="dark">
+<html lang="${escapeHtml(localeTag)}" dir="${htmlDir}" class="dark" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -309,7 +320,7 @@ export function renderPublicAgentPage({
       .banner{height:160px;background:radial-gradient(circle at top left,rgba(255,122,24,.24),transparent 35%),linear-gradient(135deg,rgba(255,122,24,.14),rgba(255,255,255,.02))}
       .hero-body{padding:20px 20px 28px}.hero-row{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
       .avatar-wrap{position:relative;margin-top:-44px;width:96px;height:96px}.avatar{width:96px;height:96px;border-radius:999px;border:4px solid #17191c;background:rgba(255,122,24,.12);display:grid;place-items:center;font-weight:700;font-size:32px;color:#ffb174;box-shadow:0 24px 80px rgba(0,0,0,.32)}
-      .agent-badge{position:absolute;right:-4px;bottom:0;width:28px;height:28px;border-radius:999px;background:var(--accent);display:grid;place-items:center;color:#180e04;font-size:15px;font-weight:700;border:2px solid #fff}
+      .agent-badge{position:absolute;inset-inline-end:-4px;bottom:0;width:28px;height:28px;border-radius:999px;background:var(--accent);display:grid;place-items:center;color:#180e04;font-size:15px;font-weight:700;border:2px solid #fff}
       h1{font-size:clamp(38px,6vw,72px);line-height:.95;letter-spacing:-.06em;margin:0 0 12px}.handle{font-size:22px;color:var(--muted);margin-bottom:20px}.meta{display:flex;flex-wrap:wrap;gap:12px}.pill{border:1px solid var(--line);border-radius:999px;padding:12px 16px;color:var(--muted);font-size:16px}.pill strong{color:var(--text);margin-inline-end:8px}
       .owner-link{display:inline-block;margin-top:14px;color:var(--accent);text-decoration:none;font-weight:600}
       .owner-link:hover{text-decoration:underline}

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
@@ -12,6 +13,7 @@ import {
   type WalletHubAssetRow,
 } from "./wallet-hub-model";
 import { TokenChainIcon } from "./wallet-visuals";
+import { useUiLocale } from "@/lib/ui-locale";
 
 function formatWipAmount(wei: string): string {
   try {
@@ -41,7 +43,7 @@ function DesktopAssetRow({ asset }: { asset: WalletHubAssetRow }) {
           {asset.symbol}
         </Type>
       </div>
-      <div className="min-w-[5.5rem] text-right">
+      <div className="min-w-[5.5rem] text-end">
         <Type as="div" variant="body" className="tabular-nums text-foreground">
           {asset.balance}
         </Type>
@@ -68,7 +70,7 @@ function MobileAssetRow({ asset }: { asset: WalletHubAssetRow }) {
           {asset.symbol}
         </Type>
       </div>
-      <div className="min-w-[4.5rem] text-right">
+      <div className="min-w-[4.5rem] text-end">
         <Type as="div" variant="body" className="tabular-nums text-foreground">
           {asset.balance}
         </Type>
@@ -143,6 +145,7 @@ export function DesktopWalletHub({
   chainSections: WalletHubChainSection[];
   recentActivity?: WalletHubActivityItem[];
 }) {
+  const { isRtl } = useUiLocale();
   const assetRows = React.useMemo(() => buildWalletAssetRows(chainSections), [chainSections]);
   const actionDisabled = walletActionsPending || isZeroUsdAmount(totalBalanceUsd);
   const showWalletActions = variant === "route" && (Boolean(walletAddress) || walletActionsPending);
@@ -227,19 +230,7 @@ export function DesktopWalletHub({
               type="button"
             >
               <Type as="span" variant="body-strong">Activity</Type>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m9 18 6-6-6-6" />
-              </svg>
+              {isRtl ? <CaretLeft aria-hidden className="size-4" /> : <CaretRight aria-hidden className="size-4" />}
             </button>
           </div>
         ) : null}

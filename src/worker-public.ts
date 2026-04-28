@@ -106,6 +106,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       copy.notFoundTitle,
       copy.notFoundDescription.replace("{path}", url.hostname),
       404,
+      localeTag,
     );
   }
 
@@ -133,6 +134,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       copy.notFoundTitle,
       copy.notFoundDescription.replace("{path}", url.hostname),
       404,
+      localeTag,
     );
   }
 
@@ -141,6 +143,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       copy.errorTitle,
       copy.errorDescription,
       502,
+      localeTag,
     );
   }
 
@@ -157,6 +160,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       appOrigin,
       canonicalUrl: url.toString(),
       host: url.hostname,
+      localeTag,
     });
   }
 

@@ -99,7 +99,7 @@ function AdPreviewContent() {
           <Type as="span" variant="body-strong">u/technohippi3</Type>
           <Type as="span" variant="caption">Promoted</Type>
         </div>
-        <DotsThree className="ml-auto size-5 text-muted-foreground" weight="bold" />
+        <DotsThree className="ms-auto size-5 text-muted-foreground" weight="bold" />
       </div>
 
       <Type as="p" className="mb-3" variant="body-strong">Write a compelling headline</Type>
@@ -362,7 +362,7 @@ export function AdCreator() {
                         <Type as="span" className="px-4" variant="caption">https://</Type>
                         <input
                           type="text"
-                          className="flex-1 bg-transparent py-2 pr-4 text-base text-foreground outline-none placeholder:text-muted-foreground"
+                          className="flex-1 bg-transparent py-2 pe-4 text-base text-foreground outline-none placeholder:text-muted-foreground"
                           placeholder=""
                         />
                       </div>
@@ -444,7 +444,7 @@ export function AdCreator() {
                     className="w-full sm:w-auto"
                     onClick={openAdvertisingChat}
                   >
-                    <Megaphone className="mr-2 size-4" />
+                    <Megaphone className="me-2 size-4" />
                     Message
                   </Button>
                 </div>

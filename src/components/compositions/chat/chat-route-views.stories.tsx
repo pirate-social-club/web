@@ -166,7 +166,7 @@ function DesktopEmptyThreadStory() {
     return (
       <div className="h-screen bg-background">
         <ConversationList
-          className="border-r-0"
+          className="border-e-0"
           conversations={conversations}
           loading={false}
           onNew={() => {}}
@@ -292,7 +292,7 @@ export const MobileList: Story = {
   render: () => (
     <div className="h-screen bg-background">
       <ConversationList
-        className="border-r-0 bg-background"
+        className="border-e-0 bg-background"
         conversations={conversations}
         loading={false}
         onNew={() => {}}
@@ -386,7 +386,7 @@ export const MobileLoadingList: Story = {
   render: () => (
     <div className="h-screen bg-background">
       <ConversationList
-        className="border-r-0 bg-background"
+        className="border-e-0 bg-background"
         conversations={[]}
         loading
         onNew={() => {}}

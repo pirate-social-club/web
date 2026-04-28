@@ -64,6 +64,7 @@ export function VotePill({
         className,
       )}
       data-post-card-interactive="true"
+      dir="ltr"
     >
       <button
         className={cn(

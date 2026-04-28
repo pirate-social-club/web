@@ -27,7 +27,7 @@ export function OnboardingVerificationGate({
   return (
     <div className="mx-auto w-full max-w-2xl">
       <div className="flex flex-col px-5 pb-5 pt-5 text-start sm:rounded-lg sm:border sm:border-border sm:bg-card sm:px-8 sm:pb-8 sm:pt-8">
-        <div className="space-y-5 pr-10 text-start">
+        <div className="space-y-5 pe-10 text-start">
           <div className="flex items-center gap-4">
             <StandardModalIconBadge>
               <HandPalm className="size-8" weight="duotone" />

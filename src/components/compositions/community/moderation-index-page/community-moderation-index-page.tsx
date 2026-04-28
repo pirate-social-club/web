@@ -56,7 +56,7 @@ export function CommunityModerationIndexPage({
       <div className={cn("flex flex-col gap-4", !showTitle && !onBackClick && "hidden")}>
         {onBackClick ? (
           <div>
-            <Button leadingIcon={<ArrowLeft className="size-5" />} onClick={onBackClick} variant="ghost">
+            <Button leadingIcon={isRtl ? <ArrowRight className="size-5" /> : <ArrowLeft className="size-5" />} onClick={onBackClick} variant="ghost">
               Back
             </Button>
           </div>

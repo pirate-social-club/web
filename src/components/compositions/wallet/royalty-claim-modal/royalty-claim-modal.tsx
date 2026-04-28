@@ -109,19 +109,19 @@ export function RoyaltyClaimModalView({
         <div className="mt-5 space-y-3 rounded-lg border border-border-soft bg-muted/20 p-4">
           <div className="flex items-center justify-between gap-4">
             <Type as="span" className="text-muted-foreground" variant="body">Available</Type>
-            <Type as="span" className="text-right" variant="body-strong">
+            <Type as="span" className="text-end" variant="body-strong">
               {loading ? "..." : `${formatWipAmount(totalClaimableWipWei)} WIP`}
             </Type>
           </div>
           <div className="flex items-center justify-between gap-4">
             <Type as="span" className="text-muted-foreground" variant="body">IP assets</Type>
-            <Type as="span" className="text-right" variant="body-strong">
+            <Type as="span" className="text-end" variant="body-strong">
               {loading ? "..." : claimableCount.toLocaleString("en-US")}
             </Type>
           </div>
           <div className="flex items-center justify-between gap-4">
             <Type as="span" className="text-muted-foreground" variant="body">Destination</Type>
-            <Type as="span" className="text-right" variant="body-strong">
+            <Type as="span" className="text-end" variant="body-strong">
               {formatAddress(walletAddress)}
             </Type>
           </div>

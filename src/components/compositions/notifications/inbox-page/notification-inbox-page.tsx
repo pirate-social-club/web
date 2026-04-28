@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   Bell,
+  CaretLeft,
   CaretRight,
   ChatCircleText,
   Coins,
@@ -338,6 +339,7 @@ function NotificationRow({
   title: string;
   unread?: boolean;
 }) {
+  const { isRtl } = useUiLocale();
   const content = (
     <>
       {media ? (
@@ -365,12 +367,16 @@ function NotificationRow({
           </Type>
         ) : null}
       </span>
-      {href || onClick ? <CaretRight aria-hidden className="size-5 shrink-0 text-muted-foreground" /> : null}
+      {href || onClick ? (
+        isRtl
+          ? <CaretLeft aria-hidden className="size-5 shrink-0 text-muted-foreground" />
+          : <CaretRight aria-hidden className="size-5 shrink-0 text-muted-foreground" />
+      ) : null}
     </>
   );
   const interactive = Boolean(href || onClick);
   const className = cn(
-    "flex w-full items-center gap-3 px-5 py-4 text-left",
+    "flex w-full items-center gap-3 px-5 py-4 text-start",
     interactive && "transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
   );
 

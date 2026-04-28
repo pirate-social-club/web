@@ -69,7 +69,7 @@ export function StandardModalHeader({
   title: React.ReactNode;
 }) {
   return (
-    <ModalHeader className="space-y-5 pr-10 text-start">
+    <ModalHeader className="space-y-5 pe-10 text-start">
       <div className="flex items-center gap-4">
         {icon}
         <ModalTitle className={cn(typeVariants({ variant: "h1" }), "min-w-0 text-2xl leading-8 sm:text-3xl sm:leading-tight")} dir="auto">

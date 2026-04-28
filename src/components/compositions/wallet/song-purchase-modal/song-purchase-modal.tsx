@@ -88,7 +88,7 @@ export function SongPurchaseModal({
         dir={dir}
         mobileSide="bottom"
       >
-        <ModalHeader className="space-y-5 pr-10 text-start">
+        <ModalHeader className="space-y-5 pe-10 text-start">
           <div className="flex items-center gap-4">
             <span
               aria-hidden="true"

@@ -20,7 +20,7 @@ export function RouteLoadFailureState({
           Try Again
         </Button>
       </div>
-      <div className="border-l-2 border-warning/60 pl-4">
+      <div className="border-s-2 border-warning/60 ps-4">
         <Type as="p" variant="body-strong">
           Could not load this page
         </Type>

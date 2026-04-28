@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   ArrowLeft,
+  ArrowRight,
   ChatCircleText,
   PaperPlaneRight,
   Plus,
@@ -21,6 +22,7 @@ import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import { isChatTarget } from "@/lib/chat/chat-addressing";
 import type { ChatConversation, ChatMessageRecord } from "@/lib/chat/chat-types";
+import { useUiLocale } from "@/lib/ui-locale";
 
 function isValidTimestamp(timestamp: number): boolean {
   return Number.isFinite(timestamp) && timestamp > 0;
@@ -197,7 +199,7 @@ export function ChatSetupState({
     <section className="grid h-full min-h-0 w-full flex-1 place-items-center bg-background px-4 py-6">
       <div className="mx-auto w-full max-w-2xl">
         <div className="flex flex-col gap-8 px-5 pb-5 pt-5 text-start sm:rounded-lg sm:border sm:border-border sm:bg-card sm:px-8 sm:pb-8 sm:pt-8">
-          <div className="space-y-5 pr-10 text-start">
+          <div className="space-y-5 pe-10 text-start">
             <div className="flex items-center gap-4">
               <StandardModalIconBadge>
                 <ChatCircleText className="size-8" weight="duotone" />
@@ -261,7 +263,7 @@ export function ConversationList({
   onSelect: (conversationId: string) => void;
 }) {
   return (
-    <aside className={cn("flex h-full min-h-0 flex-col border-r border-border-soft bg-background md:bg-card", className)}>
+    <aside className={cn("flex h-full min-h-0 flex-col border-e border-border-soft bg-background md:bg-card", className)}>
       {!hideHeader ? (
         <div className="flex items-center justify-between gap-3 border-b border-border-soft bg-background px-4 py-4 md:bg-card">
           <Type as="h1" variant="h3">Messages</Type>
@@ -287,7 +289,7 @@ export function ConversationList({
               return (
                 <button
                   className={cn(
-                    "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted active:bg-muted",
+                    "flex w-full items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-muted active:bg-muted",
                     activeConversationId === conversation.id && "bg-muted",
                   )}
                   key={conversation.id}
@@ -341,6 +343,7 @@ export function NewConversationView({
   onSubmit: (target: string) => void;
 }) {
   const [target, setTarget] = React.useState("");
+  const { isRtl } = useUiLocale();
 
   return (
     <section className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-background">
@@ -352,7 +355,7 @@ export function NewConversationView({
             </Button>
           ) : (
             <Button aria-label="Back" onClick={onBack} size="icon" variant="ghost">
-              <ArrowLeft aria-hidden className="size-5" />
+              {isRtl ? <ArrowRight aria-hidden className="size-5" /> : <ArrowLeft aria-hidden className="size-5" />}
             </Button>
           )}
           <Type as="h1" variant="h3">New message</Type>
@@ -412,6 +415,7 @@ export function ThreadView({
   sending: boolean;
 }) {
   const [draft, setDraft] = React.useState("");
+  const { isRtl } = useUiLocale();
   const seededInitialDraftRef = React.useRef<string | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const [renderedAt] = React.useState(() => Date.now());
@@ -446,12 +450,12 @@ export function ThreadView({
             </Button>
           ) : (
             <Button aria-label="Back" className="md:hidden" onClick={onBack} size="icon" variant="ghost">
-              <ArrowLeft aria-hidden className="size-5" />
+              {isRtl ? <ArrowRight aria-hidden className="size-5" /> : <ArrowLeft aria-hidden className="size-5" />}
             </Button>
           )}
           {profileHref && onOpenProfile ? (
             <button
-              className="flex min-w-0 flex-1 items-center gap-3 text-left"
+              className="flex min-w-0 flex-1 items-center gap-3 text-start"
               onClick={() => onOpenProfile(profileHref)}
               type="button"
             >

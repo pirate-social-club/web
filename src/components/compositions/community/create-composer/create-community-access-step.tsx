@@ -78,7 +78,7 @@ export function CreateCommunityAccessStep({
             />
 
             {gateState.nationalityEnabled ? (
-              <div className="space-y-2 border-l-2 border-primary pl-4">
+              <div className="space-y-2 border-s-2 border-primary ps-4">
                 <FieldLabel label={copy.allowedNationalityLabel} />
                 <NationalityMultiPicker
                   onChange={gateState.setNationalityRequiredValues}
@@ -98,7 +98,7 @@ export function CreateCommunityAccessStep({
             />
 
             {gateState.minimumAgeEnabled ? (
-              <div className="space-y-2 border-l-2 border-primary pl-4">
+              <div className="space-y-2 border-s-2 border-primary ps-4">
                 <FieldLabel label={copy.minimumAgeLabel} />
                 <NumericStepper
                   max={125}
@@ -120,7 +120,7 @@ export function CreateCommunityAccessStep({
             />
 
             {gateState.walletScoreEnabled ? (
-              <div className="space-y-2 border-l-2 border-primary pl-4">
+              <div className="space-y-2 border-s-2 border-primary ps-4">
                 <FieldLabel label={copy.walletScoreLabel} />
                 <NumericStepper
                   max={100}
@@ -142,7 +142,7 @@ export function CreateCommunityAccessStep({
             />
 
             {gateState.erc721Enabled ? (
-              <div className="space-y-2 border-l-2 border-primary pl-4">
+              <div className="space-y-2 border-s-2 border-primary ps-4">
                 <FieldLabel label={copy.collectionContractLabel} />
                 <Input
                   className="h-12 rounded-[var(--radius-lg)]"
@@ -165,7 +165,7 @@ export function CreateCommunityAccessStep({
             />
 
             {gateState.courtyardInventoryEnabled && access.courtyardInventoryGroups !== undefined ? (
-              <div className="space-y-4 border-l-2 border-primary pl-4">
+              <div className="space-y-4 border-s-2 border-primary ps-4">
                 <CourtyardWalletGateBuilder
                   groups={access.courtyardInventoryGroups}
                   loading={access.courtyardInventoryLoading}

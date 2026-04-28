@@ -89,12 +89,12 @@ function ClawitzerHandleField({
     <div className="relative min-w-0 flex-1">
       <Input
         aria-label={ariaLabel}
-        className="pr-28"
+        className="pe-28"
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         value={value}
       />
-      <span className="pointer-events-none absolute inset-y-0 right-0 inline-flex items-center pe-4 text-base font-medium text-muted-foreground">
+      <span className="pointer-events-none absolute inset-y-0 end-0 inline-flex items-center pe-4 text-base font-medium text-muted-foreground">
         .clawitzer
       </span>
     </div>

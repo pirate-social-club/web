@@ -62,6 +62,7 @@ function cleanup() {
 
 describe("session-store", () => {
   test("drops expired persisted bearer sessions before reuse", () => {
+    __resetSessionStoreForTests();
     const expiredSession = makeSession(Math.floor(Date.now() / 1000) - 60);
     const storage = installMockLocalStorage({
       pirate_session: JSON.stringify(expiredSession),
@@ -78,6 +79,7 @@ describe("session-store", () => {
   });
 
   test("keeps unexpired persisted bearer sessions", () => {
+    __resetSessionStoreForTests();
     const liveSession = makeSession(Math.floor(Date.now() / 1000) + 3600);
     installMockLocalStorage({
       pirate_session: JSON.stringify(liveSession),

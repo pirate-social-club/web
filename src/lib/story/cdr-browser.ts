@@ -7,8 +7,8 @@ import { createPublicClient, createWalletClient, custom, defineChain, http } fro
 import { resolveApiUrl } from "@/lib/api/base-url";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 
-import { initWasm } from "./vendor/piplabs/crypto/index.js";
-import { CDRClient } from "./vendor/piplabs/sdk/client.js";
+import { initWasm } from "@/vendor/piplabs/crypto/index.js";
+import { CDRClient } from "@/vendor/piplabs/sdk/client.js";
 
 type StoryCdrAccessPackage = NonNullable<AssetAccessResponse["story_cdr_access"]>;
 const CDR_REQUESTER_KEY_STORAGE_PREFIX = "pirate:story-cdr-requester-key:v1";

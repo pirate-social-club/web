@@ -7,7 +7,7 @@ import { Type } from "@/components/primitives/type";
 export function PublicRouteLoadingState() {
   return (
     <div className="flex min-h-[60vh] w-full flex-1 items-center justify-center">
-      <Spinner className="size-6" />
+      <Spinner className="size-6" debugLabel="public-route-loading" />
     </div>
   );
 }
@@ -22,7 +22,7 @@ export function PublicRouteMessageState({
   return (
     <div className="flex min-h-[60vh] w-full flex-1 items-center justify-center">
       <CardShell className="w-full max-w-xl px-6 py-8 text-center">
-        <Type as="h1" variant="h2" className="">{title}</Type>
+        <Type as="h1" variant="h2">{title}</Type>
         <p className="mt-3 text-base leading-7 text-muted-foreground">{description}</p>
       </CardShell>
     </div>

@@ -9,7 +9,7 @@ export const mediaControlButtonVariants = cva(
     variants: {
       intent: {
         default: "border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
-        subtle: "border-border bg-card text-foreground shadow-sm hover:bg-muted",
+        subtle: "border-border bg-card text-foreground shadow-sm hover:bg-card/85",
         muted: "border-transparent bg-transparent text-muted-foreground",
         danger: "border-transparent bg-transparent text-destructive hover:text-destructive/80",
       },

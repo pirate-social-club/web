@@ -63,6 +63,11 @@ export function createProfilesApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify({ desired_label: desiredLabel }),
       }),
+    publishXmtpInboxId: (xmtpInboxId: string | null): Promise<Profile> =>
+      request<Profile>("/profiles/me/xmtp-inbox", {
+        method: "POST",
+        body: JSON.stringify({ xmtp_inbox_id: xmtpInboxId }),
+      }),
   };
 }
 
@@ -70,6 +75,10 @@ export function createPublicProfilesApi(request: ApiRequest) {
   return {
     getByHandle: (handleLabel: string): Promise<ApiPublicProfileResolution> =>
       request<ApiPublicProfileResolution>(`/public-profiles/${encodeURIComponent(handleLabel)}`, {
+        tokenRequired: false,
+      }),
+    getByWalletAddress: (walletAddress: string): Promise<ApiPublicProfileResolution> =>
+      request<ApiPublicProfileResolution>(`/public-profiles/by-wallet/${encodeURIComponent(walletAddress)}`, {
         tokenRequired: false,
       }),
   };

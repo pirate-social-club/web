@@ -14,7 +14,9 @@ export const COMMUNITY_RECORDS: Record<string, CommunitySummary> = {
     moderator: {
       avatarSrc: "https://i.pravatar.cc/96?img=12",
       displayName: "Kevin Parker",
-      handle: "u/kevinparker.pirate",
+      handle: "kevinparker.pirate",
+      nationalityBadgeCountryCode: "GB",
+      nationalityBadgeLabel: "Verified United Kingdom nationality",
     },
     referenceLinks: [
       {
@@ -91,7 +93,9 @@ export const COMMUNITY_RECORDS: Record<string, CommunitySummary> = {
     moderator: {
       avatarSrc: "https://i.pravatar.cc/96?img=33",
       displayName: "modmatrix",
-      handle: "u/modmatrix.pirate",
+      handle: "modmatrix.pirate",
+      nationalityBadgeCountryCode: "US",
+      nationalityBadgeLabel: "Verified United States nationality",
     },
     referenceLinks: [
       {
@@ -143,7 +147,9 @@ export const COMMUNITY_RECORDS: Record<string, CommunitySummary> = {
     moderator: {
       avatarSrc: "https://i.pravatar.cc/96?img=21",
       displayName: "shipit",
-      handle: "u/shipit.pirate",
+      handle: "shipit.pirate",
+      nationalityBadgeCountryCode: "SG",
+      nationalityBadgeLabel: "Verified Singapore nationality",
     },
     referenceLinks: [],
     rules: [

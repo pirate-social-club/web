@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { AvatarWithBadge } from "@/components/compositions/system/avatar-badge";
+import { AvatarWithBadge } from "@/components/compositions/system/avatar-badge/avatar-with-badge";
 import { Avatar } from "@/components/primitives/avatar";
 import { cn } from "@/lib/utils";
 import { Type } from "@/components/primitives/type";

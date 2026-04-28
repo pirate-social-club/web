@@ -112,7 +112,7 @@ export function createCommunityContentApi(request: ApiRequest) {
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/comments`,
         { method: "POST", body: JSON.stringify(body) },
       ),
-    createSongArtifactUpload: (
+    createArtifactUpload: (
       communityId: string,
       body: CreateSongArtifactUploadRequest,
     ): Promise<SongArtifactUpload> =>
@@ -120,7 +120,7 @@ export function createCommunityContentApi(request: ApiRequest) {
         `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads`,
         { method: "POST", body: JSON.stringify(body) },
       ),
-    uploadSongArtifactContent: (
+    uploadArtifactContent: (
       communityId: string,
       songArtifactUploadId: string,
       body: ArrayBuffer | ApiSongArtifactUploadContentRequest,

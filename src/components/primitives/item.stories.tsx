@@ -29,7 +29,7 @@ export const Default: Story = {
 
 export const Variants: Story = {
   render: () => (
-    <ItemGroup className="w-[360px]">
+    <ItemGroup className="w-96">
       <Item variant="default">
         <ItemContent>
           <ItemTitle>Default</ItemTitle>
@@ -54,7 +54,7 @@ export const Variants: Story = {
 
 export const Sizes: Story = {
   render: () => (
-    <ItemGroup className="w-[360px]">
+    <ItemGroup className="w-96">
       <Item size="dense">
         <ItemMedia variant="icon"><MusicNote className="size-5 text-muted-foreground" /></ItemMedia>
         <ItemContent>

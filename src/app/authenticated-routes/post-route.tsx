@@ -16,16 +16,16 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { useUiLocale } from "@/lib/ui-locale";
 
-import { buildCommunityPreviewSidebar } from "./community-sidebar-helpers";
+import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
 import { NotFoundPage } from "./misc-routes";
-import { toThreadPostCard, shouldShowOriginalPost } from "./post-presentation";
+import { toThreadPostCard, shouldShowOriginalPost } from "@/app/authenticated-helpers/post-presentation";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { getErrorMessage } from "@/lib/error-utils";
-import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "./route-shell";
-import { useSongPurchaseFlow } from "./song-purchase";
-import { useSongCommerceState, useSongPlayback } from "./song-commerce";
-import { usePost } from "./post-state";
+import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
+import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
+import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
+import { usePost } from "@/app/authenticated-state/post-state";
 
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {

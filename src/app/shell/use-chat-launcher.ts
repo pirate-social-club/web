@@ -6,7 +6,7 @@ import {
   buildChatConversationPath,
   buildChatListPath,
   buildChatTargetPath,
-} from "@/app/authenticated-routes/chat/chat-addressing";
+} from "@/lib/chat/chat-addressing";
 import { navigate } from "@/app/router";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";

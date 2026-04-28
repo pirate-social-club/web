@@ -23,6 +23,7 @@ import {
 import {
   createJobsApi,
   createNotificationsApi,
+  createRoyaltiesApi,
 } from "./client-groups-system";
 import type {
   ApiRequest,
@@ -103,6 +104,7 @@ export class ApiClient {
   readonly publicComments = createPublicCommentsApi(this.request.bind(this));
   readonly jobs = createJobsApi(this.request.bind(this));
   readonly notifications = createNotificationsApi(this.request.bind(this));
+  readonly royalties = createRoyaltiesApi(this.request.bind(this));
 
   constructor(options?: { baseUrl?: string; getToken?: () => string | null }) {
     this.baseUrl = options?.baseUrl ?? DEFAULT_BASE_URL;
@@ -223,7 +225,7 @@ export class ApiClient {
     }
 
     const method = init?.method ?? "GET";
-    logger.info("[api-client] request", { method, path, tokenOptional, tokenRequired });
+    logger.debug("[api-client] request", { method, path, tokenOptional, tokenRequired });
 
     let res: Response;
     try {
@@ -232,7 +234,7 @@ export class ApiClient {
         headers: { ...headers, ...(fetchInit.headers as Record<string, string>) },
       });
     } catch (error) {
-      logger.error("[api-client] network request failed", {
+      logger.debug("[api-client] network request failed", {
         method,
         path,
         message: error instanceof Error ? error.message : String(error),
@@ -240,7 +242,7 @@ export class ApiClient {
       throw error;
     }
 
-    logger.info("[api-client] response", { method, path, status: res.status, ok: res.ok });
+    logger.debug("[api-client] response", { method, path, status: res.status, ok: res.ok });
 
     if (!res.ok) {
       let code = "internal_error";

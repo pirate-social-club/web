@@ -36,6 +36,17 @@ export function clearUnreadNotificationActivityCount() {
   }));
 }
 
+export function decrementUnreadNotificationActivityCount(count = 1) {
+  updateSummary((current) => {
+    const unreadActivityCount = Math.max(0, current.unread_activity_count - count);
+    return {
+      ...current,
+      unread_activity_count: unreadActivityCount,
+      has_unread: current.open_task_count > 0 || unreadActivityCount > 0,
+    };
+  });
+}
+
 export function decrementOpenNotificationTaskCount(count = 1) {
   updateSummary((current) => {
     const openTaskCount = Math.max(0, current.open_task_count - count);
@@ -70,7 +81,7 @@ export function useNotificationSummary(): NotificationSummary {
           emitSummary(result);
         }
       } catch (error) {
-        logger.warn("[notifications] failed to load summary", error);
+        logger.debug("[notifications] failed to load summary", error);
       }
     }
 

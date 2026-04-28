@@ -160,7 +160,8 @@ export const CommunityWithFlairFilter: Story = {
           </>
         }
         items={tameImpalaFeedItems}
-        listClassName="-mx-3 border-t-0 md:mx-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
+        fullBleedMobile
+        listClassName="border-t-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
         onSortChange={setActiveSort}
       />
     );
@@ -236,7 +237,8 @@ export const MobileCommunity: Story = {
           </>
         }
         items={tameImpalaFeedItems}
-        listClassName="-mx-3 border-t-0 md:mx-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
+        fullBleedMobile
+        listClassName="border-t-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
         onSortChange={setActiveSort}
       />
     );

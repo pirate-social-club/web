@@ -20,14 +20,14 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { toast } from "@/components/primitives/sonner";
 import { getGateFailureMessage } from "@/lib/identity-gates";
 
-import { buildCommunityPreviewSidebar } from "./community-sidebar-helpers";
+import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
 import { NotFoundPage } from "./misc-routes";
-import { resolveAnonymousComposerLabel, resolvePublicIdentityLabel } from "./post-presentation";
+import { resolveAnonymousComposerLabel, resolvePublicIdentityLabel } from "@/app/authenticated-helpers/post-presentation";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { getErrorMessage } from "@/lib/error-utils";
-import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState, StackPageShell } from "./route-shell";
-import { useCreatePostState } from "./create-post-state";
-import { useCommunityJoinVerification } from "./use-community-join-verification";
+import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState, StackPageShell } from "@/app/authenticated-helpers/route-shell";
+import { useCreatePostState } from "@/app/authenticated-state/create-post-state";
+import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
 
 type CreatePostState = ReturnType<typeof useCreatePostState>;
 type RouteCopy = ReturnType<typeof useRouteMessages>["copy"];
@@ -115,7 +115,7 @@ function CreatePostComposer({
   );
 }
 
-export function CreatePostPage({ communityId, initialDraft }: { communityId: string; initialDraft?: Partial<import("./create-post-draft-state").CreatePostDraftState> }) {
+export function CreatePostPage({ communityId, initialDraft }: { communityId: string; initialDraft?: Partial<import("@/app/authenticated-state/create-post-draft-state").CreatePostDraftState> }) {
   const state = useCreatePostState(communityId, initialDraft);
   const isMobile = useIsMobile();
   const { locale } = useUiLocale();

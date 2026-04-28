@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { cleanup as rtlCleanup, renderHook, waitFor } from "@testing-library/react";
-import { parseHTML } from "linkedom";
 import * as React from "react";
 
 import { ApiProvider } from "@/lib/api";
 import { __resetSessionStoreForTests, setSession } from "@/lib/api/session-store";
+import { createTestDom } from "@/test/setup-dom";
 import {
   __resetKnownCommunitiesForTests,
   getKnownCommunities,
@@ -19,7 +19,7 @@ const originalWindow = globalThis.window;
 const originalLocalStorage = globalThis.localStorage;
 const originalSessionStorage = globalThis.sessionStorage;
 
-const { document, window } = parseHTML("<!DOCTYPE html><html><body></body></html>");
+const { document, window } = createTestDom();
 
 function createMockStorage(seed: Record<string, string> = {}) {
   const storage = new Map(Object.entries(seed));

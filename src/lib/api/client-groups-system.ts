@@ -2,9 +2,14 @@ import type {
   DismissTaskRequest,
   Job,
   MarkNotificationsReadRequest,
+  ClaimableRoyaltiesResponse,
   NotificationFeedResponse,
   NotificationSummary,
   NotificationTasksResponse,
+  RoyaltyActivityResponse,
+  RoyaltyClaimHistoryResponse,
+  RoyaltyClaimRecord,
+  RoyaltyClaimRecordRequest,
   UserTask,
 } from "@pirate/api-contracts";
 
@@ -38,6 +43,31 @@ export function createNotificationsApi(request: ApiRequest) {
       }),
     dismissTask: (input: DismissTaskRequest): Promise<UserTask> =>
       request<UserTask>("/notifications/dismiss-task", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+  };
+}
+
+export function createRoyaltiesApi(request: ApiRequest) {
+  return {
+    listClaimable: (): Promise<ClaimableRoyaltiesResponse> =>
+      request<ClaimableRoyaltiesResponse>("/royalties/claimable"),
+    listActivity: (opts?: NotificationFeedOptions): Promise<RoyaltyActivityResponse> =>
+      request<RoyaltyActivityResponse>(
+        buildQueryPath("/royalties/activity", {
+          cursor: opts?.cursor,
+          limit: opts?.limit,
+        }),
+      ),
+    listClaims: (opts?: Pick<NotificationFeedOptions, "limit">): Promise<RoyaltyClaimHistoryResponse> =>
+      request<RoyaltyClaimHistoryResponse>(
+        buildQueryPath("/royalties/claims", {
+          limit: opts?.limit,
+        }),
+      ),
+    recordClaim: (input: RoyaltyClaimRecordRequest): Promise<RoyaltyClaimRecord> =>
+      request<RoyaltyClaimRecord>("/royalties/claims", {
         method: "POST",
         body: JSON.stringify(input),
       }),

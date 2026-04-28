@@ -17,7 +17,7 @@ import {
   ArrowFatDown,
 } from "@phosphor-icons/react";
 
-import { navigate } from "@/app/router";
+import { useChatLauncher } from "@/app/shell/use-chat-launcher";
 import {
   Modal,
   ModalFooter,
@@ -44,8 +44,12 @@ import {
   Type,
 } from "@/components/primitives";
 import { FormFieldLabel } from "@/components/primitives/form-layout";
+import { Label } from "@/components/primitives/label";
 import { PirateBrandMark } from "@/components/primitives/pirate-brand-mark";
-import { buildAdvertisingMessagePath } from "@/lib/advertising";
+import {
+  ADVERTISING_MESSAGE_DRAFT,
+  ADVERTISING_XMTP_TARGET,
+} from "@/lib/advertising";
 
 type PreviewMode = "mobile" | "desktop";
 
@@ -69,9 +73,13 @@ function Section({ value, number, title, children }: SectionProps) {
         className="px-5 py-4 text-start hover:no-underline [&>svg]:size-5 [&>svg]:text-muted-foreground"
       >
         <div className="flex items-center gap-3">
-          <span className="flex size-6 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
+          <Type
+            as="span"
+            className="flex size-6 items-center justify-center rounded-full bg-muted text-center text-muted-foreground"
+            variant="caption"
+          >
             {number}
-          </span>
+          </Type>
           <Type variant="body-strong">{title}</Type>
         </div>
       </AccordionTrigger>
@@ -88,32 +96,32 @@ function AdPreviewContent() {
       <div className="mb-3 flex items-center gap-2.5">
         <div className="size-8 rounded-full bg-primary" />
         <div className="flex flex-col">
-          <span className="text-sm font-semibold text-foreground">u/technohippi3</span>
-          <span className="text-xs text-muted-foreground">Promoted</span>
+          <Type as="span" variant="body-strong">u/technohippi3</Type>
+          <Type as="span" variant="caption">Promoted</Type>
         </div>
         <DotsThree className="ml-auto size-5 text-muted-foreground" weight="bold" />
       </div>
 
-      <p className="mb-3 text-base font-semibold text-foreground">Write a compelling headline</p>
+      <Type as="p" className="mb-3" variant="body-strong">Write a compelling headline</Type>
 
       <div className="mb-3 aspect-square w-full rounded-2xl bg-muted" />
 
-      <p className="mb-3 text-xs text-muted-foreground">Display URL</p>
+      <Type as="p" className="mb-3" variant="caption">Display URL</Type>
 
       <div className="flex items-center justify-between border-t border-border pt-3">
         <div className="flex items-center gap-4 text-muted-foreground">
           <div className="flex items-center gap-1">
             <ArrowFatUp className="size-5" />
-            <span className="text-sm">Vote</span>
+            <Type as="span" variant="caption">Vote</Type>
             <ArrowFatDown className="size-5" />
           </div>
           <div className="flex items-center gap-1">
             <ChatCircle className="size-5" />
-            <span className="text-sm">0</span>
+            <Type as="span" variant="caption">0</Type>
           </div>
           <div className="flex items-center gap-1">
             <ShareFat className="size-5" />
-            <span className="text-sm">Share</span>
+            <Type as="span" variant="caption">Share</Type>
           </div>
         </div>
       </div>
@@ -126,12 +134,12 @@ function AdPreviewContent() {
 function MobileAdPreview() {
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-[360px] rounded-[2.5rem] border-[6px] border-muted bg-background p-2 shadow-2xl">
+      <div className="relative w-96 rounded-[var(--radius-4xl)] border-8 border-muted bg-background p-2 shadow-2xl">
         {/* Notch */}
         <div className="absolute left-1/2 top-2 z-10 h-6 w-28 -translate-x-1/2 rounded-full bg-muted" />
 
         {/* Screen */}
-        <div className="relative overflow-hidden rounded-[2rem] bg-background">
+        <div className="relative overflow-hidden rounded-[var(--radius-3xl)] bg-background">
           {/* App header */}
           <div className="flex items-center justify-between bg-muted px-4 py-2 pt-7">
             <div className="flex items-center gap-2">
@@ -160,7 +168,7 @@ function MobileAdPreview() {
 
 function DesktopAdPreview() {
   return (
-    <div className="w-full rounded-[1.5rem] border border-border bg-background shadow-lg">
+    <div className="w-full rounded-[var(--radius-2xl)] border border-border bg-background shadow-lg">
       <div className="mx-auto w-full">
         <AdPreviewContent />
       </div>
@@ -178,7 +186,12 @@ export function AdCreator() {
   const [openSection, setOpenSection] = React.useState("creative");
   const [previewMode, setPreviewMode] = React.useState<PreviewMode>("mobile");
   const [comingSoonOpen, setComingSoonOpen] = React.useState(false);
-  const messageHref = React.useMemo(() => buildAdvertisingMessagePath(), []);
+  const chatLauncher = useChatLauncher();
+  const openAdvertisingChat = React.useCallback(() => {
+    chatLauncher.openTarget(ADVERTISING_XMTP_TARGET, {
+      initialMessage: ADVERTISING_MESSAGE_DRAFT,
+    });
+  }, [chatLauncher]);
 
   const shouldBlockInteraction = React.useCallback((target: EventTarget | null) => {
     if (!(target instanceof HTMLElement)) return false;
@@ -286,9 +299,9 @@ export function AdCreator() {
                     {/* Drop zone */}
                     <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-input bg-muted/50 px-6 py-12">
                       <Export className="mb-2 size-7 text-muted-foreground" />
-                      <p className="text-sm font-medium text-primary">
+                      <Type as="p" className="text-primary" variant="label">
                         Drag and drop or browse files
-                      </p>
+                      </Type>
                     </div>
 
                     {/* URL import */}
@@ -315,7 +328,7 @@ export function AdCreator() {
                       value={headline}
                       onChange={(e) => setHeadline(e.target.value)}
                       maxLength={300}
-                      className="min-h-[88px] resize-none"
+                      className="min-h-24 resize-none"
                     />
                   </div>
 
@@ -346,7 +359,7 @@ export function AdCreator() {
                     <FormFieldLabel className="mb-2" label="Destination URL" />
                     <div className="flex gap-2">
                       <div className="flex h-14 flex-1 items-center overflow-hidden rounded-full border border-input bg-background">
-                        <span className="px-4 text-sm text-muted-foreground">https://</span>
+                        <Type as="span" className="px-4" variant="caption">https://</Type>
                         <input
                           type="text"
                           className="flex-1 bg-transparent py-2 pr-4 text-base text-foreground outline-none placeholder:text-muted-foreground"
@@ -358,8 +371,8 @@ export function AdCreator() {
                         Preview
                       </Button>
                     </div>
-                    <button className="mt-2 text-sm font-medium text-primary hover:underline">
-                      Edit Display URL
+                    <button className="mt-2 text-primary hover:underline">
+                      <Type as="span" variant="label">Edit Display URL</Type>
                     </button>
                   </div>
 
@@ -371,9 +384,9 @@ export function AdCreator() {
                         checked={addSourceParam}
                         onCheckedChange={(c) => setAddSourceParam(c === true)}
                       />
-                      <label htmlFor="source-param" className="text-sm text-foreground">
+                      <Label htmlFor="source-param" tone="default">
                         Add source parameter
-                      </label>
+                      </Label>
                     </div>
                     <div className="flex items-center gap-2.5">
                       <Checkbox
@@ -381,9 +394,9 @@ export function AdCreator() {
                         checked={allowComments}
                         onCheckedChange={(c) => setAllowComments(c === true)}
                       />
-                      <label htmlFor="allow-comments" className="text-sm text-foreground">
+                      <Label htmlFor="allow-comments" tone="default">
                         Allow comments
-                      </label>
+                      </Label>
                     </div>
                   </div>
                 </div>
@@ -423,13 +436,13 @@ export function AdCreator() {
               {/* Section 3: Payment */}
               <Section value="payment" number={3} title="Payment">
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
+                  <Type as="p" variant="caption">
                     Advertising is coming soon. Message me if you want early access or want to discuss a campaign.
-                  </p>
+                  </Type>
                   <Button
                     data-ads-no-modal
                     className="w-full sm:w-auto"
-                    onClick={() => navigate(messageHref)}
+                    onClick={openAdvertisingChat}
                   >
                     <Megaphone className="mr-2 size-4" />
                     Message
@@ -495,7 +508,7 @@ export function AdCreator() {
               className="w-full sm:w-auto"
               onClick={() => {
                 setComingSoonOpen(false);
-                navigate(messageHref);
+                openAdvertisingChat();
               }}
             >
               Message me

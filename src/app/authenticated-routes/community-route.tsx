@@ -22,27 +22,27 @@ import { getGateFailureMessage, getJoinCtaLabel, getPassportPromptCapabilities, 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 
-import { useCommunityPageData } from "./community-data";
+import { useCommunityPageData } from "@/app/authenticated-data/community-data";
 import {
   buildCommunitySidebar,
   buildCommunitySidebarRequirements,
   getNamespaceActionLabel,
-} from "./community-sidebar-helpers";
+} from "@/app/authenticated-helpers/community-sidebar-helpers";
 import {
   buildCommunityModerationEntryPath,
   buildCommunityModerationPath,
-} from "./moderation-helpers";
-import { toCommunityFeedItem } from "./post-presentation";
-import { submitOptimisticPostVote, updateCommunityPostVote } from "./post-vote";
+} from "@/app/authenticated-helpers/moderation-helpers";
+import { toCommunityFeedItem } from "@/app/authenticated-helpers/post-presentation";
+import { submitOptimisticPostVote, updateCommunityPostVote } from "@/app/authenticated-helpers/post-vote";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { getErrorMessage } from "@/lib/error-utils";
 import { buildFeedSortOptions } from "@/lib/feed-sort-options";
-import { AuthRequiredRouteState, RouteLoadFailureState } from "./route-shell";
-import { useSongPurchaseFlow } from "./song-purchase";
-import { useSongCommerceState, useSongPlayback } from "./song-commerce";
-import { useCommunityInteractionGate } from "./community-interaction-gate";
-import { useCommunityJoinVerification } from "./use-community-join-verification";
+import { AuthRequiredRouteState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
+import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
+import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
+import { useCommunityInteractionGate } from "@/app/authenticated-helpers/community-interaction-gate";
+import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
 
 export function CommunityPage({ communityId }: { communityId: string }) {
   const api = useApi();

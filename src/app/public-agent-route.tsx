@@ -4,13 +4,11 @@ import * as React from "react";
 import type { ApiPublicAgentResolution } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
-import { CardShell, PageContainer } from "@/components/primitives/layout-shell";
 import { buildPublicProfilePath, getProfileHandleLabel } from "@/lib/profile-routing";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
-import { Type } from "@/components/primitives/type";
-import { typeVariants } from "@/components/primitives/type";
+import { PublicAgentPage } from "@/components/compositions/profiles/public-agent-page/public-agent-page";
 
 function usePublicAgent(handleLabel: string) {
   const api = useApi();
@@ -92,24 +90,15 @@ export function PublicAgentRoutePage({
   const ownerHandle = getProfileHandleLabel(resolution.owner);
 
   return (
-    <PageContainer className="px-4 py-6" size="narrow">
-      <CardShell className="p-7">
-        <Type as="h1" variant="display">{displayName}</Type>
-        <Type as="p" variant="caption" className="mt-2">{handle}</Type>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <a
-            className="inline-flex items-center rounded-full border border-border-soft bg-muted/40 px-4 py-2.5 text-base text-muted-foreground hover:bg-muted"
-            href={buildPublicProfilePath(ownerHandle)}
-          >
-            <strong className="me-2 text-foreground">{ownerHandle}</strong>
-            {copy.ownerLabel}
-          </a>
-          <Type as="span" variant="caption" className="inline-flex items-center rounded-full border border-border-soft bg-muted/40 px-4 py-2.5 ">
-            <strong className="me-2 text-foreground">{resolution.agent.ownership_provider ?? "agent"}</strong>
-            {copy.providerLabel}
-          </Type>
-        </div>
-      </CardShell>
-    </PageContainer>
+    <PublicAgentPage
+      bio={copy.aboutDescription}
+      createdAt={resolution.agent.created_at}
+      displayName={displayName}
+      handle={handle}
+      openInPirateHref={`${appOrigin}/a/${encodeURIComponent(handle)}`}
+      ownerHandle={ownerHandle}
+      ownerHref={buildPublicProfilePath(ownerHandle)}
+      ownershipProvider={resolution.agent.ownership_provider ?? "agent"}
+    />
   );
 }

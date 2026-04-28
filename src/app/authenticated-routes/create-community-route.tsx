@@ -5,24 +5,23 @@ import * as React from "react";
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { updateSessionUser, useSession } from "@/lib/api/session-store";
-import { usePiratePrivyRuntime } from "@/lib/auth/privy-provider";
+import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import { getApiErrorMessage } from "@/lib/api/client";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
-import type { SpacesChallengePayload } from "@/components/compositions/verify-namespace-modal/verify-namespace-modal.types";
-import type { CreateCommunityComposerProps } from "@/components/compositions/create-community-composer/create-community-composer.types";
-import { CreateCommunityComposer } from "@/components/compositions/create-community-composer/create-community-composer";
-import { MobilePageHeader } from "@/components/compositions/app-shell-chrome/mobile-page-header";
-import { SelfVerificationModal } from "@/components/compositions/self-verification-modal/self-verification-modal";
+import type { CreateCommunityComposerProps } from "@/components/compositions/community/create-composer/create-community-composer.types";
+import { CreateCommunityComposer } from "@/components/compositions/community/create-composer/create-community-composer";
+import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { toast } from "@/components/primitives/sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-import { DEFAULT_COMMUNITY_RULES } from "./moderation-helpers";
-import { serializeIdentityGateDrafts } from "./community-gate-rule-serialization";
-import { useRouteMessages } from "./route-core";
+import { DEFAULT_COMMUNITY_RULES } from "@/app/authenticated-helpers/moderation-helpers";
+import { serializeIdentityGateDrafts } from "@/app/authenticated-helpers/community-gate-rule-serialization";
+import { useRouteMessages } from "@/hooks/use-route-messages";
 
 type CreateCommunityInput = Parameters<NonNullable<CreateCommunityComposerProps["onCreate"]>>[0];
 
@@ -71,6 +70,8 @@ export function CreateCommunityPage() {
   }, [api]);
   const {
     handleModalOpenChange: handleSelfModalOpenChangeBase,
+    handleSelfQrError,
+    handleSelfQrSuccess,
     selfError,
     selfModalOpen,
     selfPrompt,
@@ -157,16 +158,19 @@ export function CreateCommunityPage() {
       error={selfError}
       href={selfPrompt?.href ?? null}
       onOpenChange={handleSelfModalOpenChange}
+      onQrError={handleSelfQrError}
+      onQrSuccess={handleSelfQrSuccess}
       open={selfModalOpen}
+      selfApp={selfPrompt?.selfApp ?? null}
       title={selfPrompt?.title ?? copy.createCommunity.verifyStartTitle}
     />
   );
 
   if (isMobile) {
     return (
-      <div className="min-h-screen w-full bg-background text-foreground">
+      <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
         <MobilePageHeader onCloseClick={() => navigate("/")} title={pageTitle} />
-        <section className="flex min-w-0 flex-1 flex-col px-4 pb-8 pt-[calc(env(safe-area-inset-top)+5rem)]">
+        <section className="flex min-w-0 flex-1 flex-col px-4 pb-24 pt-[calc(env(safe-area-inset-top)+5rem)]">
           <CreateCommunityComposer
             creatorVerificationState={creatorVerificationState}
             deferCreatorVerification
@@ -192,64 +196,4 @@ export function CreateCommunityPage() {
       {selfVerificationModal}
     </>
   );
-}
-
-export function toSpacesChallengePayload(value: Record<string, unknown> | null | undefined): SpacesChallengePayload | null {
-  if (!value) return null;
-  if (
-    value.kind !== "fabric_txt_publish" ||
-    typeof value.domain !== "string" ||
-    typeof value.root_label !== "string" ||
-    typeof value.root_pubkey !== "string" ||
-    typeof value.nonce !== "string" ||
-    typeof value.issued_at !== "string" ||
-    typeof value.expires_at !== "string" ||
-    value.txt_key !== "pirate-verify" ||
-    typeof value.txt_value !== "string" ||
-    typeof value.web_url !== "string" ||
-    typeof value.freedom_url !== "string"
-  ) return null;
-
-  return {
-    kind: "fabric_txt_publish",
-    domain: value.domain,
-    root_label: value.root_label,
-    root_pubkey: value.root_pubkey,
-    nonce: value.nonce,
-    issued_at: value.issued_at,
-    expires_at: value.expires_at,
-    txt_key: "pirate-verify",
-    txt_value: value.txt_value,
-    web_url: value.web_url,
-    freedom_url: value.freedom_url,
-  };
-}
-
-export function toNamespaceSessionResult(result: {
-  namespace_verification_session_id: string;
-  family: "hns" | "spaces";
-  submitted_root_label: string;
-  normalized_root_label?: string | null;
-  challenge_host?: string | null;
-  challenge_txt_value?: string | null;
-  challenge_payload?: Record<string, unknown> | null;
-  challenge_expires_at?: string | null;
-  assertions?: { pirate_dns_authority_verified?: boolean | null } | null;
-  operation_class?: "owner_managed_namespace" | "routing_only_namespace" | "pirate_delegated_namespace" | "owner_signed_updates_namespace" | null;
-  setup_nameservers?: string[] | null;
-  status: "draft" | "inspecting" | "dns_setup_required" | "challenge_required" | "challenge_pending" | "verifying" | "verified" | "failed" | "expired" | "disputed";
-}) {
-  return {
-    namespaceVerificationSessionId: result.namespace_verification_session_id,
-    family: result.family,
-    rootLabel: result.normalized_root_label ?? result.submitted_root_label,
-    challengeHost: result.challenge_host ?? null,
-    challengeTxtValue: result.challenge_txt_value ?? null,
-    challengePayload: toSpacesChallengePayload(result.challenge_payload),
-    challengeExpiresAt: result.challenge_expires_at ?? null,
-    status: result.status,
-    operationClass: result.operation_class ?? null,
-    pirateDnsAuthorityVerified: result.assertions?.pirate_dns_authority_verified ?? null,
-    setupNameservers: result.setup_nameservers ?? null,
-  };
 }

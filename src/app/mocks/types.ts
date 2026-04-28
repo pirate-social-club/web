@@ -1,17 +1,17 @@
-import type { CreateCommunityComposerProps } from "@/components/compositions/create-community-composer/create-community-composer.types";
-import type { OnboardingRedditBootstrapProps } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap.types";
-import type { PostCardProps } from "@/components/compositions/post-card/post-card.types";
+import type { CreateCommunityComposerProps } from "@/components/compositions/community/create-composer/create-community-composer.types";
+import type { OnboardingRedditBootstrapProps } from "@/components/compositions/onboarding/reddit-bootstrap/onboarding-reddit-bootstrap.types";
+import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import type {
   ProfileCommentItem,
   ProfileScrobbleItem,
-} from "@/components/compositions/profile-page/profile-page.types";
+} from "@/components/compositions/profiles/profile-page/profile-page.types";
 import type {
   CommunitySidebarFlairPolicy,
   CommunitySidebarModerator,
   CommunitySidebarReferenceLink,
   CommunitySidebarRule,
-} from "@/components/compositions/community-sidebar/community-sidebar.types";
-import type { CommunityMembershipMode } from "@/lib/community-membership";
+} from "@/components/compositions/community/sidebar/community-sidebar.types";
+import type { CommunityMembershipMode } from "@/components/compositions/community/create-composer/create-community-composer.types";
 
 export type RoutePost = PostCardProps & {
   postId: string;

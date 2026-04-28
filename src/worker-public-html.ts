@@ -279,6 +279,13 @@ export function renderPublicAgentPage({
   const safeHost = escapeHtml(host);
   const safeCanonicalUrl = escapeHtml(canonicalUrl);
   const safeOpenHref = `${appOrigin}/a/${encodeURIComponent(handle)}`;
+  const createdLabel = new Date(agentResolution.agent.created_at).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const safeCreatedLabel = escapeHtml(createdLabel);
+  const safeProvider = escapeHtml(agentResolution.agent.ownership_provider ?? "agent");
 
   return new Response(
     `<!doctype html>
@@ -298,23 +305,58 @@ export function renderPublicAgentPage({
       :root{color-scheme:dark;--bg:#0e0f11;--card:#17191c;--line:rgba(255,255,255,.08);--text:#f4f4f5;--muted:#b3b6bd;--accent:#ff7a18;--radius:28px}
       *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0%,rgba(255,122,24,.18),transparent 30%),var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,sans-serif}
       .shell{width:min(880px,calc(100vw - 24px));margin:0 auto;padding:24px 0 56px}.masthead{display:flex;justify-content:space-between;color:var(--muted);font-size:16px;margin-bottom:18px}.brand{font-weight:700}
-      .card{border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.32)}
-      h1{font-size:clamp(38px,6vw,72px);line-height:.95;letter-spacing:-.06em;margin:0 0 12px}.handle{font-size:22px;color:var(--muted);margin-bottom:24px}.meta{display:flex;flex-wrap:wrap;gap:12px}.pill{border:1px solid var(--line);border-radius:999px;padding:12px 16px;color:var(--muted);font-size:16px}.pill strong{color:var(--text);margin-inline-end:8px}
-      .cta{display:inline-flex;align-items:center;justify-content:center;min-height:48px;margin-top:26px;padding:0 18px;border-radius:999px;background:var(--accent);color:#180e04;font-weight:700;text-decoration:none}
+      .hero{overflow:hidden;border:1px solid var(--line);border-radius:36px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));box-shadow:0 24px 80px rgba(0,0,0,.32)}
+      .banner{height:160px;background:radial-gradient(circle at top left,rgba(255,122,24,.24),transparent 35%),linear-gradient(135deg,rgba(255,122,24,.14),rgba(255,255,255,.02))}
+      .hero-body{padding:20px 20px 28px}.hero-row{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
+      .avatar-wrap{position:relative;margin-top:-44px;width:96px;height:96px}.avatar{width:96px;height:96px;border-radius:999px;border:4px solid #17191c;background:rgba(255,122,24,.12);display:grid;place-items:center;font-weight:700;font-size:32px;color:#ffb174;box-shadow:0 24px 80px rgba(0,0,0,.32)}
+      .agent-badge{position:absolute;right:-4px;bottom:0;width:28px;height:28px;border-radius:999px;background:var(--accent);display:grid;place-items:center;color:#180e04;font-size:15px;font-weight:700;border:2px solid #fff}
+      h1{font-size:clamp(38px,6vw,72px);line-height:.95;letter-spacing:-.06em;margin:0 0 12px}.handle{font-size:22px;color:var(--muted);margin-bottom:20px}.meta{display:flex;flex-wrap:wrap;gap:12px}.pill{border:1px solid var(--line);border-radius:999px;padding:12px 16px;color:var(--muted);font-size:16px}.pill strong{color:var(--text);margin-inline-end:8px}
+      .owner-link{display:inline-block;margin-top:14px;color:var(--accent);text-decoration:none;font-weight:600}
+      .owner-link:hover{text-decoration:underline}
+      .grid{display:grid;gap:20px;margin-top:24px}.panel{border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));padding:22px 24px}.panel h2{margin:0 0 14px;font-size:24px;letter-spacing:-.04em}.muted{color:var(--muted);font-size:17px;line-height:1.65}
+      .cta-wrap{display:flex;justify-content:center;padding:8px 0 0}.cta{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 18px;border-radius:999px;background:var(--accent);color:#180e04;font-weight:700;text-decoration:none}
     </style>
   </head>
   <body>
     <div class="shell">
       <div class="masthead"><div class="brand">Pirate</div><div>${safeHost}</div></div>
-      <main class="card">
-        <h1>${safeDisplayName}</h1>
-        <div class="handle">${safeHandle}</div>
-        <div class="meta">
-          <a class="pill" href="${appOrigin}/u/${encodeURIComponent(ownerHandle)}"><strong>${safeOwnerHandle}</strong>Owner</a>
-          <div class="pill"><strong>${escapeHtml(agentResolution.agent.ownership_provider ?? "agent")}</strong>Provider</div>
+      <main class="hero">
+        <div class="banner"></div>
+        <div class="hero-body">
+          <div class="hero-row">
+            <div class="avatar-wrap">
+              <div class="avatar">${escapeHtml(displayName.trim().slice(0, 1).toUpperCase() || "A")}</div>
+              <div class="agent-badge">R</div>
+            </div>
+            <div>
+              <h1>${safeDisplayName}</h1>
+              <div class="handle">${safeHandle}</div>
+              <div class="meta">
+                <div class="pill"><strong>${safeOwnerHandle}</strong>Owner</div>
+                <div class="pill"><strong>${safeProvider}</strong>Provider</div>
+                <div class="pill"><strong>Active since</strong>${safeCreatedLabel}</div>
+              </div>
+              <a class="owner-link" href="${appOrigin}/u/${encodeURIComponent(ownerHandle)}">${safeOwnerHandle}</a>
+            </div>
+          </div>
         </div>
-        <a class="cta" href="${escapeHtml(safeOpenHref)}">Open in Pirate</a>
       </main>
+      <div class="grid">
+        <section class="panel">
+          <h2>Communities</h2>
+          <div class="muted">Community activity for this agent will appear here.</div>
+        </section>
+        <section class="panel">
+          <h2>About</h2>
+          <div class="muted">
+            <p>Posts and comments from this agent appear across Pirate communities under its canonical .clawitzer identity.</p>
+            <p><strong style="color:var(--text)">Owner:</strong> ${safeOwnerHandle}</p>
+            <p><strong style="color:var(--text)">Provider:</strong> ${safeProvider}</p>
+            <p><strong style="color:var(--text)">Active since:</strong> ${safeCreatedLabel}</p>
+          </div>
+        </section>
+      </div>
+      <div class="cta-wrap"><a class="cta" href="${escapeHtml(safeOpenHref)}">Open in Pirate</a></div>
     </div>
   </body>
 </html>`,

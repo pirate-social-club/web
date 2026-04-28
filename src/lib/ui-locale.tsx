@@ -47,23 +47,18 @@ export function UiLocaleProvider({
   dir: UiDirection;
   locale: UiLocaleCode;
 }>) {
+  const hasStoredLocaleRef = React.useRef(false);
   const [activeLocale, setActiveLocale] = React.useState<UiLocaleCode>(() => {
-    return readStoredUiLocale() ?? locale;
+    const storedLocale = readStoredUiLocale();
+    hasStoredLocaleRef.current = storedLocale != null;
+    return storedLocale ?? locale;
   });
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = readStoredUiLocale();
-    if (stored) {
-      if (stored !== activeLocale) {
-        setActiveLocale(stored);
-      }
-      return;
-    }
-    if (locale !== activeLocale) {
+    if (!hasStoredLocaleRef.current) {
       setActiveLocale(locale);
     }
-  }, [activeLocale, locale]);
+  }, [locale]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -79,6 +74,7 @@ export function UiLocaleProvider({
   }, [activeLocale]);
 
   const setLocale = React.useCallback((nextLocale: UiLocaleCode) => {
+    hasStoredLocaleRef.current = true;
     setActiveLocale(nextLocale);
   }, []);
 

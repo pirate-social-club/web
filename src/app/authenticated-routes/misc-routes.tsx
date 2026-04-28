@@ -7,27 +7,16 @@ import { AdCreator } from "@/components/compositions/ads/ad-creator/ad-creator";
 import type { CommunityPickerItem } from "@/components/compositions/posts/post-composer/post-composer.types";
 import { PostComposer } from "@/components/compositions/posts/post-composer/post-composer";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
-import { Button } from "@/components/primitives/button";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRecentCommunities } from "@/lib/owned-communities";
 
-import { interpolateMessage, useRouteMessages } from "./route-core";
-import { EmptyFeedState, StackPageShell } from "./route-shell";
-import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
+import { useRouteMessages } from "@/hooks/use-route-messages";
+import { NotFoundRouteState } from "@/app/authenticated-helpers/route-shell";
+import { useCreatePostDraftState, type CreatePostDraftState } from "@/app/authenticated-state/create-post-draft-state";
 
 export function NotFoundPage({ path }: { path: string }) {
-  const { copy } = useRouteMessages();
-
-  return (
-    <StackPageShell
-      title={copy.notFound.title}
-      description={interpolateMessage(copy.notFound.description, { path })}
-      actions={<Button onClick={() => navigate("/")} variant="secondary">{copy.common.backHome}</Button>}
-    >
-      <EmptyFeedState message={copy.notFound.body} />
-    </StackPageShell>
-  );
+  return <NotFoundRouteState path={path} />;
 }
 
 export function CreatePostGlobalPage({

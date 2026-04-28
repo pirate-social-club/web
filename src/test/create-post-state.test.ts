@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Community } from "@pirate/api-contracts";
 
-import { isPublicAudienceAllowed } from "../app/authenticated-routes/create-post-state";
+import { isPublicAudienceAllowed } from "../app/authenticated-state/create-post-state";
 
 function createCommunity(overrides: Partial<Community> = {}): Community {
   return {

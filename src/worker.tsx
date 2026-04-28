@@ -20,11 +20,16 @@ import {
   buildMarkdownForPage,
   buildMarkdownResponse,
   buildMcpServerCardResponse,
+  buildOAuthAuthorizationServerResponse,
+  buildOAuthProtectedResourceResponse,
   buildOpenApiResponse,
+  buildOpenIdConfigurationResponse,
   buildRobotsResponse,
   buildSitemapResponse,
+  buildWebBotAuthDirectoryResponse,
   getDiscoveryContext,
   markdownRequested,
+  type WebBotAuthEnv,
 } from "@/lib/agent-discovery";
 import { resolveEffectiveRequestUrl } from "@/lib/hns-forwarded-origin";
 import {
@@ -134,6 +139,9 @@ function applyCspHeaders(headers: Headers, nonce: string): void {
     import.meta.env.VITE_CSP_REPORT_ONLY === "true" ? CSP_REPORT_ONLY_HEADER : CSP_HEADER,
     buildContentSecurityPolicy(nonce),
   );
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 }
 
 function parseThemeCookie(cookieHeader: string | null): ThemeMode {
@@ -490,12 +498,17 @@ const app = defineApp<AppRequestInfo>([
     route("/openapi.json", ({ ctx, request }) => buildOpenApiResponse(ctx.effectiveUrl ?? request.url)),
     route("/docs/api", ({ ctx, request }) => buildApiDocsResponse(ctx.effectiveUrl ?? request.url, markdownRequested(request))),
     route("/.well-known/api-catalog", ({ ctx, request }) => buildApiCatalogResponse(ctx.effectiveUrl ?? request.url)),
+    route("/.well-known/oauth-protected-resource", ({ ctx, request }) => buildOAuthProtectedResourceResponse(ctx.effectiveUrl ?? request.url)),
+    route("/.well-known/oauth-authorization-server", ({ ctx, request }) => buildOAuthAuthorizationServerResponse(ctx.effectiveUrl ?? request.url)),
+    route("/.well-known/openid-configuration", ({ ctx, request }) => buildOpenIdConfigurationResponse(ctx.effectiveUrl ?? request.url)),
     route("/.well-known/mcp/server-card.json", ({ ctx, request }) => buildMcpServerCardResponse(ctx.effectiveUrl ?? request.url)),
     route("/.well-known/agent-skills/index.json", ({ ctx, request }) => buildAgentSkillsIndexResponse(ctx.effectiveUrl ?? request.url)),
     route("/.well-known/agent-skills/:skillName/SKILL.md", ({ params }) => buildAgentSkillResponse(params.skillName)),
     route("/privacy", PrivacyRoutePage),
     route("/terms", TermsRoutePage),
     route("/", AppRoutePage),
+    route("/popular", AppRoutePage),
+    route("/advertise", AppRoutePage),
     route("/your-communities", AppRoutePage),
     route("/communities/new", AppRoutePage),
     route("/submit", AppRoutePage),
@@ -507,6 +520,10 @@ const app = defineApp<AppRequestInfo>([
     route("/c/:communityId", AppRoutePage),
     route("/p/:postId", AppRoutePage),
     route("/inbox", AppRoutePage),
+    route("/chat", AppRoutePage),
+    route("/chat/new", AppRoutePage),
+    route("/chat/c/:conversationId", AppRoutePage),
+    route("/chat/to/:target", AppRoutePage),
     route("/me", AppRoutePage),
     route("/wallet", AppRoutePage),
     route("/settings", AppRoutePage),
@@ -522,6 +539,10 @@ const app = defineApp<AppRequestInfo>([
 
 export default {
   async fetch(request: Request, env: Env, cf: AppRequestInfo["cf"]) {
+    const initialEffectiveUrl = resolveEffectiveRequestUrl(request);
+    if (new URL(initialEffectiveUrl).pathname === "/.well-known/http-message-signatures-directory") {
+      return buildWebBotAuthDirectoryResponse(request, env as WebBotAuthEnv);
+    }
 
     const response = await app.fetch(request, env, cf);
     if (!markdownRequested(request)) {

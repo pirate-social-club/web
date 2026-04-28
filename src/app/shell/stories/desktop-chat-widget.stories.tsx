@@ -5,13 +5,13 @@ import bedsheetAvatarUrl from "@/assets/logo_ghost_sm.png";
 import { AppHeader } from "@/components/compositions/app/app-shell-chrome/app-header";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
-import type { ChatConversation, ChatMessageRecord } from "@/app/authenticated-routes/chat/chat-types";
+import type { ChatConversation, ChatMessageRecord } from "@/lib/chat/chat-types";
 import {
   ConversationList,
   EmptyThread,
   NewConversationView,
   ThreadView,
-} from "@/app/authenticated-routes/chat/chat-route-views";
+} from "@/components/compositions/chat/chat-route-views";
 
 import { DesktopChatWidgetFrame } from "../desktop-chat-widget";
 

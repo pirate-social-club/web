@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import type { CommentListItem } from "@pirate/api-contracts";
 
 import {
+  buildThreadCommentTreeFromItems,
   createThreadCommentNode,
+  loadThreadCommentTree,
   mergeThreadCommentNodes,
   type ThreadCommentNode,
 } from "@/app/authenticated-route-renderer";
@@ -144,4 +146,83 @@ describe("thread comment state helpers", () => {
     expect(merged[0]?.children[0]?.item.comment.body).toBe("Nested reply that was already loaded.");
     expect(merged[1]?.item.comment.comment_id).toBe("cmt_root_2");
   });
+
+  test("buildThreadCommentTreeFromItems nests flat replies under their parent", () => {
+    const parent = createCommentListItem({
+      anonymousLabel: "deckhand",
+      body: "Parent comment",
+      commentId: "cmt_parent",
+      descendantCount: 1,
+      depth: 0,
+      directReplyCount: 1,
+      score: 2,
+    });
+    const reply = createCommentListItem({
+      anonymousLabel: "lookout",
+      body: "Reply comment",
+      commentId: "cmt_reply",
+      descendantCount: 0,
+      depth: 1,
+      directReplyCount: 0,
+      parentCommentId: "cmt_parent",
+      score: 0,
+    });
+
+    const tree = buildThreadCommentTreeFromItems([parent, reply]);
+
+    expect(tree).toHaveLength(1);
+    expect(tree[0]?.item.comment.comment_id).toBe("cmt_parent");
+    expect(tree[0]?.children).toHaveLength(1);
+    expect(tree[0]?.children[0]?.item.comment.comment_id).toBe("cmt_reply");
+  });
+
+  test("loadThreadCommentTree auto-loads first-level replies for roots", async () => {
+    const parent = createCommentListItem({
+      anonymousLabel: "deckhand",
+      body: "Parent comment",
+      commentId: "cmt_parent",
+      descendantCount: 1,
+      depth: 0,
+      directReplyCount: 1,
+      score: 2,
+    });
+    const reply = createCommentListItem({
+      anonymousLabel: "lookout",
+      body: "Reply comment",
+      commentId: "cmt_reply",
+      descendantCount: 0,
+      depth: 1,
+      directReplyCount: 0,
+      parentCommentId: "cmt_parent",
+      score: 0,
+    });
+    const replyRequests: Array<{ commentId: string; limit?: string | null }> = [];
+    const api = {
+      communities: {
+        listComments: async () => ({
+          items: [parent],
+          next_cursor: null,
+        }),
+      },
+      comments: {
+        listReplies: async (commentId: string, opts?: { limit?: string | null }) => {
+          replyRequests.push({ commentId, limit: opts?.limit });
+          return {
+            items: [reply],
+            next_cursor: null,
+          };
+        },
+      },
+    } as unknown as Parameters<typeof loadThreadCommentTree>[0];
+
+    const tree = await loadThreadCommentTree(api, "cmt_browser", "pst_browser", "en", true, "best");
+
+    expect(replyRequests).toEqual([{ commentId: "cmt_parent", limit: "5" }]);
+    expect(tree).toHaveLength(1);
+    expect(tree[0]?.hasLoadedReplies).toBe(true);
+    expect(tree[0]?.nextRepliesCursor).toBe(null);
+    expect(tree[0]?.children).toHaveLength(1);
+    expect(tree[0]?.children[0]?.item.comment.comment_id).toBe("cmt_reply");
+  });
 });
+import "@/test/setup-runtime";

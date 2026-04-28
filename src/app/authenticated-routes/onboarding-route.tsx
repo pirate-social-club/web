@@ -28,7 +28,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { getErrorMessage } from "@/lib/error-utils";
-import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "./route-shell";
+import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 
 function mapRedditVerification(apiResult: ApiRedditVerification, usernameValue: string): RedditVerificationState {
   const stateMap: Record<string, RedditVerificationState["verificationState"]> = {

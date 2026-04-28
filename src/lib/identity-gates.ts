@@ -296,9 +296,44 @@ export function getVerificationRequirementsForGates(
 }
 
 export function resolveSuggestedVerificationProvider(
-  eligibility: Pick<JoinEligibility, "suggested_verification_provider">,
+  eligibility: Pick<JoinEligibility, "suggested_verification_provider"> & {
+    membership_gate_summaries?: MembershipGateSummary[] | null;
+    missing_capabilities?: readonly string[] | null;
+  },
 ): VerificationProvider {
-  return eligibility.suggested_verification_provider ?? "self";
+  if (eligibility.suggested_verification_provider) {
+    return eligibility.suggested_verification_provider;
+  }
+
+  const missingCapabilities = eligibility.missing_capabilities ?? [];
+  const gateSummaries = eligibility.membership_gate_summaries ?? [];
+
+  if (missingCapabilities.some((capability) => capability === "wallet_score")) {
+    return "passport";
+  }
+
+  if (missingCapabilities.some((capability) =>
+    capability === "age_over_18"
+    || capability === "minimum_age"
+    || capability === "nationality"
+    || capability === "gender"
+    || capability === "sanctions_clear"
+  )) {
+    return "self";
+  }
+
+  if (missingCapabilities.includes("unique_human")) {
+    const uniqueHumanGates = gateSummaries.filter((gate) => gate.gate_type === "unique_human");
+    if (uniqueHumanGates.some((gate) => gate.accepted_providers?.includes("very") ?? false)) {
+      return "very";
+    }
+    if (uniqueHumanGates.some((gate) => gate.accepted_providers?.includes("self") ?? false)) {
+      return "self";
+    }
+    return "very";
+  }
+
+  return "very";
 }
 
 export function getVerificationPromptCopy(
@@ -360,13 +395,13 @@ export function getVerificationPromptCopy(
       };
     }
     return {
-      title: needsSanctionsClear && !needsWalletScore ? "Passport screening required" : "Passport score required",
+      title: needsSanctionsClear && !needsWalletScore ? "Passport screening required" : "Score Too Low",
       description: needsSanctionsClear && !needsWalletScore
         ? "Complete Passport sanctions screening, then come back to join."
         : needsSanctionsClear
           ? "Complete the required Passport checks, then come back to join."
-          : "Improve your Passport score, then come back to join.",
-      actionLabel: "Open Passport",
+          : "Your wallet needs a Passport score of 20+ to enter this community. Visit app.passport.xyz to improve it.",
+      actionLabel: "Visit Passport.xyz",
     };
   }
 

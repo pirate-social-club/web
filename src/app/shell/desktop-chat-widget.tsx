@@ -4,11 +4,11 @@ import * as React from "react";
 import { ChatCircleText, X } from "@phosphor-icons/react";
 
 import { navigate } from "@/app/router";
-import { ChatPage, type ChatNavigationAdapter } from "@/app/authenticated-routes/chat/chat-route";
-import type { ChatRouteMode } from "@/app/authenticated-routes/chat/chat-types";
+import { ChatPage, type ChatNavigationAdapter } from "@/app/chat/chat-route";
 import { IconButton } from "@/components/primitives/icon-button";
 import { Type } from "@/components/primitives/type";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { ChatRouteMode } from "@/lib/chat/chat-types";
 import { cn } from "@/lib/utils";
 
 type DesktopChatWidgetApi = {

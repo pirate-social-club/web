@@ -16,5 +16,15 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Check generated locales freshness
+        run: |
+          cp src/locales/generated.ts src/locales/generated.ts.bak
+          node scripts/generate-locales.mjs
+          if ! diff -q src/locales/generated.ts src/locales/generated.ts.bak > /dev/null 2>&1; then
+            echo "::error::src/locales/generated.ts is stale. Run 'bun run locales:generate' and commit the result."
+            exit 1
+          fi
+          echo "generated.ts is fresh"
+
       - name: Run UI hygiene checks
         run: node scripts/ui-audit.mjs

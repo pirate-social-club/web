@@ -12,7 +12,7 @@ describe("resolveResourceHref", () => {
   test("resolves source links", () => {
     expect(resolveResourceHref("source-github")).toBe("https://github.com/pirate-social-club");
     expect(resolveResourceHref("source-freedom-browser")).toBe(
-      "https://github.com/solardev-xyz/freedom-browser",
+      "https://github.com/pirate-social-club/freedom-browser",
     );
     expect(resolveResourceHref("source-radicle-web")).toBe(
       "https://app.radicle.xyz/nodes/iris.radicle.xyz/rad:z3qZx2qJDkjxfjBSPwRva4DutYJTh",

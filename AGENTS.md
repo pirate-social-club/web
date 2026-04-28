@@ -5,18 +5,23 @@
 Use the cheap gate first:
 
 ```bash
-rtk bun run types
+rtk bun run types:safe
 rtk bun run ui:audit
 ```
+
+Use `rtk bun run types:safe` instead of `rtk bun run types` for routine local verification. It runs the same TypeScript check with incremental build info, a bounded Node heap, and lower process priority so it is less likely to stall the machine. Use `rtk bun run types` only when exact uncapped CI parity is required.
 
 Use Storybook validation when component stories change. Avoid `rtk bun run build` by default; use the lighter Vite checks from the workspace instructions unless a full production build is required.
 
 ## Browser Automation
 
-- Use `agent-browser` sparingly on local dev pages.
-- Do not run multiple `agent-browser` commands in parallel. Open/wait/snapshot/screenshot actions must be serialized so only one browser automation command is active at a time.
-- Prefer a single snapshot or screenshot after the page is loaded, then inspect code locally. Avoid repeated screenshots or long concurrent waits unless the user explicitly asks for deeper browser testing.
-- Before starting a dev server or browser session, check whether one is already running. Stop any dev server or browser session started for the task when it is no longer needed.
+- Use `agent-browser` only when visual/browser verification is needed and code inspection or unit tests are insufficient.
+- Keep at most one `agent-browser` session active for this repo. Do not open multiple tabs/sessions or run `agent-browser` commands in parallel.
+- Serialize all open/wait/snapshot/screenshot/click actions. Take one snapshot or screenshot after the page is loaded, then inspect code locally before deciding whether another browser action is necessary.
+- Before starting a dev server, Storybook, or browser session, check existing processes with `rtk ps -ef` or `rtk pgrep -af "storybook|vite|wrangler|next|6006|5173|8787"`.
+- If the desired dev server or Storybook is already running, use the existing URL. Do not start a second instance, and do not switch to an alternate port just because the default port is occupied, unless the user explicitly asks for a separate server.
+- Do not run browser automation while a build, full typecheck, Storybook build, or other heavy command is running unless the user explicitly asks for that tradeoff.
+- Stop any dev server or browser session started for the task when it is no longer needed.
 
 ## UI Rules
 

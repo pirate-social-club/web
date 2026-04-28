@@ -5,6 +5,7 @@ import {
   getJoinCtaLabel,
   getVerificationPromptCopy,
   isJoinCtaActionable,
+  resolveSuggestedVerificationProvider,
 } from "../lib/identity-gates";
 import type { MembershipGateSummary, JoinEligibility, GateFailureDetails } from "@pirate/api-contracts";
 
@@ -150,11 +151,29 @@ describe("getVerificationPromptCopy", () => {
   });
 
   test("describes Passport score remediation", () => {
-    expect(getVerificationPromptCopy("passport", ["wallet_score"]).title).toBe("Passport score required");
+    expect(getVerificationPromptCopy("passport", ["wallet_score"]).title).toBe("Score Too Low");
   });
 
   test("describes Passport sanctions screening remediation", () => {
     expect(getVerificationPromptCopy("passport", ["sanctions_clear"]).title).toBe("Passport screening required");
+  });
+});
+
+describe("resolveSuggestedVerificationProvider", () => {
+  test("defaults unique human remediation to Very when the API does not suggest a provider", () => {
+    expect(resolveSuggestedVerificationProvider({
+      membership_gate_summaries: [],
+      missing_capabilities: ["unique_human"],
+      suggested_verification_provider: null,
+    })).toBe("very");
+  });
+
+  test("keeps document fact remediation on Self", () => {
+    expect(resolveSuggestedVerificationProvider({
+      membership_gate_summaries: [{ gate_type: "nationality", accepted_providers: ["self"] }],
+      missing_capabilities: ["nationality"],
+      suggested_verification_provider: null,
+    })).toBe("self");
   });
 });
 

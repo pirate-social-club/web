@@ -17,9 +17,11 @@ export function CardShell({
 export function PageContainer({
   className,
   size = "default",
+  gutter = false,
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
   size?: "default" | "feed" | "narrow" | "rail" | "wide";
+  gutter?: boolean;
 }) {
   const sizeClassName = {
     default: "max-w-5xl",
@@ -31,7 +33,12 @@ export function PageContainer({
 
   return (
     <div
-      className={cn("mx-auto w-full", sizeClassName, className)}
+      className={cn(
+        "mx-auto w-full",
+        sizeClassName,
+        className,
+        gutter && "px-[var(--page-gutter-x)] md:px-[var(--page-gutter-x-md)] lg:px-[var(--page-gutter-x-lg)]",
+      )}
       {...props}
     />
   );

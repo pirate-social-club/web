@@ -21,7 +21,7 @@ import type { SettingsSubmitState, SettingsTab } from "@/components/compositions
 import type { ProfileUpdateInput } from "@/lib/api/client-api-types";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 
-import { AuthRequiredRouteState } from "./route-shell";
+import { AuthRequiredRouteState } from "@/app/authenticated-helpers/route-shell";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import {
   apiProfileToProps,
@@ -29,8 +29,8 @@ import {
   buildSettingsPath,
   getSelectedProfileHandleLabel,
   mapProfileLinkedHandles,
-} from "./profile-settings-mapping";
-import { useSettingsOwnedAgents } from "./use-settings-owned-agents";
+} from "@/app/authenticated-helpers/profile-settings-mapping";
+import { useSettingsOwnedAgents } from "@/app/authenticated-state/use-settings-owned-agents";
 
 export { CurrentUserWalletPage } from "./wallet-settings-route";
 export { CurrentUserSettingsIndexPage } from "./settings-index-route";

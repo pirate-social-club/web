@@ -23,18 +23,18 @@ import { PageContainer } from "@/components/primitives/layout-shell";
 import { Spinner } from "@/components/primitives/spinner";
 import { Feed, type FeedSort, TopTimeRangeControl } from "@/components/compositions/posts/feed/feed";
 
-import { loadProfilesByUserId } from "./community-data";
-import { toHomeFeedItem } from "./post-presentation";
-import { submitOptimisticPostVote, updateHomeFeedEntryPostVote } from "./post-vote";
+import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
+import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
+import { submitOptimisticPostVote, updateHomeFeedEntryPostVote } from "@/app/authenticated-helpers/post-vote";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { getErrorMessage } from "@/lib/error-utils";
 import { buildFeedSortOptions, buildTopTimeRangeOptions } from "@/lib/feed-sort-options";
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
-import { EmptyFeedState, RouteLoadFailureState } from "./route-shell";
-import { useSongPlayback } from "./song-commerce";
-import { useCommunityInteractionGate } from "./community-interaction-gate";
+import { EmptyFeedState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
+import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
+import { useCommunityInteractionGate } from "@/app/authenticated-helpers/community-interaction-gate";
 
 type HomeRailPost = {
   communityDisplayName: string;

@@ -1,26 +1,28 @@
+import "@/test/setup-runtime";
+
 import { describe, expect, test } from "bun:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Flag, House, Plus } from "@phosphor-icons/react";
 
-import { Feed } from "@/components/compositions/feed/feed";
-import { AppHeader } from "@/components/compositions/app-shell-chrome/app-header";
-import { CommunityAgentPolicyPage } from "@/components/compositions/community-agent-policy/community-agent-policy";
-import { NotificationInboxPage } from "@/components/compositions/notification-inbox-page/notification-inbox-page";
-import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding-reddit-bootstrap/onboarding-reddit-bootstrap";
-import { AppSidebar } from "@/components/compositions/app-sidebar/app-sidebar";
-import { CommunitySidebar } from "@/components/compositions/community-sidebar/community-sidebar";
+import { Feed } from "@/components/compositions/posts/feed/feed";
+import { AppHeader } from "@/components/compositions/app/app-shell-chrome/app-header";
+import { CommunityAgentPolicyPage } from "@/components/compositions/community/agent-policy/community-agent-policy";
+import { NotificationInboxPage } from "@/components/compositions/notifications/inbox-page/notification-inbox-page";
+import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding/reddit-bootstrap/onboarding-reddit-bootstrap";
+import { AppSidebar } from "@/components/compositions/app/app-sidebar/app-sidebar";
+import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
 import {
   CommunitySafetyPage,
   createDefaultCommunitySafetyAdultContentPolicy,
   createDefaultCommunitySafetyCivilityPolicy,
   createDefaultCommunitySafetyGraphicContentPolicy,
   createDefaultCommunitySafetyProviderSettings,
-} from "@/components/compositions/community-safety-page/community-safety-page";
-import { SidebarProvider } from "@/components/compositions/sidebar/sidebar";
-import { PostThread } from "@/components/compositions/post-thread/post-thread";
-import { SettingsPage } from "@/components/compositions/settings-page/settings-page";
-import { WalletHub } from "@/components/compositions/wallet-hub/wallet-hub";
+} from "@/components/compositions/community/safety-page/community-safety-page";
+import { SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
+import { PostThread } from "@/components/compositions/posts/post-thread/post-thread";
+import { SettingsPage } from "@/components/compositions/settings/settings-page/settings-page";
+import { WalletHub } from "@/components/compositions/wallet/wallet-hub/wallet-hub";
 import { UiLocaleProvider } from "@/lib/ui-locale";
 
 const primaryItems = [
@@ -74,6 +76,7 @@ const namespaceVerificationTask = {
   priority: 10,
   payload: {
     community_display_name: "Infinity Mirror",
+    target_path: "/c/gld_community_1/mod/namespace",
   },
   resolved_at: null,
   dismissed_at: null,
@@ -162,6 +165,25 @@ describe("composition smoke tests", () => {
     );
 
     expect(markup).toContain("PIRATE");
+  });
+
+  test("renders the mobile app header create action as a single plus", () => {
+    const markup = render(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <SidebarProvider>
+          <AppHeader
+            forceMobile
+            hideBrand
+            mobileLeadingContent={<div className="h-11 w-11" aria-hidden="true" />}
+            onCreateClick={() => undefined}
+            showCreateAction
+            showMobileCreateAction
+          />
+        </SidebarProvider>
+      </UiLocaleProvider>,
+    );
+
+    expect((markup.match(/<svg/g) ?? []).length).toBe(1);
   });
 
   test("renders sidebar requirements as a minimal section", () => {
@@ -275,9 +297,9 @@ describe("composition smoke tests", () => {
       />,
     );
 
-    expect(markup).toContain("Inbox");
+    expect(markup).toContain("Notifications");
     expect(markup).toContain("Verify your community namespace");
-    expect(markup).toContain("Recent activity");
+    expect(markup).toContain("Someone replied to your comment");
   });
 
   test("renders the moderation safety page", () => {
@@ -395,10 +417,33 @@ describe("composition smoke tests", () => {
       </UiLocaleProvider>,
     );
 
-    expect(markup).toContain("Ethereum");
-    expect(markup).toContain("0x42a5");
-    expect(markup).toContain("1.28");
+    expect(markup).toContain("Send");
+    expect(markup).toContain("Receive");
+    expect(markup).toContain("2.1");
     expect(markup).toContain("ETH");
+    expect(markup).toContain("IP");
+    expect(markup).toContain("18.2");
+  });
+
+  test("renders disabled wallet actions while wallet lookup is pending", () => {
+    const markup = render(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <WalletHub
+          chainSections={[{
+            availability: "ready",
+            chainId: "ethereum",
+            title: "Ethereum",
+            tokens: [{ id: "eth", name: "Ether", symbol: "ETH", balance: "0", usdPrice: 0 }],
+          }]}
+          totalBalanceUsd="$0.00"
+          walletActionsPending
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Send");
+    expect(markup).toContain("Receive");
+    expect(markup).toContain("disabled");
   });
 
   test("renders the settings agents tab", () => {

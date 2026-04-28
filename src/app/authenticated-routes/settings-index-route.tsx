@@ -9,9 +9,9 @@ import { trackAnalyticsEvent } from "@/lib/analytics";
 import { usePwaInstallPrompt } from "@/lib/pwa/use-pwa-install-prompt";
 import { toast } from "@/components/primitives/sonner";
 
-import { AuthRequiredRouteState } from "./route-shell";
+import { AuthRequiredRouteState } from "@/app/authenticated-helpers/route-shell";
 import { useRouteMessages } from "@/hooks/use-route-messages";
-import { buildSettingsPath } from "./profile-settings-mapping";
+import { buildSettingsPath } from "@/app/authenticated-helpers/profile-settings-mapping";
 
 export function CurrentUserSettingsIndexPage() {
   const { copy } = useRouteMessages();

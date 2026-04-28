@@ -25,6 +25,7 @@ export interface VotePillProps {
   downvoteLabel?: string;
   size?: "default" | "compact";
   upvoteLabel?: string;
+  variant?: "pill" | "bare";
 }
 
 export function VotePill({
@@ -36,6 +37,7 @@ export function VotePill({
   downvoteLabel,
   size = "default",
   upvoteLabel,
+  variant = "pill",
 }: VotePillProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
@@ -51,11 +53,14 @@ export function VotePill({
   return (
     <div
       className={cn(
-        "inline-grid items-center gap-0 rounded-full border border-border-soft bg-background transition-colors",
+        "inline-grid items-center gap-0 transition-colors",
         size === "default" && "h-11 grid-cols-[2.5rem_2rem_2.5rem] px-1",
         size === "compact" && "h-9 grid-cols-[2rem_1.75rem_2rem] px-0.5",
-        viewerVote === "up" && "border-primary/18 bg-primary/6",
-        viewerVote === "down" && "border-destructive/18 bg-destructive/6",
+        variant === "pill" && [
+          "rounded-full border border-border-soft bg-background",
+          viewerVote === "up" && "border-primary/18 bg-primary/6",
+          viewerVote === "down" && "border-destructive/18 bg-destructive/6",
+        ],
         className,
       )}
       data-post-card-interactive="true"

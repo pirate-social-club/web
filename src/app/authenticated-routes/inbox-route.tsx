@@ -20,7 +20,7 @@ import {
 } from "@/components/compositions/notifications/inbox-page/notification-inbox-page";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
 
-import { AuthRequiredRouteState } from "./route-shell";
+import { AuthRequiredRouteState } from "@/app/authenticated-helpers/route-shell";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 
 const EMPTY_ROYALTY_ACTIVITY: RoyaltyActivityResponse = {

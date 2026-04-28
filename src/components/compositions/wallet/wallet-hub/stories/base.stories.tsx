@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
+import { StandardRoutePage } from "@/components/compositions/app/page-shell";
+import { StorybookMobileDefaultRoute } from "@/components/compositions/app/page-shell/storybook-helpers";
 import { fiveChainSections, sharedWalletAddress } from "../../stories/wallet-flow-fixtures";
 import { WalletReceiveSheet } from "../../wallet-receive-sheet/wallet-receive-sheet";
 import { WalletSendSheet } from "../../wallet-send-sheet/wallet-send-sheet";
@@ -31,18 +33,19 @@ const meta = {
   parameters: {
     layout: "fullscreen",
   },
-  render: (args) => (
-    <div className="min-h-screen bg-background">
-      <WalletHub {...args} />
-    </div>
-  ),
 } satisfies Meta<typeof WalletHub>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  render: (args) => (
+    <StandardRoutePage size="rail">
+      <WalletHub {...args} />
+    </StandardRoutePage>
+  ),
+};
 
 export const Deferred: Story = {
   args: {
@@ -89,19 +92,29 @@ export const Deferred: Story = {
       },
     ],
   },
+  render: (args) => (
+    <StandardRoutePage size="rail">
+      <WalletHub {...args} />
+    </StandardRoutePage>
+  ),
 };
 
 export const Mobile: Story = {
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
+  render: (args) => (
+    <StorybookMobileDefaultRoute size="rail">
+      <WalletHub {...args} />
+    </StorybookMobileDefaultRoute>
+  ),
 };
 
 function WalletHubWithSheets({ forceMobile = false }: { forceMobile?: boolean }) {
   const [walletAction, setWalletAction] = React.useState<"send" | "receive" | null>(null);
 
   return (
-    <div className="min-h-screen bg-background">
+    <StandardRoutePage size="rail">
       <WalletHub
         {...baseArgs}
         onReceive={() => setWalletAction("receive")}
@@ -122,7 +135,36 @@ function WalletHubWithSheets({ forceMobile = false }: { forceMobile?: boolean })
         onOpenChange={(open) => setWalletAction(open ? "send" : null)}
         open={walletAction === "send"}
       />
-    </div>
+    </StandardRoutePage>
+  );
+}
+
+function WalletHubWithSheetsMobile({ forceMobile = false }: { forceMobile?: boolean }) {
+  const [walletAction, setWalletAction] = React.useState<"send" | "receive" | null>(null);
+
+  return (
+    <StorybookMobileDefaultRoute size="rail">
+      <WalletHub
+        {...baseArgs}
+        onReceive={() => setWalletAction("receive")}
+        onSend={() => setWalletAction("send")}
+      />
+      <WalletReceiveSheet
+        chainSections={fiveChainSections}
+        defaultChainId="tempo"
+        forceMobile={forceMobile}
+        onOpenChange={(open) => setWalletAction(open ? "receive" : null)}
+        open={walletAction === "receive"}
+        walletAddress={sharedWalletAddress}
+      />
+      <WalletSendSheet
+        chainSections={fiveChainSections}
+        defaultAssetId="base:base-usdc"
+        forceMobile={forceMobile}
+        onOpenChange={(open) => setWalletAction(open ? "send" : null)}
+        open={walletAction === "send"}
+      />
+    </StorybookMobileDefaultRoute>
   );
 }
 
@@ -134,5 +176,5 @@ export const WithSheetsMobile: Story = {
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
-  render: () => <WalletHubWithSheets forceMobile />,
+  render: () => <WalletHubWithSheetsMobile forceMobile />,
 };

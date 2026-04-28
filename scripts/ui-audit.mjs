@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, "..");
+const workspaceRoot = path.resolve(projectRoot, "..");
 
 const primitivesDir = path.join(projectRoot, "src", "components", "primitives");
 const compositionsDir = path.join(projectRoot, "src", "components", "compositions");
@@ -23,7 +24,6 @@ const staleMarkers = [
   "Status: draft",
   "to be written",
   "hns-public-profile-routing",
-  "coming soon",
   "terminal client",
 ];
 const staleRegexMarkers = [
@@ -49,6 +49,20 @@ function walk(dir, options = {}) {
 
 function relative(filePath) {
   return path.relative(projectRoot, filePath);
+}
+
+function relativeWorkspace(filePath) {
+  return path.relative(workspaceRoot, filePath);
+}
+
+function checkNoDuplicateWebTrees() {
+  const duplicateTree = path.join(workspaceRoot, "web-publisher-flow-clean");
+
+  return {
+    label: "repo/no-duplicate-web-tree",
+    passed: !fs.existsSync(duplicateTree),
+    details: fs.existsSync(duplicateTree) ? [relativeWorkspace(duplicateTree)] : [],
+  };
 }
 
 function checkPrimitiveStoryCoverage() {
@@ -98,6 +112,7 @@ function checkNoHardcodedColors() {
     /\bshadow-\[.*rgba\(/,
     /\bbg-\[color-mix\(/,
     /style\.backgroundColor\s*=\s*["']#/,
+    /\b(?:bg|text|border|ring|from|via|to)-(?:amber|blue|brown|cyan|emerald|fuchsia|gray|green|indigo|lime|neutral|orange|pink|purple|red|rose|sky|slate|stone|teal|violet|yellow|zinc)-\d{2,3}\b/,
   ];
 
   for (const filePath of walk(srcDir)) {
@@ -124,11 +139,15 @@ function checkNoHardcodedColors() {
 function checkNoArbitrarySpacing() {
   const offenders = [];
   const bannedPatterns = [
+    /\bborder-\[\d+(?:\.\d+)?(?:px|rem)\]/,
     /\brounded-\[1\.75rem\]/,
     /\brounded-\[1\.25rem\]/,
+    /\brounded-\[1\.5rem\]/,
     /\brounded-\[2rem\]/,
+    /\brounded-\[2\.5rem\]/,
     /\brounded-\[0\.4rem\]/,
     /\brounded-\[28px\]/,
+    /\bw-\[360px\]/,
     /\bmax-w-\[64rem\]/,
     /\bmax-w-\[72rem\]/,
     /\bmax-w-\[78rem\]/,
@@ -140,6 +159,7 @@ function checkNoArbitrarySpacing() {
     /\bmin-w-\[8rem\]/,
     /\bmin-w-\[10rem\]/,
     /\bmin-w-\[12rem\]/,
+    /\bmin-h-\[88px\]/,
     /\bmin-h-\[18rem\]/,
     /\bmin-h-\[20rem\]/,
     /\bh-\[4\.5rem\]/,
@@ -169,6 +189,28 @@ function checkNoArbitrarySpacing() {
   };
 }
 
+function checkNoCompositionRouteMessages() {
+  const offenders = [];
+  const routeMessagesImport = /from\s+["']@\/hooks\/use-route-messages["']/u;
+
+  for (const filePath of walk(compositionsDir)) {
+    if (!filePath.endsWith(".tsx") && !filePath.endsWith(".ts")) continue;
+
+    const lines = fs.readFileSync(filePath, "utf8").split("\n");
+    lines.forEach((line, index) => {
+      if (routeMessagesImport.test(line)) {
+        offenders.push(`${relative(filePath)}:${index + 1}`);
+      }
+    });
+  }
+
+  return {
+    label: "compositions/no-route-messages-hook",
+    passed: offenders.length === 0,
+    details: offenders,
+  };
+}
+
 function checkCompositionFolderRule() {
   const offenders = fs
     .readdirSync(compositionsDir)
@@ -178,6 +220,44 @@ function checkCompositionFolderRule() {
 
   return {
     label: "compositions/folder-rule",
+    passed: offenders.length === 0,
+    details: offenders,
+  };
+}
+
+function todayUtcDateOnly() {
+  const now = new Date();
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+}
+
+function parseUtcDateOnly(year, month, day) {
+  return Date.UTC(Number(year), Number(month) - 1, Number(day));
+}
+
+function checkNoExpiredDatedTodos() {
+  const offenders = [];
+  const self = path.normalize(__filename);
+  const today = todayUtcDateOnly();
+  const datedTodoPattern = /remove after (\d{4})-(\d{2})-(\d{2})/iu;
+
+  for (const filePath of walk(projectRoot, { skipIgnoredDirs: true })) {
+    if (path.normalize(filePath) === self) continue;
+    if (!scannedExtensions.has(path.extname(filePath))) continue;
+
+    const lines = fs.readFileSync(filePath, "utf8").split("\n");
+    lines.forEach((line, index) => {
+      const match = line.match(datedTodoPattern);
+      if (!match) return;
+
+      const expiry = parseUtcDateOnly(match[1], match[2], match[3]);
+      if (today > expiry) {
+        offenders.push(`${relative(filePath)}:${index + 1}: ${match[0]}`);
+      }
+    });
+  }
+
+  return {
+    label: "repo/no-expired-dated-todos",
     passed: offenders.length === 0,
     details: offenders,
   };
@@ -210,11 +290,14 @@ function checkStaleMarkers() {
 }
 
 const checks = [
+  checkNoDuplicateWebTrees(),
   checkPrimitiveStoryCoverage(),
   checkNoSmallText(),
   checkNoHardcodedColors(),
   checkNoArbitrarySpacing(),
+  checkNoCompositionRouteMessages(),
   checkCompositionFolderRule(),
+  checkNoExpiredDatedTodos(),
   checkStaleMarkers(),
 ];
 

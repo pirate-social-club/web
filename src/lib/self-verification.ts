@@ -1,4 +1,9 @@
 import type { VerificationSession } from "@pirate/api-contracts";
+import {
+  getUniversalLink,
+  SelfAppBuilder,
+  type SelfApp,
+} from "@selfxyz/sdk-common";
 
 export type SelfVerificationResult =
   | { status: "completed"; proof: string }
@@ -78,10 +83,36 @@ export function parseSelfCallback(url: URL): SelfVerificationResult {
   return { status: "failed", reason: "no_proof_returned" };
 }
 
-export function getSelfVerificationLaunchHref(
+function getSelfChainId(launch: SelfAppLaunch): SelfApp["chainID"] {
+  if (launch.chain_id === 42220 || launch.chain_id === 11142220) {
+    return launch.chain_id;
+  }
+  return launch.endpoint_type === "staging_celo" || launch.endpoint_type === "staging_https" ? 11142220 : 42220;
+}
+
+function getSelfVersion(launch: SelfAppLaunch): SelfApp["version"] {
+  return launch.version === 1 || launch.version === 2 ? launch.version : 2;
+}
+
+function getSelfDisclosures(launch: SelfAppLaunch): SelfApp["disclosures"] {
+  return {
+    ...(launch.disclosures.issuing_state ? { issuing_state: true } : {}),
+    ...(launch.disclosures.name ? { name: true } : {}),
+    ...(launch.disclosures.passport_number ? { passport_number: true } : {}),
+    ...(launch.disclosures.nationality ? { nationality: true } : {}),
+    ...(launch.disclosures.date_of_birth ? { date_of_birth: true } : {}),
+    ...(launch.disclosures.gender ? { gender: true } : {}),
+    ...(launch.disclosures.expiry_date ? { expiry_date: true } : {}),
+    ...(launch.disclosures.ofac ? { ofac: true } : {}),
+    ...(launch.disclosures.excluded_countries?.length ? { excludedCountries: launch.disclosures.excluded_countries as SelfApp["disclosures"]["excludedCountries"] } : {}),
+    ...(typeof launch.disclosures.minimum_age === "number" ? { minimumAge: launch.disclosures.minimum_age } : {}),
+  };
+}
+
+export function getSelfVerificationApp(
   launch: SelfAppLaunch | null | undefined,
   options: { deeplinkCallback?: string | null } = {},
-): string | null {
+): SelfApp | null {
   const endpoint = launch?.endpoint?.trim();
   const sessionId = launch?.session_id?.trim();
   const scope = launch?.scope?.trim();
@@ -91,36 +122,33 @@ export function getSelfVerificationLaunchHref(
     return null;
   }
 
-  const selfApp = {
-    appName: launch.app_name,
-    chainID: launch.chain_id ?? (launch.endpoint_type === "staging_celo" || launch.endpoint_type === "staging_https" ? 11142220 : 42220),
-    deeplinkCallback: options.deeplinkCallback ?? launch.deeplink_callback ?? "",
-    devMode: launch.dev_mode ?? false,
-    endpoint,
-    endpointType: launch.endpoint_type,
-    header: launch.header ?? "",
-    logoBase64: launch.logo_base64 ?? "",
-    disclosures: {
-      ...(launch.disclosures.issuing_state ? { issuing_state: true } : {}),
-      ...(launch.disclosures.name ? { name: true } : {}),
-      ...(launch.disclosures.passport_number ? { passport_number: true } : {}),
-      ...(launch.disclosures.nationality ? { nationality: true } : {}),
-      ...(launch.disclosures.date_of_birth ? { date_of_birth: true } : {}),
-      ...(launch.disclosures.gender ? { gender: true } : {}),
-      ...(launch.disclosures.expiry_date ? { expiry_date: true } : {}),
-      ...(launch.disclosures.ofac ? { ofac: true } : {}),
-      ...(launch.disclosures.excluded_countries?.length ? { excludedCountries: launch.disclosures.excluded_countries } : {}),
-      ...(typeof launch.disclosures.minimum_age === "number" ? { minimumAge: launch.disclosures.minimum_age } : {}),
-    },
-    scope,
-    sessionId,
-    userDefinedData: launch.user_defined_data ?? "",
-    userId,
-    userIdType: launch.user_id_type,
-    version: launch.version ?? 2,
-  };
+  try {
+    return new SelfAppBuilder({
+      appName: launch.app_name,
+      chainID: getSelfChainId(launch),
+      deeplinkCallback: options.deeplinkCallback ?? launch.deeplink_callback ?? "",
+      devMode: launch.dev_mode ?? false,
+      endpoint,
+      endpointType: launch.endpoint_type,
+      header: launch.header ?? "",
+      logoBase64: launch.logo_base64 ?? "",
+      disclosures: getSelfDisclosures(launch),
+      scope,
+      sessionId,
+      userDefinedData: launch.user_defined_data ?? "",
+      userId,
+      userIdType: launch.user_id_type,
+      version: getSelfVersion(launch),
+    }).build();
+  } catch {
+    return null;
+  }
+}
 
-  const url = new URL("https://redirect.self.xyz");
-  url.searchParams.set("selfApp", JSON.stringify(selfApp));
-  return url.toString();
+export function getSelfVerificationLaunchHref(
+  launch: SelfAppLaunch | null | undefined,
+  options: { deeplinkCallback?: string | null } = {},
+): string | null {
+  const selfApp = getSelfVerificationApp(launch, options);
+  return selfApp ? getUniversalLink(selfApp) : null;
 }

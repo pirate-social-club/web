@@ -12,7 +12,7 @@ import { ApiProvider, useSessionRevalidation } from "@/lib/api";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { useSession } from "@/lib/api/session-store";
 import { PirateAuthProvider } from "@/components/auth/privy-provider";
-import { useAssistantUnreadCount } from "@/app/authenticated-routes/chat/chat-assistant-client";
+import { useAssistantUnreadCount } from "@/lib/chat/chat-assistant-client";
 import { useNotificationBadges } from "@/lib/notifications/use-notification-badges";
 import { useNotificationSummary } from "@/lib/notifications/use-notification-summary";
 import { useSidebarCommunities } from "@/lib/owned-communities";

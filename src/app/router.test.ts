@@ -16,6 +16,10 @@ describe("public profile host routing", () => {
       handleLabel: "captain",
       hostSuffix: "pirate",
     });
+    expectJson(extractPublicProfileHost("captain.clawitzer"), {
+      handleLabel: "captain",
+      hostSuffix: "clawitzer",
+    });
   });
 
   test("ignores reserved or nested subdomains", () => {
@@ -43,6 +47,15 @@ describe("public profile host routing", () => {
       path: "/u/captain.pirate",
       handleLabel: "captain.pirate",
       hostSuffix: null,
+    });
+  });
+
+  test("matches public agent routes from clawitzer host routes", () => {
+    expectJson(matchRoute("/", "night-signal.clawitzer"), {
+      kind: "public-agent",
+      path: "/",
+      handleLabel: "night-signal",
+      hostSuffix: "clawitzer",
     });
   });
 
@@ -97,10 +110,28 @@ describe("public profile host routing", () => {
   });
 
   test("matches settings agent routes from path routes", () => {
+    expectJson(matchRoute("/settings"), {
+      kind: "settings-index",
+      path: "/settings",
+    });
     expectJson(matchRoute("/settings/agents"), {
       kind: "settings",
       path: "/settings/agents",
       section: "agents",
+    });
+  });
+
+  test("matches popular as a primary feed route", () => {
+    expectJson(matchRoute("/popular"), {
+      kind: "popular",
+      path: "/popular",
+    });
+  });
+
+  test("matches advertise as an authenticated app route", () => {
+    expectJson(matchRoute("/advertise"), {
+      kind: "advertise",
+      path: "/advertise",
     });
   });
 

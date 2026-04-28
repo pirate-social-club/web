@@ -5,7 +5,7 @@ import * as React from "react";
 import {
   ASSISTANT_CONVERSATION_ID,
   seedAssistantWelcome,
-} from "@/app/authenticated-routes/chat/chat-assistant-client";
+} from "@/lib/chat/chat-assistant-client";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useSession } from "@/lib/api/session-store";
 import { isOnboardingComplete } from "@/lib/onboarding";

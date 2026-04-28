@@ -3,18 +3,19 @@
 import * as React from "react";
 
 import type { AppRoute } from "@/app/router";
-import { toCommunityFeedItem, toHomeFeedItem, type HomeFeedEntry } from "./authenticated-routes/post-presentation";
-import { applyPostVote } from "./authenticated-routes/post-vote";
-import { buildAssetListingRequest, resolveComposerSubmitState } from "./authenticated-routes/asset-submit";
-import { buildSongPostRequest } from "./authenticated-routes/song-submit";
+import { HomePage } from "./authenticated-routes/home-routes";
+import { toCommunityFeedItem, toHomeFeedItem, type HomeFeedEntry } from "./authenticated-helpers/post-presentation";
+import { applyPostVote } from "./authenticated-helpers/post-vote";
+import { buildAssetListingRequest, resolveComposerSubmitState } from "./authenticated-helpers/asset-submit";
+import { buildSongPostRequest } from "./authenticated-helpers/song-submit";
 import {
   buildThreadCommentTreeFromItems,
   createThreadCommentNode,
   loadThreadCommentTree,
   mergeThreadCommentNodes,
   type ThreadCommentNode,
-} from "./authenticated-routes/thread-state";
-import type { CreatePostDraftState } from "./authenticated-routes/create-post-draft-state";
+} from "./authenticated-state/thread-state";
+import type { CreatePostDraftState } from "./authenticated-state/create-post-draft-state";
 
 function lazyRouteModule<TModule extends Record<string, unknown>>(
   loader: () => Promise<TModule>,
@@ -25,7 +26,6 @@ function lazyRouteModule<TModule extends Record<string, unknown>>(
   }));
 }
 
-const LazyHomePage = lazyRouteModule(() => import("./authenticated-routes/home-routes"), "HomePage");
 const LazyYourCommunitiesPage = lazyRouteModule(
   () => import("./authenticated-routes/home-routes"),
   "YourCommunitiesPage",
@@ -64,7 +64,7 @@ const LazyAdvertisePage = lazyRouteModule(
   "AdvertisePage",
 );
 const LazyChatPage = lazyRouteModule(
-  () => import("./authenticated-routes/chat/chat-route"),
+  () => import("./chat/chat-route"),
   "ChatPage",
 );
 const LazyCurrentUserProfilePage = lazyRouteModule(
@@ -110,9 +110,9 @@ export type { HomeFeedEntry, ThreadCommentNode };
 export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
   switch (route.kind) {
     case "home":
-      return <LazyHomePage />;
+      return <HomePage />;
     case "popular":
-      return <LazyHomePage initialSort="best" />;
+      return <HomePage initialSort="best" />;
     case "your-communities":
       return <LazyYourCommunitiesPage />;
     case "create-post-global":

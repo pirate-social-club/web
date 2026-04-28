@@ -21,7 +21,7 @@ import { navigate } from "@/app/router";
 import {
   buildCommunityModerationIndexPath,
   buildDefaultCommunityModerationPath,
-} from "@/app/authenticated-routes/moderation-helpers";
+} from "@/app/authenticated-helpers/moderation-helpers";
 import type {
   AppSidebarPrimaryItem,
   AppSidebarSection,

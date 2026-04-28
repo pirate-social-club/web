@@ -1,6 +1,6 @@
 import { isAddress } from "viem";
 
-import type { IdentityGateDraft } from "@/components/compositions/create-community-composer/create-community-composer.types";
+import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 
 export const COURTYARD_POLYGON_REGISTRY = "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD";
 export const COURTYARD_CATALOG_AUTHORING_ENABLED = false;

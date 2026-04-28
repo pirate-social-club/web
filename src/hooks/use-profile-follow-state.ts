@@ -7,7 +7,7 @@ import { toast } from "@/components/primitives/sonner";
 import {
   usePiratePrivyRuntime,
   usePiratePrivyWallets,
-} from "@/lib/auth/privy-provider";
+} from "@/components/auth/privy-provider";
 import { type StoredSession, useSession } from "@/lib/api/session-store";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";

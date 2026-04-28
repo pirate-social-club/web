@@ -13,7 +13,7 @@ import { useProfileFollowState } from "@/hooks/use-profile-follow-state";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
 import { useChatLauncher } from "./shell/use-chat-launcher";
 import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profiles/profile-page/profile-page";
-import { apiProfileToProps } from "./authenticated-routes/profile-settings-mapping";
+import { apiProfileToProps } from "./authenticated-helpers/profile-settings-mapping";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
 
 type PublicProfileResolution = {

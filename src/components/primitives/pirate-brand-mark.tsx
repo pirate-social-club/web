@@ -10,7 +10,7 @@ export interface PirateBrandMarkProps extends Omit<React.ImgHTMLAttributes<HTMLI
 }
 
 export const PirateBrandMark = React.forwardRef<HTMLImageElement, PirateBrandMarkProps>(
-  ({ alt = "Pirate Social Club", className, decorative = true, ...props }, ref) => (
+  ({ alt = "Pirate", className, decorative = true, ...props }, ref) => (
     <img
       {...props}
       alt={decorative ? "" : alt}

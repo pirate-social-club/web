@@ -28,15 +28,15 @@ import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 import { normalizeCountryCode } from "@/lib/countries";
 import { isValidCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 
-import { CommunityModerationGuard, getCommunityModerationTitle } from "./moderation-data";
+import { CommunityModerationGuard, getCommunityModerationTitle } from "@/app/authenticated-helpers/moderation-route-helpers";
 import {
   buildCommunityModerationIndexPath,
   buildCommunityModerationSections,
   type CommunityModerationSection,
-} from "./moderation-helpers";
-import { useCommunityModerationState } from "./moderation-state";
+} from "@/app/authenticated-helpers/moderation-helpers";
+import { useCommunityModerationState } from "@/app/authenticated-state/moderation-state";
 import { useRouteMessages } from "@/hooks/use-route-messages";
-import { FullPageSpinner, RouteLoadFailureState } from "./route-shell";
+import { FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 
 function useIsModerationMobileLayout() {
   const [isMobileLayout, setIsMobileLayout] = React.useState(() => {

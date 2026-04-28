@@ -1,7 +1,7 @@
 "use client";
 
 import { Avatar } from "@/components/primitives/avatar";
-import { AvatarWithBadge } from "@/components/compositions/system/avatar-badge";
+import { AvatarWithBadge } from "@/components/compositions/system/avatar-badge/avatar-with-badge";
 import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";

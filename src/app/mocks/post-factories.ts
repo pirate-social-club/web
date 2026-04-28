@@ -2,8 +2,8 @@ import { toast } from "@/components/primitives/sonner";
 import type {
   ProfileCommentItem,
   ProfileScrobbleItem,
-} from "@/components/compositions/profile-page/profile-page.types";
-import type { PostCardProps } from "@/components/compositions/post-card/post-card.types";
+} from "@/components/compositions/profiles/profile-page/profile-page.types";
+import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 
 import type { RoutePost } from "./types";
 

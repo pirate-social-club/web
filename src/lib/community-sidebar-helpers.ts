@@ -5,9 +5,20 @@ import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contra
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { MembershipGateSummary as ApiMembershipGateSummary } from "@pirate/api-contracts";
 
-import type { CommunitySidebarRule } from "@/components/compositions/community-sidebar/community-sidebar.types";
+import type { CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
+
+type SidebarGateSummary = Pick<
+  ApiMembershipGateSummary,
+  | "accepted_providers"
+  | "contract_address"
+  | "gate_type"
+  | "minimum_score"
+  | "required_minimum_age"
+  | "required_value"
+  | "required_values"
+>;
 
 function getRequirementLocale(locale: string | null | undefined): "ar" | "zh" | "en" {
   const normalized = String(locale ?? "").toLowerCase();
@@ -21,6 +32,7 @@ function getCountryDisplayName(requiredValue: string, locale: string | null | un
 }
 
 function formatSidebarRequirement(input: {
+  acceptedProviders?: ApiMembershipGateSummary["accepted_providers"];
   gateType: string;
   requiredValue?: string | null;
   requiredValues?: string[] | null;
@@ -62,10 +74,24 @@ function formatSidebarRequirement(input: {
       return "18+";
     case "minimum_age":
       return `${input.requiredMinimumAge ?? 18}+`;
-    case "unique_human":
-      if (locale === "ar") return "فحص الهوية";
-      if (locale === "zh") return "身份验证";
-      return "ID check";
+    case "unique_human": {
+      const acceptedProviders = input.acceptedProviders ?? [];
+      const isVeryOnly = acceptedProviders.length === 1 && acceptedProviders[0] === "very";
+      const isSelfOnly = acceptedProviders.length === 1 && acceptedProviders[0] === "self";
+      if (isVeryOnly) {
+        if (locale === "ar") return "فحص راحة اليد";
+        if (locale === "zh") return "掌纹扫描";
+        return "Palm scan";
+      }
+      if (isSelfOnly) {
+        if (locale === "ar") return "إثبات الهوية الخاص";
+        if (locale === "zh") return "私密身份证明";
+        return "Private ID proof";
+      }
+      if (locale === "ar") return "إثبات أنك إنسان";
+      if (locale === "zh") return "真人证明";
+      return "Human proof";
+    }
     case "wallet_score":
       if (typeof input.minimumScore === "number") {
         if (locale === "ar") return `درجة Passport ${input.minimumScore}+`;
@@ -94,7 +120,7 @@ function formatSidebarRequirement(input: {
 
 export function buildCommunitySidebarRequirements(input: {
   defaultAgeGatePolicy?: "none" | "18_plus" | null;
-  gateSummaries?: Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value" | "required_values" | "required_minimum_age" | "minimum_score" | "contract_address">> | null;
+  gateSummaries?: SidebarGateSummary[] | null;
   locale?: string | null;
 }): string[] {
   const requirements: string[] = [];
@@ -105,6 +131,7 @@ export function buildCommunitySidebarRequirements(input: {
 
   for (const gate of input.gateSummaries ?? []) {
       const label = formatSidebarRequirement({
+        acceptedProviders: gate.accepted_providers ?? null,
         gateType: gate.gate_type,
         contractAddress: gate.contract_address ?? null,
         locale: input.locale,
@@ -123,7 +150,7 @@ export function buildCommunitySidebarRequirements(input: {
 
 function getCommunityGateSummaries(
   community: ApiCommunity,
-): Array<Pick<ApiMembershipGateSummary, "gate_type" | "required_value" | "required_values" | "required_minimum_age" | "minimum_score" | "contract_address">> {
+): SidebarGateSummary[] {
   return (community.gate_rules ?? [])
     .filter((rule) => rule.scope === "membership" && rule.status === "active")
     .map((rule) => {
@@ -145,6 +172,7 @@ function getCommunityGateSummaries(
         : null;
 
       return {
+        accepted_providers: rule.proof_requirements?.[0]?.accepted_providers ?? null,
         gate_type: rule.gate_type as ApiMembershipGateSummary["gate_type"],
         contract_address: config && typeof config === "object" && "contract_address" in config
           ? typeof config.contract_address === "string"
@@ -225,6 +253,7 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
     createdAt: preview.created_at,
     description: resolveCommunityLocalizedText(preview, "community.description", preview.description),
     displayName: preview.display_name,
+    followerCount: preview.follower_count ?? undefined,
     memberCount: preview.member_count ?? undefined,
     membershipMode: preview.membership_mode,
     requirements: buildCommunitySidebarRequirements({

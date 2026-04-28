@@ -20,6 +20,7 @@ import {
   SIDEBAR_WIDTH,
   SIDEBAR_WIDTH_ICON,
   SIDEBAR_WIDTH_MOBILE,
+  SIDEBAR_WIDTH_MOBILE_VARIABLE,
   SidebarContext,
   SidebarSideContext,
   type SidebarContextProps,
@@ -123,6 +124,7 @@ const SidebarProvider = React.forwardRef<
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH,
+                [SIDEBAR_WIDTH_MOBILE_VARIABLE]: SIDEBAR_WIDTH_MOBILE,
                 "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
                 ...style,
               } as React.CSSProperties
@@ -191,7 +193,7 @@ const Sidebar = React.forwardRef<
               className="w-[var(--sidebar-width)] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
               style={
                 {
-                  "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+                  "--sidebar-width": `var(${SIDEBAR_WIDTH_MOBILE_VARIABLE})`,
                 } as React.CSSProperties
               }
               side={side}

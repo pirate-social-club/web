@@ -131,6 +131,7 @@ function NotificationShell({
       dir={effectiveDir}
       style={{
         "--sidebar-width": "15.5rem",
+        "--sidebar-width-mobile": "18rem",
         "--sidebar-width-icon": "3.75rem",
       } as React.CSSProperties}
     >

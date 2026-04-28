@@ -53,7 +53,8 @@ export function useCommunityInteractionGate({
   const api = useApi();
   const session = useSession();
   const { connect } = usePiratePrivyRuntime();
-  const [modalState, setModalState] = React.useState<ModalState | null>(null);
+	  const [modalState, setModalState] = React.useState<ModalState | null>(null);
+	  const [passportLoading, setPassportLoading] = React.useState(false);
   const sessionKey = session?.user.user_id ?? null;
   const pendingInteractionRef = React.useRef<PendingInteraction | null>(null);
   const interactionCopy = React.useMemo(
@@ -237,15 +238,80 @@ export function useCommunityInteractionGate({
     }
   }, [veryError]);
 
-  const startDefaultVerification = React.useCallback(async ({
-    gate,
-    provider,
-  }: {
-    gate: CommunityGateData;
-    provider: "self" | "very";
-  }): Promise<{ started: boolean }> => {
-    if (provider === "very") {
-      const result = await startVeryVerification();
+	  const startDefaultVerification = React.useCallback(async ({
+	    gate,
+	    provider,
+	  }: {
+	    gate: CommunityGateData;
+	    provider: "self" | "very" | "passport";
+	  }): Promise<{ started: boolean }> => {
+	    if (provider === "passport") {
+	      const pendingInteraction = pendingInteractionRef.current;
+	      const communityId = pendingInteraction?.communityId ?? gate.preview.community_id;
+	      setPassportLoading(true);
+	      try {
+	        const refreshed = await api.verification.refreshPassportWalletScore({ community_id: communityId });
+	        let nextEligibility = refreshed.join_eligibility ?? await api.communities.getJoinEligibility(communityId);
+	        updateCachedGate(communityId, { ...gate, eligibility: nextEligibility });
+	        if (nextEligibility.status === "joinable") {
+	          const joinResult = await api.communities.join(communityId);
+	          invalidateCommunityGate(communityId);
+	          if (joinResult.status === "requested") {
+	            setModalState({
+	              description: "The moderators will review your request.",
+	              icon: "pending",
+	              requirements: gate.preview.membership_gate_summaries,
+	              requirementStatuses: getRequirementStatuses({ ...gate, eligibility: nextEligibility }),
+	              title: "Request pending",
+	            });
+	            return { started: true };
+	          }
+	          nextEligibility = await api.communities.getJoinEligibility(communityId);
+	          updateCachedGate(communityId, { ...gate, eligibility: nextEligibility });
+	        }
+	        if (nextEligibility.status === "already_joined") {
+	          setModalState({
+	            description: pendingInteraction
+	              ? getReadyAfterJoinDescription(gate, pendingInteraction.action, { locale: interactionCopy.locale })
+	              : interactionCopy.readyDescription,
+	            primaryAction: {
+	              label: pendingInteraction
+	                ? getReadyActionLabel(pendingInteraction.action, { locale: interactionCopy.locale })
+	                : interactionCopy.readyTitle,
+	              onClick: async () => {
+	                closeModal();
+	                pendingInteractionRef.current = null;
+	                await pendingInteraction?.onAllowed();
+	              },
+	            },
+	            requirements: [],
+	            requirementStatuses: [],
+	            icon: "ready",
+	            title: interactionCopy.readyTitle,
+	          });
+	          return { started: true };
+	        }
+	        setModalState(createDefaultBlockedModalState({
+	          action: pendingInteraction?.action ?? "reply_post",
+	          closeModal,
+	          gate: { ...gate, eligibility: nextEligibility },
+	          invalidateCommunityGate,
+	          interactionCopy,
+	          openCommunity: () => navigate(buildCommunityPath(gate.preview.community_id)),
+	          defaultVerificationLoadingProvider: "passport",
+	          startDefaultVerification,
+	        }));
+	        return { started: true };
+	      } catch (error: unknown) {
+	        toast.error(getErrorMessage(error, "Could not refresh Passport score."));
+	        return { started: false };
+	      } finally {
+	        setPassportLoading(false);
+	      }
+	    }
+
+	    if (provider === "very") {
+	      const result = await startVeryVerification();
       if (result.started) {
         closeModal();
       }
@@ -281,7 +347,7 @@ export function useCommunityInteractionGate({
       }
     }
     return { started: result.started };
-  }, [closeModal, startSelfVerificationFlow, startVeryVerification]);
+	  }, [api.communities, api.verification, closeModal, interactionCopy, invalidateCommunityGate, startSelfVerificationFlow, startVeryVerification, updateCachedGate]);
 
   const runGatedCommunityAction = React.useCallback(async ({
     action,
@@ -361,9 +427,9 @@ export function useCommunityInteractionGate({
       invalidateCommunityGate,
       interactionCopy,
       openCommunity,
-      defaultVerificationLoadingProvider: veryLoading ? "very" : selfLoading ? "self" : null,
-      startDefaultVerification,
-    }) : customModalState;
+	      defaultVerificationLoadingProvider: passportLoading ? "passport" : veryLoading ? "very" : selfLoading ? "self" : null,
+	      startDefaultVerification,
+	    }) : customModalState;
     logger.info("[interaction-gate] blocked", {
       ...logBase,
       eligibilityStatus: gate.eligibility.status,
@@ -374,7 +440,7 @@ export function useCommunityInteractionGate({
       setModalState(builtModalState);
     }
     return "blocked";
-  }, [closeModal, connect, interactionCopy, loadCommunityGate, routeKind, session?.accessToken, invalidateCommunityGate, selfLoading, startDefaultVerification, veryLoading]);
+	  }, [closeModal, connect, interactionCopy, loadCommunityGate, routeKind, session?.accessToken, invalidateCommunityGate, passportLoading, selfLoading, startDefaultVerification, veryLoading]);
 
   const interactionModal = modalState ? (
     <CommunityInteractionGateModal

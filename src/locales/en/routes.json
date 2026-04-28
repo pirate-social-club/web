@@ -74,7 +74,10 @@
     "verifyToPostLabel": "Verify to post"
   },
   "yourCommunities": {
+    "emptyJoinedLabel": "Communities you join will appear here.",
+    "followingLabel": "Following",
     "gatedLabel": "Gated",
+    "joinedLabel": "Joined",
     "openLabel": "Open",
     "railTitle": "Your Spaces",
     "signInLabel": "Sign in",
@@ -148,6 +151,9 @@
       "public": "Public",
       "publicDescription": "Anyone can play the full media.",
       "rightsAttested": "I have the rights to publish and monetize this media.",
+      "textPaidDescription": "Preview in feed. Full post unlocks after purchase.",
+      "textPublicDescription": "Anyone can read the full post.",
+      "textRightsAttested": "I have the rights to publish and monetize this post.",
       "useRegionalPricing": "Use community regional pricing"
     },
     "actions": {
@@ -499,8 +505,8 @@
       "collectionContractLabel": "Collection contract",
       "collectionContractPlaceholder": "0x...",
       "invalidContractAddress": "Enter a valid Ethereum contract address.",
-      "courtyardTitle": "Courtyard collectibles",
-      "courtyardDescription": "Require specific Courtyard cards or watches.",
+      "courtyardTitle": "Courtyard.io collectibles (Coming soon)",
+      "courtyardDescription": "Create communities based on Pokémon cards, One Piece, and luxury watches.",
       "courtyardCatalogUnavailable": "Catalog source not connected.",
       "identityAccessSection": "Identity & access",
       "allowAnonymousPosting": "Allow anonymous posting",
@@ -898,8 +904,8 @@
       "collectionContractLabel": "Collection contract",
       "collectionContractPlaceholder": "0x...",
       "invalidContractAddress": "Enter a valid Ethereum contract address.",
-      "courtyardTitle": "Courtyard collectibles",
-      "courtyardDescription": "Require specific Courtyard cards or watches.",
+      "courtyardTitle": "Courtyard.io collectibles (Coming soon)",
+      "courtyardDescription": "Create communities based on Pokémon cards, One Piece, and luxury watches.",
       "courtyardCatalogUnavailable": "Catalog source not connected.",
       "readingTitle": "Reading",
       "readAccessPublicLabel": "Public",

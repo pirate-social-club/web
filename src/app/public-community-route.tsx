@@ -18,11 +18,11 @@ import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
+import { getErrorMessage } from "@/lib/error-utils";
 import { useSession } from "@/lib/api/session-store";
 import { formatCommunityRouteLabel } from "@/lib/community-routing";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
-import { getErrorMessage } from "@/lib/error-utils";
-import { getPassportPromptCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { forgetKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
@@ -294,9 +294,10 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     handleSelfModalOpenChange: handleJoinSelfModalOpenChange,
     handleSelfQrError: handleJoinSelfQrError,
     handleSelfQrSuccess: handleJoinSelfQrSuccess,
-    joinError,
-    joinLoading,
-    selfError: joinSelfError,
+	    joinError,
+	    joinLoading,
+	    passportLoading,
+	    selfError: joinSelfError,
     selfLoading: joinSelfLoading,
     selfModalOpen: joinSelfModalOpen,
     selfPrompt: joinSelfPrompt,
@@ -357,28 +358,21 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       return null;
     }
 
-    const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-    const verificationPrompt = getVerificationPromptCopy(
-      provider,
-      provider === "passport"
-        ? getPassportPromptCapabilities(gate.eligibility)
-        : getVerificationCapabilitiesForProvider(gate.eligibility, provider),
+	    const provider = resolveSuggestedVerificationProvider(gate.eligibility);
+	    if (provider === "passport") {
+	      return undefined;
+	    }
+	    const verificationPrompt = getVerificationPromptCopy(
+	      provider,
+	      getVerificationCapabilitiesForProvider(gate.eligibility, provider),
       { locale },
     );
     return {
       description: verificationPrompt.description,
-      icon: provider === "passport" ? null : provider,
-      primaryAction: provider === "passport"
-        ? {
-            href: "https://app.passport.xyz/",
-            label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
-            onClick: closeModal,
-            rel: "noopener noreferrer",
-            target: "_blank",
-          }
-        : {
-            label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
-            loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
+	      icon: provider,
+	      primaryAction: {
+	            label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
+	            loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
             onClick: async () => {
               if (provider === "very") {
                 const result = await startVeryVerification();
@@ -393,18 +387,16 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
                   closeModal();
                 }
               }
-            },
+	          },
           },
       requirements: gate.preview.membership_gate_summaries,
       secondaryAction: {
         label: copy.interactionGate.close,
         onClick: closeModal,
       },
-      title: provider === "passport"
-        ? verificationPrompt.title
-        : action === "vote_post" || action === "vote_comment"
-          ? copy.interactionGate.verifyToVoteTitle
-          : copy.interactionGate.verifyToReplyTitle,
+	      title: action === "vote_post" || action === "vote_comment"
+	          ? copy.interactionGate.verifyToVoteTitle
+	          : copy.interactionGate.verifyToReplyTitle,
     };
   }, [copy.createCommunity.startVerification, copy.interactionGate, locale, selfLoading, startSelfVerification, startVeryVerification, veryLoading]);
 
@@ -451,6 +443,10 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
   }
 
   const handleToggleFollow = async () => {
+    if (followLoading) {
+      return;
+    }
+
     if (!session) {
       logger.info("[community-follow] blocked follow without session", {
         communityId: preview.community_id,
@@ -546,7 +542,6 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     <div className="flex flex-wrap items-center justify-end gap-3">
       <Button
         className={FOLLOW_BUTTON_CLASS_NAME}
-        loading={followLoading}
         onClick={() => void handleToggleFollow()}
         variant={viewerFollowing ? "secondary" : "default"}
       >
@@ -554,7 +549,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       </Button>
       <Button
         disabled={joinActionDisabled}
-        loading={joinLoading || joinVeryLoading || joinSelfLoading}
+	        loading={joinLoading || joinVeryLoading || joinSelfLoading || passportLoading}
         onClick={() => void handlePrimaryJoinAction()}
         variant="secondary"
       >

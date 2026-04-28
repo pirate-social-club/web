@@ -61,9 +61,10 @@ export function useCommunityJoinVerification({
   refetchEligibility,
 }: UseCommunityJoinVerificationInput) {
   const api = useApi();
-  const [joinLoading, setJoinLoading] = React.useState(false);
-  const [joinError, setJoinError] = React.useState<string | null>(null);
-  const [joinRequested, setJoinRequested] = React.useState(false);
+	  const [joinLoading, setJoinLoading] = React.useState(false);
+	  const [joinError, setJoinError] = React.useState<string | null>(null);
+	  const [joinRequested, setJoinRequested] = React.useState(false);
+	  const [passportLoading, setPassportLoading] = React.useState(false);
 
   const {
     startVerification: startVeryVerification,
@@ -150,11 +151,47 @@ export function useCommunityJoinVerification({
     return result;
   }, [eligibility, startSelfVerificationFlow]);
 
-  React.useEffect(() => {
-    if (veryError) {
-      toast.error(veryError);
-    }
-  }, [veryError]);
+	  React.useEffect(() => {
+	    if (veryError) {
+	      toast.error(veryError);
+	    }
+	  }, [veryError]);
+
+	  const refreshPassportAndJoin = React.useCallback(async (
+	    details?: Pick<ApiJoinEligibility, "membership_gate_summaries" | "missing_capabilities" | "wallet_score_status" | "failure_reason"> | ApiGateFailureDetails | null,
+	  ): Promise<JoinAttemptResult> => {
+	    setPassportLoading(true);
+	    setJoinError(null);
+	    try {
+	      const refreshed = await api.verification.refreshPassportWalletScore({ community_id: communityId });
+	      const updatedEligibility = refreshed.join_eligibility ?? await refetchEligibility();
+	      if (updatedEligibility.status === "joinable") {
+	        const joinResult = await api.communities.join(communityId);
+	        if (joinResult.status === "requested") setJoinRequested(true);
+	        if (joinResult.status === "joined") onJoined?.();
+	        await refetchEligibility();
+	        return joinResult.status === "requested" ? "requested" : "joined";
+	      }
+	      await refetchEligibility();
+	      const gateFailureMessage = updatedEligibility.status === "gate_failed"
+	        ? getGateFailureMessage(updatedEligibility, { locale })
+	        : null;
+	      setJoinError(gateFailureMessage ?? getVerificationPromptCopy(
+	        "passport",
+	        getPassportPromptCapabilities(details ?? updatedEligibility),
+	        { locale },
+	      ).description);
+	      return "blocked";
+	    } catch (error: unknown) {
+	      const apiError = error as ApiError;
+	      const message = apiError?.message ?? "Could not refresh Passport score";
+	      setJoinError(message);
+	      toast.error(message);
+	      return "failed";
+	    } finally {
+	      setPassportLoading(false);
+	    }
+	  }, [api, communityId, locale, onJoined, refetchEligibility]);
 
   const handleJoin = React.useCallback(async (options: JoinAttemptOptions = {}): Promise<JoinAttemptResult> => {
     setJoinLoading(true);
@@ -167,14 +204,14 @@ export function useCommunityJoinVerification({
     if (eligibility?.status === "verification_required") {
       setJoinLoading(false);
       const provider = resolveSuggestedVerificationProvider(eligibility);
-      if (provider === "very") {
-        await startVeryVerification();
-      } else if (provider === "passport") {
-        setJoinError(getVerificationPromptCopy("passport", getPassportPromptCapabilities(eligibility), { locale }).description);
-      } else {
-        await startSelfVerification();
-      }
-      return "blocked";
+	      if (provider === "very") {
+	        await startVeryVerification();
+	      } else if (provider === "passport") {
+	        return await refreshPassportAndJoin(eligibility);
+	      } else {
+	        await startSelfVerification();
+	      }
+	      return "blocked";
     }
 
     try {
@@ -187,15 +224,15 @@ export function useCommunityJoinVerification({
       const apiError = error as ApiError;
       if (apiError?.code === "gate_failed" && apiError.details) {
         const details = apiError.details as ApiGateFailureDetails;
-        if (details.failure_reason === "missing_verification") {
-          setJoinLoading(false);
-          const provider = resolveSuggestedVerificationProvider(details);
-          if (provider === "very") {
-            await startVeryVerification();
-          } else if (provider === "passport") {
-            setJoinError(getVerificationPromptCopy("passport", getPassportPromptCapabilities(details), { locale }).description);
-          } else {
-            await startSelfVerification({
+	        if (details.failure_reason === "missing_verification" || details.failure_reason === "wallet_score_too_low") {
+	          setJoinLoading(false);
+	          const provider = resolveSuggestedVerificationProvider(details);
+	          if (provider === "very") {
+	            await startVeryVerification();
+	          } else if (provider === "passport" || details.failure_reason === "wallet_score_too_low") {
+	            return await refreshPassportAndJoin(details);
+	          } else {
+	            await startSelfVerification({
               missingCapabilities: details.missing_capabilities,
               membershipGateSummaries: details.membership_gate_summaries ?? null,
             });
@@ -216,7 +253,7 @@ export function useCommunityJoinVerification({
     } finally {
       setJoinLoading(false);
     }
-  }, [api, communityId, eligibility, locale, onJoined, refetchEligibility, startSelfVerification, startVeryVerification]);
+	  }, [api, communityId, eligibility, locale, onJoined, refetchEligibility, refreshPassportAndJoin, startSelfVerification, startVeryVerification]);
 
   return {
     handleJoin,
@@ -224,8 +261,10 @@ export function useCommunityJoinVerification({
     handleSelfQrError,
     handleSelfQrSuccess,
     joinError,
-    joinLoading,
-    joinRequested,
+	    joinLoading,
+	    joinRequested,
+	    passportLoading,
+	    refreshPassportScore: refreshPassportAndJoin,
     selfError,
     selfLoading,
     selfModalOpen,

@@ -4,9 +4,11 @@ import type {
   NamespaceVerification,
   NamespaceVerificationSession,
   OnboardingStatus,
-  RedditImportSummary,
-  RedditVerification,
-  SessionExchangeRequest,
+	  RedditImportSummary,
+	  RedditVerification,
+	  RefreshPassportWalletScoreRequest,
+	  RefreshPassportWalletScoreResponse,
+	  SessionExchangeRequest,
   SessionExchangeResponse,
   StartNamespaceVerificationSessionRequest,
   StartVerificationSessionRequest,
@@ -69,7 +71,7 @@ export function createVerificationApi(request: ApiRequest) {
       request<VerificationSession>(
         `/verification-sessions/${encodeURIComponent(verificationSessionId)}`,
       ),
-    completeSession: (
+	    completeSession: (
       verificationSessionId: string,
       input?: {
         attestation_id?: string | null;
@@ -84,8 +86,15 @@ export function createVerificationApi(request: ApiRequest) {
           method: "POST",
           body: JSON.stringify(input ?? {}),
         },
-      ),
-    startNamespaceSession: (
+	      ),
+	    refreshPassportWalletScore: (
+	      input: RefreshPassportWalletScoreRequest = {},
+	    ): Promise<RefreshPassportWalletScoreResponse> =>
+	      request<RefreshPassportWalletScoreResponse>("/verification/passport-wallet-score", {
+	        method: "POST",
+	        body: JSON.stringify(input),
+	      }),
+	    startNamespaceSession: (
       input: StartNamespaceVerificationSessionRequest,
     ): Promise<NamespaceVerificationSession> =>
       request<NamespaceVerificationSession>("/namespace-verification-sessions", {

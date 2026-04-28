@@ -5,8 +5,10 @@ import * as React from "react";
 import { Checkbox } from "@/components/primitives/checkbox";
 import { cn } from "@/lib/utils";
 
-export interface CheckboxCardProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface CheckboxCardProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  "onChange"
+> {
   title: string;
   description?: string;
   checked?: boolean;
@@ -15,10 +17,7 @@ export interface CheckboxCardProps
   disabledHint?: string;
 }
 
-export const CheckboxCard = React.forwardRef<
-  HTMLDivElement,
-  CheckboxCardProps
->(
+export const CheckboxCard = React.forwardRef<HTMLDivElement, CheckboxCardProps>(
   (
     {
       title,
@@ -57,11 +56,12 @@ export const CheckboxCard = React.forwardRef<
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         className={cn(
-          "flex w-full items-start gap-3 rounded-[var(--radius-lg)] border px-4 py-4 text-start transition-[border-color,background-color]",
+          "flex w-full cursor-pointer items-start gap-3 rounded-[var(--radius-lg)] border px-4 py-4 text-start transition-[border-color,background-color]",
           checked
             ? "border-primary bg-primary/10"
             : "border-border-soft bg-background hover:border-primary/40",
-          disabled && "cursor-not-allowed border-border-soft bg-muted/30 opacity-60",
+          disabled &&
+            "cursor-not-allowed border-border-soft bg-muted/30 opacity-60",
           className,
         )}
         {...props}

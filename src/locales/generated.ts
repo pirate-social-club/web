@@ -162,7 +162,10 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verifyToPostLabel": "Verify to post"
       },
       "yourCommunities": {
+        "emptyJoinedLabel": "Communities you join will appear here.",
+        "followingLabel": "Following",
         "gatedLabel": "Gated",
+        "joinedLabel": "Joined",
         "openLabel": "Open",
         "railTitle": "Your Spaces",
         "signInLabel": "Sign in",
@@ -236,6 +239,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "public": "Public",
           "publicDescription": "Anyone can play the full media.",
           "rightsAttested": "I have the rights to publish and monetize this media.",
+          "textPaidDescription": "Preview in feed. Full post unlocks after purchase.",
+          "textPublicDescription": "Anyone can read the full post.",
+          "textRightsAttested": "I have the rights to publish and monetize this post.",
           "useRegionalPricing": "Use community regional pricing"
         },
         "actions": {
@@ -587,8 +593,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "collectionContractLabel": "Collection contract",
           "collectionContractPlaceholder": "0x...",
           "invalidContractAddress": "Enter a valid Ethereum contract address.",
-          "courtyardTitle": "Courtyard collectibles",
-          "courtyardDescription": "Require specific Courtyard cards or watches.",
+          "courtyardTitle": "Courtyard.io collectibles (Coming soon)",
+          "courtyardDescription": "Create communities based on Pokémon cards, One Piece, and luxury watches.",
           "courtyardCatalogUnavailable": "Catalog source not connected.",
           "identityAccessSection": "Identity & access",
           "allowAnonymousPosting": "Allow anonymous posting",
@@ -986,8 +992,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "collectionContractLabel": "Collection contract",
           "collectionContractPlaceholder": "0x...",
           "invalidContractAddress": "Enter a valid Ethereum contract address.",
-          "courtyardTitle": "Courtyard collectibles",
-          "courtyardDescription": "Require specific Courtyard cards or watches.",
+          "courtyardTitle": "Courtyard.io collectibles (Coming soon)",
+          "courtyardDescription": "Create communities based on Pokémon cards, One Piece, and luxury watches.",
           "courtyardCatalogUnavailable": "Catalog source not connected.",
           "readingTitle": "Reading",
           "readAccessPublicLabel": "Public",
@@ -1583,7 +1589,10 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verifyToPostLabel": "تحقق للنشر"
       },
       "yourCommunities": {
+        "emptyJoinedLabel": "المجتمعات التي تنضم إليها ستظهر هنا.",
+        "followingLabel": "تتابعها",
         "gatedLabel": "مغلق",
+        "joinedLabel": "منضم إليها",
         "openLabel": "مفتوح",
         "railTitle": "مساحاتك",
         "signInLabel": "تسجيل الدخول",
@@ -1657,6 +1666,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "public": "عام",
           "publicDescription": "يمكن لأي شخص تشغيل المسار الكامل.",
           "rightsAttested": "أؤكد أن لدي الحقوق لنشر هذا المسار وتحقيق الدخل منه.",
+          "textPaidDescription": "تظهر معاينة في الخلاصة، ويُفتح المنشور الكامل بعد الشراء.",
+          "textPublicDescription": "يمكن لأي شخص قراءة المنشور الكامل.",
+          "textRightsAttested": "أؤكد أن لدي الحقوق لنشر هذا المنشور وتحقيق الدخل منه.",
           "useRegionalPricing": "استخدم التسعير الإقليمي للمجتمع"
         },
         "actions": {
@@ -3004,7 +3016,10 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verifyToPostLabel": "验证后发帖"
       },
       "yourCommunities": {
+        "emptyJoinedLabel": "你加入的社区会显示在这里。",
+        "followingLabel": "关注",
         "gatedLabel": "受限",
+        "joinedLabel": "已加入",
         "openLabel": "公开",
         "railTitle": "你的空间",
         "signInLabel": "登录",
@@ -3078,6 +3093,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "public": "公开",
           "publicDescription": "任何人都可以播放完整曲目。",
           "rightsAttested": "我确认我有权发布并将此曲目商业化。",
+          "textPaidDescription": "动态中显示预览，购买后解锁完整帖子。",
+          "textPublicDescription": "任何人都可以阅读完整帖子。",
+          "textRightsAttested": "我确认我有权发布并将此帖子商业化。",
           "useRegionalPricing": "使用社区区域定价"
         },
         "actions": {

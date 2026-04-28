@@ -17,12 +17,19 @@ import { interpolateMessage } from "@/lib/route-messages";
 import { getLocaleMessages } from "@/locales";
 
 export type RouteKind = "community" | "home" | "post" | "public-community";
-export type InteractionAction = "vote_post" | "vote_comment" | "reply_post" | "reply_comment";
+export type InteractionAction =
+  | "vote_post"
+  | "vote_comment"
+  | "reply_post"
+  | "reply_comment";
 export type InteractionResult = "allowed" | "blocked";
 
 export type CommunityGateData = {
   eligibility: JoinEligibility;
-  preview: Pick<CommunityPreview, "community_id" | "display_name" | "membership_gate_summaries">;
+  preview: Pick<
+    CommunityPreview,
+    "community_id" | "display_name" | "membership_gate_summaries"
+  >;
 };
 
 export type CommunityGateCacheEntry = {
@@ -30,7 +37,9 @@ export type CommunityGateCacheEntry = {
   value: CommunityGateData;
 };
 
-export type InteractionGateCopy = ReturnType<typeof getLocaleMessages<"routes">>["interactionGate"] & {
+export type InteractionGateCopy = ReturnType<
+  typeof getLocaleMessages<"routes">
+>["interactionGate"] & {
   locale: string;
   taskVerify: string;
 };
@@ -54,10 +63,10 @@ export type BuildBlockedModalStateArgs = {
   invalidateCommunityGate: (communityId: string) => void;
   interactionCopy: InteractionGateCopy;
   openCommunity: () => void;
-  defaultVerificationLoadingProvider?: "self" | "very" | null;
+  defaultVerificationLoadingProvider?: "self" | "very" | "passport" | null;
   startDefaultVerification?: (input: {
     gate: CommunityGateData;
-    provider: "self" | "very";
+    provider: "self" | "very" | "passport";
   }) => Promise<{ started: boolean }>;
 };
 
@@ -71,7 +80,9 @@ export type PendingInteraction = {
 
 export type RunGatedCommunityActionParams = {
   action: InteractionAction;
-  buildBlockedModalState?: (args: BuildBlockedModalStateArgs) => ModalState | null;
+  buildBlockedModalState?: (
+    args: BuildBlockedModalStateArgs,
+  ) => ModalState | null | undefined;
   communityId: string;
   gateData?: CommunityGateData;
   onAllowed: () => Promise<void> | void;
@@ -80,11 +91,18 @@ export type RunGatedCommunityActionParams = {
 };
 
 export const COMMUNITY_GATE_CACHE_TTL_MS = 60_000;
-export const SELF_INTERACTION_GATE_STORAGE_KEY = "pirate_pending_self_interaction_gate_session";
+export const SELF_INTERACTION_GATE_STORAGE_KEY =
+  "pirate_pending_self_interaction_gate_session";
 export const communityGateCache = new Map<string, CommunityGateCacheEntry>();
-export const communityGateRequests = new Map<string, Promise<CommunityGateData>>();
+export const communityGateRequests = new Map<
+  string,
+  Promise<CommunityGateData>
+>();
 
-function getInteractionTaskLabel(action: InteractionAction, options: { locale: string }): string {
+function getInteractionTaskLabel(
+  action: InteractionAction,
+  options: { locale: string },
+): string {
   const normalized = options.locale.toLowerCase();
   if (action === "vote_post" || action === "vote_comment") {
     if (normalized.startsWith("ar")) return "التصويت";
@@ -96,7 +114,11 @@ function getInteractionTaskLabel(action: InteractionAction, options: { locale: s
   return "reply";
 }
 
-export function getReadyAfterJoinDescription(gate: CommunityGateData, action: InteractionAction, options: { locale: string }): string {
+export function getReadyAfterJoinDescription(
+  gate: CommunityGateData,
+  action: InteractionAction,
+  options: { locale: string },
+): string {
   const taskLabel = getInteractionTaskLabel(action, options);
   const normalized = options.locale.toLowerCase();
   if (normalized.startsWith("ar")) {
@@ -108,7 +130,10 @@ export function getReadyAfterJoinDescription(gate: CommunityGateData, action: In
   return `You can now ${taskLabel} in ${gate.preview.display_name}.`;
 }
 
-export function getReadyActionLabel(action: InteractionAction, options: { locale: string }): string {
+export function getReadyActionLabel(
+  action: InteractionAction,
+  options: { locale: string },
+): string {
   const normalized = options.locale.toLowerCase();
   if (action === "vote_post" || action === "vote_comment") {
     if (normalized.startsWith("ar")) return "صوّت الآن";
@@ -120,48 +145,70 @@ export function getReadyActionLabel(action: InteractionAction, options: { locale
   return "Reply now";
 }
 
-function getJoinActionLabel(eligibility: JoinEligibility, options: { locale: string }): string {
+function getJoinActionLabel(
+  eligibility: JoinEligibility,
+  options: { locale: string },
+): string {
   const normalized = options.locale.toLowerCase();
   const isRequestable = eligibility.status === "requestable";
 
-  if (normalized.startsWith("ar")) return isRequestable ? "اطلب الانضمام" : "انضمام";
+  if (normalized.startsWith("ar"))
+    return isRequestable ? "اطلب الانضمام" : "انضمام";
   if (normalized.startsWith("zh")) return isRequestable ? "申请加入" : "加入";
   return isRequestable ? "Request to Join" : "Join";
 }
 
-function getFailedGateRequirements(gate: CommunityGateData): CommunityGateData["preview"]["membership_gate_summaries"] {
+function getFailedGateRequirements(
+  gate: CommunityGateData,
+): CommunityGateData["preview"]["membership_gate_summaries"] {
   switch (gate.eligibility.failure_reason) {
     case "nationality_mismatch":
-      return gate.preview.membership_gate_summaries.filter((summary) => summary.gate_type === "nationality");
+      return gate.preview.membership_gate_summaries.filter(
+        (summary) => summary.gate_type === "nationality",
+      );
     case "gender_mismatch":
-      return gate.preview.membership_gate_summaries.filter((summary) => summary.gate_type === "gender");
+      return gate.preview.membership_gate_summaries.filter(
+        (summary) => summary.gate_type === "gender",
+      );
     case "minimum_age_mismatch":
-      return gate.preview.membership_gate_summaries.filter((summary) => summary.gate_type === "minimum_age" || summary.gate_type === "age_over_18");
+      return gate.preview.membership_gate_summaries.filter(
+        (summary) =>
+          summary.gate_type === "minimum_age" ||
+          summary.gate_type === "age_over_18",
+      );
     case "wallet_score_too_low":
-      return gate.preview.membership_gate_summaries.filter((summary) => summary.gate_type === "wallet_score");
+      return gate.preview.membership_gate_summaries.filter(
+        (summary) => summary.gate_type === "wallet_score",
+      );
     case "erc721_holding_required":
-      return gate.preview.membership_gate_summaries.filter((summary) => summary.gate_type === "erc721_holding");
+      return gate.preview.membership_gate_summaries.filter(
+        (summary) => summary.gate_type === "erc721_holding",
+      );
     case "erc721_inventory_match_required":
-      return gate.preview.membership_gate_summaries.filter((summary) => summary.gate_type === "erc721_inventory_match");
+      return gate.preview.membership_gate_summaries.filter(
+        (summary) => summary.gate_type === "erc721_inventory_match",
+      );
     default:
       return gate.preview.membership_gate_summaries;
   }
 }
 
-function getPassportPromptDescription(gate: CommunityGateData, fallback: string, options: { locale: string }): string {
+function getPassportPromptDescription(
+  gate: CommunityGateData,
+  fallback: string,
+  options: { locale: string },
+): string {
   const normalized = options.locale.toLowerCase();
-  if (normalized.startsWith("ar") || normalized.startsWith("zh")) return fallback;
+  if (normalized.startsWith("ar") || normalized.startsWith("zh"))
+    return fallback;
 
-  const walletScoreGate = gate.preview.membership_gate_summaries.find((summary) => summary.gate_type === "wallet_score");
-
-  if (typeof walletScoreGate?.minimum_score === "number") {
-    return `Your wallet needs a Passport score of ${walletScoreGate.minimum_score}+ to enter this community. Visit app.passport.xyz to improve it.`;
-  }
-
-  return fallback;
+  return "We can't determine that you're a unique human from your wallet activity. Improve your score and try again.";
 }
 
-function getJoinGateTitle(action: InteractionAction, options: { locale: string }): string | null {
+function getJoinGateTitle(
+  action: InteractionAction,
+  options: { locale: string },
+): string | null {
   const normalized = options.locale.toLowerCase();
   if (normalized.startsWith("ar") || normalized.startsWith("zh")) return null;
   return action === "vote_post" || action === "vote_comment"
@@ -169,15 +216,24 @@ function getJoinGateTitle(action: InteractionAction, options: { locale: string }
     : "Join to Reply";
 }
 
-function getRequestableDescription(gate: CommunityGateData, action: InteractionAction, fallback: string, options: { locale: string }): string {
+function getRequestableDescription(
+  gate: CommunityGateData,
+  action: InteractionAction,
+  fallback: string,
+  options: { locale: string },
+): string {
   const normalized = options.locale.toLowerCase();
-  if (normalized.startsWith("ar") || normalized.startsWith("zh")) return fallback;
+  if (normalized.startsWith("ar") || normalized.startsWith("zh"))
+    return fallback;
 
   const taskLabel = getInteractionTaskLabel(action, options);
   return `Request to join ${gate.preview.display_name} before you ${taskLabel}.`;
 }
 
-function gateMatchesMissingCapability(gate: CommunityGateData["preview"]["membership_gate_summaries"][number], eligibility: JoinEligibility): boolean {
+function gateMatchesMissingCapability(
+  gate: CommunityGateData["preview"]["membership_gate_summaries"][number],
+  eligibility: JoinEligibility,
+): boolean {
   const missing = eligibility.missing_capabilities;
 
   switch (gate.gate_type) {
@@ -197,7 +253,10 @@ function gateMatchesMissingCapability(gate: CommunityGateData["preview"]["member
   }
 }
 
-export function getRequirementStatuses(gate: CommunityGateData, requirements = gate.preview.membership_gate_summaries): CommunityInteractionGateRequirementStatus[] {
+export function getRequirementStatuses(
+  gate: CommunityGateData,
+  requirements = gate.preview.membership_gate_summaries,
+): CommunityInteractionGateRequirementStatus[] {
   switch (gate.eligibility.status) {
     case "already_joined":
     case "joinable":
@@ -206,15 +265,25 @@ export function getRequirementStatuses(gate: CommunityGateData, requirements = g
     case "gate_failed":
       return requirements.map(() => "unmet");
     case "verification_required":
-      return requirements.map((requirement) => gateMatchesMissingCapability(requirement, gate.eligibility) ? "unmet" : "met");
+      return requirements.map((requirement) =>
+        gateMatchesMissingCapability(requirement, gate.eligibility)
+          ? "unmet"
+          : "met",
+      );
     default:
       return requirements.map(() => "unknown");
   }
 }
 
-function getJoinableDescription(gate: CommunityGateData, action: InteractionAction, fallback: string, options: { locale: string }): string {
+function getJoinableDescription(
+  gate: CommunityGateData,
+  action: InteractionAction,
+  fallback: string,
+  options: { locale: string },
+): string {
   const normalized = options.locale.toLowerCase();
-  if (normalized.startsWith("ar") || normalized.startsWith("zh")) return fallback;
+  if (normalized.startsWith("ar") || normalized.startsWith("zh"))
+    return fallback;
 
   const taskLabel = getInteractionTaskLabel(action, options);
   if (gate.preview.membership_gate_summaries.length > 0) {
@@ -236,56 +305,65 @@ export function createDefaultBlockedModalState({
   const isVoteAction = action === "vote_post" || action === "vote_comment";
 
   switch (gate.eligibility.status) {
-    case "verification_required":
-      {
-        const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-        if (provider === "passport") {
-          const passportPrompt = getVerificationPromptCopy("passport", getPassportPromptCapabilities(gate.eligibility), { locale: interactionCopy.locale });
-          return {
-            description: getPassportPromptDescription(gate, passportPrompt.description, { locale: interactionCopy.locale }),
-            icon: "passport",
-            primaryAction: {
-              href: "https://app.passport.xyz/",
-              label: passportPrompt.actionLabel,
-              onClick: closeModal,
-              rel: "noopener noreferrer",
-              target: "_blank",
-            },
-            requirements: gate.preview.membership_gate_summaries,
-            requirementStatuses: getRequirementStatuses(gate),
-            title: passportPrompt.title,
-          };
-        }
-        const verificationPrompt = getVerificationPromptCopy(
-          provider,
-          getVerificationCapabilitiesForProvider(gate.eligibility, provider),
+    case "verification_required": {
+      const provider = resolveSuggestedVerificationProvider(gate.eligibility);
+      if (provider === "passport") {
+        const passportPrompt = getVerificationPromptCopy(
+          "passport",
+          getPassportPromptCapabilities(gate.eligibility),
           { locale: interactionCopy.locale },
         );
         return {
-          description: verificationPrompt.description,
-          icon: provider,
+          description: getPassportPromptDescription(
+            gate,
+            passportPrompt.description,
+            { locale: interactionCopy.locale },
+          ),
+          icon: "passport",
           primaryAction: {
-            label: verificationPrompt.actionLabel || interactionCopy.taskVerify,
-            loading: defaultVerificationLoadingProvider === provider,
-            onClick: async () => {
-              if (startDefaultVerification) {
-                await startDefaultVerification({ gate, provider });
-                return;
-              }
-              closeModal();
-              openCommunity();
-            },
+            href: "https://app.passport.xyz/",
+            label: "Visit Passport.xyz",
+            rel: "noopener noreferrer",
+            target: "_blank",
           },
+          secondaryAction: null,
           requirements: gate.preview.membership_gate_summaries,
           requirementStatuses: getRequirementStatuses(gate),
-          title: isVoteAction
-            ? interactionCopy.verifyToVoteTitle
-            : interactionCopy.verifyToReplyTitle,
+          title: "Higher Score Required",
         };
       }
+      const verificationPrompt = getVerificationPromptCopy(
+        provider,
+        getVerificationCapabilitiesForProvider(gate.eligibility, provider),
+        { locale: interactionCopy.locale },
+      );
+      return {
+        description: verificationPrompt.description,
+        icon: provider,
+        primaryAction: {
+          label: verificationPrompt.actionLabel || interactionCopy.taskVerify,
+          loading: defaultVerificationLoadingProvider === provider,
+          onClick: async () => {
+            if (startDefaultVerification) {
+              await startDefaultVerification({ gate, provider });
+              return;
+            }
+            closeModal();
+            openCommunity();
+          },
+        },
+        requirements: gate.preview.membership_gate_summaries,
+        requirementStatuses: getRequirementStatuses(gate),
+        title: isVoteAction
+          ? interactionCopy.verifyToVoteTitle
+          : interactionCopy.verifyToReplyTitle,
+      };
+    }
     case "joinable":
     case "requestable": {
-      const ctaLabel = getJoinCtaLabel(gate.eligibility, { locale: interactionCopy.locale });
+      const ctaLabel = getJoinCtaLabel(gate.eligibility, {
+        locale: interactionCopy.locale,
+      });
       const defaultDescription = interpolateMessage(
         isVoteAction
           ? interactionCopy.joinToVoteDescription
@@ -296,12 +374,19 @@ export function createDefaultBlockedModalState({
         },
       );
       return {
-        description: gate.eligibility.status === "joinable"
-          ? getJoinableDescription(gate, action, defaultDescription, { locale: interactionCopy.locale })
-          : getRequestableDescription(gate, action, defaultDescription, { locale: interactionCopy.locale }),
+        description:
+          gate.eligibility.status === "joinable"
+            ? getJoinableDescription(gate, action, defaultDescription, {
+                locale: interactionCopy.locale,
+              })
+            : getRequestableDescription(gate, action, defaultDescription, {
+                locale: interactionCopy.locale,
+              }),
         icon: "join",
         primaryAction: {
-          label: getJoinActionLabel(gate.eligibility, { locale: interactionCopy.locale }),
+          label: getJoinActionLabel(gate.eligibility, {
+            locale: interactionCopy.locale,
+          }),
           onClick: () => {
             closeModal();
             openCommunity();
@@ -309,12 +394,14 @@ export function createDefaultBlockedModalState({
         },
         requirements: gate.preview.membership_gate_summaries,
         requirementStatuses: getRequirementStatuses(gate),
-        title: getJoinGateTitle(action, { locale: interactionCopy.locale }) ?? interpolateMessage(
-          isVoteAction
-            ? interactionCopy.joinToVoteTitle
-            : interactionCopy.joinToReplyTitle,
-          { joinLabel: ctaLabel },
-        ),
+        title:
+          getJoinGateTitle(action, { locale: interactionCopy.locale }) ??
+          interpolateMessage(
+            isVoteAction
+              ? interactionCopy.joinToVoteTitle
+              : interactionCopy.joinToReplyTitle,
+            { joinLabel: ctaLabel },
+          ),
       };
     }
     case "pending_request":
@@ -328,16 +415,23 @@ export function createDefaultBlockedModalState({
     case "gate_failed":
     case "banned":
       return {
-        description: gate.eligibility.status === "banned"
-          ? interactionCopy.bannedDescription
-          : gate.eligibility.failure_reason
-            ? getGateFailureMessage(gate.eligibility, { locale: interactionCopy.locale }) ?? (isVoteAction ? interactionCopy.blockedVoteDescription : interactionCopy.blockedReplyDescription)
-            : isVoteAction
-            ? interactionCopy.blockedVoteDescription
-            : interactionCopy.blockedReplyDescription,
-        requirements: gate.eligibility.status === "gate_failed"
-          ? getFailedGateRequirements(gate)
-          : gate.preview.membership_gate_summaries,
+        description:
+          gate.eligibility.status === "banned"
+            ? interactionCopy.bannedDescription
+            : gate.eligibility.failure_reason
+              ? (getGateFailureMessage(gate.eligibility, {
+                  locale: interactionCopy.locale,
+                }) ??
+                (isVoteAction
+                  ? interactionCopy.blockedVoteDescription
+                  : interactionCopy.blockedReplyDescription))
+              : isVoteAction
+                ? interactionCopy.blockedVoteDescription
+                : interactionCopy.blockedReplyDescription,
+        requirements:
+          gate.eligibility.status === "gate_failed"
+            ? getFailedGateRequirements(gate)
+            : gate.preview.membership_gate_summaries,
         requirementStatuses: getRequirementStatuses(
           gate,
           gate.eligibility.status === "gate_failed"
@@ -360,7 +454,10 @@ export function createDefaultBlockedModalState({
   }
 }
 
-export function getGateCacheKey(sessionKey: string | null, communityId: string): string {
+export function getGateCacheKey(
+  sessionKey: string | null,
+  communityId: string,
+): string {
   return `${sessionKey ?? "anon"}:${communityId}`;
 }
 

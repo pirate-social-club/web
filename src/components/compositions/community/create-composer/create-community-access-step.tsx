@@ -159,6 +159,7 @@ export function CreateCommunityAccessStep({
             <CheckboxCard
               checked={gateState.courtyardInventoryEnabled}
               description={copy.courtyardDescription}
+              disabled={access.courtyardInventoryGroups === undefined}
               title={copy.courtyardTitle}
               onCheckedChange={gateState.setCourtyardInventoryEnabled}
             />

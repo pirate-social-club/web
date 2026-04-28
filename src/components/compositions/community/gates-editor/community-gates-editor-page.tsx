@@ -390,7 +390,6 @@ export function CommunityGatesEditorPage({
               checked={Boolean(courtyardInventoryGate)}
               description={mc.courtyardDescription}
               disabled={!COURTYARD_CATALOG_AUTHORING_ENABLED && !courtyardInventoryGate}
-              disabledHint={!COURTYARD_CATALOG_AUTHORING_ENABLED ? mc.courtyardCatalogUnavailable : undefined}
               title={mc.courtyardTitle}
               onCheckedChange={(checked) => onGateDraftsChange?.(
                 checked

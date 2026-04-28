@@ -20,7 +20,7 @@ import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getSelfVerificationRequestForGates } from "@/lib/identity-gates";
+import { getGateFailureMessage, getSelfVerificationRequestForGates, hasSelfDocumentFactVerificationRequest } from "@/lib/identity-gates";
 
 import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
 import { NotFoundPage } from "./misc-routes";
@@ -196,9 +196,11 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     handleSelfQrError: handleJoinSelfQrError,
     handleSelfQrSuccess: handleJoinSelfQrSuccess,
     joinError,
-    joinLoading,
-    joinRequested,
-    veryLoading: joinVeryLoading,
+	    joinLoading,
+	    joinRequested,
+	    passportLoading,
+	    refreshPassportScore,
+	    veryLoading: joinVeryLoading,
     selfError: joinSelfError,
     selfLoading: joinSelfLoading,
     selfModalOpen: joinSelfModalOpen,
@@ -254,26 +256,25 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
   }, [veryPostVerificationError]);
 
   const uniqueHumanVerified =
-    state.session?.user.verification_capabilities.unique_human.state === "verified";
+    state.isCommunityOwner || state.session?.user.verification_capabilities.unique_human.state === "verified";
 
-  const handleSubmit = React.useCallback(async () => {
-    const selfVerificationRequest = getSelfVerificationRequestForGates({
+  const selfVerificationRequest = React.useMemo(
+    () => getSelfVerificationRequestForGates({
       gates: state.community?.membership_gate_summaries ?? [],
       includeUniqueHuman: true,
       verificationCapabilities: state.session?.user.verification_capabilities,
-    });
+    }),
+    [state.community?.membership_gate_summaries, state.session?.user.verification_capabilities],
+  );
+  const needsSelfDocumentFactVerification = hasSelfDocumentFactVerificationRequest(selfVerificationRequest);
 
-    if (!uniqueHumanVerified) {
-      pendingSubmitRef.current = true;
-      const result = await startVeryPostVerification();
-      if (!result.started) pendingSubmitRef.current = false;
+  const handleSubmit = React.useCallback(async () => {
+    if (state.isCommunityOwner) {
+      await state.handleSubmit();
       return;
     }
 
-    if (
-      selfVerificationRequest.requestedCapabilities.length > 0
-      || selfVerificationRequest.verificationRequirements.length > 0
-    ) {
+    if (needsSelfDocumentFactVerification) {
       pendingSubmitRef.current = true;
       const result = await startSelfVerification({
         requestedCapabilities: selfVerificationRequest.requestedCapabilities,
@@ -284,8 +285,15 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
       return;
     }
 
+    if (!uniqueHumanVerified) {
+      pendingSubmitRef.current = true;
+      const result = await startVeryPostVerification();
+      if (!result.started) pendingSubmitRef.current = false;
+      return;
+    }
+
     await state.handleSubmit();
-  }, [startSelfVerification, startVeryPostVerification, state.community?.membership_gate_summaries, state.handleSubmit, state.session?.user.verification_capabilities, uniqueHumanVerified, verifyRequiredDescription]);
+  }, [needsSelfDocumentFactVerification, selfVerificationRequest, startSelfVerification, startVeryPostVerification, state.handleSubmit, state.isCommunityOwner, uniqueHumanVerified, verifyRequiredDescription]);
 
   if (state.loading) {
     if (isMobile) {
@@ -355,7 +363,7 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     return <RouteLoadFailureState description={copy.routeStatus.createPost.incomplete} title={pageTitle} />;
   }
 
-  if (state.eligibility.status !== "already_joined") {
+  if (state.eligibility.status !== "already_joined" && !state.isCommunityOwner) {
     const joinPanel = (
       <CommunityMembershipGatePanel
         eligibility={state.eligibility}
@@ -363,12 +371,14 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
         joinError={joinError ?? (state.eligibility.status === "gate_failed" && state.eligibility.failure_reason
           ? getGateFailureMessage(state.eligibility, { locale })
           : null)}
-        joinLoading={joinLoading}
-        joinRequested={joinRequested}
-        verificationError={joinSelfError}
-        verificationLoading={joinSelfLoading}
-        onJoin={handlePrimaryJoinAction}
-      />
+	        joinLoading={joinLoading}
+	        joinRequested={joinRequested}
+	        passportLoading={passportLoading}
+	        verificationError={joinSelfError}
+	        verificationLoading={joinSelfLoading}
+	        onJoin={handlePrimaryJoinAction}
+	        onPassportRefresh={() => void refreshPassportScore()}
+	      />
     );
     const joinRequestModal = (
       <CommunityJoinRequestModal
@@ -457,7 +467,7 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
   ) : null;
 
   if (isMobile) {
-    if (!uniqueHumanVerified) {
+    if (!uniqueHumanVerified && !needsSelfDocumentFactVerification) {
       return (
         <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
           <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />

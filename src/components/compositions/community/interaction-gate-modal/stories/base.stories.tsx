@@ -5,7 +5,10 @@ import type { MembershipGateSummary } from "@pirate/api-contracts";
 import { Button } from "@/components/primitives/button";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 
-import { CommunityInteractionGateModal, type CommunityInteractionGateModalProps } from "../community-interaction-gate-modal";
+import {
+  CommunityInteractionGateModal,
+  type CommunityInteractionGateModalProps,
+} from "../community-interaction-gate-modal";
 
 const selfRequirements: MembershipGateSummary[] = [
   { gate_type: "age_over_18" },
@@ -45,12 +48,16 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-function GateModalStory(props: Omit<CommunityInteractionGateModalProps, "onOpenChange" | "open">) {
+function GateModalStory(
+  props: Omit<CommunityInteractionGateModalProps, "onOpenChange" | "open">,
+) {
   const [open, setOpen] = React.useState(true);
 
   return (
     <>
-      {!open ? <Button onClick={() => setOpen(true)}>Reopen gate</Button> : null}
+      {!open ? (
+        <Button onClick={() => setOpen(true)}>Reopen gate</Button>
+      ) : null}
       <CommunityInteractionGateModal
         {...props}
         onOpenChange={setOpen}
@@ -65,7 +72,9 @@ function RequestableToReplyStory() {
 
   return (
     <>
-      {!requestOpen ? <Button onClick={() => setRequestOpen(true)}>Request to Join</Button> : null}
+      {!requestOpen ? (
+        <Button onClick={() => setRequestOpen(true)}>Request to Join</Button>
+      ) : null}
       <CommunityJoinRequestModal
         communityName="Neighborhood Planning"
         onOpenChange={setRequestOpen}
@@ -136,7 +145,7 @@ export const VerificationRequiredPassport: Story = {
   name: "States / Verification required Passport",
   render: () => (
     <GateModalStory
-      description="Your wallet needs a Passport score of 20+ to enter this community. Visit app.passport.xyz to improve it."
+      description="We can't determine that you're a unique human from your wallet activity. Improve your score and try again."
       icon="passport"
       primaryAction={{
         href: "https://app.passport.xyz/",
@@ -146,7 +155,7 @@ export const VerificationRequiredPassport: Story = {
       }}
       requirements={passportRequirements}
       requirementStatuses={["unmet"]}
-      title="Score Too Low"
+      title="Higher Score Required"
     />
   ),
 };
@@ -206,6 +215,28 @@ export const MobileVerificationRequiredSelf: Story = {
       requirements={selfRequirements}
       requirementStatuses={["unmet"]}
       title="Verify to vote"
+    />
+  ),
+};
+
+export const MobileVerificationRequiredPassport: Story = {
+  name: "Mobile / Verification required Passport",
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <GateModalStory
+      description="We can't determine that you're a unique human from your wallet activity. Improve your score and try again."
+      icon="passport"
+      primaryAction={{
+        href: "https://app.passport.xyz/",
+        label: "Visit Passport.xyz",
+        rel: "noopener noreferrer",
+        target: "_blank",
+      }}
+      requirements={passportRequirements}
+      requirementStatuses={["unmet"]}
+      title="Higher Score Required"
     />
   ),
 };

@@ -48,12 +48,22 @@ function InteractiveCommunityGatesEditorPage({
   membershipMode: CommunityMembershipMode;
   readAccessMode: CommunityReadAccessMode;
 }) {
-  const [allowAnonymousIdentity, setAllowAnonymousIdentity] = React.useState(initialAllowAnonymousIdentity);
-  const [anonymousIdentityScope, setAnonymousIdentityScope] = React.useState(initialAnonymousIdentityScope);
-  const [defaultAgeGatePolicy, setDefaultAgeGatePolicy] = React.useState(initialDefaultAgeGatePolicy);
+  const [allowAnonymousIdentity, setAllowAnonymousIdentity] = React.useState(
+    initialAllowAnonymousIdentity,
+  );
+  const [anonymousIdentityScope, setAnonymousIdentityScope] = React.useState(
+    initialAnonymousIdentityScope,
+  );
+  const [defaultAgeGatePolicy, setDefaultAgeGatePolicy] = React.useState(
+    initialDefaultAgeGatePolicy,
+  );
   const [gateDrafts, setGateDrafts] = React.useState(initialGateDrafts);
-  const [membershipMode, setMembershipMode] = React.useState(initialMembershipMode);
-  const [readAccessMode, setReadAccessMode] = React.useState(initialReadAccessMode);
+  const [membershipMode, setMembershipMode] = React.useState(
+    initialMembershipMode,
+  );
+  const [readAccessMode, setReadAccessMode] = React.useState(
+    initialReadAccessMode,
+  );
 
   return (
     <CommunityGatesEditorPage
@@ -115,17 +125,34 @@ export const RestrictedReading: Story = {
   ),
 };
 
+export const PassportScoreGate: Story = {
+  render: () => (
+    <InteractiveCommunityGatesEditorPage
+      allowAnonymousIdentity
+      anonymousIdentityScope="community_stable"
+      defaultAgeGatePolicy="none"
+      gateDrafts={[
+        { gateType: "wallet_score", provider: "passport", minimumScore: 20 },
+      ]}
+      membershipMode="gated"
+      readAccessMode="public"
+    />
+  ),
+};
+
 export const EthereumNftGate: Story = {
   render: () => (
     <InteractiveCommunityGatesEditorPage
       allowAnonymousIdentity
       anonymousIdentityScope="community_stable"
       defaultAgeGatePolicy="none"
-      gateDrafts={[{
-        gateType: "erc721_holding",
-        chainNamespace: "eip155:1",
-        contractAddress: "0x1111111111111111111111111111111111111111",
-      }]}
+      gateDrafts={[
+        {
+          gateType: "erc721_holding",
+          chainNamespace: "eip155:1",
+          contractAddress: "0x1111111111111111111111111111111111111111",
+        },
+      ]}
       membershipMode="gated"
       readAccessMode="public"
     />

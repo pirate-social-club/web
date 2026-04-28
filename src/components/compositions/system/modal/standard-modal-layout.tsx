@@ -76,7 +76,7 @@ export function StandardModalHeader({
           {title}
         </ModalTitle>
       </div>
-      <ModalDescription className={cn(typeVariants({ variant: "body" }), "w-full leading-7 text-foreground sm:leading-8")} dir="auto">
+      <ModalDescription className={cn(typeVariants({ variant: "body" }), "w-full text-lg leading-8 text-foreground")} dir="auto">
         {description}
       </ModalDescription>
     </ModalHeader>

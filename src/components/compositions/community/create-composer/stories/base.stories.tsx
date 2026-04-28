@@ -2,7 +2,10 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { CreateCommunityComposer } from "../create-community-composer";
-import type { CreateCommunityComposerProps, IdentityGateDraft } from "../create-community-composer.types";
+import type {
+  CreateCommunityComposerProps,
+  IdentityGateDraft,
+} from "../create-community-composer.types";
 import type { CourtyardWalletInventoryGroup } from "@/lib/courtyard-inventory-gates";
 
 const baseComposer: CreateCommunityComposerProps = {
@@ -20,6 +23,10 @@ const baseComposer: CreateCommunityComposerProps = {
 
 const nationalityGateDrafts: IdentityGateDraft[] = [
   { gateType: "nationality", provider: "self", requiredValues: ["USA"] },
+];
+
+const passportScoreGateDrafts: IdentityGateDraft[] = [
+  { gateType: "wallet_score", provider: "passport", minimumScore: 20 },
 ];
 
 const meta = {
@@ -53,7 +60,13 @@ export const PublicOnly: Story = {
 
 export const AdultOnly: Story = {
   name: "Flow / Adult Only",
-  render: () => <CreateCommunityComposer {...baseComposer} defaultAgeGatePolicy="18_plus" initialStep={2} />,
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      defaultAgeGatePolicy="18_plus"
+      initialStep={2}
+    />
+  ),
 };
 
 export const AccessStep: Story = {
@@ -73,12 +86,36 @@ export const AccessStepWithNationalityGate: Story = {
   ),
 };
 
+export const AccessStepWithPassportScoreGate: Story = {
+  name: "Flow / Access Step With Passport Score Gate",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[...passportScoreGateDrafts]}
+      initialStep={2}
+      membershipMode="gated"
+    />
+  ),
+};
+
 export const ReviewWithNationalityGate: Story = {
   name: "Flow / Review With Nationality Gate",
   render: () => (
     <CreateCommunityComposer
       {...baseComposer}
       gateDrafts={[...nationalityGateDrafts]}
+      initialStep={3}
+      membershipMode="gated"
+    />
+  ),
+};
+
+export const ReviewWithPassportScoreGate: Story = {
+  name: "Flow / Review With Passport Score Gate",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[...passportScoreGateDrafts]}
       initialStep={3}
       membershipMode="gated"
     />
@@ -141,9 +178,30 @@ export const AccessStepWithCourtyardWalletEmpty: Story = {
 };
 
 const cardInventory: CourtyardWalletInventoryGroup[] = [
-  { category: "trading_card", franchise: "pokemon", subject: "charizard", displayLabel: "Pokemon Charizard", displayDetail: "4 in wallet", count: 4 },
-  { category: "trading_card", franchise: "pokemon", subject: "pikachu", displayLabel: "Pokemon Pikachu", displayDetail: "2 in wallet", count: 2 },
-  { category: "trading_card", franchise: "magic", subject: "black lotus", displayLabel: "Magic Black Lotus", displayDetail: "1 in wallet", count: 1 },
+  {
+    category: "trading_card",
+    franchise: "pokemon",
+    subject: "charizard",
+    displayLabel: "Pokemon Charizard",
+    displayDetail: "4 in wallet",
+    count: 4,
+  },
+  {
+    category: "trading_card",
+    franchise: "pokemon",
+    subject: "pikachu",
+    displayLabel: "Pokemon Pikachu",
+    displayDetail: "2 in wallet",
+    count: 2,
+  },
+  {
+    category: "trading_card",
+    franchise: "magic",
+    subject: "black lotus",
+    displayLabel: "Magic Black Lotus",
+    displayDetail: "1 in wallet",
+    count: 1,
+  },
 ];
 
 export const AccessStepWithCourtyardWalletCards: Story = {
@@ -160,9 +218,31 @@ export const AccessStepWithCourtyardWalletCards: Story = {
 };
 
 const watchInventory: CourtyardWalletInventoryGroup[] = [
-  { category: "watch", brand: "rolex", model: "submariner", reference: "124060", displayLabel: "Rolex Submariner", displayDetail: "2 in wallet", count: 2 },
-  { category: "watch", brand: "rolex", model: "gmt-master", displayLabel: "Rolex GMT-Master", displayDetail: "1 in wallet", count: 1 },
-  { category: "watch", brand: "omega", model: "speedmaster", displayLabel: "Omega Speedmaster", displayDetail: "1 in wallet", count: 1 },
+  {
+    category: "watch",
+    brand: "rolex",
+    model: "submariner",
+    reference: "124060",
+    displayLabel: "Rolex Submariner",
+    displayDetail: "2 in wallet",
+    count: 2,
+  },
+  {
+    category: "watch",
+    brand: "rolex",
+    model: "gmt-master",
+    displayLabel: "Rolex GMT-Master",
+    displayDetail: "1 in wallet",
+    count: 1,
+  },
+  {
+    category: "watch",
+    brand: "omega",
+    model: "speedmaster",
+    displayLabel: "Omega Speedmaster",
+    displayDetail: "1 in wallet",
+    count: 1,
+  },
 ];
 
 export const AccessStepWithCourtyardWalletWatches: Story = {
@@ -185,7 +265,11 @@ const courtyardCardGateDrafts: IdentityGateDraft[] = [
     contractAddress: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
     inventoryProvider: "courtyard",
     minQuantity: 3,
-    assetFilter: { category: "trading_card", franchise: "Pokemon", subject: "Charizard" },
+    assetFilter: {
+      category: "trading_card",
+      franchise: "Pokemon",
+      subject: "Charizard",
+    },
   },
 ];
 

@@ -279,6 +279,42 @@ export const CommunityWithPosts: Story = {
   },
 };
 
+export const PassportScoreGated: Story = {
+  name: "States / Passport Score Gated",
+  args: {},
+  render: () => {
+    const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
+
+    return (
+      <CommunityPageShell
+        activeSort={activeSort}
+        availableSorts={sortOptions}
+        avatarSrc={tameImpalaAvatarPlaceholder}
+        bannerSrc={tameImpalaBannerPlaceholder}
+        communityId="cmt_passport_score"
+        headerAction={(
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Button>Follow</Button>
+            <Button variant="secondary">Join</Button>
+          </div>
+        )}
+        items={tameImpalaFeedItems}
+        onSortChange={setActiveSort}
+        routeLabel="c/passportscore"
+        routeVerified
+        sidebar={{
+          ...tameImpalaSidebar,
+          description: "A community gated by Human Passport wallet reputation.",
+          displayName: "Passport Score",
+          membershipMode: "gated",
+          requirements: ["Passport score 20+"],
+        }}
+        title="Passport Score"
+      />
+    );
+  },
+};
+
 export const MobileCommunity: Story = {
   args: {},
   parameters: {

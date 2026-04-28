@@ -11,6 +11,7 @@ import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
+import { getErrorMessage } from "@/lib/error-utils";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
@@ -18,7 +19,7 @@ import { CommunityPageShell } from "@/components/compositions/community/page-she
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel, getPassportPromptCapabilities, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { getGateFailureMessage, getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationPromptCopy, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 
@@ -38,7 +39,6 @@ import { toCommunityFeedItem } from "@/app/authenticated-helpers/post-presentati
 import { submitOptimisticPostVote, updateCommunityPostVote } from "@/app/authenticated-helpers/post-vote";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
-import { getErrorMessage } from "@/lib/error-utils";
 import { buildFeedSortOptions } from "@/lib/feed-sort-options";
 import { AuthRequiredRouteState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
@@ -61,7 +61,9 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const contentLocale = useRouteContentLocale();
   const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
   const { authorProfiles, community, preview, eligibility, error, loading, posts, refetchEligibility, setPosts } = useCommunityPageData(communityId, contentLocale, activeSort);
-  const commerceEnabled = Boolean(session?.user?.user_id) && eligibility?.status === "already_joined";
+  const ownsCommunity = session?.user?.user_id === community?.created_by_user_id;
+  const canCreatePost = ownsCommunity || eligibility?.status === "already_joined";
+  const commerceEnabled = Boolean(session?.user?.user_id) && canCreatePost;
   const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(communityId, commerceEnabled);
   const { buySong, purchaseModal } = useSongPurchaseFlow({ commerceEnabled, refreshSongCommerce });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
@@ -93,9 +95,11 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     handleSelfQrError,
     handleSelfQrSuccess,
     joinError,
-    joinLoading,
-    joinRequested,
-    selfError,
+	    joinLoading,
+	    joinRequested,
+	    passportLoading,
+	    refreshPassportScore,
+	    selfError,
     selfLoading,
     selfModalOpen,
     selfPrompt,
@@ -112,7 +116,6 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const [joinRequestModalOpen, setJoinRequestModalOpen] = React.useState(false);
   const [joinRequestSubmitting, setJoinRequestSubmitting] = React.useState(false);
   const [joinRequestError, setJoinRequestError] = React.useState<string | null>(null);
-  const ownsCommunity = session?.user?.user_id === community?.created_by_user_id;
   const communityCreatePostPath = React.useMemo(
     () => community
       ? `${buildCommunityPath(community.community_id, community.route_slug)}/submit`
@@ -215,30 +218,23 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       };
     };
   }) => {
-    if (gate.eligibility.status === "verification_required") {
-      const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-      const verificationPrompt = getVerificationPromptCopy(
-        provider,
-        provider === "passport"
-          ? getPassportPromptCapabilities(gate.eligibility)
-          : getVerificationCapabilitiesForProvider(gate.eligibility, provider),
+	    if (gate.eligibility.status === "verification_required") {
+	      const provider = resolveSuggestedVerificationProvider(gate.eligibility);
+	      if (provider === "passport") {
+	        return undefined;
+	      }
+	      const verificationPrompt = getVerificationPromptCopy(
+	        provider,
+	        getVerificationCapabilitiesForProvider(gate.eligibility, provider),
         { locale },
       );
-      const verificationIcon = provider === "passport" ? "passport" : provider === "very" ? "very" : "self";
+	      const verificationIcon = provider === "very" ? "very" : "self";
       return {
         description: verificationPrompt.description,
         icon: verificationIcon as "passport" | "self" | "very",
-        primaryAction: provider === "passport"
-          ? {
-              href: "https://app.passport.xyz/",
-              label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
-              onClick: closeModal,
-              rel: "noopener noreferrer",
-              target: "_blank",
-            }
-          : {
-              label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
-              loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
+	        primaryAction: {
+	              label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
+	              loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
               onClick: async () => {
                 if (provider === "very") {
                   const result = await startVeryVerification();
@@ -264,15 +260,13 @@ export function CommunityPage({ communityId }: { communityId: string }) {
                     }
                   }
                 }
-              },
+	            },
             },
         requirements: gate.preview.membership_gate_summaries,
-        title: provider === "passport"
-          ? verificationPrompt.title
-          : action === "vote_post" || action === "vote_comment"
-            ? copy.interactionGate.verifyToVoteTitle
-            : copy.interactionGate.verifyToReplyTitle,
-      };
+	        title: action === "vote_post" || action === "vote_comment"
+	            ? copy.interactionGate.verifyToVoteTitle
+	            : copy.interactionGate.verifyToReplyTitle,
+	      };
     }
 
     if (gate.eligibility.status === "requestable") {
@@ -380,7 +374,6 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     return <RouteLoadFailureState description={copy.routeStatus.community.incomplete} title={pageTitle} />;
   }
 
-  const canCreatePost = eligibility?.status === "already_joined";
   const joinActionLabel = eligibility?.status === "already_joined"
     ? "Joined"
     : eligibility?.status === "pending_request"
@@ -437,7 +430,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       {!ownsCommunity ? (
         <Button
           disabled={joinActionDisabled}
-          loading={joinLoading || veryLoading || selfLoading}
+	          loading={joinLoading || veryLoading || selfLoading || passportLoading}
           onClick={handlePrimaryJoinAction}
           variant="secondary"
         >
@@ -488,12 +481,14 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           joinError={joinError ?? (eligibility?.status === "gate_failed" && eligibility.failure_reason
             ? getGateFailureMessage(eligibility, { locale })
             : null)}
-          joinLoading={joinLoading}
-          joinRequested={joinRequested}
-          verificationError={selfError}
-          verificationLoading={selfLoading}
-          onJoin={handlePrimaryJoinAction}
-        />
+	          joinLoading={joinLoading}
+	          joinRequested={joinRequested}
+	          passportLoading={passportLoading}
+	          verificationError={selfError}
+	          verificationLoading={selfLoading}
+	          onJoin={handlePrimaryJoinAction}
+	          onPassportRefresh={() => void refreshPassportScore()}
+	        />
       ) : null}
         <CommunityPageShell
         activeSort={activeSort}

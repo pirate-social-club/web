@@ -58,6 +58,7 @@ function formatSourceLanguage(sourceLanguage: string | null | undefined, locale:
 export function PostCard({
   viewContext = "home",
   identityPresentation,
+  authorCommunityRole,
   authorNationalityBadgeCountry,
   authorNationalityBadgeLabel,
   byline,
@@ -151,6 +152,7 @@ export function PostCard({
         )}
       >
         <PostCardHeader
+          authorCommunityRole={authorCommunityRole}
           authorNationalityBadgeCountry={authorNationalityBadgeCountry}
           authorNationalityBadgeLabel={authorNationalityBadgeLabel}
           byline={byline}

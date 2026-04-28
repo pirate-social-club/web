@@ -1,4 +1,4 @@
-import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
+import type { CommunityAuthorRole, PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 
 export type PostThreadAuthorMode = "human" | "agent";
 export type PostThreadSubmitResult = "blocked" | "submitted";
@@ -11,6 +11,7 @@ export interface PostThreadComment {
   replyId?: string;
   authorLabel: string;
   authorHref?: string;
+  authorCommunityRole?: CommunityAuthorRole | null;
   timestampLabel: string;
   scoreLabel?: string;
   viewerVote?: "up" | "down" | null;

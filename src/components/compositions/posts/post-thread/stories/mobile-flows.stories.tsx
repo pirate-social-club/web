@@ -11,8 +11,11 @@ import type { PostThreadComment } from "../post-thread.types";
 
 const threadPost = {
   ...POSTS_BY_ID.pst_01_weekly_listening,
+  authorCommunityRole: "owner" as const,
   authorNationalityBadgeCountry: "US",
   authorNationalityBadgeLabel: "Verified United States nationality",
+  identityPresentation: "author_with_community" as const,
+  viewContext: "community" as const,
 };
 
 const mobileThreadComments: PostThreadComment[] = [
@@ -29,7 +32,7 @@ const mobileThreadComments: PostThreadComment[] = [
         authorLabel: "u/modmatrix.pirate",
         authorHref: "#",
         body: "Keep the thread readable, then open a separate reply view when someone commits to writing.",
-        metadataLabel: "mod",
+        authorCommunityRole: "moderator",
         scoreLabel: "31",
         timestampLabel: "18m",
       },

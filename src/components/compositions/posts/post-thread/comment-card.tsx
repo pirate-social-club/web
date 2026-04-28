@@ -13,6 +13,7 @@ import { triggerCommentTapHaptic } from "@/lib/haptics";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
+import type { CommunityAuthorRole } from "../post-card/post-card.types";
 import type {
   PostThreadAuthorMode,
   PostThreadCommentStatus,
@@ -33,9 +34,20 @@ function commentBody(body: string | undefined, status: PostThreadCommentStatus |
   return body ?? "";
 }
 
+function CommentAuthorRoleBadge({ role }: { role?: CommunityAuthorRole | null }) {
+  if (!role) return null;
+
+  return (
+    <span className="inline-flex h-[1.15em] items-center self-center rounded-full bg-primary px-1.5 text-[10px] font-bold uppercase leading-none text-primary-foreground">
+      {role === "owner" ? "Owner" : "Mod"}
+    </span>
+  );
+}
+
 export interface CommentCardProps {
   authorLabel: string;
   authorHref?: string;
+  authorCommunityRole?: CommunityAuthorRole | null;
   metadataLabel?: string;
   scoreLabel?: string;
   timestampLabel: string;
@@ -62,6 +74,7 @@ export interface CommentCardProps {
 export function CommentCard({
   authorLabel,
   authorHref,
+  authorCommunityRole,
   metadataLabel,
   scoreLabel,
   timestampLabel,
@@ -137,6 +150,7 @@ export function CommentCard({
             <bdi>{authorLabel}</bdi>
           </span>
         )}
+        <CommentAuthorRoleBadge role={authorCommunityRole} />
         {metadataLabel ? (
           <>
             <span aria-hidden="true">·</span>

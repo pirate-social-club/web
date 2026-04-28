@@ -147,6 +147,30 @@ export const PublicAuthorNationalityBadge: Story = {
   ),
 };
 
+export const CommunityOwnerBadge: Story = {
+  name: "Public Author / Owner Badge",
+  render: () => (
+    <PostCard
+      {...basePost}
+      authorCommunityRole="owner"
+      identityPresentation="author_with_community"
+      viewContext="community"
+    />
+  ),
+};
+
+export const CommunityModeratorBadge: Story = {
+  name: "Public Author / Moderator Badge",
+  render: () => (
+    <PostCard
+      {...basePost}
+      authorCommunityRole="moderator"
+      identityPresentation="author_with_community"
+      viewContext="community"
+    />
+  ),
+};
+
 export const AnonymousWithoutNationalityBadge: Story = {
   name: "Anonymous / Badge Hidden",
   render: () => (

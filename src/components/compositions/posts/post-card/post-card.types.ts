@@ -174,6 +174,8 @@ export type PostCardAgentAuthor = {
   ownerHref?: string;
 };
 
+export type CommunityAuthorRole = "owner" | "moderator";
+
 export type PostCardByline = {
   community?: PostCardIdentity;
   author?: PostCardIdentity;
@@ -204,6 +206,7 @@ export interface PostCardProps {
   viewContext?: PostCardViewContext;
   identityPresentation?: PostCardIdentityPresentation;
   byline: PostCardByline;
+  authorCommunityRole?: CommunityAuthorRole | null;
   authorNationalityBadgeCountry?: string | null;
   authorNationalityBadgeLabel?: string;
   qualifierLabels?: string[];

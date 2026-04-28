@@ -7,8 +7,11 @@ import type { PostThreadComment } from "../post-thread.types";
 
 const threadPost = {
   ...POSTS_BY_ID.pst_01_weekly_listening,
+  authorCommunityRole: "owner" as const,
   authorNationalityBadgeCountry: "US",
   authorNationalityBadgeLabel: "Verified United States nationality",
+  identityPresentation: "author_with_community" as const,
+  viewContext: "community" as const,
 };
 
 function withCommentVoting(
@@ -46,9 +49,9 @@ const baseComments: PostThreadComment[] = [
         commentId: "comment_1_1",
         authorLabel: "u/modmatrix.pirate",
         authorHref: "#",
+        authorCommunityRole: "moderator",
         timestampLabel: "18m",
         scoreLabel: "31 score",
-        metadataLabel: "mod",
         body: "The better thread question is which records still hold up three days later, not just what hit first.",
         children: [
           {

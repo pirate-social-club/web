@@ -9,6 +9,7 @@ import { buildNationalityBadgeLabel, nationalityMatchesQualifier } from "./post-
 import { postCardType } from "./post-card.styles";
 import { PostCardActionMenu } from "./post-card-action-menu";
 import type {
+  CommunityAuthorRole,
   PostCardByline,
   PostCardIdentity,
   PostCardIdentityPresentation,
@@ -78,6 +79,16 @@ function InteractiveIdentityLink({
   return <span className={className}><bdi>{identity.label}</bdi></span>;
 }
 
+function AuthorRoleBadge({ role }: { role?: CommunityAuthorRole | null }) {
+  if (!role) return null;
+
+  return (
+    <span className="inline-flex h-[1.15em] items-center self-center rounded-full bg-primary px-1.5 text-[10px] font-bold uppercase leading-none text-primary-foreground">
+      {role === "owner" ? "Owner" : "Mod"}
+    </span>
+  );
+}
+
 function AgentByline({ byline }: { byline: PostCardByline }) {
   const { agentAuthor, community, timestampLabel } = byline;
   const { locale } = useUiLocale();
@@ -122,11 +133,13 @@ function AgentByline({ byline }: { byline: PostCardByline }) {
 }
 
 function PostCardBylineContent({
+  authorCommunityRole,
   byline,
   identityPresentation,
   qualifierLabels,
   viewContext,
 }: {
+  authorCommunityRole?: CommunityAuthorRole | null;
   byline: PostCardByline;
   identityPresentation?: PostCardIdentityPresentation;
   qualifierLabels?: string[];
@@ -142,6 +155,13 @@ function PostCardBylineContent({
 
   const { primaryIdentity, secondaryIdentity } = resolveIdentities(byline, resolvedPresentation);
   const qualifierText = qualifierLabels?.filter(Boolean).join(" · ");
+  const shouldShowAuthorRole = Boolean(
+    authorCommunityRole
+    && byline.author
+    && primaryIdentity === byline.author
+    && resolvedPresentation !== "anonymous_primary"
+    && resolvedPresentation !== "anonymous_with_community",
+  );
 
   if (!primaryIdentity && !secondaryIdentity) {
     return <div className={cn("text-muted-foreground", postCardType.meta)}>{timestampLabel}</div>;
@@ -158,6 +178,7 @@ function PostCardBylineContent({
         className="font-semibold text-foreground hover:underline"
         identity={primaryIdentity}
       />
+      {shouldShowAuthorRole ? <AuthorRoleBadge role={authorCommunityRole} /> : null}
       {qualifierText ? (
         <>
           <span aria-hidden="true">·</span>
@@ -183,6 +204,7 @@ export interface PostCardHeaderProps {
   viewContext: PostCardViewContext;
   identityPresentation?: PostCardIdentityPresentation;
   byline: PostCardByline;
+  authorCommunityRole?: CommunityAuthorRole | null;
   authorNationalityBadgeCountry?: string | null;
   authorNationalityBadgeLabel?: string;
   qualifierLabels?: string[];
@@ -195,6 +217,7 @@ export interface PostCardHeaderProps {
 export function PostCardHeader({
   viewContext,
   identityPresentation,
+  authorCommunityRole,
   authorNationalityBadgeCountry,
   authorNationalityBadgeLabel,
   byline,
@@ -269,6 +292,7 @@ export function PostCardHeader({
       )}
       <div className="min-w-0 flex-1 text-start">
         <PostCardBylineContent
+          authorCommunityRole={authorCommunityRole}
           byline={byline}
           identityPresentation={identityPresentation}
           qualifierLabels={qualifierLabels}

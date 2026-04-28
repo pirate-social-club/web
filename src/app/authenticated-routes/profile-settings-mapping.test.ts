@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Profile } from "@pirate/api-contracts";
 
-import { apiProfileToProps } from "./profile-settings-mapping";
+import { apiProfileToProps } from "../authenticated-helpers/profile-settings-mapping";
 
 function createProfile(overrides: Partial<Profile> = {}): Profile {
   return {

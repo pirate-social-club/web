@@ -26,13 +26,56 @@ function isValidTimestamp(timestamp: number): boolean {
   return Number.isFinite(timestamp) && timestamp > 0;
 }
 
-function formatTime(timestamp: number): string {
+const THREAD_TIME_DIVIDER_GAP_MS = 15 * 60 * 1000;
+
+function startOfLocalDay(timestamp: number): number {
+  const date = new Date(timestamp);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+function formatTime(timestamp: number, locale?: string): string {
   if (!isValidTimestamp(timestamp)) return "";
 
-  return new Date(timestamp).toLocaleTimeString(undefined, {
+  return new Date(timestamp).toLocaleTimeString(locale, {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatThreadTimeDivider(timestamp: number, nowTimestamp: number, locale?: string): string {
+  if (!isValidTimestamp(timestamp)) return "";
+
+  const messageDate = new Date(timestamp);
+  const now = new Date(nowTimestamp);
+  const startOfMessageDay = startOfLocalDay(timestamp);
+  const startOfToday = startOfLocalDay(nowTimestamp);
+  const oneDay = 1000 * 60 * 60 * 24;
+  const time = formatTime(timestamp, locale);
+
+  if (startOfMessageDay === startOfToday) {
+    return time;
+  }
+
+  if (startOfMessageDay === startOfToday - oneDay) {
+    return `Yesterday ${time}`;
+  }
+
+  const date = messageDate.toLocaleDateString(locale, {
+    month: "short",
+    day: "numeric",
+    ...(messageDate.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+  });
+  return `${date}, ${time}`;
+}
+
+function shouldShowThreadTimeDivider(
+  message: ChatMessageRecord,
+  previousMessage: ChatMessageRecord | undefined,
+): boolean {
+  if (!isValidTimestamp(message.createdAt)) return false;
+  if (!previousMessage || !isValidTimestamp(previousMessage.createdAt)) return true;
+  if (startOfLocalDay(message.createdAt) !== startOfLocalDay(previousMessage.createdAt)) return true;
+  return message.createdAt - previousMessage.createdAt >= THREAD_TIME_DIVIDER_GAP_MS;
 }
 
 function renderInlineMarkdown(text: string): React.ReactNode[] {
@@ -371,6 +414,7 @@ export function ThreadView({
   const [draft, setDraft] = React.useState("");
   const seededInitialDraftRef = React.useRef<string | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const [renderedAt] = React.useState(() => Date.now());
   const profileHref = conversation?.profileHref;
   const submitDraft = React.useCallback(() => {
     const next = draft.trim();
@@ -460,37 +504,42 @@ export function ThreadView({
           </div>
         ) : (
           <div className="mx-auto flex max-w-3xl flex-col gap-3">
-            {items.map((message) => {
-              const timestampLabel = formatTime(message.createdAt);
+            {items.map((message, index) => {
+              const timestampLabel = formatThreadTimeDivider(message.createdAt, renderedAt);
+              const showTimeDivider = shouldShowThreadTimeDivider(message, items[index - 1]);
+              const sentTimeLabel = timestampLabel ? `Sent ${timestampLabel}.` : "";
               return (
-                <div
-                  className={cn("flex", message.sender === "user" ? "justify-end" : "justify-start")}
-                  key={message.id}
-                >
-                  <div
-                    className={cn(
-                      "min-w-0 max-w-[78%] rounded-[var(--radius-lg)] px-4 py-3",
-                      message.sender === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-card text-card-foreground",
-                    )}
-                  >
-                    <Type
-                      as="div"
-                      variant="body"
-                      className={cn(
-                        message.sender === "user" ? "text-primary-foreground" : undefined,
-                      )}
-                    >
-                      <ChatMessageContent content={message.content} />
+                <React.Fragment key={message.id}>
+                  {showTimeDivider && timestampLabel ? (
+                    <Type as="div" variant="caption" className="py-1 text-center text-muted-foreground">
+                      {timestampLabel}
                     </Type>
-                    {timestampLabel ? (
-                      <Type as="p" variant="caption" className={cn("pt-1", message.sender === "user" && "text-primary-foreground/80")}>
-                        {timestampLabel}
+                  ) : null}
+                  <div
+                    className={cn("flex", message.sender === "user" ? "justify-end" : "justify-start")}
+                  >
+                    <div
+                      className={cn(
+                        "min-w-0 max-w-[78%] rounded-[var(--radius-lg)] px-4 py-3",
+                        message.sender === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-card text-card-foreground",
+                      )}
+                      title={timestampLabel}
+                    >
+                      {sentTimeLabel ? <span className="sr-only">{sentTimeLabel}</span> : null}
+                      <Type
+                        as="div"
+                        variant="body"
+                        className={cn(
+                          message.sender === "user" ? "text-primary-foreground" : undefined,
+                        )}
+                      >
+                        <ChatMessageContent content={message.content} />
                       </Type>
-                    ) : null}
+                    </div>
                   </div>
-                </div>
+                </React.Fragment>
               );
             })}
           </div>

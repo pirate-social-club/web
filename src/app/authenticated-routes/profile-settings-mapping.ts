@@ -3,6 +3,7 @@ import type { Profile as ApiProfile, UserAgent as ApiUserAgent } from "@pirate/a
 import { ApiError } from "@/lib/api/client";
 import type { SettingsHandle, SettingsPageProps, SettingsTab } from "@/components/compositions/settings-page/settings-page.types";
 import { buildNationalityBadgeLabel } from "@/components/compositions/post-card/post-card-nationality";
+import { resolveProfileCoverSrc } from "@/lib/default-profile-cover";
 import { formatProfileDisplayHandle } from "@/lib/profile-routing";
 
 export type PendingAgentRegistration = {
@@ -77,16 +78,23 @@ export function apiProfileToProps(
 ) {
   const handle = profile.primary_public_handle?.label ?? profile.global_handle?.label ?? "";
   const displayHandle = formatProfileDisplayHandle(handle);
+  const displayName = profile.display_name ?? displayHandle;
+  const bannerSrc = resolveProfileCoverSrc({
+    coverSrc: profile.cover_ref,
+    displayName,
+    handle,
+    userId: profile.user_id,
+  });
 
   return {
     profile: {
-      displayName: profile.display_name ?? displayHandle,
+      displayName,
       handle: displayHandle,
       bio: profile.bio ?? "",
       avatarSrc: profile.avatar_ref ?? undefined,
       nationalityBadgeCountryCode: profile.nationality_badge_country ?? undefined,
       nationalityBadgeLabel: profile.nationality_badge_country ? buildNationalityBadgeLabel(profile.nationality_badge_country, localeTag) : undefined,
-      bannerSrc: profile.cover_ref ?? undefined,
+      bannerSrc,
       meta: [],
       viewerContext: ownProfile ? ("self" as const) : ("public" as const),
       viewerFollows: followState.isFollowing,

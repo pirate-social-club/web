@@ -64,11 +64,14 @@ export function ProfileHero({
   stats?: ProfileSidebarStat[];
 }) {
   const isMobile = useIsMobile();
-  const details = (
+  const meta = profile.meta ?? [];
+  const showMeta = meta.length > 0;
+  const showMobileStats = isMobile && stats.length > 0;
+  const details = showMeta || showMobileStats ? (
     <>
-      {profile.meta?.length ? (
+      {showMeta ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-base text-muted-foreground">
-          {profile.meta.map((item) => (
+          {meta.map((item) => (
             <div className="flex items-center gap-2" key={item.label}>
               <span className="font-medium text-foreground">{item.value}</span>
               <span>{item.label}</span>
@@ -76,7 +79,7 @@ export function ProfileHero({
           ))}
         </div>
       ) : null}
-      {stats.length ? (
+      {showMobileStats ? (
         <dl className="grid grid-cols-3 gap-x-4 gap-y-3 pt-1 md:hidden">
           {stats.map((stat) => (
             <div className="min-w-0" key={stat.label}>
@@ -89,7 +92,7 @@ export function ProfileHero({
         </dl>
       ) : null}
     </>
-  );
+  ) : undefined;
 
   return (
     <IdentityHero
@@ -98,6 +101,8 @@ export function ProfileHero({
       avatarBadgeLabel={profile.nationalityBadgeLabel}
       avatarFallback={profile.displayName}
       avatarSrc={profile.avatarSrc}
+      coverClassName="bg-background md:h-60"
+      coverOverlay={<div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45" />}
       coverSrc={profile.bannerSrc}
       details={details}
       subtitle={isMobile ? undefined : profile.tagline ?? profile.handle}

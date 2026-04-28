@@ -102,17 +102,13 @@ function getPassportPrompt(
 
   const requiredScoreLabel = formatPassportScore(requiredScore);
   const currentScore = eligibility.wallet_score_status?.current_score;
-  const needsSanctionsClear = activeCapabilities.includes("sanctions_clear");
   const scoreDescription = typeof currentScore === "number"
     ? `Your score is ${formatPassportScore(currentScore)}. Need ${requiredScoreLabel}+ to join.`
     : `No Passport score found. Need ${requiredScoreLabel}+ to join.`;
-  const description = needsSanctionsClear
-    ? `${scoreDescription} Complete Passport screening too.`
-    : scoreDescription;
 
   return {
     title: `Passport score ${requiredScoreLabel}+ required`,
-    description,
+    description: scoreDescription,
     actionLabel: copy.actionLabel,
     href: "https://app.passport.xyz/",
   };

@@ -101,10 +101,6 @@ function formatSidebarRequirement(input: {
       if (locale === "ar") return "درجة Passport";
       if (locale === "zh") return "Passport 分数";
       return "Passport score";
-    case "sanctions_clear":
-      if (locale === "ar") return "خلو من العقوبات";
-      if (locale === "zh") return "无制裁限制";
-      return "Sanctions clear";
     case "erc721_holding":
       if (locale === "ar") return "حاملو NFT على إيثريوم";
       if (locale === "zh") return "以太坊 NFT 持有者";
@@ -202,6 +198,7 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       }
       : null,
     createdAt: community.created_at,
+    communityId: community.community_id,
     description: resolveCommunityLocalizedText(community, "community.description", community.description),
     displayName: community.display_name,
     memberCount: community.member_count ?? undefined,
@@ -251,6 +248,7 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       }
       : null,
     createdAt: preview.created_at,
+    communityId: preview.community_id,
     description: resolveCommunityLocalizedText(preview, "community.description", preview.description),
     displayName: preview.display_name,
     followerCount: preview.follower_count ?? undefined,

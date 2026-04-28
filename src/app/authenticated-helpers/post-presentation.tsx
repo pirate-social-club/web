@@ -50,7 +50,6 @@ export function formatQualifierLabel(qualifierTemplateId: string): string {
 
   if (normalized === "age_over_18") return "18+";
   if (normalized === "unique_human") return "Unique Human";
-  if (normalized === "sanctions_clear") return "Sanctions Clear";
 
   return normalized
     .split(/[_-]+/u)

@@ -103,7 +103,6 @@ function getSelfDisclosures(launch: SelfAppLaunch): SelfApp["disclosures"] {
     ...(launch.disclosures.date_of_birth ? { date_of_birth: true } : {}),
     ...(launch.disclosures.gender ? { gender: true } : {}),
     ...(launch.disclosures.expiry_date ? { expiry_date: true } : {}),
-    ...(launch.disclosures.ofac ? { ofac: true } : {}),
     ...(launch.disclosures.excluded_countries?.length ? { excludedCountries: launch.disclosures.excluded_countries as SelfApp["disclosures"]["excludedCountries"] } : {}),
     ...(typeof launch.disclosures.minimum_age === "number" ? { minimumAge: launch.disclosures.minimum_age } : {}),
   };

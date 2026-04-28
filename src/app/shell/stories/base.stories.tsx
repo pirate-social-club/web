@@ -23,7 +23,6 @@ const storyCapabilities: SessionExchangeResponse["user"]["verification_capabilit
   gender: { state: "unverified" },
   minimum_age: { state: "verified" },
   nationality: { state: "unverified" },
-  sanctions_clear: { state: "verified" },
   unique_human: { state: "verified" },
   wallet_score: { state: "unverified" },
 };

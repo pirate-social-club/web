@@ -66,15 +66,6 @@ describe("formatGateRequirement", () => {
     expect(formatGateRequirement(gate)).toBe("Passport Score 20+");
   });
 
-  test("formats sanctions screening gate", () => {
-    const gate: MembershipGateSummary = { gate_type: "sanctions_clear" };
-    expect(formatGateRequirement(gate)).toBe("Sanctions screening");
-  });
-
-  test("formats Passport-only sanctions screening gate", () => {
-    const gate: MembershipGateSummary = { gate_type: "sanctions_clear", accepted_providers: ["passport"] };
-    expect(formatGateRequirement(gate)).toBe("Passport sanctions screening");
-  });
 });
 
 describe("getJoinCtaLabel", () => {
@@ -154,9 +145,6 @@ describe("getVerificationPromptCopy", () => {
     expect(getVerificationPromptCopy("passport", ["wallet_score"]).title).toBe("Score Too Low");
   });
 
-  test("describes Passport sanctions screening remediation", () => {
-    expect(getVerificationPromptCopy("passport", ["sanctions_clear"]).title).toBe("Passport screening required");
-  });
 });
 
 describe("resolveSuggestedVerificationProvider", () => {

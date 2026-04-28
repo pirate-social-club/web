@@ -188,8 +188,6 @@ function gateMatchesMissingCapability(gate: CommunityGateData["preview"]["member
       return missing.includes("nationality");
     case "gender":
       return missing.includes("gender");
-    case "sanctions_clear":
-      return missing.includes("sanctions_clear");
     case "unique_human":
       return missing.includes("unique_human");
     case "wallet_score":

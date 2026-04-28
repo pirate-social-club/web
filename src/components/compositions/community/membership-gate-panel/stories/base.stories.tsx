@@ -251,27 +251,6 @@ export const PassportScoreTooLow: Story = {
   ),
 };
 
-export const PassportSanctionsScreeningRequired: Story = {
-  name: "States / Passport Sanctions Screening Required",
-  args: { gates: [] },
-  render: () => (
-    <CommunityMembershipGatePanel
-      gates={[{ gate_type: "sanctions_clear" }]}
-      eligibility={{
-        community_id: "community_passport_sanctions",
-        membership_mode: "gated",
-        human_verification_lane: "self",
-        joinable_now: false,
-        status: "verification_required",
-        membership_gate_summaries: [{ gate_type: "sanctions_clear" }],
-        missing_capabilities: ["sanctions_clear"],
-        suggested_verification_provider: "passport",
-        suggested_verification_intent: null,
-      }}
-    />
-  ),
-};
-
 export const Mobile: Story = {
   name: "Mobile layout",
   args: { gates: [] },

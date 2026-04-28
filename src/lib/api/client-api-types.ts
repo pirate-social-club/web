@@ -43,7 +43,6 @@ export type ApiCreateCommunityRequest = {
       | "minimum_age"
       | "nationality"
       | "gender"
-      | "sanctions_clear"
       | "wallet_score"
       | "erc721_holding"
       | "erc721_inventory_match";
@@ -57,7 +56,6 @@ export type ApiCreateCommunityRequest = {
         | "minimum_age"
         | "nationality"
         | "gender"
-        | "sanctions_clear"
         | "phone";
       accepted_providers?: Array<"self" | "very" | "passport"> | null;
       accepted_mechanisms?: Array<string> | null;

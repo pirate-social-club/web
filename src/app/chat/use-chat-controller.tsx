@@ -50,6 +50,7 @@ import {
   isLikelyXmtpTabContentionError,
   resetXmtpClientCache,
   XmtpRegistrationRequiredError,
+  type XmtpMessage,
 } from "@/lib/chat/chat-xmtp-support";
 import type {
   ChatConversation,
@@ -392,7 +393,7 @@ export function useChatController({
 
         stream = await client.conversations.streamAllMessages({
           consentStates: getAllowedConsentStates(module),
-          onValue: (message: any) => {
+          onValue: (message: XmtpMessage) => {
             const conversationId = String(message?.conversationId ?? message?.conversation?.id ?? "");
             const content = typeof message?.content === "string" && message.content.trim()
               ? message.content

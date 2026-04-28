@@ -4,6 +4,7 @@ import * as React from "react";
 import { Check, Copy } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
+import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
 
 import { Button } from "./button";
 import { inputVariants } from "./input";
@@ -15,12 +16,13 @@ type CopyFieldProps = React.HTMLAttributes<HTMLDivElement> & {
 const CopyField = React.forwardRef<HTMLDivElement, CopyFieldProps>(
   ({ className, value, ...props }, ref) => {
     const [copied, setCopied] = React.useState(false);
+    const { schedule: scheduleCopiedReset } = useResettableTimeout();
 
     const handleCopy = React.useCallback(async () => {
       await navigator.clipboard.writeText(value);
       setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    }, [value]);
+      scheduleCopiedReset(() => setCopied(false), 2000);
+    }, [scheduleCopiedReset, value]);
 
     return (
       <div

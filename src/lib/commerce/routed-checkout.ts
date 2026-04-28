@@ -19,15 +19,11 @@ import { base, baseSepolia } from "viem/chains";
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { getPirateNetworkConfig } from "@/lib/network-config";
+import { readViteEnv } from "@/lib/vite-env";
 
 const BASE_MAINNET_USDC = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
 const BASE_SEPOLIA_USDC = "0x036cbd53842c5426634e7929541ec2318f3dcf7e";
 const TX_WAIT_TIMEOUT_MS = 90_000;
-
-function readEnv(name: string): string | null {
-  const value = import.meta.env[name];
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
-}
 
 function normalizeAddress(value: string | null | undefined): Address | null {
   if (!value) return null;
@@ -36,7 +32,7 @@ function normalizeAddress(value: string | null | undefined): Address | null {
 }
 
 function readChainIdEnv(name: string): number | null {
-  const value = readEnv(name);
+  const value = readViteEnv(name);
   if (!value) return null;
   const chainId = Number(value);
   if (!Number.isSafeInteger(chainId) || chainId <= 0) {
@@ -46,7 +42,7 @@ function readChainIdEnv(name: string): number | null {
 }
 
 function resolveUsdcTokenAddress(chainId: number): Address {
-  const explicit = normalizeAddress(readEnv("VITE_PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS"));
+  const explicit = normalizeAddress(readViteEnv("VITE_PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS"));
   if (explicit) return explicit;
   if (chainId === base.id) return BASE_MAINNET_USDC;
   if (chainId === baseSepolia.id) return BASE_SEPOLIA_USDC;

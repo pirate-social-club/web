@@ -1,4 +1,3 @@
-import * as React from "react";
 import { ArrowSquareOut } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
@@ -9,20 +8,10 @@ import type { PostCardContent } from "./post-card.types";
 
 type EmbedContent = Extract<PostCardContent, { type: "embed" }>;
 
-declare global {
-  interface Window {
-    twttr?: {
-      widgets?: {
-        load: (element?: HTMLElement | null) => Promise<unknown> | void;
-      };
-    };
-  }
-}
-
-let xWidgetsLoadPromise: Promise<void> | null = null;
 const YOUTUBE_EMBED_HOSTS = new Set(["www.youtube.com", "www.youtube-nocookie.com"]);
-const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:"]);
 const YOUTUBE_IFRAME_ALLOW = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+const X_WIDGETS_SCRIPT_URL = "https://platform.x.com/widgets.js";
+const X_EMBED_SANDBOX = "allow-scripts";
 
 type SafeYouTubeEmbed = {
   src: string;
@@ -92,127 +81,41 @@ export function resolveSafeYouTubeEmbed(oembedHtml: string, fallbackTitle: strin
   };
 }
 
-function isSafeLinkHref(value: string | null): string | null {
-  if (!value) return null;
-
-  try {
-    const url = new URL(value);
-    return SAFE_LINK_PROTOCOLS.has(url.protocol) ? url.toString() : null;
-  } catch {
-    return null;
-  }
+function findXBlockquote(sourceDocument: Document): Element | null {
+  return sourceDocument.body.querySelector("blockquote.twitter-tweet")
+    ?? sourceDocument.querySelector("blockquote.twitter-tweet");
 }
 
-function sanitizeXNode(node: Node, document: Document): Node | null {
-  if (node.nodeType === Node.TEXT_NODE) {
-    return document.createTextNode(node.textContent ?? "");
+export function isValidXEmbedHtml(oembedHtml: string): boolean {
+  if (typeof DOMParser !== "undefined") {
+    const sourceDocument = new DOMParser().parseFromString(oembedHtml, "text/html");
+    return Boolean(findXBlockquote(sourceDocument)?.textContent?.trim());
   }
 
-  if (node.nodeType !== Node.ELEMENT_NODE) {
-    return null;
-  }
-
-  const element = node as Element;
-  const tagName = element.tagName.toLowerCase();
-  if (tagName === "br") {
-    return document.createElement("br");
-  }
-
-  if (tagName === "p") {
-    const paragraph = document.createElement("p");
-    const dir = element.getAttribute("dir");
-    const lang = element.getAttribute("lang");
-    if (dir === "ltr" || dir === "rtl" || dir === "auto") {
-      paragraph.setAttribute("dir", dir);
-    }
-    if (lang?.trim()) {
-      paragraph.setAttribute("lang", lang.trim().slice(0, 35));
-    }
-    for (const child of Array.from(element.childNodes)) {
-      const sanitized = sanitizeXNode(child, document);
-      if (sanitized) paragraph.append(sanitized);
-    }
-    return paragraph;
-  }
-
-  if (tagName === "a") {
-    const href = isSafeLinkHref(element.getAttribute("href"));
-    if (!href) return document.createTextNode(element.textContent ?? "");
-
-    const anchor = document.createElement("a");
-    anchor.href = href;
-    for (const child of Array.from(element.childNodes)) {
-      const sanitized = sanitizeXNode(child, document);
-      if (sanitized) anchor.append(sanitized);
-    }
-    if (!anchor.textContent?.trim()) {
-      anchor.textContent = href;
-    }
-    return anchor;
-  }
-
-  const fragment = document.createDocumentFragment();
-  for (const child of Array.from(element.childNodes)) {
-    const sanitized = sanitizeXNode(child, document);
-    if (sanitized) fragment.append(sanitized);
-  }
-  return fragment;
+  return /<blockquote\b[^>]*class=(["'])[^"']*\btwitter-tweet\b[^"']*\1/i.test(oembedHtml);
 }
 
-export function sanitizeXEmbedHtml(oembedHtml: string): string | null {
-  if (typeof document === "undefined") {
+export function buildSandboxedXEmbedSrcDoc(oembedHtml: string): string | null {
+  if (!isValidXEmbedHtml(oembedHtml)) {
     return null;
   }
 
-  const template = document.createElement("template");
-  template.innerHTML = oembedHtml;
-  const sourceBlockquote = template.content.querySelector("blockquote.twitter-tweet");
-  if (!sourceBlockquote) {
-    return null;
-  }
-
-  const safeDocument = document.implementation?.createHTMLDocument("") ?? document;
-  const blockquote = safeDocument.createElement("blockquote");
-  blockquote.className = "twitter-tweet";
-
-  for (const child of Array.from(sourceBlockquote.childNodes)) {
-    const sanitized = sanitizeXNode(child, safeDocument);
-    if (sanitized) blockquote.append(sanitized);
-  }
-
-  return blockquote.textContent?.trim() ? blockquote.outerHTML : null;
-}
-
-function ensureXWidgetsScript(): Promise<void> {
-  if (typeof window === "undefined") {
-    return Promise.resolve();
-  }
-  if (window.twttr?.widgets) {
-    return Promise.resolve();
-  }
-  if (xWidgetsLoadPromise) {
-    return xWidgetsLoadPromise;
-  }
-
-  xWidgetsLoadPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>("script[data-pirate-x-widgets]");
-    if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("x_widgets_load_failed")), { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.async = true;
-    script.charset = "utf-8";
-    script.dataset.pirateXWidgets = "true";
-    script.src = "https://platform.x.com/widgets.js";
-    script.addEventListener("load", () => resolve(), { once: true });
-    script.addEventListener("error", () => reject(new Error("x_widgets_load_failed")), { once: true });
-    document.head.append(script);
-  });
-
-  return xWidgetsLoadPromise;
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <base target="_blank">
+    <style>
+      html,body{margin:0;padding:0;background:transparent;color-scheme:dark;overflow:hidden;}
+      body{display:flex;justify-content:center;}
+      .twitter-tweet{margin:0!important;max-width:100%!important;}
+    </style>
+  </head>
+  <body>
+    ${oembedHtml}
+    <script async charset="utf-8" src="${X_WIDGETS_SCRIPT_URL}"></script>
+  </body>
+</html>`;
 }
 
 function formatXSource(preview: EmbedContent["preview"], onXLabel = "on X"): string {
@@ -331,98 +234,6 @@ function OfficialYouTubeEmbed({ content, className }: { content: EmbedContent; c
 }
 
 export function OfficialOEmbed({ content, className }: { content: EmbedContent; className?: string }) {
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const [hydrated, setHydrated] = React.useState(false);
-  const [failed, setFailed] = React.useState(false);
-
-  React.useEffect(() => {
-    if (content.provider !== "x" || content.state !== "embed" || !content.oembedHtml) {
-      return;
-    }
-
-    let cancelled = false;
-    setHydrated(false);
-    setFailed(false);
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    const sanitizedHtml = sanitizeXEmbedHtml(content.oembedHtml);
-    if (!sanitizedHtml) {
-      setFailed(true);
-      return;
-    }
-
-    container.innerHTML = sanitizedHtml;
-    const blockquote = container.querySelector<HTMLElement>("blockquote.twitter-tweet");
-    blockquote?.setAttribute("data-dnt", "true");
-    blockquote?.setAttribute("data-theme", "dark");
-
-    const markHydrated = () => {
-      const iframe = container.querySelector<HTMLIFrameElement>(
-        "iframe[title='X Post'], iframe[src*='platform.twitter.com/embed/Tweet.html']",
-      );
-      if (!iframe) return false;
-
-      const renderedTweet = iframe.parentElement;
-      if (renderedTweet instanceof HTMLElement) {
-        renderedTweet.style.margin = "0";
-        renderedTweet.style.maxWidth = "100%";
-        renderedTweet.style.width = "100%";
-        renderedTweet.style.overflow = "hidden";
-        renderedTweet.style.borderRadius = "0.5rem";
-        renderedTweet.style.backgroundColor = "var(--card)";
-      }
-
-      iframe.style.border = "0";
-      iframe.style.clipPath = "inset(1px round 0.5rem)";
-      iframe.style.display = "block";
-      iframe.style.maxWidth = "calc(100% + 2px)";
-      iframe.style.transform = "translateX(-1px)";
-      iframe.style.width = "calc(100% + 2px)";
-      setHydrated(true);
-      return true;
-    };
-    const requestMarkHydrated = (attempt = 0) => {
-      if (cancelled || markHydrated()) return;
-      if (attempt < 12) {
-        window.setTimeout(() => requestMarkHydrated(attempt + 1), 250);
-      }
-    };
-    let observer: MutationObserver | null = null;
-    observer = new MutationObserver(() => {
-      if (markHydrated()) {
-        observer?.disconnect();
-      }
-    });
-    observer.observe(container, {
-      childList: true,
-      subtree: true,
-    });
-
-    void ensureXWidgetsScript()
-      .then(() => {
-        if (!cancelled) {
-          return Promise.resolve(window.twttr?.widgets?.load(container)).then(() => {
-            if (!cancelled) {
-              requestMarkHydrated();
-            }
-          });
-        }
-        return undefined;
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFailed(true);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-      observer?.disconnect();
-    };
-  }, [content.oembedHtml, content.provider, content.state]);
-
   if (content.provider === "youtube") {
     return <OfficialYouTubeEmbed content={content} className={className} />;
   }
@@ -431,26 +242,21 @@ export function OfficialOEmbed({ content, className }: { content: EmbedContent; 
     return <PostEmbedPreview content={content} className={className} />;
   }
 
-  if (failed) {
+  const srcDoc = buildSandboxedXEmbedSrcDoc(content.oembedHtml);
+  if (!srcDoc) {
     return <PostEmbedPreview content={content} className={className} />;
   }
 
   return (
-    <div className={cn("grid w-full", className)}>
-      {!hydrated ? (
-        <div
-          aria-hidden="true"
-          className="col-start-1 row-start-1 min-h-[22rem] w-full rounded-lg border border-border-soft bg-card"
-        />
-      ) : null}
-      <div
-        aria-hidden={!hydrated}
-        className={cn(
-          "col-start-1 row-start-1 w-full overflow-hidden rounded-lg bg-card transition-opacity",
-          hydrated ? "opacity-100" : "pointer-events-none opacity-0",
-        )}
+    <div className={cn("h-[34rem] w-full overflow-hidden rounded-lg border border-border-soft bg-card", className)}>
+      <iframe
+        className="size-full border-0"
         data-post-card-interactive="true"
-        ref={containerRef}
+        loading="lazy"
+        referrerPolicy="strict-origin-when-cross-origin"
+        sandbox={X_EMBED_SANDBOX}
+        srcDoc={srcDoc}
+        title={content.preview?.title?.trim() || content.preview?.text?.trim() || defaultRouteCopy.common.xPost}
       />
     </div>
   );

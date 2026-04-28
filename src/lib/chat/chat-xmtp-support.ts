@@ -19,7 +19,7 @@ const XMTP_ENV = (env.VITE_XMTP_ENV || (import.meta.env.DEV ? "dev" : "productio
   | "production"
   | "local";
 
-type XmtpModule = {
+export type XmtpModule = {
   Client: {
     create: (
       signer: unknown,
@@ -40,6 +40,64 @@ type XmtpModule = {
   };
 };
 
+export type XmtpAccountIdentifier = {
+  identifier?: unknown;
+  identifierKind?: unknown;
+};
+
+export type XmtpMember = {
+  accountIdentifiers?: XmtpAccountIdentifier[];
+  inboxId?: string;
+};
+
+export type XmtpMessage = {
+  conversation?: { id?: unknown };
+  conversationId?: unknown;
+  content?: unknown;
+  fallback?: unknown;
+  id?: unknown;
+  senderInboxId?: unknown;
+  sentAt?: unknown;
+};
+
+export type XmtpDm = {
+  createdAt?: unknown;
+  createdAtNs?: unknown;
+  duplicateDms?: () => Promise<XmtpDm[]>;
+  id?: unknown;
+  members?: () => Promise<XmtpMember[]>;
+  messages: () => Promise<XmtpMessage[]>;
+  peerAddress?: unknown;
+  peerInboxId?: string | (() => Promise<string | null>);
+  sendText: (content: string) => Promise<unknown>;
+  sync?: () => Promise<unknown>;
+};
+
+export type XmtpClient = {
+  close?: () => void;
+  conversations: {
+    createDm: (inboxId: string) => Promise<XmtpDm>;
+    getConversationById?: (conversationId: string) => Promise<XmtpDm | null>;
+    getDmByInboxId: (inboxId: string) => Promise<XmtpDm | null>;
+    listDms: (options: { consentStates: unknown[] }) => Promise<XmtpDm[]>;
+    streamAllMessages?: (options: {
+      consentStates: unknown[];
+      onError?: (error: unknown) => void;
+      onValue: (message: XmtpMessage) => void;
+    }) => Promise<{ return?: () => Promise<unknown> | unknown }>;
+    syncAll: (consentStates: unknown[]) => Promise<unknown>;
+    topic?: unknown;
+  };
+  fetchInboxIdByIdentifier: (identifier: {
+    identifier: `0x${string}`;
+    identifierKind: unknown;
+  }) => Promise<string | null>;
+  inboxId?: unknown;
+  installationId?: unknown;
+  isRegistered: () => Promise<boolean>;
+  register: () => Promise<unknown>;
+};
+
 export class XmtpRegistrationRequiredError extends Error {
   constructor() {
     super("Enable encrypted messages to use chat.");
@@ -50,13 +108,13 @@ export class XmtpRegistrationRequiredError extends Error {
 let modulePromise: Promise<XmtpModule> | null = null;
 
 export type XmtpClientCache = {
-  clientInstance: any | null;
-  clientPromise: Promise<any> | null;
+  clientInstance: XmtpClient | null;
+  clientPromise: Promise<XmtpClient> | null;
   clientWalletAddress: string | null;
   registrationPromise: Promise<void> | null;
 };
 
-export const conversationCache = new Map<string, any>();
+export const conversationCache = new Map<string, XmtpDm>();
 let sharedClientCache: XmtpClientCache | null = null;
 
 function logXmtp(event: string, payload?: Record<string, unknown>) {
@@ -67,8 +125,41 @@ function warnXmtp(event: string, payload?: Record<string, unknown>) {
   logger.warn(`[chat:xmtp] ${event}`, payload ?? {});
 }
 
-function formatErrorMessage(error: unknown): string {
+export function formatErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error ?? "");
+}
+
+export function warnXmtpFallback(event: string, error: unknown, context?: Record<string, unknown>) {
+  logger.warn(`[chat:xmtp] ${event}`, {
+    ...context,
+    error: formatErrorMessage(error),
+  });
+}
+
+export async function fallbackNull<T>(
+  promise: Promise<T>,
+  event: string,
+  context?: Record<string, unknown>,
+): Promise<T | null> {
+  try {
+    return await promise;
+  } catch (error) {
+    warnXmtpFallback(event, error, context);
+    return null;
+  }
+}
+
+export async function fallbackArray<T>(
+  promise: Promise<T[]>,
+  event: string,
+  context?: Record<string, unknown>,
+): Promise<T[]> {
+  try {
+    return await promise;
+  } catch (error) {
+    warnXmtpFallback(event, error, context);
+    return [];
+  }
 }
 
 export function isLikelyXmtpTabContentionError(error: unknown): boolean {
@@ -201,7 +292,7 @@ async function createClient(
   module: XmtpModule,
   walletAddress: `0x${string}`,
   signerWallet: PirateConnectedEvmWallet,
-): Promise<any> {
+): Promise<XmtpClient> {
   const dbPath = clientOptions(walletAddress).dbPath;
   logXmtp("client:create:start", {
     dbPath,
@@ -209,14 +300,14 @@ async function createClient(
     signerWalletAddress: signerWallet.address,
     walletAddress,
   });
-  return withTimeout<any>(
-    module.Client.create(createConnectedWalletSigner(module, signerWallet, walletAddress), clientOptions(walletAddress)),
+  return withTimeout<XmtpClient>(
+    module.Client.create(createConnectedWalletSigner(module, signerWallet, walletAddress), clientOptions(walletAddress)) as Promise<XmtpClient>,
     XMTP_CLIENT_TIMEOUT_MS,
     "Timed out starting XMTP chat.",
   );
 }
 
-async function registerClientOrClose(client: any, cache: XmtpClientCache): Promise<void> {
+async function registerClientOrClose(client: XmtpClient, cache: XmtpClientCache): Promise<void> {
   try {
     await withTimeout(client.register(), XMTP_REGISTER_TIMEOUT_MS, "Timed out enabling encrypted chat.");
   } catch (error) {
@@ -235,7 +326,7 @@ async function registerClientOrClose(client: any, cache: XmtpClientCache): Promi
 }
 
 async function ensureClientRegistered(
-  client: any,
+  client: XmtpClient,
   cache: XmtpClientCache,
   walletAddress: `0x${string}`,
 ): Promise<void> {
@@ -277,7 +368,7 @@ async function ensureClientRegistered(
 export async function ensureXmtpClient(
   session: StoredSession,
   options: { allowRegistration: boolean; cache: XmtpClientCache; signerWallet?: PirateConnectedEvmWallet | null },
-): Promise<{ client: any; module: XmtpModule; walletAddress: `0x${string}` }> {
+): Promise<{ client: XmtpClient; module: XmtpModule; walletAddress: `0x${string}` }> {
   const { cache } = options;
   const walletAddress = getSessionWalletAddress(session);
   if (!walletAddress) {

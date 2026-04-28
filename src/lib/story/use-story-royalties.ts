@@ -8,6 +8,7 @@ import { custom, defineChain } from "viem";
 import { useApi } from "@/lib/api";
 import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { getPirateNetworkConfig } from "@/lib/network-config";
+import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
 import { logger } from "@/lib/logger";
 
 function resolveStoryChainName(network: string): "aeneid" | "mainnet" {
@@ -57,6 +58,7 @@ export function useStoryRoyalties() {
   const [claimable, setClaimable] = React.useState<ClaimableRoyaltiesResponse | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [claimState, setClaimState] = React.useState<RoyaltyClaimState>({ status: "idle" });
+  const { schedule: scheduleRefresh } = useResettableTimeout();
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -134,8 +136,8 @@ export function useStoryRoyalties() {
         }
         setClaimState({ status: "success", txHash });
 
-        // Refetch claimable after a short delay to let the chain state update
-        window.setTimeout(() => {
+        // Refetch claimable after a short delay to let the chain state update.
+        scheduleRefresh(() => {
           void refresh();
         }, 4000);
 
@@ -147,7 +149,7 @@ export function useStoryRoyalties() {
         throw error;
       }
     },
-    [connectedWallets, claimable, api, refresh],
+    [connectedWallets, claimable, api, refresh, scheduleRefresh],
   );
 
   const resetClaimState = React.useCallback(() => {

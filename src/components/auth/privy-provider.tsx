@@ -19,6 +19,7 @@ import {
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { logger } from "@/lib/logger";
 import { getPirateNetworkConfig } from "@/lib/network-config";
+import { readViteEnv } from "@/lib/vite-env";
 
 type PrivyProviderComponent = React.ComponentType<{
   appId: string;
@@ -39,11 +40,6 @@ type PrivyWalletBridgeComponent = React.ComponentType<{
   onWalletsChange?: (wallets: PirateConnectedEvmWallet[]) => void;
   onWalletsReadyChange?: (ready: boolean) => void;
 }>;
-
-function readEnv(name: "VITE_PRIVY_APP_ID" | "VITE_PRIVY_CLIENT_ID"): string | null {
-  const value = import.meta.env[name];
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
-}
 
 type PrivyRuntimeState = {
   busy: boolean;
@@ -83,11 +79,11 @@ const PrivyWalletDemandContext = React.createContext<PrivyWalletDemandContextVal
 });
 
 export function getPrivyAppId(): string | null {
-  return readEnv("VITE_PRIVY_APP_ID");
+  return readViteEnv("VITE_PRIVY_APP_ID");
 }
 
 export function getPrivyClientId(): string | null {
-  return readEnv("VITE_PRIVY_CLIENT_ID");
+  return readViteEnv("VITE_PRIVY_CLIENT_ID");
 }
 
 export function isPrivyConfigured(): boolean {

@@ -11,3 +11,6 @@ debug-storybook.log
 .env.*.local
 .env.development
 .env.production
+
+# Generated locale catalog — run `bun run locales:generate` to recreate
+src/locales/generated.ts

@@ -56,6 +56,7 @@ export function PrivyAuthBridge({
   const retryUntilRef = React.useRef(0);
   const wasOpenRef = React.useRef(false);
   const authStateRef = React.useRef({ authenticated, ready });
+  const authBootstrapPollsRef = React.useRef(new Map<ReturnType<typeof globalThis.setTimeout>, () => void>());
   const sessionClearInProgressRef = React.useRef(sessionClearInProgress);
   const connectEthereumWallet = React.useCallback(() => {
     connectWallet({ walletChainType: "ethereum-only" });
@@ -87,6 +88,18 @@ export function PrivyAuthBridge({
     return retryCountRef.current >= MAX_RETRY_COUNT && Date.now() < retryUntilRef.current;
   }, []);
 
+  const waitForAuthBootstrapPoll = React.useCallback(() => new Promise<void>((resolve) => {
+    const timeoutId = globalThis.setTimeout(() => {
+      authBootstrapPollsRef.current.delete(timeoutId);
+      resolve();
+    }, AUTH_BOOTSTRAP_POLL_MS);
+    authBootstrapPollsRef.current.set(timeoutId, () => {
+      globalThis.clearTimeout(timeoutId);
+      authBootstrapPollsRef.current.delete(timeoutId);
+      resolve();
+    });
+  }), []);
+
   const waitForAuthBootstrap = React.useCallback(async (): Promise<{ authenticated: boolean; ready: boolean }> => {
     if (authStateRef.current.ready) {
       return authStateRef.current;
@@ -94,13 +107,20 @@ export function PrivyAuthBridge({
 
     const deadline = Date.now() + AUTH_BOOTSTRAP_WAIT_MS;
     while (Date.now() < deadline) {
-      await new Promise((resolve) => globalThis.setTimeout(resolve, AUTH_BOOTSTRAP_POLL_MS));
+      await waitForAuthBootstrapPoll();
       if (authStateRef.current.ready) {
         break;
       }
     }
 
     return authStateRef.current;
+  }, [waitForAuthBootstrapPoll]);
+
+  React.useEffect(() => () => {
+    for (const cancelPoll of authBootstrapPollsRef.current.values()) {
+      cancelPoll();
+    }
+    authBootstrapPollsRef.current.clear();
   }, []);
 
   const exchangePrivySession = React.useCallback(async (options?: {

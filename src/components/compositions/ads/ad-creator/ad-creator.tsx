@@ -32,20 +32,22 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  Button,
-  Checkbox,
-  Input,
+} from "@/components/primitives/accordion";
+import { Button } from "@/components/primitives/button";
+import { Checkbox } from "@/components/primitives/checkbox";
+import { FormFieldLabel } from "@/components/primitives/form-layout";
+import { Input } from "@/components/primitives/input";
+import { Label } from "@/components/primitives/label";
+import { PirateBrandMark } from "@/components/primitives/pirate-brand-mark";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Textarea,
-  Type,
-} from "@/components/primitives";
-import { FormFieldLabel } from "@/components/primitives/form-layout";
-import { Label } from "@/components/primitives/label";
-import { PirateBrandMark } from "@/components/primitives/pirate-brand-mark";
+} from "@/components/primitives/select";
+import { Textarea } from "@/components/primitives/textarea";
+import { Type } from "@/components/primitives/type";
 import {
   ADVERTISING_MESSAGE_DRAFT,
   ADVERTISING_XMTP_TARGET,

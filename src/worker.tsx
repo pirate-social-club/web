@@ -39,7 +39,7 @@ import {
   type UiLocaleCode,
 } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
-import { applyFrameDenyHeader } from "@/lib/security-headers";
+import { applySecurityHeaders } from "@/lib/security/csp";
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
 
@@ -53,96 +53,8 @@ type PublicPostResponse = LocalizedPostResponse & {
   links?: unknown;
 };
 
-const CSP_HEADER = "Content-Security-Policy";
-const CSP_REPORT_ONLY_HEADER = "Content-Security-Policy-Report-Only";
 const META_DESCRIPTION_MAX_LENGTH = 180;
 const SHARE_LOCALE_QUERY_KEYS = ["locale", "lang"] as const;
-
-function buildContentSecurityPolicy(nonce: string): string {
-  const directives: string[] = [
-    "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://platform.x.com https://platform.twitter.com`,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https:",
-    "media-src 'self' blob: https:",
-    "font-src 'self' data:",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-    [
-      "child-src",
-      "https://auth.privy.io",
-      "https://verify.walletconnect.com",
-      "https://verify.walletconnect.org",
-    ].join(" "),
-    [
-      "frame-src",
-      "https://auth.privy.io",
-      "https://verify.walletconnect.com",
-      "https://verify.walletconnect.org",
-      "https://challenges.cloudflare.com",
-      "https://platform.x.com",
-      "https://platform.twitter.com",
-      "https://syndication.twitter.com",
-      "https://x.com",
-      "https://twitter.com",
-      "https://www.youtube.com",
-      "https://www.youtube-nocookie.com",
-    ].join(" "),
-    [
-      "connect-src",
-      "'self'",
-      "https://api.pirate",
-      "https://api.pirate.sc",
-      "https://api-staging.pirate.sc",
-      "https://auth.privy.io",
-      "wss://relay.walletconnect.com",
-      "wss://relay.walletconnect.org",
-      "wss://www.walletlink.org",
-      "https://*.rpc.privy.systems",
-      "https://explorer-api.walletconnect.com",
-      "https://api.ethfollow.xyz",
-      "https://mainnet.base.org",
-      "https://sepolia.base.org",
-      "https://eth.merkle.io",
-      "https://11155111.rpc.thirdweb.com",
-      "https://mainnet.optimism.io",
-      "https://sepolia.optimism.io",
-      "https://mainnet.storyrpc.io",
-      "https://aeneid.storyrpc.io",
-      "https://rpc.moderato.tempo.xyz",
-      "https://g.w.lavanet.xyz",
-      "https://api.very.org",
-      "https://bridge.very.org",
-      "https://verify.very.org",
-      "https://platform.x.com",
-      "https://platform.twitter.com",
-      "https://syndication.twitter.com",
-      "https://x.com",
-      "https://twitter.com",
-    ].join(" "),
-    "worker-src 'self' blob:",
-    "manifest-src 'self'",
-  ];
-
-  return directives.join("; ");
-}
-
-function applyCspHeaders(headers: Headers, nonce: string): void {
-  if (import.meta.env.DEV) {
-    return;
-  }
-
-  applyFrameDenyHeader(headers);
-  headers.set(
-    import.meta.env.VITE_CSP_REPORT_ONLY === "true" ? CSP_REPORT_ONLY_HEADER : CSP_HEADER,
-    buildContentSecurityPolicy(nonce),
-  );
-  headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-}
 
 function parseThemeCookie(cookieHeader: string | null): ThemeMode {
   const match = cookieHeader?.match(/(?:^|;\s*)theme=(dark|light|system)(?:;|$)/);
@@ -545,7 +457,10 @@ const app = defineApp<AppRequestInfo>([
       : null;
     ctx.theme = parseThemeCookie(request.headers.get("cookie"));
     applyDiscoveryHeaders(response.headers, discovery);
-    applyCspHeaders(response.headers, rw.nonce);
+    applySecurityHeaders(response.headers, rw.nonce, {
+      dev: import.meta.env.DEV,
+      reportOnly: import.meta.env.VITE_CSP_REPORT_ONLY === "true",
+    });
   },
   render(Document, [
     route("/robots.txt", ({ ctx, request }) => buildRobotsResponse(ctx.effectiveUrl ?? request.url)),

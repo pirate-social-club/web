@@ -20,6 +20,7 @@ import { WalletHub } from "@/components/compositions/wallet/wallet-hub/wallet-hu
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
 import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
 import { getPirateNetworkConfig } from "@/lib/network-config";
+import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
 import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
@@ -265,6 +266,7 @@ export function CurrentUserWalletPage() {
   const [claimableRoyalties, setClaimableRoyalties] = React.useState<ClaimableRoyaltiesResponse>(EMPTY_CLAIMABLE);
   const [claimLoading, setClaimLoading] = React.useState(false);
   const [royaltyClaimOpen, setRoyaltyClaimOpen] = React.useState(false);
+  const { schedule: scheduleClaimableRefresh } = useResettableTimeout();
 
   const primaryWallet = walletAttachments.find((wallet) => wallet.is_primary)
     ?? walletAttachments.find((wallet) => wallet.wallet_address === profile?.primary_wallet_address)
@@ -440,7 +442,7 @@ export function CurrentUserWalletPage() {
           <LazyRoyaltyClaimModal
             onClaimed={() => {
               void refreshClaimableRoyalties();
-              window.setTimeout(() => {
+              scheduleClaimableRefresh(() => {
                 void refreshClaimableRoyalties();
               }, 5000);
             }}

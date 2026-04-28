@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
+import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
 import { cn } from "@/lib/utils";
 
 import type {
@@ -90,12 +91,13 @@ export function NamespaceVerificationChallengeMessage({ value }: { value: string
   const copy = defaultRouteCopy;
   const mc = copy.moderation.namespaceVerification.shared;
   const [copied, setCopied] = React.useState(false);
+  const { schedule: scheduleCopiedReset } = useResettableTimeout();
 
   const handleCopy = React.useCallback(async () => {
     await navigator.clipboard.writeText(value);
     setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
-  }, [value]);
+    scheduleCopiedReset(() => setCopied(false), 2000);
+  }, [scheduleCopiedReset, value]);
 
   return (
     <div className="rounded-xl border border-input bg-background p-3">

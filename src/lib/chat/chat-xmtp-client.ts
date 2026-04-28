@@ -4,372 +4,41 @@ import type { StoredSession } from "@/lib/api/session-store";
 import type { ApiClient } from "@/lib/api/client";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { logger } from "@/lib/logger";
-import { normalizeEthereumAddress, shortAddress } from "./chat-addressing";
-import { rememberResolvedChatTarget, resolveChatPeerMetadata, resolveChatTarget, type ResolvedChatTarget } from "./chat-targets";
+import { rememberResolvedChatTarget, resolveChatPeerMetadata, resolveChatTarget } from "./chat-targets";
 import type { ChatConversation, ChatMessageRecord } from "./chat-types";
 import {
   conversationCache,
   ensureXmtpClient,
-  getAllowedConsentStates,
+  fallbackArray,
+  warnXmtpFallback,
   withTimeout,
   type XmtpClientCache,
+  type XmtpDm,
+  type XmtpMessage,
 } from "./chat-xmtp-support";
+import {
+  conversationFromDm,
+  conversationIdOf,
+  messageTime,
+  summarizeDm,
+  textContent,
+  uniqueDmsById,
+} from "./chat-xmtp-formatting";
+import {
+  describeDm,
+  findConversationById,
+  inboxIdForAddress,
+  listDuplicateDmCandidates,
+  listDms,
+  rememberCanonicalDmAliases,
+  resolveCanonicalDmForPeerInbox,
+  resolveCanonicalDmFromCandidates,
+  resolveDmPeer,
+  type DmMessageRecord,
+} from "./chat-xmtp-dm";
 
-const XMTP_LOOKUP_TIMEOUT_MS = 10_000;
 const XMTP_DM_TIMEOUT_MS = 10_000;
-const XMTP_SYNC_STALE_MS = 30_000;
 const CHAT_METADATA_TIMEOUT_MS = 3_000;
-
-const lastSyncAtByClient = new WeakMap<object, number>();
-
-type ResolvedDmPeer = {
-  peerAddress: `0x${string}` | null;
-  peerInboxId: string | null;
-};
-
-type CanonicalDmRecord = {
-  createdAtMs: number;
-  dm: any;
-  messageCount: number;
-  peer: ResolvedDmPeer;
-};
-
-async function describeDm(dm: any, client: any) {
-  const peerInboxId = typeof dm?.peerInboxId === "function"
-    ? await dm.peerInboxId().catch(() => null)
-    : typeof dm?.peerInboxId === "string"
-      ? dm.peerInboxId
-      : null;
-  const members = typeof dm?.members === "function"
-    ? await dm.members().catch(() => [])
-    : [];
-
-  return {
-    members: Array.isArray(members)
-      ? members.map((member) => ({
-          accountIdentifiers: Array.isArray(member?.accountIdentifiers)
-            ? member.accountIdentifiers.map((identifier: any) => ({
-                identifier: typeof identifier?.identifier === "string" ? identifier.identifier : null,
-                identifierKind: identifier?.identifierKind ?? null,
-              }))
-            : [],
-          inboxId: typeof member?.inboxId === "string" ? member.inboxId : null,
-          isSelf: typeof member?.inboxId === "string" ? member.inboxId === client?.inboxId : false,
-        }))
-      : [],
-    membersJson: Array.isArray(members)
-      ? JSON.stringify(members.map((member) => ({
-          accountIdentifiers: Array.isArray(member?.accountIdentifiers)
-            ? member.accountIdentifiers.map((identifier: any) => ({
-                identifier: typeof identifier?.identifier === "string" ? identifier.identifier : null,
-                identifierKind: identifier?.identifierKind ?? null,
-              }))
-            : [],
-          inboxId: typeof member?.inboxId === "string" ? member.inboxId : null,
-          isSelf: typeof member?.inboxId === "string" ? member.inboxId === client?.inboxId : false,
-        })))
-      : "[]",
-    peerInboxId: typeof peerInboxId === "string" ? peerInboxId : null,
-  };
-}
-
-function summarizeDm(dm: any) {
-  return {
-    createdAt: dm?.createdAt ?? null,
-    id: typeof dm?.id === "string" ? dm.id : null,
-    peerAddress: typeof dm?.peerAddress === "string" ? dm.peerAddress : null,
-    peerInboxId: typeof dm?.peerInboxId === "string" ? dm.peerInboxId : null,
-  };
-}
-
-function textContent(message: any): string | null {
-  if (typeof message?.content === "string" && message.content.trim()) return message.content;
-  if (typeof message?.fallback === "string" && message.fallback.trim()) return message.fallback;
-  return null;
-}
-
-function messageTime(message: any): number {
-  const timestamp = new Date(message?.sentAt).getTime();
-  return Number.isFinite(timestamp) ? timestamp : 0;
-}
-
-function ethereumAddressFromIdentifiers(identifiers: readonly { identifier?: unknown }[] | undefined): `0x${string}` | null {
-  if (!identifiers) return null;
-  for (const identifier of identifiers) {
-    const normalized = normalizeEthereumAddress(String(identifier?.identifier ?? ""));
-    if (normalized) return normalized;
-  }
-  return null;
-}
-
-async function resolveDmPeer(dm: any, client: any): Promise<ResolvedDmPeer> {
-  const directPeerAddress = normalizeEthereumAddress(String(dm?.peerAddress ?? ""));
-  const directPeerInboxId = typeof dm?.peerInboxId === "string" ? dm.peerInboxId : null;
-  if (directPeerAddress || directPeerInboxId) {
-    return {
-      peerAddress: directPeerAddress,
-      peerInboxId: directPeerInboxId,
-    };
-  }
-
-  const resolvedPeerInboxId = typeof dm?.peerInboxId === "function"
-    ? await dm.peerInboxId().catch(() => null)
-    : null;
-  const members = typeof dm?.members === "function"
-    ? await dm.members().catch(() => [])
-    : [];
-  const peerMember = Array.isArray(members)
-    ? members.find((member) => member?.inboxId && member.inboxId !== client?.inboxId)
-    : null;
-
-  return {
-    peerAddress: ethereumAddressFromIdentifiers(peerMember?.accountIdentifiers),
-    peerInboxId: (typeof resolvedPeerInboxId === "string" && resolvedPeerInboxId)
-      || (typeof peerMember?.inboxId === "string" ? peerMember.inboxId : null),
-  };
-}
-
-function fallbackConversationTitle(peer: ResolvedDmPeer, dm: any): string {
-  if (peer.peerAddress) return shortAddress(peer.peerAddress);
-  if (peer.peerInboxId) return peer.peerInboxId;
-  return String(dm?.id ?? "XMTP chat");
-}
-
-function dmCreatedAtMs(dm: any): number {
-  const createdAt = dm?.createdAt instanceof Date ? dm.createdAt.getTime() : NaN;
-  if (Number.isFinite(createdAt)) return createdAt;
-
-  const createdAtNs = dm?.createdAtNs;
-  if (typeof createdAtNs === "bigint") {
-    return Number(createdAtNs / 1_000_000n);
-  }
-
-  return Number.MAX_SAFE_INTEGER;
-}
-
-function uniqueDmsById(dms: readonly any[]): any[] {
-  const byId = new Map<string, any>();
-  for (const dm of dms) {
-    const id = typeof dm?.id === "string" ? dm.id : null;
-    if (!id || byId.has(id)) continue;
-    byId.set(id, dm);
-  }
-  return [...byId.values()];
-}
-
-async function buildCanonicalDmRecord(client: any, dm: any): Promise<CanonicalDmRecord> {
-  await dm.sync?.();
-  const [messages, peer] = await Promise.all([
-    dm.messages().catch(() => []),
-    resolveDmPeer(dm, client),
-  ]);
-
-  return {
-    createdAtMs: dmCreatedAtMs(dm),
-    dm,
-    messageCount: Array.isArray(messages) ? messages.length : 0,
-    peer,
-  };
-}
-
-async function listDuplicateDmCandidates(dm: any): Promise<any[]> {
-  if (typeof dm?.duplicateDms !== "function") {
-    return [];
-  }
-
-  return await dm.duplicateDms().catch(() => []);
-}
-
-function chooseCanonicalDmRecord(records: readonly CanonicalDmRecord[]): CanonicalDmRecord | null {
-  if (records.length === 0) return null;
-  return [...records].sort((left, right) => {
-    if (right.messageCount !== left.messageCount) {
-      return right.messageCount - left.messageCount;
-    }
-    if (left.createdAtMs !== right.createdAtMs) {
-      return left.createdAtMs - right.createdAtMs;
-    }
-    return String(left.dm?.id ?? "").localeCompare(String(right.dm?.id ?? ""));
-  })[0] ?? null;
-}
-
-function rememberCanonicalDmAliases(canonicalDm: any, candidates: readonly any[]) {
-  const canonicalId = typeof canonicalDm?.id === "string" ? canonicalDm.id : null;
-  if (!canonicalId) return;
-
-  conversationCache.set(canonicalId, canonicalDm);
-  for (const candidate of candidates) {
-    const id = typeof candidate?.id === "string" ? candidate.id : null;
-    if (!id) continue;
-    conversationCache.set(id, canonicalDm);
-  }
-}
-
-async function resolveCanonicalDmFromCandidates(
-  client: any,
-  candidates: readonly any[],
-  reason: string,
-): Promise<CanonicalDmRecord | null> {
-  const uniqueCandidates = uniqueDmsById(candidates);
-  if (uniqueCandidates.length === 0) return null;
-
-  const records = await Promise.all(uniqueCandidates.map((dm) => buildCanonicalDmRecord(client, dm)));
-  const canonical = chooseCanonicalDmRecord(records);
-  if (!canonical) return null;
-
-  rememberCanonicalDmAliases(canonical.dm, uniqueCandidates);
-  logger.info("[chat:xmtp] conversations:canonical-dm", {
-    candidates: records.map((record) => ({
-      conversationId: typeof record.dm?.id === "string" ? record.dm.id : null,
-      createdAtMs: record.createdAtMs,
-      messageCount: record.messageCount,
-      peerAddress: record.peer.peerAddress,
-      peerInboxId: record.peer.peerInboxId,
-    })),
-    chosenConversationId: typeof canonical.dm?.id === "string" ? canonical.dm.id : null,
-    chosenMessageCount: canonical.messageCount,
-    peerInboxId: canonical.peer.peerInboxId,
-    reason,
-  });
-  return canonical;
-}
-
-async function resolveCanonicalDmForPeerInbox(
-  client: any,
-  module: any,
-  peerInboxId: string,
-  options: { reason: string; seedDm?: any | null; listedDms?: readonly any[] } ,
-): Promise<CanonicalDmRecord | null> {
-  const seedCluster = options.seedDm
-    ? await listDuplicateDmCandidates(options.seedDm)
-    : [];
-  const sourceDms = options.listedDms ? [...options.listedDms] : await listDms(client, module);
-  const matchingListedDms: any[] = [];
-
-  for (const dm of sourceDms) {
-    const peer = await resolveDmPeer(dm, client);
-    if (peer.peerInboxId === peerInboxId) {
-      matchingListedDms.push(dm);
-    }
-  }
-
-  return resolveCanonicalDmFromCandidates(
-    client,
-    [options.seedDm, ...seedCluster, ...matchingListedDms].filter(Boolean),
-    options.reason,
-  );
-}
-
-function conversationFromDm(
-  dm: any,
-  peer: ResolvedDmPeer,
-  target?: ResolvedChatTarget | null,
-  last?: any,
-): ChatConversation {
-  const peerAddress = peer.peerAddress ?? target?.address ?? null;
-  const fallbackTitle = peerAddress ? shortAddress(peerAddress) : fallbackConversationTitle(peer, dm);
-  return {
-    avatarSeed: target?.avatarSeed ?? peerAddress ?? undefined,
-    avatarUrl: target?.avatarUrl,
-    id: String(dm.id),
-    peerAddress: peerAddress ?? undefined,
-    preview: textContent(last) ?? "Encrypted conversation",
-    profileHref: target?.profileHref,
-    targetLabel: target?.handle,
-    title: target?.title ?? target?.handle ?? fallbackTitle,
-    transport: "xmtp",
-    unreadCount: 0,
-    updatedAt: last ? messageTime(last) : Date.now(),
-  };
-}
-
-async function syncAllIfStale(client: any, module: any, force = false): Promise<void> {
-  const key = client as object;
-  const lastSyncAt = lastSyncAtByClient.get(key) ?? 0;
-  if (!force && Date.now() - lastSyncAt < XMTP_SYNC_STALE_MS) return;
-  logger.info("[chat:xmtp] conversations:sync:start", {
-    force,
-    inboxId: typeof client?.inboxId === "string" ? client.inboxId : null,
-    installationId: typeof client?.installationId === "string" ? client.installationId : null,
-    staleForMs: Date.now() - lastSyncAt,
-    topic: client?.conversations?.topic ?? null,
-  });
-  await client.conversations.syncAll(getAllowedConsentStates(module));
-  lastSyncAtByClient.set(key, Date.now());
-  logger.info("[chat:xmtp] conversations:sync:success", {
-    force,
-    inboxId: typeof client?.inboxId === "string" ? client.inboxId : null,
-    installationId: typeof client?.installationId === "string" ? client.installationId : null,
-    topic: client?.conversations?.topic ?? null,
-  });
-}
-
-async function listDms(client: any, module: any): Promise<any[]> {
-  await syncAllIfStale(client, module);
-  const dms = await client.conversations.listDms({
-    consentStates: getAllowedConsentStates(module),
-  }) as any[];
-  logger.info("[chat:xmtp] conversations:list-dms", {
-    count: dms.length,
-    inboxId: typeof client?.inboxId === "string" ? client.inboxId : null,
-    installationId: typeof client?.installationId === "string" ? client.installationId : null,
-    rows: dms.map(summarizeDm),
-  });
-  return dms;
-}
-
-async function findConversationById(client: any, module: any, conversationId: string): Promise<any | null> {
-  if (conversationCache.has(conversationId)) {
-    const cached = conversationCache.get(conversationId) ?? null;
-    if (cached) return cached;
-  }
-
-  await syncAllIfStale(client, module, true);
-
-  if (typeof client.conversations.getConversationById === "function") {
-    const byId = await client.conversations.getConversationById(conversationId).catch(() => null);
-    if (byId) {
-      const peer = await resolveDmPeer(byId, client);
-      const canonical = peer.peerInboxId
-        ? await resolveCanonicalDmForPeerInbox(client, module, peer.peerInboxId, {
-            reason: "find-conversation-by-id:getConversationById",
-            seedDm: byId,
-          })
-        : null;
-      const resolved = canonical?.dm ?? byId;
-      rememberCanonicalDmAliases(resolved, [byId]);
-      return resolved;
-    }
-  }
-
-  const dms = await listDms(client, module);
-  const found = dms.find((dm) => String(dm?.id) === conversationId) ?? null;
-  if (!found) return null;
-
-  const peer = await resolveDmPeer(found, client);
-  const canonical = peer.peerInboxId
-    ? await resolveCanonicalDmForPeerInbox(client, module, peer.peerInboxId, {
-        listedDms: dms,
-        reason: "find-conversation-by-id:list-dms",
-        seedDm: found,
-      })
-    : null;
-  const resolved = canonical?.dm ?? found;
-  rememberCanonicalDmAliases(resolved, [found]);
-  return resolved;
-}
-
-async function inboxIdForAddress(client: any, module: any, address: `0x${string}`): Promise<string | null> {
-  const inboxId = await withTimeout(
-    client.fetchInboxIdByIdentifier({
-      identifier: address,
-      identifierKind: module.IdentifierKind.Ethereum,
-    }),
-    XMTP_LOOKUP_TIMEOUT_MS,
-    "Timed out looking up that XMTP inbox.",
-  );
-  return typeof inboxId === "string" && inboxId.trim() ? inboxId : null;
-}
 
 export async function publishChatInboxId(api: ApiClient, inboxId: string | null | undefined): Promise<void> {
   const normalizedInboxId = typeof inboxId === "string" ? inboxId.trim() : "";
@@ -420,7 +89,7 @@ export async function loadConversations(
     return { dm, duplicateDms, messages, peer };
   }));
 
-  const dedupedCandidates = new Map<string, { dm: any; messages: any[]; peer: ResolvedDmPeer }>();
+  const dedupedCandidates = new Map<string, DmMessageRecord>();
   for (const record of rawRecords) {
     const candidateDms = uniqueDmsById([record.dm, ...record.duplicateDms]);
     for (const candidateDm of candidateDms) {
@@ -431,14 +100,16 @@ export async function loadConversations(
         ? { dm: record.dm, messages: record.messages, peer: record.peer }
         : {
             dm: candidateDm,
-            messages: await candidateDm.messages().catch(() => []),
+            messages: await fallbackArray<XmtpMessage>(candidateDm.messages(), "dm:messages:failed", {
+              conversationId: candidateId,
+            }),
             peer: await resolveDmPeer(candidateDm, client),
           };
       dedupedCandidates.set(candidateId, candidateRecord);
     }
   }
 
-  const grouped = new Map<string, Array<{ dm: any; messages: any[]; peer: ResolvedDmPeer }>>();
+  const grouped = new Map<string, DmMessageRecord[]>();
   for (const record of dedupedCandidates.values()) {
     const key = record.peer.peerInboxId ?? String(record.dm.id);
     const existing = grouped.get(key);
@@ -464,7 +135,9 @@ export async function loadConversations(
     return records.find((record) => String(record.dm?.id) === String(canonical.dm?.id))
       ?? {
         dm: canonical.dm,
-        messages: await canonical.dm.messages().catch(() => []),
+        messages: await fallbackArray<XmtpMessage>(canonical.dm.messages(), "dm:messages:failed", {
+          conversationId: conversationIdOf(canonical.dm),
+        }),
         peer: canonical.peer,
       };
   }));
@@ -477,7 +150,10 @@ export async function loadConversations(
           resolveChatPeerMetadata(peerAddress, api),
           CHAT_METADATA_TIMEOUT_MS,
           "Timed out resolving chat metadata.",
-        ).catch(() => null)
+        ).catch((error) => {
+          warnXmtpFallback("peer-metadata:failed", error, { peerAddress });
+          return null;
+        })
       : null;
     return conversationFromDm(record.dm, record.peer, target, last);
   }));
@@ -508,7 +184,7 @@ export async function loadConversationMessages(
   if (!dm) return { conversation: null, messages: [] };
 
   await dm.sync?.();
-  const rawMessages = await dm.messages() as any[];
+  const rawMessages = await dm.messages();
   const peer = await resolveDmPeer(dm, client);
   const dmDescription = await describeDm(dm, client);
   logger.info("[chat:xmtp] conversation:load", {
@@ -529,7 +205,10 @@ export async function loadConversationMessages(
         resolveChatPeerMetadata(peerAddress, api),
         CHAT_METADATA_TIMEOUT_MS,
         "Timed out resolving chat metadata.",
-      ).catch(() => null)
+      ).catch((error) => {
+        warnXmtpFallback("peer-metadata:failed", error, { conversationId, peerAddress });
+        return null;
+      })
     : null;
   const messages = rawMessages.flatMap((message) => {
     const content = textContent(message);
@@ -576,7 +255,7 @@ export async function openConversationTarget(
     throw new Error("No XMTP inbox was found for that target.");
   }
 
-  const existing = await withTimeout<any | null>(
+  const existing = await withTimeout<XmtpDm | null>(
     client.conversations.getDmByInboxId(inboxId),
     XMTP_DM_TIMEOUT_MS,
     "Timed out opening that XMTP conversation.",
@@ -585,7 +264,7 @@ export async function openConversationTarget(
     reason: "open-conversation-target:before-create",
     seedDm: existing,
   });
-  const dm = canonicalExisting?.dm ?? await withTimeout<any>(
+  const dm = canonicalExisting?.dm ?? await withTimeout<XmtpDm>(
     client.conversations.createDm(inboxId),
     XMTP_DM_TIMEOUT_MS,
     "Timed out creating that XMTP conversation.",
@@ -604,9 +283,9 @@ export async function openConversationTarget(
     resolvedDmPeerInboxId: dmDescription.peerInboxId,
     ...summarizeDm(resolvedDm),
   });
-  rememberCanonicalDmAliases(resolvedDm, [existing, dm].filter(Boolean));
+  rememberCanonicalDmAliases(resolvedDm, [existing, dm].filter((candidate): candidate is XmtpDm => Boolean(candidate)));
 
-  return conversationFromDm(resolvedDm, { peerAddress: target.address, peerInboxId: inboxId }, target, null);
+  return conversationFromDm(resolvedDm, { peerAddress: target.address, peerInboxId: inboxId }, target);
 }
 
 export async function sendMessage(
@@ -639,7 +318,7 @@ export async function sendMessage(
   });
   await resolvedDm.sendText(content);
   await resolvedDm.sync?.();
-  const messages = await resolvedDm.messages() as any[];
+  const messages = await resolvedDm.messages();
   const syncedDescription = await describeDm(resolvedDm, client);
   logger.info("[chat:xmtp] conversation:send:success", {
     contentLength: content.length,

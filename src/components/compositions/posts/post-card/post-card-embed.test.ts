@@ -2,8 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { parseHTML } from "linkedom";
 
 import {
+  buildSandboxedXEmbedSrcDoc,
+  isValidXEmbedHtml,
   resolveSafeYouTubeEmbed,
-  sanitizeXEmbedHtml,
 } from "./post-card-embed";
 
 const originalDocument = globalThis.document;
@@ -69,11 +70,11 @@ describe("post card embed hardening", () => {
     expect(resolveSafeYouTubeEmbed(`<iframe src="javascript:alert(1)"></iframe>`, "YouTube video")).toBeNull();
   });
 
-  test("sanitizes X blockquote HTML before widget hydration", () => {
+  test("accepts X blockquote HTML only inside a sandbox srcdoc", () => {
     installDom();
 
     try {
-      const sanitized = sanitizeXEmbedHtml(`
+      const source = `
         <blockquote class="twitter-tweet" onclick="bad()">
           <script>alert(1)</script>
           <p dir="ltr" lang="en" style="color:red">
@@ -83,16 +84,13 @@ describe("post card embed hardening", () => {
           </p>
           <img src=x onerror="bad()" />
         </blockquote>
-      `);
+      `;
+      const srcDoc = buildSandboxedXEmbedSrcDoc(source);
 
-      expect(sanitized).toContain(`class="twitter-tweet"`);
-      expect(sanitized).toContain(`Safe text`);
-      expect(sanitized).toContain(`href="https://x.com/pirate/status/1"`);
-      expect(sanitized?.includes("script")).toBe(false);
-      expect(sanitized?.includes("onclick")).toBe(false);
-      expect(sanitized?.includes("javascript:")).toBe(false);
-      expect(sanitized?.includes("onerror")).toBe(false);
-      expect(sanitized?.includes("style=")).toBe(false);
+      expect(isValidXEmbedHtml(source)).toBe(true);
+      expect(srcDoc).toContain(`class="twitter-tweet"`);
+      expect(srcDoc).toContain(`onclick="bad()"`);
+      expect(srcDoc).toContain(`https://platform.x.com/widgets.js`);
     } finally {
       restoreDom();
     }
@@ -102,7 +100,8 @@ describe("post card embed hardening", () => {
     installDom();
 
     try {
-      expect(sanitizeXEmbedHtml(`<div><a href="https://x.com/pirate/status/1">status</a></div>`)).toBeNull();
+      expect(isValidXEmbedHtml(`<div><a href="https://x.com/pirate/status/1">status</a></div>`)).toBe(false);
+      expect(buildSandboxedXEmbedSrcDoc(`<div><a href="https://x.com/pirate/status/1">status</a></div>`)).toBeNull();
     } finally {
       restoreDom();
     }

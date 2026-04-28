@@ -7,7 +7,7 @@ import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
-import { Avatar } from "@/components/primitives/avatar";
+import { CommunityAvatar } from "@/components/primitives/community-avatar";
 import { useApi } from "@/lib/api";
 import { clearSession, useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
@@ -376,11 +376,12 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
                             href={communityHref}
                             aria-label={post.communityDisplayName}
                           >
-                            <Avatar
+                            <CommunityAvatar
                               className="size-8 shrink-0 border-border-soft"
-                              fallback={post.communityDisplayName}
+                              avatarSrc={post.communityAvatarSrc}
+                              communityId={post.communityId}
+                              displayName={post.communityDisplayName}
                               size="xs"
-                              src={post.communityAvatarSrc ?? undefined}
                             />
                           </a>
                           <div className="min-w-0 flex-1">
@@ -565,10 +566,11 @@ export function YourCommunitiesPage() {
                 onClick={() => navigate(buildCommunityPath(community.communityId, community.routeSlug))}
                 type="button"
               >
-                <Avatar
+                <CommunityAvatar
                   className="size-11 border-border-soft"
-                  fallback={community.displayName}
-                  src={community.avatarSrc ?? undefined}
+                  avatarSrc={community.avatarSrc}
+                  communityId={community.communityId}
+                  displayName={community.displayName}
                 />
                 <div className="min-w-0 flex-1">
                   <Type as="div" variant="body-strong" className="truncate">{community.displayName}</Type>

@@ -5,7 +5,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 
-import { Avatar } from "@/components/primitives/avatar";
+import { CommunityAvatar } from "@/components/primitives/community-avatar";
 import { IconButton } from "@/components/primitives/icon-button";
 import {
   Sidebar,
@@ -71,11 +71,12 @@ export function CommunityModerationShell({
                     <X className="size-5" weight="bold" />
                   </IconButton>
                 ) : null}
-                <Avatar
+                <CommunityAvatar
                   className="h-10 w-10"
-                  fallback={communityLabel}
+                  avatarSrc={communityAvatarSrc}
+                  communityId={communityLabel}
+                  displayName={communityLabel}
                   size="sm"
-                  src={communityAvatarSrc ?? undefined}
                 />
                 <div className="min-w-0 text-base font-semibold">{communityLabel}</div>
               </div>

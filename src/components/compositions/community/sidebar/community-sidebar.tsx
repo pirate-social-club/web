@@ -8,7 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/primitives/accordion";
-import { Avatar } from "@/components/primitives/avatar";
+import { CommunityAvatar } from "@/components/primitives/community-avatar";
 import { SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
 import { useUiLocale } from "@/lib/ui-locale";
 import { resolveLocaleLanguageTag } from "@/lib/ui-locale-core";
@@ -201,6 +201,7 @@ export function CommunitySidebar({
   avatarSrc,
   charity,
   className,
+  communityId,
   description,
   displayName,
   flairPolicy,
@@ -216,10 +217,11 @@ export function CommunitySidebar({
   const content = (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2">
-        <Avatar
-          fallback={displayName}
+        <CommunityAvatar
+          avatarSrc={avatarSrc}
+          communityId={communityId ?? displayName}
+          displayName={displayName}
           size="md"
-          src={avatarSrc?.trim() || undefined}
         />
         <Type as="h2" variant="h4" className="min-w-0">{displayName}</Type>
         {description && (

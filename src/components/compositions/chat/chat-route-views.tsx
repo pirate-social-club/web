@@ -22,7 +22,13 @@ import { cn } from "@/lib/utils";
 import { isChatTarget } from "@/lib/chat/chat-addressing";
 import type { ChatConversation, ChatMessageRecord } from "@/lib/chat/chat-types";
 
+function isValidTimestamp(timestamp: number): boolean {
+  return Number.isFinite(timestamp) && timestamp > 0;
+}
+
 function formatTime(timestamp: number): string {
+  if (!isValidTimestamp(timestamp)) return "";
+
   return new Date(timestamp).toLocaleTimeString(undefined, {
     hour: "numeric",
     minute: "2-digit",
@@ -30,19 +36,28 @@ function formatTime(timestamp: number): string {
 }
 
 function formatListTime(timestamp: number): string {
+  if (!isValidTimestamp(timestamp)) return "";
+
   const now = Date.now();
   const diff = now - timestamp;
+  const oneMinute = 1000 * 60;
+  const oneHour = oneMinute * 60;
   const oneDay = 1000 * 60 * 60 * 24;
 
-  if (diff < oneDay) {
-    return new Date(timestamp).toLocaleTimeString(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-    });
+  if (diff < oneMinute) {
+    return "now";
   }
 
-  if (diff < oneDay * 2) {
-    return "Yesterday";
+  if (diff < oneHour) {
+    return `${Math.floor(diff / oneMinute)}m`;
+  }
+
+  if (diff < oneDay) {
+    return `${Math.floor(diff / oneHour)}h`;
+  }
+
+  if (diff < oneDay * 7) {
+    return `${Math.floor(diff / oneDay)}d`;
   }
 
   if (diff < oneDay * 365) {
@@ -163,32 +178,37 @@ export function ConversationList({
           </div>
         ) : (
           <div className="flex flex-col">
-            {conversations.map((conversation) => (
-              <button
-                className={cn(
-                  "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted active:bg-muted",
-                  activeConversationId === conversation.id && "bg-muted",
-                )}
-                key={conversation.id}
-                onClick={() => onSelect(conversation.id)}
-                type="button"
-              >
-                <Avatar fallback={conversation.title} size="lg" src={conversation.avatarUrl} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <Type as="span" variant="body-strong" className={cn("truncate", conversation.unreadCount > 0 && "font-bold")}>
-                      {conversation.title}
-                    </Type>
-                    <Type as="span" variant="caption" className="shrink-0 whitespace-nowrap">
-                      {formatListTime(conversation.updatedAt)}
+            {conversations.map((conversation) => {
+              const timestampLabel = formatListTime(conversation.updatedAt);
+              return (
+                <button
+                  className={cn(
+                    "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted active:bg-muted",
+                    activeConversationId === conversation.id && "bg-muted",
+                  )}
+                  key={conversation.id}
+                  onClick={() => onSelect(conversation.id)}
+                  type="button"
+                >
+                  <Avatar fallback={conversation.title} size="lg" src={conversation.avatarUrl} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Type as="span" variant="body-strong" className={cn("truncate", conversation.unreadCount > 0 && "font-bold")}>
+                        {conversation.title}
+                      </Type>
+                      {timestampLabel ? (
+                        <Type as="span" variant="caption" className="shrink-0 whitespace-nowrap">
+                          {timestampLabel}
+                        </Type>
+                      ) : null}
+                    </div>
+                    <Type as="span" variant="caption" className={cn("block truncate", conversation.unreadCount > 0 && "font-medium text-foreground/90")}>
+                      {conversation.preview}
                     </Type>
                   </div>
-                  <Type as="span" variant="caption" className={cn("block truncate", conversation.unreadCount > 0 && "font-medium text-foreground/90")}>
-                    {conversation.preview}
-                  </Type>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
             {refreshing ? (
               <div className="grid place-items-center px-4 py-6">
                 <Spinner className="size-5 text-muted-foreground" />
@@ -379,35 +399,40 @@ export function ThreadView({
           </div>
         ) : (
           <div className="mx-auto flex max-w-3xl flex-col gap-3">
-            {items.map((message) => (
-              <div
-                className={cn("flex", message.sender === "user" ? "justify-end" : "justify-start")}
-                key={message.id}
-              >
+            {items.map((message) => {
+              const timestampLabel = formatTime(message.createdAt);
+              return (
                 <div
-                  className={cn(
-                    "min-w-0 max-w-[78%] rounded-[var(--radius-lg)] px-4 py-3",
-                    message.sender === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-card text-card-foreground",
-                  )}
+                  className={cn("flex", message.sender === "user" ? "justify-end" : "justify-start")}
+                  key={message.id}
                 >
-                  <Type
-                    as="p"
-                    variant="body"
+                  <div
                     className={cn(
-                      "break-words [overflow-wrap:anywhere]",
-                      message.sender === "user" ? "text-primary-foreground" : undefined,
+                      "min-w-0 max-w-[78%] rounded-[var(--radius-lg)] px-4 py-3",
+                      message.sender === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-card text-card-foreground",
                     )}
                   >
-                    {message.content}
-                  </Type>
-                  <Type as="p" variant="caption" className={cn("pt-1", message.sender === "user" && "text-primary-foreground/80")}>
-                    {formatTime(message.createdAt)}
-                  </Type>
+                    <Type
+                      as="p"
+                      variant="body"
+                      className={cn(
+                        "break-words [overflow-wrap:anywhere]",
+                        message.sender === "user" ? "text-primary-foreground" : undefined,
+                      )}
+                    >
+                      {message.content}
+                    </Type>
+                    {timestampLabel ? (
+                      <Type as="p" variant="caption" className={cn("pt-1", message.sender === "user" && "text-primary-foreground/80")}>
+                        {timestampLabel}
+                      </Type>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

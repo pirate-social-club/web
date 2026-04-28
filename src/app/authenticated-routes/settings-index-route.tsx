@@ -57,13 +57,13 @@ export function CurrentUserSettingsIndexPage() {
   }
 
   const sections = [{
-    label: pageTitle,
+    label: isMobile ? "" : pageTitle,
     items,
   }];
   const content = !profile ? (
     <AuthRequiredRouteState description={copy.routeStatus.settings.auth} title={pageTitle} />
   ) : (
-    <section className={isMobile ? "flex w-full flex-col py-5" : "mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8"}>
+    <section className={isMobile ? "flex w-full flex-col" : "mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8"}>
       <StackedSectionNav mobileLayout={isMobile} sections={sections} />
     </section>
   );

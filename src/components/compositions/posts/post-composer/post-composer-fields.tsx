@@ -5,7 +5,7 @@ import {
   Users,
 } from "@phosphor-icons/react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { Avatar } from "@/components/primitives/avatar";
+import { CommunityAvatar } from "@/components/primitives/community-avatar";
 import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
 import { FormFieldLabel } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
@@ -115,11 +115,12 @@ export function ShellPill({
                   }}
                   type="button"
                 >
-                  <Avatar
+                  <CommunityAvatar
                     className="h-11 w-11 bg-card text-base"
-                    fallback={community.displayName.slice(0, 2).toUpperCase()}
+                    avatarSrc={community.avatarSrc}
+                    communityId={community.communityId}
+                    displayName={community.displayName}
                     size="sm"
-                    src={community.avatarSrc ?? undefined}
                   />
                   <span className="truncate">{community.displayName}</span>
                 </button>
@@ -170,11 +171,12 @@ export function ShellPill({
                 onClick={() => onSelectCommunity(community.communityId)}
                 textValue={community.displayName}
               >
-                <Avatar
+                <CommunityAvatar
                   className="h-9 w-9 bg-card text-base"
-                  fallback={community.displayName.slice(0, 2).toUpperCase()}
+                  avatarSrc={community.avatarSrc}
+                  communityId={community.communityId}
+                  displayName={community.displayName}
                   size="sm"
-                  src={community.avatarSrc ?? undefined}
                 />
                 <span className="truncate">{community.displayName}</span>
               </DropdownMenuPrimitive.Item>

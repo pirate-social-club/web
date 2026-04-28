@@ -11,6 +11,7 @@ import type { PostCardProps } from "@/components/compositions/posts/post-card/po
 import { buildNationalityBadgeLabel } from "@/components/compositions/posts/post-card/post-card-nationality";
 
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
+import { resolveCommunityAvatarSrc } from "@/lib/default-community-media";
 import {
   toCommunityPostContent,
   toViewerVote,
@@ -58,6 +59,11 @@ export function toHomeFeedItem(
         agentAuthor: resolveAgentAuthor(post, authorProfile),
         community: {
           kind: "community",
+          avatarSrc: resolveCommunityAvatarSrc({
+            avatarSrc: community.avatar_ref,
+            communityId: community.community_id,
+            displayName: community.display_name,
+          }),
           href: `/c/${community.community_id}`,
           label: formatCommunityLabel(community.route_slug ?? community.display_name),
         },

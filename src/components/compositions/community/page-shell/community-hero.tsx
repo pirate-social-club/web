@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { IdentityHero } from "@/components/compositions/profiles/identity-hero/identity-hero";
-import { resolveCommunityBannerSrc } from "@/lib/default-community-media";
+import { resolveCommunityAvatarSrc, resolveCommunityBannerSrc } from "@/lib/default-community-media";
 
 export interface CommunityHeroProps {
   actions?: React.ReactNode;
@@ -30,6 +30,10 @@ export function CommunityHero({
     () => resolveCommunityBannerSrc({ bannerSrc, communityId, displayName }),
     [bannerSrc, communityId, displayName],
   );
+  const resolvedAvatarSrc = React.useMemo(
+    () => resolveCommunityAvatarSrc({ avatarSrc, communityId, displayName }),
+    [avatarSrc, communityId, displayName],
+  );
   const trimmedDisplayName = displayName.trim();
   const trimmedRouteLabel = routeLabel?.trim() || null;
   const primaryLabel = trimmedDisplayName;
@@ -39,7 +43,7 @@ export function CommunityHero({
     <IdentityHero
       actions={actions}
       avatarFallback={displayName}
-      avatarSrc={avatarSrc}
+      avatarSrc={resolvedAvatarSrc}
       className={className}
       coverClassName="bg-background"
       coverOverlay={<div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/45" />}

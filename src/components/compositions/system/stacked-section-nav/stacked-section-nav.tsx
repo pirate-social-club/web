@@ -35,18 +35,20 @@ export function StackedSectionNav({
     <div className={cn(mobileLayout ? "w-full space-y-6" : "space-y-6", className)}>
       {sections.map((section) => (
         <section className={cn(mobileLayout ? "w-full space-y-2" : "space-y-2")} key={section.label}>
-          <Type
-            as="div"
-            className={cn("text-muted-foreground/55", mobileLayout ? "px-4" : "px-1")}
-            variant="overline"
-          >
-            {section.label}
-          </Type>
+          {section.label ? (
+            <Type
+              as="div"
+              className={cn("text-muted-foreground/55", mobileLayout ? "px-4" : "px-1")}
+              variant="overline"
+            >
+              {section.label}
+            </Type>
+          ) : null}
           <div
             className={cn(
               "w-full overflow-hidden",
               mobileLayout
-                ? "border-y border-border-soft"
+                ? "border-b border-border-soft"
                 : "rounded-[var(--radius-2xl)] border border-border-soft bg-card",
             )}
           >

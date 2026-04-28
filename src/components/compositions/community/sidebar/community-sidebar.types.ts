@@ -78,6 +78,7 @@ export interface CommunitySidebarProps {
   className?: string;
   charity?: CommunitySidebarCharity | null;
   createdAt: string;
+  communityId?: string;
   description?: string | null;
   displayName: string;
   flairPolicy?: CommunitySidebarFlairPolicy | null;

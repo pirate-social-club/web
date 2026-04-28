@@ -312,7 +312,7 @@ function SectionCard({
   flat?: boolean;
 }) {
   return (
-    <Card className={cn("overflow-hidden", flat && "rounded-none border-x-0 bg-transparent shadow-none")}>
+    <Card className={cn("overflow-hidden", flat && "rounded-none border-x-0 border-t-0 bg-transparent shadow-none")}>
       {children}
     </Card>
   );
@@ -640,7 +640,7 @@ export function NotificationInboxPage({
   const hasContent = hasTasks || hasActivity;
 
   return (
-    <PageContainer className="flex min-w-0 flex-1 flex-col gap-6">
+    <PageContainer className={cn("flex min-w-0 flex-1 flex-col gap-6", isMobile && "-mt-2")}>
       <div className={cn(
         "flex min-w-0 flex-1 flex-col",
         isMobile ? "-mx-3 gap-0" : "overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card",

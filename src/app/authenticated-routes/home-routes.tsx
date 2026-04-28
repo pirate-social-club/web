@@ -34,7 +34,7 @@ import { buildFeedSortOptions, buildTopTimeRangeOptions } from "@/lib/feed-sort-
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
 import { EmptyFeedState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
-import { useCommunityInteractionGate } from "@/app/authenticated-helpers/community-interaction-gate";
+import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 
 type HomeRailPost = {
   communityDisplayName: string;

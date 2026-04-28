@@ -3,11 +3,22 @@ import {
   formatGateRequirement,
   getGateFailureMessage,
   getJoinCtaLabel,
+  getSelfVerificationRequestForGates,
   getVerificationPromptCopy,
+  hasSelfDocumentFactVerificationRequest,
   isJoinCtaActionable,
   resolveSuggestedVerificationProvider,
 } from "../lib/identity-gates";
-import type { MembershipGateSummary, JoinEligibility, GateFailureDetails } from "@pirate/api-contracts";
+import type { MembershipGateSummary, JoinEligibility, GateFailureDetails, VerificationCapabilities } from "@pirate/api-contracts";
+
+const unverifiedCapabilities: VerificationCapabilities = {
+  unique_human: { state: "unverified" },
+  age_over_18: { state: "unverified" },
+  minimum_age: { state: "unverified" },
+  nationality: { state: "unverified" },
+  gender: { state: "unverified" },
+  wallet_score: { state: "unverified" },
+};
 
 describe("formatGateRequirement", () => {
   test("formats nationality gate with known country code", () => {
@@ -18,6 +29,12 @@ describe("formatGateRequirement", () => {
   test("formats nationality gate with localized country name", () => {
     const gate: MembershipGateSummary = { gate_type: "nationality", required_value: "PS" };
     expect(formatGateRequirement(gate, { locale: "ar" })).toContain("فلسطين");
+  });
+
+  test("formats gate copy with regional locale tags", () => {
+    const gate: MembershipGateSummary = { gate_type: "unique_human" };
+    expect(formatGateRequirement(gate, { locale: "ar-SA" })).toBe("يتطلب التحقق من أنك إنسان");
+    expect(formatGateRequirement(gate, { locale: "zh-CN" })).toBe("需要真人验证");
   });
 
   test("formats nationality gate with country name and code for admin surfaces", () => {
@@ -136,6 +153,11 @@ describe("getVerificationPromptCopy", () => {
     expect(getVerificationPromptCopy("self", ["nationality"], { locale: "ar" }).title).toBe("تحقق بالهوية");
   });
 
+  test("localizes verification prompt copy with regional locale tags", () => {
+    expect(getVerificationPromptCopy("self", ["nationality"], { locale: "ar-SA" }).title).toBe("تحقق بالهوية");
+    expect(getVerificationPromptCopy("self", ["nationality"], { locale: "zh-CN" }).title).toBe("使用身份证件验证");
+  });
+
   test("collapses unique human when a richer self capability is present", () => {
     const description = getVerificationPromptCopy("self", ["unique_human", "nationality"]).description;
     expect(description.includes("unique human")).toBe(false);
@@ -162,6 +184,90 @@ describe("resolveSuggestedVerificationProvider", () => {
       missing_capabilities: ["nationality"],
       suggested_verification_provider: null,
     })).toBe("self");
+  });
+});
+
+describe("getSelfVerificationRequestForGates", () => {
+  test("requests nationality disclosure for nationality-gated posting when nationality is not verified", () => {
+    const request = getSelfVerificationRequestForGates({
+      gates: [{ gate_type: "nationality", required_value: "US" }],
+      includeUniqueHuman: true,
+      verificationCapabilities: {
+        ...unverifiedCapabilities,
+        unique_human: { state: "verified", provider: "self", proof_type: "unique_human" },
+      },
+    });
+
+    expect(request).toEqual({
+      requestedCapabilities: ["nationality"],
+      verificationRequirements: [],
+    });
+  });
+
+  test("does not request nationality disclosure when the verified nationality satisfies the gate", () => {
+    const request = getSelfVerificationRequestForGates({
+      gates: [{ gate_type: "nationality", required_values: ["US", "CA"] }],
+      includeUniqueHuman: true,
+      verificationCapabilities: {
+        ...unverifiedCapabilities,
+        unique_human: { state: "verified", provider: "self", proof_type: "unique_human" },
+        nationality: { state: "verified", provider: "self", proof_type: "nationality", value: "US" },
+      },
+    });
+
+    expect(request).toEqual({
+      requestedCapabilities: [],
+      verificationRequirements: [],
+    });
+  });
+
+  test("matches verified ISO-3 nationality against an ISO-2 gate", () => {
+    const request = getSelfVerificationRequestForGates({
+      gates: [{ gate_type: "nationality", required_value: "US" }],
+      includeUniqueHuman: true,
+      verificationCapabilities: {
+        ...unverifiedCapabilities,
+        unique_human: { state: "verified", provider: "self", proof_type: "unique_human" },
+        nationality: { state: "verified", provider: "self", proof_type: "nationality", value: "USA" },
+      },
+    });
+
+    expect(request).toEqual({
+      requestedCapabilities: [],
+      verificationRequirements: [],
+    });
+  });
+
+  test("combines unique human, nationality, and minimum age requirements for Self", () => {
+    const request = getSelfVerificationRequestForGates({
+      gates: [
+        { gate_type: "nationality", required_value: "US" },
+        { gate_type: "minimum_age", required_minimum_age: 21 },
+      ],
+      includeUniqueHuman: true,
+      verificationCapabilities: unverifiedCapabilities,
+    });
+
+    expect(request).toEqual({
+      requestedCapabilities: ["unique_human", "nationality"],
+      verificationRequirements: [{ proof_type: "minimum_age", minimum_age: 21 }],
+    });
+  });
+});
+
+describe("hasSelfDocumentFactVerificationRequest", () => {
+  test("uses Self before Very when a nationality gate also needs unique human", () => {
+    expect(hasSelfDocumentFactVerificationRequest({
+      requestedCapabilities: ["unique_human", "nationality"],
+      verificationRequirements: [],
+    })).toBe(true);
+  });
+
+  test("leaves unique-human-only posting verification on the Very path", () => {
+    expect(hasSelfDocumentFactVerificationRequest({
+      requestedCapabilities: ["unique_human"],
+      verificationRequirements: [],
+    })).toBe(false);
   });
 });
 

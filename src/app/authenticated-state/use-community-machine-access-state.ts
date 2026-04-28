@@ -8,7 +8,7 @@ import type {
   ApiCommunityMachineAccessPolicyUpdate,
 } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/api/client";
+import { getErrorMessage } from "@/lib/error-utils";
 import { toast } from "@/components/primitives/sonner";
 import type {
   CommunityMachineAccessPageProps,
@@ -86,7 +86,7 @@ export function useCommunityMachineAccessState({
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setMachineAccessSaveError(getApiErrorMessage(error, "Could not load machine access policy."));
+          setMachineAccessSaveError(getErrorMessage(error, "Could not load machine access policy."));
         }
       })
       .finally(() => {
@@ -123,7 +123,7 @@ export function useCommunityMachineAccessState({
         toast.success("Machine access updated.");
       })
       .catch((error: unknown) => {
-        const message = getApiErrorMessage(error, "Failed to save machine access settings.");
+        const message = getErrorMessage(error, "Failed to save machine access settings.");
         setMachineAccessSaveError(message);
         toast.error(message);
       })

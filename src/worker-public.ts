@@ -9,6 +9,7 @@ import {
   X_FRAME_OPTIONS_DENY,
   X_FRAME_OPTIONS_HEADER,
 } from "./lib/security-headers";
+import { extractPublicProfileHost } from "./lib/public-host";
 import type {
   Env,
   PublicAgentResolution,
@@ -19,55 +20,11 @@ type PublicProfileRequestTarget =
   | { kind: "host"; handleLabel: string; hostSuffix: string; identityKind: "profile" | "agent" }
   | { kind: "path"; handleLabel: string };
 
-const RESERVED_PUBLIC_PROFILE_HOSTS = new Set([
-  "www",
-  "api",
-  "api-staging",
-  "spaces",
-  "app",
-  "admin",
-  "assets",
-  "static",
-  "cdn",
-  "dev",
-  "staging",
-]);
-
-const PUBLIC_PROFILE_HOST_SUFFIXES = ["pirate", "clawitzer", "localhost"];
-
 function getPublicIdentityHandleLabel(input: {
   global_handle: { label: string };
   primary_public_handle?: { label: string } | null;
 }): string {
   return input.primary_public_handle?.label ?? input.global_handle.label;
-}
-
-function extractPublicProfileHost(
-  hostname: string,
-): { handleLabel: string; hostSuffix: string; identityKind: "profile" | "agent" } | null {
-  const normalizedHostname = hostname.trim().toLowerCase().replace(/\.+$/u, "");
-  if (!normalizedHostname || normalizedHostname === "localhost") {
-    return null;
-  }
-
-  for (const hostSuffix of PUBLIC_PROFILE_HOST_SUFFIXES) {
-    if (!normalizedHostname.endsWith(`.${hostSuffix}`)) {
-      continue;
-    }
-
-    const subdomain = normalizedHostname.slice(0, -(hostSuffix.length + 1));
-    if (!subdomain || subdomain.includes(".") || RESERVED_PUBLIC_PROFILE_HOSTS.has(subdomain)) {
-      return null;
-    }
-
-    return {
-      handleLabel: subdomain,
-      hostSuffix,
-      identityKind: hostSuffix === "clawitzer" ? "agent" : "profile",
-    };
-  }
-
-  return null;
 }
 
 function extractPathPublicProfile(url: URL): { handleLabel: string } | null {
@@ -98,7 +55,7 @@ function extractPublicProfileRequestTarget(url: URL): PublicProfileRequestTarget
       kind: "host",
       handleLabel: hostTarget.handleLabel,
       hostSuffix: hostTarget.hostSuffix,
-      identityKind: hostTarget.identityKind,
+      identityKind: hostTarget.hostSuffix === "clawitzer" ? "agent" : "profile",
     };
   }
 

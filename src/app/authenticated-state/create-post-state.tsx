@@ -15,7 +15,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
-import { getApiErrorMessage } from "@/lib/api/client";
+import { getErrorMessage } from "@/lib/error-utils";
 import type {
   CommunityCharityPartner,
   ComposerAudienceState,
@@ -581,7 +581,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
       navigate(`/p/${result.post_id}`);
     } catch (error: unknown) {
-      setSubmitError(getApiErrorMessage(error, "Could not create post"));
+      setSubmitError(getErrorMessage(error, "Could not create post"));
     } finally {
       setSubmitting(false);
     }

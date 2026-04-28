@@ -3,15 +3,17 @@ import type {
   JoinEligibility,
   MembershipGateSummary,
   RequestedVerificationCapability,
+  VerificationCapabilities,
   VerificationRequirement,
 } from "@pirate/api-contracts";
-import { getCountryDisplayName } from "@/lib/countries";
+import { getCountryDisplayName, normalizeCountryCode } from "@/lib/countries";
+import { isUiLocaleCode, type UiLocaleCode } from "@/lib/ui-locale-core";
+import { getLocaleMessages } from "@/locales";
 
 type IdentityGateAudience = "public" | "admin";
 type VerificationProvider = "self" | "very" | "passport";
 type RequirementProviderContext = VerificationProvider | null;
 type MissingCapability = JoinEligibility["missing_capabilities"][number];
-type SupportedCopyLocale = "en" | "ar" | "zh";
 
 const SELF_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "unique_human",
@@ -27,14 +29,16 @@ const SELF_REQUESTED_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "gender",
 ];
 
-function resolveCopyLocale(locale: string | null | undefined): SupportedCopyLocale {
+function resolveGateLocale(locale: string | null | undefined): UiLocaleCode {
   const normalized = String(locale ?? "").toLowerCase();
-  if (normalized.startsWith("ar")) return "ar";
-  if (normalized.startsWith("zh")) return "zh";
+  if (normalized === "ar" || normalized.startsWith("ar-")) return "ar";
+  if (normalized === "zh" || normalized.startsWith("zh-")) return "zh";
+  if (normalized === "en" || normalized.startsWith("en-")) return "en";
+  if (isUiLocaleCode(normalized)) return normalized;
   return "en";
 }
 
-function joinWithAnd(values: string[], locale: SupportedCopyLocale): string {
+function joinWithAnd(values: string[], locale: UiLocaleCode): string {
   if (values.length <= 1) return values[0] ?? "";
   if (locale === "ar") {
     if (values.length === 2) return `${values[0]} و${values[1]}`;
@@ -48,7 +52,7 @@ function joinWithAnd(values: string[], locale: SupportedCopyLocale): string {
   return `${values.slice(0, -1).join(", ")}, and ${values[values.length - 1]}`;
 }
 
-function formatCountryName(code: string, locale: SupportedCopyLocale): string {
+function formatCountryName(code: string, locale: UiLocaleCode): string {
   return getCountryDisplayName(code, locale) ?? code;
 }
 
@@ -86,8 +90,9 @@ export function formatGateRequirement(
   options?: { audience?: IdentityGateAudience; locale?: string | null; provider?: RequirementProviderContext },
 ): string {
   const audience = options?.audience ?? "public";
-  const locale = resolveCopyLocale(options?.locale);
+  const locale = resolveGateLocale(options?.locale);
   const provider = options?.provider ?? null;
+  const copy = getLocaleMessages(locale, "gates").requirements;
 
   switch (gate.gate_type) {
     case "nationality": {
@@ -98,85 +103,44 @@ export function formatGateRequirement(
           return audience === "admin" ? `${country} (${value})` : country;
         });
         const countryLabel = joinWithAnd(countries, locale);
-        if (locale === "ar") {
-          return `يتطلب التحقق من الجنسية: ${countryLabel}`;
-        }
-        if (locale === "zh") {
-          return `需要国籍验证：${countryLabel}`;
-        }
-        return `${countryLabel} nationality`;
+        return copy.nationality.withValues.replace("{countryLabel}", countryLabel);
       }
-      if (locale === "ar") return "يتطلب التحقق من الجنسية";
-      if (locale === "zh") return "需要国籍验证";
-      return "Nationality verification";
+      return copy.nationality.withoutValues;
     }
     case "gender": {
-      if (locale === "ar") {
-        if (audience === "admin" && gate.required_value) {
-          return `يتطلب علامة الجنس في وثيقة Self: ${gate.required_value}`;
-        }
-        return "تحقق بالهوية";
-      }
-      if (locale === "zh") {
-        if (audience === "admin" && gate.required_value) {
-          return `需要 Self 证件性别标记 ${gate.required_value}`;
-        }
-        return "使用身份证件验证";
-      }
       if (audience === "admin" && gate.required_value) {
-        return `Requires Self document marker ${gate.required_value}`;
+        return copy.gender.adminWithValue.replace("{requiredValue}", gate.required_value);
       }
-      return "ID check";
+      return copy.gender.public;
     }
     case "unique_human":
-      if (provider === "very") {
-        if (locale === "ar") return "يتطلب فحص راحة اليد";
-        if (locale === "zh") return "需要掌纹扫描";
-        return "Palm scan";
-      }
-      if (locale === "ar") return "يتطلب التحقق من أنك إنسان";
-      if (locale === "zh") return "需要真人验证";
-      return "Real person check";
+      return provider === "very" ? copy.uniqueHuman.very : copy.uniqueHuman.self;
     case "age_over_18":
-      if (locale === "ar") return "يتطلب التحقق من أن عمرك 18+";
-      if (locale === "zh") return "需要 18+ 验证";
-      return "18+ ID check";
+      return copy.ageOver18;
     case "minimum_age": {
-      const age = gate.required_minimum_age ?? 18;
-      if (locale === "ar") return `يتطلب التحقق من أن عمرك ${age}+`;
-      if (locale === "zh") return `需要 ${age}+ 验证`;
-      return `${age}+ ID check`;
+      const age = String(gate.required_minimum_age ?? 18);
+      return copy.minimumAge.replace("{age}", age);
     }
-    case "wallet_score":
+    case "wallet_score": {
       if (typeof gate.minimum_score === "number") {
-        if (locale === "ar") return `يتطلب درجة Passport ${gate.minimum_score}+`;
-        if (locale === "zh") return `需要 Passport 分数 ${gate.minimum_score}+`;
-        return `Passport Score ${gate.minimum_score}+`;
+        return copy.walletScore.withScore.replace("{minimumScore}", String(gate.minimum_score));
       }
-      if (locale === "ar") return "يتطلب درجة Passport";
-      if (locale === "zh") return "需要 Passport 分数";
-      return "Passport Score";
+      return copy.walletScore.withoutScore;
+    }
     case "erc721_holding": {
       const label = gate.contract_address ? shortenAddress(gate.contract_address) : null;
-      if (locale === "ar") {
-        return label ? `يتطلب امتلاك NFT على إيثريوم من ${label}` : "يتطلب امتلاك NFT على إيثريوم";
+      if (label) {
+        return copy.erc721Holding.withLabel.replace("{label}", label);
       }
-      if (locale === "zh") {
-        return label ? `需要持有来自 ${label} 的以太坊 NFT` : "需要持有以太坊 NFT";
-      }
-      return label ? `Ethereum NFT from ${label}` : "Ethereum NFT";
+      return copy.erc721Holding.withoutLabel;
     }
     case "erc721_inventory_match": {
-      const quantity = gate.min_quantity ?? 1;
+      const quantity = String(gate.min_quantity ?? 1);
       const assetLabel = formatInventoryAssetLabel(gate);
-      if (locale === "ar") return `يتطلب ${quantity} من مقتنيات Courtyard: ${assetLabel}`;
-      if (locale === "zh") return `需要 ${quantity} 个 Courtyard 藏品：${assetLabel}`;
-      return `${quantity} Courtyard ${assetLabel}`;
+      return copy.erc721InventoryMatch.replace("{quantity}", quantity).replace("{assetLabel}", assetLabel);
     }
     default:
-      if (locale === "ar") return `يتطلب التحقق من ${gate.gate_type}`;
-      if (locale === "zh") return `需要 ${gate.gate_type} 验证`;
-      return `${gate.gate_type} verification`;
+      return copy.fallback.replace("{gateType}", gate.gate_type);
   }
 }
 
@@ -184,36 +148,23 @@ export function getJoinCtaLabel(
   eligibility: JoinEligibility,
   options?: { locale?: string | null },
 ): string {
-  const locale = resolveCopyLocale(options?.locale);
+  const locale = resolveGateLocale(options?.locale);
+  const copy = getLocaleMessages(locale, "gates").joinCta;
   switch (eligibility.status) {
     case "joinable":
-      if (locale === "ar") return "انضم";
-      if (locale === "zh") return "加入";
-      return "Join";
+      return copy.joinable;
     case "requestable":
-      if (locale === "ar") return "اطلب الانضمام";
-      if (locale === "zh") return "申请加入";
-      return "Request to Join";
+      return copy.requestable;
     case "pending_request":
-      if (locale === "ar") return "تم إرسال الطلب";
-      if (locale === "zh") return "申请已提交";
-      return "Request submitted";
+      return copy.pendingRequest;
     case "verification_required":
-      if (locale === "ar") return "تحقق للانضمام";
-      if (locale === "zh") return "验证后加入";
-      return "Verify to Join";
+      return copy.verificationRequired;
     case "already_joined":
-      if (locale === "ar") return "تم الانضمام";
-      if (locale === "zh") return "已加入";
-      return "Joined";
+      return copy.alreadyJoined;
     case "banned":
-      if (locale === "ar") return "غير متاح";
-      if (locale === "zh") return "不可用";
-      return "Unavailable";
+      return copy.banned;
     case "gate_failed":
-      if (locale === "ar") return "غير مؤهل";
-      if (locale === "zh") return "不符合条件";
-      return "Not eligible";
+      return copy.gateFailed;
   }
 }
 
@@ -221,18 +172,6 @@ export function isJoinCtaActionable(eligibility: JoinEligibility): boolean {
   return eligibility.status === "joinable"
     || eligibility.status === "requestable"
     || eligibility.status === "verification_required";
-}
-
-export function getSelfVerificationCapabilities(
-  eligibility: Pick<JoinEligibility, "missing_capabilities">,
-): RequestedVerificationCapability[] {
-  const uniqueCapabilities = new Set<RequestedVerificationCapability>();
-  for (const capability of eligibility.missing_capabilities) {
-    if (isSelfRequestedCapability(capability)) {
-      uniqueCapabilities.add(capability);
-    }
-  }
-  return SELF_REQUESTED_CAPABILITY_ORDER.filter((capability) => uniqueCapabilities.has(capability));
 }
 
 export function getVerificationCapabilitiesForProvider(
@@ -278,6 +217,142 @@ export function getVerificationRequirementsForGates(
     requirements.push({ proof_type: "minimum_age", minimum_age: Math.max(...minimumAges) });
   }
   return requirements;
+}
+
+function getRequiredNationalityValues(gate: MembershipGateSummary): string[] {
+  return (gate.required_values?.length ? gate.required_values : gate.required_value ? [gate.required_value] : [])
+    .map((value) => value.trim().toUpperCase())
+    .filter(Boolean);
+}
+
+function getCountryCodeAliases(value: string | null | undefined): Set<string> {
+  const normalized = value?.trim().toUpperCase();
+  if (!normalized) {
+    return new Set();
+  }
+
+  const country = normalizeCountryCode(normalized);
+  if (!country) {
+    return new Set([normalized]);
+  }
+
+  return new Set([country.alpha2, country.alpha3]);
+}
+
+function countryCodeMatchesAny(value: string, candidates: string[]): boolean {
+  const valueAliases = getCountryCodeAliases(value);
+  if (valueAliases.size === 0) {
+    return false;
+  }
+
+  return candidates.some((candidate) => {
+    const candidateAliases = getCountryCodeAliases(candidate);
+    for (const alias of candidateAliases) {
+      if (valueAliases.has(alias)) {
+        return true;
+      }
+    }
+    return false;
+  });
+}
+
+function nationalityCapabilitySatisfiesGate(
+  capability: VerificationCapabilities["nationality"] | null | undefined,
+  gate: MembershipGateSummary,
+): boolean {
+  if (capability?.state !== "verified" || capability.provider !== "self") {
+    return false;
+  }
+  const value = capability.value?.trim().toUpperCase();
+  if (!value) {
+    return false;
+  }
+  const requiredValues = getRequiredNationalityValues(gate);
+  if (requiredValues.length > 0 && !countryCodeMatchesAny(value, requiredValues)) {
+    return false;
+  }
+  const excludedValues = (gate.excluded_values ?? []).map((item) => item.trim().toUpperCase()).filter(Boolean);
+  return !countryCodeMatchesAny(value, excludedValues);
+}
+
+function genderCapabilitySatisfiesGate(
+  capability: VerificationCapabilities["gender"] | null | undefined,
+  gate: MembershipGateSummary,
+): boolean {
+  if (capability?.state !== "verified" || capability.provider !== "self") {
+    return false;
+  }
+  const requiredValue = gate.required_value?.trim().toUpperCase();
+  return !requiredValue || capability.value === requiredValue;
+}
+
+export function getSelfVerificationRequestForGates(input: {
+  gates: MembershipGateSummary[] | null | undefined;
+  includeUniqueHuman?: boolean;
+  verificationCapabilities: VerificationCapabilities | null | undefined;
+}): {
+  requestedCapabilities: RequestedVerificationCapability[];
+  verificationRequirements: VerificationRequirement[];
+} {
+  const capabilities = input.verificationCapabilities;
+  const requestedCapabilities = new Set<RequestedVerificationCapability>();
+  const minimumAges: number[] = [];
+
+  if (input.includeUniqueHuman && capabilities?.unique_human?.state !== "verified") {
+    requestedCapabilities.add("unique_human");
+  }
+
+  for (const gate of input.gates ?? []) {
+    switch (gate.gate_type) {
+      case "unique_human":
+        if (capabilities?.unique_human?.state !== "verified") {
+          requestedCapabilities.add("unique_human");
+        }
+        break;
+      case "age_over_18":
+        if (capabilities?.age_over_18?.state !== "verified") {
+          requestedCapabilities.add("age_over_18");
+        }
+        break;
+      case "minimum_age": {
+        const requiredAge = gate.required_minimum_age;
+        const verifiedAge = capabilities?.minimum_age?.state === "verified" ? capabilities.minimum_age.value : null;
+        if (typeof requiredAge === "number" && Number.isInteger(requiredAge) && (typeof verifiedAge !== "number" || verifiedAge < requiredAge)) {
+          minimumAges.push(requiredAge);
+        }
+        break;
+      }
+      case "nationality":
+        if (!nationalityCapabilitySatisfiesGate(capabilities?.nationality, gate)) {
+          requestedCapabilities.add("nationality");
+        }
+        break;
+      case "gender":
+        if (!genderCapabilitySatisfiesGate(capabilities?.gender, gate)) {
+          requestedCapabilities.add("gender");
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  const verificationRequirements = minimumAges.length > 0
+    ? [{ proof_type: "minimum_age" as const, minimum_age: Math.max(...minimumAges) }]
+    : [];
+
+  return {
+    requestedCapabilities: SELF_REQUESTED_CAPABILITY_ORDER.filter((capability) => requestedCapabilities.has(capability)),
+    verificationRequirements,
+  };
+}
+
+export function hasSelfDocumentFactVerificationRequest(input: {
+  requestedCapabilities: RequestedVerificationCapability[];
+  verificationRequirements: VerificationRequirement[];
+}): boolean {
+  return input.verificationRequirements.length > 0
+    || input.requestedCapabilities.some((capability) => capability !== "unique_human");
 }
 
 export function resolveSuggestedVerificationProvider(
@@ -329,193 +404,75 @@ export function getVerificationPromptCopy(
   description: string;
   actionLabel: string;
 } {
-  const locale = resolveCopyLocale(options?.locale);
+  const locale = resolveGateLocale(options?.locale);
+  const gates = getLocaleMessages(locale, "gates");
 
   if (provider === "very") {
-    if (locale === "ar") {
-      return {
-        title: "تحقق بالهوية",
-        description: "استخدم تطبيق VeryAI لمسح راحة يدك، ثم عد إلى Pirate للمتابعة. ستظهر روابط التنزيل عند الحاجة.",
-        actionLabel: "تحقق بالهوية",
-      };
-    }
-    if (locale === "zh") {
-      return {
-        title: "使用身份证件验证",
-        description: "使用 VeryAI app 扫描掌纹，然后回到 Pirate 继续。需要时会显示下载链接。",
-        actionLabel: "使用身份证件验证",
-      };
-    }
-    return {
-      title: "Verify with palm scan",
-      description: "Scan your palm once with VeryAI to join any community that requires it. The photo is not saved anywhere.",
-      actionLabel: "Verify with palm scan",
-    };
+    return gates.verificationPrompt.very;
   }
 
   if (provider === "passport") {
-    if (locale === "ar") {
-      return {
-        title: "درجة Passport مطلوبة",
-        description: "ارفع درجة Passport ثم عد للانضمام.",
-        actionLabel: "فتح Passport",
-      };
-    }
-    if (locale === "zh") {
-      return {
-        title: "需要 Passport 分数",
-        description: "提高 Passport 分数后回来加入。",
-        actionLabel: "打开 Passport",
-      };
-    }
-    return {
-      title: "Score Too Low",
-      description: "Your wallet needs a Passport score of 20+ to enter this community. Visit app.passport.xyz to improve it.",
-      actionLabel: "Visit Passport.xyz",
-    };
+    return gates.verificationPrompt.passport;
   }
 
   const visibleCapabilities = getVisibleSelfCapabilities(capabilities);
+  const selfPrompt = gates.verificationPrompt.self;
 
   if (visibleCapabilities.length === 0 || visibleCapabilities[0] === "unique_human") {
-    if (locale === "ar") {
-      return {
-        title: "تحقق بالهوية",
-        description: "استخدم تطبيق Self للتحقق من وثيقتك بخصوصية، ثم عد إلى Pirate للمتابعة. ستظهر روابط التنزيل عند الحاجة.",
-        actionLabel: "تحقق بالهوية",
-      };
-    }
-    if (locale === "zh") {
-      return {
-        title: "使用身份证件验证",
-        description: "使用 Self app 私密验证你的证件，然后回到 Pirate 继续。需要时会显示下载链接。",
-        actionLabel: "使用身份证件验证",
-      };
-    }
     return {
-      title: "Verify with ID",
-      description: "Self.xyz lets you prove facts like age and nationality without sharing your name, photo, or document details with anyone.",
-      actionLabel: "Verify with ID",
+      title: selfPrompt.title,
+      description: selfPrompt.descriptions.default,
+      actionLabel: selfPrompt.actionLabel,
     };
   }
 
   if (visibleCapabilities.length === 1) {
     switch (visibleCapabilities[0]) {
       case "age_over_18":
-      case "minimum_age":
-        if (locale === "ar") {
-          return {
-            title: "تحقق بالهوية",
-            description: visibleCapabilities[0] === "minimum_age" ? "استخدم تطبيق Self لتأكيد العمر بالهوية، ثم عد إلى Pirate للمتابعة." : "استخدم تطبيق Self لتأكيد أن عمرك 18+، ثم عد إلى Pirate للمتابعة.",
-            actionLabel: "تحقق بالهوية",
-          };
-        }
-        if (locale === "zh") {
-          return {
-            title: "使用身份证件验证",
-            description: visibleCapabilities[0] === "minimum_age" ? "使用 Self app 通过证件确认年龄，然后回到 Pirate 继续。" : "使用 Self app 确认你已满 18 岁，然后回到 Pirate 继续。",
-            actionLabel: "使用身份证件验证",
-          };
-        }
         return {
-          title: "Verify with ID",
-          description: visibleCapabilities[0] === "minimum_age" ? "Self.xyz lets you prove your age without sharing your name, photo, or document details with anyone." : "Self.xyz lets you prove you are over 18 without sharing your name, photo, or document details with anyone.",
-          actionLabel: "Verify with ID",
+          title: selfPrompt.title,
+          description: selfPrompt.descriptions.ageOver18,
+          actionLabel: selfPrompt.actionLabel,
+        };
+      case "minimum_age":
+        return {
+          title: selfPrompt.title,
+          description: selfPrompt.descriptions.minimumAge,
+          actionLabel: selfPrompt.actionLabel,
         };
       case "nationality":
-        if (locale === "ar") {
-          return {
-            title: "تحقق بالهوية",
-            description: "استخدم تطبيق Self لتأكيد الجنسية بالهوية، ثم عد إلى Pirate للمتابعة.",
-            actionLabel: "تحقق بالهوية",
-          };
-        }
-        if (locale === "zh") {
-          return {
-            title: "使用身份证件验证",
-            description: "使用 Self app 通过证件确认国籍，然后回到 Pirate 继续。",
-            actionLabel: "使用身份证件验证",
-          };
-        }
         return {
-          title: "Verify with ID",
-          description: "Self.xyz lets you prove your nationality without sharing your name, photo, or document details with anyone.",
-          actionLabel: "Verify with ID",
+          title: selfPrompt.title,
+          description: selfPrompt.descriptions.nationality,
+          actionLabel: selfPrompt.actionLabel,
         };
       case "gender":
-        if (locale === "ar") {
-          return {
-            title: "تحقق بالهوية",
-            description: "استخدم تطبيق Self للتحقق من وثيقتك بخصوصية، ثم عد إلى Pirate للمتابعة.",
-            actionLabel: "تحقق بالهوية",
-          };
-        }
-        if (locale === "zh") {
-          return {
-            title: "使用身份证件验证",
-            description: "使用 Self app 私密验证你的证件，然后回到 Pirate 继续。",
-            actionLabel: "使用身份证件验证",
-          };
-        }
         return {
-          title: "Verify with ID",
-          description: "Self.xyz lets you prove facts from your ID without sharing your name, photo, or document details with anyone.",
-          actionLabel: "Verify with ID",
+          title: selfPrompt.title,
+          description: selfPrompt.descriptions.gender,
+          actionLabel: selfPrompt.actionLabel,
         };
       default:
         break;
     }
   }
 
+  const labels = gates.capabilityLabels;
   const capabilityLabels = visibleCapabilities.map((capability) => {
-    if (locale === "ar") {
-      switch (capability) {
-        case "age_over_18": return "حالة 18+";
-        case "minimum_age": return "العمر";
-        case "nationality": return "الجنسية";
-        case "gender": return "علامة الجنس في وثيقة Self";
-        case "unique_human": return "إثبات أنك إنسان";
-        case "wallet_score": return "درجة Passport";
-      }
-    }
-    if (locale === "zh") {
-      switch (capability) {
-        case "age_over_18": return "18+ 状态";
-        case "minimum_age": return "年龄";
-        case "nationality": return "国籍";
-        case "gender": return "Self 证件性别标记";
-        case "unique_human": return "真人状态";
-        case "wallet_score": return "Passport 分数";
-      }
-    }
     switch (capability) {
-      case "age_over_18": return "18+ status";
-      case "minimum_age": return "age status";
-      case "nationality": return "nationality";
-      case "gender": return "Self document marker";
-      case "unique_human": return "unique human status";
-      case "wallet_score": return "Passport score";
+      case "age_over_18": return labels.ageOver18;
+      case "minimum_age": return labels.minimumAge;
+      case "nationality": return labels.nationality;
+      case "gender": return labels.gender;
+      case "unique_human": return labels.uniqueHuman;
+      case "wallet_score": return labels.walletScore;
     }
   });
 
-  if (locale === "ar") {
-    return {
-      title: "تحقق بالهوية",
-      description: `استخدم تطبيق Self لتأكيد ${joinWithAnd(capabilityLabels, locale)} بالهوية، ثم عد إلى Pirate للمتابعة.`,
-      actionLabel: "تحقق بالهوية",
-    };
-  }
-  if (locale === "zh") {
-    return {
-      title: "使用身份证件验证",
-      description: `使用 Self app 通过证件确认${joinWithAnd(capabilityLabels, locale)}，然后回到 Pirate 继续。`,
-      actionLabel: "使用身份证件验证",
-    };
-  }
   return {
-    title: "Verify with ID",
-    description: `Self.xyz lets you prove ${joinWithAnd(capabilityLabels, locale)} without sharing your name, photo, or document details with anyone.`,
-    actionLabel: "Verify with ID",
+    title: selfPrompt.title,
+    description: selfPrompt.descriptions.multiple.replace("{capabilities}", joinWithAnd(capabilityLabels, locale)),
+    actionLabel: selfPrompt.actionLabel,
   };
 }
 
@@ -523,56 +480,30 @@ export function getGateFailureMessage(
   details: Pick<GateFailureDetails, "failure_reason">,
   options?: { locale?: string | null },
 ): string | null {
-  const locale = resolveCopyLocale(options?.locale);
+  const locale = resolveGateLocale(options?.locale);
+  const copy = getLocaleMessages(locale, "gates").gateFailure;
   switch (details.failure_reason) {
     case "nationality_mismatch":
-      if (locale === "ar") return "لا يطابق فحص هويتك متطلبات هذا المجتمع.";
-      if (locale === "zh") return "你的身份验证结果不符合该社区要求。";
-      return "Your verified ID does not match this community's requirement.";
+      return copy.nationalityMismatch;
     case "gender_mismatch":
-      if (locale === "ar") return "فحص هويتك لا يطابق قاعدة هذا المجتمع.";
-      if (locale === "zh") return "你的证件验证结果不符合该社区规则。";
-      return "Your ID check does not match this community's rule.";
+      return copy.genderMismatch;
     case "minimum_age_mismatch":
-      if (locale === "ar") return "عمرك الموثق لا يطابق متطلبات هذا المجتمع.";
-      if (locale === "zh") return "你已验证的年龄不符合该社区要求。";
-      return "Your verified age does not match this community's requirement.";
+      return copy.minimumAgeMismatch;
     case "provider_not_accepted":
-      if (locale === "ar") return "التحقق الحالي لا يلبّي متطلبات هذا المجتمع.";
-      if (locale === "zh") return "你现有的验证方式不满足该社区要求。";
-      return "Your existing verification does not satisfy this community's requirement.";
+      return copy.providerNotAccepted;
     case "unsupported":
-      if (locale === "ar") return "هذا المجتمع يستخدم بوابة لا يمكن للتحقق الحالي تلبيتها هنا بعد.";
-      if (locale === "zh") return "这个社区使用了你当前验证暂时无法满足的门槛。";
-      return "This community uses a gate your current verification cannot satisfy here yet.";
+      return copy.unsupported;
     case "erc721_holding_required":
-      if (locale === "ar") return "اربط محفظة إيثريوم تملك هذا الـ NFT للانضمام إلى هذا المجتمع.";
-      if (locale === "zh") return "连接持有该 NFT 的以太坊钱包即可加入此社区。";
-      return "Connect an Ethereum wallet that holds this NFT to join this community.";
+      return copy.erc721HoldingRequired;
     case "erc721_inventory_match_required":
-      if (locale === "ar") return "اربط محفظة تملك مقتنيات Courtyard المطلوبة للانضمام.";
-      if (locale === "zh") return "连接持有所需 Courtyard 藏品的钱包即可加入。";
-      return "Connect a wallet that holds the required Courtyard collectibles to join.";
+      return copy.erc721InventoryMatchRequired;
     case "token_inventory_unavailable":
-      if (locale === "ar") return "تعذر فحص مقتنيات Courtyard الآن.";
-      if (locale === "zh") return "暂时无法检查 Courtyard 藏品。";
-      return "Courtyard collectible inventory could not be checked right now.";
+      return copy.tokenInventoryUnavailable;
     case "wallet_score_too_low":
-      if (locale === "ar") return "درجة Passport الخاصة بك لا تلبي متطلبات هذا المجتمع.";
-      if (locale === "zh") return "你的 Passport 分数不符合该社区要求。";
-      return "Your Passport score does not meet this community's requirement.";
+      return copy.walletScoreTooLow;
     case "banned":
-      if (locale === "ar") return "أنت غير مؤهل للانضمام إلى هذا المجتمع.";
-      if (locale === "zh") return "你没有资格加入这个社区。";
-      return "You are not eligible to join this community.";
+      return copy.banned;
     default:
       return null;
   }
-}
-
-export function getGateDraftWarning(gateType: MembershipGateSummary["gate_type"]): string | null {
-  if (gateType === "gender") {
-    return "This gate uses the Self document marker (M/F), which reflects passport data, not self-identified gender.";
-  }
-  return null;
 }

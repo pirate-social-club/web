@@ -31,6 +31,7 @@ import type {
   RefreshAuthCallback,
 } from "./client-internal";
 import { getAnalyticsIdentity } from "../analytics-identity";
+import { getErrorMessage } from "../error-utils";
 import { logger } from "../logger";
 
 export class ApiError extends Error {
@@ -61,18 +62,6 @@ export function isApiAuthError(error: unknown): error is ApiError {
 
 export function isApiNotFoundError(error: unknown): error is ApiError {
   return error instanceof ApiError && error.status === 404;
-}
-
-export function getApiErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-
-  if (typeof error === "string" && error.trim()) {
-    return error;
-  }
-
-  return fallback;
 }
 
 export const DEFAULT_BASE_URL = "http://127.0.0.1:8787";

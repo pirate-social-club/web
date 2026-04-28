@@ -19,7 +19,7 @@ import type { PostThreadSubmitResult } from "@/components/compositions/posts/pos
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { applyPostVote, submitOptimisticPostVote } from "@/app/authenticated-helpers/post-vote";
-import { useCommunityInteractionGate } from "@/app/authenticated-helpers/community-interaction-gate";
+import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { getErrorMessage } from "@/lib/error-utils";
 import {
   buildThreadCommentTreeFromItems,

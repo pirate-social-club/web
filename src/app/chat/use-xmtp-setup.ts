@@ -6,7 +6,7 @@ import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { useApi } from "@/lib/api";
 import type { StoredSession } from "@/lib/api/session-store";
-import { errorMessage } from "@/lib/chat/chat-conversation-state";
+import { getErrorMessage } from "@/lib/error-utils";
 import { publishChatInboxId } from "@/lib/chat/chat-xmtp-client";
 import {
   ensureXmtpClient,
@@ -216,13 +216,13 @@ export function useXmtpSetup({
           return;
         }
 
-        const message = errorMessage(setupError, "Could not set up encrypted messages.").toLowerCase();
+        const message = getErrorMessage(setupError, "Could not set up encrypted messages.").toLowerCase();
         const rejected = message.includes("reject") || message.includes("denied") || message.includes("cancel");
         setXmtpSetupError(rejected
           ? "Signature was cancelled. Messages are not enabled yet."
           : isLikelyXmtpTabContentionError(setupError)
             ? "Chat is open in another tab."
-            : errorMessage(setupError, "Could not set up encrypted messages."));
+            : getErrorMessage(setupError, "Could not set up encrypted messages."));
         setXmtpSetupPhase("error");
       });
   }, [publishInboxBestEffort, session, xmtpClientCache, xmtpSignerWallet]);
@@ -269,7 +269,7 @@ export function useXmtpSetup({
         }
         setXmtpSetupError(isLikelyXmtpTabContentionError(error)
           ? "Chat is open in another tab."
-          : errorMessage(error, "Could not set up encrypted messages."));
+          : getErrorMessage(error, "Could not set up encrypted messages."));
         setXmtpSetupPhase("error");
       });
   }, [session, walletHydrating, xmtpSignerWallet, xmtpClientCache]);

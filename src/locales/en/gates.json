@@ -1,0 +1,81 @@
+{
+  "requirements": {
+    "nationality": {
+      "withValues": "{countryLabel} nationality",
+      "withoutValues": "Nationality verification"
+    },
+    "gender": {
+      "public": "ID check",
+      "adminWithValue": "Requires Self document marker {requiredValue}"
+    },
+    "uniqueHuman": {
+      "very": "Palm scan",
+      "self": "Real person check"
+    },
+    "ageOver18": "18+ ID check",
+    "minimumAge": "{age}+ ID check",
+    "walletScore": {
+      "withScore": "Passport Score {minimumScore}+",
+      "withoutScore": "Passport Score"
+    },
+    "erc721Holding": {
+      "withLabel": "Ethereum NFT from {label}",
+      "withoutLabel": "Ethereum NFT"
+    },
+    "erc721InventoryMatch": "{quantity} Courtyard {assetLabel}",
+    "fallback": "{gateType} verification"
+  },
+  "joinCta": {
+    "joinable": "Join",
+    "requestable": "Request to Join",
+    "pendingRequest": "Request submitted",
+    "verificationRequired": "Verify to Join",
+    "alreadyJoined": "Joined",
+    "banned": "Unavailable",
+    "gateFailed": "Not eligible"
+  },
+  "verificationPrompt": {
+    "very": {
+      "title": "Verify with palm scan",
+      "description": "Scan your palm once with VeryAI to join any community that requires it. The photo is not saved anywhere.",
+      "actionLabel": "Verify with palm scan"
+    },
+    "passport": {
+      "title": "Score Too Low",
+      "description": "Your wallet needs a Passport score of 20+ to enter this community. Visit app.passport.xyz to improve it.",
+      "actionLabel": "Visit Passport.xyz"
+    },
+    "self": {
+      "title": "Verify with ID",
+      "actionLabel": "Verify with ID",
+      "descriptions": {
+        "default": "Self.xyz lets you prove facts like age and nationality without sharing your name, photo, or document details with anyone.",
+        "ageOver18": "Self.xyz lets you prove you are over 18 without sharing your name, photo, or document details with anyone.",
+        "minimumAge": "Self.xyz lets you prove your age without sharing your name, photo, or document details with anyone.",
+        "nationality": "Self.xyz lets you prove your nationality without sharing your name, photo, or document details with anyone.",
+        "gender": "Self.xyz lets you prove facts from your ID without sharing your name, photo, or document details with anyone.",
+        "multiple": "Self.xyz lets you prove {capabilities} without sharing your name, photo, or document details with anyone."
+      }
+    }
+  },
+  "capabilityLabels": {
+    "ageOver18": "18+ status",
+    "minimumAge": "age status",
+    "nationality": "nationality",
+    "gender": "Self document marker",
+    "uniqueHuman": "unique human status",
+    "walletScore": "Passport score"
+  },
+  "gateFailure": {
+    "nationalityMismatch": "Your verified ID does not match this community's requirement.",
+    "genderMismatch": "Your ID check does not match this community's rule.",
+    "minimumAgeMismatch": "Your verified age does not match this community's requirement.",
+    "providerNotAccepted": "Your existing verification does not satisfy this community's requirement.",
+    "unsupported": "This community uses a gate your current verification cannot satisfy here yet.",
+    "erc721HoldingRequired": "Connect an Ethereum wallet that holds this NFT to join this community.",
+    "erc721InventoryMatchRequired": "Connect a wallet that holds the required Courtyard collectibles to join.",
+    "tokenInventoryUnavailable": "Courtyard collectible inventory could not be checked right now.",
+    "walletScoreTooLow": "Your Passport score does not meet this community's requirement.",
+    "banned": "You are not eligible to join this community."
+  }
+}

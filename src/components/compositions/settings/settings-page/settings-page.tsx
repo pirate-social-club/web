@@ -6,7 +6,7 @@ import {
   PreferencesTab,
   ProfileTab,
   SettingsTabNav,
-} from "./settings-page.panels";
+} from "./panels";
 import type { SettingsPageProps } from "./settings-page.types";
 
 export function SettingsPage({

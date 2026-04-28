@@ -31,11 +31,11 @@ import {
 import {
   assistantConversationForAvailability,
   buildVisibleConversations,
-  errorMessage,
   mergeTransportConversations,
   sortConversations,
   upsertConversation,
 } from "@/lib/chat/chat-conversation-state";
+import { getErrorMessage } from "@/lib/error-utils";
 import { ChatSetupState } from "@/components/compositions/chat/chat-route-views";
 import type { ChatNavigationAdapter, ChatSurface } from "@/lib/chat/chat-navigation";
 import {
@@ -241,7 +241,7 @@ export function useChatController({
       if (!activeConversationIdRef.current || !isAssistantConversationId(activeConversationIdRef.current)) {
         setError(isLikelyXmtpTabContentionError(nextError)
           ? "Chat is open in another tab."
-          : errorMessage(nextError, "Could not load conversations."));
+          : getErrorMessage(nextError, "Could not load conversations."));
       }
     } finally {
       setListLoading(false);
@@ -276,7 +276,7 @@ export function useChatController({
 
       setError(isLikelyXmtpTabContentionError(nextError)
         ? "Chat is open in another tab."
-        : errorMessage(nextError, "Could not open chat."));
+        : getErrorMessage(nextError, "Could not open chat."));
     } finally {
       setRouteBusy(false);
     }
@@ -360,7 +360,7 @@ export function useChatController({
 
       setError(isLikelyXmtpTabContentionError(nextError)
         ? "Chat is open in another tab."
-        : errorMessage(nextError, "Could not load this conversation."));
+        : getErrorMessage(nextError, "Could not load this conversation."));
     } finally {
       setRouteBusy(false);
     }
@@ -511,7 +511,7 @@ export function useChatController({
         } catch (nextError) {
           setError(conversation.transport === "assistant" && nextError instanceof AssistantUnavailableError
             ? ASSISTANT_UNAVAILABLE_COPY
-            : errorMessage(nextError, "Could not send message."));
+            : getErrorMessage(nextError, "Could not send message."));
         }
       });
     sendQueueRef.current = sendTask;

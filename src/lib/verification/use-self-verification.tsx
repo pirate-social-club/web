@@ -9,7 +9,7 @@ import type {
 import type { SelfApp } from "@selfxyz/sdk-common";
 
 import { useApi } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/api/client";
+import { getErrorMessage } from "@/lib/error-utils";
 import { getVerificationPromptCopy } from "@/lib/identity-gates";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -169,7 +169,7 @@ export function useSelfVerification(input: {
       const href = getSelfVerificationLaunchHref(launch, { deeplinkCallback });
       return { started: true, href, openedModal };
     } catch (error: unknown) {
-      const message = getApiErrorMessage(error, startErrorMessage);
+      const message = getErrorMessage(error, startErrorMessage);
       setSelfError(message);
       return { error: message, started: false, href: null };
     } finally {
@@ -256,7 +256,7 @@ export function useSelfVerification(input: {
         session,
       });
     } catch (error: unknown) {
-      setSelfError(getApiErrorMessage(error, completeErrorMessage));
+      setSelfError(getErrorMessage(error, completeErrorMessage));
     } finally {
       completionInFlightRef.current = false;
       setSelfLoading(false);

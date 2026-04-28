@@ -29,20 +29,12 @@ function triggerHaptic(pattern: HapticPattern): void {
   }
 }
 
-export function triggerReviewFeedbackHaptic(isCorrect: boolean): void {
-  triggerHaptic(isCorrect ? HAPTIC_PATTERNS.success : HAPTIC_PATTERNS.warning);
-}
-
 export function triggerNavigationTapHaptic(): void {
   triggerHaptic(HAPTIC_PATTERNS.navigation);
 }
 
 export function triggerLikeToggleHaptic(nextLiked: boolean): void {
   triggerHaptic(nextLiked ? HAPTIC_PATTERNS.light : HAPTIC_PATTERNS.navigation);
-}
-
-export function triggerFollowTapHaptic(): void {
-  triggerHaptic(HAPTIC_PATTERNS.follow);
 }
 
 export function triggerShareSuccessHaptic(): void {

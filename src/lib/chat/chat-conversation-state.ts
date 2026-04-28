@@ -1,11 +1,8 @@
 "use client";
 
+import { getErrorMessage } from "@/lib/error-utils";
 import { getAssistantConversation } from "@/lib/chat/chat-assistant-client";
 import type { ChatConversation } from "@/lib/chat/chat-types";
-
-export function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error && error.message.trim() ? error.message : fallback;
-}
 
 export function sortConversations(conversations: readonly ChatConversation[]): ChatConversation[] {
   return [...conversations].sort((left, right) => right.updatedAt - left.updatedAt);

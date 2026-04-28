@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { canonicalizeRoutePathname, extractPublicProfileHost, matchRoute } from "./router";
+import { canonicalizeRoutePathname, matchRoute } from "./router";
+import { extractPublicProfileHost } from "@/lib/public-host";
 
 function expectJson(actual: unknown, expected: unknown): void {
   expect(JSON.stringify(actual)).toBe(JSON.stringify(expected));

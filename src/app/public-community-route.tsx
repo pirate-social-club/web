@@ -17,7 +17,7 @@ import { SelfVerificationModal } from "@/components/compositions/verification/se
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
-import { getApiErrorMessage, isApiNotFoundError } from "@/lib/api/client";
+import { isApiNotFoundError } from "@/lib/api/client";
 import { useSession } from "@/lib/api/session-store";
 import { formatCommunityRouteLabel } from "@/lib/community-routing";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
@@ -274,7 +274,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         if (!cancelled) setEligibility(nextEligibility);
       })
       .catch((nextError: unknown) => {
-        if (!cancelled) toast.error(getApiErrorMessage(nextError, "Could not load community membership."));
+        if (!cancelled) toast.error(getErrorMessage(nextError, "Could not load community membership."));
       });
     return () => { cancelled = true; };
   }, [api.communities, preview?.community_id, session]);
@@ -493,7 +493,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       });
       setViewerFollowing(previousFollowing);
       setFollowerCount(preview.follower_count ?? null);
-      toast.error(getApiErrorMessage(nextError, "Follow failed"));
+      toast.error(getErrorMessage(nextError, "Follow failed"));
     } finally {
       setFollowLoading(false);
     }

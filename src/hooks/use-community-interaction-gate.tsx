@@ -8,7 +8,7 @@ import { CommunityInteractionGateModal } from "@/components/compositions/communi
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/api/client";
+import { getErrorMessage } from "@/lib/error-utils";
 import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
@@ -199,7 +199,7 @@ export function useCommunityInteractionGate({
         openCommunity: () => navigate(buildCommunityPath(gate.preview.community_id)),
       }));
     } catch (error: unknown) {
-      toast.error(getApiErrorMessage(error, "Verification completed, but Pirate could not join this community."));
+      toast.error(getErrorMessage(error, "Verification completed, but Pirate could not join this community."));
     }
   }, [api.communities, closeModal, interactionCopy, invalidateCommunityGate, updateCachedGate]);
 

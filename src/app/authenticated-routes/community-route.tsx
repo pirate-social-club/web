@@ -10,7 +10,7 @@ import { CommunityRouteLoadingState } from "@/app/route-loading-states";
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
 import { useSession } from "@/lib/api/session-store";
-import { getApiErrorMessage, isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
+import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
@@ -43,7 +43,7 @@ import { buildFeedSortOptions } from "@/lib/feed-sort-options";
 import { AuthRequiredRouteState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
 import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
-import { useCommunityInteractionGate } from "@/app/authenticated-helpers/community-interaction-gate";
+import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
@@ -197,7 +197,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         viewerFollowing: result.following,
       });
     } catch (e: unknown) {
-      toast.error(getApiErrorMessage(e, "Follow failed"));
+      toast.error(getErrorMessage(e, "Follow failed"));
     } finally {
       setFollowLoading(false);
     }

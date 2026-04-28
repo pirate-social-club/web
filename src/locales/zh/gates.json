@@ -1,0 +1,81 @@
+{
+  "requirements": {
+    "nationality": {
+      "withValues": "需要国籍验证：{countryLabel}",
+      "withoutValues": "需要国籍验证"
+    },
+    "gender": {
+      "public": "使用身份证件验证",
+      "adminWithValue": "需要 Self 证件性别标记 {requiredValue}"
+    },
+    "uniqueHuman": {
+      "very": "需要掌纹扫描",
+      "self": "需要真人验证"
+    },
+    "ageOver18": "需要 18+ 验证",
+    "minimumAge": "需要 {age}+ 验证",
+    "walletScore": {
+      "withScore": "需要 Passport 分数 {minimumScore}+",
+      "withoutScore": "需要 Passport 分数"
+    },
+    "erc721Holding": {
+      "withLabel": "需要持有来自 {label} 的以太坊 NFT",
+      "withoutLabel": "需要持有以太坊 NFT"
+    },
+    "erc721InventoryMatch": "需要 {quantity} 个 Courtyard 藏品：{assetLabel}",
+    "fallback": "需要 {gateType} 验证"
+  },
+  "joinCta": {
+    "joinable": "加入",
+    "requestable": "申请加入",
+    "pendingRequest": "申请已提交",
+    "verificationRequired": "验证后加入",
+    "alreadyJoined": "已加入",
+    "banned": "不可用",
+    "gateFailed": "不符合条件"
+  },
+  "verificationPrompt": {
+    "very": {
+      "title": "使用身份证件验证",
+      "description": "使用 VeryAI app 扫描掌纹，然后回到 Pirate 继续。需要时会显示下载链接。",
+      "actionLabel": "使用身份证件验证"
+    },
+    "passport": {
+      "title": "需要 Passport 分数",
+      "description": "提高 Passport 分数后回来加入。",
+      "actionLabel": "打开 Passport"
+    },
+    "self": {
+      "title": "使用身份证件验证",
+      "actionLabel": "使用身份证件验证",
+      "descriptions": {
+        "default": "使用 Self app 私密验证你的证件，然后回到 Pirate 继续。需要时会显示下载链接。",
+        "ageOver18": "使用 Self app 确认你已满 18 岁，然后回到 Pirate 继续。",
+        "minimumAge": "使用 Self app 通过证件确认年龄，然后回到 Pirate 继续。",
+        "nationality": "使用 Self app 通过证件确认国籍，然后回到 Pirate 继续。",
+        "gender": "使用 Self app 私密验证你的证件，然后回到 Pirate 继续。",
+        "multiple": "使用 Self app 通过证件确认{capabilities}，然后回到 Pirate 继续。"
+      }
+    }
+  },
+  "capabilityLabels": {
+    "ageOver18": "18+ 状态",
+    "minimumAge": "年龄",
+    "nationality": "国籍",
+    "gender": "Self 证件性别标记",
+    "uniqueHuman": "真人状态",
+    "walletScore": "Passport 分数"
+  },
+  "gateFailure": {
+    "nationalityMismatch": "你的身份验证结果不符合该社区要求。",
+    "genderMismatch": "你的证件验证结果不符合该社区规则。",
+    "minimumAgeMismatch": "你已验证的年龄不符合该社区要求。",
+    "providerNotAccepted": "你现有的验证方式不满足该社区要求。",
+    "unsupported": "这个社区使用了你当前验证暂时无法满足的门槛。",
+    "erc721HoldingRequired": "连接持有该 NFT 的以太坊钱包即可加入此社区。",
+    "erc721InventoryMatchRequired": "连接持有所需 Courtyard 藏品的钱包即可加入。",
+    "tokenInventoryUnavailable": "暂时无法检查 Courtyard 藏品。",
+    "walletScoreTooLow": "你的 Passport 分数不符合该社区要求。",
+    "banned": "你没有资格加入这个社区。"
+  }
+}

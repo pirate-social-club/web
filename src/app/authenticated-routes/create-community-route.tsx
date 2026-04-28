@@ -8,7 +8,7 @@ import { updateSessionUser, useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
-import { getApiErrorMessage } from "@/lib/api/client";
+import { getErrorMessage } from "@/lib/error-utils";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 import type { CreateCommunityComposerProps } from "@/components/compositions/community/create-composer/create-community-composer.types";
@@ -147,7 +147,7 @@ export function CreateCommunityPage() {
     try {
       return await createCommunityFromInput(input);
     } catch (e: unknown) {
-      throw new Error(getApiErrorMessage(e, "Community creation failed"));
+      throw new Error(getErrorMessage(e, "Community creation failed"));
     }
   }, [connect, createCommunityFromInput, creatorVerificationState.ageOver18Verified, session, startSelfVerification]);
 

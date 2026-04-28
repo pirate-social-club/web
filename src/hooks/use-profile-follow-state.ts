@@ -9,6 +9,7 @@ import {
   usePiratePrivyWallets,
 } from "@/components/auth/privy-provider";
 import { type StoredSession, useSession } from "@/lib/api/session-store";
+import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import {
@@ -48,6 +49,16 @@ function resolvePrimarySessionWallet(session: StoredSession | null): Address | n
   }
 
   return normalizeAddress(session?.walletAttachments[0]?.wallet_address);
+}
+
+const loggedFollowDiagnostics = new Set<string>();
+
+function warnFollowOnce(key: string, message: string, context?: Record<string, unknown>): void {
+  if (loggedFollowDiagnostics.has(key)) {
+    return;
+  }
+  loggedFollowDiagnostics.add(key);
+  logger.warn(message, context);
 }
 
 export interface ProfileFollowState {
@@ -114,7 +125,7 @@ export function useProfileFollowState(
     }
 
     setOverrideFollowing(readViewerFollowOverride(viewerAddress, targetAddress)?.following ?? null);
-  }, [ownProfile, targetAddress, viewerAddress]);
+  }, [ownProfile, targetAddress, targetWalletAddress, viewerAddress]);
 
   React.useEffect(() => {
     if (!targetAddress) {
@@ -141,6 +152,9 @@ export function useProfileFollowState(
           return;
         }
 
+        warnFollowOnce(`summary:${targetAddress}`, "[profile-follow] Failed to load follow summary.", {
+          targetAddress,
+        });
         setFollowerCount(null);
         setFollowingCount(0);
       })
@@ -163,6 +177,13 @@ export function useProfileFollowState(
     }
 
     if (!targetAddress) {
+      if (!ownProfile && targetWalletAddress) {
+        warnFollowOnce(`invalid-target:${targetWalletAddress}`, "[profile-follow] Follow target wallet is not a valid EVM address.", {
+          targetWalletAddress,
+        });
+      } else if (!ownProfile) {
+        warnFollowOnce("missing-target-wallet", "[profile-follow] Follow disabled because target profile has no primary wallet address.");
+      }
       setServerFollowing(false);
       setFollowReady(true);
       return;
@@ -193,6 +214,10 @@ export function useProfileFollowState(
       })
       .catch(() => {
         if (!cancelled) {
+          warnFollowOnce(`viewer:${viewerAddress}:${targetAddress}`, "[profile-follow] Failed to load viewer follow state.", {
+            targetAddress,
+            viewerAddress,
+          });
           setServerFollowing(false);
         }
       })

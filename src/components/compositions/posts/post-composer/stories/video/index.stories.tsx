@@ -3,13 +3,14 @@ import * as React from "react";
 
 import { PostComposer } from "../../post-composer";
 import type { VideoComposerState } from "../../post-composer.types";
-import { baseComposer, composerDecorator, InteractivePostComposer } from "../story-helpers";
+import { baseComposer, composerDecorator, composerParameters, InteractivePostComposer } from "../story-helpers";
 
 const meta = {
   title: "Compositions/Posts/PostComposer/Video",
   component: PostComposer,
   args: baseComposer,
   decorators: composerDecorator,
+  parameters: composerParameters,
 } satisfies Meta<typeof PostComposer>;
 
 export default meta;

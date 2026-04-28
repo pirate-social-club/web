@@ -9,8 +9,10 @@ import type { PostAudience } from "./post-composer.types";
 export interface AudienceSelectProps {
   value: PostAudience;
   onChange: (value: PostAudience) => void;
+  className?: string;
   publicOptionEnabled?: boolean;
   publicOptionDisabledReason?: string;
+  triggerClassName?: string;
   labels: {
     public: string;
     community: string;
@@ -21,8 +23,10 @@ export interface AudienceSelectProps {
 export function AudienceSelect({
   value,
   onChange,
+  className,
   publicOptionEnabled = true,
   publicOptionDisabledReason,
+  triggerClassName,
   labels,
 }: AudienceSelectProps) {
   const options = [
@@ -46,11 +50,13 @@ export function AudienceSelect({
   return (
     <ResponsiveOptionSelect<PostAudience>
       ariaLabel={labels.title}
+      className={className}
       drawerTitle={labels.title}
       onValueChange={onChange}
       options={options}
       selectAlign="start"
       size="lg"
+      triggerClassName={triggerClassName}
       triggerContent={(
         <span className="flex min-w-0 items-center gap-2">
           {selected.icon}

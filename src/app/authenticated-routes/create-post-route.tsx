@@ -481,7 +481,7 @@ export function CreatePostPage({ communityId, initialDraft }: { communityId: str
     return (
       <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
         <MobilePageHeader onCloseClick={() => navigate(`/c/${communityId}`)} title={pageTitle} />
-        <section className="flex min-w-0 flex-1 flex-col px-4 pb-36 pt-[calc(env(safe-area-inset-top)+5rem)]">
+        <section className="flex min-w-0 flex-1 flex-col px-4 pb-8 pt-[calc(env(safe-area-inset-top)+5rem)]">
           <CreatePostComposer copy={copy} state={state} onSubmit={handleSubmit} submitLoading={selfLoading} />
         </section>
         {selfVerificationModal}

@@ -20,16 +20,24 @@ import { Type } from "@/components/primitives/type";
 
 export function IdentitySection({
   authorMode,
+  className,
+  controlClassName,
+  hideLabel,
   identity,
   identityMode,
   onAuthorModeChange,
   onIdentityModeChange,
+  triggerClassName,
 }: {
   authorMode: AuthorMode;
+  className?: string;
+  controlClassName?: string;
+  hideLabel?: boolean;
   identity: ComposerIdentityState;
   identityMode: IdentityMode;
   onAuthorModeChange: (mode: AuthorMode) => void;
   onIdentityModeChange: (mode: IdentityMode) => void;
+  triggerClassName?: string;
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").createPost;
@@ -47,8 +55,12 @@ export function IdentitySection({
 
   return (
     <IdentitySelect
+      className={className}
+      controlClassName={controlClassName}
+      hideLabel={hideLabel}
       identity={identity}
       postAsLabel={copy.sections.postAs}
+      triggerClassName={triggerClassName}
       value={currentOption}
       onChange={handleChange}
     />

@@ -72,7 +72,7 @@ export function ResponsiveOptionSelect<TValue extends string = string>({
 
   return (
     <div className={cn("inline-flex", className)}>
-      <div className="md:hidden">
+      <div className="w-full md:hidden">
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
           <SheetTrigger asChild>
             <PillButton aria-label={ariaLabel} className={cn(triggerSizeClassName, "max-w-48 gap-1.5 px-4", triggerClassName)} tone="default">

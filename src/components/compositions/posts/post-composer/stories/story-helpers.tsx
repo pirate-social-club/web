@@ -54,15 +54,34 @@ export const baseComposer: PostComposerProps = {
     helpText:
       "Attach optional qualifiers to add authority. Anything already required by this community stays hidden.",
   },
+  submit: {
+    disabled: false,
+    label: "Post",
+    loading: false,
+    onSubmit: () => undefined,
+  },
 };
 
 export const composerDecorator = [
   (Story: () => React.ReactNode) => (
-    <div style={{ width: "min(100vw - 32px, 980px)" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-start",
+        marginInline: "auto",
+        minHeight: "100dvh",
+        width: "min(100vw - 32px, 980px)",
+      }}
+    >
       <Story />
     </div>
   ),
 ];
+
+export const composerParameters = {
+  layout: "fullscreen",
+};
 
 export function InteractivePostComposer(props: PostComposerProps) {
   const [license, setLicense] = React.useState(props.license);

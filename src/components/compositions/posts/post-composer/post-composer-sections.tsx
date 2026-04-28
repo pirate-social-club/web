@@ -460,19 +460,24 @@ export function PostComposerCharitySection({
 
 export function PostComposerAudienceSection({
   audience,
+  className,
   copy,
+  triggerClassName,
   updateAudience,
 }: {
   audience: ComposerAudienceState;
+  className?: string;
   copy: {
     audience: Record<string, string>;
     sections: Record<string, string>;
   };
+  triggerClassName?: string;
   updateAudience: AudienceStateUpdater;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className={cn("flex min-w-0 items-center gap-3", className)}>
       <AudienceSelect
+        className="w-full min-w-0"
         labels={{
           public: copy.audience.public,
           community: copy.audience.community,
@@ -480,6 +485,7 @@ export function PostComposerAudienceSection({
         }}
         publicOptionDisabledReason={audience.publicOptionDisabledReason}
         publicOptionEnabled={audience.publicOptionEnabled}
+        triggerClassName={triggerClassName}
         value={audience.visibility}
         onChange={(value) => updateAudience((current) => ({ ...current, visibility: value }))}
       />

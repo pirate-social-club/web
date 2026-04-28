@@ -1,13 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { PostComposer } from "../post-composer";
-import { baseComposer, composerDecorator } from "./story-helpers";
+import { baseComposer, composerDecorator, composerParameters } from "./story-helpers";
 
 const meta = {
   title: "Compositions/Posts/PostComposer",
   component: PostComposer,
   args: baseComposer,
   decorators: composerDecorator,
+  parameters: composerParameters,
 } satisfies Meta<typeof PostComposer>;
 
 export default meta;

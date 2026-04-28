@@ -14,6 +14,10 @@ export interface IdentitySelectProps {
   onChange: (value: IdentityOption) => void;
   identity: ComposerIdentityState;
   postAsLabel: string;
+  className?: string;
+  controlClassName?: string;
+  hideLabel?: boolean;
+  triggerClassName?: string;
 }
 
 export function IdentitySelect({
@@ -21,6 +25,10 @@ export function IdentitySelect({
   onChange,
   identity,
   postAsLabel,
+  className,
+  controlClassName,
+  hideLabel = false,
+  triggerClassName,
 }: IdentitySelectProps) {
   const handleLabel = identity.publicHandle ?? "@handle";
   const anonymousLabel = identity.anonymousLabel ?? "anon_club";
@@ -49,15 +57,16 @@ export function IdentitySelect({
   }, [selected.value, value, onChange]);
 
   return (
-    <div className="flex items-center gap-2">
-      <Type as="span" variant="caption">{postAsLabel}</Type>
+    <div className={cn("flex min-w-0 items-center gap-2", className)}>
+      {!hideLabel ? <Type as="span" variant="caption">{postAsLabel}</Type> : null}
       <ResponsiveOptionSelect<IdentityOption>
         ariaLabel={postAsLabel}
+        className={controlClassName}
         drawerTitle={postAsLabel}
         onValueChange={onChange}
         options={options}
         selectAlign="start"
-        triggerClassName={cn("h-auto min-w-0 py-1.5")}
+        triggerClassName={cn("h-auto min-w-0 py-1.5", triggerClassName)}
         triggerContent={<span className="truncate">{selected.label}</span>}
         value={selected.value}
       />

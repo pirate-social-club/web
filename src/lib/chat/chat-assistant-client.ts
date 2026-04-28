@@ -3,11 +3,9 @@
 import * as React from "react";
 import pirateBrandMarkUrl from "@/assets/logo_ghost_sm.png";
 import { getStoredSession, type StoredSession } from "@/lib/api/session-store";
-import { buildPublicProfilePath } from "@/lib/profile-routing";
 import type { ChatConversation, ChatMessageRecord } from "./chat-types";
 
 export const ASSISTANT_CONVERSATION_ID = "bedsheet";
-const ASSISTANT_PROFILE_HANDLE = "bedsheet.pirate";
 const ASSISTANT_CACHE_KEY = "pirate.web.chat.assistant.v1";
 const ASSISTANT_CACHE_EVENT = "pirate:web:chat-assistant-cache";
 const ASSISTANT_AVAILABILITY_TTL_MS = 30_000;
@@ -286,8 +284,7 @@ export function getAssistantConversation(): ChatConversation {
     avatarUrl: pirateBrandMarkUrl,
     id: ASSISTANT_CONVERSATION_ID,
     preview: cache.preview,
-    profileHref: buildPublicProfilePath(ASSISTANT_PROFILE_HANDLE),
-    targetLabel: ASSISTANT_PROFILE_HANDLE,
+    targetLabel: "Pirate assistant",
     title: "Bedsheet",
     transport: "assistant",
     unreadCount: unreadCountFor(cache),

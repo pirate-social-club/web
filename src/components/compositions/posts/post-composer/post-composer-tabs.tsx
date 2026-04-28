@@ -22,7 +22,7 @@ export function PostComposerTabs({
   visibleTabs: ComposerTab[];
 }) {
   const orderedVisibleTabs = isRtl ? [...visibleTabs].reverse() : visibleTabs;
-  const useEqualWidthMobileTabs = isMobile && orderedVisibleTabs.length <= 4;
+  const useEqualWidthMobileTabs = isMobile;
 
   return (
     <Tabs

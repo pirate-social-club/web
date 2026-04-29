@@ -53,13 +53,15 @@ export interface CommunitySidebarFlairPolicy {
   definitions: CommunitySidebarFlairDefinition[];
 }
 
-export interface CommunitySidebarModerator {
+export interface CommunitySidebarRoleHolder {
+  user_id: string;
   avatarSeed?: string | null;
   avatarSrc?: string | null;
   displayName: string;
   handle: string;
   nationalityBadgeCountryCode?: string | null;
   nationalityBadgeLabel?: string | null;
+  role: "owner" | "admin" | "moderator";
 }
 
 export interface CommunitySidebarCharity {
@@ -86,7 +88,8 @@ export interface CommunitySidebarProps {
   followerCount?: number | null;
   memberCount?: number | null;
   membershipMode: CommunityMembershipMode;
-  moderator?: CommunitySidebarModerator | null;
+  owner?: CommunitySidebarRoleHolder | null;
+  moderators: CommunitySidebarRoleHolder[];
   namespacePanel?: CommunitySidebarNamespacePanel | null;
   requirements?: string[];
   referenceLinks?: CommunitySidebarReferenceLink[];

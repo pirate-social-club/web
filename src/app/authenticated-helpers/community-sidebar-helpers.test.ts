@@ -79,13 +79,15 @@ describe("buildCommunityPreviewSidebar", () => {
       donation_policy_mode: "none",
       donation_partner_id: null,
       donation_partner: null,
-      moderator: {
+      owner: {
         user_id: "usr_owner",
         display_name: "Owner Person",
         handle: "owner.pirate",
         avatar_ref: "profile://owner-avatar",
         nationality_badge_country: null,
+        role: "owner" as const,
       },
+      moderators: [],
       reference_links: [{
         community_reference_link_id: "crl_site",
         platform: "official_website",
@@ -109,7 +111,7 @@ describe("buildCommunityPreviewSidebar", () => {
     expect(sidebar.description).toBe("Descripcion traducida");
     expect(sidebar.followerCount).toBe(20);
     expect(sidebar.memberCount).toBe(12);
-    expect(sidebar.moderator?.handle).toBe("owner.pirate");
+    expect(sidebar.owner?.handle).toBe("owner.pirate");
     expect(sidebar.referenceLinks?.[0]?.metadata.displayName).toBe("Centro traducido");
   });
 });

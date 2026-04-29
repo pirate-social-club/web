@@ -33,6 +33,7 @@
     "showTranslation": "显示翻译",
     "submitReply": "发布回复",
     "savedPostActions": "已保存帖子操作",
+    "searchCommunities": "搜索社区",
     "postOptions": "帖子选项",
     "playVideo": "播放视频",
     "videoThumbnail": "视频缩略图",
@@ -106,6 +107,8 @@
     "membersLabel": "成员",
     "modToolsLabel": "管理工具",
     "moderatorLabel": "版主",
+    "moderatorsLabel": "版主",
+    "ownerLabel": "所有者",
     "requirementsLabel": "要求",
     "rulesLabel": "规则",
     "tagsLabel": "标签",
@@ -163,6 +166,7 @@
     "actions": {
       "back": "返回",
       "continue": "继续",
+      "next": "下一步",
       "post": "发布",
       "publish": "发布",
       "publishRemix": "发布混音"

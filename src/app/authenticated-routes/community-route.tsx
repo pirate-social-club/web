@@ -36,7 +36,6 @@ import { useCommunityPageData } from "@/app/authenticated-data/community-data";
 import {
   buildCommunityPreviewSidebar,
   buildCommunitySidebar,
-  buildCommunitySidebarModeratorFromProfile,
   buildCommunitySidebarRequirements,
   getNamespaceActionLabel,
 } from "@/app/authenticated-helpers/community-sidebar-helpers";
@@ -607,11 +606,6 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     community.route_slug,
   );
   const previewSidebar = buildCommunityPreviewSidebar(preview, locale);
-  const moderator =
-    previewSidebar.moderator ??
-    (ownsCommunity
-      ? buildCommunitySidebarModeratorFromProfile(session?.profile)
-      : null);
 
   return (
     <>
@@ -673,7 +667,8 @@ export function CommunityPage({ communityId }: { communityId: string }) {
             ...buildCommunitySidebar(community, locale),
             followerCount,
             memberCount: preview.member_count ?? null,
-            moderator,
+            owner: previewSidebar.owner,
+            moderators: previewSidebar.moderators,
             requirements: buildCommunitySidebarRequirements({
               defaultAgeGatePolicy: community.default_age_gate_policy ?? "none",
               gateSummaries: preview.membership_gate_summaries,

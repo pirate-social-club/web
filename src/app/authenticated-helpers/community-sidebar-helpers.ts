@@ -1,7 +1,7 @@
 export {
   buildCommunitySidebar,
   buildCommunityPreviewSidebar,
-  buildCommunitySidebarModeratorFromProfile,
+  buildCommunitySidebarRoleHolderFromProfile,
   buildCommunitySidebarRequirements,
   getCommunityActionLabel,
   getCommunitySidebarRules,

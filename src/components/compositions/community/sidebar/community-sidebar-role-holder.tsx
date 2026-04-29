@@ -4,11 +4,11 @@ import * as React from "react";
 import { AvatarWithBadge } from "@/components/compositions/system/avatar-badge/avatar-with-badge";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
 import { cn } from "@/lib/utils";
-import type { CommunitySidebarModerator } from "./community-sidebar.types";
+import type { CommunitySidebarRoleHolder } from "./community-sidebar.types";
 
-export interface CommunitySidebarModeratorProps {
+export interface CommunitySidebarRoleHolderProps {
   className?: string;
-  moderator: CommunitySidebarModerator;
+  roleHolder: CommunitySidebarRoleHolder;
 }
 
 function buildAvatarFallback(name: string): string {
@@ -22,11 +22,11 @@ function normalizeHandleLabel(handle: string): string {
   return handle.trim().replace(/^u\//i, "");
 }
 
-export function CommunitySidebarModerator({
+export function CommunitySidebarRoleHolderComponent({
   className,
-  moderator,
-}: CommunitySidebarModeratorProps) {
-  const handleLabel = normalizeHandleLabel(moderator.handle);
+  roleHolder,
+}: CommunitySidebarRoleHolderProps) {
+  const handleLabel = normalizeHandleLabel(roleHolder.handle);
 
   return (
     <a
@@ -38,12 +38,12 @@ export function CommunitySidebarModerator({
     >
       <AvatarWithBadge
         avatarClassName="border-border bg-foreground/10 text-foreground"
-        badgeCountryCode={moderator.nationalityBadgeCountryCode}
-        badgeLabel={moderator.nationalityBadgeLabel ?? ""}
-        fallback={buildAvatarFallback(moderator.displayName)}
-        fallbackSeed={moderator.avatarSeed ?? undefined}
+        badgeCountryCode={roleHolder.nationalityBadgeCountryCode}
+        badgeLabel={roleHolder.nationalityBadgeLabel ?? ""}
+        fallback={buildAvatarFallback(roleHolder.displayName)}
+        fallbackSeed={roleHolder.avatarSeed ?? undefined}
         size="md"
-        src={moderator.avatarSrc?.trim() || undefined}
+        src={roleHolder.avatarSrc?.trim() || undefined}
       />
       <span className="min-w-0 truncate font-semibold text-foreground hover:underline">
         {handleLabel}

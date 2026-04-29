@@ -192,6 +192,7 @@ describe("composition smoke tests", () => {
         createdAt="2026-04-19T08:00:00.000Z"
         displayName="Requirements Club"
         membershipMode="gated"
+        moderators={[]}
         requirements={["Palestine nationality", "18+"]}
       />,
     );

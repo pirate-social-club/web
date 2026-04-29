@@ -110,13 +110,15 @@ function createPreview(): CommunityPreview {
     donation_policy_mode: "none",
     donation_partner_id: null,
     donation_partner: null,
-    moderator: {
+    owner: {
       user_id: "usr_owner",
       display_name: "Owner Person",
       handle: "owner.pirate",
       avatar_ref: null,
       nationality_badge_country: null,
+      role: "owner" as const,
     },
+    moderators: [],
     reference_links: [],
     membership_gate_summaries: [],
     rules: [],

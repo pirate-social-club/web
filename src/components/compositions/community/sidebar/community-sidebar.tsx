@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { CommunitySidebarCharity } from "./community-sidebar-charity";
 import { CommunitySidebarFlairs } from "./community-sidebar-flairs";
 import { CommunitySidebarLinks } from "./community-sidebar-links";
-import { CommunitySidebarModerator } from "./community-sidebar-moderator";
+import { CommunitySidebarRoleHolderComponent } from "./community-sidebar-role-holder";
 import { CommunitySidebarRules } from "./community-sidebar-rules";
 import type { CommunitySidebarProps } from "./community-sidebar.types";
 import { Type } from "@/components/primitives/type";
@@ -38,14 +38,15 @@ function CommunitySidebarSections({
   flairPolicy,
   followerCount,
   memberCount,
-  moderator,
+  owner,
+  moderators,
   requirements,
   referenceLinks,
   rules,
   showDescriptionSection = false,
 }: Pick<
   CommunitySidebarProps,
-  "charity" | "description" | "flairPolicy" | "followerCount" | "memberCount" | "moderator" | "requirements" | "referenceLinks" | "rules"
+  "charity" | "description" | "flairPolicy" | "followerCount" | "memberCount" | "owner" | "moderators" | "requirements" | "referenceLinks" | "rules"
 > & {
   showDescriptionSection?: boolean;
 }) {
@@ -100,10 +101,18 @@ function CommunitySidebarSections({
         </div>
       ) : null}
 
-      {moderator && (
+      {owner && (
         <div className="flex flex-col gap-1.5">
-          <div className={SECTION_LABEL}>{copy.moderatorLabel}</div>
-          <CommunitySidebarModerator moderator={moderator} />
+          <div className={SECTION_LABEL}>{copy.ownerLabel}</div>
+          <CommunitySidebarRoleHolderComponent roleHolder={owner} />
+        </div>
+      )}
+      {moderators.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <div className={SECTION_LABEL}>{copy.moderatorsLabel}</div>
+          {moderators.map((mod) => (
+            <CommunitySidebarRoleHolderComponent key={mod.user_id} roleHolder={mod} />
+          ))}
         </div>
       )}
 
@@ -169,13 +178,14 @@ export function CommunitySidebarDetails({
   flairPolicy,
   followerCount,
   memberCount,
-  moderator,
+  owner,
+  moderators,
   requirements,
   referenceLinks,
   rules,
 }: Pick<
   CommunitySidebarProps,
-  "charity" | "className" | "description" | "flairPolicy" | "followerCount" | "memberCount" | "moderator" | "requirements" | "referenceLinks" | "rules"
+  "charity" | "className" | "description" | "flairPolicy" | "followerCount" | "memberCount" | "owner" | "moderators" | "requirements" | "referenceLinks" | "rules"
 >) {
   return (
     <div className={cn("rounded-lg bg-card px-4 py-4", className)}>
@@ -186,7 +196,8 @@ export function CommunitySidebarDetails({
           flairPolicy={flairPolicy}
           followerCount={followerCount}
           memberCount={memberCount}
-          moderator={moderator}
+          owner={owner}
+          moderators={moderators}
           referenceLinks={referenceLinks}
           requirements={requirements}
           rules={rules}
@@ -207,7 +218,8 @@ export function CommunitySidebar({
   flairPolicy,
   followerCount,
   memberCount,
-  moderator,
+  owner,
+  moderators,
   requirements,
   referenceLinks,
   rules,
@@ -237,7 +249,8 @@ export function CommunitySidebar({
         flairPolicy={flairPolicy}
         followerCount={followerCount}
         memberCount={memberCount}
-        moderator={moderator}
+        owner={owner}
+        moderators={moderators}
         referenceLinks={referenceLinks}
         requirements={requirements}
         rules={rules}

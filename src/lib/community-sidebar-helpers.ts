@@ -6,7 +6,7 @@ import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contract
 import type { MembershipGateSummary as ApiMembershipGateSummary } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
-import type { CommunitySidebarModerator, CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
+import type { CommunitySidebarRoleHolder, CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
 
@@ -230,11 +230,13 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       url: link.url,
       verified: link.verified,
     })),
+    owner: undefined,
+    moderators: [],
     rules: getCommunitySidebarRules(community),
   };
 }
 
-export function buildCommunitySidebarModeratorFromProfile(profile: ApiProfile | null | undefined): CommunitySidebarModerator | null {
+export function buildCommunitySidebarRoleHolderFromProfile(profile: ApiProfile | null | undefined): CommunitySidebarRoleHolder | null {
   if (!profile) {
     return null;
   }
@@ -247,12 +249,14 @@ export function buildCommunitySidebarModeratorFromProfile(profile: ApiProfile | 
   }
 
   return {
+    user_id: profile.user_id,
     avatarSeed: profile.user_id,
     avatarSrc: profile.avatar_ref ?? undefined,
     displayName,
     handle,
     nationalityBadgeCountryCode: profile.nationality_badge_country ?? undefined,
     nationalityBadgeLabel: profile.nationality_badge_country ?? undefined,
+    role: "owner" as const,
   };
 }
 
@@ -277,16 +281,28 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
     followerCount: preview.follower_count ?? undefined,
     memberCount: preview.member_count ?? undefined,
     membershipMode: preview.membership_mode,
-    moderator: preview.moderator
+    owner: preview.owner
       ? {
-        avatarSeed: preview.moderator.user_id,
-        avatarSrc: preview.moderator.avatar_ref ?? undefined,
-        displayName: preview.moderator.display_name,
-        handle: preview.moderator.handle,
-        nationalityBadgeCountryCode: preview.moderator.nationality_badge_country ?? undefined,
-        nationalityBadgeLabel: preview.moderator.nationality_badge_country ?? undefined,
+        user_id: preview.owner.user_id,
+        avatarSeed: preview.owner.user_id,
+        avatarSrc: preview.owner.avatar_ref ?? undefined,
+        displayName: preview.owner.display_name,
+        handle: preview.owner.handle,
+        nationalityBadgeCountryCode: preview.owner.nationality_badge_country ?? undefined,
+        nationalityBadgeLabel: preview.owner.nationality_badge_country ?? undefined,
+        role: preview.owner.role,
       }
       : null,
+    moderators: preview.moderators.map((mod) => ({
+      user_id: mod.user_id,
+      avatarSeed: mod.user_id,
+      avatarSrc: mod.avatar_ref ?? undefined,
+      displayName: mod.display_name,
+      handle: mod.handle,
+      nationalityBadgeCountryCode: mod.nationality_badge_country ?? undefined,
+      nationalityBadgeLabel: mod.nationality_badge_country ?? undefined,
+      role: mod.role,
+    })),
     requirements: buildCommunitySidebarRequirements({
       gateSummaries: preview.membership_gate_summaries,
       locale,

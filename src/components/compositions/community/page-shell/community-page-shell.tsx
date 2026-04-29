@@ -131,7 +131,8 @@ export function CommunityPageShell({
                 flairPolicy={sidebar.flairPolicy}
                 followerCount={sidebar.followerCount}
                 memberCount={sidebar.memberCount}
-                moderator={sidebar.moderator}
+                owner={sidebar.owner}
+                moderators={sidebar.moderators}
                 referenceLinks={sidebar.referenceLinks}
                 requirements={sidebar.requirements}
                 rules={sidebar.rules}
@@ -152,12 +153,7 @@ export function CommunityPageShell({
       <Feed
         activeSort={activeSort}
         availableSorts={availableSorts}
-        controls={sortControl || controls ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {sortControl}
-            {controls}
-          </div>
-        ) : undefined}
+        controls={controls}
         emptyState={emptyState}
         items={items}
         listClassName="-mx-3 border-t-0 md:mx-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"

@@ -33,6 +33,7 @@
     "showTranslation": "Show translation",
     "submitReply": "Post reply",
     "savedPostActions": "Saved post actions",
+    "searchCommunities": "Search communities",
     "postOptions": "Post options",
     "playVideo": "Play video",
     "videoThumbnail": "Video thumbnail",
@@ -106,6 +107,8 @@
     "membersLabel": "Members",
     "modToolsLabel": "Mod Tools",
     "moderatorLabel": "Moderator",
+    "moderatorsLabel": "Moderators",
+    "ownerLabel": "Owner",
     "requirementsLabel": "Requirements",
     "rulesLabel": "Rules",
     "tagsLabel": "Tags",
@@ -163,6 +166,7 @@
     "actions": {
       "back": "Back",
       "continue": "Continue",
+      "next": "Next",
       "post": "Post",
       "publish": "Publish",
       "publishRemix": "Publish remix"

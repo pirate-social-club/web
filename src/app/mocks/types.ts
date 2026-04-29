@@ -7,7 +7,7 @@ import type {
 } from "@/components/compositions/profiles/profile-page/profile-page.types";
 import type {
   CommunitySidebarFlairPolicy,
-  CommunitySidebarModerator,
+  CommunitySidebarRoleHolder,
   CommunitySidebarReferenceLink,
   CommunitySidebarRule,
 } from "@/components/compositions/community/sidebar/community-sidebar.types";
@@ -25,7 +25,8 @@ export interface CommunitySummary {
   createdAt: string;
   memberCount: number;
   membershipMode: CommunityMembershipMode;
-  moderator: CommunitySidebarModerator;
+  owner?: CommunitySidebarRoleHolder | null;
+  moderators: CommunitySidebarRoleHolder[];
   referenceLinks: CommunitySidebarReferenceLink[];
   rules: CommunitySidebarRule[];
   flairPolicy: CommunitySidebarFlairPolicy;

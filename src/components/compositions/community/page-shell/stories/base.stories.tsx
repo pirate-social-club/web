@@ -85,6 +85,7 @@ const infinitySidebar: CommunitySidebarProps = {
   followerCount: 18400,
   membershipMode: "open",
   memberCount: 1270,
+  moderators: [],
 };
 
 const tameImpalaSidebar: CommunitySidebarProps = {
@@ -96,6 +97,7 @@ const tameImpalaSidebar: CommunitySidebarProps = {
   followerCount: 92100,
   membershipMode: "open",
   memberCount: 48231,
+  moderators: [],
   referenceLinks: [
     {
       communityReferenceLinkId: "spotify",

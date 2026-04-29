@@ -33,14 +33,17 @@ const { mock } = await import("bun:test") as unknown as {
   };
 };
 
+let mockedIsMobile = true;
+
 mock.module("@/hooks/use-mobile", () => ({
-  useIsMobile: () => true,
+  useIsMobile: () => mockedIsMobile,
 }));
 
 const { CommunityPageShell } = await import("./community-page-shell");
 
 describe("CommunityPageShell", () => {
   test("places the mobile feed sort control below the tabs", () => {
+    mockedIsMobile = true;
     const markup = renderToStaticMarkup(
       <CommunityPageShell
         activeSort="best"
@@ -54,6 +57,7 @@ describe("CommunityPageShell", () => {
           createdAt: "2026-04-28T00:00:00.000Z",
           displayName: "Test community",
           membershipMode: "open",
+          moderators: [],
         }}
         title="Test community"
       />,
@@ -71,5 +75,32 @@ describe("CommunityPageShell", () => {
 
     expect(tabRow).toBe(aboutTab?.parentElement);
     expect(tabRow?.contains(sortButton!)).toBe(false);
+  });
+
+  test("renders one desktop feed sort selector", () => {
+    mockedIsMobile = false;
+    const markup = renderToStaticMarkup(
+      <CommunityPageShell
+        activeSort="best"
+        availableSorts={[
+          { label: "Best", value: "best" },
+          { label: "New", value: "new" },
+        ]}
+        communityId="cmt_test"
+        items={[]}
+        sidebar={{
+          createdAt: "2026-04-28T00:00:00.000Z",
+          displayName: "Test community",
+          membershipMode: "open",
+          moderators: [],
+        }}
+        title="Test community"
+      />,
+    );
+    const rendered = parseHTML(markup).document;
+    const sortButtons = Array.from(rendered.querySelectorAll("button"))
+      .filter((button) => button.getAttribute("aria-label") === "Sort feed");
+
+    expect(sortButtons).toHaveLength(2);
   });
 });

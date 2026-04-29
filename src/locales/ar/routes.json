@@ -33,6 +33,7 @@
     "showTranslation": "أظهر الترجمة",
     "submitReply": "انشر الرد",
     "savedPostActions": "إجراءات المنشور المحفوظ",
+    "searchCommunities": "ابحث في المجتمعات",
     "postOptions": "خيارات المنشور",
     "playVideo": "تشغيل الفيديو",
     "videoThumbnail": "صورة مصغرة للفيديو",
@@ -106,6 +107,8 @@
     "membersLabel": "الأعضاء",
     "modToolsLabel": "أدوات الإشراف",
     "moderatorLabel": "المشرف",
+    "moderatorsLabel": "المشرفون",
+    "ownerLabel": "المالك",
     "requirementsLabel": "المتطلبات",
     "rulesLabel": "القواعد",
     "tagsLabel": "الوسوم",
@@ -163,6 +166,7 @@
     "actions": {
       "back": "رجوع",
       "continue": "تابع",
+      "next": "التالي",
       "post": "انشر",
       "publish": "انشر",
       "publishRemix": "انشر الريمكس"

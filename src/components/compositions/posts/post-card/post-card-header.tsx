@@ -94,13 +94,21 @@ function CommunityWithAuthorByline({
           </>
         ) : null}
         {qualifierText ? (
-          <>
-            {secondaryIdentity ? <span aria-hidden="true">·</span> : null}
+          secondaryIdentity ? (
+            <BylineSeparatedItem>
+              <bdi>{qualifierText}</bdi>
+            </BylineSeparatedItem>
+          ) : (
             <span><bdi>{qualifierText}</bdi></span>
-          </>
+          )
         ) : null}
-        {(secondaryIdentity || qualifierText) ? <span aria-hidden="true">·</span> : null}
-        <span><bdi>{timestampLabel}</bdi></span>
+        {(secondaryIdentity || qualifierText) ? (
+          <BylineSeparatedItem>
+            <bdi>{timestampLabel}</bdi>
+          </BylineSeparatedItem>
+        ) : (
+          <span><bdi>{timestampLabel}</bdi></span>
+        )}
       </div>
     </div>
   );
@@ -136,6 +144,15 @@ function AuthorRoleBadge({ role }: { role?: CommunityAuthorRole | null }) {
   );
 }
 
+function BylineSeparatedItem({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex min-w-0 items-baseline gap-x-1.5">
+      <span aria-hidden="true" className="shrink-0">·</span>
+      <span className="min-w-0">{children}</span>
+    </span>
+  );
+}
+
 function AgentByline({ byline }: { byline: PostCardByline }) {
   const { agentAuthor, community, timestampLabel } = byline;
   const { locale } = useUiLocale();
@@ -165,16 +182,16 @@ function AgentByline({ byline }: { byline: PostCardByline }) {
         <span className="font-medium text-muted-foreground"><bdi>{agentAuthor.ownerLabel}</bdi></span>
       )}
       {community ? (
-        <>
-          <span aria-hidden="true">·</span>
+        <BylineSeparatedItem>
           <InteractiveIdentityLink
             className="font-medium text-muted-foreground hover:text-foreground hover:underline"
             identity={community}
           />
-        </>
+        </BylineSeparatedItem>
       ) : null}
-      <span aria-hidden="true">·</span>
-      <span><bdi>{timestampLabel}</bdi></span>
+      <BylineSeparatedItem>
+        <bdi>{timestampLabel}</bdi>
+      </BylineSeparatedItem>
     </div>
   );
 }
@@ -239,22 +256,21 @@ function PostCardBylineContent({
       />
       {shouldShowAuthorRole ? <AuthorRoleBadge role={authorCommunityRole} /> : null}
       {qualifierText ? (
-        <>
-          <span aria-hidden="true">·</span>
-          <span><bdi>{qualifierText}</bdi></span>
-        </>
+        <BylineSeparatedItem>
+          <bdi>{qualifierText}</bdi>
+        </BylineSeparatedItem>
       ) : null}
       {secondaryIdentity ? (
-        <>
-          <span aria-hidden="true">·</span>
+        <BylineSeparatedItem>
           <InteractiveIdentityLink
             className="font-medium text-muted-foreground hover:text-foreground hover:underline"
             identity={secondaryIdentity}
           />
-        </>
+        </BylineSeparatedItem>
       ) : null}
-      <span aria-hidden="true">·</span>
-      <span><bdi>{timestampLabel}</bdi></span>
+      <BylineSeparatedItem>
+        <bdi>{timestampLabel}</bdi>
+      </BylineSeparatedItem>
     </div>
   );
 }

@@ -381,6 +381,7 @@
     "actions": {
       "back": "返回",
       "generateHandle": "生成新名称",
+      "check": "检查",
       "checkAgain": "重新检查",
       "continue": "继续",
       "getCode": "获取代码",

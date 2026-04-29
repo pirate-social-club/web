@@ -381,6 +381,7 @@
     "actions": {
       "back": "Back",
       "generateHandle": "Generate a new handle",
+      "check": "Check",
       "checkAgain": "Check again",
       "continue": "Continue",
       "getCode": "Get code",

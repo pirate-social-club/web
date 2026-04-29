@@ -95,6 +95,7 @@ function Footer({
   fixedBottom = false,
   nextLabel,
   skipLabel,
+  skipDisabled,
   onSkip,
   nextDisabled,
   nextLoading,
@@ -104,6 +105,7 @@ function Footer({
   fixedBottom?: boolean;
   nextLabel?: string;
   skipLabel?: string;
+  skipDisabled?: boolean;
   onSkip?: () => void;
   nextDisabled?: boolean;
   nextLoading?: boolean;
@@ -115,7 +117,7 @@ function Footer({
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
         <div className={cn("grid gap-3 px-4", onSkip && "sm:grid-cols-2")}>
           {onSkip ? (
-            <Button className="h-14 w-full text-lg" onClick={onSkip} variant="outline">
+            <Button className="h-14 w-full text-lg" disabled={skipDisabled} onClick={onSkip} variant="outline">
               {skipLabel ?? copy.actions.skip}
             </Button>
           ) : null}
@@ -135,7 +137,7 @@ function Footer({
   return (
     <div className={onSkip ? "grid gap-3 pt-3 sm:grid-cols-2" : "grid gap-3 pt-3"}>
       {onSkip ? (
-        <Button className="h-14 w-full text-lg" onClick={onSkip} variant="outline">
+        <Button className="h-14 w-full text-lg" disabled={skipDisabled} onClick={onSkip} variant="outline">
           {skipLabel ?? copy.actions.skip}
         </Button>
       ) : null}
@@ -192,7 +194,7 @@ function ImportKarmaPhase({
     : isVerified
       ? copy.importKarmaAction
       : isCodeReady
-        ? copy.actions.checkAgain
+        ? copy.actions.check
         : copy.actions.getCode;
   const surfaceLabel = copy.surfaces[reddit.codePlacementSurface ?? "profile"];
 
@@ -285,7 +287,8 @@ function ImportKarmaPhase({
         nextLabel={nextLabel ?? resolvedNextLabel}
         nextLoading={busy || isChecking}
         onNext={onNext}
-        onSkip={!busy && canSkip ? onSkip : undefined}
+        onSkip={canSkip ? onSkip : undefined}
+        skipDisabled={busy}
         skipLabel={skipLabel}
         copy={copy}
       />
@@ -401,7 +404,8 @@ function ChooseNamePhase({
         nextLabel={nextLabel ?? copy.claimDomain.title}
         nextLoading={busy}
         onNext={onContinue}
-        onSkip={!busy && canGoBack ? onBack : undefined}
+        onSkip={canGoBack ? onBack : undefined}
+        skipDisabled={busy}
         skipLabel={backLabel ?? copy.actions.back}
       />
     </div>

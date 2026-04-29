@@ -469,6 +469,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "actions": {
           "back": "Back",
           "generateHandle": "Generate a new handle",
+          "check": "Check",
           "checkAgain": "Check again",
           "continue": "Continue",
           "getCode": "Get code",
@@ -1913,6 +1914,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "actions": {
           "back": "رجوع",
           "generateHandle": "أنشئ اسمًا جديدًا",
+          "check": "تحقق",
           "checkAgain": "تحقق مرة أخرى",
           "continue": "تابع",
           "getCode": "احصل على الرمز",
@@ -3357,6 +3359,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "actions": {
           "back": "返回",
           "generateHandle": "生成新名称",
+          "check": "检查",
           "checkAgain": "重新检查",
           "continue": "继续",
           "getCode": "获取代码",

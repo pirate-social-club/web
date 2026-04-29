@@ -381,6 +381,7 @@
     "actions": {
       "back": "رجوع",
       "generateHandle": "أنشئ اسمًا جديدًا",
+      "check": "تحقق",
       "checkAgain": "تحقق مرة أخرى",
       "continue": "تابع",
       "getCode": "احصل على الرمز",

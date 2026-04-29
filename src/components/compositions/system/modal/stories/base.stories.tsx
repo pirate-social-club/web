@@ -152,7 +152,7 @@ export const PurchaseFlow: Story = {
           <div className="rounded-[var(--radius-1_5xl)] border border-border bg-muted/35 p-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
+                <p className="text-base font-semibold uppercase tracking-[0.03em] text-muted-foreground">
                   Needed now
                 </p>
                 <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">$0.50</p>
@@ -163,13 +163,13 @@ export const PurchaseFlow: Story = {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
+              <p className="text-base font-semibold uppercase tracking-[0.03em] text-muted-foreground">
                 Track price
               </p>
               <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.50</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
+              <p className="text-base font-semibold uppercase tracking-[0.03em] text-muted-foreground">
                 Wallet balance
               </p>
               <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.00</p>
@@ -200,7 +200,7 @@ export const PurchaseFlowMobile: Story = {
       body={(
         <div className="mt-6 grid gap-3.5">
           <div className="rounded-[var(--radius-1_5xl)] border border-border bg-muted/35 p-4">
-            <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
+            <p className="text-base font-semibold uppercase tracking-[0.03em] text-muted-foreground">
               Needed now
             </p>
             <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">$0.50</p>
@@ -208,13 +208,13 @@ export const PurchaseFlowMobile: Story = {
 
           <div className="grid gap-3">
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
+              <p className="text-base font-semibold uppercase tracking-[0.03em] text-muted-foreground">
                 Track price
               </p>
               <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.50</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-base font-semibold uppercase tracking-widest text-muted-foreground">
+              <p className="text-base font-semibold uppercase tracking-[0.03em] text-muted-foreground">
                 Wallet balance
               </p>
               <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">$0.00</p>

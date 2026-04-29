@@ -7,21 +7,21 @@ import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
-import { CommunityAvatar } from "@/components/primitives/community-avatar";
 import { useApi } from "@/lib/api";
 import { clearSession, useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
-import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
+import { buildCommunityPath } from "@/lib/community-routing";
 import { getCurrentHomeFeedSort, HOME_FEED_SORT_CHANGE_EVENT, setCurrentHomeFeedSort, type HomeFeedSort } from "@/lib/home-feed-sort";
 import { useRecentCommunities, useSidebarCommunities } from "@/lib/owned-communities";
 import { useUiLocale } from "@/lib/ui-locale";
-import { Type } from "@/components/primitives/type";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { Spinner } from "@/components/primitives/spinner";
+import { YourCommunitiesPageView } from "@/components/compositions/community/your-communities-page/your-communities-page";
 import { Feed, type FeedSort, TopTimeRangeControl } from "@/components/compositions/posts/feed/feed";
+import { RecentPostRail, type RecentPostRailItem } from "@/components/compositions/posts/feed/recent-post-rail";
+import { Type } from "@/components/primitives/type";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
@@ -35,27 +35,6 @@ import { formatRelativeTimestamp } from "@/lib/formatting/time";
 import { EmptyFeedState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
-
-type HomeRailPost = {
-  communityDisplayName: string;
-  communityId: string;
-  communityRouteSlug?: string | null;
-  communityAvatarSrc?: string | null;
-  commentCount: number;
-  postId: string;
-  postTitle: string;
-  postCreatedAt: string;
-  score: number;
-  thumbnailSrc?: string | null;
-};
-
-function formatCompactCount(value: number, localeTag: string): string {
-  return new Intl.NumberFormat(localeTag, {
-    compactDisplay: "short",
-    notation: "compact",
-    maximumFractionDigits: value >= 1000 ? 1 : 0,
-  }).format(value);
-}
 
 function resolveRailThumbnail(entry: ApiHomeFeedItem): string | null {
   const primaryMedia = entry.post.post.media_refs?.[0];
@@ -82,7 +61,7 @@ function buildRecentPostRail(input: {
   feedEntries: ApiHomeFeedItem[];
   recentCommunities: ReturnType<typeof useRecentCommunities>;
   limit?: number;
-}): HomeRailPost[] {
+}): RecentPostRailItem[] {
   const limit = input.limit ?? 6;
   if (limit <= 0 || input.feedEntries.length === 0 || input.recentCommunities.length === 0) {
     return [];
@@ -112,7 +91,7 @@ function buildRecentPostRail(input: {
       return right.post.post.post_id.localeCompare(left.post.post.post_id);
     });
 
-  const railPosts: HomeRailPost[] = [];
+  const railPosts: RecentPostRailItem[] = [];
   const seenPostIds = new Set<string>();
   const seenCommunityIds = new Set<string>();
 
@@ -131,13 +110,14 @@ function buildRecentPostRail(input: {
     railPosts.push({
       commentCount: entry.post.thread_snapshot?.comment_count ?? 0,
       communityAvatarSrc: recentCommunity?.avatarSrc ?? null,
-      communityDisplayName: recentCommunity?.displayName ?? entry.community.display_name,
+      communityHref: buildCommunityPath(entry.community.community_id, recentCommunity?.routeSlug ?? entry.community.route_slug),
       communityId: entry.community.community_id,
-      communityRouteSlug: recentCommunity?.routeSlug ?? entry.community.route_slug,
-      postCreatedAt: entry.post.post.created_at,
+      communityLabel: recentCommunity?.displayName ?? entry.community.display_name,
+      postHref: `/p/${entry.post.post.post_id}`,
       postId: entry.post.post.post_id,
       postTitle: title,
       score: entry.post.upvote_count - entry.post.downvote_count,
+      timestampLabel: formatRelativeTimestamp(entry.post.post.created_at),
       thumbnailSrc: resolveRailThumbnail(entry),
     });
     seenCommunityIds.add(entry.community.community_id);
@@ -159,13 +139,14 @@ function buildRecentPostRail(input: {
     railPosts.push({
       commentCount: entry.post.thread_snapshot?.comment_count ?? 0,
       communityAvatarSrc: recentCommunity?.avatarSrc ?? null,
-      communityDisplayName: recentCommunity?.displayName ?? entry.community.display_name,
+      communityHref: buildCommunityPath(entry.community.community_id, recentCommunity?.routeSlug ?? entry.community.route_slug),
       communityId: entry.community.community_id,
-      communityRouteSlug: recentCommunity?.routeSlug ?? entry.community.route_slug,
-      postCreatedAt: entry.post.post.created_at,
+      communityLabel: recentCommunity?.displayName ?? entry.community.display_name,
+      postHref: `/p/${entry.post.post.post_id}`,
       postId: entry.post.post.post_id,
       postTitle: title,
       score: entry.post.upvote_count - entry.post.downvote_count,
+      timestampLabel: formatRelativeTimestamp(entry.post.post.created_at),
       thumbnailSrc: resolveRailThumbnail(entry),
     });
     seenPostIds.add(entry.post.post.post_id);
@@ -187,7 +168,6 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const emptyHomeBody = copy.home.emptyHomeBody;
   const emptyHomeTitle = copy.home.emptyHomeTitle;
   const emptyHomeVerifyBody = copy.home.emptyHomeVerifyBody;
-  const verifyToPostLabel = copy.home.verifyToPostLabel;
   const [activeSort, setActiveSort] = React.useState<FeedSort>(() => initialSort ?? getCurrentHomeFeedSort());
   const [topTimeRange, setTopTimeRange] = React.useState("day");
   const [feedEntries, setFeedEntries] = React.useState<ApiHomeFeedItem[]>([]);
@@ -350,108 +330,18 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         <Feed
           activeSort={activeSort}
           aside={recentRailPosts.length > 0 ? (
-            <div className="overflow-hidden rounded-[var(--radius-3xl)] border border-border-soft bg-card">
-              <div className="px-5 py-4">
-                <Type as="div" variant="label" className="uppercase tracking-widest text-muted-foreground">
-                  {copy.home.railTitle}
-                </Type>
-              </div>
-              <div>
-                {recentRailPosts.map((post, index) => {
-                  const communityHref = buildCommunityPath(post.communityId, post.communityRouteSlug);
-                  const postHref = `/p/${post.postId}`;
-
-                  return (
-                    <article
-                      className={cn(
-                        "flex w-full items-start gap-4 px-5 py-4 text-start",
-                        index === recentRailPosts.length - 1 ? undefined : "border-b border-border-soft",
-                      )}
-                      key={post.postId}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 items-start gap-3">
-                          <a
-                            className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            href={communityHref}
-                            aria-label={post.communityDisplayName}
-                          >
-                            <CommunityAvatar
-                              className="size-8 shrink-0 border-border-soft"
-                              avatarSrc={post.communityAvatarSrc}
-                              communityId={post.communityId}
-                              displayName={post.communityDisplayName}
-                              size="xs"
-                            />
-                          </a>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <a
-                                className="group min-w-0 rounded-[var(--radius-md)] outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                href={communityHref}
-                              >
-                                <Type as="span" variant="label" className="block truncate transition-colors group-hover:text-link">
-                                  {post.communityDisplayName}
-                                </Type>
-                              </a>
-                              <Type as="span" variant="label" className="shrink-0 text-muted-foreground">
-                                {`• ${formatRelativeTimestamp(post.postCreatedAt)}`}
-                              </Type>
-                            </div>
-                            <a
-                              className="group mt-1 block min-w-0 rounded-[var(--radius-md)] outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              href={communityHref}
-                            >
-                              <Type as="span" variant="label" className="block truncate text-muted-foreground transition-colors group-hover:text-foreground">
-                                {formatCommunityRouteLabel(post.communityId, post.communityRouteSlug)}
-                              </Type>
-                            </a>
-                          </div>
-                        </div>
-                        <a
-                          className="group mt-3 block rounded-[var(--radius-md)] outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          href={postHref}
-                        >
-                          <Type as="span" variant="body-strong" className="line-clamp-2 leading-7 transition-colors group-hover:text-link">
-                            {post.postTitle}
-                          </Type>
-                        </a>
-                        <Type as="div" variant="body" className="mt-3 flex flex-wrap gap-x-1 text-muted-foreground">
-                          <span className="whitespace-nowrap">{`${formatCompactCount(post.score, localeTag)} upvotes`}</span>
-                          <span aria-hidden="true">·</span>
-                          <a
-                            className="whitespace-nowrap rounded-[var(--radius-sm)] outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                            href={postHref}
-                          >
-                            {`${formatCompactCount(post.commentCount, localeTag)} comments`}
-                          </a>
-                        </Type>
-                      </div>
-                      {post.thumbnailSrc ? (
-                        <a
-                          className="h-28 w-28 shrink-0 overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-surface-skeleton outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring"
-                          href={postHref}
-                          aria-label={post.postTitle}
-                        >
-                          <img
-                            alt=""
-                            className="h-full w-full object-cover"
-                            src={post.thumbnailSrc}
-                          />
-                        </a>
-                      ) : null}
-                    </article>
-                  );
-                })}
-              </div>
-            </div>
+            <RecentPostRail
+              items={recentRailPosts}
+              localeTag={localeTag}
+              title={copy.home.railTitle}
+            />
           ) : undefined}
           availableSorts={sortOptions}
           controls={activeSort === "top" ? <TopTimeRangeControl onValueChange={setTopTimeRange} options={topTimeRangeOptions} value={topTimeRange} /> : undefined}
           emptyState={{
             action: session ? (
-              <Button onClick={() => navigate(needsPostingVerification ? "/onboarding?verify=human" : "/communities/new")} variant="secondary">
-                {needsPostingVerification ? verifyToPostLabel : createCommunityLabel}
+              <Button onClick={() => navigate("/communities/new")} variant="secondary">
+                {createCommunityLabel}
               </Button>
             ) : undefined,
             body: needsPostingVerification ? emptyHomeVerifyBody : emptyHomeBody,
@@ -508,16 +398,24 @@ function YourCommunitiesAuthState() {
 export function YourCommunitiesPage() {
   const { copy } = useRouteMessages();
   const session = useSession();
-  const { communities, error, loading } = useSidebarCommunities();
+  const { error, loading, moderatedCommunities, recentCommunities } = useSidebarCommunities();
   const createCommunityLabel = copy.home.createCommunityLabel;
   const emptyYourCommunitiesBody = copy.home.emptyYourCommunitiesBody;
   const emptyYourCommunitiesTitle = copy.home.emptyYourCommunitiesTitle;
+  const joinedCommunityIds = React.useMemo(
+    () => new Set(moderatedCommunities.map((community) => community.communityId)),
+    [moderatedCommunities],
+  );
+  const followingCommunities = React.useMemo(
+    () => recentCommunities.filter((community) => !joinedCommunityIds.has(community.communityId)),
+    [joinedCommunityIds, recentCommunities],
+  );
 
   if (!session) {
     return <YourCommunitiesAuthState />;
   }
 
-  if (loading && communities.length === 0) {
+  if (loading && recentCommunities.length === 0 && moderatedCommunities.length === 0) {
     return (
       <section className="flex min-w-0 flex-1 items-center justify-center py-20">
         <Spinner className="size-6" />
@@ -525,7 +423,7 @@ export function YourCommunitiesPage() {
     );
   }
 
-  if (error && communities.length === 0) {
+  if (error && recentCommunities.length === 0 && moderatedCommunities.length === 0) {
     return (
       <RouteLoadFailureState
         description={getErrorMessage(error, copy.home.loadCommunitiesError)}
@@ -535,55 +433,18 @@ export function YourCommunitiesPage() {
   }
 
   return (
-    <PageContainer className="flex min-w-0 flex-1 flex-col gap-6">
-      <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card">
-        <div className="flex flex-col gap-4 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-6 md:py-6 border-b border-border-soft">
-          <Type as="h1" variant="h1" className="text-2xl md:text-3xl">
-            {copy.yourCommunities.title}
-          </Type>
-          <div className="flex shrink-0 flex-wrap gap-3">
-            <Button onClick={() => navigate("/communities/new")} variant="secondary">
-              {createCommunityLabel}
-            </Button>
-          </div>
-        </div>
-
-        {communities.length === 0 ? (
-          <div className="px-5 py-8">
-            <p className="text-base leading-7 text-muted-foreground">
-              {`${emptyYourCommunitiesTitle}. ${emptyYourCommunitiesBody}`}
-            </p>
-          </div>
-        ) : (
-          <div>
-            {communities.map((community, index) => (
-              <button
-                className={cn(
-                  "flex w-full items-center gap-3 px-5 py-4 text-start",
-                  index === communities.length - 1 ? undefined : "border-b border-border-soft",
-                )}
-                key={community.communityId}
-                onClick={() => navigate(buildCommunityPath(community.communityId, community.routeSlug))}
-                type="button"
-              >
-                <CommunityAvatar
-                  className="size-11 border-border-soft"
-                  avatarSrc={community.avatarSrc}
-                  communityId={community.communityId}
-                  displayName={community.displayName}
-                />
-                <div className="min-w-0 flex-1">
-                  <Type as="div" variant="body-strong" className="truncate">{community.displayName}</Type>
-                  <div className="truncate text-base text-muted-foreground">
-                    {formatCommunityRouteLabel(community.communityId, community.routeSlug)}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </PageContainer>
+    <YourCommunitiesPageView
+      createCommunityLabel={createCommunityLabel}
+      emptyFollowingLabel={`${emptyYourCommunitiesTitle}. ${emptyYourCommunitiesBody}`}
+      emptyJoinedLabel={copy.yourCommunities.emptyJoinedLabel}
+      followingCommunities={followingCommunities}
+      followingLabel={copy.yourCommunities.followingLabel}
+      joinedCommunities={moderatedCommunities}
+      joinedLabel={copy.yourCommunities.joinedLabel}
+      onCreateCommunity={() => navigate("/communities/new")}
+      onSelectCommunity={(community) => navigate(buildCommunityPath(community.communityId, community.routeSlug))}
+      title={copy.yourCommunities.title}
+    />
   );
 }
 

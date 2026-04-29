@@ -3,6 +3,7 @@ import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
 import { Feed } from "../feed";
+import { RecentPostRail } from "../recent-post-rail";
 import {
   CommunityFlairControls,
   StoryRail,
@@ -52,7 +53,7 @@ export const HomeMixed: Story = {
     return (
       <Feed
         activeSort={activeSort}
-        aside={<StoryRail items={recentPostRailItems} title="Recent posts" />}
+        aside={<RecentPostRail items={recentPostRailItems} title="Recent posts" />}
         availableSorts={sortOptions}
         controls={
           activeSort === "top" ? (
@@ -75,7 +76,7 @@ export const HomeRecentPostsRail: Story = {
     return (
       <Feed
         activeSort={activeSort}
-        aside={<StoryRail items={recentPostRailItems} title="Recent posts" />}
+        aside={<RecentPostRail items={recentPostRailItems} title="Recent posts" />}
         availableSorts={sortOptions}
         controls={
           activeSort === "top" ? (
@@ -98,7 +99,7 @@ export const HomeLoadingMore: Story = {
     return (
       <Feed
         activeSort={activeSort}
-        aside={<StoryRail items={recentPostRailItems} title="Recent posts" />}
+        aside={<RecentPostRail items={recentPostRailItems} title="Recent posts" />}
         availableSorts={sortOptions}
         controls={
           activeSort === "top" ? (

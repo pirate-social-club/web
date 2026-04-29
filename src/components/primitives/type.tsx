@@ -19,7 +19,7 @@ const typeVariants = cva("", {
       label: "text-base font-medium leading-tight text-foreground",
       caption: "text-base font-normal leading-5 text-muted-foreground",
       overline:
-        "text-base font-medium uppercase tracking-widest text-muted-foreground",
+        "text-base font-medium uppercase tracking-[0.03em] text-muted-foreground",
     },
   },
   defaultVariants: {

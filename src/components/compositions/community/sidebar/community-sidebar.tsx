@@ -30,7 +30,7 @@ function formatMemberCount(count: number, localeTag: string): string {
 }
 
 const SECTION_LABEL =
-  "py-3 text-base font-semibold uppercase tracking-widest text-sidebar-foreground/55 hover:no-underline";
+  "py-3 text-base font-semibold uppercase tracking-[0.03em] text-sidebar-foreground/55 hover:no-underline";
 
 function CommunitySidebarSections({
   charity,

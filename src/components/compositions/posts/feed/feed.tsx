@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 
 import { PostCard } from "@/components/compositions/posts/post-card/post-card";
@@ -195,7 +197,7 @@ export function Feed({
               <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div className="space-y-2 text-start">
                   {eyebrow ? (
-                    <div className="text-base uppercase tracking-widest text-muted-foreground">
+                    <div className="text-base uppercase tracking-[0.03em] text-muted-foreground">
                       {eyebrow}
                     </div>
                   ) : null}

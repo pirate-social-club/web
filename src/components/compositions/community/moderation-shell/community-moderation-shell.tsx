@@ -86,7 +86,7 @@ export function CommunityModerationShell({
           {sections.map((section, index) => (
             <React.Fragment key={section.label}>
               <SidebarGroup className="gap-0 px-4 py-0">
-                <div className="px-2 pb-2 text-base uppercase tracking-widest text-muted-foreground/55">
+                <div className="px-2 pb-2 text-base uppercase tracking-[0.03em] text-muted-foreground/55">
                   {section.label}
                 </div>
                 <SidebarGroupContent>

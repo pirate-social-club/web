@@ -13,6 +13,7 @@ import { buildPublicProfilePathForProfile, getProfileHandleLabel } from "@/lib/p
 import type { FeedItem } from "@/components/compositions/posts/feed/feed";
 import type { PostCardProps, SongContentSpec } from "@/components/compositions/posts/post-card/post-card.types";
 import { buildNationalityBadgeLabel } from "@/components/compositions/posts/post-card/post-card-nationality";
+import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 
 import type { AssetSourceDescriptor, SongPlaybackController, SongPlaybackDescriptor } from "@/app/authenticated-helpers/song-commerce";
 import { formatUsdLabel } from "@/lib/formatting/currency";
@@ -538,7 +539,10 @@ export function toCommunityFeedItem(
 
 export function toThreadPostCard(
   postResponse: ApiPost,
-  community: Pick<ApiCommunity, "community_id" | "display_name"> | Pick<ApiCommunityPreview, "community_id" | "display_name"> | null,
+  community:
+    | Pick<ApiCommunity, "community_id" | "display_name" | "route_slug">
+    | Pick<ApiCommunityPreview, "community_id" | "display_name" | "route_slug">
+    | null,
   authorProfile?: ApiProfile,
   songOptions?: SongPresentationOptions,
   opts?: PostPresentationOptions,
@@ -558,7 +562,11 @@ export function toThreadPostCard(
       },
       agentAuthor: resolveAgentAuthor(post, authorProfile),
       community: community
-        ? { kind: "community", label: `c/${community.display_name}`, href: `/c/${community.community_id}` }
+        ? {
+          kind: "community",
+          label: formatCommunityRouteLabel(community.community_id, community.route_slug),
+          href: buildCommunityPath(community.community_id, community.route_slug),
+        }
         : undefined,
       timestampLabel: formatRelativeTimestamp(post.created_at),
     },

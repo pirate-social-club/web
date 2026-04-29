@@ -96,11 +96,15 @@ export function rememberKnownCommunity(input: {
   const displayName = input.displayName.trim();
   if (!input.communityId || !displayName) return;
 
+  const existingCommunity = getKnownCommunities().find(
+    (community) => community.communityId === input.communityId,
+  );
+  const nextRouteSlug = input.routeSlug?.trim() || existingCommunity?.routeSlug?.trim() || null;
   const nextCommunity: KnownCommunity = {
     avatarSrc: input.avatarSrc?.trim() || null,
     communityId: input.communityId,
     displayName,
-    routeSlug: input.routeSlug?.trim() || null,
+    routeSlug: nextRouteSlug,
     updatedAt: new Date().toISOString(),
   };
   const existing = getKnownCommunities().filter(

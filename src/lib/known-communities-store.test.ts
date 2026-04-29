@@ -93,6 +93,27 @@ describe("known-communities-store", () => {
     }
   });
 
+  test("preserves an existing route slug when a later caller omits it", () => {
+    installMockLocalStorage();
+
+    try {
+      rememberKnownCommunity({
+        communityId: "cmt_be13447e169a49209b2dc207fc4574c0",
+        displayName: "Flag",
+        routeSlug: "@xn--t77hga",
+      });
+      rememberKnownCommunity({
+        communityId: "cmt_be13447e169a49209b2dc207fc4574c0",
+        displayName: "Flag",
+      });
+
+      expect(getKnownCommunities()[0]?.routeSlug).toBe("@xn--t77hga");
+    } finally {
+      __resetKnownCommunitiesForTests();
+      restoreLocalStorage();
+    }
+  });
+
   test("hydrates from storage and removes stale ids", () => {
     installMockLocalStorage({
       pirate_known_communities: JSON.stringify([

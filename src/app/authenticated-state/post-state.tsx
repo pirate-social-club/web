@@ -424,7 +424,12 @@ export function usePost(
 
   React.useEffect(() => {
     if (!community) return;
-    rememberKnownCommunity({ avatarSrc: community.avatar_ref ?? undefined, communityId: community.community_id, displayName: community.display_name });
+    rememberKnownCommunity({
+      avatarSrc: community.avatar_ref ?? undefined,
+      communityId: community.community_id,
+      displayName: community.display_name,
+      routeSlug: community.route_slug ?? null,
+    });
   }, [community]);
 
   return {

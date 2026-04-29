@@ -72,6 +72,7 @@ function createPost(input: {
       swarm_manifest_ref: `swm_${input.id}`,
       thread_root_post_id: input.id,
     },
+    comment_count: input.commentCount ?? 0,
     translated_body: null,
     translated_caption: null,
     translated_title: null,

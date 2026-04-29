@@ -14,6 +14,7 @@ import { formatRelativeTimestamp } from "@/lib/formatting/time";
 import { resolveCommunityAvatarSrc } from "@/lib/default-community-media";
 import {
   toCommunityPostContent,
+  getPostCommentCount,
   toViewerVote,
   resolvePostAuthorLabel,
   resolveAgentAuthor,
@@ -72,7 +73,7 @@ export function toHomeFeedItem(
       },
       content: toCommunityPostContent(postResponse, songOptions),
       engagement: {
-        commentCount: postResponse.thread_snapshot?.comment_count ?? 0,
+        commentCount: getPostCommentCount(postResponse),
         score: getPostScore(postResponse),
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },

@@ -64,6 +64,7 @@ function createEntry(): HomeFeedItem {
         swarm_manifest_ref: "swm_test",
         thread_root_post_id: "pst_alpha",
       },
+      comment_count: 5,
       translated_body: null,
       translated_caption: null,
       translated_title: null,
@@ -112,6 +113,18 @@ describe("toHomeFeedItem", () => {
     expect(item.post.byline?.community?.label).toBe("c/alpha");
     expect(item.post.engagement?.commentCount).toBe(5);
     expect(item.post.engagement?.score).toBe(9);
+  });
+
+  test("uses live comment_count when the thread snapshot lags", () => {
+    const entry = createEntry();
+    entry.post.comment_count = 1;
+    if (entry.post.thread_snapshot) {
+      entry.post.thread_snapshot.comment_count = 0;
+    }
+
+    const item = toHomeFeedItem(entry, {});
+
+    expect(item.post.engagement?.commentCount).toBe(1);
   });
 
   test("prefers disclosed qualifier snapshots over the label badge", () => {
@@ -234,6 +247,18 @@ describe("toCommunityFeedItem", () => {
 
     expect(item.post.engagement?.commentCount).toBe(5);
     expect(item.post.onComment).toBe(onComment);
+  });
+
+  test("uses live comment_count for community cards when the snapshot lags", () => {
+    const entry = createEntry();
+    entry.post.comment_count = 1;
+    if (entry.post.thread_snapshot) {
+      entry.post.thread_snapshot.comment_count = 0;
+    }
+
+    const item = toCommunityFeedItem(entry.post, {});
+
+    expect(item.post.engagement?.commentCount).toBe(1);
   });
 });
 

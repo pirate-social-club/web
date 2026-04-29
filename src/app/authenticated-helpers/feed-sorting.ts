@@ -3,6 +3,8 @@ import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
 import type { FeedSort } from "@/components/compositions/posts/feed/feed";
 
+import { getPostCommentCount } from "./post-presentation";
+
 type TopTimeRange = "hour" | "day" | "week" | "month" | "year" | "all";
 
 function getCreatedAtMs(createdAt: string): number {
@@ -127,7 +129,7 @@ export function sortCommunityFeedPosts(
   return [...posts].sort((left, right) => compareFeedEntries({
     bodyLength: (left.post.body ?? "").trim().length,
     captionLength: (left.post.caption ?? "").trim().length,
-    commentCount: left.thread_snapshot?.comment_count ?? 0,
+    commentCount: getPostCommentCount(left),
     createdAt: left.post.created_at,
     downvoteCount: left.downvote_count,
     likeCount: left.like_count,
@@ -138,7 +140,7 @@ export function sortCommunityFeedPosts(
   }, {
     bodyLength: (right.post.body ?? "").trim().length,
     captionLength: (right.post.caption ?? "").trim().length,
-    commentCount: right.thread_snapshot?.comment_count ?? 0,
+    commentCount: getPostCommentCount(right),
     createdAt: right.post.created_at,
     downvoteCount: right.downvote_count,
     likeCount: right.like_count,
@@ -163,7 +165,7 @@ export function sortHomeFeedEntries(
   return [...visibleEntries].sort((left, right) => compareFeedEntries({
     bodyLength: (left.post.post.body ?? "").trim().length,
     captionLength: (left.post.post.caption ?? "").trim().length,
-    commentCount: left.post.thread_snapshot?.comment_count ?? 0,
+    commentCount: getPostCommentCount(left.post),
     createdAt: left.post.post.created_at,
     downvoteCount: left.post.downvote_count,
     likeCount: left.post.like_count,
@@ -174,7 +176,7 @@ export function sortHomeFeedEntries(
   }, {
     bodyLength: (right.post.post.body ?? "").trim().length,
     captionLength: (right.post.post.caption ?? "").trim().length,
-    commentCount: right.post.thread_snapshot?.comment_count ?? 0,
+    commentCount: getPostCommentCount(right.post),
     createdAt: right.post.post.created_at,
     downvoteCount: right.post.downvote_count,
     likeCount: right.post.like_count,

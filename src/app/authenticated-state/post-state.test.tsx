@@ -79,6 +79,7 @@ function createPostResponse(): LocalizedPostResponse {
       swarm_feed_ref: null,
       created_at: "2026-04-24T00:00:00.000Z",
     },
+    comment_count: 0,
     label: null,
     upvote_count: 0,
     downvote_count: 0,

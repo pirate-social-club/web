@@ -155,6 +155,10 @@ export function toViewerVote(value: ApiPost["viewer_vote"]): PostCardProps["enga
   return null;
 }
 
+export function getPostCommentCount(postResponse: ApiPost): number {
+  return postResponse.comment_count ?? postResponse.thread_snapshot?.comment_count ?? 0;
+}
+
 export function toCommentViewerVote(value: ApiCommentListItem["viewer_vote"]): "up" | "down" | null {
   if (value === 1) return "up";
   if (value === -1) return "down";
@@ -491,7 +495,7 @@ export function toCommunityFeedItem(
       },
       content: toCommunityPostContent(postResponse, songOptions),
       engagement: {
-        commentCount: postResponse.thread_snapshot?.comment_count ?? 0,
+        commentCount: getPostCommentCount(postResponse),
         score: postResponse.upvote_count - postResponse.downvote_count,
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
@@ -560,7 +564,7 @@ export function toThreadPostCard(
     },
     content: toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" }),
     engagement: {
-      commentCount: opts?.commentCountOverride ?? postResponse.thread_snapshot?.comment_count ?? 0,
+      commentCount: opts?.commentCountOverride ?? getPostCommentCount(postResponse),
       score: postResponse.upvote_count - postResponse.downvote_count,
       viewerVote: toViewerVote(postResponse.viewer_vote),
     },

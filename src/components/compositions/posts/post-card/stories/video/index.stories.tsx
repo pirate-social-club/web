@@ -136,29 +136,6 @@ export const LockedOwned: Story = {
 };
 
 // ============================================================================
-// COMMERCE STATES
-// ============================================================================
-
-export const RegionalPricing: Story = {
-  name: "Commerce / Regional Pricing",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title="Exclusive tutorial - regional pricing available"
-      content={{
-        ...baseVideo,
-        accessMode: "locked",
-        listingMode: "listed",
-        listingStatus: "active",
-        priceLabel: "$4.99",
-        regionalPriceLabel: "$2.49",
-        onBuy: noop,
-      }}
-    />
-  ),
-};
-
-// ============================================================================
 // SAFETY STATES
 // ============================================================================
 
@@ -172,60 +149,6 @@ export const AgeProofRequired: Story = {
         ...baseVideo,
         contentSafetyState: "adult",
         ageGatePolicy: "18_plus",
-        ageGateViewerState: "proof_required",
-        onVerifyAge: noop,
-      }}
-    />
-  ),
-};
-
-// ============================================================================
-// DERIVATIVE
-// ============================================================================
-
-export const ReactionVideo: Story = {
-  name: "Derivative / Reaction Video",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title="My reaction to the new album"
-      content={{
-        ...baseVideo,
-        posterSrc: "https://picsum.photos/seed/pirate-reaction/600/340",
-        durationLabel: "12:05",
-        durationMs: 725000,
-        videoMode: "reaction",
-        rightsBasis: "attribution_only",
-        upstreamAttributions: [
-          {
-            assetId: "ast_01abc",
-            relationshipType: "references_song",
-            title: "Midnight Waves",
-            artist: "The Sailors",
-          },
-        ],
-      }}
-    />
-  ),
-};
-
-export const RemixVideo: Story = {
-  name: "Derivative / Video Remix",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title="Remixed the visuals for this track"
-      content={{
-        ...baseVideo,
-        posterSrc: "https://picsum.photos/seed/pirate-vremix/600/340",
-        durationLabel: "3:47",
-        durationMs: 227000,
-        videoMode: "remix",
-        rightsBasis: "derivative",
-        upstreamAttributions: [
-          { assetId: "ast_01abc", relationshipType: "references_video", title: "Original Music Video" },
-          { assetId: "ast_02def", relationshipType: "references_song", title: "Midnight Waves", artist: "The Sailors" },
-        ],
       }}
     />
   ),
@@ -246,7 +169,6 @@ export const NoThumbnail: Story = {
         posterSrc: undefined,
         durationLabel: "0:15",
         durationMs: 15000,
-        videoMode: "clip",
       }}
     />
   ),

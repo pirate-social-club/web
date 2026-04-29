@@ -86,29 +86,6 @@ export const TranslatedImagePost: Story = {
   ),
 };
 
-export const SameLanguagePost: Story = {
-  name: "Translation: Same Language",
-  render: () => (
-    <PostCard
-      {...basePost}
-      content={{ type: "text", body: "No translation row appears when the rendered text is already the original." }}
-      sourceLanguage="en"
-      title="Same-language content"
-    />
-  ),
-};
-
-export const PendingTranslationPost: Story = {
-  name: "Translation: Pending",
-  render: () => (
-    <PostCard
-      {...basePost}
-      content={{ type: "text", body: "The original renders while translation is pending, so there is no toggle." }}
-      title="Pending translation"
-    />
-  ),
-};
-
 export const ToggleToOriginal: Story = {
   name: "Translation: Toggle To Original",
   render: function ToggleToOriginalStory() {
@@ -143,6 +120,8 @@ export const PublicAuthorNationalityBadge: Story = {
       {...basePost}
       authorNationalityBadgeCountry="US"
       authorNationalityBadgeLabel="Verified United States nationality"
+      identityPresentation="author_primary"
+      viewContext="community"
     />
   ),
 };
@@ -153,7 +132,6 @@ export const CommunityOwnerBadge: Story = {
     <PostCard
       {...basePost}
       authorCommunityRole="owner"
-      identityPresentation="author_with_community"
       viewContext="community"
     />
   ),
@@ -165,24 +143,7 @@ export const CommunityModeratorBadge: Story = {
     <PostCard
       {...basePost}
       authorCommunityRole="moderator"
-      identityPresentation="author_with_community"
       viewContext="community"
-    />
-  ),
-};
-
-export const AnonymousWithoutNationalityBadge: Story = {
-  name: "Anonymous / Badge Hidden",
-  render: () => (
-    <PostCard
-      {...basePost}
-      authorNationalityBadgeCountry="US"
-      authorNationalityBadgeLabel="Verified United States nationality"
-      byline={{
-        ...basePost.byline,
-        author: { kind: "user", label: "anon_signal-anchor-17" },
-      }}
-      identityPresentation="anonymous_with_community"
     />
   ),
 };
@@ -194,7 +155,9 @@ export const DuplicateNationalityQualifier: Story = {
       {...basePost}
       authorNationalityBadgeCountry="US"
       authorNationalityBadgeLabel="Verified United States nationality"
+      identityPresentation="author_primary"
       qualifierLabels={["US National"]}
+      viewContext="community"
     />
   ),
 };
@@ -499,55 +462,6 @@ export const CommunityFeedPost: Story = {
   ),
 };
 
-export const AuthorPrimary: Story = {
-  name: "Presentation: Author Primary",
-  render: () => (
-    <PostCard
-      {...basePost}
-      identityPresentation="author_primary"
-      title="Mixed feed author-first row"
-    />
-  ),
-};
-
-export const AuthorWithCommunity: Story = {
-  name: "Presentation: Author With Community",
-  render: () => (
-    <PostCard
-      {...basePost}
-      identityPresentation="author_with_community"
-      title="Mixed feed row with supporting community context"
-    />
-  ),
-};
-
-export const AnonymousWithQualifiers: Story = {
-  name: "Presentation: Anonymous With Qualifiers",
-  render: () => (
-    <PostCard
-      {...basePost}
-      identityPresentation="anonymous_primary"
-      byline={{
-        community: { kind: "community", label: "c/producers-only", href: "#" },
-        author: { kind: "user", label: "Anonymous Producer 14", href: "#" },
-        timestampLabel: "48m",
-      }}
-      qualifierLabels={["Verified adult", "Translated"]}
-      title="Need feedback on this locked preview"
-      content={{
-        type: "song",
-        title: "Night Window",
-        artworkSrc: "https://picsum.photos/seed/pirate-anon-song/120/120",
-        durationLabel: "2:41",
-        accessMode: "locked",
-        listingMode: "listed",
-        listingStatus: "active",
-        priceLabel: "$2.99",
-      }}
-    />
-  ),
-};
-
 export const RtlAuthorAlignment: Story = {
   name: "Layout: RTL Author Alignment",
   render: () => (
@@ -644,7 +558,7 @@ export const AgentTextPost: Story = {
 };
 
 export const AgentPostHomeFeed: Story = {
-  name: "Agent: Home Feed",
+  name: "Agent: Thread Detail",
   render: () => (
     <PostCard
       viewContext="home"
@@ -658,6 +572,7 @@ export const AgentPostHomeFeed: Story = {
         },
         timestampLabel: "12h",
       }}
+      identityPresentation="community_with_author"
       title="New remix just dropped"
       content={{
         type: "text",

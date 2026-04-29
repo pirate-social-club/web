@@ -137,29 +137,6 @@ export const LockedOwned: Story = {
 };
 
 // ============================================================================
-// COMMERCE STATES
-// ============================================================================
-
-export const RegionalPricing: Story = {
-  name: "Commerce / Regional Pricing",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title="New release - name your price"
-      content={{
-        ...baseSong,
-        accessMode: "locked",
-        listingMode: "listed",
-        listingStatus: "active",
-        priceLabel: "$3.99",
-        regionalPriceLabel: "$1.99",
-        onBuy: noop,
-      }}
-    />
-  ),
-};
-
-// ============================================================================
 // SAFETY STATES
 // ============================================================================
 
@@ -173,8 +150,6 @@ export const AgeProofRequired: Story = {
         ...baseSong,
         contentSafetyState: "adult",
         ageGatePolicy: "18_plus",
-        ageGateViewerState: "proof_required",
-        onVerifyAge: noop,
       }}
     />
   ),

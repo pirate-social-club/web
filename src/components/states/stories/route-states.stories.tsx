@@ -68,7 +68,7 @@ export const RootAppError: Story = {
     <RootAppErrorState
       title="Something went wrong"
       description="The app failed to initialize. Please try reloading the page."
-      reloadLabel="Reload"
+      homeLabel="Go Home"
     />
   ),
 };
@@ -81,7 +81,7 @@ export const RootAppErrorMobile: Story = {
     <RootAppErrorState
       title="Something went wrong"
       description="The app failed to initialize. Please try reloading the page."
-      reloadLabel="Reload"
+      homeLabel="Go Home"
     />
   ),
 };

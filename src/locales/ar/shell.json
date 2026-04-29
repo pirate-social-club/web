@@ -83,8 +83,8 @@
     "walletLabel": "المحفظة"
   },
   "rootError": {
-    "description": "حدث خطأ أثناء تحميل Pirate. أعد تحميل الصفحة ثم حاول مرة أخرى.",
-    "reloadLabel": "إعادة التحميل",
+    "description": "حدث خطأ أثناء تحميل Pirate.",
+    "homeLabel": "العودة للرئيسية",
     "title": "واجه Pirate مشكلة"
   },
   "storybook": {

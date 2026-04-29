@@ -8,7 +8,7 @@ import { logger } from "@/lib/logger";
 type RootErrorBoundaryProps = {
   children: React.ReactNode;
   description: string;
-  reloadLabel: string;
+  homeLabel: string;
   title: string;
 };
 
@@ -37,7 +37,7 @@ export class RootErrorBoundary extends React.Component<RootErrorBoundaryProps, R
       return (
         <RootAppErrorState
           description={this.props.description}
-          reloadLabel={this.props.reloadLabel}
+          homeLabel={this.props.homeLabel}
           title={this.props.title}
         />
       );

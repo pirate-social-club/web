@@ -83,8 +83,8 @@
     "walletLabel": "钱包"
   },
   "rootError": {
-    "description": "加载 Pirate 时出了问题。请刷新页面后重试。",
-    "reloadLabel": "刷新",
+    "description": "加载 Pirate 时出了问题。",
+    "homeLabel": "返回首页",
     "title": "Pirate 遇到了问题"
   },
   "storybook": {

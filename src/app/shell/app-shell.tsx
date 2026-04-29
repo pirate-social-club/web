@@ -252,7 +252,7 @@ export function PirateAppShell({ initialHost, initialPath }: { initialHost?: str
   return (
     <RootErrorBoundary
       description={copy.rootError.description}
-      reloadLabel={copy.rootError.reloadLabel}
+      homeLabel={copy.rootError.homeLabel}
       title={copy.rootError.title}
     >
       <ApiProvider initialHost={initialHost}>

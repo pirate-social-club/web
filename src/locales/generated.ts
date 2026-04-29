@@ -194,6 +194,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "membersLabel": "Members",
         "modToolsLabel": "Mod Tools",
         "moderatorLabel": "Moderator",
+        "moderatorsLabel": "Moderators",
+        "ownerLabel": "Owner",
         "requirementsLabel": "Requirements",
         "rulesLabel": "Rules",
         "tagsLabel": "Tags",
@@ -251,6 +253,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "actions": {
           "back": "Back",
           "continue": "Continue",
+          "next": "Next",
           "post": "Post",
           "publish": "Publish",
           "publishRemix": "Publish remix"
@@ -1429,8 +1432,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "walletLabel": "Wallet"
       },
       "rootError": {
-        "description": "Something went wrong while loading Pirate. Reload the page and try again.",
-        "reloadLabel": "Reload",
+        "description": "Something went wrong while loading Pirate.",
+        "homeLabel": "Go Home",
         "title": "Pirate hit a problem"
       },
       "storybook": {
@@ -1634,6 +1637,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "membersLabel": "الأعضاء",
         "modToolsLabel": "أدوات الإشراف",
         "moderatorLabel": "المشرف",
+        "moderatorsLabel": "المشرفون",
+        "ownerLabel": "المالك",
         "requirementsLabel": "المتطلبات",
         "rulesLabel": "القواعد",
         "tagsLabel": "الوسوم",
@@ -1691,6 +1696,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "actions": {
           "back": "رجوع",
           "continue": "تابع",
+          "next": "التالي",
           "post": "انشر",
           "publish": "انشر",
           "publishRemix": "انشر الريمكس"
@@ -2869,8 +2875,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "walletLabel": "المحفظة"
       },
       "rootError": {
-        "description": "حدث خطأ أثناء تحميل Pirate. أعد تحميل الصفحة ثم حاول مرة أخرى.",
-        "reloadLabel": "إعادة التحميل",
+        "description": "حدث خطأ أثناء تحميل Pirate.",
+        "homeLabel": "العودة للرئيسية",
         "title": "واجه Pirate مشكلة"
       },
       "storybook": {
@@ -3074,6 +3080,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "membersLabel": "成员",
         "modToolsLabel": "管理工具",
         "moderatorLabel": "版主",
+        "moderatorsLabel": "版主",
+        "ownerLabel": "所有者",
         "requirementsLabel": "要求",
         "rulesLabel": "规则",
         "tagsLabel": "标签",
@@ -3131,6 +3139,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "actions": {
           "back": "返回",
           "continue": "继续",
+          "next": "下一步",
           "post": "发布",
           "publish": "发布",
           "publishRemix": "发布混音"
@@ -4309,8 +4318,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "walletLabel": "钱包"
       },
       "rootError": {
-        "description": "加载 Pirate 时出了问题。请刷新页面后重试。",
-        "reloadLabel": "刷新",
+        "description": "加载 Pirate 时出了问题。",
+        "homeLabel": "返回首页",
         "title": "Pirate 遇到了问题"
       },
       "storybook": {

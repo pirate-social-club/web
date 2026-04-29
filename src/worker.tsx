@@ -375,10 +375,8 @@ function TermsRoutePage() {
 
 function ServerErrorFallback({
   locale,
-  reloadHref,
 }: {
   locale: Exclude<UiLocaleCode, "pseudo">;
-  reloadHref: string;
 }) {
   const copy = getLocaleMessages(locale, "shell").rootError;
 
@@ -397,9 +395,9 @@ function ServerErrorFallback({
         </div>
         <a
           className="inline-flex h-11 items-center justify-center rounded-full bg-secondary px-5 py-2 text-base font-semibold text-secondary-foreground shadow-sm hover:bg-secondary/85"
-          href={reloadHref}
+          href="/"
         >
-          {copy.reloadLabel}
+          {copy.homeLabel}
         </a>
       </div>
     </main>
@@ -427,7 +425,7 @@ const app = defineApp<AppRequestInfo>([
 
     const url = new URL(request.url);
     const locale = resolveServerErrorLocale(ctx.locale, url, request.headers.get("accept-language"));
-    return <ServerErrorFallback locale={locale} reloadHref={`${url.pathname}${url.search}`} />;
+    return <ServerErrorFallback locale={locale} />;
   }),
   async ({ ctx, request, response, rw }) => {
     const effectiveUrl = resolveEffectiveRequestUrl(request);

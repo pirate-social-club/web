@@ -1,5 +1,6 @@
 "use client";
 
+import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 
@@ -35,11 +36,11 @@ export function RouteLoadFailureState({
 export function RootAppErrorState({
   title,
   description,
-  reloadLabel,
+  homeLabel,
 }: {
   title: string;
   description: string;
-  reloadLabel: string;
+  homeLabel: string;
 }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-5 py-10">
@@ -60,8 +61,8 @@ export function RootAppErrorState({
             {description}
           </Type>
         </div>
-        <Button onClick={() => window.location.reload()} variant="secondary">
-          {reloadLabel}
+        <Button onClick={() => navigate("/")} variant="secondary">
+          {homeLabel}
         </Button>
       </div>
     </main>

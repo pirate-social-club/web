@@ -204,7 +204,7 @@ export const RootError: Story = {
     <ShellFrame>
       <RootErrorBoundary
         description={copy.rootError.description}
-        reloadLabel={copy.rootError.reloadLabel}
+        homeLabel={copy.rootError.homeLabel}
         title={copy.rootError.title}
       >
         <BrokenChild />

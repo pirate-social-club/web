@@ -96,6 +96,22 @@ function isHumanVerificationRequest(): boolean {
     && new URLSearchParams(window.location.search).get("verify") === "human";
 }
 
+function getOnboardingExitPath(): string {
+  if (typeof window === "undefined") return "/";
+
+  const returnTo = new URLSearchParams(window.location.search).get("return_to");
+  if (!returnTo) return "/";
+
+  try {
+    const url = new URL(returnTo, window.location.origin);
+    if (url.origin !== window.location.origin) return "/";
+    const href = `${url.pathname}${url.search}${url.hash}`;
+    return href.startsWith("/") && !href.startsWith("//") ? href : "/";
+  } catch {
+    return "/";
+  }
+}
+
 export function OnboardingPage() {
   const { copy } = useRouteMessages();
   const api = useApi();
@@ -159,7 +175,7 @@ export function OnboardingPage() {
       if (isHumanVerificationRequest() && status.unique_human_verification_status !== "verified") {
         return;
       }
-      navigate("/");
+      navigate(getOnboardingExitPath());
       return;
     }
     setPhase(nextPhase);
@@ -233,7 +249,7 @@ export function OnboardingPage() {
             void refreshRedditImportBenefits().catch(() => {});
             const nextPhase = resolveOnboardingPhase(status);
             if (!nextPhase) {
-              navigate("/");
+              navigate(getOnboardingExitPath());
               return;
             }
             setPhase(nextPhase);
@@ -344,7 +360,7 @@ export function OnboardingPage() {
       void api.onboarding.dismiss()
         .then(async (status) => {
           updateSessionOnboarding(status);
-          navigate("/");
+          navigate(getOnboardingExitPath());
         })
         .catch((e: unknown) => setError(e instanceof Error ? e.message : "Could not finish onboarding"))
         .finally(() => setActionLoading(false));
@@ -370,7 +386,7 @@ export function OnboardingPage() {
       .then(() => api.profiles.getMe().then((profile) => updateSessionProfile(profile)))
       .then(async () => {
         updateSessionOnboarding({ ...onboardingStatus!, cleanup_rename_available: false });
-        navigate("/");
+        navigate(getOnboardingExitPath());
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : copy.onboarding.errors.renameFailed))
       .finally(() => setActionLoading(false));
@@ -394,7 +410,7 @@ export function OnboardingPage() {
     if (isMobile) {
       return (
         <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader onCloseClick={() => navigate("/")} title="" />
+          <MobilePageHeader onCloseClick={() => navigate(getOnboardingExitPath())} title="" />
           <section className="flex min-w-0 flex-1 flex-col items-center justify-center px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
             <FullPageSpinner />
           </section>
@@ -415,7 +431,7 @@ export function OnboardingPage() {
     if (isMobile) {
       return (
         <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader onCloseClick={() => navigate("/")} title="" />
+          <MobilePageHeader onCloseClick={() => navigate(getOnboardingExitPath())} title="" />
           <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
             <AuthRequiredRouteState description={copy.routeStatus.onboarding.auth} title="" />
           </section>
@@ -438,7 +454,7 @@ export function OnboardingPage() {
     return (
       <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
         <MobilePageHeader
-          onCloseClick={() => navigate("/")}
+          onCloseClick={() => navigate(getOnboardingExitPath())}
           title=""
           trailingAction={null}
         />

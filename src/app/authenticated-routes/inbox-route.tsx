@@ -85,6 +85,22 @@ function taskPersistence(task: UserTask): NotificationTaskPersistence {
   return isSyntheticTask(task) ? "synthetic" : "persisted";
 }
 
+function canAutoClearTaskOnOpen(task: UserTask): boolean {
+  if (isSyntheticTask(task)) return false;
+  return task.type !== "unique_human_verification_required";
+}
+
+function appendCurrentRouteReturnTo(href: string): string {
+  if (typeof window === "undefined") return href;
+
+  const url = new URL(href, window.location.origin);
+  if (url.origin !== window.location.origin) return href;
+
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  url.searchParams.set("return_to", currentPath);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 function trackFeedMarkedReadEvents(items: NotificationFeedItem[], readMode: "auto_visible_load") {
   const countsByType = new Map<string, number>();
 
@@ -301,8 +317,12 @@ export function InboxPlaceholderPage() {
           navigate(href);
         }}
         onVerifyTask={(task) => {
-          const href = resolveNotificationTaskHref(task);
+          const resolvedHref = resolveNotificationTaskHref(task);
+          const href = task.type === "unique_human_verification_required" && resolvedHref
+            ? appendCurrentRouteReturnTo(resolvedHref)
+            : resolvedHref;
           if (!href) return;
+          const autoClearTask = canAutoClearTaskOnOpen(task);
           trackAnalyticsEvent({
             eventName: "notification_opened",
             properties: {
@@ -310,12 +330,12 @@ export function InboxPlaceholderPage() {
               task_type: task.type,
               task_persistence: taskPersistence(task),
               open_surface: "inbox",
-              task_auto_cleared_on_open: true,
+              task_auto_cleared_on_open: autoClearTask,
             },
           });
-          setTasks((current) => ({ ...current, items: current.items.filter((t) => t.task_id !== task.task_id) }));
-          decrementOpenNotificationTaskCount();
-          if (!isSyntheticTask(task)) {
+          if (autoClearTask) {
+            setTasks((current) => ({ ...current, items: current.items.filter((t) => t.task_id !== task.task_id) }));
+            decrementOpenNotificationTaskCount();
             void api.notifications.dismissTask({ task_id: task.task_id }).catch((error) => {
               logger.debug("[inbox] failed to dismiss task", error);
             });

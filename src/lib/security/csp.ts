@@ -46,6 +46,8 @@ export function buildContentSecurityPolicy(nonce: string): string {
       "https://api.pirate",
       "https://api.pirate.sc",
       "https://api-staging.pirate.sc",
+      "https://assistant.pirate.sc",
+      "https://assistant-staging.pirate.sc",
       "https://auth.privy.io",
       "wss://relay.walletconnect.com",
       "wss://relay.walletconnect.org",

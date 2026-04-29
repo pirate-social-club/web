@@ -28,6 +28,8 @@ describe("Content Security Policy", () => {
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("connect-src");
+    expect(csp).toContain("https://assistant.pirate.sc");
+    expect(csp).toContain("https://assistant-staging.pirate.sc");
     expect(csp).toContain("frame-src");
   });
 

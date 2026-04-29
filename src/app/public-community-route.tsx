@@ -20,6 +20,7 @@ import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useSession } from "@/lib/api/session-store";
+import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { formatCommunityRouteLabel } from "@/lib/community-routing";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
@@ -179,6 +180,7 @@ const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
 export function PublicCommunityRoutePage({ communityId }: { communityId: string }) {
   const api = useApi();
   const session = useSession();
+  const authRuntime = usePiratePrivyRuntime();
   const { locale } = useUiLocale();
   const copy = React.useMemo(() => getLocaleMessages(locale, "routes"), [locale]);
   const sortOptions = React.useMemo(() => buildFeedSortOptions(copy.common), [copy.common]);
@@ -288,6 +290,15 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     });
     setMemberCount((count) => typeof count === "number" ? count + 1 : count);
   }, []);
+
+  const requestAuth = React.useCallback((fallbackMessage: string) => {
+    if (authRuntime.connect) {
+      authRuntime.connect();
+      return;
+    }
+
+    toast.error(authRuntime.loadError ?? fallbackMessage);
+  }, [authRuntime.connect, authRuntime.loadError]);
 
   const {
     handleJoin,
@@ -451,7 +462,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       logger.info("[community-follow] blocked follow without session", {
         communityId: preview.community_id,
       });
-      toast.error("Connect your wallet to follow communities.");
+      requestAuth("Connect your wallet to follow communities.");
       return;
     }
 
@@ -497,7 +508,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
 
   const handlePrimaryJoinAction = async () => {
     if (!session) {
-      toast.error("Connect your wallet to join communities.");
+      requestAuth("Connect your wallet to join communities.");
       return;
     }
     if (eligibility?.status === "requestable") {
@@ -542,6 +553,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     <div className="flex flex-wrap items-center justify-end gap-3">
       <Button
         className={FOLLOW_BUTTON_CLASS_NAME}
+        loading={followLoading || (!session && authRuntime.busy)}
         onClick={() => void handleToggleFollow()}
         variant={viewerFollowing ? "secondary" : "default"}
       >
@@ -549,7 +561,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       </Button>
       <Button
         disabled={joinActionDisabled}
-	        loading={joinLoading || joinVeryLoading || joinSelfLoading || passportLoading}
+        loading={joinLoading || joinVeryLoading || joinSelfLoading || passportLoading || (!session && authRuntime.busy)}
         onClick={() => void handlePrimaryJoinAction()}
         variant="secondary"
       >

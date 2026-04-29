@@ -30,6 +30,16 @@ const LazyRoyaltyClaimModal = React.lazy(async () => {
   return { default: mod.RoyaltyClaimModal };
 });
 
+const LazyWalletReceiveSheet = React.lazy(async () => {
+  const mod = await import("@/components/compositions/wallet/wallet-receive-sheet/wallet-receive-sheet");
+  return { default: mod.WalletReceiveSheet };
+});
+
+const LazyWalletSendSheet = React.lazy(async () => {
+  const mod = await import("@/components/compositions/wallet/wallet-send-sheet/wallet-send-sheet");
+  return { default: mod.WalletSendSheet };
+});
+
 const EMPTY_CLAIMABLE: ClaimableRoyaltiesResponse = {
   items: [],
   total_claimable_wip_wei: "0",
@@ -266,6 +276,7 @@ export function CurrentUserWalletPage() {
   const [claimableRoyalties, setClaimableRoyalties] = React.useState<ClaimableRoyaltiesResponse>(EMPTY_CLAIMABLE);
   const [claimLoading, setClaimLoading] = React.useState(false);
   const [royaltyClaimOpen, setRoyaltyClaimOpen] = React.useState(false);
+  const [walletAction, setWalletAction] = React.useState<"receive" | "send" | null>(null);
   const { schedule: scheduleClaimableRefresh } = useResettableTimeout();
 
   const primaryWallet = walletAttachments.find((wallet) => wallet.is_primary)
@@ -397,6 +408,7 @@ export function CurrentUserWalletPage() {
       setClaimableRoyalties(EMPTY_CLAIMABLE);
       setClaimLoading(false);
       setRoyaltyClaimOpen(false);
+      setWalletAction(null);
       return;
     }
     void refreshClaimableRoyalties();
@@ -433,10 +445,35 @@ export function CurrentUserWalletPage() {
         onClaim={() => {
           setRoyaltyClaimOpen(true);
         }}
+        onReceive={walletAddress ? () => setWalletAction("receive") : undefined}
+        onSend={() => setWalletAction("send")}
         totalBalanceUsd={totalBalanceUsd}
         walletActionsPending={walletActionsPending}
         walletAddress={walletAddress}
       />
+      {walletAction === "receive" ? (
+        <React.Suspense fallback={null}>
+          <LazyWalletReceiveSheet
+            chainSections={chainSections}
+            onOpenChange={(open) => {
+              setWalletAction(open ? "receive" : null);
+            }}
+            open
+            walletAddress={walletAddress}
+          />
+        </React.Suspense>
+      ) : null}
+      {walletAction === "send" ? (
+        <React.Suspense fallback={null}>
+          <LazyWalletSendSheet
+            chainSections={chainSections}
+            onOpenChange={(open) => {
+              setWalletAction(open ? "send" : null);
+            }}
+            open
+          />
+        </React.Suspense>
+      ) : null}
       {royaltyClaimOpen ? (
         <React.Suspense fallback={null}>
           <LazyRoyaltyClaimModal

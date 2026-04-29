@@ -147,7 +147,8 @@ export function DesktopWalletHub({
 }) {
   const { isRtl } = useUiLocale();
   const assetRows = React.useMemo(() => buildWalletAssetRows(chainSections), [chainSections]);
-  const actionDisabled = walletActionsPending || isZeroUsdAmount(totalBalanceUsd);
+  const sendDisabled = walletActionsPending || isZeroUsdAmount(totalBalanceUsd);
+  const receiveDisabled = walletActionsPending || !walletAddress;
   const showWalletActions = variant === "route" && (Boolean(walletAddress) || walletActionsPending);
   const balanceBlock = (
     <>
@@ -159,10 +160,10 @@ export function DesktopWalletHub({
       </Type>
       {showWalletActions ? (
         <div className="mt-5 flex gap-3">
-          <Button variant="outline" className="h-14 flex-1 text-base" onClick={onSend} disabled={actionDisabled || !onSend}>
+          <Button variant="outline" className="h-14 flex-1 text-base" onClick={onSend} disabled={sendDisabled || !onSend}>
             Send
           </Button>
-          <Button variant="outline" className="h-14 flex-1 text-base" onClick={onReceive} disabled={actionDisabled || !onReceive}>
+          <Button variant="outline" className="h-14 flex-1 text-base" onClick={onReceive} disabled={receiveDisabled || !onReceive}>
             Receive
           </Button>
         </div>
@@ -267,7 +268,8 @@ export function MobileWalletHub({
 }) {
   const assetRows = React.useMemo(() => buildWalletAssetRows(chainSections), [chainSections]);
   const hasClaimable = !!claimableWipWei && claimableWipWei !== "0";
-  const actionDisabled = walletActionsPending || isZeroUsdAmount(totalBalanceUsd);
+  const sendDisabled = walletActionsPending || isZeroUsdAmount(totalBalanceUsd);
+  const receiveDisabled = walletActionsPending || !walletAddress;
   const showWalletActions = variant === "route" && (Boolean(walletAddress) || walletActionsPending);
   const balanceSummary = (
     <>
@@ -279,10 +281,10 @@ export function MobileWalletHub({
       </Type>
       {showWalletActions ? (
         <div className="mt-4 grid grid-cols-2 gap-3">
-          <Button variant="outline" className="h-14 text-base" onClick={onSend} disabled={actionDisabled || !onSend}>
+          <Button variant="outline" className="h-14 text-base" onClick={onSend} disabled={sendDisabled || !onSend}>
             Send
           </Button>
-          <Button variant="outline" className="h-14 text-base" onClick={onReceive} disabled={actionDisabled || !onReceive}>
+          <Button variant="outline" className="h-14 text-base" onClick={onReceive} disabled={receiveDisabled || !onReceive}>
             Receive
           </Button>
         </div>

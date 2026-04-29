@@ -155,6 +155,118 @@ function buildRecentPostRail(input: {
   return railPosts;
 }
 
+type UseHomeFeedInput = {
+  activeSort: FeedSort;
+  contentLocale: string;
+  hydrated: boolean;
+  session: ReturnType<typeof useSession>;
+  topTimeRange: string;
+};
+
+export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange }: UseHomeFeedInput) {
+  const api = useApi();
+  const sessionProfile = session?.profile;
+  const sessionUserId = session?.user.user_id;
+  const [feedEntries, setFeedEntries] = React.useState<ApiHomeFeedItem[]>([]);
+  const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
+  const [listingsByAssetId, setListingsByAssetId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
+  const [purchasesByAssetId, setPurchasesByAssetId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
+  const [error, setError] = React.useState<unknown>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (!hydrated) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setLoading(true);
+    setError(null);
+    setAuthorProfiles({});
+    setListingsByAssetId({});
+    setPurchasesByAssetId({});
+
+    void api.feed.home({
+      locale: contentLocale,
+      sort: activeSort,
+      timeRange: activeSort === "top" ? topTimeRange : null,
+    })
+      .then((result) => {
+        if (cancelled) return;
+
+        const nextFeedEntries = result.items;
+        setFeedEntries(nextFeedEntries);
+        setLoading(false);
+
+        void loadProfilesByUserId(
+          api,
+          nextFeedEntries.map((entry) => entry.post.post.identity_mode === "public" ? entry.post.post.author_user_id : null).filter((userId): userId is string => Boolean(userId)),
+          sessionProfile && sessionUserId ? { [sessionUserId]: sessionProfile } : {},
+        )
+          .then((profiles) => {
+            if (!cancelled) setAuthorProfiles(profiles);
+          })
+          .catch(() => {
+            if (!cancelled) setAuthorProfiles({});
+          });
+
+        const commerceCommunityIds = sessionUserId
+          ? [...new Set(nextFeedEntries
+            .filter((entry) => entry.post.post.post_type === "song" || entry.post.post.post_type === "video")
+            .map((entry) => entry.community.community_id))]
+          : [];
+
+        if (commerceCommunityIds.length > 0) {
+          void Promise.all(commerceCommunityIds.map(async (communityId) => {
+            const [listings, purchases] = await Promise.all([
+              api.communities.listListings(communityId).then((response) => response.items).catch(() => []),
+              api.communities.listPurchases(communityId).then((response) => response.items).catch(() => []),
+            ]);
+            return { communityId, listings, purchases };
+          }))
+            .then((commerceByCommunity) => {
+              if (cancelled) return;
+              setListingsByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.listings.map((listing) => (
+                typeof listing.asset_id === "string" && listing.asset_id.length > 0 ? [[listing.asset_id, listing] as const] : []
+              )))));
+              setPurchasesByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.purchases.map((purchase) => (
+                typeof purchase.asset_id === "string" && purchase.asset_id.length > 0 ? [[purchase.asset_id, purchase] as const] : []
+              )))));
+            })
+            .catch(() => {
+              // ignore commerce enrichment errors
+            });
+        }
+      })
+      .catch((nextError: unknown) => {
+        if (cancelled) return;
+        if ((nextError as { status?: number; code?: string }).status === 401 || (nextError as { code?: string }).code === "auth_error") {
+          clearSession();
+          return;
+        }
+        setError(nextError);
+        setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSort, api, contentLocale, hydrated, sessionProfile, sessionUserId, topTimeRange]);
+
+  return {
+    feedEntries,
+    setFeedEntries,
+    authorProfiles,
+    listingsByAssetId,
+    purchasesByAssetId,
+    error,
+    loading,
+  };
+}
+
 export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const api = useApi();
   const hydrated = useClientHydrated();
@@ -170,12 +282,15 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const emptyHomeVerifyBody = copy.home.emptyHomeVerifyBody;
   const [activeSort, setActiveSort] = React.useState<FeedSort>(() => initialSort ?? getCurrentHomeFeedSort());
   const [topTimeRange, setTopTimeRange] = React.useState("day");
-  const [feedEntries, setFeedEntries] = React.useState<ApiHomeFeedItem[]>([]);
-  const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
-  const [listingsByAssetId, setListingsByAssetId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
-  const [purchasesByAssetId, setPurchasesByAssetId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
-  const [error, setError] = React.useState<unknown>(null);
-  const [loading, setLoading] = React.useState(true);
+  const {
+    feedEntries,
+    setFeedEntries,
+    authorProfiles,
+    listingsByAssetId,
+    purchasesByAssetId,
+    error,
+    loading,
+  } = useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange });
   const recentCommunities = useRecentCommunities();
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
@@ -184,73 +299,6 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     routeKind: "home",
     uiLocale: locale,
   });
-
-  React.useEffect(() => {
-    let cancelled = false;
-
-    if (!hydrated) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setLoading(true);
-    setError(null);
-
-    void api.feed.home({
-      locale: contentLocale,
-      sort: activeSort,
-      timeRange: activeSort === "top" ? topTimeRange : null,
-    })
-      .then(async (result) => {
-        const nextFeedEntries = result.items;
-        const nextAuthorProfiles = await loadProfilesByUserId(
-          api,
-          nextFeedEntries.map((entry) => entry.post.post.identity_mode === "public" ? entry.post.post.author_user_id : null).filter((userId): userId is string => Boolean(userId)),
-          session?.profile ? { [session.user.user_id]: session.profile } : {},
-        );
-        const commerceCommunityIds = session
-          ? [...new Set(nextFeedEntries
-            .filter((entry) => entry.post.post.post_type === "song" || entry.post.post.post_type === "video")
-            .map((entry) => entry.community.community_id))]
-          : [];
-        const commerceByCommunity = await Promise.all(commerceCommunityIds.map(async (communityId) => {
-          const [listings, purchases] = await Promise.all([
-            api.communities.listListings(communityId).then((response) => response.items).catch(() => []),
-            api.communities.listPurchases(communityId).then((response) => response.items).catch(() => []),
-          ]);
-          return { communityId, listings, purchases };
-        }));
-
-        if (cancelled) return;
-
-        setFeedEntries(nextFeedEntries);
-        setAuthorProfiles(nextAuthorProfiles);
-        setListingsByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.listings.map((listing) => (
-          typeof listing.asset_id === "string" && listing.asset_id.length > 0 ? [[listing.asset_id, listing] as const] : []
-        )))));
-        setPurchasesByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.purchases.map((purchase) => (
-          typeof purchase.asset_id === "string" && purchase.asset_id.length > 0 ? [[purchase.asset_id, purchase] as const] : []
-        )))));
-      })
-      .catch((nextError: unknown) => {
-        if (cancelled) return;
-        if ((nextError as { status?: number; code?: string }).status === 401 || (nextError as { code?: string }).code === "auth_error") {
-          clearSession();
-          return;
-        }
-        setError(nextError);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeSort, api, contentLocale, hydrated, session, topTimeRange]);
 
   React.useEffect(() => {
     setCurrentHomeFeedSort(activeSort);

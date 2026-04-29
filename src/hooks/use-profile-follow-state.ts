@@ -22,6 +22,7 @@ import {
   readViewerFollowOverride,
   writeViewerFollowOverride,
 } from "@/lib/follow/follow-overrides";
+import { getWalletTransactionErrorMessage } from "@/lib/wallet-error-utils";
 
 function normalizeAddress(value: string | null | undefined): Address | null {
   if (!value) {
@@ -81,6 +82,7 @@ export function useProfileFollowState(
   const {
     busy: authBusy,
     connect,
+    sendSponsoredIntent,
   } = usePiratePrivyRuntime();
   const shouldSyncWallets = !ownProfile && Boolean(session);
   const {
@@ -284,6 +286,8 @@ export function useProfileFollowState(
     void submitFollowAction(writeWallet, {
       followed: nextFollowing,
       targetAddress,
+    }, {
+      sendSponsoredIntent,
     })
       .then(() => {
         setServerFollowing(nextFollowing);
@@ -296,7 +300,7 @@ export function useProfileFollowState(
         }
 
         setOverrideFollowing(previousOverride);
-        toast.error(error instanceof Error ? error.message : copy.followFailed);
+        toast.error(getWalletTransactionErrorMessage(error, copy.followFailed));
       })
       .finally(() => {
         setFollowBusy(false);
@@ -309,6 +313,7 @@ export function useProfileFollowState(
     overrideFollowing,
     ownProfile,
     session,
+    sendSponsoredIntent,
     targetAddress,
     viewerAddress,
     writeWallet,

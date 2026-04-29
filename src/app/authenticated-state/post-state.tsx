@@ -349,42 +349,67 @@ export function usePost(
     };
 
     void loadPost()
-      .then(async ({ post: p, readMode: nextReadMode }) => {
-        const [communityResult, commentTree, ownedAgentsResult] = await Promise.all([
+      .then(({ post: p, readMode: nextReadMode }) => {
+        if (cancelled) return;
+        setPost(p);
+        setReadMode(nextReadMode);
+        setLoading(false);
+
+        void loadProfilesByUserId(
+          api,
+          [...(p.post.identity_mode === "public" && p.post.author_user_id ? [p.post.author_user_id] : [])],
+          session?.profile ? { [session.user.user_id]: session.profile } : {},
+        )
+          .then((authorProfilesByUserId) => {
+            if (cancelled) return;
+            if (p.post.identity_mode === "public" && p.post.author_user_id && !authorProfilesByUserId[p.post.author_user_id]) {
+              logger.warn("[post-route] author handle fallback", {
+                postId: p.post.post_id,
+                readMode: nextReadMode,
+                userId: p.post.author_user_id,
+              });
+            }
+            setAuthorProfile(p.post.identity_mode === "public" && p.post.author_user_id ? authorProfilesByUserId[p.post.author_user_id] ?? null : null);
+            setAuthorProfilesByUserId((current) => ({ ...current, ...authorProfilesByUserId }));
+          })
+          .catch((nextError: unknown) => {
+            if (!cancelled) {
+              logger.warn("[post-route] author profile load failed", {
+                error: nextError,
+                postId: p.post.post_id,
+              });
+            }
+          });
+
+        void Promise.all([
           (hasSession
             ? api.communities.preview(p.post.community_id, { locale })
             : api.publicCommunities.get(p.post.community_id, { locale })).catch(() => null),
           loadTopLevelComments(p.post.community_id, nextReadMode, commentSort),
           hasSession ? api.agents.list().catch(() => null) : Promise.resolve(null),
-        ]);
-        const authorProfilesByUserId = await loadProfilesByUserId(
-          api,
-          [...(p.post.identity_mode === "public" && p.post.author_user_id ? [p.post.author_user_id] : [])],
-          session?.profile ? { [session.user.user_id]: session.profile } : {},
-        );
-        if (cancelled) return;
-        setPost(p);
-        setCommunity(communityResult);
-        setReadMode(nextReadMode);
-        setAvailableAgent(ownedAgentsResult ? await resolveAvailableSigningAgent(ownedAgentsResult.items) : null);
-        if (p.post.identity_mode === "public" && p.post.author_user_id && !authorProfilesByUserId[p.post.author_user_id]) {
-          logger.warn("[post-route] author handle fallback", {
-            postId: p.post.post_id,
-            readMode: nextReadMode,
-            userId: p.post.author_user_id,
+        ])
+          .then(async ([communityResult, commentTree, ownedAgentsResult]) => {
+            const nextAvailableAgent = ownedAgentsResult ? await resolveAvailableSigningAgent(ownedAgentsResult.items) : null;
+            if (cancelled) return;
+            setCommunity(communityResult);
+            setAvailableAgent(nextAvailableAgent);
+            setCommentNodes(commentTree.commentNodes);
+            setAuthorProfilesByUserId((current) => ({ ...current, ...commentTree.authorProfilesByUserId }));
+            loadedCommentSortKeyRef.current = `${p.post.community_id}:${nextReadMode}:${commentSort}`;
+          })
+          .catch((nextError: unknown) => {
+            if (!cancelled) {
+              logger.warn("[post-route] supplemental load failed", {
+                error: nextError,
+                postId: p.post.post_id,
+              });
+            }
           });
-        }
-        setAuthorProfile(p.post.identity_mode === "public" && p.post.author_user_id ? authorProfilesByUserId[p.post.author_user_id] ?? null : null);
-        setCommentNodes(commentTree.commentNodes);
-        setAuthorProfilesByUserId({ ...commentTree.authorProfilesByUserId, ...authorProfilesByUserId });
-        loadedCommentSortKeyRef.current = `${p.post.community_id}:${nextReadMode}:${commentSort}`;
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         setError(e);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       });
 
     return () => { cancelled = true; };

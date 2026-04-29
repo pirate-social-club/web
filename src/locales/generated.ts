@@ -1506,7 +1506,7 @@ export const GENERATED_LOCALE_CATALOGS = {
       "rootError": {
         "description": "Something went wrong while loading Pirate.",
         "homeLabel": "Go Home",
-        "title": "Pirate hit a problem"
+        "title": "Something went wrong?"
       },
       "storybook": {
         "contentAreaLabel": "Content area",

@@ -54,7 +54,7 @@ export function Toaster() {
             "!bg-primary !text-primary-foreground hover:!bg-primary/90",
           cancelButton:
             "!bg-secondary !text-secondary-foreground hover:!bg-secondary/85",
-          description: "!text-muted-foreground",
+          description: "!break-words !text-muted-foreground",
           error:
             "!border-destructive/25 !bg-surface-toast-error !text-foreground",
           info:
@@ -62,8 +62,8 @@ export function Toaster() {
           success:
             "!border-success/20 !bg-surface-toast-success !text-foreground",
           toast:
-            "!rounded-[var(--radius-xl)] !border !shadow-[var(--shadow-lg)] !backdrop-blur-md",
-          title: "!text-base !font-semibold !text-foreground",
+            "!max-h-[min(60vh,20rem)] !max-w-[calc(100vw-2rem)] !overflow-y-auto !rounded-[var(--radius-xl)] !border !shadow-[var(--shadow-lg)] !backdrop-blur-md sm:!max-w-[24rem]",
+          title: "!break-words !text-base !font-semibold !text-foreground",
           warning:
             "!border-warning/20 !bg-surface-toast-warning !text-foreground",
         },

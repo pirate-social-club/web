@@ -262,16 +262,12 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       api.communities.preview(communityId),
       api.communities.get(communityId),
       api.communities.getJoinEligibility(communityId),
-      api.communities.getPricingPolicy(communityId).catch(() => null),
-      session?.accessToken ? api.agents.list().catch(() => null) : Promise.resolve(null),
     ])
-      .then(async ([communityResult, fullCommunityResult, eligibilityResult, pricingPolicyResult, ownedAgentsResult]) => {
+      .then(([communityResult, fullCommunityResult, eligibilityResult]) => {
         if (cancelled) return;
         setCommunity(communityResult);
         setCommunityOwnerUserId(fullCommunityResult.created_by_user_id);
         setEligibility(eligibilityResult);
-        setPricingPolicy(pricingPolicyResult);
-        setAvailableAgent(ownedAgentsResult ? await resolveAvailableSigningAgent(ownedAgentsResult.items) : null);
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -283,6 +279,41 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
     return () => { cancelled = true; };
   }, [api, communityId, session?.accessToken]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setPricingPolicy(null);
+
+    void api.communities.getPricingPolicy(communityId)
+      .then((pricingPolicyResult) => {
+        if (!cancelled) setPricingPolicy(pricingPolicyResult);
+      })
+      .catch(() => {
+        if (!cancelled) setPricingPolicy(null);
+      });
+
+    return () => { cancelled = true; };
+  }, [api, communityId]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setAvailableAgent(null);
+
+    if (!session?.accessToken) {
+      return () => { cancelled = true; };
+    }
+
+    void api.agents.list()
+      .then(async (ownedAgentsResult) => {
+        const nextAvailableAgent = await resolveAvailableSigningAgent(ownedAgentsResult.items);
+        if (!cancelled) setAvailableAgent(nextAvailableAgent);
+      })
+      .catch(() => {
+        if (!cancelled) setAvailableAgent(null);
+      });
+
+    return () => { cancelled = true; };
+  }, [api, session?.accessToken]);
 
   React.useEffect(() => {
     if (previousSongBundleInputFingerprint.current !== songBundleInputFingerprint) {

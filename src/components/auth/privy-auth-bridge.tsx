@@ -2,6 +2,10 @@
 
 import * as React from "react";
 import { useModalStatus, usePrivy } from "@privy-io/react-auth";
+import {
+  useAuthorizationSignature,
+  useMigrateWallets,
+} from "@privy-io/react-auth";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
@@ -9,6 +13,7 @@ import type { ApiError } from "@/lib/api/client";
 import { isOnboardingComplete } from "@/lib/onboarding";
 import {
   getSessionAccessTokenExpiryMs,
+  getAccessToken as getStoredAccessToken,
   isSessionAccessTokenExpiringSoon,
   setSessionClearCallback,
   setSession,
@@ -18,6 +23,14 @@ import {
 import { logger } from "@/lib/logger";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { toast } from "@/components/primitives/sonner";
+import type {
+  PirateSponsoredIntentRequest,
+  PirateSponsoredIntentSender,
+} from "@/lib/pirate-sponsored-intent";
+import {
+  PrivyRelayResponseError,
+  sendPrivyRelayIntent,
+} from "@/lib/privy-relay-client";
 
 const REFRESH_WINDOW_MS = 5 * 60 * 1000;
 const RETRY_COOLDOWN_MS = 30 * 1000;
@@ -33,6 +46,27 @@ export interface PrivyAuthBridgeProps {
   onModalClosed?: () => void;
   onReadyChange?: (ready: boolean) => void;
   onReconnectEthereumWalletReady?: (connect: (() => void) | null) => void;
+  onSponsoredIntentSenderChange?: (sender: PirateSponsoredIntentSender | null) => void;
+}
+
+function normalizePrivyRelayError(error: unknown): Error {
+  if (error instanceof PrivyRelayResponseError) {
+    if (error.code === "unauthorized") {
+      return new Error("Privy session expired. Sign in again.");
+    }
+
+    if (error.code === "session_mismatch") {
+      return new Error("Pirate wallet does not match the active session. Sign in again.");
+    }
+
+    return new Error(error.message);
+  }
+
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function isPrivyRelayMigrationError(error: unknown): error is PrivyRelayResponseError {
+  return error instanceof PrivyRelayResponseError && error.code === "wallet_needs_migration";
 }
 
 export function PrivyAuthBridge({
@@ -43,12 +77,15 @@ export function PrivyAuthBridge({
   onModalClosed,
   onReadyChange,
   onReconnectEthereumWalletReady,
+  onSponsoredIntentSenderChange,
 }: PrivyAuthBridgeProps) {
   const api = useApi();
   const session = useSession();
   const sessionClearInProgress = useSessionClearInProgress();
   const { isOpen } = useModalStatus();
   const { ready, authenticated, connectWallet, login, linkWallet, getAccessToken, logout } = usePrivy();
+  const { generateAuthorizationSignature } = useAuthorizationSignature();
+  const { migrate } = useMigrateWallets();
   const mountIdRef = React.useRef(Math.random().toString(36).slice(2, 8));
   const [busy, setBusy] = React.useState(false);
   const [exchangeRequested, setExchangeRequested] = React.useState(false);
@@ -64,6 +101,61 @@ export function PrivyAuthBridge({
   const linkEthereumWallet = React.useCallback(() => {
     linkWallet({ walletChainType: "ethereum-only" });
   }, [linkWallet]);
+  const sendSponsoredIntent = React.useCallback(async (
+    request: PirateSponsoredIntentRequest,
+  ): Promise<`0x${string}`> => {
+    const executeRelaySend = async () => {
+      let authorizationSignature: string | undefined;
+
+      if (request.privyWalletId) {
+        const { signature } = await generateAuthorizationSignature({
+          body: {
+            caip2: `eip155:${request.chainId}`,
+            chain_type: "ethereum",
+            method: "eth_sendTransaction",
+            params: {
+              transaction: {
+                data: request.transaction.data,
+                to: request.transaction.to,
+                ...(request.transaction.value ? { value: request.transaction.value } : {}),
+              },
+            },
+            sponsor: true,
+          },
+          headers: {
+            "privy-app-id": import.meta.env.VITE_PRIVY_APP_ID,
+          },
+          method: "POST",
+          url: `${import.meta.env.VITE_PRIVY_API_URL || "https://api.privy.io"}/v1/wallets/${request.privyWalletId}/rpc`,
+          version: 1,
+        });
+        authorizationSignature = signature;
+      }
+
+      return await sendPrivyRelayIntent({
+        accessToken: getStoredAccessToken(),
+        request: {
+          ...request,
+          ...(authorizationSignature ? { authorizationSignature } : {}),
+        },
+      });
+    };
+
+    try {
+      return await executeRelaySend();
+    } catch (error) {
+      if (isPrivyRelayMigrationError(error)) {
+        await migrate();
+        return await executeRelaySend();
+      }
+
+      throw normalizePrivyRelayError(error);
+    }
+  }, [generateAuthorizationSignature, migrate]);
+  const sendSponsoredIntentRef = React.useRef(sendSponsoredIntent);
+  const stableSendSponsoredIntent = React.useCallback<PirateSponsoredIntentSender>((request) => {
+    return sendSponsoredIntentRef.current(request);
+  }, []);
   const liveStateRef = React.useRef({
     authenticated: false,
     busy: false,
@@ -75,6 +167,7 @@ export function PrivyAuthBridge({
 
   authStateRef.current = { authenticated, ready };
   sessionClearInProgressRef.current = sessionClearInProgress;
+  sendSponsoredIntentRef.current = sendSponsoredIntent;
   liveStateRef.current = {
     authenticated,
     busy,
@@ -419,6 +512,14 @@ export function PrivyAuthBridge({
       onReconnectEthereumWalletReady?.(null);
     };
   }, [onReconnectEthereumWalletReady, ready, sessionClearInProgress]);
+
+  React.useEffect(() => {
+    onSponsoredIntentSenderChange?.(authenticated ? stableSendSponsoredIntent : null);
+
+    return () => {
+      onSponsoredIntentSenderChange?.(null);
+    };
+  }, [authenticated, onSponsoredIntentSenderChange, stableSendSponsoredIntent]);
 
   React.useEffect(() => {
     if (retryCountRef.current < MAX_RETRY_COUNT || !ready || !authenticated) {

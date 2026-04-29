@@ -1,9 +1,13 @@
 "use client";
 
-import type { Address } from "viem";
+import { encodeFunctionData, type Address } from "viem";
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { getPirateNetworkConfig } from "@/lib/network-config";
+import type {
+  PirateSponsoredIntent,
+  PirateSponsoredIntentSender,
+} from "@/lib/pirate-sponsored-intent";
 
 import { fetchProfileLists, getListStorageLocation, resolvePrimaryListStorageForAddress } from "./efp-read";
 import {
@@ -17,6 +21,10 @@ import {
   submitTransaction,
   type FollowWriteTransaction,
 } from "./efp-shared";
+
+interface SubmitFollowActionOptions {
+  sendSponsoredIntent?: PirateSponsoredIntentSender | null;
+}
 
 function buildFollowTransactions(
   viewerAddress: Address,
@@ -62,9 +70,85 @@ function buildFollowTransactions(
   ];
 }
 
+function isEmbeddedPrivyWallet(wallet: PirateConnectedEvmWallet): boolean {
+  return wallet.walletClientType === "privy" || wallet.walletClientType === "privy-v2";
+}
+
+function resolveFollowTransactionSlot(transaction: FollowWriteTransaction): bigint {
+  if (
+    transaction.functionName === "applyListOps" ||
+    transaction.functionName === "setMetadataValuesAndApplyListOps"
+  ) {
+    return transaction.args[0] as bigint;
+  }
+
+  const storageLocation = transaction.args[0] as `0x${string}`;
+  return BigInt(`0x${storageLocation.slice(-64)}`);
+}
+
+function buildSponsoredFollowIntent(
+  transaction: FollowWriteTransaction,
+  targetAddress: Address,
+  followed: boolean,
+): PirateSponsoredIntent {
+  const slot = resolveFollowTransactionSlot(transaction).toString();
+
+  switch (transaction.functionName) {
+    case "applyListOps":
+      return {
+        type: "pirate.follow.apply",
+        followed,
+        slot,
+        targetAddress,
+      };
+    case "setMetadataValuesAndApplyListOps":
+      return {
+        type: "pirate.follow.create-list-records",
+        followed,
+        slot,
+        targetAddress,
+      };
+    case "mintPrimaryListNoMeta":
+      return {
+        type: "pirate.follow.mint-primary-list",
+        slot,
+      };
+  }
+}
+
+async function submitSponsoredTransaction(
+  wallet: PirateConnectedEvmWallet,
+  viewerAddress: Address,
+  targetAddress: Address,
+  followed: boolean,
+  transaction: FollowWriteTransaction,
+  sendSponsoredIntent: PirateSponsoredIntentSender,
+): Promise<Address> {
+  const { efp } = getPirateNetworkConfig();
+  if (transaction.chainId !== efp.primaryListChainId) {
+    throw new Error("Sponsored follows only support primary-chain EFP lists.");
+  }
+
+  return await sendSponsoredIntent({
+    chainId: transaction.chainId,
+    intent: buildSponsoredFollowIntent(transaction, targetAddress, followed),
+    transaction: {
+      data: encodeFunctionData({
+        abi: transaction.abi,
+        args: transaction.args,
+        functionName: transaction.functionName,
+      } as never),
+      to: transaction.address,
+    },
+    ...(wallet.id ? { privyWalletId: wallet.id } : {}),
+    walletAddress: viewerAddress,
+  });
+}
+
 export async function submitFollowAction(
   wallet: PirateConnectedEvmWallet,
   params: { followed: boolean; targetAddress: string },
+  options?: SubmitFollowActionOptions,
 ): Promise<{ txHash: Address }> {
   const { efp } = getPirateNetworkConfig();
   const viewerAddress = normalizeAddress(wallet.address);
@@ -116,6 +200,18 @@ export async function submitFollowAction(
 
   let txHash: Address | undefined;
   for (const transaction of transactions) {
+    if (options?.sendSponsoredIntent && isEmbeddedPrivyWallet(wallet)) {
+      txHash = await submitSponsoredTransaction(
+        wallet,
+        viewerAddress,
+        targetAddress,
+        params.followed,
+        transaction,
+        options.sendSponsoredIntent,
+      );
+      continue;
+    }
+
     txHash = await submitTransaction(wallet, viewerAddress, transaction);
   }
 

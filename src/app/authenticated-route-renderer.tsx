@@ -21,9 +21,18 @@ function lazyRouteModule<TModule extends Record<string, unknown>>(
   loader: () => Promise<TModule>,
   exportName: keyof TModule,
 ) {
-  return React.lazy(async () => ({
-    default: (await loader())[exportName] as React.ComponentType<any>,
-  }));
+  return React.lazy(async () => {
+    const mod = await loader();
+    const component = mod[exportName];
+
+    if (!component) {
+      throw new Error(`Route module is missing export "${String(exportName)}".`);
+    }
+
+    return {
+      default: component as React.ComponentType<any>,
+    };
+  });
 }
 
 const LazyYourCommunitiesPage = lazyRouteModule(

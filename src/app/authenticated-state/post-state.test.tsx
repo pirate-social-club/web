@@ -164,9 +164,42 @@ describe("usePost", () => {
     const { result } = renderHook(() => usePost("pst_test", "es", true, labels));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.community?.display_name).toBe("Preview Community"));
 
     expect(calls.communityGet).toBe(0);
     expect(calls.communityPreview).toEqual([{ communityId: "cmt_test", locale: "es" }]);
     expect(result.current.community?.display_name).toBe("Preview Community");
+  });
+
+  test("renders the post before slower sidebar and comments data resolves", async () => {
+    __resetSessionStoreForTests();
+    let resolvePreview: ((preview: CommunityPreview) => void) | null = null;
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: []; next_cursor: null }>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = () => new Promise<CommunityPreview>((resolve) => {
+      resolvePreview = resolve;
+    });
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    agents.list = async () => ({ items: [] });
+
+    const { result } = renderHook(() => usePost("pst_test", "es", true, labels));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.post?.post.post_id).toBe("pst_test");
+    expect(result.current.community).toBeNull();
+
+    resolvePreview?.(createPreview());
+    await waitFor(() => expect(result.current.community?.display_name).toBe("Preview Community"));
   });
 });

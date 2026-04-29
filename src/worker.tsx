@@ -54,6 +54,9 @@ type PublicPostResponse = LocalizedPostResponse & {
 };
 
 const META_DESCRIPTION_MAX_LENGTH = 180;
+const SEO_METADATA_TIMEOUT_MS = 650;
+const SEO_METADATA_USER_AGENT_PATTERN =
+  /(bot|crawler|spider|facebookexternalhit|twitterbot|xbot|slackbot|discordbot|telegrambot|whatsapp|linkedinbot|embedly|pinterest|preview)/i;
 const SHARE_LOCALE_QUERY_KEYS = ["locale", "lang"] as const;
 
 function parseThemeCookie(cookieHeader: string | null): ThemeMode {
@@ -80,6 +83,11 @@ function resolveRequestUiLocale(
   acceptLanguageHeader: string | null,
 ): Exclude<UiLocaleCode, "pseudo"> {
   return resolveLocaleQueryOverride(url) ?? resolveRequestLocale(acceptLanguageHeader);
+}
+
+function shouldResolveSeoMetadata(request: Request): boolean {
+  const userAgent = request.headers.get("user-agent") ?? "";
+  return SEO_METADATA_USER_AGENT_PATTERN.test(userAgent);
 }
 
 function buildOpenGraphUrl(canonicalUrl: string, locale: UiLocaleCode, hasLocaleOverride: boolean): string {
@@ -155,7 +163,12 @@ function buildPublicApiUrl(apiOrigin: string, path: string, locale: UiLocaleCode
   return url.toString();
 }
 
-async function fetchPublicJson<T>(apiOrigin: string, path: string, locale: UiLocaleCode | null): Promise<T> {
+async function fetchPublicJson<T>(
+  apiOrigin: string,
+  path: string,
+  locale: UiLocaleCode | null,
+  signal?: AbortSignal,
+): Promise<T> {
   const languageTag = locale && locale !== "pseudo" ? resolveLocaleLanguageTag(locale) : null;
   const response = await fetch(buildPublicApiUrl(apiOrigin, path, locale), {
     headers: {
@@ -163,6 +176,7 @@ async function fetchPublicJson<T>(apiOrigin: string, path: string, locale: UiLoc
       ...(languageTag ? { "accept-language": languageTag } : {}),
     },
     redirect: "manual",
+    signal,
   });
   if (!response.ok) {
     throw new Error(`Public metadata lookup failed with status ${response.status}`);
@@ -287,6 +301,7 @@ async function resolveRouteSeoMetadata(input: {
   appOrigin: string;
   locale: UiLocaleCode;
   route: ReturnType<typeof matchRoute>;
+  signal?: AbortSignal;
 }): Promise<SeoMetadata | null> {
   try {
     if (input.route.kind === "community") {
@@ -294,6 +309,7 @@ async function resolveRouteSeoMetadata(input: {
         input.apiOrigin,
         `/public-communities/${encodeURIComponent(input.route.communityId)}`,
         input.locale,
+        input.signal,
       );
       return buildCommunitySeoMetadata({
         appOrigin: input.appOrigin,
@@ -307,15 +323,11 @@ async function resolveRouteSeoMetadata(input: {
         input.apiOrigin,
         `/public-posts/${encodeURIComponent(input.route.postId)}`,
         input.locale,
+        input.signal,
       );
-      const community = await fetchPublicJson<PublicCommunityPreviewResponse>(
-        input.apiOrigin,
-        `/public-communities/${encodeURIComponent(postResponse.post.community_id)}`,
-        input.locale,
-      ).catch(() => null);
       return buildPostSeoMetadata({
         appOrigin: input.appOrigin,
-        community,
+        community: null,
         locale: input.locale,
         postResponse,
       });
@@ -326,6 +338,7 @@ async function resolveRouteSeoMetadata(input: {
         input.apiOrigin,
         `/public-profiles/${encodeURIComponent(input.route.handleLabel)}`,
         input.locale,
+        input.signal,
       );
       return buildProfileSeoMetadata({
         appOrigin: input.appOrigin,
@@ -339,6 +352,7 @@ async function resolveRouteSeoMetadata(input: {
         input.apiOrigin,
         `/public-agents/${encodeURIComponent(input.route.handleLabel)}`,
         input.locale,
+        input.signal,
       );
       return buildAgentSeoMetadata({
         locale: input.locale,
@@ -350,6 +364,38 @@ async function resolveRouteSeoMetadata(input: {
   }
 
   return null;
+}
+
+async function resolveRouteSeoMetadataWithinBudget(input: {
+  apiOrigin: string;
+  appOrigin: string;
+  locale: UiLocaleCode;
+  route: ReturnType<typeof matchRoute>;
+}): Promise<SeoMetadata | null> {
+  const controller = new AbortController();
+  let timedOut = false;
+  const metadataPromise = resolveRouteSeoMetadata({
+    ...input,
+    signal: controller.signal,
+  });
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<null>((resolve) => {
+    timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+      resolve(null);
+    }, SEO_METADATA_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([metadataPromise, timeoutPromise]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    if (timedOut) {
+      void metadataPromise.catch(() => null);
+    }
+  }
 }
 
 function AppRoutePage(requestInfo: AppRequestInfo) {
@@ -441,12 +487,14 @@ const app = defineApp<AppRequestInfo>([
     ctx.locale = locale;
     ctx.dir = resolveLocaleDirection(locale);
     ctx.isIndexable = discovery.isIndexable;
-    const seoMetadata = await resolveRouteSeoMetadata({
-      apiOrigin: discovery.apiOrigin,
-      appOrigin: discovery.appOrigin,
-      locale,
-      route,
-    });
+    const seoMetadata = shouldResolveSeoMetadata(request)
+      ? await resolveRouteSeoMetadataWithinBudget({
+        apiOrigin: discovery.apiOrigin,
+        appOrigin: discovery.appOrigin,
+        locale,
+        route,
+      })
+      : null;
     ctx.seoMetadata = seoMetadata
       ? {
           ...seoMetadata,

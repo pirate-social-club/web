@@ -12,6 +12,10 @@ import {
 } from "viem/chains";
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
+import type {
+  PirateSponsoredIntentRequest,
+  PirateSponsoredIntentSender,
+} from "@/lib/pirate-sponsored-intent";
 import {
   getSessionAccessTokenExpiryMs,
   useSession,
@@ -35,6 +39,7 @@ type PrivyAuthBridgeComponent = React.ComponentType<{
   onModalClosed?: () => void;
   onReadyChange?: (ready: boolean) => void;
   onReconnectEthereumWalletReady?: (connect: (() => void) | null) => void;
+  onSponsoredIntentSenderChange?: (sender: PirateSponsoredIntentSender | null) => void;
 }>;
 type PrivyWalletBridgeComponent = React.ComponentType<{
   onWalletsChange?: (wallets: PirateConnectedEvmWallet[]) => void;
@@ -51,6 +56,7 @@ type PrivyRuntimeState = {
   privyAuthenticated: boolean;
   privyReady: boolean;
   reconnectEthereumWallet: (() => void) | null;
+  sendSponsoredIntent: PirateSponsoredIntentSender | null;
   walletSyncMounted: boolean;
   walletsReady: boolean;
 };
@@ -71,6 +77,7 @@ const PrivyRuntimeContext = React.createContext<PrivyRuntimeState>({
   privyAuthenticated: false,
   privyReady: false,
   reconnectEthereumWallet: null,
+  sendSponsoredIntent: null,
   walletSyncMounted: false,
   walletsReady: false,
 });
@@ -128,6 +135,8 @@ export function PirateAuthProvider({
   const [connectMountRequested, setConnectMountRequested] = React.useState(false);
   const [loadedConnect, setLoadedConnect] = React.useState<(() => void) | null>(null);
   const [loadedReconnectEthereumWallet, setLoadedReconnectEthereumWallet] = React.useState<(() => void) | null>(null);
+  const [loadedSponsoredIntentSender, setLoadedSponsoredIntentSender] =
+    React.useState<((request: PirateSponsoredIntentRequest) => Promise<`0x${string}`>) | null>(null);
   const [ProviderComponent, setProviderComponent] = React.useState<PrivyProviderComponent | null>(null);
   const [BridgeComponent, setBridgeComponent] = React.useState<PrivyAuthBridgeComponent | null>(null);
   const [WalletBridgeComponent, setWalletBridgeComponent] = React.useState<PrivyWalletBridgeComponent | null>(null);
@@ -252,6 +261,7 @@ export function PirateAuthProvider({
       setBridgeComponent(null);
       setLoadedConnect(null);
       setLoadedReconnectEthereumWallet(null);
+      setLoadedSponsoredIntentSender(null);
       setPrivyAuthenticated(false);
       setPrivyReady(false);
       setLoadError(null);
@@ -367,6 +377,10 @@ export function PirateAuthProvider({
     setLoadedReconnectEthereumWallet((current) => current === next ? current : next);
   }, []);
 
+  const handleSponsoredIntentSenderChange = React.useCallback((next: PirateSponsoredIntentSender | null) => {
+    setLoadedSponsoredIntentSender((current: PirateSponsoredIntentSender | null) => current === next ? current : next);
+  }, []);
+
   React.useEffect(() => {
     if (!pendingConnect || !loadedConnect) {
       return;
@@ -395,6 +409,7 @@ export function PirateAuthProvider({
     privyAuthenticated,
     privyReady,
     reconnectEthereumWallet: loadedReconnectEthereumWallet,
+    sendSponsoredIntent: loadedSponsoredIntentSender,
     walletSyncMounted: !!WalletBridgeComponent,
     walletsReady,
   }), [
@@ -406,6 +421,7 @@ export function PirateAuthProvider({
     connect,
     connectedWallets,
     loadedReconnectEthereumWallet,
+    loadedSponsoredIntentSender,
     loadError,
     pendingConnect,
     connectMountRequested,
@@ -442,6 +458,7 @@ export function PirateAuthProvider({
             onModalClosed={unloadPrivy}
             onReadyChange={setPrivyReady}
             onReconnectEthereumWalletReady={handleReconnectEthereumWalletReady}
+            onSponsoredIntentSenderChange={handleSponsoredIntentSenderChange}
           />
           {WalletBridgeComponent ? (
             <WalletBridgeComponent

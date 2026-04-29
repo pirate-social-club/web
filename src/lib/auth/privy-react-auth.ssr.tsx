@@ -22,6 +22,18 @@ type UseModalStatusResult = {
   isOpen: boolean;
 };
 
+type UseAuthorizationSignatureResult = {
+  generateAuthorizationSignature: () => Promise<{ signature: string }>;
+};
+
+type UseIdentityTokenResult = {
+  identityToken: string | null;
+};
+
+type UseMigrateWalletsResult = {
+  migrate: () => Promise<void>;
+};
+
 export function PrivyProvider({ children }: PrivyProviderProps) {
   return <>{children}</>;
 }
@@ -45,5 +57,23 @@ export function useWallets(): UseWalletsResult {
 export function useModalStatus(): UseModalStatusResult {
   return {
     isOpen: false,
+  };
+}
+
+export function useAuthorizationSignature(): UseAuthorizationSignatureResult {
+  return {
+    generateAuthorizationSignature: async () => ({ signature: "" }),
+  };
+}
+
+export function useIdentityToken(): UseIdentityTokenResult {
+  return {
+    identityToken: null,
+  };
+}
+
+export function useMigrateWallets(): UseMigrateWalletsResult {
+  return {
+    migrate: async () => {},
   };
 }

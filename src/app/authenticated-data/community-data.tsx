@@ -95,13 +95,11 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
     void Promise.all([
       api.communities.get(communityId, { locale: contentLocale }),
       api.communities.preview(communityId, { locale: contentLocale }),
-      api.communities.getJoinEligibility(communityId),
     ])
-      .then(([communityResult, previewResult, eligibilityResult]) => {
+      .then(([communityResult, previewResult]) => {
         if (cancelled) return;
         setCommunity(communityResult);
         setPreview(previewResult);
-        setEligibility(eligibilityResult);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -113,6 +111,24 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
 
     return () => { cancelled = true; };
   }, [api, communityId, contentLocale]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setEligibility(null);
+
+    void api.communities.getJoinEligibility(communityId)
+      .then((eligibilityResult) => {
+        if (!cancelled) setEligibility(eligibilityResult);
+      })
+      .catch((error: unknown) => {
+        logger.warn("[community-route] join eligibility load failed", {
+          communityId,
+          error,
+        });
+      });
+
+    return () => { cancelled = true; };
+  }, [api, communityId]);
 
   React.useEffect(() => {
     let cancelled = false;

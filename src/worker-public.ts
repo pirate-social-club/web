@@ -17,35 +17,13 @@ import type {
 } from "./worker-public.types";
 
 type PublicProfileRequestTarget =
-  | { kind: "host"; handleLabel: string; hostSuffix: string; identityKind: "profile" | "agent" }
-  | { kind: "path"; handleLabel: string };
+  { kind: "host"; handleLabel: string; hostSuffix: string; identityKind: "profile" | "agent" };
 
 function getPublicIdentityHandleLabel(input: {
   global_handle: { label: string };
   primary_public_handle?: { label: string } | null;
 }): string {
   return input.primary_public_handle?.label ?? input.global_handle.label;
-}
-
-function extractPathPublicProfile(url: URL): { handleLabel: string } | null {
-  const normalizedHostname = url.hostname.trim().toLowerCase().replace(/\.+$/u, "");
-  const supportedHosts = new Set(["pirate.sc", "staging.pirate.sc", "localhost"]);
-
-  if (!supportedHosts.has(normalizedHostname)) {
-    return null;
-  }
-
-  const segments = url.pathname.split("/").filter(Boolean);
-  if (segments.length !== 2 || segments[0] !== "u") {
-    return null;
-  }
-
-  const handleLabel = decodeURIComponent(segments[1]).trim();
-  if (!handleLabel) {
-    return null;
-  }
-
-  return { handleLabel };
 }
 
 function extractPublicProfileRequestTarget(url: URL): PublicProfileRequestTarget | null {
@@ -56,14 +34,6 @@ function extractPublicProfileRequestTarget(url: URL): PublicProfileRequestTarget
       handleLabel: hostTarget.handleLabel,
       hostSuffix: hostTarget.hostSuffix,
       identityKind: hostTarget.hostSuffix === "clawitzer" ? "agent" : "profile",
-    };
-  }
-
-  const pathTarget = extractPathPublicProfile(url);
-  if (pathTarget) {
-    return {
-      kind: "path",
-      handleLabel: pathTarget.handleLabel,
     };
   }
 
@@ -110,15 +80,10 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     );
   }
 
-  const hostSuffix =
-    target.kind === "host"
-      ? target.hostSuffix
-      : url.hostname === "localhost"
-        ? "localhost"
-        : "pirate.sc";
+  const hostSuffix = target.hostSuffix;
   const apiOrigin = resolveApiOrigin(env, hostSuffix);
   const appOrigin = resolveAppOrigin(env, url, hostSuffix);
-  const publicLookupPath = target.kind === "host" && target.identityKind === "agent"
+  const publicLookupPath = target.identityKind === "agent"
     ? "public-agents"
     : "public-profiles";
   const response = await fetch(
@@ -147,7 +112,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     );
   }
 
-  if (target.kind === "host" && target.identityKind === "agent") {
+  if (target.identityKind === "agent") {
     const resolution = await response.json() as PublicAgentResolution;
     if (!resolution.is_canonical) {
       const nextUrl = new URL(request.url);
@@ -168,7 +133,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   if (!resolution.is_canonical) {
     const nextUrl = new URL(request.url);
 
-    if (target.kind === "host" && resolution.resolved_handle_label.toLowerCase().endsWith(".pirate")) {
+    if (resolution.resolved_handle_label.toLowerCase().endsWith(".pirate")) {
       nextUrl.hostname = `${resolution.resolved_handle_label.replace(/\.pirate$/i, "")}.${target.hostSuffix}`;
     } else {
       nextUrl.pathname = `/u/${encodeURIComponent(resolution.resolved_handle_label)}`;

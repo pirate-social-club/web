@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import type { AppRoute } from "@/app/router";
-import { navigate, useRoute } from "@/app/router";
+import { isNativePublicIdentityRoute, navigate, useRoute } from "@/app/router";
 import { AppSidebar, type AppSidebarPrimaryItem } from "@/components/compositions/app/app-sidebar/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/compositions/system/sidebar/sidebar";
 import { PageContainer } from "@/components/primitives/layout-shell";
@@ -236,8 +236,7 @@ export function PirateAppShell({ initialHost, initialPath }: { initialHost?: str
   const effectiveDir = resolveLocaleDirection(effectiveLocale);
   const copy = getLocaleMessages(effectiveLocale, "shell");
   const isCommunityModerationRoute = route.kind === "community-moderation" || route.kind === "community-moderation-index";
-  const isPublicProfileRoute = route.kind === "public-profile" || route.kind === "public-agent";
-  const useStandalonePublicProfileShell = isPublicProfileRoute && !session;
+  const useStandalonePublicProfileShell = isNativePublicIdentityRoute(route);
   const shouldDeferPrivyUntilConnect =
     route.kind === "create-community"
     || (!session && (

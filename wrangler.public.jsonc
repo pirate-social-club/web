@@ -10,12 +10,7 @@
     "HNS_PUBLIC_API_ORIGIN": "https://api.pirate.sc",
     "HNS_PUBLIC_APP_ORIGIN": "https://pirate.sc"
   },
-  "routes": [
-    {
-      "pattern": "pirate.sc/u/*",
-      "zone_name": "pirate.sc"
-    }
-  ],
+  "routes": [],
   "observability": {
     "enabled": true
   },
@@ -27,12 +22,7 @@
         "HNS_PUBLIC_API_ORIGIN": "https://api-staging.pirate.sc",
         "HNS_PUBLIC_APP_ORIGIN": "https://staging.pirate.sc"
       },
-      "routes": [
-        {
-          "pattern": "staging.pirate.sc/u/*",
-          "zone_name": "pirate.sc"
-        }
-      ]
+      "routes": []
     }
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { canonicalizeRoutePathname, matchRoute } from "./router";
+import { canonicalizeRoutePathname, isNativePublicIdentityRoute, matchRoute } from "./router";
 import { extractPublicProfileHost } from "@/lib/public-host";
 
 function expectJson(actual: unknown, expected: unknown): void {
@@ -49,6 +49,12 @@ describe("public profile host routing", () => {
       handleLabel: "captain.pirate",
       hostSuffix: null,
     });
+  });
+
+  test("only native public identity hosts use the standalone public shell", () => {
+    expect(isNativePublicIdentityRoute(matchRoute("/", "captain.pirate"))).toBe(true);
+    expect(isNativePublicIdentityRoute(matchRoute("/u/captain.pirate", "pirate.sc"))).toBe(false);
+    expect(isNativePublicIdentityRoute(matchRoute("/a/night-signal.clawitzer", "pirate.sc"))).toBe(false);
   });
 
   test("matches public agent routes from clawitzer host routes", () => {

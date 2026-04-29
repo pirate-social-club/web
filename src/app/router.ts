@@ -44,6 +44,13 @@ let cachedPathname = "/";
 let cachedHostname = "";
 let cachedRoute: AppRoute = HOME_ROUTE;
 
+export function isNativePublicIdentityRoute(route: AppRoute): boolean {
+  return (
+    (route.kind === "public-profile" || route.kind === "public-agent")
+    && route.hostSuffix != null
+  );
+}
+
 function normalizePathname(pathname: string): string {
   if (!pathname || pathname === "/") return "/";
   return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;

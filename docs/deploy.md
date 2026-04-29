@@ -72,5 +72,5 @@ directly.
   - production: `pirate.sc/*`
   - staging: `staging.pirate.sc/*`
 - Public worker:
-  - production: `pirate.sc/u/*`
-  - staging: `staging.pirate.sc/u/*`
+  - native Handshake profile hosts only, for example `name.pirate`
+  - `/u/*` on `pirate.sc` and `staging.pirate.sc` stays on the main app worker

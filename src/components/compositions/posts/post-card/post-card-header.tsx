@@ -130,7 +130,7 @@ function AuthorRoleBadge({ role }: { role?: CommunityAuthorRole | null }) {
   if (!role) return null;
 
   return (
-    <span className="inline-flex h-[1.15em] items-center self-center rounded-full bg-primary px-1.5 text-[10px] font-bold uppercase leading-none text-primary-foreground">
+    <span className="inline-flex h-[1.15em] items-center self-center rounded-full bg-primary px-2 text-[10px] font-bold uppercase leading-none text-primary-foreground">
       {role === "owner" ? "Owner" : "Mod"}
     </span>
   );

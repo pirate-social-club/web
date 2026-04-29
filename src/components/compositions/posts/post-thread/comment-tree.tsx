@@ -89,7 +89,7 @@ function CollapsedCommentRow({ comment, replyCount }: CollapsedCommentRowProps) 
       <Type as="div" variant="caption" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
         <span className="font-semibold text-foreground"><bdi>{comment.authorLabel}</bdi></span>
         {comment.authorCommunityRole ? (
-          <span className="inline-flex h-[1.15em] items-center self-center rounded-full bg-primary px-1.5 text-[10px] font-bold uppercase leading-none text-primary-foreground">
+          <span className="inline-flex h-[1.15em] items-center self-center rounded-full bg-primary px-2 text-[10px] font-bold uppercase leading-none text-primary-foreground">
             {comment.authorCommunityRole === "owner" ? "Owner" : "Mod"}
           </span>
         ) : null}

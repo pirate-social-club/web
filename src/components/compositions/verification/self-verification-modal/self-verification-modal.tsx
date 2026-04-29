@@ -43,9 +43,9 @@ export function SelfVerificationModal({
   selfApp,
   title,
 }: SelfVerificationModalProps) {
-  const hasPrimaryAction = Boolean(href);
   const isMobile = useIsMobile();
   const shouldShowQr = Boolean(selfApp) && !forceMobile && !isMobile;
+  const hasPrimaryAction = Boolean(href) && !shouldShowQr;
 
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
@@ -78,7 +78,7 @@ export function SelfVerificationModal({
                 {actionLabel}
               </a>
             </Button>
-          ) : (
+          ) : shouldShowQr ? null : (
             <Button className="h-12 w-full" onClick={() => onOpenChange(false)} variant="secondary">
               Cancel
             </Button>

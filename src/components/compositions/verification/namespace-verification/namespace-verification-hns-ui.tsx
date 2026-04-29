@@ -46,6 +46,7 @@ export function NamespaceVerificationHnsPanel({
   mode,
   onAbandon,
   rootLabel,
+  showAbandonAction = true,
   setupNameservers,
 }: {
   challengeHost: string | null;
@@ -54,6 +55,7 @@ export function NamespaceVerificationHnsPanel({
   mode: HnsVerificationMode;
   onAbandon: () => void;
   rootLabel: string;
+  showAbandonAction?: boolean;
   setupNameservers: string[] | null;
 }) {
   const copy = defaultRouteCopy;
@@ -112,13 +114,15 @@ export function NamespaceVerificationHnsPanel({
         </div>
       ) : null}
 
-      <button
-        className="text-base text-muted-foreground transition-colors hover:text-foreground"
-        onClick={onAbandon}
-        type="button"
-      >
-        Verify a different namespace
-      </button>
+      {showAbandonAction ? (
+        <button
+          className="text-base text-muted-foreground transition-colors hover:text-foreground"
+          onClick={onAbandon}
+          type="button"
+        >
+          Verify a different namespace
+        </button>
+      ) : null}
     </section>
   );
 }

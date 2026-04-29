@@ -12,6 +12,7 @@ type FormFieldLabelProps = {
   counter?: React.ReactNode;
   htmlFor?: string;
   label: React.ReactNode;
+  labelClassName?: string;
   tone?: "default" | "muted";
 };
 
@@ -20,12 +21,13 @@ function FormFieldLabel({
   counter,
   htmlFor,
   label,
+  labelClassName,
   tone = "muted",
 }: FormFieldLabelProps) {
   return (
     <div className={cn("flex items-center justify-between gap-3", className)}>
       <Label htmlFor={htmlFor} tone={tone}>
-        <Type variant="label">{label}</Type>
+        <Type className={labelClassName} variant="label">{label}</Type>
       </Label>
       {counter ? <Type variant="caption">{counter}</Type> : null}
     </div>

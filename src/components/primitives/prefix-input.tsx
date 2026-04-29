@@ -22,13 +22,14 @@ const prefixInputVariants = cva(
 
 export interface PrefixInputProps extends Omit<React.ComponentProps<"input">, "size">, VariantProps<typeof prefixInputVariants> {
   prefix: string;
+  prefixClassName?: string;
 }
 
 const PrefixInput = React.forwardRef<HTMLInputElement, PrefixInputProps>(
-  ({ className, prefix, size, ...props }, ref) => {
+  ({ className, prefix, prefixClassName, size, ...props }, ref) => {
     return (
       <div className={cn(prefixInputVariants({ size }), className)}>
-        <div className="grid h-full w-12 shrink-0 place-items-center border-e border-border-soft bg-muted/40 text-base font-semibold text-foreground">
+        <div className={cn("grid h-full w-12 shrink-0 place-items-center border-e border-border-soft bg-muted/40 text-xl font-semibold text-foreground", prefixClassName)}>
           {prefix}
         </div>
         <input

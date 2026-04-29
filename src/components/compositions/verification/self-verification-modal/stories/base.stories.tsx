@@ -78,7 +78,7 @@ function ModalStory({
 }
 
 export const DesktopLaunch: Story = {
-  name: "Desktop / Provider launch",
+  name: "Desktop / QR launch",
   parameters: {
     viewport: { defaultViewport: "desktop" },
   },

@@ -31,6 +31,7 @@ const namespaceFamilyMeta: Record<NamespaceFamily, {
 }> = {
   hns: {
     externalExample: "infinity",
+    rootInputPrefix: ".",
     icon: <img alt="" className="size-full object-cover" src={handshakeLogoUrl} />,
   },
   spaces: {
@@ -124,14 +125,9 @@ export function CommunityNamespaceVerificationPage({
 
   return (
     <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", isMobile && hasFooterActions && "pb-28")}>
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
         <div className="flex min-w-0 items-start gap-4">
-          <div className="min-w-0 space-y-2">
-            <Type as="h1" variant="h1" className="md:text-4xl">{mc.title}</Type>
-            <p className="text-base text-muted-foreground">
-              {mc.description}
-            </p>
-          </div>
+          <Type as="h1" variant="h1" className="md:text-4xl">Import Namespace</Type>
         </div>
         {flow.isVerified ? <Button onClick={() => onBackClick?.()}>{mc.doneLabel}</Button> : null}
       </div>
@@ -164,6 +160,7 @@ export function CommunityNamespaceVerificationPage({
                 }}
                 placeholder={meta.externalExample}
                 prefix={meta.rootInputPrefix ?? ""}
+                prefixClassName={flow.isHns ? "pb-1 text-3xl font-bold" : undefined}
                 value={flow.rootLabel}
               />
               {flow.rootLabelError ? (
@@ -190,6 +187,7 @@ export function CommunityNamespaceVerificationPage({
             mode={flow.hnsMode}
             onAbandon={flow.actions.reset}
             rootLabel={flow.rootLabel}
+            showAbandonAction={!isMobile}
             setupNameservers={flow.setupNameservers}
           />
         ) : null}
@@ -200,6 +198,7 @@ export function CommunityNamespaceVerificationPage({
             challengePayload={flow.challengePayload}
             className="rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5 md:py-5"
             onAbandon={flow.actions.reset}
+            showAbandonAction={!isMobile}
           />
         ) : null}
 

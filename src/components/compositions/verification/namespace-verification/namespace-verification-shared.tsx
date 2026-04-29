@@ -132,6 +132,7 @@ type NamespaceVerificationSpacesPanelProps = {
   challengePayload: SpacesChallengePayload;
   className?: string;
   onAbandon: () => void;
+  showAbandonAction?: boolean;
 };
 
 export function NamespaceVerificationSpacesPanel({
@@ -139,6 +140,7 @@ export function NamespaceVerificationSpacesPanel({
   challengePayload,
   className,
   onAbandon,
+  showAbandonAction = true,
 }: NamespaceVerificationSpacesPanelProps) {
   const copy = defaultRouteCopy;
   const mc = copy.moderation.namespaceVerification;
@@ -169,14 +171,16 @@ export function NamespaceVerificationSpacesPanel({
           <NamespaceVerificationChallengeMessage value={publishCommand} />
         </li>
       </ol>
-      <button
-        className="text-base text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-        disabled={busy}
-        onClick={onAbandon}
-        type="button"
-      >
-        {mc.verifyDifferent}
-      </button>
+      {showAbandonAction ? (
+        <button
+          className="text-base text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          disabled={busy}
+          onClick={onAbandon}
+          type="button"
+        >
+          {mc.verifyDifferent}
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -126,6 +126,36 @@ describe("CommentTree", () => {
     view.unmount();
   });
 
+  test("insets loaded replies under their parent comment", () => {
+    const view = renderTree(
+      <CommentTree
+        comments={[
+          {
+            authorLabel: "nadia",
+            body: "Parent comment",
+            commentId: "cmt_parent",
+            timestampLabel: "12m",
+            children: [
+              {
+                authorLabel: "eli",
+                body: "Reply should be inset",
+                commentId: "cmt_child",
+                timestampLabel: "8m",
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const reply = view.getByText("Reply should be inset");
+    const replyGroup = reply.closest("[data-comment-tree-children]");
+
+    expect(replyGroup?.className).toContain("ms-10");
+
+    view.unmount();
+  });
+
   test("uses load replies instead of collapse for unloaded branches", () => {
     const view = renderTree(
       <CommentTree

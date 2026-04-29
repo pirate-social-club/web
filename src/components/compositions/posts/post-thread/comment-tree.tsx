@@ -193,7 +193,7 @@ function CommentTreeNode({
         />
 
         {hasLoadedChildren && !truncateDeepNesting ? (
-          <div className="mt-2">
+          <div className="ms-10 mt-2" data-comment-tree-children>
             {children.map((child, index) => {
               const childKey = getCommentKey(child, `${nodeKey}-${index}`);
               return (

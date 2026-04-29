@@ -249,7 +249,7 @@ export function AppHeader({
       type="button"
     >
       <PirateBrandMark className="h-11 w-11 shrink-0" decorative={false} />
-      <Type as="span" variant="h4" className="truncate font-display tracking-wide">PIRATE</Type>
+      <Type as="span" variant="h3" className="truncate font-display tracking-wide">PIRATE</Type>
     </button>
   );
 

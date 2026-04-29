@@ -326,7 +326,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   return (
     <>
       {gateModal}
-      <StandardRoutePage size="rail" className="gap-6">
+      <StandardRoutePage size="rail" className="gap-6" frameClassName="md:pb-0">
         <Feed
           activeSort={activeSort}
           aside={recentRailPosts.length > 0 ? (

@@ -44,32 +44,14 @@ function useIsModerationMobileLayout() {
       return false;
     }
 
-    const matchesMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent);
-    const userAgentData = (window.navigator as Navigator & {
-      userAgentData?: { mobile?: boolean };
-    }).userAgentData;
-
-    return window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches && (userAgentData?.mobile === true || matchesMobileUserAgent);
+    return window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches;
   });
 
   React.useEffect(() => {
     const mobileWidthQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
 
-    const isMobileUserAgent = () => {
-      const userAgentData = (window.navigator as Navigator & {
-        userAgentData?: { mobile?: boolean };
-      }).userAgentData;
-      const matchesMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent);
-
-      if (userAgentData?.mobile === true) {
-        return true;
-      }
-
-      return matchesMobileUserAgent;
-    };
-
     const update = () => {
-      setIsMobileLayout(mobileWidthQuery.matches && isMobileUserAgent());
+      setIsMobileLayout(mobileWidthQuery.matches);
     };
 
     mobileWidthQuery.addEventListener("change", update);

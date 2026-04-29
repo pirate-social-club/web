@@ -11,6 +11,7 @@ type PageContainerSize = React.ComponentProps<typeof PageContainer>["size"];
 export interface StandardRoutePageProps {
   children: React.ReactNode;
   className?: string;
+  frameClassName?: string;
   size?: PageContainerSize;
   overflowHidden?: boolean;
 }
@@ -24,6 +25,7 @@ export interface StandardRoutePageProps {
 export function StandardRoutePage({
   children,
   className,
+  frameClassName,
   size = "default",
   overflowHidden = false,
 }: StandardRoutePageProps) {
@@ -33,6 +35,7 @@ export function StandardRoutePage({
         "flex min-h-0 w-full flex-1 flex-col",
         "pt-[calc(env(safe-area-inset-top)+4.5rem)] pb-24 md:pt-6 md:pb-8",
         overflowHidden && "md:overflow-hidden",
+        frameClassName,
       )}
     >
       <PageContainer className={cn("flex min-h-0 flex-1 flex-col", className)} gutter size={size}>

@@ -304,7 +304,7 @@ export function AppSidebar({
 
   return (
     <Sidebar
-      className={cn("w-[15.5rem] pt-0 md:top-[var(--header-height)]", className)}
+      className={cn("w-[15.5rem] pt-0 md:top-[var(--header-height)] md:h-[calc(100svh-var(--header-height))]", className)}
       collapsible="icon"
       side={resolvedSide}
       {...props}

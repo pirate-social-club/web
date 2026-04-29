@@ -7,6 +7,7 @@ import { AdCreator } from "@/components/compositions/ads/ad-creator/ad-creator";
 import type { CommunityPickerItem } from "@/components/compositions/posts/post-composer/post-composer.types";
 import { PostComposer } from "@/components/compositions/posts/post-composer/post-composer";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
+import { Button } from "@/components/primitives/button";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRecentCommunities } from "@/lib/owned-communities";
@@ -87,10 +88,22 @@ export function CreatePostGlobalPage({
   if (isMobile) {
     return (
       <div className="min-h-screen w-full bg-background text-foreground">
-        <MobilePageHeader onCloseClick={() => navigate("/")} title={copy.createPost.title} />
+        <MobilePageHeader
+          onCloseClick={() => navigate("/")}
+          title={copy.createPost.title}
+          trailingAction={(
+            <Button
+              className="h-11 px-2 text-base font-semibold text-primary"
+              disabled
+              variant="ghost"
+            >
+              {copy.createPost.actions.next}
+            </Button>
+          )}
+        />
         <section className="flex min-w-0 flex-1 flex-col px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
           <PostComposer
-            availableTabs={["text", "image", "link", "song"]}
+            availableTabs={["text", "image", "video", "link", "song"]}
             canCreateSongPost
             clubName={copy.common.chooseCommunity}
             communityPickerEmptyLabel={copy.common.noRecentCommunities}
@@ -113,7 +126,7 @@ export function CreatePostGlobalPage({
   return (
     <PageContainer className="min-w-0" size="rail">
       <PostComposer
-        availableTabs={["text", "image", "link", "song"]}
+        availableTabs={["text", "image", "video", "link", "song"]}
         canCreateSongPost
         clubName={copy.common.chooseCommunity}
         communityPickerEmptyLabel={copy.common.noRecentCommunities}

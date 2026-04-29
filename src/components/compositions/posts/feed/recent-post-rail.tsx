@@ -127,7 +127,7 @@ export function RecentPostRail({
                   aria-label={`Open post: ${item.postTitle}`}
                   href={item.postHref}
                 >
-                  <div className="h-[4.5rem] w-[4.5rem] overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-surface-skeleton">
+                  <div className="size-18 overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-surface-skeleton">
                     <img
                       alt=""
                       className="h-full w-full object-cover"

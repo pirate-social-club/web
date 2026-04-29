@@ -388,7 +388,18 @@ export function OnboardingPage() {
         updateSessionOnboarding({ ...onboardingStatus!, cleanup_rename_available: false });
         navigate(getOnboardingExitPath());
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : copy.onboarding.errors.renameFailed))
+      .catch((e: unknown) => {
+        trackAnalyticsEvent({
+          eventName: "handle_claim_failed",
+          properties: {
+            surface: "onboarding",
+            source: shouldUseRedditClaim ? "verified_reddit_username" : "free_cleanup_rename",
+            handle_length: normalizeHandleLabel(desiredLabel).length,
+            failure_code: typeof (e as { code?: unknown })?.code === "string" ? (e as { code: string }).code : "unknown",
+          },
+        });
+        setError(e instanceof Error ? e.message : copy.onboarding.errors.renameFailed);
+      })
       .finally(() => setActionLoading(false));
   }, [actionLoading, api, copy.onboarding.errors.chooseHandle, copy.onboarding.errors.renameFailed, generatedHandle, onboardingStatus, redditImportSummary, session?.profile?.global_handle?.label]);
 

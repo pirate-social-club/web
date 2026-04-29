@@ -68,7 +68,7 @@ export function ProfilePage({
   const [activeTab, setActiveTab] = useHashTab(defaultTab);
 
   return (
-    <div className={cn("w-full min-h-screen bg-background text-foreground", className)}>
+    <div className={cn("w-full bg-background text-foreground", className)}>
       <ContentRailShell
         className={cn("pb-10", isMobile && "pb-6")}
         header={(

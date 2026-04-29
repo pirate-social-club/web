@@ -41,7 +41,7 @@ export const DesktopChatWidgetFrame = React.forwardRef<HTMLElement, {
     <section
       aria-label={title}
       className={cn(
-        "fixed bottom-4 end-4 z-50 flex h-[calc(100dvh-6rem)] max-h-[42rem] min-h-96 w-[calc(100vw-2rem)] max-w-4xl flex-col overflow-hidden rounded-[var(--radius-xl)] border border-border bg-background shadow-xl",
+        "fixed bottom-0 end-4 z-50 flex h-[calc(100dvh-6rem)] max-h-[42rem] min-h-96 w-[calc(100vw-2rem)] max-w-4xl flex-col overflow-hidden rounded-t-[var(--radius-xl)] border border-border bg-background shadow-xl",
         className,
       )}
       ref={ref}

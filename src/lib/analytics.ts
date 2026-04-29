@@ -6,9 +6,9 @@ import { logger } from "@/lib/logger";
 export type AnalyticsEventName =
   | "page_viewed"
   | "auth_started"
-  | "unique_human_verification_started"
   | "reddit_verification_started"
   | "handle_claim_started"
+  | "handle_claim_failed"
   | "home_feed_viewed"
   | "community_viewed"
   | "community_join_requested"

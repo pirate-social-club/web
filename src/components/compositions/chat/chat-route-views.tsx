@@ -282,7 +282,7 @@ export function ChatSetupState({
             </div>
             <Type
               as="p"
-              className="mx-auto max-w-[18rem] whitespace-pre-line text-xl leading-9 text-muted-foreground sm:mx-0 sm:max-w-none sm:text-base sm:leading-8 sm:text-foreground"
+              className="mx-auto max-w-72 whitespace-pre-line text-xl leading-9 text-muted-foreground sm:mx-0 sm:max-w-none sm:text-base sm:leading-8 sm:text-foreground"
               variant="body"
             >
               {description}

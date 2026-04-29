@@ -254,7 +254,7 @@ export function PostThread({
             onCancel={handleMobileReplyCancel}
             onSubmit={handleMobileReplySubmit}
             placeholder={rootReplyPlaceholder}
-            postLabel={rootReplySubmitLabel}
+            postLabel={copy.createPost.actions.post}
             title={rootReplyActionLabel ?? copy.common.replyAction}
           />
         </div>

@@ -7,8 +7,8 @@ import { promisify } from "node:util";
 import { privateKeyToAccount } from "viem/accounts";
 import { createPublicClient, createWalletClient, defineChain, http, type Hex } from "viem";
 
-import { CDRClient } from "../src/lib/story/vendor/piplabs/sdk/client";
-import { initWasm } from "../src/lib/story/vendor/piplabs/crypto";
+import { CDRClient } from "../src/vendor/piplabs/sdk/client";
+import { initWasm } from "../src/vendor/piplabs/crypto";
 
 const execFileAsync = promisify(execFile);
 
@@ -21,6 +21,7 @@ const API_CWD = [
 if (!API_CWD) {
   throw new Error("Could not locate Pirate API checkout. Set PIRATE_API_DIR.");
 }
+const API_CWD_RESOLVED: string = API_CWD;
 const BUYER_PRIVATE_KEY = "0x8b3a350cf5c34c9194ca3a545d8b3b77d6c7b94d1d13d0d9f5e6f7a8b9c0d1e2" as Hex;
 
 function readFlag(flagName: string): string | null {
@@ -52,7 +53,7 @@ async function mintUpstreamJwt(sub: string, walletAddress: string): Promise<stri
   const { stdout } = await execFileAsync(
     "rtk",
     ["bun", "run", "scripts/mint-dev-jwt.ts", "--", "--sub", sub, "--wallet", walletAddress],
-    { cwd: API_CWD },
+    { cwd: API_CWD_RESOLVED },
   );
   const token = stdout.trim();
   if (!token) {
@@ -73,7 +74,7 @@ async function ensureLocalPrimaryWalletAttachment(input: {
     `--user-id=${input.userId}`,
     `--wallet-address=${input.walletAddress}`,
   ], {
-    cwd: API_CWD,
+    cwd: API_CWD_RESOLVED,
   });
   const walletAttachmentId = stdout.trim();
   if (!walletAttachmentId) {

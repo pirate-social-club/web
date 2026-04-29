@@ -11,7 +11,7 @@ rtk bun run ui:audit
 
 Use `rtk bun run types:safe` instead of `rtk bun run types` for routine local verification. It runs the same TypeScript check with incremental build info, a bounded Node heap, and lower process priority so it is less likely to stall the machine. Use `rtk bun run types` only when exact uncapped CI parity is required.
 
-Use Storybook validation when component stories change. Avoid `rtk bun run build` by default; use the lighter Vite checks from the workspace instructions unless a full production build is required.
+Use the already-running Storybook dev server for component story validation when available. Never run `rtk bun run build-storybook`, `storybook build`, or other Storybook production builds unless the user explicitly asks for that exact command; they are too heavy for routine agent validation and can freeze the machine. Avoid `rtk bun run build` by default; use the lighter Vite checks from the workspace instructions unless a full production build is required.
 
 ## Browser Automation
 
@@ -20,6 +20,7 @@ Use Storybook validation when component stories change. Avoid `rtk bun run build
 - Serialize all open/wait/snapshot/screenshot/click actions. Take one snapshot or screenshot after the page is loaded, then inspect code locally before deciding whether another browser action is necessary.
 - Before starting a dev server, Storybook, or browser session, check existing processes with `rtk ps -ef` or `rtk pgrep -af "storybook|vite|wrangler|next|6006|5173|8787"`.
 - If the desired dev server or Storybook is already running, use the existing URL. Do not start a second instance, and do not switch to an alternate port just because the default port is occupied, unless the user explicitly asks for a separate server.
+- Never run Storybook production builds for browser or story verification. Use the running Storybook dev server only.
 - Do not run browser automation while a build, full typecheck, Storybook build, or other heavy command is running unless the user explicitly asks for that tradeoff.
 - Stop any dev server or browser session started for the task when it is no longer needed.
 

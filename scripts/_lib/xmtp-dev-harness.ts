@@ -3,7 +3,6 @@ import { dirname, resolve } from "node:path";
 
 import {
   Client,
-  IdentifierKind,
   type ClientOptions,
   type Dm,
   type ConsentState,
@@ -64,7 +63,7 @@ export function getConsentStates(): ConsentState[] {
 export function getIdentifier(address: `0x${string}`): Identifier {
   return {
     identifier: address,
-    identifierKind: IdentifierKind.Ethereum,
+    identifierKind: 0 as Identifier["identifierKind"],
   };
 }
 

@@ -9,10 +9,10 @@ import { toBytes, toHex } from "viem";
 import { readDevVars, readWranglerVars } from "../../api/services/api/scripts/_lib/dev-vars";
 import { fetchSongArtifactBytes } from "../../api/services/api/src/lib/song-artifacts/song-artifact-storage";
 import type { Env } from "../../api/services/api/src/types";
-import { initWasm } from "../src/lib/story/vendor/piplabs/crypto";
-import { cdrAbi, contractAddresses } from "../src/lib/story/vendor/piplabs/contracts";
-import { CDRClient } from "../src/lib/story/vendor/piplabs/sdk/client";
-import { uuidToLabel } from "../src/lib/story/vendor/piplabs/sdk/label";
+import { initWasm } from "../src/vendor/piplabs/crypto";
+import { cdrAbi, contractAddresses } from "../src/vendor/piplabs/contracts";
+import { CDRClient } from "../src/vendor/piplabs/sdk/client";
+import { uuidToLabel } from "../src/vendor/piplabs/sdk/label";
 import { decodeBase64 } from "./_lib/base64";
 
 const scriptDir = fileURLToPath(new URL(".", import.meta.url));
@@ -23,6 +23,7 @@ const API_SERVICE_ROOT = [
 if (!API_SERVICE_ROOT) {
   throw new Error("Could not locate Pirate API checkout. Set PIRATE_API_DIR.");
 }
+const API_SERVICE_ROOT_RESOLVED: string = API_SERVICE_ROOT;
 
 function readFlag(flagName: string): string | null {
   const prefix = `${flagName}=`;
@@ -103,8 +104,8 @@ async function main(): Promise<void> {
   const fromBlockRaw = readFlag("--from-block");
 
   const env = {
-    ...readWranglerVars(resolve(API_SERVICE_ROOT, "wrangler.jsonc"), "development"),
-    ...readDevVars(resolve(API_SERVICE_ROOT, ".dev.vars")),
+    ...readWranglerVars(resolve(API_SERVICE_ROOT_RESOLVED, "wrangler.jsonc"), "development"),
+    ...readDevVars(resolve(API_SERVICE_ROOT_RESOLVED, ".dev.vars")),
     ...process.env,
   } as Env;
 

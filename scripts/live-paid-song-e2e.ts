@@ -9,11 +9,11 @@ import { privateKeyToAccount } from "viem/accounts";
 import { createPublicClient, createWalletClient, defineChain, http, parseEther, type Hex } from "viem";
 import { secp256k1 } from "@noble/curves/secp256k1";
 
-import { CDRClient } from "../src/lib/story/vendor/piplabs/sdk/client";
-import { initWasm } from "../src/lib/story/vendor/piplabs/crypto";
-import { uuidToLabel } from "../src/lib/story/vendor/piplabs/sdk/label";
+import { CDRClient } from "../src/vendor/piplabs/sdk/client";
+import { initWasm } from "../src/vendor/piplabs/crypto";
+import { uuidToLabel } from "../src/vendor/piplabs/sdk/label";
 import { toBytes, toHex } from "viem";
-import { cdrAbi, contractAddresses } from "../src/lib/story/vendor/piplabs/contracts";
+import { cdrAbi, contractAddresses } from "../src/vendor/piplabs/contracts";
 import { decodeBase64 } from "./_lib/base64";
 
 const execFileAsync = promisify(execFile);
@@ -34,6 +34,8 @@ if (!API_CWD) {
 if (!CORE_CWD) {
   throw new Error("Could not locate Pirate core repo. Set PIRATE_CORE_REPO.");
 }
+const API_CWD_RESOLVED: string = API_CWD;
+const CORE_CWD_RESOLVED: string = CORE_CWD;
 const SELLER_PRIVATE_KEY = "0x59c6995e998f97a5a0044966f0945382dbd5666b7e51f3d8d9a0c1f1e8f2a3b4" as Hex;
 const BUYER_PRIVATE_KEY = "0x8b3a350cf5c34c9194ca3a545d8b3b77d6c7b94d1d13d0d9f5e6f7a8b9c0d1e2" as Hex;
 const STORY_RUNTIME_PRIVATE_KEY = process.env.STORY_RUNTIME_PRIVATE_KEY?.trim()
@@ -108,7 +110,7 @@ async function mintUpstreamJwt(sub: string, walletAddress: string): Promise<stri
       walletAddress,
     ],
     {
-      cwd: API_CWD,
+      cwd: API_CWD_RESOLVED,
       env: process.env,
     },
   );
@@ -133,13 +135,13 @@ async function ensureLocalPrimaryWalletAttachment(input: {
     "bun",
     "run",
     "--cwd",
-    API_CWD,
+    API_CWD_RESOLVED,
     "scripts/ensure-dev-primary-wallet-attachment.ts",
     "--",
     `--user-id=${input.userId}`,
     `--wallet-address=${input.walletAddress}`,
   ], {
-    cwd: CORE_CWD,
+    cwd: CORE_CWD_RESOLVED,
     env: process.env,
   });
   const walletAttachmentId = stdout.trim();
@@ -169,16 +171,18 @@ async function request(
     headers.set("content-type", input.contentType);
   }
 
-  return await fetch(`${API_BASE}${path}`, {
+  const init = {
     method: input?.method ?? (input?.json !== undefined || input?.bytes ? "POST" : "GET"),
     headers,
     dispatcher: HTTP_AGENT,
     body: input?.json !== undefined
       ? JSON.stringify(input.json)
       : input?.bytes
-        ? input.bytes
+        ? input.bytes as unknown as BodyInit
         : undefined,
-  });
+  } as RequestInit & { dispatcher: Agent };
+
+  return await fetch(`${API_BASE}${path}`, init);
 }
 
 async function expectOkJson<T>(

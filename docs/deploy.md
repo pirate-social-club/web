@@ -39,6 +39,12 @@ VITE_PRIVY_CLIENT_ID
 These are read at Vite build time and baked into the browser bundle. A deploy
 machine without them will produce a client where Connect is disabled.
 
+API endpoint selection is host-based at runtime:
+
+- `staging.pirate.sc` uses `https://api-staging.pirate.sc`
+- `pirate.sc` and `www.pirate.sc` use `https://api.pirate.sc`
+- local hosts use `VITE_PIRATE_API_BASE_URL` when set, otherwise `http://127.0.0.1:8787`
+
 Do not use this for the main worker:
 
 ```bash

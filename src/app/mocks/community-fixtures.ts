@@ -11,13 +11,16 @@ export const COMMUNITY_RECORDS: Record<string, CommunitySummary> = {
     createdAt: "2024-06-15T00:00:00Z",
     memberCount: 48231,
     membershipMode: "open",
-    moderator: {
+    owner: {
+      user_id: "usr_kevin",
       avatarSrc: "https://i.pravatar.cc/96?img=12",
       displayName: "Kevin Parker",
       handle: "kevinparker.pirate",
       nationalityBadgeCountryCode: "GB",
       nationalityBadgeLabel: "Verified United Kingdom nationality",
+      role: "owner" as const,
     },
+    moderators: [],
     referenceLinks: [
       {
         communityReferenceLinkId: "spotify",
@@ -90,13 +93,16 @@ export const COMMUNITY_RECORDS: Record<string, CommunitySummary> = {
     createdAt: "2025-01-20T00:00:00Z",
     memberCount: 1284,
     membershipMode: "gated",
-    moderator: {
+    owner: {
+      user_id: "usr_modmatrix",
       avatarSrc: "https://i.pravatar.cc/96?img=33",
       displayName: "modmatrix",
       handle: "modmatrix.pirate",
       nationalityBadgeCountryCode: "US",
       nationalityBadgeLabel: "Verified United States nationality",
+      role: "owner" as const,
     },
+    moderators: [],
     referenceLinks: [
       {
         communityReferenceLinkId: "discord",
@@ -144,13 +150,16 @@ export const COMMUNITY_RECORDS: Record<string, CommunitySummary> = {
     createdAt: "2025-08-02T00:00:00Z",
     memberCount: 9021,
     membershipMode: "open",
-    moderator: {
+    owner: {
+      user_id: "usr_shipit",
       avatarSrc: "https://i.pravatar.cc/96?img=21",
       displayName: "shipit",
       handle: "shipit.pirate",
       nationalityBadgeCountryCode: "SG",
       nationalityBadgeLabel: "Verified Singapore nationality",
+      role: "owner" as const,
     },
+    moderators: [],
     referenceLinks: [],
     rules: [
       { ruleId: "receipts", title: "Bring receipts", body: "If you critique a system, explain the tradeoff and show the failure mode.", position: 0, status: "active" },
@@ -216,7 +225,7 @@ export const HOME_POSTS: RoutePost[] = [
     postId: "pst_01_unlock_demo",
     score: 142,
     timestampLabel: "7h",
-    title: "Preview track locked for members",
+    title: "New single — unlock to listen",
     viewContext: "home",
   }),
 ];

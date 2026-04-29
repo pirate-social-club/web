@@ -33,7 +33,7 @@ function deriveUnlockFromContent(
     const effectivePrice = regionalPriceLabel ?? priceLabel;
 
     if (isListed && effectivePrice && onBuy) {
-      return { label: `Unlock ${effectivePrice}`, onBuy };
+      return { label: effectivePrice, onBuy };
     }
 
     if (onUnlock) {

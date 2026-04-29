@@ -158,7 +158,7 @@ export function createSongPost(frame: {
     ...createPostFrame(frame),
     content: {
       type: "song",
-      title: "Preview track",
+      title: "Midnight in Tokyo",
       artist: frame.authorLabel.replace(/^u\//, ""),
       artworkSrc: "https://picsum.photos/seed/pirate-song/640/640",
       durationLabel: "2:18",

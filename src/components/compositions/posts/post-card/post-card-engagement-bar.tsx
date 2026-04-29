@@ -70,14 +70,14 @@ export function PostCardEngagementBar({
       {unlock && (
         <button
           className={cn(
-            "inline-flex h-9 items-center gap-1.5 rounded-xl border border-primary/25 bg-primary/8 px-3 text-base font-medium text-primary transition-colors hover:bg-primary/14",
+            "inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-border-soft bg-background px-4 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground",
           )}
           onClick={handleUnlock}
           type="button"
           data-post-card-interactive="true"
         >
-          <Lock className="size-[17px]" />
-          {unlock.label}
+          <Lock className="size-[20px]" />
+          <span className="tabular-nums">{unlock.label}</span>
         </button>
       )}
     </div>

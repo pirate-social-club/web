@@ -126,7 +126,7 @@ describe("CommentTree", () => {
     view.unmount();
   });
 
-  test("insets loaded replies under their parent comment", () => {
+  test("uses compact responsive spacing for loaded replies", () => {
     const view = renderTree(
       <CommentTree
         comments={[
@@ -151,7 +151,9 @@ describe("CommentTree", () => {
     const reply = view.getByText("Reply should be inset");
     const replyGroup = reply.closest("[data-comment-tree-children]");
 
-    expect(replyGroup?.className).toContain("ms-10");
+    expect(replyGroup?.className).toContain("ms-3");
+    expect(replyGroup?.className).toContain("sm:ms-5");
+    expect(replyGroup?.className).toContain("md:ms-8");
 
     view.unmount();
   });

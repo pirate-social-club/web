@@ -12,6 +12,8 @@ import { CommentCard } from "./comment-card";
 import type { PostThreadComment } from "./post-thread.types";
 
 const DEFAULT_MAX_COMMENT_DEPTH = 8;
+const CHILD_COMMENT_INDENT_CLASS_NAME = "ms-3 mt-2 sm:ms-5 md:ms-8";
+const MOBILE_NESTED_AVATAR_CLASS_NAME = "hidden sm:flex";
 
 function getCommentKey(comment: PostThreadComment, fallbackKey: string): string {
   return comment.commentId ?? comment.replyId ?? fallbackKey;
@@ -129,8 +131,8 @@ function CommentTreeNode({
 
   if (collapsed) {
     return (
-      <article className={cn("flex gap-2", depth > 0 && "pt-3")}>
-        <div className="flex w-5 shrink-0 flex-col items-center">
+      <article className={cn("flex gap-1.5 sm:gap-2", depth > 0 && "pt-3")}>
+        <div className="flex w-4 shrink-0 flex-col items-center sm:w-5">
           <button
             className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-transparent text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
             onClick={handleToggleCollapse}
@@ -148,9 +150,9 @@ function CommentTreeNode({
   }
 
   return (
-    <article className={cn("flex gap-2", depth > 0 && "pt-3")}>
+    <article className={cn("flex gap-1.5 sm:gap-2", depth > 0 && "pt-3")}>
       {canCollapse ? (
-        <div className="flex w-5 flex-col items-center">
+        <div className="flex w-4 flex-col items-center sm:w-5">
           <button
             className="mt-2 inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-transparent text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
             onClick={handleToggleCollapse}
@@ -190,10 +192,11 @@ function CommentTreeNode({
           submitReplyLabel={comment.submitReplyLabel}
           onReplySubmit={comment.onReplySubmit}
           onReplyRequest={onReplyRequest ? () => onReplyRequest(comment) : undefined}
+          avatarClassName={depth > 0 ? MOBILE_NESTED_AVATAR_CLASS_NAME : undefined}
         />
 
         {hasLoadedChildren && !truncateDeepNesting ? (
-          <div className="ms-10 mt-2" data-comment-tree-children>
+          <div className={CHILD_COMMENT_INDENT_CLASS_NAME} data-comment-tree-children>
             {children.map((child, index) => {
               const childKey = getCommentKey(child, `${nodeKey}-${index}`);
               return (

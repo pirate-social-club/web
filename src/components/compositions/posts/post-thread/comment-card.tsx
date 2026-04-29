@@ -72,6 +72,7 @@ export interface CommentCardProps {
     authorMode: PostThreadAuthorMode;
   }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   onReplyRequest?: () => void;
+  avatarClassName?: string;
   className?: string;
 }
 
@@ -99,6 +100,7 @@ export function CommentCard({
   submitReplyLabel,
   onReplySubmit,
   onReplyRequest,
+  avatarClassName,
   className,
 }: CommentCardProps) {
   const { locale } = useUiLocale();
@@ -151,11 +153,11 @@ export function CommentCard({
   return (
     <div className={cn("flex min-w-0 flex-1 items-start gap-2", className)}>
       {authorHref ? (
-        <a className="mt-0.5 shrink-0" href={authorHref} onClick={(e) => e.stopPropagation()}>
+        <a className={cn("mt-0.5 shrink-0", avatarClassName)} href={authorHref} onClick={(e) => e.stopPropagation()}>
           <Avatar fallback={authorLabel} fallbackSeed={authorAvatarSeed} size="sm" src={authorAvatarSrc} />
         </a>
       ) : (
-        <Avatar className="mt-0.5" fallback={authorLabel} fallbackSeed={authorAvatarSeed} size="sm" src={authorAvatarSrc} />
+        <Avatar className={cn("mt-0.5 shrink-0", avatarClassName)} fallback={authorLabel} fallbackSeed={authorAvatarSeed} size="sm" src={authorAvatarSrc} />
       )}
       <div className="min-w-0 flex-1">
         {/* Header */}

@@ -256,15 +256,16 @@ export const ChatSetupError: Story = {
   ),
 };
 
-export const ChatSetupReconnectWallet: Story = {
+export const ChatSetupSignatureNeeded: Story = {
   render: () => (
     <div className="h-screen bg-background">
       <ChatSetupState
         busy={false}
-        description="Your wallet session expired. Reconnect it to keep messaging securely."
+        description={"Confirm this wallet belongs to you.\nThis signature won't create a transaction or cost gas."}
         onRetry={() => {}}
-        retryLabel="Reconnect wallet"
-        title="Wallet disconnected"
+        presentation="signature"
+        retryLabel="Sign"
+        title="Sign to continue"
       />
     </div>
   ),

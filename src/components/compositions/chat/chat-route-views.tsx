@@ -5,8 +5,10 @@ import {
   ArrowLeft,
   ArrowRight,
   ChatCircleText,
+  Check,
   PaperPlaneRight,
   Plus,
+  Signature,
   WarningCircle,
   X,
 } from "@phosphor-icons/react";
@@ -194,6 +196,7 @@ export function ChatSetupState({
   description,
   error,
   onRetry,
+  presentation = "default",
   retryLabel = "Retry",
   title,
 }: {
@@ -201,21 +204,77 @@ export function ChatSetupState({
   description: string;
   error?: string | null;
   onRetry: () => void;
+  presentation?: "default" | "signature";
   retryLabel?: string;
   title: string;
 }) {
+  if (presentation !== "signature") {
+    return (
+      <section className="grid h-full min-h-0 w-full flex-1 place-items-center bg-background px-4 py-6">
+        <div className="mx-auto w-full max-w-2xl">
+          <div className="flex flex-col gap-8 px-5 pb-5 pt-5 text-start sm:rounded-lg sm:border sm:border-border sm:bg-card sm:px-8 sm:pb-8 sm:pt-8">
+            <div className="space-y-5 pe-10 text-start">
+              <div className="flex items-center gap-4">
+                <StandardModalIconBadge>
+                  <ChatCircleText className="size-8" weight="duotone" />
+                </StandardModalIconBadge>
+                <Type
+                  as="h2"
+                  className="min-w-0 text-2xl leading-8 sm:text-3xl sm:leading-tight"
+                  variant="h1"
+                >
+                  {title}
+                </Type>
+              </div>
+              <Type
+                as="p"
+                className="w-full leading-7 text-foreground sm:leading-8"
+                variant="body"
+              >
+                {description}
+              </Type>
+            </div>
+
+            <div className="flex flex-col gap-5">
+              {error ? (
+                <div className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+                  <WarningCircle
+                    className="mt-0.5 size-5 shrink-0 text-destructive"
+                    weight="fill"
+                  />
+                  <Type as="p" className="text-foreground" variant="body">
+                    {error}
+                  </Type>
+                </div>
+              ) : null}
+              <Button className="h-14 w-full" loading={busy} onClick={onRetry}>
+                {retryLabel}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="grid h-full min-h-0 w-full flex-1 place-items-center bg-background px-4 py-6">
-      <div className="mx-auto w-full max-w-2xl">
-        <div className="flex flex-col gap-8 px-5 pb-5 pt-5 text-start sm:rounded-lg sm:border sm:border-border sm:bg-card sm:px-8 sm:pb-8 sm:pt-8">
-          <div className="space-y-5 pe-10 text-start">
-            <div className="flex items-center gap-4">
-              <StandardModalIconBadge>
-                <ChatCircleText className="size-8" weight="duotone" />
+    <section className="flex h-full min-h-0 w-full flex-1 flex-col bg-background sm:grid sm:place-items-center sm:px-4 sm:py-6">
+      <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col sm:block sm:min-h-0 sm:flex-none">
+        <div className="flex min-h-0 flex-1 flex-col px-8 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-8 text-center sm:min-h-0 sm:flex-none sm:gap-8 sm:rounded-lg sm:border sm:border-border sm:bg-card sm:px-8 sm:pb-8 sm:pt-8 sm:text-start">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 pb-8 sm:min-h-0 sm:flex-none sm:items-start sm:justify-start sm:gap-5 sm:pb-0 sm:pe-10 sm:text-start">
+            <div className="flex flex-col items-center gap-7 sm:flex-row sm:gap-4">
+              <div className="relative grid size-32 place-items-center rounded-full border border-foreground/10 bg-card/70 text-primary shadow-[inset_0_1px_24px_rgb(255_255_255_/_0.04)] sm:hidden">
+                <Signature className="size-16" weight="duotone" />
+                <span className="absolute -bottom-1 -right-1 grid size-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg">
+                  <Check aria-hidden className="size-7" weight="bold" />
+                </span>
+              </div>
+              <StandardModalIconBadge className="hidden sm:inline-grid">
+                <Signature className="size-8" weight="duotone" />
               </StandardModalIconBadge>
               <Type
                 as="h2"
-                className="min-w-0 text-2xl leading-8 sm:text-3xl sm:leading-tight"
+                className="min-w-0 text-5xl font-bold leading-tight tracking-normal sm:text-3xl sm:leading-tight"
                 variant="h1"
               >
                 {title}
@@ -223,16 +282,16 @@ export function ChatSetupState({
             </div>
             <Type
               as="p"
-              className="w-full leading-7 text-foreground sm:leading-8"
+              className="mx-auto max-w-[18rem] whitespace-pre-line text-xl leading-9 text-muted-foreground sm:mx-0 sm:max-w-none sm:text-base sm:leading-8 sm:text-foreground"
               variant="body"
             >
               {description}
             </Type>
           </div>
 
-          <div className="flex flex-col gap-5">
+          <div className="flex shrink-0 flex-col gap-5 border-t border-border-soft/60 pt-5 sm:border-t-0 sm:pt-0">
             {error ? (
-              <div className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+              <div className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-start">
                 <WarningCircle
                   className="mt-0.5 size-5 shrink-0 text-destructive"
                   weight="fill"
@@ -242,7 +301,7 @@ export function ChatSetupState({
                 </Type>
               </div>
             ) : null}
-            <Button className="h-14 w-full" loading={busy} onClick={onRetry}>
+            <Button className="h-16 w-full text-xl sm:h-14 sm:text-base" loading={busy} onClick={onRetry}>
               {retryLabel}
             </Button>
           </div>

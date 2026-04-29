@@ -557,25 +557,28 @@ export function useChatController({
   const xmtpThreadSetupState = authBroken ? (
     <ChatSetupState
       busy={privyBusy}
-      description="Your wallet session expired. Reconnect it to keep messaging securely."
+      description="Make sure your wallet is available to sign."
       onRetry={handleReconnectEthereumWallet}
-      retryLabel="Reconnect wallet"
-      title="Wallet disconnected"
+      presentation="signature"
+      retryLabel="Continue with wallet"
+      title="Sign to continue"
     />
   ) : xmtpSetupPhase === "needs-enablement" ? (
     <ChatSetupState
-      description="Your Ethereum wallet will ask you to sign once to create your message identity. This does not send a transaction or cost gas."
+      description={"Confirm this wallet belongs to you.\nThis signature won't create a transaction or cost gas."}
       onRetry={handleEnableMessages}
-      retryLabel="Enable messages"
-      title="Enable encrypted messages"
+      presentation="signature"
+      retryLabel="Sign"
+      title="Sign to continue"
     />
   ) : xmtpSetupPhase === "enabling" ? (
     <ChatSetupState
       busy
-      description="Check your wallet for a signature request."
+      description={"Confirm this wallet belongs to you.\nCheck your wallet for a signature request."}
       onRetry={() => {}}
+      presentation="signature"
       retryLabel="Waiting for signature..."
-      title="Enable encrypted messages"
+      title="Sign to continue"
     />
   ) : xmtpSetupPhase === "error" ? (
     <ChatSetupState

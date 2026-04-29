@@ -103,7 +103,9 @@ export function ChatPageView({
   );
 
   if (isMobileStandalone) {
-    const headerTitle = mode.kind === "new" ? "New message" : (activeConversation?.title ?? "Conversation");
+    const headerTitle = shouldRenderXmtpSetupState
+      ? "Verify wallet"
+      : mode.kind === "new" ? "New message" : (activeConversation?.title ?? "Conversation");
     const headerProfileHref = mode.kind === "new" ? null : activeConversation?.profileHref ?? null;
     return (
       <div className="flex h-dvh min-h-0 w-full min-w-0 flex-col overflow-hidden bg-background text-foreground">

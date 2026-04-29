@@ -22,7 +22,7 @@ import { CommunityPageShell } from "@/components/compositions/community/page-she
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage } from "@/lib/identity-gates";
+import { getGateFailureMessage, getJoinCtaLabel } from "@/lib/identity-gates";
 import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -404,14 +404,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     );
   }
 
-  const joinActionLabel =
-    eligibility?.status === "already_joined"
-      ? "Joined"
-      : eligibility?.status === "pending_request"
-        ? "Request pending"
-        : eligibility?.status === "requestable"
-          ? "Request to Join"
-          : "Join";
+  const joinActionLabel = eligibility ? getJoinCtaLabel(eligibility, { locale }) : copy.community.followLabel;
   const joinActionDisabled =
     !eligibility ||
     eligibility.status === "already_joined" ||
@@ -539,6 +532,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
             }
             joinLoading={joinLoading}
             joinRequested={joinRequested}
+            locale={locale}
             verificationError={selfError}
             verificationLoading={selfLoading}
             onJoin={handlePrimaryJoinAction}

@@ -513,6 +513,7 @@ export function CreatePostPage({
         }
         joinLoading={joinLoading}
         joinRequested={joinRequested}
+        locale={locale}
         verificationError={joinSelfError}
         verificationLoading={joinSelfLoading}
         onJoin={handlePrimaryJoinAction}

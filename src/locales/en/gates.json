@@ -58,6 +58,32 @@
       }
     }
   },
+  "panel": {
+    "joinableTitle": "Ready to join",
+    "joinableDescription": "You meet this community's access requirements.",
+    "requestableTitle": "Request access",
+    "requestableDescription": "Ask the moderators to approve your membership.",
+    "pendingRequestTitle": "Request submitted",
+    "pendingRequestDescription": "The moderators will review your request.",
+    "verificationRequiredTitle": "Verification required",
+    "verificationRequiredDescription": "Complete verification to join.",
+    "gateFailedTitle": "Not eligible",
+    "gateFailedDescription": "You do not meet this community's access requirements.",
+    "alreadyJoinedTitle": "Joined",
+    "bannedTitle": "Unavailable",
+    "bannedDescription": "You are not eligible to join this community.",
+    "defaultTitle": "Access required",
+    "defaultDescription": "This community has membership requirements.",
+    "veryTitle": "Scan your palm to join",
+    "selfTitle": "Verify your identity to join",
+    "selfDescription": "Complete the ID check, then return to join.",
+    "requestSubmittedDescription": "Your join request has been submitted.",
+    "processingVerification": "Processing verification...",
+    "cancel": "Cancel",
+    "passportPromptTitle": "Higher Score Required",
+    "passportPromptDescription": "Are you human? Improve your wallet score and try again.",
+    "passportPromptActionLabel": "Visit Passport.xyz"
+  },
   "capabilityLabels": {
     "ageOver18": "18+ status",
     "minimumAge": "age status",

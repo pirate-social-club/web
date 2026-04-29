@@ -11,6 +11,7 @@ import type { StoredSession } from "@/lib/api/session-store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
+import { useRouteMessages } from "@/hooks/use-route-messages";
 import { addLocalChatNotification } from "@/lib/notifications/chat-message-notifications";
 import { usePwaInstallPrompt } from "@/lib/pwa/use-pwa-install-prompt";
 import { useXmtpSetup } from "@/app/chat/use-xmtp-setup";
@@ -58,7 +59,6 @@ import type {
   ChatRouteMode,
 } from "@/lib/chat/chat-types";
 
-const ASSISTANT_UNAVAILABLE_COPY = "Bedsheet could not be reached. Try again in a moment.";
 const INITIAL_MESSAGE_QUERY_PARAM = "message";
 
 type ChatSetupStateProps = React.ComponentProps<typeof ChatSetupState>;
@@ -83,6 +83,8 @@ export function useChatController({
   const clientHydrated = useClientHydrated();
   const session = useSession();
   const { dir, locale } = useUiLocale();
+  const { copy } = useRouteMessages();
+  const chat = copy.chat;
   const pwaPrompt = usePwaInstallPrompt();
   const isMobile = useIsMobile();
   const [assistantAvailability, setAssistantAvailability] = React.useState<"checking" | "available" | "unavailable">(
@@ -241,8 +243,8 @@ export function useChatController({
 
       if (!activeConversationIdRef.current || !isAssistantConversationId(activeConversationIdRef.current)) {
         setError(isLikelyXmtpTabContentionError(nextError)
-          ? "Chat is open in another tab."
-          : getErrorMessage(nextError, "Could not load conversations."));
+          ? chat.errorChatInAnotherTab
+          : getErrorMessage(nextError, chat.couldNotLoadConversations));
       }
     } finally {
       setListLoading(false);
@@ -276,8 +278,8 @@ export function useChatController({
       }
 
       setError(isLikelyXmtpTabContentionError(nextError)
-        ? "Chat is open in another tab."
-        : getErrorMessage(nextError, "Could not open chat."));
+        ? chat.errorChatInAnotherTab
+        : getErrorMessage(nextError, chat.couldNotOpenChat));
     } finally {
       setRouteBusy(false);
     }
@@ -324,8 +326,8 @@ export function useChatController({
       } catch (nextError) {
         if (loadThreadRequestRef.current !== requestId) return;
         setError(nextError instanceof AssistantUnavailableError
-          ? ASSISTANT_UNAVAILABLE_COPY
-          : "Could not load Bedsheet. Try again in a moment.");
+          ? chat.couldNotLoadBedsheet
+          : chat.couldNotLoadBedsheet);
       } finally {
         if (loadThreadRequestRef.current === requestId) setRouteBusy(false);
       }
@@ -346,7 +348,7 @@ export function useChatController({
     try {
       const result = await loadConversationMessages(session, conversationId, xmtpSignerWallet, xmtpClientCache, api);
       if (!result.conversation) {
-        setError("Conversation not found.");
+        setError(chat.conversationNotFound);
         return;
       }
 
@@ -360,8 +362,8 @@ export function useChatController({
       }
 
       setError(isLikelyXmtpTabContentionError(nextError)
-        ? "Chat is open in another tab."
-        : getErrorMessage(nextError, "Could not load this conversation."));
+        ? chat.errorChatInAnotherTab
+        : getErrorMessage(nextError, chat.couldNotLoadConversation));
     } finally {
       setRouteBusy(false);
     }
@@ -410,7 +412,7 @@ export function useChatController({
             addLocalChatNotification({
               conversationId,
               messageId: String(message?.id ?? `${conversationId}-${Date.now()}`),
-              senderLabel: "New message",
+              senderLabel: chat.notificationNewMessage,
               targetPath: buildChatConversationPath(conversationId),
               transport: "xmtp",
             });
@@ -511,8 +513,8 @@ export function useChatController({
           setActiveConversation((current) => current?.id === refreshedConversation.id ? refreshedConversation : current);
         } catch (nextError) {
           setError(conversation.transport === "assistant" && nextError instanceof AssistantUnavailableError
-            ? ASSISTANT_UNAVAILABLE_COPY
-            : getErrorMessage(nextError, "Could not send message."));
+            ? chat.couldNotLoadBedsheet
+            : getErrorMessage(nextError, chat.couldNotSendMessage));
         }
       });
     sendQueueRef.current = sendTask;
@@ -557,39 +559,39 @@ export function useChatController({
   const xmtpThreadSetupState = authBroken ? (
     <ChatSetupState
       busy={privyBusy}
-      description="Make sure your wallet is available to sign."
+      description={chat.setupWalletAvailableDescription}
       onRetry={handleReconnectEthereumWallet}
       presentation="signature"
-      retryLabel="Continue with wallet"
-      title="Sign to continue"
+      retryLabel={chat.setupContinueWithWalletAction}
+      title={chat.setupSignTitle}
     />
   ) : xmtpSetupPhase === "needs-enablement" ? (
     <ChatSetupState
-      description={"Confirm this wallet belongs to you.\nThis signature won't create a transaction or cost gas."}
+      description={chat.setupConfirmWalletDescription}
       onRetry={handleEnableMessages}
       presentation="signature"
-      retryLabel="Sign"
-      title="Sign to continue"
+      retryLabel={chat.setupSignAction}
+      title={chat.setupSignTitle}
     />
   ) : xmtpSetupPhase === "enabling" ? (
     <ChatSetupState
       busy
-      description={"Confirm this wallet belongs to you.\nCheck your wallet for a signature request."}
+      description={chat.setupCheckWalletDescription}
       onRetry={() => {}}
       presentation="signature"
-      retryLabel="Waiting for signature..."
-      title="Sign to continue"
+      retryLabel={chat.setupWaitingForSignatureAction}
+      title={chat.setupSignTitle}
     />
   ) : xmtpSetupPhase === "error" ? (
     <ChatSetupState
-      description="We couldn't prepare encrypted messages for this wallet. You can try again without leaving chat."
+      description={chat.setupFailedDescription}
       error={xmtpSetupError}
       onRetry={() => {
         resetXmtpClientCache(xmtpClientCache);
         handleEnableMessages();
       }}
-      retryLabel="Try again"
-      title="Message setup failed"
+      retryLabel={chat.setupTryAgainAction}
+      title={chat.setupFailedTitle}
     />
   ) : null;
   const shouldRenderXmtpSetupState = !isAssistantConversationRoute && (
@@ -612,12 +614,12 @@ export function useChatController({
     session,
     signInSetupProps: {
       busy: privyBusy,
-      description: "Connect or sign in before starting an encrypted XMTP conversation.",
+      description: chat.setupSignInDescription,
       onRetry: () => {
         connect?.();
       },
-      retryLabel: "Connect",
-      title: "Sign in to use messages",
+      retryLabel: chat.connectAction,
+      title: chat.setupSignInTitle,
     },
     viewProps: {
       activeConversation,

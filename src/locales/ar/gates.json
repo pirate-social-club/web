@@ -58,6 +58,32 @@
       }
     }
   },
+  "panel": {
+    "joinableTitle": "جاهز للانضمام",
+    "joinableDescription": "أنت تستوفي متطلبات الوصول إلى هذا المجتمع.",
+    "requestableTitle": "اطلب الوصول",
+    "requestableDescription": "اطلب من المشرفين الموافقة على عضويتك.",
+    "pendingRequestTitle": "تم إرسال الطلب",
+    "pendingRequestDescription": "سيراجع المشرفون طلبك.",
+    "verificationRequiredTitle": "التحقق مطلوب",
+    "verificationRequiredDescription": "أكمل التحقق للانضمام.",
+    "gateFailedTitle": "غير مؤهل",
+    "gateFailedDescription": "لا تستوفي متطلبات الوصول إلى هذا المجتمع.",
+    "alreadyJoinedTitle": "تم الانضمام",
+    "bannedTitle": "غير متاح",
+    "bannedDescription": "أنت غير مؤهل للانضمام إلى هذا المجتمع.",
+    "defaultTitle": "الوصول مطلوب",
+    "defaultDescription": "هذا المجتمع لديه متطلبات عضوية.",
+    "veryTitle": "امسح راحة يدك للانضمام",
+    "selfTitle": "تحقق من هويتك للانضمام",
+    "selfDescription": "أكمل فحص الهوية، ثم عد للانضمام.",
+    "requestSubmittedDescription": "تم إرسال طلب الانضمام الخاص بك.",
+    "processingVerification": "جارٍ معالجة التحقق...",
+    "cancel": "إلغاء",
+    "passportPromptTitle": "درجة أعلى مطلوبة",
+    "passportPromptDescription": "هل أنت إنسان؟ ارفع درجة محفظتك وحاول مرة أخرى.",
+    "passportPromptActionLabel": "زيارة Passport.xyz"
+  },
   "capabilityLabels": {
     "ageOver18": "حالة 18+",
     "minimumAge": "العمر",

@@ -17,6 +17,7 @@ import type {
   ChatRouteMode,
 } from "@/lib/chat/chat-types";
 import { cn } from "@/lib/utils";
+import { useRouteMessages } from "@/hooks/use-route-messages";
 
 export function ChatPageView({
   activeConversation,
@@ -102,10 +103,13 @@ export function ChatPageView({
     </>
   );
 
+  const { copy } = useRouteMessages();
+  const chat = copy.chat;
+
   if (isMobileStandalone) {
     const headerTitle = shouldRenderXmtpSetupState
-      ? "Verify wallet"
-      : mode.kind === "new" ? "New message" : (activeConversation?.title ?? "Conversation");
+      ? chat.verifyWalletTitle
+      : mode.kind === "new" ? chat.newMessageTitle : (activeConversation?.title ?? chat.conversationFallbackTitle);
     const headerProfileHref = mode.kind === "new" ? null : activeConversation?.profileHref ?? null;
     return (
       <div className="flex h-dvh min-h-0 w-full min-w-0 flex-col overflow-hidden bg-background text-foreground">

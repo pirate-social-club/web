@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { isChatTarget } from "@/lib/chat/chat-addressing";
 import type { ChatConversation, ChatMessageRecord } from "@/lib/chat/chat-types";
 import { useUiLocale } from "@/lib/ui-locale";
+import { useRouteMessages } from "@/hooks/use-route-messages";
 
 function isValidTimestamp(timestamp: number): boolean {
   return Number.isFinite(timestamp) && timestamp > 0;
@@ -46,7 +47,7 @@ function formatTime(timestamp: number, locale?: string): string {
   });
 }
 
-function formatThreadTimeDivider(timestamp: number, nowTimestamp: number, locale?: string): string {
+function formatThreadTimeDivider(timestamp: number, nowTimestamp: number, locale?: string, yesterdayLabel = "Yesterday"): string {
   if (!isValidTimestamp(timestamp)) return "";
 
   const messageDate = new Date(timestamp);
@@ -61,7 +62,7 @@ function formatThreadTimeDivider(timestamp: number, nowTimestamp: number, locale
   }
 
   if (startOfMessageDay === startOfToday - oneDay) {
-    return `Yesterday ${time}`;
+    return `${yesterdayLabel} ${time}`;
   }
 
   const date = messageDate.toLocaleDateString(locale, {
@@ -143,7 +144,7 @@ function ChatMessageContent({ content }: { content: string }) {
   );
 }
 
-function formatListTime(timestamp: number): string {
+function formatListTime(timestamp: number, nowLabel = "now"): string {
   if (!isValidTimestamp(timestamp)) return "";
 
   const now = Date.now();
@@ -153,7 +154,7 @@ function formatListTime(timestamp: number): string {
   const oneDay = 1000 * 60 * 60 * 24;
 
   if (diff < oneMinute) {
-    return "now";
+    return nowLabel;
   }
 
   if (diff < oneHour) {
@@ -330,12 +331,14 @@ export function ConversationList({
   onNew: () => void;
   onSelect: (conversationId: string) => void;
 }) {
+  const { copy } = useRouteMessages();
+  const chat = copy.chat;
   return (
     <aside className={cn("flex h-full min-h-0 flex-col border-e border-border-soft bg-background md:bg-card", className)}>
       {!hideHeader ? (
         <div className="flex items-center justify-between gap-3 border-b border-border-soft bg-background px-4 py-4 md:bg-card">
-          <Type as="h1" variant="h3">Messages</Type>
-          <IconButton aria-label="New conversation" onClick={onNew} variant="ghost">
+          <Type as="h1" variant="h3">{chat.messagesHeading}</Type>
+          <IconButton aria-label={chat.newConversationAriaLabel} onClick={onNew} variant="ghost">
             <Plus aria-hidden className="size-6" weight="bold" />
           </IconButton>
         </div>
@@ -348,15 +351,17 @@ export function ConversationList({
         ) : conversations.length === 0 ? (
           <div className="grid gap-3 px-4 py-8 text-center">
             <ChatCircleText aria-hidden className="mx-auto size-9 text-muted-foreground" />
-            <Type as="p" variant="body" className="text-muted-foreground">No messages yet.</Type>
+            <Type as="p" variant="body" className="text-muted-foreground">{chat.noMessagesYet}</Type>
           </div>
         ) : (
           <div className="flex flex-col">
             {conversations.map((conversation) => {
-              const timestampLabel = formatListTime(conversation.updatedAt);
+              const timestampLabel = formatListTime(conversation.updatedAt, chat.now);
               const unreadCount = normalizeUnreadCount(conversation.unreadCount);
               const hasUnread = unreadCount > 0;
-              const unreadLabel = `${unreadCount} unread ${unreadCount === 1 ? "message" : "messages"}`;
+              const unreadLabel = unreadCount === 1
+                ? chat.unreadMessageCountOne.replace("{count}", String(unreadCount))
+                : chat.unreadMessageCount.replace("{count}", String(unreadCount));
               return (
                 <button
                   className={cn(
@@ -428,21 +433,23 @@ export function NewConversationView({
 }) {
   const [target, setTarget] = React.useState("");
   const { isRtl } = useUiLocale();
+  const { copy } = useRouteMessages();
+  const chat = copy.chat;
 
   return (
     <section className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-background">
       {!hideHeader ? (
         <div className="flex items-center gap-3 border-b border-border-soft bg-background px-4 py-4 md:bg-card">
           {onClose ? (
-            <Button aria-label="Close" onClick={onClose} size="icon" variant="ghost">
+            <Button aria-label={copy.common.close} onClick={onClose} size="icon" variant="ghost">
               <X aria-hidden className="size-5" />
             </Button>
           ) : (
-            <Button aria-label="Back" onClick={onBack} size="icon" variant="ghost">
+            <Button aria-label={copy.common.backHome} onClick={onBack} size="icon" variant="ghost">
               {isRtl ? <ArrowRight aria-hidden className="size-5" /> : <ArrowLeft aria-hidden className="size-5" />}
             </Button>
           )}
-          <Type as="h1" variant="h3">New message</Type>
+          <Type as="h1" variant="h3">{chat.newMessageTitle}</Type>
         </div>
       ) : null}
       <form
@@ -453,12 +460,12 @@ export function NewConversationView({
         }}
       >
         <label className="grid gap-2">
-          <Type as="span" variant="label">To</Type>
+          <Type as="span" variant="label">{chat.toLabel}</Type>
           <Input
             autoCapitalize="none"
             autoComplete="off"
             onChange={(event) => setTarget(event.target.value)}
-            placeholder="name.pirate, name.eth, or 0x..."
+            placeholder={chat.recipientPlaceholder}
             value={target}
           />
         </label>
@@ -466,7 +473,7 @@ export function NewConversationView({
           <Type as="p" variant="body" className="text-destructive">{error}</Type>
         ) : null}
         <Button disabled={!isChatTarget(target)} loading={busy} type="submit">
-          Open chat
+          {chat.openChatAction}
         </Button>
       </form>
     </section>
@@ -500,6 +507,8 @@ export function ThreadView({
 }) {
   const [draft, setDraft] = React.useState("");
   const { isRtl } = useUiLocale();
+  const { copy } = useRouteMessages();
+  const chat = copy.chat;
   const seededInitialDraftRef = React.useRef<string | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const [renderedAt] = React.useState(() => Date.now());
@@ -529,11 +538,11 @@ export function ThreadView({
       {!hideHeader ? (
         <div className="flex items-center gap-3 border-b border-border-soft bg-background px-4 py-3 md:bg-card">
           {onClose ? (
-            <Button aria-label="Close" className="md:hidden" onClick={onClose} size="icon" variant="ghost">
+            <Button aria-label={copy.common.close} className="md:hidden" onClick={onClose} size="icon" variant="ghost">
               <X aria-hidden className="size-5" />
             </Button>
           ) : (
-            <Button aria-label="Back" className="md:hidden" onClick={onBack} size="icon" variant="ghost">
+            <Button aria-label={copy.common.backHome} className="md:hidden" onClick={onBack} size="icon" variant="ghost">
               {isRtl ? <ArrowRight aria-hidden className="size-5" /> : <ArrowLeft aria-hidden className="size-5" />}
             </Button>
           )}
@@ -546,7 +555,7 @@ export function ThreadView({
               {conversation ? <Avatar fallback={conversation.title} fallbackSeed={conversation.avatarSeed ?? conversation.peerAddress} size="sm" src={conversation.avatarUrl} /> : null}
               <div className="min-w-0 flex-1">
                 <Type as="h1" variant="h4" className="truncate">
-                  {conversation?.title ?? "Conversation"}
+                  {conversation?.title ?? chat.conversationFallbackTitle}
                 </Type>
                 {conversation?.targetLabel ? (
                   <Type as="p" variant="caption" className="truncate">{conversation.targetLabel}</Type>
@@ -558,7 +567,7 @@ export function ThreadView({
               {conversation ? <Avatar fallback={conversation.title} fallbackSeed={conversation.avatarSeed ?? conversation.peerAddress} size="sm" src={conversation.avatarUrl} /> : null}
               <div className="min-w-0 flex-1">
                 <Type as="h1" variant="h4" className="truncate">
-                  {conversation?.title ?? "Conversation"}
+                  {conversation?.title ?? chat.conversationFallbackTitle}
                 </Type>
                 {conversation?.targetLabel ? (
                   <Type as="p" variant="caption" className="truncate">{conversation.targetLabel}</Type>
@@ -588,12 +597,12 @@ export function ThreadView({
           </div>
         ) : items.length === 0 ? (
           <div className="grid h-full place-items-center text-center">
-            <Type as="p" variant="body" className="text-muted-foreground">Start the conversation.</Type>
+            <Type as="p" variant="body" className="text-muted-foreground">{chat.startConversation}</Type>
           </div>
         ) : (
           <div className="mx-auto flex max-w-3xl flex-col gap-3">
             {items.map((message, index) => {
-              const timestampLabel = formatThreadTimeDivider(message.createdAt, renderedAt);
+              const timestampLabel = formatThreadTimeDivider(message.createdAt, renderedAt, undefined, chat.yesterday);
               const showTimeDivider = shouldShowThreadTimeDivider(message, items[index - 1]);
               const sentTimeLabel = timestampLabel ? `Sent ${timestampLabel}.` : "";
               return (
@@ -641,7 +650,7 @@ export function ThreadView({
         }}
       >
         <AutoResizeTextarea
-          aria-label="Message"
+          aria-label={chat.messageLabel}
           className="min-h-11 rounded-[var(--radius-2_5xl)] py-2.5 leading-5"
           disabled={!conversation || sending}
           maxRows={5}
@@ -653,11 +662,11 @@ export function ThreadView({
             event.preventDefault();
             submitDraft();
           }}
-          placeholder="Message"
+          placeholder={chat.messagePlaceholder}
           rows={1}
           value={draft}
         />
-        <Button aria-label="Send message" className="shrink-0" disabled={!draft.trim() || !conversation} loading={sending} size="icon" type="submit">
+        <Button aria-label={chat.sendMessageAriaLabel} className="shrink-0" disabled={!draft.trim() || !conversation} loading={sending} size="icon" type="submit">
           <PaperPlaneRight aria-hidden className="size-5" weight="fill" />
         </Button>
       </form>
@@ -666,12 +675,14 @@ export function ThreadView({
 }
 
 export function EmptyThread({ onNew }: { onNew: () => void }) {
+  const { copy } = useRouteMessages();
+  const chat = copy.chat;
   return (
     <section className="hidden h-full min-h-0 place-items-center bg-background px-4 text-center md:grid">
       <div className="grid max-w-md gap-4">
         <ChatCircleText aria-hidden className="mx-auto size-12 text-muted-foreground" />
-        <Type as="h1" variant="h2">Select a conversation</Type>
-        <Button onClick={onNew} variant="secondary">New conversation</Button>
+        <Type as="h1" variant="h2">{chat.selectConversationTitle}</Type>
+        <Button onClick={onNew} variant="secondary">{chat.newConversationAction}</Button>
       </div>
     </section>
   );

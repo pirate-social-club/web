@@ -17,6 +17,8 @@ import { FormNote } from "@/components/primitives/form-layout";
 import { Spinner } from "@/components/primitives/spinner";
 import { getJoinCtaLabel, isJoinCtaActionable } from "@/lib/identity-gates";
 import { Type } from "@/components/primitives/type";
+import { getLocaleMessages } from "@/locales";
+import { isUiLocaleCode } from "@/lib/ui-locale-core";
 
 type VerificationPrompt = {
   title: string;
@@ -34,57 +36,62 @@ export interface CommunityMembershipGatePanelProps {
   verificationPrompt?: VerificationPrompt | null;
   verificationLoading?: boolean;
   verificationError?: string | null;
+  locale?: string | null;
   onJoin?: () => void;
   onCancelVerification?: () => void;
 }
 
-function getEligibilityText(eligibility: JoinEligibility | null | undefined): {
+function getEligibilityText(
+  eligibility: JoinEligibility | null | undefined,
+  copy: ReturnType<typeof getLocaleMessages<"gates">>["panel"],
+): {
   description: string | null;
   title: string;
 } {
   switch (eligibility?.status) {
     case "joinable":
       return {
-        title: "Ready to join",
-        description: "You meet this community's access requirements.",
+        title: copy.joinableTitle,
+        description: copy.joinableDescription,
       };
     case "requestable":
       return {
-        title: "Request access",
-        description: "Ask the moderators to approve your membership.",
+        title: copy.requestableTitle,
+        description: copy.requestableDescription,
       };
     case "pending_request":
       return {
-        title: "Request submitted",
-        description: "The moderators will review your request.",
+        title: copy.pendingRequestTitle,
+        description: copy.pendingRequestDescription,
       };
     case "verification_required":
       return {
-        title: "Verification required",
-        description: "Complete verification to join.",
+        title: copy.verificationRequiredTitle,
+        description: copy.verificationRequiredDescription,
       };
     case "gate_failed":
       return {
-        title: "Not eligible",
-        description: "You do not meet this community's access requirements.",
+        title: copy.gateFailedTitle,
+        description: copy.gateFailedDescription,
       };
     case "already_joined":
-      return { title: "Joined", description: null };
+      return { title: copy.alreadyJoinedTitle, description: null };
     case "banned":
       return {
-        title: "Unavailable",
-        description: "You are not eligible to join this community.",
+        title: copy.bannedTitle,
+        description: copy.bannedDescription,
       };
     default:
       return {
-        title: "Access required",
-        description: "This community has membership requirements.",
+        title: copy.defaultTitle,
+        description: copy.defaultDescription,
       };
   }
 }
 
 function getPassportPrompt(
   eligibility: JoinEligibility | null | undefined,
+  copy: ReturnType<typeof getLocaleMessages<"gates">>["panel"],
 ): VerificationPrompt | null {
   if (!eligibility) return null;
   const shouldShowPassportPrompt =
@@ -95,9 +102,9 @@ function getPassportPrompt(
   if (!shouldShowPassportPrompt) return null;
 
   return {
-    title: "Higher Score Required",
-    description: "Are you human? Improve your wallet score and try again.",
-    actionLabel: "Visit Passport.xyz",
+    title: copy.passportPromptTitle,
+    description: copy.passportPromptDescription,
+    actionLabel: copy.passportPromptActionLabel,
     href: "https://app.passport.xyz/",
   };
 }
@@ -137,35 +144,38 @@ export function CommunityMembershipGatePanel({
   verificationPrompt,
   verificationLoading,
   verificationError,
+  locale,
   onJoin,
   onCancelVerification,
 }: CommunityMembershipGatePanelProps) {
+  const resolvedLocale = locale && isUiLocaleCode(locale) ? locale : "en";
+  const panelCopy = getLocaleMessages(resolvedLocale, "gates").panel;
   const passportPrompt: VerificationPrompt | null = !verificationPrompt
-    ? getPassportPrompt(eligibility)
+    ? getPassportPrompt(eligibility, panelCopy)
     : null;
   const activePrompt = verificationPrompt ?? passportPrompt;
   const isVeryVerificationRequired =
     !activePrompt &&
     eligibility?.status === "verification_required" &&
     eligibility.suggested_verification_provider === "very";
-  const eligibilityText = getEligibilityText(eligibility);
+  const eligibilityText = getEligibilityText(eligibility, panelCopy);
   const isInlineVerificationRequired =
     !activePrompt &&
     eligibility?.status === "verification_required" &&
     !isVeryVerificationRequired;
   const title = isVeryVerificationRequired
-    ? "Scan your palm to join"
+    ? panelCopy.veryTitle
     : isInlineVerificationRequired
-      ? "Verify your identity to join"
+      ? panelCopy.selfTitle
       : (activePrompt?.title ??
-        (joinRequested ? "Request submitted" : eligibilityText.title));
+        (joinRequested ? panelCopy.pendingRequestTitle : eligibilityText.title));
   const description = isVeryVerificationRequired
     ? null
     : isInlineVerificationRequired
-      ? "Complete the ID check, then return to join."
+      ? panelCopy.selfDescription
       : (activePrompt?.description ??
         (joinRequested
-          ? "Your join request has been submitted."
+          ? panelCopy.requestSubmittedDescription
           : (joinError ?? eligibilityText.description)));
   const showEligibilityAction =
     eligibility &&
@@ -205,7 +215,7 @@ export function CommunityMembershipGatePanel({
       onClick={onJoin}
       size="lg"
     >
-      {getJoinCtaLabel(eligibility)}
+      {getJoinCtaLabel(eligibility, { locale })}
     </Button>
   ) : null;
 
@@ -233,7 +243,7 @@ export function CommunityMembershipGatePanel({
               className="flex items-center gap-2 "
             >
               <Spinner className="size-4" />
-              <span>Processing verification...</span>
+              <span>{panelCopy.processingVerification}</span>
             </Type>
           ) : null}
           {onCancelVerification ? (
@@ -242,7 +252,7 @@ export function CommunityMembershipGatePanel({
               variant="ghost"
               onClick={onCancelVerification}
             >
-              Cancel
+              {panelCopy.cancel}
             </Button>
           ) : null}
           {verificationError ? (

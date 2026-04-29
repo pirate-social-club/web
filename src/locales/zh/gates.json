@@ -58,6 +58,32 @@
       }
     }
   },
+  "panel": {
+    "joinableTitle": "满足加入条件",
+    "joinableDescription": "你符合该社区的访问要求。",
+    "requestableTitle": "申请访问",
+    "requestableDescription": "请求版主批准你的成员资格。",
+    "pendingRequestTitle": "申请已提交",
+    "pendingRequestDescription": "版主将审核你的申请。",
+    "verificationRequiredTitle": "需要验证",
+    "verificationRequiredDescription": "完成验证后加入。",
+    "gateFailedTitle": "不符合条件",
+    "gateFailedDescription": "你不符合该社区的访问要求。",
+    "alreadyJoinedTitle": "已加入",
+    "bannedTitle": "不可用",
+    "bannedDescription": "你没有资格加入这个社区。",
+    "defaultTitle": "需要访问权限",
+    "defaultDescription": "该社区有成员资格要求。",
+    "veryTitle": "扫描掌纹以加入",
+    "selfTitle": "验证身份以加入",
+    "selfDescription": "完成身份验证，然后返回加入。",
+    "requestSubmittedDescription": "你的加入申请已提交。",
+    "processingVerification": "正在处理验证...",
+    "cancel": "取消",
+    "passportPromptTitle": "需要更高分数",
+    "passportPromptDescription": "你是真人吗？提高你的钱包分数后再试。",
+    "passportPromptActionLabel": "访问 Passport.xyz"
+  },
   "capabilityLabels": {
     "ageOver18": "18+ 状态",
     "minimumAge": "年龄",

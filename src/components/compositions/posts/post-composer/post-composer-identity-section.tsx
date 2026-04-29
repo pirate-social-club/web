@@ -27,6 +27,8 @@ export function IdentitySection({
   identityMode,
   onAuthorModeChange,
   onIdentityModeChange,
+  postAsLabel,
+  size,
   triggerClassName,
 }: {
   authorMode: AuthorMode;
@@ -37,11 +39,14 @@ export function IdentitySection({
   identityMode: IdentityMode;
   onAuthorModeChange: (mode: AuthorMode) => void;
   onIdentityModeChange: (mode: IdentityMode) => void;
+  postAsLabel?: string;
+  size?: "default" | "lg";
   triggerClassName?: string;
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").createPost;
   const currentOption: IdentityOption = authorMode === "agent" ? "agent" : identityMode;
+  const label = postAsLabel ?? copy.sections.postAs;
 
   function handleChange(option: IdentityOption) {
     if (option === "agent") {
@@ -59,7 +64,8 @@ export function IdentitySection({
       controlClassName={controlClassName}
       hideLabel={hideLabel}
       identity={identity}
-      postAsLabel={copy.sections.postAs}
+      postAsLabel={label}
+      size={size}
       triggerClassName={triggerClassName}
       value={currentOption}
       onChange={handleChange}

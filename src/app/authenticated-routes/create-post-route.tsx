@@ -7,6 +7,11 @@ import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { ContentRailShell } from "@/components/compositions/app/content-rail-shell/content-rail-shell";
 import { PostComposer } from "@/components/compositions/posts/post-composer/post-composer";
 import type { ComposerStep } from "@/components/compositions/posts/post-composer/post-composer.types";
+import {
+  canAdvanceComposerWriteStep,
+  getNextComposerStep,
+  getPreviousComposerStep,
+} from "@/components/compositions/posts/post-composer/post-composer-utils";
 import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
@@ -46,6 +51,34 @@ import { useCommunityJoinVerification } from "@/app/authenticated-state/use-comm
 
 type CreatePostState = ReturnType<typeof useCreatePostState>;
 type RouteCopy = ReturnType<typeof useRouteMessages>["copy"];
+
+function canAdvanceMobileComposerStep(
+  current: ComposerStep,
+  state: CreatePostState,
+) {
+  if (current === "write") {
+    return canAdvanceComposerWriteStep({
+      body: state.body,
+      imageUploadPresent: Boolean(state.imageUpload),
+      linkUrl: state.linkUrl,
+      mode: state.composerMode,
+      songAudioUploadPresent: Boolean(state.songState.primaryAudioUpload),
+      title: state.title,
+      videoUploadPresent: Boolean(state.videoState.primaryVideoUpload),
+    });
+  }
+
+  if (current === "details" && state.composerMode === "song") {
+    return state.lyrics.trim().length > 0;
+  }
+
+  return state.submitState.canContinue;
+}
+
+function mobileComposerTitle(current: ComposerStep) {
+  if (current === "publish") return "Preview";
+  return "";
+}
 
 function CreatePostComposer({
   copy,
@@ -626,30 +659,19 @@ export function CreatePostPage({
       <MobileRouteShell
         className="pb-8"
         footer={selfVerificationModal}
-        onBackClick={
-          mobileComposerStep === "settings"
-            ? () => setMobileComposerStep("write")
-            : mobileComposerStep === "publish"
-              ? () => setMobileComposerStep("settings")
-              : undefined
-        }
+        onBackClick={getPreviousComposerStep(mobileComposerStep, state.composerMode)
+          ? () => setMobileComposerStep(getPreviousComposerStep(mobileComposerStep, state.composerMode) ?? "write")
+          : undefined}
         onCloseClick={mobileComposerStep === "write" ? () => navigate(`/c/${communityId}`) : undefined}
-        title={
-          mobileComposerStep === "settings"
-            ? "Post settings"
-            : mobileComposerStep === "publish"
-              ? "Review post"
-              : pageTitle
-        }
+        title={mobileComposerTitle(mobileComposerStep)}
         trailingAction={
           mobileComposerStep !== "publish" && state.composerMode !== "live" ? (
             <Button
-              className="h-11 px-2 text-base font-semibold text-primary"
-              disabled={!state.submitState.canContinue}
+              className="h-11 px-6 text-base font-semibold"
+              disabled={!canAdvanceMobileComposerStep(mobileComposerStep, state)}
               onClick={() =>
-                setMobileComposerStep(mobileComposerStep === "write" ? "settings" : "publish")
+                setMobileComposerStep(getNextComposerStep(mobileComposerStep, state.composerMode))
               }
-              variant="ghost"
             >
               {copy.createPost.actions.next}
             </Button>

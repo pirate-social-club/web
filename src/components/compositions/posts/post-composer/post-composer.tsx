@@ -1,87 +1,85 @@
 "use client";
 
-import { Type } from "@/components/primitives/type";
-
-import { Card, CardHeader } from "@/components/primitives/card";
+import { Card } from "@/components/primitives/card";
 
 import type { PostComposerProps } from "./post-composer.types";
 import { ShellPill } from "./post-composer-fields";
-import { PostComposerFormBody } from "./post-composer-form-body";
+import { PostComposerDetailsStep } from "./post-composer-details-step";
+import { PostComposerPublishSettings } from "./post-composer-publish-settings";
+import { PostComposerSettingsHub } from "./post-composer-settings-hub";
 import {
   PostComposerDesktopFooter,
   PostComposerMobileSubmitBar,
 } from "./post-composer-submit-actions";
-import { PostComposerTabs } from "./post-composer-tabs";
+import { PostComposerWriteStep } from "./post-composer-write-step";
 import { usePostComposerController } from "./use-post-composer-controller";
 
 export function PostComposer(props: PostComposerProps) {
   const controller = usePostComposerController(props);
-  const { community, copy, isMobile, isRtl, tabs } = controller;
+  const { community, isMobile, step } = controller;
 
   if (isMobile) {
     return (
-      <div className="w-full space-y-5 pb-36">
-        <div className="flex w-full flex-wrap items-center justify-between gap-3">
-          <ShellPill
-            avatarSrc={community.avatarSrc}
-            className="h-14 w-full justify-between rounded-full border border-border-soft bg-card px-4 py-3"
-            communities={community.items}
-            emptyLabel={community.emptyLabel}
-            onSelectCommunity={community.onSelect}
-            pickerTitle={community.pickerTitle}
-          >
-            {community.name}
-          </ShellPill>
-        </div>
+      <div className="w-full space-y-7 pb-8">
+        {step.isWriteStep ? (
+          <>
+            <div className="flex w-full flex-wrap items-center justify-between gap-3">
+              <ShellPill
+                avatarSrc={community.avatarSrc}
+                className="w-full"
+                communities={community.items}
+                emptyLabel={community.emptyLabel}
+                onSelectCommunity={community.onSelect}
+                pickerSearchPlaceholder={community.pickerSearchPlaceholder}
+                pickerTitle={community.pickerTitle}
+              >
+                {community.name}
+              </ShellPill>
+            </div>
 
-        <PostComposerTabs
-          activeTab={tabs.activeTab}
-          isMobile={isMobile}
-          isRtl={isRtl}
-          labels={tabs.labels}
-          onTabChange={tabs.onTabChange}
-          visibleTabs={tabs.visibleTabs}
-        />
-
-        <PostComposerFormBody controller={controller} />
-        <PostComposerMobileSubmitBar controller={controller} />
+            <PostComposerWriteStep controller={controller} />
+          </>
+        ) : step.isDetailsStep ? (
+          <PostComposerDetailsStep controller={controller} />
+        ) : step.isSettingsStep ? (
+          <PostComposerSettingsHub controller={controller} />
+        ) : (
+          <PostComposerPublishSettings controller={controller} />
+        )}
+        {step.isPublishStep ? <PostComposerMobileSubmitBar controller={controller} /> : null}
       </div>
     );
   }
 
   return (
     <div className="w-full space-y-4">
-      <Type as="h1" variant="h1">{copy.title}</Type>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <ShellPill
-          avatarSrc={community.avatarSrc}
-          communities={community.items}
-          emptyLabel={community.emptyLabel}
-          onSelectCommunity={community.onSelect}
-          pickerTitle={community.pickerTitle}
-        >
-          {community.name}
-        </ShellPill>
-      </div>
+      {step.isWriteStep ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <ShellPill
+            avatarSrc={community.avatarSrc}
+            communities={community.items}
+            emptyLabel={community.emptyLabel}
+            onSelectCommunity={community.onSelect}
+            pickerSearchPlaceholder={community.pickerSearchPlaceholder}
+            pickerTitle={community.pickerTitle}
+          >
+            {community.name}
+          </ShellPill>
+        </div>
+      ) : null}
 
       <Card className="overflow-hidden bg-card shadow-none">
-        <CardHeader className="border-b border-border-soft px-0 pb-0 pt-0">
-          <PostComposerTabs
-            activeTab={tabs.activeTab}
-            isMobile={isMobile}
-            isRtl={isRtl}
-            labels={tabs.labels}
-            onTabChange={tabs.onTabChange}
-            visibleTabs={tabs.visibleTabs}
-          />
-        </CardHeader>
-
-        <PostComposerFormBody controller={controller} />
+        {step.isWriteStep ? (
+          <PostComposerWriteStep controller={controller} />
+        ) : step.isDetailsStep ? (
+          <PostComposerDetailsStep controller={controller} />
+        ) : step.isSettingsStep ? (
+          <PostComposerSettingsHub controller={controller} />
+        ) : (
+          <PostComposerPublishSettings controller={controller} />
+        )}
         <PostComposerDesktopFooter controller={controller} />
       </Card>
-
-      <PostComposerMobileSubmitBar controller={controller} />
     </div>
   );
 }

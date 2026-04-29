@@ -12,12 +12,15 @@ export const baseComposer: PostComposerProps = {
   titleValue: "What is the best Ye opener?",
   titleCountLabel: "29/300",
   textBodyValue:
-    "Keep it close to Reddit: title first, content next, extras collapsed. Pirate-specific flows should only appear when the content actually calls for them.",
+    "Looking back through the discography, there are so many iconic intro tracks. From the soul samples of 'We Don't Care' to the stadium-sized energy of 'Ultralight Beam', what is the best Ye opener?",
+  onClose: () => undefined,
   identity: {
     allowAnonymousIdentity: true,
     allowQualifiersOnAnonymousPosts: true,
     identityMode: "public",
     publicHandle: "@saint-pablo",
+    realNameLabel: "clyeezy.pirate",
+    reputationLabel: "Rep: 1.2k",
     anonymousLabel: "anon_amber-anchor-00",
     availableQualifiers: [
       {

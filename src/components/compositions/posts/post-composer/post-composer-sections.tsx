@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { Checkbox } from "@/components/primitives/checkbox";
-import { FormSectionHeading } from "@/components/primitives/form-layout";
+import { FormFieldLabel, FormSectionHeading } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
 import { OptionCard } from "@/components/primitives/option-card";
@@ -281,19 +281,133 @@ export function PostComposerCommerceAccessSection({
     placeholders: Record<string, string>;
     sections: Record<string, string>;
   };
-  contentKind?: "song" | "video";
+  contentKind?: "text" | "image" | "song" | "video";
   monetizationState: MonetizationState;
   previewStartSeconds?: string;
   updateMonetizationState: MonetizationStateUpdater;
   onPreviewStartSecondsChange?: (value: string) => void;
 }) {
   const isMobile = useIsMobile();
+  const publicDescription = contentKind === "text"
+    ? copy.access.textPublicDescription ?? copy.access.publicDescription
+    : contentKind === "image"
+      ? copy.access.imagePublicDescription ?? copy.access.publicDescription
+    : copy.access.publicDescription;
+  const paidDescription = contentKind === "text"
+    ? copy.access.textPaidDescription ?? copy.access.paidDescription
+    : contentKind === "image"
+      ? copy.access.imagePaidDescription ?? copy.access.paidDescription
+    : copy.access.paidDescription;
+  const freeAccessTitle = copy.access.freeToView ?? copy.access.public;
+  const priceLabel = contentKind === "text" || contentKind === "image"
+    ? copy.fields.price ?? copy.fields.unlockPriceUsd
+    : copy.fields.unlockPriceUsd;
+
+  if (isMobile) {
+    return (
+      <section className="space-y-3">
+        <FormSectionHeading title={copy.sections.access} />
+        <div className="grid grid-cols-2 gap-2 rounded-full border border-border-soft bg-muted p-1">
+          <button
+            aria-pressed={!monetizationState.visible}
+            className={cn(
+              "h-10 rounded-full px-3 text-base font-semibold transition-colors",
+              !monetizationState.visible
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            onClick={() =>
+              updateMonetizationState((current) => ({
+                ...current,
+                visible: false,
+                regionalPricingEnabled: false,
+              }))
+            }
+            type="button"
+          >
+            {freeAccessTitle}
+          </button>
+          <button
+            aria-pressed={monetizationState.visible}
+            className={cn(
+              "h-10 rounded-full px-3 text-base font-semibold transition-colors",
+              monetizationState.visible
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            onClick={() =>
+              updateMonetizationState((current) => ({
+                ...current,
+                visible: true,
+              }))
+            }
+            type="button"
+          >
+            {copy.access.paidUnlock}
+          </button>
+        </div>
+
+        {monetizationState.visible ? (
+          <div className="space-y-4 pt-1">
+            <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+              <FieldLabel label={priceLabel} />
+              <Input
+                className="h-11 w-32 text-end"
+                inputMode="decimal"
+                onChange={(event) =>
+                  updateMonetizationState((current) => ({
+                    ...current,
+                    priceUsd: event.target.value,
+                  }))
+                }
+                placeholder={copy.placeholders.unlockPrice}
+                value={monetizationState.priceUsd ?? ""}
+              />
+            </div>
+
+            {contentKind === "song" && onPreviewStartSecondsChange ? (
+              <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+                <FieldLabel label={copy.fields.previewStartSeconds} />
+                <Input
+                  className="h-11 w-32 text-end"
+                  inputMode="numeric"
+                  onChange={(event) =>
+                    onPreviewStartSecondsChange(normalizeSecondsInput(event.target.value))
+                  }
+                  placeholder={copy.placeholders.previewStartSeconds}
+                  value={previewStartSeconds ?? ""}
+                />
+              </div>
+            ) : null}
+
+            {monetizationState.regionalPricingAvailable ? (
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  checked={monetizationState.regionalPricingEnabled}
+                  className="mt-0.5"
+                  id="regional-pricing"
+                  onCheckedChange={(next) =>
+                    updateMonetizationState((current) => ({
+                      ...current,
+                      regionalPricingEnabled: next === true,
+                    }))
+                  }
+                />
+                <Label htmlFor="regional-pricing">{copy.access.useRegionalPricing}</Label>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
   return (
     <section className={cn("space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
       <FormSectionHeading title={copy.sections.access} />
       <div className="grid gap-3 md:grid-cols-2">
         <OptionCard
-          description={copy.access.publicDescription}
+          description={publicDescription}
           onClick={() =>
             updateMonetizationState((current) => ({
               ...current,
@@ -302,10 +416,10 @@ export function PostComposerCommerceAccessSection({
             }))
           }
           selected={!monetizationState.visible}
-          title={copy.access.public}
+          title={freeAccessTitle}
         />
         <OptionCard
-          description={copy.access.paidDescription}
+          description={paidDescription}
           onClick={() =>
             updateMonetizationState((current) => ({
               ...current,
@@ -321,7 +435,7 @@ export function PostComposerCommerceAccessSection({
         <div className={cn("space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <FieldLabel label={copy.fields.unlockPriceUsd} />
+              <FieldLabel label={priceLabel} />
               <Input
                 className="h-12"
                 inputMode="decimal"
@@ -371,25 +485,6 @@ export function PostComposerCommerceAccessSection({
                 </div>
               </div>
             ) : null}
-          </div>
-
-          <div className="flex items-start gap-3 border-t border-border-soft pt-4">
-            <Checkbox
-              checked={monetizationState.rightsAttested}
-              className="mt-0.5"
-              id="rights-attested"
-              onCheckedChange={(next) =>
-                updateMonetizationState((current) => ({
-                  ...current,
-                  rightsAttested: next === true,
-                }))
-              }
-            />
-            <div className="space-y-1">
-              <Label htmlFor="rights-attested">
-                {copy.access.rightsAttested}
-              </Label>
-            </div>
           </div>
         </div>
       ) : null}
@@ -462,6 +557,7 @@ export function PostComposerAudienceSection({
   audience,
   className,
   copy,
+  label,
   triggerClassName,
   updateAudience,
 }: {
@@ -471,17 +567,19 @@ export function PostComposerAudienceSection({
     audience: Record<string, string>;
     sections: Record<string, string>;
   };
+  label?: string;
   triggerClassName?: string;
   updateAudience: AudienceStateUpdater;
 }) {
   return (
     <div className={cn("flex min-w-0 items-center gap-3", className)}>
+      {label ? <FormFieldLabel className="shrink-0" label={label} /> : null}
       <AudienceSelect
         className="w-full min-w-0"
         labels={{
           public: copy.audience.public,
           community: copy.audience.community,
-          title: copy.sections.audience,
+          title: label ?? copy.sections.audience,
         }}
         publicOptionDisabledReason={audience.publicOptionDisabledReason}
         publicOptionEnabled={audience.publicOptionEnabled}

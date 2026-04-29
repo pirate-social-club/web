@@ -3,11 +3,13 @@ import {
   Image as ImageIcon,
   Link,
   Microphone,
-  MusicNote,
+  MusicNotes,
   TextT,
   VideoCamera,
 } from "@phosphor-icons/react";
 import type {
+  AttachmentKind,
+  AttachmentState,
   CharityContributionState,
   ComposerAudienceState,
   ComposerReference,
@@ -21,14 +23,33 @@ import type {
   VideoComposerState,
 } from "./post-composer.types";
 
+export function deriveComposerMode(attachment: AttachmentState): ComposerTab {
+  if (!attachment) return "text";
+  return attachment.kind;
+}
+
+export const attachmentKinds: AttachmentKind[] = ["link", "image", "video", "song", "live"];
+
 export const tabMeta: Record<ComposerTab, { label: string; icon: React.ReactNode }> = {
   text: { label: "Text", icon: <TextT className="size-5" /> },
   image: { label: "Image", icon: <ImageIcon className="size-5" /> },
   video: { label: "Video", icon: <VideoCamera className="size-5" /> },
   link: { label: "Link", icon: <Link className="size-5" /> },
-  song: { label: "Song", icon: <MusicNote className="size-5" /> },
+  song: { label: "Song", icon: <MusicNotes className="size-5" /> },
   live: { label: "Live", icon: <Microphone className="size-5" /> },
 };
+
+export const attachmentActions: Array<{
+  kind: AttachmentKind;
+  label: string;
+  icon: React.ReactNode;
+}> = [
+  { kind: "link", label: "Link", icon: <Link className="size-6" /> },
+  { kind: "image", label: "Image", icon: <ImageIcon className="size-6" /> },
+  { kind: "video", label: "Video", icon: <VideoCamera className="size-6" /> },
+  { kind: "song", label: "Song", icon: <MusicNotes className="size-6" /> },
+  { kind: "live", label: "Live", icon: <Microphone className="size-6" /> },
+];
 
 export const defaultTabs: ComposerTab[] = ["text", "image", "video", "link", "song", "live"];
 export const anonymousEligibleTabs: ComposerTab[] = ["text", "image", "video", "link"];
@@ -129,7 +150,6 @@ export function defaultMonetizationState(monetization?: MonetizationState): Mone
       "1.00",
     regionalPricingAvailable: monetization?.regionalPricingAvailable ?? false,
     regionalPricingEnabled: monetization?.regionalPricingEnabled ?? false,
-    rightsAttested: monetization?.rightsAttested ?? false,
   };
 }
 

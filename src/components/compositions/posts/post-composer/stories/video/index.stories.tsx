@@ -6,7 +6,7 @@ import type { VideoComposerState } from "../../post-composer.types";
 import { baseComposer, composerDecorator, composerParameters, InteractivePostComposer } from "../story-helpers";
 
 const meta = {
-  title: "Compositions/Posts/PostComposer/Video",
+  title: "Compositions/Posts/PostComposer/Legacy Tab Composer/Video",
   component: PostComposer,
   args: baseComposer,
   decorators: composerDecorator,
@@ -146,7 +146,6 @@ function FramePickerStory({
         visible: true,
         priceUsd: "4.99",
         regionalPricingAvailable: true,
-        rightsAttested: true,
       }}
       onVideoChange={setVideo}
       video={video}
@@ -183,7 +182,6 @@ export const PaidUnlock: Story = {
         visible: true,
         priceUsd: "4.99",
         regionalPricingAvailable: true,
-        rightsAttested: true,
       }}
       video={{
         primaryVideoLabel: "full-backstage-cut.mp4",
@@ -208,7 +206,6 @@ export const PaidUnlockLicenseNonCommercial: Story = {
         visible: true,
         priceUsd: "4.99",
         regionalPricingAvailable: true,
-        rightsAttested: true,
       }}
       video={{
         primaryVideoLabel: "full-backstage-cut.mp4",
@@ -233,7 +230,6 @@ export const PaidUnlockLicenseCommercialUse: Story = {
         visible: true,
         priceUsd: "4.99",
         regionalPricingAvailable: true,
-        rightsAttested: true,
       }}
       video={{
         primaryVideoLabel: "full-backstage-cut.mp4",
@@ -259,7 +255,6 @@ export const PaidUnlockLicenseCommercialRemix: Story = {
         visible: true,
         priceUsd: "4.99",
         regionalPricingAvailable: true,
-        rightsAttested: true,
       }}
       video={{
         primaryVideoLabel: "full-backstage-cut.mp4",

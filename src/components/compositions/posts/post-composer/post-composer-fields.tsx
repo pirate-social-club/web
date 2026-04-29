@@ -9,6 +9,7 @@ import { CommunityAvatar } from "@/components/primitives/community-avatar";
 import { FormattedTextarea } from "@/components/primitives/formatted-textarea";
 import { FormFieldLabel } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
+import { PillButton } from "@/components/primitives/pill-button";
 import {
   Sheet,
   SheetContent,
@@ -31,6 +32,7 @@ export function ShellPill({
   communities,
   emptyLabel,
   onSelectCommunity,
+  pickerSearchPlaceholder = "Search communities",
   pickerTitle = "Choose a community",
 }: {
   avatarSrc?: string;
@@ -39,11 +41,25 @@ export function ShellPill({
   communities?: CommunityPickerItem[];
   emptyLabel?: string;
   onSelectCommunity?: (communityId: string) => void;
+  pickerSearchPlaceholder?: string;
   pickerTitle?: string;
 }) {
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  const triggerContent = (
+    <>
+      {avatarSrc ? (
+        <img alt="" className="size-8 rounded-full object-cover" src={avatarSrc} />
+      ) : (
+        <div className="grid size-8 place-items-center rounded-full bg-background text-muted-foreground">
+          <Users className="size-5" />
+        </div>
+      )}
+      <span className="min-w-0 flex-1 truncate text-start">{children}</span>
+      <CaretDown className="size-4 shrink-0 text-muted-foreground" weight="bold" />
+    </>
+  );
   const filteredCommunities = React.useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
     if (!communities || normalizedQuery.length === 0) return communities ?? [];
@@ -54,17 +70,15 @@ export function ShellPill({
 
   if (!communities || !onSelectCommunity) {
     return (
-      <div className={cn("inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground", className)}>
-        {avatarSrc ? (
-          <img alt="" className="size-8 rounded-full object-cover" src={avatarSrc} />
-        ) : (
-          <div className="grid size-8 place-items-center rounded-full bg-background text-muted-foreground">
-            <Users className="size-5" />
-          </div>
-        )}
-        <span className="min-w-0 flex-1 truncate text-start">{children}</span>
-        <CaretDown className="size-5 text-muted-foreground" />
-      </div>
+      <PillButton
+        aria-label={pickerTitle}
+        aria-disabled="true"
+        className={cn("h-14 max-w-full justify-start gap-3 px-3.5 text-foreground", className)}
+        tabIndex={-1}
+        tone="default"
+      >
+        {triggerContent}
+      </PillButton>
     );
   }
 
@@ -72,33 +86,27 @@ export function ShellPill({
     return (
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetTrigger asChild>
-          <button
-            className={cn("inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring", className)}
-            type="button"
+          <PillButton
+            aria-label={pickerTitle}
+            className={cn("h-14 max-w-full justify-start gap-3 px-3.5 text-foreground", className)}
+            tone="default"
           >
-            {avatarSrc ? (
-              <img alt="" className="size-8 rounded-full object-cover" src={avatarSrc} />
-            ) : (
-              <div className="grid size-8 place-items-center rounded-full bg-background text-muted-foreground">
-                <Users className="size-5" />
-              </div>
-            )}
-            <span className="min-w-0 flex-1 truncate text-start">{children}</span>
-            <CaretDown className="size-5 text-muted-foreground" />
-          </button>
+            {triggerContent}
+          </PillButton>
         </SheetTrigger>
-        <SheetContent className="flex max-h-[90dvh] flex-col gap-4 rounded-t-[var(--radius-xl)] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-5" side="bottom">
+        <SheetContent className="flex max-h-[75dvh] flex-col rounded-t-[var(--radius-3xl)] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4" side="bottom">
+          <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-muted" aria-hidden="true" />
           <SheetHeader className="pe-12 text-start">
             <SheetTitle>{pickerTitle}</SheetTitle>
           </SheetHeader>
           <Input
             aria-label={pickerTitle}
-            className="h-12"
+            className="mt-5 h-12"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={pickerTitle}
+            placeholder={pickerSearchPlaceholder}
             value={query}
           />
-          <div className="-mx-4 min-h-0 flex-1 overflow-y-auto border-t border-border-soft">
+          <div className="-mx-4 mt-4 min-h-0 flex-1 overflow-y-auto border-t border-border-soft">
             {filteredCommunities.length === 0 ? (
               <Type as="div" variant="caption" className="px-4 py-5">
                 {emptyLabel ?? "No recent communities."}
@@ -135,20 +143,13 @@ export function ShellPill({
   return (
     <DropdownMenuPrimitive.Root>
       <DropdownMenuPrimitive.Trigger asChild>
-        <button
-          className={cn("inline-flex items-center gap-3 rounded-full bg-muted px-3.5 py-2.5 text-base font-semibold text-foreground outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring", className)}
-          type="button"
+        <PillButton
+          aria-label={pickerTitle}
+          className={cn("h-11 max-w-full justify-start gap-3 px-3.5 text-foreground", className)}
+          tone="default"
         >
-          {avatarSrc ? (
-            <img alt="" className="size-8 rounded-full object-cover" src={avatarSrc} />
-          ) : (
-            <div className="grid size-8 place-items-center rounded-full bg-background text-muted-foreground">
-              <Users className="size-5" />
-            </div>
-          )}
-          <span className="min-w-0 flex-1 truncate text-start">{children}</span>
-          <CaretDown className="size-5 text-muted-foreground" />
-        </button>
+          {triggerContent}
+        </PillButton>
       </DropdownMenuPrimitive.Trigger>
       <DropdownMenuPrimitive.Portal>
         <DropdownMenuPrimitive.Content
@@ -191,11 +192,22 @@ export function ShellPill({
 export function FieldLabel({
   label,
   counter,
+  className,
+  labelClassName,
 }: {
   label: string;
   counter?: string;
+  className?: string;
+  labelClassName?: string;
 }) {
-  return <FormFieldLabel className="mb-2" counter={counter} label={label} />;
+  return (
+    <FormFieldLabel
+      className={cn("mb-2", className)}
+      counter={counter}
+      label={label}
+      labelClassName={labelClassName}
+    />
+  );
 }
 
 export function UploadField({
@@ -283,6 +295,9 @@ export function LabeledTextarea({
   value,
   onChange,
   className,
+  labelClassName,
+  labelTextClassName,
+  variant,
 }: {
   label: string;
   placeholder: string;
@@ -290,15 +305,19 @@ export function LabeledTextarea({
   value?: string;
   onChange?: (value: string) => void;
   className?: string;
+  labelClassName?: string;
+  labelTextClassName?: string;
+  variant?: React.ComponentProps<typeof Textarea>["variant"];
 }) {
   return (
     <div>
-      <FieldLabel label={label} />
+      <FieldLabel className={labelClassName} label={label} labelClassName={labelTextClassName} />
       <Textarea
         className={className}
         defaultValue={value == null ? defaultValue : undefined}
         onChange={(event) => onChange?.(event.target.value)}
         placeholder={placeholder}
+        variant={variant}
         value={value}
       />
     </div>
@@ -336,17 +355,20 @@ export function EditorChrome({
   onChange,
   placeholder = "Write your post",
   className,
+  variant = "default",
 }: {
   value: string;
   onChange?: (value: string) => void;
   placeholder?: string;
   className?: string;
+  variant?: "default" | "flat";
 }) {
   return (
-    <FormattedTextarea
+    <Textarea
       className={cn("min-h-44", className)}
-      onChange={onChange}
+      onChange={(event) => onChange?.(event.target.value)}
       placeholder={placeholder}
+      variant={variant}
       value={value}
     />
   );

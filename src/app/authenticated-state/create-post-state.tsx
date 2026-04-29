@@ -21,6 +21,7 @@ import type {
   ComposerAudienceState,
   VideoComposerState,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
+import { isValidHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
 
 import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
 import { formatQualifierLabel } from "@/app/authenticated-helpers/post-presentation";
@@ -172,6 +173,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").createPost;
   const [community, setCommunity] = React.useState<ApiCommunityPreview | null>(null);
+  const [communityOwnerUserId, setCommunityOwnerUserId] = React.useState<string | null>(null);
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
   const [pricingPolicy, setPricingPolicy] = React.useState<ApiCommunityPricingPolicy | null>(null);
   const [loadError, setLoadError] = React.useState<unknown>(null);
@@ -254,16 +256,19 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setLoading(true);
     setLoadError(null);
     setSubmitError(null);
+    setCommunityOwnerUserId(null);
 
     void Promise.all([
       api.communities.preview(communityId),
+      api.communities.get(communityId),
       api.communities.getJoinEligibility(communityId),
       api.communities.getPricingPolicy(communityId).catch(() => null),
       session?.accessToken ? api.agents.list().catch(() => null) : Promise.resolve(null),
     ])
-      .then(async ([communityResult, eligibilityResult, pricingPolicyResult, ownedAgentsResult]) => {
+      .then(async ([communityResult, fullCommunityResult, eligibilityResult, pricingPolicyResult, ownedAgentsResult]) => {
         if (cancelled) return;
         setCommunity(communityResult);
+        setCommunityOwnerUserId(fullCommunityResult.created_by_user_id);
         setEligibility(eligibilityResult);
         setPricingPolicy(pricingPolicyResult);
         setAvailableAgent(ownedAgentsResult ? await resolveAvailableSigningAgent(ownedAgentsResult.items) : null);
@@ -368,7 +373,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
   const canSubmitText = title.trim().length > 0 && body.trim().length > 0;
   const canSubmitSong = Boolean(songState.primaryAudioUpload && lyrics.trim());
-  const canSubmitLink = linkUrl.trim().length > 0;
+  const canSubmitLink = isValidHttpUrl(linkUrl);
   const canSubmitImage = title.trim().length > 0 && Boolean(imageUpload);
   const canSubmitVideo = title.trim().length > 0 && Boolean(videoState.primaryVideoUpload);
   const canSubmit = composerMode === "song"
@@ -405,6 +410,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     };
   }, [availableAgent]);
   const submitSongPost = useSongSubmit({ communityId, signAgentAuthoredBody });
+  const isCommunityOwner = Boolean(session?.user.user_id && communityOwnerUserId === session.user.user_id);
   const uploadVideoArtifact = React.useCallback(async (video: VideoComposerState) => {
     const file = video.primaryVideoUpload;
     if (!file) {
@@ -420,7 +426,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [api.communities, communityId]);
 
   const handleSubmit = React.useCallback(async () => {
-    if (submitState.disabled || !community || eligibility?.status !== "already_joined") return;
+    if (!submitState.canPost || !community || (eligibility?.status !== "already_joined" && !isCommunityOwner)) return;
 
     setSubmitting(true);
     setSubmitError(null);
@@ -586,9 +592,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       setSubmitting(false);
     }
   }, [
-    api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status,
+    api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, isCommunityOwner,
     identityMode, imageUpload, license, linkUrl, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, pricingPolicy?.regional_pricing_enabled,
-    selectedQualifierIds, setDerivativeStep, setPendingSongBundleId, setSongMode, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.disabled, title,
+    selectedQualifierIds, setDerivativeStep, setPendingSongBundleId, setSongMode, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     uploadVideoArtifact, videoState,
   ]);
 
@@ -607,6 +613,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     composerMode,
     derivativeStep,
     eligibility,
+    isCommunityOwner,
     authorMode,
     identityMode,
     imageUpload,

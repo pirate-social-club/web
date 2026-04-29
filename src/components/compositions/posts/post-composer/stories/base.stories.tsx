@@ -4,7 +4,7 @@ import { PostComposer } from "../post-composer";
 import { baseComposer, composerDecorator, composerParameters } from "./story-helpers";
 
 const meta = {
-  title: "Compositions/Posts/PostComposer",
+  title: "Compositions/Posts/PostComposer/Legacy Tab Composer",
   component: PostComposer,
   args: baseComposer,
   decorators: composerDecorator,
@@ -17,13 +17,5 @@ type Story = StoryObj<typeof meta>;
 
 export const Overview: Story = {
   name: "Overview",
-  render: () => <PostComposer {...baseComposer} />,
-};
-
-export const MobileOverview: Story = {
-  name: "Mobile Overview",
-  parameters: {
-    viewport: { defaultViewport: "mobile2" },
-  },
   render: () => <PostComposer {...baseComposer} />,
 };

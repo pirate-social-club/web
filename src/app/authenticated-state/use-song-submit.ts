@@ -157,7 +157,6 @@ export function useSongSubmit({
   }: SongSubmitInput): Promise<ApiCreatedPost | null> => {
     const isLockedSong = paidSongPriceUsd != null;
     if (monetizationState.visible && paidSongPriceUsd == null) throw new Error("Enter a valid unlock price before publishing this song.");
-    if (isLockedSong && !monetizationState.rightsAttested) throw new Error("Confirm you have the rights to sell this song before publishing it.");
     const previewStartMs = isLockedSong ? parsePreviewStartMs(songState.previewStartSeconds) : null;
     if (isLockedSong && previewStartMs == null) throw new Error("Choose where the 30 second preview starts.");
     const selectedSourceRefs = derivativeStep?.references?.map((reference) => reference.id) ?? [];

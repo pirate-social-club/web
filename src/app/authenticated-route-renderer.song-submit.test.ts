@@ -237,13 +237,15 @@ describe("song submit payload helpers", () => {
       composerMode: "song",
       derivativeStep: { required: true, references: [] },
       license: undefined,
-      monetizationState: { visible: true, rightsAttested: false },
+      monetizationState: { visible: true },
       paidSongPriceInvalid: false,
       songMode: "remix",
       submitError: null,
     })).toEqual({
+      canContinue: false,
+      canPost: false,
       disabled: true,
-      submitError: "Confirm you have the rights to publish and monetize this track.",
+      submitError: "Attach a source track before publishing this remix.",
     });
 
     expect(resolveComposerSubmitState({
@@ -251,11 +253,13 @@ describe("song submit payload helpers", () => {
       composerMode: "song",
       derivativeStep: { required: true, references: [{ id: "ast_1", title: "Source" }] },
       license: undefined,
-      monetizationState: { visible: true, rightsAttested: true },
+      monetizationState: { visible: true },
       paidSongPriceInvalid: false,
       songMode: "remix",
       submitError: null,
     })).toEqual({
+      canContinue: false,
+      canPost: false,
       disabled: true,
       submitError: "Accept the source license terms before publishing this remix.",
     });
@@ -265,11 +269,13 @@ describe("song submit payload helpers", () => {
       composerMode: "song",
       derivativeStep: { required: true, references: [{ id: "ast_1", title: "Source" }], sourceTermsAccepted: true },
       license: undefined,
-      monetizationState: { visible: true, rightsAttested: true },
+      monetizationState: { visible: true },
       paidSongPriceInvalid: false,
       songMode: "remix",
       submitError: null,
     })).toEqual({
+      canContinue: true,
+      canPost: true,
       disabled: false,
       submitError: null,
     });
@@ -286,6 +292,8 @@ describe("song submit payload helpers", () => {
       songMode: "original",
       submitError: null,
     })).toEqual({
+      canContinue: true,
+      canPost: false,
       disabled: true,
       submitError: "Choose license terms before publishing this song.",
     });
@@ -300,6 +308,8 @@ describe("song submit payload helpers", () => {
       songMode: "original",
       submitError: null,
     })).toEqual({
+      canContinue: true,
+      canPost: false,
       disabled: true,
       submitError: "Choose a valid remix revenue share before publishing this song.",
     });
@@ -314,6 +324,8 @@ describe("song submit payload helpers", () => {
       songMode: "original",
       submitError: null,
     })).toEqual({
+      canContinue: true,
+      canPost: true,
       disabled: false,
       submitError: null,
     });

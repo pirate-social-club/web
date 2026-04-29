@@ -5,11 +5,14 @@ import { CardFooter } from "@/components/primitives/card";
 import { FormNote } from "@/components/primitives/form-layout";
 
 import { anonymousEligibleTabs } from "./post-composer-config";
-import { IdentitySection } from "./post-composer-identity-section";
-import { PostComposerAudienceSection } from "./post-composer-sections";
+import {
+  canAdvanceComposerWriteStep,
+  getNextComposerStep,
+  getPreviousComposerStep,
+} from "./post-composer-utils";
 import type { PostComposerController } from "./use-post-composer-controller";
 
-function shouldShowIdentity(controller: PostComposerController) {
+export function shouldShowIdentity(controller: PostComposerController) {
   const { commerce, identity, tabs } = controller;
 
   if (!identity.identity) {
@@ -31,45 +34,102 @@ export function PostComposerDesktopFooter({
 }: {
   controller: PostComposerController;
 }) {
-  const { audience, copy, identity, isMobile, submit, tabs, commerce } = controller;
+  const { copy, fields, isMobile, media, song, step, submit, tabs } = controller;
 
   if (isMobile) {
     return null;
   }
 
+  if (step.isWriteStep && tabs.activeTab !== "live") {
+    const canAdvanceWrite = canAdvanceComposerWriteStep({
+      body: fields.textBodyValue,
+      imageUploadPresent: Boolean(media.activeImageUpload),
+      linkUrl: fields.linkUrlValue,
+      mode: tabs.activeTab,
+      songAudioUploadPresent: Boolean(song.state.primaryAudioUpload),
+      title: fields.titleValue,
+      videoUploadPresent: Boolean(media.videoState.primaryVideoUpload),
+    });
+
+    return (
+      <CardFooter className="justify-end gap-3 border-t border-border-soft p-5">
+        <Button
+          disabled={!canAdvanceWrite}
+          onClick={() => step.set(getNextComposerStep("write", tabs.activeTab))}
+          size="lg"
+        >
+          {copy.actions.continue}
+        </Button>
+      </CardFooter>
+    );
+  }
+
+  if (step.isSettingsStep) {
+    return (
+      <CardFooter className="justify-between gap-3 border-t border-border-soft p-5">
+        <Button
+          onClick={() => step.set(getPreviousComposerStep("settings", tabs.activeTab) ?? "write")}
+          size="lg"
+          variant="outline"
+        >
+          {copy.actions.back}
+        </Button>
+        <Button
+          disabled={submit.continueDisabled}
+          onClick={() => step.set("publish")}
+          size="lg"
+        >
+          {copy.actions.continue}
+        </Button>
+      </CardFooter>
+    );
+  }
+
+  if (step.isDetailsStep) {
+    return (
+      <CardFooter className="justify-between gap-3 border-t border-border-soft p-5">
+        <Button
+          onClick={() => step.set("write")}
+          size="lg"
+          variant="outline"
+        >
+          {copy.actions.back}
+        </Button>
+        <Button
+          disabled={submit.continueDisabled}
+          onClick={() => step.set("settings")}
+          size="lg"
+        >
+          {copy.actions.continue}
+        </Button>
+      </CardFooter>
+    );
+  }
+
+  const publishLabel = tabs.activeTab === "live" ? submit.label : copy.actions.publish;
+
   return (
-    <CardFooter className="flex-wrap justify-between gap-3 border-t border-border-soft p-5">
-      <div className="flex flex-wrap items-center gap-3">
-        {shouldShowIdentity(controller) && identity.identity ? (
-          <IdentitySection
-            authorMode={identity.authorMode}
-            identity={identity.identity}
-            identityMode={identity.identityMode}
-            onAuthorModeChange={identity.setAuthorMode}
-            onIdentityModeChange={identity.setIdentityMode}
-          />
-        ) : null}
-        {tabs.activeTab !== "live" ? (
-          <PostComposerAudienceSection
-            audience={audience.state}
-            copy={copy}
-            updateAudience={audience.update}
-          />
-        ) : null}
+    <CardFooter className="justify-between gap-3 border-t border-border-soft p-5">
+      {step.isPublishStep ? (
+        <Button
+          onClick={() => step.set(getPreviousComposerStep("publish", tabs.activeTab) ?? "settings")}
+          size="lg"
+          variant="outline"
+        >
+          {copy.actions.back}
+        </Button>
+      ) : <span />}
+      <div className="flex items-center justify-end gap-3 lg:ms-auto">
+        {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
+        <Button
+          disabled={submit.disabled}
+          loading={submit.loading}
+          onClick={submit.onSubmit}
+          size="lg"
+        >
+          {publishLabel}
+        </Button>
       </div>
-      {!isMobile ? (
-        <div className="ms-auto flex items-center gap-3">
-          {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
-          <Button
-            disabled={submit.disabled}
-            loading={submit.loading}
-            onClick={submit.onSubmit}
-            size="lg"
-          >
-            {submit.label}
-          </Button>
-        </div>
-      ) : null}
     </CardFooter>
   );
 }
@@ -79,51 +139,56 @@ export function PostComposerMobileSubmitBar({
 }: {
   controller: PostComposerController;
 }) {
-  const { audience, copy, identity, isMobile, submit, tabs } = controller;
+  const { copy, fields, isMobile, media, song, step, submit, tabs } = controller;
 
   if (!isMobile || !submit.mobileEnabled) {
     return null;
   }
 
-  const showIdentity = shouldShowIdentity(controller);
+  if (step.isWriteStep && tabs.activeTab !== "live") {
+    const canAdvanceWrite = canAdvanceComposerWriteStep({
+      body: fields.textBodyValue,
+      imageUploadPresent: Boolean(media.activeImageUpload),
+      linkUrl: fields.linkUrlValue,
+      mode: tabs.activeTab,
+      songAudioUploadPresent: Boolean(song.state.primaryAudioUpload),
+      title: fields.titleValue,
+      videoUploadPresent: Boolean(media.videoState.primaryVideoUpload),
+    });
+
+    return (
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
+        <div className="px-4">
+          <Button
+            className="w-full"
+            disabled={!canAdvanceWrite}
+            onClick={() => step.set(getNextComposerStep("write", tabs.activeTab))}
+            size="lg"
+          >
+            {copy.actions.continue}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const publishLabel = tabs.activeTab === "live" ? submit.label : copy.actions.publish;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
       <div className="space-y-3 px-4">
-        <div className="flex items-center justify-between gap-2">
-          {showIdentity && identity.identity ? (
-            <IdentitySection
-              authorMode={identity.authorMode}
-              className="min-w-0 flex-1"
-              controlClassName="w-full min-w-0"
-              hideLabel
-              identity={identity.identity}
-              identityMode={identity.identityMode}
-              onAuthorModeChange={identity.setAuthorMode}
-              onIdentityModeChange={identity.setIdentityMode}
-              triggerClassName="h-9 max-w-none w-full px-3 text-sm"
-            />
-          ) : <div />}
-          {tabs.activeTab !== "live" ? (
-            <PostComposerAudienceSection
-              audience={audience.state}
-              className="shrink-0 justify-end"
-              copy={copy}
-              triggerClassName="h-9 px-3 text-sm"
-              updateAudience={audience.update}
-            />
-          ) : null}
-        </div>
         {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
-        <Button
-          className="w-full"
-          disabled={submit.disabled}
-          loading={submit.loading}
-          onClick={submit.onSubmit}
-          size="lg"
-        >
-          {submit.label}
-        </Button>
+        <div>
+          <Button
+            className="w-full"
+            disabled={submit.disabled}
+            loading={submit.loading}
+            onClick={submit.onSubmit}
+            size="lg"
+          >
+            {publishLabel}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,32 @@
 export type ComposerTab = "text" | "image" | "video" | "link" | "song" | "live";
+export type ComposerStep = "write" | "details" | "settings" | "publish";
+
+export type AttachmentKind = "link" | "image" | "video" | "song" | "live";
+
+export type AttachmentState =
+  | { kind: "link"; url: string }
+  | { kind: "image"; label: string; previewUrl?: string }
+  | { kind: "video"; label: string; previewUrl?: string }
+  | { kind: "song"; label: string }
+  | { kind: "live" }
+  | null;
+
+export type ComposerUploadValue = { name: string; previewUrl?: string } | null;
+
+export interface SongDetailsState {
+  canvasVideo: ComposerUploadValue;
+  coverArt: ComposerUploadValue;
+  genre: string;
+  instrumentalStem: ComposerUploadValue;
+  language: string;
+  lyrics: string;
+  vocalStem: ComposerUploadValue;
+}
+
+export interface VideoDetailsState {
+  posterFrameSeconds: string;
+  thumbnail: ComposerUploadValue;
+}
 
 export interface CommunityPickerItem {
   communityId: string;
@@ -137,7 +165,6 @@ export interface MonetizationState {
   priceUsd?: string;
   regionalPricingAvailable?: boolean;
   regionalPricingEnabled?: boolean;
-  rightsAttested?: boolean;
 }
 
 export interface CharityContributionState {
@@ -163,6 +190,8 @@ export interface ComposerIdentityState {
   identityMode?: IdentityMode;
   authorMode?: AuthorMode;
   publicHandle?: string;
+  realNameLabel?: string;
+  reputationLabel?: string;
   anonymousLabel?: string;
   agentLabel?: string;
   availableQualifiers?: QualifierOption[];
@@ -216,6 +245,8 @@ export interface PostComposerDraftActions {
 }
 
 export interface PostComposerSubmitState {
+  canContinue?: boolean;
+  canPost?: boolean;
   disabled?: boolean;
   error?: string | null;
   label?: string;
@@ -226,6 +257,7 @@ export interface PostComposerSubmitState {
 export interface PostComposerProps extends Partial<PostComposerDraftState>, PostComposerDraftActions {
   clubName: string;
   clubAvatarSrc?: string;
+  onClose?: () => void;
   communityPickerItems?: CommunityPickerItem[];
   communityPickerEmptyLabel?: string;
   onSelectCommunity?: (communityId: string) => void;
@@ -234,6 +266,8 @@ export interface PostComposerProps extends Partial<PostComposerDraftState>, Post
   draft?: PostComposerDraftState;
   actions?: PostComposerDraftActions;
   submit?: PostComposerSubmitState;
+  composerStep?: ComposerStep;
+  onComposerStepChange?: (value: ComposerStep) => void;
   onSubmit?: () => void;
   submitDisabled?: boolean;
   submitError?: string | null;

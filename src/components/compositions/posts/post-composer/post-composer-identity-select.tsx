@@ -3,9 +3,9 @@
 import * as React from "react";
 
 import { ResponsiveOptionSelect } from "@/components/compositions/system/responsive-option-select/responsive-option-select";
+import { FormFieldLabel } from "@/components/primitives/form-layout";
 import { cn } from "@/lib/utils";
 import type { ComposerIdentityState } from "./post-composer.types";
-import { Type } from "@/components/primitives/type";
 
 export type IdentityOption = "public" | "anonymous" | "agent";
 
@@ -17,6 +17,7 @@ export interface IdentitySelectProps {
   className?: string;
   controlClassName?: string;
   hideLabel?: boolean;
+  size?: "default" | "lg";
   triggerClassName?: string;
 }
 
@@ -28,6 +29,7 @@ export function IdentitySelect({
   className,
   controlClassName,
   hideLabel = false,
+  size,
   triggerClassName,
 }: IdentitySelectProps) {
   const handleLabel = identity.publicHandle ?? "@handle";
@@ -58,7 +60,7 @@ export function IdentitySelect({
 
   return (
     <div className={cn("flex min-w-0 items-center gap-2", className)}>
-      {!hideLabel ? <Type as="span" variant="caption">{postAsLabel}</Type> : null}
+      {!hideLabel ? <FormFieldLabel className="shrink-0" label={postAsLabel} /> : null}
       <ResponsiveOptionSelect<IdentityOption>
         ariaLabel={postAsLabel}
         className={controlClassName}
@@ -66,7 +68,8 @@ export function IdentitySelect({
         onValueChange={onChange}
         options={options}
         selectAlign="start"
-        triggerClassName={cn("h-auto min-w-0 py-1.5", triggerClassName)}
+        size={size}
+        triggerClassName={cn(size === "lg" ? "min-w-0" : "h-auto min-w-0 py-1.5", triggerClassName)}
         triggerContent={<span className="truncate">{selected.label}</span>}
         value={selected.value}
       />

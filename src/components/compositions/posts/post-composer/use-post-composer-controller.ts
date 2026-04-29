@@ -10,6 +10,7 @@ import type {
   AuthorMode,
   CharityContributionState,
   ComposerAudienceState,
+  ComposerStep,
   ComposerTab,
   DerivativeStepState,
   IdentityMode,
@@ -66,14 +67,16 @@ export function usePostComposerController(props: PostComposerProps) {
     onSelectCommunity,
   } = props;
   const { actions, draft, submit } = props;
+  const controlledComposerStep = props.composerStep;
+  const onComposerStepChange = props.onComposerStepChange;
   const mode = draft?.mode ?? props.mode ?? "text";
-  const titleValue = draft?.titleValue ?? props.titleValue ?? "";
-  const textBodyValue = draft?.textBodyValue ?? props.textBodyValue ?? "";
-  const captionValue = draft?.captionValue ?? props.captionValue ?? "";
+  const providedTitleValue = draft?.titleValue ?? props.titleValue ?? "";
+  const providedTextBodyValue = draft?.textBodyValue ?? props.textBodyValue ?? "";
+  const providedCaptionValue = draft?.captionValue ?? props.captionValue ?? "";
   const imageUpload = draft?.imageUpload !== undefined ? draft.imageUpload : props.imageUpload;
   const imageUploadLabel = draft?.imageUploadLabel ?? props.imageUploadLabel;
-  const lyricsValue = draft?.lyricsValue ?? props.lyricsValue ?? "";
-  const linkUrlValue = draft?.linkUrlValue ?? props.linkUrlValue ?? "";
+  const providedLyricsValue = draft?.lyricsValue ?? props.lyricsValue ?? "";
+  const providedLinkUrlValue = draft?.linkUrlValue ?? props.linkUrlValue ?? "";
   const linkPreview = draft?.linkPreview ?? props.linkPreview;
   const songMode = draft?.songMode ?? props.songMode;
   const song = draft?.song ?? props.song;
@@ -106,6 +109,12 @@ export function usePostComposerController(props: PostComposerProps) {
   const onSelectedQualifierIdsChange = actions?.onSelectedQualifierIdsChange ?? props.onSelectedQualifierIdsChange;
   const onSubmit = submit?.onSubmit ?? props.onSubmit;
   const baseSubmitDisabled = submit?.disabled ?? props.submitDisabled ?? false;
+  const baseContinueDisabled = submit?.canContinue === undefined
+    ? baseSubmitDisabled
+    : !submit.canContinue;
+  const basePostDisabled = submit?.canPost === undefined
+    ? baseSubmitDisabled
+    : !submit.canPost;
   const submitError = submit?.error ?? props.submitError ?? null;
   const submitLabel = submit?.label ?? props.submitLabel;
   const submitLoading = submit?.loading ?? props.submitLoading ?? false;
@@ -118,6 +127,14 @@ export function usePostComposerController(props: PostComposerProps) {
     [availableTabs, canCreateSongPost],
   );
   const [activeTab, setActiveTab] = React.useState<ComposerTab>(visibleTabs[0] ?? "text");
+  const [uncontrolledTitleValue, setUncontrolledTitleValue] = React.useState(providedTitleValue);
+  const [uncontrolledTextBodyValue, setUncontrolledTextBodyValue] = React.useState(providedTextBodyValue);
+  const [uncontrolledCaptionValue, setUncontrolledCaptionValue] = React.useState(providedCaptionValue);
+  const [uncontrolledLyricsValue, setUncontrolledLyricsValue] = React.useState(providedLyricsValue);
+  const [uncontrolledLinkUrlValue, setUncontrolledLinkUrlValue] = React.useState(providedLinkUrlValue);
+  const [uncontrolledComposerStep, setUncontrolledComposerStep] = React.useState<ComposerStep>(
+    controlledComposerStep ?? "write",
+  );
   const [uncontrolledSongMode, setUncontrolledSongMode] = React.useState<NonNullable<PostComposerProps["songMode"]>>(
     songMode ?? "original",
   );
@@ -157,7 +174,13 @@ export function usePostComposerController(props: PostComposerProps) {
   const [derivativePickerKey, setDerivativePickerKey] = React.useState(0);
   const [liveState, setLiveState] = React.useState<LiveComposerState>(() => defaultLiveState(live));
   const [prevRoomKind, setPrevRoomKind] = React.useState<LiveRoomKind>(liveState.roomKind);
+  const titleValue = onTitleValueChange ? providedTitleValue : uncontrolledTitleValue;
+  const textBodyValue = onTextBodyValueChange ? providedTextBodyValue : uncontrolledTextBodyValue;
+  const captionValue = onCaptionValueChange ? providedCaptionValue : uncontrolledCaptionValue;
+  const lyricsValue = onLyricsValueChange ? providedLyricsValue : uncontrolledLyricsValue;
+  const linkUrlValue = onLinkUrlValueChange ? providedLinkUrlValue : uncontrolledLinkUrlValue;
   const activeSongMode = songMode ?? uncontrolledSongMode;
+  const composerStep = controlledComposerStep ?? uncontrolledComposerStep;
   const activeImageUpload = imageUpload === undefined ? uncontrolledImageUpload : imageUpload;
   const songState = song ?? uncontrolledSongState;
   const licenseState = license ?? uncontrolledLicenseState;
@@ -220,6 +243,41 @@ export function usePostComposerController(props: PostComposerProps) {
     onImageUploadChange?.(next);
   }, [imageUpload, onImageUploadChange]);
 
+  const setTitleValueWithCallback = React.useCallback((next: string) => {
+    if (!onTitleValueChange) {
+      setUncontrolledTitleValue(next);
+    }
+    onTitleValueChange?.(next);
+  }, [onTitleValueChange]);
+
+  const setTextBodyValueWithCallback = React.useCallback((next: string) => {
+    if (!onTextBodyValueChange) {
+      setUncontrolledTextBodyValue(next);
+    }
+    onTextBodyValueChange?.(next);
+  }, [onTextBodyValueChange]);
+
+  const setCaptionValueWithCallback = React.useCallback((next: string) => {
+    if (!onCaptionValueChange) {
+      setUncontrolledCaptionValue(next);
+    }
+    onCaptionValueChange?.(next);
+  }, [onCaptionValueChange]);
+
+  const setLyricsValueWithCallback = React.useCallback((next: string) => {
+    if (!onLyricsValueChange) {
+      setUncontrolledLyricsValue(next);
+    }
+    onLyricsValueChange?.(next);
+  }, [onLyricsValueChange]);
+
+  const setLinkUrlValueWithCallback = React.useCallback((next: string) => {
+    if (!onLinkUrlValueChange) {
+      setUncontrolledLinkUrlValue(next);
+    }
+    onLinkUrlValueChange?.(next);
+  }, [onLinkUrlValueChange]);
+
   const updateDerivativeState = React.useCallback((updater: (current: DerivativeStepState | undefined) => DerivativeStepState | undefined) => {
     const next = updater(derivativeState);
     if (derivativeStep === undefined) {
@@ -259,7 +317,16 @@ export function usePostComposerController(props: PostComposerProps) {
     && (derivativeState.references?.length ?? 0) > 0
     && derivativeState.sourceTermsAccepted !== true,
   );
-  const submitDisabled = baseSubmitDisabled || derivativeMissingRefs || derivativeMissingSourceTermsAcceptance;
+  const contentBlocked = derivativeMissingRefs || derivativeMissingSourceTermsAcceptance;
+  const continueDisabled = baseContinueDisabled || contentBlocked;
+  const postDisabled = basePostDisabled || contentBlocked;
+
+  const setComposerStepWithCallback = React.useCallback((next: ComposerStep) => {
+    if (controlledComposerStep === undefined) {
+      setUncontrolledComposerStep(next);
+    }
+    onComposerStepChange?.(next);
+  }, [controlledComposerStep, onComposerStepChange]);
 
   const updateMonetizationState = React.useCallback((updater: (current: MonetizationState) => MonetizationState) => {
     const next = updater(monetizationState);
@@ -304,6 +371,32 @@ export function usePostComposerController(props: PostComposerProps) {
 
     setActiveTab(visibleTabs[0] ?? "text");
   }, [mode, visibleTabs]);
+
+  React.useEffect(() => {
+    if (!onTitleValueChange) setUncontrolledTitleValue(providedTitleValue);
+  }, [onTitleValueChange, providedTitleValue]);
+
+  React.useEffect(() => {
+    if (!onTextBodyValueChange) setUncontrolledTextBodyValue(providedTextBodyValue);
+  }, [onTextBodyValueChange, providedTextBodyValue]);
+
+  React.useEffect(() => {
+    if (!onCaptionValueChange) setUncontrolledCaptionValue(providedCaptionValue);
+  }, [onCaptionValueChange, providedCaptionValue]);
+
+  React.useEffect(() => {
+    if (!onLyricsValueChange) setUncontrolledLyricsValue(providedLyricsValue);
+  }, [onLyricsValueChange, providedLyricsValue]);
+
+  React.useEffect(() => {
+    if (!onLinkUrlValueChange) setUncontrolledLinkUrlValue(providedLinkUrlValue);
+  }, [onLinkUrlValueChange, providedLinkUrlValue]);
+
+  React.useEffect(() => {
+    if (activeTab === "live" && composerStep !== "write") {
+      setComposerStepWithCallback("write");
+    }
+  }, [activeTab, composerStep, setComposerStepWithCallback]);
 
   React.useEffect(() => {
     setDerivativePickerKey(0);
@@ -400,6 +493,7 @@ export function usePostComposerController(props: PostComposerProps) {
       items: communityPickerItems,
       name: clubName,
       onSelect: onSelectCommunity,
+      pickerSearchPlaceholder: routesCopy.common.searchCommunities,
       pickerTitle: routesCopy.common.chooseCommunity,
     },
     copy,
@@ -408,11 +502,11 @@ export function usePostComposerController(props: PostComposerProps) {
       linkPreview,
       linkUrlValue,
       lyricsValue,
-      onCaptionValueChange,
-      onLinkUrlValueChange,
-      onLyricsValueChange,
-      onTextBodyValueChange,
-      onTitleValueChange,
+      onCaptionValueChange: setCaptionValueWithCallback,
+      onLinkUrlValueChange: setLinkUrlValueWithCallback,
+      onLyricsValueChange: setLyricsValueWithCallback,
+      onTextBodyValueChange: setTextBodyValueWithCallback,
+      onTitleValueChange: setTitleValueWithCallback,
       textBodyValue,
       titleValue,
     },
@@ -455,12 +549,24 @@ export function usePostComposerController(props: PostComposerProps) {
       update: updateSongState,
     },
     submit: {
-      disabled: submitDisabled,
-      error: submitError,
+      continueDisabled,
+      disabled: composerStep !== "write" || activeTab === "live"
+        ? postDisabled
+        : continueDisabled,
+      error: composerStep !== "write" || activeTab === "live" ? submitError : null,
       label: submitLabel ?? copy.actions.post,
       loading: submitLoading,
       mobileEnabled: Boolean(submit),
       onSubmit,
+      postDisabled,
+    },
+    step: {
+      current: composerStep,
+      isPublishStep: composerStep === "publish" && activeTab !== "live",
+      isSettingsStep: composerStep === "settings" && activeTab !== "live",
+      isDetailsStep: composerStep === "details" && activeTab !== "live",
+      isWriteStep: composerStep === "write" || activeTab === "live",
+      set: setComposerStepWithCallback,
     },
     tabs: {
       activeTab,

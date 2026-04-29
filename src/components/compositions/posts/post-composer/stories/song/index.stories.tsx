@@ -4,7 +4,7 @@ import { PostComposer } from "../../post-composer";
 import { baseComposer, composerDecorator, composerParameters, InteractivePostComposer } from "../story-helpers";
 
 const meta = {
-  title: "Compositions/Posts/PostComposer/Song",
+  title: "Compositions/Posts/PostComposer/Legacy Tab Composer/Song",
   component: PostComposer,
   args: baseComposer,
   decorators: composerDecorator,
@@ -284,7 +284,6 @@ export const PaidUnlock: Story = {
       monetization={{
         visible: true,
         priceUsd: "3.99",
-        rightsAttested: true,
       }}
     />
   ),
@@ -312,7 +311,6 @@ export const PaidUnlockRegionalPricing: Story = {
         priceUsd: "3.99",
         regionalPricingAvailable: true,
         regionalPricingEnabled: true,
-        rightsAttested: true,
       }}
     />
   ),
@@ -346,7 +344,6 @@ export const WithCharityContribution: Story = {
       monetization={{
         visible: true,
         priceUsd: "3.99",
-        rightsAttested: true,
       }}
     />
   ),

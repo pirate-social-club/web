@@ -79,13 +79,31 @@ export function resolveComposerSubmitState(input: {
   composerMode: ComposerTab;
   derivativeStep: AssetDerivativeInput | undefined;
   license: AssetLicenseState | undefined;
-  monetizationState: Pick<MonetizationState, "rightsAttested" | "visible">;
+  monetizationState: Pick<MonetizationState, "visible">;
   paidSongPriceInvalid: boolean;
   songMode?: SongMode;
   submitError: string | null;
 }) {
+  const contentError = (() => {
+    if (input.submitError) return input.submitError;
+    if (!input.canSubmit) return null;
+
+    if (input.composerMode === "song" && input.derivativeStep?.required && !(input.derivativeStep.references?.length ?? 0)) {
+      return "Attach a source track before publishing this remix.";
+    }
+
+    if (input.composerMode === "song" && input.derivativeStep?.required && input.derivativeStep.sourceTermsAccepted !== true) {
+      return "Accept the source license terms before publishing this remix.";
+    }
+
+    return null;
+  })();
+  const canContinue = input.canSubmit && !contentError;
+
   if (input.submitError) {
     return {
+      canContinue: false,
+      canPost: false,
       disabled: true,
       submitError: input.submitError,
     };
@@ -93,40 +111,32 @@ export function resolveComposerSubmitState(input: {
 
   if (!input.canSubmit) {
     return {
+      canContinue: false,
+      canPost: false,
       disabled: true,
       submitError: null,
     };
   }
 
+  if (contentError) {
+    return {
+      canContinue: false,
+      canPost: false,
+      disabled: true,
+      submitError: contentError,
+    };
+  }
+
   if ((input.composerMode === "song" || input.composerMode === "video") && input.monetizationState.visible && input.paidSongPriceInvalid) {
     return {
+      canContinue,
+      canPost: false,
       disabled: true,
       submitError: input.composerMode === "song"
         ? "Enter a valid unlock price before publishing this song."
-        : "Enter a valid unlock price before publishing this video.",
-    };
-  }
-
-  if ((input.composerMode === "song" || input.composerMode === "video") && input.monetizationState.visible && !input.monetizationState.rightsAttested) {
-    return {
-      disabled: true,
-      submitError: input.composerMode === "song"
-        ? "Confirm you have the rights to publish and monetize this track."
-        : "Confirm you have the rights to publish and monetize this video.",
-    };
-  }
-
-  if (input.composerMode === "song" && input.derivativeStep?.required && !(input.derivativeStep.references?.length ?? 0)) {
-    return {
-      disabled: true,
-      submitError: "Attach a source track before publishing this remix.",
-    };
-  }
-
-  if (input.composerMode === "song" && input.derivativeStep?.required && input.derivativeStep.sourceTermsAccepted !== true) {
-    return {
-      disabled: true,
-      submitError: "Accept the source license terms before publishing this remix.",
+        : input.composerMode === "video"
+          ? "Enter a valid unlock price before publishing this video."
+          : "Enter a valid unlock price before publishing this post.",
     };
   }
 
@@ -134,6 +144,8 @@ export function resolveComposerSubmitState(input: {
     const licenseError = validateOriginalAssetLicense(input.license, "song");
     if (licenseError) {
       return {
+        canContinue,
+        canPost: false,
         disabled: true,
         submitError: licenseError,
       };
@@ -144,6 +156,8 @@ export function resolveComposerSubmitState(input: {
     const licenseError = validateOriginalAssetLicense(input.license, "video");
     if (licenseError) {
       return {
+        canContinue,
+        canPost: false,
         disabled: true,
         submitError: licenseError,
       };
@@ -151,6 +165,8 @@ export function resolveComposerSubmitState(input: {
   }
 
   return {
+    canContinue,
+    canPost: true,
     disabled: false,
     submitError: null,
   };

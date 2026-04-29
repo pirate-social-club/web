@@ -23,7 +23,8 @@ import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { formatCommunityRouteLabel } from "@/lib/community-routing";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
-import { getVerificationCapabilitiesForProvider, getVerificationPromptCopy, getVerificationRequirementsForGates, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import { getVerificationCapabilitiesForProvider, getVerificationRequirementsForGates } from "@/lib/identity-gates";
+import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
 import { forgetKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
@@ -325,91 +326,67 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     if (joinError) toast.error(joinError);
   }, [joinError]);
 
-  const startSelfVerification = React.useCallback(async ({
-    eligibility,
-  }: {
-    eligibility: Pick<ApiJoinEligibility, "membership_gate_summaries" | "missing_capabilities">;
-  }) => {
-    const requestedCapabilities = getVerificationCapabilitiesForProvider(eligibility, "self");
-    const verificationRequirements = getVerificationRequirementsForGates(eligibility.membership_gate_summaries);
-    if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
-      const message = copy.publicCommunity.verificationMissingSelf;
-      toast.error(message);
-      return { started: false };
-    }
+  const interactionCopy = React.useMemo(
+    () => ({
+      ...copy.interactionGate,
+      locale,
+      taskVerify: copy.createCommunity.startVerification,
+    }),
+    [copy, locale],
+  );
 
-    const result = await startSelfVerificationFlow({
-      requestedCapabilities,
-      unavailableMessage: copy.publicCommunity.verificationMissingSelf,
-      verificationRequirements,
-      skipModal: true,
-    });
-    if (!result.started && result.error) {
-      toast.error(result.error);
-    }
-    if (result.started && !result.openedModal && result.href) {
-      window.location.href = result.href;
-    }
-    return result;
-  }, [copy.publicCommunity.verificationMissingSelf, startSelfVerificationFlow]);
+  const buildBlockedModalState = React.useMemo(
+    () =>
+      createCommunityBlockedModalStateFactory({
+        interactionCopy,
+        veryLoading,
+        selfLoading,
+        onStartVeryVerification: startVeryVerification,
+        onStartSelfVerification: async (gate) => {
+          const requestedCapabilities = getVerificationCapabilitiesForProvider(
+            gate.eligibility,
+            "self",
+          );
+          const verificationRequirements = getVerificationRequirementsForGates(
+            gate.eligibility.membership_gate_summaries,
+          );
+          if (
+            requestedCapabilities.length === 0 &&
+            verificationRequirements.length === 0
+          ) {
+            const message = copy.publicCommunity.verificationMissingSelf;
+            toast.error(message);
+            return { started: false };
+          }
 
-  const buildBlockedModalState = React.useCallback(({ action, closeModal, gate }: {
-    action: "reply_comment" | "reply_post" | "vote_comment" | "vote_post";
-    closeModal: () => void;
-    gate: {
-      eligibility: ApiJoinEligibility;
-      preview: {
-        community_id: string;
-        display_name: string;
-        membership_gate_summaries: ApiCommunityPreview["membership_gate_summaries"];
-      };
-    };
-  }) => {
-    if (gate.eligibility.status !== "verification_required") {
-      return null;
-    }
-
-	    const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-	    if (provider === "passport") {
-	      return undefined;
-	    }
-	    const verificationPrompt = getVerificationPromptCopy(
-	      provider,
-	      getVerificationCapabilitiesForProvider(gate.eligibility, provider),
-      { locale },
-    );
-    return {
-      description: verificationPrompt.description,
-	      icon: provider,
-	      primaryAction: {
-	            label: verificationPrompt.actionLabel || copy.createCommunity.startVerification,
-	            loading: provider === "very" ? veryLoading : provider === "self" ? selfLoading : false,
-            onClick: async () => {
-              if (provider === "very") {
-                const result = await startVeryVerification();
-                if (result.started) {
-                  closeModal();
-                }
-              } else {
-                const result = await startSelfVerification({
-                  eligibility: gate.eligibility,
-                });
-                if (result.started) {
-                  closeModal();
-                }
-              }
-	          },
-          },
-      requirements: gate.preview.membership_gate_summaries,
-      secondaryAction: {
-        label: copy.interactionGate.close,
-        onClick: closeModal,
-      },
-	      title: action === "vote_post" || action === "vote_comment"
-	          ? copy.interactionGate.verifyToVoteTitle
-	          : copy.interactionGate.verifyToReplyTitle,
-    };
-  }, [copy.createCommunity.startVerification, copy.interactionGate, locale, selfLoading, startSelfVerification, startVeryVerification, veryLoading]);
+          const result = await startSelfVerificationFlow({
+            requestedCapabilities,
+            unavailableMessage: copy.publicCommunity.verificationMissingSelf,
+            verificationRequirements,
+            skipModal: true,
+          });
+          if (!result.started && result.error) {
+            toast.error(result.error);
+          }
+          return {
+            started: result.started,
+            openedModal: result.openedModal,
+            href: result.href,
+          };
+        },
+        invalidateCommunityGate,
+        includeVerificationCloseAction: true,
+      }),
+    [
+      interactionCopy,
+      veryLoading,
+      selfLoading,
+      startVeryVerification,
+      startSelfVerificationFlow,
+      copy.publicCommunity.verificationMissingSelf,
+      invalidateCommunityGate,
+    ],
+  );
 
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
     const previousPost = posts.find((candidate) => candidate.post.post_id === postId);

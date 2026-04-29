@@ -70,6 +70,7 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
+      dotenv: resolve(__dirname, "./src/lib/dotenv-browser-shim.ts"),
     },
   },
 }));

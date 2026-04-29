@@ -6,10 +6,11 @@ import { navigate } from "@/app/router";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { ContentRailShell } from "@/components/compositions/app/content-rail-shell/content-rail-shell";
 import { PostComposer } from "@/components/compositions/posts/post-composer/post-composer";
+import type { ComposerStep } from "@/components/compositions/posts/post-composer/post-composer.types";
 import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
-import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
+import { MobileRouteShell } from "@/components/compositions/app/mobile-route-shell/mobile-route-shell";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { OnboardingVerificationGate } from "@/components/compositions/verification/onboarding-verification-gate/onboarding-verification-gate";
 import { Button } from "@/components/primitives/button";
@@ -51,11 +52,15 @@ function CreatePostComposer({
   state,
   onSubmit,
   submitLoading,
+  composerStep,
+  onComposerStepChange,
 }: {
   copy: RouteCopy;
   state: CreatePostState;
   onSubmit: () => void;
   submitLoading: boolean;
+  composerStep?: ComposerStep;
+  onComposerStepChange?: (step: ComposerStep) => void;
 }) {
   if (!state.community) {
     return null;
@@ -66,6 +71,8 @@ function CreatePostComposer({
       availableTabs={["text", "image", "video", "link", "song"]}
       canCreateSongPost
       clubName={`c/${state.community.display_name}`}
+      composerStep={composerStep}
+      onComposerStepChange={onComposerStepChange}
       draft={{
         audience: state.audience,
         captionValue: state.caption,
@@ -121,7 +128,8 @@ function CreatePostComposer({
         onVideoChange: state.setVideoState,
       }}
       submit={{
-        disabled: state.submitState.disabled,
+        canContinue: state.submitState.canContinue,
+        canPost: state.submitState.canPost,
         error: state.submitState.submitError,
         label:
           state.composerMode === "song" && state.derivativeStep?.required
@@ -154,6 +162,7 @@ export function CreatePostPage({
 
   const pendingSubmitRef = React.useRef(false);
   const latestHandleSubmitRef = React.useRef(state.handleSubmit);
+  const [mobileComposerStep, setMobileComposerStep] = React.useState<ComposerStep>("write");
   const [joinRequestModalOpen, setJoinRequestModalOpen] = React.useState(false);
   const [joinRequestSubmitting, setJoinRequestSubmitting] =
     React.useState(false);
@@ -358,15 +367,13 @@ export function CreatePostPage({
   if (state.loading) {
     if (isMobile) {
       return (
-        <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader
-            onCloseClick={() => navigate(`/c/${communityId}`)}
-            title={pageTitle}
-          />
-          <section className="flex min-w-0 flex-1 flex-col items-center justify-center px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-            <FullPageSpinner />
-          </section>
-        </div>
+        <MobileRouteShell
+          className="items-center justify-center"
+          onCloseClick={() => navigate(`/c/${communityId}`)}
+          title={pageTitle}
+        >
+          <FullPageSpinner />
+        </MobileRouteShell>
       );
     }
     return <FullPageSpinner />;
@@ -376,18 +383,15 @@ export function CreatePostPage({
     if (isApiAuthError(state.loadError)) {
       if (isMobile) {
         return (
-          <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-            <MobilePageHeader
-              onCloseClick={() => navigate(`/c/${communityId}`)}
-              title={pageTitle}
+          <MobileRouteShell
+            onCloseClick={() => navigate(`/c/${communityId}`)}
+            title={pageTitle}
+          >
+            <AuthRequiredRouteState
+              description={copy.routeStatus.createPost.auth}
+              title=""
             />
-            <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-              <AuthRequiredRouteState
-                description={copy.routeStatus.createPost.auth}
-                title=""
-              />
-            </section>
-          </div>
+          </MobileRouteShell>
         );
       }
       return (
@@ -400,36 +404,30 @@ export function CreatePostPage({
     if (isApiNotFoundError(state.loadError)) {
       if (isMobile) {
         return (
-          <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-            <MobilePageHeader
-              onCloseClick={() => navigate(`/c/${communityId}`)}
-              title={pageTitle}
-            />
-            <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-              <NotFoundPage path={`/c/${communityId}/submit`} />
-            </section>
-          </div>
+          <MobileRouteShell
+            onCloseClick={() => navigate(`/c/${communityId}`)}
+            title={pageTitle}
+          >
+            <NotFoundPage path={`/c/${communityId}/submit`} />
+          </MobileRouteShell>
         );
       }
       return <NotFoundPage path={`/c/${communityId}/submit`} />;
     }
     if (isMobile) {
       return (
-        <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader
-            onCloseClick={() => navigate(`/c/${communityId}`)}
-            title={pageTitle}
+        <MobileRouteShell
+          onCloseClick={() => navigate(`/c/${communityId}`)}
+          title={pageTitle}
+        >
+          <RouteLoadFailureState
+            description={getErrorMessage(
+              state.loadError,
+              copy.routeStatus.createPost.failure,
+            )}
+            title=""
           />
-          <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-            <RouteLoadFailureState
-              description={getErrorMessage(
-                state.loadError,
-                copy.routeStatus.createPost.failure,
-              )}
-              title=""
-            />
-          </section>
-        </div>
+        </MobileRouteShell>
       );
     }
     return (
@@ -446,18 +444,15 @@ export function CreatePostPage({
   if (!state.community || !state.eligibility) {
     if (isMobile) {
       return (
-        <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader
-            onCloseClick={() => navigate(`/c/${communityId}`)}
-            title={pageTitle}
+        <MobileRouteShell
+          onCloseClick={() => navigate(`/c/${communityId}`)}
+          title={pageTitle}
+        >
+          <RouteLoadFailureState
+            description={copy.routeStatus.createPost.incomplete}
+            title=""
           />
-          <section className="flex min-w-0 flex-1 flex-col px-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
-            <RouteLoadFailureState
-              description={copy.routeStatus.createPost.incomplete}
-              title=""
-            />
-          </section>
-        </div>
+        </MobileRouteShell>
       );
     }
     return (
@@ -520,39 +515,39 @@ export function CreatePostPage({
 
     if (isMobile && joinRequiresVeryVerification) {
       return (
-        <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader
-            onCloseClick={() => navigate(`/c/${communityId}`)}
-            title={pageTitle}
+        <MobileRouteShell
+          className="justify-start pb-32"
+          footer={joinRequestModal}
+          onCloseClick={() => navigate(`/c/${communityId}`)}
+          title={pageTitle}
+        >
+          <OnboardingVerificationGate
+            onVerify={() => void handlePrimaryJoinAction()}
+            verificationError={joinError}
+            verificationLoading={joinLoading || joinVeryLoading}
+            verificationState={
+              joinLoading || joinVeryLoading ? "pending" : "not_started"
+            }
           />
-          <section className="flex min-w-0 flex-1 flex-col justify-start px-4 pb-32 pt-[calc(env(safe-area-inset-top)+5rem)]">
-            <OnboardingVerificationGate
-              onVerify={() => void handlePrimaryJoinAction()}
-              verificationError={joinError}
-              verificationLoading={joinLoading || joinVeryLoading}
-              verificationState={
-                joinLoading || joinVeryLoading ? "pending" : "not_started"
-              }
-            />
-          </section>
-          {joinRequestModal}
-        </div>
+        </MobileRouteShell>
       );
     }
 
     if (isMobile) {
       return (
-        <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader
-            onCloseClick={() => navigate(`/c/${communityId}`)}
-            title={pageTitle}
-          />
-          <section className="flex min-w-0 flex-1 flex-col gap-4 px-4 pb-8 pt-[calc(env(safe-area-inset-top)+5rem)]">
-            {joinPanel}
-          </section>
-          {joinRequestModal}
-          {joinSelfVerificationModal}
-        </div>
+        <MobileRouteShell
+          className="gap-4 pb-8"
+          footer={
+            <>
+              {joinRequestModal}
+              {joinSelfVerificationModal}
+            </>
+          }
+          onCloseClick={() => navigate(`/c/${communityId}`)}
+          title={pageTitle}
+        >
+          {joinPanel}
+        </MobileRouteShell>
       );
     }
 
@@ -603,48 +598,73 @@ export function CreatePostPage({
   if (isMobile) {
     if (!uniqueHumanVerified && !needsSelfDocumentFactVerification) {
       return (
-        <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-          <MobilePageHeader
-            onCloseClick={() => navigate(`/c/${communityId}`)}
-            title={pageTitle}
+        <MobileRouteShell
+          className="justify-start pb-32"
+          onCloseClick={() => navigate(`/c/${communityId}`)}
+          title={pageTitle}
+        >
+          <OnboardingVerificationGate
+            onVerify={() => {
+              pendingSubmitRef.current = true;
+              void startVeryPostVerification().then((result) => {
+                if (!result.started) pendingSubmitRef.current = false;
+              });
+            }}
+            verificationError={veryPostVerificationError}
+            verificationLoading={veryPostVerificationLoading}
+            verificationState={
+              veryPostVerificationState === "pending"
+                ? "pending"
+                : "not_started"
+            }
           />
-          <section className="flex min-w-0 flex-1 flex-col justify-start px-4 pb-32 pt-[calc(env(safe-area-inset-top)+5rem)]">
-            <OnboardingVerificationGate
-              onVerify={() => {
-                pendingSubmitRef.current = true;
-                void startVeryPostVerification().then((result) => {
-                  if (!result.started) pendingSubmitRef.current = false;
-                });
-              }}
-              verificationError={veryPostVerificationError}
-              verificationLoading={veryPostVerificationLoading}
-              verificationState={
-                veryPostVerificationState === "pending"
-                  ? "pending"
-                  : "not_started"
-              }
-            />
-          </section>
-        </div>
+        </MobileRouteShell>
       );
     }
 
     return (
-      <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-        <MobilePageHeader
-          onCloseClick={() => navigate(`/c/${communityId}`)}
-          title={pageTitle}
+      <MobileRouteShell
+        className="pb-8"
+        footer={selfVerificationModal}
+        onBackClick={
+          mobileComposerStep === "settings"
+            ? () => setMobileComposerStep("write")
+            : mobileComposerStep === "publish"
+              ? () => setMobileComposerStep("settings")
+              : undefined
+        }
+        onCloseClick={mobileComposerStep === "write" ? () => navigate(`/c/${communityId}`) : undefined}
+        title={
+          mobileComposerStep === "settings"
+            ? "Post settings"
+            : mobileComposerStep === "publish"
+              ? "Review post"
+              : pageTitle
+        }
+        trailingAction={
+          mobileComposerStep !== "publish" && state.composerMode !== "live" ? (
+            <Button
+              className="h-11 px-2 text-base font-semibold text-primary"
+              disabled={!state.submitState.canContinue}
+              onClick={() =>
+                setMobileComposerStep(mobileComposerStep === "write" ? "settings" : "publish")
+              }
+              variant="ghost"
+            >
+              {copy.createPost.actions.next}
+            </Button>
+          ) : null
+        }
+      >
+        <CreatePostComposer
+          copy={copy}
+          state={state}
+          onSubmit={handleSubmit}
+          submitLoading={selfLoading}
+          composerStep={mobileComposerStep}
+          onComposerStepChange={setMobileComposerStep}
         />
-        <section className="flex min-w-0 flex-1 flex-col px-4 pb-8 pt-[calc(env(safe-area-inset-top)+5rem)]">
-          <CreatePostComposer
-            copy={copy}
-            state={state}
-            onSubmit={handleSubmit}
-            submitLoading={selfLoading}
-          />
-        </section>
-        {selfVerificationModal}
-      </div>
+      </MobileRouteShell>
     );
   }
 

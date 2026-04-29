@@ -30,7 +30,9 @@
     "agents:openclaw:challenge": "node ./scripts/build-openclaw-challenge.mjs",
     "ui:audit": "node ./scripts/ui-audit.mjs",
     "validate": "bun run locales:generate && bun run types && bun run boundary:audit && bun test && bun run ui:audit",
-    "types": "bun run locales:generate && tsc --noEmit",
+    "types": "bun run locales:generate && tsc --noEmit -p tsconfig.app.json",
+    "types:stories": "tsc --noEmit -p tsconfig.stories.json",
+    "types:tests": "tsc --noEmit -p tsconfig.tests.json",
     "types:safe": "bun run locales:generate && node ./scripts/run-types-safely.mjs"
   },
   "dependencies": {

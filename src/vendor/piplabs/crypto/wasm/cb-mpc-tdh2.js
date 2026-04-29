@@ -38,7 +38,8 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 if (ENVIRONMENT_IS_NODE) {
   // When building an ES module `require` is not normally available.
   // We need to use `createRequire()` to construct the require()` function.
-  const { createRequire } = await import('node:module');
+  const nodeModule = 'node:module';
+  const { createRequire } = await import(nodeModule);
   /** @suppress{duplicate} */
   var require = createRequire(import.meta.url);
 
@@ -72,10 +73,13 @@ if (ENVIRONMENT_IS_NODE) {
 
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
-  var fs = require('node:fs');
+  var nodeFs = 'node:fs';
+  var nodePath = 'node:path';
+  var nodeUrl = 'node:url';
+  var fs = require(nodeFs);
 
   if (_scriptName.startsWith('file:')) {
-    scriptDirectory = require('node:path').dirname(require('node:url').fileURLToPath(_scriptName)) + '/';
+    scriptDirectory = require(nodePath).dirname(require(nodeUrl).fileURLToPath(_scriptName)) + '/';
   }
 
 // include: node_shell_read.js
@@ -3982,4 +3986,3 @@ if (runtimeInitialized)  {
 
 // Export using a UMD style export, or ES6 exports if selected
 export default createCbMpcModule;
-

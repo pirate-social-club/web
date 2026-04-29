@@ -479,3 +479,132 @@ export function resolveCommunityInteractionState(input: {
 
   return input.eligibility.status;
 }
+
+
+export function createCommunityBlockedModalStateFactory(options: {
+  interactionCopy: InteractionGateCopy;
+  joinLoading?: boolean;
+  veryLoading: boolean;
+  selfLoading: boolean;
+  onJoin?: (gate: CommunityGateData) => Promise<void>;
+  onStartVeryVerification?: () => Promise<{ started: boolean }>;
+  onStartSelfVerification?: (gate: CommunityGateData) => Promise<{
+    started: boolean;
+    openedModal?: boolean;
+    href?: string | null;
+  }>;
+  onRequestable?: (gate: CommunityGateData) => void;
+  invalidateCommunityGate?: (communityId: string) => void;
+  includeVerificationCloseAction?: boolean;
+}) {
+  return function buildBlockedModalState({
+    action,
+    closeModal,
+    gate,
+  }: BuildBlockedModalStateArgs): ModalState | null | undefined {
+    const isVoteAction =
+      action === "vote_post" || action === "vote_comment";
+
+    if (gate.eligibility.status === "verification_required") {
+      const provider = resolveSuggestedVerificationProvider(gate.eligibility);
+      if (provider === "passport") {
+        return undefined;
+      }
+
+      const verificationPrompt = getVerificationPromptCopy(
+        provider,
+        getVerificationCapabilitiesForProvider(gate.eligibility, provider),
+        { locale: options.interactionCopy.locale },
+      );
+
+      return {
+        description: verificationPrompt.description,
+        icon: provider,
+        primaryAction: {
+          label:
+            verificationPrompt.actionLabel || options.interactionCopy.taskVerify,
+          loading:
+            provider === "very"
+              ? options.veryLoading
+              : provider === "self"
+                ? options.selfLoading
+                : false,
+          onClick: async () => {
+            if (provider === "very") {
+              if (!options.onStartVeryVerification) return;
+              const result = await options.onStartVeryVerification();
+              if (result.started) {
+                closeModal();
+              }
+            } else {
+              if (!options.onStartSelfVerification) return;
+              const result = await options.onStartSelfVerification(gate);
+              if (result.started) {
+                closeModal();
+                if (!result.openedModal && result.href) {
+                  window.location.href = result.href;
+                }
+              }
+            }
+          },
+        },
+        ...(options.includeVerificationCloseAction
+          ? {
+              secondaryAction: {
+                label: options.interactionCopy.close,
+                onClick: closeModal,
+              },
+            }
+          : {}),
+        requirements: gate.preview.membership_gate_summaries,
+        requirementStatuses: getRequirementStatuses(gate),
+        title: isVoteAction
+          ? options.interactionCopy.verifyToVoteTitle
+          : options.interactionCopy.verifyToReplyTitle,
+      };
+    }
+
+    if (gate.eligibility.status === "requestable") {
+      if (options.onRequestable) {
+        options.onRequestable(gate);
+        return null;
+      }
+      return undefined;
+    }
+
+    if (gate.eligibility.status === "joinable") {
+      if (!options.onJoin || !options.invalidateCommunityGate) {
+        return undefined;
+      }
+      const ctaLabel = getJoinCtaLabel(gate.eligibility, {
+        locale: options.interactionCopy.locale,
+      });
+      return {
+        description: (isVoteAction
+          ? options.interactionCopy.joinToVoteDescription
+          : options.interactionCopy.joinToReplyDescription
+        )
+          .replace("{joinLabel}", ctaLabel)
+          .replace("{communityName}", gate.preview.display_name),
+        icon: "join",
+        primaryAction: {
+          label: ctaLabel,
+          loading: options.joinLoading ?? false,
+          onClick: async () => {
+            await options.onJoin!(gate);
+            options.invalidateCommunityGate!(gate.preview.community_id);
+            closeModal();
+          },
+        },
+        requirements: gate.preview.membership_gate_summaries,
+        requirementStatuses: getRequirementStatuses(gate),
+        title: (isVoteAction
+          ? options.interactionCopy.joinToVoteTitle
+          : options.interactionCopy.joinToReplyTitle
+        ).replace("{joinLabel}", ctaLabel),
+      };
+    }
+
+    return undefined;
+  };
+}

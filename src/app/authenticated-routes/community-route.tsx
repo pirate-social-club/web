@@ -22,13 +22,8 @@ import { CommunityPageShell } from "@/components/compositions/community/page-she
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
-import {
-  getGateFailureMessage,
-  getJoinCtaLabel,
-  getVerificationCapabilitiesForProvider,
-  getVerificationPromptCopy,
-  resolveSuggestedVerificationProvider,
-} from "@/lib/identity-gates";
+import { getGateFailureMessage } from "@/lib/identity-gates";
+import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 
@@ -271,160 +266,53 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     }
   }, [api, communityId, viewerFollowing]);
 
-  const buildCommunityBlockedModalState = React.useCallback(
-    ({
-      action,
-      closeModal,
-      gate,
-    }: {
-      action: "reply_comment" | "reply_post" | "vote_comment" | "vote_post";
-      closeModal: () => void;
-      gate: {
-        eligibility: ApiJoinEligibility;
-        preview: {
-          community_id: string;
-          display_name: string;
-          membership_gate_summaries: NonNullable<
-            typeof preview
-          >["membership_gate_summaries"];
-        };
-      };
-    }) => {
-      if (gate.eligibility.status === "verification_required") {
-        const provider = resolveSuggestedVerificationProvider(gate.eligibility);
-        if (provider === "passport") {
-          return undefined;
-        }
-        const verificationPrompt = getVerificationPromptCopy(
-          provider,
-          getVerificationCapabilitiesForProvider(gate.eligibility, provider),
-          { locale },
-        );
-        const verificationIcon = provider === "very" ? "very" : "self";
-        return {
-          description: verificationPrompt.description,
-          icon: verificationIcon as "passport" | "self" | "very",
-          primaryAction: {
-            label:
-              verificationPrompt.actionLabel ||
-              copy.createCommunity.startVerification,
-            loading:
-              provider === "very"
-                ? veryLoading
-                : provider === "self"
-                  ? selfLoading
-                  : false,
-            onClick: async () => {
-              if (provider === "very") {
-                const result = await startVeryVerification();
-                if (result.started) {
-                  closeModal();
-                }
-              } else {
-                const result = await startSelfVerification({
-                  showToastOnError: true,
-                  missingCapabilities: gate.eligibility.missing_capabilities,
-                  membershipGateSummaries:
-                    gate.eligibility.membership_gate_summaries,
-                  skipModal: true,
-                });
-                if (result.started) {
-                  closeModal();
-                  if (result.openedModal) {
-                    return;
-                  }
-                  if (result.href) {
-                    window.location.href = result.href;
-                  } else {
-                    toast.error("Could not get Self app launch link.");
-                  }
-                }
-              }
-            },
-          },
-          requirements: gate.preview.membership_gate_summaries,
-          title:
-            action === "vote_post" || action === "vote_comment"
-              ? copy.interactionGate.verifyToVoteTitle
-              : copy.interactionGate.verifyToReplyTitle,
-        };
-      }
-
-      if (gate.eligibility.status === "requestable") {
-        openJoinRequestModal();
-        return null;
-      }
-
-      if (gate.eligibility.status === "joinable") {
-        const ctaLabel = getJoinCtaLabel(gate.eligibility, { locale });
-        const isVoteAction =
-          action === "vote_post" || action === "vote_comment";
-        const isEnglish =
-          !locale.toLowerCase().startsWith("ar") &&
-          !locale.toLowerCase().startsWith("zh");
-        return {
-          description: (isVoteAction
-            ? copy.interactionGate.joinToVoteDescription
-            : copy.interactionGate.joinToReplyDescription
-          )
-            .replace("{joinLabel}", ctaLabel)
-            .replace("{communityName}", gate.preview.display_name),
-          icon: "join" as const,
-          primaryAction: {
-            label: ctaLabel,
-            loading: joinLoading,
-            onClick: async () => {
-              await handleJoin();
-              invalidateCommunityGate(gate.preview.community_id);
-              closeModal();
-            },
-          },
-          requirements: gate.preview.membership_gate_summaries,
-          title: isEnglish
-            ? `Join to ${isVoteAction ? "Vote" : "Reply"}`
-            : (isVoteAction
-                ? copy.interactionGate.joinToVoteTitle
-                : copy.interactionGate.joinToReplyTitle
-              ).replace("{joinLabel}", ctaLabel),
-        };
-      }
-
-      if (gate.eligibility.status === "pending_request") {
-        return {
-          description: "The moderators will review your request.",
-          icon: "pending" as const,
-          requirements: gate.preview.membership_gate_summaries,
-          title: "Request pending",
-        };
-      }
-
-      return {
-        description:
-          gate.eligibility.status === "banned"
-            ? copy.interactionGate.bannedDescription
-            : action === "vote_post" || action === "vote_comment"
-              ? copy.interactionGate.blockedVoteDescription
-              : copy.interactionGate.blockedReplyDescription,
-        icon: "blocked" as const,
-        requirements: gate.preview.membership_gate_summaries,
-        title:
-          action === "vote_post" || action === "vote_comment"
-            ? copy.interactionGate.cantVoteHereTitle
-            : copy.interactionGate.cantReplyHereTitle,
-      };
-    },
-    [
-      copy.createCommunity.startVerification,
-      copy.interactionGate,
-      handleJoin,
-      invalidateCommunityGate,
-      joinLoading,
+  const interactionCopy = React.useMemo(
+    () => ({
+      ...copy.interactionGate,
       locale,
-      openJoinRequestModal,
-      selfLoading,
-      startSelfVerification,
-      startVeryVerification,
+      taskVerify: copy.createCommunity.startVerification,
+    }),
+    [copy, locale],
+  );
+
+  const buildBlockedModalState = React.useMemo(
+    () =>
+      createCommunityBlockedModalStateFactory({
+        interactionCopy,
+        joinLoading,
+        veryLoading,
+        selfLoading,
+        onJoin: async () => {
+          await handleJoin();
+        },
+        onStartVeryVerification: startVeryVerification,
+        onStartSelfVerification: async (gate) => {
+          const result = await startSelfVerification({
+            showToastOnError: true,
+            missingCapabilities: gate.eligibility.missing_capabilities,
+            membershipGateSummaries:
+              gate.eligibility.membership_gate_summaries,
+            skipModal: true,
+          });
+          return {
+            started: result.started,
+            openedModal: result.openedModal,
+            href: result.href,
+          };
+        },
+        onRequestable: () => openJoinRequestModal(),
+        invalidateCommunityGate,
+      }),
+    [
+      interactionCopy,
+      joinLoading,
       veryLoading,
+      selfLoading,
+      handleJoin,
+      startVeryVerification,
+      startSelfVerification,
+      openJoinRequestModal,
+      invalidateCommunityGate,
     ],
   );
 
@@ -433,7 +321,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       if (!preview || !eligibility) return;
       await runGatedCommunityAction({
         action: "vote_post",
-        buildBlockedModalState: buildCommunityBlockedModalState,
+        buildBlockedModalState,
         communityId,
         gateData: {
           eligibility,
@@ -472,7 +360,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     },
     [
       api.posts.vote,
-      buildCommunityBlockedModalState,
+      buildBlockedModalState,
       communityId,
       eligibility,
       posts,

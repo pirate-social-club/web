@@ -72,6 +72,7 @@ export type ApiCreateCommunityRequest = {
 export type ApiCommunityMediaUploadResponse = {
   kind: "avatar" | "banner" | "post_image";
   media_ref: string;
+  ipfs_cid?: string;
   mime_type: string;
   size_bytes: number;
   storage_bucket: string;
@@ -81,6 +82,7 @@ export type ApiCommunityMediaUploadResponse = {
 export type ApiProfileMediaUploadResponse = {
   kind: "avatar" | "cover";
   media_ref: string;
+  ipfs_cid?: string;
   mime_type: string;
   size_bytes: number;
   storage_bucket: string;

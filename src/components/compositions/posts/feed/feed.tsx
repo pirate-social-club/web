@@ -161,7 +161,7 @@ export function Feed({
   const showHeadingBlock = Boolean(eyebrow || title || subtitle || headerAction);
   const showSortControl = Boolean(activeSort && availableSorts.length > 0);
   const showHeaderControls = showSortControl || controls;
-  const showMobileHeaderControls = showHeaderControls && !hideMobileHeaderControls;
+  const showMobileHeaderControls = Boolean(controls) && !hideMobileHeaderControls;
   const showLoadingOnly = loading && !hasItems;
   const showLoadingTail = loading && hasItems;
   const [originalPostIds, setOriginalPostIds] = React.useState<Set<string>>(() => new Set());
@@ -224,7 +224,7 @@ export function Feed({
                 {showSortControl ? (
                   <ResponsiveOptionSelect
                     ariaLabel="Sort feed"
-                    className="self-end md:self-auto"
+                    className="hidden self-end md:inline-flex md:self-auto"
                     drawerTitle="Sort"
                     onValueChange={onSortChange}
                     options={availableSorts}

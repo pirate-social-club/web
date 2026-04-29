@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
-import { Plus } from "@phosphor-icons/react";
+import { SlidersHorizontal } from "@phosphor-icons/react";
 
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { useSession } from "@/lib/api/session-store";
@@ -11,6 +11,7 @@ import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome
 import { ContentRailShell } from "@/components/compositions/app/content-rail-shell/content-rail-shell";
 import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
 import { PostThread } from "@/components/compositions/posts/post-thread/post-thread";
+import { ResponsiveOptionSelect } from "@/components/compositions/system/responsive-option-select/responsive-option-select";
 import { IconButton } from "@/components/primitives/icon-button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { buildCommunityPath } from "@/lib/community-routing";
@@ -38,13 +39,13 @@ function closeMobileThread(fallbackPath: string) {
 
 function MobileThreadShell({
   children,
-  createPostPath,
   fallbackPath,
+  sortAction,
   title,
 }: {
   children: React.ReactNode;
-  createPostPath?: string | null;
   fallbackPath: string;
+  sortAction?: React.ReactNode;
   title: string;
 }) {
   return (
@@ -52,11 +53,7 @@ function MobileThreadShell({
       <MobilePageHeader
         onCloseClick={() => closeMobileThread(fallbackPath)}
         title={title}
-        trailingAction={createPostPath ? (
-          <IconButton aria-label="Create post" onClick={() => navigate(createPostPath)} variant="ghost">
-            <Plus className="size-6" weight="bold" />
-          </IconButton>
-        ) : undefined}
+        trailingAction={sortAction}
       />
       <section className="min-w-0 flex-1 px-0 pt-[calc(env(safe-area-inset-top)+4rem)]">
         {children}
@@ -183,19 +180,33 @@ export function PostPage({ postId }: { postId: string }) {
     })
     : undefined;
   const communityPath = community ? buildCommunityPath(community.community_id) : "/";
-  const createPostPath = community ? `${buildCommunityPath(community.community_id)}/submit` : null;
   const threadSidebarProps = community ? buildCommunityPreviewSidebar(community, locale) : null;
+  const commentSortOptions = [
+    { label: copy.common.bestTab, value: "best" as const },
+    { label: copy.common.newTab, value: "new" as const },
+    { label: copy.common.topTab, value: "top" as const },
+  ];
+  const mobileCommentSortAction = (
+    <ResponsiveOptionSelect
+      ariaLabel="Sort comments"
+      drawerTitle={copy.common.commentsHeading}
+      mobileTrigger={(
+        <IconButton aria-label="Sort comments" variant="ghost">
+          <SlidersHorizontal className="size-6" weight="bold" />
+        </IconButton>
+      )}
+      onValueChange={setCommentSort}
+      options={commentSortOptions}
+      value={commentSort}
+    />
+  );
   const threadBody = (
     <>
       {gateModal}
       {purchaseModal}
       <ContentRailShell rail={!isMobile && threadSidebarProps ? <CommunitySidebar {...threadSidebarProps} /> : undefined}>
         <PostThread
-          availableCommentSorts={[
-            { label: copy.common.bestTab, value: "best" },
-            { label: copy.common.newTab, value: "new" },
-            { label: copy.common.topTab, value: "top" },
-          ]}
+          availableCommentSorts={commentSortOptions}
           commentSort={commentSort}
           commentsHeading={copy.common.commentsHeading}
           commentsHeadingDir={contentLocale === "ar" ? "rtl" : undefined}
@@ -217,7 +228,7 @@ export function PostPage({ postId }: { postId: string }) {
 
   if (isMobile) {
     return (
-      <MobileThreadShell createPostPath={session ? createPostPath : null} fallbackPath={communityPath} title={pageTitle}>
+      <MobileThreadShell fallbackPath={communityPath} sortAction={mobileCommentSortAction} title={pageTitle}>
         {threadBody}
       </MobileThreadShell>
     );

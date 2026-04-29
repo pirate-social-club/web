@@ -44,8 +44,7 @@ function routeUsesMobileFooter(route: AppRoute): boolean {
 
 function routeUsesMobileCreateAction(route: AppRoute): boolean {
   return route.kind === "home"
-    || route.kind === "popular"
-    || route.kind === "community";
+    || route.kind === "popular";
 }
 
 function resolveMobileHeaderTitle({
@@ -126,7 +125,7 @@ export function AppShellHeader({
       <Plus className="size-6" weight="bold" />
     </IconButton>
   ) : undefined;
-  const mobileTrailingContent = mobileHeaderAction ?? (isPublicProfileRoute || (clientReady && session && routeUsesMobileFooter(route) && !showMobileCreateAction)
+  const mobileTrailingContent = mobileHeaderAction ?? (route.kind === "community" || isPublicProfileRoute || (clientReady && session && routeUsesMobileFooter(route) && !showMobileCreateAction)
     ? <div className="h-11 w-11" aria-hidden="true" />
     : undefined);
   const mobileHeaderTitle = resolveMobileHeaderTitle({ copy, route, session });

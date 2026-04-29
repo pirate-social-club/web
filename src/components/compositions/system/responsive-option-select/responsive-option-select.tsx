@@ -35,6 +35,7 @@ export interface ResponsiveOptionSelectProps<TValue extends string = string> {
   ariaLabel: string;
   className?: string;
   drawerTitle: string;
+  mobileTrigger?: React.ReactNode;
   onValueChange?: (value: TValue) => void;
   options: readonly ResponsiveOptionSelectOption<TValue>[];
   placeholder?: string;
@@ -49,6 +50,7 @@ export function ResponsiveOptionSelect<TValue extends string = string>({
   ariaLabel,
   className,
   drawerTitle,
+  mobileTrigger,
   onValueChange,
   options,
   placeholder,
@@ -75,10 +77,12 @@ export function ResponsiveOptionSelect<TValue extends string = string>({
       <div className="w-full md:hidden">
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
           <SheetTrigger asChild>
-            <PillButton aria-label={ariaLabel} className={cn(triggerSizeClassName, "max-w-48 gap-1.5 px-4", triggerClassName)} tone="default">
-              {triggerContent ?? <span className="truncate">{activeLabel}</span>}
-              <CaretDown aria-hidden="true" className="size-4 shrink-0" weight="bold" />
-            </PillButton>
+            {mobileTrigger ?? (
+              <PillButton aria-label={ariaLabel} className={cn(triggerSizeClassName, "max-w-48 gap-1.5 px-4", triggerClassName)} tone="default">
+                {triggerContent ?? <span className="truncate">{activeLabel}</span>}
+                <CaretDown aria-hidden="true" className="size-4 shrink-0" weight="bold" />
+              </PillButton>
+            )}
           </SheetTrigger>
           <SheetContent className="max-h-[75dvh] rounded-t-[var(--radius-3xl)] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4" side="bottom">
             <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-muted" aria-hidden="true" />
@@ -128,7 +132,7 @@ export function ResponsiveOptionSelect<TValue extends string = string>({
               triggerClassName,
             )}
           >
-            <SelectValue placeholder={placeholder} />
+            {triggerContent ?? <SelectValue placeholder={placeholder} />}
           </SelectTrigger>
           <SelectContent align={selectAlign}>
             {options.map((option) => (

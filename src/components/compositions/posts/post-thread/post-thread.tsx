@@ -218,6 +218,7 @@ export function PostThread({
           <div className="flex justify-end px-4 pb-3">
             <ResponsiveOptionSelect<CommentSort>
               ariaLabel="Sort comments"
+              className="hidden md:inline-flex"
               drawerTitle={copy.common.commentsHeading}
               onValueChange={onCommentSortChange}
               options={availableCommentSorts}

@@ -31,8 +31,8 @@ const meta = {
   },
   decorators: [
     (Story: () => React.ReactNode) => (
-      <div style={{ padding: 16 }}>
-        <div style={{ margin: "0 auto", width: "min(100%, 1200px)" }}>
+      <div className="p-0 md:p-4">
+        <div className="mx-auto w-full max-w-[1200px]">
           <Story />
         </div>
       </div>
@@ -60,7 +60,9 @@ export const HomeMixed: Story = {
             <TopTimeRangeControl onValueChange={setTopRange} value={topRange} />
           ) : undefined
         }
+        fullBleedMobile
         items={homeFeedItems}
+        listClassName="border-t-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
         onSortChange={setActiveSort}
       />
     );
@@ -191,7 +193,8 @@ export const MixedTranslatedAndOriginal: Story = {
   },
 };
 
-export const MobileHome: Story = {
+export const HomeViewportPreset: Story = {
+  name: "Home (viewport preset)",
   args: {},
   parameters: {
     viewport: { defaultViewport: "mobile1" },
@@ -216,7 +219,8 @@ export const MobileHome: Story = {
   },
 };
 
-export const MobileCommunity: Story = {
+export const CommunityViewportPreset: Story = {
+  name: "Community (viewport preset)",
   args: {},
   parameters: {
     viewport: { defaultViewport: "mobile1" },

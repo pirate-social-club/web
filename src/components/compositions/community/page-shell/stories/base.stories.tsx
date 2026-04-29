@@ -317,7 +317,8 @@ export const PassportScoreGated: Story = {
   },
 };
 
-export const MobileCommunity: Story = {
+export const CommunityViewportPreset: Story = {
+  name: "Community (viewport preset)",
   args: {},
   parameters: {
     viewport: { defaultViewport: "mobile1" },

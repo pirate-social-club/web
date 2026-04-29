@@ -42,7 +42,7 @@ mock.module("@/hooks/use-mobile", () => ({
 const { CommunityPageShell } = await import("./community-page-shell");
 
 describe("CommunityPageShell", () => {
-  test("places the mobile feed sort control below the tabs", () => {
+  test("places the mobile feed sort control in the top-right header slot", () => {
     mockedIsMobile = true;
     const markup = renderToStaticMarkup(
       <CommunityPageShell
@@ -72,9 +72,15 @@ describe("CommunityPageShell", () => {
     expect(aboutTab === undefined).toBe(false);
     expect(sortButton === undefined).toBe(false);
     const tabRow = feedTab!.parentElement;
+    let sortSlot = sortButton!.parentElement;
+    while (sortSlot && !sortSlot.className.includes("fixed")) {
+      sortSlot = sortSlot.parentElement;
+    }
 
     expect(tabRow).toBe(aboutTab?.parentElement);
     expect(tabRow?.contains(sortButton!)).toBe(false);
+    expect(sortSlot?.className).toContain("fixed");
+    expect(sortSlot?.className).toContain("end-3");
   });
 
   test("renders one desktop feed sort selector", () => {

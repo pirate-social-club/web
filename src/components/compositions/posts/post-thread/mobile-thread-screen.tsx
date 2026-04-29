@@ -24,6 +24,10 @@ export function MobileThreadScreen({
         mobileCenterContent={<Type as="div" variant="h4" className="truncate ">{title}</Type>}
         mobileTrailingContent={trailingAction}
         onBackClick={onBackClick}
+        showCreateAction={false}
+        showNotificationsAction={false}
+        showProfileAction={false}
+        showWalletAction={false}
       />
       <main className="flex min-h-dvh w-full flex-col px-4 pb-6 pt-[calc(env(safe-area-inset-top)+5rem)]">
         {children}

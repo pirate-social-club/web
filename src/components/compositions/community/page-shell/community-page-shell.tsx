@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { SlidersHorizontal } from "@phosphor-icons/react";
 
 import { CommunityHero } from "@/components/compositions/community/page-shell/community-hero";
 import { FlatTabBar, FlatTabButton } from "@/components/compositions/system/flat-tabs/flat-tabs";
@@ -18,6 +19,7 @@ import {
   type FeedSortOption,
 } from "@/components/compositions/posts/feed/feed";
 import { ResponsiveOptionSelect } from "@/components/compositions/system/responsive-option-select/responsive-option-select";
+import { IconButton } from "@/components/primitives/icon-button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
@@ -64,10 +66,15 @@ export function CommunityPageShell({
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes");
   const [mobileView, setMobileView] = React.useState<"feed" | "about">("feed");
-  const sortControl = activeSort && availableSorts && availableSorts.length > 0 ? (
+  const mobileSortControl = activeSort && availableSorts && availableSorts.length > 0 ? (
     <ResponsiveOptionSelect<FeedSort>
       ariaLabel="Sort feed"
       drawerTitle={copy.community.feedTab}
+      mobileTrigger={(
+        <IconButton aria-label="Sort feed" variant="ghost">
+          <SlidersHorizontal className="size-6" weight="bold" />
+        </IconButton>
+      )}
       onValueChange={onSortChange}
       options={availableSorts}
       value={activeSort}
@@ -95,6 +102,11 @@ export function CommunityPageShell({
   if (isMobile) {
     return (
       <section className={cn("mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-4", className)}>
+        {mobileView === "feed" && mobileSortControl ? (
+          <div className="fixed end-3 top-[calc(env(safe-area-inset-top)+0.625rem)] z-50">
+            {mobileSortControl}
+          </div>
+        ) : null}
         <div className="min-w-0">{hero}</div>
         <div className="flex flex-col gap-3">
           <FlatTabBar columns={2}>
@@ -105,11 +117,6 @@ export function CommunityPageShell({
               {copy.community.aboutTab}
             </FlatTabButton>
           </FlatTabBar>
-          {mobileView === "feed" && sortControl ? (
-            <div className="flex justify-end">
-              {sortControl}
-            </div>
-          ) : null}
           {mobileView === "feed" ? (
             <div>
               <Feed

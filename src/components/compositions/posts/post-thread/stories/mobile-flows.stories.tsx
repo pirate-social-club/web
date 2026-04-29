@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
+import { SlidersHorizontal } from "@phosphor-icons/react";
 
 import { POSTS_BY_ID } from "@/app/mocks";
+import { IconButton } from "@/components/primitives/icon-button";
+import { ResponsiveOptionSelect } from "@/components/compositions/system/responsive-option-select/responsive-option-select";
 
 import { MobileReplyScreen } from "../mobile-reply-screen";
 import { MobileThreadScreen } from "../mobile-thread-screen";
@@ -90,6 +93,7 @@ export const ThreadRead: Story = {
       "mobile-thread-1-1": null,
       "mobile-thread-2": null,
     });
+    const [sort, setSort] = React.useState<"best" | "new" | "top">("best");
 
     const comments = withCommentVoting(mobileThreadComments, viewerVotes, (commentId, direction) => {
       setViewerVotes((current) => ({
@@ -99,11 +103,38 @@ export const ThreadRead: Story = {
     });
 
     return (
-      <MobileThreadScreen title="c/yeezy">
+      <MobileThreadScreen
+        title="c/yeezy"
+        trailingAction={(
+          <ResponsiveOptionSelect
+            ariaLabel="Sort comments"
+            drawerTitle="Comments"
+            mobileTrigger={(
+              <IconButton aria-label="Sort comments" variant="ghost">
+                <SlidersHorizontal className="size-6" weight="bold" />
+              </IconButton>
+            )}
+            onValueChange={setSort}
+            options={[
+              { label: "Best", value: "best" },
+              { label: "New", value: "new" },
+              { label: "Top", value: "top" },
+            ]}
+            value={sort}
+          />
+        )}
+      >
         <div className="space-y-3 pb-4">
           <PostThread
+            availableCommentSorts={[
+              { label: "Best", value: "best" },
+              { label: "New", value: "new" },
+              { label: "Top", value: "top" },
+            ]}
+            commentSort={sort}
             comments={comments}
             commentsHeading="Comments"
+            onCommentSortChange={setSort}
             post={threadPost}
           />
         </div>

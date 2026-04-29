@@ -44,7 +44,6 @@ const followState = {
 const labels = {
   followersLabel: "Followers",
   followingLabel: "Following",
-  joinedStatLabel: "Joined",
 };
 
 describe("apiProfileToProps", () => {
@@ -65,5 +64,14 @@ describe("apiProfileToProps", () => {
     const props = apiProfileToProps(createProfile({ cover_ref: "ipfs://cover-ref" }), false, labels, followState, "en-US");
 
     expect(props.profile.bannerSrc.startsWith("data:image/svg+xml;charset=utf-8,")).toBe(true);
+  });
+
+  test("does not expose account creation date as a profile stat", () => {
+    const props = apiProfileToProps(createProfile(), false, labels, followState, "en-US");
+
+    expect(props.rightRail.stats).toEqual([
+      { label: "Followers", value: 0 },
+      { label: "Following", value: 0 },
+    ]);
   });
 });

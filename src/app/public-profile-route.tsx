@@ -201,7 +201,6 @@ export function PublicProfileRoutePage({
       {...apiProfileToProps(resolution.profile, ownProfile, {
         followersLabel: profileCopy.followersLabel,
         followingLabel: profileCopy.followingLabel,
-        joinedStatLabel: copy.common.joinedStatLabel,
       }, followState, localeTag)}
       onMessageProfile={messageTarget
         ? () => chatLauncher.openTarget(messageTarget)

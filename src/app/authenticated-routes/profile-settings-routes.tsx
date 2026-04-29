@@ -64,7 +64,6 @@ export function CurrentUserProfilePage() {
       {...apiProfileToProps(profile, true, {
         followersLabel: copy.profile.followersLabel,
         followingLabel: copy.profile.followingLabel,
-        joinedStatLabel: copy.common.joinedStatLabel,
       }, followState, localeTag)}
       onEditProfile={() => {
         handleFlow.clearDraft();

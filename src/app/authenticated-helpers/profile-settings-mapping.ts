@@ -39,7 +39,6 @@ type SettingsLocaleCopy = {
 type ProfileLabels = {
   followersLabel: string;
   followingLabel: string;
-  joinedStatLabel: string;
 };
 
 type ProfileFollowState = {
@@ -109,7 +108,6 @@ export function apiProfileToProps(
       stats: [
         { label: labels.followersLabel, value: followState.followerCount ?? 0 },
         { label: labels.followingLabel, value: followState.followingCount },
-        { label: labels.joinedStatLabel, value: new Date(profile.created_at).toLocaleDateString(localeTag, { month: "short", year: "numeric" }) },
       ],
       description: profile.bio ?? undefined,
       walletAddress: profile.primary_wallet_address ?? undefined,

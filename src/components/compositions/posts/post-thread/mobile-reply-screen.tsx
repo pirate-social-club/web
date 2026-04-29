@@ -10,8 +10,11 @@ import { MobileThreadScreen } from "./mobile-thread-screen";
 
 export interface MobileReplyScreenProps {
   body: string;
+  busy?: boolean;
   context?: React.ReactNode;
   onBodyChange: (value: string) => void;
+  onCancel?: () => void;
+  onSubmit?: () => void;
   placeholder?: string;
   postLabel?: string;
   title: string;
@@ -19,8 +22,11 @@ export interface MobileReplyScreenProps {
 
 export function MobileReplyScreen({
   body,
+  busy = false,
   context,
   onBodyChange,
+  onCancel,
+  onSubmit,
   placeholder,
   postLabel,
   title,
@@ -29,9 +35,16 @@ export function MobileReplyScreen({
   const copy = getLocaleMessages(locale, "routes").common;
   return (
     <MobileThreadScreen
+      onBackClick={onCancel}
       title={title}
       trailingAction={(
-        <Button className="h-11 px-4" disabled={!body.trim()} size="sm">
+        <Button
+          className="h-11 px-4"
+          disabled={busy || !body.trim()}
+          loading={busy}
+          onClick={onSubmit}
+          size="sm"
+        >
           {postLabel ?? copy.submitReply}
         </Button>
       )}

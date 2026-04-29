@@ -7,12 +7,14 @@ export interface MobileThreadScreenProps {
   children: React.ReactNode;
   title: string;
   trailingAction?: React.ReactNode;
+  onBackClick?: () => void;
 }
 
 export function MobileThreadScreen({
   children,
   title,
   trailingAction,
+  onBackClick,
 }: MobileThreadScreenProps) {
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -21,7 +23,7 @@ export function MobileThreadScreen({
         hideBrand
         mobileCenterContent={<Type as="div" variant="h4" className="truncate ">{title}</Type>}
         mobileTrailingContent={trailingAction}
-        onBackClick={() => undefined}
+        onBackClick={onBackClick}
       />
       <main className="flex min-h-dvh w-full flex-col px-4 pb-6 pt-[calc(env(safe-area-inset-top)+5rem)]">
         {children}

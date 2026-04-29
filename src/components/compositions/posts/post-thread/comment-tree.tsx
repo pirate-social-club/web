@@ -63,27 +63,11 @@ function commentHasExpandableContent(comment: PostThreadComment): boolean {
   );
 }
 
-function formatReplyCount(count: number, copy: { replyCount: string; replyCountOne: string }): string {
-  return count === 1 ? copy.replyCountOne : copy.replyCount.replace("{count}", String(count));
-}
-
 function resolveReplyCount(comment: PostThreadComment, loadedChildrenCount: number): number {
   return comment.replyCount ?? comment.loadedReplyCount ?? loadedChildrenCount;
 }
 
-interface CollapsedCommentRowProps {
-  comment: PostThreadComment;
-  replyCount: number;
-}
-
-function CollapsedCommentRow({ comment, replyCount }: CollapsedCommentRowProps) {
-  const { locale } = useUiLocale();
-  const commonCopy = getLocaleMessages(locale, "routes").common;
-  const detailParts = [
-    comment.scoreLabel,
-    replyCount > 0 ? formatReplyCount(replyCount, commonCopy) : null,
-  ].filter(Boolean);
-
+function CollapsedCommentRow({ comment }: { comment: PostThreadComment }) {
   return (
     <div className="min-w-0 flex-1">
       <Type as="div" variant="caption" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
@@ -95,12 +79,6 @@ function CollapsedCommentRow({ comment, replyCount }: CollapsedCommentRowProps) 
         ) : null}
         <span aria-hidden="true">·</span>
         <span>{comment.timestampLabel}</span>
-        {detailParts.length > 0 ? (
-          <>
-            <span aria-hidden="true">·</span>
-            <span>{detailParts.join(" · ")}</span>
-          </>
-        ) : null}
       </Type>
     </div>
   );
@@ -122,7 +100,8 @@ function CommentTreeNode({
   maxDepth,
   nodeKey,
   onToggleCollapsed,
-}: CommentTreeNodeProps) {
+  onReplyRequest,
+}: CommentTreeNodeProps & { onReplyRequest?: (comment: PostThreadComment) => void }) {
   const { locale } = useUiLocale();
   const commonCopy = getLocaleMessages(locale, "routes").common;
   const children = comment.children ?? [];
@@ -162,7 +141,7 @@ function CommentTreeNode({
           </button>
         </div>
         <div className="min-w-0 flex-1 pb-3">
-          <CollapsedCommentRow comment={comment} replyCount={replyCount} />
+          <CollapsedCommentRow comment={comment} />
         </div>
       </article>
     );
@@ -170,23 +149,21 @@ function CommentTreeNode({
 
   return (
     <article className={cn("flex gap-2", depth > 0 && "pt-3")}>
-      <div className="flex w-5 flex-col items-center">
-        {canCollapse ? (
+      {canCollapse ? (
+        <div className="flex w-5 flex-col items-center">
           <button
-            className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-transparent text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
+            className="mt-2 inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-transparent text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
             onClick={handleToggleCollapse}
             aria-label={commonCopy.collapseThread}
             type="button"
           >
             <Minus className="size-3" weight="bold" />
           </button>
-        ) : (
-          <div className="size-5 shrink-0" />
-        )}
-        {hasLoadedChildren && !truncateDeepNesting ? (
-          <div className="mt-1 w-px flex-1 bg-border" />
-        ) : null}
-      </div>
+          {hasLoadedChildren && !truncateDeepNesting ? (
+            <div className="mt-1 w-px flex-1 bg-border" />
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="min-w-0 flex-1 pb-3">
         <CommentCard
@@ -212,6 +189,7 @@ function CommentTreeNode({
           cancelReplyLabel={comment.cancelReplyLabel}
           submitReplyLabel={comment.submitReplyLabel}
           onReplySubmit={comment.onReplySubmit}
+          onReplyRequest={onReplyRequest ? () => onReplyRequest(comment) : undefined}
         />
 
         {hasLoadedChildren && !truncateDeepNesting ? (
@@ -227,6 +205,7 @@ function CommentTreeNode({
                   maxDepth={maxDepth}
                   nodeKey={childKey}
                   onToggleCollapsed={onToggleCollapsed}
+                  onReplyRequest={onReplyRequest}
                 />
               );
             })}
@@ -257,12 +236,14 @@ export interface CommentTreeProps {
   comments: PostThreadComment[];
   className?: string;
   maxDepth?: number;
+  onReplyRequest?: (comment: PostThreadComment) => void;
 }
 
 export function CommentTree({
   comments,
   className,
   maxDepth = DEFAULT_MAX_COMMENT_DEPTH,
+  onReplyRequest,
 }: CommentTreeProps) {
   const initializedKeysRef = React.useRef<Set<string>>(new Set());
   const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(() => collectInitialCollapsedKeySet(comments));
@@ -314,6 +295,7 @@ export function CommentTree({
             maxDepth={maxDepth}
             nodeKey={nodeKey}
             onToggleCollapsed={handleToggleCollapsed}
+            onReplyRequest={onReplyRequest}
           />
         );
       })}

@@ -71,6 +71,7 @@ export interface CommentCardProps {
     body: string;
     authorMode: PostThreadAuthorMode;
   }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
+  onReplyRequest?: () => void;
   className?: string;
 }
 
@@ -97,6 +98,7 @@ export function CommentCard({
   cancelReplyLabel,
   submitReplyLabel,
   onReplySubmit,
+  onReplyRequest,
   className,
 }: CommentCardProps) {
   const { locale } = useUiLocale();
@@ -105,15 +107,23 @@ export function CommentCard({
   const [replyOpen, setReplyOpen] = React.useState(false);
   const [replyBody, setReplyBody] = React.useState("");
   const [replyBusy, setReplyBusy] = React.useState(false);
+  const replyContainerRef = React.useRef<HTMLDivElement>(null);
 
+  React.useEffect(() => {
+    if (replyOpen && replyContainerRef.current) {
+      replyContainerRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [replyOpen]);
+
+  const isPublished = !status || status === "published";
   const resolvedBody = showOriginal && originalBody ? originalBody : commentBody(body, status);
   const canToggleOriginal =
-    status === "published" &&
+    isPublished &&
     Boolean(originalBody) &&
     originalBody !== body &&
     Boolean(showOriginalLabel) &&
     Boolean(showTranslationLabel);
-  const canReply = status === "published" && Boolean(onReplySubmit);
+  const canReply = isPublished && Boolean(onReplySubmit);
   const handleVote = React.useCallback((direction: "up" | "down" | null) => {
     if (direction) {
       onVote?.(direction);
@@ -142,10 +152,10 @@ export function CommentCard({
     <div className={cn("flex min-w-0 flex-1 items-start gap-2", className)}>
       {authorHref ? (
         <a className="mt-0.5 shrink-0" href={authorHref} onClick={(e) => e.stopPropagation()}>
-          <Avatar fallback={authorLabel} fallbackSeed={authorAvatarSeed} size="xs" src={authorAvatarSrc} />
+          <Avatar fallback={authorLabel} fallbackSeed={authorAvatarSeed} size="sm" src={authorAvatarSrc} />
         </a>
       ) : (
-        <Avatar className="mt-0.5" fallback={authorLabel} fallbackSeed={authorAvatarSeed} size="xs" src={authorAvatarSrc} />
+        <Avatar className="mt-0.5" fallback={authorLabel} fallbackSeed={authorAvatarSeed} size="sm" src={authorAvatarSrc} />
       )}
       <div className="min-w-0 flex-1">
         {/* Header */}
@@ -196,7 +206,7 @@ export function CommentCard({
         ) : null}
 
         {/* Action row */}
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-1 gap-y-1.5">
           <VotePill
             downvoteLabel={commonCopy.downvoteComment}
             onVote={handleVote}
@@ -208,23 +218,28 @@ export function CommentCard({
           />
           {canReply ? (
             <button
-              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground"
               onClick={() => {
                 triggerCommentTapHaptic();
-                setReplyOpen((value) => !value);
+                if (onReplyRequest) {
+                  onReplyRequest();
+                } else {
+                  setReplyOpen((value) => !value);
+                }
               }}
               type="button"
             >
               <ChatCircle className="size-[18px]" />
-              <Type as="span" variant="label">{replyActionLabel}</Type>
+              <Type as="span" variant="label" className="text-inherit">{replyActionLabel}</Type>
             </button>
           ) : null}
         </div>
 
         {/* Inline reply composer */}
         {replyOpen ? (
-          <div className="mt-3 space-y-3 border border-border-soft bg-background/60 p-3 md:rounded-[var(--radius-lg)]">
+          <div ref={replyContainerRef} className="mt-3 space-y-3 border border-border-soft bg-background/60 p-3 md:rounded-[var(--radius-lg)]">
             <FormattedTextarea
+              autoFocus
               className="min-h-28"
               onChange={setReplyBody}
               placeholder={replyPlaceholder}

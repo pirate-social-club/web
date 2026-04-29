@@ -70,7 +70,7 @@ describe("CommentTree", () => {
       expect(Boolean(view.queryByText("This body should collapse."))).toBe(false);
       expect(Boolean(view.queryByText("Nested reply"))).toBe(false);
     });
-    expect(Boolean(view.getByText("8 score · 2 replies"))).toBe(true);
+    expect(view.queryByText("8 score · 2 replies")).toBeNull();
 
     fireEvent.click(view.getByRole("button", { name: "Expand thread" }));
 
@@ -98,6 +98,30 @@ describe("CommentTree", () => {
 
     expect(Boolean(view.getByText("Last reply in the branch"))).toBe(true);
     expect(view.queryByRole("button", { name: "Collapse thread" })).toBeNull();
+
+    view.unmount();
+  });
+
+  test("renders reply action when status is omitted", () => {
+    const view = renderTree(
+      <CommentTree
+        comments={[
+          {
+            authorLabel: "nadia",
+            body: "Replyable by default",
+            cancelReplyLabel: "Cancel",
+            commentId: "cmt_replyable",
+            onReplySubmit: () => "submitted",
+            replyActionLabel: "Reply",
+            replyPlaceholder: "Write a reply",
+            submitReplyLabel: "Reply",
+            timestampLabel: "4m",
+          },
+        ]}
+      />,
+    );
+
+    expect(Boolean(view.getByRole("button", { name: "Reply" }))).toBe(true);
 
     view.unmount();
   });

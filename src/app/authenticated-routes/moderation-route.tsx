@@ -27,6 +27,7 @@ import { useApi } from "@/lib/api";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 import { normalizeCountryCode } from "@/lib/countries";
 import { isValidCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
+import { buildCommunityPath } from "@/lib/community-routing";
 
 import { CommunityModerationGuard, getCommunityModerationTitle } from "@/app/authenticated-helpers/moderation-route-helpers";
 import {
@@ -84,18 +85,20 @@ function getNationalityGateCountryCodes(gateDrafts: IdentityGateDraft[]): string
 function MobileModerationSectionLayout({
   children,
   communityId,
+  routeSlug,
   trailingAction,
   title,
 }: {
   children: React.ReactNode;
   communityId: string;
+  routeSlug?: string | null;
   trailingAction?: React.ReactNode;
   title: string;
 }) {
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
       <MobilePageHeader
-        onBackClick={() => navigate(buildCommunityModerationIndexPath(communityId))}
+        onBackClick={() => navigate(buildCommunityModerationIndexPath(communityId, routeSlug))}
         title={title}
         trailingAction={trailingAction}
       />
@@ -114,7 +117,12 @@ export function CommunityModerationIndexPage({
   const isMobile = useIsModerationMobileLayout();
   const state = useCommunityModerationState(communityId);
   const { copy } = useRouteMessages();
-  const sections = buildCommunityModerationSections(null, communityId, copy.moderation);
+  const sections = buildCommunityModerationSections(
+    null,
+    communityId,
+    copy.moderation,
+    state.community?.route_slug,
+  );
   const blocked = CommunityModerationGuard({
     community: state.community,
     error: state.error,
@@ -566,7 +574,12 @@ export function CommunityModerationPage({
 
   if (isMobile) {
     return (
-      <MobileModerationSectionLayout communityId={communityId} title={title} trailingAction={mobileTrailingAction}>
+      <MobileModerationSectionLayout
+        communityId={communityId}
+        routeSlug={state.community?.route_slug}
+        title={title}
+        trailingAction={mobileTrailingAction}
+      >
         {content}
       </MobileModerationSectionLayout>
     );
@@ -576,8 +589,13 @@ export function CommunityModerationPage({
     <CommunityModerationShell
       communityAvatarSrc={state.community?.avatar_ref ?? undefined}
       communityLabel={state.community ? `r/${state.community.display_name}` : copy.moderation.shell.communityLabelFallback}
-      onExitClick={() => navigate(`/c/${communityId}`)}
-      sections={buildCommunityModerationSections(section, communityId, copy.moderation)}
+      onExitClick={() => navigate(buildCommunityPath(communityId, state.community?.route_slug))}
+      sections={buildCommunityModerationSections(
+        section,
+        communityId,
+        copy.moderation,
+        state.community?.route_slug,
+      )}
     >
       {content}
     </CommunityModerationShell>

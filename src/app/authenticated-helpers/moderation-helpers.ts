@@ -35,51 +35,63 @@ export type CommunityModerationSection = "profile" | "rules" | "links" | "labels
 
 export const DEFAULT_COMMUNITY_MODERATION_SECTION: CommunityModerationSection = "profile";
 
-export function buildCommunityModerationIndexPath(communityId: string): string {
-  return `${buildCommunityPath(communityId)}/mod`;
+export function buildCommunityModerationIndexPath(
+  communityId: string,
+  routeSlug?: string | null,
+): string {
+  return `${buildCommunityPath(communityId, routeSlug)}/mod`;
 }
 
 export function buildCommunityModerationPath(
   communityId: string,
   section: CommunityModerationSection,
+  routeSlug?: string | null,
 ): string {
-  return `${buildCommunityPath(communityId)}/mod/${section}`;
+  return `${buildCommunityPath(communityId, routeSlug)}/mod/${section}`;
 }
 
-export function buildDefaultCommunityModerationPath(communityId: string): string {
-  return buildCommunityModerationPath(communityId, DEFAULT_COMMUNITY_MODERATION_SECTION);
+export function buildDefaultCommunityModerationPath(
+  communityId: string,
+  routeSlug?: string | null,
+): string {
+  return buildCommunityModerationPath(communityId, DEFAULT_COMMUNITY_MODERATION_SECTION, routeSlug);
 }
 
-export function buildCommunityModerationEntryPath(communityId: string, isMobileWeb: boolean): string {
+export function buildCommunityModerationEntryPath(
+  communityId: string,
+  isMobileWeb: boolean,
+  routeSlug?: string | null,
+): string {
   return isMobileWeb
-    ? buildCommunityModerationIndexPath(communityId)
-    : buildDefaultCommunityModerationPath(communityId);
+    ? buildCommunityModerationIndexPath(communityId, routeSlug)
+    : buildDefaultCommunityModerationPath(communityId, routeSlug);
 }
 
 export function buildCommunityModerationSections(
   activeSection: CommunityModerationSection | null,
   communityId: string,
   copy: { nav: Record<string, string> },
+  routeSlug?: string | null,
 ) {
   return [{
     label: copy.nav.communitySection,
     items: [
-      { active: activeSection === "profile", icon: ImageSquare, label: copy.nav.profile, onSelect: () => navigate(buildCommunityModerationPath(communityId, "profile")) },
-      { active: activeSection === "namespace", icon: SealCheck, label: copy.nav.namespace, onSelect: () => navigate(buildCommunityModerationPath(communityId, "namespace")) },
-      { active: activeSection === "rules", icon: Gavel, label: copy.nav.rules, onSelect: () => navigate(buildCommunityModerationPath(communityId, "rules")) },
-      { active: activeSection === "links", icon: LinkSimple, label: copy.nav.links, onSelect: () => navigate(buildCommunityModerationPath(communityId, "links")) },
-      { active: activeSection === "labels", icon: Tag, label: copy.nav.labels, onSelect: () => navigate(buildCommunityModerationPath(communityId, "labels")) },
-      { active: activeSection === "donations", icon: Heart, label: copy.nav.donations, onSelect: () => navigate(buildCommunityModerationPath(communityId, "donations")) },
-      { active: activeSection === "pricing", icon: CurrencyDollar, label: copy.nav.pricing, onSelect: () => navigate(buildCommunityModerationPath(communityId, "pricing")) },
+      { active: activeSection === "profile", icon: ImageSquare, label: copy.nav.profile, onSelect: () => navigate(buildCommunityModerationPath(communityId, "profile", routeSlug)) },
+      { active: activeSection === "namespace", icon: SealCheck, label: copy.nav.namespace, onSelect: () => navigate(buildCommunityModerationPath(communityId, "namespace", routeSlug)) },
+      { active: activeSection === "rules", icon: Gavel, label: copy.nav.rules, onSelect: () => navigate(buildCommunityModerationPath(communityId, "rules", routeSlug)) },
+      { active: activeSection === "links", icon: LinkSimple, label: copy.nav.links, onSelect: () => navigate(buildCommunityModerationPath(communityId, "links", routeSlug)) },
+      { active: activeSection === "labels", icon: Tag, label: copy.nav.labels, onSelect: () => navigate(buildCommunityModerationPath(communityId, "labels", routeSlug)) },
+      { active: activeSection === "donations", icon: Heart, label: copy.nav.donations, onSelect: () => navigate(buildCommunityModerationPath(communityId, "donations", routeSlug)) },
+      { active: activeSection === "pricing", icon: CurrencyDollar, label: copy.nav.pricing, onSelect: () => navigate(buildCommunityModerationPath(communityId, "pricing", routeSlug)) },
     ],
   }, {
     label: copy.nav.accessSection,
     items: [
-      { active: activeSection === "requests", icon: UserPlus, label: "Requests", onSelect: () => navigate(buildCommunityModerationPath(communityId, "requests")) },
-      { active: activeSection === "gates", icon: Lock, label: copy.nav.gates, onSelect: () => navigate(buildCommunityModerationPath(communityId, "gates")) },
-      { active: activeSection === "safety", icon: Shield, label: copy.nav.safety, onSelect: () => navigate(buildCommunityModerationPath(communityId, "safety")) },
-      { active: activeSection === "agents", icon: Robot, label: copy.nav.agents, onSelect: () => navigate(buildCommunityModerationPath(communityId, "agents")) },
-      { active: activeSection === "machine-access", icon: Database, label: copy.nav.machineAccess, onSelect: () => navigate(buildCommunityModerationPath(communityId, "machine-access")) },
+      { active: activeSection === "requests", icon: UserPlus, label: "Requests", onSelect: () => navigate(buildCommunityModerationPath(communityId, "requests", routeSlug)) },
+      { active: activeSection === "gates", icon: Lock, label: copy.nav.gates, onSelect: () => navigate(buildCommunityModerationPath(communityId, "gates", routeSlug)) },
+      { active: activeSection === "safety", icon: Shield, label: copy.nav.safety, onSelect: () => navigate(buildCommunityModerationPath(communityId, "safety", routeSlug)) },
+      { active: activeSection === "agents", icon: Robot, label: copy.nav.agents, onSelect: () => navigate(buildCommunityModerationPath(communityId, "agents", routeSlug)) },
+      { active: activeSection === "machine-access", icon: Database, label: copy.nav.machineAccess, onSelect: () => navigate(buildCommunityModerationPath(communityId, "machine-access", routeSlug)) },
     ],
   }];
 }

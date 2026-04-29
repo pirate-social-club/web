@@ -46,13 +46,10 @@ const resourceIcons = {
   "terms-of-service": Scroll,
 } satisfies Record<ResourceLinkId, typeof House>;
 
-function buildCreatePostPath(communityId: string): string {
-  return `${buildCommunityPath(communityId)}/submit`;
-}
-
 export function resolveCreatePostPath(route: AppRoute): string | null {
   if (route.kind === "community") {
-    return buildCreatePostPath(route.communityId);
+    const routeSegment = route.path.replace(/^\/c\//u, "").replace(/\/+$/u, "");
+    return `${buildCommunityPath(route.communityId, routeSegment)}/submit`;
   }
 
   if (route.kind === "create-post") {
@@ -136,7 +133,7 @@ export function buildSidebarSections(
         avatarSrc: community.avatarSrc,
         id: `moderation/${community.communityId}`,
         label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
-        onSelect: () => navigate(buildDefaultCommunityModerationPath(community.communityId)),
+        onSelect: () => navigate(buildDefaultCommunityModerationPath(community.communityId, community.routeSlug)),
       })),
     });
   }

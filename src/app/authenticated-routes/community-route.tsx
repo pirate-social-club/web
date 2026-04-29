@@ -165,8 +165,12 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     [community, communityId, preview?.route_slug],
   );
   const moderationEntryPath = React.useMemo(
-    () => buildCommunityModerationEntryPath(communityId, isMobileWeb),
-    [communityId, isMobileWeb],
+    () => buildCommunityModerationEntryPath(
+      communityId,
+      isMobileWeb,
+      community?.route_slug ?? preview?.route_slug,
+    ),
+    [community?.route_slug, communityId, isMobileWeb, preview?.route_slug],
   );
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const { gateModal, invalidateCommunityGate, runGatedCommunityAction } =
@@ -577,6 +581,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
                           buildCommunityModerationPath(
                             communityId,
                             "namespace",
+                            community.route_slug ?? preview.route_slug,
                           ),
                         ),
                 }

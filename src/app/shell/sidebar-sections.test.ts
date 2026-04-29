@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { resolveCreatePostPath } from "./sidebar-sections";
+import type { ShellMessages } from "@/locales";
+
+import { buildSidebarSections, resolveCreatePostPath } from "./sidebar-sections";
 
 describe("resolveCreatePostPath", () => {
   test("canonicalizes emoji community handles for submit routes", () => {
@@ -17,5 +19,34 @@ describe("resolveCreatePostPath", () => {
       path: "/c/@xn--t77hga",
       communityId: "@xn--t77hga",
     })).toBe("/c/@xn--t77hga/submit");
+  });
+
+  test("keeps the current community route segment for submit routes", () => {
+    expect(resolveCreatePostPath({
+      kind: "community",
+      path: "/c/@xn--t77hga",
+      communityId: "cmt_be13447e169a49209b2dc207fc4574c0",
+    })).toBe("/c/@xn--t77hga/submit");
+  });
+});
+
+describe("buildSidebarSections", () => {
+  test("uses verified route slugs for sidebar moderation navigation and labels", () => {
+    const sections = buildSidebarSections(
+      {
+        sections: [{ id: "moderation", label: "Moderation", items: [] }],
+      } as unknown as ShellMessages["appSidebar"],
+      [],
+      [{
+        avatarSrc: null,
+        communityId: "cmt_be13447e169a49209b2dc207fc4574c0",
+        displayName: "Palestine",
+        routeSlug: "@xn--t77hga",
+        updatedAt: "2026-04-29T00:00:00.000Z",
+      }],
+    );
+
+    const item = sections[0]?.items[0];
+    expect(item?.label).toBe("c/@🇵🇸");
   });
 });

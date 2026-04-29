@@ -180,6 +180,15 @@ function formatListTime(timestamp: number): string {
   });
 }
 
+function normalizeUnreadCount(count: number): number {
+  if (!Number.isFinite(count)) return 0;
+  return Math.max(0, Math.floor(count));
+}
+
+function formatUnreadCount(count: number): string {
+  return count > 99 ? "99+" : String(count);
+}
+
 export function ChatSetupState({
   busy = false,
   description,
@@ -286,6 +295,9 @@ export function ConversationList({
           <div className="flex flex-col">
             {conversations.map((conversation) => {
               const timestampLabel = formatListTime(conversation.updatedAt);
+              const unreadCount = normalizeUnreadCount(conversation.unreadCount);
+              const hasUnread = unreadCount > 0;
+              const unreadLabel = `${unreadCount} unread ${unreadCount === 1 ? "message" : "messages"}`;
               return (
                 <button
                   className={cn(
@@ -299,7 +311,7 @@ export function ConversationList({
                   <Avatar fallback={conversation.title} fallbackSeed={conversation.avatarSeed ?? conversation.peerAddress} size="lg" src={conversation.avatarUrl} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <Type as="span" variant="body-strong" className={cn("truncate", conversation.unreadCount > 0 && "font-bold")}>
+                      <Type as="span" variant="body-strong" className={cn("truncate", hasUnread && "font-bold")}>
                         {conversation.title}
                       </Type>
                       {timestampLabel ? (
@@ -308,9 +320,22 @@ export function ConversationList({
                         </Type>
                       ) : null}
                     </div>
-                    <Type as="span" variant="caption" className={cn("block truncate", conversation.unreadCount > 0 && "font-medium text-foreground/90")}>
-                      {conversation.preview}
-                    </Type>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Type as="span" variant="caption" className={cn("block min-w-0 flex-1 truncate", hasUnread && "font-medium text-foreground/90")}>
+                        {conversation.preview}
+                      </Type>
+                      {hasUnread ? (
+                        <>
+                          <span className="sr-only">{unreadLabel}</span>
+                          <span
+                            aria-hidden="true"
+                            className="notification-count-badge h-5 min-w-5 shrink-0 px-1.5 tabular-nums"
+                          >
+                            {formatUnreadCount(unreadCount)}
+                          </span>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
                 </button>
               );

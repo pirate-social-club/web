@@ -19,11 +19,11 @@ const bedsheetConversation: ChatConversation = {
   assistantKind: "bedsheet",
   avatarUrl: bedsheetAvatarUrl,
   id: "bedsheet",
-  preview: "Ask Bedsheet about Pirate",
+  preview: "I found a few updates about your Pirate communities and can summarize them now.",
   targetLabel: "Pirate assistant",
   title: "Bedsheet",
   transport: "assistant",
-  unreadCount: 0,
+  unreadCount: 1,
   updatedAt: now + 1000,
 };
 
@@ -59,6 +59,16 @@ const conversations: ChatConversation[] = [
     updatedAt: now - 1000 * 60 * 95,
   },
   bedsheetConversation,
+];
+
+const unreadTruncationConversations: ChatConversation[] = [
+  {
+    ...bedsheetConversation,
+    preview:
+      "This is a much longer Bedsheet update that should truncate cleanly before the unread count badge on narrow message list screens.",
+    unreadCount: 128,
+  },
+  ...conversations.filter((conversation) => conversation.id !== bedsheetConversation.id),
 ];
 
 const messages: ChatMessageRecord[] = [
@@ -294,6 +304,23 @@ export const MobileList: Story = {
       <ConversationList
         className="border-e-0 bg-background"
         conversations={conversations}
+        loading={false}
+        onNew={() => {}}
+        onSelect={() => {}}
+      />
+    </div>
+  ),
+};
+
+export const MobileUnreadPreviewTruncation: Story = {
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <div className="h-screen bg-background">
+      <ConversationList
+        className="border-e-0 bg-background"
+        conversations={unreadTruncationConversations}
         loading={false}
         onNew={() => {}}
         onSelect={() => {}}

@@ -64,6 +64,24 @@ describe("ConversationList timestamps", () => {
       Date.now = originalDateNow;
     }
   });
+
+  test("renders unread count badges without letting previews collide with the badge", () => {
+    const markup = renderList([
+      conversation({
+        id: "unread",
+        preview: "A very long preview that needs to truncate before the unread message count badge",
+        title: "Unread",
+        unreadCount: 128,
+        updatedAt: Date.parse("2026-04-28T11:57:00.000Z"),
+      }),
+    ]);
+
+    expect(markup).toContain("99+");
+    expect(markup).toContain("128 unread messages");
+    expect(markup).toContain("notification-count-badge");
+    expect(markup).toContain("min-w-0 flex-1 truncate");
+    expect(markup).toContain("shrink-0");
+  });
 });
 
 function renderThread(items: ChatMessageRecord[]) {

@@ -24,6 +24,7 @@ import {
   buildThreadCommentTreeFromItems,
   collectCommentAuthorUserIds,
   collectThreadCommentAuthorUserIds,
+  countThreadComments,
   findThreadCommentNode,
   loadThreadCommentTree,
   logReplyLoadFailure,
@@ -419,6 +420,7 @@ export function usePost(
     createReply,
     voteOnComment,
   )), [authorProfilesByUserId, commentNodes, createReply, labels, loadRepliesForComment, voteOnComment]);
+  const commentCount = React.useMemo(() => countThreadComments(commentNodes), [commentNodes]);
 
   React.useEffect(() => {
     if (!community) return;
@@ -430,6 +432,7 @@ export function usePost(
     community,
     authorProfile,
     comments,
+    commentCount,
     availableAgent,
     createTopLevelComment,
     error,

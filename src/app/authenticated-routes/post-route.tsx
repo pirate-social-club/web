@@ -84,7 +84,7 @@ export function PostPage({ postId }: { postId: string }) {
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, comments, createTopLevelComment, error, gateModal, loading, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, comments, commentCount, createTopLevelComment, error, gateModal, loading, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const commerceEnabled = Boolean(
     session?.user?.user_id
       && community?.community_id
@@ -168,12 +168,14 @@ export function PostPage({ postId }: { postId: string }) {
     }
     : undefined;
   const localizedPostCard = toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
+    commentCountOverride: commentCount,
     onVote: voteOnPost,
     showOriginalLabel: copy.common.showOriginal,
     showTranslationLabel: copy.common.showTranslation,
   });
   const originalPostCard = shouldShowOriginalPost(post)
     ? toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
+      commentCountOverride: commentCount,
       onVote: voteOnPost,
       preferOriginalText: true,
       showOriginalLabel: copy.common.showOriginal,

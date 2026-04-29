@@ -42,6 +42,10 @@ export function collectThreadCommentAuthorUserIds(nodes: ThreadCommentNode[]): s
   ]))];
 }
 
+export function countThreadComments(nodes: ThreadCommentNode[]): number {
+  return nodes.reduce((total, node) => total + 1 + node.item.comment.descendant_count, 0);
+}
+
 export function createThreadCommentNode(item: ApiCommentListItem): ThreadCommentNode {
   return {
     item,

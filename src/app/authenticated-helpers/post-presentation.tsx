@@ -32,6 +32,7 @@ export type SongPresentationOptions = {
 };
 
 export type PostPresentationOptions = {
+  commentCountOverride?: number;
   onVote?: PostCardProps["onVote"];
   onComment?: PostCardProps["onComment"];
   preferOriginalText?: boolean;
@@ -559,7 +560,7 @@ export function toThreadPostCard(
     },
     content: toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" }),
     engagement: {
-      commentCount: postResponse.thread_snapshot?.comment_count ?? 0,
+      commentCount: opts?.commentCountOverride ?? postResponse.thread_snapshot?.comment_count ?? 0,
       score: postResponse.upvote_count - postResponse.downvote_count,
       viewerVote: toViewerVote(postResponse.viewer_vote),
     },

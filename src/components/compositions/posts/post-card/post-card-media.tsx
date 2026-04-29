@@ -56,13 +56,15 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
       );
     case "image":
       return (
-        <figure className={cn("overflow-hidden rounded-lg", className)}>
-          <img
-            alt={content.alt}
-            className="w-full object-cover"
-            src={content.src}
-            style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
-          />
+        <figure className={className}>
+          <div className="overflow-hidden rounded-lg">
+            <img
+              alt={content.alt}
+              className="w-full object-cover"
+              src={content.src}
+              style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
+            />
+          </div>
           {content.caption && (
             <figcaption
               className={cn("mt-1.5 text-start text-muted-foreground", postCardType.caption)}

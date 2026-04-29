@@ -599,6 +599,15 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         communityId={preview.community_id}
         emptyState={{
           title: copy.publicCommunity.emptyPosts,
+          body: "Be the first to share something in this community.",
+          illustration: (
+            <div className="relative size-32 overflow-hidden rounded-full md:size-40">
+              <picture>
+                <source srcSet="/mascots/celebrate-ghost-512.webp 2x, /mascots/celebrate-ghost-256.webp 1x" type="image/webp" />
+                <img alt="Celebrating pirate ghost" className="size-full object-cover" draggable={false} src="/mascots/celebrate-ghost-256.png" />
+              </picture>
+            </div>
+          ),
         }}
         headerAction={headerAction}
         items={posts.map((post) => toCommunityFeedItem(post, authorProfiles, undefined, {

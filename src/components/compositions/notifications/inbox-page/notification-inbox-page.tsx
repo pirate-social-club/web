@@ -34,6 +34,7 @@ import { getLocaleMessages } from "@/locales";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import { trackAnalyticsEvent } from "@/lib/analytics";
+import { EmptyInboxState } from "@/components/states/empty-inbox-state";
 import {
   dismissPromo,
   markPromoImpression,
@@ -714,15 +715,9 @@ export function NotificationInboxPage({
                 ) : null}
               </>
             ) : (
-              isMobile ? (
-                <Card className="rounded-none border-x-0 bg-transparent px-5 py-8 text-center shadow-none">
-                  <Type as="p" className="text-muted-foreground" variant="body">{copy.emptyState}</Type>
-                </Card>
-              ) : (
-                <div className="px-5 py-8 text-center">
-                  <Type as="p" className="text-muted-foreground" variant="body">{copy.emptyState}</Type>
-                </div>
-              )
+              <div className="flex flex-1 flex-col justify-center">
+                <EmptyInboxState description={copy.emptyState} />
+              </div>
             )}
           </>
         )}

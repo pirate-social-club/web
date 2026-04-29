@@ -36,6 +36,7 @@ export interface FeedEmptyState {
   title: string;
   body?: string;
   action?: React.ReactNode;
+  illustration?: React.ReactNode;
 }
 
 export interface FeedProps {
@@ -116,6 +117,21 @@ function FeedLoadingRows({ count }: { count: number }) {
 }
 
 function FeedEmpty({ emptyState }: { emptyState: FeedEmptyState }) {
+  if (emptyState.illustration) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-5 px-5 py-10 text-center">
+        {emptyState.illustration}
+        <Type as="h2" variant="h4" className="text-muted-foreground">
+          {emptyState.title}
+        </Type>
+        {emptyState.body ? (
+          <p className="max-w-xs text-lg leading-7 text-muted-foreground">{emptyState.body}</p>
+        ) : null}
+        {emptyState.action ? <div className="mt-1">{emptyState.action}</div> : null}
+      </div>
+    );
+  }
+
   return (
     <div className="px-5 py-8 md:px-6">
       <div className="max-w-2xl space-y-2 text-start">

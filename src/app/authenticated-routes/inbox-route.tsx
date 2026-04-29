@@ -22,6 +22,7 @@ import { buildPublicProfilePath } from "@/lib/profile-routing";
 
 import { AuthRequiredRouteState } from "@/app/authenticated-helpers/route-shell";
 import { useRouteMessages } from "@/hooks/use-route-messages";
+import { EmptyInboxState } from "@/components/states/empty-inbox-state";
 
 const EMPTY_ROYALTY_ACTIVITY: RoyaltyActivityResponse = {
   items: [],
@@ -282,7 +283,16 @@ export function InboxPlaceholderPage() {
   }, [api.publicProfiles, royaltyActivity.items, royaltyProfilesByWallet, session]);
 
   if (!session) {
-    return <AuthRequiredRouteState description={copy.routeStatus.inbox.auth} hideTitleOnMobile title={copy.inbox.title} />;
+    return (
+      <AuthRequiredRouteState
+        ctaLabel="Connect"
+        description="Get notified when someone replies, mentions you, or sends a tip."
+        headline="Your inbox is waiting"
+        hideTitleOnMobile
+        illustration={<EmptyInboxState className="py-0" />}
+        title={copy.inbox.title}
+      />
+    );
   }
 
   const activityItems = feed.items.filter((item) => item.event.type !== "xmtp_message");
@@ -351,3 +361,4 @@ export function InboxPlaceholderPage() {
     </>
   );
 }
+

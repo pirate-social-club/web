@@ -10,6 +10,7 @@ export interface KnownCommunity {
   avatarSrc?: string | null;
   communityId: string;
   displayName: string;
+  routeSlug?: string | null;
   updatedAt: string;
 }
 
@@ -57,6 +58,7 @@ function readFromStorage(): KnownCommunity[] {
           && (entry.avatarSrc == null || typeof entry.avatarSrc === "string")
           && typeof entry.communityId === "string"
           && typeof entry.displayName === "string"
+          && (entry.routeSlug == null || typeof entry.routeSlug === "string")
           && typeof entry.updatedAt === "string",
         ),
       ),
@@ -89,6 +91,7 @@ export function rememberKnownCommunity(input: {
   avatarSrc?: string | null;
   communityId: string;
   displayName: string;
+  routeSlug?: string | null;
 }): void {
   const displayName = input.displayName.trim();
   if (!input.communityId || !displayName) return;
@@ -97,6 +100,7 @@ export function rememberKnownCommunity(input: {
     avatarSrc: input.avatarSrc?.trim() || null,
     communityId: input.communityId,
     displayName,
+    routeSlug: input.routeSlug?.trim() || null,
     updatedAt: new Date().toISOString(),
   };
   const existing = getKnownCommunities().filter(

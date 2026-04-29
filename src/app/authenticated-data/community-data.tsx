@@ -142,8 +142,9 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
       avatarSrc: community.avatar_ref ?? undefined,
       communityId: community.community_id,
       displayName: community.display_name,
+      routeSlug: community.route_slug ?? preview?.route_slug ?? null,
     });
-  }, [community]);
+  }, [community, preview?.route_slug]);
 
   const refetchEligibility = React.useCallback(async () => {
     const e = await api.communities.getJoinEligibility(communityId);

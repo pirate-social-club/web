@@ -525,6 +525,10 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       || eligibility.status === "gate_failed"
       || eligibility.status === "banned"
   );
+  const routeLabel = formatCommunityRouteLabel(
+    preview.community_id,
+    preview.route_slug ?? communityId,
+  );
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
@@ -603,7 +607,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         }))}
         loading={postsLoading}
         onSortChange={setActiveSort}
-        routeLabel={formatCommunityRouteLabel(preview.community_id, communityId)}
+        routeLabel={routeLabel}
         sidebar={{
           ...buildCommunityPreviewSidebar(preview, locale),
           followerCount,

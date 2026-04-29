@@ -160,9 +160,9 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const communityCreatePostPath = React.useMemo(
     () =>
       community
-        ? `${buildCommunityPath(community.community_id, community.route_slug)}/submit`
+        ? `${buildCommunityPath(community.community_id, community.route_slug ?? preview?.route_slug)}/submit`
         : `${buildCommunityPath(communityId)}/submit`,
-    [community, communityId],
+    [community, communityId, preview?.route_slug],
   );
   const moderationEntryPath = React.useMemo(
     () => buildCommunityModerationEntryPath(communityId, isMobileWeb),
@@ -491,7 +491,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   );
   const routeLabel = formatCommunityRouteLabel(
     community.community_id,
-    community.route_slug,
+    community.route_slug ?? preview.route_slug,
   );
   const previewSidebar = buildCommunityPreviewSidebar(preview, locale);
 

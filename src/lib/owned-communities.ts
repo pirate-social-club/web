@@ -32,7 +32,7 @@ function mergeCommunities(
       avatarSrc: community.avatarSrc,
       communityId: community.communityId,
       displayName: community.displayName,
-      routeSlug: null,
+      routeSlug: community.routeSlug ?? null,
       updatedAt: community.updatedAt,
     });
   }
@@ -117,7 +117,7 @@ function useValidatedKnownCommunities(ownedCommunities: SidebarCommunitySummary[
         avatarSrc: community.avatarSrc,
         communityId: community.communityId,
         displayName: community.displayName,
-        routeSlug: null,
+        routeSlug: community.routeSlug ?? null,
         updatedAt: community.updatedAt,
       })),
     [invalidCommunityIds, knownCommunities],

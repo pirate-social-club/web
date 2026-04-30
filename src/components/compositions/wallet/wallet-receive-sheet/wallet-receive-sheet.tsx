@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { QrCode } from "@phosphor-icons/react";
+import { QRCodeSVG } from "qrcode.react";
 
 import {
   Modal,
@@ -55,31 +56,10 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 10)}...${address.slice(-6)}`;
 }
 
-function PseudoQrCode({ value }: { value: string }) {
-  const cells = React.useMemo(() => {
-    let seed = 0;
-    for (const char of value) seed = (seed * 31 + char.charCodeAt(0)) % 9973;
-    return Array.from({ length: 121 }, (_, index) => {
-      const x = index % 11;
-      const y = Math.floor(index / 11);
-      const finder = (x < 3 && y < 3) || (x > 7 && y < 3) || (x < 3 && y > 7);
-      return finder || ((seed + x * 17 + y * 29 + x * y) % 5 < 2);
-    });
-  }, [value]);
-
+function WalletQrCode({ value }: { value: string }) {
   return (
-    <div
-      aria-label={`QR code for ${value}`}
-      className="mx-auto grid size-52 grid-cols-11 gap-1 rounded-xl border border-border-soft bg-white p-4"
-      role="img"
-    >
-      {cells.map((filled, index) => (
-        <span
-          aria-hidden="true"
-          className={cn("rounded-[2px]", filled ? "bg-black" : "bg-white")}
-          key={index}
-        />
-      ))}
+    <div className="mx-auto grid size-52 place-items-center rounded-xl border border-border-soft bg-white p-4">
+      <QRCodeSVG aria-label={`QR code for ${value}`} bgColor="#ffffff" fgColor="#000000" level="M" role="img" size={176} value={value} />
     </div>
   );
 }
@@ -104,7 +84,7 @@ export function WalletReceiveSheet({
   const selectedAddress = selectedChain?.walletAddress ?? walletAddress ?? null;
   const options = chainSections.map((section) => ({
     description: formatFiatTotal(section),
-    icon: <ChainIcon chainId={section.chainId} className="size-6" framed={false} />,
+    icon: <ChainIcon chainId={section.chainId} className="size-8" framed={true} />,
     label: section.title,
     value: section.chainId,
   }));
@@ -163,7 +143,7 @@ export function WalletReceiveSheet({
               <CopyField value={selectedAddress} />
             </div>
 
-            <PseudoQrCode value={`${selectedChain.chainId}:${selectedAddress}`} />
+            <WalletQrCode value={`${selectedChain.chainId}:${selectedAddress}`} />
 
             <div className="flex gap-3 rounded-lg border border-border-soft bg-muted/20 p-4">
               <QrCode aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" />

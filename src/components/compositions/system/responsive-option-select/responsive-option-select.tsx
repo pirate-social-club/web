@@ -99,8 +99,8 @@ export function ResponsiveOptionSelect<TValue extends string = string>({
                   trailingIcon={option.value === value ? <Check aria-hidden="true" className="size-5 shrink-0" weight="bold" /> : null}
                   variant={option.value === value ? "default" : "secondary"}
                 >
-                  <span className="flex min-w-0 items-start gap-3 text-start">
-                    {option.icon ? <span className="mt-0.5 shrink-0">{option.icon}</span> : null}
+                  <span className="flex min-w-0 items-center gap-3 text-start">
+                    {option.icon ? <span className="shrink-0">{option.icon}</span> : null}
                     <span className="min-w-0 space-y-0.5">
                       <span className="block truncate">{option.label}</span>
                       {option.description ? (
@@ -137,8 +137,8 @@ export function ResponsiveOptionSelect<TValue extends string = string>({
           <SelectContent align={selectAlign}>
             {options.map((option) => (
               <SelectItem className={cn(option.description && "items-start py-3")} disabled={option.disabled} key={option.value} value={option.value}>
-                <span className="flex min-w-0 items-start gap-3">
-                  {option.icon ? <span className="mt-0.5 shrink-0">{option.icon}</span> : null}
+                <span className="flex min-w-0 items-center gap-3">
+                  {option.icon ? <span className="shrink-0">{option.icon}</span> : null}
                   <span className="min-w-0 space-y-0.5">
                     <span className="block truncate">{option.label}</span>
                     {option.description ? (

@@ -54,7 +54,7 @@ export function PostComposerDesktopFooter({
     return (
       <CardFooter className="justify-end gap-3 border-t border-border-soft p-5">
         <Button
-          disabled={!canAdvanceWrite}
+          disabled={!canAdvanceWrite || submit.disabled}
           onClick={() => step.set(getNextComposerStep("write", tabs.activeTab))}
           size="lg"
         >
@@ -161,7 +161,7 @@ export function PostComposerMobileSubmitBar({
         <div className="px-4">
           <Button
             className="w-full"
-            disabled={!canAdvanceWrite}
+            disabled={!canAdvanceWrite || submit.disabled}
             onClick={() => step.set(getNextComposerStep("write", tabs.activeTab))}
             size="lg"
           >

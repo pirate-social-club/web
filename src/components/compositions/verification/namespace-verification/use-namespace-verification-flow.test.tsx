@@ -254,6 +254,52 @@ describe("useNamespaceVerificationFlow", () => {
     expect(verifiedId).toBe("verified-789");
   });
 
+  test("verified state survives clearing activeSessionId after parent saves completion", async () => {
+    let activeSessionId: string | null = "session-verify";
+
+    const { result, rerender } = renderHook(
+      ({ sessionId }: { sessionId: string | null }) =>
+        useNamespaceVerificationFlow({
+          callbacks: createMockCallbacks({
+            onGetSession: () =>
+              Promise.resolve(
+                mockStartResult({
+                  status: "challenge_required",
+                  namespaceVerificationSessionId: "session-verify",
+                }),
+              ),
+            onCompleteSession: () =>
+              Promise.resolve(
+                mockCompleteResult({
+                  status: "verified",
+                  namespaceVerificationId: "verified-789",
+                }),
+              ),
+          }),
+          enabled: true,
+          activeSessionId: sessionId,
+          onSessionCleared: () => {
+            activeSessionId = null;
+          },
+        }),
+      { initialProps: { sessionId: activeSessionId } },
+    );
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    await act(async () => {
+      await result.current.actions.verify();
+    });
+
+    rerender({ sessionId: activeSessionId });
+
+    expect(result.current.state).toBe("verified");
+    expect(result.current.isVerified).toBe(true);
+    expect(result.current.namespaceVerificationId).toBe("verified-789");
+  });
+
   test("verify returns expired", async () => {
     const { result } = renderHook(() =>
       useNamespaceVerificationFlow({

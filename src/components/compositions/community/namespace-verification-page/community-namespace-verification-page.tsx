@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
+import { CopyField } from "@/components/primitives/copy-field";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
 import { OptionCard } from "@/components/primitives/option-card";
 import { PrefixInput } from "@/components/primitives/prefix-input";
@@ -43,10 +44,13 @@ const namespaceFamilyMeta: Record<NamespaceFamily, {
 
 export interface CommunityNamespaceVerificationPageProps {
   activeSessionId?: string | null;
+  attachedNamespaceVerificationId?: string | null;
+  attachedRouteSlug?: string | null;
   callbacks: import("@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types").NamespaceVerificationCallbacks;
   initialFamily?: NamespaceFamily;
   initialRootLabel?: string;
   onBackClick?: () => void;
+  onClearPendingSession?: () => Promise<void> | void;
   onSessionCleared?: () => void;
   onSessionStarted?: (sessionId: string) => void;
   onVerified?: (namespaceVerificationId: string) => void;
@@ -54,10 +58,13 @@ export interface CommunityNamespaceVerificationPageProps {
 
 export function CommunityNamespaceVerificationPage({
   activeSessionId,
+  attachedNamespaceVerificationId,
+  attachedRouteSlug,
   callbacks,
   initialFamily,
   initialRootLabel = "",
   onBackClick,
+  onClearPendingSession,
   onSessionCleared,
   onSessionStarted,
   onVerified,
@@ -70,6 +77,18 @@ export function CommunityNamespaceVerificationPage({
     hns: { label: family.handshakeLabel, rootInputLabel: family.handshakeRootLabel },
     spaces: { label: family.spacesLabel, rootInputLabel: family.spacesRootLabel },
   };
+  const [clearingPending, setClearingPending] = React.useState(false);
+  const hasAttachedNamespace = Boolean(attachedNamespaceVerificationId);
+
+  const handleClearPendingSession = React.useCallback(async () => {
+    if (!onClearPendingSession || clearingPending) return;
+    setClearingPending(true);
+    try {
+      await onClearPendingSession();
+    } finally {
+      setClearingPending(false);
+    }
+  }, [clearingPending, onClearPendingSession]);
 
   const flow = useNamespaceVerificationFlow({
     callbacks,
@@ -122,6 +141,51 @@ export function CommunityNamespaceVerificationPage({
       ) : null}
     </>
   );
+
+  if (hasAttachedNamespace) {
+    return (
+      <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
+          <Type as="h1" variant="h1" className="md:text-4xl">Namespace</Type>
+          {onBackClick ? <Button onClick={onBackClick} variant="outline">Done</Button> : null}
+        </div>
+
+        <div className="space-y-6 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5 md:py-5">
+          <div className="space-y-2">
+            <Type as="div" variant="body-strong">Namespace attached</Type>
+            {attachedRouteSlug ? (
+              <FormNote>Community route: /c/{attachedRouteSlug}</FormNote>
+            ) : null}
+          </div>
+
+          {attachedRouteSlug ? (
+            <div className="space-y-2">
+              <FormFieldLabel label="Route" />
+              <CopyField value={attachedRouteSlug} />
+            </div>
+          ) : null}
+
+          {attachedNamespaceVerificationId ? (
+            <div className="space-y-2">
+              <FormFieldLabel label="Verification" />
+              <CopyField value={attachedNamespaceVerificationId} />
+            </div>
+          ) : null}
+
+          {activeSessionId ? (
+            <div className="space-y-3 border-t border-border-soft pt-4">
+              <FormNote tone="warning">
+                There is also a pending namespace verification for this community. Replacing an attached namespace is not supported, so clear the pending verification before continuing.
+              </FormNote>
+              <Button loading={clearingPending} onClick={handleClearPendingSession} variant="outline">
+                Clear pending verification
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", isMobile && hasFooterActions && "pb-28")}>

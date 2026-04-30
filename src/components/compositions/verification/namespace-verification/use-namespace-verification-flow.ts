@@ -112,6 +112,7 @@ export function useNamespaceVerificationFlow({
   const [setupNameservers, setSetupNameservers] =
     React.useState<NamespaceVerificationStartResult["setupNameservers"]>(null);
   const [resuming, setResuming] = React.useState(false);
+  const preserveVerifiedStateOnSessionClearRef = React.useRef(false);
   const rootLabelResult = React.useMemo(
     () => canonicalizeNamespaceRootLabel(activeFamily, rootLabel),
     [activeFamily, rootLabel],
@@ -125,6 +126,8 @@ export function useNamespaceVerificationFlow({
   onSessionClearedRef.current = onSessionCleared;
   const onVerifiedRef = React.useRef(onVerified);
   onVerifiedRef.current = onVerified;
+  const stateRef = React.useRef(state);
+  stateRef.current = state;
 
   const handleSessionCleared = React.useCallback(() => {
     onSessionClearedRef.current?.();
@@ -176,7 +179,10 @@ export function useNamespaceVerificationFlow({
           setSetupNameservers,
           setFailureReason,
           setState,
-          onSessionCleared: handleSessionCleared,
+          onSessionCleared: () => {
+            preserveVerifiedStateOnSessionClearRef.current = true;
+            handleSessionCleared();
+          },
         },
         result,
       );
@@ -187,16 +193,27 @@ export function useNamespaceVerificationFlow({
   React.useEffect(() => {
     if (!enabled) return;
 
+    if (!activeSessionId) {
+      if (preserveVerifiedStateOnSessionClearRef.current && stateRef.current === "verified") {
+        preserveVerifiedStateOnSessionClearRef.current = false;
+        return;
+      }
+
+      setRootLabel(initialRootLabel);
+      setActiveFamily(initialFamily ?? "hns");
+      setState("idle");
+      resetChallengeState();
+      setNamespaceVerificationId(null);
+      setFailureReason(null);
+      return;
+    }
+
     setRootLabel(initialRootLabel);
     setActiveFamily(initialFamily ?? "hns");
     setState("idle");
     resetChallengeState();
     setNamespaceVerificationId(null);
     setFailureReason(null);
-
-    if (!activeSessionId) {
-      return;
-    }
 
     setResuming(true);
     setState("starting");
@@ -266,6 +283,7 @@ export function useNamespaceVerificationFlow({
           setState("verified");
           setNamespaceVerificationId(result.namespaceVerificationId);
           onVerifiedRef.current?.(result.namespaceVerificationId);
+          preserveVerifiedStateOnSessionClearRef.current = true;
           onSessionClearedRef.current?.();
         } else if (result.status === "dns_setup_required") {
           setState("dns_setup_required");

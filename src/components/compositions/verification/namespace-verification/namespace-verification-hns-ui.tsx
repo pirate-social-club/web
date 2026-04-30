@@ -120,7 +120,7 @@ export function NamespaceVerificationHnsPanel({
           onClick={onAbandon}
           type="button"
         >
-          Verify a different namespace
+          {copy.moderation.namespaceVerification.verifyDifferent}
         </button>
       ) : null}
     </section>

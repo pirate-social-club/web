@@ -560,22 +560,28 @@ export function CommunityModerationPage({
         />
       );
     } else {
+      const clearPendingNamespaceSession = async () => {
+        state.setActiveNamespaceSessionId(null);
+        state.setCommunity((current) => current ? { ...current, pending_namespace_verification_session: null } : current);
+        try {
+          const updatedCommunity = await api.communities.setPendingNamespaceSession(communityId, null);
+          state.setCommunity(updatedCommunity);
+        } catch {
+          toast.error("Could not clear the saved namespace verification.");
+        }
+      };
+
       content = (
         <CommunityNamespaceVerificationPage
           activeSessionId={state.effectiveNamespaceSessionId}
+          attachedNamespaceVerificationId={state.community.namespace_verification ?? null}
+          attachedRouteSlug={state.community.route_slug ?? null}
           callbacks={state.namespaceVerificationCallbacks}
           initialRootLabel={state.community.route_slug ?? ""}
+          onClearPendingSession={clearPendingNamespaceSession}
           onBackClick={() => navigate(moderationIndexPath)}
           onSessionCleared={() => {
-            state.setActiveNamespaceSessionId(null);
-            state.setCommunity((current) => current ? { ...current, pending_namespace_verification_session: null } : current);
-            void api.communities.setPendingNamespaceSession(communityId, null)
-              .then((updatedCommunity) => {
-                state.setCommunity(updatedCommunity);
-              })
-              .catch(() => {
-                toast.error("Could not clear the saved namespace verification.");
-              });
+            void clearPendingNamespaceSession();
           }}
           onSessionStarted={state.setActiveNamespaceSessionId}
         />

@@ -1180,7 +1180,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "publisherCdCommand": "Find your Spaces wallet export JSON. Keep it on your computer and do not upload it. On macOS, drag the file into Terminal to paste its full path.",
           "digestLabel": "Digest",
           "challengeDetails": "Challenge details",
-          "verifyDifferent": "Verify a different namespace",
+          "verifyDifferent": "Use a different namespace",
           "rootVerified": "Root verified.",
           "closeLabel": "Close",
           "checkSetup": "Check setup",

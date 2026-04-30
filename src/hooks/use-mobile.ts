@@ -2,21 +2,22 @@
 
 import * as React from "react";
 
-import { MOBILE_BREAKPOINT, MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
+import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
+
+function getSnapshot() {
+  return window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches;
+}
+
+function getServerSnapshot() {
+  return false;
+}
+
+function subscribe(callback: () => void) {
+  const mql = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
+  mql.addEventListener("change", callback);
+  return () => mql.removeEventListener("change", callback);
+}
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState(
-    () => typeof window !== "undefined" && window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches,
-  );
-
-  React.useEffect(() => {
-    const mql = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
-    const onChange = () => {
-      setIsMobile(mql.matches);
-    };
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-
-  return isMobile;
+  return React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

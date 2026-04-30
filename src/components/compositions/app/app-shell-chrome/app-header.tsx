@@ -17,6 +17,7 @@ import { Button } from "@/components/primitives/button";
 import { IconButton } from "@/components/primitives/icon-button";
 import { PirateBrandMark } from "@/components/primitives/pirate-brand-mark";
 import { useSidebar } from "@/components/compositions/system/sidebar/sidebar";
+import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -148,7 +149,8 @@ export function AppHeader({
     walletAriaLabel = "Wallet",
   } = labels ?? {};
   const detectedMobile = useIsMobile();
-  const isMobile = forceMobile ?? detectedMobile;
+  const hydrated = useClientHydrated();
+  const isMobile = forceMobile ?? (hydrated ? detectedMobile : false);
   const { isRtl } = useUiLocale();
   const normalizedUnreadChatCount = normalizeUnreadCount(unreadChatCount);
   const normalizedUnreadNotificationsCount = normalizeUnreadCount(unreadNotificationsCount);

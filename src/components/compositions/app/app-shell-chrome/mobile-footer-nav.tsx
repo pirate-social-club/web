@@ -9,6 +9,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
+import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { triggerNavigationTapHaptic } from "@/lib/haptics";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -98,7 +99,8 @@ export function MobileFooterNav({
     walletAriaLabel = wallet,
   } = labels ?? {};
   const detectedMobile = useIsMobile();
-  const isMobile = forceMobile ?? detectedMobile;
+  const hydrated = useClientHydrated();
+  const isMobile = forceMobile ?? (hydrated ? detectedMobile : false);
   const normalizedUnreadChatCount = normalizeUnreadCount(unreadChatCount);
   const normalizedUnreadInboxCount = normalizeUnreadCount(unreadInboxCount);
   const chatAccessibleLabel = normalizedUnreadChatCount > 0

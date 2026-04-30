@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import {
@@ -63,7 +64,9 @@ const SidebarProvider = React.forwardRef<
     },
     ref,
   ) => {
-    const isMobile = useIsMobile();
+    const detectedMobile = useIsMobile();
+    const hydrated = useClientHydrated();
+    const isMobile = hydrated ? detectedMobile : false;
     const [openMobile, setOpenMobile] = React.useState(false);
     const [_open, _setOpen] = React.useState(defaultOpen);
     const open = openProp ?? _open;

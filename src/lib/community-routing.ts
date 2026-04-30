@@ -12,6 +12,25 @@ export function buildCommunityPath(
   return `/c/${encodeCommunityRouteSegment(routeSlug || communityId)}`;
 }
 
+export function buildCanonicalCommunityRoutePathname(
+  currentPathname: string,
+  communityId: string,
+  routeSlug?: string | null,
+): string | null {
+  const normalizedPathname = currentPathname.endsWith("/") && currentPathname !== "/"
+    ? currentPathname.slice(0, -1)
+    : currentPathname;
+  const segments = normalizedPathname.split("/").filter(Boolean);
+  if (segments[0] !== "c" || !segments[1]) {
+    return null;
+  }
+
+  const communityPath = buildCommunityPath(communityId, routeSlug);
+  const suffix = segments.slice(2).join("/");
+  const nextPathname = suffix ? `${communityPath}/${suffix}` : communityPath;
+  return normalizedPathname === nextPathname ? null : nextPathname;
+}
+
 export function formatCommunityRouteLabel(
   communityId: string,
   routeSlug?: string | null,

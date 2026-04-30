@@ -304,6 +304,19 @@ export function navigate(path: string): void {
   window.dispatchEvent(new Event(NAVIGATION_EVENT));
 }
 
+export function replaceRoute(path: string): void {
+  const nextUrl = new URL(path, window.location.origin);
+  const nextPath = normalizePathname(nextUrl.pathname);
+  const nextHref = `${nextPath}${nextUrl.search}${nextUrl.hash}`;
+  const currentPath = normalizePathname(window.location.pathname);
+  const currentHref = `${currentPath}${window.location.search}${window.location.hash}`;
+
+  if (currentHref === nextHref) return;
+
+  window.history.replaceState({}, "", nextHref);
+  window.dispatchEvent(new Event(NAVIGATION_EVENT));
+}
+
 export function useRoute(initialPathname?: string, initialHostname?: string): AppRoute {
   const initialRoute = React.useMemo(() => {
     if (typeof window !== "undefined") {

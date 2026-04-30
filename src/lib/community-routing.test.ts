@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  buildCanonicalCommunityRoutePathname,
   buildCommunityPath,
   canonicalizeCommunityRouteSegment,
   formatCommunityRouteLabel,
@@ -32,6 +33,32 @@ describe("canonicalizeCommunityRouteSegment", () => {
   test("leaves existing punycode and ascii labels unchanged", () => {
     expect(canonicalizeCommunityRouteSegment("@xn--t77hga")).toBe("@xn--t77hga");
     expect(canonicalizeCommunityRouteSegment("builders")).toBe("builders");
+  });
+});
+
+describe("buildCanonicalCommunityRoutePathname", () => {
+  test("replaces public community IDs with verified route slugs", () => {
+    expect(buildCanonicalCommunityRoutePathname(
+      "/c/com_cmt_be13447e169a49209b2dc207fc4574c0",
+      "com_cmt_be13447e169a49209b2dc207fc4574c0",
+      "@xn--t77hga",
+    )).toBe("/c/@xn--t77hga");
+  });
+
+  test("preserves community route suffixes", () => {
+    expect(buildCanonicalCommunityRoutePathname(
+      "/c/cmt_be13447e169a49209b2dc207fc4574c0/mod/links",
+      "com_cmt_be13447e169a49209b2dc207fc4574c0",
+      "@xn--t77hga",
+    )).toBe("/c/@xn--t77hga/mod/links");
+  });
+
+  test("does not rewrite already canonical community paths", () => {
+    expect(buildCanonicalCommunityRoutePathname(
+      "/c/@xn--t77hga",
+      "com_cmt_be13447e169a49209b2dc207fc4574c0",
+      "@xn--t77hga",
+    )).toBeNull();
   });
 });
 

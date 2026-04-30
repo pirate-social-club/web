@@ -16,6 +16,7 @@ import {
   buildCommunityPath,
   formatCommunityRouteLabel,
 } from "@/lib/community-routing";
+import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
@@ -179,6 +180,15 @@ export function CommunityPage({ communityId }: { communityId: string }) {
       routeKind: "community",
       uiLocale: locale,
     });
+
+  React.useEffect(() => {
+    const canonicalCommunityId = community?.id ?? preview?.id;
+    if (!canonicalCommunityId) return;
+    replaceWithCanonicalCommunityRoute(
+      canonicalCommunityId,
+      community?.route_slug ?? preview?.route_slug,
+    );
+  }, [community?.id, community?.route_slug, preview?.id, preview?.route_slug]);
 
   React.useEffect(() => {
     if (!preview) return;

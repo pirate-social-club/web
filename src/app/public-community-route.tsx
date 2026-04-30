@@ -22,6 +22,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { formatCommunityRouteLabel } from "@/lib/community-routing";
+import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getVerificationCapabilitiesForProvider, getVerificationRequirementsForGates, isJoinCtaActionable } from "@/lib/identity-gates";
 import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
@@ -252,6 +253,11 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       forgetKnownCommunity(communityId);
     }
   }, [communityId, error]);
+
+  React.useEffect(() => {
+    if (!preview?.id) return;
+    replaceWithCanonicalCommunityRoute(preview.id, preview.route_slug);
+  }, [preview?.id, preview?.route_slug]);
 
   React.useEffect(() => {
     setViewerFollowing(Boolean(preview?.viewer_following));

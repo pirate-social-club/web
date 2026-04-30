@@ -65,12 +65,26 @@ export function resolveAnonymousComposerLabel(
 ): string {
   switch (scope) {
     case "thread_stable":
-      return "anon_thread";
+      return "Pseudonym";
     case "post_ephemeral":
-      return "anon_post";
+      return "Pseudonym";
     case "community_stable":
     default:
-      return "anon_community";
+      return "Pseudonym";
+  }
+}
+
+export function resolveAnonymousComposerDescription(
+  scope: ApiCommunity["anonymous_identity_scope"] | undefined | null,
+): string {
+  switch (scope) {
+    case "thread_stable":
+      return "Same identity in this thread";
+    case "post_ephemeral":
+      return "New identity for this post";
+    case "community_stable":
+    default:
+      return "Same identity across this community";
   }
 }
 

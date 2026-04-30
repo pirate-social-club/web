@@ -33,7 +33,7 @@ export function IdentitySelect({
   triggerClassName,
 }: IdentitySelectProps) {
   const handleLabel = identity.publicHandle ?? "@handle";
-  const anonymousLabel = identity.anonymousLabel ?? "anon_club";
+  const anonymousLabel = identity.anonymousLabel ?? "Pseudonym";
   const agentLabel = identity.agentLabel ?? "Agent";
 
   const options = [

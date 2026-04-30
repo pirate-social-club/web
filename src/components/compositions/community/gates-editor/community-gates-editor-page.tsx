@@ -136,6 +136,7 @@ function removeGateDraft(
 export interface CommunityGatesEditorPageProps {
   allowAnonymousIdentity: boolean;
   anonymousIdentityScope: AnonymousIdentityScope;
+  anonymousScopeChangeWarning?: string;
   readAccessMode?: CommunityReadAccessMode;
   className?: string;
   creatorVerificationState?: CreatorVerificationState;
@@ -157,6 +158,7 @@ export interface CommunityGatesEditorPageProps {
 export function CommunityGatesEditorPage({
   allowAnonymousIdentity,
   anonymousIdentityScope,
+  anonymousScopeChangeWarning = "Changes apply to new posts only.",
   className,
   creatorVerificationState,
   defaultAgeGatePolicy,
@@ -189,7 +191,6 @@ export function CommunityGatesEditorPage({
   > = {
     community_stable: { label: mc.anonymousScopeCommunityStableLabel, detail: mc.anonymousScopeCommunityStableDetail },
     thread_stable: { label: mc.anonymousScopeThreadStableLabel, detail: mc.anonymousScopeThreadStableDetail },
-
   };
 
   const readAccessMeta: Record<CommunityReadAccessMode, { label: string; detail: string }> = {
@@ -431,6 +432,7 @@ export function CommunityGatesEditorPage({
           {allowAnonymousIdentity ? (
             <div className="space-y-3 border-s border-border-soft ps-4">
               <p className="text-base font-medium">{mc.anonymousScopeLabel}</p>
+              <FormNote>{anonymousScopeChangeWarning}</FormNote>
               <div className="space-y-2">
                 {((Object.keys(anonymousScopeMeta) as (keyof typeof anonymousScopeMeta)[]).map((scope) => {
                   const option = anonymousScopeMeta[scope];

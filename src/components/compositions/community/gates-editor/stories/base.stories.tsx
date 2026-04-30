@@ -125,6 +125,19 @@ export const RestrictedReading: Story = {
   ),
 };
 
+export const AnonymousScopeChange: Story = {
+  render: () => (
+    <InteractiveCommunityGatesEditorPage
+      allowAnonymousIdentity
+      anonymousIdentityScope="community_stable"
+      defaultAgeGatePolicy="none"
+      gateDrafts={[]}
+      membershipMode="open"
+      readAccessMode="public"
+    />
+  ),
+};
+
 export const PassportScoreGate: Story = {
   render: () => (
     <InteractiveCommunityGatesEditorPage

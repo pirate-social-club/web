@@ -200,4 +200,84 @@ describe("owned communities hooks", () => {
       cleanup();
     }
   });
+
+  test("useSidebarCommunities accepts created communities returned with id fields", async () => {
+    installDom();
+    setSession({
+      access_token: "header.eyJleHAiOjQxMDI0NDQ4MDB9.signature",
+      user: { user: "usr_test" } as never,
+      profile: {
+        global_handle: { label: "captain.pirate" },
+        primary_public_handle: null,
+      } as never,
+      onboarding: {} as never,
+      wallet_attachments: [],
+    });
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      const url = new URL(request.url);
+
+      if (url.pathname === "/public-profiles/captain.pirate") {
+        return Response.json({
+          requested_handle_label: "captain.pirate",
+          resolved_handle_label: "captain.pirate",
+          is_canonical: true,
+          created_communities: [
+            {
+              id: "cmt_owned",
+              display_name: "Owned",
+              route_slug: "@owned",
+              created: "2026-04-17T00:00:00.000Z",
+            },
+            {
+              display_name: "Missing id",
+              route_slug: null,
+              created: "2026-04-17T00:00:00.000Z",
+            },
+          ],
+          profile: {
+            user: "usr_test",
+            global_handle: {
+              global_handle_id: "ghl_test",
+              label: "captain.pirate",
+              tier: "standard",
+              status: "active",
+              issuance_source: "free_cleanup_rename",
+              issued_at: "2026-04-17T00:00:00.000Z",
+            },
+            linked_handles: [],
+            primary_public_handle: null,
+            display_name: "Captain",
+            bio: null,
+            avatar_ref: null,
+            cover_ref: null,
+            preferred_locale: null,
+            created: "2026-04-17T00:00:00.000Z",
+            updated: "2026-04-17T00:00:00.000Z",
+          },
+        });
+      }
+
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    };
+
+    try {
+      const { result } = renderHook(() => useSidebarCommunities(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.moderatedCommunities.map((community) => ({
+          communityId: community.communityId,
+          displayName: community.displayName,
+          routeSlug: community.routeSlug,
+        }))).toEqual([{
+          communityId: "cmt_owned",
+          displayName: "Owned",
+          routeSlug: "@owned",
+        }]);
+      });
+    } finally {
+      cleanup();
+    }
+  });
 });

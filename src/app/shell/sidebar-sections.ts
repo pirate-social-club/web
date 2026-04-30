@@ -84,7 +84,7 @@ export function resolveMobileBackPath(route: AppRoute): string | null {
 }
 
 function formatCommunitySidebarLabel(
-  communityId: string,
+  communityId?: string | null,
   routeSlug?: string | null,
 ): string {
   const trimmedSlug = routeSlug?.trim();
@@ -92,13 +92,19 @@ function formatCommunitySidebarLabel(
     const normalizedSlug = trimmedSlug.toLowerCase().startsWith("c/")
       ? trimmedSlug.slice(2)
       : trimmedSlug;
-    return formatCommunityRouteLabel(communityId, normalizedSlug);
+    return formatCommunityRouteLabel(communityId?.trim() || "unknown", normalizedSlug);
   }
 
-  const trimmedId = communityId.trim();
+  const trimmedId = communityId?.trim() ?? "";
   if (!trimmedId) return "c/unknown";
   if (trimmedId.length <= 14) return `c/${trimmedId}`;
   return `c/${trimmedId.slice(0, 7)}...${trimmedId.slice(-4)}`;
+}
+
+function hasCommunityId(
+  community: SidebarCommunitySummary,
+): community is SidebarCommunitySummary & { communityId: string } {
+  return typeof community.communityId === "string" && community.communityId.trim().length > 0;
 }
 
 export function buildSidebarSections(
@@ -112,31 +118,37 @@ export function buildSidebarSections(
   const sections: AppSidebarSection[] = [];
 
   if (recentCommunities.length > 0) {
-    sections.push({
-      id: "recent",
-      label: getSectionLabel("recent", "Recent"),
-      defaultOpen: true,
-      items: recentCommunities.map((community) => ({
-        avatarSrc: community.avatarSrc,
-        id: `c/${community.communityId}`,
-        label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
-        onSelect: () => navigate(buildCommunityPath(community.communityId, community.routeSlug)),
-      })),
-    });
+    const validRecentCommunities = recentCommunities.filter(hasCommunityId);
+    if (validRecentCommunities.length > 0) {
+      sections.push({
+        id: "recent",
+        label: getSectionLabel("recent", "Recent"),
+        defaultOpen: true,
+        items: validRecentCommunities.map((community) => ({
+          avatarSrc: community.avatarSrc,
+          id: `c/${community.communityId}`,
+          label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
+          onSelect: () => navigate(buildCommunityPath(community.communityId, community.routeSlug)),
+        })),
+      });
+    }
   }
 
   if (moderatedCommunities.length > 0) {
-    sections.push({
-      id: "moderation",
-      label: getSectionLabel("moderation", "Moderation"),
-      defaultOpen: true,
-      items: moderatedCommunities.map((community) => ({
-        avatarSrc: community.avatarSrc,
-        id: `moderation/${community.communityId}`,
-        label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
-        onSelect: () => navigate(buildCommunityModerationEntryPath(community.communityId, isMobileWeb, community.routeSlug)),
-      })),
-    });
+    const validModeratedCommunities = moderatedCommunities.filter(hasCommunityId);
+    if (validModeratedCommunities.length > 0) {
+      sections.push({
+        id: "moderation",
+        label: getSectionLabel("moderation", "Moderation"),
+        defaultOpen: true,
+        items: validModeratedCommunities.map((community) => ({
+          avatarSrc: community.avatarSrc,
+          id: `moderation/${community.communityId}`,
+          label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
+          onSelect: () => navigate(buildCommunityModerationEntryPath(community.communityId, isMobileWeb, community.routeSlug)),
+        })),
+      });
+    }
   }
 
   return sections;

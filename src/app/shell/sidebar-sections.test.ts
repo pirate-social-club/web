@@ -50,4 +50,23 @@ describe("buildSidebarSections", () => {
     const item = sections[0]?.items[0];
     expect(item?.label).toBe("c/@🇵🇸");
   });
+
+  test("skips malformed community summaries without crashing", () => {
+    const sections = buildSidebarSections(
+      {
+        sections: [{ id: "recent", label: "Recent", items: [] }],
+      } as unknown as ShellMessages["appSidebar"],
+      [{
+        avatarSrc: null,
+        communityId: undefined,
+        displayName: "Broken",
+        routeSlug: null,
+        updatedAt: "2026-04-29T00:00:00.000Z",
+      } as never],
+      [],
+      false,
+    );
+
+    expect(sections).toEqual([]);
+  });
 });

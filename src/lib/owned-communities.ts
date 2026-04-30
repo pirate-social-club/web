@@ -51,6 +51,42 @@ function mergeCommunities(
   return sortCommunities([...merged.values()]);
 }
 
+type PublicProfileCommunitySummary = {
+  community?: unknown;
+  community_id?: unknown;
+  created?: unknown;
+  display_name?: unknown;
+  id?: unknown;
+  route_slug?: unknown;
+};
+
+function getPublicProfileCommunityId(community: PublicProfileCommunitySummary): string | null {
+  const rawId = community.community ?? community.id ?? community.community_id;
+  if (typeof rawId !== "string") return null;
+
+  const communityId = rawId.trim();
+  return communityId || null;
+}
+
+function publicProfileCommunityToSidebarSummary(
+  community: PublicProfileCommunitySummary,
+): SidebarCommunitySummary | null {
+  const communityId = getPublicProfileCommunityId(community);
+  if (!communityId) return null;
+
+  const displayName = typeof community.display_name === "string" && community.display_name.trim()
+    ? community.display_name
+    : communityId;
+
+  return {
+    avatarSrc: null,
+    communityId,
+    displayName,
+    routeSlug: typeof community.route_slug === "string" ? community.route_slug : null,
+    updatedAt: typeof community.created === "string" ? community.created : Date.now(),
+  };
+}
+
 function useValidatedKnownCommunities(ownedCommunities: SidebarCommunitySummary[]): SidebarCommunitySummary[] {
   const api = useApi();
   const knownCommunities = useKnownCommunities();
@@ -162,13 +198,11 @@ export function useSidebarCommunities(): {
       .then((result) => {
         if (cancelled) return;
 
-        const nextOwnedCommunities = sortCommunities(result.created_communities.map((community) => ({
-          avatarSrc: null,
-          communityId: community.community,
-          displayName: community.display_name,
-          routeSlug: community.route_slug,
-          updatedAt: community.created,
-        })));
+        const nextOwnedCommunities = sortCommunities(
+          (result.created_communities as PublicProfileCommunitySummary[])
+            .map(publicProfileCommunityToSidebarSummary)
+            .filter((community): community is SidebarCommunitySummary => community !== null),
+        );
 
         logger.debug("[your-communities] loaded created communities", {
           count: nextOwnedCommunities.length,

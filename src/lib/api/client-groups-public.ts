@@ -66,7 +66,10 @@ export function createProfilesApi(request: ApiRequest) {
     publishXmtpInboxId: (xmtpInboxId: string | null): Promise<Profile> =>
       request<Profile>("/profiles/me/xmtp-inbox", {
         method: "POST",
-        body: JSON.stringify({ xmtp_inbox_id: xmtpInboxId }),
+        body: JSON.stringify({
+          xmtp_inbox: xmtpInboxId,
+          xmtp_inbox_id: xmtpInboxId,
+        }),
       }),
   };
 }

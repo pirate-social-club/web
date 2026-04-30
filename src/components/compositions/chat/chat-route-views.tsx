@@ -194,6 +194,7 @@ function formatUnreadCount(count: number): string {
 
 export function ChatSetupState({
   busy = false,
+  compact = false,
   description,
   error,
   onRetry,
@@ -202,6 +203,7 @@ export function ChatSetupState({
   title,
 }: {
   busy?: boolean;
+  compact?: boolean;
   description: string;
   error?: string | null;
   onRetry: () => void;
@@ -260,9 +262,15 @@ export function ChatSetupState({
 
   return (
     <section className="flex h-full min-h-0 w-full flex-1 flex-col bg-background sm:grid sm:place-items-center sm:px-4 sm:py-6">
-      <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col sm:block sm:min-h-0 sm:flex-none">
-        <div className="flex min-h-0 flex-1 flex-col px-8 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-8 text-center sm:min-h-0 sm:flex-none sm:gap-8 sm:rounded-lg sm:border sm:border-border sm:bg-card sm:px-8 sm:pb-8 sm:pt-8 sm:text-start">
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 pb-8 sm:min-h-0 sm:flex-none sm:items-start sm:justify-start sm:gap-5 sm:pb-0 sm:pe-10 sm:text-start">
+      <div className={cn("mx-auto flex min-h-0 w-full flex-1 flex-col sm:block sm:min-h-0 sm:flex-none", compact ? "max-w-md" : "max-w-2xl")}>
+        <div className={cn(
+          "flex min-h-0 flex-1 flex-col px-8 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-8 text-center sm:min-h-0 sm:flex-none sm:rounded-lg sm:border sm:border-border sm:bg-card sm:text-start",
+          compact ? "sm:gap-6 sm:px-6 sm:pb-6 sm:pt-6" : "sm:gap-8 sm:px-8 sm:pb-8 sm:pt-8",
+        )}>
+          <div className={cn(
+            "flex min-h-0 flex-1 flex-col items-center justify-center gap-6 pb-8 sm:min-h-0 sm:flex-none sm:items-start sm:justify-start sm:gap-5 sm:pb-0 sm:pe-10 sm:text-start",
+            compact && "sm:pe-0",
+          )}>
             <div className="flex flex-col items-center gap-7 sm:flex-row sm:gap-4">
               <div className="relative grid size-32 place-items-center rounded-full border border-foreground/10 bg-card/70 text-primary shadow-[inset_0_1px_24px_rgb(255_255_255_/_0.04)] sm:hidden">
                 <Signature className="size-16" weight="duotone" />
@@ -270,12 +278,15 @@ export function ChatSetupState({
                   <Check aria-hidden className="size-7" weight="bold" />
                 </span>
               </div>
-              <StandardModalIconBadge className="hidden sm:inline-grid">
+              <StandardModalIconBadge className={cn("hidden sm:inline-grid", compact && "sm:size-12")}>
                 <Signature className="size-8" weight="duotone" />
               </StandardModalIconBadge>
               <Type
                 as="h2"
-                className="min-w-0 text-5xl font-bold leading-tight tracking-normal sm:text-3xl sm:leading-tight"
+                className={cn(
+                  "min-w-0 text-5xl font-bold leading-tight tracking-normal sm:leading-tight",
+                  compact ? "sm:text-2xl" : "sm:text-3xl",
+                )}
                 variant="h1"
               >
                 {title}
@@ -290,7 +301,7 @@ export function ChatSetupState({
             </Type>
           </div>
 
-          <div className="flex shrink-0 flex-col gap-5 border-t border-border-soft/60 pt-5 sm:border-t-0 sm:pt-0">
+          <div className={cn("flex shrink-0 flex-col gap-5 border-t border-border-soft/60 pt-5 sm:border-t-0 sm:pt-0", compact && "sm:gap-4")}>
             {error ? (
               <div className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-start">
                 <WarningCircle
@@ -302,7 +313,7 @@ export function ChatSetupState({
                 </Type>
               </div>
             ) : null}
-            <Button className="h-16 w-full text-xl sm:h-14 sm:text-base" loading={busy} onClick={onRetry}>
+            <Button className={cn("h-16 w-full text-xl sm:text-base", compact ? "sm:h-12" : "sm:h-14")} loading={busy} onClick={onRetry}>
               {retryLabel}
             </Button>
           </div>

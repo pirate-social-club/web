@@ -270,6 +270,59 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("publishes XMTP inbox using current and legacy payload keys", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        id: "usr_test",
+        object: "profile",
+        display_name: "Captain",
+        avatar_ref: null,
+        avatar_source: null,
+        cover_ref: null,
+        cover_source: null,
+        bio: null,
+        bio_source: null,
+        preferred_locale: null,
+        display_verified_nationality_badge: false,
+        nationality_badge_country: null,
+        linked_handles: [],
+        primary_public_handle: null,
+        primary_wallet_address: "0x0000000000000000000000000000000000000001",
+        xmtp_inbox: "xmtp-inbox-test",
+        global_handle: {
+          global_handle_id: "ghl_test",
+          label: "captain.pirate",
+          tier: "standard",
+          status: "active",
+          issuance_source: "free_cleanup_rename",
+          issued_at: "2026-04-17T00:00:00.000Z",
+        },
+        created: "2026-04-17T00:00:00.000Z",
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.profiles.publishXmtpInboxId("xmtp-inbox-test");
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("POST");
+      expect(capturedRequest.url).toBe("http://pirate.test/profiles/me/xmtp-inbox");
+      expect(await capturedRequest.json()).toEqual({
+        xmtp_inbox: "xmtp-inbox-test",
+        xmtp_inbox_id: "xmtp-inbox-test",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("sends agent name updates as JSON patch requests", async () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

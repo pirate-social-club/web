@@ -10,6 +10,9 @@ import { normalizeChatTarget, normalizeEthereumAddress, shortAddress } from "./c
 
 const PEER_METADATA_STORAGE_KEY = "pirate.web.xmtp.peer-metadata.v1";
 const PEER_METADATA_MISS_STORAGE_KEY = "pirate.web.xmtp.peer-metadata-misses.v1";
+const ETH_MAINNET_RPC_FALLBACKS = [
+  "https://cloudflare-eth.com",
+] as const;
 const MAX_STORED_PEERS = 200;
 const PEER_METADATA_MISS_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -30,6 +33,15 @@ type StoredPeerMetadataMiss = {
   checkedAt: number;
 };
 
+function uniqueUrls(urls: readonly (string | null | undefined)[]): string[] {
+  const unique = new Set<string>();
+  for (const url of urls) {
+    const trimmed = url?.trim();
+    if (trimmed) unique.add(trimmed);
+  }
+  return [...unique];
+}
+
 function getEnsClient() {
   if (!ensClient) {
     const env = import.meta.env as ImportMetaEnv & {
@@ -39,8 +51,12 @@ function getEnsClient() {
       ? env.VITE_ETH_MAINNET_RPC_URL.trim()
       : "";
     const efpMainnetRpc = getPirateNetworkConfig().efp.rpcUrlsByChainId[mainnet.id];
-    const transports = [configuredMainnetRpc, efpMainnetRpc, mainnet.rpcUrls.default.http[0]]
-      .filter((url): url is string => Boolean(url));
+    const transports = uniqueUrls([
+      configuredMainnetRpc,
+      efpMainnetRpc,
+      mainnet.rpcUrls.default.http[0],
+      ...ETH_MAINNET_RPC_FALLBACKS,
+    ]);
 
     ensClient = createPublicClient({
       chain: mainnet,
@@ -239,7 +255,9 @@ export async function resolveChatTarget(
   }
 
   if (target.endsWith(".eth")) {
-    const ensAddress = await getEnsClient().getEnsAddress({ name: target });
+    const ensAddress = await getEnsClient().getEnsAddress({ name: target }).catch(() => {
+      throw new Error("Could not resolve that ENS name. Try again, or start the chat with the wallet address.");
+    });
     const walletAddress = ensAddress ? normalizeEthereumAddress(ensAddress) : null;
     if (!walletAddress) {
       throw new Error("That ENS name did not resolve to an Ethereum wallet.");

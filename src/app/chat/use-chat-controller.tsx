@@ -556,9 +556,11 @@ export function useChatController({
 
   const threadConversation = shouldMaskThread ? null : activeConversation;
   const threadItems = threadConversation ? messages[threadConversation.id] ?? [] : [];
+  const compactSetupState = surface === "widget";
   const xmtpThreadSetupState = authBroken ? (
     <ChatSetupState
       busy={privyBusy}
+      compact={compactSetupState}
       description={chat.setupWalletAvailableDescription}
       onRetry={handleReconnectEthereumWallet}
       presentation="signature"
@@ -567,6 +569,7 @@ export function useChatController({
     />
   ) : xmtpSetupPhase === "needs-enablement" ? (
     <ChatSetupState
+      compact={compactSetupState}
       description={chat.setupConfirmWalletDescription}
       onRetry={handleEnableMessages}
       presentation="signature"
@@ -576,6 +579,7 @@ export function useChatController({
   ) : xmtpSetupPhase === "enabling" ? (
     <ChatSetupState
       busy
+      compact={compactSetupState}
       description={chat.setupCheckWalletDescription}
       onRetry={() => {}}
       presentation="signature"
@@ -614,6 +618,7 @@ export function useChatController({
     session,
     signInSetupProps: {
       busy: privyBusy,
+      compact: compactSetupState,
       description: chat.setupSignInDescription,
       onRetry: () => {
         connect?.();

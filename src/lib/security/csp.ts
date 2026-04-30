@@ -58,6 +58,7 @@ export function buildContentSecurityPolicy(nonce: string): string {
       "https://mainnet.base.org",
       "https://sepolia.base.org",
       "https://eth.merkle.io",
+      "https://cloudflare-eth.com",
       "https://11155111.rpc.thirdweb.com",
       "https://mainnet.optimism.io",
       "https://sepolia.optimism.io",

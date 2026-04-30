@@ -302,7 +302,7 @@ export function createCommunitiesApi(request: ApiRequest) {
       body: CommunityPurchaseSettlementFailureRequest,
     ): Promise<CommunityPurchaseSettlementFailure> =>
       request<CommunityPurchaseSettlementFailure>(
-        `/communities/${encodeURIComponent(communityId)}/fail_purchase_settlement`,
+        `/communities/${encodeURIComponent(communityId)}/fail-purchase-settlement`,
         { method: "POST", body: JSON.stringify(body) },
       ),
     listPosts: (

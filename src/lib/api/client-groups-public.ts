@@ -28,12 +28,12 @@ export function createProfilesApi(request: ApiRequest) {
         body: JSON.stringify(input),
       }),
     syncLinkedHandles: (): Promise<Profile> =>
-      request<Profile>("/profiles/me/sync_linked_handles", {
+      request<Profile>("/profiles/me/sync-linked-handles", {
         method: "POST",
         body: JSON.stringify({}),
       }),
     setPrimaryPublicHandle: (linkedHandleId: string | null): Promise<Profile> =>
-      request<Profile>("/profiles/me/set_primary_public_handle", {
+      request<Profile>("/profiles/me/set-primary-public-handle", {
         method: "POST",
         body: JSON.stringify({ linked_handle: linkedHandleId }),
       }),
@@ -49,7 +49,7 @@ export function createProfilesApi(request: ApiRequest) {
       });
     },
     renameHandle: (desiredLabel: string): Promise<RenameHandleResponse> =>
-      request("/profiles/me/rename_global_handle", {
+      request("/profiles/me/rename-global-handle", {
         method: "POST",
         body: JSON.stringify({ desired_label: desiredLabel }),
       }),
@@ -59,7 +59,7 @@ export function createProfilesApi(request: ApiRequest) {
         body: JSON.stringify({ desired_label: desiredLabel }),
       }),
     quoteHandleUpgrade: (desiredLabel: string): Promise<HandleUpgradeQuoteResponse> =>
-      request("/profiles/me/quote_handle_upgrade", {
+      request("/profiles/me/quote-handle-upgrade", {
         method: "POST",
         body: JSON.stringify({ desired_label: desiredLabel }),
       }),

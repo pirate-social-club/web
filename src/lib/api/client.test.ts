@@ -223,7 +223,7 @@ describe("ApiClient media uploads", () => {
       const profile = await client.profiles.syncLinkedHandles();
       const capturedRequest = requireRequest(request);
       expect(capturedRequest.method).toBe("POST");
-      expect(capturedRequest.url).toBe("http://pirate.test/profiles/me/sync_linked_handles");
+      expect(capturedRequest.url).toBe("http://pirate.test/profiles/me/sync-linked-handles");
       expect(profile.primary_public_handle?.label).toBe("blackbeard.eth");
     } finally {
       globalThis.fetch = originalFetch;
@@ -261,7 +261,7 @@ describe("ApiClient media uploads", () => {
 
       const capturedRequest = requireRequest(request);
       expect(capturedRequest.method).toBe("POST");
-      expect(capturedRequest.url).toBe("http://pirate.test/profiles/me/set_primary_public_handle");
+      expect(capturedRequest.url).toBe("http://pirate.test/profiles/me/set-primary-public-handle");
       expect(JSON.stringify(await capturedRequest.json())).toBe(
         JSON.stringify({ linked_handle: "lnk_ens_test" }),
       );

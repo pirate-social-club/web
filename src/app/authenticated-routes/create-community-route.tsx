@@ -19,7 +19,7 @@ import { PageContainer } from "@/components/primitives/layout-shell";
 import { toast } from "@/components/primitives/sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-import { DEFAULT_COMMUNITY_RULES } from "@/app/authenticated-helpers/moderation-helpers";
+import { getLocaleMessages } from "@/locales";
 import { serializeIdentityGateDrafts } from "@/app/authenticated-helpers/community-gate-rule-serialization";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 
@@ -45,6 +45,11 @@ export function CreateCommunityPage() {
     const gatePolicy = input.membershipMode === "gated"
       ? serializeIdentityGateDrafts(input.gateDrafts)
       : null;
+    const rc = getLocaleMessages(locale, "routes").moderation.rules;
+    const bootstrapRules = [
+      { title: rc.defaultRule1Title, body: rc.defaultRule1Body, report_reason: rc.defaultRule1Title },
+      { title: rc.defaultRule2Title, body: rc.defaultRule2Body, report_reason: rc.defaultRule2Title },
+    ];
 
     const result = await api.communities.create({
       avatar_ref: avatarRef,
@@ -59,7 +64,7 @@ export function CreateCommunityPage() {
       handle_policy: { policy_template: "standard" },
       governance_mode: "centralized",
       gate_policy: gatePolicy ?? undefined,
-      community_bootstrap: { rules: DEFAULT_COMMUNITY_RULES.map((rule) => ({ title: rule.title, body: rule.body, report_reason: rule.title })) },
+      community_bootstrap: { rules: bootstrapRules },
     });
 
     rememberKnownCommunity({
@@ -69,7 +74,7 @@ export function CreateCommunityPage() {
     });
     navigate(`/c/${result.community.id}`);
     return { communityId: result.community.id };
-  }, [api]);
+  }, [api, locale]);
   const {
     handleModalOpenChange: handleSelfModalOpenChangeBase,
     handleSelfQrError,

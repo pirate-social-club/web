@@ -855,7 +855,11 @@
       "reportingDescription": "Users or mods can select a report reason when reporting content.",
       "reportReasonPlaceholder": "Report reason",
       "reportReasonHint": "By default, this is the same as your rule name.",
-      "emptyState": "No rules yet."
+      "emptyState": "No rules yet.",
+      "defaultRule1Title": "Respect others and be civil",
+      "defaultRule1Body": "No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness.",
+      "defaultRule2Title": "No spam",
+      "defaultRule2Body": "Excessive promotion, spam, or advertising of any kind is not allowed."
     },
     "labels": {
       "title": "Labels",

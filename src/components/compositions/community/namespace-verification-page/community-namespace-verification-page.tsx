@@ -191,7 +191,7 @@ export function CommunityNamespaceVerificationPage({
                   To access your site on Handshake DNS, use{" "}
                   <a
                     className="text-primary underline-offset-4 hover:underline"
-                    href="https://github.com/pirate-social-club/freedom-browser/releases/tag/v0.7.6"
+                    href="https://github.com/pirate-social-club/freedom-browser/releases"
                     rel="noreferrer"
                     target="_blank"
                   >

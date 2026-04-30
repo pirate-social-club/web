@@ -19,17 +19,6 @@ import {
   createDefaultCommunitySafetyProviderSettings,
 } from "@/components/compositions/community/safety-page/community-safety-page";
 
-export const DEFAULT_COMMUNITY_RULES = [
-  {
-    title: "Respect others and be civil",
-    body: "No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness.",
-  },
-  {
-    title: "No spam",
-    body: "Excessive promotion, spam, or advertising of any kind is not allowed.",
-  },
-] as const;
-
 export type CommunityModerationSection = "profile" | "rules" | "links" | "labels" | "donations" | "pricing" | "requests" | "gates" | "safety" | "agents" | "machine-access" | "namespace";
 
 export const DEFAULT_COMMUNITY_MODERATION_SECTION: CommunityModerationSection = "profile";

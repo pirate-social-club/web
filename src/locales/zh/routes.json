@@ -855,7 +855,11 @@
       "reportingDescription": "用户或版主在举报内容时可以选择举报原因。",
       "reportReasonPlaceholder": "举报原因",
       "reportReasonHint": "默认情况下，这与你的规则名称相同。",
-      "emptyState": "还没有规则。"
+      "emptyState": "还没有规则。",
+      "defaultRule1Title": "尊重他人，文明交流",
+      "defaultRule1Body": "禁止骚扰、仇恨言论或任何有害行为。请友善对待所有贡献者和成员。",
+      "defaultRule2Title": "禁止垃圾信息",
+      "defaultRule2Body": "不允许任何形式的过度推广、垃圾信息或广告。"
     },
     "labels": {
       "title": "标签",

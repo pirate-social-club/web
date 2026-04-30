@@ -969,7 +969,11 @@ export const GENERATED_LOCALE_CATALOGS = {
           "reportingDescription": "Users or mods can select a report reason when reporting content.",
           "reportReasonPlaceholder": "Report reason",
           "reportReasonHint": "By default, this is the same as your rule name.",
-          "emptyState": "No rules yet."
+          "emptyState": "No rules yet.",
+          "defaultRule1Title": "Respect others and be civil",
+          "defaultRule1Body": "No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness.",
+          "defaultRule2Title": "No spam",
+          "defaultRule2Body": "Excessive promotion, spam, or advertising of any kind is not allowed."
         },
         "labels": {
           "title": "Labels",
@@ -2512,7 +2516,11 @@ export const GENERATED_LOCALE_CATALOGS = {
           "reportingDescription": "يمكن للمستخدمين أو المشرفين اختيار سبب إبلاغ عند الإبلاغ عن محتوى.",
           "reportReasonPlaceholder": "سبب الإبلاغ",
           "reportReasonHint": "افتراضيًا، هذا هو نفس اسم قاعدتك.",
-          "emptyState": "لا توجد قواعد بعد."
+          "emptyState": "لا توجد قواعد بعد.",
+          "defaultRule1Title": "احترام الآخرين والالتزام بالأدب",
+          "defaultRule1Body": "لا تحرش ولا خطاب كراهية ولا سلوك سامي. عامل جميع المساهمين والأعضاء بلطف.",
+          "defaultRule2Title": "لا رسائل مزعجة",
+          "defaultRule2Body": "الإفراط في الترويج والرسائل المزعجة والإعلانات غير مسموح به بأي شكل."
         },
         "labels": {
           "title": "التسميات",
@@ -4055,7 +4063,11 @@ export const GENERATED_LOCALE_CATALOGS = {
           "reportingDescription": "用户或版主在举报内容时可以选择举报原因。",
           "reportReasonPlaceholder": "举报原因",
           "reportReasonHint": "默认情况下，这与你的规则名称相同。",
-          "emptyState": "还没有规则。"
+          "emptyState": "还没有规则。",
+          "defaultRule1Title": "尊重他人，文明交流",
+          "defaultRule1Body": "禁止骚扰、仇恨言论或任何有害行为。请友善对待所有贡献者和成员。",
+          "defaultRule2Title": "禁止垃圾信息",
+          "defaultRule2Body": "不允许任何形式的过度推广、垃圾信息或广告。"
         },
         "labels": {
           "title": "标签",

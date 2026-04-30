@@ -74,6 +74,12 @@ export function useCommunityInteractionGate({
     [uiLocale],
   );
 
+  const gatesPanel = React.useMemo(() => {
+    const resolvedLocale: import("@/lib/ui-locale-core").UiLocaleCode =
+      uiLocale === "pseudo" ? "pseudo" : uiLocale === "ar" ? "ar" : uiLocale === "zh" ? "zh" : "en";
+    return getLocaleMessages(resolvedLocale, "gates").panel;
+  }, [uiLocale]);
+
   React.useEffect(() => {
     communityGateCache.clear();
     communityGateRequests.clear();
@@ -150,11 +156,11 @@ export function useCommunityInteractionGate({
         invalidateCommunityGate(communityId);
         if (joinResult.status === "requested") {
           setModalState({
-            description: "The moderators will review your request.",
+            description: gatesPanel.pendingRequestDescription,
             icon: "pending",
             requirements: gate.preview.membership_gate_summaries,
             requirementStatuses: getRequirementStatuses({ ...gate, eligibility: nextEligibility }),
-            title: "Request pending",
+            title: gatesPanel.pendingRequestTitle,
           });
           return;
         }
@@ -183,11 +189,11 @@ export function useCommunityInteractionGate({
 
       if (nextEligibility.status === "pending_request") {
         setModalState({
-          description: "The moderators will review your request.",
+          description: gatesPanel.pendingRequestDescription,
           icon: "pending",
           requirements: gate.preview.membership_gate_summaries,
           requirementStatuses: getRequirementStatuses({ ...gate, eligibility: nextEligibility }),
-          title: "Request pending",
+          title: gatesPanel.pendingRequestTitle,
         });
         return;
       }
@@ -259,11 +265,11 @@ export function useCommunityInteractionGate({
 	          invalidateCommunityGate(communityId);
 	          if (joinResult.status === "requested") {
 	            setModalState({
-	              description: "The moderators will review your request.",
+	              description: gatesPanel.pendingRequestDescription,
 	              icon: "pending",
 	              requirements: gate.preview.membership_gate_summaries,
 	              requirementStatuses: getRequirementStatuses({ ...gate, eligibility: nextEligibility }),
-	              title: "Request pending",
+	              title: gatesPanel.pendingRequestTitle,
 	            });
 	            return { started: true };
 	          }

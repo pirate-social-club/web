@@ -16,6 +16,7 @@ import {
 } from "@/lib/identity-gates";
 import { interpolateMessage } from "@/lib/route-messages";
 import { getLocaleMessages } from "@/locales";
+import { type UiLocaleCode } from "@/lib/ui-locale-core";
 
 export type RouteKind = "community" | "home" | "post" | "public-community";
 export type InteractionAction =
@@ -304,6 +305,15 @@ export function createDefaultBlockedModalState({
   startDefaultVerification,
 }: BuildBlockedModalStateArgs): ModalState {
   const isVoteAction = action === "vote_post" || action === "vote_comment";
+  const resolvedLocale: UiLocaleCode =
+    interactionCopy.locale === "pseudo"
+      ? "pseudo"
+      : interactionCopy.locale === "ar"
+        ? "ar"
+        : interactionCopy.locale === "zh"
+          ? "zh"
+          : "en";
+  const gatesPanel = getLocaleMessages(resolvedLocale, "gates").panel;
 
   switch (gate.eligibility.status) {
     case "verification_required": {
@@ -323,14 +333,14 @@ export function createDefaultBlockedModalState({
           icon: "passport",
           primaryAction: {
             href: "https://app.passport.xyz/",
-            label: "Visit Passport.xyz",
+            label: gatesPanel.passportPromptActionLabel,
             rel: "noopener noreferrer",
             target: "_blank",
           },
           secondaryAction: null,
           requirements: gate.preview.membership_gate_summaries,
           requirementStatuses: getRequirementStatuses(gate),
-          title: "Higher Score Required",
+          title: gatesPanel.passportPromptTitle,
         };
       }
       const verificationPrompt = getVerificationPromptCopy(
@@ -407,11 +417,11 @@ export function createDefaultBlockedModalState({
     }
     case "pending_request":
       return {
-        description: "The moderators will review your request.",
+        description: gatesPanel.pendingRequestDescription,
         icon: "pending",
         requirements: gate.preview.membership_gate_summaries,
         requirementStatuses: getRequirementStatuses(gate),
-        title: "Request pending",
+        title: gatesPanel.pendingRequestTitle,
       };
     case "gate_failed":
     case "banned":

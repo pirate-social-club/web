@@ -6,6 +6,7 @@ import {
   UsersThree,
 } from "@phosphor-icons/react";
 
+import { Avatar } from "@/components/primitives/avatar";
 import { Input } from "@/components/primitives/input";
 import { RadioIndicator } from "@/components/primitives/radio-indicator";
 import { Type } from "@/components/primitives/type";
@@ -50,6 +51,7 @@ export type PostComposerSettingsSectionsProps = {
   onRoyaltyPercentChange: (value: string) => void;
   onVisibilityChange: (value: "public" | "community") => void;
   price: string;
+  publicAvatarSeed?: string;
   publicAvatarSrc?: string;
   publicIdentityLabel?: string;
   publicIdentityInitials?: string;
@@ -63,7 +65,7 @@ export type PostComposerSettingsSectionsProps = {
 const defaultCopy: PostComposerSettingsSectionsCopy = {
   postAsTitle: "Post as",
   publicIdentityDescription: "Your public profile",
-  anonymousIdentityDescription: "A community pseudonym",
+  anonymousIdentityDescription: "Same identity across this community",
   visibilityTitle: "Who can see this?",
   publicVisibilityLabel: "Public",
   communityVisibilityLabel: "Community",
@@ -165,7 +167,7 @@ export function PostComposerSettingsSections({
   attachment,
   className,
   copy: copyOverrides,
-  anonymousIdentityLabel = "anon_amber-anchor-00",
+  anonymousIdentityLabel = "Pseudonym",
   identity,
   license,
   onAccessChange,
@@ -175,6 +177,7 @@ export function PostComposerSettingsSections({
   onRoyaltyPercentChange,
   onVisibilityChange,
   price,
+  publicAvatarSeed,
   publicAvatarSrc,
   publicIdentityLabel = "saint-pablo.pirate",
   publicIdentityInitials = "sp",
@@ -210,11 +213,12 @@ export function PostComposerSettingsSections({
           checked={identity === "pseudonym" && !agentIdentitySelected}
           description={copy.publicIdentityDescription}
           icon={
-            publicAvatarSrc ? (
-              <img alt="" className="size-full rounded-full object-cover" src={publicAvatarSrc} />
-            ) : (
-              <span className="text-base font-bold">{publicIdentityInitials}</span>
-            )
+            <Avatar
+              className="h-full w-full border-0"
+              fallback={publicIdentityInitials}
+              fallbackSeed={publicAvatarSeed}
+              src={publicAvatarSrc}
+            />
           }
           onClick={() => onIdentityChange("pseudonym")}
           title={publicIdentityLabel}

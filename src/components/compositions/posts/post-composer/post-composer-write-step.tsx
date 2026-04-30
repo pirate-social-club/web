@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { CardContent } from "@/components/primitives/card";
+import { Input } from "@/components/primitives/input";
 import { Textarea } from "@/components/primitives/textarea";
 import { cn } from "@/lib/utils";
 
@@ -218,11 +219,11 @@ export function PostComposerWriteStep({
   if (!controller.isMobile) {
     return (
       <CardContent className="space-y-8 p-6">
-        <Textarea
-          className="min-h-20 resize-none break-words rounded-none border-0 bg-transparent px-0 py-0 text-3xl font-semibold leading-tight shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+        <Input
           maxLength={300}
           onChange={(event) => controller.fields.onTitleValueChange?.(event.target.value)}
-          placeholder={controller.copy.placeholders.title}
+          placeholder="Title*"
+          size="title"
           value={controller.fields.titleValue}
         />
         <PostComposerAttachmentCard
@@ -233,11 +234,11 @@ export function PostComposerWriteStep({
         />
         <Textarea
           className={cn(
-            "min-h-56 resize-none rounded-none border-0 bg-transparent px-0 py-0 text-xl leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0",
+            "min-h-56 resize-none text-xl leading-relaxed",
             write.attachment?.kind === "link" && "min-h-40",
           )}
           onChange={(event) => updateBody(controller, event.target.value)}
-          placeholder={write.attachment ? controller.copy.placeholders.optional : controller.copy.placeholders.body}
+          placeholder={write.attachment ? "Optional" : "Body text (optional)"}
           value={bodyValue(controller)}
         />
         <PostComposerDesktopAttachmentToolbar

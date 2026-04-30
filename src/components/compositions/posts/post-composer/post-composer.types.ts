@@ -190,9 +190,12 @@ export interface ComposerIdentityState {
   identityMode?: IdentityMode;
   authorMode?: AuthorMode;
   publicHandle?: string;
+  publicAvatarSrc?: string | null;
+  publicAvatarSeed?: string | null;
   realNameLabel?: string;
   reputationLabel?: string;
   anonymousLabel?: string;
+  anonymousDescription?: string;
   agentLabel?: string;
   availableQualifiers?: QualifierOption[];
   selectedQualifierIds?: string[];

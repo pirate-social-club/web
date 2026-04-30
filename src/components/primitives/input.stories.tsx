@@ -24,6 +24,14 @@ export const Large: Story = {
   render: () => <Input placeholder="Large input..." size="lg" />,
 };
 
+export const Title: Story = {
+  render: () => (
+    <div className="w-full max-w-xl">
+      <Input placeholder="Title*" size="title" />
+    </div>
+  ),
+};
+
 export const Types: Story = {
   render: () => (
     <div className="w-full max-w-sm space-y-3">

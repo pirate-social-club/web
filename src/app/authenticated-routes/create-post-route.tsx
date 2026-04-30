@@ -35,6 +35,7 @@ import {
 import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
 import { NotFoundPage } from "./misc-routes";
 import {
+  resolveAnonymousComposerDescription,
   resolveAnonymousComposerLabel,
   resolvePublicIdentityLabel,
 } from "@/app/authenticated-helpers/post-presentation";
@@ -48,6 +49,8 @@ import {
 } from "@/app/authenticated-helpers/route-shell";
 import { useCreatePostState } from "@/app/authenticated-state/create-post-state";
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
+import { useKnownCommunities } from "@/lib/known-communities-store";
+import type { CommunityPickerItem } from "@/components/compositions/posts/post-composer/post-composer.types";
 
 type CreatePostState = ReturnType<typeof useCreatePostState>;
 type RouteCopy = ReturnType<typeof useRouteMessages>["copy"];
@@ -76,7 +79,7 @@ function canAdvanceMobileComposerStep(
 }
 
 function mobileComposerTitle(current: ComposerStep) {
-  if (current === "publish") return "Preview";
+  if (current === "publish") return "Preview Post";
   return "";
 }
 
@@ -95,17 +98,34 @@ function CreatePostComposer({
   composerStep?: ComposerStep;
   onComposerStepChange?: (step: ComposerStep) => void;
 }) {
+  const knownCommunities = useKnownCommunities();
+
   if (!state.community) {
     return null;
   }
+
+  const communityPickerItems: CommunityPickerItem[] = React.useMemo(
+    () =>
+      knownCommunities.map((c) => ({
+        communityId: c.communityId,
+        displayName: c.displayName,
+        avatarSrc: c.avatarSrc,
+      })),
+    [knownCommunities],
+  );
 
   return (
     <PostComposer
       availableTabs={["text", "image", "video", "link", "song"]}
       canCreateSongPost
+      clubAvatarSrc={state.community.avatar_ref ?? undefined}
       clubName={`c/${state.community.display_name}`}
+      communityPickerItems={communityPickerItems}
       composerStep={composerStep}
       onComposerStepChange={onComposerStepChange}
+      onSelectCommunity={(selectedCommunityId) => {
+        navigate(`/c/${selectedCommunityId}/submit`);
+      }}
       draft={{
         audience: state.audience,
         captionValue: state.caption,
@@ -121,7 +141,12 @@ function CreatePostComposer({
           identityMode: state.identityMode,
           publicHandle:
             resolvePublicIdentityLabel(state.session?.profile) ?? "@handle",
+          publicAvatarSrc: state.session?.profile?.avatar_ref ?? null,
+          publicAvatarSeed: state.session?.profile?.user_id ?? null,
           anonymousLabel: resolveAnonymousComposerLabel(
+            state.community.anonymous_identity_scope,
+          ),
+          anonymousDescription: resolveAnonymousComposerDescription(
             state.community.anonymous_identity_scope,
           ),
           availableQualifiers: state.availableIdentityQualifiers,

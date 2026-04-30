@@ -64,7 +64,7 @@ function licenseCopyForPreset(
 }
 
 function settingsCopy(controller: PostComposerController) {
-  const { copy, license, tabs } = controller;
+  const { copy, identity, license, tabs } = controller;
   const assetLicenseCopy = license.assetLicenseCopy;
   const nonCommercial = licenseCopyForPreset(assetLicenseCopy, "non-commercial");
   const commercialUse = licenseCopyForPreset(assetLicenseCopy, "commercial-use");
@@ -73,7 +73,7 @@ function settingsCopy(controller: PostComposerController) {
   return {
     postAsTitle: copy.sections.postAs,
     publicIdentityDescription: "Your public profile",
-    anonymousIdentityDescription: "A community pseudonym",
+    anonymousIdentityDescription: identity.identity?.anonymousDescription ?? "Same identity across this community",
     visibilityTitle: "Who can see this?",
     publicVisibilityLabel: copy.audience.public,
     communityVisibilityLabel: copy.audience.community,
@@ -125,7 +125,7 @@ export function PostComposerSettingsHub({
   } = controller;
   const attachment = attachmentFromTab(controller);
   const publicHandle = identity.identity?.publicHandle ?? "name.pirate";
-  const anonymousLabel = identity.identity?.anonymousLabel ?? "Anonymous";
+  const anonymousLabel = identity.identity?.anonymousLabel ?? "Pseudonym";
   const access = accessFromController(controller);
 
   return (
@@ -181,6 +181,8 @@ export function PostComposerSettingsHub({
           }))
         }
         price={commerce.monetizationState.priceUsd ?? ""}
+        publicAvatarSrc={identity.publicAvatarSrc ?? undefined}
+        publicAvatarSeed={identity.publicAvatarSeed ?? undefined}
         publicIdentityInitials={publicInitials(publicHandle)}
         publicIdentityLabel={publicHandle}
         royaltyPercent={String(license.state.commercialRevSharePct ?? 10)}

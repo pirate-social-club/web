@@ -12,6 +12,10 @@ import { buildPostComposerPreviewContent } from "./post-composer-preview";
 import type { AttachmentState } from "./post-composer.types";
 import type { PostComposerController } from "./use-post-composer-controller";
 
+type PostComposerPublishSettingsProps = {
+  controller: PostComposerController;
+};
+
 function formatPrice(value?: string) {
   const normalized = value?.trim();
   if (!normalized) return "$1.00";
@@ -100,7 +104,7 @@ function buildPreviewPost(
   const authorLabel = identity.authorMode === "agent" && identity.identity?.agentLabel
     ? identity.identity.agentLabel
     : identity.identityMode === "anonymous"
-      ? identity.identity?.anonymousLabel ?? "Anonymous"
+      ? identity.identity?.anonymousLabel ?? "Pseudonym"
       : identity.identity?.publicHandle ?? "name.pirate";
 
   return {
@@ -108,6 +112,8 @@ function buildPreviewPost(
       author: {
         kind: "user",
         label: authorLabel,
+        avatarSrc: identity.identity?.publicAvatarSrc ?? undefined,
+        avatarSeed: identity.identity?.publicAvatarSeed ?? undefined,
       },
       timestampLabel: audience.state.visibility === "public" ? "Public" : "Community",
     },
@@ -133,9 +139,7 @@ function buildPreviewPost(
 
 export function PostComposerPublishSettings({
   controller,
-}: {
-  controller: PostComposerController;
-}) {
+}: PostComposerPublishSettingsProps) {
   const imagePreviewUrl = useObjectUrl(controller.media.activeImageUpload);
   const videoPreviewUrl = useObjectUrl(controller.media.videoState.primaryVideoUpload);
   const attachment = attachmentFromController(controller, imagePreviewUrl, videoPreviewUrl);

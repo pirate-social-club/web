@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/primitives/card";
+import { Type } from "@/components/primitives/type";
 
 import type { PostComposerProps } from "./post-composer.types";
 import { ShellPill } from "./post-composer-fields";
@@ -20,7 +21,7 @@ export function PostComposer(props: PostComposerProps) {
 
   if (isMobile) {
     return (
-      <div className="w-full space-y-7 pb-8">
+      <div className="w-full space-y-7">
         {step.isWriteStep ? (
           <>
             <div className="flex w-full flex-wrap items-center justify-between gap-3">
@@ -52,9 +53,18 @@ export function PostComposer(props: PostComposerProps) {
   }
 
   return (
-    <div className="w-full space-y-4">
-      {step.isWriteStep ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="w-full space-y-4 pt-2">
+      <div className="flex items-center justify-between gap-3">
+        <Type as="h1" variant="h2">
+          {step.isWriteStep
+            ? "Create post"
+            : step.isDetailsStep
+              ? "Post details"
+              : step.isSettingsStep
+                ? "Post settings"
+                : "Post preview"}
+        </Type>
+        {step.isWriteStep ? (
           <ShellPill
             avatarSrc={community.avatarSrc}
             communities={community.items}
@@ -65,8 +75,8 @@ export function PostComposer(props: PostComposerProps) {
           >
             {community.name}
           </ShellPill>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       <Card className="overflow-hidden bg-card shadow-none">
         {step.isWriteStep ? (

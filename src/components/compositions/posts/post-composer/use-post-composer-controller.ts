@@ -514,6 +514,8 @@ export function usePostComposerController(props: PostComposerProps) {
       authorMode,
       identity,
       identityMode,
+      publicAvatarSrc: identity?.publicAvatarSrc,
+      publicAvatarSeed: identity?.publicAvatarSeed,
       selectedQualifierIds,
       setAuthorMode: setAuthorModeWithCallback,
       setIdentityMode: setIdentityModeWithCallback,

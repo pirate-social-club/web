@@ -59,10 +59,10 @@ export function PostComposerMobileAttachmentBar({
 }) {
   return (
     <div
-      className="fixed inset-x-0 z-30 border-t border-border-soft bg-background/95 px-5 py-3 backdrop-blur-xl"
+      className="fixed inset-x-0 z-30 border-t border-border-soft bg-background/95 px-5 pt-3 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
       style={{ bottom: bottomOffset }}
     >
-      <div className="flex items-center gap-5">
+      <div className="flex items-center justify-between">
         {actions.map((action) => (
           <button
             aria-label={action.label}

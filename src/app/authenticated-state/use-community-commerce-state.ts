@@ -140,6 +140,7 @@ export function useCommunityCommerceState({
     void submitCommunitySave({
       action: (currentCommunity) => api.communities.updateDonationPolicy(currentCommunity.id, {
         donation_policy_mode: nextDonationMode,
+        donation_partner_id: nextDonationMode === "none" || !partnerPreview ? null : partnerPreview.donationPartnerId,
         donation_partner: nextDonationMode === "none" || !partnerPreview ? null : {
           donation_partner: partnerPreview.donationPartnerId,
           display_name: partnerPreview.displayName,

@@ -12,6 +12,7 @@ installDomGlobals();
 
 type DonationPolicyBody = {
   donation_policy_mode: "none" | "optional_creator_sidecar";
+  donation_partner_id: string | null;
   donation_partner: {
     donation_partner: string;
     display_name: string;
@@ -264,6 +265,7 @@ describe("useCommunityCommerceState", () => {
       communityId: "community-1",
       body: {
         donation_policy_mode: "optional_creator_sidecar",
+        donation_partner_id: "partner-3",
         donation_partner: {
           donation_partner: "partner-3",
           display_name: "Saved Org",

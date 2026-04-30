@@ -452,7 +452,21 @@
     "installPromoBody": "把 Pirate 放到主屏幕上，绝不错过任何一笔款项。",
     "installPromoAction": "安装",
     "installPromoDismiss": "以后再说",
-    "installPromoIOSInstructions": "点击下方分享按钮，然后向下滚动并点击\"添加到主屏幕\"。"
+    "installPromoIOSInstructions": "点击下方分享按钮，然后向下滚动并点击\"添加到主屏幕\"。",
+    "taskUniqueHumanVerificationRequired": "Verify you're human",
+    "taskProfileCompletionSuggested": "Finish your profile",
+    "taskGlobalHandleCleanupSuggested": "Choose your .pirate name",
+    "taskMembershipReview": "Membership requests",
+    "taskUniqueHumanVerificationMeta": "Take a photo of your palm",
+    "taskProfileCompletionMeta": "Add a name, bio, avatar, or cover",
+    "taskGlobalHandleCleanupMeta": "Replace your generated handle",
+    "pendingCount": "{count} pending",
+    "eventXmtpMessage": "{actor} sent a message",
+    "eventRoyaltyEarned": "Royalty earned",
+    "eventRoyaltyContext": "{amount} from {title}",
+    "eventRoyaltyContextAmount": "{amount}",
+    "royaltyPurchasedBy": "Purchased by {buyer} · {amount}",
+    "loadingNotifications": "Loading notifications..."
   },
   "createCommunity": {
     "reopenVerification": "重新打开验证",

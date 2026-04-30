@@ -16,4 +16,23 @@ describe("getErrorMessage", () => {
     expect(getErrorMessage("", "Fallback")).toBe("Fallback");
     expect(getErrorMessage({ message: "not trusted" }, "Fallback")).toBe("Fallback");
   });
+
+  test("falls back for unhelpful browser network errors", () => {
+    const fallback = "The post composer could not be loaded right now.";
+
+    expect(getErrorMessage(new Error("Failed to fetch"), fallback)).toBe(fallback);
+    expect(getErrorMessage(new Error("TypeError: Failed to fetch"), fallback)).toBe(fallback);
+    expect(getErrorMessage(new Error("NetworkError when attempting to fetch resource."), fallback)).toBe(fallback);
+    expect(getErrorMessage(new Error("Load failed"), fallback)).toBe(fallback);
+    expect(getErrorMessage(new Error("Network request failed"), fallback)).toBe(fallback);
+    expect(getErrorMessage(new Error("fetch failed"), fallback)).toBe(fallback);
+    expect(getErrorMessage("Failed to fetch", fallback)).toBe(fallback);
+  });
+
+  test("preserves helpful error messages that contain network words", () => {
+    const fallback = "Fallback";
+
+    expect(getErrorMessage(new Error("Failed to fetch user profile"), fallback)).toBe("Failed to fetch user profile");
+    expect(getErrorMessage(new Error("Network routing table is full"), fallback)).toBe("Network routing table is full");
+  });
 });

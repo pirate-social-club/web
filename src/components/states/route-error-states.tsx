@@ -13,21 +13,23 @@ export function RouteLoadFailureState({
   description: string;
 }) {
   return (
-    <section className="flex min-w-0 flex-1 flex-col justify-center px-1 py-2 md:max-w-3xl md:px-6 md:py-8">
-      <ErrorState
-        action={(
-          <div className="flex w-full flex-row gap-3">
-            <Button className="h-12 flex-1" onClick={() => window.location.reload()} size="lg">
-              Try Again
-            </Button>
-            <Button className="h-12 flex-1" onClick={() => navigate("/")} size="lg" variant="secondary">
-              Go Home
-            </Button>
-          </div>
-        )}
-        description={description}
-        title={title}
-      />
+    <section className="flex min-w-0 flex-1 flex-col justify-center">
+      <div className="mx-auto w-full max-w-3xl px-1 py-2 md:px-6 md:py-8">
+        <ErrorState
+          action={(
+            <div className="flex w-full flex-row gap-3">
+              <Button className="h-12 flex-1" onClick={() => window.location.reload()} size="lg">
+                Try Again
+              </Button>
+              <Button className="h-12 flex-1" onClick={() => navigate("/")} size="lg" variant="secondary">
+                Go Home
+              </Button>
+            </div>
+          )}
+          description={description}
+          title={title}
+        />
+      </div>
     </section>
   );
 }

@@ -22,7 +22,7 @@ import { CommunityPageShell } from "@/components/compositions/community/page-she
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel } from "@/lib/identity-gates";
+import { getGateFailureMessage, getJoinCtaLabel, getMissingCapabilitiesFromGateEvaluation } from "@/lib/identity-gates";
 import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -89,10 +89,10 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     setPosts,
   } = useCommunityPageData(communityId, contentLocale, activeSort);
   const ownsCommunity =
-    session?.user?.user_id === community?.created_by_user_id;
+    session?.user?.id === community?.created_by_user;
   const canCreatePost =
     ownsCommunity || eligibility?.status === "already_joined";
-  const commerceEnabled = Boolean(session?.user?.user_id) && canCreatePost;
+  const commerceEnabled = Boolean(session?.user?.id) && canCreatePost;
   const {
     listingsByAssetId,
     purchasesByAssetId,
@@ -109,7 +109,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     followerCount: number | null;
     viewerFollowing: boolean;
   } | null>(null);
-  const previewCommunityId = preview?.community_id ?? null;
+  const previewCommunityId = preview?.id ?? null;
   const viewerFollowing =
     followState?.communityId === previewCommunityId
       ? followState.viewerFollowing
@@ -160,7 +160,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   const communityCreatePostPath = React.useMemo(
     () =>
       community
-        ? `${buildCommunityPath(community.community_id, community.route_slug ?? preview?.route_slug)}/submit`
+        ? `${buildCommunityPath(community.id, community.route_slug ?? preview?.route_slug)}/submit`
         : `${buildCommunityPath(communityId)}/submit`,
     [community, communityId, preview?.route_slug],
   );
@@ -183,12 +183,12 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   React.useEffect(() => {
     if (!preview) return;
     setFollowState({
-      communityId: preview.community_id,
+      communityId: preview.id,
       followerCount: preview.follower_count ?? null,
       viewerFollowing: Boolean(preview.viewer_following),
     });
   }, [
-    preview?.community_id,
+    preview?.id,
     preview?.follower_count,
     preview?.viewer_following,
   ]);
@@ -259,7 +259,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         ? await api.communities.unfollow(communityId)
         : await api.communities.follow(communityId);
       setFollowState({
-        communityId: result.community_id,
+        communityId: result.community,
         followerCount: result.follower_count ?? null,
         viewerFollowing: result.following,
       });
@@ -293,7 +293,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         onStartSelfVerification: async (gate) => {
           const result = await startSelfVerification({
             showToastOnError: true,
-            missingCapabilities: gate.eligibility.missing_capabilities,
+            missingCapabilities: getMissingCapabilitiesFromGateEvaluation(gate.eligibility),
             membershipGateSummaries:
               gate.eligibility.membership_gate_summaries,
             skipModal: true,
@@ -330,14 +330,14 @@ export function CommunityPage({ communityId }: { communityId: string }) {
         gateData: {
           eligibility,
           preview: {
-            community_id: preview.community_id,
+            id: preview.id,
             display_name: preview.display_name,
             membership_gate_summaries: preview.membership_gate_summaries,
           },
         },
         onAllowed: async () => {
           const previousPost = posts.find(
-            (postResponse) => postResponse.post.post_id === postId,
+            (postResponse) => postResponse.post.id === postId,
           );
           await submitOptimisticPostVote({
             direction,
@@ -348,7 +348,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
             onRollback: (restoredPost) =>
               setPosts((current) =>
                 current.map((postResponse) =>
-                  postResponse.post.post_id === postId
+                  postResponse.post.id === postId
                     ? restoredPost
                     : postResponse,
                 ),
@@ -412,13 +412,13 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     eligibility.status === "gate_failed" ||
     eligibility.status === "banned";
   const feedItems = posts.map((post) => {
-    const assetId = post.post.asset_id ?? undefined;
+    const assetId = post.post.asset ?? undefined;
     return toCommunityFeedItem(
       post,
       authorProfiles,
       post.post.post_type === "song" || post.post.post_type === "video"
         ? {
-            currentUserId: session?.user?.user_id,
+            currentUserId: session?.user?.id,
             listing: assetId ? listingsByAssetId[assetId] : undefined,
             localeTag,
             onBuy:
@@ -436,8 +436,8 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           }
         : undefined,
       {
-        onComment: () => navigate(`/p/${post.post.post_id}`),
-        onVote: (direction) => void voteOnPost(post.post.post_id, direction),
+        onComment: () => navigate(`/p/${post.post.id}`),
+        onVote: (direction) => void voteOnPost(post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
       },
@@ -487,7 +487,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     </div>
   );
   const routeLabel = formatCommunityRouteLabel(
-    community.community_id,
+    community.id,
     community.route_slug ?? preview.route_slug,
   );
   const previewSidebar = buildCommunityPreviewSidebar(preview, locale);
@@ -543,12 +543,12 @@ export function CommunityPage({ communityId }: { communityId: string }) {
           avatarSrc={community.avatar_ref ?? undefined}
           availableSorts={sortOptions}
           bannerSrc={community.banner_ref ?? undefined}
-          communityId={community.community_id}
+          communityId={community.id}
           headerAction={headerAction}
           items={feedItems}
           onSortChange={setActiveSort}
           routeLabel={routeLabel}
-          routeVerified={Boolean(community.namespace_verification_id)}
+          routeVerified={Boolean(community.namespace_verification)}
           sidebar={{
             ...buildCommunitySidebar(community, locale),
             followerCount,
@@ -563,12 +563,12 @@ export function CommunityPage({ communityId }: { communityId: string }) {
             namespacePanel: ownsCommunity
               ? {
                   routeLabel,
-                  status: community.namespace_verification_id
+                  status: community.namespace_verification
                     ? "verified"
-                    : community.pending_namespace_verification_session_id
+                    : community.pending_namespace_verification_session
                       ? "pending"
                       : "available",
-                  onOpen: community.namespace_verification_id
+                  onOpen: community.namespace_verification
                     ? undefined
                     : () =>
                         navigate(

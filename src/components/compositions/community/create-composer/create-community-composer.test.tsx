@@ -35,6 +35,11 @@ function installHookStubs() {
     ) => callback) as unknown as typeof React.useCallback),
     spyOn(React, "useEffect").mockImplementation((() => undefined) as unknown as typeof React.useEffect),
     spyOn(React, "useId").mockImplementation((() => "test-id") as unknown as typeof React.useId),
+    spyOn(React, "useSyncExternalStore").mockImplementation(((
+      _subscribe: unknown,
+      _getSnapshot: unknown,
+      getServerSnapshot?: () => unknown,
+    ) => getServerSnapshot?.() ?? false) as unknown as typeof React.useSyncExternalStore),
   ];
 }
 
@@ -154,6 +159,7 @@ describe("CreateCommunityComposer", () => {
         ageOver18Verified: true,
       },
       displayName: "Collectors",
+      gateDrafts: [],
       initialStep: 2,
       membershipMode: "gated",
     });
@@ -183,6 +189,64 @@ describe("CreateCommunityComposer", () => {
 
     expect(emptyNext?.props.disabled).toBe(true);
     expect(validNext?.props.disabled).toBe(false);
+  });
+
+  test("renders and submits document sex marker gates", () => {
+    let submitted: Parameters<NonNullable<CreateCommunityComposerProps["onCreate"]>>[0] | null = null;
+    const genderGate: IdentityGateDraft = {
+      gateType: "gender",
+      provider: "self",
+      requiredValue: "F",
+    };
+    const accessTree = renderComposer({
+      creatorVerificationState: {
+        ageOver18Verified: true,
+      },
+      displayName: "Marker Club",
+      gateDrafts: [genderGate],
+      initialStep: 2,
+      membershipMode: "gated",
+    });
+    const submitTree = renderComposer({
+      creatorVerificationState: {
+        ageOver18Verified: true,
+      },
+      displayName: "Marker Club",
+      gateDrafts: [genderGate],
+      initialStep: 3,
+      membershipMode: "gated",
+      onCreate: (input) => {
+        submitted = input;
+        return Promise.resolve({ communityId: "community-marker" });
+      },
+    });
+
+    const genderOption = findElement(
+      accessTree,
+      (element) => element.props.title === "Document sex marker (verified ID)",
+    );
+    const fMarkerOption = findElement(
+      accessTree,
+      (element) => element.props.title === "F marker",
+    );
+    const next = findElement(
+      accessTree,
+      (element) => element.props.children === "Next" && "disabled" in element.props,
+    );
+    const createButton = findElement(
+      submitTree,
+      (element) => element.props.children === "Create Community" && typeof element.props.onClick === "function",
+    );
+    if (!createButton) {
+      throw new Error("Missing create button");
+    }
+
+    (createButton.props.onClick as (() => void) | undefined)?.();
+
+    expect(genderOption === null).toBe(false);
+    expect(fMarkerOption === null).toBe(false);
+    expect(next?.props.disabled).toBe(false);
+    expect(submitted?.gateDrafts).toEqual([genderGate]);
   });
 
   test("submits the trimmed final payload with the effective age policy", () => {
@@ -233,5 +297,44 @@ describe("CreateCommunityComposer", () => {
       gateDrafts: [minimumAgeGate],
       membershipMode: "gated",
     });
+  });
+
+  test("does not submit stale gate drafts for request membership", () => {
+    let submitted: Parameters<NonNullable<CreateCommunityComposerProps["onCreate"]>>[0] | null = null;
+    const passportGate: IdentityGateDraft = {
+      gateType: "wallet_score",
+      provider: "passport",
+      minimumScore: 20,
+    };
+    const tree = renderComposer({
+      creatorVerificationState: {
+        ageOver18Verified: true,
+      },
+      displayName: "Request Club",
+      gateDrafts: [passportGate],
+      initialStep: 3,
+      membershipMode: "request",
+      onCreate: (input) => {
+        submitted = input;
+        return Promise.resolve({ communityId: "community-request" });
+      },
+    });
+
+    const createButton = findElement(
+      tree,
+      (element) => element.props.children === "Create Community" && typeof element.props.onClick === "function",
+    );
+    if (!createButton) {
+      throw new Error("Missing create button");
+    }
+
+    (createButton.props.onClick as (() => void) | undefined)?.();
+
+    if (!submitted) {
+      throw new Error("Create handler was not called");
+    }
+    const payload = submitted as Parameters<NonNullable<CreateCommunityComposerProps["onCreate"]>>[0];
+    expect(payload.membershipMode).toBe("request");
+    expect(payload.gateDrafts).toEqual([]);
   });
 });

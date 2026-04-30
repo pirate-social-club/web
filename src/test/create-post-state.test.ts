@@ -5,7 +5,7 @@ import { isPublicAudienceAllowed } from "../app/authenticated-state/create-post-
 
 function createCommunity(overrides: Partial<Community> = {}): Community {
   return {
-    community_id: "cmt_test",
+    community: "cmt_test",
     creator_user_id: "usr_test",
     display_name: "Test community",
     route_slug: "test-community",
@@ -21,11 +21,11 @@ function createCommunity(overrides: Partial<Community> = {}): Community {
     allow_anonymous_identity: false,
     anonymous_identity_scope: "community_stable",
     allowed_disclosed_qualifiers: [],
-    created_at: "2026-01-01T00:00:00.000Z",
-    updated_at: "2026-01-01T00:00:00.000Z",
+    created: "2026-01-01T00:00:00.000Z",
+    updated: "2026-01-01T00:00:00.000Z",
     donation_policy_mode: "none",
     donation_partner_status: "unconfigured",
-    donation_partner_id: null,
+    donation_partner: null,
     donation_partner: null,
     default_monetization: null,
     openai_moderation_settings: null,
@@ -45,14 +45,14 @@ describe("isPublicAudienceAllowed", () => {
       membership_mode: "gated",
       gate_rules: [
         {
-          gate_rule_id: "gate_nat_us",
-          community_id: "cmt_test",
+          id: "gate_nat_us",
+          community: "cmt_test",
           scope: "membership",
           gate_family: "identity_proof",
           gate_type: "nationality",
           status: "active",
-          created_at: "2026-01-01T00:00:00.000Z",
-          updated_at: "2026-01-01T00:00:00.000Z",
+          created: "2026-01-01T00:00:00.000Z",
+          updated: "2026-01-01T00:00:00.000Z",
           proof_requirements: [
             {
               proof_type: "nationality",
@@ -71,14 +71,14 @@ describe("isPublicAudienceAllowed", () => {
     const community = createCommunity({
       gate_rules: [
         {
-          gate_rule_id: "gate_viewer_human",
-          community_id: "cmt_test",
+          id: "gate_viewer_human",
+          community: "cmt_test",
           scope: "viewer",
           gate_family: "identity_proof",
           gate_type: "unique_human",
           status: "active",
-          created_at: "2026-01-01T00:00:00.000Z",
-          updated_at: "2026-01-01T00:00:00.000Z",
+          created: "2026-01-01T00:00:00.000Z",
+          updated: "2026-01-01T00:00:00.000Z",
           proof_requirements: [
             {
               proof_type: "unique_human",

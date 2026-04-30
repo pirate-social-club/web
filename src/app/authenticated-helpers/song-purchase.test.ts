@@ -11,15 +11,15 @@ import { executeSongPurchase, resolveQuoteDiscountPercent } from "@/app/authenti
 
 function createListing(): ApiCommunityListing {
   return {
-    listing_id: "listing-1",
-    community_id: "community-1",
+    listing: "listing-1",
+    community: "community-1",
     status: "active",
     listing_mode: "fixed_price",
-    price_usd: 5,
+    price_cents: 500,
     regional_pricing_enabled: false,
-    created_by_user_id: "user-1",
-    created_at: "2026-01-01T00:00:00Z",
-    updated_at: "2026-01-01T00:00:00Z",
+    created_by_user: "user-1",
+    created: "2026-01-01T00:00:00Z",
+    updated: "2026-01-01T00:00:00Z",
   } as ApiCommunityListing;
 }
 
@@ -47,21 +47,21 @@ function createCommunities(overrides: {
       createPurchaseQuote: async (_communityId: string) => {
         calls.createPurchaseQuote.push(_communityId);
         return {
-          quote_id: "quote-1",
-          community_id: _communityId,
-          listing_id: "listing-1",
+          quote: "quote-1",
+          community: _communityId,
+          listing: "listing-1",
           buyer_user_id: "user-1",
-          base_price_usd: 5,
-          final_price_usd: 5,
+          base_price_cents: 500,
+          final_price_cents: 500,
           settlement_mode: "delivery_only_story_settlement",
           allocation_snapshot: [],
           funding_mode: "routed",
-          funding_asset: { asset_symbol: "USDC", chain_namespace: "eip155", chain_id: 84532, display_name: "USDC" },
-          source_chain: { chain_namespace: "eip155", chain_id: 84532, display_name: "Base Sepolia" },
+          funding_asset: { asset_symbol: "USDC", chain_namespace: "eip155", chain: 84532, display_name: "USDC" },
+          source_chain: { chain_namespace: "eip155", chain: 84532, display_name: "Base Sepolia" },
           route_provider: "pirate_checkout",
           route_policy_compliant: true,
           policy_origin: "explicit",
-          destination_settlement_chain: { chain_namespace: "story", chain_id: 1315, display_name: "Story Aeneid" },
+          destination_settlement_chain: { chain_namespace: "story", chain: 1315, display_name: "Story Aeneid" },
           destination_settlement_token: "IP",
           funding_destination_address: null,
           quote_ttl_seconds: 60,
@@ -73,28 +73,28 @@ function createCommunities(overrides: {
           ...overrides.quote,
         } as CommunityPurchaseQuote;
       },
-      failPurchase: async (_communityId: string, body: { quote_id: string }) => {
-        calls.failPurchase.push(body.quote_id);
+      failPurchase: async (_communityId: string, body: { quote: string }) => {
+        calls.failPurchase.push(body.quote);
         return {
-          quote_id: body.quote_id,
-          community_id: _communityId,
+          quote: body.quote,
+          community: _communityId,
           status: "failed" as const,
           failed_at: "2026-01-01T00:00:00Z",
           expires_at: "2026-01-01T00:01:00Z",
         };
       },
-      settlePurchase: async (_communityId: string, body: { quote_id: string }) => {
-        calls.settlePurchase.push(body.quote_id);
+      settlePurchase: async (_communityId: string, body: { quote: string }) => {
+        calls.settlePurchase.push(body.quote);
         return {
           purchase_id: "purchase-1",
-          quote_id: body.quote_id,
-          community_id: _communityId,
-          listing_id: "listing-1",
+          quote: body.quote,
+          community: _communityId,
+          listing: "listing-1",
           buyer_user_id: "user-1",
           settlement_wallet_attachment_id: "wallet-1",
-          purchase_price_usd: 5,
+          purchase_price_cents: 500,
           settlement_mode: "delivery_only_story_settlement",
-          settlement_chain: { chain_namespace: "story", chain_id: 1315, display_name: "Story Aeneid" },
+          settlement_chain: { chain_namespace: "story", chain: 1315, display_name: "Story Aeneid" },
           settlement_chain_ref: "story",
           settlement_token: "IP",
           settlement_tx_ref: "0xabc",
@@ -178,13 +178,13 @@ describe("executeSongPurchase", () => {
 
 describe("resolveQuoteDiscountPercent", () => {
   test("computes one-decimal discount percentage from quote prices", () => {
-    expect(resolveQuoteDiscountPercent({ base_price_usd: 5, final_price_usd: 4 })).toBe(20);
-    expect(resolveQuoteDiscountPercent({ base_price_usd: 3.99, final_price_usd: 2.99 })).toBe(25.1);
+    expect(resolveQuoteDiscountPercent({ base_price_cents: 500, final_price_cents: 400 })).toBe(20);
+    expect(resolveQuoteDiscountPercent({ base_price_cents: 399, final_price_cents: 299 })).toBe(25.1);
   });
 
   test("returns null when quote has no discount", () => {
-    expect(resolveQuoteDiscountPercent({ base_price_usd: 5, final_price_usd: 5 })).toBeNull();
-    expect(resolveQuoteDiscountPercent({ base_price_usd: 5, final_price_usd: 6 })).toBeNull();
-    expect(resolveQuoteDiscountPercent({ base_price_usd: 0, final_price_usd: 0 })).toBeNull();
+    expect(resolveQuoteDiscountPercent({ base_price_cents: 500, final_price_cents: 500 })).toBeNull();
+    expect(resolveQuoteDiscountPercent({ base_price_cents: 500, final_price_cents: 600 })).toBeNull();
+    expect(resolveQuoteDiscountPercent({ base_price_cents: 0, final_price_cents: 0 })).toBeNull();
   });
 });

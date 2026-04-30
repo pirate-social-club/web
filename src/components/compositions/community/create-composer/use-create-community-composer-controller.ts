@@ -22,6 +22,8 @@ import type {
 } from "./create-community-composer.types";
 import { useCommunityGateState } from "./use-community-gate-state";
 
+const DEFAULT_MEMBERSHIP_MODE: CommunityMembershipMode | null = null;
+
 export function useCreateCommunityComposerController({
   avatarRef = "",
   bannerRef = "",
@@ -29,7 +31,7 @@ export function useCreateCommunityComposerController({
   databaseRegion = "aws-us-east-1",
   description = "",
   gateDrafts = [],
-  membershipMode = "open",
+  membershipMode = DEFAULT_MEMBERSHIP_MODE,
   defaultAgeGatePolicy = "none",
   allowAnonymousIdentity = true,
   anonymousIdentityScope: anonymousIdentityScopeProp,
@@ -41,9 +43,10 @@ export function useCreateCommunityComposerController({
   onCreate,
 }: CreateCommunityComposerProps) {
   const isMobile = useIsMobile();
+  const initialMembershipMode = membershipMode;
   const [activeStep, setActiveStep] = React.useState<ComposerStep>(initialStep ?? 1);
   const [activeMembershipMode, setActiveMembershipMode] =
-    React.useState<CommunityMembershipMode>(membershipMode);
+    React.useState<CommunityMembershipMode | null>(initialMembershipMode);
   const [activeDefaultAgeGatePolicy, setActiveDefaultAgeGatePolicy] =
     React.useState<CommunityDefaultAgeGatePolicy>(defaultAgeGatePolicy);
   const [activeAllowAnonymousIdentity, setActiveAllowAnonymousIdentity] =
@@ -60,7 +63,7 @@ export function useCreateCommunityComposerController({
   const [activeDescription, setActiveDescription] = React.useState(description ?? "");
   const [submitting, setSubmitting] = React.useState(false);
 
-  const gateState = useCommunityGateState(gateDrafts, activeMembershipMode);
+  const gateState = useCommunityGateState(gateDrafts, activeMembershipMode ?? "gated");
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? false;
   const hasAdultMinimumAgeGate =
     activeMembershipMode === "gated"
@@ -97,11 +100,11 @@ export function useCreateCommunityComposerController({
       displayName: activeDisplayName.trim(),
       databaseRegion: activeDatabaseRegion,
       description: activeDescription.trim() || null,
-      membershipMode: activeMembershipMode,
+      membershipMode: activeMembershipMode ?? "gated",
       defaultAgeGatePolicy: effectiveDefaultAgeGatePolicy,
       allowAnonymousIdentity: activeAllowAnonymousIdentity,
       anonymousIdentityScope: activeAnonymousScope,
-      gateDrafts: gateState.activeGateDrafts,
+      gateDrafts: activeMembershipMode === "gated" ? gateState.activeGateDrafts : [],
     })
       .catch((error: unknown) => {
         toast.error(error instanceof Error ? error.message : cc.createError);
@@ -131,11 +134,13 @@ export function useCreateCommunityComposerController({
       !!onCreate &&
       creatorCanCreate &&
       activeDisplayName.trim().length > 0 &&
+      activeMembershipMode != null &&
       gateState.gateDraftsValid,
     [
       onCreate,
       creatorCanCreate,
       activeDisplayName,
+      activeMembershipMode,
       gateState.gateDraftsValid,
     ],
   );
@@ -146,6 +151,7 @@ export function useCreateCommunityComposerController({
         return activeDisplayName.trim().length > 0;
       case 2:
         if (!deferCreatorVerification && !creatorAgeRequirementMet) return false;
+        if (activeMembershipMode == null) return false;
         return gateState.gateDraftsValid;
       case 3:
         return canCreateCommunity;
@@ -155,6 +161,7 @@ export function useCreateCommunityComposerController({
   }, [
     activeStep,
     activeDisplayName,
+    activeMembershipMode,
     gateState.gateDraftsValid,
     canCreateCommunity,
     creatorAgeRequirementMet,
@@ -165,7 +172,7 @@ export function useCreateCommunityComposerController({
     open: cc.membershipOpenLabel,
     request: cc.membershipRequestLabel,
     gated: cc.membershipGatedLabel,
-  })[activeMembershipMode];
+  })[activeMembershipMode ?? "gated"];
   const databaseRegionLabel = ({
     auto: cc.databaseRegionUsEast,
     "aws-us-east-1": cc.databaseRegionUsEast,
@@ -175,8 +182,9 @@ export function useCreateCommunityComposerController({
     "aws-ap-south-1": cc.databaseRegionIndia,
     "aws-ap-northeast-1": cc.databaseRegionJapan,
   })[activeDatabaseRegion];
-  const gateRequirementSummary = gateState.activeGateDrafts.length > 0
-    ? gateState.activeGateDrafts
+  const activeReviewGateDrafts = activeMembershipMode === "gated" ? gateState.activeGateDrafts : [];
+  const gateRequirementSummary = activeReviewGateDrafts.length > 0
+    ? activeReviewGateDrafts
         .map((draft) =>
           formatGateRequirement(
             draft.gateType === "erc721_holding"

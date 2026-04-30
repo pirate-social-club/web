@@ -61,7 +61,7 @@ describe("ApiClient media uploads", () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       request = input instanceof Request ? input : new Request(input, init);
-      return Response.json({ community_id: "cmt_test", status: "joined" });
+      return Response.json({ community: "cmt_test", status: "joined" });
     };
 
     try {
@@ -83,7 +83,7 @@ describe("ApiClient media uploads", () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       request = input instanceof Request ? input : new Request(input, init);
-      return Response.json({ community_id: "cmt_test", status: "requested" });
+      return Response.json({ community: "cmt_test", status: "requested" });
     };
 
     try {
@@ -180,7 +180,7 @@ describe("ApiClient media uploads", () => {
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       request = input instanceof Request ? input : new Request(input, init);
       return Response.json({
-        user_id: "usr_test",
+        user: "usr_test",
         global_handle: {
           global_handle_id: "ghl_test",
           label: "captainblackbeard.pirate",
@@ -191,26 +191,26 @@ describe("ApiClient media uploads", () => {
         },
         linked_handles: [
           {
-            linked_handle_id: "global:ghl_test",
+            linked_handle: "global:ghl_test",
             label: "captainblackbeard.pirate",
             kind: "pirate",
             verification_state: "verified",
           },
           {
-            linked_handle_id: "lnk_ens_test",
+            linked_handle: "lnk_ens_test",
             label: "blackbeard.eth",
             kind: "ens",
             verification_state: "verified",
           },
         ],
         primary_public_handle: {
-          linked_handle_id: "lnk_ens_test",
+          linked_handle: "lnk_ens_test",
           label: "blackbeard.eth",
           kind: "ens",
           verification_state: "verified",
         },
-        created_at: "2026-04-17T00:00:00.000Z",
-        updated_at: "2026-04-17T00:00:00.000Z",
+        created: "2026-04-17T00:00:00.000Z",
+        updated: "2026-04-17T00:00:00.000Z",
       });
     };
 
@@ -223,7 +223,7 @@ describe("ApiClient media uploads", () => {
       const profile = await client.profiles.syncLinkedHandles();
       const capturedRequest = requireRequest(request);
       expect(capturedRequest.method).toBe("POST");
-      expect(capturedRequest.url).toBe("http://pirate.test/profiles/me/linked-handles/sync");
+      expect(capturedRequest.url).toBe("http://pirate.test/profiles/me/sync_linked_handles");
       expect(profile.primary_public_handle?.label).toBe("blackbeard.eth");
     } finally {
       globalThis.fetch = originalFetch;
@@ -235,7 +235,7 @@ describe("ApiClient media uploads", () => {
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       request = input instanceof Request ? input : new Request(input, init);
       return Response.json({
-        user_id: "usr_test",
+        user: "usr_test",
         global_handle: {
           global_handle_id: "ghl_test",
           label: "captainblackbeard.pirate",
@@ -246,8 +246,8 @@ describe("ApiClient media uploads", () => {
         },
         linked_handles: [],
         primary_public_handle: null,
-        created_at: "2026-04-17T00:00:00.000Z",
-        updated_at: "2026-04-17T00:00:00.000Z",
+        created: "2026-04-17T00:00:00.000Z",
+        updated: "2026-04-17T00:00:00.000Z",
       });
     };
 
@@ -261,9 +261,9 @@ describe("ApiClient media uploads", () => {
 
       const capturedRequest = requireRequest(request);
       expect(capturedRequest.method).toBe("POST");
-      expect(capturedRequest.url).toBe("http://pirate.test/profiles/me/primary-public-handle");
+      expect(capturedRequest.url).toBe("http://pirate.test/profiles/me/set_primary_public_handle");
       expect(JSON.stringify(await capturedRequest.json())).toBe(
-        JSON.stringify({ linked_handle_id: "lnk_ens_test" }),
+        JSON.stringify({ linked_handle: "lnk_ens_test" }),
       );
     } finally {
       globalThis.fetch = originalFetch;
@@ -281,8 +281,8 @@ describe("ApiClient media uploads", () => {
         status: "active",
         current_ownership_record_id: "aor_test",
         current_ownership: null,
-        created_at: "2026-04-17T00:00:00.000Z",
-        updated_at: "2026-04-17T00:10:00.000Z",
+        created: "2026-04-17T00:00:00.000Z",
+        updated: "2026-04-17T00:10:00.000Z",
       });
     };
 
@@ -295,7 +295,7 @@ describe("ApiClient media uploads", () => {
       await client.agents.update("agt_test", { display_name: "Night Signal" });
 
       const capturedRequest = requireRequest(request);
-      expect(capturedRequest.method).toBe("PATCH");
+      expect(capturedRequest.method).toBe("POST");
       expect(capturedRequest.url).toBe("http://pirate.test/agents/agt_test");
       expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
       expect(JSON.stringify(await capturedRequest.json())).toBe(
@@ -316,14 +316,14 @@ describe("ApiClient media uploads", () => {
         is_canonical: true,
         created_communities: [
           {
-            community_id: "cmt_test",
+            community: "cmt_test",
             display_name: "Test Builders",
             route_slug: null,
-            created_at: "2026-04-17T00:00:00.000Z",
+            created: "2026-04-17T00:00:00.000Z",
           },
         ],
         profile: {
-          user_id: "usr_test",
+          id: "usr_test",
           global_handle: {
             global_handle_id: "ghl_test",
             label: "captain.pirate",
@@ -339,8 +339,8 @@ describe("ApiClient media uploads", () => {
           avatar_ref: null,
           cover_ref: null,
           preferred_locale: null,
-          created_at: "2026-04-17T00:00:00.000Z",
-          updated_at: "2026-04-17T00:00:00.000Z",
+          created: "2026-04-17T00:00:00.000Z",
+          updated: "2026-04-17T00:00:00.000Z",
         },
       });
     };
@@ -441,7 +441,7 @@ describe("ApiClient media uploads", () => {
       }
 
       return Response.json({
-        community_id: "cmt_test",
+        community: "cmt_test",
         display_name: "Captain Club",
         description: "Public preview",
         avatar_ref: null,
@@ -451,7 +451,7 @@ describe("ApiClient media uploads", () => {
         member_count: null,
         membership_gate_summaries: [],
         viewer_membership_status: "not_member",
-        created_at: "2026-04-17T00:00:00.000Z",
+        created: "2026-04-17T00:00:00.000Z",
       });
     };
 
@@ -560,7 +560,7 @@ describe("ApiClient media uploads", () => {
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const request = input instanceof Request ? input : new Request(input, init);
       requests.push(request);
-      return Response.json({ items: [], post: { post_id: "pst_test" } });
+      return Response.json({ items: [], post: { post: "pst_test" } });
     };
 
     try {
@@ -594,10 +594,10 @@ describe("ApiClient media uploads", () => {
 
       if (request.headers.get("authorization") === "Bearer fresh-token") {
         return Response.json({
-          user_id: "usr_test",
+          id: "usr_test",
           auth_sources: [],
-          created_at: "2026-04-17T00:00:00.000Z",
-          updated_at: "2026-04-17T00:00:00.000Z",
+          created: "2026-04-17T00:00:00.000Z",
+          updated: "2026-04-17T00:00:00.000Z",
         });
       }
 
@@ -624,7 +624,7 @@ describe("ApiClient media uploads", () => {
 
       const result = await requestPromise;
 
-      expect(result.user_id).toBe("usr_test");
+      expect(result.id).toBe("usr_test");
       expect(requests).toHaveLength(2);
       expect(requests[0]?.headers.get("authorization")).toBe("Bearer stale-token");
       expect(requests[1]?.headers.get("authorization")).toBe("Bearer fresh-token");
@@ -642,10 +642,10 @@ describe("ApiClient media uploads", () => {
       requests.push(request);
 
       return Response.json({
-        user_id: "usr_test",
+        id: "usr_test",
         auth_sources: [],
-        created_at: "2026-04-17T00:00:00.000Z",
-        updated_at: "2026-04-17T00:00:00.000Z",
+        created: "2026-04-17T00:00:00.000Z",
+        updated: "2026-04-17T00:00:00.000Z",
       });
     };
 
@@ -665,7 +665,7 @@ describe("ApiClient media uploads", () => {
 
       const result = await requestPromise;
 
-      expect(result.user_id).toBe("usr_test");
+      expect(result.id).toBe("usr_test");
       expect(requests).toHaveLength(1);
       expect(requests[0]?.headers.get("authorization")).toBe("Bearer fresh-token");
     } finally {

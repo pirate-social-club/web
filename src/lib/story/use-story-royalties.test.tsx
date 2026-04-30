@@ -37,27 +37,27 @@ const listClaimable = bunMock(async () => ({
   total_claimable_wip_wei: "12450000000000000000",
   items: [
     {
-      asset_id: "ast_one",
+      asset: "ast_one",
       claimable_wip_wei: "10000000000000000000",
-      community_id: "cmt_one",
-      ip_id: "0x1111111111111111111111111111111111111111",
+      community: "cmt_one",
+      ip: "0x1111111111111111111111111111111111111111",
       title: "Paid anthem",
     },
     {
-      asset_id: "ast_two",
+      asset: "ast_two",
       claimable_wip_wei: "2450000000000000000",
-      community_id: "cmt_two",
-      ip_id: "0x2222222222222222222222222222222222222222",
+      community: "cmt_two",
+      ip: "0x2222222222222222222222222222222222222222",
       title: "Basement session",
     },
   ],
 }));
 const recordClaim = bunMock(async () => ({
   claim_id: "rcl_test",
-  user_id: "usr_test",
+  user: "usr_test",
   tx_hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   wallet_address: walletAddress,
-  chain_id: 1315,
+  chain: 1315,
   claimable_wip_wei_at_submission: "12450000000000000000",
   ip_ids: [
     "0x1111111111111111111111111111111111111111",
@@ -68,8 +68,8 @@ const recordClaim = bunMock(async () => ({
   verified_at: null,
   verification_error: null,
   claimed_at: "2026-04-26T00:00:00Z",
-  created_at: "2026-04-26T00:00:00Z",
-  updated_at: "2026-04-26T00:00:00Z",
+  created: "2026-04-26T00:00:00Z",
+  updated: "2026-04-26T00:00:00Z",
 }));
 
 bunMock.module("@story-protocol/core-sdk", () => ({
@@ -165,7 +165,7 @@ describe("useStoryRoyalties", () => {
       {
       tx_hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       wallet_address: walletAddress,
-      chain_id: 1315,
+      chain: 1315,
       claimable_wip_wei_at_submission: "12450000000000000000",
       ip_ids: [
         "0x1111111111111111111111111111111111111111",

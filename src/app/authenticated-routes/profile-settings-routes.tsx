@@ -162,7 +162,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     setBio(profile.bio ?? "");
     setPreferredLocale(isUiLocaleCode(nextPreferredLocale ?? "") ? nextPreferredLocale as UiLocaleCode : locale);
     setNationalityBadgeEnabled(Boolean(profile.display_verified_nationality_badge));
-    setSelectedPrimaryHandleId(profile.primary_public_handle?.linked_handle_id ?? null);
+    setSelectedPrimaryHandleId(profile.primary_public_handle?.linked_handle ?? null);
     setAvatarFile(null);
     setCoverFile(null);
     setAvatarRemoved(false);
@@ -175,11 +175,11 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
 
   React.useEffect(() => {
     if (!profile || activeTab !== "profile") return;
-    const primaryWalletAttachmentId = session?.user.primary_wallet_attachment_id ?? null;
+    const primaryWalletAttachmentId = session?.user.primary_wallet_attachment ?? null;
     const hasEthereumWallet = walletAttachments.some((wallet) => wallet.chain_namespace === "eip155:1");
     if (!primaryWalletAttachmentId || !hasEthereumWallet) return;
 
-    const syncKey = `${profile.user_id}:${primaryWalletAttachmentId}`;
+    const syncKey = `${profile.id}:${primaryWalletAttachmentId}`;
     if (syncedPrimaryWalletRef.current === syncKey) return;
 
     syncedPrimaryWalletRef.current = syncKey;
@@ -188,16 +188,16 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
       .then((updatedProfile) => {
         if (cancelled) return;
         updateSessionProfile(updatedProfile);
-        setSelectedPrimaryHandleId(updatedProfile.primary_public_handle?.linked_handle_id ?? null);
+        setSelectedPrimaryHandleId(updatedProfile.primary_public_handle?.linked_handle ?? null);
       })
       .catch((error: unknown) => {
         logger.warn("[settings] linked handle sync failed", error);
       });
 
     return () => { cancelled = true; };
-  }, [activeTab, api, profile, session?.user.primary_wallet_attachment_id, walletAttachments]);
+  }, [activeTab, api, profile, session?.user.primary_wallet_attachment, walletAttachments]);
 
-  const profilePrimaryHandleId = profile?.primary_public_handle?.linked_handle_id ?? null;
+  const profilePrimaryHandleId = profile?.primary_public_handle?.linked_handle ?? null;
   const currentHandle = profile?.global_handle?.label ? profile.global_handle.label.replace(/\.pirate$/i, "").concat(".pirate") : "";
   const linkedHandles = profile ? mapProfileLinkedHandles(profile) : [];
   const verifiedEnsHandle = linkedHandles.find((handle) => handle.kind === "ens" && handle.verificationState === "verified") ?? null;
@@ -276,7 +276,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     try {
       const updatedProfile = await api.profiles.setPrimaryPublicHandle(selectedPrimaryHandleId);
       updateSessionProfile(updatedProfile);
-      setSelectedPrimaryHandleId(updatedProfile.primary_public_handle?.linked_handle_id ?? null);
+      setSelectedPrimaryHandleId(updatedProfile.primary_public_handle?.linked_handle ?? null);
       setPublicHandlesSubmitState({ kind: "idle" });
       toast.success(copy.settings.profileUpdated);
     } catch (e: unknown) {
@@ -343,7 +343,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         submitState: preferencesSubmitState,
       }}
       profile={{
-        avatarSeed: profile.user_id,
+        avatarSeed: profile.id,
         avatarSrc: avatarRemoved ? undefined : profile.avatar_ref ?? undefined,
         avatarSource: avatarRemoved ? "none" : profile.avatar_source ?? null,
         bio,

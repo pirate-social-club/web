@@ -155,7 +155,7 @@ export function useSelfVerification(input: {
       });
       const launch = result.launch?.self_app;
       const deeplinkCallback = isMobile && typeof window !== "undefined"
-        ? buildSelfVerificationCallbackHref(window.location.href, result.verification_session_id)
+        ? buildSelfVerificationCallbackHref(window.location.href, result.id)
         : null;
       const launchResult = buildSelfVerificationLaunch(launch, { deeplinkCallback });
       if ("error" in launchResult) {
@@ -176,7 +176,7 @@ export function useSelfVerification(input: {
       }
       writePendingSelfVerificationSession(storageKey, {
         requestedCapabilities: result.requested_capabilities,
-        verificationSessionId: result.verification_session_id,
+        verificationSessionId: result.id,
       });
       return { started: true, href: launchResult.href, openedModal };
     } catch (error: unknown) {
@@ -345,7 +345,7 @@ export function useSelfVerification(input: {
 
     const launch = selfSession.launch?.self_app;
     const deeplinkCallback = isMobile && typeof window !== "undefined"
-      ? buildSelfVerificationCallbackHref(window.location.href, selfSession.verification_session_id)
+      ? buildSelfVerificationCallbackHref(window.location.href, selfSession.id)
       : null;
     const launchResult = buildSelfVerificationLaunch(launch, { deeplinkCallback });
     if ("error" in launchResult) {

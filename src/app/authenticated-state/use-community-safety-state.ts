@@ -40,7 +40,7 @@ export function useCommunitySafetyState({
 
   const handleSaveSafety = React.useCallback(() => {
     void submitCommunitySave({
-      action: (currentCommunity) => api.communities.updateSafety(currentCommunity.community_id, {
+      action: (currentCommunity) => api.communities.updateSafety(currentCommunity.id, {
         adult_content_policy: { ...adultContentPolicy },
         civility_policy: { ...civilityPolicy },
         graphic_content_policy: { ...graphicContentPolicy },

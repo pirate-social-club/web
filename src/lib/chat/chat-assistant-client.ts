@@ -53,7 +53,7 @@ function storage(): Storage | null {
 }
 
 function cacheKey(session?: StoredSession | null): string {
-  const userId = session?.user.user_id ?? getStoredSession()?.user.user_id;
+  const userId = session?.user.id ?? getStoredSession()?.user.id;
   return userId ? `${ASSISTANT_CACHE_KEY}:${userId}` : ASSISTANT_CACHE_KEY;
 }
 

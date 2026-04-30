@@ -144,7 +144,7 @@ function resolvedTargetFromPublicProfile(
   const displayHandle = resolution.resolved_handle_label || resolution.profile.global_handle.label;
   return {
     address,
-    avatarSeed: resolution.profile.user_id,
+    avatarSeed: resolution.profile.id,
     avatarUrl: resolution.profile.avatar_ref ?? undefined,
     handle: displayHandle,
     profileHref: buildPublicProfilePath(displayHandle),

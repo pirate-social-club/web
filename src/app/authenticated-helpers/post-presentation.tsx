@@ -16,7 +16,7 @@ import { buildNationalityBadgeLabel } from "@/components/compositions/posts/post
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 
 import type { AssetSourceDescriptor, SongPlaybackController, SongPlaybackDescriptor } from "@/app/authenticated-helpers/song-commerce";
-import { formatUsdLabel } from "@/lib/formatting/currency";
+import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
 
 export type HomeFeedEntry = ApiHomeFeedItem;
@@ -107,7 +107,7 @@ export function resolvePublicAuthorFallback(
 }
 
 export function resolvePostAuthorLabel(
-  post: Pick<ApiPost["post"], "agent_display_name_snapshot" | "anonymous_label" | "author_user_id" | "authorship_mode" | "identity_mode">,
+  post: Pick<ApiPost["post"], "agent_display_name_snapshot" | "anonymous_label" | "author_user" | "authorship_mode" | "identity_mode">,
   authorProfile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
 ): string {
   if (post.identity_mode === "anonymous") {
@@ -116,11 +116,11 @@ export function resolvePostAuthorLabel(
 
   return post.authorship_mode === "user_agent" && post.agent_display_name_snapshot
     ? post.agent_display_name_snapshot
-    : resolvePublicAuthorFallback(post.author_user_id, authorProfile);
+    : resolvePublicAuthorFallback(post.author_user, authorProfile);
 }
 
 export function resolveAgentAuthor(
-  post: Pick<ApiPost["post"], "agent_display_name_snapshot" | "agent_owner_handle_snapshot" | "author_user_id" | "authorship_mode" | "identity_mode">,
+  post: Pick<ApiPost["post"], "agent_display_name_snapshot" | "agent_owner_handle_snapshot" | "author_user" | "authorship_mode" | "identity_mode">,
   authorProfile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
 ) {
   if (post.identity_mode !== "public" || post.authorship_mode !== "user_agent" || !post.agent_display_name_snapshot) {
@@ -129,8 +129,8 @@ export function resolveAgentAuthor(
 
   const ownerLabel = post.agent_owner_handle_snapshot?.trim()
     || resolvePublicIdentityLabel(authorProfile)
-    || resolvePublicAuthorFallback(post.author_user_id, authorProfile);
-  const ownerHref = post.author_user_id && authorProfile
+    || resolvePublicAuthorFallback(post.author_user, authorProfile);
+  const ownerHref = post.author_user && authorProfile
     ? buildPublicProfilePathForProfile(authorProfile)
     : undefined;
 
@@ -142,14 +142,14 @@ export function resolveAgentAuthor(
 }
 
 export function resolveCommentAuthorLabel(
-  comment: Pick<ApiCommentListItem["comment"], "anonymous_label" | "author_user_id" | "identity_mode">,
+  comment: Pick<ApiCommentListItem["comment"], "anonymous_label" | "author_user" | "identity_mode">,
   authorProfile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
 ): string {
   if (comment.identity_mode === "anonymous") {
     return comment.anonymous_label ?? "anon";
   }
 
-  return resolvePublicAuthorFallback(comment.author_user_id, authorProfile);
+  return resolvePublicAuthorFallback(comment.author_user, authorProfile);
 }
 
 export function resolvePostQualifierLabels(postResponse: ApiPost): string[] | undefined {
@@ -189,13 +189,13 @@ function toSongPlaybackDescriptor(
 ): SongPlaybackDescriptor | null {
   const { post } = postResponse;
   const mediaRef = post.media_refs?.[0]?.storage_ref ?? null;
-  const viewerOwnsPost = Boolean(input.currentUserId && post.author_user_id === input.currentUserId);
+  const viewerOwnsPost = Boolean(input.currentUserId && post.author_user === input.currentUserId);
   const isLocked = (post.access_mode ?? "public") === "locked";
   const hasFullAccess = !isLocked || viewerOwnsPost || Boolean(input.purchase);
 
   if (!isLocked && mediaRef) {
     return {
-      key: `public:${post.post_id}`,
+      key: `public:${post.id}`,
       title: post.title ?? "song",
       kind: "source",
       sourcePath: mediaRef,
@@ -203,19 +203,19 @@ function toSongPlaybackDescriptor(
     };
   }
 
-  if (hasFullAccess && post.asset_id) {
+  if (hasFullAccess && post.asset) {
     return {
-      key: `asset:${post.asset_id}`,
+      key: `asset:${post.asset}`,
       title: post.title ?? "song",
       kind: "asset",
-      communityId: post.community_id,
-      assetId: post.asset_id,
+      communityId: post.community,
+      assetId: post.asset,
     };
   }
 
   if (mediaRef) {
     return {
-      key: `preview:${post.post_id}`,
+      key: `preview:${post.id}`,
       title: post.title ?? "song preview",
       kind: "source",
       sourcePath: mediaRef,
@@ -234,19 +234,19 @@ function toVideoAssetSourceDescriptor(
   },
 ): AssetSourceDescriptor | null {
   const { post } = postResponse;
-  const viewerOwnsPost = Boolean(input.currentUserId && post.author_user_id === input.currentUserId);
+  const viewerOwnsPost = Boolean(input.currentUserId && post.author_user === input.currentUserId);
   const isLocked = (post.access_mode ?? "public") === "locked";
   const hasFullAccess = isLocked && (viewerOwnsPost || Boolean(input.purchase));
 
-  if (!hasFullAccess || !post.asset_id) {
+  if (!hasFullAccess || !post.asset) {
     return null;
   }
 
   return {
-    key: `video-asset:${post.asset_id}`,
+    key: `video-asset:${post.asset}`,
     title: post.title ?? "video",
-    communityId: post.community_id,
-    assetId: post.asset_id,
+    communityId: post.community,
+    assetId: post.asset,
   };
 }
 
@@ -356,7 +356,7 @@ export function toCommunityPostContent(
         durationMs: primaryMedia?.duration_ms ?? undefined,
         hasEntitlement: accessMode === "public"
           || Boolean(purchase)
-          || Boolean(songOptions?.currentUserId && post.author_user_id === songOptions.currentUserId),
+          || Boolean(songOptions?.currentUserId && post.author_user === songOptions.currentUserId),
         listingMode: listing ? "listed" : "not_listed",
         listingStatus: listing?.status === "active"
           ? "active"
@@ -369,7 +369,7 @@ export function toCommunityPostContent(
           : undefined,
         playbackState: assetSourceState?.playbackState ?? "idle",
         posterSrc: primaryMedia?.poster_ref ?? undefined,
-        priceLabel: listing ? formatUsdLabel(listing.price_usd, songOptions?.localeTag) : undefined,
+        priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
         src: assetSourceState?.src ?? primaryMedia?.storage_ref ?? "",
         title,
       };
@@ -388,7 +388,7 @@ export function toCommunityPostContent(
           preview: {
             authorName: embed.preview?.author_name,
             authorUrl: embed.preview?.author_url,
-            createdAt: embed.preview?.created_at,
+            createdAt: embed.preview?.created,
             hasMedia: embed.preview?.has_media,
             mediaUrl: embed.preview?.media_url,
             text: embed.preview?.text,
@@ -456,7 +456,7 @@ export function toCommunityPostContent(
         contentSafetyState: post.content_safety_state,
         hasEntitlement: (post.access_mode ?? "public") === "public"
           || Boolean(purchase)
-          || Boolean(songOptions?.currentUserId && post.author_user_id === songOptions.currentUserId),
+          || Boolean(songOptions?.currentUserId && post.author_user === songOptions.currentUserId),
         listingMode: listing ? "listed" : "not_listed",
         listingStatus: listing?.status === "active"
           ? "active"
@@ -467,7 +467,7 @@ export function toCommunityPostContent(
         onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
         onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
         playbackState,
-        priceLabel: listing ? formatUsdLabel(listing.price_usd, songOptions?.localeTag) : undefined,
+        priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
         rightsBasis: post.rights_basis ?? undefined,
         songMode: post.song_mode ?? undefined,
         title,
@@ -492,21 +492,21 @@ export function toCommunityFeedItem(
   opts?: PostPresentationOptions,
 ): FeedItem {
   const { post } = postResponse;
-  const authorProfile = post.author_user_id ? authorProfiles[post.author_user_id] ?? undefined : undefined;
+  const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
 
   const localizedPost = withTranslationToggleProps({
       byline: {
         author: {
           kind: "user",
           label: resolvePostAuthorLabel(post, authorProfile),
-          avatarSeed: post.identity_mode === "public" ? authorProfile?.user_id ?? post.author_user_id ?? undefined : undefined,
+          avatarSeed: post.identity_mode === "public" ? authorProfile?.id ?? post.author_user ?? undefined : undefined,
           avatarSrc: post.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
-          href: post.identity_mode === "public" && post.author_user_id && authorProfile
+          href: post.identity_mode === "public" && post.author_user && authorProfile
             ? buildPublicProfilePathForProfile(authorProfile)
             : undefined,
         },
         agentAuthor: resolveAgentAuthor(post, authorProfile),
-        timestampLabel: formatRelativeTimestamp(post.created_at),
+        timestampLabel: formatRelativeTimestamp(post.created),
       },
       content: toCommunityPostContent(postResponse, songOptions),
       engagement: {
@@ -522,12 +522,12 @@ export function toCommunityFeedItem(
         : undefined,
       onComment: opts?.onComment,
       onVote: opts?.onVote,
-      postHref: `/p/${post.post_id}`,
+      postHref: `/p/${post.id}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
       title: postResponse.translated_title ?? post.title ?? undefined,
       titleDir: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined,
       titleLang: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined,
-      titleHref: `/p/${post.post_id}`,
+      titleHref: `/p/${post.id}`,
       viewContext: "community",
     },
     postResponse,
@@ -544,7 +544,7 @@ export function toCommunityFeedItem(
     : undefined;
 
   return {
-    id: post.post_id,
+    id: post.id,
     post: localizedPost,
     postOriginal: originalPost,
   };
@@ -554,19 +554,19 @@ export function toCommunityFeedItem(
 export function toThreadPostCard(
   postResponse: ApiPost,
   community:
-    | Pick<ApiCommunity, "community_id" | "display_name" | "namespace_verification_id" | "route_slug">
-    | Pick<ApiCommunityPreview, "community_id" | "display_name" | "namespace_verification_id" | "route_slug">
+    | Pick<ApiCommunity, "id" | "display_name" | "namespace_verification" | "route_slug">
+    | Pick<ApiCommunityPreview, "id" | "display_name" | "namespace_verification" | "route_slug">
     | null,
   authorProfile?: ApiProfile,
   songOptions?: SongPresentationOptions,
   opts?: PostPresentationOptions,
 ): PostCardProps {
   const { post } = postResponse;
-  const communityVerified = Boolean(community?.namespace_verification_id);
+  const communityVerified = Boolean(community?.namespace_verification);
   const communityLabel = community
     ? communityVerified
-      ? formatCommunityRouteLabel(community.community_id, community.route_slug)
-      : community.display_name.trim() || formatCommunityRouteLabel(community.community_id, community.route_slug)
+      ? formatCommunityRouteLabel(community.id, community.route_slug)
+      : community.display_name.trim() || formatCommunityRouteLabel(community.id, community.route_slug)
     : undefined;
 
   return withTranslationToggleProps({
@@ -574,9 +574,9 @@ export function toThreadPostCard(
       author: {
         kind: "user",
         label: resolvePostAuthorLabel(post, authorProfile),
-        avatarSeed: post.identity_mode === "public" ? authorProfile?.user_id ?? post.author_user_id ?? undefined : undefined,
+        avatarSeed: post.identity_mode === "public" ? authorProfile?.id ?? post.author_user ?? undefined : undefined,
         avatarSrc: post.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
-        href: post.identity_mode === "public" && post.author_user_id && authorProfile
+        href: post.identity_mode === "public" && post.author_user && authorProfile
           ? buildPublicProfilePathForProfile(authorProfile)
           : undefined,
       },
@@ -584,12 +584,12 @@ export function toThreadPostCard(
       community: community
         ? {
           kind: "community",
-          label: communityLabel ?? community.community_id,
-          href: buildCommunityPath(community.community_id, community.route_slug),
+          label: communityLabel ?? community.id,
+          href: buildCommunityPath(community.id, community.route_slug),
           verificationStatus: communityVerified ? undefined : "unverified",
         }
         : undefined,
-      timestampLabel: formatRelativeTimestamp(post.created_at),
+      timestampLabel: formatRelativeTimestamp(post.created),
     },
     content: toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" }),
     engagement: {
@@ -605,7 +605,7 @@ export function toThreadPostCard(
       : undefined,
     onComment: opts?.onComment,
     onVote: opts?.onVote,
-    postHref: `/p/${post.post_id}`,
+    postHref: `/p/${post.id}`,
     qualifierLabels: resolvePostQualifierLabels(postResponse),
     title: opts?.preferOriginalText
       ? post.title ?? undefined
@@ -616,7 +616,7 @@ export function toThreadPostCard(
     titleLang: !opts?.preferOriginalText && postResponse.translation_state === "ready"
       ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
       : undefined,
-    titleHref: `/p/${post.post_id}`,
+    titleHref: `/p/${post.id}`,
     viewContext: "home",
   }, postResponse, opts);
 }

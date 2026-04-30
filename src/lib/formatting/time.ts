@@ -1,5 +1,5 @@
-export function formatRelativeTimestamp(isoString: string): string {
-  const timestamp = new Date(isoString).getTime();
+export function formatRelativeTimestamp(value: string | number): string {
+  const timestamp = typeof value === "number" ? value * 1000 : new Date(value).getTime();
   if (Number.isNaN(timestamp)) return "";
 
   const diffMinutes = Math.floor((Date.now() - timestamp) / 60_000);

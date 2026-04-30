@@ -12,7 +12,7 @@ installDomGlobals();
 
 type RuleBody = {
   rules: Array<{
-    rule_id: string | null;
+    id: string | null;
     title: string;
     body: string;
     report_reason: string;
@@ -23,7 +23,7 @@ type RuleBody = {
 
 type ReferenceLinksBody = {
   reference_links: Array<{
-    community_reference_link_id: string | null;
+    community_reference_link: string | null;
     label: string | null;
     platform: string;
     position: number;
@@ -45,11 +45,11 @@ type LabelPolicyBody = {
 
 function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
   return {
-    community_id: "community-1",
+    community: "community-1",
     display_name: "Test Community",
     community_profile: {
       rules: [{
-        rule_id: "rule-1",
+        id: "rule-1",
         title: "Be civil",
         body: "No harassment.",
         report_reason: "Incivility",
@@ -59,7 +59,7 @@ function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
       resource_links: [],
     },
     reference_links: [{
-      community_reference_link_id: "link-1",
+      community_reference_link: "link-1",
       label: "Site",
       metadata: { display_name: "Official site" },
       platform: "official_website",
@@ -100,7 +100,7 @@ function installCommunityApiMocks() {
       community_profile: {
         rules: body.rules.map((rule, index) => ({
           ...rule,
-          rule_id: rule.rule_id ?? `rule-${index + 1}`,
+          id: rule.id ?? `rule-${index + 1}`,
         })),
         resource_links: [],
       },
@@ -110,7 +110,7 @@ function installCommunityApiMocks() {
     calls.updateReferenceLinks.push({ communityId, body });
     return createCommunity({
       reference_links: body.reference_links.map((link, index) => ({
-        community_reference_link_id: link.community_reference_link_id ?? `link-${index + 1}`,
+        community_reference_link: link.community_reference_link ?? `link-${index + 1}`,
         label: link.label,
         metadata: { display_name: link.label },
         platform: link.platform,
@@ -208,7 +208,7 @@ describe("useCommunityContentPolicyState", () => {
       communityId: "community-1",
       body: {
         rules: [{
-          rule_id: "rule-1",
+          id: "rule-1",
           title: "Stay on topic",
           body: "Posts should match the community.",
           report_reason: "Stay on topic",
@@ -253,7 +253,7 @@ describe("useCommunityContentPolicyState", () => {
       communityId: "community-1",
       body: {
         reference_links: [{
-          community_reference_link_id: null,
+          community_reference_link: null,
           label: "Main",
           platform: "official_website",
           position: 0,

@@ -86,7 +86,7 @@ export function useGlobalHandleFlow({
         } else {
           setState({
             kind: "available",
-            freeRenameRemaining: quote.price_usd === 0,
+            freeRenameRemaining: quote.price_cents === 0,
           });
         }
       })

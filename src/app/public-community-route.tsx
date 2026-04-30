@@ -93,7 +93,7 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
       .then((previewResult) => {
         if (cancelled) return;
         logger.debug("[community-follow] preview loaded", {
-          communityId: previewResult.community_id,
+          communityId: previewResult.id,
           followerCount: previewResult.follower_count,
           viewerFollowing: previewResult.viewer_following,
           viewerMembershipStatus: previewResult.viewer_membership_status,
@@ -122,7 +122,7 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
     let cancelled = false;
 
     const authorUserIds = posts
-      .map((item) => item.post.identity_mode === "public" ? item.post.author_user_id : null)
+      .map((item) => item.post.identity_mode === "public" ? item.post.author_user : null)
       .filter((userId): userId is string => Boolean(userId));
 
     if (authorUserIds.length === 0) {
@@ -257,22 +257,22 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     setViewerFollowing(Boolean(preview?.viewer_following));
     setFollowerCount(preview?.follower_count ?? null);
     setMemberCount(preview?.member_count ?? null);
-  }, [preview?.community_id, preview?.follower_count, preview?.member_count, preview?.viewer_following]);
+  }, [preview?.id, preview?.follower_count, preview?.member_count, preview?.viewer_following]);
 
   const refetchEligibility = React.useCallback(async () => {
-    const nextEligibility = await api.communities.getJoinEligibility(preview?.community_id ?? communityId);
+    const nextEligibility = await api.communities.getJoinEligibility(preview?.id ?? communityId);
     setEligibility(nextEligibility);
     return nextEligibility;
-  }, [api.communities, communityId, preview?.community_id]);
+  }, [api.communities, communityId, preview?.id]);
 
   React.useEffect(() => {
-    if (!session || !preview?.community_id) {
+    if (!session || !preview?.id) {
       setEligibility(null);
       return;
     }
 
     let cancelled = false;
-    void api.communities.getJoinEligibility(preview.community_id)
+    void api.communities.getJoinEligibility(preview.id)
       .then((nextEligibility) => {
         if (!cancelled) setEligibility(nextEligibility);
       })
@@ -280,7 +280,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         if (!cancelled) toast.error(getErrorMessage(nextError, "Could not load community membership."));
       });
     return () => { cancelled = true; };
-  }, [api.communities, preview?.community_id, session]);
+  }, [api.communities, preview?.id, session]);
 
   const markViewerJoined = React.useCallback(() => {
     setViewerFollowing((current) => {
@@ -315,7 +315,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     selfPrompt: joinSelfPrompt,
     veryLoading: joinVeryLoading,
   } = useCommunityJoinVerification({
-    communityId: preview?.community_id ?? communityId,
+    communityId: preview?.id ?? communityId,
     eligibility,
     locale,
     onJoined: markViewerJoined,
@@ -389,17 +389,17 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
   );
 
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
-    const previousPost = posts.find((candidate) => candidate.post.post_id === postId);
+    const previousPost = posts.find((candidate) => candidate.post.id === postId);
     if (!previousPost) return;
     await runGatedCommunityAction({
       action: "vote_post",
       buildBlockedModalState: buildBlockedModalState ?? undefined,
-      communityId: previousPost.post.community_id,
+      communityId: previousPost.post.community,
       onAllowed: async () => {
         await submitOptimisticPostVote({
           direction,
           onApply: (nextValue) => setPosts((current) => updateCommunityPostVote(current, postId, nextValue)),
-          onRollback: (restoredPost) => setPosts((current) => current.map((post) => post.post.post_id === postId ? restoredPost : post)),
+          onRollback: (restoredPost) => setPosts((current) => current.map((post) => post.post.id === postId ? restoredPost : post)),
           postId,
           previousPost,
           requestIdsRef: voteRequestIdsRef,
@@ -437,7 +437,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
 
     if (!session) {
       logger.info("[community-follow] blocked follow without session", {
-        communityId: preview.community_id,
+        communityId: preview.id,
       });
       requestAuth("Connect your wallet to follow communities.");
       return;
@@ -447,7 +447,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     const previousFollowing = viewerFollowing;
     const nextFollowing = !viewerFollowing;
     logger.info("[community-follow] submit", {
-      communityId: preview.community_id,
+      communityId: preview.id,
       previousFollowing,
       nextFollowing,
       followerCount,
@@ -460,10 +460,10 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
 
     try {
       const result = nextFollowing
-        ? await api.communities.follow(preview.community_id)
-        : await api.communities.unfollow(preview.community_id);
+        ? await api.communities.follow(preview.id)
+        : await api.communities.unfollow(preview.id);
       logger.info("[community-follow] saved", {
-        communityId: preview.community_id,
+        communityId: preview.id,
         following: result.following,
         followerCount: result.follower_count,
       });
@@ -471,7 +471,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       setFollowerCount(result.follower_count ?? null);
     } catch (nextError: unknown) {
       logger.warn("[community-follow] failed", {
-        communityId: preview.community_id,
+        communityId: preview.id,
         attemptedFollowing: nextFollowing,
         error: nextError,
       });
@@ -526,7 +526,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
       || eligibility.status === "banned"
   );
   const routeLabel = formatCommunityRouteLabel(
-    preview.community_id,
+    preview.id,
     preview.route_slug ?? communityId,
   );
 
@@ -596,7 +596,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         avatarSrc={preview.avatar_ref ?? undefined}
         availableSorts={sortOptions}
         bannerSrc={preview.banner_ref ?? undefined}
-        communityId={preview.community_id}
+        communityId={preview.id}
         emptyState={{
           title: copy.publicCommunity.emptyPosts,
           body: "Be the first to share something in this community.",
@@ -611,8 +611,8 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         }}
         headerAction={headerAction}
         items={posts.map((post) => toCommunityFeedItem(post, authorProfiles, undefined, {
-          onComment: () => navigate(`/p/${post.post.post_id}`),
-          onVote: (direction) => void voteOnPost(post.post.post_id, direction),
+          onComment: () => navigate(`/p/${post.post.id}`),
+          onVote: (direction) => void voteOnPost(post.post.id, direction),
         }))}
         loading={postsLoading}
         onSortChange={setActiveSort}

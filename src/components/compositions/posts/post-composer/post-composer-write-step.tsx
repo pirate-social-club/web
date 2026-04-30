@@ -218,7 +218,7 @@ export function PostComposerWriteStep({
 
   if (!controller.isMobile) {
     return (
-      <CardContent className="space-y-8 p-6">
+      <CardContent className="space-y-5 p-6">
         <Input
           maxLength={300}
           onChange={(event) => controller.fields.onTitleValueChange?.(event.target.value)}
@@ -234,8 +234,8 @@ export function PostComposerWriteStep({
         />
         <Textarea
           className={cn(
-            "min-h-56 resize-none text-xl leading-relaxed",
-            write.attachment?.kind === "link" && "min-h-40",
+            "min-h-36 resize-none text-xl leading-relaxed",
+            write.attachment?.kind === "link" && "min-h-32",
           )}
           onChange={(event) => updateBody(controller, event.target.value)}
           placeholder={write.attachment ? "Optional" : "Body text (optional)"}
@@ -283,7 +283,6 @@ export function PostComposerWriteStep({
       <PostComposerMobileAttachmentBar
         actions={attachmentActions}
         activeKind={write.attachment?.kind ?? null}
-        bottomOffset={bottomOffset}
         onSelect={write.selectAttachment}
       />
       {write.fileInputs}

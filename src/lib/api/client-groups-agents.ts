@@ -37,7 +37,7 @@ export function createAgentsApi(request: ApiRequest) {
       body: UpdateUserAgentRequest,
     ): Promise<UserAgent> =>
       request<UserAgent>(`/agents/${encodeURIComponent(agentId)}`, {
-        method: "PATCH",
+        method: "POST",
         body: JSON.stringify(body),
       }),
     getHandle: (agentId: string): Promise<AgentHandle> =>

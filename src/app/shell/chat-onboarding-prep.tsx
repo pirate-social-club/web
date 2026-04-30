@@ -22,7 +22,7 @@ export function ChatOnboardingPrep() {
       return;
     }
 
-    const userId = session.user.user_id;
+    const userId = session.user.id;
     if (seededUsersRef.current.has(userId)) {
       return;
     }

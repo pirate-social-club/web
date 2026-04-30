@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { serializeIdentityGateDrafts } from "@/app/authenticated-helpers/community-gate-rule-serialization";
 
 describe("serializeIdentityGateDrafts", () => {
-  test("serializes Courtyard inventory drafts for community creation", () => {
+  test("serializes Courtyard inventory drafts as gate policy", () => {
     expect(serializeIdentityGateDrafts([{
       gateType: "erc721_inventory_match",
       chainNamespace: "eip155:137",
@@ -16,58 +16,86 @@ describe("serializeIdentityGateDrafts", () => {
         model: "Submariner",
         reference: "124060",
       },
-    }])).toEqual([{
-      scope: "membership",
-      gate_family: "token_holding",
-      gate_type: "erc721_inventory_match",
-      chain_namespace: "eip155:137",
-      gate_config: {
-        contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
-        inventory_provider: "courtyard",
-        min_quantity: 5,
-        match: {
-          category: "watch",
-          brand: "Rolex",
-          model: "Submariner",
-          reference: "124060",
-        },
+    }])).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [{
+          op: "gate",
+          gate: {
+            type: "erc721_inventory_match",
+            provider: "courtyard",
+            chain_namespace: "eip155:137",
+            contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+            min_quantity: 5,
+            match: {
+              category: "watch",
+              brand: "Rolex",
+              model: "Submariner",
+              reference: "124060",
+            },
+          },
+        }],
       },
-    }]);
+    });
   });
 
-  test("includes gate_rule_id only when serializing editor updates", () => {
+  test("serializes minimum age drafts as gate policy", () => {
     expect(serializeIdentityGateDrafts([{
       gateType: "minimum_age",
       provider: "self",
       minimumAge: 30,
-      gateRuleId: "gate-1",
-    }], { includeGateRuleIds: true })[0]).toEqual({
-      scope: "membership",
-      gate_family: "identity_proof",
-      gate_type: "minimum_age",
-      gate_rule_id: "gate-1",
-      proof_requirements: [{
-        proof_type: "minimum_age",
-        accepted_providers: ["self"],
-        config: { minimum_age: 30 },
-      }],
+    }])).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [{
+          op: "gate",
+          gate: {
+            type: "minimum_age",
+            provider: "self",
+            minimum_age: 30,
+          },
+        }],
+      },
     });
   });
 
-  test("serializes Passport wallet score gates", () => {
+  test("serializes Passport wallet score gates as gate policy", () => {
     expect(serializeIdentityGateDrafts([{
       gateType: "wallet_score",
       provider: "passport",
       minimumScore: 20,
-    }])).toEqual([{
-      scope: "membership",
-      gate_family: "identity_proof",
-      gate_type: "wallet_score",
-      proof_requirements: [{
-        proof_type: "wallet_score",
-        accepted_providers: ["passport"],
-        config: { minimum_score: 20 },
-      }],
-    }]);
+    }])).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [{
+          op: "gate",
+          gate: {
+            type: "wallet_score",
+            provider: "passport",
+            minimum_score: 20,
+          },
+        }],
+      },
+    });
+  });
+
+  test("wraps in or when mode is any", () => {
+    const result = serializeIdentityGateDrafts(
+      [
+        { gateType: "wallet_score" as const, provider: "passport" as const, minimumScore: 20 },
+        { gateType: "unique_human" as const, provider: "very" as const },
+      ],
+      { mode: "any" },
+    );
+    expect(result).not.toBeNull();
+    expect(result!.expression.op).toBe("or");
+    expect(result!.expression.children).toHaveLength(2);
+  });
+
+  test("returns null for empty drafts", () => {
+    expect(serializeIdentityGateDrafts([])).toBeNull();
   });
 });

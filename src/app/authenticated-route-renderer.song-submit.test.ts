@@ -46,7 +46,7 @@ describe("song submit payload helpers", () => {
       commercial_rev_share_pct: undefined,
       post_type: "song",
       rights_basis: "original",
-      song_artifact_bundle_id: "sab_free",
+      song_artifact_bundle: "sab_free",
       song_mode: "original",
       title: "Free song",
       translation_policy: "machine_allowed",
@@ -84,11 +84,11 @@ describe("song submit payload helpers", () => {
     expect(postRequest.upstream_asset_refs).toBe(undefined);
     expect(postRequest.visibility).toBe("members_only");
     expect(listingRequest).toEqual({
-      asset_id: "ast_paid",
-      price_usd: 4.99,
+      asset: "ast_paid",
+      price_cents: 499,
       regional_pricing_enabled: true,
-      donation_partner_id: "don_charity_water",
-      donation_share_pct: 10,
+      donation_partner: "don_charity_water",
+      donation_share_bps: 1000,
       status: "active",
     });
   });
@@ -127,7 +127,7 @@ describe("song submit payload helpers", () => {
       commercial_rev_share_pct: undefined,
       post_type: "song",
       rights_basis: "derivative",
-      song_artifact_bundle_id: "sab_remix",
+      song_artifact_bundle: "sab_remix",
       song_mode: "remix",
       title: "Paid remix",
       translation_policy: "machine_allowed",
@@ -135,11 +135,11 @@ describe("song submit payload helpers", () => {
       visibility: "public",
     });
     expect(listingRequest).toEqual({
-      asset_id: "ast_remix",
-      price_usd: 1,
+      asset: "ast_remix",
+      price_cents: 100,
       regional_pricing_enabled: false,
-      donation_partner_id: null,
-      donation_share_pct: null,
+      donation_partner: null,
+      donation_share_bps: null,
       status: "active",
     });
   });

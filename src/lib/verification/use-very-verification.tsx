@@ -62,7 +62,7 @@ export function useVeryVerification(input: {
     }
 
     cleanupWidget();
-    bridgeFetchProxyCleanupRef.current = installVeryBridgeFetchProxy(result.verification_session_id);
+    bridgeFetchProxyCleanupRef.current = installVeryBridgeFetchProxy(result.id);
     widgetRef.current = createVeryWidget({
       appId: launch.app_id,
       context: launch.context,
@@ -72,11 +72,11 @@ export function useVeryVerification(input: {
       onSuccess: async (proof: string) => {
         try {
           logger.info("[very-verification] widget proof valid, completing session", {
-            verificationSessionId: result.verification_session_id,
+            verificationSessionId: result.id,
           });
-          const completedSession = await api.verification.completeSession(result.verification_session_id, { provider_payload_ref: proof });
+          const completedSession = await api.verification.completeSession(result.id, { provider_payload_ref: proof });
           logger.info("[very-verification] session completion response", {
-            verificationSessionId: completedSession.verification_session_id,
+            verificationSessionId: completedSession.id,
             status: completedSession.status,
           });
           await refreshOnboardingStatus(completedSession);
@@ -109,7 +109,7 @@ export function useVeryVerification(input: {
         provider: "very",
         verification_intent: verificationIntent,
       });
-      setVerificationSessionId(result.verification_session_id);
+      setVerificationSessionId(result.id);
       await openVeryWidget(result);
       return { started: true };
     } catch (error: unknown) {

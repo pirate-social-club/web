@@ -39,7 +39,7 @@ const storySession: SessionExchangeResponse = {
     unique_human_verification_status: "verified",
   },
   profile: {
-    created_at: "2026-04-26T15:30:00.000Z",
+    created: "2026-04-26T15:30:00.000Z",
     global_handle: {
       global_handle_id: "gh_story",
       issuance_source: "generated_signup",
@@ -49,13 +49,13 @@ const storySession: SessionExchangeResponse = {
       tier: "standard",
     },
     primary_wallet_address: "0x1111111111111111111111111111111111111111",
-    updated_at: "2026-04-26T15:30:00.000Z",
-    user_id: "usr_story",
+    updated: "2026-04-26T15:30:00.000Z",
+    user: "usr_story",
   },
   user: {
-    created_at: "2026-04-26T15:30:00.000Z",
-    updated_at: "2026-04-26T15:30:00.000Z",
-    user_id: "usr_story",
+    created: "2026-04-26T15:30:00.000Z",
+    updated: "2026-04-26T15:30:00.000Z",
+    user: "usr_story",
     verification_capabilities: storyCapabilities,
     verification_state: "verified",
   },
@@ -64,7 +64,7 @@ const storySession: SessionExchangeResponse = {
       chain_namespace: "eip155",
       is_primary: true,
       wallet_address: "0x1111111111111111111111111111111111111111",
-      wallet_attachment_id: "wa_story",
+      wallet_attachment: "wa_story",
     },
   ],
 };

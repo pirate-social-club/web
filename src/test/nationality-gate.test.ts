@@ -64,7 +64,7 @@ describe("formatGateRequirement", () => {
 
   test("formats gender gate with exact marker for admin surfaces", () => {
     const gate: MembershipGateSummary = { gate_type: "gender", required_value: "F" };
-    expect(formatGateRequirement(gate, { audience: "admin" })).toBe("Requires Self document marker F");
+    expect(formatGateRequirement(gate, { audience: "admin" })).toBe("Requires document sex marker F");
   });
 
   test("formats Courtyard inventory match gate", () => {
@@ -173,16 +173,30 @@ describe("resolveSuggestedVerificationProvider", () => {
   test("defaults unique human remediation to Very when the API does not suggest a provider", () => {
     expect(resolveSuggestedVerificationProvider({
       membership_gate_summaries: [],
-      missing_capabilities: ["unique_human"],
-      suggested_verification_provider: null,
+      gate_evaluation: {
+        passed: false,
+        trace: { kind: "op", op: "and", passed: false, children: [] },
+        required_action_set: {
+          kind: "set",
+          mode: "all",
+          items: [{ kind: "action", provider: "very", capability: "unique_human" }],
+        },
+      },
     })).toBe("very");
   });
 
   test("keeps document fact remediation on Self", () => {
     expect(resolveSuggestedVerificationProvider({
       membership_gate_summaries: [{ gate_type: "nationality", accepted_providers: ["self"] }],
-      missing_capabilities: ["nationality"],
-      suggested_verification_provider: null,
+      gate_evaluation: {
+        passed: false,
+        trace: { kind: "op", op: "and", passed: false, children: [] },
+        required_action_set: {
+          kind: "set",
+          mode: "all",
+          items: [{ kind: "action", provider: "self", capability: "nationality", allowed_countries: ["US"] }],
+        },
+      },
     })).toBe("self");
   });
 });

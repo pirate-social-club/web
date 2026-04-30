@@ -23,7 +23,7 @@ export function getCommunityLabelDrafts(
     ?.slice()
     .sort((left, right) => left.position - right.position)
     .map((definition) => ({
-      id: definition.label_id,
+      id: definition.id,
       label: definition.label,
       color: definition.color_token ?? "#f97316",
       status: definition.status,
@@ -102,7 +102,7 @@ export function useCommunityContentPolicyState({
     const existingRules = community.community_profile?.rules ?? [];
     const rules = [
       {
-        rule_id: existingRules[0]?.rule_id ?? null,
+        id: existingRules[0]?.id ?? null,
         title: ruleName,
         body: description,
         report_reason: reportReason.trim() || ruleName.trim(),
@@ -110,7 +110,7 @@ export function useCommunityContentPolicyState({
         status: "active" as const,
       },
       ...existingRules.slice(1).map((rule, index) => ({
-        rule_id: rule.rule_id,
+        id: rule.id,
         title: rule.title,
         body: rule.body,
         report_reason: rule.report_reason?.trim() || rule.title,
@@ -119,7 +119,7 @@ export function useCommunityContentPolicyState({
       })),
     ];
     void submitCommunitySave({
-      action: (currentCommunity) => api.communities.updateRules(currentCommunity.community_id, { rules }),
+      action: (currentCommunity) => api.communities.updateRules(currentCommunity.id, { rules }),
       community,
       failureMessage: "Could not save rules.",
       saveCommunity,
@@ -131,9 +131,9 @@ export function useCommunityContentPolicyState({
 
   const handleSaveLinks = React.useCallback(() => {
     void submitCommunitySave({
-      action: (currentCommunity) => api.communities.updateReferenceLinks(currentCommunity.community_id, {
+      action: (currentCommunity) => api.communities.updateReferenceLinks(currentCommunity.id, {
         reference_links: links.filter((link) => link.url.trim()).map((link, index) => ({
-          community_reference_link_id: link.id.startsWith("draft-") ? null : link.id,
+          community_reference_link: link.id.startsWith("draft-") ? null : link.id,
           label: link.label.trim() || null,
           platform: link.platform as NonNullable<ApiCommunity["reference_links"]>[number]["platform"],
           position: index,
@@ -157,7 +157,7 @@ export function useCommunityContentPolicyState({
   const handleSaveLabels = React.useCallback(() => {
     if (labelsValidationError) return;
     void submitCommunitySave({
-      action: (currentCommunity) => api.communities.updateLabelPolicy(currentCommunity.community_id, {
+      action: (currentCommunity) => api.communities.updateLabelPolicy(currentCommunity.id, {
         label_enabled: labelsEnabled,
         require_label_on_top_level_posts: currentCommunity.label_policy?.require_label_on_top_level_posts === true,
         definitions: labels.map((label, index) => ({

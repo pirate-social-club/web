@@ -12,9 +12,9 @@ installDomGlobals();
 
 type DonationPolicyBody = {
   donation_policy_mode: "none" | "optional_creator_sidecar";
-  donation_partner_id: string | null;
+  donation_partner: string | null;
   donation_partner: {
-    donation_partner_id: string;
+    donation_partner: string;
     display_name: string;
     provider: "endaoment";
     provider_partner_ref: string | null;
@@ -40,10 +40,10 @@ type PricingPolicyBody = {
 
 function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
   return {
-    community_id: "community-1",
+    community: "community-1",
     display_name: "Test Community",
     donation_policy_mode: "none",
-    donation_partner_id: null,
+    donation_partner: null,
     donation_partner: null,
     ...overrides,
   } as ApiCommunity;
@@ -53,7 +53,7 @@ function createPricingPolicy(
   overrides: Partial<ApiCommunityPricingPolicy> = {},
 ): ApiCommunityPricingPolicy {
   return {
-    community_id: "community-1",
+    community: "community-1",
     policy_origin: "explicit",
     pricing_policy_version: "v1",
     regional_pricing_enabled: true,
@@ -66,7 +66,7 @@ function createPricingPolicy(
       adjustment_value: 1,
     }],
     country_assignments: [{ country_code: "US", tier_key: "tier_1" }],
-    updated_at: "2026-01-01T00:00:00Z",
+    updated: "2026-01-01T00:00:00Z",
     ...overrides,
   };
 }
@@ -74,7 +74,7 @@ function createPricingPolicy(
 function installCommunityApiMocks(options: {
   pricingPolicy?: ApiCommunityPricingPolicy;
   resolvedPartner?: {
-    donation_partner_id: string;
+    donation_partner: string;
     display_name: string;
     image_url?: string | null;
     provider_partner_ref?: string | null;
@@ -95,7 +95,7 @@ function installCommunityApiMocks(options: {
       communityId: string,
       body: { endaoment_url: string },
     ) => Promise<{
-      donation_partner_id: string;
+      donation_partner: string;
       display_name: string;
       image_url?: string | null;
       provider_partner_ref?: string | null;
@@ -111,7 +111,7 @@ function installCommunityApiMocks(options: {
   communities.resolveDonationPartner = async (communityId, body) => {
     calls.resolveDonationPartner.push({ communityId, body });
     return options.resolvedPartner ?? {
-      donation_partner_id: "partner-1",
+      donation_partner: "partner-1",
       display_name: "Endaoment Org",
       image_url: null,
       provider_partner_ref: "org-1",
@@ -121,10 +121,10 @@ function installCommunityApiMocks(options: {
     calls.updateDonationPolicy.push({ communityId, body });
     return options.updatedCommunity ?? createCommunity({
       donation_policy_mode: body.donation_policy_mode,
-      donation_partner_id: body.donation_partner_id,
+      donation_partner: body.donation_partner,
       donation_partner: body.donation_partner
         ? {
-          donation_partner_id: body.donation_partner.donation_partner_id,
+          donation_partner: body.donation_partner.donation_partner,
           display_name: body.donation_partner.display_name,
           image_url: body.donation_partner.image_url,
           provider: body.donation_partner.provider,
@@ -184,9 +184,9 @@ describe("useCommunityCommerceState", () => {
     installCommunityApiMocks();
     const community = createCommunity({
       donation_policy_mode: "optional_creator_sidecar",
-      donation_partner_id: "partner-1",
+      donation_partner: "partner-1",
       donation_partner: {
-        donation_partner_id: "partner-1",
+        donation_partner: "partner-1",
         display_name: "Endaoment Org",
         image_url: "https://example.com/logo.png",
         provider: "endaoment",
@@ -212,7 +212,7 @@ describe("useCommunityCommerceState", () => {
   test("resolves an Endaoment partner into the donation preview", async () => {
     const calls = installCommunityApiMocks({
       resolvedPartner: {
-        donation_partner_id: "partner-2",
+        donation_partner: "partner-2",
         display_name: "Resolved Org",
         image_url: null,
         provider_partner_ref: "resolved-org",
@@ -268,9 +268,9 @@ describe("useCommunityCommerceState", () => {
       communityId: "community-1",
       body: {
         donation_policy_mode: "optional_creator_sidecar",
-        donation_partner_id: "partner-3",
+        donation_partner: "partner-3",
         donation_partner: {
-          donation_partner_id: "partner-3",
+          donation_partner: "partner-3",
           display_name: "Saved Org",
           provider: "endaoment",
           provider_partner_ref: "saved-org",

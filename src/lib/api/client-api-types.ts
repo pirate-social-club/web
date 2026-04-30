@@ -5,6 +5,31 @@ import type {
   Profile,
 } from "@pirate/api-contracts";
 
+export type ApiGatePolicy = {
+  version: 1;
+  expression: ApiGateExpression;
+};
+
+export type ApiGateExpression =
+  | { op: "and" | "or"; children: ApiGateExpression[] }
+  | { op: "gate"; gate: ApiGateAtom };
+
+export type ApiGateAtom =
+  | { type: "unique_human"; provider: "self" | "very" }
+  | { type: "minimum_age"; provider: "self"; minimum_age: number }
+  | { type: "nationality"; provider: "self"; allowed: string[] }
+  | { type: "gender"; provider: "self"; allowed: Array<"M" | "F"> }
+  | { type: "wallet_score"; provider: "passport"; minimum_score: number }
+  | { type: "erc721_holding"; chain_namespace: "eip155:1"; contract_address: string }
+  | {
+    type: "erc721_inventory_match";
+    provider: "courtyard";
+    chain_namespace: "eip155:1" | "eip155:137";
+    contract_address: string;
+    min_quantity: number;
+    match: Record<string, unknown>;
+  };
+
 export type ApiCreateCommunityRequest = {
   display_name: string;
   database_region?:
@@ -26,7 +51,7 @@ export type ApiCreateCommunityRequest = {
       report_reason?: string | null;
     }> | null;
   } | null;
-  membership_mode?: "open" | "request" | "gated";
+  membership_mode?: "request" | "gated";
   default_age_gate_policy?: "none" | "18_plus";
   allow_anonymous_identity?: boolean;
   anonymous_identity_scope?: "community_stable" | "thread_stable" | "post_ephemeral" | null;
@@ -34,38 +59,9 @@ export type ApiCreateCommunityRequest = {
     policy_template: "standard";
   };
   governance_mode?: "centralized";
-  gate_rules?: Array<{
-    scope: "membership" | "viewer" | "posting";
-    gate_family: "identity_proof" | "token_holding";
-    gate_type:
-      | "unique_human"
-      | "age_over_18"
-      | "minimum_age"
-      | "nationality"
-      | "gender"
-      | "wallet_score"
-      | "erc721_holding"
-      | "erc721_inventory_match";
-    proof_requirements?: Array<{
-      proof_type:
-        | "unique_human"
-        | "biometric_liveness"
-        | "wallet_score"
-        | "gov_id"
-        | "age_over_18"
-        | "minimum_age"
-        | "nationality"
-        | "gender"
-        | "phone";
-      accepted_providers?: Array<"self" | "very" | "passport"> | null;
-      accepted_mechanisms?: Array<string> | null;
-      config?: Record<string, unknown> | null;
-    }> | null;
-    chain_namespace?: string | null;
-    gate_config?: Record<string, unknown> | null;
-  }> | null;
+  gate_policy?: ApiGatePolicy | null;
   namespace?: {
-    namespace_verification_id: string;
+    namespace_verification: string;
   } | null;
 };
 
@@ -95,10 +91,10 @@ export type ApiPublicProfileResolution = {
   resolved_handle_label: string;
   is_canonical: boolean;
   created_communities: Array<{
-    community_id: string;
+    community: string;
     display_name: string;
     route_slug: string | null;
-    created_at: string;
+    created: string;
   }>;
 };
 
@@ -111,11 +107,11 @@ export type ApiPublicAgentResolution = {
     display_name: string | null;
     handle: { label_display: string };
     ownership_provider: string | null;
-    created_at: string;
-    updated_at: string;
+    created: string;
+    updated: string;
   };
   owner: {
-    user_id: string;
+    user: string;
     display_name: string | null;
     global_handle: { label: string };
     primary_public_handle: { label: string } | null;
@@ -136,13 +132,11 @@ export type ApiCommunityRuleInput = {
 };
 
 export type ApiCommunityGatesUpdateRequest = {
-  membership_mode: "open" | "request" | "gated";
+  membership_mode: "request" | "gated";
   default_age_gate_policy?: "none" | "18_plus" | null;
   allow_anonymous_identity: boolean;
   anonymous_identity_scope?: "community_stable" | "thread_stable" | "post_ephemeral" | null;
-  gate_rules?: NonNullable<ApiCreateCommunityRequest["gate_rules"]> extends Array<infer T>
-    ? Array<T & { gate_rule_id?: string | null }>
-    : never;
+  gate_policy?: ApiGatePolicy | null;
 };
 
 export type ApiUpdateCommunityRequest = {
@@ -183,7 +177,7 @@ export type ApiCommunitySafetyUpdateRequest = {
 };
 
 export type ApiDonationPartnerSummaryInput = {
-  donation_partner_id: string;
+  donation_partner: string;
   display_name: string;
   provider: "endaoment";
   provider_partner_ref?: string | null;
@@ -191,16 +185,15 @@ export type ApiDonationPartnerSummaryInput = {
 };
 
 export type ApiCommunityDonationPolicyResponse = {
-  community_id: string;
+  community: string;
   donation_policy_mode: Community["donation_policy_mode"];
   donation_partner_status: Community["donation_partner_status"];
-  donation_partner_id: string | null;
   donation_partner: (Community["donation_partner"] & { image_url?: string | null }) | null;
-  updated_at: string;
+  updated: string;
 };
 
 export type ApiResolveDonationPartnerResponse = {
-  donation_partner_id: string;
+  donation_partner: string;
   display_name: string;
   provider: "endaoment";
   provider_partner_ref?: string | null;
@@ -251,7 +244,7 @@ export type DonationPolicyUpdateInput = {
 };
 
 export type ApiCommunityMachineAccessPolicy = {
-  community_id: string;
+  community: string;
   policy_origin: "default" | "explicit";
   access_mode: "structured_api" | "structured_api_enhanced";
   included_surfaces: {
@@ -273,7 +266,7 @@ export type ApiCommunityMachineAccessPolicy = {
     top_comments_limit: number;
     max_lookback_window: string;
   };
-  updated_at: string;
+  updated: string;
 };
 
 export type ApiCommunityMachineAccessPolicyUpdate = {
@@ -295,11 +288,11 @@ export type ProfileUpdateInput = {
 export type HandleUpgradeQuoteResponse = {
   desired_label: string;
   tier: string;
-  price_usd: number;
+  price_cents: number;
   eligible: boolean;
   reason?: string | null;
   benefit_source?: "verified_reddit_username" | "reddit_reputation" | null;
-  reputation_discount_usd?: number | null;
+  reputation_discount_cents?: number | null;
   claim_reason?: string | null;
 };
 

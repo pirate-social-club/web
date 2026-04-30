@@ -9,6 +9,7 @@ import {
   getJoinCtaLabel,
   getGateFailureMessage,
   getPassportPromptCapabilities,
+  getMissingCapabilitiesFromGateEvaluation,
   getVerificationCapabilitiesForProvider,
   getVerificationPromptCopy,
   resolveSuggestedVerificationProvider,
@@ -28,7 +29,7 @@ export type CommunityGateData = {
   eligibility: JoinEligibility;
   preview: Pick<
     CommunityPreview,
-    "community_id" | "display_name" | "membership_gate_summaries"
+    "id" | "display_name" | "membership_gate_summaries"
   >;
 };
 
@@ -234,7 +235,7 @@ function gateMatchesMissingCapability(
   gate: CommunityGateData["preview"]["membership_gate_summaries"][number],
   eligibility: JoinEligibility,
 ): boolean {
-  const missing = eligibility.missing_capabilities;
+  const missing = getMissingCapabilitiesFromGateEvaluation(eligibility);
 
   switch (gate.gate_type) {
     case "age_over_18":
@@ -592,7 +593,7 @@ export function createCommunityBlockedModalStateFactory(options: {
           loading: options.joinLoading ?? false,
           onClick: async () => {
             await options.onJoin!(gate);
-            options.invalidateCommunityGate!(gate.preview.community_id);
+            options.invalidateCommunityGate!(gate.preview.id);
             closeModal();
           },
         },

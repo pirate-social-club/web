@@ -13,7 +13,7 @@ const baseComposer: CreateCommunityComposerProps = {
   description:
     "A national-interest community where verified context matters, but moderation still needs a safe anonymous layer.",
   databaseRegion: "aws-us-east-1",
-  membershipMode: "open",
+  gateDrafts: [],
   defaultAgeGatePolicy: "none",
   allowAnonymousIdentity: true,
   creatorVerificationState: {
@@ -47,14 +47,26 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  name: "Flow / Default",
+  name: "Flow / Default Choose Access",
   render: () => <CreateCommunityComposer {...baseComposer} />,
 };
 
-export const PublicOnly: Story = {
-  name: "Flow / Public Only",
+export const AnonymousOff: Story = {
+  name: "Flow / Anonymous Off",
   render: () => (
     <CreateCommunityComposer {...baseComposer} allowAnonymousIdentity={false} />
+  ),
+};
+
+export const RequestToJoin: Story = {
+  name: "Flow / Request To Join",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[]}
+      initialStep={2}
+      membershipMode="request"
+    />
   ),
 };
 
@@ -87,7 +99,7 @@ export const AccessStepWithNationalityGate: Story = {
 };
 
 export const AccessStepWithPassportScoreGate: Story = {
-  name: "Flow / Access Step With Passport Score Gate",
+  name: "Flow / Access Step With Wallet Score Gate",
   render: () => (
     <CreateCommunityComposer
       {...baseComposer}
@@ -111,7 +123,7 @@ export const ReviewWithNationalityGate: Story = {
 };
 
 export const ReviewWithPassportScoreGate: Story = {
-  name: "Flow / Review With Passport Score Gate",
+  name: "Flow / Review With Wallet Score Gate",
   render: () => (
     <CreateCommunityComposer
       {...baseComposer}

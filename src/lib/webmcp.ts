@@ -146,21 +146,24 @@ export function registerWebMcpTools(): void {
 
         const payload = await response.json() as {
           items?: Array<{
-            community?: { community_id?: string; display_name?: string; route_slug?: string | null };
-            post?: { post?: { post_id?: string; title?: string | null; body?: string | null; post_type?: string } | null };
+            community?: { id?: string; community_id?: string; display_name?: string; route_slug?: string | null };
+            post?: { post?: { id?: string; post_id?: string; title?: string | null; body?: string | null; post_type?: string } | null };
           }>;
         };
 
         return {
-          items: (payload.items ?? []).map((item) => ({
-            communityId: item.community?.community_id ?? null,
-            communityLabel: item.community?.route_slug ?? item.community?.display_name ?? null,
-            postId: item.post?.post?.post_id ?? null,
-            title: item.post?.post?.title ?? null,
-            body: item.post?.post?.body ?? null,
-            postType: item.post?.post?.post_type ?? null,
-            url: item.post?.post?.post_id ? new URL(`/p/${encodeURIComponent(item.post.post.post_id)}`, window.location.origin).toString() : null,
-          })),
+          items: (payload.items ?? []).map((item) => {
+            const postId = item.post?.post?.id ?? item.post?.post?.post_id ?? null;
+            return {
+              communityId: item.community?.id ?? item.community?.community_id ?? null,
+              communityLabel: item.community?.route_slug ?? item.community?.display_name ?? null,
+              postId,
+              title: item.post?.post?.title ?? null,
+              body: item.post?.post?.body ?? null,
+              postType: item.post?.post?.post_type ?? null,
+              url: postId ? new URL(`/p/${encodeURIComponent(postId)}`, window.location.origin).toString() : null,
+            };
+          }),
         };
       },
     },

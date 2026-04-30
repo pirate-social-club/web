@@ -258,7 +258,6 @@ function ComposeStep({
       <PostComposerMobileAttachmentBar
         actions={attachmentActions}
         activeKind={attachment?.kind ?? null}
-        bottomOffset={bottomOffset}
         onSelect={handleAttachmentSelect}
       />
       <input

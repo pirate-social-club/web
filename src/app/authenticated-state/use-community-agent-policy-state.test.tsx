@@ -20,7 +20,7 @@ type AgentBody = {
 
 function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
   return {
-    community_id: "community-1",
+    id: "community-1",
     display_name: "Test Community",
     agent_posting_policy: "disallow",
     agent_posting_scope: "top_level_and_replies",

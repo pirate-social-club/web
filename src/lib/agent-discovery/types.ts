@@ -1,14 +1,22 @@
 import type { matchRoute } from "@/app/router";
 
 export type FeedCommunity = {
+  id?: string;
+  community?: string;
   community_id?: string;
   route_slug?: string | null;
+  created?: number | string | null;
+  updated?: number | string | null;
   updated_at?: string | null;
 };
 
 export type FeedPost = {
+  id?: string;
+  post?: string;
   post_id?: string;
+  created?: number | string | null;
   created_at?: string | null;
+  updated?: number | string | null;
   updated_at?: string | null;
 };
 

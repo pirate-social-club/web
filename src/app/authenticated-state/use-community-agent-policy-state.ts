@@ -52,7 +52,7 @@ export function useCommunityAgentPolicyState({
   const handleSaveAgents = React.useCallback(() => {
     setAgentSaveError(null);
     void submitCommunitySave({
-      action: (currentCommunity) => api.communities.update(currentCommunity.community_id, {
+      action: (currentCommunity) => api.communities.update(currentCommunity.id, {
         agent_posting_policy: agentSettings.agentPostingPolicy,
         agent_posting_scope: agentSettings.agentPostingScope,
         accepted_agent_ownership_providers: agentSettings.acceptedAgentOwnershipProviders,

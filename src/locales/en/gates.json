@@ -6,7 +6,7 @@
     },
     "gender": {
       "public": "ID check",
-      "adminWithValue": "Requires Self document marker {requiredValue}"
+      "adminWithValue": "Requires document sex marker {requiredValue}"
     },
     "uniqueHuman": {
       "very": "Palm scan",
@@ -88,7 +88,7 @@
     "ageOver18": "18+ status",
     "minimumAge": "age status",
     "nationality": "nationality",
-    "gender": "Self document marker",
+    "gender": "document sex marker",
     "uniqueHuman": "unique human status",
     "walletScore": "Passport score"
   },

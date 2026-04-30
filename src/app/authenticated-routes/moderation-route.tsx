@@ -273,7 +273,7 @@ export function CommunityModerationPage({
       const result = decision === "approved"
         ? await api.communities.approveMembershipRequest(communityId, requestId)
         : await api.communities.rejectMembershipRequest(communityId, requestId);
-      setMembershipRequests((current) => current.filter((request) => request.membership_request_id !== result.membership_request_id));
+      setMembershipRequests((current) => current.filter((request) => request.id !== result.id));
     } catch {
       toast.error(decision === "approved" ? "Could not approve request." : "Could not reject request.");
     } finally {
@@ -463,8 +463,8 @@ export function CommunityModerationPage({
       content = (
         <CommunityMembershipRequestsPage
           loading={membershipRequestsLoading}
-          onApprove={(request) => void reviewMembershipRequest(request.membership_request_id, "approved")}
-          onReject={(request) => void reviewMembershipRequest(request.membership_request_id, "rejected")}
+          onApprove={(request) => void reviewMembershipRequest(request.id, "approved")}
+          onReject={(request) => void reviewMembershipRequest(request.id, "rejected")}
           processingRequestId={processingMembershipRequestId}
           requests={membershipRequests}
         />
@@ -568,7 +568,7 @@ export function CommunityModerationPage({
           onBackClick={() => navigate(moderationIndexPath)}
           onSessionCleared={() => {
             state.setActiveNamespaceSessionId(null);
-            state.setCommunity((current) => current ? { ...current, pending_namespace_verification_session_id: null } : current);
+            state.setCommunity((current) => current ? { ...current, pending_namespace_verification_session: null } : current);
             void api.communities.setPendingNamespaceSession(communityId, null)
               .then((updatedCommunity) => {
                 state.setCommunity(updatedCommunity);

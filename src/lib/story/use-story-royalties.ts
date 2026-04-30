@@ -105,8 +105,8 @@ export function useStoryRoyalties() {
         setClaimState({ status: "signing" });
 
         const ancestorIps = currentClaimable.items.map((item) => ({
-          ipId: item.ip_id as `0x${string}`,
-          claimer: item.ip_id as `0x${string}`,
+          ipId: item.ip as `0x${string}`,
+          claimer: item.ip as `0x${string}`,
           currencyTokens: [WIP_TOKEN_ADDRESS],
           childIpIds: [] as `0x${string}`[],
           royaltyPolicies: [] as `0x${string}`[],
@@ -126,9 +126,9 @@ export function useStoryRoyalties() {
           await api.royalties.recordClaim({
             tx_hash: txHash,
             wallet_address: wallet.address,
-            chain_id: storyChain.id,
+            chain: storyChain.id,
             claimable_wip_wei_at_submission: currentClaimable.total_claimable_wip_wei,
-            ip_ids: currentClaimable.items.map((item) => item.ip_id),
+            ip_ids: currentClaimable.items.map((item) => item.ip),
             auto_unwrap_ip_tokens: opts?.autoUnwrapIpTokens ?? true,
           }).catch((error) => {
             logger.warn("[useStoryRoyalties] failed to record royalty claim", error);

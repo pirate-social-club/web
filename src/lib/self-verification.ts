@@ -132,7 +132,8 @@ export function buildSelfVerificationLaunch(
   const endpoint = launch?.endpoint?.trim();
   const sessionId = launch?.session_id?.trim();
   const scope = launch?.scope?.trim();
-  const userId = launch?.user_id?.trim();
+  const legacyLaunch = launch as SelfAppLaunch & { user?: string | null };
+  const userId = (launch?.user_id ?? legacyLaunch.user)?.trim();
 
   if (!appName) {
     return { error: "Self launch data is missing app_name.", href: null, selfApp: null };

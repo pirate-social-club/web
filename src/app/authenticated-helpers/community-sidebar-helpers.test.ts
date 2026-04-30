@@ -51,7 +51,7 @@ describe("buildCommunitySidebarRequirements", () => {
 describe("buildCommunityPreviewSidebar", () => {
   test("uses localized preview text when ready", () => {
     const sidebar = buildCommunityPreviewSidebar({
-      community_id: "cmt_test",
+      community: "cmt_test",
       display_name: "Pirate Club",
       description: "Canonical description",
       localized_text: {
@@ -77,10 +77,10 @@ describe("buildCommunityPreviewSidebar", () => {
       member_count: 12,
       follower_count: 20,
       donation_policy_mode: "none",
-      donation_partner_id: null,
+      donation_partner: null,
       donation_partner: null,
       owner: {
-        user_id: "usr_owner",
+        user: "usr_owner",
         display_name: "Owner Person",
         handle: "owner.pirate",
         avatar_ref: "profile://owner-avatar",
@@ -89,7 +89,7 @@ describe("buildCommunityPreviewSidebar", () => {
       },
       moderators: [],
       reference_links: [{
-        community_reference_link_id: "crl_site",
+        community_reference_link: "crl_site",
         platform: "official_website",
         url: "https://pirate.test/community",
         label: "Official site",
@@ -105,7 +105,7 @@ describe("buildCommunityPreviewSidebar", () => {
       rules: [],
       viewer_membership_status: "member",
       viewer_following: true,
-      created_at: "2026-04-24T00:00:00.000Z",
+      created: "2026-04-24T00:00:00.000Z",
     });
 
     expect(sidebar.description).toBe("Descripcion traducida");

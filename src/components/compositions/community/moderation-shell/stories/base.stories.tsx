@@ -67,7 +67,7 @@ function ModerationShellStory({
     provider: "Endaoment",
     providerPartnerRef: "charity-water",
   },
-  initialMembershipMode = "open",
+  initialMembershipMode = "request",
   initialReportReason,
   initialRuleName,
   initialView = "rules",
@@ -84,7 +84,7 @@ function ModerationShellStory({
   initialLinks?: CommunityLinkEditorItem[];
   initialEndaomentUrl?: string;
   initialPartnerPreview?: DonationPartnerPreview | null;
-  initialMembershipMode?: "open" | "request" | "gated";
+  initialMembershipMode?: "request" | "gated";
   initialReportReason: string;
   initialRuleName: string;
   initialView?: ModerationView;
@@ -97,7 +97,7 @@ function ModerationShellStory({
   const [endaomentUrl, setEndaomentUrl] = React.useState(initialEndaomentUrl);
   const [partnerPreview, setPartnerPreview] = React.useState<DonationPartnerPreview | null>(initialPartnerPreview);
   const [membershipMode, setMembershipMode] =
-    React.useState<"open" | "request" | "gated">(initialMembershipMode);
+    React.useState<"request" | "gated">(initialMembershipMode);
   const [defaultAgeGatePolicy, setDefaultAgeGatePolicy] =
     React.useState<"none" | "18_plus">(initialDefaultAgeGatePolicy);
   const [allowAnonymousIdentity, setAllowAnonymousIdentity] =

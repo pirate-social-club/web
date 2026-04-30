@@ -21,7 +21,7 @@ const meta = {
     anonymousIdentityScope: "community_stable",
     defaultAgeGatePolicy: "18_plus",
     gateDrafts: [],
-    membershipMode: "open",
+    membershipMode: "request",
     readAccessMode: "public",
   },
   parameters: {
@@ -80,6 +80,7 @@ function InteractiveCommunityGatesEditorPage({
       onReadAccessModeChange={setReadAccessMode}
       onSave={() => undefined}
       readAccessMode={readAccessMode}
+      saveDisabled={membershipMode === "gated" && gateDrafts.length === 0}
     />
   );
 }
@@ -132,7 +133,7 @@ export const AnonymousScopeChange: Story = {
       anonymousIdentityScope="community_stable"
       defaultAgeGatePolicy="none"
       gateDrafts={[]}
-      membershipMode="open"
+      membershipMode="request"
       readAccessMode="public"
     />
   ),

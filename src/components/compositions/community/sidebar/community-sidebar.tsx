@@ -111,7 +111,7 @@ function CommunitySidebarSections({
         <div className="flex flex-col gap-1.5">
           <div className={SECTION_LABEL}>{copy.moderatorsLabel}</div>
           {moderators.map((mod) => (
-            <CommunitySidebarRoleHolderComponent key={mod.user_id} roleHolder={mod} />
+            <CommunitySidebarRoleHolderComponent key={mod.user} roleHolder={mod} />
           ))}
         </div>
       )}

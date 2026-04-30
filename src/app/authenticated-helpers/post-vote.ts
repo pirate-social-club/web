@@ -41,7 +41,7 @@ export function updateHomeFeedEntryPostVote(
   let didUpdate = false;
 
   const nextEntries = entries.map((entry) => {
-    if (entry.post.post.post_id !== postId) {
+    if (entry.post.post.id !== postId) {
       return entry;
     }
 
@@ -68,7 +68,7 @@ export function updateCommunityPostVote(
   let didUpdate = false;
 
   const nextPosts = posts.map((postResponse) => {
-    if (postResponse.post.post_id !== postId) {
+    if (postResponse.post.id !== postId) {
       return postResponse;
     }
 

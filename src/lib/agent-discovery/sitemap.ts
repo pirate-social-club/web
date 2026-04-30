@@ -12,6 +12,10 @@ import {
 const MAX_SITEMAP_FEED_PAGES = 3;
 const MAX_SITEMAP_FEED_ITEMS = 150;
 
+function getCommunityId(community: FeedCommunity): string | null {
+  return community.id ?? community.community ?? community.community_id ?? null;
+}
+
 async function fetchPublicHomeFeed(ctx: DiscoveryContext): Promise<HomeFeedResponseLike | null> {
   const entries: HomeFeedItemLike[] = [];
   const communities = new Map<string, FeedCommunity>();
@@ -37,8 +41,9 @@ async function fetchPublicHomeFeed(ctx: DiscoveryContext): Promise<HomeFeedRespo
     const payload = await response.json() as HomeFeedResponseLike;
     for (const item of payload.items ?? []) {
       entries.push(item);
-      if (item.community?.community_id) {
-        communities.set(item.community.community_id, item.community);
+      const communityId = item.community ? getCommunityId(item.community) : null;
+      if (communityId && item.community) {
+        communities.set(communityId, item.community);
       }
       if (entries.length >= MAX_SITEMAP_FEED_ITEMS) {
         return {
@@ -50,8 +55,9 @@ async function fetchPublicHomeFeed(ctx: DiscoveryContext): Promise<HomeFeedRespo
     }
 
     for (const community of payload.top_communities ?? []) {
-      if (community.community_id) {
-        communities.set(community.community_id, community);
+      const communityId = getCommunityId(community);
+      if (communityId) {
+        communities.set(communityId, community);
       }
     }
 
@@ -77,28 +83,31 @@ export async function buildSitemapResponse(input: URL | string): Promise<Respons
 
   const homeFeed = await fetchPublicHomeFeed(ctx);
   for (const community of homeFeed?.top_communities ?? []) {
-    if (!community.community_id) continue;
+    const communityId = getCommunityId(community);
+    if (!communityId) continue;
     urlSet.set(
-      absoluteUrl(ctx.appOrigin, buildCommunityPath(community.community_id, community.route_slug)),
-      normalizeTimestamp(community.updated_at),
+      absoluteUrl(ctx.appOrigin, buildCommunityPath(communityId, community.route_slug)),
+      normalizeTimestamp(community.updated ?? community.updated_at ?? community.created),
     );
   }
 
   for (const item of homeFeed?.items ?? []) {
     const community = item.community;
-    const post = item.post?.post;
+    const post = item.post?.post ?? null;
 
-    if (community?.community_id) {
+    const communityId = community ? getCommunityId(community) : null;
+    if (communityId && community) {
       urlSet.set(
-        absoluteUrl(ctx.appOrigin, buildCommunityPath(community.community_id, community.route_slug)),
-        normalizeTimestamp(community.updated_at),
+        absoluteUrl(ctx.appOrigin, buildCommunityPath(communityId, community.route_slug)),
+        normalizeTimestamp(community.updated ?? community.updated_at ?? community.created),
       );
     }
 
-    if (post?.post_id) {
+    const postId = post ? post.id ?? post.post ?? post.post_id : null;
+    if (postId) {
       urlSet.set(
-        absoluteUrl(ctx.appOrigin, `/p/${encodeURIComponent(post.post_id)}`),
-        normalizeTimestamp(post.updated_at ?? post.created_at),
+        absoluteUrl(ctx.appOrigin, `/p/${encodeURIComponent(postId)}`),
+        normalizeTimestamp(post?.updated ?? post?.updated_at ?? post?.created ?? post?.created_at),
       );
     }
   }

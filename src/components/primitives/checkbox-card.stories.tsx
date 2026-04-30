@@ -37,8 +37,8 @@ function InteractiveMultiCheckboxCard() {
       />
       <CheckboxCard
         checked={gates.gender}
-        description="Require the Self document marker on a verified document."
-        title="Self document marker"
+        description="Require members to match the sex marker on their verified ID document."
+        title="Document sex marker"
         onCheckedChange={(checked) => setGates((prev) => ({ ...prev, gender: checked }))}
       />
       <CheckboxCard

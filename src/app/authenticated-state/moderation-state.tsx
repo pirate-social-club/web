@@ -33,16 +33,16 @@ export function useCommunityModerationState(communityId: string) {
 
     rememberKnownCommunity({
       avatarSrc: community.avatar_ref ?? undefined,
-      communityId: community.community_id,
+      communityId: community.id,
       displayName: community.display_name,
     });
   }, [community]);
 
   React.useEffect(() => {
-    setActiveNamespaceSessionId(community?.pending_namespace_verification_session_id ?? null);
-  }, [community?.pending_namespace_verification_session_id]);
+    setActiveNamespaceSessionId(community?.pending_namespace_verification_session ?? null);
+  }, [community?.pending_namespace_verification_session]);
 
-  const effectiveNamespaceSessionId = activeNamespaceSessionId ?? community?.pending_namespace_verification_session_id ?? null;
+  const effectiveNamespaceSessionId = activeNamespaceSessionId ?? community?.pending_namespace_verification_session ?? null;
 
   const namespaceVerificationCallbacks = React.useMemo<NamespaceVerificationCallbacks>(() => ({
     onStartSession: async ({ family, rootLabel }) => {
@@ -51,10 +51,10 @@ export function useCommunityModerationState(communityId: string) {
         root_label: rootLabel,
       });
 
-      setActiveNamespaceSessionId(result.namespace_verification_session_id);
+      setActiveNamespaceSessionId(result.id);
       const updatedCommunity = await api.communities.setPendingNamespaceSession(
         communityId,
-        result.namespace_verification_session_id,
+        result.id,
       );
       setCommunity(updatedCommunity);
 
@@ -65,15 +65,15 @@ export function useCommunityModerationState(communityId: string) {
         restart_challenge: restartChallenge ?? null,
       });
 
-      if (result.status === "verified" && result.namespace_verification_id) {
-        const updatedCommunity = await api.communities.attachNamespace(communityId, result.namespace_verification_id);
+      if (result.status === "verified" && result.namespace_verification) {
+        const updatedCommunity = await api.communities.attachNamespace(communityId, result.namespace_verification);
         setCommunity(updatedCommunity);
         setActiveNamespaceSessionId(null);
       }
 
       return {
         status: result.status,
-        namespaceVerificationId: result.namespace_verification_id ?? null,
+        namespaceVerificationId: result.namespace_verification ?? null,
         failureReason: result.failure_reason ?? null,
       };
     },

@@ -15,32 +15,24 @@ type GatesBody = {
   default_age_gate_policy: "none" | "18_plus";
   allow_anonymous_identity: boolean;
   anonymous_identity_scope: "community_stable" | "thread_stable" | "post_ephemeral" | null;
-  gate_rules: unknown[];
+  gate_policy: unknown;
 };
 
 function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
   return {
-    community_id: "community-1",
+    id: "community-1",
     display_name: "Test Community",
     membership_mode: "gated",
     default_age_gate_policy: "18_plus",
     allow_anonymous_identity: false,
     anonymous_identity_scope: "thread_stable",
-    gate_rules: [{
-      gate_rule_id: "gate-1",
-      community_id: "community-1",
-      scope: "membership",
-      gate_family: "identity_proof",
-      gate_type: "nationality",
-      proof_requirements: [{
-        proof_type: "nationality",
-        accepted_providers: ["self"],
-        config: { required_value: "US" },
-      }],
-      status: "active",
-      created_at: "2026-01-01T00:00:00Z",
-      updated_at: "2026-01-01T00:00:00Z",
-    }],
+    gate_policy: {
+      version: 1,
+      expression: {
+        op: "and",
+        children: [{ op: "gate", gate: { type: "nationality", provider: "self", allowed: ["US"] } }],
+      },
+    },
     ...overrides,
   } as ApiCommunity;
 }
@@ -115,28 +107,28 @@ describe("useCommunityAccessState", () => {
     installCommunityApiMocks();
     const { result } = renderAccessHook({
       community: createCommunity({
-        gate_rules: [{
-          gate_rule_id: "gate-courtyard",
-          community_id: "community-1",
-          scope: "membership",
-          gate_family: "token_holding",
-          gate_type: "erc721_inventory_match",
-          chain_namespace: "eip155:137",
-          gate_config: {
-            contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
-            inventory_provider: "courtyard",
-            min_quantity: 3,
-            match: {
-              category: "watch",
-              brand: "Rolex",
-              model: "Submariner",
-              reference: "124060",
-            },
+        gate_policy: {
+          version: 1,
+          expression: {
+            op: "and",
+            children: [{
+              op: "gate",
+              gate: {
+                type: "erc721_inventory_match",
+                provider: "courtyard",
+                chain_namespace: "eip155:137",
+                contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+                min_quantity: 3,
+                match: {
+                  category: "watch",
+                  brand: "Rolex",
+                  model: "Submariner",
+                  reference: "124060",
+                },
+              },
+            }],
           },
-          status: "active",
-          created_at: "2026-01-01T00:00:00Z",
-          updated_at: "2026-01-01T00:00:00Z",
-        }],
+        },
       }),
     });
 
@@ -153,8 +145,14 @@ describe("useCommunityAccessState", () => {
         brand: "Rolex",
         model: "Submariner",
         reference: "124060",
+        condition: undefined,
+        franchise: undefined,
+        grade: undefined,
+        grader: undefined,
+        set: undefined,
+        subject: undefined,
+        year: undefined,
       },
-      gateRuleId: "gate-courtyard",
     });
   });
 
@@ -193,87 +191,9 @@ describe("useCommunityAccessState", () => {
         default_age_gate_policy: "none",
         allow_anonymous_identity: false,
         anonymous_identity_scope: null,
-        gate_rules: [{
-          scope: "membership",
-          gate_family: "token_holding",
-          gate_type: "erc721_holding",
-          gate_rule_id: null,
-          chain_namespace: "eip155:1",
-          gate_config: { contract_address: "0x123" },
-        }],
+        gate_policy: null,
       },
     });
-  });
-
-  test("preserves active membership gates the editor cannot edit", async () => {
-    const calls = installCommunityApiMocks();
-    const save = createSaveCommunityMock();
-    const { result } = renderAccessHook({
-      community: createCommunity({
-        gate_rules: [{
-          gate_rule_id: "gate-1",
-          community_id: "community-1",
-          scope: "membership",
-          gate_family: "identity_proof",
-          gate_type: "nationality",
-          proof_requirements: [{
-            proof_type: "nationality",
-            accepted_providers: ["self"],
-            config: { required_value: "US" },
-          }],
-          status: "active",
-          created_at: "2026-01-01T00:00:00Z",
-          updated_at: "2026-01-01T00:00:00Z",
-        }, {
-          gate_rule_id: "gate-preserved",
-          community_id: "community-1",
-          scope: "membership",
-          gate_family: "identity_proof",
-          gate_type: "unique_human",
-          proof_requirements: [{
-            proof_type: "unique_human",
-            accepted_providers: ["very"],
-          }],
-          status: "active",
-          created_at: "2026-01-01T00:00:00Z",
-          updated_at: "2026-01-01T00:00:00Z",
-        }],
-      }),
-      saveCommunity: save.saveCommunity,
-    });
-
-    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(1));
-    expect(result.current.preservedGateRuleCount).toBe(1);
-
-    act(() => {
-      result.current.handleSaveGates();
-    });
-
-    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
-
-    expect(calls.updateGates[0]?.body.gate_rules).toEqual([{
-      scope: "membership",
-      gate_family: "identity_proof",
-      gate_type: "unique_human",
-      gate_rule_id: "gate-preserved",
-      proof_requirements: [{
-        proof_type: "unique_human",
-        accepted_providers: ["very"],
-        config: null,
-      }],
-      chain_namespace: null,
-      gate_config: null,
-    }, {
-      scope: "membership",
-      gate_family: "identity_proof",
-      gate_type: "nationality",
-      gate_rule_id: "gate-1",
-      proof_requirements: [{
-        proof_type: "nationality",
-        accepted_providers: ["self"],
-        config: { required_values: ["US"] },
-      }],
-    }]);
   });
 
   test("derives adult content policy from an active minimum age membership gate", async () => {
@@ -330,21 +250,25 @@ describe("useCommunityAccessState", () => {
 
     await waitFor(() => expect(calls.updateGates).toHaveLength(1));
 
-    expect(calls.updateGates[0]?.body.gate_rules).toEqual([{
-      scope: "membership",
-      gate_family: "token_holding",
-      gate_type: "erc721_inventory_match",
-      gate_rule_id: null,
-      chain_namespace: "eip155:137",
-      gate_config: {
+    expect(calls.updateGates[0]?.body.gate_policy).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [{
+          op: "gate",
+          gate: {
+            type: "erc721_inventory_match",
+            provider: "courtyard",
+            chain_namespace: "eip155:137",
         contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
-        inventory_provider: "courtyard",
         min_quantity: 5,
         match: {
           category: "watch",
           brand: "Rolex",
         },
+          },
+        }],
       },
-    }]);
+    });
   });
 });

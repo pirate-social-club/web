@@ -83,7 +83,7 @@ const infinitySidebar: CommunitySidebarProps = {
   description: "To infinity and beyond",
   displayName: "Infinity",
   followerCount: 18400,
-  membershipMode: "open",
+  membershipMode: "request",
   memberCount: 1270,
   moderators: [],
 };
@@ -95,7 +95,7 @@ const tameImpalaSidebar: CommunitySidebarProps = {
     "Everything about Tame Impala — albums, deep cuts, live sessions, and production talk.",
   displayName: "Tame Impala",
   followerCount: 92100,
-  membershipMode: "open",
+  membershipMode: "request",
   memberCount: 48231,
   moderators: [],
   referenceLinks: [

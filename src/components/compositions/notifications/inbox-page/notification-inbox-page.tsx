@@ -113,8 +113,8 @@ function formatCompactHash(hash: string | null | undefined): string | null {
   return `${hash.slice(0, 6)}...${hash.slice(-4)}`;
 }
 
-function formatRelativeShort(value: string): string {
-  const timestamp = Date.parse(value);
+function formatRelativeShort(value: string | number): string {
+  const timestamp = typeof value === "number" ? value * 1000 : Date.parse(value);
   if (!Number.isFinite(timestamp)) return "";
   const diffMs = Date.now() - timestamp;
   const future = diffMs < 0;
@@ -209,11 +209,11 @@ export function resolveNotificationActivityHref(item: NotificationFeedItem): str
   }
 
   if (item.event.type === "post_commented") {
-    return item.event.subject_type === "post" ? `/p/${item.event.subject_id}` : null;
+    return item.event.subject_type === "post" ? `/p/${item.event.subject}` : null;
   }
 
   if (item.event.type === "xmtp_message") {
-    return `/chat/c/${encodeURIComponent(item.event.subject_id)}`;
+    return `/chat/c/${encodeURIComponent(item.event.subject)}`;
   }
 
   return null;
@@ -233,9 +233,9 @@ export function resolveNotificationTaskHref(task: UserTask): string | null {
     case "global_handle_cleanup_suggested":
       return "/settings/profile";
     case "membership_review":
-      return `/c/${task.subject_id}/mod/requests`;
+      return `/c/${task.subject}/mod/requests`;
     case "namespace_verification_required":
-      return `/c/${task.subject_id}/mod/namespace`;
+      return `/c/${task.subject}/mod/namespace`;
     default:
       return null;
   }
@@ -274,7 +274,7 @@ function getActivityMedia(item: NotificationFeedItem): React.ReactNode | null {
     <Avatar
       className="h-10 w-10 border-none"
       fallback={actorName}
-      fallbackSeed={item.event.actor_user_id ?? undefined}
+      fallbackSeed={item.event.actor_user ?? undefined}
       size="sm"
       src={avatarUrl ?? undefined}
     />
@@ -428,7 +428,7 @@ function NotificationTaskList({
       {tasks.map((task, index) => {
         const href = resolveNotificationTaskHref(task);
         return (
-          <div key={task.task_id}>
+          <div key={task.id}>
             {index > 0 || showPwaInstallTask ? <Separator /> : null}
             <NotificationRow
               icon={getTaskIcon(task)}
@@ -459,8 +459,9 @@ type NotificationTimelineEntry =
   }
 ;
 
-function parseTimestamp(value: string | null | undefined): number {
+function parseTimestamp(value: string | number | null | undefined): number {
   if (!value) return 0;
+  if (typeof value === "number") return value * 1000;
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
@@ -482,14 +483,14 @@ function NotificationActivityList({
   const timelineItems = React.useMemo<NotificationTimelineEntry[]>(() => {
     const notificationEntries: NotificationTimelineEntry[] = activityItems.map((item) => ({
       item,
-      key: item.event.event_id,
-      timestamp: parseTimestamp(item.event.created_at),
+      key: item.event.id,
+      timestamp: parseTimestamp(item.event.created),
       type: "notification",
     }));
     const royaltyActivityEntries: NotificationTimelineEntry[] = royaltyActivityItems.map((item) => ({
       item,
-      key: item.event_id,
-      timestamp: parseTimestamp(item.created_at),
+      key: item.id,
+      timestamp: parseTimestamp(item.created),
       type: "royalty_activity",
     }));
     return [...notificationEntries, ...royaltyActivityEntries]
@@ -510,7 +511,7 @@ function NotificationActivityList({
         if (entry.type === "notification") {
           const href = resolveNotificationActivityHref(entry.item);
           const context = formatEventContext(entry.item);
-          const relativeTime = formatRelativeShort(entry.item.event.created_at);
+          const relativeTime = formatRelativeShort(entry.item.event.created);
 
           return (
             <div key={entry.key}>
@@ -538,7 +539,7 @@ function NotificationActivityList({
         if (entry.type === "royalty_activity") {
           const buyerProfile = (entry.item as RoyaltyActivityItem & { buyerProfile?: { href: string; label: string } | null }).buyerProfile ?? null;
           const buyer = buyerProfile?.label ?? formatCompactAddress(entry.item.buyer_wallet_address);
-          const relativeTime = formatRelativeShort(entry.item.created_at);
+          const relativeTime = formatRelativeShort(entry.item.created);
           const amountLabel = `+$${formatWipAmount(entry.item.amount_wip_wei)} $WIP`;
 
           return (

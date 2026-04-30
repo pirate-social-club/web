@@ -25,13 +25,13 @@ function createCommentListItem(input: {
     comment: {
       anonymous_label: input.anonymousLabel,
       anonymous_scope: "thread_stable",
-      author_user_id: null,
+      author_user: null,
       authorship_mode: "human_direct",
       body: input.body,
-      comment_id: input.commentId,
-      community_id: "cmt_browser",
+      comment: input.commentId,
+      community: "cmt_browser",
       content_hash: null,
-      created_at: "2026-04-18T14:05:00.000Z",
+      created: "2026-04-18T14:05:00.000Z",
       depth: input.depth,
       descendant_count: input.descendantCount,
       downvote_count: 0,
@@ -45,7 +45,7 @@ function createCommentListItem(input: {
       swarm_body_ref: null,
       thread_root_post_id: "pst_browser",
       upvote_count: 0,
-      updated_at: "2026-04-18T14:05:00.000Z",
+      updated: "2026-04-18T14:05:00.000Z",
     },
     machine_translated: input.translationState === "ready",
     resolved_locale: "en",
@@ -138,13 +138,13 @@ describe("thread comment state helpers", () => {
     const merged = mergeThreadCommentNodes([previousRoot], [refreshedRoot, newSibling]);
 
     expect(merged.length).toBe(2);
-    expect(merged[0]?.item.comment.comment_id).toBe("cmt_root");
+    expect(merged[0]?.item.comment.id).toBe("cmt_root");
     expect(merged[0]?.item.comment.score).toBe(3);
     expect(merged[0]?.item.comment.direct_reply_count).toBe(2);
     expect(merged[0]?.hasLoadedReplies).toBe(true);
     expect(merged[0]?.children.length).toBe(1);
     expect(merged[0]?.children[0]?.item.comment.body).toBe("Nested reply that was already loaded.");
-    expect(merged[1]?.item.comment.comment_id).toBe("cmt_root_2");
+    expect(merged[1]?.item.comment.id).toBe("cmt_root_2");
   });
 
   test("buildThreadCommentTreeFromItems nests flat replies under their parent", () => {
@@ -171,9 +171,9 @@ describe("thread comment state helpers", () => {
     const tree = buildThreadCommentTreeFromItems([parent, reply]);
 
     expect(tree).toHaveLength(1);
-    expect(tree[0]?.item.comment.comment_id).toBe("cmt_parent");
+    expect(tree[0]?.item.comment.id).toBe("cmt_parent");
     expect(tree[0]?.children).toHaveLength(1);
-    expect(tree[0]?.children[0]?.item.comment.comment_id).toBe("cmt_reply");
+    expect(tree[0]?.children[0]?.item.comment.id).toBe("cmt_reply");
   });
 
   test("loadThreadCommentTree auto-loads first-level replies for roots", async () => {
@@ -222,7 +222,7 @@ describe("thread comment state helpers", () => {
     expect(tree[0]?.hasLoadedReplies).toBe(true);
     expect(tree[0]?.nextRepliesCursor).toBe(null);
     expect(tree[0]?.children).toHaveLength(1);
-    expect(tree[0]?.children[0]?.item.comment.comment_id).toBe("cmt_reply");
+    expect(tree[0]?.children[0]?.item.comment.id).toBe("cmt_reply");
   });
 });
 import "@/test/setup-runtime";

@@ -18,8 +18,8 @@ function createPostResponse(overrides: { postId?: string; postType?: LocalizedPo
   const postId = overrides.postId ?? "pst_test";
   return {
     post: {
-      post_id: postId,
-      community_id: "cmt_test",
+      post: postId,
+      community: "cmt_test",
       post_type: overrides.postType ?? "text",
       title: "Post title",
       body: "Post body",
@@ -27,7 +27,7 @@ function createPostResponse(overrides: { postId?: string; postType?: LocalizedPo
       status: "published",
       visibility: "public",
       identity_mode: overrides.authorUserId ? "public" : "anonymous",
-      author_user_id: overrides.authorUserId ?? null,
+      author_user: overrides.authorUserId ?? null,
       anonymous_label: null,
       authorship_mode: "human_direct",
       agent_display_name_snapshot: null,
@@ -39,10 +39,10 @@ function createPostResponse(overrides: { postId?: string; postType?: LocalizedPo
       media_refs: [],
       embeds: [],
       link_url: null,
-      asset_id: null,
+      asset: null,
       access_mode: "public",
-      created_at: "2026-04-24T00:00:00.000Z",
-      updated_at: "2026-04-24T00:00:00.000Z",
+      created: "2026-04-24T00:00:00.000Z",
+      updated: "2026-04-24T00:00:00.000Z",
       analysis_state: "allow",
       content_safety_state: "safe",
       age_gate_policy: "none",
@@ -54,7 +54,7 @@ function createPostResponse(overrides: { postId?: string; postType?: LocalizedPo
       comment_count: 0,
       swarm_manifest_ref: "swarm://comments/pst_test",
       swarm_feed_ref: null,
-      created_at: "2026-04-24T00:00:00.000Z",
+      created: "2026-04-24T00:00:00.000Z",
     },
     comment_count: 0,
     upvote_count: 1,
@@ -72,13 +72,13 @@ function createPostResponse(overrides: { postId?: string; postType?: LocalizedPo
 function createFeedItem(overrides: { postId?: string; postType?: LocalizedPostResponse["post"]["post_type"]; authorUserId?: string | null } = {}): HomeFeedItem {
   return {
     community: {
-      community_id: "cmt_test",
+      community: "cmt_test",
       display_name: "Test Community",
       route_slug: "test",
       avatar_ref: null,
       member_count: 1,
       follower_count: 1,
-      updated_at: "2026-04-24T00:00:00.000Z",
+      updated: "2026-04-24T00:00:00.000Z",
     },
     post: createPostResponse(overrides),
   };
@@ -130,14 +130,14 @@ describe("useHomeFeed", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.feedEntries.length).toBe(1);
-    expect(result.current.feedEntries[0]?.post.post.post_id).toBe("pst_1");
+    expect(result.current.feedEntries[0]?.post.post.id).toBe("pst_1");
     expect(Object.keys(result.current.authorProfiles).length).toBe(0);
     expect(Object.keys(result.current.listingsByAssetId).length).toBe(0);
     expect(Object.keys(result.current.purchasesByAssetId).length).toBe(0);
 
-    resolveProfile?.({ user_id: "usr_1", display_name: "Test User" });
+    resolveProfile?.({ user: "usr_1", display_name: "Test User" });
     await waitFor(() => expect(result.current.authorProfiles["usr_1"]).toBeDefined());
-    expect(result.current.authorProfiles["usr_1"]).toEqual({ user_id: "usr_1", display_name: "Test User" });
+    expect(result.current.authorProfiles["usr_1"]).toEqual({ user: "usr_1", display_name: "Test User" });
   });
 
   test("loads commerce data asynchronously for song posts", async () => {
@@ -162,12 +162,12 @@ describe("useHomeFeed", () => {
         createFeedItem({ postId: "pst_song", postType: "song", authorUserId: "usr_1" }),
       ],
     });
-    profilesApi.getByUserId = async () => ({ user_id: "usr_1", display_name: "Test User" });
+    profilesApi.getByUserId = async () => ({ user: "usr_1", display_name: "Test User" });
     communitiesApi.listListings = async () => ({
-      items: [{ asset_id: "asset_1", community_id: "cmt_test", price_usd: "1.00" }],
+      items: [{ asset: "asset_1", community: "cmt_test", price_cents: 100 }],
     });
     communitiesApi.listPurchases = async () => ({
-      items: [{ asset_id: "asset_1", community_id: "cmt_test" }],
+      items: [{ asset: "asset_1", community: "cmt_test" }],
     });
 
     const { result } = renderHook(() =>
@@ -177,7 +177,7 @@ describe("useHomeFeed", () => {
         hydrated: true,
         session: {
           accessToken: "token",
-          user: { user_id: "usr_1" },
+          user: { user: "usr_1" },
           profile: null,
           onboarding: { unique_human_verification_status: "verified" },
           walletAttachments: [],

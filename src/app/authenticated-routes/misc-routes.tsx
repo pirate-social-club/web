@@ -17,8 +17,16 @@ import { useRouteMessages } from "@/hooks/use-route-messages";
 import { NotFoundRouteState } from "@/app/authenticated-helpers/route-shell";
 import { useCreatePostDraftState, type CreatePostDraftState } from "@/app/authenticated-state/create-post-draft-state";
 
-export function NotFoundPage({ path }: { path: string }) {
-  return <NotFoundRouteState path={path} />;
+export function NotFoundPage({
+  path,
+  title,
+  description,
+}: {
+  path: string;
+  title?: string;
+  description?: string;
+}) {
+  return <NotFoundRouteState description={description} path={path} title={title} />;
 }
 
 export function CreatePostGlobalPage({

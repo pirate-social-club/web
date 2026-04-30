@@ -116,7 +116,7 @@ export function useSongSubmit({
         break;
       }
       await sleep(SONG_PREVIEW_POLL_INTERVAL_MS);
-      current = await api.communities.getSongArtifactBundle(communityId, current.song_artifact_bundle_id);
+      current = await api.communities.getSongArtifactBundle(communityId, current.id);
     }
     throw new Error("Song preview is still processing. Try again in a moment.");
   }, [api.communities, communityId]);
@@ -132,7 +132,7 @@ export function useSongSubmit({
       filename: file.name,
       size_bytes: file.size,
     });
-    return await api.communities.uploadArtifactContent(communityId, intent.song_artifact_upload_id, await file.arrayBuffer());
+    return await api.communities.uploadArtifactContent(communityId, intent.id, await file.arrayBuffer());
   }, [api, communityId]);
 
   return React.useCallback(async ({
@@ -183,20 +183,20 @@ export function useSongSubmit({
       const instrumentalAudio = await uploadSongArtifact("instrumental_audio", songState.instrumentalAudioUpload);
       const vocalAudio = await uploadSongArtifact("vocal_audio", songState.vocalAudioUpload);
       const bundle = await api.communities.createSongArtifactBundle(communityId, {
-        primary_audio: { song_artifact_upload_id: primaryAudio.song_artifact_upload_id },
+        primary_audio: { song_artifact_upload: primaryAudio.id },
         lyrics: lyrics.trim(),
-        cover_art: coverArt ? { song_artifact_upload_id: coverArt.song_artifact_upload_id } : null,
+        cover_art: coverArt ? { song_artifact_upload: coverArt.id } : null,
         preview_window: isLockedSong ? { start_ms: previewStartMs ?? 0, duration_ms: SONG_PREVIEW_DURATION_MS } : null,
-        canvas_video: canvasVideo ? { song_artifact_upload_id: canvasVideo.song_artifact_upload_id } : null,
-        instrumental_audio: instrumentalAudio ? { song_artifact_upload_id: instrumentalAudio.song_artifact_upload_id } : null,
-        vocal_audio: vocalAudio ? { song_artifact_upload_id: vocalAudio.song_artifact_upload_id } : null,
+        canvas_video: canvasVideo ? { song_artifact_upload: canvasVideo.id } : null,
+        instrumental_audio: instrumentalAudio ? { song_artifact_upload: instrumentalAudio.id } : null,
+        vocal_audio: vocalAudio ? { song_artifact_upload: vocalAudio.id } : null,
       });
-      bundleId = bundle.song_artifact_bundle_id;
+      bundleId = bundle.id;
       bundleForPublish = bundle;
 
       if (resolveBundleAnalysisState(bundle) === "allow_with_required_reference") {
         const matchedReferences = buildMatchedSourceReferences(bundle);
-        setPendingSongBundleId(bundle.song_artifact_bundle_id);
+        setPendingSongBundleId(bundle.id);
         setSongMode("remix");
         setDerivativeStep((current) => ({
           visible: true,
@@ -218,7 +218,7 @@ export function useSongSubmit({
       bundleForPublish = await waitForSongPreview(
         bundleForPublish ?? await api.communities.getSongArtifactBundle(communityId, bundleId),
       );
-      bundleId = bundleForPublish.song_artifact_bundle_id;
+      bundleId = bundleForPublish.id;
     }
 
     const songRequest = buildSongPostRequest({
@@ -239,9 +239,9 @@ export function useSongSubmit({
     );
 
     if (isLockedSong) {
-      if (!result.asset_id) throw new Error("The song published, but the paid asset was not created.");
+      if (!result.asset) throw new Error("The song published, but the paid asset was not created.");
       const listingRequest = buildAssetListingRequest({
-        assetId: result.asset_id,
+        assetId: result.asset,
         paidSongPriceUsd,
         pricingPolicyRegionalPricingEnabled,
         regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,

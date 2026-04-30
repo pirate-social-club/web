@@ -6,7 +6,7 @@
     },
     "gender": {
       "public": "使用身份证件验证",
-      "adminWithValue": "需要 Self 证件性别标记 {requiredValue}"
+      "adminWithValue": "需要证件性别标记 {requiredValue}"
     },
     "uniqueHuman": {
       "very": "需要掌纹扫描",
@@ -88,7 +88,7 @@
     "ageOver18": "18+ 状态",
     "minimumAge": "年龄",
     "nationality": "国籍",
-    "gender": "Self 证件性别标记",
+    "gender": "证件性别标记",
     "uniqueHuman": "真人状态",
     "walletScore": "Passport 分数"
   },

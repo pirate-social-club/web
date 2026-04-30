@@ -56,9 +56,9 @@ function buildMissingSignerDiagnostic({
     reason: "missing_xmtp_signer_wallet",
     setupKey,
     hasPirateSession: !!session,
-    userId: session?.user.user_id ?? null,
+    userId: session?.user.id ?? null,
     primaryWalletAddress: session?.profile.primary_wallet_address ?? null,
-    primaryWalletAttachmentId: session?.user.primary_wallet_attachment_id ?? null,
+    primaryWalletAttachmentId: session?.user.primary_wallet_attachment ?? null,
     walletAttachments: summarizeSessionWallets(session),
     walletsReady,
     connectedWallets: summarizeConnectedWallets(connectedWallets),
@@ -111,7 +111,7 @@ export function useXmtpSetup({
   const xmtpClientCache = React.useMemo(() => getSharedXmtpClientCache(), []);
   const xmtpReady = xmtpSetupPhase === "ready";
   const setupKey = session
-    ? `${session.user.user_id}:${session.profile.primary_wallet_address ?? session.walletAttachments[0]?.wallet_address ?? "no-wallet"}`
+    ? `${session.user.id}:${session.profile.primary_wallet_address ?? session.walletAttachments[0]?.wallet_address ?? "no-wallet"}`
     : null;
   const xmtpSignerWallet = React.useMemo(
     () => session ? resolveXmtpSignerWallet(session, connectedWallets) : null,

@@ -57,6 +57,10 @@ function resolveRailThumbnail(entry: ApiHomeFeedItem): string | null {
   return null;
 }
 
+function unixOrIsoMs(value: string | number): number {
+  return typeof value === "number" ? value * 1000 : Date.parse(value);
+}
+
 function buildRecentPostRail(input: {
   feedEntries: ApiHomeFeedItem[];
   recentCommunities: ReturnType<typeof useRecentCommunities>;
@@ -75,20 +79,20 @@ function buildRecentPostRail(input: {
   }
 
   const eligiblePosts = input.feedEntries
-    .filter((entry) => communityVisitRank.has(entry.community.community_id))
+    .filter((entry) => communityVisitRank.has(entry.community.id))
     .sort((left, right) => {
-      const leftRank = communityVisitRank.get(left.community.community_id) ?? Number.MAX_SAFE_INTEGER;
-      const rightRank = communityVisitRank.get(right.community.community_id) ?? Number.MAX_SAFE_INTEGER;
+      const leftRank = communityVisitRank.get(left.community.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightRank = communityVisitRank.get(right.community.id) ?? Number.MAX_SAFE_INTEGER;
       if (leftRank !== rightRank) {
         return leftRank - rightRank;
       }
 
-      const createdAtDiff = Date.parse(right.post.post.created_at) - Date.parse(left.post.post.created_at);
+      const createdAtDiff = unixOrIsoMs(right.post.post.created) - unixOrIsoMs(left.post.post.created);
       if (!Number.isNaN(createdAtDiff) && createdAtDiff !== 0) {
         return createdAtDiff;
       }
 
-      return right.post.post.post_id.localeCompare(left.post.post.post_id);
+      return right.post.post.id.localeCompare(left.post.post.id);
     });
 
   const railPosts: RecentPostRailItem[] = [];
@@ -97,11 +101,11 @@ function buildRecentPostRail(input: {
 
   for (const entry of eligiblePosts) {
     if (railPosts.length >= limit) break;
-    if (seenCommunityIds.has(entry.community.community_id) || seenPostIds.has(entry.post.post.post_id)) {
+    if (seenCommunityIds.has(entry.community.id) || seenPostIds.has(entry.post.post.id)) {
       continue;
     }
 
-    const recentCommunity = recentCommunityMeta.get(entry.community.community_id);
+    const recentCommunity = recentCommunityMeta.get(entry.community.id);
     const title = (entry.post.translated_title ?? entry.post.post.title ?? entry.post.post.caption ?? entry.post.post.body ?? "").trim();
     if (!title) {
       continue;
@@ -110,27 +114,27 @@ function buildRecentPostRail(input: {
     railPosts.push({
       commentCount: entry.post.thread_snapshot?.comment_count ?? 0,
       communityAvatarSrc: recentCommunity?.avatarSrc ?? null,
-      communityHref: buildCommunityPath(entry.community.community_id, recentCommunity?.routeSlug ?? entry.community.route_slug),
-      communityId: entry.community.community_id,
+      communityHref: buildCommunityPath(entry.community.id, recentCommunity?.routeSlug ?? entry.community.route_slug),
+      communityId: entry.community.id,
       communityLabel: recentCommunity?.displayName ?? entry.community.display_name,
-      postHref: `/p/${entry.post.post.post_id}`,
-      postId: entry.post.post.post_id,
+      postHref: `/p/${entry.post.post.id}`,
+      postId: entry.post.post.id,
       postTitle: title,
       score: entry.post.upvote_count - entry.post.downvote_count,
-      timestampLabel: formatRelativeTimestamp(entry.post.post.created_at),
+      timestampLabel: formatRelativeTimestamp(entry.post.post.created),
       thumbnailSrc: resolveRailThumbnail(entry),
     });
-    seenCommunityIds.add(entry.community.community_id);
-    seenPostIds.add(entry.post.post.post_id);
+    seenCommunityIds.add(entry.community.id);
+    seenPostIds.add(entry.post.post.id);
   }
 
   for (const entry of eligiblePosts) {
     if (railPosts.length >= limit) break;
-    if (seenPostIds.has(entry.post.post.post_id)) {
+    if (seenPostIds.has(entry.post.post.id)) {
       continue;
     }
 
-    const recentCommunity = recentCommunityMeta.get(entry.community.community_id);
+    const recentCommunity = recentCommunityMeta.get(entry.community.id);
     const title = (entry.post.translated_title ?? entry.post.post.title ?? entry.post.post.caption ?? entry.post.post.body ?? "").trim();
     if (!title) {
       continue;
@@ -139,17 +143,17 @@ function buildRecentPostRail(input: {
     railPosts.push({
       commentCount: entry.post.thread_snapshot?.comment_count ?? 0,
       communityAvatarSrc: recentCommunity?.avatarSrc ?? null,
-      communityHref: buildCommunityPath(entry.community.community_id, recentCommunity?.routeSlug ?? entry.community.route_slug),
-      communityId: entry.community.community_id,
+      communityHref: buildCommunityPath(entry.community.id, recentCommunity?.routeSlug ?? entry.community.route_slug),
+      communityId: entry.community.id,
       communityLabel: recentCommunity?.displayName ?? entry.community.display_name,
-      postHref: `/p/${entry.post.post.post_id}`,
-      postId: entry.post.post.post_id,
+      postHref: `/p/${entry.post.post.id}`,
+      postId: entry.post.post.id,
       postTitle: title,
       score: entry.post.upvote_count - entry.post.downvote_count,
-      timestampLabel: formatRelativeTimestamp(entry.post.post.created_at),
+      timestampLabel: formatRelativeTimestamp(entry.post.post.created),
       thumbnailSrc: resolveRailThumbnail(entry),
     });
-    seenPostIds.add(entry.post.post.post_id);
+    seenPostIds.add(entry.post.post.id);
   }
 
   return railPosts;
@@ -166,7 +170,7 @@ type UseHomeFeedInput = {
 export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange }: UseHomeFeedInput) {
   const api = useApi();
   const sessionProfile = session?.profile;
-  const sessionUserId = session?.user.user_id;
+  const sessionUserId = session?.user.id;
   const [feedEntries, setFeedEntries] = React.useState<ApiHomeFeedItem[]>([]);
   const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
   const [listingsByAssetId, setListingsByAssetId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
@@ -203,7 +207,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
 
         void loadProfilesByUserId(
           api,
-          nextFeedEntries.map((entry) => entry.post.post.identity_mode === "public" ? entry.post.post.author_user_id : null).filter((userId): userId is string => Boolean(userId)),
+          nextFeedEntries.map((entry) => entry.post.post.identity_mode === "public" ? entry.post.post.author_user : null).filter((userId): userId is string => Boolean(userId)),
           sessionProfile && sessionUserId ? { [sessionUserId]: sessionProfile } : {},
         )
           .then((profiles) => {
@@ -216,7 +220,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
         const commerceCommunityIds = sessionUserId
           ? [...new Set(nextFeedEntries
             .filter((entry) => entry.post.post.post_type === "song" || entry.post.post.post_type === "video")
-            .map((entry) => entry.community.community_id))]
+            .map((entry) => entry.community.id))]
           : [];
 
         if (commerceCommunityIds.length > 0) {
@@ -230,10 +234,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
             .then((commerceByCommunity) => {
               if (cancelled) return;
               setListingsByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.listings.map((listing) => (
-                typeof listing.asset_id === "string" && listing.asset_id.length > 0 ? [[listing.asset_id, listing] as const] : []
+                typeof listing.asset === "string" && listing.asset.length > 0 ? [[listing.asset, listing] as const] : []
               )))));
               setPurchasesByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.purchases.map((purchase) => (
-                typeof purchase.asset_id === "string" && purchase.asset_id.length > 0 ? [[purchase.asset_id, purchase] as const] : []
+                typeof purchase.asset === "string" && purchase.asset.length > 0 ? [[purchase.asset, purchase] as const] : []
               )))));
             })
             .catch(() => {
@@ -319,17 +323,17 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const needsPostingVerification = !!session && session.onboarding.unique_human_verification_status !== "verified";
 
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
-    const entry = feedEntries.find((candidate) => candidate.post.post.post_id === postId);
+    const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
     if (!entry) return;
     await runGatedCommunityAction({
       action: "vote_post",
-      communityId: entry.community.community_id,
+      communityId: entry.community.id,
       onAllowed: async () => {
         const previousPost = entry.post;
         await submitOptimisticPostVote({
           direction,
           onApply: (nextValue) => setFeedEntries((current) => updateHomeFeedEntryPostVote(current, postId, nextValue)),
-          onRollback: (restoredPost) => setFeedEntries((current) => current.map((currentEntry) => currentEntry.post.post.post_id === postId ? { ...currentEntry, post: restoredPost } : currentEntry)),
+          onRollback: (restoredPost) => setFeedEntries((current) => current.map((currentEntry) => currentEntry.post.post.id === postId ? { ...currentEntry, post: restoredPost } : currentEntry)),
           postId,
           previousPost: previousPost ?? null,
           requestIdsRef: voteRequestIdsRef,
@@ -341,13 +345,13 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   }, [api.posts.vote, feedEntries, runGatedCommunityAction]);
 
   const feedItems = feedEntries.map((entry) => {
-    const assetId = entry.post.post.asset_id ?? undefined;
+    const assetId = entry.post.post.asset ?? undefined;
     return toHomeFeedItem(
       entry,
       authorProfiles,
       entry.post.post.post_type === "song" || entry.post.post.post_type === "video"
         ? {
-          currentUserId: session?.user?.user_id,
+          currentUserId: session?.user?.id,
           listing: assetId ? listingsByAssetId[assetId] : undefined,
           localeTag,
           playback: songPlayback,
@@ -355,8 +359,8 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         }
         : undefined,
       {
-        onComment: () => navigate(`/p/${entry.post.post.post_id}`),
-        onVote: (direction) => void voteOnPost(entry.post.post.post_id, direction),
+        onComment: () => navigate(`/p/${entry.post.post.id}`),
+        onVote: (direction) => void voteOnPost(entry.post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
       },

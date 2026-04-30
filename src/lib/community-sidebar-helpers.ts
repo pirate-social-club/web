@@ -21,6 +21,10 @@ type SidebarGateSummary = Pick<
   | "required_values"
 >;
 
+function normalizeCommunityMembershipMode(mode: ApiCommunity["membership_mode"] | ApiCommunityPreview["membership_mode"]): "request" | "gated" {
+  return mode === "request" ? "request" : "gated";
+}
+
 function getRequirementLocale(locale: string | null | undefined): "ar" | "zh" | "en" {
   const normalized = String(locale ?? "").toLowerCase();
   if (normalized.startsWith("ar")) return "ar";
@@ -69,8 +73,8 @@ function formatSidebarRequirement(input: {
           : "证件性别标记";
       }
       return input.requiredValue
-        ? `Self document marker ${input.requiredValue}`
-        : "Self document marker";
+        ? `Document sex marker ${input.requiredValue}`
+        : "Document sex marker";
     case "age_over_18":
       return "18+";
     case "minimum_age":
@@ -148,40 +152,33 @@ export function buildCommunitySidebarRequirements(input: {
 function getCommunityGateSummaries(
   community: ApiCommunity,
 ): SidebarGateSummary[] {
-  return (community.gate_rules ?? [])
-    .filter((rule) => rule.scope === "membership" && rule.status === "active")
-    .map((rule) => {
-      const config = rule.proof_requirements?.[0]?.config ?? rule.gate_config ?? null;
-      const requiredValue = config && typeof config === "object" && "required_value" in config
-        ? typeof config.required_value === "string"
-          ? config.required_value
-          : null
-        : null;
-      const rawRequiredValues = config && typeof config === "object" && Array.isArray((config as Record<string, unknown>).required_values)
-        ? (config as Record<string, unknown>).required_values as unknown[]
-        : null;
-      const requiredValues = rawRequiredValues?.filter((value): value is string => typeof value === "string") ?? null;
-      const requiredMinimumAge = config && typeof config === "object" && Number.isInteger((config as Record<string, unknown>).minimum_age)
-        ? (config as Record<string, unknown>).minimum_age as number
-        : null;
-      const minimumScore = config && typeof config === "object" && typeof (config as Record<string, unknown>).minimum_score === "number"
-        ? (config as Record<string, unknown>).minimum_score as number
-        : null;
-
-      return {
-        accepted_providers: rule.proof_requirements?.[0]?.accepted_providers ?? null,
-        gate_type: rule.gate_type as ApiMembershipGateSummary["gate_type"],
-        contract_address: config && typeof config === "object" && "contract_address" in config
-          ? typeof config.contract_address === "string"
-            ? config.contract_address
-            : null
-          : null,
-        required_value: requiredValue,
-        required_values: requiredValues,
-        required_minimum_age: requiredMinimumAge,
-        minimum_score: minimumScore,
-      };
-    });
+  const policy = community.gate_policy;
+  if (!policy) return [];
+  type ApiGateAtom = NonNullable<typeof policy.expression.gate>;
+  type ApiGateExpression = Omit<typeof policy.expression, "children" | "gate"> & {
+    children?: ApiGateExpression[];
+    gate?: ApiGateAtom;
+  };
+  const atoms: ApiGateAtom[] = [];
+  const collect = (expression: ApiGateExpression): void => {
+    if (expression.op === "gate" && expression.gate) {
+      atoms.push(expression.gate);
+      return;
+    }
+    expression.children?.forEach(collect);
+  };
+  collect(policy.expression as ApiGateExpression);
+  return atoms.map((atom) => ({
+    accepted_providers: "provider" in atom && (atom.provider === "self" || atom.provider === "very" || atom.provider === "passport")
+      ? [atom.provider]
+      : null,
+    gate_type: atom.type as ApiMembershipGateSummary["gate_type"],
+    contract_address: "contract_address" in atom ? atom.contract_address : null,
+    required_value: atom.type === "gender" ? atom.allowed?.[0] ?? null : atom.type === "nationality" && atom.allowed?.length === 1 ? atom.allowed[0] : null,
+    required_values: atom.type === "nationality" && (atom.allowed?.length ?? 0) > 1 ? atom.allowed : atom.type === "gender" && (atom.allowed?.length ?? 0) > 1 ? atom.allowed : null,
+    required_minimum_age: atom.type === "minimum_age" ? atom.minimum_age : null,
+    minimum_score: atom.type === "wallet_score" ? atom.minimum_score : null,
+  }));
 }
 
 export function buildCommunitySidebar(community: ApiCommunity, locale?: string | null) {
@@ -198,29 +195,29 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
         name: community.donation_partner.display_name,
       }
       : null,
-    createdAt: community.created_at,
-    communityId: community.community_id,
+    createdAt: community.created,
+    communityId: community.id,
     description: resolveCommunityLocalizedText(community, "community.description", community.description),
     displayName: community.display_name,
     memberCount: community.member_count ?? undefined,
-    membershipMode: community.membership_mode,
+    membershipMode: normalizeCommunityMembershipMode(community.membership_mode),
     requirements: buildCommunitySidebarRequirements({
       defaultAgeGatePolicy: community.default_age_gate_policy ?? "none",
       gateSummaries: getCommunityGateSummaries(community),
       locale,
     }),
     referenceLinks: community.reference_links?.map((link) => ({
-      communityReferenceLinkId: link.community_reference_link_id,
+      communityReferenceLinkId: link.community_reference_link,
       label: resolveCommunityLocalizedText(
         community,
-        `community.reference_link.${link.community_reference_link_id}.label`,
+        `community.reference_link.${link.community_reference_link}.label`,
         link.label,
       ) || null,
       linkStatus: link.link_status,
       metadata: {
         displayName: resolveCommunityLocalizedText(
           community,
-          `community.reference_link.${link.community_reference_link_id}.metadata.display_name`,
+          `community.reference_link.${link.community_reference_link}.metadata.display_name`,
           link.metadata.display_name,
         ) || null,
         imageUrl: link.metadata.image_url ?? null,
@@ -249,8 +246,8 @@ export function buildCommunitySidebarRoleHolderFromProfile(profile: ApiProfile |
   }
 
   return {
-    user_id: profile.user_id,
-    avatarSeed: profile.user_id,
+    user: profile.id,
+    avatarSeed: profile.id,
     avatarSrc: profile.avatar_ref ?? undefined,
     displayName,
     handle,
@@ -274,17 +271,17 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
         name: preview.donation_partner.display_name,
       }
       : null,
-    createdAt: preview.created_at,
-    communityId: preview.community_id,
+    createdAt: preview.created,
+    communityId: preview.id,
     description: resolveCommunityLocalizedText(preview, "community.description", preview.description),
     displayName: preview.display_name,
     followerCount: preview.follower_count ?? undefined,
     memberCount: preview.member_count ?? undefined,
-    membershipMode: preview.membership_mode,
+    membershipMode: normalizeCommunityMembershipMode(preview.membership_mode),
     owner: preview.owner
       ? {
-        user_id: preview.owner.user_id,
-        avatarSeed: preview.owner.user_id,
+        user: preview.owner.user,
+        avatarSeed: preview.owner.user,
         avatarSrc: preview.owner.avatar_ref ?? undefined,
         displayName: preview.owner.display_name,
         handle: preview.owner.handle,
@@ -294,8 +291,8 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       }
       : null,
     moderators: preview.moderators.map((mod) => ({
-      user_id: mod.user_id,
-      avatarSeed: mod.user_id,
+      user: mod.user,
+      avatarSeed: mod.user,
       avatarSrc: mod.avatar_ref ?? undefined,
       displayName: mod.display_name,
       handle: mod.handle,
@@ -308,17 +305,17 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       locale,
     }),
     referenceLinks: preview.reference_links?.map((link) => ({
-      communityReferenceLinkId: link.community_reference_link_id,
+      communityReferenceLinkId: link.community_reference_link,
       label: resolveCommunityLocalizedText(
         preview,
-        `community.reference_link.${link.community_reference_link_id}.label`,
+        `community.reference_link.${link.community_reference_link}.label`,
         link.label,
       ) || null,
       linkStatus: link.link_status,
       metadata: {
         displayName: resolveCommunityLocalizedText(
           preview,
-          `community.reference_link.${link.community_reference_link_id}.metadata.display_name`,
+          `community.reference_link.${link.community_reference_link}.metadata.display_name`,
           link.metadata.display_name,
         ) || null,
         imageUrl: link.metadata.image_url ?? null,
@@ -329,11 +326,11 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       verified: link.verified,
     })),
     rules: preview.rules.map((rule) => ({
-      body: resolveCommunityLocalizedText(preview, `community.rule.${rule.rule_id}.body`, rule.body),
+      body: resolveCommunityLocalizedText(preview, `community.rule.${rule.id}.body`, rule.body),
       position: rule.position,
-      ruleId: rule.rule_id,
+      ruleId: rule.id,
       status: rule.status,
-      title: resolveCommunityLocalizedText(preview, `community.rule.${rule.rule_id}.title`, rule.title),
+      title: resolveCommunityLocalizedText(preview, `community.rule.${rule.id}.title`, rule.title),
     })),
   };
 }
@@ -342,15 +339,15 @@ export function getCommunitySidebarRules(community: ApiCommunity | null): Commun
   return community?.community_profile?.rules?.map((rule) => ({
     body: resolveCommunityLocalizedText(
       community,
-      `community.rule.${rule.rule_id}.body`,
+      `community.rule.${rule.id}.body`,
       rule.body,
     ),
     position: rule.position,
-    ruleId: rule.rule_id,
+    ruleId: rule.id,
     status: rule.status,
     title: resolveCommunityLocalizedText(
       community,
-      `community.rule.${rule.rule_id}.title`,
+      `community.rule.${rule.id}.title`,
       rule.title,
     ),
   })) ?? [];
@@ -367,11 +364,11 @@ export function getCommunityActionLabel(status: ApiJoinEligibility["status"]): s
 }
 
 export function getNamespaceActionLabel(community: ApiCommunity): string | null {
-  if (community.namespace_verification_id) {
+  if (community.namespace_verification) {
     return null;
   }
 
-  return community.pending_namespace_verification_session_id
+  return community.pending_namespace_verification_session
     ? "Resume verification"
     : "Verify namespace";
 }

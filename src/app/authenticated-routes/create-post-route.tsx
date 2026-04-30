@@ -30,6 +30,7 @@ import {
   getGateFailureMessage,
   getSelfVerificationRequestForGates,
   hasSelfDocumentFactVerificationRequest,
+  resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 
 import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
@@ -142,7 +143,7 @@ function CreatePostComposer({
           publicHandle:
             resolvePublicIdentityLabel(state.session?.profile) ?? "@handle",
           publicAvatarSrc: state.session?.profile?.avatar_ref ?? null,
-          publicAvatarSeed: state.session?.profile?.user_id ?? null,
+          publicAvatarSeed: state.session?.profile?.id ?? null,
           anonymousLabel: state.communityStableAnonymousLabel
             ?? resolveAnonymousComposerLabel(
               state.community.anonymous_identity_scope,
@@ -577,7 +578,7 @@ export function CreatePostPage({
     ) : null;
     const joinRequiresVeryVerification =
       state.eligibility.status === "verification_required" &&
-      state.eligibility.suggested_verification_provider === "very";
+      resolveSuggestedVerificationProvider(state.eligibility) === "very";
 
     if (isMobile && joinRequiresVeryVerification) {
       return (

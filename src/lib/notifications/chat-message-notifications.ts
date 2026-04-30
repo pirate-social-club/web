@@ -76,25 +76,26 @@ export function addLocalChatNotification(input: {
 export function listLocalChatNotificationItems(): NotificationFeedItem[] {
   return readItems().map((item) => ({
     event: {
-      actor_user_id: null,
-      created_at: item.createdAt,
-      event_id: item.eventId,
-      object_id: item.conversationId,
+      actor_user: null,
+      created: Math.floor(Date.parse(item.createdAt) / 1000),
+      id: item.eventId,
+      object: "notification_event",
       object_type: item.transport === "assistant" ? "assistant_conversation" : "xmtp_conversation",
       payload: {
         actor_display_name: item.senderLabel,
         target_path: item.targetPath,
       },
-      subject_id: item.conversationId,
+      subject: item.conversationId,
       subject_type: item.transport === "assistant" ? "assistant_conversation" : "xmtp_conversation",
-      type: item.transport === "assistant" ? "assistant_message" : "xmtp_message",
+      type: "xmtp_message",
     },
     receipt: {
-      created_at: item.createdAt,
-      event_id: item.eventId,
-      recipient_user_id: "local",
+      created: Math.floor(Date.parse(item.createdAt) / 1000),
+      id: item.eventId,
+      object: "notification_receipt",
+      recipient_user: "local",
       read_at: null,
       seen_at: null,
     },
-  }) as NotificationFeedItem);
+  }));
 }

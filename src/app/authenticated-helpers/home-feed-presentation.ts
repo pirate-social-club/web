@@ -45,31 +45,33 @@ export function toHomeFeedItem(
 ): FeedItem {
   const { community, post: postResponse } = entry;
   const { post } = postResponse;
-  const authorProfile = post.author_user_id ? authorProfiles[post.author_user_id] ?? undefined : undefined;
+  const communityId = community.id ?? (community as typeof community & { community?: string }).community ?? "";
+  const postId = post.id ?? (post as typeof post & { post?: string }).post ?? "";
+  const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
 
   const localizedPost = withTranslationToggleProps({
       byline: {
         author: {
           kind: "user",
           label: resolvePostAuthorLabel(post, authorProfile),
-          avatarSeed: post.identity_mode === "public" ? authorProfile?.user_id ?? post.author_user_id ?? undefined : undefined,
+          avatarSeed: post.identity_mode === "public" ? authorProfile?.id ?? post.author_user ?? undefined : undefined,
           avatarSrc: post.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
-          href: post.identity_mode === "public" && post.author_user_id && authorProfile
+          href: post.identity_mode === "public" && post.author_user && authorProfile
             ? buildPublicProfilePathForProfile(authorProfile)
             : undefined,
         },
         agentAuthor: resolveAgentAuthor(post, authorProfile),
         community: {
           kind: "community",
-          avatarSrc: resolveCommunityAvatarSrc({
-            avatarSrc: community.avatar_ref,
-            communityId: community.community_id,
+            avatarSrc: resolveCommunityAvatarSrc({
+              avatarSrc: community.avatar_ref,
+            communityId,
             displayName: community.display_name,
           }),
-          href: `/c/${community.community_id}`,
+          href: `/c/${communityId}`,
           label: formatCommunityLabel(community.route_slug ?? community.display_name),
         },
-        timestampLabel: formatRelativeTimestamp(post.created_at),
+        timestampLabel: formatRelativeTimestamp(post.created),
       },
       content: toCommunityPostContent(postResponse, songOptions),
       engagement: {
@@ -85,12 +87,12 @@ export function toHomeFeedItem(
         : undefined,
       onComment: opts?.onComment,
       onVote: opts?.onVote,
-      postHref: `/p/${post.post_id}`,
+      postHref: `/p/${postId}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
       title: postResponse.translated_title ?? post.title ?? undefined,
       titleDir: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined,
       titleLang: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined,
-      titleHref: `/p/${post.post_id}`,
+      titleHref: `/p/${postId}`,
       viewContext: "home",
     },
     postResponse,
@@ -107,7 +109,7 @@ export function toHomeFeedItem(
     : undefined;
 
   return {
-    id: post.post_id,
+    id: postId,
     post: localizedPost,
     postOriginal: originalPost,
   };

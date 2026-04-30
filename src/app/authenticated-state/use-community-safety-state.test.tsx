@@ -30,36 +30,36 @@ type SafetyBody = {
 
 function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
   return {
-    community_id: "community-1",
+    community: "community-1",
     display_name: "Test Community",
     adult_content_policy: {
-      community_id: "community-1",
+      community: "community-1",
       policy_origin: "explicit",
       suggestive: "allow",
       artistic_nudity: "review",
       explicit_nudity: "review",
       explicit_sexual_content: "disallow",
       fetish_content: "disallow",
-      updated_at: "2026-01-01T00:00:00Z",
+      updated: "2026-01-01T00:00:00Z",
     },
     civility_policy: {
-      community_id: "community-1",
+      community: "community-1",
       policy_origin: "explicit",
       group_directed_demeaning_language: "review",
       targeted_insults: "review",
       targeted_harassment: "disallow",
       threatening_language: "disallow",
-      updated_at: "2026-01-01T00:00:00Z",
+      updated: "2026-01-01T00:00:00Z",
     },
     graphic_content_policy: {
-      community_id: "community-1",
+      community: "community-1",
       policy_origin: "explicit",
       injury_medical: "allow",
       gore: "review",
       extreme_gore: "disallow",
       body_horror_disturbing: "review",
       animal_harm: "disallow",
-      updated_at: "2026-01-01T00:00:00Z",
+      updated: "2026-01-01T00:00:00Z",
     },
     openai_moderation_settings: {
       scan_titles: true,

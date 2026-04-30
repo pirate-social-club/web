@@ -69,7 +69,7 @@ export function useCommunityProfileState({
         bannerRef = (await api.communities.uploadMedia({ kind: "banner", file: profileBannerFile })).media_ref;
       }
 
-      const updatedCommunity = await api.communities.update(community.community_id, {
+      const updatedCommunity = await api.communities.update(community.id, {
         display_name: trimmedDisplayName,
         description: profileDescription.trim() ? profileDescription : null,
         avatar_ref: avatarRef,

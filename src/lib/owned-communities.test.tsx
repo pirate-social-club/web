@@ -84,7 +84,7 @@ describe("owned communities hooks", () => {
       requests.push(pathname);
 
       if (pathname === "/public-communities/cmt_alive") {
-        return Response.json({ community_id: "cmt_alive", display_name: "Alive" });
+        return Response.json({ community: "cmt_alive", display_name: "Alive" });
       }
       if (pathname === "/public-communities/cmt_dead") {
         return Response.json({ code: "not_found", message: "missing" }, { status: 404 });
@@ -123,7 +123,7 @@ describe("owned communities hooks", () => {
     installDom();
     setSession({
       access_token: "header.eyJleHAiOjQxMDI0NDQ4MDB9.signature",
-      user: { user_id: "usr_test" } as never,
+      user: { user: "usr_test" } as never,
       profile: {
         global_handle: { label: "captain.pirate" },
         primary_public_handle: null,
@@ -147,14 +147,14 @@ describe("owned communities hooks", () => {
           is_canonical: true,
           created_communities: [
             {
-              community_id: "cmt_owned",
+              community: "cmt_owned",
               display_name: "Owned",
               route_slug: null,
-              created_at: "2026-04-17T00:00:00.000Z",
+              created: "2026-04-17T00:00:00.000Z",
             },
           ],
           profile: {
-            user_id: "usr_test",
+            user: "usr_test",
             global_handle: {
               global_handle_id: "ghl_test",
               label: "captain.pirate",
@@ -170,13 +170,13 @@ describe("owned communities hooks", () => {
             avatar_ref: null,
             cover_ref: null,
             preferred_locale: null,
-            created_at: "2026-04-17T00:00:00.000Z",
-            updated_at: "2026-04-17T00:00:00.000Z",
+            created: "2026-04-17T00:00:00.000Z",
+            updated: "2026-04-17T00:00:00.000Z",
           },
         });
       }
       if (url.pathname === "/public-communities/cmt_owned") {
-        return Response.json({ community_id: "cmt_owned", display_name: "Owned" });
+        return Response.json({ community: "cmt_owned", display_name: "Owned" });
       }
       if (url.pathname === "/public-communities/cmt_dead") {
         return Response.json({ code: "not_found", message: "missing" }, { status: 404 });

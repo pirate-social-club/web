@@ -14,11 +14,11 @@ export interface SidebarCommunitySummary {
   communityId: string;
   displayName: string;
   routeSlug?: string | null;
-  updatedAt: string;
+  updatedAt: string | number;
 }
 
 function sortCommunities(communities: SidebarCommunitySummary[]): SidebarCommunitySummary[] {
-  return [...communities].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return [...communities].sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt));
 }
 
 function mergeCommunities(
@@ -44,7 +44,7 @@ function mergeCommunities(
       communityId: community.communityId,
       displayName: community.displayName || existing?.displayName || community.communityId,
       routeSlug: community.routeSlug ?? existing?.routeSlug ?? null,
-      updatedAt: community.updatedAt > (existing?.updatedAt ?? "") ? community.updatedAt : existing?.updatedAt ?? community.updatedAt,
+      updatedAt: Number(community.updatedAt) > Number(existing?.updatedAt ?? 0) ? community.updatedAt : existing?.updatedAt ?? community.updatedAt,
     });
   }
 
@@ -164,10 +164,10 @@ export function useSidebarCommunities(): {
 
         const nextOwnedCommunities = sortCommunities(result.created_communities.map((community) => ({
           avatarSrc: null,
-          communityId: community.community_id,
+          communityId: community.community,
           displayName: community.display_name,
           routeSlug: community.route_slug,
-          updatedAt: community.created_at,
+          updatedAt: community.created,
         })));
 
         logger.debug("[your-communities] loaded created communities", {

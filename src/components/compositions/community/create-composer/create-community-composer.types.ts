@@ -1,6 +1,6 @@
 import type { CourtyardWalletInventoryGroup } from "@/lib/courtyard-inventory-gates";
 
-export type CommunityMembershipMode = "open" | "request" | "gated";
+export type CommunityMembershipMode = "request" | "gated";
 export type { CourtyardWalletInventoryGroup };
 export type CommunityDefaultAgeGatePolicy = "none" | "18_plus";
 export type CommunityReadAccessMode = "public" | "members_only";
@@ -80,7 +80,7 @@ export interface CreateCommunityComposerProps {
   databaseRegion?: CommunityDatabaseRegion;
   description?: string;
   gateDrafts?: IdentityGateDraft[];
-  membershipMode?: CommunityMembershipMode;
+  membershipMode?: CommunityMembershipMode | null;
   defaultAgeGatePolicy?: CommunityDefaultAgeGatePolicy;
   allowAnonymousIdentity?: boolean;
   anonymousIdentityScope?: AnonymousIdentityScope;

@@ -67,11 +67,11 @@ const basePost = {
 };
 
 const namespaceVerificationTask = {
-  task_id: "tsk_namespace_infinity",
-  user_id: "usr_owner_1",
+  id: "tsk_namespace_infinity",
+  user: "usr_owner_1",
   type: "namespace_verification_required" as const,
   subject_type: "community",
-  subject_id: "gld_community_1",
+  subject: "gld_community_1",
   status: "open" as const,
   priority: 10,
   payload: {
@@ -80,31 +80,31 @@ const namespaceVerificationTask = {
   },
   resolved_at: null,
   dismissed_at: null,
-  created_at: "2026-04-19T08:00:00.000Z",
-  updated_at: "2026-04-19T08:00:00.000Z",
+  created: "2026-04-19T08:00:00.000Z",
+  updated: "2026-04-19T08:00:00.000Z",
 };
 
 const commentReplyNotification = {
   event: {
-    event_id: "nev_reply_1",
+    id: "nev_reply_1",
     type: "comment_reply" as const,
-    actor_user_id: "usr_actor_1",
+    actor_user: "usr_actor_1",
     subject_type: "comment",
-    subject_id: "cmt_parent_1",
+    subject: "cmt_parent_1",
     object_type: "comment",
     object_id: "cmt_reply_1",
     payload: {
-      community_id: "gld_community_1",
+      community: "gld_community_1",
       thread_root_post_id: "pst_root_1",
     },
-    created_at: "2026-04-19T11:45:00.000Z",
+    created: "2026-04-19T11:45:00.000Z",
   },
   receipt: {
-    event_id: "nev_reply_1",
+    id: "nev_reply_1",
     recipient_user_id: "usr_owner_1",
     seen_at: null,
     read_at: null,
-    created_at: "2026-04-19T11:45:00.000Z",
+    created: "2026-04-19T11:45:00.000Z",
   },
 };
 

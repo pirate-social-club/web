@@ -24,18 +24,18 @@ export function createProfilesApi(request: ApiRequest) {
       request<Profile>(`/profiles/${encodeURIComponent(userId)}`, { tokenRequired: false }),
     updateMe: (input: ProfileUpdateInput): Promise<Profile> =>
       request<Profile>("/profiles/me", {
-        method: "PATCH",
+        method: "POST",
         body: JSON.stringify(input),
       }),
     syncLinkedHandles: (): Promise<Profile> =>
-      request<Profile>("/profiles/me/linked-handles/sync", {
+      request<Profile>("/profiles/me/sync_linked_handles", {
         method: "POST",
         body: JSON.stringify({}),
       }),
     setPrimaryPublicHandle: (linkedHandleId: string | null): Promise<Profile> =>
-      request<Profile>("/profiles/me/primary-public-handle", {
+      request<Profile>("/profiles/me/set_primary_public_handle", {
         method: "POST",
-        body: JSON.stringify({ linked_handle_id: linkedHandleId }),
+        body: JSON.stringify({ linked_handle: linkedHandleId }),
       }),
     uploadMedia: (
       input: { kind: "avatar" | "cover"; file: File },
@@ -49,7 +49,7 @@ export function createProfilesApi(request: ApiRequest) {
       });
     },
     renameHandle: (desiredLabel: string): Promise<RenameHandleResponse> =>
-      request("/profiles/me/global-handle/rename", {
+      request("/profiles/me/rename_global_handle", {
         method: "POST",
         body: JSON.stringify({ desired_label: desiredLabel }),
       }),
@@ -59,7 +59,7 @@ export function createProfilesApi(request: ApiRequest) {
         body: JSON.stringify({ desired_label: desiredLabel }),
       }),
     quoteHandleUpgrade: (desiredLabel: string): Promise<HandleUpgradeQuoteResponse> =>
-      request("/profiles/me/global-handle/upgrade-quote", {
+      request("/profiles/me/quote_handle_upgrade", {
         method: "POST",
         body: JSON.stringify({ desired_label: desiredLabel }),
       }),

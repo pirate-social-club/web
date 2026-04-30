@@ -1,12 +1,12 @@
 export type PublicProfileResolution = {
   is_canonical: boolean;
   profile: {
-    user_id: string;
+    user: string;
     display_name: string | null;
     bio: string | null;
     avatar_ref: string | null;
     cover_ref: string | null;
-    created_at: string;
+    created: string;
     global_handle: {
       label: string;
     };
@@ -15,10 +15,10 @@ export type PublicProfileResolution = {
     } | null;
   };
   created_communities: Array<{
-    community_id: string;
+    community: string;
     display_name: string;
     route_slug: string | null;
-    created_at: string;
+    created: string;
   }>;
   requested_handle_label: string;
   resolved_handle_label: string;
@@ -35,11 +35,11 @@ export type PublicAgentResolution = {
       label_display: string;
     };
     ownership_provider?: string | null;
-    created_at: string;
-    updated_at: string;
+    created: string;
+    updated: string;
   };
   owner: {
-    user_id: string;
+    user: string;
     display_name?: string | null;
     global_handle: {
       label: string;

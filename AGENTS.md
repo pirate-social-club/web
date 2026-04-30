@@ -1,5 +1,11 @@
 # Pirate Web — Agent Notes
 
+## Repository Boundary
+
+`/home/t42/Documents/pirate-workspace` is a workspace directory, not this Git repo. This repo root is `/home/t42/Documents/pirate-workspace/web`.
+
+Run web git commands from this directory. The sibling `api/` and `core/` directories are separate Git repositories and must be committed independently.
+
 ## Default Checks
 
 Use the cheap gate first:

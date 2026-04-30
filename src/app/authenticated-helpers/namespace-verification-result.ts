@@ -34,27 +34,30 @@ export function toSpacesChallengePayload(value: Record<string, unknown> | null |
 }
 
 export function toNamespaceSessionResult(result: {
-  namespace_verification_session_id: string;
+  id: string;
   family: "hns" | "spaces";
   submitted_root_label: string;
   normalized_root_label?: string | null;
   challenge_host?: string | null;
   challenge_txt_value?: string | null;
   challenge_payload?: Record<string, unknown> | null;
-  challenge_expires_at?: string | null;
+  challenge_expires_at?: number | string | null;
   assertions?: { pirate_dns_authority_verified?: boolean | null } | null;
   operation_class?: "owner_managed_namespace" | "routing_only_namespace" | "pirate_delegated_namespace" | "owner_signed_updates_namespace" | null;
   setup_nameservers?: string[] | null;
   status: "draft" | "inspecting" | "dns_setup_required" | "challenge_required" | "challenge_pending" | "verifying" | "verified" | "failed" | "expired" | "disputed";
 }) {
+  const challengeExpiresAt = typeof result.challenge_expires_at === "number"
+    ? new Date(result.challenge_expires_at * 1000).toISOString()
+    : result.challenge_expires_at ?? null;
   return {
-    namespaceVerificationSessionId: result.namespace_verification_session_id,
+    namespaceVerificationSessionId: result.id,
     family: result.family,
     rootLabel: result.normalized_root_label ?? result.submitted_root_label,
     challengeHost: result.challenge_host ?? null,
     challengeTxtValue: result.challenge_txt_value ?? null,
     challengePayload: toSpacesChallengePayload(result.challenge_payload),
-    challengeExpiresAt: result.challenge_expires_at ?? null,
+    challengeExpiresAt,
     status: result.status,
     operationClass: result.operation_class ?? null,
     pirateDnsAuthorityVerified: result.assertions?.pirate_dns_authority_verified ?? null,

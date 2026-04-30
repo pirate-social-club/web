@@ -42,7 +42,9 @@ export function CreateCommunityPage() {
   const createCommunityFromInput = React.useCallback(async (input: CreateCommunityInput) => {
     const avatarRef = input.avatarFile ? (await api.communities.uploadMedia({ kind: "avatar", file: input.avatarFile })).media_ref : input.avatarRef;
     const bannerRef = input.bannerFile ? (await api.communities.uploadMedia({ kind: "banner", file: input.bannerFile })).media_ref : input.bannerRef;
-    const gateRules = serializeIdentityGateDrafts(input.gateDrafts);
+    const gatePolicy = input.membershipMode === "gated"
+      ? serializeIdentityGateDrafts(input.gateDrafts)
+      : null;
 
     const result = await api.communities.create({
       avatar_ref: avatarRef,
@@ -56,17 +58,17 @@ export function CreateCommunityPage() {
       anonymous_identity_scope: input.anonymousIdentityScope,
       handle_policy: { policy_template: "standard" },
       governance_mode: "centralized",
-      gate_rules: gateRules.length > 0 ? gateRules : undefined,
+      gate_policy: gatePolicy ?? undefined,
       community_bootstrap: { rules: DEFAULT_COMMUNITY_RULES.map((rule) => ({ title: rule.title, body: rule.body, report_reason: rule.title })) },
     });
 
     rememberKnownCommunity({
       avatarSrc: result.community.avatar_ref ?? undefined,
-      communityId: result.community.community_id,
+      communityId: result.community.id,
       displayName: result.community.display_name ?? input.displayName,
     });
-    navigate(`/c/${result.community.community_id}`);
-    return { communityId: result.community.community_id };
+    navigate(`/c/${result.community.id}`);
+    return { communityId: result.community.id };
   }, [api]);
   const {
     handleModalOpenChange: handleSelfModalOpenChangeBase,

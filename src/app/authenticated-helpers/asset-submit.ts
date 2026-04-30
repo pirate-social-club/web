@@ -7,6 +7,7 @@ import type {
   MonetizationState,
   SongMode,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
+import { usdToCents } from "@/lib/formatting/currency";
 
 type AssetDerivativeReference = NonNullable<DerivativeStepState["references"]>[number];
 export type AssetDerivativeInput = Pick<DerivativeStepState, "required" | "sourceTermsAccepted"> & {
@@ -65,11 +66,11 @@ export function buildAssetListingRequest(input: {
     : null;
 
   return {
-    asset_id: input.assetId,
-    price_usd: input.paidSongPriceUsd,
+    asset: input.assetId,
+    price_cents: usdToCents(input.paidSongPriceUsd) ?? 0,
     regional_pricing_enabled: input.pricingPolicyRegionalPricingEnabled && input.regionalPricingEnabled,
-    donation_partner_id: donationSharePct && input.charityPartnerId ? input.charityPartnerId : null,
-    donation_share_pct: donationSharePct,
+    donation_partner: donationSharePct && input.charityPartnerId ? input.charityPartnerId : null,
+    donation_share_bps: donationSharePct == null ? null : donationSharePct * 100,
     status: "active" as const,
   };
 }

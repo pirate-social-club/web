@@ -198,7 +198,7 @@ export async function executeRoutedStoryCheckout(params: {
     abi: erc20Abi,
     account,
     address: resolveUsdcTokenAddress(chainId),
-    args: [recipient, resolveUsdAmountAtomic(params.quote.final_price_usd)],
+    args: [recipient, resolveUsdAmountAtomic(params.quote.final_price_cents / 100)],
     chain,
     functionName: "transfer",
   });

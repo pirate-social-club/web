@@ -5,22 +5,16 @@ import * as React from "react";
 import { Button } from "@/components/primitives/button";
 import { Checkbox } from "@/components/primitives/checkbox";
 import { Input } from "@/components/primitives/input";
-import { ImageSquare, Minus, Plus } from "@phosphor-icons/react";
+import { ImageSquare, Lock, Minus, Plus, Users } from "@phosphor-icons/react";
 import {
   FormFieldLabel,
   FormNote,
 } from "@/components/primitives/form-layout";
 import { Label } from "@/components/primitives/label";
-import { FlatTabBar, FlatTabButton } from "@/components/compositions/system/flat-tabs/flat-tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Type } from "@/components/primitives/type";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
-
-import type {
-  AnonymousIdentityScope,
-  CommunityMembershipMode,
-} from "./create-community-composer.types";
 
 export const ISO_ALPHA_2 = /^[A-Z]{2}$/;
 export const acceptedCommunityImageTypes = "image/png,image/jpeg,image/webp,image/gif,image/avif";
@@ -57,36 +51,6 @@ export function FieldLabel({ label }: { label: string }) {
   return <FormFieldLabel className="mb-1.5" label={label} />;
 }
 
-export function SegmentedControl<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: Record<T, { label: string; detail?: string }>;
-  value: T;
-  onChange: (next: T) => void;
-}) {
-  const keys = Object.keys(options) as T[];
-  const selectedOption = options[value];
-
-  return (
-    <div className="space-y-3">
-      <FlatTabBar columns={keys.length}>
-        {keys.map((key) => (
-          <FlatTabButton
-            key={key}
-            active={value === key}
-            onClick={() => onChange(key)}
-          >
-            {options[key].label}
-          </FlatTabButton>
-        ))}
-      </FlatTabBar>
-      {selectedOption.detail ? <FormNote>{selectedOption.detail}</FormNote> : null}
-    </div>
-  );
-}
-
 export function CheckboxRow({
   checked,
   id,
@@ -120,9 +84,9 @@ export function ReviewField({
   value: React.ReactNode;
 }) {
   return (
-    <div className="space-y-0.5">
-      <p className="text-base text-muted-foreground">{label}</p>
-      <Type as="p" variant="label">{value || "\u2014"}</Type>
+    <div className="space-y-1">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="text-base font-medium text-foreground">{value || "\u2014"}</p>
     </div>
   );
 }
@@ -134,12 +98,12 @@ export function ReviewSection({
   title: string;
   children: React.ReactNode;
 }) {
-  const isMobile = useIsMobile();
-
   return (
-    <div className={cn("space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
-      <Type as="h3" variant="body-strong">{title}</Type>
-      <div className="grid gap-3 md:grid-cols-2">{children}</div>
+    <div className="space-y-5 py-6 first:pt-0 last:pb-0">
+      <Type as="h3" variant="h4">
+        {title}
+      </Type>
+      <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">{children}</div>
     </div>
   );
 }
@@ -219,33 +183,96 @@ export function CommunityReviewStep({
   membershipLabel: string;
 }) {
   return (
-    <div className="space-y-4">
-      <ReviewSection title={copy.reviewCommunitySection}>
-        <ReviewField label={copy.reviewDisplayName} value={displayName} />
-        <div className="md:col-span-2">
-          <ReviewField label={copy.reviewDescription} value={description || "\u2014"} />
+    <div className="space-y-0">
+      {/* Community section */}
+      <div className="pb-8">
+        <div className="flex items-center gap-3 pb-6">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
+            <Users className="size-5 text-muted-foreground" />
+          </div>
+          <Type as="h3" variant="h3">{copy.reviewCommunitySection}</Type>
         </div>
-        <ReviewField label={copy.reviewDataRegion} value={databaseRegionLabel} />
-        <ReviewField label={copy.reviewAvatar} value={avatarLabel} />
-        <ReviewField label={copy.reviewBanner} value={bannerLabel} />
-      </ReviewSection>
 
-      <ReviewSection title={copy.reviewAccessPolicySection}>
-        <ReviewField label={copy.reviewJoinFlow} value={membershipLabel} />
-        <ReviewField label={copy.reviewAgeGate} value={ageGateLabel} />
-        {gateRequirementSummary ? (
-          <div className="md:col-span-2">
-            <ReviewField label={copy.reviewMembershipGates} value={gateRequirementSummary} />
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">{copy.reviewDisplayName}</p>
+            <p className="text-lg font-medium text-foreground">{displayName}</p>
+          </div>
+          <div className="relative space-y-1 md:border-l md:border-border-soft md:pl-6">
+            <p className="text-sm text-muted-foreground">{copy.reviewDescription}</p>
+            <p className="text-base font-medium text-foreground">{description || "\u2014"}</p>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-1">
+          <p className="text-sm text-muted-foreground">{copy.reviewDataRegion}</p>
+          <p className="text-base font-medium text-foreground">{databaseRegionLabel}</p>
+        </div>
+
+        {(avatarLabel !== copy.generatedDefault || bannerLabel !== copy.generatedDefault) ? (
+          <div className="mt-5 grid gap-6 md:grid-cols-2">
+            {avatarLabel !== copy.generatedDefault ? (
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">{copy.reviewAvatar}</p>
+                <p className="text-base font-medium text-foreground">{avatarLabel}</p>
+              </div>
+            ) : null}
+            {bannerLabel !== copy.generatedDefault ? (
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">{copy.reviewBanner}</p>
+                <p className="text-base font-medium text-foreground">{bannerLabel}</p>
+              </div>
+            ) : null}
           </div>
         ) : null}
-        <ReviewField label={copy.reviewAnonymousPosting} value={anonymousPostingLabel} />
-        {anonymousScopeLabel ? (
-          <ReviewField label={copy.reviewAnonymousScope} value={anonymousScopeLabel} />
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-border-soft" />
+
+      {/* Access policy section */}
+      <div className="py-8">
+        <div className="flex items-center gap-3 pb-6">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
+            <Lock className="size-5 text-muted-foreground" />
+          </div>
+          <Type as="h3" variant="h3">{copy.reviewAccessPolicySection}</Type>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">{copy.reviewJoinFlow}</p>
+            <p className="text-lg font-medium text-foreground">{membershipLabel}</p>
+          </div>
+          <div className="relative space-y-1 md:border-l md:border-border-soft md:pl-6">
+            <p className="text-sm text-muted-foreground">{copy.reviewAgeGate}</p>
+            <p className="text-lg font-medium text-foreground">{ageGateLabel}</p>
+          </div>
+        </div>
+
+        {gateRequirementSummary ? (
+          <div className="mt-6 space-y-1">
+            <p className="text-sm text-muted-foreground">{copy.reviewMembershipGates}</p>
+            <p className="text-base font-medium text-foreground">{gateRequirementSummary}</p>
+          </div>
         ) : null}
-      </ReviewSection>
+
+        <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">{copy.reviewAnonymousPosting}</p>
+            <p className="text-lg font-medium text-foreground">{anonymousPostingLabel}</p>
+          </div>
+          {anonymousScopeLabel ? (
+            <div className="relative space-y-1 md:border-l md:border-border-soft md:pl-6">
+              <p className="text-sm text-muted-foreground">{copy.reviewAnonymousScope}</p>
+              <p className="text-lg font-medium text-foreground">{anonymousScopeLabel}</p>
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       {creatorVerificationMessage ? (
-        <div className="rounded-[var(--radius-lg)] border border-destructive/20 bg-destructive/5 px-4 py-3">
+        <div className="mt-5 rounded-[var(--radius-lg)] border border-destructive/20 bg-destructive/5 px-4 py-3">
           <p className="text-base font-semibold text-foreground">
             {creatorVerificationMessage}
           </p>

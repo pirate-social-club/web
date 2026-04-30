@@ -15,7 +15,7 @@ import { Button } from "@/components/primitives/button";
 import { VerificationAppDownloadLinks } from "@/components/compositions/verification/verification-app-download-links/verification-app-download-links";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Spinner } from "@/components/primitives/spinner";
-import { getJoinCtaLabel, isJoinCtaActionable } from "@/lib/identity-gates";
+import { getJoinCtaLabel, isJoinCtaActionable, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
 import { Type } from "@/components/primitives/type";
 import { getLocaleMessages } from "@/locales";
 import { isUiLocaleCode } from "@/lib/ui-locale-core";
@@ -96,7 +96,7 @@ function getPassportPrompt(
   if (!eligibility) return null;
   const shouldShowPassportPrompt =
     (eligibility.status === "verification_required" &&
-      eligibility.suggested_verification_provider === "passport") ||
+      resolveSuggestedVerificationProvider(eligibility) === "passport") ||
     (eligibility.status === "gate_failed" &&
       eligibility.failure_reason === "wallet_score_too_low");
   if (!shouldShowPassportPrompt) return null;
@@ -157,7 +157,7 @@ export function CommunityMembershipGatePanel({
   const isVeryVerificationRequired =
     !activePrompt &&
     eligibility?.status === "verification_required" &&
-    eligibility.suggested_verification_provider === "very";
+    resolveSuggestedVerificationProvider(eligibility) === "very";
   const eligibilityText = getEligibilityText(eligibility, panelCopy);
   const isInlineVerificationRequired =
     !activePrompt &&

@@ -92,7 +92,7 @@ export function CommunityModerationGuard({
     return <RouteLoadFailureState description={incompleteDescription} title={showInlineTitle ? title : ""} />;
   }
 
-  if (session?.user?.user_id !== community.created_by_user_id) {
+  if (session?.user?.id !== community.created_by_user) {
     return (
       <StackPageShell title={showInlineTitle ? title : ""}>
         <StatusCard

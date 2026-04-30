@@ -92,7 +92,7 @@ export function PublicAgentRoutePage({
   return (
     <PublicAgentPage
       bio={copy.aboutDescription}
-      createdAt={resolution.agent.created_at}
+      createdAt={resolution.agent.created}
       avatarSeed={resolution.agent.agent_id ?? handle}
       displayName={displayName}
       handle={handle}

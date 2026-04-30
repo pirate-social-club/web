@@ -8,7 +8,7 @@ function createProfile(overrides: Partial<Profile> = {}): Profile {
     avatar_ref: null,
     bio: null,
     cover_ref: null,
-    created_at: "2026-04-18T10:00:00.000Z",
+    created: "2026-04-18T10:00:00.000Z",
     display_name: null,
     global_handle: {
       free_rename_consumed: false,
@@ -24,8 +24,8 @@ function createProfile(overrides: Partial<Profile> = {}): Profile {
     preferred_locale: null,
     primary_public_handle: null,
     primary_wallet_address: null,
-    updated_at: "2026-04-18T10:00:00.000Z",
-    user_id: "usr_test",
+    updated: "2026-04-18T10:00:00.000Z",
+    user: "usr_test",
     verification_capabilities: null,
     ...overrides,
   };

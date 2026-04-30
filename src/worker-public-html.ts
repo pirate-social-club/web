@@ -87,7 +87,7 @@ export function renderPublicProfilePage({
   const bio = profile.bio?.trim() || "";
   const avatar = profile.avatar_ref?.trim() || "";
   const cover = profile.cover_ref?.trim() || "";
-  const joined = formatJoinedLabel(profile.created_at, localeTag);
+  const joined = formatJoinedLabel(profile.created, localeTag);
   const tagline = displayHandle;
   const initials = escapeHtml(displayName.slice(0, 2).toUpperCase() || "P");
   const safeDisplayName = escapeHtml(displayName);
@@ -108,7 +108,7 @@ export function renderPublicProfilePage({
     ? communities
         .map(
           (community) =>
-            `<a class="community-link" href="${appOrigin}${buildCommunityPath(community.community_id, community.route_slug)}">${escapeHtml(community.display_name)}</a>`,
+            `<a class="community-link" href="${appOrigin}${buildCommunityPath(community.community, community.route_slug)}">${escapeHtml(community.display_name)}</a>`,
         )
         .join("")
     : "";
@@ -289,7 +289,7 @@ export function renderPublicAgentPage({
   const safeHost = escapeHtml(host);
   const safeCanonicalUrl = escapeHtml(canonicalUrl);
   const safeOpenHref = `${appOrigin}/a/${encodeURIComponent(handle)}`;
-  const createdLabel = new Date(agentResolution.agent.created_at).toLocaleDateString(localeTag, {
+  const createdLabel = new Date(agentResolution.agent.created).toLocaleDateString(localeTag, {
     month: "short",
     day: "numeric",
     year: "numeric",

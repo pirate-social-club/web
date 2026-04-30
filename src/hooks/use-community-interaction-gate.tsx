@@ -15,6 +15,7 @@ import { buildCommunityPath } from "@/lib/community-routing";
 import {
   getVerificationCapabilitiesForProvider,
   getVerificationRequirementsForGates,
+  getMissingCapabilitiesFromGateEvaluation,
 } from "@/lib/identity-gates";
 import { logger } from "@/lib/logger";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
@@ -55,7 +56,7 @@ export function useCommunityInteractionGate({
   const { connect } = usePiratePrivyRuntime();
 	  const [modalState, setModalState] = React.useState<ModalState | null>(null);
 	  const [passportLoading, setPassportLoading] = React.useState(false);
-  const sessionKey = session?.user.user_id ?? null;
+  const sessionKey = session?.user.id ?? null;
   const pendingInteractionRef = React.useRef<PendingInteraction | null>(null);
   const interactionCopy = React.useMemo(
     () => {
@@ -113,7 +114,7 @@ export function useCommunityInteractionGate({
       const value: CommunityGateData = {
         eligibility,
         preview: {
-          community_id: preview.community_id,
+          id: preview.id,
           display_name: preview.display_name,
           membership_gate_summaries: preview.membership_gate_summaries,
         },
@@ -197,7 +198,7 @@ export function useCommunityInteractionGate({
         gate: { ...gate, eligibility: nextEligibility },
         invalidateCommunityGate,
         interactionCopy,
-        openCommunity: () => navigate(buildCommunityPath(gate.preview.community_id)),
+        openCommunity: () => navigate(buildCommunityPath(gate.preview.id)),
       }));
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Verification completed, but Pirate could not join this community."));
@@ -247,10 +248,10 @@ export function useCommunityInteractionGate({
 	  }): Promise<{ started: boolean }> => {
 	    if (provider === "passport") {
 	      const pendingInteraction = pendingInteractionRef.current;
-	      const communityId = pendingInteraction?.communityId ?? gate.preview.community_id;
+	      const communityId = pendingInteraction?.communityId ?? gate.preview.id;
 	      setPassportLoading(true);
 	      try {
-	        const refreshed = await api.verification.refreshPassportWalletScore({ community_id: communityId });
+	        const refreshed = await api.verification.refreshPassportWalletScore({ community: communityId });
 	        let nextEligibility = refreshed.join_eligibility ?? await api.communities.getJoinEligibility(communityId);
 	        updateCachedGate(communityId, { ...gate, eligibility: nextEligibility });
 	        if (nextEligibility.status === "joinable") {
@@ -297,7 +298,7 @@ export function useCommunityInteractionGate({
 	          gate: { ...gate, eligibility: nextEligibility },
 	          invalidateCommunityGate,
 	          interactionCopy,
-	          openCommunity: () => navigate(buildCommunityPath(gate.preview.community_id)),
+	          openCommunity: () => navigate(buildCommunityPath(gate.preview.id)),
 	          defaultVerificationLoadingProvider: "passport",
 	          startDefaultVerification,
 	        }));
@@ -411,7 +412,7 @@ export function useCommunityInteractionGate({
       postId,
     };
 
-    const openCommunity = () => navigate(buildCommunityPath(gate.preview.community_id));
+    const openCommunity = () => navigate(buildCommunityPath(gate.preview.id));
     const customModalState = buildBlockedModalState?.({
       action,
       closeModal,
@@ -433,7 +434,7 @@ export function useCommunityInteractionGate({
     logger.info("[interaction-gate] blocked", {
       ...logBase,
       eligibilityStatus: gate.eligibility.status,
-      missingCapabilities: gate.eligibility.missing_capabilities,
+      missingCapabilities: getMissingCapabilitiesFromGateEvaluation(gate.eligibility),
       requirements: gate.preview.membership_gate_summaries.length,
     });
     if (builtModalState) {

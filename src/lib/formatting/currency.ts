@@ -31,3 +31,17 @@ export function parseUsdInput(value: string | null | undefined): number | null {
 
   return Math.round(parsed * 100) / 100;
 }
+
+export function usdToCents(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  return Math.round(value * 100);
+}
+
+export function centsToUsd(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  return value / 100;
+}

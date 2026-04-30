@@ -43,7 +43,7 @@ const LazyWalletSendSheet = React.lazy(async () => {
 const EMPTY_CLAIMABLE: ClaimableRoyaltiesResponse = {
   items: [],
   total_claimable_wip_wei: "0",
-  checked_at: "",
+  checked_at: 0,
 };
 
 type WalletBalanceChain = {

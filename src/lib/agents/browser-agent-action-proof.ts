@@ -158,13 +158,13 @@ export function canonicalizeAgentActionProofRequest(input: {
 
 export function canonicalizeAgentActionProofSignaturePayload(input: {
   nonce: string;
-  signedAt: string;
+  signedAt: number;
   canonicalRequestHash: string;
 }): string {
   return [
     SIGNATURE_VERSION,
     input.nonce.trim(),
-    input.signedAt.trim(),
+    String(input.signedAt),
     input.canonicalRequestHash.trim(),
   ].join("\n");
 }
@@ -187,7 +187,7 @@ export async function buildAgentActionProof(input: {
   privateKeyPem: string;
 }): Promise<AgentActionProof> {
   const subtle = ensureBrowserCrypto();
-  const signedAt = new Date().toISOString();
+  const signedAt = Math.floor(Date.now() / 1000);
   const nonce = globalThis.crypto.randomUUID();
   const canonicalRequestHash = await computeAgentActionProofHash({
     method: input.method,

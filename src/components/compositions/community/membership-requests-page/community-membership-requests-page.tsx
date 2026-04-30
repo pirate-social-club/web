@@ -17,8 +17,9 @@ export interface CommunityMembershipRequestsPageProps {
   requests: MembershipRequestSummary[];
 }
 
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString(undefined, {
+function formatDate(value: string | number): string {
+  const date = typeof value === "number" ? new Date(value * 1000) : new Date(value);
+  return date.toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -59,10 +60,10 @@ export function CommunityMembershipRequestsPage({
             {requests.map((request, index) => {
               const applicantLabel = getApplicantLabel(request);
               const profileHref = request.applicant_handle ? buildPublicProfilePath(request.applicant_handle) : null;
-              const processing = processingRequestId === request.membership_request_id;
+              const processing = processingRequestId === request.id;
 
               return (
-                <div key={request.membership_request_id}>
+                <div key={request.id}>
                   {index > 0 ? <Separator /> : null}
                   <div className="flex flex-col gap-4 px-5 py-5 md:flex-row md:items-start">
                     <a
@@ -72,14 +73,14 @@ export function CommunityMembershipRequestsPage({
                         if (!profileHref) event.preventDefault();
                       }}
                     >
-                      <Avatar fallback={applicantLabel} fallbackSeed={request.applicant_user_id} size="md" src={request.applicant_avatar_ref ?? undefined} />
+                      <Avatar fallback={applicantLabel} fallbackSeed={request.applicant_user} size="md" src={request.applicant_avatar_ref ?? undefined} />
                       <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                           <Type as="span" className="min-w-0 truncate" variant="body-strong">
                             {applicantLabel}
                           </Type>
                           <Type as="span" className="text-muted-foreground" variant="caption">
-                            {formatDate(request.created_at)}
+                            {formatDate(request.created)}
                           </Type>
                         </div>
                         {request.note?.trim() ? (

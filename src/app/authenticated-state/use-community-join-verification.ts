@@ -9,9 +9,9 @@ import { type ApiError } from "@/lib/api/client";
 import {
   getGateFailureMessage,
   getPassportPromptCapabilities,
-  getVerificationCapabilitiesForProvider,
   getVerificationPromptCopy,
   getVerificationRequirementsForGates,
+  getMissingCapabilitiesFromGateEvaluation,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { toast } from "@/components/primitives/sonner";
@@ -47,10 +47,11 @@ type JoinAttemptOptions = {
 
 type JoinAttemptResult = "blocked" | "failed" | "joined" | "requested";
 
-const SELF_CAPABILITIES = ["unique_human", "age_over_18", "minimum_age", "nationality", "gender"];
+const SELF_CAPABILITIES = ["unique_human", "age_over_18", "minimum_age", "nationality", "gender"] as const;
+type SelfCapability = typeof SELF_CAPABILITIES[number];
 
-function isSelfCapability(value: string): value is ApiJoinEligibility["missing_capabilities"][number] {
-  return SELF_CAPABILITIES.includes(value);
+function isSelfCapability(value: string): value is SelfCapability {
+  return (SELF_CAPABILITIES as readonly string[]).includes(value);
 }
 
 export function useCommunityJoinVerification({
@@ -122,12 +123,12 @@ export function useCommunityJoinVerification({
     membershipGateSummaries,
     skipModal,
   }: SelfVerificationOptions = {}): Promise<SelfVerificationStartResult> => {
-    const rawCapabilities = missingCapabilities ?? eligibility?.missing_capabilities ?? [];
+    const rawCapabilities = missingCapabilities ?? (eligibility ? getMissingCapabilitiesFromGateEvaluation(eligibility) : []);
     const activeGateSummaries = membershipGateSummaries ?? eligibility?.membership_gate_summaries ?? [];
     const verificationRequirements = getVerificationRequirementsForGates(activeGateSummaries);
-    const requestedCapabilities = getVerificationCapabilitiesForProvider(
-      { missing_capabilities: rawCapabilities.filter((capability): capability is ApiJoinEligibility["missing_capabilities"][number] => isSelfCapability(capability)) },
-      "self",
+    const selfCapabilities = rawCapabilities.filter(isSelfCapability);
+    const requestedCapabilities = SELF_CAPABILITIES.filter((capability) =>
+      capability !== "age_over_18" && selfCapabilities.includes(capability)
     );
 
     if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
@@ -158,12 +159,12 @@ export function useCommunityJoinVerification({
 	  }, [veryError]);
 
 	  const refreshPassportAndJoin = React.useCallback(async (
-	    details?: Pick<ApiJoinEligibility, "membership_gate_summaries" | "missing_capabilities" | "wallet_score_status" | "failure_reason"> | ApiGateFailureDetails | null,
+	    details?: Pick<ApiJoinEligibility, "membership_gate_summaries" | "gate_evaluation" | "wallet_score_status" | "failure_reason"> | ApiGateFailureDetails | null,
 	  ): Promise<JoinAttemptResult> => {
 	    setPassportLoading(true);
 	    setJoinError(null);
 	    try {
-	      const refreshed = await api.verification.refreshPassportWalletScore({ community_id: communityId });
+	      const refreshed = await api.verification.refreshPassportWalletScore({ community: communityId });
 	      const updatedEligibility = refreshed.join_eligibility ?? await refetchEligibility();
 	      if (updatedEligibility.status === "joinable") {
 	        const joinResult = await api.communities.join(communityId);
@@ -233,7 +234,7 @@ export function useCommunityJoinVerification({
 	            return await refreshPassportAndJoin(details);
 	          } else {
 	            await startSelfVerification({
-              missingCapabilities: details.missing_capabilities,
+              missingCapabilities: getMissingCapabilitiesFromGateEvaluation(details),
               membershipGateSummaries: details.membership_gate_summaries ?? null,
             });
           }

@@ -38,7 +38,7 @@ function gate(status: JoinEligibility["status"], overrides: Partial<JoinEligibil
   return {
     eligibility: eligibility(status, overrides),
     preview: {
-      community_id: "community-1",
+      id: "community-1",
       display_name: "Test Community",
       membership_gate_summaries: [requirement],
     },
@@ -86,7 +86,7 @@ describe("createCommunityBlockedModalStateFactory", () => {
       selfLoading: false,
       veryLoading: false,
       onRequestable: (gateData) => {
-        openedForCommunityId = gateData.preview.community_id;
+        openedForCommunityId = gateData.preview.id;
       },
     });
 
@@ -102,7 +102,7 @@ describe("createCommunityBlockedModalStateFactory", () => {
       selfLoading: false,
       veryLoading: false,
       onJoin: async (gateData) => {
-        calls.push(`join:${gateData.preview.community_id}`);
+        calls.push(`join:${gateData.preview.id}`);
       },
       invalidateCommunityGate: (communityId) => {
         calls.push(`invalidate:${communityId}`);
@@ -125,7 +125,7 @@ describe("createCommunityBlockedModalStateFactory", () => {
       veryLoading: false,
       includeVerificationCloseAction: true,
       onStartSelfVerification: async (gateData) => {
-        startedSelfForCommunityId = gateData.preview.community_id;
+        startedSelfForCommunityId = gateData.preview.id;
         return { started: true, openedModal: true };
       },
     })(args(gate("verification_required", {

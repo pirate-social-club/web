@@ -19,6 +19,25 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+function gateEvaluation(capabilities: Array<"gender" | "nationality" | "unique_human" | "wallet_score">, provider: "self" | "very" | "passport" = "self") {
+  return {
+    passed: capabilities.length === 0,
+    trace: { kind: "op" as const, op: "and" as const, passed: capabilities.length === 0, children: [] },
+    required_action_set: capabilities.length === 0
+      ? null
+      : {
+        kind: "set" as const,
+        mode: "all" as const,
+        items: capabilities.map((capability) => {
+          if (capability === "wallet_score") return { kind: "action" as const, provider: "passport" as const, capability, minimum_score: 20, actual_score: null };
+          if (capability === "gender") return { kind: "action" as const, provider: "self" as const, capability, allowed_markers: ["F" as const] };
+          if (capability === "nationality") return { kind: "action" as const, provider: "self" as const, capability, allowed_countries: ["US"] };
+          return { kind: "action" as const, provider, capability };
+        }),
+      },
+  } as any;
+}
+
 export const DocumentMarkerVerificationRequired: Story = {
   name: "States / Document Marker Verification Required",
   args: { gates: [] },
@@ -26,7 +45,7 @@ export const DocumentMarkerVerificationRequired: Story = {
     <CommunityMembershipGatePanel
       gates={[{ gate_type: "gender", required_value: "F" }]}
       eligibility={{
-        community_id: "community_marker",
+        community: "community_marker",
         membership_mode: "gated",
         human_verification_lane: "self",
         joinable_now: false,
@@ -34,8 +53,7 @@ export const DocumentMarkerVerificationRequired: Story = {
         membership_gate_summaries: [
           { gate_type: "gender", required_value: "F" },
         ],
-        missing_capabilities: ["gender"],
-        suggested_verification_provider: "self",
+        gate_evaluation: gateEvaluation(["gender"]),
         suggested_verification_intent: "community_join",
       }}
     />
@@ -49,7 +67,7 @@ export const DocumentMarkerMismatch: Story = {
     <CommunityMembershipGatePanel
       gates={[{ gate_type: "gender", required_value: "F" }]}
       eligibility={{
-        community_id: "community_marker",
+        community: "community_marker",
         membership_mode: "gated",
         human_verification_lane: "self",
         joinable_now: false,
@@ -57,11 +75,10 @@ export const DocumentMarkerMismatch: Story = {
         membership_gate_summaries: [
           { gate_type: "gender", required_value: "F" },
         ],
-        missing_capabilities: [],
-        suggested_verification_provider: "self",
+        gate_evaluation: gateEvaluation([]),
         suggested_verification_intent: "community_join",
       }}
-      joinError="Your verified Self document marker does not match this community's requirement."
+      joinError="Your verified ID document sex marker does not match this community's requirement."
     />
   ),
 };
@@ -73,7 +90,7 @@ export const Joinable: Story = {
     <CommunityMembershipGatePanel
       gates={[{ gate_type: "nationality", required_value: "US" }]}
       eligibility={{
-        community_id: "community_joinable",
+        community: "community_joinable",
         membership_mode: "gated",
         human_verification_lane: "self",
         joinable_now: true,
@@ -81,8 +98,7 @@ export const Joinable: Story = {
         membership_gate_summaries: [
           { gate_type: "nationality", required_value: "US" },
         ],
-        missing_capabilities: [],
-        suggested_verification_provider: "self",
+        gate_evaluation: gateEvaluation([]),
         suggested_verification_intent: "community_join",
       }}
     />
@@ -96,7 +112,7 @@ export const Requestable: Story = {
     <CommunityMembershipGatePanel
       gates={[{ gate_type: "gender", required_value: "F" }]}
       eligibility={{
-        community_id: "community_requestable",
+        community: "community_requestable",
         membership_mode: "request",
         human_verification_lane: "self",
         joinable_now: false,
@@ -104,8 +120,7 @@ export const Requestable: Story = {
         membership_gate_summaries: [
           { gate_type: "gender", required_value: "F" },
         ],
-        missing_capabilities: [],
-        suggested_verification_provider: "self",
+        gate_evaluation: gateEvaluation([]),
         suggested_verification_intent: "community_join",
       }}
     />
@@ -119,7 +134,7 @@ export const PendingRequest: Story = {
     <CommunityMembershipGatePanel
       gates={[{ gate_type: "gender", required_value: "F" }]}
       eligibility={{
-        community_id: "community_requestable",
+        community: "community_requestable",
         membership_mode: "request",
         human_verification_lane: "self",
         joinable_now: false,
@@ -127,8 +142,7 @@ export const PendingRequest: Story = {
         membership_gate_summaries: [
           { gate_type: "gender", required_value: "F" },
         ],
-        missing_capabilities: [],
-        suggested_verification_provider: "self",
+        gate_evaluation: gateEvaluation([]),
         suggested_verification_intent: "community_join",
       }}
     />
@@ -146,7 +160,7 @@ export const MultipleMissingCapabilities: Story = {
         { gate_type: "unique_human" },
       ]}
       eligibility={{
-        community_id: "community_multi",
+        community: "community_multi",
         membership_mode: "gated",
         human_verification_lane: "self",
         joinable_now: false,
@@ -156,8 +170,7 @@ export const MultipleMissingCapabilities: Story = {
           { gate_type: "age_over_18" },
           { gate_type: "unique_human" },
         ],
-        missing_capabilities: ["nationality", "age_over_18", "unique_human"],
-        suggested_verification_provider: "self",
+        gate_evaluation: gateEvaluation(["nationality", "unique_human"]),
         suggested_verification_intent: "community_join",
       }}
     />
@@ -171,14 +184,13 @@ export const VeryVerificationRequired: Story = {
     <CommunityMembershipGatePanel
       gates={[{ gate_type: "unique_human" }]}
       eligibility={{
-        community_id: "community_very",
+        community: "community_very",
         membership_mode: "gated",
         human_verification_lane: "very",
         joinable_now: false,
         status: "verification_required",
         membership_gate_summaries: [{ gate_type: "unique_human" }],
-        missing_capabilities: ["unique_human"],
-        suggested_verification_provider: "very",
+        gate_evaluation: gateEvaluation(["unique_human"], "very"),
         suggested_verification_intent: "community_join",
       }}
     />
@@ -192,7 +204,7 @@ export const PassportScoreRequired: Story = {
     <CommunityMembershipGatePanel
       gates={[{ gate_type: "wallet_score", minimum_score: 20 }]}
       eligibility={{
-        community_id: "community_passport_score",
+        community: "community_passport_score",
         membership_mode: "gated",
         human_verification_lane: "self",
         joinable_now: false,
@@ -200,14 +212,13 @@ export const PassportScoreRequired: Story = {
         membership_gate_summaries: [
           { gate_type: "wallet_score", minimum_score: 20 },
         ],
-        missing_capabilities: ["wallet_score"],
-        suggested_verification_provider: "passport",
+        gate_evaluation: gateEvaluation(["wallet_score"], "passport"),
         suggested_verification_intent: null,
         wallet_score_status: {
-          current_score: null,
-          required_score: 20,
+          current_score_decimal: null,
+          required_score_decimal: "20",
           passing_score: null,
-          last_score_timestamp: null,
+          last_scored_at: null,
         },
       }}
     />
@@ -224,7 +235,7 @@ export const Mobile: Story = {
     <CommunityMembershipGatePanel
       gates={[{ gate_type: "nationality", required_value: "US" }]}
       eligibility={{
-        community_id: "community_mobile",
+        community: "community_mobile",
         membership_mode: "gated",
         human_verification_lane: "self",
         joinable_now: false,
@@ -232,8 +243,7 @@ export const Mobile: Story = {
         membership_gate_summaries: [
           { gate_type: "nationality", required_value: "US" },
         ],
-        missing_capabilities: ["nationality"],
-        suggested_verification_provider: "self",
+        gate_evaluation: gateEvaluation(["nationality"]),
         suggested_verification_intent: "community_join",
       }}
     />
@@ -250,14 +260,13 @@ export const MobileVeryVerificationRequired: Story = {
     <CommunityMembershipGatePanel
       gates={[{ gate_type: "unique_human" }]}
       eligibility={{
-        community_id: "community_mobile_very",
+        community: "community_mobile_very",
         membership_mode: "gated",
         human_verification_lane: "very",
         joinable_now: false,
         status: "verification_required",
         membership_gate_summaries: [{ gate_type: "unique_human" }],
-        missing_capabilities: ["unique_human"],
-        suggested_verification_provider: "very",
+        gate_evaluation: gateEvaluation(["unique_human"], "very"),
         suggested_verification_intent: "community_join",
       }}
     />

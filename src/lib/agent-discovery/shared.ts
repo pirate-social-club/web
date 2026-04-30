@@ -109,9 +109,9 @@ export function escapeHtml(value: string): string {
   return escapeXml(value);
 }
 
-export function normalizeTimestamp(value: string | null | undefined): string | null {
+export function normalizeTimestamp(value: string | number | null | undefined): string | null {
   if (!value) return null;
-  const date = new Date(value);
+  const date = typeof value === "number" ? new Date(value * 1000) : new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   return date.toISOString();
 }

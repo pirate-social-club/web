@@ -83,12 +83,12 @@ export function PostPage({ postId }: { postId: string }) {
   const hasSession = Boolean(session?.accessToken);
   const { post, community, authorProfile, comments, commentCount, createTopLevelComment, error, gateModal, loading, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const commerceEnabled = Boolean(
-    session?.user?.user_id
-      && community?.community_id
+    session?.user?.id
+      && community?.id
       && (post?.post.post_type === "song" || post?.post.post_type === "video")
-      && post.post.asset_id,
+      && post.post.asset,
   );
-  const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(community?.community_id ?? "", commerceEnabled);
+  const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(community?.id ?? "", commerceEnabled);
   const { buySong, purchaseModal } = useSongPurchaseFlow({ commerceEnabled, refreshSongCommerce });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
 
@@ -102,7 +102,7 @@ export function PostPage({ postId }: { postId: string }) {
       assetLabel,
       communityId: nextCommunityId,
       listing,
-      successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} unlocked for ${settlement.purchase_price_usd}.`,
+      successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} unlocked for $${(settlement.purchase_price_cents / 100).toFixed(2)}.`,
       titleText,
     });
   }, [buySong]);
@@ -122,7 +122,13 @@ export function PostPage({ postId }: { postId: string }) {
     const errorBody = isApiAuthError(error)
       ? <AuthRequiredRouteState description={copy.routeStatus.post.auth} title={isMobile ? "" : pageTitle} />
       : isApiNotFoundError(error)
-        ? <NotFoundPage path={`/p/${postId}`} />
+        ? (
+          <NotFoundPage
+            description={copy.routeStatus.post.notFoundDescription}
+            path={`/p/${postId}`}
+            title={copy.routeStatus.post.notFoundTitle}
+          />
+        )
         : <RouteLoadFailureState description={getErrorMessage(error, copy.routeStatus.post.failure)} title={isMobile ? "" : pageTitle} />;
 
     if (isMobile) {
@@ -147,17 +153,17 @@ export function PostPage({ postId }: { postId: string }) {
     return <RouteLoadFailureState description={copy.routeStatus.post.incomplete} title={pageTitle} />;
   }
 
-  const threadAssetId = post.post.asset_id ?? null;
+  const threadAssetId = post.post.asset ?? null;
   const threadListing = threadAssetId ? listingsByAssetId[threadAssetId] : undefined;
   const threadPurchase = threadAssetId ? purchasesByAssetId[threadAssetId] : undefined;
   const songOptions = (post.post.post_type === "song" || post.post.post_type === "video") && community && threadAssetId
     ? {
-      currentUserId: session?.user?.user_id,
+      currentUserId: session?.user?.id,
       listing: threadListing,
       onBuy: threadListing ? () => void handleBuySong(
         threadListing,
         post.post.title ?? (post.post.post_type === "video" ? "video" : "song"),
-        community.community_id,
+        community.id,
         post.post.post_type === "video" ? "video" : "song",
       ) : undefined,
       playback: songPlayback,
@@ -179,7 +185,7 @@ export function PostPage({ postId }: { postId: string }) {
       showTranslationLabel: copy.common.showTranslation,
     })
     : undefined;
-  const communityPath = community ? buildCommunityPath(community.community_id, community.route_slug) : "/";
+  const communityPath = community ? buildCommunityPath(community.id, community.route_slug) : "/";
   const threadSidebarProps = community ? buildCommunityPreviewSidebar(community, locale) : null;
   const commentSortOptions = [
     { label: copy.common.bestTab, value: "best" as const },

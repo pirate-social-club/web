@@ -79,13 +79,13 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
 
       setListingsByAssetId(Object.fromEntries(
         listingsResult.items
-          .filter((listing) => typeof listing.asset_id === "string" && listing.asset_id.length > 0)
-          .map((listing) => [listing.asset_id as string, listing] as const),
+          .filter((listing) => typeof listing.asset === "string" && listing.asset.length > 0)
+          .map((listing) => [listing.asset as string, listing] as const),
       ));
       setPurchasesByAssetId(Object.fromEntries(
         purchasesResult.items
-          .filter((purchase) => typeof purchase.asset_id === "string" && purchase.asset_id.length > 0)
-          .map((purchase) => [purchase.asset_id as string, purchase] as const),
+          .filter((purchase) => typeof purchase.asset === "string" && purchase.asset.length > 0)
+          .map((purchase) => [purchase.asset as string, purchase] as const),
       ));
     } catch (error) {
       logger.warn("[song-commerce] failed to refresh commerce state", {

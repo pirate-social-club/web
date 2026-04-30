@@ -20,18 +20,18 @@ function createPost(input: {
     post: {
       anonymous_label: null,
       anonymous_scope: null,
-      asset_id: null,
+      asset: null,
       access_mode: null,
       age_gate_policy: "none",
       analysis_result_ref: null,
       analysis_state: "allow",
-      author_user_id: "usr_test",
+      author_user: "usr_test",
       authorship_mode: "human_direct",
       body: input.body ?? "",
       caption: input.caption ?? null,
-      community_id: "cmt_test",
+      community: "cmt_test",
       content_safety_state: "safe",
-      created_at: input.createdAt,
+      created: input.createdAt,
       disclosed_qualifiers_json: null,
       identity_mode: "public",
       label_id: null,
@@ -49,23 +49,23 @@ function createPost(input: {
         width: 100,
       })),
       parent_post_id: null,
-      post_id: input.id,
+      post: input.id,
       post_type: "text",
       rights_basis: "none",
-      song_artifact_bundle_id: null,
+      song_artifact_bundle: null,
       song_mode: null,
       source_language: "en",
       status: "published",
       title: input.title ?? null,
       translation_policy: "none",
-      updated_at: input.createdAt,
+      updated: input.createdAt,
       visibility: "public",
     },
     resolved_locale: "en",
     source_hash: `src_${input.id}`,
     thread_snapshot: {
       comment_count: input.commentCount ?? 0,
-      created_at: input.createdAt,
+      created: input.createdAt,
       published_through_comment_created_at: input.createdAt,
       snapshot_seq: 1,
       swarm_feed_ref: null,
@@ -90,11 +90,11 @@ function createHomeEntry(post: ApiPost): ApiHomeFeedItem {
   return {
     community: {
       avatar_ref: null,
-      community_id: "cmt_test",
+      community: "cmt_test",
       display_name: "Test Community",
       member_count: null,
       route_slug: "test-community",
-      updated_at: post.post.updated_at,
+      updated: post.post.updated,
     },
     post,
   };
@@ -128,7 +128,7 @@ describe("feed sorting", () => {
   test("new sorts by creation time descending", () => {
     const sorted = sortCommunityFeedPosts([oldEngaged, midRich, recentPlain], "new", now);
 
-    expect(sorted.map((post) => post.post.post_id)).toEqual([
+    expect(sorted.map((post) => post.post.id)).toEqual([
       "pst_recent",
       "pst_rich",
       "pst_engaged",
@@ -138,7 +138,7 @@ describe("feed sorting", () => {
   test("top prioritizes engagement and richness over recency", () => {
     const sorted = sortCommunityFeedPosts([recentPlain, oldEngaged, midRich], "top", now);
 
-    expect(sorted.map((post) => post.post.post_id)).toEqual([
+    expect(sorted.map((post) => post.post.id)).toEqual([
       "pst_engaged",
       "pst_rich",
       "pst_recent",
@@ -148,7 +148,7 @@ describe("feed sorting", () => {
   test("best applies time decay to the weighted score", () => {
     const sorted = sortCommunityFeedPosts([recentPlain, oldEngaged, midRich], "best", now);
 
-    expect(sorted.map((post) => post.post.post_id)).toEqual([
+    expect(sorted.map((post) => post.post.id)).toEqual([
       "pst_rich",
       "pst_recent",
       "pst_engaged",
@@ -166,7 +166,7 @@ describe("feed sorting", () => {
       topTimeRange: "day",
     });
 
-    expect(sorted.map((entry) => entry.post.post.post_id)).toEqual([
+    expect(sorted.map((entry) => entry.post.post.id)).toEqual([
       "pst_rich",
       "pst_recent",
     ]);

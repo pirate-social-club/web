@@ -47,6 +47,10 @@ function getAgentRegistrationBlockReason(input: {
   return "ready";
 }
 
+function unixToIso(value: number | null | undefined): string | null {
+  return typeof value === "number" ? new Date(value * 1000).toISOString() : null;
+}
+
 export function useSettingsOwnedAgents({
   api,
   canRegisterByVerification,
@@ -145,13 +149,13 @@ export function useSettingsOwnedAgents({
     try {
       const completedSession = await api.agents.completeOwnershipSession(pendingRegistration.sessionId, {});
 
-      if (completedSession.status === "verified" && completedSession.agent_id) {
-        await api.agents.claimHandle(completedSession.agent_id, {
+      if (completedSession.status === "verified" && completedSession.agent) {
+        await api.agents.claimHandle(completedSession.agent, {
           desired_label: pendingRegistration.handleLabel,
         });
         const now = new Date().toISOString();
         await saveStoredOwnedAgentKey({
-          agentId: completedSession.agent_id,
+          agentId: completedSession.agent,
           displayName: pendingRegistration.displayName,
           ownershipProvider: "clawkey",
           publicKeyPem: pendingRegistration.publicKeyPem,
@@ -190,7 +194,7 @@ export function useSettingsOwnedAgents({
     });
 
     setOwnedAgents((current) => current.map((agent) => (
-      agent.agentId === updatedAgent.agent_id ? mapApiUserAgentToOwnedAgent(updatedAgent) : agent
+      agent.agentId === updatedAgent.id ? mapApiUserAgentToOwnedAgent(updatedAgent) : agent
     )));
 
     const storedKey = await findStoredOwnedAgentKey(agentId);
@@ -258,7 +262,7 @@ export function useSettingsOwnedAgents({
       setAgentsState({
         kind: "pairing_code",
         pairingCode: pairing.pairing_code,
-        expiresAt: pairing.expires_at,
+        expiresAt: unixToIso(pairing.expires_at) ?? "",
       });
     } catch (error: unknown) {
       logger.warn("[settings:agents] pairing code creation failed", error);
@@ -281,7 +285,13 @@ export function useSettingsOwnedAgents({
       session_kind: "register",
       ownership_provider: "clawkey",
       display_name: displayName,
-      agent_challenge: input.agentChallenge,
+      agent_challenge: {
+        device: input.agentChallenge.device_id,
+        public_key: input.agentChallenge.public_key,
+        message: input.agentChallenge.message,
+        signature: input.agentChallenge.signature,
+        timestamp: input.agentChallenge.timestamp,
+      },
     });
 
     const launch = sessionResult.launch?.clawkey_registration;
@@ -290,7 +300,7 @@ export function useSettingsOwnedAgents({
     }
 
     pendingAgentRegistrationRef.current = {
-      sessionId: sessionResult.agent_ownership_session_id,
+      sessionId: sessionResult.id,
       handleLabel: input.handleLabel,
       displayName,
       publicKeyPem: input.publicKeyPem,
@@ -300,8 +310,8 @@ export function useSettingsOwnedAgents({
     setAgentsState({
       kind: "awaiting_owner",
       registrationUrl: launch.registration_url,
-      sessionId: launch.session_id,
-      expiresAt: launch.expires_at ?? null,
+      sessionId: launch.session,
+      expiresAt: unixToIso(launch.expires_at),
     });
   }, [api.agents, messages.missingRegistrationUrlError]);
 

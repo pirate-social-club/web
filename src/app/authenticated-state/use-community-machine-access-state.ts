@@ -75,7 +75,7 @@ export function useCommunityMachineAccessState({
 
     setLoadingMachineAccess(true);
     setMachineAccessSaveError(null);
-    void api.communities.getMachineAccessPolicy(community.community_id)
+    void api.communities.getMachineAccessPolicy(community.id)
       .then((policy) => {
         if (cancelled) {
           return;
@@ -113,7 +113,7 @@ export function useCommunityMachineAccessState({
     setMachineAccessSaveError(null);
     setSavingMachineAccess(true);
     void api.communities.updateMachineAccessPolicy(
-      community.community_id,
+      community.id,
       settingsToPolicyUpdate(machineAccessSettings),
     )
       .then((policy) => {

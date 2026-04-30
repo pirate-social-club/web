@@ -18,7 +18,7 @@ describe("self verification helpers", () => {
       endpoint_type: "https",
       scope: "community_join",
       session_id: "ss_123",
-      user_id: "00000000-0000-4000-8000-000000000001",
+      user: "00000000-0000-4000-8000-000000000001",
       user_id_type: "uuid",
       user_defined_data: "{\"verification_session_id\":\"ver_123\"}",
       version: 2,
@@ -76,7 +76,7 @@ describe("self verification helpers", () => {
       endpoint_type: "https",
       scope: "community_join",
       session_id: "ss_123",
-      user_id: "00000000-0000-4000-8000-000000000001",
+      user: "00000000-0000-4000-8000-000000000001",
       user_id_type: "uuid",
     });
     const url = new URL(href ?? "");
@@ -93,7 +93,7 @@ describe("self verification helpers", () => {
       endpoint_type: "https",
       scope: "community_join",
       session_id: "ss_123",
-      user_id: "00000000-0000-4000-8000-000000000001",
+      user: "00000000-0000-4000-8000-000000000001",
       user_id_type: "uuid",
     }, {
       deeplinkCallback: "https://pirate.localhost/c/cmt_123?self_verification_session_id=ver_123",
@@ -112,7 +112,7 @@ describe("self verification helpers", () => {
       endpoint_type: "https",
       scope: "",
       session_id: "ss_123",
-      user_id: "user_123",
+      user: "user_123",
       user_id_type: "uuid",
     })).toBeNull();
     expect(getSelfVerificationLaunchHref({
@@ -122,7 +122,7 @@ describe("self verification helpers", () => {
       endpoint_type: "https",
       scope: "community_join",
       session_id: "",
-      user_id: "00000000-0000-4000-8000-000000000001",
+      user: "00000000-0000-4000-8000-000000000001",
       user_id_type: "uuid",
     })).toBeNull();
   });

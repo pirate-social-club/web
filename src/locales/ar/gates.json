@@ -6,7 +6,7 @@
     },
     "gender": {
       "public": "تحقق بالهوية",
-      "adminWithValue": "يتطلب علامة الجنس في وثيقة Self: {requiredValue}"
+      "adminWithValue": "يتطلب علامة الجنس في وثيقة الهوية: {requiredValue}"
     },
     "uniqueHuman": {
       "very": "يتطلب فحص راحة اليد",
@@ -88,7 +88,7 @@
     "ageOver18": "حالة 18+",
     "minimumAge": "العمر",
     "nationality": "الجنسية",
-    "gender": "علامة الجنس في وثيقة Self",
+    "gender": "علامة الجنس في وثيقة الهوية",
     "uniqueHuman": "إثبات أنك إنسان",
     "walletScore": "درجة Passport"
   },

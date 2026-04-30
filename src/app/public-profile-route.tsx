@@ -23,10 +23,10 @@ type PublicProfileResolution = {
   requested_handle_label: string;
   resolved_handle_label: string;
   created_communities: Array<{
-    community_id: string;
+    community: string;
     display_name: string;
     route_slug: string | null;
-    created_at: string;
+    created: string;
   }>;
 };
 
@@ -92,7 +92,7 @@ export function PublicProfileRoutePage({
   const profileCopy = copy.profile;
   const session = useSession();
   const { error, loading, resolution } = usePublicProfile(handleLabel);
-  const ownProfile = Boolean(session?.profile.user_id && resolution?.profile.user_id === session.profile.user_id);
+  const ownProfile = Boolean(session?.profile.id && resolution?.profile.id === session.profile.id);
   const followState = useProfileFollowState(resolution?.profile.primary_wallet_address ?? null, ownProfile);
 
   React.useEffect(() => {
@@ -131,16 +131,16 @@ export function PublicProfileRoutePage({
       handleLabel: resolution.resolved_handle_label,
       messageEnabled,
       ownProfile,
-      targetUserId: resolution.profile.user_id,
+      targetUserId: resolution.profile.id,
       targetWalletAddress,
-      viewerUserId: session?.profile.user_id ?? null,
+      viewerUserId: session?.profile.id ?? null,
     });
   }, [
     followState.followDisabled,
     followState.followLoading,
     ownProfile,
     resolution,
-    session?.profile.user_id,
+    session?.profile.id,
   ]);
 
   React.useEffect(() => {

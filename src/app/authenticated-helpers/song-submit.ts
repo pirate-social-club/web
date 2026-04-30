@@ -35,7 +35,7 @@ export function buildSongPostRequest(input: {
     license_preset: input.songMode === "original" ? input.license?.presetId : undefined,
     post_type: "song" as const,
     rights_basis: input.songMode === "original" ? "original" as const : "derivative" as const,
-    song_artifact_bundle_id: input.bundleId,
+    song_artifact_bundle: input.bundleId,
     song_mode: input.songMode,
     title: input.title.trim(),
     translation_policy: "machine_allowed" as const,

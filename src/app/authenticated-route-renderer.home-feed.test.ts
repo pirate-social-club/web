@@ -10,11 +10,11 @@ function createEntry(): HomeFeedItem {
   return {
     community: {
       avatar_ref: null,
-      community_id: "cmt_alpha",
+      community: "cmt_alpha",
       display_name: "Alpha Crew",
       member_count: null,
       route_slug: "alpha",
-      updated_at: "2026-04-18T10:00:00.000Z",
+      updated: "2026-04-18T10:00:00.000Z",
     },
     post: {
       downvote_count: 2,
@@ -23,41 +23,41 @@ function createEntry(): HomeFeedItem {
       post: {
         anonymous_label: null,
         anonymous_scope: null,
-        asset_id: null,
+        asset: null,
         access_mode: null,
         age_gate_policy: "none",
         analysis_result_ref: null,
         analysis_state: "allow",
-        author_user_id: "usr_author",
+        author_user: "usr_author",
         authorship_mode: "human_direct",
         body: "Body copy",
         caption: null,
-        community_id: "cmt_alpha",
+        community: "cmt_alpha",
         content_safety_state: "safe",
-        created_at: "2026-04-18T10:00:00.000Z",
+        created: "2026-04-18T10:00:00.000Z",
         disclosed_qualifiers_json: null,
         identity_mode: "public",
         label_id: null,
         link_url: null,
         media_refs: undefined,
         parent_post_id: null,
-        post_id: "pst_alpha",
+        post: "pst_alpha",
         post_type: "text",
         rights_basis: "none",
-        song_artifact_bundle_id: null,
+        song_artifact_bundle: null,
         song_mode: null,
         source_language: "en",
         status: "published",
         visibility: "public",
         title: "Hello world",
         translation_policy: "none",
-        updated_at: "2026-04-18T10:00:00.000Z",
+        updated: "2026-04-18T10:00:00.000Z",
       },
       resolved_locale: "en",
       source_hash: "src_test",
       thread_snapshot: {
         comment_count: 5,
-        created_at: "2026-04-18T10:30:00.000Z",
+        created: "2026-04-18T10:30:00.000Z",
         published_through_comment_created_at: "2026-04-18T10:30:00.000Z",
         snapshot_seq: 1,
         swarm_feed_ref: null,
@@ -81,7 +81,7 @@ function createAuthorProfile(overrides: Partial<Profile> = {}): Profile {
     avatar_ref: null,
     bio: null,
     cover_ref: null,
-    created_at: "2026-04-18T10:00:00.000Z",
+    created: "2026-04-18T10:00:00.000Z",
     display_name: "Blackbeard",
     global_handle: {
       free_rename_consumed: false,
@@ -97,8 +97,8 @@ function createAuthorProfile(overrides: Partial<Profile> = {}): Profile {
     preferred_locale: null,
     primary_public_handle: null,
     primary_wallet_address: null,
-    updated_at: "2026-04-18T10:00:00.000Z",
-    user_id: "usr_author",
+    updated: "2026-04-18T10:00:00.000Z",
+    user: "usr_author",
     verification_capabilities: null,
     ...overrides,
   };
@@ -169,7 +169,7 @@ describe("toHomeFeedItem", () => {
       primary_public_handle: {
         kind: "ens",
         label: "blackbeard.eth",
-        linked_handle_id: "lnk_blackbeard_ens",
+        linked_handle: "lnk_blackbeard_ens",
         verification_state: "verified",
       },
     });
@@ -185,7 +185,7 @@ describe("toHomeFeedItem", () => {
       primary_public_handle: {
         kind: "ens",
         label: "blackbeard.eth",
-        linked_handle_id: "lnk_blackbeard_ens",
+        linked_handle: "lnk_blackbeard_ens",
         verification_state: "verified",
       },
     });
@@ -198,7 +198,7 @@ describe("toHomeFeedItem", () => {
       },
     } as unknown as Parameters<typeof loadProfilesByUserId>[0];
 
-    const hydratedProfiles = await loadProfilesByUserId(api, [entry.post.post.author_user_id ?? ""]);
+    const hydratedProfiles = await loadProfilesByUserId(api, [entry.post.post.author_user ?? ""]);
     const item = toHomeFeedItem(entry, hydratedProfiles);
 
     expect(item.post.byline?.author?.label).toBe("blackbeard.eth");

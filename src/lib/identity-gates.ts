@@ -13,7 +13,10 @@ import { getLocaleMessages } from "@/locales";
 type IdentityGateAudience = "public" | "admin";
 type VerificationProvider = "self" | "very" | "passport";
 type RequirementProviderContext = VerificationProvider | null;
-type MissingCapability = JoinEligibility["missing_capabilities"][number];
+type MissingCapability = "unique_human" | "age_over_18" | "minimum_age" | "nationality" | "gender" | "wallet_score";
+type RequiredActionNode = Omit<NonNullable<NonNullable<JoinEligibility["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
+  items?: RequiredActionNode[];
+};
 
 const SELF_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "unique_human",
@@ -175,11 +178,12 @@ export function isJoinCtaActionable(eligibility: JoinEligibility): boolean {
 }
 
 export function getVerificationCapabilitiesForProvider(
-  eligibility: Pick<JoinEligibility, "missing_capabilities">,
+  eligibility: Pick<JoinEligibility, "gate_evaluation">,
   provider: VerificationProvider,
 ): RequestedVerificationCapability[] {
+  const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(eligibility);
   const uniqueCapabilities = new Set<RequestedVerificationCapability>();
-  for (const capability of eligibility.missing_capabilities) {
+  for (const capability of missingCapabilities) {
     if (provider === "very") {
       if (capability === "unique_human") {
         uniqueCapabilities.add(capability);
@@ -200,10 +204,44 @@ export function getVerificationCapabilitiesForProvider(
 }
 
 export function getPassportPromptCapabilities(
-  input: { missing_capabilities?: readonly string[] | null },
+  input: { gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null },
 ): MissingCapability[] {
-  return (input.missing_capabilities ?? [])
+  return getMissingCapabilitiesFromGateEvaluation(input)
     .filter((capability): capability is MissingCapability => capability === "wallet_score");
+}
+
+export function getMissingCapabilitiesFromGateEvaluation(
+  input: { gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null },
+): MissingCapability[] {
+  const actions = (input.gate_evaluation?.required_action_set?.items ?? []) as RequiredActionNode[];
+  if (actions.length === 0 && Array.isArray((input as { missing_capabilities?: unknown }).missing_capabilities)) {
+    return ((input as { missing_capabilities?: unknown[] }).missing_capabilities ?? [])
+      .filter((capability): capability is MissingCapability =>
+        capability === "unique_human"
+        || capability === "age_over_18"
+        || capability === "minimum_age"
+        || capability === "nationality"
+        || capability === "gender"
+        || capability === "wallet_score"
+      );
+  }
+  const capabilities = new Set<MissingCapability>();
+  const visit = (action: RequiredActionNode): void => {
+    if (action.kind === "set") {
+      action.items?.forEach(visit);
+      return;
+    }
+    if (
+      !action.capability
+      || action.capability === "erc721_holding"
+      || action.capability === "erc721_inventory_match"
+    ) {
+      return;
+    }
+    capabilities.add(action.capability);
+  };
+  actions.forEach(visit);
+  return Array.from(capabilities);
 }
 
 export function getVerificationRequirementsForGates(
@@ -356,16 +394,16 @@ export function hasSelfDocumentFactVerificationRequest(input: {
 }
 
 export function resolveSuggestedVerificationProvider(
-  eligibility: Pick<JoinEligibility, "suggested_verification_provider"> & {
+  eligibility: {
     membership_gate_summaries?: MembershipGateSummary[] | null;
-    missing_capabilities?: readonly string[] | null;
+    gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null;
   },
 ): VerificationProvider {
-  if (eligibility.suggested_verification_provider) {
-    return eligibility.suggested_verification_provider;
+  const legacyProvider = (eligibility as { suggested_verification_provider?: VerificationProvider | null }).suggested_verification_provider;
+  if (legacyProvider) {
+    return legacyProvider;
   }
-
-  const missingCapabilities = eligibility.missing_capabilities ?? [];
+  const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(eligibility);
   const gateSummaries = eligibility.membership_gate_summaries ?? [];
 
   if (missingCapabilities.some((capability) => capability === "wallet_score")) {

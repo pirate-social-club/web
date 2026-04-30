@@ -7,8 +7,8 @@ import { getPostCommentCount } from "./post-presentation";
 
 type TopTimeRange = "hour" | "day" | "week" | "month" | "year" | "all";
 
-function getCreatedAtMs(createdAt: string): number {
-  const timestamp = Date.parse(createdAt);
+function getCreatedAtMs(createdAt: string | number): number {
+  const timestamp = typeof createdAt === "number" ? createdAt * 1000 : Date.parse(createdAt);
   return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
@@ -35,7 +35,7 @@ function getRichnessScore(input: {
   return input.titleLength * 2 + input.bodyLength + input.captionLength + input.mediaCount * 120;
 }
 
-function getBestRank(score: number, createdAt: string, now: number): number {
+function getBestRank(score: number, createdAt: string | number, now: number): number {
   const ageHours = Math.max(0, (now - getCreatedAtMs(createdAt)) / 3_600_000);
   return score / Math.pow(ageHours + 2, 1.5);
 }
@@ -59,7 +59,7 @@ function compareFeedEntries(
     bodyLength: number;
     captionLength: number;
     commentCount: number;
-    createdAt: string;
+    createdAt: string | number;
     downvoteCount: number;
     likeCount: number;
     mediaCount: number;
@@ -71,7 +71,7 @@ function compareFeedEntries(
     bodyLength: number;
     captionLength: number;
     commentCount: number;
-    createdAt: string;
+    createdAt: string | number;
     downvoteCount: number;
     likeCount: number;
     mediaCount: number;
@@ -116,9 +116,13 @@ function compareFeedEntries(
 }
 
 export function getFeedOrderSignature(
-  items: ReadonlyArray<{ post: { post_id: string } } | { post: { post: { post_id: string } } }>,
+  items: ReadonlyArray<{ post: { id?: string; post?: string } } | { post: { post: { id?: string; post?: string } } }>,
 ): string {
-  return items.map((item) => "post_id" in item.post ? item.post.post_id : item.post.post.post_id).join(",");
+  return items.map((item) => {
+    const outerPost = item.post as { id?: string; post?: string | { id?: string; post?: string } };
+    const post = typeof outerPost.post === "object" && outerPost.post !== null ? outerPost.post : outerPost;
+    return post.id ?? post.post ?? "";
+  }).join(",");
 }
 
 export function sortCommunityFeedPosts(
@@ -130,22 +134,22 @@ export function sortCommunityFeedPosts(
     bodyLength: (left.post.body ?? "").trim().length,
     captionLength: (left.post.caption ?? "").trim().length,
     commentCount: getPostCommentCount(left),
-    createdAt: left.post.created_at,
+    createdAt: left.post.created,
     downvoteCount: left.downvote_count,
     likeCount: left.like_count,
     mediaCount: left.post.media_refs?.length ?? 0,
-    postId: left.post.post_id,
+    postId: left.post.id,
     titleLength: (left.post.title ?? "").trim().length,
     upvoteCount: left.upvote_count,
   }, {
     bodyLength: (right.post.body ?? "").trim().length,
     captionLength: (right.post.caption ?? "").trim().length,
     commentCount: getPostCommentCount(right),
-    createdAt: right.post.created_at,
+    createdAt: right.post.created,
     downvoteCount: right.downvote_count,
     likeCount: right.like_count,
     mediaCount: right.post.media_refs?.length ?? 0,
-    postId: right.post.post_id,
+    postId: right.post.id,
     titleLength: (right.post.title ?? "").trim().length,
     upvoteCount: right.upvote_count,
   }, sort, now));
@@ -160,28 +164,28 @@ export function sortHomeFeedEntries(
   const cutoffMs = input.sort === "top" ? getTimeRangeCutoffMs(topTimeRange, now) : null;
   const visibleEntries = cutoffMs == null
     ? entries
-    : entries.filter((entry) => getCreatedAtMs(entry.post.post.created_at) >= cutoffMs);
+    : entries.filter((entry) => getCreatedAtMs(entry.post.post.created) >= cutoffMs);
 
   return [...visibleEntries].sort((left, right) => compareFeedEntries({
     bodyLength: (left.post.post.body ?? "").trim().length,
     captionLength: (left.post.post.caption ?? "").trim().length,
     commentCount: getPostCommentCount(left.post),
-    createdAt: left.post.post.created_at,
+    createdAt: left.post.post.created,
     downvoteCount: left.post.downvote_count,
     likeCount: left.post.like_count,
     mediaCount: left.post.post.media_refs?.length ?? 0,
-    postId: left.post.post.post_id,
+    postId: left.post.post.id,
     titleLength: (left.post.post.title ?? "").trim().length,
     upvoteCount: left.post.upvote_count,
   }, {
     bodyLength: (right.post.post.body ?? "").trim().length,
     captionLength: (right.post.post.caption ?? "").trim().length,
     commentCount: getPostCommentCount(right.post),
-    createdAt: right.post.post.created_at,
+    createdAt: right.post.post.created,
     downvoteCount: right.post.downvote_count,
     likeCount: right.post.like_count,
     mediaCount: right.post.post.media_refs?.length ?? 0,
-    postId: right.post.post.post_id,
+    postId: right.post.post.id,
     titleLength: (right.post.post.title ?? "").trim().length,
     upvoteCount: right.post.upvote_count,
   }, input.sort, now));

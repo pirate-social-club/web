@@ -12,7 +12,6 @@ import type { PricingTier, CountryAssignment as PricingCountryAssignment } from 
 import { buildCommunityPath } from "@/lib/community-routing";
 import { createDefaultCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 import { COUNTRIES, normalizeCountryCode } from "@/lib/countries";
-import { serializeExistingCommunityGateRuleForUpdate, type SerializedGateRule } from "@/app/authenticated-helpers/community-gate-rule-serialization";
 import {
   createDefaultCommunitySafetyAdultContentPolicy,
   createDefaultCommunitySafetyCivilityPolicy,
@@ -98,7 +97,7 @@ export function buildCommunityModerationSections(
 
 export function getCommunityLinkDrafts(community: ApiCommunity): CommunityLinkEditorItem[] {
   return (community.reference_links ?? []).map((link) => ({
-    id: link.community_reference_link_id,
+    id: link.community_reference_link,
     label: link.label ?? link.metadata.display_name ?? "",
     platform: link.platform,
     url: link.url,
@@ -107,12 +106,12 @@ export function getCommunityLinkDrafts(community: ApiCommunity): CommunityLinkEd
 }
 
 export function getCommunityDonationPartnerPreview(community: ApiCommunity): DonationPartnerPreview | null {
-  if (!community.donation_partner || !community.donation_partner_id) {
+  if (!community.donation_partner || !community.donation_partner) {
     return null;
   }
 
   return {
-    donationPartnerId: community.donation_partner_id,
+    donationPartnerId: community.donation_partner.donation_partner,
     displayName: community.donation_partner.display_name,
     imageUrl: community.donation_partner.image_url ?? null,
     provider: "Endaoment",
@@ -226,86 +225,93 @@ function extractCourtyardInventoryDraft(config: unknown): Omit<Extract<IdentityG
   });
 }
 
-type ApiCommunityGateRule = NonNullable<ApiCommunity["gate_rules"]>[number];
-
-function isActiveMembershipGateRule(rule: ApiCommunityGateRule): boolean {
-  return rule.scope === "membership" && rule.status === "active";
-}
-
-function getCommunityGateDraft(rule: ApiCommunityGateRule): IdentityGateDraft | null {
-  if (!isActiveMembershipGateRule(rule)) {
-    return null;
-  }
-
-  if (rule.gate_family === "token_holding" && rule.gate_type === "erc721_holding" && rule.chain_namespace === "eip155:1") {
-    const contractAddress = extractContractAddress(rule.gate_config);
-    if (contractAddress) {
-      return {
-        gateType: "erc721_holding",
-        chainNamespace: "eip155:1",
-        contractAddress,
-        gateRuleId: rule.gate_rule_id,
-      };
-    }
-    return null;
-  }
-
-  if (rule.gate_family === "token_holding" && rule.gate_type === "erc721_inventory_match" && rule.chain_namespace === "eip155:137") {
-    const draft = extractCourtyardInventoryDraft(rule.gate_config);
-    if (draft) {
-      return { ...draft, gateRuleId: rule.gate_rule_id };
-    }
-    return null;
-  }
-
-  if (rule.gate_family !== "identity_proof") {
-    return null;
-  }
-
-  const config = rule.proof_requirements?.[0]?.config ?? rule.gate_config;
-  const requiredValue = extractRequiredValue(config);
-
-  if (rule.gate_type === "nationality") {
-    const requiredValues = extractRequiredValues(config);
-    if (requiredValues.length > 0) {
-      return { gateType: "nationality", provider: "self", requiredValues, gateRuleId: rule.gate_rule_id };
-    }
-    return null;
-  }
-
-  if (rule.gate_type === "minimum_age") {
-    const minimumAge = extractMinimumAge(config);
-    if (minimumAge != null) {
-      return { gateType: "minimum_age", provider: "self", minimumAge, gateRuleId: rule.gate_rule_id };
-    }
-    return null;
-  }
-
-  if (rule.gate_type === "wallet_score") {
-    const minimumScore = extractMinimumScore(config);
-    if (minimumScore != null) {
-      return { gateType: "wallet_score", provider: "passport", minimumScore, gateRuleId: rule.gate_rule_id };
-    }
-    return null;
-  }
-
-  if (rule.gate_type === "gender" && (requiredValue === "M" || requiredValue === "F")) {
-    return { gateType: "gender", provider: "self", requiredValue, gateRuleId: rule.gate_rule_id };
-  }
-
-  return null;
-}
-
 export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDraft[] {
-  return (community.gate_rules ?? [])
-    .map((rule) => getCommunityGateDraft(rule))
+  return flattenGatePolicyAtoms(community.gate_policy ?? null)
+    .map((atom) => getCommunityGateDraft(atom))
     .filter((draft): draft is IdentityGateDraft => draft != null);
 }
 
-export function getPreservedCommunityGateRules(community: ApiCommunity): SerializedGateRule[] {
-  return (community.gate_rules ?? [])
-    .filter((rule) => isActiveMembershipGateRule(rule) && getCommunityGateDraft(rule) == null)
-    .map((rule) => serializeExistingCommunityGateRuleForUpdate(rule));
+type ApiGatePolicy = NonNullable<ApiCommunity["gate_policy"]>;
+type ApiGateAtom = NonNullable<ApiGatePolicy["expression"]["gate"]>;
+type ApiGateExpression = Omit<ApiGatePolicy["expression"], "children" | "gate"> & {
+  children?: ApiGateExpression[];
+  gate?: ApiGateAtom;
+};
+
+function flattenGatePolicyAtoms(policy: ApiGatePolicy | null): ApiGateAtom[] {
+  if (!policy) return [];
+  const atoms: ApiGateAtom[] = [];
+  collectGatePolicyAtoms(policy.expression as ApiGateExpression, atoms);
+  return atoms;
+}
+
+function collectGatePolicyAtoms(expression: ApiGateExpression, atoms: ApiGateAtom[]): void {
+  if (expression.op === "gate" && expression.gate) {
+    atoms.push(expression.gate);
+    return;
+  }
+  for (const child of expression.children ?? []) {
+    collectGatePolicyAtoms(child, atoms);
+  }
+}
+
+function getCommunityGateDraft(atom: ApiGateAtom): IdentityGateDraft | null {
+  if (atom.type === "erc721_holding" && atom.chain_namespace === "eip155:1" && atom.contract_address) {
+    return {
+      gateType: "erc721_holding",
+      chainNamespace: "eip155:1",
+      contractAddress: atom.contract_address,
+    };
+  }
+
+  if (
+    atom.type === "erc721_inventory_match"
+    && atom.chain_namespace === "eip155:137"
+    && atom.contract_address
+    && Number.isInteger(atom.min_quantity)
+  ) {
+    const match = atom.match ?? {};
+    const category = typeof match.category === "string" ? match.category : null;
+    if (category !== "trading_card" && category !== "watch") return null;
+    return createDefaultCourtyardInventoryDraft({
+      contractAddress: atom.contract_address,
+      minQuantity: atom.min_quantity,
+      assetFilter: {
+        category,
+        franchise: typeof match.franchise === "string" ? match.franchise : undefined,
+        subject: typeof match.subject === "string" ? match.subject : undefined,
+        brand: typeof match.brand === "string" ? match.brand : undefined,
+        model: typeof match.model === "string" ? match.model : undefined,
+        reference: typeof match.reference === "string" ? match.reference : undefined,
+        set: typeof match.set === "string" ? match.set : undefined,
+        year: typeof match.year === "string" ? match.year : undefined,
+        grader: typeof match.grader === "string" ? match.grader : undefined,
+        grade: typeof match.grade === "string" ? match.grade : undefined,
+        condition: typeof match.condition === "string" ? match.condition : undefined,
+      },
+    });
+  }
+
+  if (atom.type === "nationality") {
+    return atom.allowed?.length ? { gateType: "nationality", provider: "self", requiredValues: atom.allowed } : null;
+  }
+
+  if (atom.type === "minimum_age") {
+    return typeof atom.minimum_age === "number" && Number.isInteger(atom.minimum_age)
+      ? { gateType: "minimum_age", provider: "self", minimumAge: atom.minimum_age }
+      : null;
+  }
+
+  if (atom.type === "wallet_score") {
+    return typeof atom.minimum_score === "number" ? { gateType: "wallet_score", provider: "passport", minimumScore: atom.minimum_score } : null;
+  }
+
+  if (atom.type === "gender") {
+    const marker = atom.allowed?.[0];
+    return marker === "M" || marker === "F" ? { gateType: "gender", provider: "self", requiredValue: marker } : null;
+  }
+
+  return null;
 }
 
 export function getPricingTierDrafts(policy: ApiCommunityPricingPolicy | null): PricingTier[] {

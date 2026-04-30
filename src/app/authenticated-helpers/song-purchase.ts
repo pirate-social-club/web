@@ -18,7 +18,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { toast } from "@/components/primitives/sonner";
 import { SongPurchaseModal } from "@/components/compositions/wallet/song-purchase-modal/song-purchase-modal";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
-import { formatUsdLabel } from "@/lib/formatting/currency";
+import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useUiLocale } from "@/lib/ui-locale";
 
@@ -67,17 +67,17 @@ export async function executeSongPurchase(params: {
     }
 
     const quote = await params.communities.createPurchaseQuote(params.communityId, {
-      listing_id: params.listing.listing_id,
+      listing: params.listing.id,
       ...DEFAULT_STORY_CHECKOUT_ROUTE,
     });
-    quoteId = quote.quote_id;
+    quoteId = quote.id;
     fundingTxRef = await executeRoutedStoryCheckout({
       quote,
       wallet: fundingWallet,
     });
     const settlement = await params.communities.settlePurchase(params.communityId, {
-      quote_id: quote.quote_id,
-      settlement_wallet_attachment_id: params.settlementWalletAttachmentId,
+      quote: quote.id,
+      settlement_wallet_attachment: params.settlementWalletAttachmentId,
       funding_tx_ref: fundingTxRef,
       settlement_tx_ref: fundingTxRef,
     });
@@ -85,7 +85,7 @@ export async function executeSongPurchase(params: {
     params.onSuccess(params.successMessage({ settlement, titleText: params.titleText }));
   } catch (error) {
     if (quoteId && !fundingTxRef) {
-      void params.communities.failPurchase(params.communityId, { quote_id: quoteId }).catch(() => undefined);
+      void params.communities.failPurchase(params.communityId, { quote: quoteId }).catch(() => undefined);
     }
     params.onError(getErrorMessage(error, `Could not unlock this ${assetLabel}.`));
   }
@@ -118,7 +118,7 @@ export function useSongPurchase({
     onSuccess: toast.success,
     primaryWalletAddress: session?.profile.primary_wallet_address,
     refreshSongCommerce,
-    settlementWalletAttachmentId: session?.user.primary_wallet_attachment_id,
+    settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
     successMessage: params.successMessage,
     titleText: params.titleText,
   }), [
@@ -126,7 +126,7 @@ export function useSongPurchase({
     connectedWallets,
     refreshSongCommerce,
     session?.profile.primary_wallet_address,
-    session?.user.primary_wallet_attachment_id,
+    session?.user.primary_wallet_attachment,
   ]);
 }
 
@@ -143,19 +143,19 @@ type QuotedSongPurchase = PendingSongPurchase & {
   quote: CommunityPurchaseQuote;
 };
 
-export function resolveQuoteDiscountPercent(quote: Pick<CommunityPurchaseQuote, "base_price_usd" | "final_price_usd">): number | null {
+export function resolveQuoteDiscountPercent(quote: Pick<CommunityPurchaseQuote, "base_price_cents" | "final_price_cents">): number | null {
   if (
-    typeof quote.base_price_usd !== "number"
-    || typeof quote.final_price_usd !== "number"
-    || !Number.isFinite(quote.base_price_usd)
-    || !Number.isFinite(quote.final_price_usd)
-    || quote.base_price_usd <= 0
-    || quote.final_price_usd >= quote.base_price_usd
+    typeof quote.base_price_cents !== "number"
+    || typeof quote.final_price_cents !== "number"
+    || !Number.isFinite(quote.base_price_cents)
+    || !Number.isFinite(quote.final_price_cents)
+    || quote.base_price_cents <= 0
+    || quote.final_price_cents >= quote.base_price_cents
   ) {
     return null;
   }
 
-  const discountPercent = ((quote.base_price_usd - quote.final_price_usd) / quote.base_price_usd) * 100;
+  const discountPercent = ((quote.base_price_cents - quote.final_price_cents) / quote.base_price_cents) * 100;
   return Math.round(discountPercent * 10) / 10;
 }
 
@@ -177,7 +177,7 @@ export function useSongPurchaseFlow({
   const createPreflight = React.useCallback(async (params: PendingSongPurchase): Promise<CommunityPurchaseQuotePreflight | null> => {
     try {
       return await api.communities.preflightPurchaseQuote(params.communityId, {
-        listing_id: params.listing.listing_id,
+        listing: params.listing.id,
         ...DEFAULT_STORY_CHECKOUT_ROUTE,
       });
     } catch {
@@ -187,7 +187,7 @@ export function useSongPurchaseFlow({
 
   const createQuote = React.useCallback(async (params: PendingSongPurchase): Promise<CommunityPurchaseQuote> => {
     return await api.communities.createPurchaseQuote(params.communityId, {
-      listing_id: params.listing.listing_id,
+      listing: params.listing.id,
       ...DEFAULT_STORY_CHECKOUT_ROUTE,
     });
   }, [api.communities]);
@@ -196,7 +196,7 @@ export function useSongPurchaseFlow({
     if (!pendingPurchase || purchaseProcessing) return;
 
     try {
-      await api.communities.failPurchase(pendingPurchase.communityId, { quote_id: pendingPurchase.quote.quote_id });
+      await api.communities.failPurchase(pendingPurchase.communityId, { quote: pendingPurchase.quote.id });
       const quote = await createQuote(pendingPurchase);
       setPendingPurchase({ ...pendingPurchase, quote });
       setPurchaseError(null);
@@ -238,7 +238,7 @@ export function useSongPurchaseFlow({
     setPendingPurchase(null);
     setPurchaseError(null);
     if (quoteToFail) {
-      void api.communities.failPurchase(quoteToFail.communityId, { quote_id: quoteToFail.quote.quote_id }).catch(() => undefined);
+      void api.communities.failPurchase(quoteToFail.communityId, { quote: quoteToFail.quote.id }).catch(() => undefined);
     }
   }, [api.communities, pendingPurchase, purchaseProcessing]);
 
@@ -246,7 +246,7 @@ export function useSongPurchaseFlow({
     setPurchaseError(null);
     const assetLabel = params.assetLabel ?? "song";
 
-    if (!session?.user.primary_wallet_attachment_id) {
+    if (!session?.user.primary_wallet_attachment) {
       toast.error(`Connect a primary wallet before buying this ${assetLabel}.`);
       return;
     }
@@ -267,7 +267,9 @@ export function useSongPurchaseFlow({
       ]);
       setPendingPurchase({
         ...params,
-        maxSelfDiscountPercent: preflight?.max_self_discount_percent ?? null,
+        maxSelfDiscountPercent: preflight?.max_self_discount_bps == null
+          ? null
+          : preflight.max_self_discount_bps / 100,
         quote,
       });
     } catch (error) {
@@ -278,14 +280,14 @@ export function useSongPurchaseFlow({
     createPreflight,
     createQuote,
     session?.profile.primary_wallet_address,
-    session?.user.primary_wallet_attachment_id,
+    session?.user.primary_wallet_attachment,
   ]);
 
   const confirmPurchase = React.useCallback(async () => {
     if (!pendingPurchase || purchaseProcessing) return;
     const assetLabel = pendingPurchase.assetLabel ?? "song";
 
-    if (!session?.user.primary_wallet_attachment_id) {
+    if (!session?.user.primary_wallet_attachment) {
       setPurchaseError(`Connect a primary wallet before buying this ${assetLabel}.`);
       return;
     }
@@ -308,8 +310,8 @@ export function useSongPurchaseFlow({
         wallet: fundingWallet,
       });
       const settlement = await api.communities.settlePurchase(pendingPurchase.communityId, {
-        quote_id: pendingPurchase.quote.quote_id,
-        settlement_wallet_attachment_id: session.user.primary_wallet_attachment_id,
+        quote: pendingPurchase.quote.id,
+        settlement_wallet_attachment: session.user.primary_wallet_attachment,
         funding_tx_ref: fundingTxRef,
         settlement_tx_ref: fundingTxRef,
       });
@@ -318,7 +320,7 @@ export function useSongPurchaseFlow({
       setPendingPurchase(null);
     } catch (error) {
       if (!fundingTxRef) {
-        void api.communities.failPurchase(pendingPurchase.communityId, { quote_id: pendingPurchase.quote.quote_id }).catch(() => undefined);
+        void api.communities.failPurchase(pendingPurchase.communityId, { quote: pendingPurchase.quote.id }).catch(() => undefined);
         setPendingPurchase(null);
       }
       const message = getErrorMessage(error, `Could not unlock this ${assetLabel}.`);
@@ -334,7 +336,7 @@ export function useSongPurchaseFlow({
     purchaseProcessing,
     refreshSongCommerce,
     session?.profile.primary_wallet_address,
-    session?.user.primary_wallet_attachment_id,
+    session?.user.primary_wallet_attachment,
   ]);
 
   const quoteDiscountPercent = pendingPurchase ? resolveQuoteDiscountPercent(pendingPurchase.quote) : null;
@@ -350,7 +352,7 @@ export function useSongPurchaseFlow({
         onOpenChange: closePurchaseModal,
         onSelfVerificationClick: shouldOfferSelfVerification ? startSelfPricingVerification : undefined,
         open: true,
-        priceLabel: formatUsdLabel(pendingPurchase.quote.final_price_usd) ?? "$0.00",
+        priceLabel: formatUsdLabel(centsToUsd(pendingPurchase.quote.final_price_cents)) ?? "$0.00",
         processing: purchaseProcessing,
         selfVerificationSavingsPercent: shouldOfferSelfVerification ? pendingPurchase.maxSelfDiscountPercent : null,
         assetLabel: pendingPurchase.assetLabel ?? "song",

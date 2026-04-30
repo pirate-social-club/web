@@ -70,6 +70,8 @@ export const CheckboxCard = React.forwardRef<HTMLDivElement, CheckboxCardProps>(
           checked={checked}
           disabled={disabled}
           className="mt-0.5"
+          onClick={(event) => event.stopPropagation()}
+          onCheckedChange={(next) => onCheckedChange?.(next === true)}
           tabIndex={-1}
           aria-hidden="true"
         />

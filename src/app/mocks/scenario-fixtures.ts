@@ -23,7 +23,7 @@ export const ONBOARDING_SAMPLE: OnboardingSample = {
 export const CREATE_COMMUNITY_SAMPLE: CreateCommunitySample = {
   displayName: "American Voices",
   description: "A national-interest community where verified context matters, but moderation still needs a safe anonymous layer.",
-  membershipMode: "open",
+  membershipMode: "request",
   defaultAgeGatePolicy: "none",
   allowAnonymousIdentity: true,
   creatorVerificationState: {

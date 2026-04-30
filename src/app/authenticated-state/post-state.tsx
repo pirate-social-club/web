@@ -50,16 +50,16 @@ async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<Ava
     }
     let storedKey = null;
     try {
-      storedKey = await findStoredOwnedAgentKey(agent.agent_id);
+      storedKey = await findStoredOwnedAgentKey(agent.id);
     } catch (error) {
-      logger.warn("[post-route] could not read local agent key", { agentId: agent.agent_id, error });
+      logger.warn("[post-route] could not read local agent key", { agentId: agent.id, error });
       continue;
     }
     if (!storedKey) {
       continue;
     }
     return {
-      agentId: agent.agent_id,
+      agentId: agent.id,
       displayName: agent.display_name,
       privateKeyPem: storedKey.privateKeyPem,
     };
@@ -114,7 +114,7 @@ export function usePost(
     const nextAuthorProfilesByUserId = await loadProfilesByUserId(
       api,
       collectThreadCommentAuthorUserIds(nextCommentNodes),
-      session?.profile ? { [session.user.user_id]: session.profile } : {},
+      session?.profile ? { [session.user.id]: session.profile } : {},
     );
 
     return { authorProfilesByUserId: nextAuthorProfilesByUserId, commentNodes: nextCommentNodes };
@@ -162,7 +162,7 @@ export function usePost(
       const repliesPage = readMode === "authenticated"
         ? await api.comments.listReplies(commentId, { cursor: currentNode.hasLoadedReplies ? currentNode.nextRepliesCursor : null, limit: THREAD_COMMENT_PAGE_LIMIT, locale, sort: commentSort })
         : await api.publicComments.listReplies(commentId, { cursor: currentNode.hasLoadedReplies ? currentNode.nextRepliesCursor : null, limit: THREAD_COMMENT_PAGE_LIMIT, locale, sort: commentSort });
-      const nextProfiles = await loadProfilesByUserId(api, collectCommentAuthorUserIds(repliesPage.items), session?.profile ? { [session.user.user_id]: session.profile } : {});
+      const nextProfiles = await loadProfilesByUserId(api, collectCommentAuthorUserIds(repliesPage.items), session?.profile ? { [session.user.id]: session.profile } : {});
       logger.debug("[post-thread] load replies complete", {
         commentId,
         nextCursor: repliesPage.next_cursor,
@@ -170,9 +170,9 @@ export function usePost(
       });
       setAuthorProfilesByUserId((current) => ({ ...current, ...nextProfiles }));
       setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => {
-        const nextChildrenById = new Map(node.children.map((child) => [child.item.comment.comment_id, child] as const));
+        const nextChildrenById = new Map(node.children.map((child) => [child.item.comment.id, child] as const));
         for (const child of buildThreadCommentTreeFromItems(repliesPage.items)) {
-          nextChildrenById.set(child.item.comment.comment_id, child);
+          nextChildrenById.set(child.item.comment.id, child);
         }
 
         return {
@@ -194,27 +194,27 @@ export function usePost(
     if (!post) return "blocked";
     const result = await runGatedCommunityAction({
       action: "reply_post",
-      communityId: post.post.community_id,
+      communityId: post.post.id,
       onAllowed: async () => {
         try {
           const commentBody = { body: input.body };
           await api.communities.createComment(
-            post.post.community_id,
-            post.post.post_id,
+            post.post.id,
+            post.post.id,
             input.authorMode === "agent"
               ? await signAgentAuthoredCommentBody(
-                `/communities/${post.post.community_id}/posts/${post.post.post_id}/comments`,
+                `/communities/${post.post.id}/posts/${post.post.id}/comments`,
                 commentBody,
               )
               : commentBody,
           );
-          await refreshTopLevelComments(post.post.community_id);
+          await refreshTopLevelComments(post.post.id);
         } catch (nextError) {
           toast.error(getErrorMessage(nextError, "Could not post this reply."));
           throw nextError;
         }
       },
-      postId: post.post.post_id,
+      postId: post.post.id,
     });
     return result === "allowed" ? "submitted" : "blocked";
   }, [api, post, refreshTopLevelComments, runGatedCommunityAction, signAgentAuthoredCommentBody]);
@@ -223,7 +223,7 @@ export function usePost(
     if (!post) return "blocked";
     const result = await runGatedCommunityAction({
       action: "reply_comment",
-      communityId: post.post.community_id,
+      communityId: post.post.id,
       onAllowed: async () => {
         try {
           const commentBody = { body: input.body };
@@ -237,7 +237,7 @@ export function usePost(
           const nextProfiles = await loadProfilesByUserId(api, [
             ...collectCommentAuthorUserIds([context.comment]),
             ...collectCommentAuthorUserIds(context.replies),
-          ], session?.profile ? { [session.user.user_id]: session.profile } : {});
+          ], session?.profile ? { [session.user.id]: session.profile } : {});
 
           setAuthorProfilesByUserId((current) => ({ ...current, ...nextProfiles }));
           setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({
@@ -253,7 +253,7 @@ export function usePost(
           throw nextError;
         }
       },
-      postId: post.post.post_id,
+      postId: post.post.id,
     });
     return result === "allowed" ? "submitted" : "blocked";
   }, [api, locale, post, runGatedCommunityAction, session, signAgentAuthoredCommentBody]);
@@ -262,7 +262,7 @@ export function usePost(
     if (!post) return;
     await runGatedCommunityAction({
       action: "vote_comment",
-      communityId: post.post.community_id,
+      communityId: post.post.id,
       onAllowed: async () => {
         const nextValue = direction === "up" ? 1 : -1;
         const currentNode = findThreadCommentNode(commentNodes, commentId);
@@ -289,7 +289,7 @@ export function usePost(
           toast.error(getErrorMessage(nextError, "Could not update this vote."));
         }
       },
-      postId: post.post.post_id,
+      postId: post.post.id,
     });
   }, [api, commentNodes, post, runGatedCommunityAction]);
 
@@ -297,9 +297,9 @@ export function usePost(
     if (!post) return;
     await runGatedCommunityAction({
       action: "vote_post",
-      communityId: post.post.community_id,
+      communityId: post.post.id,
       onAllowed: async () => {
-        const nextPostId = post.post.post_id;
+        const nextPostId = post.post.id;
         await submitOptimisticPostVote({
           direction,
           onApply: (nextValue) => setPost((current) => current ? applyPostVote(current, nextValue) : current),
@@ -310,7 +310,7 @@ export function usePost(
           vote: api.posts.vote,
         });
       },
-      postId: post.post.post_id,
+      postId: post.post.id,
     });
   }, [api.posts.vote, post, runGatedCommunityAction]);
 
@@ -357,35 +357,35 @@ export function usePost(
 
         void loadProfilesByUserId(
           api,
-          [...(p.post.identity_mode === "public" && p.post.author_user_id ? [p.post.author_user_id] : [])],
-          session?.profile ? { [session.user.user_id]: session.profile } : {},
+          [...(p.post.identity_mode === "public" && p.post.author_user ? [p.post.author_user] : [])],
+          session?.profile ? { [session.user.id]: session.profile } : {},
         )
           .then((authorProfilesByUserId) => {
             if (cancelled) return;
-            if (p.post.identity_mode === "public" && p.post.author_user_id && !authorProfilesByUserId[p.post.author_user_id]) {
+            if (p.post.identity_mode === "public" && p.post.author_user && !authorProfilesByUserId[p.post.author_user]) {
               logger.warn("[post-route] author handle fallback", {
-                postId: p.post.post_id,
+                postId: p.post.id,
                 readMode: nextReadMode,
-                userId: p.post.author_user_id,
+                userId: p.post.author_user,
               });
             }
-            setAuthorProfile(p.post.identity_mode === "public" && p.post.author_user_id ? authorProfilesByUserId[p.post.author_user_id] ?? null : null);
+            setAuthorProfile(p.post.identity_mode === "public" && p.post.author_user ? authorProfilesByUserId[p.post.author_user] ?? null : null);
             setAuthorProfilesByUserId((current) => ({ ...current, ...authorProfilesByUserId }));
           })
           .catch((nextError: unknown) => {
             if (!cancelled) {
               logger.warn("[post-route] author profile load failed", {
                 error: nextError,
-                postId: p.post.post_id,
+                postId: p.post.id,
               });
             }
           });
 
         void Promise.all([
           (hasSession
-            ? api.communities.preview(p.post.community_id, { locale })
-            : api.publicCommunities.get(p.post.community_id, { locale })).catch(() => null),
-          loadTopLevelComments(p.post.community_id, nextReadMode, commentSort),
+            ? api.communities.preview(p.post.id, { locale })
+            : api.publicCommunities.get(p.post.id, { locale })).catch(() => null),
+          loadTopLevelComments(p.post.id, nextReadMode, commentSort),
           hasSession ? api.agents.list().catch(() => null) : Promise.resolve(null),
         ])
           .then(async ([communityResult, commentTree, ownedAgentsResult]) => {
@@ -395,13 +395,13 @@ export function usePost(
             setAvailableAgent(nextAvailableAgent);
             setCommentNodes(commentTree.commentNodes);
             setAuthorProfilesByUserId((current) => ({ ...current, ...commentTree.authorProfilesByUserId }));
-            loadedCommentSortKeyRef.current = `${p.post.community_id}:${nextReadMode}:${commentSort}`;
+            loadedCommentSortKeyRef.current = `${p.post.id}:${nextReadMode}:${commentSort}`;
           })
           .catch((nextError: unknown) => {
             if (!cancelled) {
               logger.warn("[post-route] supplemental load failed", {
                 error: nextError,
-                postId: p.post.post_id,
+                postId: p.post.id,
               });
             }
           });
@@ -418,11 +418,11 @@ export function usePost(
   React.useEffect(() => {
     if (!post || !community || loading) return;
 
-    const sortKey = `${community.community_id}:${readMode}:${commentSort}`;
+    const sortKey = `${community.id}:${readMode}:${commentSort}`;
     if (loadedCommentSortKeyRef.current === sortKey) return;
 
     let cancelled = false;
-    void loadTopLevelComments(community.community_id, readMode, commentSort)
+    void loadTopLevelComments(community.id, readMode, commentSort)
       .then((nextThreadState) => {
         if (cancelled) return;
         setAuthorProfilesByUserId((current) => ({ ...current, ...nextThreadState.authorProfilesByUserId }));
@@ -451,7 +451,7 @@ export function usePost(
     if (!community) return;
     rememberKnownCommunity({
       avatarSrc: community.avatar_ref ?? undefined,
-      communityId: community.community_id,
+      communityId: community.id,
       displayName: community.display_name,
       routeSlug: community.route_slug ?? null,
     });

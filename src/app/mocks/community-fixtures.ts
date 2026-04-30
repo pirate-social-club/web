@@ -10,9 +10,9 @@ export const COMMUNITY_RECORDS: Record<string, CommunitySummary> = {
     description: "Everything about Tame Impala: albums, deep cuts, live sessions, and production talk.",
     createdAt: "2024-06-15T00:00:00Z",
     memberCount: 48231,
-    membershipMode: "open",
+    membershipMode: "request",
     owner: {
-      user_id: "usr_kevin",
+      user: "usr_kevin",
       avatarSrc: "https://i.pravatar.cc/96?img=12",
       displayName: "Kevin Parker",
       handle: "kevinparker.pirate",
@@ -94,7 +94,7 @@ export const COMMUNITY_RECORDS: Record<string, CommunitySummary> = {
     memberCount: 1284,
     membershipMode: "gated",
     owner: {
-      user_id: "usr_modmatrix",
+      user: "usr_modmatrix",
       avatarSrc: "https://i.pravatar.cc/96?img=33",
       displayName: "modmatrix",
       handle: "modmatrix.pirate",
@@ -149,9 +149,9 @@ export const COMMUNITY_RECORDS: Record<string, CommunitySummary> = {
     description: "Product, protocol, and infrastructure discussion for people shipping internet-native systems.",
     createdAt: "2025-08-02T00:00:00Z",
     memberCount: 9021,
-    membershipMode: "open",
+    membershipMode: "request",
     owner: {
-      user_id: "usr_shipit",
+      user: "usr_shipit",
       avatarSrc: "https://i.pravatar.cc/96?img=21",
       displayName: "shipit",
       handle: "shipit.pirate",

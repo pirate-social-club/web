@@ -148,8 +148,9 @@ export function CommunityGatesEditorPage({
   const copy = defaultRouteCopy;
   const mc = copy.moderation.gates;
 
+  const effectiveMembershipMode: CommunityMembershipMode = membershipMode;
+
   const membershipMeta: Record<CommunityMembershipMode, { label: string; detail: string }> = {
-    open: { label: mc.membershipOpenLabel, detail: mc.membershipOpenDetail },
     request: { label: mc.membershipRequestLabel, detail: mc.membershipRequestDetail },
     gated: { label: mc.membershipGatedLabel, detail: mc.membershipGatedDetail },
   };
@@ -168,12 +169,13 @@ export function CommunityGatesEditorPage({
   };
   const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
   const minimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
+  const genderGate = gateDrafts.find((draft) => draft.gateType === "gender");
   const walletScoreGate = gateDrafts.find((draft) => draft.gateType === "wallet_score");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const courtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? true;
   const hasAdultMinimumAgeGate =
-    membershipMode === "gated"
+    effectiveMembershipMode === "gated"
     && minimumAgeGate != null
     && Number.isInteger(minimumAgeGate.minimumAge)
     && minimumAgeGate.minimumAge >= 18
@@ -191,89 +193,27 @@ export function CommunityGatesEditorPage({
 
       <Section title={mc.membershipTitle}>
         <div className="space-y-3">
-          {(Object.keys(membershipMeta) as CommunityMembershipMode[]).map((mode) => (
+          {(Object.keys(membershipMeta) as Array<Exclude<CommunityMembershipMode, "open">>).map((mode) => (
             <div key={mode} className="space-y-3">
               <OptionCard
-                description={membershipMeta[mode].detail}
-                selected={mode === membershipMode}
+                className={mode === effectiveMembershipMode ? "border-border bg-muted/30" : undefined}
+                selected={mode === effectiveMembershipMode}
                 title={membershipMeta[mode].label}
-                onClick={() => onMembershipModeChange?.(mode)}
+                onClick={() => {
+                  onMembershipModeChange?.(mode);
+                  if (mode === "request") {
+                    onGateDraftsChange?.([]);
+                  }
+                }}
               />
 
-              {mode === "gated" && membershipMode === "gated" ? (
-                <div className="space-y-3 border-s-2 border-primary ps-4">
-                  <FormSectionHeading title={mc.gateChecksTitle} />
+              {mode === "gated" && effectiveMembershipMode === "gated" ? (
+                <div className="space-y-3 pt-2">
+                  <FormSectionHeading title={mc.walletGateChecksTitle} />
 
                   <CheckboxCard
-                    checked={Boolean(nationalityGate)}
-                    description={mc.nationalityDescription}
-                    title={mc.nationalityTitle}
-                    onCheckedChange={(checked) => onGateDraftsChange?.(
-                      checked
-                        ? upsertGateDraft(gateDrafts, {
-                          gateType: "nationality",
-                          provider: "self",
-                          requiredValues: ["USA"],
-                        })
-                        : removeGateDraft(gateDrafts, "nationality"),
-                    )}
-                  />
-
-                  {nationalityGate ? (
-                    <div className="space-y-2 border-s-2 border-primary ps-4">
-                      <FormFieldLabel label={mc.allowedNationalityLabel} />
-                      <NationalityMultiPicker
-                        onChange={(codes) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
-                          gateType: "nationality",
-                          provider: "self",
-                          requiredValues: codes,
-                        }))}
-                        values={nationalityGate.requiredValues}
-                      />
-                      {nationalityGate.requiredValues.some((value) => !isCountryCode(value)) ? (
-                        <FormNote tone="warning">{mc.selectValidCountry}</FormNote>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <CheckboxCard
-                    checked={Boolean(minimumAgeGate)}
-                    description={mc.minimumAgeDescription}
-                    title={mc.minimumAgeTitle}
-                    onCheckedChange={(checked) => onGateDraftsChange?.(
-                      checked
-                        ? upsertGateDraft(gateDrafts, {
-                          gateType: "minimum_age",
-                          provider: "self",
-                          minimumAge: 30,
-                        })
-                        : removeGateDraft(gateDrafts, "minimum_age"),
-                    )}
-                  />
-
-                  {minimumAgeGate ? (
-                    <div className="space-y-2 border-s-2 border-primary ps-4">
-                      <FormFieldLabel label={mc.minimumAgeLabel} />
-                      <NumericStepper
-                        max={125}
-                        min={18}
-                        value={minimumAgeGate.minimumAge}
-                        onChange={(next) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
-                          gateType: "minimum_age",
-                          provider: "self",
-                          minimumAge: next,
-                          gateRuleId: minimumAgeGate.gateRuleId,
-                        }))}
-                      />
-                      {(!Number.isInteger(minimumAgeGate.minimumAge) || minimumAgeGate.minimumAge < 18 || minimumAgeGate.minimumAge > 125) ? (
-                        <FormNote tone="warning">{mc.minimumAgeInvalid}</FormNote>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <CheckboxCard
+                    className={walletScoreGate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(walletScoreGate)}
-                    description={mc.walletScoreDescription}
                     title={mc.walletScoreTitle}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
                       checked
@@ -287,7 +227,7 @@ export function CommunityGatesEditorPage({
                   />
 
                   {walletScoreGate ? (
-                    <div className="space-y-2 border-s-2 border-primary ps-4">
+                    <div className="space-y-2 ps-4">
                       <FormFieldLabel label={mc.walletScoreLabel} />
                       <NumericStepper
                         max={100}
@@ -307,8 +247,8 @@ export function CommunityGatesEditorPage({
                   ) : null}
 
                   <CheckboxCard
+                    className={erc721Gate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(erc721Gate)}
-                    description={mc.erc721Description}
                     title={mc.erc721Title}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
                       checked
@@ -322,7 +262,7 @@ export function CommunityGatesEditorPage({
                   />
 
                   {erc721Gate ? (
-                    <div className="space-y-2 border-s-2 border-primary ps-4">
+                    <div className="space-y-2 ps-4">
                       <FormFieldLabel label={mc.collectionContractLabel} />
                       <Input
                         className="h-12 rounded-[var(--radius-lg)]"
@@ -341,8 +281,8 @@ export function CommunityGatesEditorPage({
                   ) : null}
 
                   <CheckboxCard
+                    className={courtyardInventoryGate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(courtyardInventoryGate)}
-                    description={mc.courtyardDescription}
                     disabled={!COURTYARD_CATALOG_AUTHORING_ENABLED && !courtyardInventoryGate}
                     title={mc.courtyardTitle}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
@@ -354,6 +294,117 @@ export function CommunityGatesEditorPage({
 
                   {!COURTYARD_CATALOG_AUTHORING_ENABLED && courtyardInventoryGate ? (
                     <FormNote tone="warning">{mc.courtyardCatalogUnavailable}</FormNote>
+                  ) : null}
+
+                  <FormSectionHeading title={mc.biometricGateChecksTitle} />
+
+                  <CheckboxCard
+                    className={nationalityGate ? "border-border bg-muted/30" : undefined}
+                    checked={Boolean(nationalityGate)}
+                    title={mc.nationalityTitle}
+                    onCheckedChange={(checked) => onGateDraftsChange?.(
+                      checked
+                        ? upsertGateDraft(gateDrafts, {
+                          gateType: "nationality",
+                          provider: "self",
+                          requiredValues: ["USA"],
+                        })
+                        : removeGateDraft(gateDrafts, "nationality"),
+                    )}
+                  />
+
+                  {nationalityGate ? (
+                    <div className="space-y-2 ps-4">
+                      <FormFieldLabel label={mc.allowedNationalityLabel} />
+                      <NationalityMultiPicker
+                        onChange={(codes) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                          gateType: "nationality",
+                          provider: "self",
+                          requiredValues: codes,
+                        }))}
+                        values={nationalityGate.requiredValues}
+                      />
+                      {nationalityGate.requiredValues.some((value) => !isCountryCode(value)) ? (
+                        <FormNote tone="warning">{mc.selectValidCountry}</FormNote>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <CheckboxCard
+                    className={minimumAgeGate ? "border-border bg-muted/30" : undefined}
+                    checked={Boolean(minimumAgeGate)}
+                    title={mc.minimumAgeTitle}
+                    onCheckedChange={(checked) => onGateDraftsChange?.(
+                      checked
+                        ? upsertGateDraft(gateDrafts, {
+                          gateType: "minimum_age",
+                          provider: "self",
+                          minimumAge: 30,
+                        })
+                        : removeGateDraft(gateDrafts, "minimum_age"),
+                    )}
+                  />
+
+                  {minimumAgeGate ? (
+                    <div className="space-y-2 ps-4">
+                      <FormFieldLabel label={mc.minimumAgeLabel} />
+                      <NumericStepper
+                        max={125}
+                        min={18}
+                        value={minimumAgeGate.minimumAge}
+                        onChange={(next) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                          gateType: "minimum_age",
+                          provider: "self",
+                          minimumAge: next,
+                          gateRuleId: minimumAgeGate.gateRuleId,
+                        }))}
+                      />
+                      {(!Number.isInteger(minimumAgeGate.minimumAge) || minimumAgeGate.minimumAge < 18 || minimumAgeGate.minimumAge > 125) ? (
+                        <FormNote tone="warning">{mc.minimumAgeInvalid}</FormNote>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <CheckboxCard
+                    className={genderGate ? "border-border bg-muted/30" : undefined}
+                    checked={Boolean(genderGate)}
+                    title={mc.genderTitle}
+                    onCheckedChange={(checked) => onGateDraftsChange?.(
+                      checked
+                        ? upsertGateDraft(gateDrafts, {
+                          gateType: "gender",
+                          provider: "self",
+                          requiredValue: genderGate?.requiredValue ?? "F",
+                        })
+                        : removeGateDraft(gateDrafts, "gender"),
+                    )}
+                  />
+
+                  {genderGate ? (
+                    <div className="grid gap-3 ps-4 sm:grid-cols-2">
+                      <OptionCard
+                        className={genderGate.requiredValue === "F" ? "border-border bg-muted/30" : undefined}
+                        selected={genderGate.requiredValue === "F"}
+                        title={mc.fMarkerLabel}
+                        onClick={() => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                          gateType: "gender",
+                          provider: "self",
+                          requiredValue: "F",
+                          gateRuleId: genderGate.gateRuleId,
+                        }))}
+                      />
+                      <OptionCard
+                        className={genderGate.requiredValue === "M" ? "border-border bg-muted/30" : undefined}
+                        selected={genderGate.requiredValue === "M"}
+                        title={mc.mMarkerLabel}
+                        onClick={() => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                          gateType: "gender",
+                          provider: "self",
+                          requiredValue: "M",
+                          gateRuleId: genderGate.gateRuleId,
+                        }))}
+                      />
+                    </div>
                   ) : null}
                 </div>
               ) : null}

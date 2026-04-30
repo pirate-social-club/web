@@ -32,7 +32,7 @@ function StatefulStory({
       activityItems={activityItems}
       loading={loading}
       onVerifyTask={(task) => {
-        setTasks((current) => current.filter((t) => t.task_id !== task.task_id));
+        setTasks((current) => current.filter((t) => t.id !== task.id));
       }}
       royaltyActivityItems={royaltyActivityItems}
       tasks={tasks}

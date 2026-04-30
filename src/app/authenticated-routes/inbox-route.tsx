@@ -43,16 +43,16 @@ type EnrichedRoyaltyActivityItem = RoyaltyActivityItem & {
 function unreadFeedEventIds(feed: ApiNotificationFeedResponse): string[] {
   return feed.items
     .filter((item) => item.event.type !== "xmtp_message" && !item.receipt.read_at)
-    .map((item) => item.event.event_id);
+    .map((item) => item.event.id);
 }
 
-function markFeedItemsRead(feed: ApiNotificationFeedResponse, eventIds: string[], readAt: string): ApiNotificationFeedResponse {
+function markFeedItemsRead(feed: ApiNotificationFeedResponse, eventIds: string[], readAt: number): ApiNotificationFeedResponse {
   if (eventIds.length === 0) return feed;
   const eventIdSet = new Set(eventIds);
   return {
     ...feed,
     items: feed.items.map((item) => {
-      if (!eventIdSet.has(item.event.event_id)) return item;
+      if (!eventIdSet.has(item.event.id)) return item;
       return {
         ...item,
         receipt: {
@@ -65,13 +65,13 @@ function markFeedItemsRead(feed: ApiNotificationFeedResponse, eventIds: string[]
   };
 }
 
-function markRoyaltyActivityItemsRead(activity: RoyaltyActivityResponse, eventIds: string[], readAt: string): RoyaltyActivityResponse {
+function markRoyaltyActivityItemsRead(activity: RoyaltyActivityResponse, eventIds: string[], readAt: number): RoyaltyActivityResponse {
   if (eventIds.length === 0) return activity;
   const eventIdSet = new Set(eventIds);
   return {
     ...activity,
     items: activity.items.map((item) => (
-      eventIdSet.has(item.event_id)
+      eventIdSet.has(item.id)
         ? { ...item, read_at: item.read_at ?? readAt }
         : item
     )),
@@ -79,7 +79,7 @@ function markRoyaltyActivityItemsRead(activity: RoyaltyActivityResponse, eventId
 }
 
 function isSyntheticTask(task: UserTask): boolean {
-  return task.task_id.startsWith("synth:");
+  return task.id.startsWith("synth:");
 }
 
 function taskPersistence(task: UserTask): NotificationTaskPersistence {
@@ -147,7 +147,7 @@ export function InboxPlaceholderPage() {
   const api = useApi();
   const session = useSession();
   const { copy } = useRouteMessages();
-  const [tasks, setTasks] = React.useState<ApiNotificationTasksResponse>({ items: [] });
+  const [tasks, setTasks] = React.useState<ApiNotificationTasksResponse>({ items: [], next_cursor: null });
   const [feed, setFeed] = React.useState<ApiNotificationFeedResponse>({ items: [], next_cursor: null });
   const [loading, setLoading] = React.useState(true);
   const [royaltyActivity, setRoyaltyActivity] = React.useState<RoyaltyActivityResponse>(EMPTY_ROYALTY_ACTIVITY);
@@ -160,11 +160,11 @@ export function InboxPlaceholderPage() {
       const activityResult = await api.royalties.listActivity({ limit: 50 });
       const unreadEventIds = activityResult.items
         .filter((item) => !item.read_at)
-        .map((item) => item.event_id);
-      let readAt: string | null = null;
+        .map((item) => item.id);
+      let readAt: number | null = null;
         if (unreadEventIds.length > 0) {
           try {
-            readAt = new Date().toISOString();
+            readAt = Math.floor(Date.now() / 1000);
             await api.notifications.markRead({ event_ids: unreadEventIds });
             decrementUnreadNotificationActivityCount(unreadEventIds.length);
             trackRoyaltyMarkedReadEvents(unreadEventIds.length, "auto_visible_load");
@@ -192,7 +192,7 @@ export function InboxPlaceholderPage() {
     let cancelled = false;
 
     if (!session) {
-      setTasks({ items: [] });
+      setTasks({ items: [], next_cursor: null });
       setFeed({ items: [], next_cursor: null });
       setLoading(false);
       setRoyaltyActivity(EMPTY_ROYALTY_ACTIVITY);
@@ -209,13 +209,13 @@ export function InboxPlaceholderPage() {
         ]);
 
         const unreadEventIds = unreadFeedEventIds(feedResult);
-        let readAt: string | null = null;
+        let readAt: number | null = null;
         if (unreadEventIds.length > 0) {
           try {
-            readAt = new Date().toISOString();
+            readAt = Math.floor(Date.now() / 1000);
             await api.notifications.markRead({ event_ids: unreadEventIds });
             decrementUnreadNotificationActivityCount(unreadEventIds.length);
-            trackFeedMarkedReadEvents(feedResult.items.filter((item) => unreadEventIds.includes(item.event.event_id)), "auto_visible_load");
+            trackFeedMarkedReadEvents(feedResult.items.filter((item) => unreadEventIds.includes(item.event.id)), "auto_visible_load");
           } catch (error) {
             logger.warn("[inbox] failed to mark visible notifications read", error);
             readAt = null;
@@ -315,9 +315,9 @@ export function InboxPlaceholderPage() {
           if (!href) return;
           trackAnalyticsEvent({
             eventName: "notification_opened",
-            communityId: typeof item.event.payload?.community_id === "string" ? item.event.payload.community_id : undefined,
-            postId: item.event.subject_type === "post" ? item.event.subject_id : undefined,
-            commentId: item.event.object_type === "comment" ? item.event.object_id : undefined,
+            communityId: typeof item.event.payload?.community === "string" ? item.event.payload.community : undefined,
+            postId: item.event.subject_type === "post" ? item.event.subject : undefined,
+            commentId: item.event.object_type === "comment" ? item.event.subject : undefined,
             properties: {
               notification_kind: "activity",
               notification_type: item.event.type,
@@ -344,9 +344,9 @@ export function InboxPlaceholderPage() {
             },
           });
           if (autoClearTask) {
-            setTasks((current) => ({ ...current, items: current.items.filter((t) => t.task_id !== task.task_id) }));
+            setTasks((current) => ({ ...current, items: current.items.filter((t) => t.id !== task.id) }));
             decrementOpenNotificationTaskCount();
-            void api.notifications.dismissTask({ task_id: task.task_id }).catch((error) => {
+            void api.notifications.dismissTask({ task: task.id }).catch((error) => {
               logger.debug("[inbox] failed to dismiss task", error);
             });
           }
@@ -361,4 +361,3 @@ export function InboxPlaceholderPage() {
     </>
   );
 }
-

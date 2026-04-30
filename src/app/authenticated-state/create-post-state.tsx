@@ -35,15 +35,8 @@ export function isPublicAudienceAllowed(community: ApiCommunity | ApiCommunityPr
     return true;
   }
 
-  if ("gate_rules" in community) {
-    const hasActiveViewerGates = community.gate_rules?.some((rule) =>
-      rule.status === "active" && rule.scope === "viewer"
-    ) ?? false;
-
-    return !hasActiveViewerGates;
-  }
-
-  return true;
+  const gateRules = "gate_rules" in community ? community.gate_rules ?? [] : [];
+  return !gateRules.some((rule) => rule.scope === "viewer" && rule.status === "active");
 }
 
 type AvailableSigningAgent = {
@@ -149,9 +142,9 @@ async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<Ava
 
     let storedKey = null;
     try {
-      storedKey = await findStoredOwnedAgentKey(agent.agent_id);
+      storedKey = await findStoredOwnedAgentKey(agent.id);
     } catch (error) {
-      logger.warn("[create-post-route] could not read local agent key", { agentId: agent.agent_id, error });
+      logger.warn("[create-post-route] could not read local agent key", { agentId: agent.id, error });
       continue;
     }
     if (!storedKey) {
@@ -159,7 +152,7 @@ async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<Ava
     }
 
     return {
-      agentId: agent.agent_id,
+      agentId: agent.id,
       displayName: agent.display_name,
       privateKeyPem: storedKey.privateKeyPem,
     };
@@ -267,7 +260,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       .then(([communityResult, fullCommunityResult, eligibilityResult]) => {
         if (cancelled) return;
         setCommunity(communityResult);
-        setCommunityOwnerUserId(fullCommunityResult.created_by_user_id);
+        setCommunityOwnerUserId(fullCommunityResult.created_by_user);
         setEligibility(eligibilityResult);
       })
       .catch((error: unknown) => {
@@ -326,7 +319,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
   React.useEffect(() => {
     if (!community) return;
-    rememberKnownCommunity({ avatarSrc: community.avatar_ref ?? undefined, communityId: community.community_id, displayName: community.display_name });
+    rememberKnownCommunity({ avatarSrc: community.avatar_ref ?? undefined, communityId: community.id, displayName: community.display_name });
   }, [community]);
 
   React.useEffect(() => {
@@ -374,7 +367,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     }
 
     return {
-      partnerId: community.donation_partner_id ?? community.donation_partner.donation_partner_id,
+      partnerId: community.donation_partner.donation_partner,
       displayName: community.donation_partner.display_name,
       imageUrl: community.donation_partner.image_url ?? null,
     };
@@ -464,7 +457,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     };
   }, [availableAgent]);
   const submitSongPost = useSongSubmit({ communityId, signAgentAuthoredBody });
-  const isCommunityOwner = Boolean(session?.user.user_id && communityOwnerUserId === session.user.user_id);
+  const isCommunityOwner = Boolean(session?.user.id && communityOwnerUserId === session.user.id);
   const uploadVideoArtifact = React.useCallback(async (video: VideoComposerState) => {
     const file = video.primaryVideoUpload;
     if (!file) {
@@ -476,7 +469,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       filename: file.name,
       size_bytes: file.size,
     });
-    return await api.communities.uploadArtifactContent(communityId, intent.song_artifact_upload_id, await file.arrayBuffer());
+    return await api.communities.uploadArtifactContent(communityId, intent.id, await file.arrayBuffer());
   }, [api.communities, communityId]);
 
   const handleSubmit = React.useCallback(async () => {
@@ -588,9 +581,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
             : videoRequest,
         );
         if (monetizationState.visible) {
-          if (!result.asset_id) throw new Error("The video published, but the paid asset was not created.");
+          if (!result.asset) throw new Error("The video published, but the paid asset was not created.");
           const listingRequest = buildAssetListingRequest({
-            assetId: result.asset_id,
+            assetId: result.asset,
             paidSongPriceUsd: paidAssetPriceUsd,
             pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
             regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
@@ -639,7 +632,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         );
       }
 
-      navigate(`/p/${result.post_id}`);
+      navigate(`/p/${result.id}`);
     } catch (error: unknown) {
       setSubmitError(getErrorMessage(error, "Could not create post"));
     } finally {

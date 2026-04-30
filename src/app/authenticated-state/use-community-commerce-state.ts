@@ -75,7 +75,7 @@ export function useCommunityCommerceState({
     setPricingPolicyLoading(true);
     setPricingPolicyError(null);
 
-    void api.communities.getPricingPolicy(community.community_id)
+    void api.communities.getPricingPolicy(community.id)
       .then((result) => {
         if (!cancelled) {
           setPricingPolicy(result);
@@ -109,10 +109,10 @@ export function useCommunityCommerceState({
     if (!community || resolvingDonationPartner || !endaomentUrl.trim()) return;
     setResolvingDonationPartner(true);
     setResolveError(null);
-    void api.communities.resolveDonationPartner(community.community_id, { endaoment_url: endaomentUrl.trim() })
+    void api.communities.resolveDonationPartner(community.id, { endaoment_url: endaomentUrl.trim() })
       .then((resolvedPartner) => {
         setPartnerPreview({
-          donationPartnerId: resolvedPartner.donation_partner_id,
+          donationPartnerId: resolvedPartner.donation_partner,
           displayName: resolvedPartner.display_name,
           imageUrl: resolvedPartner.image_url ?? null,
           provider: "Endaoment",
@@ -138,11 +138,10 @@ export function useCommunityCommerceState({
     const nextDonationMode: DonationPolicyMode = partnerPreview ? "optional_creator_sidecar" : "none";
     setResolveError(null);
     void submitCommunitySave({
-      action: (currentCommunity) => api.communities.updateDonationPolicy(currentCommunity.community_id, {
+      action: (currentCommunity) => api.communities.updateDonationPolicy(currentCommunity.id, {
         donation_policy_mode: nextDonationMode,
-        donation_partner_id: nextDonationMode === "none" ? null : (partnerPreview?.donationPartnerId ?? null),
         donation_partner: nextDonationMode === "none" || !partnerPreview ? null : {
-          donation_partner_id: partnerPreview.donationPartnerId,
+          donation_partner: partnerPreview.donationPartnerId,
           display_name: partnerPreview.displayName,
           provider: "endaoment",
           provider_partner_ref: partnerPreview.providerPartnerRef ?? null,
@@ -175,7 +174,7 @@ export function useCommunityCommerceState({
   const handleSavePricing = React.useCallback(() => {
     if (!community || savingPricing || pricingValidationError) return;
     setSavingPricing(true);
-    void api.communities.updatePricingPolicy(community.community_id, {
+    void api.communities.updatePricingPolicy(community.id, {
       regional_pricing_enabled: regionalPricingEnabled,
       verification_provider_requirement: regionalPricingEnabled ? (verificationProviderRequirement ?? "self") : null,
       default_tier_key: regionalPricingEnabled ? defaultTierKey : null,

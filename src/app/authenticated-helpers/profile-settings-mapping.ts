@@ -78,11 +78,12 @@ export function apiProfileToProps(
   const handle = profile.primary_public_handle?.label ?? profile.global_handle?.label ?? "";
   const displayHandle = formatProfileDisplayHandle(handle);
   const displayName = profile.display_name ?? displayHandle;
+  const profileId = profile.id ?? (profile as ApiProfile & { user?: string }).user ?? "";
   const bannerSrc = resolveProfileCoverSrc({
     coverSrc: profile.cover_ref,
     displayName,
     handle,
-    userId: profile.user_id,
+    userId: profileId,
   });
 
   return {
@@ -90,7 +91,7 @@ export function apiProfileToProps(
       displayName,
       handle: displayHandle,
       bio: profile.bio ?? "",
-      avatarSeed: profile.user_id,
+      avatarSeed: profileId,
       avatarSrc: profile.avatar_ref ?? undefined,
       nationalityBadgeCountryCode: profile.nationality_badge_country ?? undefined,
       nationalityBadgeLabel: profile.nationality_badge_country ? buildNationalityBadgeLabel(profile.nationality_badge_country, localeTag) : undefined,
@@ -121,26 +122,26 @@ export function apiProfileToProps(
 
 export function mapProfileLinkedHandles(profile: ApiProfile): SettingsHandle[] {
   const linkedHandles = profile.linked_handles ?? [{
-    linked_handle_id: `global:${profile.global_handle.global_handle_id}`,
+    linked_handle: `global:${profile.global_handle.id}`,
     label: profile.global_handle.label,
     kind: "pirate" as const,
     verification_state: "verified" as const,
   }];
-  const primaryLinkedHandleId = profile.primary_public_handle?.linked_handle_id ?? null;
+  const primaryLinkedHandleId = profile.primary_public_handle?.linked_handle ?? null;
 
   return linkedHandles.map((handle) => ({
-    handleId: handle.kind === "pirate" ? null : handle.linked_handle_id,
+    handleId: handle.kind === "pirate" ? null : handle.linked_handle,
     kind: handle.kind,
     label: handle.label,
     metadata: handle.metadata ?? null,
-    primary: handle.kind === "pirate" ? primaryLinkedHandleId == null : primaryLinkedHandleId === handle.linked_handle_id,
+    primary: handle.kind === "pirate" ? primaryLinkedHandleId == null : primaryLinkedHandleId === handle.linked_handle,
     verificationState: handle.verification_state,
   }));
 }
 
 export function getSelectedProfileHandleLabel(profile: ApiProfile, linkedHandleId: string | null): string {
   if (linkedHandleId == null) return profile.global_handle.label;
-  return profile.linked_handles?.find((handle) => handle.linked_handle_id === linkedHandleId)?.label
+  return profile.linked_handles?.find((handle) => handle.linked_handle === linkedHandleId)?.label
     ?? profile.primary_public_handle?.label
     ?? profile.global_handle.label;
 }
@@ -173,18 +174,22 @@ export function displayNameFromAgentHandle(value: string): string {
     .join(" ") || normalized;
 }
 
+function unixToIso(value: number): string {
+  return new Date(value * 1000).toISOString();
+}
+
 export function mapApiUserAgentToOwnedAgent(agent: ApiUserAgent): SettingsPageProps["agents"]["items"][number] {
   return {
-    agentId: agent.agent_id,
+    agentId: agent.id,
     displayName: agent.display_name,
     handleLabel: agent.handle?.label_display ?? null,
     status: agent.status,
-    createdAt: agent.created_at,
+    createdAt: unixToIso(agent.created),
     currentOwnership: agent.current_ownership
       ? {
         ownershipProvider: agent.current_ownership.ownership_provider,
-        verifiedAt: agent.current_ownership.verified_at ?? agent.created_at,
-        expiresAt: agent.current_ownership.expires_at ?? null,
+        verifiedAt: unixToIso(agent.current_ownership.verified_at ?? agent.created),
+        expiresAt: agent.current_ownership.expires_at ? unixToIso(agent.current_ownership.expires_at) : null,
       }
       : null,
   };

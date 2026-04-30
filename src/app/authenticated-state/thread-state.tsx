@@ -29,9 +29,17 @@ type CommentPage = {
   next_cursor: string | null;
 };
 
+function getCommentId(comment: ApiCommentListItem["comment"]): string {
+  return comment.id ?? (comment as typeof comment & { comment?: string }).comment ?? "";
+}
+
+function getParentCommentId(comment: ApiCommentListItem["comment"]): string | null {
+  return comment.parent_comment ?? (comment as typeof comment & { parent_comment_id?: string | null }).parent_comment_id ?? null;
+}
+
 export function collectCommentAuthorUserIds(items: ApiCommentListItem[]): string[] {
   return [...new Set(items
-    .map((item) => item.comment.identity_mode === "public" ? item.comment.author_user_id : null)
+    .map((item) => item.comment.identity_mode === "public" ? item.comment.author_user : null)
     .filter((value): value is string => Boolean(value)))];
 }
 
@@ -47,8 +55,17 @@ export function countThreadComments(nodes: ThreadCommentNode[]): number {
 }
 
 export function createThreadCommentNode(item: ApiCommentListItem): ThreadCommentNode {
+  const commentId = getCommentId(item.comment);
+  const parentCommentId = getParentCommentId(item.comment);
   return {
-    item,
+    item: {
+      ...item,
+      comment: {
+        ...item.comment,
+        id: commentId,
+        parent_comment: parentCommentId,
+      },
+    },
     children: [],
     hasLoadedReplies: false,
     loadingReplies: false,
@@ -63,24 +80,25 @@ export function buildThreadCommentTreeFromItems(items: ApiCommentListItem[]): Th
   const orphanReplyIds: string[] = [];
 
   for (const item of items) {
-    nodesByCommentId.set(item.comment.comment_id, createThreadCommentNode(item));
+    nodesByCommentId.set(getCommentId(item.comment), createThreadCommentNode(item));
   }
 
   for (const item of items) {
-    const node = nodesByCommentId.get(item.comment.comment_id);
+    const commentId = getCommentId(item.comment);
+    const node = nodesByCommentId.get(commentId);
     if (!node) {
       continue;
     }
 
-    const parentCommentId = item.comment.parent_comment_id;
+    const parentCommentId = getParentCommentId(item.comment);
     const parent = parentCommentId ? nodesByCommentId.get(parentCommentId) : null;
     if (parent) {
       parent.children.push(node);
-      linkedReplyIds.push(item.comment.comment_id);
+      linkedReplyIds.push(commentId);
     } else {
       roots.push(node);
       if (parentCommentId) {
-        orphanReplyIds.push(item.comment.comment_id);
+        orphanReplyIds.push(commentId);
       }
     }
   }
@@ -101,10 +119,10 @@ export function mergeThreadCommentNodes(
   previousNodes: ThreadCommentNode[],
   nextNodes: ThreadCommentNode[],
 ): ThreadCommentNode[] {
-  const previousByCommentId = new Map(previousNodes.map((node) => [node.item.comment.comment_id, node] as const));
+  const previousByCommentId = new Map(previousNodes.map((node) => [node.item.comment.id, node] as const));
 
   return nextNodes.map((node) => {
-    const previousNode = previousByCommentId.get(node.item.comment.comment_id);
+    const previousNode = previousByCommentId.get(node.item.comment.id);
     if (!previousNode) {
       return node;
     }
@@ -172,12 +190,12 @@ async function loadRootReplyPreviews(
     nodesWithReplies,
     AUTO_REPLY_PREVIEW_CONCURRENCY,
     async (node) => {
-      const commentId = node.item.comment.comment_id;
+      const commentId = node.item.comment.id;
       try {
         const repliesPage = await fetchReplies(commentId);
-        const childrenByCommentId = new Map(node.children.map((child) => [child.item.comment.comment_id, child] as const));
+        const childrenByCommentId = new Map(node.children.map((child) => [child.item.comment.id, child] as const));
         for (const child of buildThreadCommentTreeFromItems(repliesPage.items)) {
-          childrenByCommentId.set(child.item.comment.comment_id, child);
+          childrenByCommentId.set(child.item.comment.id, child);
         }
 
         return {
@@ -196,7 +214,7 @@ async function loadRootReplyPreviews(
       }
     },
   );
-  const hydratedByCommentId = new Map(hydratedNodes.map((node) => [node.item.comment.comment_id, node] as const));
+  const hydratedByCommentId = new Map(hydratedNodes.map((node) => [node.item.comment.id, node] as const));
 
   logger.debug("[post-thread] auto-loaded root reply previews", {
     requestedCount: nodesWithReplies.length,
@@ -204,7 +222,7 @@ async function loadRootReplyPreviews(
     limit: AUTO_REPLY_PREVIEW_LIMIT,
   });
 
-  return nodes.map((node) => hydratedByCommentId.get(node.item.comment.comment_id) ?? node);
+  return nodes.map((node) => hydratedByCommentId.get(node.item.comment.id) ?? node);
 }
 
 export async function loadThreadCommentTree(
@@ -231,7 +249,7 @@ export function updateThreadCommentNode(
   updater: (node: ThreadCommentNode) => ThreadCommentNode,
 ): ThreadCommentNode[] {
   return nodes.map((node) => {
-    if (node.item.comment.comment_id === commentId) {
+    if (node.item.comment.id === commentId) {
       return updater(node);
     }
 
@@ -249,7 +267,7 @@ export function findThreadCommentNode(
   commentId: string,
 ): ThreadCommentNode | null {
   for (const node of nodes) {
-    if (node.item.comment.comment_id === commentId) {
+    if (node.item.comment.id === commentId) {
       return node;
     }
     const child = findThreadCommentNode(node.children, commentId);
@@ -288,7 +306,7 @@ export function toThreadComment(
   children?: PostThreadComment[],
 ): PostThreadComment {
   const { comment } = item;
-  const authorProfile = comment.author_user_id ? authorProfiles[comment.author_user_id] : null;
+  const authorProfile = comment.author_user ? authorProfiles[comment.author_user] : null;
   const authorLabel = resolveCommentAuthorLabel(comment, authorProfile);
   const defaultBody = item.translated_body ?? comment.body ?? "";
   const originalBody = item.translation_state === "ready" && item.translated_body && item.translated_body !== comment.body
@@ -302,9 +320,9 @@ export function toThreadComment(
     : undefined;
 
   return {
-    authorAvatarSeed: comment.identity_mode === "public" ? authorProfile?.user_id ?? comment.author_user_id ?? undefined : undefined,
+    authorAvatarSeed: comment.identity_mode === "public" ? authorProfile?.id ?? comment.author_user ?? undefined : undefined,
     authorAvatarSrc: comment.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
-    authorHref: comment.identity_mode === "public" && comment.author_user_id && authorProfile
+    authorHref: comment.identity_mode === "public" && comment.author_user && authorProfile
       ? buildPublicProfilePathForProfile(authorProfile)
       : undefined,
     authorLabel,
@@ -313,7 +331,7 @@ export function toThreadComment(
     bodyLang: textLang,
     canLoadMoreReplies: opts?.canLoadMoreReplies,
     children,
-    commentId: comment.comment_id,
+    commentId: comment.id,
     cancelReplyLabel: opts?.onReplySubmit ? labels.cancelReplyLabel : undefined,
     loadedReplyCount: opts?.loadedReplyCount,
     loadingReplies: opts?.loadingReplies,
@@ -331,7 +349,7 @@ export function toThreadComment(
     showOriginalLabel: originalBody ? labels.showOriginalLabel : undefined,
     showTranslationLabel: originalBody ? labels.showTranslationLabel : undefined,
     status: comment.status,
-    timestampLabel: formatRelativeTimestamp(comment.created_at),
+    timestampLabel: formatRelativeTimestamp(comment.created),
     viewerVote: toCommentViewerVote(item.viewer_vote),
   };
 }
@@ -388,13 +406,13 @@ export function mapThreadCommentNode(
       loadMoreRepliesLabel,
       moreRepliesLabel: loadMoreRepliesLabel,
       onLoadMoreReplies: node.item.comment.direct_reply_count > 0
-        ? () => onLoadReplies(node.item.comment.comment_id)
+        ? () => onLoadReplies(node.item.comment.id)
         : undefined,
       onReplySubmit: onReplySubmit
-        ? async (input) => await onReplySubmit(node.item.comment.comment_id, input)
+        ? async (input) => await onReplySubmit(node.item.comment.id, input)
         : undefined,
       onVote: onVote
-        ? (direction) => onVote(node.item.comment.comment_id, direction)
+        ? (direction) => onVote(node.item.comment.id, direction)
         : undefined,
     },
     node.children.map((child) => mapThreadCommentNode(

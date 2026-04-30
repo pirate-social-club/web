@@ -54,7 +54,7 @@ export interface CommunitySidebarFlairPolicy {
 }
 
 export interface CommunitySidebarRoleHolder {
-  user_id: string;
+  user: string;
   avatarSeed?: string | null;
   avatarSrc?: string | null;
   displayName: string;
@@ -80,7 +80,7 @@ export interface CommunitySidebarProps {
   avatarSrc?: string | null;
   className?: string;
   charity?: CommunitySidebarCharity | null;
-  createdAt: string;
+  createdAt: string | number;
   communityId?: string;
   description?: string | null;
   displayName: string;

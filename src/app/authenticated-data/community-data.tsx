@@ -134,10 +134,10 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
     let cancelled = false;
     const publicAuthorIds = Array.from(new Set(
       rawPosts
-        .map((item) => item.post.identity_mode === "public" ? item.post.author_user_id : null)
+        .map((item) => item.post.identity_mode === "public" ? item.post.author_user : null)
         .filter((userId): userId is string => typeof userId === "string" && userId.length > 0),
     ));
-    const profileFallbacks = session?.profile ? { [session.user.user_id]: session.profile } : {};
+    const profileFallbacks = session?.profile ? { [session.user.id]: session.profile } : {};
 
     void loadProfilesByUserId(api, publicAuthorIds, profileFallbacks)
       .then((profiles) => {
@@ -156,7 +156,7 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
 
     rememberKnownCommunity({
       avatarSrc: community.avatar_ref ?? undefined,
-      communityId: community.community_id,
+      communityId: community.id,
       displayName: community.display_name,
       routeSlug: community.route_slug ?? preview?.route_slug ?? null,
     });

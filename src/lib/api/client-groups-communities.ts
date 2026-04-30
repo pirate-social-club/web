@@ -70,13 +70,13 @@ export function createCommunitiesApi(request: ApiRequest) {
     },
     update: (communityId: string, body: ApiUpdateCommunityRequest): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}`, {
-        method: "PATCH",
+        method: "POST",
         body: JSON.stringify(body),
       }),
     attachNamespace: (communityId: string, namespaceVerificationId: string): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}/namespace`, {
         method: "POST",
-        body: JSON.stringify({ namespace_verification_id: namespaceVerificationId }),
+        body: JSON.stringify({ namespace_verification: namespaceVerificationId }),
       }),
     setPendingNamespaceSession: (
       communityId: string,
@@ -85,7 +85,7 @@ export function createCommunitiesApi(request: ApiRequest) {
       request<Community>(
         `/communities/${encodeURIComponent(communityId)}/pending-namespace-session`,
         {
-          method: "PUT",
+          method: "POST",
           body: JSON.stringify({
             namespace_verification_session_id: namespaceVerificationSessionId,
           }),
@@ -93,7 +93,7 @@ export function createCommunitiesApi(request: ApiRequest) {
       ),
     updateRules: (communityId: string, body: { rules: ApiCommunityRuleInput[] }): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}/rules`, {
-        method: "PUT",
+        method: "POST",
         body: JSON.stringify(body),
       }),
     updateReferenceLinks: (
@@ -101,7 +101,7 @@ export function createCommunitiesApi(request: ApiRequest) {
       body: CommunityReferenceLinksInput,
     ): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}/reference-links`, {
-        method: "PUT",
+        method: "POST",
         body: JSON.stringify(body),
       }),
     updateLabelPolicy: (
@@ -109,7 +109,7 @@ export function createCommunitiesApi(request: ApiRequest) {
       body: CommunityLabelPolicyInput,
     ): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}/labels`, {
-        method: "PATCH",
+        method: "POST",
         body: JSON.stringify(body),
       }),
     getDonationPolicy: (communityId: string): Promise<ApiCommunityDonationPolicyResponse> =>
@@ -126,7 +126,7 @@ export function createCommunitiesApi(request: ApiRequest) {
     ): Promise<ApiCommunityMachineAccessPolicy> =>
       request<ApiCommunityMachineAccessPolicy>(
         `/communities/${encodeURIComponent(communityId)}/machine-access-policy`,
-        { method: "PATCH", body: JSON.stringify(body) },
+        { method: "POST", body: JSON.stringify(body) },
       ),
     resolveDonationPartner: (
       communityId: string,
@@ -141,7 +141,7 @@ export function createCommunitiesApi(request: ApiRequest) {
       body: DonationPolicyUpdateInput,
     ): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}/donation-policy`, {
-        method: "PATCH",
+        method: "POST",
         body: JSON.stringify(body),
       }),
     updateGates: (
@@ -149,7 +149,7 @@ export function createCommunitiesApi(request: ApiRequest) {
       body: ApiCommunityGatesUpdateRequest,
     ): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}/gates`, {
-        method: "PUT",
+        method: "POST",
         body: JSON.stringify(body),
       }),
     updateSafety: (
@@ -157,26 +157,26 @@ export function createCommunitiesApi(request: ApiRequest) {
       body: ApiCommunitySafetyUpdateRequest,
     ): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}/safety`, {
-        method: "PUT",
+        method: "POST",
         body: JSON.stringify(body),
       }),
     join: (
       communityId: string,
       body?: { note?: string | null },
-    ): Promise<{ community_id: string; status: string }> =>
-      request<{ community_id: string; status: string }>(
+    ): Promise<{ community: string; status: string }> =>
+      request<{ community: string; status: string }>(
         `/communities/${encodeURIComponent(communityId)}/join`,
         { method: "POST", body: JSON.stringify(body ?? {}) },
       ),
     follow: (communityId: string): Promise<CommunityFollowResponse> =>
       request<CommunityFollowResponse>(
         `/communities/${encodeURIComponent(communityId)}/follow`,
-        { method: "PUT", body: JSON.stringify({}) },
+        { method: "POST", body: JSON.stringify({}) },
       ),
     unfollow: (communityId: string): Promise<CommunityFollowResponse> =>
       request<CommunityFollowResponse>(
-        `/communities/${encodeURIComponent(communityId)}/follow`,
-        { method: "DELETE" },
+        `/communities/${encodeURIComponent(communityId)}/unfollow`,
+        { method: "POST", body: JSON.stringify({}) },
       ),
     preview: (communityId: string, opts?: { locale?: string | null }): Promise<CommunityPreview> => {
       return request<CommunityPreview>(buildQueryPath(
@@ -218,7 +218,7 @@ export function createCommunitiesApi(request: ApiRequest) {
     ): Promise<CommunityMoneyPolicy> =>
       request<CommunityMoneyPolicy>(
         `/communities/${encodeURIComponent(communityId)}/money-policy`,
-        { method: "PUT", body: JSON.stringify(body) },
+        { method: "POST", body: JSON.stringify(body) },
       ),
     getPricingPolicy: (communityId: string): Promise<CommunityPricingPolicy> =>
       request<CommunityPricingPolicy>(
@@ -230,7 +230,7 @@ export function createCommunitiesApi(request: ApiRequest) {
     ): Promise<CommunityPricingPolicy> =>
       request<CommunityPricingPolicy>(
         `/communities/${encodeURIComponent(communityId)}/pricing-policy`,
-        { method: "PUT", body: JSON.stringify(body) },
+        { method: "POST", body: JSON.stringify(body) },
       ),
     getAsset: (communityId: string, assetId: string): Promise<Asset> =>
       request<Asset>(
@@ -263,7 +263,7 @@ export function createCommunitiesApi(request: ApiRequest) {
     ): Promise<CommunityListing> =>
       request<CommunityListing>(
         `/communities/${encodeURIComponent(communityId)}/listings/${encodeURIComponent(listingId)}`,
-        { method: "PATCH", body: JSON.stringify(body) },
+        { method: "POST", body: JSON.stringify(body) },
       ),
     listPurchases: (communityId: string): Promise<CommunityPurchaseListResponse> =>
       request<CommunityPurchaseListResponse>(
@@ -302,7 +302,7 @@ export function createCommunitiesApi(request: ApiRequest) {
       body: CommunityPurchaseSettlementFailureRequest,
     ): Promise<CommunityPurchaseSettlementFailure> =>
       request<CommunityPurchaseSettlementFailure>(
-        `/communities/${encodeURIComponent(communityId)}/purchase-settlements/fail`,
+        `/communities/${encodeURIComponent(communityId)}/fail_purchase_settlement`,
         { method: "POST", body: JSON.stringify(body) },
       ),
     listPosts: (

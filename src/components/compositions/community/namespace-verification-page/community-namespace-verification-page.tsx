@@ -3,7 +3,6 @@
 import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
-import { CopyField } from "@/components/primitives/copy-field";
 import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
 import { OptionCard } from "@/components/primitives/option-card";
 import { PrefixInput } from "@/components/primitives/prefix-input";
@@ -162,34 +161,49 @@ export function CommunityNamespaceVerificationPage({
   );
 
   if (hasAttachedNamespace) {
+    const publicCommunityUrl = attachedRouteSlug ? `https://pirate.sc/c/${attachedRouteSlug}` : null;
+    const handshakeUrl = attachedRouteSlug ? `https://${attachedRouteSlug}/` : null;
+
     return (
       <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
-          <Type as="h1" variant="h1" className="md:text-4xl">Namespace</Type>
+          <Type as="h1" variant="h1" className="md:text-4xl">Success!</Type>
           {onBackClick ? <Button onClick={onBackClick} variant="outline">Done</Button> : null}
         </div>
 
-        <div className="space-y-6 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5 md:py-5">
+        <div className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5 md:py-5">
           <div className="space-y-2">
-            <Type as="div" variant="body-strong">Namespace attached</Type>
-            {attachedRouteSlug ? (
-              <FormNote>Community route: /c/{attachedRouteSlug}</FormNote>
-            ) : null}
+            <Type as="div" variant="body-strong">Namespace connected</Type>
+            {publicCommunityUrl && handshakeUrl ? (
+              <div className="space-y-3">
+                <Type as="p" variant="body">
+                  Your namespace is now available at{" "}
+                  <a className="text-primary underline-offset-4 hover:underline" href={publicCommunityUrl}>
+                    {publicCommunityUrl}
+                  </a>{" "}
+                  and{" "}
+                  <a className="text-primary underline-offset-4 hover:underline" href={handshakeUrl}>
+                    {handshakeUrl}
+                  </a>
+                  .
+                </Type>
+                <Type as="p" variant="body">
+                  To access your site on Handshake DNS, use{" "}
+                  <a
+                    className="text-primary underline-offset-4 hover:underline"
+                    href="https://github.com/pirate-social-club/freedom-browser/releases/tag/v0.7.6"
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Freedom Browser
+                  </a>
+                  .
+                </Type>
+              </div>
+            ) : (
+              <FormNote>This community namespace is connected. There is nothing else to set up here.</FormNote>
+            )}
           </div>
-
-          {attachedRouteSlug ? (
-            <div className="space-y-2">
-              <FormFieldLabel label="Route" />
-              <CopyField value={attachedRouteSlug} />
-            </div>
-          ) : null}
-
-          {attachedNamespaceVerificationId ? (
-            <div className="space-y-2">
-              <FormFieldLabel label="Verification" />
-              <CopyField value={attachedNamespaceVerificationId} />
-            </div>
-          ) : null}
 
           {activeSessionId ? (
             <div className="space-y-3 border-t border-border-soft pt-4">

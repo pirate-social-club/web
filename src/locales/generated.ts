@@ -2501,7 +2501,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "verificationSection": "التحقق"
         },
         "rules": {
-          "title": "إنشاء قاعدة",
+          "title": "القواعد",
           "description": "تحدد القواعد التوقعات للأعضاء والزوار في مجتمعك.",
           "addRule": "إضافة قاعدة",
           "namePlaceholder": "اسم القاعدة",
@@ -4044,7 +4044,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "verificationSection": "验证"
         },
         "rules": {
-          "title": "创建规则",
+          "title": "规则",
           "description": "规则为社区中的成员和访客设定期望。",
           "addRule": "添加规则",
           "namePlaceholder": "规则名称",

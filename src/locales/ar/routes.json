@@ -844,7 +844,7 @@
       "verificationSection": "التحقق"
     },
     "rules": {
-      "title": "إنشاء قاعدة",
+      "title": "القواعد",
       "description": "تحدد القواعد التوقعات للأعضاء والزوار في مجتمعك.",
       "addRule": "إضافة قاعدة",
       "namePlaceholder": "اسم القاعدة",

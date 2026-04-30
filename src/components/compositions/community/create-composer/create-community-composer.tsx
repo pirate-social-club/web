@@ -29,7 +29,7 @@ export function CreateCommunityComposer(props: CreateCommunityComposerProps) {
   return (
     <div className={cn("mx-auto w-full max-w-6xl space-y-4", isMobile && "mx-0 max-w-none space-y-5")}>
       <Type as="h1" variant="h2" className="hidden md:block">
-        {step === 1 ? copy.title : step === 2 ? "Community settings" : "Preview"}
+        {step === 1 ? copy.title : step === 2 ? copy.communitySettingsTitle : copy.preview}
       </Type>
       {creatorVerificationMessage ? (
         <div className="rounded-[var(--radius-lg)] border border-warning/20 bg-warning/5 px-4 py-3">

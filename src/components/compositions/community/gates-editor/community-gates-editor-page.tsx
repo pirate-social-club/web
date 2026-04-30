@@ -29,7 +29,8 @@ import {
   createDefaultCourtyardInventoryDraft,
 } from "@/lib/courtyard-inventory-gates";
 import { cn } from "@/lib/utils";
-import { defaultRouteCopy } from "../../system/route-copy-defaults";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { NumericStepper } from "@/components/compositions/community/create-composer/create-community-composer.sections";
 import { Type } from "@/components/primitives/type";
 
@@ -129,7 +130,7 @@ export interface CommunityGatesEditorPageProps {
 export function CommunityGatesEditorPage({
   allowAnonymousIdentity,
   anonymousIdentityScope,
-  anonymousScopeChangeWarning = "Changes apply to new posts only.",
+  anonymousScopeChangeWarning: anonymousScopeChangeWarningProp,
   className,
   creatorVerificationState,
   defaultAgeGatePolicy,
@@ -149,8 +150,10 @@ export function CommunityGatesEditorPage({
   showSaveAction = true,
   showTitle = true,
 }: CommunityGatesEditorPageProps) {
-  const copy = defaultRouteCopy;
+  const { locale } = useUiLocale();
+  const copy = React.useMemo(() => getLocaleMessages(locale, "routes"), [locale]);
   const mc = copy.moderation.gates;
+  const anonymousScopeChangeWarning = anonymousScopeChangeWarningProp ?? mc.anonymousScopeChangeWarning;
 
   const effectiveMembershipMode: CommunityMembershipMode = membershipMode;
 

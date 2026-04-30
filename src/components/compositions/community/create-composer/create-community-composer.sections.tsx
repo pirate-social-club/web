@@ -14,7 +14,8 @@ import { Label } from "@/components/primitives/label";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Type } from "@/components/primitives/type";
-import { defaultRouteCopy } from "../../system/route-copy-defaults";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 
 export const ISO_ALPHA_2 = /^[A-Z]{2}$/;
 export const acceptedCommunityImageTypes = "image/png,image/jpeg,image/webp,image/gif,image/avif";
@@ -321,7 +322,8 @@ export function MediaPicker({
 }) {
   const inputId = React.useId();
   const isMobile = useIsMobile();
-  const copy = defaultRouteCopy;
+  const { locale } = useUiLocale();
+  const copy = React.useMemo(() => getLocaleMessages(locale, "routes"), [locale]);
   const cc = copy.createCommunity.composer;
 
   return (

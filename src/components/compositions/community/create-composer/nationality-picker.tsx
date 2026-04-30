@@ -15,7 +15,8 @@ import {
   ComboboxValue,
 } from "@/components/primitives/combobox";
 import { COUNTRIES, findCountry, type Country } from "@/lib/countries";
-import { defaultRouteCopy } from "../../system/route-copy-defaults";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { Type } from "@/components/primitives/type";
 
 export interface NationalityPickerProps {
@@ -28,7 +29,8 @@ export function NationalityPicker({
   onChange,
 }: NationalityPickerProps) {
   const selectedCountry = React.useMemo(() => findCountry(value), [value]);
-  const copy = defaultRouteCopy;
+  const { locale } = useUiLocale();
+  const copy = React.useMemo(() => getLocaleMessages(locale, "routes"), [locale]);
   const cc = copy.createCommunity.composer;
 
   return (
@@ -76,7 +78,8 @@ export function NationalityMultiPicker({
     () => COUNTRIES.map((country) => ({ ...country, identityCode: findCountry(country.code)?.identityCode ?? country.code })),
     [],
   );
-  const copy = defaultRouteCopy;
+  const { locale } = useUiLocale();
+  const copy = React.useMemo(() => getLocaleMessages(locale, "routes"), [locale]);
   const cc = copy.createCommunity.composer;
 
   return (

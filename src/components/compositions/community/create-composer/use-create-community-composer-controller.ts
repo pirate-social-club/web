@@ -12,7 +12,8 @@ import { resolveCommunityAvatarSrc, resolveCommunityBannerSrc } from "@/lib/defa
 import { formatGateRequirement } from "@/lib/identity-gates";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-import { defaultRouteCopy } from "../../system/route-copy-defaults";
+import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
 import { useCommunityPreviewMedia } from "./create-community-composer.sections";
 import type {
   AnonymousIdentityScope,
@@ -96,7 +97,8 @@ export function useCreateCommunityComposerController({
   const gateDraftsValid =
     activeMembershipMode !== "gated"
     || (activeGateDrafts.length > 0 && activeGateDrafts.every(isValidGateDraft));
-  const copy = defaultRouteCopy;
+  const { locale } = useUiLocale();
+  const copy = React.useMemo(() => getLocaleMessages(locale, "routes"), [locale]);
   const cc = copy.createCommunity.composer;
 
   const handleNext = React.useCallback(() => {

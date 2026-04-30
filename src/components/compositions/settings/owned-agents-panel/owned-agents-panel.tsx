@@ -40,9 +40,11 @@ function stripClawitzerSuffix(value: string | null): string {
 
 function AgentAvatar({
   active,
+  badgeLabel,
   fallback,
 }: {
   active: boolean;
+  badgeLabel: string;
   fallback: string;
 }) {
   return (
@@ -57,7 +59,7 @@ function AgentAvatar({
           <Robot className="size-3.5" weight="duotone" />
         </span>
       )}
-      badgeLabel="Agent"
+      badgeLabel={badgeLabel}
       badgeOffsetXPercent={6}
       badgeOffsetYPercent={2}
       badgePadding={1}
@@ -192,7 +194,7 @@ function AgentRow({
 
   return (
     <div className="group flex items-start gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4 transition-colors hover:bg-muted/50">
-      <AgentAvatar active={isActive} fallback={agent.displayName || agent.handleLabel || copy.namePlaceholder} />
+      <AgentAvatar active={isActive} badgeLabel={copy.agentBadgeLabel} fallback={agent.displayName || agent.handleLabel || copy.namePlaceholder} />
 
       <div className="min-w-0 flex-1 space-y-3">
         {canEditName ? (

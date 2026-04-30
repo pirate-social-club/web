@@ -552,7 +552,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "body": "Keep `/inbox` as a neutral placeholder until notifications or messaging are specified as real product surfaces.",
         "description": "This route is scaffolded so the mobile nav can point somewhere truthful while inbox behavior is still undefined.",
         "emptyChatsState": "No chats yet",
-        "emptyState": "No notifications yet",
+        "emptyState": "No notifications",
         "loading": "Loading...",
         "notificationsTab": "Notifications",
         "someone": "Someone",

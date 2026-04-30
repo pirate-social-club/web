@@ -46,6 +46,7 @@ export function SelfVerificationModal({
   const isMobile = useIsMobile();
   const shouldShowQr = Boolean(selfApp) && !forceMobile && !isMobile;
   const hasPrimaryAction = Boolean(href) && !shouldShowQr;
+  const missingLaunchTarget = !shouldShowQr && !hasPrimaryAction;
 
   return (
     <Modal forceMobile={forceMobile} onOpenChange={onOpenChange} open={open}>
@@ -58,6 +59,9 @@ export function SelfVerificationModal({
 
         <div className="mt-8 space-y-6">
           {error ? <FormNote tone="warning">{error}</FormNote> : null}
+          {!error && missingLaunchTarget ? (
+            <FormNote tone="warning">Verification link is unavailable. Please close this and try again.</FormNote>
+          ) : null}
           {shouldShowQr && selfApp ? (
             <div className="flex justify-center">
               <SelfQRcodeWrapper
@@ -80,7 +84,7 @@ export function SelfVerificationModal({
             </Button>
           ) : shouldShowQr ? null : (
             <Button className="h-12 w-full" onClick={() => onOpenChange(false)} variant="secondary">
-              Cancel
+              Close
             </Button>
           )}
 

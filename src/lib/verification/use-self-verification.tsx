@@ -13,11 +13,10 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { getVerificationPromptCopy } from "@/lib/identity-gates";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
+  buildSelfVerificationLaunch,
   buildSelfVerificationCallbackHref,
   getSelfCallbackCleanHref,
   getSelfCallbackSessionId,
-  getSelfVerificationApp,
-  getSelfVerificationLaunchHref,
   hasSelfCallbackParams,
   parseSelfCallback,
 } from "@/lib/self-verification";
@@ -41,6 +40,8 @@ const SELF_REQUESTED_CAPABILITIES = new Set([
   "nationality",
   "gender",
 ]);
+
+const SELF_LAUNCH_UNAVAILABLE_MESSAGE = "Could not create Self verification link.";
 
 function isSelfRequestedCapability(
   value: unknown,
@@ -152,6 +153,21 @@ export function useSelfVerification(input: {
         verification_intent: verificationIntent,
         verification_requirements: nextVerificationRequirements,
       });
+      const launch = result.launch?.self_app;
+      const deeplinkCallback = isMobile && typeof window !== "undefined"
+        ? buildSelfVerificationCallbackHref(window.location.href, result.verification_session_id)
+        : null;
+      const launchResult = buildSelfVerificationLaunch(launch, { deeplinkCallback });
+      if ("error" in launchResult) {
+        const message = `${SELF_LAUNCH_UNAVAILABLE_MESSAGE} ${launchResult.error}`;
+        setSelfSession(null);
+        setRequestedCapabilities([]);
+        setSelfModalOpen(false);
+        clearPendingSelfVerificationSession(storageKey);
+        setSelfError(message);
+        return { error: message, started: false, href: null };
+      }
+
       setRequestedCapabilities(result.requested_capabilities);
       setSelfSession(result);
       const openedModal = !options.skipModal || !isMobile;
@@ -162,12 +178,7 @@ export function useSelfVerification(input: {
         requestedCapabilities: result.requested_capabilities,
         verificationSessionId: result.verification_session_id,
       });
-      const launch = result.launch?.self_app;
-      const deeplinkCallback = isMobile && typeof window !== "undefined"
-        ? buildSelfVerificationCallbackHref(window.location.href, result.verification_session_id)
-        : null;
-      const href = getSelfVerificationLaunchHref(launch, { deeplinkCallback });
-      return { started: true, href, openedModal };
+      return { started: true, href: launchResult.href, openedModal };
     } catch (error: unknown) {
       const message = getErrorMessage(error, startErrorMessage);
       setSelfError(message);
@@ -336,12 +347,14 @@ export function useSelfVerification(input: {
     const deeplinkCallback = isMobile && typeof window !== "undefined"
       ? buildSelfVerificationCallbackHref(window.location.href, selfSession.verification_session_id)
       : null;
-    const selfApp = getSelfVerificationApp(launch, { deeplinkCallback });
-    const href = getSelfVerificationLaunchHref(launch, { deeplinkCallback });
+    const launchResult = buildSelfVerificationLaunch(launch, { deeplinkCallback });
+    if ("error" in launchResult) {
+      return null;
+    }
     return {
       ...getVerificationPromptCopy("self", requestedCapabilities, { locale }),
-      href,
-      selfApp,
+      href: launchResult.href,
+      selfApp: launchResult.selfApp,
     };
   }, [isMobile, locale, requestedCapabilities, selfSession]);
 

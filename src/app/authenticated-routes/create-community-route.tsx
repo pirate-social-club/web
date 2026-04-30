@@ -151,20 +151,20 @@ export function CreateCommunityPage() {
     }
   }, [connect, createCommunityFromInput, creatorVerificationState.ageOver18Verified, session, startSelfVerification]);
 
-  const selfVerificationModal = (
+  const selfVerificationModal = selfPrompt ? (
     <SelfVerificationModal
-      actionLabel={selfPrompt?.actionLabel ?? copy.createCommunity.startVerification}
-      description={selfPrompt?.description ?? copy.createCommunity.verifyDescription}
+      actionLabel={selfPrompt.actionLabel}
+      description={selfPrompt.description}
       error={selfError}
-      href={selfPrompt?.href ?? null}
+      href={selfPrompt.href}
       onOpenChange={handleSelfModalOpenChange}
       onQrError={handleSelfQrError}
       onQrSuccess={handleSelfQrSuccess}
       open={selfModalOpen}
-      selfApp={selfPrompt?.selfApp ?? null}
-      title={selfPrompt?.title ?? copy.createCommunity.verifyStartTitle}
+      selfApp={selfPrompt.selfApp}
+      title={selfPrompt.title}
     />
-  );
+  ) : null;
 
   if (isMobile) {
     return (

@@ -13,6 +13,10 @@ export type SelfVerificationResult =
 type SelfAppLaunch = NonNullable<NonNullable<VerificationSession["launch"]>["self_app"]>;
 type SelfCallbackParam = "error" | "expired" | "proof" | "self_verification_session_id";
 
+export type SelfVerificationLaunchBuildResult =
+  | { href: string; selfApp: SelfApp }
+  | { error: string; href: null; selfApp: null };
+
 const SELF_CALLBACK_PARAMS: SelfCallbackParam[] = [
   "error",
   "expired",
@@ -112,18 +116,43 @@ export function getSelfVerificationApp(
   launch: SelfAppLaunch | null | undefined,
   options: { deeplinkCallback?: string | null } = {},
 ): SelfApp | null {
+  const result = buildSelfVerificationLaunch(launch, options);
+  return result.selfApp;
+}
+
+export function buildSelfVerificationLaunch(
+  launch: SelfAppLaunch | null | undefined,
+  options: { deeplinkCallback?: string | null } = {},
+): SelfVerificationLaunchBuildResult {
+  if (!launch) {
+    return { error: "Self launch data was not returned by the API.", href: null, selfApp: null };
+  }
+
+  const appName = launch.app_name?.trim();
   const endpoint = launch?.endpoint?.trim();
   const sessionId = launch?.session_id?.trim();
   const scope = launch?.scope?.trim();
   const userId = launch?.user_id?.trim();
 
-  if (!launch || !endpoint || !sessionId || !scope || !userId) {
-    return null;
+  if (!appName) {
+    return { error: "Self launch data is missing app_name.", href: null, selfApp: null };
+  }
+  if (!endpoint) {
+    return { error: "Self launch data is missing endpoint.", href: null, selfApp: null };
+  }
+  if (!sessionId) {
+    return { error: "Self launch data is missing session_id.", href: null, selfApp: null };
+  }
+  if (!scope) {
+    return { error: "Self launch data is missing scope.", href: null, selfApp: null };
+  }
+  if (!userId) {
+    return { error: "Self launch data is missing user_id.", href: null, selfApp: null };
   }
 
   try {
-    return new SelfAppBuilder({
-      appName: launch.app_name,
+    const selfApp = new SelfAppBuilder({
+      appName,
       chainID: getSelfChainId(launch),
       deeplinkCallback: options.deeplinkCallback ?? launch.deeplink_callback ?? "",
       devMode: launch.dev_mode ?? false,
@@ -139,8 +168,16 @@ export function getSelfVerificationApp(
       userIdType: launch.user_id_type,
       version: getSelfVersion(launch),
     }).build();
-  } catch {
-    return null;
+    const href = getUniversalLink(selfApp);
+    if (!href) {
+      return { error: "Self SDK did not return a verification link.", href: null, selfApp: null };
+    }
+    return { href, selfApp };
+  } catch (error) {
+    const message = error instanceof Error && error.message.trim()
+      ? error.message.trim()
+      : "unknown Self SDK error";
+    return { error: `Self SDK rejected launch data: ${message}`, href: null, selfApp: null };
   }
 }
 
@@ -148,6 +185,6 @@ export function getSelfVerificationLaunchHref(
   launch: SelfAppLaunch | null | undefined,
   options: { deeplinkCallback?: string | null } = {},
 ): string | null {
-  const selfApp = getSelfVerificationApp(launch, options);
-  return selfApp ? getUniversalLink(selfApp) : null;
+  const result = buildSelfVerificationLaunch(launch, options);
+  return result.href;
 }

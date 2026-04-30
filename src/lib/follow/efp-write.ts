@@ -74,6 +74,11 @@ function isEmbeddedPrivyWallet(wallet: PirateConnectedEvmWallet): boolean {
   return wallet.walletClientType === "privy" || wallet.walletClientType === "privy-v2";
 }
 
+function canSponsorFollowTransaction(transaction: FollowWriteTransaction): boolean {
+  const { efp } = getPirateNetworkConfig();
+  return efp.environment === "testnet" && transaction.chainId === efp.primaryListChainId;
+}
+
 function resolveFollowTransactionSlot(transaction: FollowWriteTransaction): bigint {
   if (
     transaction.functionName === "applyListOps" ||
@@ -125,7 +130,7 @@ async function submitSponsoredTransaction(
   sendSponsoredIntent: PirateSponsoredIntentSender,
 ): Promise<Address> {
   const { efp } = getPirateNetworkConfig();
-  if (transaction.chainId !== efp.primaryListChainId) {
+  if (!canSponsorFollowTransaction(transaction)) {
     throw new Error("Sponsored follows only support primary-chain EFP lists.");
   }
 
@@ -200,7 +205,11 @@ export async function submitFollowAction(
 
   let txHash: Address | undefined;
   for (const transaction of transactions) {
-    if (options?.sendSponsoredIntent && isEmbeddedPrivyWallet(wallet)) {
+    if (
+      options?.sendSponsoredIntent
+      && isEmbeddedPrivyWallet(wallet)
+      && canSponsorFollowTransaction(transaction)
+    ) {
       txHash = await submitSponsoredTransaction(
         wallet,
         viewerAddress,
@@ -221,3 +230,10 @@ export async function submitFollowAction(
 
   return { txHash };
 }
+
+export const __testOnly = {
+  buildFollowTransactions,
+  buildSponsoredFollowIntent,
+  canSponsorFollowTransaction,
+  isEmbeddedPrivyWallet,
+};

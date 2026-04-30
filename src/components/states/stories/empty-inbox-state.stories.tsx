@@ -16,7 +16,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    description: "No notifications yet",
+    description: "No notifications",
   },
 };
 
@@ -32,6 +32,6 @@ export const Mobile: Story = {
     viewport: { defaultViewport: "mobile1" },
   },
   args: {
-    description: "No notifications yet",
+    description: "No notifications",
   },
 };

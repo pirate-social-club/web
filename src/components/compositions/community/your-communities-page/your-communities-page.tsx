@@ -56,7 +56,7 @@ function YourCommunitySection({
   return (
     <section className="min-w-0">
       <div className="mb-3 flex items-center justify-between gap-4">
-        <Type as="h2" variant="h3">
+        <Type as="h2" variant="h3" className="hidden md:block">
           {title}
         </Type>
       </div>

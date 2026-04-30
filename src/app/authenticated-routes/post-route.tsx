@@ -185,7 +185,7 @@ export function PostPage({ postId }: { postId: string }) {
       showTranslationLabel: copy.common.showTranslation,
     })
     : undefined;
-  const communityPath = community ? buildCommunityPath(community.id, community.route_slug) : "/";
+  const communityPath = community?.id ? buildCommunityPath(community.id, community.route_slug) : "/";
   const threadSidebarProps = community ? buildCommunityPreviewSidebar(community, locale) : null;
   const commentSortOptions = [
     { label: copy.common.bestTab, value: "best" as const },

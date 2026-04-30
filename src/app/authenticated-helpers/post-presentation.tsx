@@ -563,10 +563,10 @@ export function toThreadPostCard(
 ): PostCardProps {
   const { post } = postResponse;
   const communityVerified = Boolean(community?.namespace_verification);
-  const communityLabel = community
+  const communityLabel = community?.id
     ? communityVerified
       ? formatCommunityRouteLabel(community.id, community.route_slug)
-      : community.display_name.trim() || formatCommunityRouteLabel(community.id, community.route_slug)
+      : community.display_name?.trim() || formatCommunityRouteLabel(community.id, community.route_slug)
     : undefined;
 
   return withTranslationToggleProps({
@@ -581,7 +581,7 @@ export function toThreadPostCard(
           : undefined,
       },
       agentAuthor: resolveAgentAuthor(post, authorProfile),
-      community: community
+      community: community?.id
         ? {
           kind: "community",
           label: communityLabel ?? community.id,

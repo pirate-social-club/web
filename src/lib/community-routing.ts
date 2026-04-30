@@ -25,6 +25,9 @@ export function encodeCommunityRouteSegment(value: string): string {
 }
 
 export function canonicalizeCommunityRouteSegment(value: string): string {
+  if (typeof value !== "string") {
+    throw new TypeError(`canonicalizeCommunityRouteSegment expected a string, received ${value === null ? "null" : typeof value}`);
+  }
   const trimmedInput = value.trim();
   const trimmed = trimmedInput.toLowerCase().startsWith("c/")
     ? trimmedInput.slice(2)

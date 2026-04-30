@@ -320,6 +320,9 @@ export function usePost(
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setPost(null);
+    setCommunity(null);
+    setAuthorProfile(null);
     setCommentNodes([]);
     setAuthorProfilesByUserId({});
     setReadMode(hasSession ? "authenticated" : "public");

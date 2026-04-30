@@ -85,7 +85,7 @@ export function ReviewField({
 }) {
   return (
     <div className="space-y-1">
-      <p className="text-sm text-muted-foreground">{label}</p>
+      <Type as="p" className="text-muted-foreground" variant="caption">{label}</Type>
       <p className="text-base font-medium text-foreground">{value || "\u2014"}</p>
     </div>
   );
@@ -195,17 +195,17 @@ export function CommunityReviewStep({
 
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{copy.reviewDisplayName}</p>
-            <p className="text-lg font-medium text-foreground">{displayName}</p>
+            <Type as="p" className="text-muted-foreground" variant="caption">{copy.reviewDisplayName}</Type>
+            <p className="text-base font-medium text-foreground">{displayName}</p>
           </div>
           <div className="relative space-y-1 md:border-l md:border-border-soft md:pl-6">
-            <p className="text-sm text-muted-foreground">{copy.reviewDescription}</p>
+            <Type as="p" className="text-muted-foreground" variant="caption">{copy.reviewDescription}</Type>
             <p className="text-base font-medium text-foreground">{description || "\u2014"}</p>
           </div>
         </div>
 
         <div className="mt-5 space-y-1">
-          <p className="text-sm text-muted-foreground">{copy.reviewDataRegion}</p>
+          <Type as="p" className="text-muted-foreground" variant="caption">{copy.reviewDataRegion}</Type>
           <p className="text-base font-medium text-foreground">{databaseRegionLabel}</p>
         </div>
 
@@ -213,13 +213,13 @@ export function CommunityReviewStep({
           <div className="mt-5 grid gap-6 md:grid-cols-2">
             {avatarLabel !== copy.generatedDefault ? (
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{copy.reviewAvatar}</p>
+                <Type as="p" className="text-muted-foreground" variant="caption">{copy.reviewAvatar}</Type>
                 <p className="text-base font-medium text-foreground">{avatarLabel}</p>
               </div>
             ) : null}
             {bannerLabel !== copy.generatedDefault ? (
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{copy.reviewBanner}</p>
+              <div className={cn("space-y-1", avatarLabel !== copy.generatedDefault && "relative md:border-l md:border-border-soft md:pl-6")}>
+                <Type as="p" className="text-muted-foreground" variant="caption">{copy.reviewBanner}</Type>
                 <p className="text-base font-medium text-foreground">{bannerLabel}</p>
               </div>
             ) : null}
@@ -241,31 +241,31 @@ export function CommunityReviewStep({
 
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{copy.reviewJoinFlow}</p>
-            <p className="text-lg font-medium text-foreground">{membershipLabel}</p>
+            <Type as="p" className="text-muted-foreground" variant="caption">{copy.reviewJoinFlow}</Type>
+            <p className="text-base font-medium text-foreground">{membershipLabel}</p>
           </div>
           <div className="relative space-y-1 md:border-l md:border-border-soft md:pl-6">
-            <p className="text-sm text-muted-foreground">{copy.reviewAgeGate}</p>
-            <p className="text-lg font-medium text-foreground">{ageGateLabel}</p>
+            <Type as="p" className="text-muted-foreground" variant="caption">{copy.reviewAgeGate}</Type>
+            <p className="text-base font-medium text-foreground">{ageGateLabel}</p>
           </div>
         </div>
 
         {gateRequirementSummary ? (
           <div className="mt-6 space-y-1">
-            <p className="text-sm text-muted-foreground">{copy.reviewMembershipGates}</p>
+            <Type as="p" className="text-muted-foreground" variant="caption">{copy.reviewMembershipGates}</Type>
             <p className="text-base font-medium text-foreground">{gateRequirementSummary}</p>
           </div>
         ) : null}
 
         <div className="mt-6 grid gap-6 md:grid-cols-2">
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{copy.reviewAnonymousPosting}</p>
-            <p className="text-lg font-medium text-foreground">{anonymousPostingLabel}</p>
+            <Type as="p" className="text-muted-foreground" variant="caption">{copy.reviewAnonymousPosting}</Type>
+            <p className="text-base font-medium text-foreground">{anonymousPostingLabel}</p>
           </div>
           {anonymousScopeLabel ? (
             <div className="relative space-y-1 md:border-l md:border-border-soft md:pl-6">
-              <p className="text-sm text-muted-foreground">{copy.reviewAnonymousScope}</p>
-              <p className="text-lg font-medium text-foreground">{anonymousScopeLabel}</p>
+              <Type as="p" className="text-muted-foreground" variant="caption">{copy.reviewAnonymousScope}</Type>
+              <p className="text-base font-medium text-foreground">{anonymousScopeLabel}</p>
             </div>
           ) : null}
         </div>

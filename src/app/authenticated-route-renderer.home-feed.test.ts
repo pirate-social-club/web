@@ -112,10 +112,20 @@ describe("toHomeFeedItem", () => {
     const item = toHomeFeedItem(createEntry(), {});
 
     expect(item.id).toBe("pst_alpha");
-    expect(item.post.byline?.community?.href).toBe("/c/cmt_alpha");
+    expect(item.post.byline?.community?.href).toBe("/c/alpha");
     expect(item.post.byline?.community?.label).toBe("c/alpha");
     expect(item.post.engagement?.commentCount).toBe(5);
     expect(item.post.engagement?.score).toBe(9);
+  });
+
+  test("links home feed community bylines directly to canonical punycode routes", () => {
+    const entry = createEntry();
+    entry.community.route_slug = "@xn--t77hga";
+
+    const item = toHomeFeedItem(entry, {});
+
+    expect(item.post.byline?.community?.href).toBe("/c/@xn--t77hga");
+    expect(item.post.byline?.community?.label).toBe("c/@🇵🇸");
   });
 
   test("passes home feed community avatars through to post cards", () => {

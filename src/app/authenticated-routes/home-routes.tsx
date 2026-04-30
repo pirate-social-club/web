@@ -24,6 +24,7 @@ import { RecentPostRail, type RecentPostRailItem } from "@/components/compositio
 import { Type } from "@/components/primitives/type";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
+import { resolveHomeFeedCommunityId } from "@/app/authenticated-helpers/home-feed-presentation";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { submitOptimisticPostVote, updateHomeFeedEntryPostVote } from "@/app/authenticated-helpers/post-vote";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
@@ -61,7 +62,7 @@ function unixOrIsoMs(value: string | number): number {
   return typeof value === "number" ? value * 1000 : Date.parse(value);
 }
 
-function buildRecentPostRail(input: {
+export function buildRecentPostRail(input: {
   feedEntries: ApiHomeFeedItem[];
   recentCommunities: ReturnType<typeof useRecentCommunities>;
   limit?: number;
@@ -79,10 +80,12 @@ function buildRecentPostRail(input: {
   }
 
   const eligiblePosts = input.feedEntries
-    .filter((entry) => communityVisitRank.has(entry.community.id))
+    .filter((entry) => communityVisitRank.has(resolveHomeFeedCommunityId(entry.community)))
     .sort((left, right) => {
-      const leftRank = communityVisitRank.get(left.community.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightRank = communityVisitRank.get(right.community.id) ?? Number.MAX_SAFE_INTEGER;
+      const leftCommunityId = resolveHomeFeedCommunityId(left.community);
+      const rightCommunityId = resolveHomeFeedCommunityId(right.community);
+      const leftRank = communityVisitRank.get(leftCommunityId) ?? Number.MAX_SAFE_INTEGER;
+      const rightRank = communityVisitRank.get(rightCommunityId) ?? Number.MAX_SAFE_INTEGER;
       if (leftRank !== rightRank) {
         return leftRank - rightRank;
       }
@@ -100,12 +103,13 @@ function buildRecentPostRail(input: {
   const seenCommunityIds = new Set<string>();
 
   for (const entry of eligiblePosts) {
+    const communityId = resolveHomeFeedCommunityId(entry.community);
     if (railPosts.length >= limit) break;
-    if (seenCommunityIds.has(entry.community.id) || seenPostIds.has(entry.post.post.id)) {
+    if (seenCommunityIds.has(communityId) || seenPostIds.has(entry.post.post.id)) {
       continue;
     }
 
-    const recentCommunity = recentCommunityMeta.get(entry.community.id);
+    const recentCommunity = recentCommunityMeta.get(communityId);
     const title = (entry.post.translated_title ?? entry.post.post.title ?? entry.post.post.caption ?? entry.post.post.body ?? "").trim();
     if (!title) {
       continue;
@@ -114,8 +118,8 @@ function buildRecentPostRail(input: {
     railPosts.push({
       commentCount: entry.post.thread_snapshot?.comment_count ?? 0,
       communityAvatarSrc: recentCommunity?.avatarSrc ?? null,
-      communityHref: buildCommunityPath(entry.community.id, recentCommunity?.routeSlug ?? entry.community.route_slug),
-      communityId: entry.community.id,
+      communityHref: buildCommunityPath(communityId, recentCommunity?.routeSlug ?? entry.community.route_slug),
+      communityId,
       communityLabel: recentCommunity?.displayName ?? entry.community.display_name,
       postHref: `/p/${entry.post.post.id}`,
       postId: entry.post.post.id,
@@ -124,17 +128,18 @@ function buildRecentPostRail(input: {
       timestampLabel: formatRelativeTimestamp(entry.post.post.created),
       thumbnailSrc: resolveRailThumbnail(entry),
     });
-    seenCommunityIds.add(entry.community.id);
+    seenCommunityIds.add(communityId);
     seenPostIds.add(entry.post.post.id);
   }
 
   for (const entry of eligiblePosts) {
+    const communityId = resolveHomeFeedCommunityId(entry.community);
     if (railPosts.length >= limit) break;
     if (seenPostIds.has(entry.post.post.id)) {
       continue;
     }
 
-    const recentCommunity = recentCommunityMeta.get(entry.community.id);
+    const recentCommunity = recentCommunityMeta.get(communityId);
     const title = (entry.post.translated_title ?? entry.post.post.title ?? entry.post.post.caption ?? entry.post.post.body ?? "").trim();
     if (!title) {
       continue;
@@ -143,8 +148,8 @@ function buildRecentPostRail(input: {
     railPosts.push({
       commentCount: entry.post.thread_snapshot?.comment_count ?? 0,
       communityAvatarSrc: recentCommunity?.avatarSrc ?? null,
-      communityHref: buildCommunityPath(entry.community.id, recentCommunity?.routeSlug ?? entry.community.route_slug),
-      communityId: entry.community.id,
+      communityHref: buildCommunityPath(communityId, recentCommunity?.routeSlug ?? entry.community.route_slug),
+      communityId,
       communityLabel: recentCommunity?.displayName ?? entry.community.display_name,
       postHref: `/p/${entry.post.post.id}`,
       postId: entry.post.post.id,

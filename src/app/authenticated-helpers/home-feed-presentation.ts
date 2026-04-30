@@ -3,7 +3,7 @@ import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { buildPublicProfilePathForProfile } from "@/lib/profile-routing";
-import { formatCommunityRouteLabel } from "@/lib/community-routing";
+import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import type { FeedItem } from "@/components/compositions/posts/feed/feed";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { buildNationalityBadgeLabel } from "@/components/compositions/posts/post-card/post-card-nationality";
@@ -35,7 +35,7 @@ function getPostScore(post: ApiPost): number {
   return post.upvote_count - post.downvote_count;
 }
 
-function resolveHomeFeedCommunityId(community: HomeFeedEntry["community"]): string {
+export function resolveHomeFeedCommunityId(community: HomeFeedEntry["community"]): string {
   const rawCommunityId =
     (community as typeof community & { community?: string }).community
     ?? (community as typeof community & { community_id?: string }).community_id
@@ -75,7 +75,7 @@ export function toHomeFeedItem(
             communityId,
             displayName: community.display_name,
           }),
-          href: `/c/${communityId}`,
+          href: buildCommunityPath(communityId, community.route_slug),
           label: formatCommunityLabel(community.route_slug ?? community.display_name),
         },
         timestampLabel: formatRelativeTimestamp(post.created),

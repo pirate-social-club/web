@@ -6,7 +6,7 @@ import type { HomeFeedItem, LocalizedPostResponse } from "@pirate/api-contracts"
 
 import { api } from "@/lib/api";
 import { __resetSessionStoreForTests } from "@/lib/api/session-store";
-import { useHomeFeed } from "./home-routes";
+import { buildRecentPostRail, useHomeFeed } from "./home-routes";
 
 installDomGlobals();
 
@@ -201,5 +201,30 @@ describe("useHomeFeed", () => {
     expect(result.current.feedEntries.length).toBe(1);
     await waitFor(() => expect(Object.keys(result.current.listingsByAssetId).length).toBe(1));
     expect(Object.keys(result.current.purchasesByAssetId).length).toBe(1);
+  });
+});
+
+describe("buildRecentPostRail", () => {
+  test("links communities directly to canonical feed route slugs", () => {
+    const feedItem = createFeedItem();
+    feedItem.community.id = "com_cmt_test";
+    feedItem.community.route_slug = "@xn--t77hga";
+
+    const items = buildRecentPostRail({
+      feedEntries: [feedItem],
+      recentCommunities: [
+        {
+          avatarSrc: null,
+          communityId: "cmt_test",
+          displayName: "Palestine",
+          routeSlug: null,
+          updatedAt: "2026-04-24T00:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.communityHref).toBe("/c/@xn--t77hga");
+    expect(items[0]?.communityId).toBe("cmt_test");
   });
 });

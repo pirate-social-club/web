@@ -60,6 +60,16 @@ function resolveRedditProfileHref(username: string | undefined): string {
   return `https://www.reddit.com/user/${encodeURIComponent(normalizedUsername)}/`;
 }
 
+function formatCheckedTime(value: string | undefined): string | null {
+  if (!value) return null;
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return null;
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function OnboardingCardHeader({
   icon,
   subtitle,
@@ -194,9 +204,10 @@ function ImportKarmaPhase({
     : isVerified
       ? copy.importKarmaAction
       : isCodeReady
-        ? copy.actions.check
+        ? reddit.lastCheckedAt ? copy.actions.checkAgain : copy.actions.check
         : copy.actions.getCode;
   const surfaceLabel = copy.surfaces[reddit.codePlacementSurface ?? "profile"];
+  const checkedTime = formatCheckedTime(reddit.lastCheckedAt);
 
   const canNext =
     !busy && (
@@ -273,6 +284,11 @@ function ImportKarmaPhase({
           <CopyField value={verificationCode ?? reddit.verificationHint} />
           {fieldError ? (
             <FormNote tone="warning">{fieldError}</FormNote>
+          ) : null}
+          {!fieldError && checkedTime ? (
+            <FormNote tone="warning">
+              {formatMessage(copy.notes.checkedRedditAt, { time: checkedTime })}
+            </FormNote>
           ) : null}
         </div>
       ) : null}

@@ -44,6 +44,9 @@ function mapRedditVerification(apiResult: ApiRedditVerification, usernameValue: 
     verificationState: stateMap[apiResult.status] ?? "not_started",
     verificationHint: apiResult.verification_hint ?? undefined,
     codePlacementSurface: apiResult.code_placement_surface ?? undefined,
+    lastCheckedAt: apiResult.last_checked_at
+      ? new Date(apiResult.last_checked_at * 1000).toISOString()
+      : undefined,
     errorTitle: apiResult.failure_code ? apiResult.failure_code.replace(/_/g, " ") : undefined,
   };
 }

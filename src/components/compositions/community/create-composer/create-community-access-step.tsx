@@ -19,7 +19,6 @@ import {
   FieldLabel,
   NumericStepper,
   Section,
-  SegmentedControl,
 } from "./create-community-composer.sections";
 import type { CommunityMembershipMode } from "./create-community-composer.types";
 import { CourtyardWalletGateBuilder } from "./courtyard-wallet-gate-builder";
@@ -38,17 +37,161 @@ export function CreateCommunityAccessStep({
   return (
     <>
       <Section title={copy.membershipSection}>
-        <SegmentedControl
-          onChange={(value) => access.setActiveMembershipMode(value as CommunityMembershipMode)}
-          options={{
-            open: { label: copy.membershipOpenLabel, detail: copy.membershipOpenDetail },
-            request: { label: copy.membershipRequestLabel, detail: copy.membershipRequestDetail },
-            gated: { label: copy.membershipGatedLabel, detail: copy.membershipGatedDetail },
-          }}
-          value={access.activeMembershipMode}
-        />
+        <div className="space-y-3">
+          {([
+            { key: "open" as const, label: copy.membershipOpenLabel, detail: copy.membershipOpenDetail },
+            { key: "request" as const, label: copy.membershipRequestLabel, detail: copy.membershipRequestDetail },
+            { key: "gated" as const, label: copy.membershipGatedLabel, detail: copy.membershipGatedDetail },
+          ]).map((option) => (
+            <div key={option.key} className="space-y-3">
+              <OptionCard
+                description={option.detail}
+                selected={option.key === access.activeMembershipMode}
+                title={option.label}
+                onClick={() => access.setActiveMembershipMode(option.key as CommunityMembershipMode)}
+              />
 
-        {!access.hasAdultMinimumAgeGate ? (
+              {option.key === "gated" && access.activeMembershipMode === "gated" ? (
+                <div className={cn("space-y-3 border-s-2 border-primary ps-4", isMobile && "ps-3")}>
+                  <FormSectionHeading title={copy.gateChecksTitle} />
+
+                  <CheckboxCard
+                    checked={gateState.nationalityEnabled}
+                    description={copy.nationalityDescription}
+                    title={copy.nationalityTitle}
+                    onCheckedChange={gateState.setNationalityEnabled}
+                  />
+
+                  {gateState.nationalityEnabled ? (
+                    <div className="space-y-2 border-s-2 border-primary ps-4">
+                      <FieldLabel label={copy.allowedNationalityLabel} />
+                      <NationalityMultiPicker
+                        onChange={gateState.setNationalityRequiredValues}
+                        values={gateState.nationalityRequiredValues}
+                      />
+                      {gateState.nationalityRequiredValues.some((value) => !isCountryCode(value)) ? (
+                        <FormNote tone="warning">{copy.selectValidCountry}</FormNote>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <CheckboxCard
+                    checked={gateState.minimumAgeEnabled}
+                    description={copy.minimumAgeDescription}
+                    title={copy.minimumAgeTitle}
+                    onCheckedChange={gateState.setMinimumAgeEnabled}
+                  />
+
+                  {gateState.minimumAgeEnabled ? (
+                    <div className="space-y-2 border-s-2 border-primary ps-4">
+                      <FieldLabel label={copy.minimumAgeLabel} />
+                      <NumericStepper
+                        max={125}
+                        min={18}
+                        value={gateState.minimumAge}
+                        onChange={gateState.setMinimumAge}
+                      />
+                      {(!Number.isInteger(gateState.minimumAge) || gateState.minimumAge < 18 || gateState.minimumAge > 125) ? (
+                        <FormNote tone="warning">{copy.minimumAgeInvalid}</FormNote>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <CheckboxCard
+                    checked={gateState.walletScoreEnabled}
+                    description={copy.walletScoreDescription}
+                    title={copy.walletScoreTitle}
+                    onCheckedChange={gateState.setWalletScoreEnabled}
+                  />
+
+                  {gateState.walletScoreEnabled ? (
+                    <div className="space-y-2 border-s-2 border-primary ps-4">
+                      <FieldLabel label={copy.walletScoreLabel} />
+                      <NumericStepper
+                        max={100}
+                        min={0}
+                        value={gateState.minimumWalletScore}
+                        onChange={gateState.setMinimumWalletScore}
+                      />
+                      {(!Number.isFinite(gateState.minimumWalletScore) || gateState.minimumWalletScore < 0 || gateState.minimumWalletScore > 100) ? (
+                        <FormNote tone="warning">{copy.walletScoreInvalid}</FormNote>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <CheckboxCard
+                    checked={gateState.erc721Enabled}
+                    description={copy.erc721Description}
+                    title={copy.erc721Title}
+                    onCheckedChange={gateState.setErc721Enabled}
+                  />
+
+                  {gateState.erc721Enabled ? (
+                    <div className="space-y-2 border-s-2 border-primary ps-4">
+                      <FieldLabel label={copy.collectionContractLabel} />
+                      <Input
+                        className="h-12 rounded-[var(--radius-lg)]"
+                        onChange={(event) => gateState.setErc721ContractAddress(event.target.value)}
+                        placeholder={copy.collectionContractPlaceholder}
+                        value={gateState.erc721ContractAddress}
+                      />
+                      {gateState.erc721ContractAddress.trim().length > 0 && !isAddress(gateState.erc721ContractAddress.trim()) ? (
+                        <FormNote tone="warning">{copy.invalidContractAddress}</FormNote>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <CheckboxCard
+                    checked={gateState.courtyardInventoryEnabled}
+                    description={copy.courtyardDescription}
+                    disabled={access.courtyardInventoryGroups === undefined}
+                    title={copy.courtyardTitle}
+                    onCheckedChange={gateState.setCourtyardInventoryEnabled}
+                  />
+
+                  {gateState.courtyardInventoryEnabled && access.courtyardInventoryGroups !== undefined ? (
+                    <div className="space-y-4 border-s-2 border-primary ps-4">
+                      <CourtyardWalletGateBuilder
+                        groups={access.courtyardInventoryGroups}
+                        loading={access.courtyardInventoryLoading}
+                        quantity={gateState.courtyardInventoryDraft.minQuantity}
+                        selectedGroup={resolveSelectedCourtyardGroup(gateState.courtyardInventoryDraft, access.courtyardInventoryGroups)}
+                        onQuantityChange={(value) => gateState.setCourtyardInventoryDraft((draft) => ({ ...draft, minQuantity: value }))}
+                        onSelectGroup={(group) => gateState.setCourtyardInventoryDraft({
+                          gateType: "erc721_inventory_match",
+                          chainNamespace: "eip155:137",
+                          contractAddress: COURTYARD_POLYGON_REGISTRY,
+                          inventoryProvider: "courtyard",
+                          minQuantity: 1,
+                          assetFilter: {
+                            category: group.category,
+                            franchise: group.franchise,
+                            subject: group.subject,
+                            brand: group.brand,
+                            model: group.model,
+                            reference: group.reference,
+                            set: group.set,
+                            year: group.year,
+                            grader: group.grader,
+                            grade: group.grade,
+                            condition: group.condition,
+                          },
+                        })}
+                      />
+                    </div>
+                  ) : gateState.courtyardInventoryEnabled ? (
+                    <FormNote tone="warning">{copy.courtyardCatalogUnavailable}</FormNote>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+
+      </Section>
+
+      {!access.hasAdultMinimumAgeGate ? (
+        <Section className={cn("border-t border-border-soft pt-8", isMobile && "border-t-0 pt-1")} title={copy.contentRatingSection}>
           <div className="space-y-2">
             <CheckboxRow
               checked={access.activeDefaultAgeGatePolicy === "18_plus"}
@@ -64,142 +207,8 @@ export function CreateCommunityAccessStep({
               </FormNote>
             ) : null}
           </div>
-        ) : null}
-
-        {access.activeMembershipMode === "gated" ? (
-          <div className={cn("space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-5 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
-            <FormSectionHeading title={copy.gateChecksTitle} />
-
-            <CheckboxCard
-              checked={gateState.nationalityEnabled}
-              description={copy.nationalityDescription}
-              title={copy.nationalityTitle}
-              onCheckedChange={gateState.setNationalityEnabled}
-            />
-
-            {gateState.nationalityEnabled ? (
-              <div className="space-y-2 border-s-2 border-primary ps-4">
-                <FieldLabel label={copy.allowedNationalityLabel} />
-                <NationalityMultiPicker
-                  onChange={gateState.setNationalityRequiredValues}
-                  values={gateState.nationalityRequiredValues}
-                />
-                {gateState.nationalityRequiredValues.some((value) => !isCountryCode(value)) ? (
-                  <FormNote tone="warning">{copy.selectValidCountry}</FormNote>
-                ) : null}
-              </div>
-            ) : null}
-
-            <CheckboxCard
-              checked={gateState.minimumAgeEnabled}
-              description={copy.minimumAgeDescription}
-              title={copy.minimumAgeTitle}
-              onCheckedChange={gateState.setMinimumAgeEnabled}
-            />
-
-            {gateState.minimumAgeEnabled ? (
-              <div className="space-y-2 border-s-2 border-primary ps-4">
-                <FieldLabel label={copy.minimumAgeLabel} />
-                <NumericStepper
-                  max={125}
-                  min={18}
-                  value={gateState.minimumAge}
-                  onChange={gateState.setMinimumAge}
-                />
-                {(!Number.isInteger(gateState.minimumAge) || gateState.minimumAge < 18 || gateState.minimumAge > 125) ? (
-                  <FormNote tone="warning">{copy.minimumAgeInvalid}</FormNote>
-                ) : null}
-              </div>
-            ) : null}
-
-            <CheckboxCard
-              checked={gateState.walletScoreEnabled}
-              description={copy.walletScoreDescription}
-              title={copy.walletScoreTitle}
-              onCheckedChange={gateState.setWalletScoreEnabled}
-            />
-
-            {gateState.walletScoreEnabled ? (
-              <div className="space-y-2 border-s-2 border-primary ps-4">
-                <FieldLabel label={copy.walletScoreLabel} />
-                <NumericStepper
-                  max={100}
-                  min={0}
-                  value={gateState.minimumWalletScore}
-                  onChange={gateState.setMinimumWalletScore}
-                />
-                {(!Number.isFinite(gateState.minimumWalletScore) || gateState.minimumWalletScore < 0 || gateState.minimumWalletScore > 100) ? (
-                  <FormNote tone="warning">{copy.walletScoreInvalid}</FormNote>
-                ) : null}
-              </div>
-            ) : null}
-
-            <CheckboxCard
-              checked={gateState.erc721Enabled}
-              description={copy.erc721Description}
-              title={copy.erc721Title}
-              onCheckedChange={gateState.setErc721Enabled}
-            />
-
-            {gateState.erc721Enabled ? (
-              <div className="space-y-2 border-s-2 border-primary ps-4">
-                <FieldLabel label={copy.collectionContractLabel} />
-                <Input
-                  className="h-12 rounded-[var(--radius-lg)]"
-                  onChange={(event) => gateState.setErc721ContractAddress(event.target.value)}
-                  placeholder={copy.collectionContractPlaceholder}
-                  value={gateState.erc721ContractAddress}
-                />
-                {gateState.erc721ContractAddress.trim().length > 0 && !isAddress(gateState.erc721ContractAddress.trim()) ? (
-                  <FormNote tone="warning">{copy.invalidContractAddress}</FormNote>
-                ) : null}
-              </div>
-            ) : null}
-
-            <CheckboxCard
-              checked={gateState.courtyardInventoryEnabled}
-              description={copy.courtyardDescription}
-              disabled={access.courtyardInventoryGroups === undefined}
-              title={copy.courtyardTitle}
-              onCheckedChange={gateState.setCourtyardInventoryEnabled}
-            />
-
-            {gateState.courtyardInventoryEnabled && access.courtyardInventoryGroups !== undefined ? (
-              <div className="space-y-4 border-s-2 border-primary ps-4">
-                <CourtyardWalletGateBuilder
-                  groups={access.courtyardInventoryGroups}
-                  loading={access.courtyardInventoryLoading}
-                  quantity={gateState.courtyardInventoryDraft.minQuantity}
-                  selectedGroup={resolveSelectedCourtyardGroup(gateState.courtyardInventoryDraft, access.courtyardInventoryGroups)}
-                  onQuantityChange={(value) => gateState.setCourtyardInventoryDraft((draft) => ({ ...draft, minQuantity: value }))}
-                  onSelectGroup={(group) => gateState.setCourtyardInventoryDraft({
-                    gateType: "erc721_inventory_match",
-                    chainNamespace: "eip155:137",
-                    contractAddress: COURTYARD_POLYGON_REGISTRY,
-                    inventoryProvider: "courtyard",
-                    minQuantity: 1,
-                    assetFilter: {
-                      category: group.category,
-                      franchise: group.franchise,
-                      subject: group.subject,
-                      brand: group.brand,
-                      model: group.model,
-                      reference: group.reference,
-                      set: group.set,
-                      year: group.year,
-                      grader: group.grader,
-                      grade: group.grade,
-                      condition: group.condition,
-                    },
-                  })}
-                />
-              </div>
-            ) : gateState.courtyardInventoryEnabled ? (
-              <FormNote tone="warning">{copy.courtyardCatalogUnavailable}</FormNote>
-            ) : null}
-          </div>
-        ) : null}
-      </Section>
+        </Section>
+      ) : null}
 
       <Section className={cn("border-t border-border-soft pt-8", isMobile && "border-t-0 pt-1")} title={copy.identityAccessSection}>
         <div className="space-y-5">

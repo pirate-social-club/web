@@ -203,11 +203,13 @@ function CreatePostComposer({
 export function CreatePostPage({
   communityId,
   initialDraft,
+  onCommunityNotFound,
 }: {
   communityId: string;
   initialDraft?: Partial<
     import("@/app/authenticated-state/create-post-draft-state").CreatePostDraftState
   >;
+  onCommunityNotFound?: () => void;
 }) {
   const state = useCreatePostState(communityId, initialDraft);
   const isMobile = useIsMobile();
@@ -460,6 +462,10 @@ export function CreatePostPage({
       );
     }
     if (isApiNotFoundError(state.loadError)) {
+      if (onCommunityNotFound) {
+        onCommunityNotFound();
+        return null;
+      }
       if (isMobile) {
         return (
           <MobileRouteShell
@@ -683,7 +689,6 @@ export function CreatePostPage({
 
     return (
       <MobileRouteShell
-        className="pb-8"
         footer={selfVerificationModal}
         onBackClick={getPreviousComposerStep(mobileComposerStep, state.composerMode)
           ? () => setMobileComposerStep(getPreviousComposerStep(mobileComposerStep, state.composerMode) ?? "write")

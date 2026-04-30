@@ -11,6 +11,7 @@ import { Button } from "@/components/primitives/button";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRecentCommunities } from "@/lib/owned-communities";
+import { forgetKnownCommunity } from "@/lib/known-communities-store";
 
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { NotFoundRouteState } from "@/app/authenticated-helpers/route-shell";
@@ -23,7 +24,7 @@ export function NotFoundPage({ path }: { path: string }) {
 export function CreatePostGlobalPage({
   renderCreatePost,
 }: {
-  renderCreatePost: (communityId: string, initialDraft?: Partial<CreatePostDraftState>) => React.ReactNode;
+  renderCreatePost: (communityId: string, initialDraft: Partial<CreatePostDraftState> | undefined, onCommunityNotFound: () => void) => React.ReactNode;
 }) {
   const { copy } = useRouteMessages();
   const isMobile = useIsMobile();
@@ -39,8 +40,15 @@ export function CreatePostGlobalPage({
     [knownCommunities],
   );
 
+  const handleCommunityNotFound = React.useCallback(() => {
+    if (selectedCommunityId) {
+      forgetKnownCommunity(selectedCommunityId);
+    }
+    setSelectedCommunityId(null);
+  }, [selectedCommunityId]);
+
   if (selectedCommunityId) {
-    return <>{renderCreatePost(selectedCommunityId, state)}</>;
+    return <>{renderCreatePost(selectedCommunityId, state, handleCommunityNotFound)}</>;
   }
 
   const composerDraft = {

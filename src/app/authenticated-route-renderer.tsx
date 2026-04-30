@@ -127,7 +127,7 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
     case "create-post-global":
       return (
         <LazyCreatePostGlobalPage
-          renderCreatePost={(communityId: string, initialDraft?: Partial<CreatePostDraftState>) => <LazyCreatePostPage communityId={communityId} initialDraft={initialDraft} />}
+          renderCreatePost={(communityId: string, initialDraft: Partial<CreatePostDraftState> | undefined, onCommunityNotFound: () => void) => <LazyCreatePostPage communityId={communityId} initialDraft={initialDraft} onCommunityNotFound={onCommunityNotFound} />}
         />
       );
     case "create-post":

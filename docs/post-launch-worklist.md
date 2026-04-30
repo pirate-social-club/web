@@ -33,7 +33,51 @@ Engineering notes:
 - Use `effective_karma` for trust/display unless product explicitly wants raw component totals.
 - Add API contract fields only after the privacy and community visibility rules are decided.
 
-## 2. Customizable Notifications
+## 2. Commerce Observability and Effect Hardening
+
+Goal: make the most sensitive purchase, settlement, and entitlement paths observable first, then incrementally move the riskiest control flow to typed Effect programs.
+
+Launch constraint: do not block launch on the full rewrite. Sentry capture is proven for backend 500s; source maps, alerting, and deeper workflow instrumentation can happen after launch.
+
+Immediate observability work:
+
+- Backend Sentry smoke test is complete: `GET /__debug/sentry-error` reaches the backend Sentry project from the Wrangler-backed Worker path.
+- Confirm event details after launch as needed: `route`, `method`, `status`, environment, and redacted request headers.
+- Trigger or simulate one scheduled task failure and confirm `scheduled_task` is present.
+- Configure source map upload in CI with `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT`.
+- Add alert rules for `rollback_failed`, `receipt_timeout`, `rpc_revert`, `operator_unauthorized`, `config_invalid`, and `libsql_busy_exhausted`.
+- Capture a before/after bundle size benchmark for the Sentry integration.
+
+Domain tagging work:
+
+- Add request and workflow tags where they are naturally available: `request_id`, `user_id_hash`, `purchase_id`, `community_id`, `quote_id`, `chain_id`, `settlement_kind`, `error_tag`, `error_stage`, and `tx_hash`.
+- Keep raw user identifiers, auth headers, session IDs, anonymous IDs, wallet private data, and cookies out of Sentry.
+- Prefer stable, low-cardinality tags for alert routing; put high-cardinality values in contexts or extras only when needed for debugging.
+
+Effect pilot scope:
+
+- Start with Story-native purchase settlement, not broad route or repository rewrites.
+- First candidate: the `settlePurchaseOnStory` flow in `settlement-service.ts`, especially the sequence that reserves settlement effects, calls Story royalty settlement, mints locked-asset entitlement, confirms or fails effects, and finalizes local purchase rows.
+- Second candidate: transaction and retry helpers around local write finalization, including rollback failure capture and `libsql_busy` exhaustion handling.
+- Third candidate: Story RPC calls that need typed error categories for receipt timeout, revert, operator authorization, invalid config, and insufficient signer balance.
+
+Effect design direction:
+
+- Define a small error taxonomy before moving code: validation, conflict/idempotency, config, database, external RPC, receipt timeout, revert, authorization, rollback failure, and invariant violation.
+- Introduce `withWriteTransaction` as a narrow helper with explicit commit/rollback behavior and Sentry capture on rollback failure.
+- Use retry schedules only around operations that are actually safe to retry, such as transient database busy errors or receipt polling.
+- Preserve existing idempotency keys and settlement effect rows as the source of truth for whether an external side effect has already happened.
+- Keep route handlers thin; convert Effect results back to the existing `HttpError` and response contracts at the boundary.
+
+Acceptance criteria:
+
+- Sentry events for settlement failures carry enough tags to route alerts and diagnose the affected purchase without querying logs first.
+- Retried operations are idempotent by construction, not by convention.
+- A failed Story side effect records a failed settlement effect with a useful error stage.
+- A confirmed external side effect is never repeated after a retry or worker restart.
+- The first Effect pilot reduces branching and error ambiguity in one sensitive flow without forcing a repo-wide rewrite.
+
+## 3. Customizable Notifications
 
 Goal: let users decide which notifications they receive, where they receive them, and whether an AI bot should help triage or deliver lower-priority updates.
 

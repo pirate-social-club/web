@@ -85,14 +85,15 @@ describe("serializeIdentityGateDrafts", () => {
   test("wraps in or when mode is any", () => {
     const result = serializeIdentityGateDrafts(
       [
-        { gateType: "wallet_score" as const, provider: "passport" as const, minimumScore: 20 },
-        { gateType: "unique_human" as const, provider: "very" as const },
+        { gateType: "wallet_score", provider: "passport", minimumScore: 20 },
+        { gateType: "minimum_age", provider: "self", minimumAge: 18 },
       ],
       { mode: "any" },
     );
-    expect(result).not.toBeNull();
+    expect(result == null).toBe(false);
     expect(result!.expression.op).toBe("or");
-    expect(result!.expression.children).toHaveLength(2);
+    const children = (result!.expression as { children: unknown[] }).children;
+    expect(children).toHaveLength(2);
   });
 
   test("returns null for empty drafts", () => {

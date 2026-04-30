@@ -1,51 +1,18 @@
 import type {
-  Asset,
-  AssetAccessResponse,
   Community,
   CommunityCreateAcceptedResponse,
-  CommunityFollowResponse,
-  CommunityListing,
-  CommunityListingListResponse,
-  CommunityMoneyPolicy,
-  MembershipRequestListResponse,
-  MembershipRequestSummary,
-  CommunityPreview,
-  CommunityPricingPolicy,
-  CommunityPurchase,
-  CommunityPurchaseListResponse,
-  CommunityPurchaseQuote,
-  CommunityPurchaseQuotePreflight,
-  CommunityPurchaseQuotePreflightRequest,
-  CommunityPurchaseQuoteRequest,
-  CommunityPurchaseSettlement,
-  CommunityPurchaseSettlementFailure,
-  CommunityPurchaseSettlementFailureRequest,
-  CommunityPurchaseSettlementRequest,
-  CreateCommunityListingRequest,
-  JoinEligibility,
   LocalizedPostResponse,
-  UpdateCommunityListingRequest,
-  UpdateCommunityMoneyPolicyRequest,
-  UpdateCommunityPricingPolicyRequest,
 } from "@pirate/api-contracts";
 
 import type {
-  ApiCommunityDonationPolicyResponse,
-  ApiCommunityGatesUpdateRequest,
-  ApiCommunityMachineAccessPolicy,
-  ApiCommunityMachineAccessPolicyUpdate,
   ApiCommunityMediaUploadResponse,
-  ApiCommunityRuleInput,
-  ApiCommunitySafetyUpdateRequest,
   ApiCreateCommunityRequest,
-  ApiUpdateCommunityRequest,
-  ApiResolveDonationPartnerResponse,
-  CommunityLabelPolicyInput,
   CommunityListPostsOptions,
-  CommunityReferenceLinksInput,
-  DonationPolicyUpdateInput,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
+import { createCommunityCommerceApi } from "./client-groups-community-commerce";
+import { createCommunityMembershipApi } from "./client-groups-community-membership";
+import { createCommunitySettingsApi } from "./client-groups-community-settings";
 
 export function createCommunitiesApi(request: ApiRequest) {
   return {
@@ -68,11 +35,6 @@ export function createCommunitiesApi(request: ApiRequest) {
         { locale: opts?.locale },
       ));
     },
-    update: (communityId: string, body: ApiUpdateCommunityRequest): Promise<Community> =>
-      request<Community>(`/communities/${encodeURIComponent(communityId)}`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
     attachNamespace: (communityId: string, namespaceVerificationId: string): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}/namespace`, {
         method: "POST",
@@ -91,220 +53,9 @@ export function createCommunitiesApi(request: ApiRequest) {
           }),
         },
       ),
-    updateRules: (communityId: string, body: { rules: ApiCommunityRuleInput[] }): Promise<Community> =>
-      request<Community>(`/communities/${encodeURIComponent(communityId)}/rules`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    updateReferenceLinks: (
-      communityId: string,
-      body: CommunityReferenceLinksInput,
-    ): Promise<Community> =>
-      request<Community>(`/communities/${encodeURIComponent(communityId)}/reference-links`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    updateLabelPolicy: (
-      communityId: string,
-      body: CommunityLabelPolicyInput,
-    ): Promise<Community> =>
-      request<Community>(`/communities/${encodeURIComponent(communityId)}/labels`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    getDonationPolicy: (communityId: string): Promise<ApiCommunityDonationPolicyResponse> =>
-      request<ApiCommunityDonationPolicyResponse>(
-        `/communities/${encodeURIComponent(communityId)}/donation-policy`,
-      ),
-    getMachineAccessPolicy: (communityId: string): Promise<ApiCommunityMachineAccessPolicy> =>
-      request<ApiCommunityMachineAccessPolicy>(
-        `/communities/${encodeURIComponent(communityId)}/machine-access-policy`,
-      ),
-    updateMachineAccessPolicy: (
-      communityId: string,
-      body: ApiCommunityMachineAccessPolicyUpdate,
-    ): Promise<ApiCommunityMachineAccessPolicy> =>
-      request<ApiCommunityMachineAccessPolicy>(
-        `/communities/${encodeURIComponent(communityId)}/machine-access-policy`,
-        { method: "POST", body: JSON.stringify(body) },
-      ),
-    resolveDonationPartner: (
-      communityId: string,
-      body: { endaoment_url: string },
-    ): Promise<ApiResolveDonationPartnerResponse> =>
-      request<ApiResolveDonationPartnerResponse>(
-        `/communities/${encodeURIComponent(communityId)}/donation-policy/resolve`,
-        { method: "POST", body: JSON.stringify(body) },
-      ),
-    updateDonationPolicy: (
-      communityId: string,
-      body: DonationPolicyUpdateInput,
-    ): Promise<Community> =>
-      request<Community>(`/communities/${encodeURIComponent(communityId)}/donation-policy`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    updateGates: (
-      communityId: string,
-      body: ApiCommunityGatesUpdateRequest,
-    ): Promise<Community> =>
-      request<Community>(`/communities/${encodeURIComponent(communityId)}/gates`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    updateSafety: (
-      communityId: string,
-      body: ApiCommunitySafetyUpdateRequest,
-    ): Promise<Community> =>
-      request<Community>(`/communities/${encodeURIComponent(communityId)}/safety`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    join: (
-      communityId: string,
-      body?: { note?: string | null },
-    ): Promise<{ community: string; status: string }> =>
-      request<{ community: string; status: string }>(
-        `/communities/${encodeURIComponent(communityId)}/join`,
-        { method: "POST", body: JSON.stringify(body ?? {}) },
-      ),
-    follow: (communityId: string): Promise<CommunityFollowResponse> =>
-      request<CommunityFollowResponse>(
-        `/communities/${encodeURIComponent(communityId)}/follow`,
-        { method: "POST", body: JSON.stringify({}) },
-      ),
-    unfollow: (communityId: string): Promise<CommunityFollowResponse> =>
-      request<CommunityFollowResponse>(
-        `/communities/${encodeURIComponent(communityId)}/unfollow`,
-        { method: "POST", body: JSON.stringify({}) },
-      ),
-    preview: (communityId: string, opts?: { locale?: string | null }): Promise<CommunityPreview> => {
-      return request<CommunityPreview>(buildQueryPath(
-        `/communities/${encodeURIComponent(communityId)}/preview`,
-        { locale: opts?.locale },
-      ));
-    },
-    getJoinEligibility: (communityId: string): Promise<JoinEligibility> =>
-      request<JoinEligibility>(
-        `/communities/${encodeURIComponent(communityId)}/join-eligibility`,
-      ),
-    listMembershipRequests: (communityId: string): Promise<MembershipRequestListResponse> =>
-      request<MembershipRequestListResponse>(
-        `/communities/${encodeURIComponent(communityId)}/membership-requests`,
-      ),
-    approveMembershipRequest: (
-      communityId: string,
-      membershipRequestId: string,
-    ): Promise<MembershipRequestSummary> =>
-      request<MembershipRequestSummary>(
-        `/communities/${encodeURIComponent(communityId)}/membership-requests/${encodeURIComponent(membershipRequestId)}/approve`,
-        { method: "POST", body: JSON.stringify({}) },
-      ),
-    rejectMembershipRequest: (
-      communityId: string,
-      membershipRequestId: string,
-    ): Promise<MembershipRequestSummary> =>
-      request<MembershipRequestSummary>(
-        `/communities/${encodeURIComponent(communityId)}/membership-requests/${encodeURIComponent(membershipRequestId)}/reject`,
-        { method: "POST", body: JSON.stringify({}) },
-      ),
-    getMoneyPolicy: (communityId: string): Promise<CommunityMoneyPolicy> =>
-      request<CommunityMoneyPolicy>(
-        `/communities/${encodeURIComponent(communityId)}/money-policy`,
-      ),
-    updateMoneyPolicy: (
-      communityId: string,
-      body: UpdateCommunityMoneyPolicyRequest,
-    ): Promise<CommunityMoneyPolicy> =>
-      request<CommunityMoneyPolicy>(
-        `/communities/${encodeURIComponent(communityId)}/money-policy`,
-        { method: "POST", body: JSON.stringify(body) },
-      ),
-    getPricingPolicy: (communityId: string): Promise<CommunityPricingPolicy> =>
-      request<CommunityPricingPolicy>(
-        `/communities/${encodeURIComponent(communityId)}/pricing-policy`,
-      ),
-    updatePricingPolicy: (
-      communityId: string,
-      body: UpdateCommunityPricingPolicyRequest,
-    ): Promise<CommunityPricingPolicy> =>
-      request<CommunityPricingPolicy>(
-        `/communities/${encodeURIComponent(communityId)}/pricing-policy`,
-        { method: "POST", body: JSON.stringify(body) },
-      ),
-    getAsset: (communityId: string, assetId: string): Promise<Asset> =>
-      request<Asset>(
-        `/communities/${encodeURIComponent(communityId)}/assets/${encodeURIComponent(assetId)}`,
-      ),
-    resolveAssetAccess: (communityId: string, assetId: string): Promise<AssetAccessResponse> =>
-      request<AssetAccessResponse>(
-        `/communities/${encodeURIComponent(communityId)}/assets/${encodeURIComponent(assetId)}/access`,
-      ),
-    listListings: (communityId: string): Promise<CommunityListingListResponse> =>
-      request<CommunityListingListResponse>(
-        `/communities/${encodeURIComponent(communityId)}/listings`,
-      ),
-    createListing: (
-      communityId: string,
-      body: CreateCommunityListingRequest,
-    ): Promise<CommunityListing> =>
-      request<CommunityListing>(`/communities/${encodeURIComponent(communityId)}/listings`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
-    getListing: (communityId: string, listingId: string): Promise<CommunityListing> =>
-      request<CommunityListing>(
-        `/communities/${encodeURIComponent(communityId)}/listings/${encodeURIComponent(listingId)}`,
-      ),
-    updateListing: (
-      communityId: string,
-      listingId: string,
-      body: UpdateCommunityListingRequest,
-    ): Promise<CommunityListing> =>
-      request<CommunityListing>(
-        `/communities/${encodeURIComponent(communityId)}/listings/${encodeURIComponent(listingId)}`,
-        { method: "POST", body: JSON.stringify(body) },
-      ),
-    listPurchases: (communityId: string): Promise<CommunityPurchaseListResponse> =>
-      request<CommunityPurchaseListResponse>(
-        `/communities/${encodeURIComponent(communityId)}/purchases`,
-      ),
-    getPurchase: (communityId: string, purchaseId: string): Promise<CommunityPurchase> =>
-      request<CommunityPurchase>(
-        `/communities/${encodeURIComponent(communityId)}/purchases/${encodeURIComponent(purchaseId)}`,
-      ),
-    preflightPurchaseQuote: (
-      communityId: string,
-      body: CommunityPurchaseQuotePreflightRequest,
-    ): Promise<CommunityPurchaseQuotePreflight> =>
-      request<CommunityPurchaseQuotePreflight>(
-        `/communities/${encodeURIComponent(communityId)}/purchase-quote-preflight`,
-        { method: "POST", body: JSON.stringify(body) },
-      ),
-    createPurchaseQuote: (
-      communityId: string,
-      body: CommunityPurchaseQuoteRequest,
-    ): Promise<CommunityPurchaseQuote> =>
-      request<CommunityPurchaseQuote>(
-        `/communities/${encodeURIComponent(communityId)}/purchase-quotes`,
-        { method: "POST", body: JSON.stringify(body) },
-      ),
-    settlePurchase: (
-      communityId: string,
-      body: CommunityPurchaseSettlementRequest,
-    ): Promise<CommunityPurchaseSettlement> =>
-      request<CommunityPurchaseSettlement>(
-        `/communities/${encodeURIComponent(communityId)}/purchase-settlements`,
-        { method: "POST", body: JSON.stringify(body) },
-      ),
-    failPurchase: (
-      communityId: string,
-      body: CommunityPurchaseSettlementFailureRequest,
-    ): Promise<CommunityPurchaseSettlementFailure> =>
-      request<CommunityPurchaseSettlementFailure>(
-        `/communities/${encodeURIComponent(communityId)}/fail-purchase-settlement`,
-        { method: "POST", body: JSON.stringify(body) },
-      ),
+    ...createCommunitySettingsApi(request),
+    ...createCommunityMembershipApi(request),
+    ...createCommunityCommerceApi(request),
     listPosts: (
       communityId: string,
       opts?: CommunityListPostsOptions,

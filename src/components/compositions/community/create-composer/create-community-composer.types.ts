@@ -1,10 +1,13 @@
 import type { CourtyardWalletInventoryGroup } from "@/lib/courtyard-inventory-gates";
+import type {
+  AnonymousIdentityScope,
+  CommunityDefaultAgeGatePolicy,
+} from "@/lib/community-access-types";
 
 export type CommunityMembershipMode = "request" | "gated";
 export type { CourtyardWalletInventoryGroup };
-export type CommunityDefaultAgeGatePolicy = "none" | "18_plus";
+export type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy };
 export type CommunityReadAccessMode = "public" | "members_only";
-export type AnonymousIdentityScope = "community_stable" | "thread_stable" | "post_ephemeral";
 export type CommunityDatabaseRegion =
   | "auto"
   | "aws-us-east-1"

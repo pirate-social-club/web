@@ -1,13 +1,13 @@
+import type { GateAtom, GatePolicy } from "@pirate/api-contracts";
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
-import type { ApiGateAtom, ApiGatePolicy } from "@/lib/api/client-api-types";
 
-export type SerializedGatePolicy = ApiGatePolicy;
+export type SerializedGatePolicy = GatePolicy;
 
 export function serializeIdentityGateDrafts(
   gateDrafts: IdentityGateDraft[],
   options?: { mode?: "all" | "any"; includeGateRuleIds?: boolean },
 ): SerializedGatePolicy | null {
-  const atoms = gateDrafts.map(draftToAtom).filter((atom): atom is ApiGateAtom => atom != null);
+  const atoms = gateDrafts.map(draftToAtom).filter((atom): atom is GateAtom => atom != null);
   if (atoms.length === 0) {
     return null;
   }
@@ -20,7 +20,7 @@ export function serializeIdentityGateDrafts(
   };
 }
 
-function draftToAtom(draft: IdentityGateDraft): ApiGateAtom | null {
+function draftToAtom(draft: IdentityGateDraft): GateAtom | null {
   if (draft.gateType === "erc721_holding") {
     return {
       type: "erc721_holding",

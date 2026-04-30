@@ -39,9 +39,9 @@ function CommentAuthorRoleBadge({ role }: { role?: CommunityAuthorRole | null })
   if (!role) return null;
 
   return (
-    <span className="inline-flex h-[1.15em] items-center self-center rounded-full bg-primary px-2 text-[10px] font-bold uppercase leading-none text-primary-foreground">
+    <Type as="span" variant="overline" className="inline-flex min-h-5 items-center self-center rounded-full bg-primary px-2 leading-none text-primary-foreground">
       {role === "owner" ? "Owner" : "Mod"}
-    </span>
+    </Type>
   );
 }
 

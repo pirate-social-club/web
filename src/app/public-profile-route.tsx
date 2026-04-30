@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { Profile as ApiProfile } from "@pirate/api-contracts";
+import type { PublicProfileResolution } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
@@ -16,19 +16,6 @@ import { useChatLauncher } from "./shell/use-chat-launcher";
 import { ProfilePage as ProfilePageComposition } from "@/components/compositions/profiles/profile-page/profile-page";
 import { apiProfileToProps } from "./authenticated-helpers/profile-settings-mapping";
 import { PublicRouteLoadingState, PublicRouteMessageState } from "./public-route-states";
-
-type PublicProfileResolution = {
-  is_canonical: boolean;
-  profile: ApiProfile;
-  requested_handle_label: string;
-  resolved_handle_label: string;
-  created_communities: Array<{
-    community: string;
-    display_name: string;
-    route_slug: string | null;
-    created: string;
-  }>;
-};
 
 const loggedUnavailableProfileActions = new Set<string>();
 

@@ -1,19 +1,19 @@
 import type {
   CommentListResponse,
   CommunityPreview,
+  GlobalHandle,
   LocalizedPostResponse,
   Profile,
+  PublicAgentResolution,
+  PublicProfileResolution,
 } from "@pirate/api-contracts";
 
 import type {
   ApiProfileMediaUploadResponse,
-  ApiPublicAgentResolution,
-  ApiPublicProfileResolution,
   CommunityListCommentsOptions,
   CommunityListPostsOptions,
   HandleUpgradeQuoteResponse,
   ProfileUpdateInput,
-  RenameHandleResponse,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
@@ -48,13 +48,13 @@ export function createProfilesApi(request: ApiRequest) {
         body: formData,
       });
     },
-    renameHandle: (desiredLabel: string): Promise<RenameHandleResponse> =>
-      request("/profiles/me/rename-global-handle", {
+    renameHandle: (desiredLabel: string): Promise<GlobalHandle> =>
+      request<GlobalHandle>("/profiles/me/rename-global-handle", {
         method: "POST",
         body: JSON.stringify({ desired_label: desiredLabel }),
       }),
-    claimRedditHandle: (desiredLabel: string): Promise<RenameHandleResponse> =>
-      request("/profiles/me/global-handle/reddit-claim", {
+    claimRedditHandle: (desiredLabel: string): Promise<GlobalHandle> =>
+      request<GlobalHandle>("/profiles/me/global-handle/reddit-claim", {
         method: "POST",
         body: JSON.stringify({ desired_label: desiredLabel }),
       }),
@@ -68,7 +68,6 @@ export function createProfilesApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify({
           xmtp_inbox: xmtpInboxId,
-          xmtp_inbox_id: xmtpInboxId,
         }),
       }),
   };
@@ -76,12 +75,12 @@ export function createProfilesApi(request: ApiRequest) {
 
 export function createPublicProfilesApi(request: ApiRequest) {
   return {
-    getByHandle: (handleLabel: string): Promise<ApiPublicProfileResolution> =>
-      request<ApiPublicProfileResolution>(`/public-profiles/${encodeURIComponent(handleLabel)}`, {
+    getByHandle: (handleLabel: string): Promise<PublicProfileResolution> =>
+      request<PublicProfileResolution>(`/public-profiles/${encodeURIComponent(handleLabel)}`, {
         tokenRequired: false,
       }),
-    getByWalletAddress: (walletAddress: string): Promise<ApiPublicProfileResolution> =>
-      request<ApiPublicProfileResolution>(`/public-profiles/by-wallet/${encodeURIComponent(walletAddress)}`, {
+    getByWalletAddress: (walletAddress: string): Promise<PublicProfileResolution> =>
+      request<PublicProfileResolution>(`/public-profiles/by-wallet/${encodeURIComponent(walletAddress)}`, {
         tokenRequired: false,
       }),
   };
@@ -89,8 +88,8 @@ export function createPublicProfilesApi(request: ApiRequest) {
 
 export function createPublicAgentsApi(request: ApiRequest) {
   return {
-    getByHandle: (handleLabel: string): Promise<ApiPublicAgentResolution> =>
-      request<ApiPublicAgentResolution>(`/public-agents/${encodeURIComponent(handleLabel)}`, {
+    getByHandle: (handleLabel: string): Promise<PublicAgentResolution> =>
+      request<PublicAgentResolution>(`/public-agents/${encodeURIComponent(handleLabel)}`, {
         tokenRequired: false,
       }),
   };

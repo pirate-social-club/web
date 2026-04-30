@@ -1,3 +1,5 @@
+import type { AnonymousIdentityScope } from "@/lib/community-access-types";
+
 export type ComposerTab = "text" | "image" | "video" | "link" | "song" | "live";
 export type ComposerStep = "write" | "details" | "settings" | "publish";
 
@@ -56,7 +58,7 @@ export interface LivePerformerAllocation {
 
 export type DerivativeTrigger = "remix" | "declaration" | "analysis";
 
-export type AnonymousIdentityScope = "community_stable" | "thread_stable" | "post_ephemeral";
+export type { AnonymousIdentityScope };
 
 export type IdentityMode = "public" | "anonymous";
 export type AuthorMode = "human" | "agent";

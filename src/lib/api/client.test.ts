@@ -316,7 +316,6 @@ describe("ApiClient media uploads", () => {
       expect(capturedRequest.url).toBe("http://pirate.test/profiles/me/xmtp-inbox");
       expect(await capturedRequest.json()).toEqual({
         xmtp_inbox: "xmtp-inbox-test",
-        xmtp_inbox_id: "xmtp-inbox-test",
       });
     } finally {
       globalThis.fetch = originalFetch;

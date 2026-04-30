@@ -2859,70 +2859,70 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "routeStatus": {
         "chat": {
-          "auth": "Sign in to use messages.",
-          "failure": "Messages could not be loaded right now.",
-          "incomplete": "The messages response was incomplete. Try loading it again.",
-          "title": "Messages"
+          "auth": "سجّل الدخول لاستخدام الرسائل.",
+          "failure": "تعذر تحميل الرسائل الآن.",
+          "incomplete": "استجابة الرسائل غير مكتملة. حاول تحميلها مرة أخرى.",
+          "title": "الرسائل"
         },
         "community": {
-          "auth": "Sign in to view this community.",
-          "failure": "The community could not be loaded right now.",
-          "incomplete": "The community response was incomplete. Try loading it again.",
-          "title": "Community",
-          "createPost": "Create Post",
-          "modTools": "Mod Tools"
+          "auth": "سجّل الدخول لعرض هذا المجتمع.",
+          "failure": "تعذر تحميل المجتمع الآن.",
+          "incomplete": "استجابة المجتمع غير مكتملة. حاول تحميله مرة أخرى.",
+          "title": "المجتمع",
+          "createPost": "إنشاء منشور",
+          "modTools": "أدوات الإشراف"
         },
         "createCommunity": {
-          "auth": "Sign in to create a community.",
-          "failure": "The create community page could not be loaded right now.",
-          "incomplete": "The create community response was incomplete. Try loading it again.",
-          "title": "Create a community",
-          "verifyDescription": "Verify before creating a community.",
-          "verifyPendingDescription": "Complete your palm scan to continue.",
-          "verifyPendingTitle": "Finish verification",
-          "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
-          "verifyStartTitle": "Verify",
-          "reopenVerification": "Reopen verification",
-          "startVerification": "Start verification"
+          "auth": "سجّل الدخول لإنشاء مجتمع.",
+          "failure": "تعذر تحميل صفحة إنشاء المجتمع الآن.",
+          "incomplete": "استجابة إنشاء المجتمع غير مكتملة. حاول تحميلها مرة أخرى.",
+          "title": "إنشاء مجتمع",
+          "verifyDescription": "تحقق قبل إنشاء مجتمع.",
+          "verifyPendingDescription": "أكمل مسح كفّك للمتابعة.",
+          "verifyPendingTitle": "إنهاء التحقق",
+          "verifyStartDescription": "امسح كفّك لإثبات أنك إنسان. لا تُحفظ أي صور أو بيانات.",
+          "verifyStartTitle": "تحقق",
+          "reopenVerification": "إعادة فتح التحقق",
+          "startVerification": "بدء التحقق"
         },
         "createPost": {
-          "auth": "Sign in to create a post.",
-          "failure": "The post composer could not be loaded right now.",
-          "incomplete": "The community response was incomplete. Try loading the composer again.",
-          "title": "Create post",
-          "backToCommunity": "Back to community",
-          "membershipRequiredDescription": "Only community members can publish posts here.",
-          "membershipRequiredTitle": "Join this community before posting"
+          "auth": "سجّل الدخول لإنشاء منشور.",
+          "failure": "تعذر تحميل محرّر المنشورات الآن.",
+          "incomplete": "استجابة المجتمع غير مكتملة. حاول تحميل المحرّر مرة أخرى.",
+          "title": "إنشاء منشور",
+          "backToCommunity": "العودة إلى المجتمع",
+          "membershipRequiredDescription": "يمكن لأعضاء المجتمع فقط نشر المنشورات هنا.",
+          "membershipRequiredTitle": "انضم إلى هذا المجتمع قبل النشر"
         },
         "home": {
-          "auth": "Sign in to view your home feed.",
-          "failure": "The home feed could not be loaded right now.",
-          "incomplete": "The home feed response was incomplete. Try loading it again.",
-          "title": "Home",
-          "createCommunity": "Create community",
-          "emptyHomeBody": "Join a community or create one to start building your home feed.",
-          "emptyHomeTitle": "No posts yet",
-          "emptyYourCommunitiesBody": "Communities you create or join show up here.",
-          "emptyYourCommunitiesTitle": "No communities yet"
+          "auth": "سجّل الدخول لعرض خلاصتك الرئيسية.",
+          "failure": "تعذر تحميل الخلاصة الرئيسية الآن.",
+          "incomplete": "استجابة الخلاصة الرئيسية غير مكتملة. حاول تحميلها مرة أخرى.",
+          "title": "الرئيسية",
+          "createCommunity": "إنشاء مجتمع",
+          "emptyHomeBody": "انضم إلى مجتمع أو أنشئ واحدًا لبدء بناء خلاصتك الرئيسية.",
+          "emptyHomeTitle": "لا توجد منشورات بعد",
+          "emptyYourCommunitiesBody": "المجتمعات التي تنشئها أو تنضم إليها تظهر هنا.",
+          "emptyYourCommunitiesTitle": "لا توجد مجتمعات بعد"
         },
         "inbox": {
-          "auth": "Sign in to view your inbox.",
-          "failure": "The inbox could not be loaded right now.",
-          "incomplete": "The inbox response was incomplete. Try loading it again.",
-          "title": "Inbox"
+          "auth": "سجّل الدخول لعرض صندوق الوارد.",
+          "failure": "تعذر تحميل صندوق الوارد الآن.",
+          "incomplete": "استجابة صندوق الوارد غير مكتملة. حاول تحميله مرة أخرى.",
+          "title": "صندوق الوارد"
         },
         "moderation": {
-          "auth": "Sign in to access mod tools.",
-          "failure": "This moderation page could not be loaded right now.",
-          "incomplete": "The community response was incomplete.",
-          "title": "Moderator tools",
-          "accessRequiredDescription": "Only community moderators can open this page.",
-          "accessRequiredTitle": "Moderator access required"
+          "auth": "سجّل الدخول للوصول إلى أدوات الإشراف.",
+          "failure": "تعذر تحميل صفحة الإشراف هذه الآن.",
+          "incomplete": "استجابة المجتمع غير مكتملة.",
+          "title": "أدوات المشرف",
+          "accessRequiredDescription": "يمكن للمشرفين فقط فتح هذه الصفحة.",
+          "accessRequiredTitle": "مطلوب صلاحية مشرف"
         },
         "onboarding": {
-          "auth": "Sign in to continue onboarding.",
-          "failure": "The onboarding flow could not be loaded right now.",
-          "incomplete": "The onboarding response was incomplete. Try loading it again."
+          "auth": "سجّل الدخول لمتابعة التهيئة.",
+          "failure": "تعذر تحميل مسار التهيئة الآن.",
+          "incomplete": "استجابة التهيئة غير مكتملة. حاول تحميلها مرة أخرى."
         },
         "post": {
           "auth": "سجّل الدخول لعرض هذا المنشور.",
@@ -2933,28 +2933,28 @@ export const GENERATED_LOCALE_CATALOGS = {
           "title": "منشور"
         },
         "profile": {
-          "auth": "Sign in to view your profile.",
-          "failure": "The profile could not be loaded right now.",
-          "incomplete": "The profile response was incomplete. Try loading it again.",
-          "title": "Profile"
+          "auth": "سجّل الدخول لعرض ملفّك الشخصي.",
+          "failure": "تعذر تحميل الملفّ الشخصي الآن.",
+          "incomplete": "استجابة الملفّ الشخصي غير مكتملة. حاول تحميله مرة أخرى.",
+          "title": "الملفّ الشخصي"
         },
         "settings": {
-          "auth": "Sign in to access settings.",
-          "failure": "The settings page could not be loaded right now.",
-          "incomplete": "The settings response was incomplete. Try loading it again.",
-          "title": "Settings"
+          "auth": "سجّل الدخول للوصول إلى الإعدادات.",
+          "failure": "تعذر تحميل صفحة الإعدادات الآن.",
+          "incomplete": "استجابة الإعدادات غير مكتملة. حاول تحميلها مرة أخرى.",
+          "title": "الإعدادات"
         },
         "wallet": {
-          "auth": "Sign in to view your wallet.",
-          "failure": "The wallet could not be loaded right now.",
-          "incomplete": "The wallet response was incomplete. Try loading it again.",
-          "title": "Wallet"
+          "auth": "سجّل الدخول لعرض محفظتك.",
+          "failure": "تعذر تحميل المحفظة الآن.",
+          "incomplete": "استجابة المحفظة غير مكتملة. حاول تحميلها مرة أخرى.",
+          "title": "المحفظة"
         },
         "yourCommunities": {
-          "auth": "Sign in to view your communities.",
-          "failure": "Your communities could not be loaded right now.",
-          "incomplete": "Your communities response was incomplete. Try loading it again.",
-          "title": "Your Communities"
+          "auth": "سجّل الدخول لعرض مجتمعاتك.",
+          "failure": "تعذر تحميل مجتمعاتك الآن.",
+          "incomplete": "استجابة مجتمعاتك غير مكتملة. حاول تحميلها مرة أخرى.",
+          "title": "مجتمعاتك"
         }
       }
     },
@@ -4410,70 +4410,70 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "routeStatus": {
         "chat": {
-          "auth": "Sign in to use messages.",
-          "failure": "Messages could not be loaded right now.",
-          "incomplete": "The messages response was incomplete. Try loading it again.",
-          "title": "Messages"
+          "auth": "登录后使用消息功能。",
+          "failure": "暂时无法加载消息。",
+          "incomplete": "消息响应不完整。请重新加载。",
+          "title": "消息"
         },
         "community": {
-          "auth": "Sign in to view this community.",
-          "failure": "The community could not be loaded right now.",
-          "incomplete": "The community response was incomplete. Try loading it again.",
-          "title": "Community",
-          "createPost": "Create Post",
-          "modTools": "Mod Tools"
+          "auth": "登录后查看此社区。",
+          "failure": "暂时无法加载此社区。",
+          "incomplete": "社区响应不完整。请重新加载。",
+          "title": "社区",
+          "createPost": "发布帖子",
+          "modTools": "管理工具"
         },
         "createCommunity": {
-          "auth": "Sign in to create a community.",
-          "failure": "The create community page could not be loaded right now.",
-          "incomplete": "The create community response was incomplete. Try loading it again.",
-          "title": "Create a community",
-          "verifyDescription": "Verify before creating a community.",
-          "verifyPendingDescription": "Complete your palm scan to continue.",
-          "verifyPendingTitle": "Finish verification",
-          "verifyStartDescription": "Scan your palm to prove you're human. No photos or data is saved.",
-          "verifyStartTitle": "Verify",
-          "reopenVerification": "Reopen verification",
-          "startVerification": "Start verification"
+          "auth": "登录后创建社区。",
+          "failure": "暂时无法加载创建社区页面。",
+          "incomplete": "创建社区响应不完整。请重新加载。",
+          "title": "创建社区",
+          "verifyDescription": "创建社区前请先验证。",
+          "verifyPendingDescription": "完成掌纹扫描以继续。",
+          "verifyPendingTitle": "完成验证",
+          "verifyStartDescription": "扫描掌纹以证明你是真人。不会保存任何照片或数据。",
+          "verifyStartTitle": "验证",
+          "reopenVerification": "重新打开验证",
+          "startVerification": "开始验证"
         },
         "createPost": {
-          "auth": "Sign in to create a post.",
-          "failure": "The post composer could not be loaded right now.",
-          "incomplete": "The community response was incomplete. Try loading the composer again.",
-          "title": "Create post",
-          "backToCommunity": "Back to community",
-          "membershipRequiredDescription": "Only community members can publish posts here.",
-          "membershipRequiredTitle": "Join this community before posting"
+          "auth": "登录后发布帖子。",
+          "failure": "暂时无法加载发帖编辑器。",
+          "incomplete": "社区响应不完整。请重新加载编辑器。",
+          "title": "发布帖子",
+          "backToCommunity": "返回社区",
+          "membershipRequiredDescription": "只有社区成员才能在此发布帖子。",
+          "membershipRequiredTitle": "发布前请先加入此社区"
         },
         "home": {
-          "auth": "Sign in to view your home feed.",
-          "failure": "The home feed could not be loaded right now.",
-          "incomplete": "The home feed response was incomplete. Try loading it again.",
-          "title": "Home",
-          "createCommunity": "Create community",
-          "emptyHomeBody": "Join a community or create one to start building your home feed.",
-          "emptyHomeTitle": "No posts yet",
-          "emptyYourCommunitiesBody": "Communities you create or join show up here.",
-          "emptyYourCommunitiesTitle": "No communities yet"
+          "auth": "登录后查看你的主页动态。",
+          "failure": "暂时无法加载主页动态。",
+          "incomplete": "主页动态响应不完整。请重新加载。",
+          "title": "主页",
+          "createCommunity": "创建社区",
+          "emptyHomeBody": "加入或创建一个社区，开始构建你的主页动态。",
+          "emptyHomeTitle": "暂无帖子",
+          "emptyYourCommunitiesBody": "你创建或加入的社区将显示在这里。",
+          "emptyYourCommunitiesTitle": "暂无社区"
         },
         "inbox": {
-          "auth": "Sign in to view your inbox.",
-          "failure": "The inbox could not be loaded right now.",
-          "incomplete": "The inbox response was incomplete. Try loading it again.",
-          "title": "Inbox"
+          "auth": "登录后查看收件箱。",
+          "failure": "暂时无法加载收件箱。",
+          "incomplete": "收件箱响应不完整。请重新加载。",
+          "title": "收件箱"
         },
         "moderation": {
-          "auth": "Sign in to access mod tools.",
-          "failure": "This moderation page could not be loaded right now.",
-          "incomplete": "The community response was incomplete.",
-          "title": "Moderator tools",
-          "accessRequiredDescription": "Only community moderators can open this page.",
-          "accessRequiredTitle": "Moderator access required"
+          "auth": "登录后使用管理工具。",
+          "failure": "暂时无法加载此管理页面。",
+          "incomplete": "社区响应不完整。",
+          "title": "管理工具",
+          "accessRequiredDescription": "只有社区管理员才能打开此页面。",
+          "accessRequiredTitle": "需要管理员权限"
         },
         "onboarding": {
-          "auth": "Sign in to continue onboarding.",
-          "failure": "The onboarding flow could not be loaded right now.",
-          "incomplete": "The onboarding response was incomplete. Try loading it again."
+          "auth": "登录后继续完成引导。",
+          "failure": "暂时无法加载引导流程。",
+          "incomplete": "引导响应不完整。请重新加载。"
         },
         "post": {
           "auth": "登录后查看此帖子。",
@@ -4484,28 +4484,28 @@ export const GENERATED_LOCALE_CATALOGS = {
           "title": "帖子"
         },
         "profile": {
-          "auth": "Sign in to view your profile.",
-          "failure": "The profile could not be loaded right now.",
-          "incomplete": "The profile response was incomplete. Try loading it again.",
-          "title": "Profile"
+          "auth": "登录后查看你的个人资料。",
+          "failure": "暂时无法加载个人资料。",
+          "incomplete": "个人资料响应不完整。请重新加载。",
+          "title": "个人资料"
         },
         "settings": {
-          "auth": "Sign in to access settings.",
-          "failure": "The settings page could not be loaded right now.",
-          "incomplete": "The settings response was incomplete. Try loading it again.",
-          "title": "Settings"
+          "auth": "登录后访问设置。",
+          "failure": "暂时无法加载设置页面。",
+          "incomplete": "设置响应不完整。请重新加载。",
+          "title": "设置"
         },
         "wallet": {
-          "auth": "Sign in to view your wallet.",
-          "failure": "The wallet could not be loaded right now.",
-          "incomplete": "The wallet response was incomplete. Try loading it again.",
-          "title": "Wallet"
+          "auth": "登录后查看你的钱包。",
+          "failure": "暂时无法加载钱包。",
+          "incomplete": "钱包响应不完整。请重新加载。",
+          "title": "钱包"
         },
         "yourCommunities": {
-          "auth": "Sign in to view your communities.",
-          "failure": "Your communities could not be loaded right now.",
-          "incomplete": "Your communities response was incomplete. Try loading it again.",
-          "title": "Your Communities"
+          "auth": "登录后查看你的社区。",
+          "failure": "暂时无法加载你的社区。",
+          "incomplete": "社区响应不完整。请重新加载。",
+          "title": "你的社区"
         }
       }
     },

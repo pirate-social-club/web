@@ -8,7 +8,7 @@ export interface PublicAgentPageProps {
   handle: string;
   ownerHandle: string;
   ownershipProvider?: string | null;
-  createdAt: string;
+  createdAt: string | number;
   avatarSeed?: string;
   avatarSrc?: string;
   bannerSrc?: string;

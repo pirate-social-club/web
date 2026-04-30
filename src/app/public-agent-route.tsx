@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { ApiPublicAgentResolution } from "@/lib/api/client-api-types";
+import type { PublicAgentResolution } from "@pirate/api-contracts";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
 import { buildPublicProfilePath, getProfileHandleLabel } from "@/lib/profile-routing";
@@ -12,7 +12,7 @@ import { PublicAgentPage } from "@/components/compositions/profiles/public-agent
 
 function usePublicAgent(handleLabel: string) {
   const api = useApi();
-  const [resolution, setResolution] = React.useState<ApiPublicAgentResolution | null>(null);
+  const [resolution, setResolution] = React.useState<PublicAgentResolution | null>(null);
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -93,7 +93,7 @@ export function PublicAgentRoutePage({
     <PublicAgentPage
       bio={copy.aboutDescription}
       createdAt={resolution.agent.created}
-      avatarSeed={resolution.agent.agent_id ?? handle}
+      avatarSeed={resolution.agent.agent ?? handle}
       displayName={displayName}
       handle={handle}
       openInPirateHref={`${appOrigin}/a/${encodeURIComponent(handle)}`}

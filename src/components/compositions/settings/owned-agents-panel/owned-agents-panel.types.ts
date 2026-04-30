@@ -1,3 +1,5 @@
+import type { AgentOwnershipProvider } from "@pirate/api-contracts";
+
 export type OwnedAgentStatus =
   | "pending"
   | "active"
@@ -6,7 +8,7 @@ export type OwnedAgentStatus =
   | "transferred"
   | "deregistered";
 
-export type OwnershipProvider = "self_agent_id" | "clawkey";
+export type OwnershipProvider = AgentOwnershipProvider;
 
 export interface OwnedAgentOwnershipSnapshot {
   ownershipProvider: OwnershipProvider;

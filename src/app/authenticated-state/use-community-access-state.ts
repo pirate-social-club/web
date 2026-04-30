@@ -5,6 +5,7 @@ import type { Community as ApiCommunity } from "@pirate/api-contracts";
 
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import { useApi } from "@/lib/api";
+import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
 import { submitCommunitySave, type SaveCommunityAction } from "@/app/authenticated-helpers/community-moderation-save";
 import { serializeIdentityGateDrafts } from "@/app/authenticated-helpers/community-gate-rule-serialization";
@@ -19,9 +20,9 @@ export function useCommunityAccessState({
 }) {
   const api = useApi();
   const [membershipMode, setMembershipMode] = React.useState<"request" | "gated">("gated");
-  const [defaultAgeGatePolicy, setDefaultAgeGatePolicy] = React.useState<"none" | "18_plus">("none");
+  const [defaultAgeGatePolicy, setDefaultAgeGatePolicy] = React.useState<CommunityDefaultAgeGatePolicy>("none");
   const [allowAnonymousIdentity, setAllowAnonymousIdentity] = React.useState(true);
-  const [anonymousIdentityScope, setAnonymousIdentityScope] = React.useState<"community_stable" | "thread_stable" | "post_ephemeral">("community_stable");
+  const [anonymousIdentityScope, setAnonymousIdentityScope] = React.useState<AnonymousIdentityScope>("community_stable");
   const [gateDrafts, setGateDrafts] = React.useState<IdentityGateDraft[]>([]);
   const [savingGates, setSavingGates] = React.useState(false);
   React.useEffect(() => {

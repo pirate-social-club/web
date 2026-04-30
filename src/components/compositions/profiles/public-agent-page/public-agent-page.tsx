@@ -13,6 +13,10 @@ import { cn } from "@/lib/utils";
 
 import type { PublicAgentPageProps } from "./public-agent-page.types";
 
+function contractDate(value: string | number): Date {
+  return new Date(typeof value === "number" ? value * 1000 : value);
+}
+
 function AgentAvatar({
   avatarSeed,
   avatarSrc,
@@ -60,7 +64,7 @@ function PublicHero({
   const { locale } = useUiLocale();
   const localeTag = resolveLocaleLanguageTag(locale);
   const copy = getLocaleMessages(locale, "routes").publicAgent;
-  const createdLabel = new Date(createdAt).toLocaleDateString(localeTag, {
+  const createdLabel = contractDate(createdAt).toLocaleDateString(localeTag, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -77,7 +81,7 @@ function PublicHero({
     <section className="overflow-hidden rounded-[var(--radius-4xl)] border border-border-soft bg-card shadow-[var(--shadow-lg)]">
       <div
         className={cn(
-          "h-40 bg-[radial-gradient(circle_at_top_left,rgba(255,122,24,0.24),transparent_35%),linear-gradient(135deg,rgba(255,122,24,0.14),rgba(255,255,255,0.02))]",
+          "h-40 bg-primary-subtle",
           bannerSrc && "bg-none",
         )}
         style={bannerStyle}
@@ -169,7 +173,7 @@ function AboutPanel({
   const { locale } = useUiLocale();
   const localeTag = resolveLocaleLanguageTag(locale);
   const copy = getLocaleMessages(locale, "routes").publicAgent;
-  const createdLabel = new Date(createdAt).toLocaleDateString(localeTag, {
+  const createdLabel = contractDate(createdAt).toLocaleDateString(localeTag, {
     month: "short",
     day: "numeric",
     year: "numeric",

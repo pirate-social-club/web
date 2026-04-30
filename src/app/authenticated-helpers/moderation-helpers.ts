@@ -12,6 +12,7 @@ import type { PricingTier, CountryAssignment as PricingCountryAssignment } from 
 import { buildCommunityPath } from "@/lib/community-routing";
 import { createDefaultCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 import { COUNTRIES, normalizeCountryCode } from "@/lib/countries";
+import { flattenGatePolicyAtoms } from "@/lib/gate-policy-utils";
 import {
   createDefaultCommunitySafetyAdultContentPolicy,
   createDefaultCommunitySafetyCivilityPolicy,
@@ -86,7 +87,7 @@ export function buildCommunityModerationSections(
 
 export function getCommunityLinkDrafts(community: ApiCommunity): CommunityLinkEditorItem[] {
   return (community.reference_links ?? []).map((link) => ({
-    id: link.id,
+    id: link.community_reference_link,
     label: link.label ?? link.metadata.display_name ?? "",
     platform: link.platform,
     url: link.url,
@@ -220,31 +221,7 @@ export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDra
     .filter((draft): draft is IdentityGateDraft => draft != null);
 }
 
-type ApiGatePolicy = NonNullable<ApiCommunity["gate_policy"]>;
-type ApiGateAtom = NonNullable<ApiGatePolicy["expression"]["gate"]>;
-type ApiGateExpression = Omit<ApiGatePolicy["expression"], "children" | "gate"> & {
-  children?: ApiGateExpression[];
-  gate?: ApiGateAtom;
-};
-
-function flattenGatePolicyAtoms(policy: ApiGatePolicy | null): ApiGateAtom[] {
-  if (!policy) return [];
-  const atoms: ApiGateAtom[] = [];
-  collectGatePolicyAtoms(policy.expression as ApiGateExpression, atoms);
-  return atoms;
-}
-
-function collectGatePolicyAtoms(expression: ApiGateExpression, atoms: ApiGateAtom[]): void {
-  if (expression.op === "gate" && expression.gate) {
-    atoms.push(expression.gate);
-    return;
-  }
-  for (const child of expression.children ?? []) {
-    collectGatePolicyAtoms(child, atoms);
-  }
-}
-
-function getCommunityGateDraft(atom: ApiGateAtom): IdentityGateDraft | null {
+function getCommunityGateDraft(atom: ReturnType<typeof flattenGatePolicyAtoms>[number]): IdentityGateDraft | null {
   if (atom.type === "erc721_holding" && atom.chain_namespace === "eip155:1" && atom.contract_address) {
     return {
       gateType: "erc721_holding",

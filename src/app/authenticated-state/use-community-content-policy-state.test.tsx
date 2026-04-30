@@ -125,11 +125,12 @@ function installCommunityApiMocks() {
     calls.updateReferenceLinks.push({ communityId, body });
     return createCommunity({
       reference_links: body.reference_links.map((link, index) => ({
-        id: link.id ?? `link-${index + 1}`,
-        object: "community_reference_link" as const,
+        community_reference_link: link.id ?? `link-${index + 1}`,
         label: link.label,
+        link_status: "active" as const,
         metadata: { display_name: link.label },
         platform: link.platform,
+        position: link.position ?? index,
         url: link.url,
         verified: false,
       })),

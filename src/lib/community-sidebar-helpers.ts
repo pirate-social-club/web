@@ -7,8 +7,10 @@ import type { MembershipGateSummary as ApiMembershipGateSummary } from "@pirate/
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import type { CommunitySidebarRoleHolder, CommunitySidebarRule } from "@/components/compositions/community/sidebar/community-sidebar.types";
+import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
+import { flattenGatePolicyAtoms } from "@/lib/gate-policy-utils";
 
 type SidebarGateSummary = Pick<
   ApiMembershipGateSummary,
@@ -120,7 +122,7 @@ function formatSidebarRequirement(input: {
 }
 
 export function buildCommunitySidebarRequirements(input: {
-  defaultAgeGatePolicy?: "none" | "18_plus" | null;
+  defaultAgeGatePolicy?: CommunityDefaultAgeGatePolicy | null;
   gateSummaries?: SidebarGateSummary[] | null;
   locale?: string | null;
 }): string[] {
@@ -152,23 +154,7 @@ export function buildCommunitySidebarRequirements(input: {
 function getCommunityGateSummaries(
   community: ApiCommunity,
 ): SidebarGateSummary[] {
-  const policy = community.gate_policy;
-  if (!policy) return [];
-  type ApiGateAtom = NonNullable<typeof policy.expression.gate>;
-  type ApiGateExpression = Omit<typeof policy.expression, "children" | "gate"> & {
-    children?: ApiGateExpression[];
-    gate?: ApiGateAtom;
-  };
-  const atoms: ApiGateAtom[] = [];
-  const collect = (expression: ApiGateExpression): void => {
-    if (expression.op === "gate" && expression.gate) {
-      atoms.push(expression.gate);
-      return;
-    }
-    expression.children?.forEach(collect);
-  };
-  collect(policy.expression as ApiGateExpression);
-  return atoms.map((atom) => ({
+  return flattenGatePolicyAtoms(community.gate_policy).map((atom) => ({
     accepted_providers: "provider" in atom && (atom.provider === "self" || atom.provider === "very" || atom.provider === "passport")
       ? [atom.provider]
       : null,
@@ -207,17 +193,17 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       locale,
     }),
     referenceLinks: community.reference_links?.map((link) => ({
-      communityReferenceLinkId: link.id,
+      communityReferenceLinkId: link.community_reference_link,
       label: resolveCommunityLocalizedText(
         community,
-        `community.reference_link.${link.id}.label`,
+        `community.reference_link.${link.community_reference_link}.label`,
         link.label,
       ) || null,
       linkStatus: link.link_status,
       metadata: {
         displayName: resolveCommunityLocalizedText(
           community,
-          `community.reference_link.${link.id}.metadata.display_name`,
+          `community.reference_link.${link.community_reference_link}.metadata.display_name`,
           link.metadata.display_name,
         ) || null,
         imageUrl: link.metadata.image_url ?? null,
@@ -305,17 +291,17 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       locale,
     }),
     referenceLinks: preview.reference_links?.map((link) => ({
-      communityReferenceLinkId: link.id,
+      communityReferenceLinkId: link.community_reference_link,
       label: resolveCommunityLocalizedText(
         preview,
-        `community.reference_link.${link.id}.label`,
+        `community.reference_link.${link.community_reference_link}.label`,
         link.label,
       ) || null,
       linkStatus: link.link_status,
       metadata: {
         displayName: resolveCommunityLocalizedText(
           preview,
-          `community.reference_link.${link.id}.metadata.display_name`,
+          `community.reference_link.${link.community_reference_link}.metadata.display_name`,
           link.metadata.display_name,
         ) || null,
         imageUrl: link.metadata.image_url ?? null,

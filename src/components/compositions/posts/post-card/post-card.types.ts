@@ -1,4 +1,5 @@
 import type { ActionMenuItem } from "@/components/primitives/action-menu";
+import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
 // Domain-aligned types from specs/domain/asset.md and specs/domain/post.md
 export type AccessMode = "public" | "locked";
@@ -7,7 +8,7 @@ export type SongMode = "original" | "remix";
 export type RightsBasis = "none" | "original" | "derivative" | "attribution_only";
 export type AnalysisState = "pending" | "allow" | "allow_with_required_reference" | "review_required" | "blocked";
 export type ContentSafetyState = "pending" | "safe" | "sensitive" | "adult";
-export type AgeGatePolicy = "none" | "18_plus";
+export type AgeGatePolicy = CommunityDefaultAgeGatePolicy;
 
 // From specs/domain/marketplace.md
 export type ListingMode = "not_listed" | "listed";

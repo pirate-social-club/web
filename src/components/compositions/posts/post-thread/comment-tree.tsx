@@ -75,9 +75,9 @@ function CollapsedCommentRow({ comment }: { comment: PostThreadComment }) {
       <Type as="div" variant="caption" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
         <span className="font-semibold text-foreground"><bdi>{comment.authorLabel}</bdi></span>
         {comment.authorCommunityRole ? (
-          <span className="inline-flex h-[1.15em] items-center self-center rounded-full bg-primary px-2 text-[10px] font-bold uppercase leading-none text-primary-foreground">
+          <Type as="span" variant="overline" className="inline-flex min-h-5 items-center self-center rounded-full bg-primary px-2 leading-none text-primary-foreground">
             {comment.authorCommunityRole === "owner" ? "Owner" : "Mod"}
-          </span>
+          </Type>
         ) : null}
         <span aria-hidden="true">·</span>
         <span>{comment.timestampLabel}</span>

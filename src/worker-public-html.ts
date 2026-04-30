@@ -25,8 +25,9 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function formatJoinedLabel(createdAt: string, localeTag: string): string {
-  return new Date(createdAt).toLocaleDateString(localeTag, {
+function formatJoinedLabel(createdAt: string | number, localeTag: string): string {
+  const date = new Date(typeof createdAt === "number" ? createdAt * 1000 : createdAt);
+  return date.toLocaleDateString(localeTag, {
     month: "short",
     year: "numeric",
     timeZone: "UTC",
@@ -108,7 +109,7 @@ export function renderPublicProfilePage({
     ? communities
         .map(
           (community) =>
-            `<a class="community-link" href="${appOrigin}${buildCommunityPath(community.community, community.route_slug)}">${escapeHtml(community.display_name)}</a>`,
+            `<a class="community-link" href="${appOrigin}${buildCommunityPath(community.community, community.route_slug ?? null)}">${escapeHtml(community.display_name)}</a>`,
         )
         .join("")
     : "";
@@ -289,7 +290,7 @@ export function renderPublicAgentPage({
   const safeHost = escapeHtml(host);
   const safeCanonicalUrl = escapeHtml(canonicalUrl);
   const safeOpenHref = `${appOrigin}/a/${encodeURIComponent(handle)}`;
-  const createdLabel = new Date(agentResolution.agent.created).toLocaleDateString(localeTag, {
+  const createdLabel = new Date(agentResolution.agent.created * 1000).toLocaleDateString(localeTag, {
     month: "short",
     day: "numeric",
     year: "numeric",

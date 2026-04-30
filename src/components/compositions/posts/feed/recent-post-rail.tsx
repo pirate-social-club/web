@@ -56,7 +56,7 @@ export function RecentPostRail({
           as="h2"
           id={headingId}
           variant="overline"
-          className="text-[13px] tracking-[0.02em] text-muted-foreground/70"
+          className="text-muted-foreground/70"
         >
           {title}
         </Type>
@@ -72,7 +72,7 @@ export function RecentPostRail({
               key={item.postId}
             >
               <div className="min-w-0 flex-1 pr-2">
-                <div className="flex min-w-0 items-center gap-2 text-[15px] leading-none text-muted-foreground">
+                <Type as="div" variant="caption" className="flex min-w-0 items-center gap-2 leading-none">
                   <a
                     className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label={`Open community: ${item.communityLabel}`}
@@ -99,7 +99,7 @@ export function RecentPostRail({
                     •
                   </span>
                   <span className="shrink-0 text-muted-foreground/80">{item.timestampLabel}</span>
-                </div>
+                </Type>
                 <a
                   className="group mt-2 block rounded-[var(--radius-md)] outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label={`Open post: ${item.postTitle}`}
@@ -108,18 +108,18 @@ export function RecentPostRail({
                   <Type
                     as="span"
                     variant="body-strong"
-                    className="block line-clamp-2 text-[17px] leading-[1.24] transition-colors group-hover:text-link md:text-[18px]"
+                    className="block line-clamp-2 transition-colors group-hover:text-link"
                   >
                     {item.postTitle}
                   </Type>
                 </a>
-                <div className="mt-2 flex flex-nowrap items-center gap-2 text-[14px] leading-none text-muted-foreground">
+                <Type as="div" variant="caption" className="mt-2 flex flex-nowrap items-center gap-2 leading-none">
                   <span className="whitespace-nowrap">{`${scoreLabel} upvotes`}</span>
                   <span aria-hidden="true" className="shrink-0">
                     •
                   </span>
                   <span className="whitespace-nowrap">{`${commentLabel} comments`}</span>
-                </div>
+                </Type>
               </div>
               {item.thumbnailSrc ? (
                 <a

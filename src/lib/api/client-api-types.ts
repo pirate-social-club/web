@@ -1,34 +1,10 @@
 import type {
   Community,
+  GatePolicy,
   CommunityMoneyPolicy,
   CommunityPricingPolicy,
-  Profile,
 } from "@pirate/api-contracts";
-
-export type ApiGatePolicy = {
-  version: 1;
-  expression: ApiGateExpression;
-};
-
-export type ApiGateExpression =
-  | { op: "and" | "or"; children: ApiGateExpression[] }
-  | { op: "gate"; gate: ApiGateAtom };
-
-export type ApiGateAtom =
-  | { type: "unique_human"; provider: "self" | "very" }
-  | { type: "minimum_age"; provider: "self"; minimum_age: number }
-  | { type: "nationality"; provider: "self"; allowed: string[] }
-  | { type: "gender"; provider: "self"; allowed: Array<"M" | "F"> }
-  | { type: "wallet_score"; provider: "passport"; minimum_score: number }
-  | { type: "erc721_holding"; chain_namespace: "eip155:1"; contract_address: string }
-  | {
-    type: "erc721_inventory_match";
-    provider: "courtyard";
-    chain_namespace: "eip155:1" | "eip155:137";
-    contract_address: string;
-    min_quantity: number;
-    match: Record<string, unknown>;
-  };
+import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
 export type ApiCreateCommunityRequest = {
   display_name: string;
@@ -51,15 +27,15 @@ export type ApiCreateCommunityRequest = {
       report_reason?: string | null;
     }> | null;
   } | null;
-  membership_mode?: "request" | "gated";
-  default_age_gate_policy?: "none" | "18_plus";
+  membership_mode?: "open" | "request" | "gated";
+  default_age_gate_policy?: CommunityDefaultAgeGatePolicy;
   allow_anonymous_identity?: boolean;
-  anonymous_identity_scope?: "community_stable" | "thread_stable" | "post_ephemeral" | null;
+  anonymous_identity_scope?: AnonymousIdentityScope | null;
   handle_policy?: {
     policy_template: "standard";
   };
   governance_mode?: "centralized";
-  gate_policy?: ApiGatePolicy | null;
+  gate_policy?: GatePolicy | null;
   namespace?: {
     namespace_verification: string;
   } | null;
@@ -85,39 +61,6 @@ export type ApiProfileMediaUploadResponse = {
   storage_object_key: string;
 };
 
-export type ApiPublicProfileResolution = {
-  profile: Profile;
-  requested_handle_label: string;
-  resolved_handle_label: string;
-  is_canonical: boolean;
-  created_communities: Array<{
-    community: string;
-    display_name: string;
-    route_slug: string | null;
-    created: string;
-  }>;
-};
-
-export type ApiPublicAgentResolution = {
-  is_canonical: boolean;
-  requested_handle_label: string;
-  resolved_handle_label: string;
-  agent: {
-    agent_id: string;
-    display_name: string | null;
-    handle: { label_display: string };
-    ownership_provider: string | null;
-    created: string;
-    updated: string;
-  };
-  owner: {
-    user: string;
-    display_name: string | null;
-    global_handle: { label: string };
-    primary_public_handle: { label: string } | null;
-  };
-};
-
 export type ApiSongArtifactUploadContentRequest = {
   content_base64: string;
 };
@@ -133,10 +76,10 @@ export type ApiCommunityRuleInput = {
 
 export type ApiCommunityGatesUpdateRequest = {
   membership_mode: "request" | "gated";
-  default_age_gate_policy?: "none" | "18_plus" | null;
+  default_age_gate_policy?: CommunityDefaultAgeGatePolicy | null;
   allow_anonymous_identity: boolean;
-  anonymous_identity_scope?: "community_stable" | "thread_stable" | "post_ephemeral" | null;
-  gate_policy?: ApiGatePolicy | null;
+  anonymous_identity_scope?: AnonymousIdentityScope | null;
+  gate_policy?: GatePolicy | null;
 };
 
 export type ApiUpdateCommunityRequest = {
@@ -294,13 +237,6 @@ export type HandleUpgradeQuoteResponse = {
   benefit_source?: "verified_reddit_username" | "reddit_reputation" | null;
   reputation_discount_cents?: number | null;
   claim_reason?: string | null;
-};
-
-export type RenameHandleResponse = {
-  global_handle_id: string;
-  label: string;
-  tier: string;
-  status: string;
 };
 
 export type NotificationFeedOptions = {

@@ -38,6 +38,7 @@ import {
   moderationStoryCommunityAvatar,
   moderationStoryCommunityLabel,
 } from "./story-fixtures";
+import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
 const SAMPLE_LABELS: LabelEditorDefinition[] = [
   { id: "l1", label: "Discussion", color: "#6377f0", status: "active" },
@@ -88,8 +89,8 @@ function ModerationShellStory({
   initialView = "rules",
 }: {
   initialAllowAnonymousIdentity?: boolean;
-  initialAnonymousIdentityScope?: "community_stable" | "thread_stable" | "post_ephemeral";
-  initialDefaultAgeGatePolicy?: "none" | "18_plus";
+  initialAnonymousIdentityScope?: AnonymousIdentityScope;
+  initialDefaultAgeGatePolicy?: CommunityDefaultAgeGatePolicy;
   initialCommunityDescription?: string;
   initialCommunityDisplayName?: string;
   initialGateDrafts?: IdentityGateDraft[];
@@ -110,11 +111,11 @@ function ModerationShellStory({
   const [membershipMode, setMembershipMode] =
     React.useState<"request" | "gated">(initialMembershipMode);
   const [defaultAgeGatePolicy, setDefaultAgeGatePolicy] =
-    React.useState<"none" | "18_plus">(initialDefaultAgeGatePolicy);
+    React.useState<CommunityDefaultAgeGatePolicy>(initialDefaultAgeGatePolicy);
   const [allowAnonymousIdentity, setAllowAnonymousIdentity] =
     React.useState(initialAllowAnonymousIdentity);
   const [anonymousIdentityScope, setAnonymousIdentityScope] =
-    React.useState<"community_stable" | "thread_stable" | "post_ephemeral">(initialAnonymousIdentityScope);
+    React.useState<AnonymousIdentityScope>(initialAnonymousIdentityScope);
   const [gateDrafts, setGateDrafts] = React.useState<IdentityGateDraft[]>(initialGateDrafts);
   const [links, setLinks] = React.useState<CommunityLinkEditorItem[]>(initialLinks);
   const [labelsEnabled, setLabelsEnabled] = React.useState(initialLabelsEnabled);

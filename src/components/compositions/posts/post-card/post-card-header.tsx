@@ -3,6 +3,7 @@ import { WarningCircle } from "@phosphor-icons/react";
 
 import { AvatarWithBadge } from "@/components/compositions/system/avatar-badge/avatar-with-badge";
 import { Avatar } from "@/components/primitives/avatar";
+import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
@@ -164,9 +165,9 @@ function AuthorRoleBadge({ role }: { role?: CommunityAuthorRole | null }) {
   if (!role) return null;
 
   return (
-    <span className="inline-flex h-[1.3em] items-center self-center rounded-full bg-primary px-2 text-[10px] font-bold uppercase leading-none text-primary-foreground">
+    <Type as="span" variant="overline" className="inline-flex min-h-5 items-center self-center rounded-full bg-primary px-2 leading-none text-primary-foreground">
       {role === "owner" ? "Owner" : "Mod"}
-    </span>
+    </Type>
   );
 }
 

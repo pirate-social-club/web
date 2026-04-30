@@ -1,5 +1,9 @@
 "use client";
 
+import * as React from "react";
+
+import { createPortal } from "react-dom";
+
 import { Button } from "@/components/primitives/button";
 import { CardFooter } from "@/components/primitives/card";
 import { FormNote } from "@/components/primitives/form-layout";
@@ -145,6 +149,8 @@ export function PostComposerMobileSubmitBar({
     return null;
   }
 
+  let bar: React.ReactNode = null;
+
   if (step.isWriteStep && tabs.activeTab !== "live") {
     const canAdvanceWrite = canAdvanceComposerWriteStep({
       body: fields.textBodyValue,
@@ -156,7 +162,7 @@ export function PostComposerMobileSubmitBar({
       videoUploadPresent: Boolean(media.videoState.primaryVideoUpload),
     });
 
-    return (
+    bar = (
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
         <div className="px-4">
           <Button
@@ -170,26 +176,30 @@ export function PostComposerMobileSubmitBar({
         </div>
       </div>
     );
-  }
+  } else {
+    const publishLabel = tabs.activeTab === "live" ? submit.label : copy.actions.publish;
 
-  const publishLabel = tabs.activeTab === "live" ? submit.label : copy.actions.publish;
-
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
-      <div className="space-y-3 px-4">
-        {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
-        <div>
-          <Button
-            className="w-full"
-            disabled={submit.disabled}
-            loading={submit.loading}
-            onClick={submit.onSubmit}
-            size="lg"
-          >
-            {publishLabel}
-          </Button>
+    bar = (
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
+        <div className="space-y-3 px-4">
+          {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
+          <div>
+            <Button
+              className="w-full"
+              disabled={submit.disabled}
+              loading={submit.loading}
+              onClick={submit.onSubmit}
+              size="lg"
+            >
+              {publishLabel}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (typeof document === "undefined") return bar;
+
+  return createPortal(bar, document.body);
 }

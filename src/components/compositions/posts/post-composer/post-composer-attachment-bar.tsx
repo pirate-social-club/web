@@ -1,6 +1,8 @@
 "use client";
 
-import type * as React from "react";
+import * as React from "react";
+
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/primitives/button";
 import { cn } from "@/lib/utils";
@@ -45,7 +47,6 @@ export function PostComposerAttachmentBar({
 export function PostComposerMobileAttachmentBar({
   actions,
   activeKind,
-  bottomOffset,
   onSelect,
 }: {
   actions: Array<{
@@ -54,15 +55,13 @@ export function PostComposerMobileAttachmentBar({
     label: string;
   }>;
   activeKind: AttachmentKind | null;
-  bottomOffset: number;
   onSelect: (kind: AttachmentKind) => void;
 }) {
-  return (
+  const bar = (
     <div
-      className="fixed inset-x-0 z-30 border-t border-border-soft bg-background/95 px-5 pt-3 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
-      style={{ bottom: bottomOffset }}
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-border-soft bg-background/95 px-5 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between py-3">
         {actions.map((action) => (
           <button
             aria-label={action.label}
@@ -80,6 +79,10 @@ export function PostComposerMobileAttachmentBar({
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") return bar;
+
+  return createPortal(bar, document.body);
 }
 
 export function PostComposerDesktopAttachmentToolbar({

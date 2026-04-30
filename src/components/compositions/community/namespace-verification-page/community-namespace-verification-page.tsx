@@ -173,7 +173,6 @@ export function CommunityNamespaceVerificationPage({
 
         <div className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5 md:py-5">
           <div className="space-y-2">
-            <Type as="div" variant="body-strong">Namespace connected</Type>
             {publicCommunityUrl && handshakeUrl ? (
               <div className="space-y-3">
                 <Type as="p" variant="body">

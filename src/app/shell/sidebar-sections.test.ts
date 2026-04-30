@@ -44,6 +44,7 @@ describe("buildSidebarSections", () => {
         routeSlug: "@xn--t77hga",
         updatedAt: "2026-04-29T00:00:00.000Z",
       }],
+      false,
     );
 
     const item = sections[0]?.items[0];

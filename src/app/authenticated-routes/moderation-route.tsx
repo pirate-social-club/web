@@ -36,6 +36,7 @@ import {
   type CommunityModerationSection,
 } from "@/app/authenticated-helpers/moderation-helpers";
 import { useCommunityModerationState } from "@/app/authenticated-state/moderation-state";
+import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 
@@ -114,7 +115,12 @@ export function CommunityModerationIndexPage({
 }: {
   communityId: string;
 }) {
+  const hydrated = useClientHydrated();
   const isMobile = useIsModerationMobileLayout();
+
+  if (!hydrated) {
+    return <div className="min-h-screen w-full bg-background" />;
+  }
   const state = useCommunityModerationState(communityId);
   const { copy } = useRouteMessages();
   const sections = buildCommunityModerationSections(
@@ -178,7 +184,12 @@ export function CommunityModerationPage({
   section: CommunityModerationSection;
 }) {
   const api = useApi();
+  const hydrated = useClientHydrated();
   const isMobile = useIsModerationMobileLayout();
+
+  if (!hydrated) {
+    return <div className="min-h-screen w-full bg-background" />;
+  }
   const state = useCommunityModerationState(communityId);
   const { copy } = useRouteMessages();
   const [membershipRequests, setMembershipRequests] = React.useState<MembershipRequestSummary[]>([]);

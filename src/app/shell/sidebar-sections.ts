@@ -19,8 +19,8 @@ import type { ComponentProps } from "react";
 import type { AppRoute } from "@/app/router";
 import { navigate } from "@/app/router";
 import {
+  buildCommunityModerationEntryPath,
   buildCommunityModerationIndexPath,
-  buildDefaultCommunityModerationPath,
 } from "@/app/authenticated-helpers/moderation-helpers";
 import type {
   AppSidebarPrimaryItem,
@@ -105,6 +105,7 @@ export function buildSidebarSections(
   messages: ShellMessages["appSidebar"],
   recentCommunities: SidebarCommunitySummary[],
   moderatedCommunities: SidebarCommunitySummary[],
+  isMobileWeb: boolean,
 ): AppSidebarSection[] {
   const getSectionLabel = (sectionId: string, fallback: string) =>
     messages.sections.find((section) => section.id === sectionId)?.label ?? fallback;
@@ -133,7 +134,7 @@ export function buildSidebarSections(
         avatarSrc: community.avatarSrc,
         id: `moderation/${community.communityId}`,
         label: formatCommunitySidebarLabel(community.communityId, community.routeSlug),
-        onSelect: () => navigate(buildDefaultCommunityModerationPath(community.communityId, community.routeSlug)),
+        onSelect: () => navigate(buildCommunityModerationEntryPath(community.communityId, isMobileWeb, community.routeSlug)),
       })),
     });
   }

@@ -119,7 +119,7 @@ function NotificationShell({
   const unreadChatCount = useAssistantUnreadCount();
   const { moderatedCommunities, recentCommunities } = useSidebarCommunities();
   const codeItems = buildCodeItems(copy.appSidebar);
-  const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities);
+  const sections = buildSidebarSections(copy.appSidebar, recentCommunities, moderatedCommunities, isMobileLayout);
   const resourceItems = buildResourceItems(copy.appSidebar);
   const isMobileStandaloneRoute = isMobileLayout && (
     route.kind === "post"

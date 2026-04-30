@@ -192,29 +192,31 @@ export function usePost(
 
   const createTopLevelComment = React.useCallback(async (input: { body: string; authorMode: "human" | "agent" }): Promise<PostThreadSubmitResult> => {
     if (!post) return "blocked";
+    const communityId = post.post.community;
+    const nextPostId = post.post.id;
     const result = await runGatedCommunityAction({
       action: "reply_post",
-      communityId: post.post.id,
+      communityId,
       onAllowed: async () => {
         try {
           const commentBody = { body: input.body };
           await api.communities.createComment(
-            post.post.id,
-            post.post.id,
+            communityId,
+            nextPostId,
             input.authorMode === "agent"
               ? await signAgentAuthoredCommentBody(
-                `/communities/${post.post.id}/posts/${post.post.id}/comments`,
+                `/communities/${communityId}/posts/${nextPostId}/comments`,
                 commentBody,
               )
               : commentBody,
           );
-          await refreshTopLevelComments(post.post.id);
+          await refreshTopLevelComments(communityId);
         } catch (nextError) {
           toast.error(getErrorMessage(nextError, "Could not post this reply."));
           throw nextError;
         }
       },
-      postId: post.post.id,
+      postId: nextPostId,
     });
     return result === "allowed" ? "submitted" : "blocked";
   }, [api, post, refreshTopLevelComments, runGatedCommunityAction, signAgentAuthoredCommentBody]);
@@ -223,7 +225,7 @@ export function usePost(
     if (!post) return "blocked";
     const result = await runGatedCommunityAction({
       action: "reply_comment",
-      communityId: post.post.id,
+      communityId: post.post.community,
       onAllowed: async () => {
         try {
           const commentBody = { body: input.body };
@@ -262,7 +264,7 @@ export function usePost(
     if (!post) return;
     await runGatedCommunityAction({
       action: "vote_comment",
-      communityId: post.post.id,
+      communityId: post.post.community,
       onAllowed: async () => {
         const nextValue = direction === "up" ? 1 : -1;
         const currentNode = findThreadCommentNode(commentNodes, commentId);
@@ -297,7 +299,7 @@ export function usePost(
     if (!post) return;
     await runGatedCommunityAction({
       action: "vote_post",
-      communityId: post.post.id,
+      communityId: post.post.community,
       onAllowed: async () => {
         const nextPostId = post.post.id;
         await submitOptimisticPostVote({
@@ -383,9 +385,9 @@ export function usePost(
 
         void Promise.all([
           (hasSession
-            ? api.communities.preview(p.post.id, { locale })
-            : api.publicCommunities.get(p.post.id, { locale })).catch(() => null),
-          loadTopLevelComments(p.post.id, nextReadMode, commentSort),
+            ? api.communities.preview(p.post.community, { locale })
+            : api.publicCommunities.get(p.post.community, { locale })).catch(() => null),
+          loadTopLevelComments(p.post.community, nextReadMode, commentSort),
           hasSession ? api.agents.list().catch(() => null) : Promise.resolve(null),
         ])
           .then(async ([communityResult, commentTree, ownedAgentsResult]) => {

@@ -1,8 +1,8 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { buildAnonymousLabel } from "./anonymous-label";
 
 describe("buildAnonymousLabel", () => {
-  it("matches server algorithm for community_stable scope", () => {
+  test("matches server algorithm for community_stable scope", () => {
     expect(
       buildAnonymousLabel({ communityId: "cmt_test123", userId: "usr_user1" }),
     ).toBe("anon_ember-port-10");
@@ -27,7 +27,7 @@ describe("buildAnonymousLabel", () => {
     ).toBe("anon_ivory-oar-90");
   });
 
-  it("is deterministic for the same inputs", () => {
+  test("is deterministic for the same inputs", () => {
     const first = buildAnonymousLabel({
       communityId: "cmt_test123",
       userId: "usr_user1",
@@ -39,7 +39,7 @@ describe("buildAnonymousLabel", () => {
     expect(first).toBe(second);
   });
 
-  it("differs when communityId differs", () => {
+  test("differs when communityId differs", () => {
     const a = buildAnonymousLabel({
       communityId: "cmt_alpha",
       userId: "usr_same",
@@ -48,10 +48,10 @@ describe("buildAnonymousLabel", () => {
       communityId: "cmt_beta",
       userId: "usr_same",
     });
-    expect(a).not.toBe(b);
+    expect(a === b).toBe(false);
   });
 
-  it("differs when userId differs", () => {
+  test("differs when userId differs", () => {
     const a = buildAnonymousLabel({
       communityId: "cmt_same",
       userId: "usr_alpha",
@@ -60,6 +60,6 @@ describe("buildAnonymousLabel", () => {
       communityId: "cmt_same",
       userId: "usr_beta",
     });
-    expect(a).not.toBe(b);
+    expect(a === b).toBe(false);
   });
 });

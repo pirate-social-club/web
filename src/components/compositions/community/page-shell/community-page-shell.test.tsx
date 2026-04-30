@@ -56,7 +56,7 @@ describe("CommunityPageShell", () => {
         sidebar={{
           createdAt: "2026-04-28T00:00:00.000Z",
           displayName: "Test community",
-          membershipMode: "open",
+          membershipMode: "request",
           moderators: [],
         }}
         title="Test community"
@@ -97,7 +97,7 @@ describe("CommunityPageShell", () => {
         sidebar={{
           createdAt: "2026-04-28T00:00:00.000Z",
           displayName: "Test community",
-          membershipMode: "open",
+          membershipMode: "request",
           moderators: [],
         }}
         title="Test community"

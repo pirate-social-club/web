@@ -51,7 +51,8 @@ describe("buildCommunitySidebarRequirements", () => {
 describe("buildCommunityPreviewSidebar", () => {
   test("uses localized preview text when ready", () => {
     const sidebar = buildCommunityPreviewSidebar({
-      community: "cmt_test",
+      id: "cmt_test",
+      object: "community_preview",
       display_name: "Pirate Club",
       description: "Canonical description",
       localized_text: {
@@ -77,7 +78,6 @@ describe("buildCommunityPreviewSidebar", () => {
       member_count: 12,
       follower_count: 20,
       donation_policy_mode: "none",
-      donation_partner: null,
       donation_partner: null,
       owner: {
         user: "usr_owner",
@@ -105,7 +105,7 @@ describe("buildCommunityPreviewSidebar", () => {
       rules: [],
       viewer_membership_status: "member",
       viewer_following: true,
-      created: "2026-04-24T00:00:00.000Z",
+      created: Date.parse("2026-04-24T00:00:00.000Z"),
     });
 
     expect(sidebar.description).toBe("Descripcion traducida");

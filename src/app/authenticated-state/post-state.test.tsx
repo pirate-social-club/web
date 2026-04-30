@@ -43,6 +43,8 @@ const labels = {
 function createPostResponse(): LocalizedPostResponse {
   return {
     post: {
+      id: "pst_test",
+      object: "post",
       post: "pst_test",
       community: "cmt_test",
       post_type: "text",
@@ -54,7 +56,7 @@ function createPostResponse(): LocalizedPostResponse {
       identity_mode: "anonymous",
       author_user: null,
       anonymous_label: "anon",
-      authorship_mode: "human",
+      authorship_mode: "human_direct",
       agent_display_name_snapshot: null,
       agent_owner_handle_snapshot: null,
       source_language: "en",
@@ -66,19 +68,18 @@ function createPostResponse(): LocalizedPostResponse {
       link_url: null,
       asset: null,
       access_mode: "public",
-      created: "2026-04-24T00:00:00.000Z",
-      updated: "2026-04-24T00:00:00.000Z",
-      score: 0,
+      created: Date.parse("2026-04-24T00:00:00.000Z"),
     } as unknown as LocalizedPostResponse["post"],
     thread_snapshot: {
+      thread_root_post: "pst_test",
       thread_root_post_id: "pst_test",
       snapshot_seq: 1,
-      published_through_comment_created_at: "2026-04-24T00:00:00.000Z",
+      published_through_comment_created: Date.parse("2026-04-24T00:00:00.000Z"),
       comment_count: 0,
       swarm_manifest_ref: "swarm://comments/pst_test",
       swarm_feed_ref: null,
-      created: "2026-04-24T00:00:00.000Z",
-    },
+      created: Date.parse("2026-04-24T00:00:00.000Z"),
+    } as unknown as LocalizedPostResponse["thread_snapshot"],
     comment_count: 0,
     label: null,
     upvote_count: 0,
@@ -98,7 +99,8 @@ function createPostResponse(): LocalizedPostResponse {
 
 function createPreview(): CommunityPreview {
   return {
-    community: "cmt_test",
+    id: "cmt_test",
+    object: "community_preview",
     display_name: "Preview Community",
     description: "Localized preview source",
     localized_text: null,
@@ -109,7 +111,6 @@ function createPreview(): CommunityPreview {
     member_count: 2,
     follower_count: 3,
     donation_policy_mode: "none",
-    donation_partner: null,
     donation_partner: null,
     owner: {
       user: "usr_owner",
@@ -125,7 +126,7 @@ function createPreview(): CommunityPreview {
     rules: [],
     viewer_membership_status: "member",
     viewer_following: true,
-    created: "2026-04-24T00:00:00.000Z",
+    created: Date.parse("2026-04-24T00:00:00.000Z"),
   };
 }
 
@@ -199,7 +200,8 @@ describe("usePost", () => {
     expect(result.current.post?.post.id).toBe("pst_test");
     expect(result.current.community).toBeNull();
 
-    resolvePreview?.(createPreview());
+    const resolveLoadedPreview = resolvePreview as unknown as (preview: CommunityPreview) => void;
+    resolveLoadedPreview(createPreview());
     await waitFor(() => expect(result.current.community?.display_name).toBe("Preview Community"));
   });
 });

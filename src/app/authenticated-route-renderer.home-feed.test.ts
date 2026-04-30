@@ -9,12 +9,13 @@ import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 function createEntry(): HomeFeedItem {
   return {
     community: {
-      avatar_ref: null,
+      id: "cmt_alpha",
+      object: "home_feed_community_summary",
       community: "cmt_alpha",
+      avatar_ref: null,
       display_name: "Alpha Crew",
       member_count: null,
       route_slug: "alpha",
-      updated: "2026-04-18T10:00:00.000Z",
     },
     post: {
       downvote_count: 2,
@@ -34,13 +35,15 @@ function createEntry(): HomeFeedItem {
         caption: null,
         community: "cmt_alpha",
         content_safety_state: "safe",
-        created: "2026-04-18T10:00:00.000Z",
+        created: Date.parse("2026-04-18T10:00:00.000Z"),
         disclosed_qualifiers_json: null,
         identity_mode: "public",
         label_id: null,
         link_url: null,
         media_refs: undefined,
         parent_post_id: null,
+        id: "pst_alpha",
+        object: "post",
         post: "pst_alpha",
         post_type: "text",
         rights_basis: "none",
@@ -51,17 +54,17 @@ function createEntry(): HomeFeedItem {
         visibility: "public",
         title: "Hello world",
         translation_policy: "none",
-        updated: "2026-04-18T10:00:00.000Z",
       },
       resolved_locale: "en",
       source_hash: "src_test",
       thread_snapshot: {
         comment_count: 5,
-        created: "2026-04-18T10:30:00.000Z",
-        published_through_comment_created_at: "2026-04-18T10:30:00.000Z",
+        created: Date.parse("2026-04-18T10:30:00.000Z"),
+        published_through_comment_created: Date.parse("2026-04-18T10:30:00.000Z"),
         snapshot_seq: 1,
         swarm_feed_ref: null,
         swarm_manifest_ref: "swm_test",
+        thread_root_post: "pst_alpha",
         thread_root_post_id: "pst_alpha",
       },
       comment_count: 5,
@@ -72,22 +75,25 @@ function createEntry(): HomeFeedItem {
       upvote_count: 11,
       viewer_reaction_kinds: [],
       viewer_vote: 1,
-    } as LocalizedPostResponse,
-  };
+    } as unknown as LocalizedPostResponse,
+  } as unknown as HomeFeedItem;
 }
 
 function createAuthorProfile(overrides: Partial<Profile> = {}): Profile {
   return {
+    id: "usr_author",
+    object: "profile",
     avatar_ref: null,
     bio: null,
     cover_ref: null,
-    created: "2026-04-18T10:00:00.000Z",
+    created: Date.parse("2026-04-18T10:00:00.000Z"),
     display_name: "Blackbeard",
     global_handle: {
       free_rename_consumed: false,
-      global_handle_id: "ghl_blackbeard",
+      id: "ghl_blackbeard",
+      object: "global_handle",
       issuance_source: "generated_signup",
-      issued_at: "2026-04-18T10:00:00.000Z",
+      issued_at: Date.parse("2026-04-18T10:00:00.000Z"),
       label: "sable-harbor-4143.pirate",
       replaced_at: null,
       status: "active",
@@ -97,8 +103,6 @@ function createAuthorProfile(overrides: Partial<Profile> = {}): Profile {
     preferred_locale: null,
     primary_public_handle: null,
     primary_wallet_address: null,
-    updated: "2026-04-18T10:00:00.000Z",
-    user: "usr_author",
     verification_capabilities: null,
     ...overrides,
   };
@@ -133,7 +137,7 @@ describe("toHomeFeedItem", () => {
       {
         qualifier_kind: "verification_capability",
         qualifier_source: "community_post",
-        qualifier_template_id: "unique_human",
+        qualifier_template: "unique_human",
         redundancy_key: null,
         rendered_label: "Unique Human",
         sensitivity_level: null,
@@ -141,13 +145,13 @@ describe("toHomeFeedItem", () => {
       {
         qualifier_kind: "verification_capability",
         qualifier_source: "community_post",
-        qualifier_template_id: "age_over_18",
+        qualifier_template: "age_over_18",
         redundancy_key: null,
         rendered_label: "18+",
         sensitivity_level: null,
       },
     ];
-    entry.post.label = { label: "Legacy Label", label_id: "lbl_legacy", status: "active" };
+    entry.post.label = { id: "lbl_legacy", object: "post_label", label: "Legacy Label", status: "active" };
 
     const item = toHomeFeedItem(entry, {});
 

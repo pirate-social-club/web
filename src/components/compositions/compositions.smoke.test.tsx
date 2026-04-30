@@ -68,6 +68,7 @@ const basePost = {
 
 const namespaceVerificationTask = {
   id: "tsk_namespace_infinity",
+  object: "user_task" as const,
   user: "usr_owner_1",
   type: "namespace_verification_required" as const,
   subject_type: "community",
@@ -80,31 +81,31 @@ const namespaceVerificationTask = {
   },
   resolved_at: null,
   dismissed_at: null,
-  created: "2026-04-19T08:00:00.000Z",
-  updated: "2026-04-19T08:00:00.000Z",
+  created: Date.parse("2026-04-19T08:00:00.000Z"),
 };
 
 const commentReplyNotification = {
   event: {
     id: "nev_reply_1",
+    object: "notification_event" as const,
     type: "comment_reply" as const,
     actor_user: "usr_actor_1",
     subject_type: "comment",
     subject: "cmt_parent_1",
     object_type: "comment",
-    object_id: "cmt_reply_1",
     payload: {
       community: "gld_community_1",
       thread_root_post_id: "pst_root_1",
     },
-    created: "2026-04-19T11:45:00.000Z",
+    created: Date.parse("2026-04-19T11:45:00.000Z"),
   },
   receipt: {
     id: "nev_reply_1",
-    recipient_user_id: "usr_owner_1",
+    object: "notification_receipt" as const,
+    recipient_user: "usr_owner_1",
     seen_at: null,
     read_at: null,
-    created: "2026-04-19T11:45:00.000Z",
+    created: Date.parse("2026-04-19T11:45:00.000Z"),
   },
 };
 

@@ -152,7 +152,7 @@ function CommunityVerificationBadge() {
   return (
     <span
       aria-label="Unverified community"
-      className="inline-flex size-[1.05em] shrink-0 items-center justify-center self-center text-amber-300"
+      className="inline-flex size-[1.05em] shrink-0 items-center justify-center self-center text-warning"
       title="Community name is not verified with Handshake or Spaces."
     >
       <WarningCircle aria-hidden className="size-full" weight="fill" />

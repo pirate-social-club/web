@@ -12,7 +12,6 @@ installDomGlobals();
 
 type DonationPolicyBody = {
   donation_policy_mode: "none" | "optional_creator_sidecar";
-  donation_partner: string | null;
   donation_partner: {
     donation_partner: string;
     display_name: string;
@@ -40,10 +39,9 @@ type PricingPolicyBody = {
 
 function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
   return {
-    community: "community-1",
+    id: "community-1",
     display_name: "Test Community",
     donation_policy_mode: "none",
-    donation_partner: null,
     donation_partner: null,
     ...overrides,
   } as ApiCommunity;
@@ -53,7 +51,8 @@ function createPricingPolicy(
   overrides: Partial<ApiCommunityPricingPolicy> = {},
 ): ApiCommunityPricingPolicy {
   return {
-    community: "community-1",
+    id: "policy-1",
+    object: "community_pricing_policy",
     policy_origin: "explicit",
     pricing_policy_version: "v1",
     regional_pricing_enabled: true,
@@ -66,7 +65,6 @@ function createPricingPolicy(
       adjustment_value: 1,
     }],
     country_assignments: [{ country_code: "US", tier_key: "tier_1" }],
-    updated: "2026-01-01T00:00:00Z",
     ...overrides,
   };
 }
@@ -121,7 +119,6 @@ function installCommunityApiMocks(options: {
     calls.updateDonationPolicy.push({ communityId, body });
     return options.updatedCommunity ?? createCommunity({
       donation_policy_mode: body.donation_policy_mode,
-      donation_partner: body.donation_partner,
       donation_partner: body.donation_partner
         ? {
           donation_partner: body.donation_partner.donation_partner,
@@ -184,7 +181,6 @@ describe("useCommunityCommerceState", () => {
     installCommunityApiMocks();
     const community = createCommunity({
       donation_policy_mode: "optional_creator_sidecar",
-      donation_partner: "partner-1",
       donation_partner: {
         donation_partner: "partner-1",
         display_name: "Endaoment Org",
@@ -268,7 +264,6 @@ describe("useCommunityCommerceState", () => {
       communityId: "community-1",
       body: {
         donation_policy_mode: "optional_creator_sidecar",
-        donation_partner: "partner-3",
         donation_partner: {
           donation_partner: "partner-3",
           display_name: "Saved Org",

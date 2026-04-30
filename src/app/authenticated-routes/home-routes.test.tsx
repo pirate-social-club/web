@@ -11,13 +11,15 @@ import { useHomeFeed } from "./home-routes";
 installDomGlobals();
 
 let resolveProfile: ((profile: unknown) => void) | null = null;
-let resolveListings: ((items: unknown[]) => void) | null = null;
-let resolvePurchases: ((items: unknown[]) => void) | null = null;
+let resolveListings: ((items: { items: unknown[] }) => void) | null = null;
+let resolvePurchases: ((items: { items: unknown[] }) => void) | null = null;
 
 function createPostResponse(overrides: { postId?: string; postType?: LocalizedPostResponse["post"]["post_type"]; authorUserId?: string | null } = {}): LocalizedPostResponse {
   const postId = overrides.postId ?? "pst_test";
   return {
     post: {
+      id: postId,
+      object: "post",
       post: postId,
       community: "cmt_test",
       post_type: overrides.postType ?? "text",
@@ -41,21 +43,21 @@ function createPostResponse(overrides: { postId?: string; postType?: LocalizedPo
       link_url: null,
       asset: null,
       access_mode: "public",
-      created: "2026-04-24T00:00:00.000Z",
-      updated: "2026-04-24T00:00:00.000Z",
+      created: Date.parse("2026-04-24T00:00:00.000Z"),
       analysis_state: "allow",
       content_safety_state: "safe",
       age_gate_policy: "none",
     } as unknown as LocalizedPostResponse["post"],
     thread_snapshot: {
+      thread_root_post: postId,
       thread_root_post_id: postId,
       snapshot_seq: 1,
-      published_through_comment_created_at: "2026-04-24T00:00:00.000Z",
+      published_through_comment_created: Date.parse("2026-04-24T00:00:00.000Z"),
       comment_count: 0,
       swarm_manifest_ref: "swarm://comments/pst_test",
       swarm_feed_ref: null,
-      created: "2026-04-24T00:00:00.000Z",
-    },
+      created: Date.parse("2026-04-24T00:00:00.000Z"),
+    } as unknown as LocalizedPostResponse["thread_snapshot"],
     comment_count: 0,
     upvote_count: 1,
     downvote_count: 0,
@@ -72,16 +74,17 @@ function createPostResponse(overrides: { postId?: string; postType?: LocalizedPo
 function createFeedItem(overrides: { postId?: string; postType?: LocalizedPostResponse["post"]["post_type"]; authorUserId?: string | null } = {}): HomeFeedItem {
   return {
     community: {
+      id: "cmt_test",
+      object: "home_feed_community_summary",
       community: "cmt_test",
       display_name: "Test Community",
       route_slug: "test",
       avatar_ref: null,
       member_count: 1,
       follower_count: 1,
-      updated: "2026-04-24T00:00:00.000Z",
     },
     post: createPostResponse(overrides),
-  };
+  } as unknown as HomeFeedItem;
 }
 
 describe("useHomeFeed", () => {
@@ -135,8 +138,9 @@ describe("useHomeFeed", () => {
     expect(Object.keys(result.current.listingsByAssetId).length).toBe(0);
     expect(Object.keys(result.current.purchasesByAssetId).length).toBe(0);
 
-    resolveProfile?.({ user: "usr_1", display_name: "Test User" });
-    await waitFor(() => expect(result.current.authorProfiles["usr_1"]).toBeDefined());
+    const resolveLoadedProfile = resolveProfile as unknown as (profile: unknown) => void;
+    resolveLoadedProfile({ user: "usr_1", display_name: "Test User" });
+    await waitFor(() => expect(result.current.authorProfiles["usr_1"] != null).toBe(true));
     expect(result.current.authorProfiles["usr_1"]).toEqual({ user: "usr_1", display_name: "Test User" });
   });
 
@@ -177,7 +181,13 @@ describe("useHomeFeed", () => {
         hydrated: true,
         session: {
           accessToken: "token",
-          user: { user: "usr_1" },
+          user: {
+            id: "usr_1",
+            object: "user",
+            created: Date.parse("2026-04-24T00:00:00.000Z"),
+            verification_capabilities: {},
+            verification_state: "verified",
+          },
           profile: null,
           onboarding: { unique_human_verification_status: "verified" },
           walletAttachments: [],

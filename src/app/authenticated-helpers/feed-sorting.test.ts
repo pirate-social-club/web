@@ -89,12 +89,12 @@ function createPost(input: {
 function createHomeEntry(post: ApiPost): ApiHomeFeedItem {
   return {
     community: {
+      id: "cmt_test",
+      object: "home_feed_community_summary",
       avatar_ref: null,
-      community: "cmt_test",
       display_name: "Test Community",
       member_count: null,
       route_slug: "test-community",
-      updated: post.post.updated,
     },
     post,
   };

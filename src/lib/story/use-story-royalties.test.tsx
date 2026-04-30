@@ -33,7 +33,7 @@ const newClient = bunMock(() => ({
 const switchChain = bunMock(async () => undefined);
 const getEthereumProvider = bunMock(async () => ({}));
 const listClaimable = bunMock(async () => ({
-  checked_at: "2026-04-26T00:00:00Z",
+  checked_at: Date.parse("2026-04-26T00:00:00Z"),
   total_claimable_wip_wei: "12450000000000000000",
   items: [
     {
@@ -53,7 +53,8 @@ const listClaimable = bunMock(async () => ({
   ],
 }));
 const recordClaim = bunMock(async () => ({
-  claim_id: "rcl_test",
+  id: "rcl_test",
+  object: "royalty_claim_record" as const,
   user: "usr_test",
   tx_hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   wallet_address: walletAddress,
@@ -67,9 +68,8 @@ const recordClaim = bunMock(async () => ({
   status: "pending" as const,
   verified_at: null,
   verification_error: null,
-  claimed_at: "2026-04-26T00:00:00Z",
-  created: "2026-04-26T00:00:00Z",
-  updated: "2026-04-26T00:00:00Z",
+  claimed_at: Date.parse("2026-04-26T00:00:00Z"),
+  created: Date.parse("2026-04-26T00:00:00Z"),
 }));
 
 bunMock.module("@story-protocol/core-sdk", () => ({

@@ -246,7 +246,7 @@ describe("CreateCommunityComposer", () => {
     expect(genderOption === null).toBe(false);
     expect(fMarkerOption === null).toBe(false);
     expect(next?.props.disabled).toBe(false);
-    expect(submitted?.gateDrafts).toEqual([genderGate]);
+    expect((submitted as unknown as { gateDrafts?: IdentityGateDraft[] } | null)?.gateDrafts).toEqual([genderGate]);
   });
 
   test("submits the trimmed final payload with the effective age policy", () => {

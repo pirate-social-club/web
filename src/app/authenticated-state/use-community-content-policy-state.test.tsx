@@ -45,11 +45,13 @@ type LabelPolicyBody = {
 
 function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
   return {
-    community: "community-1",
+    id: "community-1",
+    object: "community",
     display_name: "Test Community",
     community_profile: {
       rules: [{
         id: "rule-1",
+        object: "community_rule",
         title: "Be civil",
         body: "No harassment.",
         report_reason: "Incivility",
@@ -61,8 +63,10 @@ function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
     reference_links: [{
       community_reference_link: "link-1",
       label: "Site",
+      link_status: "active",
       metadata: { display_name: "Official site" },
       platform: "official_website",
+      position: 0,
       url: "https://example.com",
       verified: true,
     }],
@@ -70,7 +74,8 @@ function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
       label_enabled: true,
       require_label_on_top_level_posts: true,
       definitions: [{
-        label_id: "label-1",
+        id: "label-1",
+        object: "community_label_definition",
         label: "News",
         color_token: "#f97316",
         position: 0,
@@ -101,6 +106,7 @@ function installCommunityApiMocks() {
         rules: body.rules.map((rule, index) => ({
           ...rule,
           id: rule.id ?? `rule-${index + 1}`,
+          object: "community_rule" as const,
         })),
         resource_links: [],
       },
@@ -127,7 +133,8 @@ function installCommunityApiMocks() {
         require_label_on_top_level_posts: body.require_label_on_top_level_posts,
         definitions: body.definitions.map((definition, index) => ({
           ...definition,
-          label_id: definition.label_id ?? `label-${index + 1}`,
+          id: definition.label_id ?? `label-${index + 1}`,
+          object: "community_label_definition" as const,
           color_token: definition.color_token,
         })),
       },

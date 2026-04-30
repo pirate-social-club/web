@@ -11,7 +11,7 @@ import { useCommunityAccessState } from "./use-community-access-state";
 installDomGlobals();
 
 type GatesBody = {
-  membership_mode: "open" | "request" | "gated";
+  membership_mode: "request" | "gated";
   default_age_gate_policy: "none" | "18_plus";
   allow_anonymous_identity: boolean;
   anonymous_identity_scope: "community_stable" | "thread_stable" | "post_ephemeral" | null;
@@ -164,7 +164,7 @@ describe("useCommunityAccessState", () => {
     await waitFor(() => expect(result.current.membershipMode).toBe("gated"));
 
     act(() => {
-      result.current.setMembershipMode("open");
+      result.current.setMembershipMode("request");
       result.current.setDefaultAgeGatePolicy("none");
       result.current.setAllowAnonymousIdentity(false);
       result.current.setAnonymousIdentityScope("post_ephemeral");
@@ -187,7 +187,7 @@ describe("useCommunityAccessState", () => {
     expect(calls.updateGates[0]).toEqual({
       communityId: "community-1",
       body: {
-        membership_mode: "open",
+        membership_mode: "request",
         default_age_gate_policy: "none",
         allow_anonymous_identity: false,
         anonymous_identity_scope: null,

@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { isChatTarget } from "@/lib/chat/chat-addressing";
 import type { ChatConversation, ChatMessageRecord } from "@/lib/chat/chat-types";
 import { useUiLocale } from "@/lib/ui-locale";
-import { useRouteMessages } from "@/hooks/use-route-messages";
+import { getLocaleMessages } from "@/locales";
 
 function isValidTimestamp(timestamp: number): boolean {
   return Number.isFinite(timestamp) && timestamp > 0;
@@ -331,7 +331,8 @@ export function ConversationList({
   onNew: () => void;
   onSelect: (conversationId: string) => void;
 }) {
-  const { copy } = useRouteMessages();
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
   const chat = copy.chat;
   return (
     <aside className={cn("flex h-full min-h-0 flex-col border-e border-border-soft bg-background md:bg-card", className)}>
@@ -432,8 +433,8 @@ export function NewConversationView({
   onSubmit: (target: string) => void;
 }) {
   const [target, setTarget] = React.useState("");
-  const { isRtl } = useUiLocale();
-  const { copy } = useRouteMessages();
+  const { isRtl, locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
   const chat = copy.chat;
 
   return (
@@ -506,8 +507,8 @@ export function ThreadView({
   sending: boolean;
 }) {
   const [draft, setDraft] = React.useState("");
-  const { isRtl } = useUiLocale();
-  const { copy } = useRouteMessages();
+  const { isRtl, locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
   const chat = copy.chat;
   const seededInitialDraftRef = React.useRef<string | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -675,7 +676,8 @@ export function ThreadView({
 }
 
 export function EmptyThread({ onNew }: { onNew: () => void }) {
-  const { copy } = useRouteMessages();
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
   const chat = copy.chat;
   return (
     <section className="hidden h-full min-h-0 place-items-center bg-background px-4 text-center md:grid">

@@ -16,11 +16,10 @@ function createListing(): ApiCommunityListing {
     status: "active",
     listing_mode: "fixed_price",
     price_cents: 500,
-    regional_pricing_enabled: false,
-    created_by_user: "user-1",
-    created: "2026-01-01T00:00:00Z",
-    updated: "2026-01-01T00:00:00Z",
-  } as ApiCommunityListing;
+      regional_pricing_enabled: false,
+      created_by_user: "user-1",
+      created: Date.parse("2026-01-01T00:00:00Z"),
+  } as unknown as ApiCommunityListing;
 }
 
 function createWallet(address: `0x${string}`): PirateConnectedEvmWallet {
@@ -76,11 +75,13 @@ function createCommunities(overrides: {
       failPurchase: async (_communityId: string, body: { quote: string }) => {
         calls.failPurchase.push(body.quote);
         return {
+          id: "failure-1",
+          object: "community_purchase_settlement_failure" as const,
           quote: body.quote,
           community: _communityId,
           status: "failed" as const,
-          failed_at: "2026-01-01T00:00:00Z",
-          expires_at: "2026-01-01T00:01:00Z",
+          failed_at: Date.parse("2026-01-01T00:00:00Z"),
+          expires_at: Date.parse("2026-01-01T00:01:00Z"),
         };
       },
       settlePurchase: async (_communityId: string, body: { quote: string }) => {

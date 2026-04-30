@@ -28,7 +28,9 @@ export function CreateCommunityComposer(props: CreateCommunityComposerProps) {
 
   return (
     <div className={cn("mx-auto w-full max-w-6xl space-y-4", isMobile && "mx-0 max-w-none space-y-5")}>
-      <Type as="h2" variant="h1" className="hidden md:block">{copy.title}</Type>
+      <Type as="h1" variant="h2" className="hidden md:block">
+        {step === 1 ? copy.title : step === 2 ? "Community settings" : "Preview"}
+      </Type>
       {creatorVerificationMessage ? (
         <div className="rounded-[var(--radius-lg)] border border-warning/20 bg-warning/5 px-4 py-3">
           <Type as="p" variant="body-strong">{copy.verificationRequired}</Type>
@@ -48,7 +50,7 @@ export function CreateCommunityComposer(props: CreateCommunityComposerProps) {
 
           {step === 3 ? (
             <CommunityReviewStep
-              ageGateLabel={effectiveDefaultAgeGatePolicy === "18_plus" ? "18+" : copy.none}
+              ageGateLabel={effectiveDefaultAgeGatePolicy === "18_plus" ? "18+" : copy.ageGateNoneLabel}
               anonymousPostingLabel={review.anonymousPostingLabel}
               anonymousScopeLabel={review.anonymousScopeLabel}
               avatarLabel={review.avatarLabel}

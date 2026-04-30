@@ -24,7 +24,7 @@ import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { formatCommunityRouteLabel } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
-import { getVerificationCapabilitiesForProvider, getVerificationRequirementsForGates, isJoinCtaActionable } from "@/lib/identity-gates";
+import { getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationRequirementsForGates, isJoinCtaActionable } from "@/lib/identity-gates";
 import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
 import { forgetKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
@@ -178,6 +178,13 @@ function PublicCommunityErrorState({ description }: { description: string }) {
 }
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
+
+export function resolvePublicCommunityJoinActionLabel(
+  eligibility: ApiJoinEligibility | null,
+  locale: string,
+): string {
+  return getJoinCtaLabel(eligibility ?? ({ status: "joinable" } as ApiJoinEligibility), { locale });
+}
 
 export function PublicCommunityRoutePage({ communityId }: { communityId: string }) {
   const api = useApi();
@@ -517,13 +524,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
     }
   };
 
-  const joinActionLabel = eligibility?.status === "already_joined"
-    ? "Joined"
-    : eligibility?.status === "pending_request"
-      ? "Request pending"
-      : eligibility?.status === "requestable"
-        ? "Request to Join"
-        : "Join";
+  const joinActionLabel = resolvePublicCommunityJoinActionLabel(eligibility, locale);
   const joinActionDisabled = Boolean(session) && (
     !eligibility
       || !isJoinCtaActionable(eligibility)

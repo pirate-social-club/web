@@ -1,5 +1,3 @@
-import type { Community as ApiCommunity } from "@pirate/api-contracts";
-import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contracts";
 import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
@@ -37,6 +35,15 @@ function getPostScore(post: ApiPost): number {
   return post.upvote_count - post.downvote_count;
 }
 
+function resolveHomeFeedCommunityId(community: HomeFeedEntry["community"]): string {
+  const rawCommunityId =
+    (community as typeof community & { community?: string }).community
+    ?? (community as typeof community & { community_id?: string }).community_id
+    ?? community.id
+    ?? "";
+  return rawCommunityId.replace(/^com_/u, "");
+}
+
 export function toHomeFeedItem(
   entry: HomeFeedEntry,
   authorProfiles: Record<string, ApiProfile | null>,
@@ -45,7 +52,7 @@ export function toHomeFeedItem(
 ): FeedItem {
   const { community, post: postResponse } = entry;
   const { post } = postResponse;
-  const communityId = community.id ?? (community as typeof community & { community?: string }).community ?? "";
+  const communityId = resolveHomeFeedCommunityId(community);
   const postId = post.id ?? (post as typeof post & { post?: string }).post ?? "";
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
 

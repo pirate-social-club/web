@@ -9,9 +9,8 @@ import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 function createEntry(): HomeFeedItem {
   return {
     community: {
-      id: "cmt_alpha",
+      id: "com_cmt_alpha",
       object: "home_feed_community_summary",
-      community: "cmt_alpha",
       avatar_ref: null,
       display_name: "Alpha Crew",
       member_count: null,
@@ -117,6 +116,15 @@ describe("toHomeFeedItem", () => {
     expect(item.post.byline?.community?.label).toBe("c/alpha");
     expect(item.post.engagement?.commentCount).toBe(5);
     expect(item.post.engagement?.score).toBe(9);
+  });
+
+  test("passes home feed community avatars through to post cards", () => {
+    const entry = createEntry();
+    entry.community.avatar_ref = "https://media.pirate.test/community-avatar.png";
+
+    const item = toHomeFeedItem(entry, {});
+
+    expect(item.post.byline?.community?.avatarSrc).toBe("https://media.pirate.test/community-avatar.png");
   });
 
   test("uses live comment_count when the thread snapshot lags", () => {

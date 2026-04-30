@@ -356,7 +356,7 @@ export function InboxPlaceholderPage() {
         royaltyActivityLoading={royaltiesLoading}
 
         tasks={tasks.items}
-        title="Notifications"
+        title={copy.inbox.notificationsTab}
       />
     </>
   );

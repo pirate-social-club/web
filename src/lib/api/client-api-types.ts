@@ -217,7 +217,7 @@ export type CommunityListCommentsOptions = {
 
 export type CommunityReferenceLinksInput = {
   reference_links: Array<{
-    community_reference_link_id?: string | null;
+    id?: string | null;
     platform: NonNullable<Community["reference_links"]>[number]["platform"];
     url: string;
     label?: string | null;

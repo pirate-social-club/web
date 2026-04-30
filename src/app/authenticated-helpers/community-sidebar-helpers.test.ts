@@ -89,7 +89,8 @@ describe("buildCommunityPreviewSidebar", () => {
       },
       moderators: [],
       reference_links: [{
-        community_reference_link: "crl_site",
+        id: "crl_site",
+        object: "community_reference_link",
         platform: "official_website",
         url: "https://pirate.test/community",
         label: "Official site",

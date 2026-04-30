@@ -98,11 +98,13 @@ export function useCommunityContentPolicyState({
   const labelsValidationError = getLabelValidationError(labelsEnabled, labels);
 
   const handleSaveRules = React.useCallback(() => {
-    if (!community) return;
+    if (!community) {
+      return;
+    }
     const existingRules = community.community_profile?.rules ?? [];
     const rules = [
       {
-        id: existingRules[0]?.id ?? null,
+        rule_id: existingRules[0]?.id ?? null,
         title: ruleName,
         body: description,
         report_reason: reportReason.trim() || ruleName.trim(),
@@ -110,7 +112,7 @@ export function useCommunityContentPolicyState({
         status: "active" as const,
       },
       ...existingRules.slice(1).map((rule, index) => ({
-        id: rule.id,
+        rule_id: rule.id,
         title: rule.title,
         body: rule.body,
         report_reason: rule.report_reason?.trim() || rule.title,
@@ -133,7 +135,7 @@ export function useCommunityContentPolicyState({
     void submitCommunitySave({
       action: (currentCommunity) => api.communities.updateReferenceLinks(currentCommunity.id, {
         reference_links: links.filter((link) => link.url.trim()).map((link, index) => ({
-          community_reference_link: link.id.startsWith("draft-") ? null : link.id,
+          id: link.id.startsWith("draft-") ? null : link.id,
           label: link.label.trim() || null,
           platform: link.platform as NonNullable<ApiCommunity["reference_links"]>[number]["platform"],
           position: index,

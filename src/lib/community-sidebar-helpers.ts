@@ -207,17 +207,17 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       locale,
     }),
     referenceLinks: community.reference_links?.map((link) => ({
-      communityReferenceLinkId: link.community_reference_link,
+      communityReferenceLinkId: link.id,
       label: resolveCommunityLocalizedText(
         community,
-        `community.reference_link.${link.community_reference_link}.label`,
+        `community.reference_link.${link.id}.label`,
         link.label,
       ) || null,
       linkStatus: link.link_status,
       metadata: {
         displayName: resolveCommunityLocalizedText(
           community,
-          `community.reference_link.${link.community_reference_link}.metadata.display_name`,
+          `community.reference_link.${link.id}.metadata.display_name`,
           link.metadata.display_name,
         ) || null,
         imageUrl: link.metadata.image_url ?? null,
@@ -305,17 +305,17 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       locale,
     }),
     referenceLinks: preview.reference_links?.map((link) => ({
-      communityReferenceLinkId: link.community_reference_link,
+      communityReferenceLinkId: link.id,
       label: resolveCommunityLocalizedText(
         preview,
-        `community.reference_link.${link.community_reference_link}.label`,
+        `community.reference_link.${link.id}.label`,
         link.label,
       ) || null,
       linkStatus: link.link_status,
       metadata: {
         displayName: resolveCommunityLocalizedText(
           preview,
-          `community.reference_link.${link.community_reference_link}.metadata.display_name`,
+          `community.reference_link.${link.id}.metadata.display_name`,
           link.metadata.display_name,
         ) || null,
         imageUrl: link.metadata.image_url ?? null,

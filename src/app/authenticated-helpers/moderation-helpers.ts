@@ -97,7 +97,7 @@ export function buildCommunityModerationSections(
 
 export function getCommunityLinkDrafts(community: ApiCommunity): CommunityLinkEditorItem[] {
   return (community.reference_links ?? []).map((link) => ({
-    id: link.community_reference_link,
+    id: link.id,
     label: link.label ?? link.metadata.display_name ?? "",
     platform: link.platform,
     url: link.url,

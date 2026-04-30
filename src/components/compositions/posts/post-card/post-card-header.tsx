@@ -1,4 +1,5 @@
 import * as React from "react";
+import { WarningCircle } from "@phosphor-icons/react";
 
 import { AvatarWithBadge } from "@/components/compositions/system/avatar-badge/avatar-with-badge";
 import { Avatar } from "@/components/primitives/avatar";
@@ -123,22 +124,47 @@ function InteractiveIdentityLink({
 }) {
   if (!identity) return null;
 
-  if (identity.href) {
+  const labelClassName = cn("min-w-0 truncate", className);
+  const label = identity.href ? (
+    <a className={labelClassName} data-post-card-interactive="true" href={identity.href}>
+      <bdi>{identity.label}</bdi>
+    </a>
+  ) : (
+    <span className={labelClassName}><bdi>{identity.label}</bdi></span>
+  );
+  const statusBadge = identity.kind === "community" && identity.verificationStatus === "unverified"
+    ? <CommunityVerificationBadge />
+    : null;
+
+  if (statusBadge) {
     return (
-      <a className={className} data-post-card-interactive="true" href={identity.href}>
-        <bdi>{identity.label}</bdi>
-      </a>
+      <span className="inline-flex min-w-0 max-w-full items-center gap-1 align-baseline">
+        {label}
+        {statusBadge}
+      </span>
     );
   }
 
-  return <span className={className}><bdi>{identity.label}</bdi></span>;
+  return label;
+}
+
+function CommunityVerificationBadge() {
+  return (
+    <span
+      aria-label="Unverified community"
+      className="inline-flex size-[1.05em] shrink-0 items-center justify-center self-center text-amber-300"
+      title="Community name is not verified with Handshake or Spaces."
+    >
+      <WarningCircle aria-hidden className="size-full" weight="fill" />
+    </span>
+  );
 }
 
 function AuthorRoleBadge({ role }: { role?: CommunityAuthorRole | null }) {
   if (!role) return null;
 
   return (
-    <span className="inline-flex h-[1.15em] items-center self-center rounded-full bg-primary px-2 text-[10px] font-bold uppercase leading-none text-primary-foreground">
+    <span className="inline-flex h-[1.3em] items-center self-center rounded-full bg-primary px-2 text-[10px] font-bold uppercase leading-none text-primary-foreground">
       {role === "owner" ? "Owner" : "Mod"}
     </span>
   );

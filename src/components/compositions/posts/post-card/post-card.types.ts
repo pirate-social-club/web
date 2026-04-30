@@ -166,6 +166,7 @@ export type PostCardIdentity = {
   href?: string;
   avatarSeed?: string;
   avatarSrc?: string;
+  verificationStatus?: "unverified";
 };
 
 export type PostCardAgentAuthor = {

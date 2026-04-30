@@ -148,6 +148,38 @@ export const CommunityModeratorBadge: Story = {
   ),
 };
 
+export const UnverifiedCommunityBadge: Story = {
+  name: "Community / Unverified Icon",
+  render: () => (
+    <div style={{ width: 360 }}>
+      <PostCard
+        {...basePost}
+        authorCommunityRole="owner"
+        byline={{
+          community: {
+            kind: "community",
+            label: "Test",
+            href: "#",
+            avatarSrc: undefined,
+            verificationStatus: "unverified",
+          },
+          author: {
+            kind: "user",
+            label: "swift-comet-1431.pirate",
+            href: "#",
+            avatarSrc: "https://i.pravatar.cc/100?img=5",
+          },
+          timestampLabel: "23h",
+        }}
+        content={{ type: "text", body: "The visible byline should use the display name and a status badge, not the raw cmt_ identifier." }}
+        identityPresentation="community_with_author"
+        title="Unverified community byline"
+        viewContext="home"
+      />
+    </div>
+  ),
+};
+
 export const DuplicateNationalityQualifier: Story = {
   name: "Nationality Qualifier / Badge Suppressed",
   render: () => (

@@ -540,14 +540,20 @@ export function toCommunityFeedItem(
 export function toThreadPostCard(
   postResponse: ApiPost,
   community:
-    | Pick<ApiCommunity, "community_id" | "display_name" | "route_slug">
-    | Pick<ApiCommunityPreview, "community_id" | "display_name" | "route_slug">
+    | Pick<ApiCommunity, "community_id" | "display_name" | "namespace_verification_id" | "route_slug">
+    | Pick<ApiCommunityPreview, "community_id" | "display_name" | "namespace_verification_id" | "route_slug">
     | null,
   authorProfile?: ApiProfile,
   songOptions?: SongPresentationOptions,
   opts?: PostPresentationOptions,
 ): PostCardProps {
   const { post } = postResponse;
+  const communityVerified = Boolean(community?.namespace_verification_id);
+  const communityLabel = community
+    ? communityVerified
+      ? formatCommunityRouteLabel(community.community_id, community.route_slug)
+      : community.display_name.trim() || formatCommunityRouteLabel(community.community_id, community.route_slug)
+    : undefined;
 
   return withTranslationToggleProps({
     byline: {
@@ -564,8 +570,9 @@ export function toThreadPostCard(
       community: community
         ? {
           kind: "community",
-          label: formatCommunityRouteLabel(community.community_id, community.route_slug),
+          label: communityLabel ?? community.community_id,
           href: buildCommunityPath(community.community_id, community.route_slug),
+          verificationStatus: communityVerified ? undefined : "unverified",
         }
         : undefined,
       timestampLabel: formatRelativeTimestamp(post.created_at),

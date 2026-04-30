@@ -3,9 +3,12 @@
 import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
+import { CopyField } from "@/components/primitives/copy-field";
+import { Type } from "@/components/primitives/type";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
 import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
 import { cn } from "@/lib/utils";
+import { Check, Copy } from "@phosphor-icons/react";
 
 import type {
   NamespaceFamily,
@@ -87,9 +90,7 @@ export function applyNamespaceSessionResult(
   setters.setState("challenge_ready");
 }
 
-export function NamespaceVerificationChallengeMessage({ value }: { value: string }) {
-  const copy = defaultRouteCopy;
-  const mc = copy.moderation.namespaceVerification.shared;
+function CopyBlock({ value }: { value: string }) {
   const [copied, setCopied] = React.useState(false);
   const { schedule: scheduleCopiedReset } = useResettableTimeout();
 
@@ -100,12 +101,18 @@ export function NamespaceVerificationChallengeMessage({ value }: { value: string
   }, [scheduleCopiedReset, value]);
 
   return (
-    <div className="rounded-xl border border-input bg-background p-3">
-      <pre className="mb-3 whitespace-pre-wrap break-all font-mono text-base leading-6 text-muted-foreground">
+    <div className="flex items-start gap-2 overflow-hidden rounded-2xl border border-input bg-background p-3 shadow-sm">
+      <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-sm leading-5 text-foreground select-all">
         {value}
       </pre>
-      <Button className="h-9 text-base" onClick={handleCopy} size="sm" variant="outline">
-        {copied ? mc.copied : mc.copyMessage}
+      <Button
+        aria-label={copied ? "Copied" : "Copy value"}
+        className="size-9 shrink-0"
+        onClick={handleCopy}
+        size="icon"
+        variant="secondary"
+      >
+        {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
       </Button>
     </div>
   );
@@ -116,7 +123,7 @@ function buildSpacesPublishCommand(challengePayload: SpacesChallengePayload) {
   const publisher = "github.com/pirate-social-club/pirate-spaces-publisher@v0.1.0";
   return [
     `go run ${publisher} publish ${shellQuote(root)} \\`,
-    "  --wallet-export '/full/path/to/your-wallet-export.json' \\",
+    "  --wallet-export '/PATH/TO/YOUR/WALLET_EXPORT.json' \\",
     `  --web ${shellQuote(challengePayload.web_url)} \\`,
     `  --freedom ${shellQuote(challengePayload.freedom_url)} \\`,
     `  --txt ${shellQuote(`${challengePayload.txt_key}=${challengePayload.txt_value}`)}`,
@@ -150,36 +157,47 @@ export function NamespaceVerificationSpacesPanel({
   );
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <ol className="space-y-4">
-        <li className="space-y-2">
+    <div className={cn("space-y-6", className)}>
+      <ol className="space-y-6">
+        <li className="space-y-3">
           <div className="text-base font-medium text-foreground">
             1. {mc.publishStepLabels[0]}
           </div>
-          <NamespaceVerificationChallengeMessage value={mc.publisherInstallCommand} />
+          <Type as="p" variant="body">
+            {mc.spacesStep1Instruction}
+          </Type>
+          <CopyField value={mc.spacesStep1Command} />
         </li>
-        <li className="space-y-2">
+        <li className="space-y-3">
           <div className="text-base font-medium text-foreground">
             2. {mc.publishStepLabels[1]}
           </div>
-          <NamespaceVerificationChallengeMessage value={mc.publisherCdCommand} />
+          <Type as="p" variant="body">
+            {mc.spacesStep2Instruction}
+          </Type>
+          <CopyField value={mc.spacesStep2Command} />
         </li>
-        <li className="space-y-2">
+        <li className="space-y-3">
           <div className="text-base font-medium text-foreground">
             3. {mc.publishStepLabels[2]}
           </div>
-          <NamespaceVerificationChallengeMessage value={publishCommand} />
+          <Type as="p" variant="body">
+            {mc.spacesStep3Instruction}
+          </Type>
+          <CopyBlock value={publishCommand} />
         </li>
       </ol>
       {showAbandonAction ? (
-        <button
-          className="text-base text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-          disabled={busy}
-          onClick={onAbandon}
-          type="button"
-        >
-          {mc.verifyDifferent}
-        </button>
+        <div className="border-t border-border-soft pt-4">
+          <Button
+            disabled={busy}
+            onClick={onAbandon}
+            size="sm"
+            variant="ghost"
+          >
+            {mc.verifyDifferent}
+          </Button>
+        </div>
       ) : null}
     </div>
   );

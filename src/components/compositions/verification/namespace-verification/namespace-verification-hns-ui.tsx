@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { Button } from "@/components/primitives/button";
 import { CopyField } from "@/components/primitives/copy-field";
 import { FormNote } from "@/components/primitives/form-layout";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
@@ -115,13 +116,15 @@ export function NamespaceVerificationHnsPanel({
       ) : null}
 
       {showAbandonAction ? (
-        <button
-          className="text-base text-muted-foreground transition-colors hover:text-foreground"
-          onClick={onAbandon}
-          type="button"
-        >
-          {copy.moderation.namespaceVerification.verifyDifferent}
-        </button>
+        <div className="border-t border-border-soft pt-4">
+          <Button
+            onClick={onAbandon}
+            size="sm"
+            variant="ghost"
+          >
+            {copy.moderation.namespaceVerification.verifyDifferent}
+          </Button>
+        </div>
       ) : null}
     </section>
   );

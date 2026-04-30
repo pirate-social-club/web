@@ -1173,11 +1173,14 @@ export const GENERATED_LOCALE_CATALOGS = {
           "resuming": "Resuming verification...",
           "publishStepLabels": [
             "Check Go",
-            "Find wallet export",
-            "Run this"
+            "Export your wallet",
+            "Publish verification"
           ],
-          "publisherInstallCommand": "go version\n\nIf this prints \"command not found\", install Go from https://go.dev/dl/ and reopen Terminal.",
-          "publisherCdCommand": "Find your Spaces wallet export JSON. Keep it on your computer and do not upload it. On macOS, drag the file into Terminal to paste its full path.",
+          "spacesStep1Instruction": "Run the command below. If it prints \"command not found\", install Go from https://go.dev/dl/ and reopen Terminal.",
+          "spacesStep1Command": "go version",
+          "spacesStep2Instruction": "Run the command below to export your Spaces wallet. This file contains your private keys — keep it on your computer and do not share it. You will need the full file path in the next step.",
+          "spacesStep2Command": "space-cli exportwallet",
+          "spacesStep3Instruction": "Copy the command below and replace `/PATH/TO/YOUR/WALLET_EXPORT.json` with your actual wallet export path before running it in Terminal.",
           "digestLabel": "Digest",
           "challengeDetails": "Challenge details",
           "verifyDifferent": "Use a different namespace",
@@ -2696,11 +2699,14 @@ export const GENERATED_LOCALE_CATALOGS = {
           "resuming": "استئناف التحقق...",
           "publishStepLabels": [
             "تحقق من Go",
-            "اعثر على ملف المحفظة",
-            "شغّل هذا"
+            "صدّر محفظتك",
+            "انشر التحقق"
           ],
-          "publisherInstallCommand": "go version\n\nإذا ظهرت رسالة \"command not found\"، ثبّت Go من https://go.dev/dl/ ثم أعد فتح Terminal.",
-          "publisherCdCommand": "اعثر على ملف Spaces wallet export بصيغة JSON. أبقه على جهازك ولا ترفعه. على macOS، اسحب الملف إلى Terminal للصق مساره الكامل.",
+          "spacesStep1Instruction": "شغّل الأمر أدناه. إذا ظهرت رسالة \"command not found\"، ثبّت Go من https://go.dev/dl/ ثم أعد فتح Terminal.",
+          "spacesStep1Command": "go version",
+          "spacesStep2Instruction": "شغّل الأمر أدناه لتصدير محفظة Spaces. يحتوي هذا الملف على مفاتيحك الخاصة — أبقه على جهازك ولا تشاركه. ستحتاج إلى المسار الكامل للملف في الخطوة التالية.",
+          "spacesStep2Command": "space-cli exportwallet",
+          "spacesStep3Instruction": "انسخ الأمر أدناه واستبدل `/PATH/TO/YOUR/WALLET_EXPORT.json` بالمسار الفعلي لملف محفظتك قبل تشغيله في Terminal.",
           "digestLabel": "الملخص",
           "challengeDetails": "تفاصيل التحدي",
           "verifyDifferent": "التحقق من مساحة اسم مختلفة",
@@ -4193,11 +4199,14 @@ export const GENERATED_LOCALE_CATALOGS = {
           "resuming": "继续验证中...",
           "publishStepLabels": [
             "检查 Go",
-            "找到钱包导出文件",
-            "运行此命令"
+            "获取钱包导出文件",
+            "发布验证"
           ],
-          "publisherInstallCommand": "go version\n\n如果显示“command not found”，请从 https://go.dev/dl/ 安装 Go，然后重新打开终端。",
-          "publisherCdCommand": "找到你的 Spaces 钱包导出 JSON 文件。只保存在自己的电脑上，不要上传。在 macOS 上，可以把文件拖进终端来粘贴完整路径。",
+          "spacesStep1Instruction": "运行下方命令。如果显示“command not found”，请从 https://go.dev/dl/ 安装 Go，然后重新打开终端。",
+          "spacesStep1Command": "go version",
+          "spacesStep2Instruction": "运行下方命令导出你的 Spaces 钱包。此文件包含你的私钥——请保存在本地电脑上，不要分享。下一步需要该文件的完整路径。",
+          "spacesStep2Command": "space-cli exportwallet",
+          "spacesStep3Instruction": "复制下方命令，将 `/PATH/TO/YOUR/WALLET_EXPORT.json` 替换为你钱包导出文件的实际路径，然后在终端中运行。",
           "digestLabel": "摘要",
           "challengeDetails": "挑战详情",
           "verifyDifferent": "验证不同的命名空间",

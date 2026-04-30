@@ -1059,11 +1059,14 @@
       "resuming": "Resuming verification...",
       "publishStepLabels": [
         "Check Go",
-        "Find wallet export",
-        "Run this"
+        "Export your wallet",
+        "Publish verification"
       ],
-      "publisherInstallCommand": "go version\n\nIf this prints \"command not found\", install Go from https://go.dev/dl/ and reopen Terminal.",
-      "publisherCdCommand": "Find your Spaces wallet export JSON. Keep it on your computer and do not upload it. On macOS, drag the file into Terminal to paste its full path.",
+      "spacesStep1Instruction": "Run the command below. If it prints \"command not found\", install Go from https://go.dev/dl/ and reopen Terminal.",
+      "spacesStep1Command": "go version",
+      "spacesStep2Instruction": "Run the command below to export your Spaces wallet. This file contains your private keys — keep it on your computer and do not share it. You will need the full file path in the next step.",
+      "spacesStep2Command": "space-cli exportwallet",
+      "spacesStep3Instruction": "Copy the command below and replace `/PATH/TO/YOUR/WALLET_EXPORT.json` with your actual wallet export path before running it in Terminal.",
       "digestLabel": "Digest",
       "challengeDetails": "Challenge details",
       "verifyDifferent": "Use a different namespace",

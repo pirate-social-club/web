@@ -1059,11 +1059,14 @@
       "resuming": "استئناف التحقق...",
       "publishStepLabels": [
         "تحقق من Go",
-        "اعثر على ملف المحفظة",
-        "شغّل هذا"
+        "صدّر محفظتك",
+        "انشر التحقق"
       ],
-      "publisherInstallCommand": "go version\n\nإذا ظهرت رسالة \"command not found\"، ثبّت Go من https://go.dev/dl/ ثم أعد فتح Terminal.",
-      "publisherCdCommand": "اعثر على ملف Spaces wallet export بصيغة JSON. أبقه على جهازك ولا ترفعه. على macOS، اسحب الملف إلى Terminal للصق مساره الكامل.",
+      "spacesStep1Instruction": "شغّل الأمر أدناه. إذا ظهرت رسالة \"command not found\"، ثبّت Go من https://go.dev/dl/ ثم أعد فتح Terminal.",
+      "spacesStep1Command": "go version",
+      "spacesStep2Instruction": "شغّل الأمر أدناه لتصدير محفظة Spaces. يحتوي هذا الملف على مفاتيحك الخاصة — أبقه على جهازك ولا تشاركه. ستحتاج إلى المسار الكامل للملف في الخطوة التالية.",
+      "spacesStep2Command": "space-cli exportwallet",
+      "spacesStep3Instruction": "انسخ الأمر أدناه واستبدل `/PATH/TO/YOUR/WALLET_EXPORT.json` بالمسار الفعلي لملف محفظتك قبل تشغيله في Terminal.",
       "digestLabel": "الملخص",
       "challengeDetails": "تفاصيل التحدي",
       "verifyDifferent": "التحقق من مساحة اسم مختلفة",

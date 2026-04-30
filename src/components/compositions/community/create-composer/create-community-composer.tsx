@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter } from "@/components/primitives/card";
 import { FormNote } from "@/components/primitives/form-layout";
 import { cn } from "@/lib/utils";
 
-import { CreateCommunityAccessStep } from "./create-community-access-step";
+import { CommunityGatesEditorPage } from "@/components/compositions/community/gates-editor/community-gates-editor-page";
 import { CreateCommunityBasicsStep } from "./create-community-basics-step";
 import { CreateCommunityFooterActions } from "./create-community-footer-actions";
 import { CommunityReviewStep } from "./create-community-composer.sections";
@@ -45,7 +45,22 @@ export function CreateCommunityComposer(props: CreateCommunityComposerProps) {
           ) : null}
 
           {step === 2 ? (
-            <CreateCommunityAccessStep controller={controller} />
+            <CommunityGatesEditorPage
+              allowAnonymousIdentity={controller.access.activeAllowAnonymousIdentity}
+              anonymousIdentityScope={controller.access.activeAnonymousScope}
+              creatorVerificationState={controller.access.creatorAgeOver18Verified ? { ageOver18Verified: true } : { ageOver18Verified: false }}
+              defaultAgeGatePolicy={controller.access.activeDefaultAgeGatePolicy}
+              gateDrafts={controller.access.gateDrafts}
+              membershipMode={controller.access.activeMembershipMode ?? "gated"}
+              onAllowAnonymousIdentityChange={controller.access.setActiveAllowAnonymousIdentity}
+              onAnonymousIdentityScopeChange={controller.access.setActiveAnonymousScope}
+              onDefaultAgeGatePolicyChange={controller.access.setActiveDefaultAgeGatePolicy}
+              onGateDraftsChange={controller.access.setActiveGateDrafts}
+              onMembershipModeChange={controller.access.setActiveMembershipMode}
+              showReadAccessSection={false}
+              showSaveAction={false}
+              showTitle={false}
+            />
           ) : null}
 
           {step === 3 ? (

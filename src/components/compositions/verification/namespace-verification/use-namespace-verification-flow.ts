@@ -44,6 +44,7 @@ export type UseNamespaceVerificationFlowReturn = {
   signature: string;
   namespaceVerificationId: string | null;
   failureReason: string | null;
+  lastCheckStatus: "dns_setup_required" | null;
   operationClass: NamespaceVerificationOperationClass | null;
   pirateDnsAuthorityVerified: boolean | null;
   setupNameservers: string[] | null;
@@ -105,6 +106,9 @@ export function useNamespaceVerificationFlow({
   const [namespaceVerificationId, setNamespaceVerificationId] =
     React.useState<string | null>(null);
   const [failureReason, setFailureReason] = React.useState<string | null>(null);
+  const [lastCheckStatus, setLastCheckStatus] =
+    React.useState<UseNamespaceVerificationFlowReturn["lastCheckStatus"]>(null);
+  const [checkingSetup, setCheckingSetup] = React.useState(false);
   const [operationClass, setOperationClass] =
     React.useState<NamespaceVerificationOperationClass | null>(null);
   const [pirateDnsAuthorityVerified, setPirateDnsAuthorityVerified] =
@@ -142,6 +146,7 @@ export function useNamespaceVerificationFlow({
     setOperationClass(null);
     setPirateDnsAuthorityVerified(null);
     setSetupNameservers(null);
+    setCheckingSetup(false);
   }, []);
 
   const setRootLabelInput = React.useCallback((value: string) => {
@@ -161,10 +166,12 @@ export function useNamespaceVerificationFlow({
     resetChallengeState();
     setNamespaceVerificationId(null);
     setFailureReason(null);
+    setLastCheckStatus(null);
   }, [handleSessionCleared, initialFamily, initialRootLabel, resetChallengeState]);
 
   const applySessionResult = React.useCallback(
     (result: NamespaceVerificationStartResult) => {
+      setLastCheckStatus(null);
       applyNamespaceSessionResult(
         {
           setSessionId,
@@ -205,6 +212,7 @@ export function useNamespaceVerificationFlow({
       resetChallengeState();
       setNamespaceVerificationId(null);
       setFailureReason(null);
+      setLastCheckStatus(null);
       return;
     }
 
@@ -214,6 +222,7 @@ export function useNamespaceVerificationFlow({
     resetChallengeState();
     setNamespaceVerificationId(null);
     setFailureReason(null);
+    setLastCheckStatus(null);
 
     setResuming(true);
     setState("starting");
@@ -248,6 +257,7 @@ export function useNamespaceVerificationFlow({
 
     setState("starting");
     setFailureReason(null);
+    setLastCheckStatus(null);
 
     return callbacksRef.current
       .onStartSession({ family: activeFamily, rootLabel: rootLabelResult.rootLabel })
@@ -266,8 +276,14 @@ export function useNamespaceVerificationFlow({
   const verify = React.useCallback(() => {
     if (!sessionId) return Promise.resolve();
 
-    setState("verifying");
+    const isSetupCheck = stateRef.current === "dns_setup_required";
+    if (isSetupCheck) {
+      setCheckingSetup(true);
+    } else {
+      setState("verifying");
+    }
     setFailureReason(null);
+    setLastCheckStatus(null);
 
     const completeInput: Parameters<
       NamespaceVerificationCallbacks["onCompleteSession"]
@@ -288,9 +304,11 @@ export function useNamespaceVerificationFlow({
         } else if (result.status === "dns_setup_required") {
           setState("dns_setup_required");
           setFailureReason(null);
+          setLastCheckStatus("dns_setup_required");
         } else if (result.status === "challenge_pending") {
           setState("challenge_pending");
           setFailureReason(null);
+          setLastCheckStatus(null);
         } else if (result.status === "expired") {
           setState("expired");
         } else {
@@ -299,10 +317,17 @@ export function useNamespaceVerificationFlow({
         }
       })
       .catch((error: unknown) => {
-        setState("failed");
+        if (!isSetupCheck) {
+          setState("failed");
+        }
         toast.error(
           error instanceof Error ? error.message : "Could not verify namespace",
         );
+      })
+      .finally(() => {
+        if (isSetupCheck) {
+          setCheckingSetup(false);
+        }
       });
   }, [activeFamily, sessionId]);
 
@@ -323,6 +348,7 @@ export function useNamespaceVerificationFlow({
 
       setState("starting");
       setFailureReason(null);
+      setLastCheckStatus(null);
 
       return callbacksRef.current
         .onStartSession({ family: activeFamily, rootLabel: currentRootLabel.rootLabel })
@@ -341,8 +367,14 @@ export function useNamespaceVerificationFlow({
         });
     }
 
-    setState("starting");
+    const isSetupCheck = stateRef.current === "dns_setup_required";
+    if (isSetupCheck) {
+      setCheckingSetup(true);
+    } else {
+      setState("starting");
+    }
     setFailureReason(null);
+    setLastCheckStatus(null);
 
     return callbacksRef.current
       .onCompleteSession({
@@ -359,10 +391,15 @@ export function useNamespaceVerificationFlow({
           .onGetSession({ namespaceVerificationSessionId: sessionId })
           .then((sessionResult) => {
             applySessionResult(sessionResult);
+            if (isSetupCheck && sessionResult.status === "dns_setup_required") {
+              setLastCheckStatus("dns_setup_required");
+            }
           })
           .catch((error: unknown) => {
-            setState("idle");
-            resetChallengeState();
+            if (!isSetupCheck) {
+              setState("idle");
+              resetChallengeState();
+            }
             toast.error(
               error instanceof Error
                 ? error.message
@@ -371,12 +408,19 @@ export function useNamespaceVerificationFlow({
           });
       })
       .catch((error: unknown) => {
-        setState("failed");
+        if (!isSetupCheck) {
+          setState("failed");
+        }
         toast.error(
           error instanceof Error
             ? error.message
             : "Could not refresh verification",
         );
+      })
+      .finally(() => {
+        if (isSetupCheck) {
+          setCheckingSetup(false);
+        }
       });
   }, [activeFamily, applySessionResult, resetChallengeState, sessionId]);
 
@@ -385,7 +429,7 @@ export function useNamespaceVerificationFlow({
   const isChallengeReady = state === "challenge_ready";
   const isChallengePending = state === "challenge_pending";
   const isDnsSetupRequired = state === "dns_setup_required";
-  const isVerifying = state === "verifying";
+  const isVerifying = state === "verifying" || checkingSetup;
   const isVerified = state === "verified";
   const isFailed = state === "failed";
   const isExpired = state === "expired";
@@ -424,6 +468,7 @@ export function useNamespaceVerificationFlow({
     signature,
     namespaceVerificationId,
     failureReason,
+    lastCheckStatus,
     operationClass,
     pirateDnsAuthorityVerified,
     setupNameservers,

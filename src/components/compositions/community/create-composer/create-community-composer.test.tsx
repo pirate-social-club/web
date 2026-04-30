@@ -52,7 +52,7 @@ function shouldEvaluateComponent(element: TestElement) {
   return (
     typeof element.type === "function"
     && (
-      element.type.name === "CreateCommunityAccessStep"
+      element.type.name === "CommunityGatesEditorPage"
       || element.type.name === "CreateCommunityBasicsStep"
       || element.type.name === "CreateCommunityFooterActions"
       || element.type.name === "CommunityReviewStep"

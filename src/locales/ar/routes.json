@@ -452,7 +452,21 @@
     "installPromoBody": "لا تفوّت أي دفعة مع Pirate على شاشتك الرئيسية.",
     "installPromoAction": "تثبيت",
     "installPromoDismiss": "ليس الآن",
-    "installPromoIOSInstructions": "اضغط زر المشاركة أدناه، ثم مرّر للأسفل واضغط \"إضافة إلى الشاشة الرئيسية\"."
+    "installPromoIOSInstructions": "اضغط زر المشاركة أدناه، ثم مرّر للأسفل واضغط \"إضافة إلى الشاشة الرئيسية\".",
+    "taskUniqueHumanVerificationRequired": "تحقق من أنك إنسان",
+    "taskProfileCompletionSuggested": "أكمل ملفك الشخصي",
+    "taskGlobalHandleCleanupSuggested": "اختر اسمك على .pirate",
+    "taskMembershipReview": "طلبات العضوية",
+    "taskUniqueHumanVerificationMeta": "التقط صورة لراحة يدك",
+    "taskProfileCompletionMeta": "أضف اسمًا أو نبذة أو صورة شخصية أو غلافًا",
+    "taskGlobalHandleCleanupMeta": "استبدل اسمك المُنشأ تلقائيًا",
+    "pendingCount": "{count} معلّق",
+    "eventXmtpMessage": "{actor} أرسل رسالة",
+    "eventRoyaltyEarned": "تم استلام حقوق",
+    "eventRoyaltyContext": "{amount} من {title}",
+    "eventRoyaltyContextAmount": "{amount}",
+    "royaltyPurchasedBy": "تم الشراء بواسطة {buyer} · {amount}",
+    "loadingNotifications": "جارٍ تحميل الإشعارات..."
   },
   "createCommunity": {
     "reopenVerification": "أعد فتح التحقق",
@@ -832,6 +846,7 @@
     "rules": {
       "title": "إنشاء قاعدة",
       "description": "تحدد القواعد التوقعات للأعضاء والزوار في مجتمعك.",
+      "addRule": "إضافة قاعدة",
       "namePlaceholder": "اسم القاعدة",
       "maxChars100": "الحد الأقصى 100 حرف",
       "descriptionPlaceholder": "الوصف",
@@ -839,7 +854,8 @@
       "reportingTitle": "الإبلاغ",
       "reportingDescription": "يمكن للمستخدمين أو المشرفين اختيار سبب إبلاغ عند الإبلاغ عن محتوى.",
       "reportReasonPlaceholder": "سبب الإبلاغ",
-      "reportReasonHint": "افتراضيًا، هذا هو نفس اسم قاعدتك."
+      "reportReasonHint": "افتراضيًا، هذا هو نفس اسم قاعدتك.",
+      "emptyState": "لا توجد قواعد بعد."
     },
     "labels": {
       "title": "التسميات",
@@ -1096,7 +1112,8 @@
         "spacesDefault": "تعذر التحقق من هذا الجذر. تحقق من السجلات المنشورة وحاول مرة أخرى."
       },
       "hns": {
-        "dnsSetupNote": "قم بإعداد nameservers أولاً. قيم TXT من جانب الأب لن تنشئ سجل _pirate.",
+        "dnsSetupNote": "اضبط سجلات NS للجذر على nameservers هذه، ثم تحقق من الإعداد.",
+        "dnsSetupPendingNote": "لم يتم اكتشاف إعداد nameserver بعد.",
         "txtPendingNote": "انتشار TXT لا يزال معلقًا.",
         "txtVerifyNote": "أضف سجل TXT هذا على DNS التفويضي لديك، ثم تحقق.",
         "nameserversLabel": "Nameservers",

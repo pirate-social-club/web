@@ -183,6 +183,46 @@ describe("useNamespaceVerificationFlow", () => {
     expect(result.current.isDnsSetupRequired).toBe(true);
   });
 
+  test("check setup re-inspects dns setup and reports unchanged result", async () => {
+    let completeInput: Parameters<NamespaceVerificationCallbacks["onCompleteSession"]>[0] | null = null;
+    const { result } = renderHook(() =>
+      useNamespaceVerificationFlow({
+        callbacks: createMockCallbacks({
+          onStartSession: () =>
+            Promise.resolve(mockStartResult({ status: "dns_setup_required" })),
+          onCompleteSession: (input) => {
+            completeInput = input;
+            return Promise.resolve(mockCompleteResult({ status: "dns_setup_required" }));
+          },
+          onGetSession: () =>
+            Promise.resolve(mockStartResult({ status: "dns_setup_required" })),
+        }),
+        enabled: true,
+      }),
+    );
+
+    act(() => {
+      result.current.actions.setRootLabel("myroot");
+    });
+
+    await act(async () => {
+      await result.current.actions.start();
+    });
+
+    await act(async () => {
+      await result.current.actions.restart();
+    });
+
+    expect(result.current.state).toBe("dns_setup_required");
+    expect(result.current.isDnsSetupRequired).toBe(true);
+    expect(result.current.lastCheckStatus).toBe("dns_setup_required");
+    expect(completeInput).toEqual({
+      namespaceVerificationSessionId: "session-123",
+      family: "hns",
+      restartChallenge: true,
+    });
+  });
+
   test("start returns challenge_pending", async () => {
     const { result } = renderHook(() =>
       useNamespaceVerificationFlow({

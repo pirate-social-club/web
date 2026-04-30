@@ -113,10 +113,29 @@ export function CommunityNamespaceVerificationPage({
     flow.isVerifying
   ) && !flow.isVerified;
   const primaryButtonClassName = cn(isMobile && "w-full");
-  const footerActions = (
+  const secondaryButtonClassName = cn(isMobile && "w-full");
+  const canChooseDifferentNamespace = (
+    flow.isDnsSetupRequired ||
+    flow.isChallengePending ||
+    flow.isFailed ||
+    flow.isExpired ||
+    flow.isChallengeReady ||
+    flow.isVerifying
+  ) && !flow.isVerified;
+  const chooseDifferentNamespaceAction = canChooseDifferentNamespace ? (
+    <Button
+      className={secondaryButtonClassName}
+      disabled={flow.busy}
+      onClick={flow.actions.reset}
+      variant="secondary"
+    >
+      {mc.verifyDifferent}
+    </Button>
+  ) : null;
+  const primaryFooterActions = (
     <>
       {flow.isDnsSetupRequired ? (
-        <Button className={primaryButtonClassName} loading={flow.isStarting} onClick={flow.actions.restart}>{mc.checkSetup}</Button>
+        <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.restart}>{mc.checkSetup}</Button>
       ) : null}
       {flow.isChallengePending ? (
         <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.verify}>{flow.isSpaces ? mc.checkSetup : mc.verifyAction}</Button>
@@ -251,7 +270,7 @@ export function CommunityNamespaceVerificationPage({
             mode={flow.hnsMode}
             onAbandon={flow.actions.reset}
             rootLabel={flow.rootLabel}
-            showAbandonAction={!isMobile}
+            showAbandonAction={false}
             setupNameservers={flow.setupNameservers}
           />
         ) : null}
@@ -262,7 +281,7 @@ export function CommunityNamespaceVerificationPage({
             challengePayload={flow.challengePayload}
             className="rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5 md:py-5"
             onAbandon={flow.actions.reset}
-            showAbandonAction={!isMobile}
+            showAbandonAction={false}
           />
         ) : null}
 
@@ -285,19 +304,31 @@ export function CommunityNamespaceVerificationPage({
                   : mc.failure.spacesDefault}
           </FormNote>
         ) : null}
+
+        {flow.isDnsSetupRequired && flow.lastCheckStatus === "dns_setup_required" ? (
+          <FormNote tone="warning">{mc.hns.dnsSetupPendingNote}</FormNote>
+        ) : null}
       </div>
 
       {hasFooterActions && isMobile ? (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
-          <div className="flex items-center justify-end gap-3 px-4">
-            {footerActions}
+          <div className="flex flex-col items-stretch gap-3 px-4">
+            <div className="flex flex-col items-stretch gap-3">
+              {primaryFooterActions}
+            </div>
+            {chooseDifferentNamespaceAction}
           </div>
         </div>
       ) : null}
 
       {hasFooterActions && !isMobile ? (
-        <div className="flex flex-col-reverse gap-3 border-t border-border-soft pt-6 sm:flex-row sm:justify-end">
-          {footerActions}
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <div className="flex items-center justify-start">
+            {chooseDifferentNamespaceAction}
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            {primaryFooterActions}
+          </div>
         </div>
       ) : null}
     </section>

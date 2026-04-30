@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { isAddress } from "viem";
 
 import { toast } from "@/components/primitives/sonner";
 import {
   describeCourtyardInventoryDraft,
+  isValidCourtyardInventoryDraft,
 } from "@/lib/courtyard-inventory-gates";
 import { resolveCommunityAvatarSrc, resolveCommunityBannerSrc } from "@/lib/default-community-media";
 import { formatGateRequirement } from "@/lib/identity-gates";
@@ -19,10 +21,23 @@ import type {
   CommunityMembershipMode,
   ComposerStep,
   CreateCommunityComposerProps,
+  IdentityGateDraft,
 } from "./create-community-composer.types";
-import { useCommunityGateState } from "./use-community-gate-state";
 
 const DEFAULT_MEMBERSHIP_MODE: CommunityMembershipMode | null = null;
+
+function isValidGateDraft(draft: IdentityGateDraft): boolean {
+  if (draft.gateType === "erc721_holding") {
+    return isAddress(draft.contractAddress.trim());
+  }
+  if (draft.gateType === "erc721_inventory_match") {
+    return isValidCourtyardInventoryDraft(draft);
+  }
+  if (draft.gateType === "wallet_score") {
+    return Number.isFinite(draft.minimumScore) && draft.minimumScore >= 0 && draft.minimumScore <= 100;
+  }
+  return true;
+}
 
 export function useCreateCommunityComposerController({
   avatarRef = "",
@@ -61,22 +76,26 @@ export function useCreateCommunityComposerController({
   const [activeDatabaseRegion, setActiveDatabaseRegion] =
     React.useState<CommunityDatabaseRegion>(databaseRegion);
   const [activeDescription, setActiveDescription] = React.useState(description ?? "");
+  const [activeGateDrafts, setActiveGateDrafts] = React.useState<IdentityGateDraft[]>(gateDrafts);
   const [submitting, setSubmitting] = React.useState(false);
 
-  const gateState = useCommunityGateState(gateDrafts, activeMembershipMode ?? "gated");
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? false;
+  const minimumAgeDraft = activeGateDrafts.find((d) => d.gateType === "minimum_age");
   const hasAdultMinimumAgeGate =
     activeMembershipMode === "gated"
-    && gateState.minimumAgeEnabled
-    && Number.isInteger(gateState.minimumAge)
-    && gateState.minimumAge >= 18
-    && gateState.minimumAge <= 125;
+    && minimumAgeDraft != null
+    && Number.isInteger(minimumAgeDraft.minimumAge)
+    && minimumAgeDraft.minimumAge >= 18
+    && minimumAgeDraft.minimumAge <= 125;
   const effectiveDefaultAgeGatePolicy: CommunityDefaultAgeGatePolicy =
     hasAdultMinimumAgeGate ? "18_plus" : activeDefaultAgeGatePolicy;
 
   const creatorAgeRequirementMet =
     effectiveDefaultAgeGatePolicy !== "18_plus" || creatorAgeOver18Verified;
   const creatorCanCreate = deferCreatorVerification || creatorAgeRequirementMet;
+  const gateDraftsValid =
+    activeMembershipMode !== "gated"
+    || (activeGateDrafts.length > 0 && activeGateDrafts.every(isValidGateDraft));
   const copy = defaultRouteCopy;
   const cc = copy.createCommunity.composer;
 
@@ -104,7 +123,7 @@ export function useCreateCommunityComposerController({
       defaultAgeGatePolicy: effectiveDefaultAgeGatePolicy,
       allowAnonymousIdentity: activeAllowAnonymousIdentity,
       anonymousIdentityScope: activeAnonymousScope,
-      gateDrafts: activeMembershipMode === "gated" ? gateState.activeGateDrafts : [],
+      gateDrafts: activeMembershipMode === "gated" ? activeGateDrafts : [],
     })
       .catch((error: unknown) => {
         toast.error(error instanceof Error ? error.message : cc.createError);
@@ -125,7 +144,7 @@ export function useCreateCommunityComposerController({
     effectiveDefaultAgeGatePolicy,
     activeAllowAnonymousIdentity,
     activeAnonymousScope,
-    gateState.activeGateDrafts,
+    activeGateDrafts,
     cc.createError,
   ]);
 
@@ -135,13 +154,13 @@ export function useCreateCommunityComposerController({
       creatorCanCreate &&
       activeDisplayName.trim().length > 0 &&
       activeMembershipMode != null &&
-      gateState.gateDraftsValid,
+      gateDraftsValid,
     [
       onCreate,
       creatorCanCreate,
       activeDisplayName,
       activeMembershipMode,
-      gateState.gateDraftsValid,
+      gateDraftsValid,
     ],
   );
 
@@ -152,7 +171,7 @@ export function useCreateCommunityComposerController({
       case 2:
         if (!deferCreatorVerification && !creatorAgeRequirementMet) return false;
         if (activeMembershipMode == null) return false;
-        return gateState.gateDraftsValid;
+        return gateDraftsValid;
       case 3:
         return canCreateCommunity;
       default:
@@ -162,7 +181,7 @@ export function useCreateCommunityComposerController({
     activeStep,
     activeDisplayName,
     activeMembershipMode,
-    gateState.gateDraftsValid,
+    gateDraftsValid,
     canCreateCommunity,
     creatorAgeRequirementMet,
     deferCreatorVerification,
@@ -182,7 +201,7 @@ export function useCreateCommunityComposerController({
     "aws-ap-south-1": cc.databaseRegionIndia,
     "aws-ap-northeast-1": cc.databaseRegionJapan,
   })[activeDatabaseRegion];
-  const activeReviewGateDrafts = activeMembershipMode === "gated" ? gateState.activeGateDrafts : [];
+  const activeReviewGateDrafts = activeMembershipMode === "gated" ? activeGateDrafts : [];
   const gateRequirementSummary = activeReviewGateDrafts.length > 0
     ? activeReviewGateDrafts
         .map((draft) =>
@@ -199,13 +218,13 @@ export function useCreateCommunityComposerController({
                   asset_filter_label: describeCourtyardInventoryDraft(draft).replace(/^\d+ Courtyard /u, ""),
                   asset_category: draft.assetFilter.category,
                 }
-              : draft.gateType === "nationality"
-                ? { gate_type: draft.gateType, required_values: draft.requiredValues }
-                : draft.gateType === "minimum_age"
-                  ? { gate_type: draft.gateType, required_minimum_age: draft.minimumAge }
-                  : draft.gateType === "wallet_score"
-                    ? { gate_type: draft.gateType, minimum_score: draft.minimumScore }
-                    : { gate_type: draft.gateType, required_value: draft.requiredValue },
+                : draft.gateType === "nationality"
+                  ? { gate_type: draft.gateType, required_values: draft.requiredValues }
+                  : draft.gateType === "minimum_age"
+                    ? { gate_type: draft.gateType, required_minimum_age: draft.minimumAge }
+                    : draft.gateType === "wallet_score"
+                      ? { gate_type: draft.gateType, minimum_score: draft.minimumScore }
+                      : { gate_type: draft.gateType, required_value: draft.requiredValue },
             { audience: "admin" },
           ),
         )
@@ -243,14 +262,13 @@ export function useCreateCommunityComposerController({
       activeDefaultAgeGatePolicy,
       activeMembershipMode,
       creatorAgeOver18Verified,
-      courtyardInventoryGroups,
-      courtyardInventoryLoading,
-      deferCreatorVerification,
-      gateState,
+      gateDrafts: activeGateDrafts,
+      gateDraftsValid,
       hasAdultMinimumAgeGate,
       setActiveAllowAnonymousIdentity,
       setActiveAnonymousScope,
       setActiveDefaultAgeGatePolicy,
+      setActiveGateDrafts,
       setActiveMembershipMode,
     },
     basics: {

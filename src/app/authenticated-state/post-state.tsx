@@ -43,6 +43,52 @@ type AvailableSigningAgent = {
 
 type PostReadMode = "authenticated" | "public";
 
+type MaybeLegacyPostResponse = ApiPost & {
+  post: ApiPost["post"] & {
+    post_id?: string | null;
+    community_id?: string | null;
+  };
+};
+
+function publicPostId(rawPostId: string): string {
+  return rawPostId.startsWith("post_") ? rawPostId : `post_${rawPostId}`;
+}
+
+function publicCommunityId(rawCommunityId: string): string {
+  return rawCommunityId.startsWith("com_") ? rawCommunityId : `com_${rawCommunityId}`;
+}
+
+function normalizePostResponse(response: ApiPost): ApiPost {
+  const legacy = response as MaybeLegacyPostResponse;
+  const postId = typeof legacy.post.id === "string" && legacy.post.id
+    ? legacy.post.id
+    : typeof legacy.post.post_id === "string" && legacy.post.post_id
+      ? publicPostId(legacy.post.post_id)
+      : null;
+  const communityId = typeof legacy.post.community === "string" && legacy.post.community
+    ? legacy.post.community
+    : typeof legacy.post.community_id === "string" && legacy.post.community_id
+      ? publicCommunityId(legacy.post.community_id)
+      : null;
+
+  if (!postId || !communityId) {
+    throw new Error("Post response is missing its post or community identifier.");
+  }
+
+  if (postId === legacy.post.id && communityId === legacy.post.community) {
+    return response;
+  }
+
+  return {
+    ...response,
+    post: {
+      ...response.post,
+      id: postId,
+      community: communityId,
+    },
+  };
+}
+
 async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<AvailableSigningAgent | null> {
   for (const agent of agents) {
     if (agent.status !== "active" || !agent.current_ownership) {
@@ -330,14 +376,14 @@ export function usePost(
     const loadPost = async (): Promise<{ post: ApiPost; readMode: PostReadMode }> => {
       if (!hasSession) {
         return {
-          post: await api.publicPosts.get(postId, { locale }),
+          post: normalizePostResponse(await api.publicPosts.get(postId, { locale })),
           readMode: "public",
         };
       }
 
       try {
         return {
-          post: await api.posts.get(postId, { locale }),
+          post: normalizePostResponse(await api.posts.get(postId, { locale })),
           readMode: "authenticated",
         };
       } catch (nextError) {
@@ -347,7 +393,7 @@ export function usePost(
 
         logger.info("[post-route] falling back to public read", { postId });
         return {
-          post: await api.publicPosts.get(postId, { locale }),
+          post: normalizePostResponse(await api.publicPosts.get(postId, { locale })),
           readMode: "public",
         };
       }
@@ -400,7 +446,7 @@ export function usePost(
             setAvailableAgent(nextAvailableAgent);
             setCommentNodes(commentTree.commentNodes);
             setAuthorProfilesByUserId((current) => ({ ...current, ...commentTree.authorProfilesByUserId }));
-            loadedCommentSortKeyRef.current = `${p.post.id}:${nextReadMode}:${commentSort}`;
+            loadedCommentSortKeyRef.current = `${p.post.community}:${nextReadMode}:${commentSort}`;
           })
           .catch((nextError: unknown) => {
             if (!cancelled) {

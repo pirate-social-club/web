@@ -5,6 +5,7 @@ import type { Community as ApiCommunity } from "@pirate/api-contracts";
 
 import type { LabelEditorDefinition } from "@/components/compositions/community/labels-editor/community-labels-editor-page";
 import type { CommunityLinkEditorItem } from "@/components/compositions/community/links-editor/community-links-editor-page";
+import type { RuleDraft } from "@/components/compositions/community/rules-editor/community-rules-editor-page";
 import { useApi } from "@/lib/api";
 
 import { submitCommunitySave, type SaveCommunityAction } from "@/app/authenticated-helpers/community-moderation-save";
@@ -60,6 +61,16 @@ export function getLabelValidationError(
   return null;
 }
 
+export function getCommunityRuleDrafts(community: ApiCommunity | null): RuleDraft[] {
+  return (community?.community_profile?.rules ?? []).map((rule) => ({
+    id: rule.id,
+    existingRuleId: rule.id,
+    title: rule.title,
+    body: rule.body,
+    reportReason: rule.report_reason?.trim() || rule.title,
+  }));
+}
+
 export function useCommunityContentPolicyState({
   community,
   saveCommunity,
@@ -68,9 +79,7 @@ export function useCommunityContentPolicyState({
   saveCommunity: SaveCommunityAction;
 }) {
   const api = useApi();
-  const [ruleName, setRuleName] = React.useState("");
-  const [description, setDescription] = React.useState("");
-  const [reportReason, setReportReason] = React.useState("");
+  const [rules, setRules] = React.useState<RuleDraft[]>([]);
   const [links, setLinks] = React.useState<CommunityLinkEditorItem[]>([]);
   const [labelsEnabled, setLabelsEnabled] = React.useState(false);
   const [labels, setLabels] = React.useState<LabelEditorDefinition[]>([]);
@@ -79,10 +88,7 @@ export function useCommunityContentPolicyState({
   const [savingLabels, setSavingLabels] = React.useState(false);
 
   React.useEffect(() => {
-    const firstRule = community?.community_profile?.rules?.[0];
-    setRuleName(firstRule?.title ?? "");
-    setDescription(firstRule?.body ?? "");
-    setReportReason(firstRule?.report_reason?.trim() || (firstRule?.title ?? ""));
+    setRules(getCommunityRuleDrafts(community));
   }, [community]);
 
   React.useEffect(() => {
@@ -101,27 +107,16 @@ export function useCommunityContentPolicyState({
     if (!community) {
       return;
     }
-    const existingRules = community.community_profile?.rules ?? [];
-    const rules = [
-      {
-        rule_id: existingRules[0]?.id ?? null,
-        title: ruleName,
-        body: description,
-        report_reason: reportReason.trim() || ruleName.trim(),
-        position: 0,
-        status: "active" as const,
-      },
-      ...existingRules.slice(1).map((rule, index) => ({
-        rule_id: rule.id,
-        title: rule.title,
-        body: rule.body,
-        report_reason: rule.report_reason?.trim() || rule.title,
-        position: index + 1,
-        status: rule.status,
-      })),
-    ];
+    const rulesPayload = rules.map((draft, index) => ({
+      rule_id: draft.existingRuleId ?? null,
+      title: draft.title,
+      body: draft.body,
+      report_reason: draft.reportReason.trim() || draft.title.trim(),
+      position: index,
+      status: "active" as const,
+    }));
     void submitCommunitySave({
-      action: (currentCommunity) => api.communities.updateRules(currentCommunity.id, { rules }),
+      action: (currentCommunity) => api.communities.updateRules(currentCommunity.id, { rules: rulesPayload }),
       community,
       failureMessage: "Could not save rules.",
       saveCommunity,
@@ -129,7 +124,7 @@ export function useCommunityContentPolicyState({
       savingSetter: setSavingRules,
       successMessage: "Rules saved.",
     });
-  }, [api.communities, community, description, reportReason, ruleName, saveCommunity, savingRules]);
+  }, [api.communities, community, rules, saveCommunity, savingRules]);
 
   const handleSaveLinks = React.useCallback(() => {
     void submitCommunitySave({
@@ -194,7 +189,6 @@ export function useCommunityContentPolicyState({
   ]);
 
   return {
-    description,
     handleSaveLabels,
     handleSaveLinks,
     handleSaveRules,
@@ -202,16 +196,13 @@ export function useCommunityContentPolicyState({
     labelsEnabled,
     labelsValidationError,
     links,
-    reportReason,
-    ruleName,
+    rules,
     savingLabels,
     savingLinks,
     savingRules,
-    setDescription,
     setLabels,
     setLabelsEnabled,
     setLinks,
-    setReportReason,
-    setRuleName,
+    setRules,
   };
 }

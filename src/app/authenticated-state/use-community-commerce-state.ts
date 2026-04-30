@@ -112,7 +112,7 @@ export function useCommunityCommerceState({
     void api.communities.resolveDonationPartner(community.id, { endaoment_url: endaomentUrl.trim() })
       .then((resolvedPartner) => {
         setPartnerPreview({
-          donationPartnerId: resolvedPartner.donation_partner,
+          donationPartnerId: resolvedPartner.donation_partner_id,
           displayName: resolvedPartner.display_name,
           imageUrl: resolvedPartner.image_url ?? null,
           provider: "Endaoment",
@@ -142,7 +142,7 @@ export function useCommunityCommerceState({
         donation_policy_mode: nextDonationMode,
         donation_partner_id: nextDonationMode === "none" || !partnerPreview ? null : partnerPreview.donationPartnerId,
         donation_partner: nextDonationMode === "none" || !partnerPreview ? null : {
-          donation_partner: partnerPreview.donationPartnerId,
+          donation_partner_id: partnerPreview.donationPartnerId,
           display_name: partnerPreview.displayName,
           provider: "endaoment",
           provider_partner_ref: partnerPreview.providerPartnerRef ?? null,

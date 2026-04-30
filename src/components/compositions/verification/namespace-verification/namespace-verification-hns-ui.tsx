@@ -62,7 +62,6 @@ export function NamespaceVerificationHnsPanel({
   const copy = defaultRouteCopy;
   const mc = copy.moderation.namespaceVerification.hns;
   const nameservers = (setupNameservers ?? []).filter((value) => value.trim().length > 0);
-  const challengeName = challengeHost ?? (rootLabel.trim() ? `_pirate.${rootLabel.trim()}` : "_pirate");
 
   return (
     <section className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-5 py-5">
@@ -83,21 +82,6 @@ export function NamespaceVerificationHnsPanel({
             {nameservers.map((value) => (
               <CopyField key={value} value={value} />
             ))}
-          </div>
-        </div>
-      ) : null}
-
-      {mode === "dns_setup_required" ? (
-        <Type as="div" variant="caption">
-          Update the root&apos;s `NS` records where you manage the Handshake parent. After that, Pirate will show the TXT record here.
-        </Type>
-      ) : null}
-
-      {mode === "pirate_managed" ? (
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Type as="div" variant="caption">{mc.challengeLabel}</Type>
-            <CopyField value={challengeName} />
           </div>
         </div>
       ) : null}

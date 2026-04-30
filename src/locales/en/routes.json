@@ -452,7 +452,21 @@
     "installPromoBody": "Never miss a payout with Pirate on your homescreen",
     "installPromoAction": "Install",
     "installPromoDismiss": "Not now",
-    "installPromoIOSInstructions": "Tap the Share button below, then scroll down and tap \"Add to Home Screen\"."
+    "installPromoIOSInstructions": "Tap the Share button below, then scroll down and tap \"Add to Home Screen\".",
+    "taskUniqueHumanVerificationRequired": "Verify you're human",
+    "taskProfileCompletionSuggested": "Finish your profile",
+    "taskGlobalHandleCleanupSuggested": "Choose your .pirate name",
+    "taskMembershipReview": "Membership requests",
+    "taskUniqueHumanVerificationMeta": "Take a photo of your palm",
+    "taskProfileCompletionMeta": "Add a name, bio, avatar, or cover",
+    "taskGlobalHandleCleanupMeta": "Replace your generated handle",
+    "pendingCount": "{count} pending",
+    "eventXmtpMessage": "{actor} sent a message",
+    "eventRoyaltyEarned": "Royalty earned",
+    "eventRoyaltyContext": "{amount} from {title}",
+    "eventRoyaltyContextAmount": "{amount}",
+    "royaltyPurchasedBy": "Purchased by {buyer} · {amount}",
+    "loadingNotifications": "Loading notifications..."
   },
   "createCommunity": {
     "reopenVerification": "Reopen verification",
@@ -830,8 +844,9 @@
       "verificationSection": "Verification"
     },
     "rules": {
-      "title": "Create rule",
+      "title": "Rules",
       "description": "Rules set the expectations for members and visitors in your community.",
+      "addRule": "Add rule",
       "namePlaceholder": "Rule name",
       "maxChars100": "Max characters 100",
       "descriptionPlaceholder": "Description",
@@ -839,7 +854,8 @@
       "reportingTitle": "Reporting",
       "reportingDescription": "Users or mods can select a report reason when reporting content.",
       "reportReasonPlaceholder": "Report reason",
-      "reportReasonHint": "By default, this is the same as your rule name."
+      "reportReasonHint": "By default, this is the same as your rule name.",
+      "emptyState": "No rules yet."
     },
     "labels": {
       "title": "Labels",
@@ -1096,7 +1112,8 @@
         "spacesDefault": "Could not verify this root. Check the published records and try again."
       },
       "hns": {
-        "dnsSetupNote": "Set nameservers first. Parent-side TXT values will not create the _pirate record.",
+        "dnsSetupNote": "Set the root's NS records to these nameservers, then check setup.",
+        "dnsSetupPendingNote": "Nameserver setup is not detected yet.",
         "txtPendingNote": "TXT propagation is still pending.",
         "txtVerifyNote": "Add this TXT record on your authoritative DNS, then verify.",
         "nameserversLabel": "Nameservers",

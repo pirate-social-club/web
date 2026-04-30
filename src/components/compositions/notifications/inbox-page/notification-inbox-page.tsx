@@ -55,34 +55,35 @@ function payloadString(
 function formatTaskLabel(type: string, copy: ReturnType<typeof getLocaleMessages<"routes">>["inbox"]): string {
   switch (type) {
     case "unique_human_verification_required":
-      return "Verify you're human";
+      return copy.taskUniqueHumanVerificationRequired;
     case "profile_completion_suggested":
-      return "Finish your profile";
+      return copy.taskProfileCompletionSuggested;
     case "global_handle_cleanup_suggested":
-      return "Choose your .pirate name";
+      return copy.taskGlobalHandleCleanupSuggested;
     case "namespace_verification_required":
       return copy.taskNamespaceVerificationRequired;
     case "membership_review":
-      return "Membership requests";
+      return copy.taskMembershipReview;
     default:
       return type.replace(/_/g, " ");
   }
 }
 
-function formatTaskMeta(task: UserTask): string | null {
+function formatTaskMeta(task: UserTask, copy: ReturnType<typeof getLocaleMessages<"routes">>["inbox"]): string | null {
   if (task.type === "unique_human_verification_required") {
-    return "Take a photo of your palm";
+    return copy.taskUniqueHumanVerificationMeta;
   }
   if (task.type === "profile_completion_suggested") {
-    return "Add a name, bio, avatar, or cover";
+    return copy.taskProfileCompletionMeta;
   }
   if (task.type === "global_handle_cleanup_suggested") {
-    return "Replace your generated handle";
+    return copy.taskGlobalHandleCleanupMeta;
   }
   if (task.type === "membership_review") {
+    const count = getMembershipReviewCount(task);
     return [
       task.payload?.community_display_name ? String(task.payload.community_display_name) : null,
-      getMembershipReviewCount(task) != null ? `${getMembershipReviewCount(task)} pending` : null,
+      count != null ? copy.pendingCount.replace("{count}", String(count)) : null,
     ].filter(Boolean).join(" · ");
   }
   return task.payload?.community_display_name ? String(task.payload.community_display_name) : null;
@@ -174,20 +175,24 @@ function formatEventLabel(
     case "post_commented":
       return copy.eventPostCommented.replace("{actor}", actorLabel);
     case "xmtp_message":
-      return `${actorLabel} sent a message`;
+      return copy.eventXmtpMessage.replace("{actor}", actorLabel);
     case "royalty_earned":
-      return "Royalty earned";
+      return copy.eventRoyaltyEarned;
     default:
       return `${actorLabel} ${item.event.type.replace(/_/g, " ")}`;
   }
 }
 
-function formatEventContext(item: NotificationFeedItem): string | null {
+function formatEventContext(
+  item: NotificationFeedItem,
+  copy: ReturnType<typeof getLocaleMessages<"routes">>["inbox"],
+): string | null {
   if (item.event.type === "royalty_earned") {
     const amount = payloadString(item.event.payload, "amount_wip_wei");
     const title = payloadString(item.event.payload, "title");
-    if (amount && title) return `+$${formatWipAmount(amount)} $WIP from ${title}`;
-    if (amount) return `+$${formatWipAmount(amount)} $WIP`;
+    const amountLabel = amount ? `+$${formatWipAmount(amount)} $WIP` : null;
+    if (amountLabel && title) return copy.eventRoyaltyContext.replace("{amount}", amountLabel).replace("{title}", title);
+    if (amountLabel) return copy.eventRoyaltyContextAmount.replace("{amount}", amountLabel);
   }
   return payloadString(item.event.payload, "comment_excerpt")
     ?? payloadString(item.event.payload, "post_title");
@@ -433,7 +438,7 @@ function NotificationTaskList({
             <NotificationRow
               icon={getTaskIcon(task)}
               onClick={href && onVerifyTask ? () => onVerifyTask(task) : undefined}
-              subtext={formatTaskMeta(task)}
+              subtext={formatTaskMeta(task, copy)}
               title={formatTaskLabel(task.type, copy)}
               unread
             />
@@ -500,7 +505,7 @@ function NotificationActivityList({
   if (timelineItems.length === 0 && royaltyActivityLoading) {
     return (
       <div className="px-5 py-8 text-center">
-        <Type as="p" className="text-muted-foreground" variant="body">Loading notifications...</Type>
+        <Type as="p" className="text-muted-foreground" variant="body">{copy.loadingNotifications}</Type>
       </div>
     );
   }
@@ -510,7 +515,7 @@ function NotificationActivityList({
       {timelineItems.map((entry, index) => {
         if (entry.type === "notification") {
           const href = resolveNotificationActivityHref(entry.item);
-          const context = formatEventContext(entry.item);
+          const context = formatEventContext(entry.item, copy);
           const relativeTime = formatRelativeShort(entry.item.event.created);
 
           return (
@@ -548,8 +553,8 @@ function NotificationActivityList({
               <NotificationRow
                 icon={ShoppingCart}
                 meta={relativeTime || null}
-                subtext={buyer ? `Purchased by ${buyer} · ${amountLabel}` : amountLabel}
-                title={entry.item.title?.trim() || "Royalty earned"}
+                subtext={buyer ? copy.royaltyPurchasedBy.replace("{buyer}", buyer).replace("{amount}", amountLabel) : amountLabel}
+                title={entry.item.title?.trim() || copy.eventRoyaltyEarned}
                 unread={!entry.item.read_at}
               />
             </div>

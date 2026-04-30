@@ -20,8 +20,8 @@ import {
   Section,
 } from "./create-community-composer.sections";
 import type { CommunityDatabaseRegion } from "./create-community-composer.types";
+import { DATABASE_REGION_OPTIONS } from "./create-community-composer.types";
 import type { CreateCommunityComposerController } from "./use-create-community-composer-controller";
-import { DATABASE_REGION_OPTIONS } from "./use-community-gate-state";
 
 export function CreateCommunityBasicsStep({
   controller,

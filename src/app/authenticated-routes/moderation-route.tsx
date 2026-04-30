@@ -327,21 +327,16 @@ export function CommunityModerationPage({
       );
     } else if (section === "rules") {
       setMobileSaveAction({
-        disabled: !state.ruleName.trim() || !state.description.trim() || state.savingRules,
+        disabled: state.rules.length === 0 || state.savingRules,
         loading: state.savingRules,
         onSave: state.handleSaveRules,
       });
       content = (
         <CommunityRulesEditorPage
-          description={state.description}
-          onBackClick={() => navigate(moderationIndexPath)}
-          onDescriptionChange={state.setDescription}
-          onReportReasonChange={state.setReportReason}
-          onRuleNameChange={state.setRuleName}
+          onRulesChange={state.setRules}
           onSave={state.handleSaveRules}
-          reportReason={state.reportReason}
-          ruleName={state.ruleName}
-          saveDisabled={!state.ruleName.trim() || !state.description.trim() || state.savingRules}
+          rules={state.rules}
+          saveDisabled={state.rules.length === 0 || state.savingRules}
           saveLoading={state.savingRules}
         />
       );

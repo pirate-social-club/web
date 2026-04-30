@@ -5,6 +5,7 @@ import { installDomGlobals } from "@/test/setup-dom";
 import type { CommunityPreview, LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { api } from "@/lib/api";
+import { ApiError } from "@/lib/api/client";
 import { __resetSessionStoreForTests } from "@/lib/api/session-store";
 
 import { usePost } from "./post-state";
@@ -203,5 +204,62 @@ describe("usePost", () => {
     const resolveLoadedPreview = resolvePreview as unknown as (preview: CommunityPreview) => void;
     resolveLoadedPreview(createPreview());
     await waitFor(() => expect(result.current.community?.display_name).toBe("Preview Community"));
+  });
+
+  test("normalizes legacy public post fallback before loading community data", async () => {
+    __resetSessionStoreForTests();
+    const calls = {
+      communityPreview: [] as Array<{ communityId: string; locale?: string | null }>,
+      publicPost: [] as Array<{ postId: string; locale?: string | null }>,
+    };
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const publicPosts = api.publicPosts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const publicComments = api.publicComments as unknown as {
+      listPostComments: (...args: unknown[]) => Promise<{ items: []; next_cursor: null }>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => {
+      throw new ApiError("not_found", "Community not found", 404);
+    };
+    publicPosts.get = async (postId, opts) => {
+      calls.publicPost.push({ postId, locale: opts?.locale });
+      const response = createPostResponse();
+      const { id: _id, community: _community, ...legacyPost } = response.post;
+      return {
+        ...response,
+        post: {
+          ...legacyPost,
+          post_id: "pst_test",
+          community_id: "cmt_test",
+        },
+      } as unknown as LocalizedPostResponse;
+    };
+    communities.preview = async (communityId, opts) => {
+      calls.communityPreview.push({ communityId, locale: opts?.locale });
+      return createPreview();
+    };
+    publicComments.listPostComments = async () => ({ items: [], next_cursor: null });
+    agents.list = async () => ({ items: [] });
+
+    const { result } = renderHook(() => usePost("post_pst_test", "ar", true, labels));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.community?.display_name).toBe("Preview Community"));
+
+    expect(calls.publicPost).toEqual([{ postId: "post_pst_test", locale: "ar" }]);
+    expect(calls.communityPreview).toEqual([{ communityId: "com_cmt_test", locale: "ar" }]);
+    expect(result.current.post?.post.id).toBe("post_pst_test");
+    expect(result.current.post?.post.community).toBe("com_cmt_test");
   });
 });

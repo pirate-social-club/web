@@ -32,7 +32,7 @@ import {
   createDefaultCommunitySafetyProviderSettings,
 } from "@/components/compositions/community/safety-page/community-safety-page";
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
-import { CommunityRulesEditorPage } from "@/components/compositions/community/rules-editor/community-rules-editor-page";
+import { CommunityRulesEditorPage, type RuleDraft } from "@/components/compositions/community/rules-editor/community-rules-editor-page";
 import {
   mockNamespaceCallbacks,
   moderationStoryCommunityAvatar,
@@ -46,13 +46,29 @@ const SAMPLE_LABELS: LabelEditorDefinition[] = [
   { id: "l4", label: "Original", color: "#f0d163", status: "active" },
 ];
 
+const DEFAULT_STORY_RULES: RuleDraft[] = [
+  {
+    id: "rule-1",
+    existingRuleId: "rule-1",
+    title: "Respect others and be civil",
+    body: "No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness.",
+    reportReason: "Respect others and be civil",
+  },
+  {
+    id: "rule-2",
+    existingRuleId: "rule-2",
+    title: "No spam",
+    body: "Excessive promotion, spam, or advertising of any kind is not allowed.",
+    reportReason: "No spam",
+  },
+];
+
 type ModerationView = "profile" | "rules" | "links" | "labels" | "donations" | "pricing" | "gates" | "safety" | "agents" | "machine-access" | "namespace";
 
 function ModerationShellStory({
   initialAllowAnonymousIdentity = true,
   initialAnonymousIdentityScope = "community_stable",
   initialDefaultAgeGatePolicy = "none",
-  initialDescription,
   initialCommunityDescription = "A gated space for producers to trade stems, workflows, and hard feedback.",
   initialCommunityDisplayName = "Infinity Mirror",
   initialGateDrafts = [],
@@ -68,14 +84,12 @@ function ModerationShellStory({
     providerPartnerRef: "charity-water",
   },
   initialMembershipMode = "request",
-  initialReportReason,
-  initialRuleName,
+  initialRules = DEFAULT_STORY_RULES,
   initialView = "rules",
 }: {
   initialAllowAnonymousIdentity?: boolean;
   initialAnonymousIdentityScope?: "community_stable" | "thread_stable" | "post_ephemeral";
   initialDefaultAgeGatePolicy?: "none" | "18_plus";
-  initialDescription: string;
   initialCommunityDescription?: string;
   initialCommunityDisplayName?: string;
   initialGateDrafts?: IdentityGateDraft[];
@@ -85,13 +99,10 @@ function ModerationShellStory({
   initialEndaomentUrl?: string;
   initialPartnerPreview?: DonationPartnerPreview | null;
   initialMembershipMode?: "request" | "gated";
-  initialReportReason: string;
-  initialRuleName: string;
+  initialRules?: RuleDraft[];
   initialView?: ModerationView;
 }) {
-  const [ruleName, setRuleName] = React.useState(initialRuleName);
-  const [description, setDescription] = React.useState(initialDescription);
-  const [reportReason, setReportReason] = React.useState(initialReportReason);
+  const [rules, setRules] = React.useState<RuleDraft[]>(initialRules);
   const [communityDisplayName, setCommunityDisplayName] = React.useState(initialCommunityDisplayName);
   const [communityDescription, setCommunityDescription] = React.useState(initialCommunityDescription);
   const [endaomentUrl, setEndaomentUrl] = React.useState(initialEndaomentUrl);
@@ -160,13 +171,10 @@ function ModerationShellStory({
         />
       ) : activeView === "rules" ? (
         <CommunityRulesEditorPage
-          description={description}
-          onDescriptionChange={setDescription}
-          onReportReasonChange={setReportReason}
-          onRuleNameChange={setRuleName}
-          reportReason={reportReason}
-          ruleName={ruleName}
-          saveDisabled={!ruleName.trim() || !description.trim()}
+          onRulesChange={setRules}
+          onSave={() => undefined}
+          rules={rules}
+          saveDisabled={rules.length === 0}
         />
       ) : activeView === "links" ? (
         <CommunityLinksEditorPage
@@ -278,20 +286,13 @@ type Story = StoryObj<typeof meta>;
 
 export const Rules: Story = {
   render: () => (
-    <ModerationShellStory
-      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
-      initialReportReason="Respect others and be civil"
-      initialRuleName="Respect others and be civil"
-    />
+    <ModerationShellStory />
   ),
 };
 
 export const Profile: Story = {
   render: () => (
     <ModerationShellStory
-      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
-      initialReportReason="Respect others and be civil"
-      initialRuleName="Respect others and be civil"
       initialView="profile"
     />
   ),
@@ -300,9 +301,6 @@ export const Profile: Story = {
 export const Labels: Story = {
   render: () => (
     <ModerationShellStory
-      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
-      initialReportReason="Respect others and be civil"
-      initialRuleName="Respect others and be civil"
       initialView="labels"
     />
   ),
@@ -312,9 +310,6 @@ export const LabelsEmpty: Story = {
   name: "Labels empty",
   render: () => (
     <ModerationShellStory
-      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
-      initialReportReason="Respect others and be civil"
-      initialRuleName="Respect others and be civil"
       initialLabels={[]}
       initialView="labels"
     />
@@ -325,9 +320,6 @@ export const LabelsDisabled: Story = {
   name: "Labels disabled",
   render: () => (
     <ModerationShellStory
-      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
-      initialReportReason="Respect others and be civil"
-      initialRuleName="Respect others and be civil"
       initialLabelsEnabled={false}
       initialLabels={[]}
       initialView="labels"
@@ -338,9 +330,6 @@ export const LabelsDisabled: Story = {
 export const Donations: Story = {
   render: () => (
     <ModerationShellStory
-      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
-      initialReportReason="Respect others and be civil"
-      initialRuleName="Respect others and be civil"
       initialView="donations"
     />
   ),
@@ -349,9 +338,7 @@ export const Donations: Story = {
 export const Blank: Story = {
   render: () => (
     <ModerationShellStory
-      initialDescription=""
-      initialReportReason=""
-      initialRuleName=""
+      initialRules={[]}
     />
   ),
 };
@@ -362,11 +349,8 @@ export const Gates: Story = {
       initialAllowAnonymousIdentity
       initialAnonymousIdentityScope="community_stable"
       initialDefaultAgeGatePolicy="18_plus"
-      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
       initialGateDrafts={[{ gateType: "gender", provider: "self", requiredValue: "F" }]}
       initialMembershipMode="gated"
-      initialReportReason="Respect others and be civil"
-      initialRuleName="Respect others and be civil"
       initialView="gates"
     />
   ),
@@ -375,7 +359,6 @@ export const Gates: Story = {
 export const Links: Story = {
   render: () => (
     <ModerationShellStory
-      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
       initialLinks={[
         {
           id: "link-1",
@@ -392,8 +375,6 @@ export const Links: Story = {
           verified: false,
         },
       ]}
-      initialReportReason="Respect others and be civil"
-      initialRuleName="Respect others and be civil"
       initialView="links"
     />
   ),
@@ -402,9 +383,6 @@ export const Links: Story = {
 export const Safety: Story = {
   render: () => (
     <ModerationShellStory
-      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
-      initialReportReason="Respect others and be civil"
-      initialRuleName="Respect others and be civil"
       initialView="safety"
     />
   ),
@@ -413,9 +391,6 @@ export const Safety: Story = {
 export const Namespace: Story = {
   render: () => (
     <ModerationShellStory
-      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
-      initialReportReason="Respect others and be civil"
-      initialRuleName="Respect others and be civil"
       initialView="namespace"
     />
   ),
@@ -424,9 +399,6 @@ export const Namespace: Story = {
 export const Agents: Story = {
   render: () => (
     <ModerationShellStory
-      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
-      initialReportReason="Respect others and be civil"
-      initialRuleName="Respect others and be civil"
       initialView="agents"
     />
   ),
@@ -436,9 +408,6 @@ export const MachineAccess: Story = {
   name: "Machine access",
   render: () => (
     <ModerationShellStory
-      initialDescription="No harassment, hate speech, or toxic behavior. Treat all contributors and members with kindness."
-      initialReportReason="Respect others and be civil"
-      initialRuleName="Respect others and be civil"
       initialView="machine-access"
     />
   ),

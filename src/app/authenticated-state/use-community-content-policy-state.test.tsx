@@ -57,6 +57,14 @@ function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
         report_reason: "Incivility",
         position: 0,
         status: "active",
+      }, {
+        id: "rule-2",
+        object: "community_rule",
+        title: "No spam",
+        body: "No excessive promotion.",
+        report_reason: "No spam",
+        position: 1,
+        status: "active",
       }],
       resource_links: [],
     },
@@ -181,27 +189,33 @@ describe("useCommunityContentPolicyState", () => {
     installCommunityApiMocks();
     const { result } = renderContentHook();
 
-    await waitFor(() => expect(result.current.ruleName).toBe("Be civil"));
+    await waitFor(() => expect(result.current.rules).toHaveLength(2));
 
-    expect(result.current.description).toBe("No harassment.");
-    expect(result.current.reportReason).toBe("Incivility");
+    expect(result.current.rules[0]?.title).toBe("Be civil");
+    expect(result.current.rules[0]?.body).toBe("No harassment.");
+    expect(result.current.rules[0]?.reportReason).toBe("Incivility");
+    expect(result.current.rules[1]?.title).toBe("No spam");
     expect(result.current.links).toHaveLength(1);
     expect(result.current.links[0]?.label).toBe("Site");
     expect(result.current.labelsEnabled).toBe(true);
     expect(result.current.labels[0]?.label).toBe("News");
   });
 
-  test("saves rules through the injected community save boundary", async () => {
+  test("saves all rules through the injected community save boundary", async () => {
     const calls = installCommunityApiMocks();
     const save = createSaveCommunityMock();
     const { result } = renderContentHook({ saveCommunity: save.saveCommunity });
 
-    await waitFor(() => expect(result.current.ruleName).toBe("Be civil"));
+    await waitFor(() => expect(result.current.rules).toHaveLength(2));
 
     act(() => {
-      result.current.setRuleName("Stay on topic");
-      result.current.setDescription("Posts should match the community.");
-      result.current.setReportReason("");
+      result.current.setRules((current) =>
+        current.map((r, i) =>
+          i === 0
+            ? { ...r, title: "Stay on topic", body: "Posts should match the community.", reportReason: "" }
+            : r,
+        ),
+      );
     });
     act(() => {
       result.current.handleSaveRules();
@@ -222,6 +236,13 @@ describe("useCommunityContentPolicyState", () => {
           body: "Posts should match the community.",
           report_reason: "Stay on topic",
           position: 0,
+          status: "active",
+        }, {
+          rule_id: "rule-2",
+          title: "No spam",
+          body: "No excessive promotion.",
+          report_reason: "No spam",
+          position: 1,
           status: "active",
         }],
       },

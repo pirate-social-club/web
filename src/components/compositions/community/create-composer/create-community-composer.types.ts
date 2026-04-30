@@ -67,6 +67,15 @@ export type IdentityGateDraft =
     gateRuleId?: string;
   };
 
+export const DATABASE_REGION_OPTIONS: CommunityDatabaseRegion[] = [
+  "aws-us-east-1",
+  "aws-us-east-2",
+  "aws-us-west-2",
+  "aws-eu-west-1",
+  "aws-ap-south-1",
+  "aws-ap-northeast-1",
+];
+
 export type ComposerStep = 1 | 2 | 3;
 
 export interface CreatorVerificationState {

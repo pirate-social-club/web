@@ -45,6 +45,7 @@ function installHookStubs() {
     spyOn(React, "useRef").mockImplementation(((
       initial: unknown,
     ) => ({ current: initial })) as unknown as typeof React.useRef),
+    spyOn(React, "useSyncExternalStore").mockImplementation((() => false) as unknown as typeof React.useSyncExternalStore),
   ];
 }
 

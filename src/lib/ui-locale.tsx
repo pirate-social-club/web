@@ -48,11 +48,18 @@ export function UiLocaleProvider({
   locale: UiLocaleCode;
 }>) {
   const hasStoredLocaleRef = React.useRef(false);
-  const [activeLocale, setActiveLocale] = React.useState<UiLocaleCode>(() => {
+  // Initialize with the server-provided locale so the first client render
+  // matches the SSR output and avoids a hydration mismatch.
+  const [activeLocale, setActiveLocale] = React.useState<UiLocaleCode>(locale);
+
+  // After hydration, apply any stored locale preference.
+  React.useEffect(() => {
     const storedLocale = readStoredUiLocale();
-    hasStoredLocaleRef.current = storedLocale != null;
-    return storedLocale ?? locale;
-  });
+    if (storedLocale != null) {
+      hasStoredLocaleRef.current = true;
+      setActiveLocale(storedLocale);
+    }
+  }, []);
 
   React.useEffect(() => {
     if (!hasStoredLocaleRef.current) {

@@ -121,7 +121,9 @@ export interface CommunityGatesEditorPageProps {
   onReadAccessModeChange?: (value: CommunityReadAccessMode) => void;
   onSave?: () => void;
   saveDisabled?: boolean;
+  showReadAccessSection?: boolean;
   showSaveAction?: boolean;
+  showTitle?: boolean;
 }
 
 export function CommunityGatesEditorPage({
@@ -143,7 +145,9 @@ export function CommunityGatesEditorPage({
   onReadAccessModeChange,
   onSave,
   saveDisabled = false,
+  showReadAccessSection = true,
   showSaveAction = true,
+  showTitle = true,
 }: CommunityGatesEditorPageProps) {
   const copy = defaultRouteCopy;
   const mc = copy.moderation.gates;
@@ -183,13 +187,15 @@ export function CommunityGatesEditorPage({
 
   return (
     <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
-        <div className="flex min-w-0 items-start gap-4">
-          <div className="min-w-0 space-y-2">
-            <Type as="h1" variant="h1" className="md:text-4xl">{mc.title}</Type>
+      {showTitle ? (
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="min-w-0 space-y-2">
+              <Type as="h1" variant="h1" className="md:text-4xl">{mc.title}</Type>
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       <Section title={mc.membershipTitle}>
         <div className="space-y-3">
@@ -432,19 +438,21 @@ export function CommunityGatesEditorPage({
         </Section>
       ) : null}
 
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title={mc.readingTitle}>
-        <div className="space-y-3">
-          {(Object.keys(readAccessMeta) as CommunityReadAccessMode[]).map((mode) => (
-            <OptionCard
-              key={mode}
-              description={readAccessMeta[mode].detail}
-              selected={mode === readAccessMode}
-              title={readAccessMeta[mode].label}
-              onClick={() => onReadAccessModeChange?.(mode)}
-            />
-          ))}
-        </div>
-      </Section>
+      {showReadAccessSection ? (
+        <Section className="border-t border-border-soft pt-6 md:pt-8" title={mc.readingTitle}>
+          <div className="space-y-3">
+            {(Object.keys(readAccessMeta) as CommunityReadAccessMode[]).map((mode) => (
+              <OptionCard
+                key={mode}
+                description={readAccessMeta[mode].detail}
+                selected={mode === readAccessMode}
+                title={readAccessMeta[mode].label}
+                onClick={() => onReadAccessModeChange?.(mode)}
+              />
+            ))}
+          </div>
+        </Section>
+      ) : null}
 
       <Section className="border-t border-border-soft pt-6 md:pt-8" title={mc.identityAndAccessTitle}>
         <div className="space-y-5">

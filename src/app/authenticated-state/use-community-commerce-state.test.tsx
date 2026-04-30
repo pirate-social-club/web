@@ -14,7 +14,7 @@ type DonationPolicyBody = {
   donation_policy_mode: "none" | "optional_creator_sidecar";
   donation_partner_id: string | null;
   donation_partner: {
-    donation_partner: string;
+    donation_partner_id: string;
     display_name: string;
     provider: "endaoment";
     provider_partner_ref: string | null;
@@ -73,7 +73,7 @@ function createPricingPolicy(
 function installCommunityApiMocks(options: {
   pricingPolicy?: ApiCommunityPricingPolicy;
   resolvedPartner?: {
-    donation_partner: string;
+    donation_partner_id: string;
     display_name: string;
     image_url?: string | null;
     provider_partner_ref?: string | null;
@@ -94,7 +94,7 @@ function installCommunityApiMocks(options: {
       communityId: string,
       body: { endaoment_url: string },
     ) => Promise<{
-      donation_partner: string;
+      donation_partner_id: string;
       display_name: string;
       image_url?: string | null;
       provider_partner_ref?: string | null;
@@ -110,7 +110,7 @@ function installCommunityApiMocks(options: {
   communities.resolveDonationPartner = async (communityId, body) => {
     calls.resolveDonationPartner.push({ communityId, body });
     return options.resolvedPartner ?? {
-      donation_partner: "partner-1",
+      donation_partner_id: "partner-1",
       display_name: "Endaoment Org",
       image_url: null,
       provider_partner_ref: "org-1",
@@ -122,7 +122,7 @@ function installCommunityApiMocks(options: {
       donation_policy_mode: body.donation_policy_mode,
       donation_partner: body.donation_partner
         ? {
-          donation_partner: body.donation_partner.donation_partner,
+          donation_partner: body.donation_partner.donation_partner_id,
           display_name: body.donation_partner.display_name,
           image_url: body.donation_partner.image_url,
           provider: body.donation_partner.provider,
@@ -209,7 +209,7 @@ describe("useCommunityCommerceState", () => {
   test("resolves an Endaoment partner into the donation preview", async () => {
     const calls = installCommunityApiMocks({
       resolvedPartner: {
-        donation_partner: "partner-2",
+        donation_partner_id: "partner-2",
         display_name: "Resolved Org",
         image_url: null,
         provider_partner_ref: "resolved-org",
@@ -267,7 +267,7 @@ describe("useCommunityCommerceState", () => {
         donation_policy_mode: "optional_creator_sidecar",
         donation_partner_id: "partner-3",
         donation_partner: {
-          donation_partner: "partner-3",
+          donation_partner_id: "partner-3",
           display_name: "Saved Org",
           provider: "endaoment",
           provider_partner_ref: "saved-org",

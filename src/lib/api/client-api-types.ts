@@ -177,7 +177,7 @@ export type ApiCommunitySafetyUpdateRequest = {
 };
 
 export type ApiDonationPartnerSummaryInput = {
-  donation_partner: string;
+  donation_partner_id: string;
   display_name: string;
   provider: "endaoment";
   provider_partner_ref?: string | null;
@@ -193,7 +193,7 @@ export type ApiCommunityDonationPolicyResponse = {
 };
 
 export type ApiResolveDonationPartnerResponse = {
-  donation_partner: string;
+  donation_partner_id: string;
   display_name: string;
   provider: "endaoment";
   provider_partner_ref?: string | null;

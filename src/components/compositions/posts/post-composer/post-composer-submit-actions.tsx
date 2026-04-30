@@ -59,6 +59,7 @@ export function PostComposerDesktopFooter({
       <CardFooter className="justify-end gap-3 border-t border-border-soft p-5">
         <Button
           disabled={!canAdvanceWrite || submit.disabled}
+          key="continue"
           onClick={() => step.set(getNextComposerStep("write", tabs.activeTab))}
           size="lg"
         >
@@ -72,6 +73,7 @@ export function PostComposerDesktopFooter({
     return (
       <CardFooter className="justify-between gap-3 border-t border-border-soft p-5">
         <Button
+          key="back"
           onClick={() => step.set(getPreviousComposerStep("settings", tabs.activeTab) ?? "write")}
           size="lg"
           variant="outline"
@@ -80,6 +82,7 @@ export function PostComposerDesktopFooter({
         </Button>
         <Button
           disabled={submit.continueDisabled}
+          key="continue"
           onClick={() => step.set("publish")}
           size="lg"
         >
@@ -93,6 +96,7 @@ export function PostComposerDesktopFooter({
     return (
       <CardFooter className="justify-between gap-3 border-t border-border-soft p-5">
         <Button
+          key="back"
           onClick={() => step.set("write")}
           size="lg"
           variant="outline"
@@ -101,6 +105,7 @@ export function PostComposerDesktopFooter({
         </Button>
         <Button
           disabled={submit.continueDisabled}
+          key="continue"
           onClick={() => step.set("settings")}
           size="lg"
         >
@@ -116,6 +121,7 @@ export function PostComposerDesktopFooter({
     <CardFooter className="justify-between gap-3 border-t border-border-soft p-5">
       {step.isPublishStep ? (
         <Button
+          key="back"
           onClick={() => step.set(getPreviousComposerStep("publish", tabs.activeTab) ?? "settings")}
           size="lg"
           variant="outline"
@@ -127,6 +133,7 @@ export function PostComposerDesktopFooter({
         {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
         <Button
           disabled={submit.disabled}
+          key="publish"
           loading={submit.loading}
           onClick={submit.onSubmit}
           size="lg"

@@ -24,6 +24,11 @@ type Story = StoryObj<typeof meta>;
 
 const dnsSetupCallbacks: NamespaceVerificationCallbacks = {
   ...mockNamespaceCallbacks,
+  onCompleteSession: async () => ({
+    status: "dns_setup_required",
+    namespaceVerificationId: null,
+    failureReason: null,
+  }),
   onGetSession: async ({ namespaceVerificationSessionId }) => ({
     namespaceVerificationSessionId,
     family: "hns",

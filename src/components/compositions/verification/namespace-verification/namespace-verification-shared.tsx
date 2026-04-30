@@ -102,7 +102,7 @@ function CopyBlock({ value }: { value: string }) {
 
   return (
     <div className="flex items-start gap-2 overflow-hidden rounded-2xl border border-input bg-background p-3 shadow-sm">
-      <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-sm leading-5 text-foreground select-all">
+      <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-base text-foreground select-all">
         {value}
       </pre>
       <Button

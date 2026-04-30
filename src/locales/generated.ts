@@ -944,8 +944,9 @@ export const GENERATED_LOCALE_CATALOGS = {
           "verificationSection": "Verification"
         },
         "rules": {
-          "title": "Create rule",
+          "title": "Rules",
           "description": "Rules set the expectations for members and visitors in your community.",
+          "addRule": "Add rule",
           "namePlaceholder": "Rule name",
           "maxChars100": "Max characters 100",
           "descriptionPlaceholder": "Description",
@@ -953,7 +954,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "reportingTitle": "Reporting",
           "reportingDescription": "Users or mods can select a report reason when reporting content.",
           "reportReasonPlaceholder": "Report reason",
-          "reportReasonHint": "By default, this is the same as your rule name."
+          "reportReasonHint": "By default, this is the same as your rule name.",
+          "emptyState": "No rules yet."
         },
         "labels": {
           "title": "Labels",
@@ -1210,7 +1212,8 @@ export const GENERATED_LOCALE_CATALOGS = {
             "spacesDefault": "Could not verify this root. Check the published records and try again."
           },
           "hns": {
-            "dnsSetupNote": "Set nameservers first. Parent-side TXT values will not create the _pirate record.",
+            "dnsSetupNote": "Set the root's NS records to these nameservers, then check setup.",
+            "dnsSetupPendingNote": "Nameserver setup is not detected yet.",
             "txtPendingNote": "TXT propagation is still pending.",
             "txtVerifyNote": "Add this TXT record on your authoritative DNS, then verify.",
             "nameserversLabel": "Nameservers",
@@ -2472,6 +2475,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "rules": {
           "title": "إنشاء قاعدة",
           "description": "تحدد القواعد التوقعات للأعضاء والزوار في مجتمعك.",
+          "addRule": "إضافة قاعدة",
           "namePlaceholder": "اسم القاعدة",
           "maxChars100": "الحد الأقصى 100 حرف",
           "descriptionPlaceholder": "الوصف",
@@ -2479,7 +2483,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "reportingTitle": "الإبلاغ",
           "reportingDescription": "يمكن للمستخدمين أو المشرفين اختيار سبب إبلاغ عند الإبلاغ عن محتوى.",
           "reportReasonPlaceholder": "سبب الإبلاغ",
-          "reportReasonHint": "افتراضيًا، هذا هو نفس اسم قاعدتك."
+          "reportReasonHint": "افتراضيًا، هذا هو نفس اسم قاعدتك.",
+          "emptyState": "لا توجد قواعد بعد."
         },
         "labels": {
           "title": "التسميات",
@@ -2736,7 +2741,8 @@ export const GENERATED_LOCALE_CATALOGS = {
             "spacesDefault": "تعذر التحقق من هذا الجذر. تحقق من السجلات المنشورة وحاول مرة أخرى."
           },
           "hns": {
-            "dnsSetupNote": "قم بإعداد nameservers أولاً. قيم TXT من جانب الأب لن تنشئ سجل _pirate.",
+            "dnsSetupNote": "اضبط سجلات NS للجذر على nameservers هذه، ثم تحقق من الإعداد.",
+            "dnsSetupPendingNote": "لم يتم اكتشاف إعداد nameserver بعد.",
             "txtPendingNote": "انتشار TXT لا يزال معلقًا.",
             "txtVerifyNote": "أضف سجل TXT هذا على DNS التفويضي لديك، ثم تحقق.",
             "nameserversLabel": "Nameservers",
@@ -3998,6 +4004,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "rules": {
           "title": "创建规则",
           "description": "规则为社区中的成员和访客设定期望。",
+          "addRule": "添加规则",
           "namePlaceholder": "规则名称",
           "maxChars100": "最多 100 个字符",
           "descriptionPlaceholder": "描述",
@@ -4005,7 +4012,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "reportingTitle": "举报",
           "reportingDescription": "用户或版主在举报内容时可以选择举报原因。",
           "reportReasonPlaceholder": "举报原因",
-          "reportReasonHint": "默认情况下，这与你的规则名称相同。"
+          "reportReasonHint": "默认情况下，这与你的规则名称相同。",
+          "emptyState": "还没有规则。"
         },
         "labels": {
           "title": "标签",
@@ -4236,7 +4244,8 @@ export const GENERATED_LOCALE_CATALOGS = {
             "spacesDefault": "无法验证此根。检查已发布记录后重试。"
           },
           "hns": {
-            "dnsSetupNote": "先设置 nameservers。父级 TXT 值不会创建 _pirate 记录。",
+            "dnsSetupNote": "将根的 NS 记录设为这些 nameservers，然后检查设置。",
+            "dnsSetupPendingNote": "尚未检测到 nameserver 设置。",
             "txtPendingNote": "TXT 传播仍在等待中。",
             "txtVerifyNote": "在你的权威 DNS 上添加此 TXT 记录，然后验证。",
             "nameserversLabel": "Nameservers",

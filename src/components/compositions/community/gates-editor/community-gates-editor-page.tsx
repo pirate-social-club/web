@@ -204,10 +204,6 @@ export function CommunityGatesEditorPage({
                 <div className="space-y-3 border-s-2 border-primary ps-4">
                   <FormSectionHeading title={mc.gateChecksTitle} />
 
-                  {gateDrafts.length === 0 ? (
-                    <FormNote tone="warning">{mc.gateChecksDescription}</FormNote>
-                  ) : null}
-
                   <CheckboxCard
                     checked={Boolean(nationalityGate)}
                     description={mc.nationalityDescription}

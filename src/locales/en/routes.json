@@ -897,7 +897,6 @@
       "membershipRequestDetail": "Users request to join.",
       "membershipGatedLabel": "Gated",
       "membershipGatedDetail": "Joining requires passing one or more gate checks.",
-      "gateChecksDescription": "No gate checks selected yet.",
       "gateChecksTitle": "Gate checks",
       "nationalityDescription": "Require nationality verification through Self.",
       "nationalityTitle": "Nationality verification",

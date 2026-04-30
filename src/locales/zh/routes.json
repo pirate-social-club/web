@@ -897,7 +897,6 @@
       "membershipRequestDetail": "用户申请加入。",
       "membershipGatedLabel": "受限",
       "membershipGatedDetail": "加入需要通过一个或多个门槛检查。",
-      "gateChecksDescription": "尚未选择任何门槛检查。",
       "gateChecksTitle": "门槛检查",
       "nationalityDescription": "要求通过 Self 验证国籍。",
       "nationalityTitle": "国籍验证",

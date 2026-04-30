@@ -897,7 +897,6 @@
       "membershipRequestDetail": "يطلب المستخدمون الانضمام.",
       "membershipGatedLabel": "مقيد",
       "membershipGatedDetail": "يتطلب الانضمام اجتياز بوابة واحدة أو أكثر.",
-      "gateChecksDescription": "لم يتم اختيار أي فحوصات بوابة بعد.",
       "gateChecksTitle": "فحوصات البوابة",
       "nationalityDescription": "اشترط التحقق من الجنسية عبر Self.",
       "nationalityTitle": "التحقق من الجنسية",

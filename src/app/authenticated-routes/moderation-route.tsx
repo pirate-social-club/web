@@ -117,12 +117,12 @@ export function CommunityModerationIndexPage({
 }) {
   const hydrated = useClientHydrated();
   const isMobile = useIsModerationMobileLayout();
+  const state = useCommunityModerationState(communityId);
+  const { copy } = useRouteMessages();
 
   if (!hydrated) {
     return <div className="min-h-screen w-full bg-background" />;
   }
-  const state = useCommunityModerationState(communityId);
-  const { copy } = useRouteMessages();
   const sections = buildCommunityModerationSections(
     null,
     communityId,
@@ -186,10 +186,6 @@ export function CommunityModerationPage({
   const api = useApi();
   const hydrated = useClientHydrated();
   const isMobile = useIsModerationMobileLayout();
-
-  if (!hydrated) {
-    return <div className="min-h-screen w-full bg-background" />;
-  }
   const state = useCommunityModerationState(communityId);
   const { copy } = useRouteMessages();
   const [membershipRequests, setMembershipRequests] = React.useState<MembershipRequestSummary[]>([]);
@@ -280,6 +276,10 @@ export function CommunityModerationPage({
       setProcessingMembershipRequestId(null);
     }
   }, [api, communityId]);
+
+  if (!hydrated) {
+    return <div className="min-h-screen w-full bg-background" />;
+  }
 
   if (!content && state.community) {
     if (section === "profile") {

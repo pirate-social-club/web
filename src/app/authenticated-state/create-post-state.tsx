@@ -28,6 +28,7 @@ import { formatQualifierLabel } from "@/app/authenticated-helpers/post-presentat
 import { parseUsdInput } from "@/lib/formatting/currency";
 import { buildAssetListingRequest, resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
 import { useSongSubmit } from "./use-song-submit";
+import { buildAnonymousLabel } from "@/lib/anonymous-label";
 
 export function isPublicAudienceAllowed(community: ApiCommunity | ApiCommunityPreview | null): boolean {
   if (!community) {
@@ -379,6 +380,28 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     };
   }, [community]);
 
+  const communityStableAnonymousLabel = React.useMemo(() => {
+    const anonymousScope = community?.anonymous_identity_scope ?? "community_stable";
+
+    if (
+      !community?.allow_anonymous_identity
+      || anonymousScope !== "community_stable"
+      || !session?.user.id
+    ) {
+      return null;
+    }
+
+    return buildAnonymousLabel({
+      communityId: communityId,
+      userId: session.user.id,
+    });
+  }, [
+    community?.allow_anonymous_identity,
+    community?.anonymous_identity_scope,
+    communityId,
+    session?.user.id,
+  ]);
+
   React.useEffect(() => {
     if (!community?.allow_anonymous_identity) setIdentityMode("public");
   }, [community?.allow_anonymous_identity]);
@@ -651,6 +674,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     imageUploadLabel,
     availableAgent,
     audience,
+    communityStableAnonymousLabel,
     linkUrl,
     license,
     loadError,

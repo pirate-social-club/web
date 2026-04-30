@@ -143,9 +143,10 @@ function CreatePostComposer({
             resolvePublicIdentityLabel(state.session?.profile) ?? "@handle",
           publicAvatarSrc: state.session?.profile?.avatar_ref ?? null,
           publicAvatarSeed: state.session?.profile?.user_id ?? null,
-          anonymousLabel: resolveAnonymousComposerLabel(
-            state.community.anonymous_identity_scope,
-          ),
+          anonymousLabel: state.communityStableAnonymousLabel
+            ?? resolveAnonymousComposerLabel(
+              state.community.anonymous_identity_scope,
+            ),
           anonymousDescription: resolveAnonymousComposerDescription(
             state.community.anonymous_identity_scope,
           ),

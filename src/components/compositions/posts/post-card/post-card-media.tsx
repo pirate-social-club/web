@@ -101,6 +101,8 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
                 : "grid-cols-1",
             )}
             href={content.href}
+            rel="noopener noreferrer"
+            target="_blank"
             data-post-card-interactive="true"
           >
             <div className="flex min-h-20 min-w-0 items-center rounded-lg border border-border-soft bg-muted/30 px-3 py-2.5">

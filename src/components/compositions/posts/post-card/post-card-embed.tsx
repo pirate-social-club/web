@@ -176,6 +176,8 @@ export function PostEmbedPreview({ content, className }: { content: EmbedContent
         )}
         data-post-card-interactive="true"
         href={content.canonicalUrl}
+        rel="noopener noreferrer"
+        target="_blank"
       >
         <div className="flex min-h-20 min-w-0 items-center rounded-lg border border-border-soft bg-muted/30 px-3 py-2.5">
           <div className="min-w-0 space-y-1">

@@ -21,7 +21,7 @@ import type {
   ComposerAudienceState,
   VideoComposerState,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
-import { isValidHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
+import { isValidHttpUrl, normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
 
 import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
 import { formatQualifierLabel } from "@/app/authenticated-helpers/post-presentation";
@@ -594,6 +594,10 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           await api.communities.createListing(communityId, listingRequest);
         }
       } else if (composerMode === "link") {
+        const normalizedLinkUrl = normalizeHttpUrl(linkUrl);
+        if (!normalizedLinkUrl) {
+          throw new Error("Enter a valid http or https link.");
+        }
         const linkRequest: CreatePostRequest = {
           idempotency_key: crypto.randomUUID(),
           post_type: "link" as const,
@@ -603,7 +607,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           translation_policy: "machine_allowed",
           title: title.trim() || undefined,
           body: body.trim() || undefined,
-          link_url: linkUrl.trim(),
+          link_url: normalizedLinkUrl,
           visibility: audience.visibility,
         };
         result = await api.communities.createPost(

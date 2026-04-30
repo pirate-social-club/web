@@ -6,9 +6,11 @@ import { navigate } from "@/app/router";
 import { AdCreator } from "@/components/compositions/ads/ad-creator/ad-creator";
 import type { CommunityPickerItem } from "@/components/compositions/posts/post-composer/post-composer.types";
 import { PostComposer } from "@/components/compositions/posts/post-composer/post-composer";
+import { isValidHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
 import { Button } from "@/components/primitives/button";
 import { PageContainer } from "@/components/primitives/layout-shell";
+import { toast } from "@/components/primitives/sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRecentCommunities } from "@/lib/owned-communities";
 import { forgetKnownCommunity } from "@/lib/known-communities-store";
@@ -16,6 +18,22 @@ import { forgetKnownCommunity } from "@/lib/known-communities-store";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { NotFoundRouteState } from "@/app/authenticated-helpers/route-shell";
 import { useCreatePostDraftState, type CreatePostDraftState } from "@/app/authenticated-state/create-post-draft-state";
+
+export function resolveGlobalCreatePostCanContinue(state: CreatePostDraftState) {
+  if (state.composerMode === "song") {
+    return Boolean(state.songState.primaryAudioUpload && state.lyrics.trim());
+  }
+  if (state.composerMode === "link") {
+    return isValidHttpUrl(state.linkUrl);
+  }
+  if (state.composerMode === "image") {
+    return state.title.trim().length > 0 && Boolean(state.imageUpload);
+  }
+  if (state.composerMode === "video") {
+    return state.title.trim().length > 0 && Boolean(state.videoState.primaryVideoUpload);
+  }
+  return state.title.trim().length > 0 && state.body.trim().length > 0;
+}
 
 export function NotFoundPage({
   path,
@@ -54,6 +72,15 @@ export function CreatePostGlobalPage({
     }
     setSelectedCommunityId(null);
   }, [selectedCommunityId]);
+
+  const handleSelectCommunity = React.useCallback((communityId: string) => {
+    setSelectedCommunityId(communityId);
+  }, []);
+  const canContinue = resolveGlobalCreatePostCanContinue(state);
+  const handleGlobalSubmit = React.useCallback(() => {
+    if (!canContinue) return;
+    toast.error(copy.common.chooseCommunity, { id: "create-post-global-community-required" });
+  }, [canContinue, copy.common.chooseCommunity]);
 
   if (selectedCommunityId) {
     return <>{renderCreatePost(selectedCommunityId, state, handleCommunityNotFound)}</>;
@@ -126,12 +153,13 @@ export function CreatePostGlobalPage({
             communityPickerItems={pickerItems}
             draft={composerDraft}
             actions={composerActions}
-            onSelectCommunity={setSelectedCommunityId}
+            onSelectCommunity={handleSelectCommunity}
             submit={{
-              disabled: true,
+              canContinue,
+              canPost: canContinue,
               loading: false,
               label: copy.createPost.actions.post,
-              onSubmit: () => {},
+              onSubmit: handleGlobalSubmit,
             }}
           />
         </section>
@@ -149,12 +177,13 @@ export function CreatePostGlobalPage({
         communityPickerItems={pickerItems}
         draft={composerDraft}
         actions={composerActions}
-        onSelectCommunity={setSelectedCommunityId}
+        onSelectCommunity={handleSelectCommunity}
         submit={{
-          disabled: true,
+          canContinue,
+          canPost: canContinue,
           loading: false,
           label: copy.createPost.actions.post,
-          onSubmit: () => {},
+          onSubmit: handleGlobalSubmit,
         }}
       />
     </PageContainer>

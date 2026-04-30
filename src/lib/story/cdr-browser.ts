@@ -1,7 +1,6 @@
 "use client";
 
 import type { AssetAccessResponse } from "@pirate/api-contracts";
-import { secp256k1 } from "@noble/curves/secp256k1";
 import { createPublicClient, createWalletClient, custom, defineChain, http } from "viem";
 
 import { resolveApiUrl } from "@/lib/api/base-url";
@@ -11,7 +10,6 @@ import { initWasm } from "@/vendor/piplabs/crypto/index.js";
 import { CDRClient } from "@/vendor/piplabs/sdk/client.js";
 
 type StoryCdrAccessPackage = NonNullable<AssetAccessResponse["story_cdr_access"]>;
-const CDR_REQUESTER_KEY_STORAGE_PREFIX = "pirate:story-cdr-requester-key:v1";
 
 function decodeBase64(value: string): Uint8Array {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
@@ -57,59 +55,6 @@ function resolveStoryChain(access: StoryCdrAccessPackage) {
 
 function cloneBytes(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
   return new Uint8Array(bytes);
-}
-
-function bytesToHex(bytes: Uint8Array): `0x${string}` {
-  return `0x${Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
-}
-
-function decodeHex(value: string): Uint8Array {
-  const normalized = value.startsWith("0x") ? value.slice(2) : value;
-  if (!/^[0-9a-f]*$/i.test(normalized) || normalized.length % 2 !== 0) {
-    throw new Error("Malformed Story requester key.");
-  }
-  const bytes = new Uint8Array(normalized.length / 2);
-  for (let index = 0; index < normalized.length; index += 2) {
-    bytes[index / 2] = Number.parseInt(normalized.slice(index, index + 2), 16);
-  }
-  return bytes;
-}
-
-function resolveRequesterStorageKey(params: {
-  walletAddress: string;
-  chainId: number;
-  vaultUuid: number;
-}): string {
-  return [
-    CDR_REQUESTER_KEY_STORAGE_PREFIX,
-    params.chainId,
-    params.walletAddress.toLowerCase(),
-    params.vaultUuid,
-  ].join(":");
-}
-
-function resolveStableRequesterKey(params: {
-  walletAddress: string;
-  chainId: number;
-  vaultUuid: number;
-}): {
-  requesterPubKey: `0x${string}`;
-  recipientPrivKey: Uint8Array;
-} {
-  const storageKey = resolveRequesterStorageKey(params);
-  const existing = globalThis.localStorage.getItem(storageKey);
-  let privateKey: Uint8Array;
-  if (existing) {
-    privateKey = decodeHex(existing);
-  } else {
-    privateKey = secp256k1.utils.randomPrivateKey();
-    globalThis.localStorage.setItem(storageKey, bytesToHex(privateKey));
-  }
-  const requesterPubKey = bytesToHex(secp256k1.getPublicKey(privateKey, false));
-  return {
-    requesterPubKey,
-    recipientPrivKey: cloneBytes(privateKey),
-  };
 }
 
 async function decryptAesGcm(params: {
@@ -186,16 +131,9 @@ export async function readStoryCdrAsset(params: {
     publicClient,
     walletClient,
   });
-  const requesterKey = resolveStableRequesterKey({
-    walletAddress: wallet.address,
-    chainId: access.chain_id,
-    vaultUuid: access.vault_uuid,
-  });
   const { dataKey } = await client.consumer.accessCDR({
     uuid: access.vault_uuid,
     accessAuxData: accessAuxDataHex as `0x${string}`,
-    requesterPubKey: requesterKey.requesterPubKey,
-    recipientPrivKey: requesterKey.recipientPrivKey,
   });
 
   const ciphertext = await fetchCiphertext(access.ciphertext_ref, accessToken);

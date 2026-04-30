@@ -12,6 +12,7 @@ const YOUTUBE_EMBED_HOSTS = new Set(["www.youtube.com", "www.youtube-nocookie.co
 const YOUTUBE_IFRAME_ALLOW = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
 const X_WIDGETS_SCRIPT_URL = "https://platform.x.com/widgets.js";
 const X_EMBED_SANDBOX = "allow-scripts";
+const X_EMBED_CSP = "default-src 'none'; script-src https://platform.x.com https://platform.twitter.com; frame-src https://platform.x.com https://platform.twitter.com https://syndication.twitter.com https://x.com https://twitter.com; connect-src https://platform.x.com https://platform.twitter.com https://syndication.twitter.com https://x.com https://twitter.com; img-src https: data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'";
 
 type SafeYouTubeEmbed = {
   src: string;
@@ -86,6 +87,81 @@ function findXBlockquote(sourceDocument: Document): Element | null {
     ?? sourceDocument.querySelector("blockquote.twitter-tweet");
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function resolveSafeXHref(value: string | null): string | null {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    if (
+      url.protocol !== "https:"
+      || url.username
+      || url.password
+      || (url.hostname !== "x.com" && url.hostname !== "twitter.com")
+    ) {
+      return null;
+    }
+
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeXChildNode(node: Node): string {
+  if (node.nodeType === 3) {
+    return escapeHtml(node.textContent ?? "");
+  }
+  if (node.nodeType !== 1 || !(node instanceof Element)) {
+    return "";
+  }
+
+  const tagName = node.tagName.toLowerCase();
+  const children = Array.from(node.childNodes).map(sanitizeXChildNode).join("");
+  if (tagName === "br") {
+    return "<br>";
+  }
+  if (tagName === "p") {
+    const dir = node.getAttribute("dir");
+    const lang = node.getAttribute("lang");
+    const attributes = [
+      dir === "ltr" || dir === "rtl" || dir === "auto" ? ` dir="${dir}"` : "",
+      lang?.match(/^[a-z]{2,8}(?:-[a-z0-9]{1,8})*$/i) ? ` lang="${escapeHtml(lang)}"` : "",
+    ].join("");
+    return `<p${attributes}>${children}</p>`;
+  }
+  if (tagName === "a") {
+    const href = resolveSafeXHref(node.getAttribute("href"));
+    return href ? `<a href="${escapeHtml(href)}" rel="noopener noreferrer">${children}</a>` : children;
+  }
+
+  return children;
+}
+
+function buildSafeXBlockquoteHtml(blockquote: Element): string | null {
+  if (!blockquote.textContent?.trim()) {
+    return null;
+  }
+
+  const cite = resolveSafeXHref(blockquote.getAttribute("cite"));
+  const dataTheme = blockquote.getAttribute("data-theme");
+  const attributes = [
+    ` class="twitter-tweet"`,
+    cite ? ` cite="${escapeHtml(cite)}"` : "",
+    dataTheme === "dark" || dataTheme === "light" ? ` data-theme="${dataTheme}"` : "",
+  ].join("");
+  const children = Array.from(blockquote.childNodes).map(sanitizeXChildNode).join("").trim();
+  return children ? `<blockquote${attributes}>${children}</blockquote>` : null;
+}
+
 export function isValidXEmbedHtml(oembedHtml: string): boolean {
   if (typeof DOMParser !== "undefined") {
     const sourceDocument = new DOMParser().parseFromString(oembedHtml, "text/html");
@@ -96,14 +172,19 @@ export function isValidXEmbedHtml(oembedHtml: string): boolean {
 }
 
 export function buildSandboxedXEmbedSrcDoc(oembedHtml: string): string | null {
-  if (!isValidXEmbedHtml(oembedHtml)) {
+  if (typeof DOMParser === "undefined") {
     return null;
   }
+  const sourceDocument = new DOMParser().parseFromString(oembedHtml, "text/html");
+  const blockquote = findXBlockquote(sourceDocument);
+  const safeBlockquote = blockquote ? buildSafeXBlockquoteHtml(blockquote) : null;
+  if (!safeBlockquote) return null;
 
   return `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="${escapeHtml(X_EMBED_CSP)}">
     <base target="_blank">
     <style>
       html,body{margin:0;padding:0;background:transparent;color-scheme:dark;overflow:hidden;}
@@ -112,7 +193,7 @@ export function buildSandboxedXEmbedSrcDoc(oembedHtml: string): string | null {
     </style>
   </head>
   <body>
-    ${oembedHtml}
+    ${safeBlockquote}
     <script async charset="utf-8" src="${X_WIDGETS_SCRIPT_URL}"></script>
   </body>
 </html>`;

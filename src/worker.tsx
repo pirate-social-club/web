@@ -462,14 +462,29 @@ function resolveServerErrorLocale(
   return resolveRequestUiLocale(url, acceptLanguageHeader);
 }
 
+function summarizeRouteError(error: unknown, includeStack: boolean): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      name: error.name,
+      ...(includeStack && error.stack ? { stack: error.stack } : {}),
+    };
+  }
+
+  return {
+    message: typeof error === "string" ? error : "Non-Error route failure",
+    name: typeof error,
+  };
+}
+
 const app = defineApp<AppRequestInfo>([
   except((error, { ctx, request }) => {
+    const url = new URL(request.url);
     console.error("[server-error] unhandled route error", {
-      error,
-      url: request.url,
+      error: summarizeRouteError(error, import.meta.env.DEV),
+      path: url.pathname,
     });
 
-    const url = new URL(request.url);
     const locale = resolveServerErrorLocale(ctx.locale, url, request.headers.get("accept-language"));
     return <ServerErrorFallback locale={locale} />;
   }),

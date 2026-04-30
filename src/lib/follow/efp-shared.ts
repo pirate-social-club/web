@@ -25,6 +25,9 @@ import {
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { getPirateNetworkConfig } from "@/lib/network-config";
+import { withTimeout } from "@/lib/promise-utils";
+
+export { withTimeout };
 
 export const EFP_READ_TIMEOUT_MS = 4_000;
 
@@ -172,25 +175,6 @@ export function createEfpPublicClient(chainId: number) {
   });
 }
 
-export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(new Error("EFP request timed out."));
-        }, timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timeoutId !== null) {
-      clearTimeout(timeoutId);
-    }
-  }
-}
-
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const { efp } = getPirateNetworkConfig();
   const response = await withTimeout(
@@ -203,6 +187,7 @@ export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T>
       ...init,
     }),
     EFP_READ_TIMEOUT_MS,
+    "EFP request timed out.",
   );
 
   if (!response.ok) {

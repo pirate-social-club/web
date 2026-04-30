@@ -89,8 +89,13 @@ describe("post card embed hardening", () => {
 
       expect(isValidXEmbedHtml(source)).toBe(true);
       expect(srcDoc).toContain(`class="twitter-tweet"`);
-      expect(srcDoc).toContain(`onclick="bad()"`);
+      expect(srcDoc?.includes(`onclick="bad()"`)).toBe(false);
+      expect(srcDoc?.includes(`<script>alert(1)</script>`)).toBe(false);
+      expect(srcDoc?.includes(`javascript:alert(1)`)).toBe(false);
+      expect(srcDoc?.includes(`<img`)).toBe(false);
+      expect(srcDoc).toContain(`https://x.com/pirate/status/1`);
       expect(srcDoc).toContain(`https://platform.x.com/widgets.js`);
+      expect(srcDoc).toContain(`Content-Security-Policy`);
     } finally {
       restoreDom();
     }

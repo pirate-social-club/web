@@ -1,10 +1,11 @@
 "use client";
 
-import { createWalletClient, custom } from "viem";
+import { createWalletClient, custom, hexToBytes } from "viem";
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import type { StoredSession } from "@/lib/api/session-store";
 import { logger } from "@/lib/logger";
+import { withTimeout } from "@/lib/promise-utils";
 
 const XMTP_APP_VERSION = "pirate-social/1.x";
 const XMTP_CLIENT_TIMEOUT_MS = 15_000;
@@ -217,26 +218,7 @@ export async function loadXmtpModule(): Promise<XmtpModule> {
   return modulePromise;
 }
 
-export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
-  let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null;
-  const timeout = new Promise<never>((_, reject) => {
-    timeoutId = globalThis.setTimeout(() => reject(new Error(message)), timeoutMs);
-  });
-  try {
-    return await Promise.race([promise, timeout]);
-  } finally {
-    if (timeoutId) globalThis.clearTimeout(timeoutId);
-  }
-}
-
-function hexToBytes(hex: string): Uint8Array {
-  const raw = hex.startsWith("0x") ? hex.slice(2) : hex;
-  const out = new Uint8Array(raw.length / 2);
-  for (let index = 0; index < out.length; index += 1) {
-    out[index] = Number.parseInt(raw.slice(index * 2, index * 2 + 2), 16);
-  }
-  return out;
-}
+export { withTimeout };
 
 function createConnectedWalletSigner(
   module: XmtpModule,

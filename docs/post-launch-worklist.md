@@ -118,3 +118,42 @@ Acceptance criteria:
 - Mandatory security, billing, and moderation notifications still reach the user through at least one approved surface.
 - Bot summaries include links back to the source items and respect community visibility rules.
 - Analytics can report opt-in rates and delivery success by notification category and channel without storing sensitive message content.
+
+## 4. External Boundary and Code Health Hardening
+
+Goal: reduce production risk from malformed external data, weak client-only identifiers, and slow codebase drift without blocking launch.
+
+Launch constraint: do not block launch on a repo-wide validation or cleanup sweep. The current critical security fixes are in place; this work should be incremental and targeted at unstable boundaries first.
+
+Runtime validation scope:
+
+- Add lightweight runtime validation at external fetch and storage boundaries before expanding into internal APIs.
+- Start with Story CDR access payloads, EFP API responses, XMTP-derived records, public SEO metadata fetches, and persisted JSON in browser storage.
+- Prefer narrow schema modules close to each integration instead of introducing a broad validation layer everywhere at once.
+- Treat validation failures as typed, user-safe errors with enough internal context for debugging, but no raw payload logging.
+
+Client ID cleanup:
+
+- Replace remaining `Math.random()` draft IDs with `crypto.randomUUID()` where IDs can be opaque.
+- Keep deterministic IDs only where tests, DOM relationships, or persisted contracts require stability.
+- Add small fallback helpers only if a target runtime lacks `crypto.randomUUID()`.
+
+Dead export policy:
+
+- Run an orphan export audit for production `src/lib` and `src/app` surfaces.
+- Remove true production orphans instead of keeping hypothetical extension points.
+- Exclude stories, mocks, generated files, vendor files, and explicitly named test helpers such as `__reset...ForTests`.
+- Consider adding a CI check only after the first cleanup pass avoids noisy false positives.
+
+Large file follow-up:
+
+- Split files over roughly 500 LOC on the next meaningful touch when review becomes hard.
+- Prioritize route/controller files that mix data loading, state machines, UI composition, and side effects.
+- Preserve current behavior while extracting named helpers or hooks; avoid cosmetic decomposition that only moves code around.
+
+Acceptance criteria:
+
+- External integration failures fail closed with typed, user-safe messages instead of unchecked casts.
+- No client draft ID path depends on `Math.random()` where `crypto.randomUUID()` is available.
+- Production orphan exports trend down without breaking story/test ergonomics.
+- Large file splits reduce review complexity in touched areas without broad rewrites.

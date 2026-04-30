@@ -346,7 +346,7 @@ export function InboxPlaceholderPage() {
           if (autoClearTask) {
             setTasks((current) => ({ ...current, items: current.items.filter((t) => t.id !== task.id) }));
             decrementOpenNotificationTaskCount();
-            void api.notifications.dismissTask({ task: task.id }).catch((error) => {
+            void api.notifications.dismissTask({ task_id: task.id }).catch((error) => {
               logger.debug("[inbox] failed to dismiss task", error);
             });
           }

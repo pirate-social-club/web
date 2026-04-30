@@ -35,6 +35,12 @@ function installHookStubs() {
     ) => callback) as unknown as typeof React.useCallback),
     spyOn(React, "useEffect").mockImplementation((() => undefined) as unknown as typeof React.useEffect),
     spyOn(React, "useId").mockImplementation((() => "test-id") as unknown as typeof React.useId),
+    spyOn(React, "useContext").mockImplementation((() => ({
+      dir: "ltr",
+      isRtl: false,
+      locale: "en",
+      setLocale: () => undefined,
+    })) as unknown as typeof React.useContext),
     spyOn(React, "useSyncExternalStore").mockImplementation(((
       _subscribe: unknown,
       _getSnapshot: unknown,

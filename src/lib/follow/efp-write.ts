@@ -1,6 +1,6 @@
 "use client";
 
-import { encodeFunctionData, type Address } from "viem";
+import { encodeFunctionData, encodePacked, type Address } from "viem";
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { getPirateNetworkConfig } from "@/lib/network-config";
@@ -12,15 +12,27 @@ import type {
 import { fetchProfileLists, getListStorageLocation, resolvePrimaryListStorageForAddress } from "./efp-read";
 import {
   createFollowListOp,
-  createMintStorageLocation,
   generateListNonce,
-  getPrimaryListRecordsAddress,
   listMinterAbi,
   listRecordsAbi,
   normalizeAddress,
   submitTransaction,
   type FollowWriteTransaction,
 } from "./efp-shared";
+
+type EfpConfig = ReturnType<typeof getPirateNetworkConfig>["efp"];
+
+function createMintStorageLocationForConfig(slot: bigint, efp: EfpConfig) {
+  const recordsAddress = efp.listRecordsByChain[efp.primaryListChainId];
+  if (!recordsAddress) {
+    throw new Error(`Missing EFP list-records deployment for chain ${efp.primaryListChainId}.`);
+  }
+
+  return encodePacked(
+    ["uint8", "uint8", "uint256", "address", "uint256"],
+    [1, 1, BigInt(efp.primaryListChainId), recordsAddress, slot],
+  );
+}
 
 interface SubmitFollowActionOptions {
   sendSponsoredIntent?: PirateSponsoredIntentSender | null;
@@ -31,8 +43,8 @@ function buildFollowTransactions(
   targetAddress: Address,
   existingStorage: { chainId: number; slot: bigint } | undefined,
   followed: boolean,
+  efp = getPirateNetworkConfig().efp,
 ): FollowWriteTransaction[] {
-  const { efp } = getPirateNetworkConfig();
   const op = createFollowListOp(targetAddress, followed);
 
   if (existingStorage) {
@@ -55,7 +67,7 @@ function buildFollowTransactions(
   return [
     {
       abi: listRecordsAbi,
-      address: getPrimaryListRecordsAddress(),
+      address: efp.listRecordsByChain[efp.primaryListChainId]!,
       args: [slot, [{ key: "user", value: viewerAddress }], [op]],
       chainId: efp.primaryListChainId,
       functionName: "setMetadataValuesAndApplyListOps",
@@ -63,7 +75,7 @@ function buildFollowTransactions(
     {
       abi: listMinterAbi,
       address: efp.listMinter,
-      args: [createMintStorageLocation(slot)],
+      args: [createMintStorageLocationForConfig(slot, efp)],
       chainId: efp.primaryListChainId,
       functionName: "mintPrimaryListNoMeta",
     },
@@ -74,8 +86,7 @@ function isEmbeddedPrivyWallet(wallet: PirateConnectedEvmWallet): boolean {
   return wallet.walletClientType === "privy" || wallet.walletClientType === "privy-v2";
 }
 
-function canSponsorFollowTransaction(transaction: FollowWriteTransaction): boolean {
-  const { efp } = getPirateNetworkConfig();
+function canSponsorFollowTransaction(transaction: FollowWriteTransaction, efp = getPirateNetworkConfig().efp): boolean {
   return efp.environment === "testnet" && transaction.chainId === efp.primaryListChainId;
 }
 

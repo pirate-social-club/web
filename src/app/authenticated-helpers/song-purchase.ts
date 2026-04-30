@@ -85,7 +85,7 @@ export async function executeSongPurchase(params: {
     params.onSuccess(params.successMessage({ settlement, titleText: params.titleText }));
   } catch (error) {
     if (quoteId && !fundingTxRef) {
-      void params.communities.failPurchase(params.communityId, { quote: quoteId }).catch(() => undefined);
+      await params.communities.failPurchase(params.communityId, { quote: quoteId }).catch(() => undefined);
     }
     params.onError(getErrorMessage(error, `Could not unlock this ${assetLabel}.`));
   }

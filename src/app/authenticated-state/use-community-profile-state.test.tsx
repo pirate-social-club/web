@@ -19,7 +19,8 @@ type UpdateCommunityBody = {
 
 function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
   return {
-    community: "community-1",
+    id: "community-1",
+    object: "community",
     display_name: "Test Community",
     description: "Original description",
     avatar_ref: "avatar-1",

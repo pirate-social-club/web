@@ -11,7 +11,8 @@ import { executeSongPurchase, resolveQuoteDiscountPercent } from "@/app/authenti
 
 function createListing(): ApiCommunityListing {
   return {
-    listing: "listing-1",
+    id: "listing-1",
+    object: "community_listing",
     community: "community-1",
     status: "active",
     listing_mode: "fixed_price",
@@ -46,7 +47,8 @@ function createCommunities(overrides: {
       createPurchaseQuote: async (_communityId: string) => {
         calls.createPurchaseQuote.push(_communityId);
         return {
-          quote: "quote-1",
+          id: "quote-1",
+          object: "community_purchase_quote",
           community: _communityId,
           listing: "listing-1",
           buyer_user_id: "user-1",

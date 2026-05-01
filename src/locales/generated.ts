@@ -91,6 +91,10 @@ export const GENERATED_LOCALE_CATALOGS = {
         "passportPromptDescription": "Are you human? Improve your wallet score and try again.",
         "passportPromptActionLabel": "Visit Passport.xyz"
       },
+      "matchModeHeader": {
+        "allRequired": "All required",
+        "anyRequired": "Any one required"
+      },
       "capabilityLabels": {
         "ageOver18": "18+ status",
         "minimumAge": "age status",
@@ -1643,6 +1647,10 @@ export const GENERATED_LOCALE_CATALOGS = {
         "passportPromptDescription": "هل أنت إنسان؟ ارفع درجة محفظتك وحاول مرة أخرى.",
         "passportPromptActionLabel": "زيارة Passport.xyz"
       },
+      "matchModeHeader": {
+        "allRequired": "كلها مطلوبة",
+        "anyRequired": "أي واحد مطلوب"
+      },
       "capabilityLabels": {
         "ageOver18": "حالة 18+",
         "minimumAge": "العمر",
@@ -3194,6 +3202,10 @@ export const GENERATED_LOCALE_CATALOGS = {
         "passportPromptTitle": "需要更高分数",
         "passportPromptDescription": "你是真人吗？提高你的钱包分数后再试。",
         "passportPromptActionLabel": "访问 Passport.xyz"
+      },
+      "matchModeHeader": {
+        "allRequired": "全部需要",
+        "anyRequired": "任一即可"
       },
       "capabilityLabels": {
         "ageOver18": "18+ 状态",

@@ -317,6 +317,80 @@ export const PassportScoreGated: Story = {
   },
 };
 
+export const GatesAndMode: Story = {
+  name: "States / AND gates",
+  args: {},
+  render: () => {
+    const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
+
+    return (
+      <CommunityPageShell
+        activeSort={activeSort}
+        availableSorts={sortOptions}
+        avatarSrc={tameImpalaAvatarPlaceholder}
+        bannerSrc={tameImpalaBannerPlaceholder}
+        communityId="cmt_and_gates"
+        headerAction={(
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Button>Follow</Button>
+            <Button variant="secondary">Join</Button>
+          </div>
+        )}
+        items={tameImpalaFeedItems}
+        onSortChange={setActiveSort}
+        routeLabel="c/andgates"
+        routeVerified
+        sidebar={{
+          ...tameImpalaSidebar,
+          description: "Requires both a high Passport score and a palm scan.",
+          displayName: "AND Gates",
+          membershipMode: "gated",
+          requirements: ["Passport score 8+", "Palm scan"],
+          requirementsMode: "all",
+        }}
+        title="AND Gates"
+      />
+    );
+  },
+};
+
+export const GatesOrMode: Story = {
+  name: "States / OR gates",
+  args: {},
+  render: () => {
+    const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
+
+    return (
+      <CommunityPageShell
+        activeSort={activeSort}
+        availableSorts={sortOptions}
+        avatarSrc={tameImpalaAvatarPlaceholder}
+        bannerSrc={tameImpalaBannerPlaceholder}
+        communityId="cmt_or_gates"
+        headerAction={(
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Button>Follow</Button>
+            <Button variant="secondary">Join</Button>
+          </div>
+        )}
+        items={tameImpalaFeedItems}
+        onSortChange={setActiveSort}
+        routeLabel="c/orgates"
+        routeVerified
+        sidebar={{
+          ...tameImpalaSidebar,
+          description: "Join with either a high Passport score or a palm scan.",
+          displayName: "OR Gates",
+          membershipMode: "gated",
+          requirements: ["Passport score 8+", "Palm scan"],
+          requirementsMode: "any",
+        }}
+        title="OR Gates"
+      />
+    );
+  },
+};
+
 export const CommunityViewportPreset: Story = {
   name: "Community (viewport preset)",
   args: {},

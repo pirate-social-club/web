@@ -84,6 +84,10 @@
     "passportPromptDescription": "你是真人吗？提高你的钱包分数后再试。",
     "passportPromptActionLabel": "访问 Passport.xyz"
   },
+  "matchModeHeader": {
+    "allRequired": "全部需要",
+    "anyRequired": "任一即可"
+  },
   "capabilityLabels": {
     "ageOver18": "18+ 状态",
     "minimumAge": "年龄",

@@ -84,6 +84,10 @@
     "passportPromptDescription": "هل أنت إنسان؟ ارفع درجة محفظتك وحاول مرة أخرى.",
     "passportPromptActionLabel": "زيارة Passport.xyz"
   },
+  "matchModeHeader": {
+    "allRequired": "كلها مطلوبة",
+    "anyRequired": "أي واحد مطلوب"
+  },
   "capabilityLabels": {
     "ageOver18": "حالة 18+",
     "minimumAge": "العمر",

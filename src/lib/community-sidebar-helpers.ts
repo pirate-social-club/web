@@ -10,7 +10,7 @@ import type { CommunitySidebarRoleHolder, CommunitySidebarRule } from "@/compone
 import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
-import { flattenGatePolicyAtoms } from "@/lib/gate-policy-utils";
+import { flattenGatePolicyAtoms, getGatePolicyMatchMode } from "@/lib/gate-policy-utils";
 
 type SidebarGateSummary = Pick<
   ApiMembershipGateSummary,
@@ -192,6 +192,7 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       gateSummaries: getCommunityGateSummaries(community),
       locale,
     }),
+    requirementsMode: getGatePolicyMatchMode(community.gate_policy),
     referenceLinks: community.reference_links?.map((link) => ({
       communityReferenceLinkId: link.community_reference_link,
       label: resolveCommunityLocalizedText(

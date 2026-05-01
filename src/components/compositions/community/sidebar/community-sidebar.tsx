@@ -18,6 +18,7 @@ import { CommunitySidebarCharity } from "./community-sidebar-charity";
 import { CommunitySidebarFlairs } from "./community-sidebar-flairs";
 import { CommunitySidebarLinks } from "./community-sidebar-links";
 import { CommunitySidebarRoleHolderComponent } from "./community-sidebar-role-holder";
+import { CommunitySidebarRequirements } from "./community-sidebar-requirements";
 import { CommunitySidebarRules } from "./community-sidebar-rules";
 import type { CommunitySidebarProps } from "./community-sidebar.types";
 import { Type } from "@/components/primitives/type";
@@ -41,12 +42,23 @@ function CommunitySidebarSections({
   owner,
   moderators,
   requirements,
+  requirementsMode,
   referenceLinks,
   rules,
   showDescriptionSection = false,
 }: Pick<
   CommunitySidebarProps,
-  "charity" | "description" | "flairPolicy" | "followerCount" | "memberCount" | "owner" | "moderators" | "requirements" | "referenceLinks" | "rules"
+  | "charity"
+  | "description"
+  | "flairPolicy"
+  | "followerCount"
+  | "memberCount"
+  | "owner"
+  | "moderators"
+  | "requirements"
+  | "requirementsMode"
+  | "referenceLinks"
+  | "rules"
 > & {
   showDescriptionSection?: boolean;
 }) {
@@ -140,11 +152,10 @@ function CommunitySidebarSections({
           <AccordionItem className="border-b-0" value="requirements">
             <AccordionTrigger className={SECTION_LABEL}>{copy.requirementsLabel}</AccordionTrigger>
             <AccordionContent className="pb-0">
-              <ul className="list-disc space-y-1.5 ps-5 text-base leading-snug text-muted-foreground">
-                {activeRequirements.map((requirement) => (
-                  <li key={requirement}>{requirement}</li>
-                ))}
-              </ul>
+              <CommunitySidebarRequirements
+                items={activeRequirements}
+                mode={requirementsMode}
+              />
             </AccordionContent>
           </AccordionItem>
         )}
@@ -181,11 +192,23 @@ export function CommunitySidebarDetails({
   owner,
   moderators,
   requirements,
+  requirementsMode,
   referenceLinks,
   rules,
 }: Pick<
   CommunitySidebarProps,
-  "charity" | "className" | "description" | "flairPolicy" | "followerCount" | "memberCount" | "owner" | "moderators" | "requirements" | "referenceLinks" | "rules"
+  | "charity"
+  | "className"
+  | "description"
+  | "flairPolicy"
+  | "followerCount"
+  | "memberCount"
+  | "owner"
+  | "moderators"
+  | "requirements"
+  | "requirementsMode"
+  | "referenceLinks"
+  | "rules"
 >) {
   return (
     <div className={cn("rounded-lg bg-card px-4 py-4", className)}>
@@ -200,6 +223,7 @@ export function CommunitySidebarDetails({
           moderators={moderators}
           referenceLinks={referenceLinks}
           requirements={requirements}
+          requirementsMode={requirementsMode}
           rules={rules}
           showDescriptionSection
         />
@@ -221,6 +245,7 @@ export function CommunitySidebar({
   owner,
   moderators,
   requirements,
+  requirementsMode,
   referenceLinks,
   rules,
 }: CommunitySidebarProps) {
@@ -253,6 +278,7 @@ export function CommunitySidebar({
         moderators={moderators}
         referenceLinks={referenceLinks}
         requirements={requirements}
+        requirementsMode={requirementsMode}
         rules={rules}
       />
     </div>

@@ -92,6 +92,7 @@ export interface CommunitySidebarProps {
   moderators: CommunitySidebarRoleHolder[];
   namespacePanel?: CommunitySidebarNamespacePanel | null;
   requirements?: string[];
+  requirementsMode?: "all" | "any";
   referenceLinks?: CommunitySidebarReferenceLink[];
   rules?: CommunitySidebarRule[];
 }

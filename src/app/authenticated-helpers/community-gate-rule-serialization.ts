@@ -21,6 +21,13 @@ export function serializeIdentityGateDrafts(
 }
 
 function draftToAtom(draft: IdentityGateDraft): GateAtom | null {
+  if (draft.gateType === "unique_human") {
+    return {
+      type: "unique_human",
+      provider: "very",
+    };
+  }
+
   if (draft.gateType === "erc721_holding") {
     return {
       type: "erc721_holding",

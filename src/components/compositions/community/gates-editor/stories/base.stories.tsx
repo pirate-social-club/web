@@ -10,9 +10,7 @@ import type {
   IdentityGateDraft,
 } from "@/components/compositions/community/create-composer/create-community-composer.types";
 
-// Note: CommunityGatesEditorPage supports nationality, Passport score,
-// Ethereum ERC-721, and Courtyard inventory-match gates. unique_human and
-// age_over_18 gates are valid in v0 but not yet configurable through this UI.
+// Note: age_over_18 gates are valid in v0 but not yet configurable through this UI.
 const meta = {
   title: "Compositions/Community/Moderation/Gates",
   component: CommunityGatesEditorPage,
@@ -147,6 +145,21 @@ export const PassportScoreGate: Story = {
       defaultAgeGatePolicy="none"
       gateDrafts={[
         { gateType: "wallet_score", provider: "passport", minimumScore: 20 },
+      ]}
+      membershipMode="gated"
+      readAccessMode="public"
+    />
+  ),
+};
+
+export const PalmScanGate: Story = {
+  render: () => (
+    <InteractiveCommunityGatesEditorPage
+      allowAnonymousIdentity
+      anonymousIdentityScope="community_stable"
+      defaultAgeGatePolicy="none"
+      gateDrafts={[
+        { gateType: "unique_human", provider: "very" },
       ]}
       membershipMode="gated"
       readAccessMode="public"

@@ -29,6 +29,10 @@ const passportScoreGateDrafts: IdentityGateDraft[] = [
   { gateType: "wallet_score", provider: "passport", minimumScore: 20 },
 ];
 
+const palmScanGateDrafts: IdentityGateDraft[] = [
+  { gateType: "unique_human", provider: "very" },
+];
+
 const meta = {
   title: "Compositions/Community/CreateCommunityComposer",
   component: CreateCommunityComposer,
@@ -110,6 +114,18 @@ export const AccessStepWithPassportScoreGate: Story = {
   ),
 };
 
+export const AccessStepWithPalmScanGate: Story = {
+  name: "Flow / Access Step With Palm Scan Gate",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[...palmScanGateDrafts]}
+      initialStep={2}
+      membershipMode="gated"
+    />
+  ),
+};
+
 export const ReviewWithNationalityGate: Story = {
   name: "Flow / Review With Nationality Gate",
   render: () => (
@@ -128,6 +144,18 @@ export const ReviewWithPassportScoreGate: Story = {
     <CreateCommunityComposer
       {...baseComposer}
       gateDrafts={[...passportScoreGateDrafts]}
+      initialStep={3}
+      membershipMode="gated"
+    />
+  ),
+};
+
+export const ReviewWithPalmScanGate: Story = {
+  name: "Flow / Review With Palm Scan Gate",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[...palmScanGateDrafts]}
       initialStep={3}
       membershipMode="gated"
     />

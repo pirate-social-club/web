@@ -3,6 +3,25 @@ import { describe, expect, test } from "bun:test";
 import { serializeIdentityGateDrafts } from "@/app/authenticated-helpers/community-gate-rule-serialization";
 
 describe("serializeIdentityGateDrafts", () => {
+  test("serializes Very palm scan drafts as unique-human gate policy", () => {
+    expect(serializeIdentityGateDrafts([{
+      gateType: "unique_human",
+      provider: "very",
+    }])).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [{
+          op: "gate",
+          gate: {
+            type: "unique_human",
+            provider: "very",
+          },
+        }],
+      },
+    });
+  });
+
   test("serializes Courtyard inventory drafts as gate policy", () => {
     expect(serializeIdentityGateDrafts([{
       gateType: "erc721_inventory_match",

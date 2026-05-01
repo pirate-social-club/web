@@ -926,6 +926,7 @@
       "gateChecksTitle": "门槛",
       "biometricGateChecksTitle": "身份门槛",
       "walletGateChecksTitle": "钱包门槛",
+      "uniqueHumanTitle": "Palm scan (Very)",
       "nationalityDescription": "要求通过 Self 验证国籍。",
       "nationalityTitle": "国籍验证（Self.xyz）",
       "allowedNationalityLabel": "允许的国籍",

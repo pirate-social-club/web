@@ -19,6 +19,11 @@ export type CommunityDatabaseRegion =
 
 export type IdentityGateDraft =
   | {
+    gateType: "unique_human";
+    provider: "very";
+    gateRuleId?: string;
+  }
+  | {
     gateType: "nationality";
     provider: "self";
     requiredValues: string[];

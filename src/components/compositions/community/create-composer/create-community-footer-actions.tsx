@@ -20,7 +20,14 @@ export function CreateCommunityFooterActions({
         </Button>
       ) : null}
       {footer.activeStep < 3 ? (
-        <Button className={cn(isMobile && "flex-1")} disabled={!footer.canProceed} onClick={footer.handleNext}>
+        <Button
+          aria-label={footer.nextDisabledReason ? `${copy.next}: ${footer.nextDisabledReason}` : copy.next}
+          className={cn(isMobile && "flex-1")}
+          data-disabled-reason={footer.nextDisabledReason ?? undefined}
+          disabled={!footer.canProceed}
+          onClick={footer.handleNext}
+          title={footer.nextDisabledReason ?? undefined}
+        >
           {copy.next}
         </Button>
       ) : (

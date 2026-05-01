@@ -926,6 +926,7 @@
       "gateChecksTitle": "Gates",
       "biometricGateChecksTitle": "Identity gates",
       "walletGateChecksTitle": "Wallet gates",
+      "uniqueHumanTitle": "Palm scan (Very)",
       "nationalityDescription": "Require nationality verification through Self.",
       "nationalityTitle": "Nationality verification (Self.xyz)",
       "allowedNationalityLabel": "Allowed nationalities",

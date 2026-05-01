@@ -222,6 +222,10 @@ export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDra
 }
 
 function getCommunityGateDraft(atom: ReturnType<typeof flattenGatePolicyAtoms>[number]): IdentityGateDraft | null {
+  if (atom.type === "unique_human" && atom.provider === "very") {
+    return { gateType: "unique_human", provider: "very" };
+  }
+
   if (atom.type === "erc721_holding" && atom.chain_namespace === "eip155:1" && atom.contract_address) {
     return {
       gateType: "erc721_holding",

@@ -175,6 +175,7 @@ export function CommunityGatesEditorPage({
     members_only: { label: mc.readAccessMembersOnlyLabel, detail: mc.readAccessMembersOnlyDetail },
   };
   const nationalityGate = gateDrafts.find((draft) => draft.gateType === "nationality");
+  const uniqueHumanGate = gateDrafts.find((draft) => draft.gateType === "unique_human");
   const minimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
   const genderGate = gateDrafts.find((draft) => draft.gateType === "gender");
   const walletScoreGate = gateDrafts.find((draft) => draft.gateType === "wallet_score");
@@ -308,6 +309,20 @@ export function CommunityGatesEditorPage({
                   <FormSectionHeading title={mc.biometricGateChecksTitle} />
 
                   <CheckboxCard
+                    className={uniqueHumanGate ? "border-border bg-muted/30" : undefined}
+                    checked={Boolean(uniqueHumanGate)}
+                    title={mc.uniqueHumanTitle}
+                    onCheckedChange={(checked) => onGateDraftsChange?.(
+                      checked
+                        ? upsertGateDraft(gateDrafts, {
+                          gateType: "unique_human",
+                          provider: "very",
+                        })
+                        : removeGateDraft(gateDrafts, "unique_human"),
+                    )}
+                  />
+
+                  <CheckboxCard
                     className={nationalityGate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(nationalityGate)}
                     title={mc.nationalityTitle}
@@ -316,7 +331,7 @@ export function CommunityGatesEditorPage({
                         ? upsertGateDraft(gateDrafts, {
                           gateType: "nationality",
                           provider: "self",
-                          requiredValues: ["USA"],
+                          requiredValues: [],
                         })
                         : removeGateDraft(gateDrafts, "nationality"),
                     )}

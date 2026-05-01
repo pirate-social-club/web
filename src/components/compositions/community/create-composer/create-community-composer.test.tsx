@@ -197,6 +197,30 @@ describe("CreateCommunityComposer", () => {
     expect(validNext?.props.disabled).toBe(false);
   });
 
+  test("allows access-step progress with a valid Passport score gate", () => {
+    const passportGate: IdentityGateDraft = {
+      gateType: "wallet_score",
+      provider: "passport",
+      minimumScore: 10,
+    };
+    const tree = renderComposer({
+      creatorVerificationState: {
+        ageOver18Verified: true,
+      },
+      displayName: "Passport Club",
+      gateDrafts: [passportGate],
+      initialStep: 2,
+      membershipMode: "gated",
+    });
+
+    const next = findElement(
+      tree,
+      (element) => element.props.children === "Next" && "disabled" in element.props,
+    );
+
+    expect(next?.props.disabled).toBe(false);
+  });
+
   test("renders and submits document sex marker gates", () => {
     let submitted: Parameters<NonNullable<CreateCommunityComposerProps["onCreate"]>>[0] | null = null;
     const genderGate: IdentityGateDraft = {
@@ -253,6 +277,58 @@ describe("CreateCommunityComposer", () => {
     expect(fMarkerOption === null).toBe(false);
     expect(next?.props.disabled).toBe(false);
     expect((submitted as unknown as { gateDrafts?: IdentityGateDraft[] } | null)?.gateDrafts).toEqual([genderGate]);
+  });
+
+  test("renders and submits palm scan gates", () => {
+    let submitted: Parameters<NonNullable<CreateCommunityComposerProps["onCreate"]>>[0] | null = null;
+    const palmScanGate: IdentityGateDraft = {
+      gateType: "unique_human",
+      provider: "very",
+    };
+    const accessTree = renderComposer({
+      creatorVerificationState: {
+        ageOver18Verified: true,
+      },
+      displayName: "Human Club",
+      gateDrafts: [palmScanGate],
+      initialStep: 2,
+      membershipMode: "gated",
+    });
+    const submitTree = renderComposer({
+      creatorVerificationState: {
+        ageOver18Verified: true,
+      },
+      displayName: "Human Club",
+      gateDrafts: [palmScanGate],
+      initialStep: 3,
+      membershipMode: "gated",
+      onCreate: (input) => {
+        submitted = input;
+        return Promise.resolve({ communityId: "community-human" });
+      },
+    });
+
+    const palmScanOption = findElement(
+      accessTree,
+      (element) => element.props.title === "Palm scan (Very)",
+    );
+    const next = findElement(
+      accessTree,
+      (element) => element.props.children === "Next" && "disabled" in element.props,
+    );
+    const createButton = findElement(
+      submitTree,
+      (element) => element.props.children === "Create Community" && typeof element.props.onClick === "function",
+    );
+    if (!createButton) {
+      throw new Error("Missing create button");
+    }
+
+    (createButton.props.onClick as (() => void) | undefined)?.();
+
+    expect(palmScanOption === null).toBe(false);
+    expect(next?.props.disabled).toBe(false);
+    expect((submitted as unknown as { gateDrafts?: IdentityGateDraft[] } | null)?.gateDrafts).toEqual([palmScanGate]);
   });
 
   test("submits the trimmed final payload with the effective age policy", () => {

@@ -926,6 +926,7 @@
       "gateChecksTitle": "البوابات",
       "biometricGateChecksTitle": "بوابات الهوية",
       "walletGateChecksTitle": "بوابات المحفظة",
+      "uniqueHumanTitle": "Palm scan (Very)",
       "nationalityDescription": "اشترط التحقق من الجنسية عبر Self.",
       "nationalityTitle": "التحقق من الجنسية (Self.xyz)",
       "allowedNationalityLabel": "الجنسيات المسموح بها",

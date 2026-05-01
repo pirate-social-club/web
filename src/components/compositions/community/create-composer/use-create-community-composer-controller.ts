@@ -11,6 +11,7 @@ import {
 import { resolveCommunityAvatarSrc, resolveCommunityBannerSrc } from "@/lib/default-community-media";
 import { formatGateRequirement } from "@/lib/identity-gates";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { logger } from "@/lib/logger";
 
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
@@ -25,19 +26,55 @@ import type {
   IdentityGateDraft,
 } from "./create-community-composer.types";
 
-const DEFAULT_MEMBERSHIP_MODE: CommunityMembershipMode | null = null;
+const DEFAULT_MEMBERSHIP_MODE: CommunityMembershipMode = "gated";
 
-function isValidGateDraft(draft: IdentityGateDraft): boolean {
+function getInvalidGateDraftReason(draft: IdentityGateDraft): string | null {
   if (draft.gateType === "erc721_holding") {
-    return isAddress(draft.contractAddress.trim());
+    return isAddress(draft.contractAddress.trim()) ? null : "invalid_erc721_contract";
   }
   if (draft.gateType === "erc721_inventory_match") {
-    return isValidCourtyardInventoryDraft(draft);
+    return isValidCourtyardInventoryDraft(draft) ? null : "invalid_courtyard_inventory";
   }
   if (draft.gateType === "wallet_score") {
-    return Number.isFinite(draft.minimumScore) && draft.minimumScore >= 0 && draft.minimumScore <= 100;
+    return Number.isFinite(draft.minimumScore) && draft.minimumScore >= 0 && draft.minimumScore <= 100
+      ? null
+      : "invalid_wallet_score";
   }
-  return true;
+  return null;
+}
+
+function isValidGateDraft(draft: IdentityGateDraft): boolean {
+  return getInvalidGateDraftReason(draft) == null;
+}
+
+function summarizeGateDraftForLog(draft: IdentityGateDraft): Record<string, unknown> {
+  switch (draft.gateType) {
+    case "wallet_score":
+      return { gateType: draft.gateType, provider: draft.provider, minimumScore: draft.minimumScore };
+    case "nationality":
+      return { gateType: draft.gateType, provider: draft.provider, requiredValues: draft.requiredValues };
+    case "minimum_age":
+      return { gateType: draft.gateType, provider: draft.provider, minimumAge: draft.minimumAge };
+    case "gender":
+      return { gateType: draft.gateType, provider: draft.provider, requiredValue: draft.requiredValue };
+    case "unique_human":
+      return { gateType: draft.gateType, provider: draft.provider };
+    case "erc721_holding":
+      return {
+        gateType: draft.gateType,
+        chainNamespace: draft.chainNamespace,
+        hasContractAddress: draft.contractAddress.trim().length > 0,
+        contractAddressValid: isAddress(draft.contractAddress.trim()),
+      };
+    case "erc721_inventory_match":
+      return {
+        gateType: draft.gateType,
+        chainNamespace: draft.chainNamespace,
+        inventoryProvider: draft.inventoryProvider,
+        minQuantity: draft.minQuantity,
+        valid: isValidCourtyardInventoryDraft(draft),
+      };
+  }
 }
 
 export function useCreateCommunityComposerController({
@@ -97,13 +134,15 @@ export function useCreateCommunityComposerController({
   const gateDraftsValid =
     activeMembershipMode !== "gated"
     || (activeGateDrafts.length > 0 && activeGateDrafts.every(isValidGateDraft));
+  const invalidGateDrafts = React.useMemo(
+    () => activeGateDrafts
+      .map((draft) => ({ draft: summarizeGateDraftForLog(draft), reason: getInvalidGateDraftReason(draft) }))
+      .filter((item) => item.reason != null),
+    [activeGateDrafts],
+  );
   const { locale } = useUiLocale();
   const copy = React.useMemo(() => getLocaleMessages(locale, "routes"), [locale]);
   const cc = copy.createCommunity.composer;
-
-  const handleNext = React.useCallback(() => {
-    setActiveStep((s) => Math.min(s + 1, 3) as ComposerStep);
-  }, []);
 
   const handleBack = React.useCallback(() => {
     setActiveStep((s) => Math.max(s - 1, 1) as ComposerStep);
@@ -188,6 +227,88 @@ export function useCreateCommunityComposerController({
     creatorAgeRequirementMet,
     deferCreatorVerification,
   ]);
+  const accessStepBlockReasons = React.useMemo(() => {
+    const reasons: string[] = [];
+    if (!deferCreatorVerification && !creatorAgeRequirementMet) {
+      reasons.push("creator_age_verification_required");
+    }
+    if (activeMembershipMode == null) {
+      reasons.push("membership_mode_required");
+    }
+    if (activeMembershipMode === "gated" && activeGateDrafts.length === 0) {
+      reasons.push("gated_membership_requires_gate");
+    }
+    if (invalidGateDrafts.length > 0) {
+      reasons.push("invalid_gate_drafts");
+    }
+    return reasons;
+  }, [
+    activeGateDrafts.length,
+    activeMembershipMode,
+    creatorAgeRequirementMet,
+    deferCreatorVerification,
+    invalidGateDrafts,
+  ]);
+
+  const nextDisabledReason = React.useMemo(() => {
+    if (canProceed) {
+      return null;
+    }
+    if (activeStep === 1) {
+      return "display_name_required";
+    }
+    if (activeStep === 2) {
+      return accessStepBlockReasons.join(",") || "access_step_blocked";
+    }
+    if (activeStep === 3) {
+      return "create_requirements_incomplete";
+    }
+    return "unknown";
+  }, [accessStepBlockReasons, activeStep, canProceed]);
+
+  React.useEffect(() => {
+    logger.warn("[create-community] composer state", {
+      activeStep,
+      membershipMode: activeMembershipMode,
+      gateDrafts: activeGateDrafts.map(summarizeGateDraftForLog),
+      gateDraftsValid,
+      invalidGateDrafts,
+      defaultAgeGatePolicy: activeDefaultAgeGatePolicy,
+      effectiveDefaultAgeGatePolicy,
+      creatorAgeOver18Verified,
+      creatorAgeRequirementMet,
+      canProceed,
+      canCreateCommunity,
+      nextDisabledReason,
+      accessStepBlockReasons: activeStep === 2 ? accessStepBlockReasons : [],
+    });
+  }, [
+    accessStepBlockReasons,
+    activeDefaultAgeGatePolicy,
+    activeGateDrafts,
+    activeMembershipMode,
+    activeStep,
+    canCreateCommunity,
+    canProceed,
+    creatorAgeOver18Verified,
+    creatorAgeRequirementMet,
+    effectiveDefaultAgeGatePolicy,
+    gateDraftsValid,
+    invalidGateDrafts,
+    nextDisabledReason,
+  ]);
+
+  const handleNext = React.useCallback(() => {
+    if (!canProceed) {
+      logger.warn("[create-community] blocked next click", {
+        activeStep,
+        accessStepBlockReasons: activeStep === 2 ? accessStepBlockReasons : [],
+        gateDrafts: activeGateDrafts.map(summarizeGateDraftForLog),
+      });
+      return;
+    }
+    setActiveStep((s) => Math.min(s + 1, 3) as ComposerStep);
+  }, [accessStepBlockReasons, activeGateDrafts, activeStep, canProceed]);
 
   const membershipLabel = ({
     open: cc.membershipOpenLabel,
@@ -222,11 +343,13 @@ export function useCreateCommunityComposerController({
                 }
                 : draft.gateType === "nationality"
                   ? { gate_type: draft.gateType, required_values: draft.requiredValues }
-                  : draft.gateType === "minimum_age"
-                    ? { gate_type: draft.gateType, required_minimum_age: draft.minimumAge }
-                    : draft.gateType === "wallet_score"
-                      ? { gate_type: draft.gateType, minimum_score: draft.minimumScore }
-                      : { gate_type: draft.gateType, required_value: draft.requiredValue },
+                  : draft.gateType === "unique_human"
+                    ? { gate_type: draft.gateType, accepted_providers: [draft.provider] }
+                    : draft.gateType === "minimum_age"
+                      ? { gate_type: draft.gateType, required_minimum_age: draft.minimumAge }
+                      : draft.gateType === "wallet_score"
+                        ? { gate_type: draft.gateType, minimum_score: draft.minimumScore }
+                        : { gate_type: draft.gateType, required_value: draft.requiredValue },
             { audience: "admin" },
           ),
         )
@@ -302,6 +425,7 @@ export function useCreateCommunityComposerController({
       handleBack,
       handleCreate,
       handleNext,
+      nextDisabledReason,
       submitting,
     },
     isMobile,

@@ -19,7 +19,7 @@ env:
 jobs:
   staging:
     name: Deploy staging
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,11 +28,6 @@ jobs:
         with:
           repository: pirate-social-club/api
           path: api
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-      - uses: actions/checkout@v4
-        with:
-          repository: pirate-social-club/core
-          path: core
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/setup-node@v4
         with:
@@ -58,7 +53,7 @@ jobs:
     name: Deploy production
     needs: staging
     if: ${{ inputs.deploy_production }}
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -68,6 +63,11 @@ jobs:
         with:
           repository: pirate-social-club/api
           path: api
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: pirate-social-club/core
+          path: core
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/setup-node@v4
         with:

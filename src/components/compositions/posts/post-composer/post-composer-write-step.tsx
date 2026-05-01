@@ -2,9 +2,12 @@
 
 import * as React from "react";
 
+import { UploadSimple } from "@phosphor-icons/react";
+
 import { CardContent } from "@/components/primitives/card";
 import { Input } from "@/components/primitives/input";
 import { Textarea } from "@/components/primitives/textarea";
+import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
 import { PostComposerAttachmentCard } from "./post-composer-attachment-card";
@@ -86,6 +89,37 @@ function updateBody(controller: PostComposerController, value: string) {
   fields.onTextBodyValueChange?.(value);
 }
 
+const imageExtensions = new Set([
+  "jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "heic", "heif", "avif",
+]);
+const videoExtensions = new Set([
+  "mp4", "mov", "avi", "mkv", "webm", "flv", "wmv", "m4v", "3gp", "ts", "mts",
+]);
+const audioExtensions = new Set([
+  "mp3", "wav", "flac", "aac", "ogg", "m4a", "wma", "aiff", "opus",
+]);
+
+function extensionFromFileName(name: string): string | null {
+  const dotIndex = name.lastIndexOf(".");
+  if (dotIndex === -1 || dotIndex === name.length - 1) return null;
+  return name.slice(dotIndex + 1).toLowerCase();
+}
+
+function fileKindFromFile(file: File): AttachmentKind | null {
+  if (file.type.startsWith("image/")) return "image";
+  if (file.type.startsWith("video/")) return "video";
+  if (file.type.startsWith("audio/")) return "song";
+
+  const ext = extensionFromFileName(file.name);
+  if (!ext) return null;
+
+  if (imageExtensions.has(ext)) return "image";
+  if (videoExtensions.has(ext)) return "video";
+  if (audioExtensions.has(ext)) return "song";
+
+  return null;
+}
+
 function useWriteStepController(controller: PostComposerController) {
   const imageInputRef = React.useRef<HTMLInputElement | null>(null);
   const videoInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -93,6 +127,8 @@ function useWriteStepController(controller: PostComposerController) {
   const imagePreviewUrl = useObjectUrl(controller.media.activeImageUpload);
   const videoPreviewUrl = useObjectUrl(controller.media.videoState.primaryVideoUpload);
   const attachment = attachmentFromController(controller, imagePreviewUrl, videoPreviewUrl);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const dragCounter = React.useRef(0);
 
   function selectAttachment(kind: AttachmentKind) {
     if (kind === "image") {
@@ -143,16 +179,12 @@ function useWriteStepController(controller: PostComposerController) {
     controller.tabs.onTabChange("text");
   }
 
-  function handleImageFile(files: FileList | null) {
-    const file = files?.[0];
-    if (!file) return;
+  function handleImageFile(file: File) {
     controller.media.setImageUpload(file);
     controller.tabs.onTabChange("image");
   }
 
-  function handleVideoFile(files: FileList | null) {
-    const file = files?.[0];
-    if (!file) return;
+  function handleVideoFile(file: File) {
     controller.media.updateVideoState((current) => ({
       ...current,
       primaryVideoLabel: file.name,
@@ -162,9 +194,7 @@ function useWriteStepController(controller: PostComposerController) {
     controller.tabs.onTabChange("video");
   }
 
-  function handleAudioFile(files: FileList | null) {
-    const file = files?.[0];
-    if (!file) return;
+  function handleAudioFile(file: File) {
     controller.song.update((current) => ({
       ...current,
       primaryAudioLabel: file.name,
@@ -173,26 +203,81 @@ function useWriteStepController(controller: PostComposerController) {
     controller.tabs.onTabChange("song");
   }
 
+  function handleFileInputChange(kind: AttachmentKind, files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    if (kind === "image") handleImageFile(file);
+    else if (kind === "video") handleVideoFile(file);
+    else if (kind === "song") handleAudioFile(file);
+  }
+
+  function handleDroppedFile(file: File) {
+    const kind = fileKindFromFile(file);
+    if (!kind) return;
+    if (kind === "image") handleImageFile(file);
+    else if (kind === "video") handleVideoFile(file);
+    else if (kind === "song") handleAudioFile(file);
+  }
+
+  function onDragEnter(event: React.DragEvent) {
+    event.preventDefault();
+    dragCounter.current += 1;
+    if (event.dataTransfer.types.includes("Files")) {
+      setIsDragging(true);
+    }
+  }
+
+  function onDragOver(event: React.DragEvent) {
+    event.preventDefault();
+    if (event.dataTransfer.types.includes("Files")) {
+      event.dataTransfer.dropEffect = "copy";
+      setIsDragging(true);
+    }
+  }
+
+  function onDragLeave(event: React.DragEvent) {
+    event.preventDefault();
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setIsDragging(false);
+    }
+  }
+
+  function onDrop(event: React.DragEvent) {
+    event.preventDefault();
+    dragCounter.current = 0;
+    setIsDragging(false);
+    const files = event.dataTransfer.files;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (fileKindFromFile(file)) {
+        handleDroppedFile(file);
+        break;
+      }
+    }
+  }
+
   const fileInputs = (
     <>
       <input
         accept="image/*"
         className="sr-only"
-        onChange={(event) => handleImageFile(event.target.files)}
+        onChange={(event) => handleFileInputChange("image", event.target.files)}
         ref={imageInputRef}
         type="file"
       />
       <input
         accept="video/*"
         className="sr-only"
-        onChange={(event) => handleVideoFile(event.target.files)}
+        onChange={(event) => handleFileInputChange("video", event.target.files)}
         ref={videoInputRef}
         type="file"
       />
       <input
         accept="audio/*"
         className="sr-only"
-        onChange={(event) => handleAudioFile(event.target.files)}
+        onChange={(event) => handleFileInputChange("song", event.target.files)}
         ref={audioInputRef}
         type="file"
       />
@@ -202,6 +287,11 @@ function useWriteStepController(controller: PostComposerController) {
   return {
     attachment,
     fileInputs,
+    isDragging,
+    onDragEnter,
+    onDragLeave,
+    onDragOver,
+    onDrop,
     removeAttachment,
     selectAttachment,
     updateAttachment,
@@ -218,7 +308,23 @@ export function PostComposerWriteStep({
 
   if (!controller.isMobile) {
     return (
-      <CardContent className="space-y-5 p-6">
+      <CardContent
+        className={cn("relative space-y-5 p-6", write.isDragging && "overflow-hidden")}
+        onDragEnter={write.onDragEnter}
+        onDragLeave={write.onDragLeave}
+        onDragOver={write.onDragOver}
+        onDrop={write.onDrop}
+      >
+        {write.isDragging ? (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-[var(--radius-lg)] border-2 border-dashed border-primary bg-primary-subtle/80 backdrop-blur-sm">
+            <span className="grid size-16 place-items-center rounded-full bg-primary text-primary-foreground">
+              <UploadSimple className="size-8" weight="bold" />
+            </span>
+            <Type as="p" variant="body-strong" className="text-primary">
+              Drop image, video, or audio here
+            </Type>
+          </div>
+        ) : null}
         <Input
           maxLength={300}
           onChange={(event) => controller.fields.onTitleValueChange?.(event.target.value)}

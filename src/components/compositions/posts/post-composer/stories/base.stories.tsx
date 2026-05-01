@@ -19,3 +19,14 @@ export const Overview: Story = {
   name: "Overview",
   render: () => <PostComposer {...baseComposer} />,
 };
+
+export const DragAndDrop: Story = {
+  name: "Drag and Drop",
+  render: () => (
+    <PostComposer
+      {...baseComposer}
+      titleValue="Try dragging a file here"
+      textBodyValue="Drag an image, video, or audio file directly onto this composer."
+    />
+  ),
+};

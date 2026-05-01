@@ -11,6 +11,7 @@ import { useApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
+import { buildCanonicalAuthUrl, isCanonicalAuthOrigin } from "@/lib/auth-origin";
 import { buildCommunityPath } from "@/lib/community-routing";
 import {
   getVerificationCapabilitiesForProvider,
@@ -68,6 +69,7 @@ export function useCommunityInteractionGate({
       return {
         ...localeMessages.interactionGate,
         locale: uiLocale,
+        openInPirate: localeMessages.publicProfile.openInPirate,
         taskVerify: localeMessages.createCommunity.startVerification,
       };
     },
@@ -376,6 +378,20 @@ export function useCommunityInteractionGate({
 
     if (!hasSession) {
       logger.info("[interaction-gate] blocked", { ...logBase, reason: "auth" });
+      if (!isCanonicalAuthOrigin()) {
+        const canonicalUrl = buildCanonicalAuthUrl(
+          action === "vote_post" && postId ? `/p/${postId}` : buildCommunityPath(communityId),
+        );
+        toast.info(interactionCopy.connectToContinue, {
+          action: {
+            label: interactionCopy.openInPirate,
+            onClick: () => {
+              window.location.href = canonicalUrl;
+            },
+          },
+        });
+        return "blocked";
+      }
       if (connect) {
         connect();
       } else {

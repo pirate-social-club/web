@@ -21,7 +21,8 @@ import { isApiNotFoundError } from "@/lib/api/client";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
-import { formatCommunityRouteLabel } from "@/lib/community-routing";
+import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
+import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationRequirementsForGates, isJoinCtaActionable } from "@/lib/identity-gates";
@@ -306,13 +307,28 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
   }, []);
 
   const requestAuth = React.useCallback((fallbackMessage: string) => {
+    if (!isCanonicalAuthOrigin()) {
+      const canonicalUrl = buildCanonicalAuthUrl(
+        preview ? buildCommunityPath(preview.id, preview.route_slug ?? communityId) : undefined,
+      );
+      toast.error(fallbackMessage, {
+        action: {
+          label: copy.publicProfile.openInPirate,
+          onClick: () => {
+            window.location.href = canonicalUrl;
+          },
+        },
+      });
+      return;
+    }
+
     if (authRuntime.connect) {
       authRuntime.connect();
       return;
     }
 
     toast.error(authRuntime.loadError ?? fallbackMessage);
-  }, [authRuntime.connect, authRuntime.loadError]);
+  }, [authRuntime.connect, authRuntime.loadError, communityId, copy.publicProfile.openInPirate, preview]);
 
   const {
     handleJoin,
@@ -617,6 +633,8 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         items={posts.map((post) => toCommunityFeedItem(post, authorProfiles, undefined, {
           onComment: () => navigate(`/p/${post.post.id}`),
           onVote: (direction) => void voteOnPost(post.post.id, direction),
+          showOriginalLabel: copy.common.showOriginal,
+          showTranslationLabel: copy.common.showTranslation,
         }))}
         loading={postsLoading}
         onSortChange={setActiveSort}

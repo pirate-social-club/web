@@ -62,6 +62,8 @@ export function NamespaceVerificationHnsPanel({
   const copy = defaultRouteCopy;
   const mc = copy.moderation.namespaceVerification.hns;
   const nameservers = (setupNameservers ?? []).filter((value) => value.trim().length > 0);
+  const txtHostName = challengeHost?.startsWith("_pirate.") ? "_pirate" : challengeHost;
+  const shouldShowFullTxtName = Boolean(challengeHost && txtHostName && txtHostName !== challengeHost);
 
   return (
     <section className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-5 py-5">
@@ -88,10 +90,17 @@ export function NamespaceVerificationHnsPanel({
 
       {mode === "owner_managed_txt" && challengeHost && challengeTxtValue ? (
         <div className="space-y-3">
+          <FormNote>{mc.txtRecordNote}</FormNote>
           <div className="space-y-1.5">
             <Type as="div" variant="caption">{mc.hostLabel}</Type>
-            <CopyField value={challengeHost} />
+            <CopyField value={txtHostName ?? challengeHost} />
           </div>
+          {shouldShowFullTxtName ? (
+            <div className="space-y-1.5">
+              <Type as="div" variant="caption">{mc.fullHostLabel}</Type>
+              <CopyField value={challengeHost} />
+            </div>
+          ) : null}
           <div className="space-y-1.5">
             <Type as="div" variant="caption">{mc.valueLabel}</Type>
             <CopyField value={challengeTxtValue} />

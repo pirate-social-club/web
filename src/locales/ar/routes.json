@@ -1129,6 +1129,8 @@
         "nameserversNote": "حدّث سجلات الجذر حيث تدير اسم Handshake.",
         "challengeLabel": "التحدي",
         "hostLabel": "المضيف",
+        "fullHostLabel": "Full TXT name",
+        "txtRecordNote": "If Bob asks for host or name, use _pirate.",
         "valueLabel": "القيمة"
       },
       "shared": {

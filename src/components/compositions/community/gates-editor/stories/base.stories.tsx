@@ -36,6 +36,7 @@ function InteractiveCommunityGatesEditorPage({
   anonymousIdentityScope: initialAnonymousIdentityScope,
   defaultAgeGatePolicy: initialDefaultAgeGatePolicy,
   gateDrafts: initialGateDrafts,
+  gateMatchMode: initialGateMatchMode = "all",
   membershipMode: initialMembershipMode,
   readAccessMode: initialReadAccessMode,
 }: {
@@ -43,6 +44,7 @@ function InteractiveCommunityGatesEditorPage({
   anonymousIdentityScope: AnonymousIdentityScope;
   defaultAgeGatePolicy: CommunityDefaultAgeGatePolicy;
   gateDrafts: IdentityGateDraft[];
+  gateMatchMode?: "all" | "any";
   membershipMode: CommunityMembershipMode;
   readAccessMode: CommunityReadAccessMode;
 }) {
@@ -56,6 +58,7 @@ function InteractiveCommunityGatesEditorPage({
     initialDefaultAgeGatePolicy,
   );
   const [gateDrafts, setGateDrafts] = React.useState(initialGateDrafts);
+  const [gateMatchMode, setGateMatchMode] = React.useState(initialGateMatchMode);
   const [membershipMode, setMembershipMode] = React.useState(
     initialMembershipMode,
   );
@@ -69,11 +72,13 @@ function InteractiveCommunityGatesEditorPage({
       anonymousIdentityScope={anonymousIdentityScope}
       defaultAgeGatePolicy={defaultAgeGatePolicy}
       gateDrafts={gateDrafts}
+      gateMatchMode={gateMatchMode}
       membershipMode={membershipMode}
       onAllowAnonymousIdentityChange={setAllowAnonymousIdentity}
       onAnonymousIdentityScopeChange={setAnonymousIdentityScope}
       onDefaultAgeGatePolicyChange={setDefaultAgeGatePolicy}
       onGateDraftsChange={setGateDrafts}
+      onGateMatchModeChange={setGateMatchMode}
       onMembershipModeChange={setMembershipMode}
       onReadAccessModeChange={setReadAccessMode}
       onSave={() => undefined}
@@ -161,6 +166,23 @@ export const PalmScanGate: Story = {
       gateDrafts={[
         { gateType: "unique_human", provider: "very" },
       ]}
+      membershipMode="gated"
+      readAccessMode="public"
+    />
+  ),
+};
+
+export const PassportScoreOrPalmScan: Story = {
+  render: () => (
+    <InteractiveCommunityGatesEditorPage
+      allowAnonymousIdentity
+      anonymousIdentityScope="community_stable"
+      defaultAgeGatePolicy="none"
+      gateDrafts={[
+        { gateType: "wallet_score", provider: "passport", minimumScore: 10 },
+        { gateType: "unique_human", provider: "very" },
+      ]}
+      gateMatchMode="any"
       membershipMode="gated"
       readAccessMode="public"
     />

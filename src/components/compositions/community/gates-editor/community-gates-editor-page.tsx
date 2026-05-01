@@ -112,12 +112,14 @@ export interface CommunityGatesEditorPageProps {
   creatorVerificationState?: CreatorVerificationState;
   defaultAgeGatePolicy: CommunityDefaultAgeGatePolicy;
   gateDrafts: IdentityGateDraft[];
+  gateMatchMode?: "all" | "any";
   membershipMode: CommunityMembershipMode;
   onAllowAnonymousIdentityChange?: (value: boolean) => void;
   onAnonymousIdentityScopeChange?: (value: AnonymousIdentityScope) => void;
   onBackClick?: () => void;
   onDefaultAgeGatePolicyChange?: (value: CommunityDefaultAgeGatePolicy) => void;
   onGateDraftsChange?: (value: IdentityGateDraft[]) => void;
+  onGateMatchModeChange?: (value: "all" | "any") => void;
   onMembershipModeChange?: (value: CommunityMembershipMode) => void;
   onReadAccessModeChange?: (value: CommunityReadAccessMode) => void;
   onSave?: () => void;
@@ -135,6 +137,7 @@ export function CommunityGatesEditorPage({
   creatorVerificationState,
   defaultAgeGatePolicy,
   gateDrafts,
+  gateMatchMode = "all",
   membershipMode,
   readAccessMode = "public",
   onAllowAnonymousIdentityChange,
@@ -142,6 +145,7 @@ export function CommunityGatesEditorPage({
   onBackClick,
   onDefaultAgeGatePolicyChange,
   onGateDraftsChange,
+  onGateMatchModeChange,
   onMembershipModeChange,
   onReadAccessModeChange,
   onSave,
@@ -188,6 +192,9 @@ export function CommunityGatesEditorPage({
     && Number.isInteger(minimumAgeGate.minimumAge)
     && minimumAgeGate.minimumAge >= 18
     && minimumAgeGate.minimumAge <= 125;
+  const showGateMatchModeControl =
+    effectiveMembershipMode === "gated"
+    && (onGateMatchModeChange != null || gateMatchMode === "any");
 
   return (
     <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
@@ -219,6 +226,28 @@ export function CommunityGatesEditorPage({
 
               {mode === "gated" && effectiveMembershipMode === "gated" ? (
                 <div className="space-y-3 pt-2">
+                  {showGateMatchModeControl ? (
+                    <div className="space-y-3">
+                      <FormSectionHeading title="Gate logic" />
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <OptionCard
+                          className={gateMatchMode === "all" ? "border-border bg-muted/30" : undefined}
+                          description="Members must pass every selected gate."
+                          selected={gateMatchMode === "all"}
+                          title="All selected gates"
+                          onClick={() => onGateMatchModeChange?.("all")}
+                        />
+                        <OptionCard
+                          className={gateMatchMode === "any" ? "border-border bg-muted/30" : undefined}
+                          description="Members can pass any one selected gate."
+                          selected={gateMatchMode === "any"}
+                          title="Any selected gate"
+                          onClick={() => onGateMatchModeChange?.("any")}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
                   <FormSectionHeading title={mc.walletGateChecksTitle} />
 
                   <CheckboxCard

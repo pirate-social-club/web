@@ -12,6 +12,10 @@ export function flattenGatePolicyAtoms(policy: GatePolicy | null | undefined): G
   return atoms;
 }
 
+export function getGatePolicyMatchMode(policy: GatePolicy | null | undefined): "all" | "any" {
+  return policy?.expression.op === "or" ? "any" : "all";
+}
+
 function collectGatePolicyAtoms(expression: RecursiveGateExpression, atoms: GateAtom[]): void {
   if (expression.op === "gate" && expression.gate) {
     atoms.push(expression.gate);

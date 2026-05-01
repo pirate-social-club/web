@@ -20,6 +20,7 @@ import type {
   AnonymousIdentityScope,
   CommunityDatabaseRegion,
   CommunityDefaultAgeGatePolicy,
+  CommunityGateMatchMode,
   CommunityMembershipMode,
   ComposerStep,
   CreateCommunityComposerProps,
@@ -84,6 +85,7 @@ export function useCreateCommunityComposerController({
   databaseRegion = "aws-us-east-1",
   description = "",
   gateDrafts = [],
+  gateMatchMode = "all",
   membershipMode = DEFAULT_MEMBERSHIP_MODE,
   defaultAgeGatePolicy = "none",
   allowAnonymousIdentity = true,
@@ -115,6 +117,7 @@ export function useCreateCommunityComposerController({
     React.useState<CommunityDatabaseRegion>(databaseRegion);
   const [activeDescription, setActiveDescription] = React.useState(description ?? "");
   const [activeGateDrafts, setActiveGateDrafts] = React.useState<IdentityGateDraft[]>(gateDrafts);
+  const [activeGateMatchMode, setActiveGateMatchMode] = React.useState<CommunityGateMatchMode>(gateMatchMode);
   const [submitting, setSubmitting] = React.useState(false);
 
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? false;
@@ -165,6 +168,7 @@ export function useCreateCommunityComposerController({
       allowAnonymousIdentity: activeAllowAnonymousIdentity,
       anonymousIdentityScope: activeAnonymousScope,
       gateDrafts: activeMembershipMode === "gated" ? activeGateDrafts : [],
+      gateMatchMode: activeGateMatchMode,
     })
       .catch((error: unknown) => {
         toast.error(error instanceof Error ? error.message : cc.createError);
@@ -186,6 +190,7 @@ export function useCreateCommunityComposerController({
     activeAllowAnonymousIdentity,
     activeAnonymousScope,
     activeGateDrafts,
+    activeGateMatchMode,
     cc.createError,
   ]);
 
@@ -271,6 +276,7 @@ export function useCreateCommunityComposerController({
       activeStep,
       membershipMode: activeMembershipMode,
       gateDrafts: activeGateDrafts.map(summarizeGateDraftForLog),
+      gateMatchMode: activeGateMatchMode,
       gateDraftsValid,
       invalidGateDrafts,
       defaultAgeGatePolicy: activeDefaultAgeGatePolicy,
@@ -286,6 +292,7 @@ export function useCreateCommunityComposerController({
     accessStepBlockReasons,
     activeDefaultAgeGatePolicy,
     activeGateDrafts,
+    activeGateMatchMode,
     activeMembershipMode,
     activeStep,
     canCreateCommunity,
@@ -388,12 +395,14 @@ export function useCreateCommunityComposerController({
       activeMembershipMode,
       creatorAgeOver18Verified,
       gateDrafts: activeGateDrafts,
+      gateMatchMode: activeGateMatchMode,
       gateDraftsValid,
       hasAdultMinimumAgeGate,
       setActiveAllowAnonymousIdentity,
       setActiveAnonymousScope,
       setActiveDefaultAgeGatePolicy,
       setActiveGateDrafts,
+      setActiveGateMatchMode,
       setActiveMembershipMode,
     },
     basics: {

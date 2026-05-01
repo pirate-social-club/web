@@ -10,6 +10,7 @@ import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/li
 import { submitCommunitySave, type SaveCommunityAction } from "@/app/authenticated-helpers/community-moderation-save";
 import { serializeIdentityGateDrafts } from "@/app/authenticated-helpers/community-gate-rule-serialization";
 import { getCommunityGateDrafts } from "@/app/authenticated-helpers/moderation-helpers";
+import { getGatePolicyMatchMode } from "@/lib/gate-policy-utils";
 
 export function useCommunityAccessState({
   community,
@@ -24,6 +25,7 @@ export function useCommunityAccessState({
   const [allowAnonymousIdentity, setAllowAnonymousIdentity] = React.useState(true);
   const [anonymousIdentityScope, setAnonymousIdentityScope] = React.useState<AnonymousIdentityScope>("community_stable");
   const [gateDrafts, setGateDrafts] = React.useState<IdentityGateDraft[]>([]);
+  const [gateMatchMode, setGateMatchMode] = React.useState<"all" | "any">("all");
   const [savingGates, setSavingGates] = React.useState(false);
   React.useEffect(() => {
     if (!community) {
@@ -35,6 +37,7 @@ export function useCommunityAccessState({
     setAllowAnonymousIdentity(community.allow_anonymous_identity);
     setAnonymousIdentityScope(community.anonymous_identity_scope ?? "community_stable");
     setGateDrafts(getCommunityGateDrafts(community));
+    setGateMatchMode(getGatePolicyMatchMode(community.gate_policy));
   }, [community]);
 
   const handleSaveGates = React.useCallback(() => {
@@ -47,7 +50,7 @@ export function useCommunityAccessState({
     );
     const effectiveDefaultAgeGatePolicy = hasAdultMinimumAgeGate ? "18_plus" : defaultAgeGatePolicy;
     const gatePolicy = membershipMode === "gated"
-      ? serializeIdentityGateDrafts(gateDrafts)
+      ? serializeIdentityGateDrafts(gateDrafts, { mode: gateMatchMode })
       : null;
     void submitCommunitySave({
       action: (currentCommunity) => api.communities.updateGates(currentCommunity.id, {
@@ -64,13 +67,14 @@ export function useCommunityAccessState({
       savingSetter: setSavingGates,
       successMessage: "Access settings saved.",
     });
-  }, [allowAnonymousIdentity, anonymousIdentityScope, api.communities, community, defaultAgeGatePolicy, gateDrafts, membershipMode, saveCommunity, savingGates]);
+  }, [allowAnonymousIdentity, anonymousIdentityScope, api.communities, community, defaultAgeGatePolicy, gateDrafts, gateMatchMode, membershipMode, saveCommunity, savingGates]);
 
   return {
     allowAnonymousIdentity,
     anonymousIdentityScope,
     defaultAgeGatePolicy,
     gateDrafts,
+    gateMatchMode,
     handleSaveGates,
     membershipMode,
     preservedGateRuleCount: 0,
@@ -79,6 +83,7 @@ export function useCommunityAccessState({
     setAnonymousIdentityScope,
     setDefaultAgeGatePolicy,
     setGateDrafts,
+    setGateMatchMode,
     setMembershipMode,
   };
 }

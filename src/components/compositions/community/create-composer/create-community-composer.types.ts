@@ -5,6 +5,7 @@ import type {
 } from "@/lib/community-access-types";
 
 export type CommunityMembershipMode = "request" | "gated";
+export type CommunityGateMatchMode = "all" | "any";
 export type { CourtyardWalletInventoryGroup };
 export type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy };
 export type CommunityReadAccessMode = "public" | "members_only";
@@ -97,6 +98,7 @@ export interface CreateCommunityComposerProps {
   databaseRegion?: CommunityDatabaseRegion;
   description?: string;
   gateDrafts?: IdentityGateDraft[];
+  gateMatchMode?: CommunityGateMatchMode;
   membershipMode?: CommunityMembershipMode | null;
   defaultAgeGatePolicy?: CommunityDefaultAgeGatePolicy;
   allowAnonymousIdentity?: boolean;
@@ -119,6 +121,7 @@ export interface CreateCommunityComposerProps {
     allowAnonymousIdentity: boolean;
     anonymousIdentityScope: AnonymousIdentityScope;
     gateDrafts: IdentityGateDraft[];
+    gateMatchMode: CommunityGateMatchMode;
   }) => Promise<{
     communityId: string;
   } | void>;

@@ -482,12 +482,14 @@ export function CommunityModerationPage({
           anonymousIdentityScope={state.anonymousIdentityScope}
           defaultAgeGatePolicy={state.defaultAgeGatePolicy}
           gateDrafts={state.gateDrafts}
+          gateMatchMode={state.gateMatchMode}
           membershipMode={state.membershipMode}
           onAllowAnonymousIdentityChange={state.setAllowAnonymousIdentity}
           onAnonymousIdentityScopeChange={state.setAnonymousIdentityScope}
           onBackClick={() => navigate(moderationIndexPath)}
           onDefaultAgeGatePolicyChange={state.setDefaultAgeGatePolicy}
           onGateDraftsChange={state.setGateDrafts}
+          onGateMatchModeChange={state.setGateMatchMode}
           onMembershipModeChange={state.setMembershipMode}
           onSave={state.handleSaveGates}
           saveDisabled={

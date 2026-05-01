@@ -99,8 +99,31 @@ describe("useCommunityAccessState", () => {
     expect(result.current.defaultAgeGatePolicy).toBe("18_plus");
     expect(result.current.allowAnonymousIdentity).toBe(false);
     expect(result.current.anonymousIdentityScope).toBe("thread_stable");
+    expect(result.current.gateMatchMode).toBe("all");
     expect(result.current.gateDrafts).toHaveLength(1);
     expect(result.current.gateDrafts[0]?.gateType).toBe("nationality");
+  });
+
+  test("initializes any match mode from an OR gate policy", async () => {
+    installCommunityApiMocks();
+    const { result } = renderAccessHook({
+      community: createCommunity({
+        gate_policy: {
+          version: 1,
+          expression: {
+            op: "or",
+            children: [
+              { op: "gate", gate: { type: "wallet_score", provider: "passport", minimum_score: 10 } },
+              { op: "gate", gate: { type: "unique_human", provider: "very" } },
+            ],
+          },
+        },
+      }),
+    });
+
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(2));
+
+    expect(result.current.gateMatchMode).toBe("any");
   });
 
   test("preserves any-nationality Self gate drafts from empty allowed lists", async () => {
@@ -291,6 +314,44 @@ describe("useCommunityAccessState", () => {
         },
           },
         }],
+      },
+    });
+  });
+
+  test("serializes OR gate policy when match mode is any", async () => {
+    const calls = installCommunityApiMocks();
+    const save = createSaveCommunityMock();
+    const { result } = renderAccessHook({ saveCommunity: save.saveCommunity });
+
+    await waitFor(() => expect(result.current.membershipMode).toBe("gated"));
+
+    act(() => {
+      result.current.setGateMatchMode("any");
+      result.current.setGateDrafts([
+        { gateType: "wallet_score", provider: "passport", minimumScore: 10 },
+        { gateType: "unique_human", provider: "very" },
+      ]);
+    });
+    act(() => {
+      result.current.handleSaveGates();
+    });
+
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+
+    expect(calls.updateGates[0]?.body.gate_policy).toEqual({
+      version: 1,
+      expression: {
+        op: "or",
+        children: [
+          {
+            op: "gate",
+            gate: { type: "wallet_score", provider: "passport", minimum_score: 10 },
+          },
+          {
+            op: "gate",
+            gate: { type: "unique_human", provider: "very" },
+          },
+        ],
       },
     });
   });

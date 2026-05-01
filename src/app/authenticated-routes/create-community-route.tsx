@@ -43,7 +43,7 @@ export function CreateCommunityPage() {
     const avatarRef = input.avatarFile ? (await api.communities.uploadMedia({ kind: "avatar", file: input.avatarFile })).media_ref : input.avatarRef;
     const bannerRef = input.bannerFile ? (await api.communities.uploadMedia({ kind: "banner", file: input.bannerFile })).media_ref : input.bannerRef;
     const gatePolicy = input.membershipMode === "gated"
-      ? serializeIdentityGateDrafts(input.gateDrafts)
+      ? serializeIdentityGateDrafts(input.gateDrafts, { mode: input.gateMatchMode })
       : null;
     const rc = getLocaleMessages(locale, "routes").moderation.rules;
     const bootstrapRules = [

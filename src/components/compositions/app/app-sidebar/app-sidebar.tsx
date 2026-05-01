@@ -398,7 +398,9 @@ export function AppSidebar({
           onItemSelect={handleItemSelect}
         />
 
-        <VersionBadge />
+        <div className="group-data-[collapsible=icon]:hidden px-4 pb-3 pt-1">
+          <VersionBadge />
+        </div>
       </SidebarContent>
 
       <SidebarRail />

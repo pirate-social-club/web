@@ -37,14 +37,10 @@ export function VersionBadge() {
     });
   }, []);
 
-  const web = webSha ?? "—";
-  const api = apiSha ?? "—";
-
   return (
-    <div className="group-data-[collapsible=icon]:hidden px-4 pb-2 pt-3">
-      <span className="text-[10px] leading-tight text-sidebar-foreground/40 select-none">
-        web {web} · api {api}
-      </span>
+    <div className="group-data-[collapsible=icon]:hidden select-text text-[10px] leading-tight text-sidebar-foreground/45">
+      <div>web {webSha ?? "-"}</div>
+      <div>api {apiSha ?? "-"}</div>
     </div>
   );
 }

@@ -22,14 +22,14 @@ rtk bun run deploy:main
 
 These commands:
 
-- verify the required production Vite env is present
+- verify the required staging/production Vite env is present
 - build with `vite build`
 - deploy `dist/worker/index.js`
 - use the checked-in [`wrangler.jsonc`](../wrangler.jsonc)
 - attach `dist/client` assets
 - pass `--no-bundle`
 
-Required client env for the main production build:
+Required client env for the main staging/production build:
 
 ```bash
 VITE_PRIVY_APP_ID
@@ -38,6 +38,9 @@ VITE_PRIVY_CLIENT_ID
 
 These are read at Vite build time and baked into the browser bundle. A deploy
 machine without them will produce a client where Connect is disabled.
+
+GitHub Actions reads these values from `VITE_PRIVY_APP_ID` and
+`VITE_PRIVY_CLIENT_ID` repository or organization secrets/variables.
 
 API endpoint selection is host-based at runtime:
 

@@ -27,7 +27,7 @@ import { useApi } from "@/lib/api";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 import { normalizeCountryCode } from "@/lib/countries";
 import { isValidCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
-import { buildCommunityPath } from "@/lib/community-routing";
+import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 
 import { CommunityModerationGuard, getCommunityModerationTitle } from "@/app/authenticated-helpers/moderation-route-helpers";
 import {
@@ -39,6 +39,10 @@ import { useCommunityModerationState } from "@/app/authenticated-state/moderatio
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
+
+function formatModerationCommunityLabel(community: { id: string; route_slug?: string | null; display_name: string }): string {
+  return formatCommunityRouteLabel(community.id, community.route_slug ?? community.display_name);
+}
 
 function useIsModerationMobileLayout() {
   const [isMobileLayout, setIsMobileLayout] = React.useState(() => {
@@ -167,7 +171,7 @@ export function CommunityModerationIndexPage({
   return (
     <CommunityModerationShell
       communityAvatarSrc={state.community?.avatar_ref ?? undefined}
-      communityLabel={state.community ? `r/${state.community.display_name}` : copy.moderation.shell.communityLabelFallback}
+      communityLabel={state.community ? formatModerationCommunityLabel(state.community) : copy.moderation.shell.communityLabelFallback}
       onExitClick={() => navigate(`/c/${communityId}`)}
       sections={sections}
     >
@@ -602,7 +606,7 @@ export function CommunityModerationPage({
   return (
     <CommunityModerationShell
       communityAvatarSrc={state.community?.avatar_ref ?? undefined}
-      communityLabel={state.community ? `r/${state.community.display_name}` : copy.moderation.shell.communityLabelFallback}
+      communityLabel={state.community ? formatModerationCommunityLabel(state.community) : copy.moderation.shell.communityLabelFallback}
       onExitClick={() => navigate(buildCommunityPath(communityId, state.community?.route_slug))}
       sections={buildCommunityModerationSections(
         section,

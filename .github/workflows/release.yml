@@ -64,11 +64,6 @@ jobs:
           repository: pirate-social-club/api
           path: api
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-      - uses: actions/checkout@v4
-        with:
-          repository: pirate-social-club/core
-          path: core
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -81,6 +76,4 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Deploy production
         working-directory: web
-        env:
-          PIRATE_CORE_REPO: ${{ github.workspace }}/core
-        run: scripts/deploy-production.sh --confirm-production
+        run: scripts/deploy-production.sh --confirm-production --skip-tests

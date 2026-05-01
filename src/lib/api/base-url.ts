@@ -18,24 +18,35 @@ function resolveEnvironmentFallback(): string {
   return DEFAULT_BASE_URL;
 }
 
+function isLocalHostname(hostname: string): boolean {
+  return (
+    !hostname
+    || hostname === "localhost"
+    || hostname.endsWith(".localhost")
+    || hostname === "127.0.0.1"
+    || hostname.startsWith("127.")
+  );
+}
+
+function getBrowserHostname(): string {
+  return typeof window !== "undefined" ? window.location.hostname : "";
+}
+
 export function resolveApiBaseUrl(hostname?: string | null): string {
   const explicitBaseUrl = readExplicitApiBaseUrl();
   if (explicitBaseUrl) {
     return explicitBaseUrl;
   }
 
-  const resolvedHostname = (hostname
-    ?? (typeof window !== "undefined" ? window.location.hostname : ""))
+  const providedHostname = (hostname ?? "").trim().toLowerCase();
+  const browserHostname = getBrowserHostname().trim().toLowerCase();
+  const resolvedHostname = (providedHostname && (!isLocalHostname(providedHostname) || isLocalHostname(browserHostname))
+    ? providedHostname
+    : browserHostname)
     .trim()
     .toLowerCase();
 
-  if (
-    !resolvedHostname
-    || resolvedHostname === "localhost"
-    || resolvedHostname.endsWith(".localhost")
-    || resolvedHostname === "127.0.0.1"
-    || resolvedHostname.startsWith("127.")
-  ) {
+  if (isLocalHostname(resolvedHostname)) {
     return DEFAULT_BASE_URL;
   }
 

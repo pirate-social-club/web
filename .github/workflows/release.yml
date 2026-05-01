@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_production:
+        description: "Deploy production after staging verification"
+        required: true
+        default: false
+        type: boolean
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+jobs:
+  staging:
+    name: Deploy staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: web
+      - uses: actions/checkout@v4
+        with:
+          repository: pirate-social-club/api
+          path: api
+      - uses: oven-sh/setup-bun@v2
+      - name: Install web dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+      - name: Install API dependencies
+        working-directory: api/services/api
+        run: bun install --frozen-lockfile
+      - name: Deploy staging
+        working-directory: web
+        run: scripts/deploy-staging.sh
+      - name: Verify staging/prod metadata
+        working-directory: web
+        run: scripts/check-deployments.sh --no-strict
+      - name: Smoke staging
+        working-directory: web
+        run: scripts/smoke-test.sh staging
+
+  production:
+    name: Deploy production
+    needs: staging
+    if: ${{ inputs.deploy_production }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: web
+      - uses: actions/checkout@v4
+        with:
+          repository: pirate-social-club/api
+          path: api
+      - uses: oven-sh/setup-bun@v2
+      - name: Install web dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+      - name: Install API dependencies
+        working-directory: api/services/api
+        run: bun install --frozen-lockfile
+      - name: Deploy production
+        working-directory: web
+        run: scripts/deploy-production.sh --confirm-production

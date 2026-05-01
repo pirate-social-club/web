@@ -3,6 +3,22 @@ import { describe, expect, test } from "bun:test";
 import { resolveApiBaseUrl, resolveApiUrl } from "./base-url";
 
 describe("resolveApiBaseUrl", () => {
+  function withBrowserHostname(hostname: string, run: () => void) {
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { location: { hostname } },
+    });
+    try {
+      run();
+    } finally {
+      Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: originalWindow,
+      });
+    }
+  }
+
   test("uses local API for localhost hosts", () => {
     expect(resolveApiBaseUrl("localhost")).toBe("http://127.0.0.1:8787");
     expect(resolveApiBaseUrl("captain.localhost")).toBe("http://127.0.0.1:8787");
@@ -18,6 +34,12 @@ describe("resolveApiBaseUrl", () => {
     expect(resolveApiBaseUrl("pirate.sc")).toBe("https://api.pirate.sc");
     expect(resolveApiBaseUrl("www.pirate.sc")).toBe("https://api.pirate.sc");
     expect(resolveApiBaseUrl("captain.pirate.sc")).toBe("https://api.pirate.sc");
+  });
+
+  test("prefers the browser host when SSR passes a local host in production", () => {
+    withBrowserHostname("pirate.sc", () => {
+      expect(resolveApiBaseUrl("127.0.0.1")).toBe("https://api.pirate.sc");
+    });
   });
 
   test("uses HNS API for the HNS app host", () => {

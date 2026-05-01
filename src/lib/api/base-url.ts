@@ -32,6 +32,14 @@ function getBrowserHostname(): string {
   return typeof window !== "undefined" ? window.location.hostname : "";
 }
 
+function getBrowserOrigin(): string {
+  return typeof window !== "undefined" ? window.location.origin : "";
+}
+
+function isBareHnsRootHostname(hostname: string): boolean {
+  return /^[a-z]([a-z0-9-]*[a-z0-9])?$/.test(hostname);
+}
+
 export function resolveApiBaseUrl(hostname?: string | null): string {
   const explicitBaseUrl = readExplicitApiBaseUrl();
   if (explicitBaseUrl) {
@@ -40,6 +48,11 @@ export function resolveApiBaseUrl(hostname?: string | null): string {
 
   const providedHostname = (hostname ?? "").trim().toLowerCase();
   const browserHostname = getBrowserHostname().trim().toLowerCase();
+  const browserOrigin = getBrowserOrigin().trim();
+  if (browserOrigin && isBareHnsRootHostname(browserHostname) && !isLocalHostname(browserHostname)) {
+    return browserOrigin;
+  }
+
   const resolvedHostname = (providedHostname && (!isLocalHostname(providedHostname) || isLocalHostname(browserHostname))
     ? providedHostname
     : browserHostname)

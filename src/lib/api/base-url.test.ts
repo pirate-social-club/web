@@ -3,11 +3,11 @@ import { describe, expect, test } from "bun:test";
 import { resolveApiBaseUrl, resolveApiUrl } from "./base-url";
 
 describe("resolveApiBaseUrl", () => {
-  function withBrowserHostname(hostname: string, run: () => void) {
+  function withBrowserHostname(hostname: string, run: () => void, origin = `https://${hostname}`) {
     const originalWindow = globalThis.window;
     Object.defineProperty(globalThis, "window", {
       configurable: true,
-      value: { location: { hostname } },
+      value: { location: { hostname, origin } },
     });
     try {
       run();
@@ -39,6 +39,12 @@ describe("resolveApiBaseUrl", () => {
   test("prefers the browser host when SSR passes a local host in production", () => {
     withBrowserHostname("pirate.sc", () => {
       expect(resolveApiBaseUrl("127.0.0.1")).toBe("https://api.pirate.sc");
+    });
+  });
+
+  test("uses the current origin for bare HNS community roots", () => {
+    withBrowserHostname("dankmeme", () => {
+      expect(resolveApiBaseUrl("pirate.sc")).toBe("https://dankmeme");
     });
   });
 

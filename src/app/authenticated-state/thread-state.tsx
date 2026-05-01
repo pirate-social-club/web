@@ -10,7 +10,7 @@ import type { PostThreadComment, PostThreadSubmitResult } from "@/components/com
 
 import { getErrorMessage } from "@/lib/error-utils";
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
-import { resolveCommentAuthorLabel, toCommentViewerVote } from "@/app/authenticated-helpers/post-presentation";
+import { resolveCommentAuthorAvatarSeed, resolveCommentAuthorLabel, toCommentViewerVote } from "@/app/authenticated-helpers/post-presentation";
 
 export type ThreadCommentNode = {
   item: ApiCommentListItem;
@@ -320,7 +320,7 @@ export function toThreadComment(
     : undefined;
 
   return {
-    authorAvatarSeed: comment.identity_mode === "public" ? authorProfile?.id ?? comment.author_user ?? undefined : undefined,
+    authorAvatarSeed: resolveCommentAuthorAvatarSeed(comment, authorProfile),
     authorAvatarSrc: comment.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
     authorHref: comment.identity_mode === "public" && comment.author_user && authorProfile
       ? buildPublicProfilePathForProfile(authorProfile)

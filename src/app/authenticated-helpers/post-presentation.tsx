@@ -119,6 +119,16 @@ export function resolvePostAuthorLabel(
     : resolvePublicAuthorFallback(post.author_user, authorProfile);
 }
 
+export function resolvePostAuthorAvatarSeed(
+  post: Pick<ApiPost["post"], "anonymous_label" | "author_user" | "identity_mode">,
+  authorProfile?: Pick<ApiProfile, "id"> | null,
+): string | undefined {
+  if (post.identity_mode === "anonymous") {
+    return post.anonymous_label ?? post.author_user ?? undefined;
+  }
+  return authorProfile?.id ?? post.author_user ?? undefined;
+}
+
 export function resolveAgentAuthor(
   post: Pick<ApiPost["post"], "agent_display_name_snapshot" | "agent_owner_handle_snapshot" | "author_user" | "authorship_mode" | "identity_mode">,
   authorProfile?: Pick<ApiProfile, "display_name" | "global_handle" | "primary_public_handle"> | null,
@@ -150,6 +160,16 @@ export function resolveCommentAuthorLabel(
   }
 
   return resolvePublicAuthorFallback(comment.author_user, authorProfile);
+}
+
+export function resolveCommentAuthorAvatarSeed(
+  comment: Pick<ApiCommentListItem["comment"], "anonymous_label" | "author_user" | "identity_mode">,
+  authorProfile?: Pick<ApiProfile, "id"> | null,
+): string | undefined {
+  if (comment.identity_mode === "anonymous") {
+    return comment.anonymous_label ?? comment.author_user ?? undefined;
+  }
+  return authorProfile?.id ?? comment.author_user ?? undefined;
 }
 
 export function resolvePostQualifierLabels(postResponse: ApiPost): string[] | undefined {
@@ -499,7 +519,7 @@ export function toCommunityFeedItem(
         author: {
           kind: "user",
           label: resolvePostAuthorLabel(post, authorProfile),
-          avatarSeed: post.identity_mode === "public" ? authorProfile?.id ?? post.author_user ?? undefined : undefined,
+          avatarSeed: resolvePostAuthorAvatarSeed(post, authorProfile),
           avatarSrc: post.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
           href: post.identity_mode === "public" && post.author_user && authorProfile
             ? buildPublicProfilePathForProfile(authorProfile)
@@ -574,7 +594,7 @@ export function toThreadPostCard(
       author: {
         kind: "user",
         label: resolvePostAuthorLabel(post, authorProfile),
-        avatarSeed: post.identity_mode === "public" ? authorProfile?.id ?? post.author_user ?? undefined : undefined,
+        avatarSeed: resolvePostAuthorAvatarSeed(post, authorProfile),
         avatarSrc: post.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
         href: post.identity_mode === "public" && post.author_user && authorProfile
           ? buildPublicProfilePathForProfile(authorProfile)

@@ -16,6 +16,7 @@ import {
   toViewerVote,
   resolvePostAuthorLabel,
   resolveAgentAuthor,
+  resolvePostAuthorAvatarSeed,
   resolvePostQualifierLabels,
   resolveTranslatedTextPresentation,
   withTranslationToggleProps,
@@ -61,7 +62,7 @@ export function toHomeFeedItem(
         author: {
           kind: "user",
           label: resolvePostAuthorLabel(post, authorProfile),
-          avatarSeed: post.identity_mode === "public" ? authorProfile?.id ?? post.author_user ?? undefined : undefined,
+          avatarSeed: resolvePostAuthorAvatarSeed(post, authorProfile),
           avatarSrc: post.identity_mode === "public" ? authorProfile?.avatar_ref ?? undefined : undefined,
           href: post.identity_mode === "public" && post.author_user && authorProfile
             ? buildPublicProfilePathForProfile(authorProfile)

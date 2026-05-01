@@ -16,6 +16,11 @@ const tscBin = path.join(rootDir, "node_modules", "typescript", "bin", "tsc");
 
 fs.mkdirSync(path.dirname(buildInfoPath), { recursive: true });
 
+const userArgs = process.argv.slice(2);
+const hasProjectFlag = userArgs.some((a) =>
+  a === "-p" || a.startsWith("-p") || a === "--project" || a.startsWith("--project=")
+);
+
 const args = [
   `--max-old-space-size=${heapMb}`,
   tscBin,
@@ -23,7 +28,8 @@ const args = [
   "--incremental",
   "--tsBuildInfoFile",
   buildInfoPath,
-  ...process.argv.slice(2),
+  ...(hasProjectFlag ? [] : ["-p", "tsconfig.app.json"]),
+  ...userArgs,
 ];
 
 console.error(

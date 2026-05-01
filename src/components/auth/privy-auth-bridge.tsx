@@ -37,6 +37,8 @@ const RETRY_COOLDOWN_MS = 30 * 1000;
 const MAX_RETRY_COUNT = 3;
 const AUTH_BOOTSTRAP_WAIT_MS = 1_500;
 const AUTH_BOOTSTRAP_POLL_MS = 50;
+const PRIVY_REQUESTED_WALLET_MISMATCH_MESSAGE = "Privy proof does not include the requested wallet";
+const WALLET_MISMATCH_TOAST_ID = "privy-requested-wallet-mismatch";
 
 export interface PrivyAuthBridgeProps {
   connectedWallets?: PirateConnectedEvmWallet[];
@@ -67,6 +69,17 @@ function normalizePrivyRelayError(error: unknown): Error {
 
 function isPrivyRelayMigrationError(error: unknown): error is PrivyRelayResponseError {
   return error instanceof PrivyRelayResponseError && error.code === "wallet_needs_migration";
+}
+
+function isPrivyRequestedWalletMismatchError(error: unknown): boolean {
+  const apiError = error as ApiError | null;
+  return apiError?.code === "auth_error"
+    && typeof apiError.message === "string"
+    && apiError.message.includes(PRIVY_REQUESTED_WALLET_MISMATCH_MESSAGE);
+}
+
+function formatCompactWalletAddress(address: string): string {
+  return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
 }
 
 export function PrivyAuthBridge({
@@ -235,16 +248,42 @@ export function PrivyAuthBridge({
         throw new Error("Privy did not return an access token.");
       }
 
-      const response = await api.auth.sessionExchange({
+      const requestedWalletAddress = connectedWallets[0]?.address ?? null;
+      const exchange = (walletAddress: string | null) => api.auth.sessionExchange({
         type: "privy_access_token",
         privy_access_token: accessToken,
-        wallet_address: connectedWallets[0]?.address ?? null,
+        wallet_address: walletAddress,
       });
+      let usedWalletFallback = false;
+      let response: Awaited<ReturnType<typeof api.auth.sessionExchange>>;
+
+      try {
+        response = await exchange(requestedWalletAddress);
+      } catch (error) {
+        if (!requestedWalletAddress || !isPrivyRequestedWalletMismatchError(error)) {
+          throw error;
+        }
+
+        logger.info("[auth-bridge] requested wallet is not linked to Privy user; retrying exchange without wallet selection", {
+          mountId: mountIdRef.current,
+          requestedWalletAddress,
+          silent: options?.silent,
+        });
+        usedWalletFallback = true;
+        response = await exchange(null);
+      }
 
       setSession(response);
       setExchangeRequested(false);
       retryCountRef.current = 0;
       retryUntilRef.current = 0;
+
+      if (usedWalletFallback && requestedWalletAddress && !options?.silent) {
+        toast.info(
+          `Signed in with your existing Privy account. ${formatCompactWalletAddress(requestedWalletAddress)} is not linked to it yet.`,
+          { id: WALLET_MISMATCH_TOAST_ID },
+        );
+      }
 
       if (
         options?.navigateOnFirstSession !== false
@@ -258,7 +297,10 @@ export function PrivyAuthBridge({
       const apiError = error as ApiError;
       logger.warn("[auth-bridge] exchange failed", { mountId: mountIdRef.current, message: apiError?.message ?? String(error), silent: options?.silent });
       if (!options?.silent && !sessionClearInProgressRef.current) {
-        toast.error(apiError?.message ?? "Privy authentication failed");
+        const message = isPrivyRequestedWalletMismatchError(error)
+          ? "That wallet is not linked to your current Privy login. Open Privy and link the wallet, or switch back to a linked wallet."
+          : apiError?.message ?? "Privy authentication failed";
+        toast.error(message, { id: isPrivyRequestedWalletMismatchError(error) ? WALLET_MISMATCH_TOAST_ID : undefined });
       }
 
       retryCountRef.current += 1;

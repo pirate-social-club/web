@@ -225,6 +225,49 @@ export const PassportScoreRequired: Story = {
   ),
 };
 
+const courtyardPokemonGates = [
+  {
+    gate_type: "erc721_inventory_match" as const,
+    inventory_provider: "courtyard" as const,
+    chain_namespace: "eip155:1",
+    contract_address: "0xd4ac3CE8e1E14CD60666D49AC34Ff2d2937cF6FA",
+    min_quantity: 1,
+    asset_category: "trading_card",
+    asset_filter_label: "Pokemon trading card",
+  },
+  {
+    gate_type: "erc721_inventory_match" as const,
+    inventory_provider: "courtyard" as const,
+    chain_namespace: "eip155:137",
+    contract_address: "0x251BE3A17Af4892035C37ebf5890F4a4D889dcAD",
+    min_quantity: 1,
+    asset_category: "trading_card",
+    asset_filter_label: "Pokemon trading card",
+  },
+];
+
+export const CourtyardInventoryRequired: Story = {
+  name: "States / Courtyard Inventory Required",
+  args: { gates: [] },
+  render: () => (
+    <CommunityMembershipGatePanel
+      gates={courtyardPokemonGates}
+      eligibility={{
+        community: "community_courtyard",
+        membership_mode: "gated",
+        human_verification_lane: "self",
+        joinable_now: false,
+        status: "gate_failed",
+        membership_gate_summaries: courtyardPokemonGates,
+        gate_evaluation: gateEvaluation([]),
+        suggested_verification_intent: "community_join",
+        failure_reason: "erc721_inventory_match_required",
+      }}
+      joinError="Connect a wallet that holds the required Courtyard collectibles to join."
+    />
+  ),
+};
+
 export const Mobile: Story = {
   name: "Mobile layout",
   args: { gates: [] },

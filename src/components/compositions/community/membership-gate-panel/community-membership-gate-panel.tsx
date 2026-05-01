@@ -15,7 +15,12 @@ import { Button } from "@/components/primitives/button";
 import { VerificationAppDownloadLinks } from "@/components/compositions/verification/verification-app-download-links/verification-app-download-links";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Spinner } from "@/components/primitives/spinner";
-import { getJoinCtaLabel, isJoinCtaActionable, resolveSuggestedVerificationProvider } from "@/lib/identity-gates";
+import {
+  formatGateRequirement,
+  getJoinCtaLabel,
+  isJoinCtaActionable,
+  resolveSuggestedVerificationProvider,
+} from "@/lib/identity-gates";
 import { Type } from "@/components/primitives/type";
 import { getLocaleMessages } from "@/locales";
 import { isUiLocaleCode } from "@/lib/ui-locale-core";
@@ -150,6 +155,9 @@ export function CommunityMembershipGatePanel({
 }: CommunityMembershipGatePanelProps) {
   const resolvedLocale = locale && isUiLocaleCode(locale) ? locale : "en";
   const panelCopy = getLocaleMessages(resolvedLocale, "gates").panel;
+  const requirementLabels = Array.from(new Set(
+    gates.map((gate) => formatGateRequirement(gate, { locale: resolvedLocale })),
+  ));
   const passportPrompt: VerificationPrompt | null = !verificationPrompt
     ? getPassportPrompt(eligibility, panelCopy)
     : null;
@@ -232,6 +240,22 @@ export function CommunityMembershipGatePanel({
           className="flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-muted-foreground"
           variant="inline"
         />
+      ) : null}
+
+      {requirementLabels.length > 0 ? (
+        <ul aria-label="Membership requirements" className="mt-4 space-y-2">
+          {requirementLabels.map((label) => (
+            <Type
+              as="li"
+              className="flex items-start gap-2 text-muted-foreground"
+              key={label}
+              variant="caption"
+            >
+              <span aria-hidden="true">-</span>
+              <span>{label}</span>
+            </Type>
+          ))}
+        </ul>
       ) : null}
 
       {verificationLoading || onCancelVerification || verificationError ? (

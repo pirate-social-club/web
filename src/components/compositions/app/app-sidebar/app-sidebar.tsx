@@ -29,6 +29,7 @@ import {
 } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
+import { VersionBadge } from "./version-badge";
 import { dispatchHomeFeedSortChange, getCurrentHomeFeedSort, HOME_FEED_SORT_CHANGE_EVENT, type HomeFeedSort } from "@/lib/home-feed-sort";
 
 type SidebarIcon = Icon;
@@ -396,6 +397,8 @@ export function AppSidebar({
           label={resolvedCodeLabel}
           onItemSelect={handleItemSelect}
         />
+
+        <VersionBadge />
       </SidebarContent>
 
       <SidebarRail />

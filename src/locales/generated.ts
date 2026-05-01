@@ -1223,7 +1223,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "verifyAction": "Verify",
           "routePreviewLabel": "Route",
           "invalidRootLabel": "Invalid namespace root.",
-          "hnsSetupNote": "Add these records in Bob Wallet, then verify.",
+          "hnsSetupNote": "Add these records to your Handshake name, then verify.",
           "family": {
             "handshakeLabel": "Handshake",
             "handshakeDetail": "Add records to your Handshake name to verify ownership.",
@@ -1239,17 +1239,15 @@ export const GENERATED_LOCALE_CATALOGS = {
             "spacesDefault": "Could not verify this root. Check the published records and try again."
           },
           "hns": {
-            "dnsSetupNote": "Add these records in Bob Wallet, then verify.",
+            "dnsSetupNote": "Add these records to your Handshake name, then verify.",
             "dnsSetupPendingNote": "The Handshake records are not detected yet.",
             "txtPendingNote": "Record propagation is still pending.",
-            "txtVerifyNote": "Add these records in Bob Wallet, then verify.",
-            "nameserversLabel": "Nameserver (NS)",
+            "txtVerifyNote": "Add these records to your Handshake name, then verify.",
+            "nameserversLabel": "NS record",
             "nameserversNote": "Update the root records where you manage the Handshake name.",
             "challengeLabel": "Challenge",
-            "hostLabel": "TXT host/name",
-            "fullHostLabel": "Full TXT name",
-            "txtRecordNote": "If Bob asks for host or name, use _pirate.",
-            "valueLabel": "TXT value"
+            "txtRecordNote": "Add this TXT record on the root name.",
+            "valueLabel": "TXT record"
           },
           "shared": {
             "copied": "Copied",
@@ -2804,9 +2802,7 @@ export const GENERATED_LOCALE_CATALOGS = {
             "nameserversLabel": "Nameservers",
             "nameserversNote": "حدّث سجلات الجذر حيث تدير اسم Handshake.",
             "challengeLabel": "التحدي",
-            "hostLabel": "المضيف",
-            "fullHostLabel": "Full TXT name",
-            "txtRecordNote": "If Bob asks for host or name, use _pirate.",
+            "txtRecordNote": "Add this TXT record on the root name.",
             "valueLabel": "القيمة"
           },
           "shared": {
@@ -4336,9 +4332,7 @@ export const GENERATED_LOCALE_CATALOGS = {
             "nameserversLabel": "Nameservers",
             "nameserversNote": "在你管理 Handshake 名称的地方更新根记录。",
             "challengeLabel": "挑战",
-            "hostLabel": "主机",
-            "fullHostLabel": "Full TXT name",
-            "txtRecordNote": "If Bob asks for host or name, use _pirate.",
+            "txtRecordNote": "Add this TXT record on the root name.",
             "valueLabel": "值"
           },
           "shared": {

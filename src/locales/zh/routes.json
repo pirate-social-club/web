@@ -1102,9 +1102,7 @@
         "nameserversLabel": "Nameservers",
         "nameserversNote": "在你管理 Handshake 名称的地方更新根记录。",
         "challengeLabel": "挑战",
-        "hostLabel": "主机",
-        "fullHostLabel": "Full TXT name",
-        "txtRecordNote": "If Bob asks for host or name, use _pirate.",
+        "txtRecordNote": "Add this TXT record on the root name.",
         "valueLabel": "值"
       },
       "shared": {

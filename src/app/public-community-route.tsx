@@ -23,7 +23,7 @@ import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { formatCommunityRouteLabel } from "@/lib/community-routing";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
-import { getVerificationCapabilitiesForProvider, getVerificationRequirementsForGates } from "@/lib/identity-gates";
+import { getVerificationCapabilitiesForProvider, getVerificationRequirementsForGates, isJoinCtaActionable } from "@/lib/identity-gates";
 import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
 import { forgetKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
@@ -520,10 +520,7 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
         : "Join";
   const joinActionDisabled = Boolean(session) && (
     !eligibility
-      || eligibility.status === "already_joined"
-      || eligibility.status === "pending_request"
-      || eligibility.status === "gate_failed"
-      || eligibility.status === "banned"
+      || !isJoinCtaActionable(eligibility)
   );
   const routeLabel = formatCommunityRouteLabel(
     preview.id,

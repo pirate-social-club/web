@@ -12,6 +12,7 @@ import {
   getVerificationPromptCopy,
   getVerificationRequirementsForGates,
   getMissingCapabilitiesFromGateEvaluation,
+  hasOnlyWalletGateRequirements,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { toast } from "@/components/primitives/sonner";
@@ -204,6 +205,14 @@ export function useCommunityJoinVerification({
     });
     if (eligibility?.status === "verification_required") {
       setJoinLoading(false);
+      if (hasOnlyWalletGateRequirements(eligibility)) {
+        setJoinError(getGateFailureMessage({
+          failure_reason: eligibility.membership_gate_summaries.some((gate) => gate.gate_type === "erc721_inventory_match")
+            ? "erc721_inventory_match_required"
+            : "erc721_holding_required",
+        }, { locale }));
+        return "blocked";
+      }
       const provider = resolveSuggestedVerificationProvider(eligibility);
 	      if (provider === "very") {
 	        await startVeryVerification();

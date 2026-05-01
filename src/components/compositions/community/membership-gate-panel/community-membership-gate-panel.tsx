@@ -17,7 +17,9 @@ import { FormNote } from "@/components/primitives/form-layout";
 import { Spinner } from "@/components/primitives/spinner";
 import {
   formatGateRequirement,
+  getGateFailureMessage,
   getJoinCtaLabel,
+  hasOnlyWalletGateRequirements,
   isJoinCtaActionable,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
@@ -48,11 +50,23 @@ export interface CommunityMembershipGatePanelProps {
 
 function getEligibilityText(
   eligibility: JoinEligibility | null | undefined,
+  gates: MembershipGateSummary[],
+  locale: string,
   copy: ReturnType<typeof getLocaleMessages<"gates">>["panel"],
 ): {
   description: string | null;
   title: string;
 } {
+  if (eligibility && hasOnlyWalletGateRequirements(eligibility)) {
+    const failureReason = gates.some((gate) => gate.gate_type === "erc721_inventory_match")
+      ? "erc721_inventory_match_required"
+      : "erc721_holding_required";
+    return {
+      title: copy.gateFailedTitle,
+      description: getGateFailureMessage({ failure_reason: failureReason }, { locale }) ?? copy.gateFailedDescription,
+    };
+  }
+
   switch (eligibility?.status) {
     case "joinable":
       return {
@@ -166,7 +180,7 @@ export function CommunityMembershipGatePanel({
     !activePrompt &&
     eligibility?.status === "verification_required" &&
     resolveSuggestedVerificationProvider(eligibility) === "very";
-  const eligibilityText = getEligibilityText(eligibility, panelCopy);
+  const eligibilityText = getEligibilityText(eligibility, gates, resolvedLocale, panelCopy);
   const isInlineVerificationRequired =
     !activePrompt &&
     eligibility?.status === "verification_required" &&

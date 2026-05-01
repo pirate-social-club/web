@@ -17,6 +17,7 @@ type MissingCapability = "unique_human" | "age_over_18" | "minimum_age" | "natio
 type RequiredActionNode = Omit<NonNullable<NonNullable<JoinEligibility["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
   items?: RequiredActionNode[];
 };
+type RequiredActionCapability = MissingCapability | "erc721_holding" | "erc721_inventory_match";
 
 const SELF_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "unique_human",
@@ -153,6 +154,9 @@ export function getJoinCtaLabel(
 ): string {
   const locale = resolveGateLocale(options?.locale);
   const copy = getLocaleMessages(locale, "gates").joinCta;
+  if (eligibility.status === "verification_required" && hasOnlyWalletGateRequirements(eligibility)) {
+    return copy.gateFailed;
+  }
   switch (eligibility.status) {
     case "joinable":
       return copy.joinable;
@@ -172,9 +176,21 @@ export function getJoinCtaLabel(
 }
 
 export function isJoinCtaActionable(eligibility: JoinEligibility): boolean {
+  if (eligibility.status === "verification_required" && hasOnlyWalletGateRequirements(eligibility)) {
+    return false;
+  }
   return eligibility.status === "joinable"
     || eligibility.status === "requestable"
     || eligibility.status === "verification_required";
+}
+
+export function hasOnlyWalletGateRequirements(
+  input: { gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null },
+): boolean {
+  const capabilities = getRequiredActionCapabilities(input);
+  return capabilities.length > 0 && capabilities.every((capability) =>
+    capability === "erc721_holding" || capability === "erc721_inventory_match"
+  );
 }
 
 export function getVerificationCapabilitiesForProvider(
@@ -239,6 +255,34 @@ export function getMissingCapabilitiesFromGateEvaluation(
       return;
     }
     capabilities.add(action.capability);
+  };
+  actions.forEach(visit);
+  return Array.from(capabilities);
+}
+
+function getRequiredActionCapabilities(
+  input: { gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null },
+): RequiredActionCapability[] {
+  const actions = (input.gate_evaluation?.required_action_set?.items ?? []) as RequiredActionNode[];
+  const capabilities = new Set<RequiredActionCapability>();
+  const visit = (action: RequiredActionNode): void => {
+    if (action.kind === "set") {
+      action.items?.forEach(visit);
+      return;
+    }
+    const capability = (action as { capability?: string }).capability;
+    if (
+      capability === "unique_human"
+      || capability === "age_over_18"
+      || capability === "minimum_age"
+      || capability === "nationality"
+      || capability === "gender"
+      || capability === "wallet_score"
+      || capability === "erc721_holding"
+      || capability === "erc721_inventory_match"
+    ) {
+      capabilities.add(capability);
+    }
   };
   actions.forEach(visit);
   return Array.from(capabilities);

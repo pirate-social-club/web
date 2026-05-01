@@ -9,6 +9,7 @@ import {
   X_FRAME_OPTIONS_DENY,
   X_FRAME_OPTIONS_HEADER,
 } from "./lib/security-headers";
+import { buildVersionResponse } from "./lib/build-version";
 import { extractPublicProfileHost } from "./lib/public-host";
 import type {
   Env,
@@ -66,6 +67,10 @@ function resolveAppOrigin(env: Env, url: URL, hostSuffix: string): string {
 
 async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
+  if (url.pathname === "/__version") {
+    return buildVersionResponse("web-public", env);
+  }
+
   const locale = resolveRequestLocale(request.headers.get("accept-language"));
   const localeTag = resolveLocaleLanguageTag(locale);
   const copy = getLocaleMessages(locale, "routes").publicProfile;

@@ -219,7 +219,7 @@ describe("getSelfVerificationRequestForGates", () => {
 
     expect(request).toEqual({
       requestedCapabilities: ["nationality"],
-      verificationRequirements: [],
+      verificationRequirements: [{ proof_type: "nationality", required_values: ["USA"] }],
     });
   });
 
@@ -269,7 +269,10 @@ describe("getSelfVerificationRequestForGates", () => {
 
     expect(request).toEqual({
       requestedCapabilities: ["unique_human", "nationality"],
-      verificationRequirements: [{ proof_type: "minimum_age", minimum_age: 21 }],
+      verificationRequirements: [
+        { proof_type: "minimum_age", minimum_age: 21 },
+        { proof_type: "nationality", required_values: ["USA"] },
+      ],
     });
   });
 });

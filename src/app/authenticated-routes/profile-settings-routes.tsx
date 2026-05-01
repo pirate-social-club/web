@@ -145,6 +145,51 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
   });
 
   React.useEffect(() => {
+    if (activeTab !== "agents" || canRegisterAgentByVerification) {
+      return;
+    }
+
+    let cancelled = false;
+    let inFlight = false;
+
+    const refreshUserVerification = () => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+      void api.users.getMe()
+        .then((refreshedUser) => {
+          if (!cancelled) {
+            updateSessionUser(refreshedUser);
+          }
+        })
+        .catch((error: unknown) => {
+          logger.debug("[settings:agents] verification session refresh failed", error);
+        })
+        .finally(() => {
+          inFlight = false;
+        });
+    };
+
+    refreshUserVerification();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshUserVerification();
+      }
+    };
+
+    window.addEventListener("focus", refreshUserVerification);
+    window.addEventListener("pageshow", refreshUserVerification);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refreshUserVerification);
+      window.removeEventListener("pageshow", refreshUserVerification);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [activeTab, api.users, canRegisterAgentByVerification]);
+
+  React.useEffect(() => {
     if (agentVerificationError) {
       toast.error(agentVerificationError, { id: "agent-owner-verification-error" });
     }

@@ -40,6 +40,7 @@ import {
 } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
 import { applySecurityHeaders } from "@/lib/security/csp";
+import { buildVersionResponse, type BuildVersionEnv } from "@/lib/build-version";
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
 
@@ -571,7 +572,11 @@ const app = defineApp<AppRequestInfo>([
 export default {
   async fetch(request: Request, env: Env, cf: AppRequestInfo["cf"]) {
     const initialEffectiveUrl = resolveEffectiveRequestUrl(request);
-    if (new URL(initialEffectiveUrl).pathname === "/.well-known/http-message-signatures-directory") {
+    const initialPathname = new URL(initialEffectiveUrl).pathname;
+    if (initialPathname === "/__version") {
+      return buildVersionResponse("web", env as BuildVersionEnv);
+    }
+    if (initialPathname === "/.well-known/http-message-signatures-directory") {
       return buildWebBotAuthDirectoryResponse(request, env as WebBotAuthEnv);
     }
 

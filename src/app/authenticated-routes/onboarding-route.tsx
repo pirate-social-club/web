@@ -9,7 +9,7 @@ import { navigate } from "@/app/router";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { useApi } from "@/lib/api";
-import { updateSessionOnboarding, updateSessionProfile, useSession } from "@/lib/api/session-store";
+import { updateSessionOnboarding, updateSessionProfile, updateSessionUser, useSession } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { resolveOnboardingPhase } from "@/lib/onboarding";
 import { generateRedditFallbackHandle } from "@/lib/reddit-handle-suggestion";
@@ -199,9 +199,11 @@ export function OnboardingPage() {
     verificationLoading: humanVerificationLoading,
     verificationState: humanVerificationState,
   } = useVeryVerification({
-    onVerified: (status) => {
+    onVerified: async (status) => {
       updateSessionOnboarding(status);
       applyOnboardingStatus(status);
+      const refreshedUser = await api.users.getMe();
+      updateSessionUser(refreshedUser);
     },
     verified: onboardingStatus?.unique_human_verification_status === "verified",
     verificationIntent: "profile_verification",

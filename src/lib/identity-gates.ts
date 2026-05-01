@@ -292,11 +292,34 @@ export function getVerificationRequirementsForGates(
   gates: MembershipGateSummary[] | null | undefined,
 ): VerificationRequirement[] {
   const requirements: VerificationRequirement[] = [];
+  const nationalityValues = new Set<string>();
   const minimumAges = (gates ?? [])
     .filter((gate) => gate.gate_type === "minimum_age" && Number.isInteger(gate.required_minimum_age))
     .map((gate) => gate.required_minimum_age as number);
   if (minimumAges.length > 0) {
     requirements.push({ proof_type: "minimum_age", minimum_age: Math.max(...minimumAges) });
+  }
+  for (const gate of gates ?? []) {
+    if (gate.gate_type !== "nationality") {
+      continue;
+    }
+    const requiredValues = gate.required_values?.length
+      ? gate.required_values
+      : gate.required_value
+        ? [gate.required_value]
+        : [];
+    for (const value of requiredValues) {
+      const normalized = normalizeCountryCode(value);
+      if (normalized) {
+        nationalityValues.add(normalized.alpha3);
+      }
+    }
+  }
+  if (nationalityValues.size > 0) {
+    requirements.push({
+      proof_type: "nationality",
+      required_values: Array.from(nationalityValues),
+    });
   }
   return requirements;
 }
@@ -379,6 +402,7 @@ export function getSelfVerificationRequestForGates(input: {
   const capabilities = input.verificationCapabilities;
   const requestedCapabilities = new Set<RequestedVerificationCapability>();
   const minimumAges: number[] = [];
+  const nationalityValues = new Set<string>();
 
   if (input.includeUniqueHuman && capabilities?.unique_human?.state !== "verified") {
     requestedCapabilities.add("unique_human");
@@ -407,6 +431,13 @@ export function getSelfVerificationRequestForGates(input: {
       case "nationality":
         if (!nationalityCapabilitySatisfiesGate(capabilities?.nationality, gate)) {
           requestedCapabilities.add("nationality");
+          const requiredValues = getRequiredNationalityValues(gate);
+          for (const value of requiredValues) {
+            const normalized = normalizeCountryCode(value);
+            if (normalized) {
+              nationalityValues.add(normalized.alpha3);
+            }
+          }
         }
         break;
       case "gender":
@@ -419,9 +450,16 @@ export function getSelfVerificationRequestForGates(input: {
     }
   }
 
-  const verificationRequirements = minimumAges.length > 0
-    ? [{ proof_type: "minimum_age" as const, minimum_age: Math.max(...minimumAges) }]
-    : [];
+  const verificationRequirements: VerificationRequirement[] = [];
+  if (minimumAges.length > 0) {
+    verificationRequirements.push({ proof_type: "minimum_age", minimum_age: Math.max(...minimumAges) });
+  }
+  if (nationalityValues.size > 0) {
+    verificationRequirements.push({
+      proof_type: "nationality",
+      required_values: Array.from(nationalityValues),
+    });
+  }
 
   return {
     requestedCapabilities: SELF_REQUESTED_CAPABILITY_ORDER.filter((capability) => requestedCapabilities.has(capability)),

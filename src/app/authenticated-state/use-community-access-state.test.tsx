@@ -103,6 +103,29 @@ describe("useCommunityAccessState", () => {
     expect(result.current.gateDrafts[0]?.gateType).toBe("nationality");
   });
 
+  test("preserves any-nationality Self gate drafts from empty allowed lists", async () => {
+    installCommunityApiMocks();
+    const { result } = renderAccessHook({
+      community: createCommunity({
+        gate_policy: {
+          version: 1,
+          expression: {
+            op: "and",
+            children: [{ op: "gate", gate: { type: "nationality", provider: "self", allowed: [] } }],
+          },
+        },
+      }),
+    });
+
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(1));
+
+    expect(result.current.gateDrafts[0]).toEqual({
+      gateType: "nationality",
+      provider: "self",
+      requiredValues: [],
+    });
+  });
+
   test("initializes Courtyard inventory gate drafts from active token rules", async () => {
     installCommunityApiMocks();
     const { result } = renderAccessHook({

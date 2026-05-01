@@ -26,6 +26,11 @@ describe("formatGateRequirement", () => {
     expect(formatGateRequirement(gate)).toContain("United States");
   });
 
+  test("formats nationality gate without country values as verification", () => {
+    const gate: MembershipGateSummary = { gate_type: "nationality" };
+    expect(formatGateRequirement(gate)).toBe("Nationality verification");
+  });
+
   test("formats nationality gate with localized country name", () => {
     const gate: MembershipGateSummary = { gate_type: "nationality", required_value: "PS" };
     expect(formatGateRequirement(gate, { locale: "ar" })).toContain("فلسطين");

@@ -82,6 +82,27 @@ describe("serializeIdentityGateDrafts", () => {
     });
   });
 
+  test("serializes empty nationality drafts as any-nationality Self gates", () => {
+    expect(serializeIdentityGateDrafts([{
+      gateType: "nationality",
+      provider: "self",
+      requiredValues: [],
+    }])).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [{
+          op: "gate",
+          gate: {
+            type: "nationality",
+            provider: "self",
+            allowed: [],
+          },
+        }],
+      },
+    });
+  });
+
   test("wraps in or when mode is any", () => {
     const result = serializeIdentityGateDrafts(
       [

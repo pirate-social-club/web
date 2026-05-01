@@ -259,7 +259,7 @@ function getCommunityGateDraft(atom: ReturnType<typeof flattenGatePolicyAtoms>[n
   }
 
   if (atom.type === "nationality") {
-    return atom.allowed?.length ? { gateType: "nationality", provider: "self", requiredValues: atom.allowed } : null;
+    return { gateType: "nationality", provider: "self", requiredValues: atom.allowed ?? [] };
   }
 
   if (atom.type === "minimum_age") {

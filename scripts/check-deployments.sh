@@ -89,16 +89,20 @@ const targets = allTargets.filter((target) => {
   if (scope === "staging") return target.id.endsWith("-staging");
   return true;
 });
+const FETCH_TIMEOUT_MS = 15000;
 
 function text(value) {
   return value == null || value === "" ? "-" : String(value);
 }
 
 async function fetchVersion(target) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const response = await fetch(target.url, {
       headers: { accept: "application/json" },
       cache: "no-store",
+      signal: controller.signal,
     });
     const raw = await response.text();
     let body = null;
@@ -116,6 +120,8 @@ async function fetchVersion(target) {
       body: null,
       error: error instanceof Error ? error.message : String(error),
     };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

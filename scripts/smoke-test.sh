@@ -63,9 +63,20 @@ fi
 node - "$WEB_ORIGIN" "$API_ORIGIN" "$TARGET_LABEL" "$CREATE_COMMUNITY" <<'NODE'
 const [webOrigin, apiOrigin, targetLabel, createCommunityRaw] = process.argv.slice(2);
 const createCommunity = createCommunityRaw === "1";
+const FETCH_TIMEOUT_MS = 15000;
+
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 async function expectJson(url, expectedStatus = 200, options = {}) {
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     ...options,
     headers: { accept: "application/json", ...(options.headers ?? {}) },
   });
@@ -101,7 +112,7 @@ console.log(`api version: ${apiVersion.body.git_sha}`);
 await expectJson(`${apiOrigin}/health`);
 console.log("api health: ok");
 
-const cors = await fetch(`${apiOrigin}/health`, {
+const cors = await fetchWithTimeout(`${apiOrigin}/health`, {
   headers: { origin: webOrigin, accept: "application/json" },
 });
 const allowedOrigin = cors.headers.get("access-control-allow-origin");

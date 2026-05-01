@@ -106,14 +106,20 @@ function buildPreviewPost(
     : identity.identityMode === "anonymous"
       ? identity.identity?.anonymousLabel ?? "Pseudonym"
       : identity.identity?.publicHandle ?? "name.pirate";
+  const authorAvatarSeed = identity.identityMode === "anonymous"
+    ? authorLabel
+    : identity.identity?.publicAvatarSeed ?? undefined;
+  const authorAvatarSrc = identity.identityMode === "anonymous"
+    ? undefined
+    : identity.identity?.publicAvatarSrc ?? undefined;
 
   return {
     byline: {
       author: {
         kind: "user",
         label: authorLabel,
-        avatarSrc: identity.identity?.publicAvatarSrc ?? undefined,
-        avatarSeed: identity.identity?.publicAvatarSeed ?? undefined,
+        avatarSrc: authorAvatarSrc,
+        avatarSeed: authorAvatarSeed,
       },
       timestampLabel: audience.state.visibility === "public" ? "Public" : "Community",
     },

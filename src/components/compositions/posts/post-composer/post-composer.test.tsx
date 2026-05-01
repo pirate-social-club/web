@@ -1,6 +1,8 @@
 import * as BunTest from "bun:test";
 import * as React from "react";
 
+import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
+
 import { PostComposer } from "./post-composer";
 import { defaultMonetizationState } from "./post-composer-config";
 import type { AssetLicenseState, MonetizationState, PostComposerProps } from "./post-composer.types";
@@ -646,6 +648,34 @@ describe("PostComposer monetization", () => {
     }
 
     expect(submitButton.props.disabled).toBe(false);
+  });
+
+  test("uses the anonymous DiceBear fallback in the publish preview", () => {
+    const tree = renderComposer({
+      ...baseComposerProps(),
+      composerStep: "publish",
+      identity: {
+        allowAnonymousIdentity: true,
+        anonymousLabel: "anon_amber-anchor-00",
+        identityMode: "anonymous",
+        publicAvatarSeed: "profile-id-1",
+        publicAvatarSrc: "https://media.pirate.test/profile-avatar.png",
+        publicHandle: "@saint-pablo",
+      },
+    });
+
+    const previewCard = findElement(
+      tree,
+      (element) => element.type.name === "PostCard",
+    );
+    if (!previewCard) {
+      throw new Error("Missing preview post card");
+    }
+
+    const byline = previewCard.props.byline as PostCardProps["byline"];
+    expect(byline.author?.label).toBe("anon_amber-anchor-00");
+    expect(byline.author?.avatarSrc).toBeUndefined();
+    expect(byline.author?.avatarSeed).toBe("anon_amber-anchor-00");
   });
 
   test("blocks continue when a required derivative source is missing", () => {

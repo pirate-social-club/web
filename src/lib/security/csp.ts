@@ -55,6 +55,7 @@ export function buildContentSecurityPolicy(nonce: string): string {
       "https://*.rpc.privy.systems",
       "https://explorer-api.walletconnect.com",
       "https://api.ethfollow.xyz",
+      "https://api.coingecko.com",
       "https://mainnet.base.org",
       "https://sepolia.base.org",
       "https://eth.merkle.io",

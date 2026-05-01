@@ -40,6 +40,33 @@ type EnrichedRoyaltyActivityItem = RoyaltyActivityItem & {
   buyerProfile?: ProfileLink | null;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object");
+}
+
+function isRenderableNotificationFeedItem(item: NotificationFeedItem): boolean {
+  if (!isRecord(item) || !isRecord(item.event) || !isRecord(item.receipt)) {
+    return false;
+  }
+  return (
+    typeof item.event.id === "string"
+    && typeof item.event.type === "string"
+    && typeof item.event.subject_type === "string"
+    && typeof item.event.subject === "string"
+  );
+}
+
+function filterRenderableNotificationFeedItems(feed: ApiNotificationFeedResponse): ApiNotificationFeedResponse {
+  const items = feed.items.filter(isRenderableNotificationFeedItem);
+  if (items.length !== feed.items.length) {
+    logger.warn("[inbox] dropped malformed notification feed items", {
+      dropped: feed.items.length - items.length,
+      total: feed.items.length,
+    });
+  }
+  return items.length === feed.items.length ? feed : { ...feed, items };
+}
+
 function unreadFeedEventIds(feed: ApiNotificationFeedResponse): string[] {
   return feed.items
     .filter((item) => item.event.type !== "xmtp_message" && !item.receipt.read_at)
@@ -207,15 +234,16 @@ export function InboxPlaceholderPage() {
           api.notifications.getTasks(),
           api.notifications.getFeed(),
         ]);
+        const renderableFeedResult = filterRenderableNotificationFeedItems(feedResult);
 
-        const unreadEventIds = unreadFeedEventIds(feedResult);
+        const unreadEventIds = unreadFeedEventIds(renderableFeedResult);
         let readAt: number | null = null;
         if (unreadEventIds.length > 0) {
           try {
             readAt = Math.floor(Date.now() / 1000);
             await api.notifications.markRead({ event_ids: unreadEventIds });
             decrementUnreadNotificationActivityCount(unreadEventIds.length);
-            trackFeedMarkedReadEvents(feedResult.items.filter((item) => unreadEventIds.includes(item.event.id)), "auto_visible_load");
+            trackFeedMarkedReadEvents(renderableFeedResult.items.filter((item) => unreadEventIds.includes(item.event.id)), "auto_visible_load");
           } catch (error) {
             logger.warn("[inbox] failed to mark visible notifications read", error);
             readAt = null;
@@ -224,7 +252,7 @@ export function InboxPlaceholderPage() {
 
         if (!cancelled) {
           setTasks(tasksResult);
-          setFeed(readAt ? markFeedItemsRead(feedResult, unreadEventIds, readAt) : feedResult);
+          setFeed(readAt ? markFeedItemsRead(renderableFeedResult, unreadEventIds, readAt) : renderableFeedResult);
         }
       } catch (error) {
         logger.debug("[inbox] failed to load notification inbox", error);

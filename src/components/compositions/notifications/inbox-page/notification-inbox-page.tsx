@@ -163,6 +163,10 @@ function unreadCountBucket(count: number | undefined): string | undefined {
   return "20_plus";
 }
 
+function isNotificationRead(item: NotificationFeedItem): boolean {
+  return Boolean(item.receipt?.read_at);
+}
+
 function formatEventLabel(
   item: NotificationFeedItem,
   copy: ReturnType<typeof getLocaleMessages<"routes">>["inbox"],
@@ -535,7 +539,7 @@ function NotificationActivityList({
                 }}
                 subtext={context}
                 title={formatEventLabel(entry.item, copy)}
-                unread={!entry.item.receipt.read_at}
+                unread={!isNotificationRead(entry.item)}
               />
             </div>
           );

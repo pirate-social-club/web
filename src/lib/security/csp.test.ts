@@ -30,6 +30,7 @@ describe("Content Security Policy", () => {
     expect(csp).toContain("connect-src");
     expect(csp).toContain("https://assistant.pirate.sc");
     expect(csp).toContain("https://assistant-staging.pirate.sc");
+    expect(csp).toContain("https://api.coingecko.com");
     expect(csp).toContain("frame-src");
   });
 

@@ -304,6 +304,18 @@ describe("composition smoke tests", () => {
     expect(markup).toContain("Someone replied to your comment");
   });
 
+  test("renders notification feed rows without a receipt defensively", () => {
+    const withoutReceipt = { event: commentReplyNotification.event };
+    const markup = render(
+      <NotificationInboxPage
+        activityItems={[withoutReceipt as typeof commentReplyNotification]}
+        tasks={[]}
+      />,
+    );
+
+    expect(markup).toContain("Someone replied to your comment");
+  });
+
   test("renders the moderation safety page", () => {
     const markup = render(
       <CommunitySafetyPage

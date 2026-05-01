@@ -19,6 +19,12 @@ Use `rtk bun run types:safe` instead of `rtk bun run types` for routine local ve
 
 Use the already-running Storybook dev server for component story validation when available. Never run `rtk bun run build-storybook`, `storybook build`, or other Storybook production builds unless the user explicitly asks for that exact command; they are too heavy for routine agent validation and can freeze the machine. Avoid `rtk bun run build` by default; use the lighter Vite checks from the workspace instructions unless a full production build is required.
 
+## Deployment
+
+Production web deploys must go through the Blacksmith GitHub Actions release workflow in `.github/workflows/release.yml`. Do not run `rtk bun run build:prod`, `rtk bun run deploy:main`, `rtk bun run deploy:public`, `wrangler deploy`, or `scripts/deploy-production.sh` locally for production unless the user explicitly asks for that exact local deploy/build command after being told the CI workflow is the normal path.
+
+For production-ready changes, commit and push the branch, then use or instruct the user to use the `release.yml` workflow with `deploy_production` as appropriate. Local verification should stay to focused tests, `rtk bun run types:safe`, and other cheap checks unless the user explicitly requests a local production build.
+
 ## Browser Automation
 
 - Use `agent-browser` only when visual/browser verification is needed and code inspection or unit tests are insufficient.

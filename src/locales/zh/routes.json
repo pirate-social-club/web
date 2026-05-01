@@ -1079,10 +1079,10 @@
       "verifyAction": "验证",
       "routePreviewLabel": "路由",
       "invalidRootLabel": "无效的命名空间根。",
-      "hnsSetupNote": "当根还没有权威 DNS 时，先从 nameserver 设置开始。只有在该路径上线后才添加 TXT。",
+      "hnsSetupNote": "将 nameserver 和 TXT 记录添加到你的 Handshake 名称，然后验证。",
       "family": {
         "handshakeLabel": "Handshake",
-        "handshakeDetail": "先设置 DNS，然后验证根所有权。",
+        "handshakeDetail": "向你的 Handshake 名称添加记录以验证所有权。",
         "handshakeRootLabel": "Handshake 根",
         "spacesLabel": "Spaces",
         "spacesDetail": "通过发布路由验证根所有权。",
@@ -1090,17 +1090,17 @@
       },
       "failure": {
         "expired": "验证已过期。生成新挑战。",
-        "dnsSetupRequired": "先设置 nameservers，然后刷新会话。",
+        "dnsSetupRequired": "添加 Handshake 记录，然后再次验证。",
         "hnsDefault": "无法验证此根。检查 TXT 记录后重试。",
         "spacesDefault": "无法验证此根。检查已发布记录后重试。"
       },
       "hns": {
-        "dnsSetupNote": "将根的 NS 记录设为这些 nameservers，然后检查设置。",
-        "dnsSetupPendingNote": "尚未检测到 nameserver 设置。",
-        "txtPendingNote": "TXT 传播仍在等待中。",
-        "txtVerifyNote": "在你的权威 DNS 上添加此 TXT 记录，然后验证。",
+        "dnsSetupNote": "将这些记录添加到你的 Handshake 名称，然后验证。",
+        "dnsSetupPendingNote": "尚未检测到 Handshake 记录。",
+        "txtPendingNote": "记录仍在传播中。",
+        "txtVerifyNote": "将这些记录添加到你的 Handshake 名称，然后验证。",
         "nameserversLabel": "Nameservers",
-        "nameserversNote": "在你管理 Handshake 父级的地方更新根的 NS 记录。之后，Pirate 会在这里显示 TXT 记录。",
+        "nameserversNote": "在你管理 Handshake 名称的地方更新根记录。",
         "challengeLabel": "挑战",
         "hostLabel": "主机",
         "valueLabel": "值"

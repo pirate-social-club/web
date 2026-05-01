@@ -77,10 +77,11 @@ export const HandshakeChallengeReady: Story = {
     ...baseArgs,
     canSubmitSignature: true,
     challengeHost: "_pirate.builders",
-    challengeTxtValue: "pirate-verify=123456789",
+    challengeTxtValue: "pirate-verification=nvs_abc123",
     hnsMode: "owner_managed_txt",
     isChallengeReady: true,
     isIdle: false,
+    setupNameservers: ["ns1.pirate.", "ns2.pirate."],
   },
 };
 

@@ -32,33 +32,33 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const HandshakeDnsSetup: Story = {
-  render: () => (
-    <div className="w-[min(100vw-2rem,34rem)]">
-      <NamespaceVerificationHnsPanel
-        challengeHost={null}
-        challengePending={false}
-        challengeTxtValue={null}
-        mode="dns_setup_required"
-        onAbandon={() => undefined}
-        rootLabel="builders"
-        setupNameservers={["ns1.pirate.dev", "ns2.pirate.dev"]}
-      />
-    </div>
-  ),
-};
-
-export const HandshakeTxtChallenge: Story = {
+export const HandshakeRecords: Story = {
   render: () => (
     <div className="w-[min(100vw-2rem,34rem)]">
       <NamespaceVerificationHnsPanel
         challengeHost="_pirate.builders"
         challengePending={false}
-        challengeTxtValue="pirate-verify=123456789"
+        challengeTxtValue="pirate-verification=nvs_abc123"
         mode="owner_managed_txt"
         onAbandon={() => undefined}
         rootLabel="builders"
-        setupNameservers={null}
+        setupNameservers={["ns1.pirate.", "ns2.pirate."]}
+      />
+    </div>
+  ),
+};
+
+export const HandshakeRecordsPending: Story = {
+  render: () => (
+    <div className="w-[min(100vw-2rem,34rem)]">
+      <NamespaceVerificationHnsPanel
+        challengeHost="_pirate.builders"
+        challengePending
+        challengeTxtValue="pirate-verification=nvs_abc123"
+        mode="owner_managed_txt"
+        onAbandon={() => undefined}
+        rootLabel="builders"
+        setupNameservers={["ns1.pirate.", "ns2.pirate."]}
       />
     </div>
   ),

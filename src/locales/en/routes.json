@@ -1105,10 +1105,10 @@
       "verifyAction": "Verify",
       "routePreviewLabel": "Route",
       "invalidRootLabel": "Invalid namespace root.",
-      "hnsSetupNote": "Start with nameserver setup when the root does not already have authoritative DNS. Only add TXT after that path is live.",
+      "hnsSetupNote": "Add the nameserver and TXT records to your Handshake name, then verify.",
       "family": {
         "handshakeLabel": "Handshake",
-        "handshakeDetail": "Set up DNS first, then verify root ownership.",
+        "handshakeDetail": "Add records to your Handshake name to verify ownership.",
         "handshakeRootLabel": "Handshake root",
         "spacesLabel": "Spaces",
         "spacesDetail": "Verify root ownership by publishing a route.",
@@ -1116,17 +1116,17 @@
       },
       "failure": {
         "expired": "Verification expired. Generate a new challenge.",
-        "dnsSetupRequired": "Set nameservers first, then refresh the session.",
+        "dnsSetupRequired": "Add the Handshake records, then verify again.",
         "hnsDefault": "Could not verify this root. Check the TXT record and try again.",
         "spacesDefault": "Could not verify this root. Check the published records and try again."
       },
       "hns": {
-        "dnsSetupNote": "Set the root's NS records to these nameservers, then check setup.",
-        "dnsSetupPendingNote": "Nameserver setup is not detected yet.",
-        "txtPendingNote": "TXT propagation is still pending.",
-        "txtVerifyNote": "Add this TXT record on your authoritative DNS, then verify.",
+        "dnsSetupNote": "Add these records to your Handshake name, then verify.",
+        "dnsSetupPendingNote": "The Handshake records are not detected yet.",
+        "txtPendingNote": "Record propagation is still pending.",
+        "txtVerifyNote": "Add these records to your Handshake name, then verify.",
         "nameserversLabel": "Nameservers",
-        "nameserversNote": "Update the root's NS records where you manage the Handshake parent. After that, Pirate will show the TXT record here.",
+        "nameserversNote": "Update the root records where you manage the Handshake name.",
         "challengeLabel": "Challenge",
         "hostLabel": "Host",
         "valueLabel": "Value"

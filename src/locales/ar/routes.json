@@ -1105,10 +1105,10 @@
       "verifyAction": "تحقق",
       "routePreviewLabel": "المسار",
       "invalidRootLabel": "جذر مساحة اسم غير صالح.",
-      "hnsSetupNote": "ابدأ بإعداد nameserver عندما لا يكون الجذر يملك DNS تفويضي. أضف TXT فقط بعد أن يصبح المسار نشطًا.",
+      "hnsSetupNote": "أضف سجلات nameserver و TXT إلى اسم Handshake، ثم تحقق.",
       "family": {
         "handshakeLabel": "Handshake",
-        "handshakeDetail": "قم بإعداد DNS أولاً، ثم تحقق من ملكية الجذر.",
+        "handshakeDetail": "أضف السجلات إلى اسم Handshake للتحقق من الملكية.",
         "handshakeRootLabel": "جذر Handshake",
         "spacesLabel": "Spaces",
         "spacesDetail": "تحقق من ملكية الجذر عن طريق نشر مسار.",
@@ -1116,17 +1116,17 @@
       },
       "failure": {
         "expired": "انتهت صلاحية التحقق. أنشئ تحديًا جديدًا.",
-        "dnsSetupRequired": "قم بإعداد nameservers أولاً، ثم قم بتحديث الجلسة.",
+        "dnsSetupRequired": "أضف سجلات Handshake، ثم تحقق مرة أخرى.",
         "hnsDefault": "تعذر التحقق من هذا الجذر. تحقق من سجل TXT وحاول مرة أخرى.",
         "spacesDefault": "تعذر التحقق من هذا الجذر. تحقق من السجلات المنشورة وحاول مرة أخرى."
       },
       "hns": {
-        "dnsSetupNote": "اضبط سجلات NS للجذر على nameservers هذه، ثم تحقق من الإعداد.",
-        "dnsSetupPendingNote": "لم يتم اكتشاف إعداد nameserver بعد.",
-        "txtPendingNote": "انتشار TXT لا يزال معلقًا.",
-        "txtVerifyNote": "أضف سجل TXT هذا على DNS التفويضي لديك، ثم تحقق.",
+        "dnsSetupNote": "أضف هذه السجلات إلى اسم Handshake، ثم تحقق.",
+        "dnsSetupPendingNote": "لم يتم اكتشاف سجلات Handshake بعد.",
+        "txtPendingNote": "انتشار السجلات لا يزال معلقًا.",
+        "txtVerifyNote": "أضف هذه السجلات إلى اسم Handshake، ثم تحقق.",
         "nameserversLabel": "Nameservers",
-        "nameserversNote": "حدّث سجلات NS للجذر حيث تدير Handshake الأب. بعد ذلك، سيعرض Pirate سجل TXT هنا.",
+        "nameserversNote": "حدّث سجلات الجذر حيث تدير اسم Handshake.",
         "challengeLabel": "التحدي",
         "hostLabel": "المضيف",
         "valueLabel": "القيمة"

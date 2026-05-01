@@ -53,3 +53,14 @@ export const OwnerManagedRecords: Story = {
     />
   ),
 };
+
+export const AttachedNamespace: Story = {
+  render: () => (
+    <CommunityNamespaceVerificationPage
+      attachedNamespaceVerificationId="nvs_abc123"
+      attachedRouteSlug="@xx"
+      callbacks={mockNamespaceCallbacks}
+      onBackClick={() => undefined}
+    />
+  ),
+};

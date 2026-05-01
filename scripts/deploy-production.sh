@@ -200,7 +200,6 @@ log "deploy web production"
 log "deploy web public production worker"
 (cd "$WEB_DIR" && "$WEB_WRANGLER" deploy \
   --config wrangler.public.jsonc \
-  --env production \
   --var "BUILD_GIT_SHA:$WEB_SHA" \
   --var "BUILD_GIT_REF:$WEB_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")

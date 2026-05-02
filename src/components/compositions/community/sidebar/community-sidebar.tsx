@@ -308,7 +308,7 @@ export function CommunitySidebar({
           className,
         )}
       >
-        <div className="rounded-lg bg-card px-4 py-4">{content}</div>
+        <div className="animate-in fade-in-0 duration-200 rounded-lg bg-card px-4 py-4">{content}</div>
       </aside>
     </SidebarProvider>
   );

@@ -21,7 +21,7 @@ const popularCommunities = [
     communityHref: "/c/destiny",
     avatarSrc: null,
     metricCount: 3_354_929,
-    metricLabel: "followers",
+    metricLabel: "views",
   },
   {
     communityId: "cmt_anime",
@@ -29,7 +29,7 @@ const popularCommunities = [
     communityHref: "/c/anime",
     avatarSrc: null,
     metricCount: 14_246_777,
-    metricLabel: "followers",
+    metricLabel: "views",
   },
   {
     communityId: "cmt_destiny2",
@@ -37,7 +37,7 @@ const popularCommunities = [
     communityHref: "/c/destiny2",
     avatarSrc: null,
     metricCount: 930_309,
-    metricLabel: "followers",
+    metricLabel: "views",
   },
   {
     communityId: "cmt_fortnite",
@@ -45,7 +45,7 @@ const popularCommunities = [
     communityHref: "/c/fortnite",
     avatarSrc: null,
     metricCount: 5_653_387,
-    metricLabel: "followers",
+    metricLabel: "views",
   },
   {
     communityId: "cmt_dnd",
@@ -53,7 +53,7 @@ const popularCommunities = [
     communityHref: "/c/dndnext",
     avatarSrc: null,
     metricCount: 817_992,
-    metricLabel: "followers",
+    metricLabel: "views",
   },
 ];
 

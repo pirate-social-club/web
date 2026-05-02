@@ -210,7 +210,7 @@ export function PostPage({ postId }: { postId: string }) {
     <>
       {gateModal}
       {purchaseModal}
-      <ContentRailShell rail={!isMobile && threadSidebarProps ? <CommunitySidebar {...threadSidebarProps} /> : undefined}>
+      <ContentRailShell rail={!isMobile && threadSidebarProps ? <CommunitySidebar {...threadSidebarProps} /> : undefined} reserveRail={!isMobile}>
         <PostThread
           availableCommentSorts={commentSortOptions}
           commentSort={commentSort}

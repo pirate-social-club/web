@@ -62,103 +62,133 @@ function unixOrIsoMs(value: string | number): number {
   return typeof value === "number" ? value * 1000 : Date.parse(value);
 }
 
+function buildRailItem(entry: ApiHomeFeedItem): RecentPostRailItem | null {
+  const title = (entry.post.translated_title ?? entry.post.post.title ?? entry.post.post.caption ?? entry.post.post.body ?? "").trim();
+  if (!title) return null;
+
+  const communityId = resolveHomeFeedCommunityId(entry.community);
+  return {
+    commentCount: entry.post.thread_snapshot?.comment_count ?? 0,
+    communityAvatarSrc: entry.community.avatar_ref ?? null,
+    communityHref: buildCommunityPath(communityId, entry.community.route_slug),
+    communityId,
+    communityLabel: entry.community.display_name,
+    postHref: `/p/${entry.post.post.id}`,
+    postId: entry.post.post.id,
+    postTitle: title,
+    score: entry.post.upvote_count - entry.post.downvote_count,
+    timestampLabel: formatRelativeTimestamp(entry.post.post.created),
+    thumbnailSrc: resolveRailThumbnail(entry),
+  };
+}
+
 export function buildRecentPostRail(input: {
   feedEntries: ApiHomeFeedItem[];
   recentCommunities: ReturnType<typeof useRecentCommunities>;
   limit?: number;
 }): RecentPostRailItem[] {
   const limit = input.limit ?? 6;
-  if (limit <= 0 || input.feedEntries.length === 0 || input.recentCommunities.length === 0) {
+  if (limit <= 0 || input.feedEntries.length === 0) {
     return [];
   }
 
-  const communityVisitRank = new Map<string, number>();
-  const recentCommunityMeta = new Map<string, ReturnType<typeof useRecentCommunities>[number]>();
-  for (const [index, community] of input.recentCommunities.entries()) {
-    communityVisitRank.set(community.communityId, index);
-    recentCommunityMeta.set(community.communityId, community);
-  }
-
-  const eligiblePosts = input.feedEntries
-    .filter((entry) => communityVisitRank.has(resolveHomeFeedCommunityId(entry.community)))
-    .sort((left, right) => {
-      const leftCommunityId = resolveHomeFeedCommunityId(left.community);
-      const rightCommunityId = resolveHomeFeedCommunityId(right.community);
-      const leftRank = communityVisitRank.get(leftCommunityId) ?? Number.MAX_SAFE_INTEGER;
-      const rightRank = communityVisitRank.get(rightCommunityId) ?? Number.MAX_SAFE_INTEGER;
-      if (leftRank !== rightRank) {
-        return leftRank - rightRank;
-      }
-
-      const createdAtDiff = unixOrIsoMs(right.post.post.created) - unixOrIsoMs(left.post.post.created);
-      if (!Number.isNaN(createdAtDiff) && createdAtDiff !== 0) {
-        return createdAtDiff;
-      }
-
-      return right.post.post.id.localeCompare(left.post.post.id);
-    });
-
   const railPosts: RecentPostRailItem[] = [];
   const seenPostIds = new Set<string>();
-  const seenCommunityIds = new Set<string>();
 
-  for (const entry of eligiblePosts) {
-    const communityId = resolveHomeFeedCommunityId(entry.community);
-    if (railPosts.length >= limit) break;
-    if (seenCommunityIds.has(communityId) || seenPostIds.has(entry.post.post.id)) {
-      continue;
+  // When the user has recent communities, prioritize posts from those communities.
+  if (input.recentCommunities.length > 0) {
+    const communityVisitRank = new Map<string, number>();
+    const recentCommunityMeta = new Map<string, ReturnType<typeof useRecentCommunities>[number]>();
+    for (const [index, community] of input.recentCommunities.entries()) {
+      communityVisitRank.set(community.communityId, index);
+      recentCommunityMeta.set(community.communityId, community);
     }
 
-    const recentCommunity = recentCommunityMeta.get(communityId);
-    const title = (entry.post.translated_title ?? entry.post.post.title ?? entry.post.post.caption ?? entry.post.post.body ?? "").trim();
-    if (!title) {
-      continue;
+    const eligiblePosts = input.feedEntries
+      .filter((entry) => communityVisitRank.has(resolveHomeFeedCommunityId(entry.community)))
+      .sort((left, right) => {
+        const leftCommunityId = resolveHomeFeedCommunityId(left.community);
+        const rightCommunityId = resolveHomeFeedCommunityId(right.community);
+        const leftRank = communityVisitRank.get(leftCommunityId) ?? Number.MAX_SAFE_INTEGER;
+        const rightRank = communityVisitRank.get(rightCommunityId) ?? Number.MAX_SAFE_INTEGER;
+        if (leftRank !== rightRank) {
+          return leftRank - rightRank;
+        }
+
+        const createdAtDiff = unixOrIsoMs(right.post.post.created) - unixOrIsoMs(left.post.post.created);
+        if (!Number.isNaN(createdAtDiff) && createdAtDiff !== 0) {
+          return createdAtDiff;
+        }
+
+        return right.post.post.id.localeCompare(left.post.post.id);
+      });
+
+    const seenCommunityIds = new Set<string>();
+
+    // First pass: one post per recent community.
+    for (const entry of eligiblePosts) {
+      if (railPosts.length >= limit) break;
+
+      const communityId = resolveHomeFeedCommunityId(entry.community);
+      if (seenCommunityIds.has(communityId) || seenPostIds.has(entry.post.post.id)) {
+        continue;
+      }
+
+      const recentCommunity = recentCommunityMeta.get(communityId);
+      const item = buildRailItem(entry);
+      if (!item) continue;
+
+      railPosts.push({
+        ...item,
+        communityAvatarSrc: recentCommunity?.avatarSrc ?? item.communityAvatarSrc,
+        communityHref: buildCommunityPath(communityId, recentCommunity?.routeSlug ?? entry.community.route_slug),
+        communityLabel: recentCommunity?.displayName ?? item.communityLabel,
+      });
+      seenCommunityIds.add(communityId);
+      seenPostIds.add(entry.post.post.id);
     }
 
-    railPosts.push({
-      commentCount: entry.post.thread_snapshot?.comment_count ?? 0,
-      communityAvatarSrc: recentCommunity?.avatarSrc ?? null,
-      communityHref: buildCommunityPath(communityId, recentCommunity?.routeSlug ?? entry.community.route_slug),
-      communityId,
-      communityLabel: recentCommunity?.displayName ?? entry.community.display_name,
-      postHref: `/p/${entry.post.post.id}`,
-      postId: entry.post.post.id,
-      postTitle: title,
-      score: entry.post.upvote_count - entry.post.downvote_count,
-      timestampLabel: formatRelativeTimestamp(entry.post.post.created),
-      thumbnailSrc: resolveRailThumbnail(entry),
-    });
-    seenCommunityIds.add(communityId);
-    seenPostIds.add(entry.post.post.id);
+    // Second pass: fill remaining slots with any eligible posts.
+    for (const entry of eligiblePosts) {
+      if (railPosts.length >= limit) break;
+      if (seenPostIds.has(entry.post.post.id)) continue;
+
+      const communityId = resolveHomeFeedCommunityId(entry.community);
+      const recentCommunity = recentCommunityMeta.get(communityId);
+      const item = buildRailItem(entry);
+      if (!item) continue;
+
+      railPosts.push({
+        ...item,
+        communityAvatarSrc: recentCommunity?.avatarSrc ?? item.communityAvatarSrc,
+        communityHref: buildCommunityPath(communityId, recentCommunity?.routeSlug ?? entry.community.route_slug),
+        communityLabel: recentCommunity?.displayName ?? item.communityLabel,
+      });
+      seenPostIds.add(entry.post.post.id);
+    }
   }
 
-  for (const entry of eligiblePosts) {
-    const communityId = resolveHomeFeedCommunityId(entry.community);
-    if (railPosts.length >= limit) break;
-    if (seenPostIds.has(entry.post.post.id)) {
-      continue;
-    }
+  // Fallback: fill any remaining slots with the newest posts from the full feed.
+  if (railPosts.length < limit) {
+    const fallbackPosts = [...input.feedEntries]
+      .sort((left, right) => {
+        const createdAtDiff = unixOrIsoMs(right.post.post.created) - unixOrIsoMs(left.post.post.created);
+        if (!Number.isNaN(createdAtDiff) && createdAtDiff !== 0) {
+          return createdAtDiff;
+        }
+        return right.post.post.id.localeCompare(left.post.post.id);
+      });
 
-    const recentCommunity = recentCommunityMeta.get(communityId);
-    const title = (entry.post.translated_title ?? entry.post.post.title ?? entry.post.post.caption ?? entry.post.post.body ?? "").trim();
-    if (!title) {
-      continue;
-    }
+    for (const entry of fallbackPosts) {
+      if (railPosts.length >= limit) break;
+      if (seenPostIds.has(entry.post.post.id)) continue;
 
-    railPosts.push({
-      commentCount: entry.post.thread_snapshot?.comment_count ?? 0,
-      communityAvatarSrc: recentCommunity?.avatarSrc ?? null,
-      communityHref: buildCommunityPath(communityId, recentCommunity?.routeSlug ?? entry.community.route_slug),
-      communityId,
-      communityLabel: recentCommunity?.displayName ?? entry.community.display_name,
-      postHref: `/p/${entry.post.post.id}`,
-      postId: entry.post.post.id,
-      postTitle: title,
-      score: entry.post.upvote_count - entry.post.downvote_count,
-      timestampLabel: formatRelativeTimestamp(entry.post.post.created),
-      thumbnailSrc: resolveRailThumbnail(entry),
-    });
-    seenPostIds.add(entry.post.post.id);
+      const item = buildRailItem(entry);
+      if (!item) continue;
+
+      railPosts.push(item);
+      seenPostIds.add(entry.post.post.id);
+    }
   }
 
   return railPosts;

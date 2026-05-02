@@ -20,6 +20,7 @@ import { PageContainer } from "@/components/primitives/layout-shell";
 import { Spinner } from "@/components/primitives/spinner";
 import { YourCommunitiesPageView } from "@/components/compositions/community/your-communities-page/your-communities-page";
 import { Feed, type FeedSort, TopTimeRangeControl } from "@/components/compositions/posts/feed/feed";
+import { PopularCommunitiesRail, type PopularCommunityItem } from "@/components/compositions/community/popular-communities-rail/popular-communities-rail";
 import { RecentPostRail, type RecentPostRailItem } from "@/components/compositions/posts/feed/recent-post-rail";
 import { Type } from "@/components/primitives/type";
 
@@ -406,6 +407,31 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     recentCommunities,
   }), [feedEntries, recentCommunities]);
 
+  const popularCommunities = React.useMemo((): PopularCommunityItem[] => {
+    if (feedEntries.length === 0) return [];
+
+    const seen = new Set<string>();
+    const communities: PopularCommunityItem[] = [];
+
+    for (const entry of feedEntries) {
+      const communityId = resolveHomeFeedCommunityId(entry.community);
+      if (seen.has(communityId)) continue;
+      seen.add(communityId);
+
+      communities.push({
+        communityId,
+        communityLabel: entry.community.display_name,
+        communityHref: buildCommunityPath(communityId, entry.community.route_slug),
+        avatarSrc: entry.community.avatar_ref ?? null,
+        memberCount: entry.community.member_count ?? 0,
+      });
+    }
+
+    return communities
+      .sort((a, b) => b.memberCount - a.memberCount)
+      .slice(0, 6);
+  }, [feedEntries]);
+
   if (error) {
     return <RouteLoadFailureState description={getErrorMessage(error, copy.routeStatus.home.failure)} title={copy.home.title} />;
   }
@@ -416,13 +442,23 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
       <StandardRoutePage size="rail" className="gap-6" frameClassName="md:pb-0">
         <Feed
           activeSort={activeSort}
-          aside={recentRailPosts.length > 0 ? (
-            <RecentPostRail
-              items={recentRailPosts}
-              localeTag={localeTag}
-              title={copy.home.railTitle}
-            />
-          ) : undefined}
+          aside={(
+            <div className="flex flex-col gap-4">
+              {recentRailPosts.length > 0 ? (
+                <RecentPostRail
+                  items={recentRailPosts}
+                  localeTag={localeTag}
+                  title={copy.home.railTitle}
+                />
+              ) : null}
+              {popularCommunities.length > 0 ? (
+                <PopularCommunitiesRail
+                  items={popularCommunities}
+                  localeTag={localeTag}
+                />
+              ) : null}
+            </div>
+          )}
           availableSorts={sortOptions}
           controls={activeSort === "top" ? <TopTimeRangeControl onValueChange={setTopTimeRange} options={topTimeRangeOptions} value={topTimeRange} /> : undefined}
           emptyState={{

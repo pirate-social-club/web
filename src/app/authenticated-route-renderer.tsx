@@ -137,7 +137,7 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
     case "community-moderation":
       return <LazyCommunityModerationPage communityId={route.communityId} section={route.section} />;
     case "community":
-      return <LazyCommunityPage communityId={route.communityId} />;
+      return <LazyCommunityPage communityId={route.communityId} isImportedRoot={route.isImportedRoot} />;
     case "create-community":
       return <LazyCreateCommunityPage />;
     case "post":

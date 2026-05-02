@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { canonicalizeRoutePathname, isNativePublicIdentityRoute, matchRoute, resolveHydrationPathname } from "./router";
+import {
+  canonicalizeRoutePathname,
+  isNativePublicIdentityRoute,
+  matchRoute,
+  matchRouteWithImportedRootCommunity,
+  resolveHydrationPathname,
+} from "./router";
 import { extractPublicProfileHost } from "@/lib/public-host";
 
 function expectJson(actual: unknown, expected: unknown): void {
@@ -199,5 +205,32 @@ describe("resolveHydrationPathname", () => {
       windowHostname: "xn--pokmon-dva",
       windowPathname: "/p/post-1",
     })).toBe("/p/post-1");
+  });
+});
+
+describe("matchRouteWithImportedRootCommunity", () => {
+  test("maps imported HNS root requests to the resolved community without changing the path", () => {
+    expectJson(matchRouteWithImportedRootCommunity(
+      "/",
+      "xn--pokmon-dva",
+      "com_cmt_public_namespace_test",
+    ), {
+      kind: "community",
+      path: "/",
+      communityId: "com_cmt_public_namespace_test",
+      isImportedRoot: true,
+    });
+  });
+
+  test("keeps explicit paths on imported HNS roots", () => {
+    expectJson(matchRouteWithImportedRootCommunity(
+      "/p/post-1",
+      "xn--pokmon-dva",
+      "com_cmt_public_namespace_test",
+    ), {
+      kind: "post",
+      path: "/p/post-1",
+      postId: "post-1",
+    });
   });
 });

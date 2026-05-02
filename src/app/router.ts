@@ -25,7 +25,7 @@ export type AppRoute =
   | { kind: "create-post-global"; path: "/submit" }
   | { kind: "community-moderation-index"; path: string; communityId: string }
   | { kind: "community-moderation"; path: string; communityId: string; section: CommunityModerationSectionName }
-  | { kind: "community"; path: string; communityId: string }
+  | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean }
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
   | { kind: "inbox"; path: "/inbox" }
@@ -43,6 +43,7 @@ const HOME_ROUTE: AppRoute = { kind: "home", path: "/" };
 let cachedPathname = "/";
 let cachedHostname = "";
 let cachedRoute: AppRoute = HOME_ROUTE;
+let cachedImportedRootCommunityId: string | null = null;
 
 export function isNativePublicIdentityRoute(route: AppRoute): boolean {
   return (
@@ -217,6 +218,24 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   return { kind: "not-found", path: normalized };
 }
 
+export function matchRouteWithImportedRootCommunity(
+  pathname: string,
+  hostname: string | undefined,
+  importedRootCommunityId: string | null,
+): AppRoute {
+  const normalized = normalizePathname(pathname);
+  if (normalized === "/" && importedRootCommunityId) {
+    return {
+      kind: "community",
+      path: "/",
+      communityId: importedRootCommunityId,
+      isImportedRoot: true,
+    };
+  }
+
+  return matchRoute(normalized, hostname);
+}
+
 export function canonicalizeRoutePathname(pathname: string, hostname?: string): string {
   const normalized = normalizePathname(pathname);
   const route = matchRoute(normalized, hostname);
@@ -294,7 +313,7 @@ function getCurrentRoute(): AppRoute {
 
   cachedPathname = pathname;
   cachedHostname = hostname;
-  cachedRoute = matchRoute(pathname, hostname);
+  cachedRoute = matchRouteWithImportedRootCommunity(pathname, hostname, cachedImportedRootCommunityId);
 
   return cachedRoute;
 }
@@ -340,8 +359,14 @@ export function replaceRoute(path: string): void {
   window.dispatchEvent(new Event(NAVIGATION_EVENT));
 }
 
-export function useRoute(initialPathname?: string, initialHostname?: string): AppRoute {
+export function useRoute(
+  initialPathname?: string,
+  initialHostname?: string,
+  importedRootCommunityId?: string | null,
+): AppRoute {
   const initialRoute = React.useMemo(() => {
+    const rootCommunityId = importedRootCommunityId?.trim() || null;
+    cachedImportedRootCommunityId = rootCommunityId;
     if (typeof window !== "undefined") {
       cachedPathname = canonicalizeRoutePathname(
         resolveHydrationPathname({
@@ -356,12 +381,16 @@ export function useRoute(initialPathname?: string, initialHostname?: string): Ap
         replaceCurrentPathname(cachedPathname);
       }
       cachedHostname = window.location.hostname.toLowerCase();
-      cachedRoute = matchRoute(cachedPathname, cachedHostname);
+      cachedRoute = matchRouteWithImportedRootCommunity(cachedPathname, cachedHostname, rootCommunityId);
       return cachedRoute;
     }
 
-    return initialPathname ? matchRoute(initialPathname, initialHostname) : HOME_ROUTE;
-  }, [initialHostname, initialPathname]);
+    return initialPathname
+      ? matchRouteWithImportedRootCommunity(initialPathname, initialHostname, rootCommunityId)
+      : rootCommunityId
+        ? { kind: "community" as const, path: "/", communityId: rootCommunityId, isImportedRoot: true }
+        : HOME_ROUTE;
+  }, [importedRootCommunityId, initialHostname, initialPathname]);
 
   const liveRoute = React.useSyncExternalStore(
     subscribeToNavigation,

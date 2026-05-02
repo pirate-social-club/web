@@ -61,7 +61,13 @@ import { useCommunityJoinVerification } from "@/app/authenticated-state/use-comm
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
 
-export function CommunityPage({ communityId }: { communityId: string }) {
+export function CommunityPage({
+  communityId,
+  isImportedRoot = false,
+}: {
+  communityId: string;
+  isImportedRoot?: boolean;
+}) {
   const api = useApi();
   const session = useSession();
   const isMobileWeb = useIsMobile();
@@ -182,13 +188,14 @@ export function CommunityPage({ communityId }: { communityId: string }) {
     });
 
   React.useEffect(() => {
+    if (isImportedRoot) return;
     const canonicalCommunityId = community?.id ?? preview?.id;
     if (!canonicalCommunityId) return;
     replaceWithCanonicalCommunityRoute(
       canonicalCommunityId,
       community?.route_slug ?? preview?.route_slug,
     );
-  }, [community?.id, community?.route_slug, preview?.id, preview?.route_slug]);
+  }, [community?.id, community?.route_slug, isImportedRoot, preview?.id, preview?.route_slug]);
 
   React.useEffect(() => {
     if (!preview) return;
@@ -389,7 +396,7 @@ export function CommunityPage({ communityId }: { communityId: string }) {
   }
   if (error) {
     if (isApiNotFoundError(error)) {
-      return <PublicCommunityRoutePage communityId={communityId} />;
+      return <PublicCommunityRoutePage communityId={communityId} isImportedRoot={isImportedRoot} />;
     }
     if (isApiAuthError(error))
       return (

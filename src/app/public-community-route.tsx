@@ -187,7 +187,13 @@ export function resolvePublicCommunityJoinActionLabel(
   return getJoinCtaLabel(eligibility ?? ({ status: "joinable" } as ApiJoinEligibility), { locale });
 }
 
-export function PublicCommunityRoutePage({ communityId }: { communityId: string }) {
+export function PublicCommunityRoutePage({
+  communityId,
+  isImportedRoot = false,
+}: {
+  communityId: string;
+  isImportedRoot?: boolean;
+}) {
   const api = useApi();
   const session = useSession();
   const authRuntime = usePiratePrivyRuntime();
@@ -263,9 +269,10 @@ export function PublicCommunityRoutePage({ communityId }: { communityId: string 
   }, [communityId, error]);
 
   React.useEffect(() => {
+    if (isImportedRoot) return;
     if (!preview?.id) return;
     replaceWithCanonicalCommunityRoute(preview.id, preview.route_slug);
-  }, [preview?.id, preview?.route_slug]);
+  }, [isImportedRoot, preview?.id, preview?.route_slug]);
 
   React.useEffect(() => {
     setViewerFollowing(Boolean(preview?.viewer_following));

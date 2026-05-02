@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { resolveEffectiveRequestUrl } from "./hns-forwarded-origin";
+import {
+  resolveEffectiveRequestUrl,
+  resolveForwardedCommunityRouteSegment,
+} from "./hns-forwarded-origin";
 
 function request(headers: Record<string, string>): Request {
   return new Request("https://pirate.sc/c/crew?sort=top", { headers });
@@ -54,5 +57,20 @@ describe("HNS forwarded origin", () => {
       "cf-connecting-ip": "173.199.93.117",
       "x-forwarded-host": "xn--pokmon-dva",
     }))).toBe("https://pirate.sc/c/crew?sort=top");
+  });
+
+  test("uses resolved imported community ids from trusted HNS ingress", () => {
+    expect(resolveForwardedCommunityRouteSegment(request({
+      "cf-connecting-ip": "173.199.93.117",
+      "x-pirate-hns-community-id": "com_cmt_public_namespace_test",
+      "x-pirate-hns-community-route": "xn--pokmon-dva",
+    }))).toBe("com_cmt_public_namespace_test");
+  });
+
+  test("ignores imported community routes from untrusted clients", () => {
+    expect(resolveForwardedCommunityRouteSegment(request({
+      "cf-connecting-ip": "203.0.113.12",
+      "x-pirate-hns-community-id": "com_cmt_public_namespace_test",
+    }))).toBe(null);
   });
 });

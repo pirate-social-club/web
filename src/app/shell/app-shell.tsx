@@ -228,9 +228,17 @@ function NotificationShell({
   );
 }
 
-export function PirateAppShell({ initialHost, initialPath }: { initialHost?: string; initialPath?: string }) {
+export function PirateAppShell({
+  initialHost,
+  initialImportedRootCommunityId,
+  initialPath,
+}: {
+  initialHost?: string;
+  initialImportedRootCommunityId?: string | null;
+  initialPath?: string;
+}) {
   const { locale } = useUiLocale();
-  const route = useRoute(initialPath, initialHost);
+  const route = useRoute(initialPath, initialHost, initialImportedRootCommunityId);
   const session = useSession();
   const effectiveLocale = locale;
   const effectiveDir = resolveLocaleDirection(effectiveLocale);

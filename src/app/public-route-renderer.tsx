@@ -13,7 +13,7 @@ export function renderPublicRoute(
 ): React.ReactNode {
   switch (route.kind) {
     case "community":
-      return <PublicCommunityRoutePage communityId={route.communityId} />;
+      return <PublicCommunityRoutePage communityId={route.communityId} isImportedRoot={route.isImportedRoot} />;
     case "post":
       return <PostPage postId={route.postId} />;
     case "public-profile":

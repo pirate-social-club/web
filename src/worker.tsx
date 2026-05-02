@@ -31,7 +31,10 @@ import {
   markdownRequested,
   type WebBotAuthEnv,
 } from "@/lib/agent-discovery";
-import { resolveEffectiveRequestUrl } from "@/lib/hns-forwarded-origin";
+import {
+  resolveEffectiveRequestUrl,
+  resolveForwardedCommunityRouteSegment,
+} from "@/lib/hns-forwarded-origin";
 import {
   resolveLocaleDirection,
   resolveLocaleLanguageTag,
@@ -401,11 +404,15 @@ async function resolveRouteSeoMetadataWithinBudget(input: {
 
 function AppRoutePage(requestInfo: AppRequestInfo) {
   const url = new URL(requestInfo.ctx.effectiveUrl ?? requestInfo.request.url);
+  const importedRootCommunityId = url.pathname === "/"
+    ? resolveForwardedCommunityRouteSegment(requestInfo.request)
+    : null;
 
   return (
     <PirateApp
       initialDir={requestInfo.ctx.dir}
       initialHost={url.hostname}
+      initialImportedRootCommunityId={importedRootCommunityId}
       initialLocale={requestInfo.ctx.locale}
       initialPath={url.pathname}
     />
@@ -495,7 +502,17 @@ const app = defineApp<AppRequestInfo>([
     const discovery = getDiscoveryContext(effectiveUrl);
     const hasLocaleOverride = resolveLocaleQueryOverride(url) !== null;
     const locale = resolveRequestUiLocale(url, request.headers.get("accept-language"));
-    const route = matchRoute(url.pathname, url.hostname);
+    const forwardedCommunityRoot = url.pathname === "/"
+      ? resolveForwardedCommunityRouteSegment(request)
+      : null;
+    const route = forwardedCommunityRoot
+      ? {
+          kind: "community" as const,
+          path: "/" as const,
+          communityId: forwardedCommunityRoot,
+          isImportedRoot: true,
+        }
+      : matchRoute(url.pathname, url.hostname);
 
     ctx.effectiveUrl = effectiveUrl;
     ctx.appOrigin = discovery.appOrigin;

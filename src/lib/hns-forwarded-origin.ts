@@ -60,3 +60,17 @@ export function resolveEffectiveRequestUrl(request: Request, env: HnsForwardedOr
   url.port = "";
   return url.toString();
 }
+
+export function resolveForwardedCommunityRouteSegment(
+  request: Request,
+  env: HnsForwardedOriginEnv = {},
+): string | null {
+  const routeSegment = request.headers.get("x-pirate-hns-community-id")
+    ?? request.headers.get("x-pirate-hns-community-route");
+  const normalized = routeSegment?.split(",")[0]?.trim() ?? "";
+  if (!normalized || !isTrustedForwarder(request, env)) {
+    return null;
+  }
+
+  return normalized;
+}

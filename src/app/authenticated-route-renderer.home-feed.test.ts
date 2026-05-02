@@ -275,6 +275,62 @@ describe("toHomeFeedItem", () => {
     expect(item.post.content.summary?.shortSummary).toBe("Neutral article summary.");
     expect(item.post.content.summary?.keyPoints).toEqual(["First key point.", "Second key point."]);
   });
+
+  test("uses localized link enrichment when viewing original source text", () => {
+    const entry = createEntry();
+    entry.post.post.post_type = "link";
+    entry.post.post.source_language = "ar";
+    entry.post.post.title = "تقرير رويترز";
+    entry.post.post.body = "تعليق عربي";
+    entry.post.post.link_url = "https://www.reuters.com/world/story";
+    entry.post.post.link_og_title = "Israel seizes Gaza aid ships";
+    entry.post.post.link_enrichment = {
+      version: 1,
+      title: "Israel seizes Gaza aid ships",
+      published_at: "2026-04-29",
+      summary: {
+        status: "ready",
+        summary_paragraph: "A longer neutral article summary.",
+        short_summary: "Neutral article summary.",
+        key_points: ["Ships seized off Greece", "Israel cites blockade", "Turkey condemns move"],
+      },
+      translations: {
+        ar: {
+          locale: "ar",
+          title: "إسرائيل تستولي على سفن مساعدات غزة",
+          description: null,
+          summary: {
+            summary_paragraph: "ملخص عربي أطول للخبر.",
+            short_summary: "ملخص عربي قصير.",
+            key_points: ["مصادرة سفن قبالة اليونان", "إسرائيل تستند إلى الحصار", "تركيا تدين التحرك"],
+          },
+          generated_at: "2026-05-02T09:00:00.000Z",
+          model: "test",
+          provider: "openrouter",
+        },
+      },
+    };
+    entry.post.translation_state = "ready";
+    entry.post.resolved_locale = "en";
+    entry.post.translated_title = "Reuters report";
+    entry.post.translated_body = "English commentary";
+
+    const item = toHomeFeedItem(entry, {}, undefined, {
+      showOriginalLabel: "Show original",
+      showTranslationLabel: "Show translation",
+    });
+
+    expect(item.post.content.type).toBe("link");
+    if (item.post.content.type !== "link") throw new Error("expected link content");
+    expect(item.post.content.previewTitle).toBe("Israel seizes Gaza aid ships");
+    expect(item.post.content.summary?.keyPoints).toEqual(["Ships seized off Greece", "Israel cites blockade", "Turkey condemns move"]);
+    expect(item.postOriginal?.content.type).toBe("link");
+    if (!item.postOriginal || item.postOriginal.content.type !== "link") throw new Error("expected original link content");
+    expect(item.postOriginal.content.previewTitle).toBe("إسرائيل تستولي على سفن مساعدات غزة");
+    expect(item.postOriginal.content.previewTitleDir).toBe("rtl");
+    expect(item.postOriginal.content.summary?.summaryParagraph).toBe("ملخص عربي أطول للخبر.");
+    expect(item.postOriginal.content.summary?.keyPoints).toEqual(["مصادرة سفن قبالة اليونان", "إسرائيل تستند إلى الحصار", "تركيا تدين التحرك"]);
+  });
 });
 
 describe("toCommunityFeedItem", () => {

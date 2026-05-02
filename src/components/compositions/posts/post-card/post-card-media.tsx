@@ -99,7 +99,12 @@ function LinkPreviewCard({ content }: { content: LinkContent }) {
           {summaryBullets.length > 0 ? (
             <ul className="mt-2 space-y-1 pl-4 text-foreground/85">
               {summaryBullets.map((point, index) => (
-                <li className={cn(postCardType.caption, "list-disc")} key={`${index}:${point}`}>
+                <li
+                  className={cn(postCardType.caption, "list-disc")}
+                  dir={content.summaryDir ?? "auto"}
+                  key={`${index}:${point}`}
+                  lang={content.summaryLang}
+                >
                   {point}
                 </li>
               ))}
@@ -122,6 +127,8 @@ function LinkPreviewCard({ content }: { content: LinkContent }) {
           {summaryExpanded ? (
             <FormattedText
               className={cn(postCardType.caption, "mb-2 border-t border-border-soft pt-2 text-foreground/85")}
+              dir={content.summaryDir ?? "auto"}
+              lang={content.summaryLang}
               value={summaryParagraph}
             />
           ) : null}

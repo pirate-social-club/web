@@ -45,6 +45,60 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
+function normalizeContentLocale(locale: string | null | undefined): string | null {
+  const trimmed = String(locale ?? "").trim();
+  if (!trimmed) return null;
+  const lowered = trimmed.replace(/_/gu, "-").toLowerCase();
+  if (lowered === "pt" || lowered === "pt-br") return "pt-BR";
+  if (lowered === "zh" || lowered === "zh-cn" || lowered === "zh-hans") return "zh-Hans";
+  if (lowered === "zh-tw" || lowered === "zh-hk" || lowered === "zh-hant") return "zh-Hant";
+  const [language, ...rest] = lowered.split("-").filter(Boolean);
+  if (!language) return null;
+  return rest.length ? [language, ...rest.map((segment) => segment.length === 4
+    ? segment[0]!.toUpperCase() + segment.slice(1)
+    : segment.toUpperCase())].join("-") : language;
+}
+
+function resolveLinkEnrichmentForLocale(
+  enrichment: Record<string, unknown> | null | undefined,
+  locale: string | null | undefined,
+): Record<string, unknown> | null | undefined {
+  if (!isRecord(enrichment)) {
+    return enrichment;
+  }
+
+  const normalizedLocale = normalizeContentLocale(locale);
+  if (!normalizedLocale || normalizedLocale === "en") {
+    return enrichment;
+  }
+
+  const translations = isRecord(enrichment.translations) ? enrichment.translations : null;
+  const exact = translations && isRecord(translations[normalizedLocale]) ? translations[normalizedLocale] : null;
+  const language = normalizedLocale.split("-")[0];
+  const languageMatch = !exact && translations && language
+    ? Object.entries(translations).find(([key, value]) => key.split("-")[0] === language && isRecord(value))?.[1]
+    : null;
+  const translated = exact ?? (isRecord(languageMatch) ? languageMatch : null);
+  if (!translated) {
+    return enrichment;
+  }
+
+  const translatedSummary = isRecord(translated.summary) ? translated.summary : null;
+  return {
+    ...enrichment,
+    title: typeof translated.title === "string" && translated.title.trim() ? translated.title : enrichment.title,
+    description: typeof translated.description === "string" && translated.description.trim() ? translated.description : enrichment.description,
+    summary: translatedSummary
+      ? {
+        ...(isRecord(enrichment.summary) ? enrichment.summary : {}),
+        short_summary: translatedSummary.short_summary,
+        summary_paragraph: translatedSummary.summary_paragraph,
+        key_points: translatedSummary.key_points,
+      }
+      : enrichment.summary,
+  };
+}
+
 function extractLinkSummary(
   enrichment: Record<string, unknown> | null | undefined,
 ): NonNullable<Extract<PostCardProps["content"], { type: "link" }>["summary"]> | undefined {
@@ -431,6 +485,12 @@ export function toCommunityPostContent(
   const translatedTextPresentation = !opts?.preferOriginalText && postResponse.translation_state === "ready"
     ? resolveTranslatedTextPresentation(postResponse.resolved_locale)
     : {};
+  const linkLocale = opts?.preferOriginalText
+    ? post.source_language
+    : postResponse.translation_state === "ready"
+      ? postResponse.resolved_locale
+      : null;
+  const linkTextPresentation = linkLocale ? resolveTranslatedTextPresentation(linkLocale) : {};
   const primaryMedia = post.media_refs?.[0];
   const imageMedia = primaryMedia as ({ width?: number | null; height?: number | null } & typeof primaryMedia) | undefined;
   const title = opts?.preferOriginalText ? (post.title ?? "Untitled post") : (translated_title ?? post.title ?? "Untitled post");
@@ -592,6 +652,7 @@ export function toCommunityPostContent(
           state: embed.state,
         };
       }
+      const localizedLinkEnrichment = resolveLinkEnrichmentForLocale(post.link_enrichment, linkLocale);
       return {
         type: "link",
         body: resolvedBody || undefined,
@@ -601,9 +662,15 @@ export function toCommunityPostContent(
         linkLabel: post.link_url ?? undefined,
         sourceLabel: formatLinkSourceLabel(post.link_url, post.link_enrichment),
         publishedLabel: extractPublishedLabel(post.link_enrichment),
-        previewTitle: post.link_og_title ?? undefined,
+        previewTitle: typeof localizedLinkEnrichment?.title === "string"
+          ? localizedLinkEnrichment.title
+          : post.link_og_title ?? undefined,
+        previewTitleDir: linkTextPresentation.dir,
+        previewTitleLang: linkTextPresentation.lang,
         previewImageSrc: post.link_og_image_url ?? undefined,
-        summary: extractLinkSummary(post.link_enrichment),
+        summary: extractLinkSummary(localizedLinkEnrichment),
+        summaryDir: linkTextPresentation.dir,
+        summaryLang: linkTextPresentation.lang,
       };
     case "song": {
       const listing = songOptions?.listing;

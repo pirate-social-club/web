@@ -144,6 +144,8 @@ export type PostCardContent =
       publishedLabel?: string;
       previewImageSrc?: string;
       summary?: LinkSummaryContent | null;
+      summaryDir?: "ltr" | "rtl" | "auto";
+      summaryLang?: string;
     }
   | {
       type: "embed";

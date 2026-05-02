@@ -25,9 +25,9 @@ function base64ToArrayBuffer(value: string): ArrayBuffer {
 }
 
 describe("agent discovery origins", () => {
-  test("uses HNS API origin for the HNS app host", () => {
-    expect(resolveApiOriginFromHostname("app.pirate")).toBe("https://api.pirate");
-    expect(getDiscoveryContext("https://app.pirate/c/crew").apiOrigin).toBe("https://api.pirate");
+  test("uses production API origin for the HNS app host", () => {
+    expect(resolveApiOriginFromHostname("app.pirate")).toBe("https://api.pirate.sc");
+    expect(getDiscoveryContext("https://app.pirate/c/crew").apiOrigin).toBe("https://api.pirate.sc");
   });
 
   test("builds an MCP server card for browser-exposed Pirate tools", async () => {

@@ -28,10 +28,6 @@ function resolveApiOrigin(): string {
     return "https://api-staging.pirate.sc";
   }
 
-  if (hostname === "app.pirate") {
-    return "https://api.pirate";
-  }
-
   return "https://api.pirate.sc";
 }
 

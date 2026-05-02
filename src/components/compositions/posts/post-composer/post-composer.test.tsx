@@ -666,7 +666,7 @@ describe("PostComposer monetization", () => {
 
     const previewCard = findElement(
       tree,
-      (element) => element.type.name === "PostCard",
+      (element) => typeof element.type !== "string" && element.type.name === "PostCard",
     );
     if (!previewCard) {
       throw new Error("Missing preview post card");

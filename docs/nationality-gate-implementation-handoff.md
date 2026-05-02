@@ -809,7 +809,7 @@ describe("isJoinCtaActionable", () => {
 7. `src/app/pages.tsx` — replace `useCommunity` with `useCommunityPreview`, replace `handleCreate`, add join flow, add self verification
 8. `src/components/compositions/community-sidebar/community-sidebar.tsx` — update access label
 9. `src/test/nationality-gate.test.ts` — tests
-9. Run `rtk bun run types` to verify typecheck
+9. Run `rtk bun run types:safe` to verify typecheck on local machines
 10. Run `rtk ./node_modules/.bin/vite build --ssr src/worker.tsx --minify false --sourcemap false` for light build check
 
 ---

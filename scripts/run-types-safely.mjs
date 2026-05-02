@@ -12,7 +12,16 @@ const nicePriority = clamp(readIntEnv("TSC_SAFE_NICE", 10), -20, 19);
 const buildInfoFile =
   process.env.TSC_SAFE_BUILD_INFO ?? "node_modules/.tmp/tsconfig.safe.tsbuildinfo";
 const buildInfoPath = path.resolve(rootDir, buildInfoFile);
+const tsgoBin = path.join(
+  rootDir,
+  "node_modules",
+  "@typescript",
+  "native-preview",
+  "bin",
+  "tsgo.js",
+);
 const tscBin = path.join(rootDir, "node_modules", "typescript", "bin", "tsc");
+const typecheckBin = fs.existsSync(tsgoBin) ? tsgoBin : tscBin;
 
 fs.mkdirSync(path.dirname(buildInfoPath), { recursive: true });
 
@@ -23,7 +32,7 @@ const hasProjectFlag = userArgs.some((a) =>
 
 const args = [
   `--max-old-space-size=${heapMb}`,
-  tscBin,
+  typecheckBin,
   "--noEmit",
   "--incremental",
   "--tsBuildInfoFile",
@@ -33,10 +42,10 @@ const args = [
 ];
 
 console.error(
-  `[types:safe] heap=${heapMb}MB nice=${nicePriority} buildInfo=${path.relative(
+  `[types:safe] compiler=${path.relative(
     rootDir,
-    buildInfoPath,
-  )}`,
+    typecheckBin,
+  )} heap=${heapMb}MB nice=${nicePriority} buildInfo=${path.relative(rootDir, buildInfoPath)}`,
 );
 
 const child = spawn(process.execPath, args, {

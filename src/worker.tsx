@@ -35,6 +35,7 @@ import {
   authenticateHnsForwarderRequest,
   resolveEffectiveRequestUrl,
   resolveForwardedCommunityRouteSegment,
+  type HnsForwardedOriginEnv,
 } from "@/lib/hns-forwarded-origin";
 import {
   resolveLocaleDirection,
@@ -589,7 +590,7 @@ const app = defineApp<AppRequestInfo>([
 
 export default {
   async fetch(request: Request, env: Env, cf: AppRequestInfo["cf"]) {
-    request = authenticateHnsForwarderRequest(request, env);
+    request = authenticateHnsForwarderRequest(request, env as HnsForwardedOriginEnv);
     const initialEffectiveUrl = resolveEffectiveRequestUrl(request);
     const initialPathname = new URL(initialEffectiveUrl).pathname;
     if (initialPathname === "/__version") {

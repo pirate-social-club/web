@@ -20,7 +20,7 @@ Use this checklist when touching `src/components/`.
 2. Update imports in the same change.
 3. Delete dead story-only surface instead of preserving it.
 4. Run `rtk bun test`.
-5. Run `rtk bun run types`.
+5. Run `rtk bun run types:safe`.
 
 ## Ongoing Hygiene
 

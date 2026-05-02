@@ -8,6 +8,7 @@ declare module "bun:test" {
     toContain(expected: unknown): void;
     toEqual(expected: unknown): void;
     toBeNull(): void;
+    toBeUndefined(): void;
     toHaveLength(expected: number): void;
   };
 }

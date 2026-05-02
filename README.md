@@ -8,14 +8,15 @@ React 19 + Vite + Cloudflare Workers (rwsdk). Tailwind CSS v4 + Radix UI. Bun fo
 
 ```bash
 bun install
-bun run types          # typecheck (run first)
+bun run types:safe     # preferred local typecheck on weak machines (TS7 tsgo)
+bun run types          # uncapped typecheck, use when CI parity matters
 bun run ui:audit       # component hygiene and stale-marker checks
 bun run locales:generate
 bun run dev            # dev server on :5173
 bun run test
 bun run storybook      # component workspace on :6006
 bun run build          # full production build (heavy, avoid by default)
-bun run validate       # canonical pre-deploy validation
+bun run validate       # canonical pre-deploy validation (broad/heavy)
 ```
 
 See [AGENTS.md](./AGENTS.md) for validation escalation order and style rules.

@@ -32,13 +32,26 @@ function isTrustedForwarder(request: Request, env: HnsForwardedOriginEnv): boole
   return !!connectingIp && parseTrustedIps(env).has(connectingIp);
 }
 
+function isTrustedForwardedHnsHost(hostname: string): boolean {
+  if (HNS_APP_HOSTS.has(hostname)) {
+    return true;
+  }
+
+  return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/u
+    .test(hostname);
+}
+
 export function resolveEffectiveRequestUrl(request: Request, env: HnsForwardedOriginEnv = {}): string {
   const url = new URL(request.url);
-  const forwardedHost = normalizeHost(
-    request.headers.get("x-pirate-hns-host") ?? request.headers.get("x-forwarded-host"),
-  );
+  const pirateHnsHost = normalizeHost(request.headers.get("x-pirate-hns-host"));
+  const fallbackForwardedHost = normalizeHost(request.headers.get("x-forwarded-host"));
+  const forwardedHost = pirateHnsHost ?? fallbackForwardedHost;
 
-  if (!forwardedHost || !HNS_APP_HOSTS.has(forwardedHost) || !isTrustedForwarder(request, env)) {
+  const hostAllowed = pirateHnsHost
+    ? isTrustedForwardedHnsHost(pirateHnsHost)
+    : !!fallbackForwardedHost && HNS_APP_HOSTS.has(fallbackForwardedHost);
+
+  if (!forwardedHost || !hostAllowed || !isTrustedForwarder(request, env)) {
     return url.toString();
   }
 

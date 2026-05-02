@@ -21,10 +21,38 @@ describe("HNS forwarded origin", () => {
     }))).toBe("https://pirate.sc/c/crew?sort=top");
   });
 
-  test("ignores non-app forwarded hosts", () => {
+  test("uses first-party public HNS hosts when forwarded by the trusted HNS ingress", () => {
     expect(resolveEffectiveRequestUrl(request({
       "cf-connecting-ip": "173.199.93.117",
       "x-pirate-hns-host": "captain.pirate",
+    }))).toBe("https://captain.pirate/c/crew?sort=top");
+  });
+
+  test("uses imported HNS roots when forwarded by the trusted HNS ingress", () => {
+    expect(resolveEffectiveRequestUrl(request({
+      "cf-connecting-ip": "173.199.93.117",
+      "x-pirate-hns-host": "xn--pokmon-dva",
+    }))).toBe("https://xn--pokmon-dva/c/crew?sort=top");
+  });
+
+  test("uses imported HNS subdomains when forwarded by the trusted HNS ingress", () => {
+    expect(resolveEffectiveRequestUrl(request({
+      "cf-connecting-ip": "173.199.93.117",
+      "x-pirate-hns-host": "v.xn--pokmon-dva",
+    }))).toBe("https://v.xn--pokmon-dva/c/crew?sort=top");
+  });
+
+  test("ignores invalid forwarded hostnames", () => {
+    expect(resolveEffectiveRequestUrl(request({
+      "cf-connecting-ip": "173.199.93.117",
+      "x-pirate-hns-host": "bad host",
+    }))).toBe("https://pirate.sc/c/crew?sort=top");
+  });
+
+  test("does not expand generic forwarded-host beyond app hosts", () => {
+    expect(resolveEffectiveRequestUrl(request({
+      "cf-connecting-ip": "173.199.93.117",
+      "x-forwarded-host": "xn--pokmon-dva",
     }))).toBe("https://pirate.sc/c/crew?sort=top");
   });
 });

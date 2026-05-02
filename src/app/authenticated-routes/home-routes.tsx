@@ -3,6 +3,7 @@
 import * as React from "react";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
 import type { CommunityPurchase as ApiCommunityPurchase } from "@pirate/api-contracts";
+import type { HomeFeedCommunitySummary as ApiHomeFeedCommunitySummary } from "@pirate/api-contracts";
 import type { HomeFeedItem as ApiHomeFeedItem } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
@@ -208,6 +209,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   const sessionProfile = session?.profile;
   const sessionUserId = session?.user.id;
   const [feedEntries, setFeedEntries] = React.useState<ApiHomeFeedItem[]>([]);
+  const [topCommunities, setTopCommunities] = React.useState<ApiHomeFeedCommunitySummary[]>([]);
   const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
   const [listingsByAssetId, setListingsByAssetId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
   const [purchasesByAssetId, setPurchasesByAssetId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
@@ -225,6 +227,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
 
     setLoading(true);
     setError(null);
+    setTopCommunities([]);
     setAuthorProfiles({});
     setListingsByAssetId({});
     setPurchasesByAssetId({});
@@ -239,6 +242,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
 
         const nextFeedEntries = result.items;
         setFeedEntries(nextFeedEntries);
+        setTopCommunities(result.top_communities);
         setLoading(false);
 
         void loadProfilesByUserId(
@@ -299,6 +303,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   return {
     feedEntries,
     setFeedEntries,
+    topCommunities,
     authorProfiles,
     listingsByAssetId,
     purchasesByAssetId,
@@ -325,6 +330,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const {
     feedEntries,
     setFeedEntries,
+    topCommunities,
     authorProfiles,
     listingsByAssetId,
     purchasesByAssetId,
@@ -408,29 +414,21 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   }), [feedEntries, recentCommunities]);
 
   const popularCommunities = React.useMemo((): PopularCommunityItem[] => {
-    if (feedEntries.length === 0) return [];
-
-    const seen = new Set<string>();
-    const communities: PopularCommunityItem[] = [];
-
-    for (const entry of feedEntries) {
-      const communityId = resolveHomeFeedCommunityId(entry.community);
-      if (seen.has(communityId)) continue;
-      seen.add(communityId);
-
-      communities.push({
-        communityId,
-        communityLabel: entry.community.display_name,
-        communityHref: buildCommunityPath(communityId, entry.community.route_slug),
-        avatarSrc: entry.community.avatar_ref ?? null,
-        memberCount: entry.community.member_count ?? 0,
-      });
-    }
-
-    return communities
-      .sort((a, b) => b.memberCount - a.memberCount)
+    return topCommunities
+      .map((community) => {
+        const communityId = resolveHomeFeedCommunityId(community);
+        return {
+          communityId,
+          communityLabel: community.display_name,
+          communityHref: buildCommunityPath(communityId, community.route_slug),
+          avatarSrc: community.avatar_ref ?? null,
+          metricCount: community.follower_count ?? 0,
+          metricLabel: "followers",
+        };
+      })
+      .sort((a, b) => b.metricCount - a.metricCount)
       .slice(0, 6);
-  }, [feedEntries]);
+  }, [topCommunities]);
 
   if (error) {
     return <RouteLoadFailureState description={getErrorMessage(error, copy.routeStatus.home.failure)} title={copy.home.title} />;

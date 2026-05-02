@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { renderHook, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test/setup-dom";
 
-import type { HomeFeedItem, LocalizedPostResponse } from "@pirate/api-contracts";
+import type { HomeFeedCommunitySummary, HomeFeedItem, LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { api } from "@/lib/api";
 import { __resetSessionStoreForTests } from "@/lib/api/session-store";
@@ -87,6 +87,19 @@ function createFeedItem(overrides: { postId?: string; postType?: LocalizedPostRe
   } as unknown as HomeFeedItem;
 }
 
+function createTopCommunity(overrides: Partial<HomeFeedCommunitySummary> = {}): HomeFeedCommunitySummary {
+  return {
+    id: "com_cmt_test",
+    object: "home_feed_community_summary",
+    display_name: "Test Community",
+    route_slug: "test",
+    avatar_ref: null,
+    member_count: null,
+    follower_count: 7,
+    ...overrides,
+  };
+}
+
 describe("useHomeFeed", () => {
   test("renders feed entries before slower profile and commerce data resolves", async () => {
     __resetSessionStoreForTests();
@@ -95,7 +108,7 @@ describe("useHomeFeed", () => {
     resolvePurchases = null;
 
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[] }>;
+      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
     };
     const profilesApi = api.profiles as unknown as {
       getByUserId: (userId: string) => Promise<unknown>;
@@ -107,6 +120,7 @@ describe("useHomeFeed", () => {
 
     feedApi.home = async () => ({
       items: [createFeedItem({ postId: "pst_1", authorUserId: "usr_1" })],
+      top_communities: [createTopCommunity()],
     });
     profilesApi.getByUserId = async () =>
       new Promise((resolve) => {
@@ -134,6 +148,8 @@ describe("useHomeFeed", () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.feedEntries.length).toBe(1);
     expect(result.current.feedEntries[0]?.post.post.id).toBe("pst_1");
+    expect(result.current.topCommunities.length).toBe(1);
+    expect(result.current.topCommunities[0]?.follower_count).toBe(7);
     expect(Object.keys(result.current.authorProfiles).length).toBe(0);
     expect(Object.keys(result.current.listingsByAssetId).length).toBe(0);
     expect(Object.keys(result.current.purchasesByAssetId).length).toBe(0);
@@ -151,7 +167,7 @@ describe("useHomeFeed", () => {
     resolvePurchases = null;
 
     const feedApi = api.feed as unknown as {
-      home: (opts: unknown) => Promise<{ items: HomeFeedItem[] }>;
+      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
     };
     const profilesApi = api.profiles as unknown as {
       getByUserId: (userId: string) => Promise<unknown>;
@@ -165,6 +181,7 @@ describe("useHomeFeed", () => {
       items: [
         createFeedItem({ postId: "pst_song", postType: "song", authorUserId: "usr_1" }),
       ],
+      top_communities: [],
     });
     profilesApi.getByUserId = async () => ({ user: "usr_1", display_name: "Test User" });
     communitiesApi.listListings = async () => ({
@@ -249,7 +266,6 @@ describe("buildRecentPostRail", () => {
     const recentFeedItem = createFeedItem({ postId: "pst_recent" });
     const otherFeedItem = createFeedItem({ postId: "pst_other" });
     otherFeedItem.community.id = "com_other";
-    otherFeedItem.community.community = "other";
 
     const items = buildRecentPostRail({
       feedEntries: [recentFeedItem, otherFeedItem],

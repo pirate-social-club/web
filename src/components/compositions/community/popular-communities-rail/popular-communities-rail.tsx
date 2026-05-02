@@ -11,7 +11,8 @@ export interface PopularCommunityItem {
   communityLabel: string;
   communityHref: string;
   avatarSrc?: string | null;
-  memberCount: number;
+  metricCount: number;
+  metricLabel: string;
 }
 
 export interface PopularCommunitiesRailProps {
@@ -21,7 +22,7 @@ export interface PopularCommunitiesRailProps {
   title?: string;
 }
 
-function formatMemberCount(value: number, localeTag: string): string {
+function formatMetricCount(value: number, localeTag: string): string {
   return new Intl.NumberFormat(localeTag, {
     notation: "compact",
     compactDisplay: "short",
@@ -57,7 +58,7 @@ export function PopularCommunitiesRail({
       </header>
       <div className="divide-y divide-border-soft">
         {items.map((item) => {
-          const membersLabel = formatMemberCount(item.memberCount, localeTag);
+          const metricCountLabel = formatMetricCount(item.metricCount, localeTag);
 
           return (
             <a
@@ -77,7 +78,7 @@ export function PopularCommunitiesRail({
                   {item.communityLabel}
                 </Type>
                 <Type as="div" variant="caption" className="truncate">
-                  {`${membersLabel} members`}
+                  {`${metricCountLabel} ${item.metricLabel}`}
                 </Type>
               </div>
             </a>

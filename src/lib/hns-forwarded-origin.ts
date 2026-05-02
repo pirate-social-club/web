@@ -1,8 +1,11 @@
 const DEFAULT_TRUSTED_HNS_FORWARDER_IPS = ["173.199.93.117"];
 const HNS_APP_HOSTS = new Set(["app.pirate"]);
+const TRUSTED_FORWARDER_HEADER = "x-pirate-hns-trusted-forwarder";
+const FORWARDER_TOKEN_HEADER = "x-pirate-hns-forwarder-token";
 
 export type HnsForwardedOriginEnv = {
   HNS_FORWARDER_TRUSTED_IPS?: string;
+  HNS_FORWARDER_AUTH_TOKEN?: string;
 };
 
 function normalizeHost(value: string | null): string | null {
@@ -28,8 +31,30 @@ function parseTrustedIps(env: HnsForwardedOriginEnv): Set<string> {
 }
 
 function isTrustedForwarder(request: Request, env: HnsForwardedOriginEnv): boolean {
+  if (request.headers.get(TRUSTED_FORWARDER_HEADER) === "1") {
+    return true;
+  }
+
   const connectingIp = request.headers.get("cf-connecting-ip")?.trim();
   return !!connectingIp && parseTrustedIps(env).has(connectingIp);
+}
+
+export function authenticateHnsForwarderRequest(
+  request: Request,
+  env: HnsForwardedOriginEnv = {},
+): Request {
+  const headers = new Headers(request.headers);
+  const token = env.HNS_FORWARDER_AUTH_TOKEN?.trim();
+  const forwardedToken = headers.get(FORWARDER_TOKEN_HEADER)?.trim();
+
+  headers.delete(TRUSTED_FORWARDER_HEADER);
+  headers.delete(FORWARDER_TOKEN_HEADER);
+
+  if (token && forwardedToken && forwardedToken === token) {
+    headers.set(TRUSTED_FORWARDER_HEADER, "1");
+  }
+
+  return new Request(request, { headers });
 }
 
 function isTrustedForwardedHnsHost(hostname: string): boolean {

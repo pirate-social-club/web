@@ -32,6 +32,7 @@ import {
   type WebBotAuthEnv,
 } from "@/lib/agent-discovery";
 import {
+  authenticateHnsForwarderRequest,
   resolveEffectiveRequestUrl,
   resolveForwardedCommunityRouteSegment,
 } from "@/lib/hns-forwarded-origin";
@@ -588,6 +589,7 @@ const app = defineApp<AppRequestInfo>([
 
 export default {
   async fetch(request: Request, env: Env, cf: AppRequestInfo["cf"]) {
+    request = authenticateHnsForwarderRequest(request, env);
     const initialEffectiveUrl = resolveEffectiveRequestUrl(request);
     const initialPathname = new URL(initialEffectiveUrl).pathname;
     if (initialPathname === "/__version") {

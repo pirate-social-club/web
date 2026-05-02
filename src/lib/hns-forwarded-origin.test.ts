@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  authenticateHnsForwarderRequest,
   resolveEffectiveRequestUrl,
   resolveForwardedCommunityRouteSegment,
 } from "./hns-forwarded-origin";
@@ -72,5 +73,34 @@ describe("HNS forwarded origin", () => {
       "cf-connecting-ip": "203.0.113.12",
       "x-pirate-hns-community-id": "com_cmt_public_namespace_test",
     }))).toBe(null);
+  });
+
+  test("trusts forwarded HNS headers when the gateway token matches", () => {
+    const authenticated = authenticateHnsForwarderRequest(request({
+      "x-pirate-hns-forwarder-token": "shared-secret",
+      "x-pirate-hns-host": "xn--pokmon-dva",
+      "x-pirate-hns-community-id": "com_cmt_public_namespace_test",
+    }), {
+      HNS_FORWARDER_AUTH_TOKEN: "shared-secret",
+    });
+
+    expect(resolveEffectiveRequestUrl(authenticated)).toBe("https://xn--pokmon-dva/c/crew?sort=top");
+    expect(resolveForwardedCommunityRouteSegment(authenticated)).toBe("com_cmt_public_namespace_test");
+    expect(authenticated.headers.has("x-pirate-hns-forwarder-token")).toBe(false);
+  });
+
+  test("strips client-supplied trust markers without a matching gateway token", () => {
+    const unauthenticated = authenticateHnsForwarderRequest(request({
+      "x-pirate-hns-trusted-forwarder": "1",
+      "x-pirate-hns-forwarder-token": "wrong-secret",
+      "x-pirate-hns-host": "xn--pokmon-dva",
+      "x-pirate-hns-community-id": "com_cmt_public_namespace_test",
+    }), {
+      HNS_FORWARDER_AUTH_TOKEN: "shared-secret",
+    });
+
+    expect(resolveEffectiveRequestUrl(unauthenticated)).toBe("https://pirate.sc/c/crew?sort=top");
+    expect(resolveForwardedCommunityRouteSegment(unauthenticated)).toBe(null);
+    expect(unauthenticated.headers.has("x-pirate-hns-trusted-forwarder")).toBe(false);
   });
 });

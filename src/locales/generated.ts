@@ -196,7 +196,6 @@ export const GENERATED_LOCALE_CATALOGS = {
         "membersLabel": "{count} members",
         "followersLabel": "{count} Followers",
         "loadCommunitiesError": "Could not load your communities.",
-        "railTitle": "Recent posts",
         "subtitle": "",
         "title": "Home",
         "verifyToPostLabel": "Verify to post"
@@ -1761,7 +1760,6 @@ export const GENERATED_LOCALE_CATALOGS = {
         "membersLabel": "{count} عضو",
         "followersLabel": "{count} متابع",
         "loadCommunitiesError": "تعذر تحميل مجتمعاتك.",
-        "railTitle": "المنشورات الحديثة",
         "subtitle": "",
         "title": "الرئيسية",
         "verifyToPostLabel": "تحقق للنشر"
@@ -3326,7 +3324,6 @@ export const GENERATED_LOCALE_CATALOGS = {
         "membersLabel": "{count} 位成员",
         "followersLabel": "{count} 位关注者",
         "loadCommunitiesError": "无法加载你的社区。",
-        "railTitle": "最新帖子",
         "subtitle": "",
         "title": "首页",
         "verifyToPostLabel": "验证后发帖"

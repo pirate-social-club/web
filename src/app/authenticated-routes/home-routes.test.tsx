@@ -6,7 +6,7 @@ import type { HomeFeedCommunitySummary, HomeFeedItem, LocalizedPostResponse } fr
 
 import { api } from "@/lib/api";
 import { __resetSessionStoreForTests } from "@/lib/api/session-store";
-import { buildRecentPostRail, useHomeFeed } from "./home-routes";
+import { useHomeFeed } from "./home-routes";
 
 installDomGlobals();
 
@@ -221,68 +221,3 @@ describe("useHomeFeed", () => {
   });
 });
 
-describe("buildRecentPostRail", () => {
-  test("links communities directly to canonical feed route slugs", () => {
-    const feedItem = createFeedItem();
-    feedItem.community.id = "com_cmt_test";
-    feedItem.community.route_slug = "@xn--t77hga";
-
-    const items = buildRecentPostRail({
-      feedEntries: [feedItem],
-      recentCommunities: [
-        {
-          avatarSrc: null,
-          communityId: "cmt_test",
-          displayName: "Palestine",
-          routeSlug: null,
-          updatedAt: "2026-04-24T00:00:00.000Z",
-        },
-      ],
-    });
-
-    expect(items).toHaveLength(1);
-    expect(items[0]?.communityHref).toBe("/c/@xn--t77hga");
-    expect(items[0]?.communityId).toBe("cmt_test");
-  });
-
-  test("falls back to newest feed posts when there are no recent communities", () => {
-    const olderFeedItem = createFeedItem({ postId: "pst_older" });
-    olderFeedItem.post.post.created = Date.parse("2026-04-20T00:00:00.000Z");
-
-    const newerFeedItem = createFeedItem({ postId: "pst_newer" });
-    newerFeedItem.post.post.created = Date.parse("2026-04-25T00:00:00.000Z");
-
-    const items = buildRecentPostRail({
-      feedEntries: [olderFeedItem, newerFeedItem],
-      recentCommunities: [],
-    });
-
-    expect(items).toHaveLength(2);
-    expect(items[0]?.postId).toBe("pst_newer");
-    expect(items[1]?.postId).toBe("pst_older");
-  });
-
-  test("prefers recent communities but falls back to feed posts to fill slots", () => {
-    const recentFeedItem = createFeedItem({ postId: "pst_recent" });
-    const otherFeedItem = createFeedItem({ postId: "pst_other" });
-    otherFeedItem.community.id = "com_other";
-
-    const items = buildRecentPostRail({
-      feedEntries: [recentFeedItem, otherFeedItem],
-      recentCommunities: [
-        {
-          avatarSrc: null,
-          communityId: "cmt_test",
-          displayName: "Test Community",
-          routeSlug: null,
-          updatedAt: "2026-04-24T00:00:00.000Z",
-        },
-      ],
-      limit: 2,
-    });
-
-    expect(items).toHaveLength(2);
-    expect(items[0]?.postId).toBe("pst_recent");
-    expect(items[1]?.postId).toBe("pst_other");
-  });
-});

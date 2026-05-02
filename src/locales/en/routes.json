@@ -78,7 +78,6 @@
     "membersLabel": "{count} members",
     "followersLabel": "{count} Followers",
     "loadCommunitiesError": "Could not load your communities.",
-    "railTitle": "Recent posts",
     "subtitle": "",
     "title": "Home",
     "verifyToPostLabel": "Verify to post"

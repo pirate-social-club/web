@@ -13,7 +13,7 @@ import { clearSession, useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { getCurrentHomeFeedSort, HOME_FEED_SORT_CHANGE_EVENT, setCurrentHomeFeedSort, type HomeFeedSort } from "@/lib/home-feed-sort";
-import { useRecentCommunities, useSidebarCommunities } from "@/lib/owned-communities";
+import { useSidebarCommunities } from "@/lib/owned-communities";
 import { useUiLocale } from "@/lib/ui-locale";
 import { Button } from "@/components/primitives/button";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
@@ -22,7 +22,6 @@ import { Spinner } from "@/components/primitives/spinner";
 import { YourCommunitiesPageView } from "@/components/compositions/community/your-communities-page/your-communities-page";
 import { Feed, type FeedSort, TopTimeRangeControl } from "@/components/compositions/posts/feed/feed";
 import { PopularCommunitiesRail, type PopularCommunityItem } from "@/components/compositions/community/popular-communities-rail/popular-communities-rail";
-import { RecentPostRail, type RecentPostRailItem } from "@/components/compositions/posts/feed/recent-post-rail";
 import { Type } from "@/components/primitives/type";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
@@ -34,166 +33,12 @@ import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { getErrorMessage } from "@/lib/error-utils";
 import { buildFeedSortOptions, buildTopTimeRangeOptions } from "@/lib/feed-sort-options";
-import { formatRelativeTimestamp } from "@/lib/formatting/time";
 import { EmptyFeedState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 
-function resolveRailThumbnail(entry: ApiHomeFeedItem): string | null {
-  const primaryMedia = entry.post.post.media_refs?.[0];
-  if (entry.post.post.post_type === "video") {
-    return primaryMedia?.poster_ref ?? null;
-  }
-  if (entry.post.post.post_type === "image") {
-    return primaryMedia?.storage_ref ?? null;
-  }
-  if (entry.post.post.post_type === "link") {
-    const embed = entry.post.post.embeds?.[0];
-    if (embed?.provider === "youtube") {
-      return embed.preview?.thumbnail_url ?? null;
-    }
-    if (embed?.provider === "x") {
-      return embed.preview?.media_url ?? null;
-    }
-    return entry.post.post.link_og_image_url ?? null;
-  }
-  return null;
-}
-
 function unixOrIsoMs(value: string | number): number {
   return typeof value === "number" ? value * 1000 : Date.parse(value);
-}
-
-function buildRailItem(entry: ApiHomeFeedItem): RecentPostRailItem | null {
-  const title = (entry.post.translated_title ?? entry.post.post.title ?? entry.post.post.caption ?? entry.post.post.body ?? "").trim();
-  if (!title) return null;
-
-  const communityId = resolveHomeFeedCommunityId(entry.community);
-  return {
-    commentCount: entry.post.thread_snapshot?.comment_count ?? 0,
-    communityAvatarSrc: entry.community.avatar_ref ?? null,
-    communityHref: buildCommunityPath(communityId, entry.community.route_slug),
-    communityId,
-    communityLabel: entry.community.display_name,
-    postHref: `/p/${entry.post.post.id}`,
-    postId: entry.post.post.id,
-    postTitle: title,
-    score: entry.post.upvote_count - entry.post.downvote_count,
-    timestampLabel: formatRelativeTimestamp(entry.post.post.created),
-    thumbnailSrc: resolveRailThumbnail(entry),
-  };
-}
-
-export function buildRecentPostRail(input: {
-  feedEntries: ApiHomeFeedItem[];
-  recentCommunities: ReturnType<typeof useRecentCommunities>;
-  limit?: number;
-}): RecentPostRailItem[] {
-  const limit = input.limit ?? 6;
-  if (limit <= 0 || input.feedEntries.length === 0) {
-    return [];
-  }
-
-  const railPosts: RecentPostRailItem[] = [];
-  const seenPostIds = new Set<string>();
-
-  // When the user has recent communities, prioritize posts from those communities.
-  if (input.recentCommunities.length > 0) {
-    const communityVisitRank = new Map<string, number>();
-    const recentCommunityMeta = new Map<string, ReturnType<typeof useRecentCommunities>[number]>();
-    for (const [index, community] of input.recentCommunities.entries()) {
-      communityVisitRank.set(community.communityId, index);
-      recentCommunityMeta.set(community.communityId, community);
-    }
-
-    const eligiblePosts = input.feedEntries
-      .filter((entry) => communityVisitRank.has(resolveHomeFeedCommunityId(entry.community)))
-      .sort((left, right) => {
-        const leftCommunityId = resolveHomeFeedCommunityId(left.community);
-        const rightCommunityId = resolveHomeFeedCommunityId(right.community);
-        const leftRank = communityVisitRank.get(leftCommunityId) ?? Number.MAX_SAFE_INTEGER;
-        const rightRank = communityVisitRank.get(rightCommunityId) ?? Number.MAX_SAFE_INTEGER;
-        if (leftRank !== rightRank) {
-          return leftRank - rightRank;
-        }
-
-        const createdAtDiff = unixOrIsoMs(right.post.post.created) - unixOrIsoMs(left.post.post.created);
-        if (!Number.isNaN(createdAtDiff) && createdAtDiff !== 0) {
-          return createdAtDiff;
-        }
-
-        return right.post.post.id.localeCompare(left.post.post.id);
-      });
-
-    const seenCommunityIds = new Set<string>();
-
-    // First pass: one post per recent community.
-    for (const entry of eligiblePosts) {
-      if (railPosts.length >= limit) break;
-
-      const communityId = resolveHomeFeedCommunityId(entry.community);
-      if (seenCommunityIds.has(communityId) || seenPostIds.has(entry.post.post.id)) {
-        continue;
-      }
-
-      const recentCommunity = recentCommunityMeta.get(communityId);
-      const item = buildRailItem(entry);
-      if (!item) continue;
-
-      railPosts.push({
-        ...item,
-        communityAvatarSrc: recentCommunity?.avatarSrc ?? item.communityAvatarSrc,
-        communityHref: buildCommunityPath(communityId, recentCommunity?.routeSlug ?? entry.community.route_slug),
-        communityLabel: recentCommunity?.displayName ?? item.communityLabel,
-      });
-      seenCommunityIds.add(communityId);
-      seenPostIds.add(entry.post.post.id);
-    }
-
-    // Second pass: fill remaining slots with any eligible posts.
-    for (const entry of eligiblePosts) {
-      if (railPosts.length >= limit) break;
-      if (seenPostIds.has(entry.post.post.id)) continue;
-
-      const communityId = resolveHomeFeedCommunityId(entry.community);
-      const recentCommunity = recentCommunityMeta.get(communityId);
-      const item = buildRailItem(entry);
-      if (!item) continue;
-
-      railPosts.push({
-        ...item,
-        communityAvatarSrc: recentCommunity?.avatarSrc ?? item.communityAvatarSrc,
-        communityHref: buildCommunityPath(communityId, recentCommunity?.routeSlug ?? entry.community.route_slug),
-        communityLabel: recentCommunity?.displayName ?? item.communityLabel,
-      });
-      seenPostIds.add(entry.post.post.id);
-    }
-  }
-
-  // Fallback: fill any remaining slots with the newest posts from the full feed.
-  if (railPosts.length < limit) {
-    const fallbackPosts = [...input.feedEntries]
-      .sort((left, right) => {
-        const createdAtDiff = unixOrIsoMs(right.post.post.created) - unixOrIsoMs(left.post.post.created);
-        if (!Number.isNaN(createdAtDiff) && createdAtDiff !== 0) {
-          return createdAtDiff;
-        }
-        return right.post.post.id.localeCompare(left.post.post.id);
-      });
-
-    for (const entry of fallbackPosts) {
-      if (railPosts.length >= limit) break;
-      if (seenPostIds.has(entry.post.post.id)) continue;
-
-      const item = buildRailItem(entry);
-      if (!item) continue;
-
-      railPosts.push(item);
-      seenPostIds.add(entry.post.post.id);
-    }
-  }
-
-  return railPosts;
 }
 
 type UseHomeFeedInput = {
@@ -337,7 +182,6 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     error,
     loading,
   } = useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange });
-  const recentCommunities = useRecentCommunities();
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const { gateModal, runGatedCommunityAction } = useCommunityInteractionGate({
@@ -408,11 +252,6 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
       },
     );
   });
-  const recentRailPosts = React.useMemo(() => buildRecentPostRail({
-    feedEntries,
-    recentCommunities,
-  }), [feedEntries, recentCommunities]);
-
   const popularCommunities = React.useMemo((): PopularCommunityItem[] => {
     return topCommunities
       .map((community) => {
@@ -442,13 +281,6 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           activeSort={activeSort}
           aside={(
             <div className="flex flex-col gap-4">
-              {recentRailPosts.length > 0 ? (
-                <RecentPostRail
-                  items={recentRailPosts}
-                  localeTag={localeTag}
-                  title={copy.home.railTitle}
-                />
-              ) : null}
               {popularCommunities.length > 0 ? (
                 <PopularCommunitiesRail
                   items={popularCommunities}

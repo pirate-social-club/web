@@ -35,6 +35,7 @@ export function useCommunityModerationState(communityId: string) {
       avatarSrc: community.avatar_ref ?? undefined,
       communityId: community.id,
       displayName: community.display_name,
+      routeSlug: community.route_slug ?? null,
     });
   }, [community]);
 

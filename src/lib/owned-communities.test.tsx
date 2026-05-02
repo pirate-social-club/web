@@ -84,7 +84,12 @@ describe("owned communities hooks", () => {
       requests.push(pathname);
 
       if (pathname === "/public-communities/cmt_alive") {
-        return Response.json({ community: "cmt_alive", display_name: "Alive" });
+        return Response.json({
+          avatar_ref: "https://cdn.test/alive.png",
+          community: "cmt_alive",
+          display_name: "Alive",
+          route_slug: "alive-slug",
+        });
       }
       if (pathname === "/public-communities/cmt_dead") {
         return Response.json({ code: "not_found", message: "missing" }, { status: 404 });
@@ -114,6 +119,12 @@ describe("owned communities hooks", () => {
         "cmt_alive",
         "cmt_flaky",
       ]);
+      expect(getKnownCommunities().find((community) => community.communityId === "cmt_alive")).toEqual(
+        expect.objectContaining({
+          avatarSrc: "https://cdn.test/alive.png",
+          routeSlug: "alive-slug",
+        }),
+      );
     } finally {
       cleanup();
     }

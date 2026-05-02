@@ -319,7 +319,12 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
   React.useEffect(() => {
     if (!community) return;
-    rememberKnownCommunity({ avatarSrc: community.avatar_ref ?? undefined, communityId: community.id, displayName: community.display_name });
+    rememberKnownCommunity({
+      avatarSrc: community.avatar_ref ?? undefined,
+      communityId: community.id,
+      displayName: community.display_name,
+      routeSlug: community.route_slug ?? null,
+    });
   }, [community]);
 
   React.useEffect(() => {

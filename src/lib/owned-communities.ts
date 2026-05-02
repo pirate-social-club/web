@@ -5,7 +5,7 @@ import * as React from "react";
 import { useApi } from "@/lib/api";
 import { isApiNotFoundError } from "@/lib/api/client";
 import { useSession } from "@/lib/api/session-store";
-import { forgetKnownCommunity, useKnownCommunities } from "@/lib/known-communities-store";
+import { forgetKnownCommunity, getKnownCommunities, rememberKnownCommunity, useKnownCommunities } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import { getProfileHandleLabel } from "@/lib/profile-routing";
 
@@ -87,6 +87,19 @@ function publicProfileCommunityToSidebarSummary(
   };
 }
 
+type KnownCommunityValidationResult =
+  | {
+      communityId: string;
+      valid: false;
+    }
+  | {
+      avatarSrc?: string | null;
+      communityId: string;
+      displayName?: string | null;
+      routeSlug?: string | null;
+      valid: true;
+    };
+
 function useValidatedKnownCommunities(ownedCommunities: SidebarCommunitySummary[]): SidebarCommunitySummary[] {
   const api = useApi();
   const knownCommunities = useKnownCommunities();
@@ -113,16 +126,42 @@ function useValidatedKnownCommunities(ownedCommunities: SidebarCommunitySummary[
 
     void Promise.all(candidates.map(async (community) => {
       try {
-        await api.publicCommunities.get(community.communityId);
-        return { communityId: community.communityId, valid: true } as const;
+        const result = await api.publicCommunities.get(community.communityId);
+        return {
+          avatarSrc: typeof result.avatar_ref === "string" ? result.avatar_ref : null,
+          communityId: community.communityId,
+          displayName: typeof result.display_name === "string" ? result.display_name : null,
+          routeSlug: typeof result.route_slug === "string" ? result.route_slug : null,
+          valid: true,
+        } satisfies KnownCommunityValidationResult;
       } catch (error) {
         if (isApiNotFoundError(error)) {
-          return { communityId: community.communityId, valid: false } as const;
+          return { communityId: community.communityId, valid: false } satisfies KnownCommunityValidationResult;
         }
-        return { communityId: community.communityId, valid: true } as const;
+        return { communityId: community.communityId, valid: true } satisfies KnownCommunityValidationResult;
       }
     })).then((results) => {
       if (cancelled) return;
+      const currentCommunities = new Map(
+        getKnownCommunities().map((community) => [community.communityId, community]),
+      );
+      for (const result of results) {
+        if (!result.valid) continue;
+
+        const routeSlug = result.routeSlug?.trim();
+        if (!routeSlug) continue;
+
+        const existing = currentCommunities.get(result.communityId);
+        if (existing?.routeSlug?.trim() === routeSlug) continue;
+
+        rememberKnownCommunity({
+          avatarSrc: result.avatarSrc ?? existing?.avatarSrc ?? null,
+          communityId: result.communityId,
+          displayName: result.displayName?.trim() || existing?.displayName || result.communityId,
+          routeSlug,
+        });
+      }
+
       const nextInvalidIds = results
         .filter((result) => !result.valid)
         .map((result) => result.communityId);

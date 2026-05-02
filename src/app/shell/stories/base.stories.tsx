@@ -206,6 +206,7 @@ export const RootError: Story = {
       <RootErrorBoundary
         description={copy.rootError.description}
         homeLabel={copy.rootError.homeLabel}
+        resetKey="/broken"
         title={copy.rootError.title}
       >
         <BrokenChild />

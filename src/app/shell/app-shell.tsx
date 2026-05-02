@@ -262,6 +262,7 @@ export function PirateAppShell({
     <RootErrorBoundary
       description={copy.rootError.description}
       homeLabel={copy.rootError.homeLabel}
+      resetKey={route.path}
       title={copy.rootError.title}
     >
       <ApiProvider initialHost={initialHost}>

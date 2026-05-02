@@ -9,6 +9,7 @@ type RootErrorBoundaryProps = {
   children: React.ReactNode;
   description: string;
   homeLabel: string;
+  resetKey: string;
   title: string;
 };
 
@@ -30,6 +31,12 @@ export class RootErrorBoundary extends React.Component<RootErrorBoundaryProps, R
       error,
       componentStack: errorInfo.componentStack,
     });
+  }
+
+  public componentDidUpdate(previousProps: RootErrorBoundaryProps) {
+    if (this.state.hasError && previousProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
   }
 
   public render() {

@@ -250,6 +250,17 @@ describe("toHomeFeedItem", () => {
     entry.post.post.body = "My commentary on the link.";
     entry.post.post.link_url = "https://example.com/story";
     entry.post.post.link_og_title = "Publisher preview title";
+    entry.post.post.link_enrichment = {
+      version: 1,
+      publisher: "Example News",
+      published_at: "2026-04-29",
+      summary: {
+        status: "ready",
+        summary_paragraph: "A longer neutral article summary.",
+        short_summary: "Neutral article summary.",
+        key_points: ["First key point.", "Second key point."],
+      },
+    };
 
     const item = toHomeFeedItem(entry, {});
 
@@ -258,6 +269,11 @@ describe("toHomeFeedItem", () => {
     if (item.post.content.type !== "link") throw new Error("expected link content");
     expect(item.post.content.body).toBe("My commentary on the link.");
     expect(item.post.content.previewTitle).toBe("Publisher preview title");
+    expect(item.post.content.sourceLabel).toBe("example.com");
+    expect(item.post.content.publishedLabel).toBe("Apr 29");
+    expect(item.post.content.summary?.summaryParagraph).toBe("A longer neutral article summary.");
+    expect(item.post.content.summary?.shortSummary).toBe("Neutral article summary.");
+    expect(item.post.content.summary?.keyPoints).toEqual(["First key point.", "Second key point."]);
   });
 });
 

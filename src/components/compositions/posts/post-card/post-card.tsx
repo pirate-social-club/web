@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -53,6 +54,17 @@ function formatSourceLanguage(sourceLanguage: string | null | undefined, locale:
   } catch {
     return normalized;
   }
+}
+
+function shouldHandleCardNavigation(event: React.MouseEvent<HTMLElement>): boolean {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) {
+    return false;
+  }
+
+  const target = event.target instanceof Element ? event.target : null;
+  return !target?.closest(
+    "a,button,input,select,textarea,summary,[role='button'],[data-post-card-interactive='true']",
+  );
 }
 
 export function PostCard({
@@ -122,7 +134,6 @@ export function PostCard({
   const unlockFromContent = deriveUnlockFromContent(content);
   const unlock = engagement.unlock ?? unlockFromContent;
   const isClickable = Boolean(postHref);
-  const openPostLabel = title ? `Open post: ${title}` : content.type === "link" ? "Open link post" : "Open post";
 
   return (
     <article
@@ -131,25 +142,19 @@ export function PostCard({
         isClickable && "cursor-pointer hover:bg-muted/20 focus-visible:bg-muted/20",
         className,
       )}
+      onClick={postHref ? (event) => {
+        if (shouldHandleCardNavigation(event)) {
+          navigate(postHref);
+        }
+      } : undefined}
       style={{
         containIntrinsicSize: "560px",
         contentVisibility: "auto",
       }}
     >
-      {postHref ? (
-        <a
-          aria-label={openPostLabel}
-          className="absolute inset-0 z-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          href={postHref}
-        />
-      ) : null}
-
       <div
         className={cn(
           "relative z-10 flex w-full flex-col gap-2.5 px-4 py-2.5",
-          isClickable && "pointer-events-none",
-          "[&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_input]:pointer-events-auto",
-          "[&_select]:pointer-events-auto [&_summary]:pointer-events-auto [&_textarea]:pointer-events-auto",
         )}
       >
         <PostCardHeader

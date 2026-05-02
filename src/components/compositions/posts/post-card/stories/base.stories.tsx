@@ -271,11 +271,81 @@ export const LinkPostWithSummary: Story = {
         previewImageSrc: "https://commons.wikimedia.org/wiki/Special:Redirect/file/View_of_many_people_on_a_boat_at_sea_(AM_80414-1).jpg?width=320",
         summary: {
           status: "ready",
+          summaryParagraph: "Reuters reports that Israel intercepted aid vessels headed toward Gaza, while flotilla organizers described the seizure as taking place in international waters and criticized it as an obstruction of aid. Officials framed the action as enforcement around Gaza access, leaving the location and legal basis of the interception central to the dispute.",
           shortSummary: "Israel intercepted aid vessels headed toward Gaza. Organizers said the seizure happened in international waters, while officials described it as enforcement around Gaza access.",
           keyPoints: [
             "Israel intercepted aid vessels headed toward Gaza.",
             "Organizers said the seizure happened in international waters.",
             "Officials described it as enforcement around Gaza access.",
+          ],
+        },
+      }}
+      engagement={{ ...basePost.engagement, score: 246, commentCount: 37 }}
+    />
+  ),
+};
+
+export const LinkPostSummaryBulletsOnly: Story = {
+  name: "Link Post / Summary Bullets Only",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        author: { kind: "user", label: "alex.morgan", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=12" },
+        timestampLabel: "9h",
+      }}
+      identityPresentation="author_primary"
+      title="Update on aid flotilla interception"
+      content={{
+        type: "link",
+        body: "Useful source for the timeline. Official and organizer statements differ on where the interception happened.",
+        href: "https://www.reuters.com/world/middle-east/israel-begins-intercepting-gaza-aid-ships-far-shores-army-radio-says-2026-04-29/",
+        previewTitle: "Aid boats bound for Gaza intercepted",
+        linkLabel: "news.com",
+        sourceLabel: "news.com",
+        publishedLabel: "2h ago",
+        previewImageSrc: "https://commons.wikimedia.org/wiki/Special:Redirect/file/View_of_many_people_on_a_boat_at_sea_(AM_80414-1).jpg?width=320",
+        summary: {
+          status: "ready",
+          keyPoints: [
+            "Israel intercepted aid vessels headed toward Gaza.",
+            "Organizers said the seizure happened in international waters.",
+            "Officials described it as enforcement around Gaza access.",
+          ],
+        },
+      }}
+      engagement={{ ...basePost.engagement, score: 246, commentCount: 37 }}
+    />
+  ),
+};
+
+export const LinkPostLongSummary: Story = {
+  name: "Link Post / Long Summary",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        author: { kind: "user", label: "alex.morgan", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=12" },
+        timestampLabel: "9h",
+      }}
+      identityPresentation="author_primary"
+      title="Update on aid flotilla interception"
+      content={{
+        type: "link",
+        body: "Useful source for the timeline. Official and organizer statements differ on where the interception happened.",
+        href: "https://www.reuters.com/world/middle-east/israel-begins-intercepting-gaza-aid-ships-far-shores-army-radio-says-2026-04-29/",
+        previewTitle: "Aid boats bound for Gaza intercepted",
+        linkLabel: "news.com",
+        sourceLabel: "news.com",
+        publishedLabel: "2h ago",
+        previewImageSrc: "https://commons.wikimedia.org/wiki/Special:Redirect/file/View_of_many_people_on_a_boat_at_sea_(AM_80414-1).jpg?width=320",
+        summary: {
+          status: "ready",
+          summaryParagraph: "Reuters reports that Israel intercepted vessels carrying aid toward Gaza after organizers said the boats were stopped far from shore. The account emphasizes the dispute between organizers, who characterized the incident as taking place in international waters, and officials, who described the action as enforcement around Gaza access. The article centers on the timeline, the location of the interception, and how each side framed the legal and humanitarian stakes.",
+          keyPoints: [
+            "Aid vessels headed toward Gaza were intercepted.",
+            "Organizers disputed the location and legality of the seizure.",
+            "Officials framed the action as enforcement around Gaza access.",
           ],
         },
       }}

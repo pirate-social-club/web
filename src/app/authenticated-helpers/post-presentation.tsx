@@ -88,13 +88,12 @@ function extractLinkSummary(
 }
 
 function formatLinkSourceLabel(url: string | null | undefined, enrichment: Record<string, unknown> | null | undefined): string | undefined {
-  const publisher = typeof enrichment?.publisher === "string" ? enrichment.publisher.trim() : "";
-  if (publisher) return publisher;
-
   try {
     const hostname = new URL(url ?? "").hostname.replace(/^www\./u, "");
     return hostname || undefined;
   } catch {
+    const publisher = typeof enrichment?.publisher === "string" ? enrichment.publisher.trim() : "";
+    if (publisher) return publisher;
     return undefined;
   }
 }

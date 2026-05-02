@@ -63,7 +63,7 @@ export function getHnsVerificationMode(input: {
     return "dns_setup_required";
   }
 
-  if (input.challengeHost && input.challengeTxtValue) {
+  if (input.challengeTxtValue) {
     return "owner_managed_txt";
   }
 
@@ -140,7 +140,7 @@ export function NamespaceVerificationHnsPanel({
         </div>
       ) : null}
 
-      {mode === "owner_managed_txt" && challengeHost && challengeTxtValue ? (
+      {mode === "owner_managed_txt" && challengeTxtValue ? (
         <div className="space-y-3">
           <FormNote>{mc.txtRecordNote}</FormNote>
           <div className="space-y-1.5">

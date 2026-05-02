@@ -76,7 +76,7 @@ export const HandshakeChallengeReady: Story = {
   args: {
     ...baseArgs,
     canSubmitSignature: true,
-    challengeHost: "_pirate.builders",
+    challengeHost: "builders",
     challengeTxtValue: "pirate-verification=nvs_abc123",
     hnsMode: "owner_managed_txt",
     isChallengeReady: true,

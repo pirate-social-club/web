@@ -1128,7 +1128,7 @@
         "nameserversLabel": "Nameservers",
         "nameserversNote": "حدّث سجلات الجذر حيث تدير اسم Handshake.",
         "challengeLabel": "التحدي",
-        "txtRecordNote": "Add this TXT record on the root name.",
+        "txtRecordNote": "Add this TXT record to the HNS root resource.",
         "valueLabel": "القيمة"
       },
       "shared": {

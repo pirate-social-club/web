@@ -2802,7 +2802,7 @@ export const GENERATED_LOCALE_CATALOGS = {
             "nameserversLabel": "Nameservers",
             "nameserversNote": "حدّث سجلات الجذر حيث تدير اسم Handshake.",
             "challengeLabel": "التحدي",
-            "txtRecordNote": "Add this TXT record on the root name.",
+            "txtRecordNote": "Add this TXT record to the HNS root resource.",
             "valueLabel": "القيمة"
           },
           "shared": {
@@ -4332,7 +4332,7 @@ export const GENERATED_LOCALE_CATALOGS = {
             "nameserversLabel": "Nameservers",
             "nameserversNote": "在你管理 Handshake 名称的地方更新根记录。",
             "challengeLabel": "挑战",
-            "txtRecordNote": "Add this TXT record on the root name.",
+            "txtRecordNote": "Add this TXT record to the HNS root resource.",
             "valueLabel": "值"
           },
           "shared": {

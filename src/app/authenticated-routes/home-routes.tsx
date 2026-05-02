@@ -262,7 +262,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           communityHref: buildCommunityPath(communityId, community.route_slug),
           avatarSrc: community.avatar_ref ?? null,
           metricCount: community.view_count ?? community.follower_count ?? 0,
-          metricLabel: "views",
+          metricLabel: copy.common.viewsLabel,
         };
       })
       .sort((a, b) => b.metricCount - a.metricCount)
@@ -285,6 +285,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
                 <PopularCommunitiesRail
                   items={popularCommunities}
                   localeTag={localeTag}
+                  title={copy.common.popularTitle}
                 />
               ) : null}
             </div>

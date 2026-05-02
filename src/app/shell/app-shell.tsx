@@ -205,7 +205,9 @@ function NotificationShell({
                   )}
                 >
                   <React.Suspense fallback={<RouteContentFallback route={route} />}>
-                    {isPublicRoute || ((route.kind === "community" || route.kind === "post") && !session)
+                    {isPublicRoute
+                      || (route.kind === "community" && (route.isImportedRoot || !session))
+                      || (route.kind === "post" && !session)
                       ? <LazyPublicRouteRenderer route={route} />
                       : <LazyAuthenticatedRouteRenderer route={route} />}
                   </React.Suspense>

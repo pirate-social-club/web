@@ -17,7 +17,7 @@ import { SelfVerificationModal } from "@/components/compositions/verification/se
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
-import { isApiNotFoundError } from "@/lib/api/client";
+import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
@@ -89,6 +89,15 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
 
     const previewRequest = hasSession
       ? api.communities.preview(communityId, { locale: localeTag })
+        .catch((nextError: unknown) => {
+          if (!isApiAuthError(nextError)) {
+            throw nextError;
+          }
+          logger.warn("[community-follow] authenticated preview rejected; falling back to public preview", {
+            communityId,
+          });
+          return api.publicCommunities.get(communityId, { locale: localeTag });
+        })
       : api.publicCommunities.get(communityId, { locale: localeTag });
 
     void previewRequest

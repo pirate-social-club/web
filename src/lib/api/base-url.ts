@@ -28,6 +28,18 @@ function isLocalHostname(hostname: string): boolean {
   );
 }
 
+function isHnsHostname(hostname: string): boolean {
+  if (!hostname || isLocalHostname(hostname)) {
+    return false;
+  }
+
+  if (hostname.endsWith(".pirate")) {
+    return true;
+  }
+
+  return !hostname.includes(".") && /^[a-z0-9-]+$/u.test(hostname);
+}
+
 function getBrowserHostname(): string {
   return typeof window !== "undefined" ? window.location.hostname : "";
 }
@@ -63,6 +75,10 @@ export function resolveApiBaseUrl(hostname?: string | null): string {
     || resolvedHostname === "www.pirate.sc"
     || resolvedHostname.endsWith(".pirate.sc")
   ) {
+    return "https://api.pirate.sc";
+  }
+
+  if (isHnsHostname(resolvedHostname)) {
     return "https://api.pirate.sc";
   }
 

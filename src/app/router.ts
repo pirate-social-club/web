@@ -256,6 +256,29 @@ function replaceCurrentPathname(pathname: string): void {
   window.history.replaceState({}, "", `${pathname}${window.location.search}${window.location.hash}`);
 }
 
+export function resolveHydrationPathname(input: {
+  initialHostname?: string;
+  initialPathname?: string;
+  windowHostname: string;
+  windowPathname: string;
+}): string {
+  const windowPathname = normalizePathname(input.windowPathname);
+  const initialPathname = input.initialPathname ? normalizePathname(input.initialPathname) : null;
+  const initialHostname = input.initialHostname?.trim().toLowerCase();
+  const windowHostname = input.windowHostname.trim().toLowerCase();
+
+  if (
+    windowPathname === "/"
+    && initialPathname
+    && initialPathname !== "/"
+    && (!initialHostname || initialHostname === windowHostname)
+  ) {
+    return initialPathname;
+  }
+
+  return windowPathname;
+}
+
 function getCurrentRoute(): AppRoute {
   let pathname = normalizePathname(window.location.pathname);
   const hostname = window.location.hostname.toLowerCase();
@@ -320,7 +343,15 @@ export function replaceRoute(path: string): void {
 export function useRoute(initialPathname?: string, initialHostname?: string): AppRoute {
   const initialRoute = React.useMemo(() => {
     if (typeof window !== "undefined") {
-      cachedPathname = canonicalizeRoutePathname(window.location.pathname, window.location.hostname);
+      cachedPathname = canonicalizeRoutePathname(
+        resolveHydrationPathname({
+          initialHostname,
+          initialPathname,
+          windowHostname: window.location.hostname,
+          windowPathname: window.location.pathname,
+        }),
+        window.location.hostname,
+      );
       if (cachedPathname !== normalizePathname(window.location.pathname)) {
         replaceCurrentPathname(cachedPathname);
       }

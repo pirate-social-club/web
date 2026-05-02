@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { canonicalizeRoutePathname, isNativePublicIdentityRoute, matchRoute } from "./router";
+import { canonicalizeRoutePathname, isNativePublicIdentityRoute, matchRoute, resolveHydrationPathname } from "./router";
 import { extractPublicProfileHost } from "@/lib/public-host";
 
 function expectJson(actual: unknown, expected: unknown): void {
@@ -179,5 +179,25 @@ describe("canonicalizeRoutePathname", () => {
   test("leaves existing canonical and non-community routes unchanged", () => {
     expect(canonicalizeRoutePathname("/c/@xn--t77hga")).toBe("/c/@xn--t77hga");
     expect(canonicalizeRoutePathname("/u/%F0%9F%87%B5%F0%9F%87%B8")).toBe("/u/%F0%9F%87%B5%F0%9F%87%B8");
+  });
+});
+
+describe("resolveHydrationPathname", () => {
+  test("keeps imported HNS root hydration on the server-resolved community route", () => {
+    expect(resolveHydrationPathname({
+      initialHostname: "xn--pokmon-dva",
+      initialPathname: "/c/xn--pokmon-dva",
+      windowHostname: "xn--pokmon-dva",
+      windowPathname: "/",
+    })).toBe("/c/xn--pokmon-dva");
+  });
+
+  test("keeps explicit browser paths instead of replacing them with the initial route", () => {
+    expect(resolveHydrationPathname({
+      initialHostname: "xn--pokmon-dva",
+      initialPathname: "/c/xn--pokmon-dva",
+      windowHostname: "xn--pokmon-dva",
+      windowPathname: "/p/post-1",
+    })).toBe("/p/post-1");
   });
 });

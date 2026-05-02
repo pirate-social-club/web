@@ -87,7 +87,6 @@ export function VerifyNamespaceModalView({
   busy,
   canStart,
   canSubmitSignature,
-  challengeHost,
   challengePayload,
   challengeTxtValue,
   failureReason,
@@ -124,7 +123,6 @@ export function VerifyNamespaceModalView({
   busy: boolean;
   canStart: boolean;
   canSubmitSignature: boolean;
-  challengeHost: string | null;
   challengePayload: SpacesChallengePayload | null;
   challengeTxtValue: string | null;
   failureReason: string | null;
@@ -225,7 +223,6 @@ export function VerifyNamespaceModalView({
           isHns &&
           hnsMode ? (
             <NamespaceVerificationHnsPanel
-              challengeHost={challengeHost}
               challengePending={isChallengePending}
               challengeTxtValue={challengeTxtValue}
               mode={hnsMode}

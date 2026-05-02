@@ -20,7 +20,6 @@ import type {
 
 type NamespaceSessionStateSetters = {
   setSessionId: React.Dispatch<React.SetStateAction<string | null>>;
-  setChallengeHost: React.Dispatch<React.SetStateAction<string | null>>;
   setChallengeTxtValue: React.Dispatch<React.SetStateAction<string | null>>;
   setChallengePayload: React.Dispatch<React.SetStateAction<SpacesChallengePayload | null>>;
   setActiveFamily: React.Dispatch<React.SetStateAction<NamespaceFamily>>;
@@ -39,7 +38,6 @@ export function applyNamespaceSessionResult(
   result: NamespaceVerificationStartResult,
 ) {
   setters.setSessionId(result.namespaceVerificationSessionId);
-  setters.setChallengeHost(result.challengeHost);
   setters.setChallengeTxtValue(result.challengeTxtValue);
   setters.setChallengePayload(result.challengePayload);
   setters.setActiveFamily(result.family);

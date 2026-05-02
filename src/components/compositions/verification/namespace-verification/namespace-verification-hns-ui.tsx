@@ -54,7 +54,6 @@ export type HnsVerificationMode =
 
 export function getHnsVerificationMode(input: {
   state: NamespaceVerificationModalState;
-  challengeHost: string | null;
   challengeTxtValue: string | null;
   pirateDnsAuthorityVerified: boolean | null;
   operationClass: string | null;
@@ -78,7 +77,6 @@ export function getHnsVerificationMode(input: {
 }
 
 export function NamespaceVerificationHnsPanel({
-  challengeHost,
   challengePending,
   challengeTxtValue,
   mode,
@@ -87,7 +85,6 @@ export function NamespaceVerificationHnsPanel({
   showAbandonAction = true,
   setupNameservers,
 }: {
-  challengeHost: string | null;
   challengePending: boolean;
   challengeTxtValue: string | null;
   mode: HnsVerificationMode;

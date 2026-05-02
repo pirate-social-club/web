@@ -36,7 +36,6 @@ export function VerifyNamespaceModal({
       busy={flow.busy}
       canStart={flow.canStart}
       canSubmitSignature={flow.canSubmitSignature}
-      challengeHost={flow.challengeHost}
       challengePayload={flow.challengePayload}
       challengeTxtValue={flow.challengeTxtValue}
       failureReason={flow.failureReason}

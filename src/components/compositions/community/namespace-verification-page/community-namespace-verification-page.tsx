@@ -278,7 +278,6 @@ export function CommunityNamespaceVerificationPage({
 
         {(flow.isDnsSetupRequired || flow.isChallengeReady || flow.isChallengePending || flow.isVerifying) && flow.isHns && flow.hnsMode ? (
           <NamespaceVerificationHnsPanel
-            challengeHost={flow.challengeHost}
             challengePending={flow.isChallengePending}
             challengeTxtValue={flow.challengeTxtValue}
             mode={flow.hnsMode}

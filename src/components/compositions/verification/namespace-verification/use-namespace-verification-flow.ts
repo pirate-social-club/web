@@ -38,7 +38,6 @@ export type UseNamespaceVerificationFlowReturn = {
   rootLabel: string;
   activeFamily: NamespaceFamily;
   sessionId: string | null;
-  challengeHost: string | null;
   challengeTxtValue: string | null;
   challengePayload: SpacesChallengePayload | null;
   signature: string;
@@ -98,7 +97,6 @@ export function useNamespaceVerificationFlow({
   );
   const [state, setState] = React.useState<NamespaceVerificationModalState>("idle");
   const [sessionId, setSessionId] = React.useState<string | null>(null);
-  const [challengeHost, setChallengeHost] = React.useState<string | null>(null);
   const [challengeTxtValue, setChallengeTxtValue] = React.useState<string | null>(null);
   const [challengePayload, setChallengePayload] =
     React.useState<SpacesChallengePayload | null>(null);
@@ -139,7 +137,6 @@ export function useNamespaceVerificationFlow({
 
   const resetChallengeState = React.useCallback(() => {
     setSessionId(null);
-    setChallengeHost(null);
     setChallengeTxtValue(null);
     setChallengePayload(null);
     setSignature("");
@@ -175,7 +172,6 @@ export function useNamespaceVerificationFlow({
       applyNamespaceSessionResult(
         {
           setSessionId,
-          setChallengeHost,
           setChallengeTxtValue,
           setChallengePayload,
           setActiveFamily,
@@ -441,7 +437,6 @@ export function useNamespaceVerificationFlow({
   const hnsMode = isHns
     ? getHnsVerificationMode({
         state,
-        challengeHost,
         challengeTxtValue,
         pirateDnsAuthorityVerified,
         operationClass,
@@ -462,7 +457,6 @@ export function useNamespaceVerificationFlow({
     rootLabel,
     activeFamily,
     sessionId,
-    challengeHost,
     challengeTxtValue,
     challengePayload,
     signature,

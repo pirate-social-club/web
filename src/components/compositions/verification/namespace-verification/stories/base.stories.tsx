@@ -38,7 +38,6 @@ export const HandshakeRecords: Story = {
   render: () => (
     <div className="w-[min(100vw-2rem,34rem)] space-y-4">
       <NamespaceVerificationHnsPanel
-        challengeHost="builders"
         challengePending={false}
         challengeTxtValue="pirate-verification=nvs_abc123"
         mode="owner_managed_txt"
@@ -55,7 +54,6 @@ export const HandshakeRecordsPending: Story = {
   render: () => (
     <div className="w-[min(100vw-2rem,34rem)] space-y-4">
       <NamespaceVerificationHnsPanel
-        challengeHost="builders"
         challengePending
         challengeTxtValue="pirate-verification=nvs_abc123"
         mode="owner_managed_txt"
@@ -72,7 +70,6 @@ export const HandshakeDnsSetupRequired: Story = {
   render: () => (
     <div className="w-[min(100vw-2rem,34rem)] space-y-4">
       <NamespaceVerificationHnsPanel
-        challengeHost={null}
         challengePending={false}
         challengeTxtValue={null}
         mode="dns_setup_required"
@@ -89,7 +86,6 @@ export const HandshakeRecordsError: Story = {
   render: () => (
     <div className="w-[min(100vw-2rem,34rem)] space-y-4">
       <NamespaceVerificationHnsPanel
-        challengeHost="builders"
         challengePending={false}
         challengeTxtValue="pirate-verification=nvs_abc123"
         mode="owner_managed_txt"

@@ -33,7 +33,7 @@ const ownerManagedRecordsCallbacks: NamespaceVerificationCallbacks = {
     namespaceVerificationSessionId,
     family: "hns",
     rootLabel: "infinity",
-    challengeHost: "_pirate.infinity",
+    challengeHost: "infinity",
     challengeTxtValue: "pirate-verification=nvs_infinity_records",
     challengePayload: null,
     challengeExpiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),

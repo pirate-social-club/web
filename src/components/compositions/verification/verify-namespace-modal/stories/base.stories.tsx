@@ -10,7 +10,6 @@ const baseArgs = {
   busy: false,
   canStart: true,
   canSubmitSignature: false,
-  challengeHost: null,
   challengePayload: null,
   challengeTxtValue: null,
   failureReason: null,
@@ -76,7 +75,6 @@ export const HandshakeChallengeReady: Story = {
   args: {
     ...baseArgs,
     canSubmitSignature: true,
-    challengeHost: "builders",
     challengeTxtValue: "pirate-verification=nvs_abc123",
     hnsMode: "owner_managed_txt",
     isChallengeReady: true,

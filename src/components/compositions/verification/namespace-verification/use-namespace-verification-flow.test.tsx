@@ -65,7 +65,6 @@ describe("useNamespaceVerificationFlow", () => {
     expect(result.current.rootLabel).toBe("");
     expect(result.current.activeFamily).toBe("hns");
     expect(result.current.sessionId).toBeNull();
-    expect(result.current.challengeHost).toBeNull();
     expect(result.current.challengeTxtValue).toBeNull();
     expect(result.current.signature).toBe("");
     expect(result.current.isIdle).toBe(true);

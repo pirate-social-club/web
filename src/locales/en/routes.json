@@ -31,6 +31,8 @@
     "showOriginal": "Show original",
     "showRepliesCount": "Show {count} replies",
     "showTranslation": "Show translation",
+    "readSummary": "Read summary",
+    "hideSummary": "Hide summary",
     "submitReply": "Post reply",
     "savedPostActions": "Saved post actions",
     "searchCommunities": "Search communities",

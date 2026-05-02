@@ -31,6 +31,8 @@
     "showOriginal": "显示原文",
     "showRepliesCount": "显示 {count} 条回复",
     "showTranslation": "显示翻译",
+    "readSummary": "阅读摘要",
+    "hideSummary": "隐藏摘要",
     "submitReply": "发布回复",
     "savedPostActions": "已保存帖子操作",
     "searchCommunities": "搜索社区",

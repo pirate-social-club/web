@@ -2,7 +2,9 @@ import * as React from "react";
 import { Globe } from "@phosphor-icons/react";
 
 import { FormattedText } from "@/components/primitives/formatted-text";
+import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { getLocaleMessages } from "@/locales";
 import { OfficialOEmbed, PostEmbedPreview } from "./post-card-embed";
 import { postCardType } from "./post-card.styles";
 import type { PostCardContent } from "./post-card.types";
@@ -52,6 +54,8 @@ function getLinkSummaryBullets(summary: LinkContent["summary"]): string[] {
 }
 
 function LinkPreviewCard({ content }: { content: LinkContent }) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").common;
   const [summaryExpanded, setSummaryExpanded] = React.useState(false);
   const sourceLabel = content.sourceLabel ?? content.linkLabel ?? content.href;
   const metaLabel = content.publishedLabel
@@ -97,7 +101,7 @@ function LinkPreviewCard({ content }: { content: LinkContent }) {
             </p>
           ) : null}
           {summaryBullets.length > 0 ? (
-            <ul className="mt-2 space-y-1 pl-4 text-foreground/85">
+            <ul className="mt-2 space-y-1 ps-4 text-foreground/85">
               {summaryBullets.map((point, index) => (
                 <li
                   className={cn(postCardType.caption, "list-disc")}
@@ -142,7 +146,7 @@ function LinkPreviewCard({ content }: { content: LinkContent }) {
             }}
             type="button"
           >
-            {summaryExpanded ? "Hide summary" : "Read summary"}
+            {summaryExpanded ? copy.hideSummary : copy.readSummary}
           </button>
         </div>
       ) : null}

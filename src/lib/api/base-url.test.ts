@@ -54,8 +54,14 @@ describe("resolveApiBaseUrl", () => {
     }
   });
 
-  test("uses HNS API for the HNS app host", () => {
-    expect(resolveApiBaseUrl("app.pirate")).toBe("https://api.pirate");
+  test("uses the production API for HNS app hosts", () => {
+    const originalAppEnv = import.meta.env.VITE_PIRATE_APP_ENV;
+    import.meta.env.VITE_PIRATE_APP_ENV = "prod";
+    try {
+      expect(resolveApiBaseUrl("app.pirate")).toBe("https://api.pirate.sc");
+    } finally {
+      import.meta.env.VITE_PIRATE_APP_ENV = originalAppEnv;
+    }
   });
 
   test("joins relative paths against the resolved API origin", () => {

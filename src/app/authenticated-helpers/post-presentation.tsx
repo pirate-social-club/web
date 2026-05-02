@@ -489,7 +489,7 @@ export function toCommunityPostContent(
     ? post.source_language
     : postResponse.translation_state === "ready"
       ? postResponse.resolved_locale
-      : null;
+      : post.source_language;
   const linkTextPresentation = linkLocale ? resolveTranslatedTextPresentation(linkLocale) : {};
   const primaryMedia = post.media_refs?.[0];
   const imageMedia = primaryMedia as ({ width?: number | null; height?: number | null } & typeof primaryMedia) | undefined;

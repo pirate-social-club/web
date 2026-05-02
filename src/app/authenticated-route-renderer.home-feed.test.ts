@@ -331,6 +331,53 @@ describe("toHomeFeedItem", () => {
     expect(item.postOriginal.content.summary?.summaryParagraph).toBe("ملخص عربي أطول للخبر.");
     expect(item.postOriginal.content.summary?.keyPoints).toEqual(["مصادرة سفن قبالة اليونان", "إسرائيل تستند إلى الحصار", "تركيا تدين التحرك"]);
   });
+
+  test("uses source-language link enrichment for same-language link posts", () => {
+    const entry = createEntry();
+    entry.post.post.post_type = "link";
+    entry.post.post.source_language = "ar";
+    entry.post.post.title = "تقرير رويترز";
+    entry.post.post.body = "تعليق عربي";
+    entry.post.post.link_url = "https://www.reuters.com/world/story";
+    entry.post.post.link_og_title = "Israel seizes Gaza aid ships";
+    entry.post.post.link_enrichment = {
+      version: 1,
+      title: "Israel seizes Gaza aid ships",
+      published_at: "2026-04-29",
+      summary: {
+        status: "ready",
+        summary_paragraph: "A longer neutral article summary.",
+        short_summary: "Neutral article summary.",
+        key_points: ["Ships seized off Greece", "Israel cites blockade", "Turkey condemns move"],
+      },
+      translations: {
+        ar: {
+          locale: "ar",
+          title: "إسرائيل تستولي على سفن مساعدات غزة",
+          description: null,
+          summary: {
+            summary_paragraph: "ملخص عربي أطول للخبر.",
+            short_summary: "ملخص عربي قصير.",
+            key_points: ["مصادرة سفن مساعدات غزة", "المنظمون يصفونها بالقرصنة", "اليونان تطلب الانسحاب"],
+          },
+          generated_at: "2026-05-02T09:00:00.000Z",
+          model: "test",
+          provider: "openrouter",
+        },
+      },
+    };
+    entry.post.translation_state = "same_language";
+    entry.post.resolved_locale = "ar";
+
+    const item = toHomeFeedItem(entry, {});
+
+    expect(item.post.content.type).toBe("link");
+    if (item.post.content.type !== "link") throw new Error("expected link content");
+    expect(item.post.content.previewTitle).toBe("إسرائيل تستولي على سفن مساعدات غزة");
+    expect(item.post.content.previewTitleDir).toBe("rtl");
+    expect(item.post.content.summary?.keyPoints).toEqual(["مصادرة سفن مساعدات غزة", "المنظمون يصفونها بالقرصنة", "اليونان تطلب الانسحاب"]);
+    expect(item.post.content.summaryDir).toBe("rtl");
+  });
 });
 
 describe("toCommunityFeedItem", () => {

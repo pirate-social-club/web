@@ -241,9 +241,45 @@ export const LinkPost: Story = {
         href: "https://blog.pirate.sc/feed-ranking",
         previewTitle: "How We Think About Ranking Music Communities",
         linkLabel: "blog.pirate.sc/feed-ranking",
+        sourceLabel: "blog.pirate.sc",
         previewImageSrc: "https://picsum.photos/seed/pirate-link/240/240",
       }}
       engagement={{ ...basePost.engagement, score: 731, commentCount: 52 }}
+    />
+  ),
+};
+
+export const LinkPostWithSummary: Story = {
+  name: "Link Post / Summary",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        author: { kind: "user", label: "alex.morgan", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=12" },
+        timestampLabel: "9h",
+      }}
+      identityPresentation="author_primary"
+      title="Update on aid flotilla interception"
+      content={{
+        type: "link",
+        body: "Useful source for the timeline. Official and organizer statements differ on where the interception happened.",
+        href: "https://www.reuters.com/world/middle-east/israel-begins-intercepting-gaza-aid-ships-far-shores-army-radio-says-2026-04-29/",
+        previewTitle: "Aid boats bound for Gaza intercepted",
+        linkLabel: "news.com",
+        sourceLabel: "news.com",
+        publishedLabel: "2h ago",
+        previewImageSrc: "https://commons.wikimedia.org/wiki/Special:Redirect/file/View_of_many_people_on_a_boat_at_sea_(AM_80414-1).jpg?width=320",
+        summary: {
+          status: "ready",
+          shortSummary: "Israel intercepted aid vessels headed toward Gaza. Organizers said the seizure happened in international waters, while officials described it as enforcement around Gaza access.",
+          keyPoints: [
+            "Israel intercepted aid vessels headed toward Gaza.",
+            "Organizers said the seizure happened in international waters.",
+            "Officials described it as enforcement around Gaza access.",
+          ],
+        },
+      }}
+      engagement={{ ...basePost.engagement, score: 246, commentCount: 37 }}
     />
   ),
 };
@@ -373,6 +409,291 @@ export const YouTubeEmbedOfficial: Story = {
         state: "embed",
       }}
       engagement={{ ...basePost.engagement, score: 624, commentCount: 74 }}
+    />
+  ),
+};
+
+export const KalshiMarketEmbed: Story = {
+  name: "Embed / Kalshi Market",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title={undefined}
+      content={{
+        type: "embed",
+        canonicalUrl: "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael",
+        originalUrl: "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael",
+        preview: {
+          chart: [
+            0.18, 0.22, 0.2, 0.23, 0.21, 0.24, 0.26, 0.25, 0.27, 0.3,
+            0.29, 0.32, 0.28, 0.31, 0.35, 0.33, 0.37, 0.4, 0.38, 0.36,
+            0.39, 0.42, 0.41, 0.43, 0.44, 0.46, 0.45, 0.48, 0.47, 0.42,
+          ].map((price, index) => ({
+            price,
+            ts: 1_714_000_000 + index * 86_400,
+            volume: 1200 + index * 90,
+          })),
+          closeTime: "2026-06-01T00:00:00Z",
+          lastPrice: 0.42,
+          openInterest: 18420,
+          question: "Will Kanye visit Israel before June?",
+          status: "open",
+          updatedAt: "2026-05-02T12:00:00Z",
+          volume: 921000,
+          volume24h: 64000,
+          yesAsk: 0.43,
+          yesBid: 0.41,
+          yesPrice: 0.42,
+        },
+        provider: "kalshi",
+        renderMode: "preview",
+        state: "embed",
+      }}
+      engagement={{ ...basePost.engagement, score: 73, commentCount: 11 }}
+    />
+  ),
+};
+
+export const PolymarketMarketEmbed: Story = {
+  name: "Embed / Polymarket Market",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title={undefined}
+      content={{
+        type: "embed",
+        canonicalUrl: "https://polymarket.com/event/example-market/will-example-resolve-yes",
+        originalUrl: "https://polymarket.com/event/example-market/will-example-resolve-yes",
+        preview: {
+          chart: [
+            0.62, 0.58, 0.6, 0.56, 0.52, 0.55, 0.51, 0.49, 0.5, 0.48,
+            0.44, 0.46, 0.43, 0.4, 0.42, 0.45, 0.47, 0.44, 0.49, 0.51,
+            0.5, 0.54, 0.52, 0.55, 0.58, 0.56, 0.53, 0.55, 0.52, 0.53,
+          ].map((price, index) => ({
+            price,
+            ts: 1_714_000_000 + index * 86_400,
+          })),
+          closeTime: "2026-07-15T00:00:00Z",
+          imageUrl: "https://picsum.photos/seed/pirate-polymarket/180/180",
+          lastPrice: 0.53,
+          liquidity: 382000,
+          question: "Will the example market resolve Yes?",
+          status: "active",
+          updatedAt: "2026-05-02T12:00:00Z",
+          volume: 2_420_000,
+          volume24h: 182_000,
+          yesAsk: 0.54,
+          yesBid: 0.52,
+          yesPrice: 0.53,
+        },
+        provider: "polymarket",
+        renderMode: "preview",
+        state: "embed",
+      }}
+      engagement={{ ...basePost.engagement, score: 116, commentCount: 24 }}
+    />
+  ),
+};
+
+export const PolymarketMarketEmbedArabic: Story = {
+  name: "Embed / Polymarket Market Arabic",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title={undefined}
+      content={{
+        type: "embed",
+        canonicalUrl: "https://polymarket.com/event/example-market/will-example-resolve-yes",
+        originalUrl: "https://polymarket.com/event/example-market/will-example-resolve-yes",
+        preview: {
+          chart: [
+            0.62, 0.58, 0.6, 0.56, 0.52, 0.55, 0.51, 0.49, 0.5, 0.48,
+            0.44, 0.46, 0.43, 0.4, 0.42, 0.45, 0.47, 0.44, 0.49, 0.51,
+            0.5, 0.54, 0.52, 0.55, 0.58, 0.56, 0.53, 0.55, 0.52, 0.53,
+          ].map((price, index) => ({
+            price,
+            ts: 1_714_000_000 + index * 86_400,
+          })),
+          closeTime: "2026-07-15T00:00:00Z",
+          imageUrl: "https://picsum.photos/seed/pirate-polymarket/180/180",
+          lastPrice: 0.53,
+          question: "Will the example market resolve Yes?",
+          questionDir: "rtl",
+          questionLang: "ar",
+          translatedQuestion: "هل سيحسم هذا السوق التجريبي بنعم؟",
+          yesPrice: 0.53,
+        },
+        provider: "polymarket",
+        renderMode: "preview",
+        state: "embed",
+      }}
+      engagement={{ ...basePost.engagement, score: 116, commentCount: 24 }}
+    />
+  ),
+};
+
+export const KalshiMarketEmbedClosed: Story = {
+  name: "Embed / Kalshi Market Closed",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title={undefined}
+      content={{
+        type: "embed",
+        canonicalUrl: "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael",
+        originalUrl: "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael",
+        preview: {
+          chart: [
+            0.18, 0.22, 0.2, 0.23, 0.21, 0.24, 0.26, 0.25, 0.27, 0.3,
+            0.29, 0.32, 0.28, 0.31, 0.35, 0.33, 0.37, 0.4, 0.38, 0.36,
+            0.39, 0.42, 0.41, 0.43, 0.44, 0.46, 0.45, 0.48, 0.47, 0.42,
+          ].map((price, index) => ({
+            price,
+            ts: 1_714_000_000 + index * 86_400,
+          })),
+          closeTime: "2026-06-01T00:00:00Z",
+          lastPrice: 0.42,
+          question: "Will Kanye visit Israel before June?",
+          status: "closed",
+          yesPrice: 0.42,
+        },
+        provider: "kalshi",
+        renderMode: "preview",
+        state: "embed",
+      }}
+      engagement={{ ...basePost.engagement, score: 73, commentCount: 11 }}
+    />
+  ),
+};
+
+export const KalshiMarketEmbedResolvedYes: Story = {
+  name: "Embed / Kalshi Market Resolved Yes",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title={undefined}
+      content={{
+        type: "embed",
+        canonicalUrl: "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael",
+        originalUrl: "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael",
+        preview: {
+          chart: [
+            0.18, 0.22, 0.2, 0.23, 0.21, 0.24, 0.26, 0.25, 0.27, 0.3,
+            0.29, 0.32, 0.28, 0.31, 0.35, 0.33, 0.37, 0.4, 0.38, 0.36,
+            0.39, 0.42, 0.49, 0.56, 0.68, 0.74, 0.82, 0.91, 0.97, 1,
+          ].map((price, index) => ({
+            price,
+            ts: 1_714_000_000 + index * 86_400,
+          })),
+          closeTime: "2026-06-01T00:00:00Z",
+          lastPrice: 1,
+          question: "Will Kanye visit Israel before June?",
+          resolution: "yes",
+          status: "settled",
+          yesPrice: 1,
+        },
+        provider: "kalshi",
+        renderMode: "preview",
+        state: "embed",
+      }}
+      engagement={{ ...basePost.engagement, score: 73, commentCount: 11 }}
+    />
+  ),
+};
+
+export const PolymarketMarketEmbedResolvedNo: Story = {
+  name: "Embed / Polymarket Market Resolved No",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title={undefined}
+      content={{
+        type: "embed",
+        canonicalUrl: "https://polymarket.com/event/example-market/will-example-resolve-yes",
+        originalUrl: "https://polymarket.com/event/example-market/will-example-resolve-yes",
+        preview: {
+          chart: [
+            0.62, 0.58, 0.6, 0.56, 0.52, 0.55, 0.51, 0.49, 0.5, 0.48,
+            0.44, 0.46, 0.43, 0.4, 0.42, 0.39, 0.34, 0.3, 0.24, 0.19,
+            0.15, 0.13, 0.1, 0.08, 0.06, 0.04, 0.03, 0.02, 0.01, 0,
+          ].map((price, index) => ({
+            price,
+            ts: 1_714_000_000 + index * 86_400,
+          })),
+          closeTime: "2026-07-15T00:00:00Z",
+          imageUrl: "https://picsum.photos/seed/pirate-polymarket/180/180",
+          lastPrice: 0,
+          question: "Will the example market resolve Yes?",
+          resolution: "no",
+          status: "closed",
+          yesPrice: 0,
+        },
+        provider: "polymarket",
+        renderMode: "preview",
+        state: "embed",
+      }}
+      engagement={{ ...basePost.engagement, score: 116, commentCount: 24 }}
+    />
+  ),
+};
+
+export const PolymarketEventMultiOutcome: Story = {
+  name: "Embed / Polymarket Event Multi-Outcome",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title={undefined}
+      content={{
+        type: "embed",
+        canonicalUrl: "https://polymarket.com/event/fda-bpc157-reclassification",
+        originalUrl: "https://polymarket.com/event/fda-bpc157-reclassification",
+        preview: {
+          closeTime: "2027-01-01T00:00:00Z",
+          imageUrl: "https://picsum.photos/seed/pirate-fda-market/180/180",
+          outcomes: [
+            { label: "Before 2027", probability: 0.77 },
+            { label: "Before November 2026", probability: 0.75 },
+            { label: "Before September 2026", probability: 0.18 },
+          ],
+          question: "When will the FDA reclassify BPC-157 to Category 1?",
+          status: "active",
+        },
+        provider: "polymarket",
+        renderMode: "preview",
+        state: "embed",
+      }}
+      engagement={{ ...basePost.engagement, score: 89, commentCount: 31 }}
+    />
+  ),
+};
+
+export const PolymarketEventResolvedOutcome: Story = {
+  name: "Embed / Polymarket Event Resolved Outcome",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title={undefined}
+      content={{
+        type: "embed",
+        canonicalUrl: "https://polymarket.com/event/fda-bpc157-reclassification",
+        originalUrl: "https://polymarket.com/event/fda-bpc157-reclassification",
+        preview: {
+          closeTime: "2027-01-01T00:00:00Z",
+          imageUrl: "https://picsum.photos/seed/pirate-fda-market-resolved/180/180",
+          outcomes: [
+            { label: "Before 2027", probability: 1 },
+            { label: "Before November 2026", probability: 0 },
+            { label: "Before September 2026", probability: 0 },
+          ],
+          question: "When will the FDA reclassify BPC-157 to Category 1?",
+          resolvedOutcome: "Before 2027",
+          status: "closed",
+        },
+        provider: "polymarket",
+        renderMode: "preview",
+        state: "embed",
+      }}
+      engagement={{ ...basePost.engagement, score: 89, commentCount: 31 }}
     />
   ),
 };

@@ -104,6 +104,15 @@ export interface VideoContentSpec {
   onVerifyAge?: () => void;
 }
 
+export type LinkSummaryStatus = "pending" | "ready" | "failed" | "unavailable" | "manual";
+
+export interface LinkSummaryContent {
+  status?: LinkSummaryStatus | null;
+  summaryParagraph?: string | null;
+  shortSummary?: string | null;
+  keyPoints?: string[];
+}
+
 export type PostCardContent =
   | {
       type: "text";
@@ -131,11 +140,14 @@ export type PostCardContent =
       previewTitleDir?: "ltr" | "rtl" | "auto";
       previewTitleLang?: string;
       linkLabel?: string;
+      sourceLabel?: string;
+      publishedLabel?: string;
       previewImageSrc?: string;
+      summary?: LinkSummaryContent | null;
     }
   | {
       type: "embed";
-      provider: "x" | "youtube";
+      provider: "x" | "youtube" | "kalshi" | "polymarket";
       state: "pending" | "preview" | "embed" | "unavailable";
       renderMode: "preview" | "official";
       canonicalUrl: string;
@@ -154,6 +166,37 @@ export type PostCardContent =
         thumbnailUrl?: string | null;
         thumbnailWidth?: number | null;
         thumbnailHeight?: number | null;
+        question?: string | null;
+        translatedQuestion?: string | null;
+        questionDir?: "ltr" | "rtl" | "auto";
+        questionLang?: string | null;
+        imageUrl?: string | null;
+        yesPrice?: number | null;
+        yesBid?: number | null;
+        yesAsk?: number | null;
+        noBid?: number | null;
+        noAsk?: number | null;
+        lastPrice?: number | null;
+        volume?: number | null;
+        volume24h?: number | null;
+        liquidity?: number | null;
+        openInterest?: number | null;
+        status?: string | null;
+        resolution?: "yes" | "no" | null;
+        resolvedOutcome?: string | null;
+        closeTime?: string | null;
+        updatedAt?: string | null;
+        chart?: Array<{
+          ts: number;
+          price?: number | null;
+          volume?: number | null;
+          openInterest?: number | null;
+        }> | null;
+        outcomes?: Array<{
+          label: string;
+          translatedLabel?: string | null;
+          probability: number;
+        }> | null;
       } | null;
       oembedHtml?: string | null;
     }

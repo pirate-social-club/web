@@ -1,5 +1,7 @@
 import { ArrowSquareOut } from "@phosphor-icons/react";
 
+import { getLocaleMessages } from "@/locales";
+import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
 import type { RoutesMessages } from "@/locales";
@@ -214,6 +216,12 @@ function formatXSource(preview: EmbedContent["preview"], onXLabel = "on X"): str
 
 function formatEmbedSource(content: EmbedContent, copy: RoutesMessages["common"]): string {
   const preview = content.preview;
+  if (content.provider === "kalshi") {
+    return "Kalshi";
+  }
+  if (content.provider === "polymarket") {
+    return "Polymarket";
+  }
   if (content.provider === "youtube") {
     const author = preview?.authorName?.trim();
     if (author) return `${author} ${copy.onYouTube}`;
@@ -227,24 +235,285 @@ function resolveEmbedText(content: EmbedContent, copy: RoutesMessages["common"])
   if (content.state === "unavailable") {
     return content.provider === "youtube"
       ? copy.youtubeVideoUnavailable
+      : content.provider === "kalshi" || content.provider === "polymarket"
+      ? copy.marketUnavailable
       : copy.xPostUnavailable;
   }
 
   if (content.provider === "youtube") {
     return content.preview?.title?.trim() || copy.youtubeVideo;
   }
+  if (content.provider === "kalshi" || content.provider === "polymarket") {
+    return content.preview?.translatedQuestion?.trim()
+      || content.preview?.question?.trim()
+      || content.preview?.title?.trim()
+      || copy.predictionMarket;
+  }
 
   return content.preview?.text?.trim() || copy.xPost;
 }
 
 function resolveEmbedImage(content: EmbedContent): string | null {
-  return content.provider === "youtube"
-    ? content.preview?.thumbnailUrl ?? null
-    : content.preview?.mediaUrl ?? null;
+  if (content.provider === "youtube") {
+    return content.preview?.thumbnailUrl ?? null;
+  }
+  if (content.provider === "kalshi" || content.provider === "polymarket") {
+    return content.preview?.imageUrl ?? null;
+  }
+  return content.preview?.mediaUrl ?? null;
+}
+
+function formatProbability(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "n/a";
+  }
+  return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
+}
+
+function formatDateLabel(value: string | null | undefined, locale?: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat(locale || undefined, {
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
+
+function formatChartDateLabel(value: number | null | undefined, locale?: string | null): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const date = new Date(value * 1000);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat(locale || undefined, {
+    month: "short",
+  }).format(date);
+}
+
+function buildSparkline(points: NonNullable<EmbedContent["preview"]>["chart"], locale?: string | null, width = 320, height = 96): {
+  areaPath: string;
+  endLabel: string | null;
+  linePath: string;
+  startLabel: string | null;
+} | null {
+  const chartPoints = (points ?? [])
+    .filter((point) => typeof point.price === "number" && Number.isFinite(point.price));
+  const values = chartPoints.map((point) => point.price as number);
+  if (values.length < 2) {
+    return null;
+  }
+
+  const topPadding = 8;
+  const bottomPadding = 8;
+  const plotHeight = height - topPadding - bottomPadding;
+  const coordinates = values.map((price, index) => {
+    const probability = Math.max(0, Math.min(1, price));
+    const x = values.length === 1 ? 0 : (index / (values.length - 1)) * width;
+    const y = topPadding + (1 - probability) * plotHeight;
+    return { x, y };
+  });
+  const linePath = coordinates.map(({ x, y }, index) => `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  const last = coordinates[coordinates.length - 1];
+  return {
+    areaPath: `${linePath} L${width} ${height} L0 ${height} Z`,
+    endLabel: formatChartDateLabel(chartPoints[chartPoints.length - 1]?.ts, locale),
+    linePath,
+    startLabel: formatChartDateLabel(chartPoints[0]?.ts, locale),
+  };
+}
+
+function isClosedMarketStatus(value: string | null | undefined): boolean {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return normalized === "closed"
+    || normalized === "settled"
+    || normalized === "resolved"
+    || normalized === "determined";
+}
+
+function PredictionMarketEmbed({
+  className,
+  content,
+  copy,
+  locale,
+}: {
+  className?: string;
+  content: EmbedContent;
+  copy: RoutesMessages["common"];
+  locale: string;
+}) {
+  const preview = content.preview;
+  const question = resolveEmbedText(content, copy);
+  const provider = formatEmbedSource(content, copy);
+  const baseAccent = content.provider === "polymarket"
+    ? { fill: "#2f80ff3d", line: "#2f80ff", text: "#6aa7ff" }
+    : { fill: "#13d6a340", line: "#13d6a3", text: "#54e0c2" };
+  const yesPrice = preview?.yesPrice ?? preview?.lastPrice;
+  const resolution = preview?.resolution ?? null;
+  const isClosed = isClosedMarketStatus(preview?.status);
+  const accent = isClosed
+    ? { fill: "rgba(148, 163, 184, 0.18)", line: "rgba(148, 163, 184, 0.78)", text: "hsl(var(--muted-foreground))" }
+    : baseAccent;
+  const sparkline = buildSparkline(preview?.chart, locale);
+  const closeLabel = formatDateLabel(preview?.closeTime, locale);
+  const imageSrc = preview?.imageUrl?.trim();
+  const footerDateLabel = closeLabel
+    ? `${resolution ? copy.settled : isClosed ? copy.closed : copy.closes} ${closeLabel}`
+    : null;
+  const isMultiOutcome = (preview?.outcomes?.length ?? 0) >= 2;
+  const resolvedOutcome = preview?.resolvedOutcome?.trim();
+  const resolvedOutcomeLabel = resolvedOutcome
+    ? preview?.outcomes?.find((outcome) => outcome.label === resolvedOutcome)?.translatedLabel?.trim() || resolvedOutcome
+    : null;
+  const visibleOutcomes = (preview?.outcomes ?? []).filter((outcome) => outcome.label !== resolvedOutcome);
+  const marketState = resolution
+    ? {
+      label: resolution === "yes" ? copy.resolvedYes : copy.resolvedNo,
+      tone: resolution === "yes" ? baseAccent.text : "hsl(var(--muted-foreground))",
+    }
+    : isClosed && !isMultiOutcome
+    ? {
+      label: copy.closed,
+      tone: "hsl(var(--muted-foreground))",
+    }
+    : null;
+
+  return (
+    <a
+      className={cn(
+        "block w-full rounded-lg border border-border-soft bg-muted/20 p-3 text-start transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        className,
+      )}
+      data-post-card-interactive="true"
+      href={content.canonicalUrl}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      <div className="space-y-3">
+        <div className="flex min-w-0 items-center gap-3">
+          {imageSrc ? (
+            <img
+              alt=""
+              aria-hidden="true"
+              className="size-14 shrink-0 rounded-md object-cover"
+              src={imageSrc}
+            />
+          ) : null}
+          <div className="min-w-0">
+            <p
+              className={cn(postCardType.title, "line-clamp-2 font-semibold text-foreground")}
+              dir={preview?.questionDir ?? "auto"}
+              lang={preview?.questionLang ?? undefined}
+            >
+              {question}
+            </p>
+          </div>
+        </div>
+
+        {isMultiOutcome ? (
+          <div className="space-y-2">
+            {resolvedOutcomeLabel ? (
+              <div className="flex min-w-0 items-baseline gap-2 text-foreground">
+                <span
+                  className={cn("truncate font-semibold", postCardType.title)}
+                  dir={preview?.questionDir ?? "auto"}
+                  lang={preview?.questionLang ?? undefined}
+                >
+                  {resolvedOutcomeLabel}
+                </span>
+                <span className={cn("shrink-0 font-semibold", postCardType.meta)} style={{ color: baseAccent.text }}>
+                  {copy.closed}
+                </span>
+              </div>
+            ) : null}
+            {visibleOutcomes.map((outcome) => (
+              <div key={outcome.label} className="space-y-1">
+                <div className={cn("flex min-w-0 items-baseline justify-between gap-2", postCardType.title)}>
+                  <span
+                    className="truncate text-foreground"
+                    dir={preview?.questionDir ?? "auto"}
+                    lang={preview?.questionLang ?? undefined}
+                  >
+                    {outcome.translatedLabel?.trim() || outcome.label}
+                  </span>
+                  <span className="shrink-0 font-semibold" style={{ color: accent.text }}>{formatProbability(outcome.probability)}</span>
+                </div>
+                <div className="h-1.5 min-w-0 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${Math.round(Math.max(0, Math.min(1, outcome.probability)) * 100)}%`, backgroundColor: accent.line }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : marketState ? (
+          <div className="flex min-w-0 items-baseline gap-2 text-foreground">
+            <span className={cn("font-semibold", postCardType.title)}>{marketState.label}</span>
+            {resolution ? (
+              <span className={cn("shrink-0 font-semibold", postCardType.meta)} style={{ color: marketState.tone }}>
+                {copy.closed}
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          <div className="flex min-w-0 items-baseline gap-1.5 text-foreground">
+            <div className="text-2xl font-semibold leading-none" style={{ color: accent.text }}>{formatProbability(yesPrice)}</div>
+            <div className={cn("font-semibold", postCardType.meta)}>{copy.chance}</div>
+          </div>
+        )}
+
+        {!isMultiOutcome ? (
+          <div className="relative h-32 min-w-0 overflow-hidden">
+            <div className="absolute bottom-7 left-0 right-12 top-2">
+              <div className="absolute inset-x-0 top-0 border-t border-dashed border-white/10" />
+              <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-white/10" />
+              <div className="absolute inset-x-0 bottom-0 border-t border-dashed border-white/10" />
+            </div>
+            <div className={cn("pointer-events-none absolute bottom-7 right-0 top-2 grid grid-rows-3 text-muted-foreground/80", postCardType.meta)}>
+              <span className="self-start">100%</span>
+              <span className="self-center">50%</span>
+              <span className="self-end">0%</span>
+            </div>
+            {sparkline ? (
+              <div className="absolute bottom-7 left-0 right-12 top-2">
+                <svg aria-label="Recent odds movement" className="size-full" role="img" viewBox="0 0 320 96" preserveAspectRatio="none">
+                  <path d={sparkline.areaPath} fill={accent.fill} />
+                  <path d={sparkline.linePath} fill="none" stroke={accent.line} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
+                </svg>
+              </div>
+            ) : (
+              <div className={cn("flex size-full items-center justify-center text-muted-foreground", postCardType.meta)}>No chart</div>
+            )}
+            {sparkline ? (
+              <div className={cn("absolute bottom-0 left-0 right-12 flex items-center justify-between text-muted-foreground/85", postCardType.meta)}>
+                <span>{sparkline.startLabel}</span>
+                <span>{sparkline.endLabel}</span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {(provider || closeLabel) ? (
+          <div className={cn("flex min-w-0 items-center justify-between gap-3 border-t border-border-soft pt-2 text-muted-foreground", postCardType.meta)}>
+            <div className="flex min-w-0 items-center gap-1">
+              <span className="truncate font-semibold text-foreground">{provider}</span>
+              <ArrowSquareOut className="size-4 shrink-0" />
+            </div>
+            {footerDateLabel ? <div className="shrink-0">{footerDateLabel}</div> : null}
+          </div>
+        ) : null}
+      </div>
+    </a>
+  );
 }
 
 export function PostEmbedPreview({ content, className }: { content: EmbedContent; className?: string }) {
-  const copy = defaultRouteCopy;
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes");
+
+  if (content.provider === "kalshi" || content.provider === "polymarket") {
+    return <PredictionMarketEmbed content={content} className={className} copy={copy.common} locale={locale} />;
+  }
+
   const text = resolveEmbedText(content, copy.common);
   const imageSrc = resolveEmbedImage(content);
 

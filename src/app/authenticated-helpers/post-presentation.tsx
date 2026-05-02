@@ -41,6 +41,101 @@ export type PostPresentationOptions = {
   showTranslationLabel?: string;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function extractLinkSummary(
+  enrichment: Record<string, unknown> | null | undefined,
+): NonNullable<Extract<PostCardProps["content"], { type: "link" }>["summary"]> | undefined {
+  if (!isRecord(enrichment?.summary)) {
+    return undefined;
+  }
+
+  const summary = enrichment.summary;
+  const shortSummary = typeof summary.short_summary === "string"
+    ? summary.short_summary.trim()
+    : null;
+  const summaryParagraph = typeof summary.summary_paragraph === "string"
+    ? summary.summary_paragraph.trim()
+    : null;
+  const keyPoints = Array.isArray(summary.key_points)
+    ? summary.key_points
+      .filter((point): point is string => typeof point === "string")
+      .map((point) => point.trim())
+      .filter(Boolean)
+    : [];
+  const status = typeof summary.status === "string"
+    ? summary.status
+    : null;
+
+  if (!summaryParagraph && !shortSummary && keyPoints.length === 0) {
+    return undefined;
+  }
+
+  return {
+    status: status === "pending"
+      || status === "ready"
+      || status === "failed"
+      || status === "unavailable"
+      || status === "manual"
+      ? status
+      : null,
+    shortSummary,
+    summaryParagraph,
+    keyPoints,
+  };
+}
+
+function formatLinkSourceLabel(url: string | null | undefined, enrichment: Record<string, unknown> | null | undefined): string | undefined {
+  const publisher = typeof enrichment?.publisher === "string" ? enrichment.publisher.trim() : "";
+  if (publisher) return publisher;
+
+  try {
+    const hostname = new URL(url ?? "").hostname.replace(/^www\./u, "");
+    return hostname || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function extractPublishedLabel(enrichment: Record<string, unknown> | null | undefined): string | undefined {
+  const raw = typeof enrichment?.published_at === "string" ? enrichment.published_at : "";
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return trimmed;
+  }
+
+  const now = new Date();
+  const diffMs = now.getTime() - parsed.getTime();
+  const oneMinuteMs = 60_000;
+  const oneHourMs = 60 * oneMinuteMs;
+  const oneDayMs = 24 * oneHourMs;
+  if (diffMs >= 0 && diffMs < oneDayMs) {
+    if (diffMs < oneHourMs) {
+      const minutes = Math.max(1, Math.floor(diffMs / oneMinuteMs));
+      return `${minutes}m ago`;
+    }
+    const hours = Math.max(1, Math.floor(diffMs / oneHourMs));
+    return `${hours}h ago`;
+  }
+
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfPublishedDay = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()).getTime();
+  if (startOfToday - startOfPublishedDay === oneDayMs) {
+    return "Yesterday";
+  }
+
+  return parsed.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    ...(parsed.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+  });
+}
+
 export function formatQualifierLabel(qualifierTemplateId: string): string {
   const trimmed = qualifierTemplateId.trim();
   if (!trimmed) return "Qualifier";
@@ -441,6 +536,63 @@ export function toCommunityPostContent(
           state: embed.state,
         };
       }
+      if (post.embeds?.[0]?.provider === "kalshi" || post.embeds?.[0]?.provider === "polymarket") {
+        const embed = post.embeds[0];
+        const translatedEmbed = postResponse.translated_embeds?.find((item) => item.embed_key === embed.embed_key);
+        const translatedEmbedPresentation = translatedEmbed?.translated_question && postResponse.translation_state === "ready"
+          ? resolveTranslatedTextPresentation(postResponse.resolved_locale)
+          : {};
+        return {
+          type: "embed",
+          body: resolvedBody || undefined,
+          bodyDir: translatedTextPresentation.dir,
+          bodyLang: translatedTextPresentation.lang,
+          canonicalUrl: embed.canonical_url,
+          oembedHtml: embed.oembed_html,
+          originalUrl: embed.original_url,
+          preview: {
+            chart: embed.preview?.chart?.map((point) => ({
+              openInterest: point.open_interest,
+              price: point.price,
+              ts: point.ts,
+              volume: point.volume,
+            })),
+            closeTime: embed.preview?.close_time,
+            imageUrl: embed.preview?.image_url,
+            lastPrice: embed.preview?.last_price,
+            liquidity: embed.preview?.liquidity,
+            noAsk: embed.preview?.no_ask,
+            noBid: embed.preview?.no_bid,
+            openInterest: embed.preview?.open_interest,
+            question: embed.preview?.question,
+            questionDir: translatedEmbedPresentation.dir,
+            questionLang: translatedEmbedPresentation.lang,
+            resolution: embed.preview?.resolution,
+            resolvedOutcome: embed.preview?.resolved_outcome,
+            status: embed.preview?.status,
+            title: embed.preview?.title,
+            translatedQuestion: postResponse.translation_state === "ready"
+              ? translatedEmbed?.translated_question
+              : null,
+            updatedAt: embed.preview?.updated_at,
+            volume: embed.preview?.volume,
+            volume24h: embed.preview?.volume_24h,
+            yesAsk: embed.preview?.yes_ask,
+            yesBid: embed.preview?.yes_bid,
+            yesPrice: embed.preview?.yes_price,
+            outcomes: embed.preview?.outcomes?.map((outcome) => ({
+              label: outcome.label,
+              translatedLabel: postResponse.translation_state === "ready"
+                ? translatedEmbed?.translated_outcomes?.find((item) => item.label === outcome.label)?.translated_label
+                : null,
+              probability: outcome.probability,
+            })),
+          },
+          provider: embed.provider,
+          renderMode: "preview",
+          state: embed.state,
+        };
+      }
       return {
         type: "link",
         body: resolvedBody || undefined,
@@ -448,8 +600,11 @@ export function toCommunityPostContent(
         bodyLang: translatedTextPresentation.lang,
         href: post.link_url ?? "#",
         linkLabel: post.link_url ?? undefined,
+        sourceLabel: formatLinkSourceLabel(post.link_url, post.link_enrichment),
+        publishedLabel: extractPublishedLabel(post.link_enrichment),
         previewTitle: post.link_og_title ?? undefined,
         previewImageSrc: post.link_og_image_url ?? undefined,
+        summary: extractLinkSummary(post.link_enrichment),
       };
     case "song": {
       const listing = songOptions?.listing;

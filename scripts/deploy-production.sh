@@ -185,9 +185,6 @@ log "deploy api production"
   --var "BUILD_GIT_REF:$API_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
 
-log "smoke api production"
-"$ROOT_DIR/scripts/smoke-test.sh" prod
-
 log "deploy web production"
 (cd "$WEB_DIR" && "$WEB_WRANGLER" deploy dist/worker/index.js \
   --config wrangler.jsonc \

@@ -47,7 +47,7 @@ export function canonicalizeNamespaceRootLabel(
     };
   }
 
-  if (!isProtocolRootLabel(asciiLabel)) {
+  if (!isProtocolRootLabel(family, asciiLabel)) {
     return {
       ok: false,
       empty: false,
@@ -110,7 +110,7 @@ function toAsciiRootLabel(value: string): string | null {
   }
 }
 
-function isProtocolRootLabel(value: string): boolean {
+function isProtocolRootLabel(family: NamespaceFamily, value: string): boolean {
   if (!value || value.length > MAX_ROOT_LABEL_LENGTH) {
     return false;
   }
@@ -118,10 +118,13 @@ function isProtocolRootLabel(value: string): boolean {
   const verifyRange = value.startsWith("xn--") && value.length > "xn--".length
     ? value.slice("xn--".length)
     : value;
+  const allowedPattern = family === "hns" && !value.startsWith("xn--")
+    ? /^[a-z0-9_-]+$/u
+    : /^[a-z0-9-]+$/u;
 
   return Boolean(verifyRange)
     && !verifyRange.startsWith("-")
     && !verifyRange.endsWith("-")
     && !verifyRange.includes("--")
-    && /^[a-z0-9-]+$/u.test(verifyRange);
+    && allowedPattern.test(verifyRange);
 }

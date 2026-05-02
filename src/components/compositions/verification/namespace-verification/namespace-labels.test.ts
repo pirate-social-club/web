@@ -26,6 +26,23 @@ describe("namespace label canonicalization", () => {
     expect(result.routePath).toBe("/c/example");
   });
 
+  test("allows underscores in HNS root labels", () => {
+    const result = canonicalizeNamespaceRootLabel("hns", "Tame_Impala");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.rootLabel).toBe("tame_impala");
+    expect(result.namespaceKey).toBe("tame_impala");
+    expect(result.routePath).toBe("/c/tame_impala");
+  });
+
+  test("rejects underscores in Spaces root labels", () => {
+    const result = canonicalizeNamespaceRootLabel("spaces", "tame_impala");
+
+    expect(result.ok).toBe(false);
+    expect(result.empty).toBe(false);
+  });
+
   test("allows canonical literal ASCII xn labels", () => {
     const result = canonicalizeNamespaceRootLabel("spaces", "xn--t77hga");
 

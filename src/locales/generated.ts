@@ -1246,7 +1246,7 @@ export const GENERATED_LOCALE_CATALOGS = {
             "nameserversLabel": "NS record",
             "nameserversNote": "Update the root records where you manage the Handshake name.",
             "challengeLabel": "Challenge",
-            "txtRecordNote": "Add this TXT record at the host shown below.",
+            "txtRecordNote": "Add this TXT record to the HNS root resource.",
             "valueLabel": "TXT record"
           },
           "shared": {

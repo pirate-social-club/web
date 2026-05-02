@@ -42,10 +42,16 @@ describe("resolveApiBaseUrl", () => {
     });
   });
 
-  test("uses the current origin for bare HNS community roots", () => {
-    withBrowserHostname("dankmeme", () => {
-      expect(resolveApiBaseUrl("pirate.sc")).toBe("https://dankmeme");
-    });
+  test("does not use bare HNS community roots as API origins", () => {
+    const originalAppEnv = import.meta.env.VITE_PIRATE_APP_ENV;
+    import.meta.env.VITE_PIRATE_APP_ENV = "prod";
+    try {
+      withBrowserHostname("dankmeme", () => {
+        expect(resolveApiBaseUrl()).toBe("https://api.pirate.sc");
+      });
+    } finally {
+      import.meta.env.VITE_PIRATE_APP_ENV = originalAppEnv;
+    }
   });
 
   test("uses HNS API for the HNS app host", () => {

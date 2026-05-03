@@ -14,6 +14,8 @@ export function getCommunityModerationTitle(
   copy: { nav: Record<string, string> },
 ): string {
   switch (section) {
+    case "queue":
+      return copy.nav.queue ?? "Queue";
     case "profile":
       return copy.nav.profile;
     case "rules":

@@ -58,6 +58,8 @@ import {
 } from "@/app/authenticated-helpers/song-commerce";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
+import { useSelfVerification } from "@/lib/verification/use-self-verification";
+import { updateSessionUser } from "@/lib/api/session-store";
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
 
@@ -157,6 +159,31 @@ export function CommunityPage({
     locale,
     onJoined: markViewerJoined,
     refetchEligibility,
+  });
+  const {
+    handleModalOpenChange: handleAgeSelfModalOpenChange,
+    handleSelfQrError: handleAgeSelfQrError,
+    handleSelfQrSuccess: handleAgeSelfQrSuccess,
+    selfError: ageSelfError,
+    selfModalOpen: ageSelfModalOpen,
+    selfPrompt: ageSelfPrompt,
+    startVerification: startAgeSelfVerification,
+  } = useSelfVerification({
+    completeErrorMessage: "Could not complete age verification.",
+    locale,
+    onVerified: async () => {
+      if (session) {
+        const refreshedUser = await api.users.getMe();
+        updateSessionUser(refreshedUser);
+      }
+      setPosts((current) => current.map((post) => ({
+        ...post,
+        age_gate_viewer_state: "verified_allowed",
+      })));
+    },
+    startErrorMessage: "Could not start age verification.",
+    storageKey: `pirate_pending_self_age_gate:${communityId}`,
+    verificationIntent: "community_join",
   });
   const [joinRequestModalOpen, setJoinRequestModalOpen] = React.useState(false);
   const [joinRequestSubmitting, setJoinRequestSubmitting] =
@@ -427,6 +454,12 @@ export function CommunityPage({
     !isJoinCtaActionable(eligibility);
   const feedItems = posts.map((post) => {
     const assetId = post.post.asset ?? undefined;
+    const handleVerifyAge = () => {
+      void startAgeSelfVerification({
+        requestedCapabilities: ["age_over_18"],
+        unavailableMessage: "Age verification is required to view 18+ content.",
+      });
+    };
     return toCommunityFeedItem(
       post,
       authorProfiles,
@@ -448,8 +481,9 @@ export function CommunityPage({
             playback: songPlayback,
             purchase: assetId ? purchasesByAssetId[assetId] : undefined,
           }
-        : undefined,
+      : undefined,
       {
+        onVerifyAge: handleVerifyAge,
         onComment: () => navigate(`/p/${post.post.id}`),
         onVote: (direction) => void voteOnPost(post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
@@ -530,6 +564,20 @@ export function CommunityPage({
           open={selfModalOpen}
           selfApp={selfPrompt.selfApp}
           title={selfPrompt.title}
+        />
+      ) : null}
+      {ageSelfPrompt ? (
+        <SelfVerificationModal
+          actionLabel={ageSelfPrompt.actionLabel}
+          description={ageSelfPrompt.description}
+          error={ageSelfError}
+          href={ageSelfPrompt.href}
+          onOpenChange={handleAgeSelfModalOpenChange}
+          onQrError={handleAgeSelfQrError}
+          onQrSuccess={handleAgeSelfQrSuccess}
+          open={ageSelfModalOpen}
+          selfApp={ageSelfPrompt.selfApp}
+          title={ageSelfPrompt.title}
         />
       ) : null}
       <section className="flex min-w-0 flex-1 flex-col gap-6">

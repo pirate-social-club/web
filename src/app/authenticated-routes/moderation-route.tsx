@@ -11,6 +11,7 @@ import { CommunityLabelsEditorPage } from "@/components/compositions/community/l
 import { CommunityLinksEditorPage, createEmptyCommunityLinkEditorItem } from "@/components/compositions/community/links-editor/community-links-editor-page";
 import { CommunityMembershipRequestsPage } from "@/components/compositions/community/membership-requests-page/community-membership-requests-page";
 import { CommunityModerationIndexPage as CommunityModerationIndexPageView } from "@/components/compositions/community/moderation-index-page/community-moderation-index-page";
+import { CommunityModerationQueuePage } from "@/components/compositions/community/moderation-queue-page/community-moderation-queue-page";
 import { CommunityModerationShell } from "@/components/compositions/community/moderation-shell/community-moderation-shell";
 import { CommunityProfileEditorPage } from "@/components/compositions/community/profile-editor/community-profile-editor-page";
 import { CommunityNamespaceVerificationPage } from "@/components/compositions/community/namespace-verification-page/community-namespace-verification-page";
@@ -195,6 +196,9 @@ export function CommunityModerationPage({
   const [membershipRequests, setMembershipRequests] = React.useState<MembershipRequestSummary[]>([]);
   const [membershipRequestsLoading, setMembershipRequestsLoading] = React.useState(false);
   const [processingMembershipRequestId, setProcessingMembershipRequestId] = React.useState<string | null>(null);
+  const [moderationCases, setModerationCases] = React.useState<Parameters<typeof CommunityModerationQueuePage>[0]["cases"]>([]);
+  const [moderationCasesLoading, setModerationCasesLoading] = React.useState(false);
+  const [processingModerationCaseId, setProcessingModerationCaseId] = React.useState<string | null>(null);
   const pricingLocalCountryCodes = React.useMemo(
     () => getNationalityGateCountryCodes(state.gateDrafts),
     [state.gateDrafts],
@@ -264,6 +268,61 @@ export function CommunityModerationPage({
     return () => { cancelled = true; };
   }, [api, communityId, hasBlockedState, section]);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    if (section !== "queue" || hasBlockedState) {
+      return () => { cancelled = true; };
+    }
+
+    setModerationCasesLoading(true);
+    void api.communities.listModerationCases(communityId)
+      .then((result) => {
+        if (!cancelled) {
+          setModerationCases(
+            result.items.map((item) => {
+              const post = item.post;
+              let imageSrc: string | undefined;
+              if (post?.media_refs_json) {
+                try {
+                  const mediaRefs = JSON.parse(post.media_refs_json) as Array<{ storage_ref?: string }>;
+                  const firstImage = mediaRefs?.[0]?.storage_ref;
+                  if (firstImage) {
+                    imageSrc = firstImage;
+                  }
+                } catch {
+                  // ignore parse errors
+                }
+              }
+              return {
+                caseId: item.moderation_case_id,
+                postId: item.post_id,
+                priority: item.priority,
+                openedBy: item.opened_by,
+                status: item.status,
+                createdAt: item.created_at,
+                postPreview: post
+                  ? {
+                      title: post.title ?? undefined,
+                      body: post.body ?? post.caption ?? undefined,
+                      imageSrc: imageSrc ?? undefined,
+                      authorLabel: undefined,
+                    }
+                  : undefined,
+              };
+            }),
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Could not load moderation queue.");
+      })
+      .finally(() => {
+        if (!cancelled) setModerationCasesLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [api, communityId, hasBlockedState, section]);
+
   const reviewMembershipRequest = React.useCallback(async (
     requestId: string,
     decision: "approved" | "rejected",
@@ -281,12 +340,37 @@ export function CommunityModerationPage({
     }
   }, [api, communityId]);
 
+  const handleModerationAction = React.useCallback(async (
+    caseId: string,
+    actionType: "restore" | "hide" | "remove" | "dismiss",
+  ) => {
+    setProcessingModerationCaseId(caseId);
+    try {
+      await api.communities.resolveModerationCase(communityId, caseId, { action_type: actionType });
+      setModerationCases((current) => current.filter((c) => c.caseId !== caseId));
+    } catch {
+      toast.error("Could not apply moderation action.");
+    } finally {
+      setProcessingModerationCaseId(null);
+    }
+  }, [api, communityId]);
+
   if (!hydrated) {
     return <div className="min-h-screen w-full bg-background" />;
   }
 
   if (!content && state.community) {
-    if (section === "profile") {
+    if (section === "queue") {
+      content = (
+        <CommunityModerationQueuePage
+          cases={moderationCases}
+          loading={moderationCasesLoading}
+          onApprove={(caseId) => void handleModerationAction(caseId, "restore")}
+          onDeny={(caseId) => void handleModerationAction(caseId, "remove")}
+          processingCaseId={processingModerationCaseId}
+        />
+      );
+    } else if (section === "profile") {
       setMobileSaveAction({
         disabled: state.savingProfile || !state.profileHasChanges,
         loading: state.savingProfile,

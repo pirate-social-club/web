@@ -1,6 +1,6 @@
 "use client";
 
-import { CurrencyDollar, Database, Gavel, Heart, ImageSquare, LinkSimple, Lock, Robot, SealCheck, Shield, Tag, UserPlus } from "@phosphor-icons/react";
+import { CurrencyDollar, Database, Gavel, Heart, ImageSquare, LinkSimple, Lock, Queue, Robot, SealCheck, Shield, Tag, UserPlus } from "@phosphor-icons/react";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 
@@ -20,9 +20,9 @@ import {
   createDefaultCommunitySafetyProviderSettings,
 } from "@/components/compositions/community/safety-page/community-safety-page";
 
-export type CommunityModerationSection = "profile" | "rules" | "links" | "labels" | "donations" | "pricing" | "requests" | "gates" | "safety" | "agents" | "machine-access" | "namespace";
+export type CommunityModerationSection = "queue" | "profile" | "rules" | "links" | "labels" | "donations" | "pricing" | "requests" | "gates" | "safety" | "agents" | "machine-access" | "namespace";
 
-export const DEFAULT_COMMUNITY_MODERATION_SECTION: CommunityModerationSection = "profile";
+export const DEFAULT_COMMUNITY_MODERATION_SECTION: CommunityModerationSection = "queue";
 
 export function buildCommunityModerationIndexPath(
   communityId: string,
@@ -63,6 +63,11 @@ export function buildCommunityModerationSections(
   routeSlug?: string | null,
 ) {
   return [{
+    label: copy.nav.moderationSection ?? "Moderation",
+    items: [
+      { active: activeSection === "queue", icon: Queue, label: copy.nav.queue ?? "Queue", onSelect: () => navigate(buildCommunityModerationPath(communityId, "queue", routeSlug)) },
+    ],
+  }, {
     label: copy.nav.communitySection,
     items: [
       { active: activeSection === "profile", icon: ImageSquare, label: copy.nav.profile, onSelect: () => navigate(buildCommunityModerationPath(communityId, "profile", routeSlug)) },

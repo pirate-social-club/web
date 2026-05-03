@@ -26,6 +26,7 @@ function mergeCommunities(
   ownedCommunities: SidebarCommunitySummary[],
 ): SidebarCommunitySummary[] {
   const merged = new Map<string, SidebarCommunitySummary>();
+  const slugToCanonicalId = new Map<string, string>();
 
   for (const community of knownCommunities) {
     merged.set(community.communityId, {
@@ -35,16 +36,43 @@ function mergeCommunities(
       routeSlug: community.routeSlug ?? null,
       updatedAt: community.updatedAt,
     });
+    if (community.routeSlug) {
+      slugToCanonicalId.set(community.routeSlug, community.communityId);
+    }
   }
 
   for (const community of ownedCommunities) {
     const existing = merged.get(community.communityId);
+
+    // If an owned community shares a routeSlug with a known community that has
+    // a different ID, merge into the existing entry to avoid sidebar duplicates.
+    if (
+      community.routeSlug
+      && slugToCanonicalId.has(community.routeSlug)
+      && slugToCanonicalId.get(community.routeSlug) !== community.communityId
+    ) {
+      const canonicalId = slugToCanonicalId.get(community.routeSlug)!;
+      const existingBySlug = merged.get(canonicalId);
+      merged.set(canonicalId, {
+        avatarSrc: existingBySlug?.avatarSrc ?? community.avatarSrc ?? null,
+        communityId: canonicalId,
+        displayName: community.displayName || existingBySlug?.displayName || canonicalId,
+        routeSlug: community.routeSlug ?? existingBySlug?.routeSlug ?? null,
+        updatedAt: Number(community.updatedAt) > Number(existingBySlug?.updatedAt ?? 0)
+          ? community.updatedAt
+          : existingBySlug?.updatedAt ?? community.updatedAt,
+      });
+      continue;
+    }
+
     merged.set(community.communityId, {
       avatarSrc: existing?.avatarSrc ?? community.avatarSrc ?? null,
       communityId: community.communityId,
       displayName: community.displayName || existing?.displayName || community.communityId,
       routeSlug: community.routeSlug ?? existing?.routeSlug ?? null,
-      updatedAt: Number(community.updatedAt) > Number(existing?.updatedAt ?? 0) ? community.updatedAt : existing?.updatedAt ?? community.updatedAt,
+      updatedAt: Number(community.updatedAt) > Number(existing?.updatedAt ?? 0)
+        ? community.updatedAt
+        : existing?.updatedAt ?? community.updatedAt,
     });
   }
 
@@ -94,6 +122,7 @@ type KnownCommunityValidationResult =
     }
   | {
       avatarSrc?: string | null;
+      canonicalId?: string | null;
       communityId: string;
       displayName?: string | null;
       routeSlug?: string | null;
@@ -129,6 +158,7 @@ function useValidatedKnownCommunities(ownedCommunities: SidebarCommunitySummary[
         const result = await api.publicCommunities.get(community.communityId);
         return {
           avatarSrc: typeof result.avatar_ref === "string" ? result.avatar_ref : null,
+          canonicalId: typeof result.id === "string" ? result.id : null,
           communityId: community.communityId,
           displayName: typeof result.display_name === "string" ? result.display_name : null,
           routeSlug: typeof result.route_slug === "string" ? result.route_slug : null,
@@ -151,13 +181,23 @@ function useValidatedKnownCommunities(ownedCommunities: SidebarCommunitySummary[
         const routeSlug = result.routeSlug?.trim();
         if (!routeSlug) continue;
 
-        const existing = currentCommunities.get(result.communityId);
+        const canonicalId = result.canonicalId?.trim();
+        const targetId = canonicalId && canonicalId !== result.communityId
+          ? canonicalId
+          : result.communityId;
+
+        // Remove stale entry if the canonical ID changed (e.g. old cmt_... -> com_cmt_...)
+        if (canonicalId && canonicalId !== result.communityId) {
+          forgetKnownCommunity(result.communityId);
+        }
+
+        const existing = currentCommunities.get(targetId);
         if (existing?.routeSlug?.trim() === routeSlug) continue;
 
         rememberKnownCommunity({
           avatarSrc: result.avatarSrc ?? existing?.avatarSrc ?? null,
-          communityId: result.communityId,
-          displayName: result.displayName?.trim() || existing?.displayName || result.communityId,
+          communityId: targetId,
+          displayName: result.displayName?.trim() || existing?.displayName || targetId,
           routeSlug,
         });
       }

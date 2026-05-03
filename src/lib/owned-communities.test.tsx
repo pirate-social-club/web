@@ -86,7 +86,7 @@ describe("owned communities hooks", () => {
       if (pathname === "/public-communities/cmt_alive") {
         return Response.json({
           avatar_ref: "https://cdn.test/alive.png",
-          community: "cmt_alive",
+          id: "com_cmt_alive",
           display_name: "Alive",
           route_slug: "alive-slug",
         });
@@ -106,8 +106,8 @@ describe("owned communities hooks", () => {
 
       await waitFor(() => {
         expect(result.current.map((community) => community.communityId).sort()).toEqual([
-          "cmt_alive",
           "cmt_flaky",
+          "com_cmt_alive",
         ]);
       });
 
@@ -116,10 +116,10 @@ describe("owned communities hooks", () => {
       expect(communityRequests.includes("/public-communities/cmt_dead")).toBe(true);
       expect(communityRequests.includes("/public-communities/cmt_flaky")).toBe(true);
       expect(getKnownCommunities().map((community) => community.communityId).sort()).toEqual([
-        "cmt_alive",
         "cmt_flaky",
+        "com_cmt_alive",
       ]);
-      expect(getKnownCommunities().find((community) => community.communityId === "cmt_alive")).toEqual(
+      expect(getKnownCommunities().find((community) => community.communityId === "com_cmt_alive")).toEqual(
         expect.objectContaining({
           avatarSrc: "https://cdn.test/alive.png",
           routeSlug: "alive-slug",
@@ -142,7 +142,7 @@ describe("owned communities hooks", () => {
       onboarding: {} as never,
       wallet_attachments: [],
     });
-    rememberKnownCommunity({ communityId: "cmt_owned", displayName: "Owned" });
+    rememberKnownCommunity({ communityId: "com_cmt_owned", displayName: "Owned" });
     rememberKnownCommunity({ communityId: "cmt_dead", displayName: "Dead" });
 
     const requests: string[] = [];
@@ -158,7 +158,7 @@ describe("owned communities hooks", () => {
           is_canonical: true,
           created_communities: [
             {
-              community: "cmt_owned",
+              community: "com_cmt_owned",
               display_name: "Owned",
               route_slug: null,
               created: "2026-04-17T00:00:00.000Z",
@@ -186,8 +186,8 @@ describe("owned communities hooks", () => {
           },
         });
       }
-      if (url.pathname === "/public-communities/cmt_owned") {
-        return Response.json({ community: "cmt_owned", display_name: "Owned" });
+      if (url.pathname === "/public-communities/com_cmt_owned") {
+        return Response.json({ id: "com_cmt_owned", display_name: "Owned" });
       }
       if (url.pathname === "/public-communities/cmt_dead") {
         return Response.json({ code: "not_found", message: "missing" }, { status: 404 });
@@ -201,12 +201,12 @@ describe("owned communities hooks", () => {
 
       await waitFor(() => {
         expect(result.current.recentCommunities.map((community) => community.communityId)).toEqual([
-          "cmt_owned",
+          "com_cmt_owned",
         ]);
       });
 
       expect(requests).toContain("/public-profiles/captain.pirate");
-      expect(getKnownCommunities().map((community) => community.communityId)).toEqual(["cmt_owned"]);
+      expect(getKnownCommunities().map((community) => community.communityId)).toEqual(["com_cmt_owned"]);
     } finally {
       cleanup();
     }
@@ -236,7 +236,7 @@ describe("owned communities hooks", () => {
           is_canonical: true,
           created_communities: [
             {
-              id: "cmt_owned",
+              id: "com_cmt_owned",
               display_name: "Owned",
               route_slug: "@owned",
               created: "2026-04-17T00:00:00.000Z",
@@ -282,11 +282,54 @@ describe("owned communities hooks", () => {
           displayName: community.displayName,
           routeSlug: community.routeSlug,
         }))).toEqual([{
-          communityId: "cmt_owned",
+          communityId: "com_cmt_owned",
           displayName: "Owned",
           routeSlug: "@owned",
         }]);
       });
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("normalizes stale known community IDs to canonical format during validation", async () => {
+    installDom();
+    rememberKnownCommunity({ communityId: "cmt_legacy", displayName: "Legacy" });
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      const pathname = new URL(request.url).pathname;
+
+      if (pathname === "/public-communities/cmt_legacy") {
+        return Response.json({
+          avatar_ref: "https://cdn.test/legacy.png",
+          id: "com_cmt_legacy",
+          display_name: "Legacy",
+          route_slug: "legacy-slug",
+        });
+      }
+
+      throw new Error(`Unexpected request: ${pathname}`);
+    };
+
+    try {
+      const { result } = renderHook(() => useRecentCommunities(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.map((community) => community.communityId)).toEqual([
+          "com_cmt_legacy",
+        ]);
+      });
+
+      expect(getKnownCommunities().map((community) => community.communityId)).toEqual([
+        "com_cmt_legacy",
+      ]);
+      expect(getKnownCommunities().find((community) => community.communityId === "com_cmt_legacy")).toEqual(
+        expect.objectContaining({
+          avatarSrc: "https://cdn.test/legacy.png",
+          routeSlug: "legacy-slug",
+        }),
+      );
     } finally {
       cleanup();
     }

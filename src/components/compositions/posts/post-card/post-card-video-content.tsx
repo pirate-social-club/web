@@ -14,6 +14,25 @@ const LazyVideoPlayer = React.lazy(async () => {
   return { default: module.VideoPlayer };
 });
 
+function isBlobUrl(src: string): boolean {
+  return src.startsWith("blob:");
+}
+
+function BlobVideoPlayer({ src, poster, title, className }: { src: string; poster?: string; title?: string; className?: string }) {
+  return (
+    <video
+      className={cn("aspect-video w-full rounded-lg bg-black object-contain", className)}
+      controls
+      muted
+      playsInline
+      poster={poster}
+      preload="metadata"
+      src={src}
+      title={title}
+    />
+  );
+}
+
 export interface VideoPostContentProps {
   content: VideoContentSpec;
   className?: string;
@@ -122,6 +141,23 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
   };
 
   if (expanded && ui.canPlay && hasPlayableSource) {
+    if (isBlobUrl(content.src)) {
+      return (
+        <div className={cn("flex flex-col gap-2 text-start", className)}>
+          <BlobVideoPlayer
+            src={content.src}
+            poster={content.posterSrc}
+            title={content.title}
+          />
+          {derivativeSummary && (
+            <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
+              {derivativeSummary}
+            </p>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className={cn("flex flex-col gap-2 text-start", className)}>
         <React.Suspense

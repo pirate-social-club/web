@@ -41,7 +41,7 @@ export function buildPostComposerPreviewContent({
     return {
       type: "video",
       src: attachment.previewUrl ?? fallbackVideoSrc,
-      posterSrc: videoDetails?.thumbnail?.previewUrl ?? attachment.previewUrl,
+      posterSrc: videoDetails?.thumbnail?.previewUrl,
       title: title || "Video",
       accessMode,
       listingMode: access === "paid" ? "listed" : "not_listed",

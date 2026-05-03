@@ -34,6 +34,7 @@ export type SongPresentationOptions = {
 
 export type PostPresentationOptions = {
   commentCountOverride?: number;
+  onVerifyAge?: () => void;
   onVote?: PostCardProps["onVote"];
   onComment?: PostCardProps["onComment"];
   preferOriginalText?: boolean;
@@ -477,7 +478,7 @@ export function withTranslationToggleProps(
 export function toCommunityPostContent(
   postResponse: ApiPost,
   songOptions?: SongPresentationOptions,
-  opts?: { embedMode?: "preview" | "official"; preferOriginalText?: boolean },
+  opts?: Pick<PostPresentationOptions, "onVerifyAge" | "preferOriginalText"> & { embedMode?: "preview" | "official" },
 ): PostCardProps["content"] {
   const { post, translated_body, translated_caption, translated_title } = postResponse;
   const resolvedBody = opts?.preferOriginalText ? post.body ?? "" : translated_body ?? post.body ?? "";
@@ -508,8 +509,12 @@ export function toCommunityPostContent(
         captionDir: translatedTextPresentation.dir,
         captionLang: translatedTextPresentation.lang,
         src: primaryMedia?.storage_ref ?? "",
-      };
-    }
+        ageGatePolicy: post.age_gate_policy,
+        contentSafetyState: post.content_safety_state,
+        ageGateViewerState: postResponse.age_gate_viewer_state ?? undefined,
+        onVerifyAge: opts?.onVerifyAge,
+        };
+      }
     case "video": {
       const listing = songOptions?.listing;
       const purchase = songOptions?.purchase;
@@ -525,6 +530,7 @@ export function toCommunityPostContent(
         type: "video",
         accessMode,
         ageGatePolicy: post.age_gate_policy,
+        ageGateViewerState: postResponse.age_gate_viewer_state ?? undefined,
         analysisState: post.analysis_state,
         contentSafetyState: post.content_safety_state,
         durationMs: primaryMedia?.duration_ms ?? undefined,
@@ -538,6 +544,7 @@ export function toCommunityPostContent(
           ? "paused"
           : undefined,
         onBuy: songOptions?.onBuy,
+        onVerifyAge: opts?.onVerifyAge,
         onPlay: assetSourceDescriptor && songOptions?.playback
           ? () => void songOptions.playback?.loadAssetSource(assetSourceDescriptor)
           : undefined,

@@ -50,6 +50,7 @@ export interface SongContentSpec {
   contentSafetyState?: ContentSafetyState;
   ageGatePolicy?: AgeGatePolicy;
   ageGateViewerState?: "proof_required" | "verified_blocked";
+
   upstreamAttributions?: UpstreamAttribution[];
 
   // Commerce axis - from specs/domain/marketplace.md
@@ -87,7 +88,7 @@ export interface VideoContentSpec {
   analysisState?: AnalysisState;
   contentSafetyState?: ContentSafetyState;
   ageGatePolicy?: AgeGatePolicy;
-  ageGateViewerState?: "proof_required" | "verified_blocked";
+  ageGateViewerState?: "proof_required" | "verified_allowed";
   upstreamAttributions?: UpstreamAttribution[];
 
   listingMode?: ListingMode;
@@ -128,6 +129,10 @@ export type PostCardContent =
       captionDir?: "ltr" | "rtl" | "auto";
       captionLang?: string;
       aspectRatio?: number;
+      ageGatePolicy?: AgeGatePolicy;
+      contentSafetyState?: ContentSafetyState;
+      ageGateViewerState?: "proof_required" | "verified_allowed";
+      onVerifyAge?: () => void;
     }
   | VideoContentSpec
   | {

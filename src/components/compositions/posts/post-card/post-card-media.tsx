@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Globe } from "@phosphor-icons/react";
 
+import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -174,16 +175,39 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
           value={content.body}
         />
       );
-    case "image":
+    case "image": {
+      const isAgeGated = content.ageGatePolicy === "18_plus" && content.contentSafetyState === "adult";
+      const ageGateRequiresProof = isAgeGated && content.ageGateViewerState !== "verified_allowed";
       return (
         <figure className={className}>
           <div className="overflow-hidden rounded-lg">
-            <img
-              alt={content.alt}
-              className="w-full object-cover"
-              src={content.src}
-              style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
-            />
+            {ageGateRequiresProof ? (
+              <div
+                className="flex w-full items-center justify-center bg-muted"
+                style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
+              >
+                <div className="flex flex-col items-center gap-3 p-6 text-center">
+                  <p className={cn("text-muted-foreground", postCardType.label)}>
+                    18+ content
+                  </p>
+                  <Button
+                    size="sm"
+                    className="h-8 px-4 font-medium"
+                    onClick={content.onVerifyAge}
+                    disabled={!content.onVerifyAge}
+                  >
+                    Verify Age
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <img
+                alt={content.alt}
+                className="w-full object-cover"
+                src={content.src}
+                style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
+              />
+            )}
           </div>
           {content.caption && (
             <figcaption
@@ -196,6 +220,7 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
           )}
         </figure>
       );
+    }
     case "video":
       return (
         <React.Suspense fallback={<VideoPostContentFallback className={className} />}>

@@ -63,4 +63,16 @@ describe("deriveVideoUI", () => {
       hasEntitlement: true,
     }).canPlay).toBe(true);
   });
+
+  test("allows verified viewers through the age gate", () => {
+    const ui = deriveVideoUI({
+      ...baseVideo,
+      ageGatePolicy: "18_plus",
+      ageGateViewerState: "verified_allowed",
+      contentSafetyState: "adult",
+    });
+
+    expect(ui.ageGateRequiresProof).toBe(false);
+    expect(ui.canPlay).toBe(true);
+  });
 });

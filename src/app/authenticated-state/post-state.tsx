@@ -362,6 +362,15 @@ export function usePost(
     });
   }, [api.posts.vote, post, runGatedCommunityAction]);
 
+  const markAgeGateVerified = React.useCallback(() => {
+    setPost((current) => current
+      ? {
+          ...current,
+          age_gate_viewer_state: "verified_allowed",
+        }
+      : current);
+  }, []);
+
   React.useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -518,6 +527,7 @@ export function usePost(
     createTopLevelComment,
     error,
     gateModal,
+    markAgeGateVerified,
     loading,
     voteOnPost,
     commentSort,

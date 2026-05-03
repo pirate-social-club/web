@@ -61,7 +61,7 @@ export function deriveVideoUI(content: VideoContentSpec): DerivedVideoUI {
   } = content;
 
   const isAgeGated = ageGatePolicy === "18_plus" && contentSafetyState === "adult";
-  const ageGateRequiresProof = isAgeGated && ageGateViewerState !== "verified_blocked";
+  const ageGateRequiresProof = isAgeGated && ageGateViewerState !== "verified_allowed";
   const isLocked = accessMode === "locked";
 
   const showLockedThumbnail = isLocked && !hasEntitlement;

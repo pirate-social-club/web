@@ -5,15 +5,17 @@ import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contra
 import { SlidersHorizontal } from "@phosphor-icons/react";
 
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
-import { useSession } from "@/lib/api/session-store";
+import { updateSessionUser, useSession } from "@/lib/api/session-store";
 import { navigate } from "@/app/router";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
 import { ContentRailShell } from "@/components/compositions/app/content-rail-shell/content-rail-shell";
 import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
 import { PostThread } from "@/components/compositions/posts/post-thread/post-thread";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { ResponsiveOptionSelect } from "@/components/compositions/system/responsive-option-select/responsive-option-select";
 import { IconButton } from "@/components/primitives/icon-button";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useApi } from "@/lib/api";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { useUiLocale } from "@/lib/ui-locale";
 
@@ -27,6 +29,7 @@ import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "
 import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
 import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import { usePost } from "@/app/authenticated-state/post-state";
+import { useSelfVerification } from "@/lib/verification/use-self-verification";
 
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
@@ -63,6 +66,7 @@ function MobileThreadShell({
 }
 
 export function PostPage({ postId }: { postId: string }) {
+  const api = useApi();
   const session = useSession();
   const isMobile = useIsMobile();
   const { locale } = useUiLocale();
@@ -81,7 +85,35 @@ export function PostPage({ postId }: { postId: string }) {
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, comments, commentCount, createTopLevelComment, error, gateModal, loading, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, comments, commentCount, createTopLevelComment, error, gateModal, markAgeGateVerified, loading, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const {
+    handleModalOpenChange: handleAgeSelfModalOpenChange,
+    handleSelfQrError: handleAgeSelfQrError,
+    handleSelfQrSuccess: handleAgeSelfQrSuccess,
+    selfError: ageSelfError,
+    selfModalOpen: ageSelfModalOpen,
+    selfPrompt: ageSelfPrompt,
+    startVerification: startAgeSelfVerification,
+  } = useSelfVerification({
+    completeErrorMessage: "Could not complete age verification.",
+    locale,
+    onVerified: async () => {
+      if (session) {
+        const refreshedUser = await api.users.getMe();
+        updateSessionUser(refreshedUser);
+      }
+      markAgeGateVerified();
+    },
+    startErrorMessage: "Could not start age verification.",
+    storageKey: `pirate_pending_self_age_gate:${postId}`,
+    verificationIntent: "community_join",
+  });
+  const handleVerifyAge = React.useCallback(() => {
+    void startAgeSelfVerification({
+      requestedCapabilities: ["age_over_18"],
+      unavailableMessage: "Age verification is required to view 18+ content.",
+    });
+  }, [startAgeSelfVerification]);
   const commerceEnabled = Boolean(
     session?.user?.id
       && community?.id
@@ -172,6 +204,7 @@ export function PostPage({ postId }: { postId: string }) {
     : undefined;
   const localizedPostCard = toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
     commentCountOverride: commentCount,
+    onVerifyAge: handleVerifyAge,
     onVote: voteOnPost,
     showOriginalLabel: copy.common.showOriginal,
     showTranslationLabel: copy.common.showTranslation,
@@ -179,6 +212,7 @@ export function PostPage({ postId }: { postId: string }) {
   const originalPostCard = shouldShowOriginalPost(post)
     ? toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
       commentCountOverride: commentCount,
+      onVerifyAge: handleVerifyAge,
       onVote: voteOnPost,
       preferOriginalText: true,
       showOriginalLabel: copy.common.showOriginal,
@@ -209,6 +243,20 @@ export function PostPage({ postId }: { postId: string }) {
   const threadBody = (
     <>
       {gateModal}
+      {ageSelfPrompt ? (
+        <SelfVerificationModal
+          actionLabel={ageSelfPrompt.actionLabel}
+          description={ageSelfPrompt.description}
+          error={ageSelfError}
+          href={ageSelfPrompt.href}
+          onOpenChange={handleAgeSelfModalOpenChange}
+          onQrError={handleAgeSelfQrError}
+          onQrSuccess={handleAgeSelfQrSuccess}
+          open={ageSelfModalOpen}
+          selfApp={ageSelfPrompt.selfApp}
+          title={ageSelfPrompt.title}
+        />
+      ) : null}
       {purchaseModal}
       <ContentRailShell rail={!isMobile && threadSidebarProps ? <CommunitySidebar {...threadSidebarProps} /> : undefined} reserveRail={!isMobile}>
         <PostThread

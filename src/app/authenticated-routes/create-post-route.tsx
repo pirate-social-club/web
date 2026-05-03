@@ -369,19 +369,24 @@ export function CreatePostPage({
     }
   }, [veryPostVerificationError]);
 
+  const hasPostingAccess =
+    state.isCommunityOwner || state.eligibility?.status === "already_joined";
   const uniqueHumanVerified =
-    state.isCommunityOwner ||
+    hasPostingAccess ||
     state.session?.user.verification_capabilities.unique_human.state ===
       "verified";
 
   const selfVerificationRequest = React.useMemo(
     () =>
       getSelfVerificationRequestForGates({
-        gates: state.community?.membership_gate_summaries ?? [],
+        gates: hasPostingAccess
+          ? []
+          : state.community?.membership_gate_summaries ?? [],
         includeUniqueHuman: true,
         verificationCapabilities: state.session?.user.verification_capabilities,
       }),
     [
+      hasPostingAccess,
       state.community?.membership_gate_summaries,
       state.session?.user.verification_capabilities,
     ],
@@ -390,7 +395,7 @@ export function CreatePostPage({
     hasSelfDocumentFactVerificationRequest(selfVerificationRequest);
 
   const handleSubmit = React.useCallback(async () => {
-    if (state.isCommunityOwner) {
+    if (hasPostingAccess) {
       await state.handleSubmit();
       return;
     }
@@ -421,7 +426,7 @@ export function CreatePostPage({
     startSelfVerification,
     startVeryPostVerification,
     state.handleSubmit,
-    state.isCommunityOwner,
+    hasPostingAccess,
     uniqueHumanVerified,
     verifyRequiredDescription,
   ]);

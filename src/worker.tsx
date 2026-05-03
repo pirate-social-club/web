@@ -331,9 +331,23 @@ async function resolveRouteSeoMetadata(input: {
         input.locale,
         input.signal,
       );
+      let community: PublicCommunityPreviewResponse | null = null;
+      const communityId = postResponse.post.community;
+      if (communityId) {
+        try {
+          community = await fetchPublicJson<PublicCommunityPreviewResponse>(
+            input.apiOrigin,
+            `/public-communities/${encodeURIComponent(communityId)}`,
+            input.locale,
+            input.signal,
+          );
+        } catch {
+          community = null;
+        }
+      }
       return buildPostSeoMetadata({
         appOrigin: input.appOrigin,
-        community: null,
+        community,
         locale: input.locale,
         postResponse,
       });

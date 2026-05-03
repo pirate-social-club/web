@@ -2,6 +2,7 @@ export const SETTINGS_SECTIONS = ["profile", "domains", "preferences", "agents"]
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 export const COMMUNITY_MODERATION_SECTIONS = [
+  "queue",
   "profile",
   "rules",
   "links",

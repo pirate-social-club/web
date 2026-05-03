@@ -81,7 +81,7 @@ export function toHomeFeedItem(
         },
         timestampLabel: formatRelativeTimestamp(post.created),
       },
-      content: toCommunityPostContent(postResponse, songOptions),
+      content: toCommunityPostContent(postResponse, songOptions, opts),
       engagement: {
         commentCount: getPostCommentCount(postResponse),
         score: getPostScore(postResponse),
@@ -109,7 +109,7 @@ export function toHomeFeedItem(
   const originalPost = canShowOriginalToggle(postResponse, opts)
     ? withTranslationToggleProps({
       ...localizedPost,
-      content: toCommunityPostContent(postResponse, songOptions, { preferOriginalText: true }),
+      content: toCommunityPostContent(postResponse, songOptions, { ...opts, preferOriginalText: true }),
       title: post.title ?? undefined,
       titleDir: undefined,
       titleLang: undefined,

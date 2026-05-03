@@ -258,12 +258,22 @@ export function PublicCommunityRoutePage({
     locale,
     onVerified: () => {
       invalidateCommunityGate(communityId);
+      setPosts((current) => current.map((post) => ({
+        ...post,
+        age_gate_viewer_state: "verified_allowed",
+      })));
       toast.success(copy.publicCommunity.verificationCompleted);
     },
     startErrorMessage: copy.publicCommunity.verificationStartFailed,
     storageKey: `pirate_pending_self_join_session:${communityId}`,
     verificationIntent: "community_join",
   });
+  const handleVerifyAge = React.useCallback(() => {
+    void startSelfVerificationFlow({
+      requestedCapabilities: ["age_over_18"],
+      unavailableMessage: "Age verification is required to view 18+ content.",
+    });
+  }, [startSelfVerificationFlow]);
 
   React.useEffect(() => {
     if (veryError) {
@@ -648,6 +658,7 @@ export function PublicCommunityRoutePage({
         headerAction={headerAction}
         items={posts.map((post) => toCommunityFeedItem(post, authorProfiles, undefined, {
           onComment: () => navigate(`/p/${post.post.id}`),
+          onVerifyAge: handleVerifyAge,
           onVote: (direction) => void voteOnPost(post.post.id, direction),
           showOriginalLabel: copy.common.showOriginal,
           showTranslationLabel: copy.common.showTranslation,

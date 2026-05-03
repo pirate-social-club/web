@@ -1,3 +1,4 @@
+import * as React from "react";
 import { ArrowSquareOut } from "@phosphor-icons/react";
 
 import { getLocaleMessages } from "@/locales";
@@ -228,7 +229,7 @@ function formatEmbedSource(content: EmbedContent, copy: RoutesMessages["common"]
     return "YouTube";
   }
 
-  return formatXSource(preview, copy.onYouTube);
+  return formatXSource(preview, copy.onX);
 }
 
 function resolveEmbedText(content: EmbedContent, copy: RoutesMessages["common"]): string {
@@ -585,9 +586,81 @@ function OfficialYouTubeEmbed({ content, className }: { content: EmbedContent; c
   );
 }
 
+const X_EMBED_MIN_HEIGHT = 200;
+const X_EMBED_MAX_HEIGHT = 800;
+const X_EMBED_FALLBACK_HEIGHT = 400;
+
+function useIsClient(): boolean {
+  const [isClient, setIsClient] = React.useState(false);
+  React.useEffect(() => setIsClient(true), []);
+  return isClient;
+}
+
+function resolveXTweetId(canonicalUrl: string): string | null {
+  try {
+    const pathname = new URL(canonicalUrl).pathname;
+    const lastSegment = pathname.split("/").filter(Boolean).pop();
+    if (lastSegment && /^\d+$/.test(lastSegment)) return lastSegment;
+  } catch {}
+  return null;
+}
+
+function useXTweetEmbedHeight(): number {
+  const [height, setHeight] = React.useState(X_EMBED_FALLBACK_HEIGHT);
+  React.useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.origin !== "https://platform.twitter.com" && event.origin !== "https://platform.x.com") return;
+      const data = event.data;
+      if (typeof data !== "object" || data === null) return;
+      const resize = data?.["twttr.embed"]?.params?.[0];
+      if (typeof resize?.height === "number") {
+        const clamped = Math.min(X_EMBED_MAX_HEIGHT, Math.max(X_EMBED_MIN_HEIGHT, Math.round(resize.height)));
+        setHeight(clamped);
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+  return height;
+}
+
 export function OfficialOEmbed({ content, className }: { content: EmbedContent; className?: string }) {
-  if (content.provider === "youtube") {
-    return <OfficialYouTubeEmbed content={content} className={className} />;
+  const isClient = useIsClient();
+  const xEmbedHeight = useXTweetEmbedHeight();
+
+  if (!isClient || content.provider === "youtube") {
+    return <PostEmbedPreview content={content} className={className} />;
+  }
+
+  if (content.provider === "x") {
+    if (content.state !== "embed") {
+      return <PostEmbedPreview content={content} className={className} />;
+    }
+
+    const tweetId = resolveXTweetId(content.canonicalUrl);
+    if (!tweetId) {
+      return <PostEmbedPreview content={content} className={className} />;
+    }
+
+    const embedUrl = `https://platform.twitter.com/embed/Tweet.html?id=${encodeURIComponent(tweetId)}&dnt=true&theme=dark`;
+
+    return (
+      <div
+        className={cn("mx-auto w-full max-w-[550px] overflow-hidden rounded-lg border border-border-soft bg-card transition-[height] duration-200", className)}
+        style={{ height: xEmbedHeight }}
+      >
+        <iframe
+          allow="autoplay; fullscreen"
+          className="size-full border-0"
+          data-post-card-interactive="true"
+          loading="lazy"
+          referrerPolicy="strict-origin-when-cross-origin"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+          src={embedUrl}
+          title={content.preview?.text?.trim() || defaultRouteCopy.common.xPost}
+        />
+      </div>
+    );
   }
 
   if (content.state !== "embed" || !content.oembedHtml) {

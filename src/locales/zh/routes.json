@@ -66,6 +66,7 @@
     "settled": "已结算",
     "youtubeVideoUnavailable": "此 YouTube 视频不可用。",
     "xPostUnavailable": "此 X 帖子不可用。",
+    "onX": "在 X 上",
     "onYouTube": "在 YouTube 上",
     "downloadAppPrompt": "下载 {appName} 应用：",
     "downloadFor": "下载 {appName} 的 {platform} 版本",

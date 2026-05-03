@@ -100,7 +100,11 @@ function LinkPreviewCard({ content }: { content: LinkContent }) {
             >
               {content.previewTitle}
             </p>
-          ) : null}
+          ) : (
+            <p className={cn(postCardType.title, "line-clamp-2 font-semibold text-primary underline decoration-primary/40 underline-offset-2")}>
+              {content.href}
+            </p>
+          )}
           {summaryBullets.length > 0 ? (
             <ul className="mt-2 space-y-1 ps-4 text-foreground/85">
               {summaryBullets.map((point, index) => (

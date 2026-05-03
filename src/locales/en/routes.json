@@ -66,6 +66,7 @@
     "settled": "Settled",
     "youtubeVideoUnavailable": "This YouTube video is unavailable.",
     "xPostUnavailable": "This X post is unavailable.",
+    "onX": "on X",
     "onYouTube": "on YouTube",
     "downloadAppPrompt": "Download {appName} app:",
     "downloadFor": "Download {appName} for {platform}",

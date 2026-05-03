@@ -98,7 +98,7 @@ export function canAdvanceComposerWriteStep({
   if (mode === "image") return title.trim().length > 0 && imageUploadPresent;
   if (mode === "link") return isValidHttpUrl(linkUrl);
   if (mode === "live") return true;
-  return title.trim().length > 0 && body.trim().length > 0;
+  return title.trim().length > 0;
 }
 
 export function normalizePriceInput(value: string) {

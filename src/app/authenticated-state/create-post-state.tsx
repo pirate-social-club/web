@@ -423,7 +423,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setSelectedQualifierIds((current) => current.filter((qualifierId) => allowedQualifierIds.has(qualifierId)));
   }, [availableIdentityQualifiers]);
 
-  const canSubmitText = title.trim().length > 0 && body.trim().length > 0;
+  const canSubmitText = title.trim().length > 0;
   const canSubmitSong = Boolean(songState.primaryAudioUpload && lyrics.trim());
   const canSubmitLink = isValidHttpUrl(linkUrl);
   const canSubmitImage = title.trim().length > 0 && Boolean(imageUpload);
@@ -630,7 +630,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           disclosed_qualifier_ids: disclosedQualifierIds,
           translation_policy: "machine_allowed",
           title: title.trim(),
-          body: body.trim(),
+          body: body.trim() || undefined,
           visibility: audience.visibility,
         };
         result = await api.communities.createPost(

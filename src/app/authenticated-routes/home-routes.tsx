@@ -261,8 +261,8 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           communityLabel: community.display_name,
           communityHref: buildCommunityPath(communityId, community.route_slug),
           avatarSrc: community.avatar_ref ?? null,
-          metricCount: community.view_count ?? community.follower_count ?? 0,
-          metricLabel: copy.common.viewsLabel,
+          metricCount: community.follower_count ?? 0,
+          metricLabel: copy.community.followersLabel,
         };
       })
       .sort((a, b) => b.metricCount - a.metricCount)

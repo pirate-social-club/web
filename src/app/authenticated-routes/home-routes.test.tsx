@@ -82,7 +82,6 @@ function createFeedItem(overrides: { postId?: string; postType?: LocalizedPostRe
       avatar_ref: null,
       member_count: 1,
       follower_count: 1,
-      view_count: 1,
     },
     post: createPostResponse(overrides),
   } as unknown as HomeFeedItem;
@@ -97,7 +96,7 @@ function createTopCommunity(overrides: Partial<HomeFeedCommunitySummary> = {}): 
     avatar_ref: null,
     member_count: null,
     follower_count: 7,
-    view_count: 7,
+    view_count: null,
     ...overrides,
   };
 }
@@ -151,7 +150,7 @@ describe("useHomeFeed", () => {
     expect(result.current.feedEntries.length).toBe(1);
     expect(result.current.feedEntries[0]?.post.post.id).toBe("pst_1");
     expect(result.current.topCommunities.length).toBe(1);
-    expect(result.current.topCommunities[0]?.view_count).toBe(7);
+    expect(result.current.topCommunities[0]?.follower_count).toBe(7);
     expect(Object.keys(result.current.authorProfiles).length).toBe(0);
     expect(Object.keys(result.current.listingsByAssetId).length).toBe(0);
     expect(Object.keys(result.current.purchasesByAssetId).length).toBe(0);

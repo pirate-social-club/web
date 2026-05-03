@@ -974,8 +974,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "agents": "Agents",
           "machineAccess": "Machine access",
           "namespace": "Namespace",
+          "queue": "Queue",
           "communitySection": "Community",
           "accessSection": "Access",
+          "moderationSection": "Moderation",
           "verificationSection": "Verification"
         },
         "rules": {
@@ -2537,8 +2539,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "agents": "الوكلاء",
           "machineAccess": "وصول الآلات",
           "namespace": "مساحة الاسم",
+          "queue": "القائمة",
           "communitySection": "المجتمع",
           "accessSection": "الوصول",
+          "moderationSection": "الإشراف",
           "verificationSection": "التحقق"
         },
         "rules": {
@@ -4100,8 +4104,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           "agents": "代理",
           "machineAccess": "机器访问",
           "namespace": "命名空间",
+          "queue": "队列",
           "communitySection": "社区",
           "accessSection": "访问",
+          "moderationSection": "管理",
           "verificationSection": "验证"
         },
         "rules": {

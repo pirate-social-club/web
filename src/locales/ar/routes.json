@@ -856,8 +856,10 @@
       "agents": "الوكلاء",
       "machineAccess": "وصول الآلات",
       "namespace": "مساحة الاسم",
+      "queue": "القائمة",
       "communitySection": "المجتمع",
       "accessSection": "الوصول",
+      "moderationSection": "الإشراف",
       "verificationSection": "التحقق"
     },
     "rules": {

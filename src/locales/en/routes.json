@@ -856,8 +856,10 @@
       "agents": "Agents",
       "machineAccess": "Machine access",
       "namespace": "Namespace",
+      "queue": "Queue",
       "communitySection": "Community",
       "accessSection": "Access",
+      "moderationSection": "Moderation",
       "verificationSection": "Verification"
     },
     "rules": {

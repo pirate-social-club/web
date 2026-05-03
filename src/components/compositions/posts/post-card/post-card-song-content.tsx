@@ -39,7 +39,7 @@ interface DerivedSongUI {
   primaryAction: "play" | "pause" | "buffering" | "preview" | "locked";
 }
 
-function deriveSongUI(content: SongContentSpec): DerivedSongUI {
+export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   const {
     playbackState = "idle",
     accessMode,
@@ -75,7 +75,7 @@ function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   // Commerce UI
   const showPrice = isListed && isListingActive && !isOwned && isLocked;
   const showUnlock = isLocked && !isOwned && (!isListed || !isListingActive);
-  const showOwned = isOwned;
+  const showOwned = isLocked && isOwned;
   
   // Attribution
   const showAttribution = !!(songMode === "remix" && upstreamAttributions && upstreamAttributions.length > 0);

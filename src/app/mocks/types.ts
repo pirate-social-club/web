@@ -1,5 +1,4 @@
 import type { CreateCommunityComposerProps } from "@/components/compositions/community/create-composer/create-community-composer.types";
-import type { OnboardingRedditBootstrapProps } from "@/components/compositions/onboarding/reddit-bootstrap/onboarding-reddit-bootstrap.types";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import type {
   ProfileCommentItem,
@@ -46,7 +45,6 @@ export interface ProfileSummary {
   scrobbles: ProfileScrobbleItem[];
 }
 
-export type OnboardingSample = OnboardingRedditBootstrapProps;
 export type CreateCommunitySample = CreateCommunityComposerProps;
 
 export const CURRENT_USER_ID = "usr_01_suspicious_code";

@@ -213,12 +213,6 @@ export function VerifyNamespaceModalView({
             </>
           ) : null}
 
-          {resuming ? (
-            <div className="flex items-center justify-center py-8 text-base text-muted-foreground">
-              {mc.resuming}
-            </div>
-          ) : null}
-
           {(isDnsSetupRequired || isChallengeReady || isChallengePending || isVerifying) &&
           isHns &&
           hnsMode ? (

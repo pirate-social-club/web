@@ -9,7 +9,7 @@ import { Feed } from "@/components/compositions/posts/feed/feed";
 import { AppHeader } from "@/components/compositions/app/app-shell-chrome/app-header";
 import { CommunityAgentPolicyPage } from "@/components/compositions/community/agent-policy/community-agent-policy";
 import { NotificationInboxPage } from "@/components/compositions/notifications/inbox-page/notification-inbox-page";
-import { OnboardingRedditBootstrap } from "@/components/compositions/onboarding/reddit-bootstrap/onboarding-reddit-bootstrap";
+import { DomainsTab } from "@/components/compositions/settings/settings-page/panels/settings-page-domains-tab";
 import { AppSidebar } from "@/components/compositions/app/app-sidebar/app-sidebar";
 import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
 import {
@@ -271,19 +271,14 @@ describe("composition smoke tests", () => {
     expect(markup).toContain("هذا تعليق مترجم.");
   });
 
-  test("renders onboarding without a browser environment", () => {
+  test("renders domains tab without a browser environment", () => {
     const markup = render(
-      <OnboardingRedditBootstrap
-        canSkip
-        generatedHandle="captainhook.pirate"
-        handleSuggestion={{
-          suggestedLabel: "captainhook",
-          source: "verified_reddit_username",
-          availability: "available",
-        }}
+      <DomainsTab
+        currentHandle="captainhook.pirate"
+        handleTier="standard"
+        redditImportDone={false}
+        redditVerification={{ usernameValue: "captainhook", verificationState: "not_started" }}
         importJob={{ status: "not_started" }}
-        phase="choose_name"
-        reddit={{ usernameValue: "captainhook", verificationState: "not_started" }}
       />,
     );
 

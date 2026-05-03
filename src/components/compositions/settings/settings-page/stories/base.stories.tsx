@@ -142,6 +142,18 @@ const baseArgs: SettingsPageProps = {
     ],
     submitState: { kind: "idle" },
   },
+  domains: {
+    currentHandle: "captainblackbeard.pirate",
+    handleTier: "standard",
+    redditImportDone: false,
+    redditVerification: {
+      usernameValue: "",
+      verificationState: "not_started",
+    },
+    importJob: {
+      status: "not_started",
+    },
+  },
 };
 
 const meta = {

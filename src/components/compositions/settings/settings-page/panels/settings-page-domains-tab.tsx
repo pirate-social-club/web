@@ -4,8 +4,8 @@ import * as React from "react";
 import {
   ArrowSquareOut,
   ArrowsClockwise,
+  CaretRight,
   Check,
-  Flag,
   RedditLogo,
   X,
 } from "@phosphor-icons/react";
@@ -18,18 +18,44 @@ import { Input } from "@/components/primitives/input";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
-import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
+import { getLocaleMessages } from "@/locales";
 import type { RoutesMessages } from "@/locales";
 
 import type {
   ImportJobState,
-  OnboardingRedditBootstrapProps,
   RedditImportSummaryState,
   RedditVerificationState,
-} from "./onboarding-reddit-bootstrap.types";
+  HandleSuggestion,
+} from "@/components/compositions/onboarding/reddit-bootstrap/onboarding-reddit-bootstrap.types";
+
+import { SettingsSection } from "./settings-page-panel-primitives";
 
 type OnboardingCopy = RoutesMessages["onboarding"];
+
+export type DomainsTabPhase = "options" | "import_karma" | "choose_name";
+
+export interface DomainsTabProps {
+  currentHandle: string;
+  handleTier: "generated" | "standard" | "premium";
+  redditImportDone: boolean;
+  busy?: boolean;
+  phaseError?: string | null;
+  phase?: DomainsTabPhase;
+  redditVerification: RedditVerificationState;
+  importJob: ImportJobState;
+  redditImportSummary?: RedditImportSummaryState | null;
+  generatedHandle?: string;
+  handleSuggestion?: HandleSuggestion;
+  onPhaseChange?: (phase: DomainsTabPhase) => void;
+  onRedditUsernameChange?: (value: string) => void;
+  onImportKarmaNext?: () => void;
+  onImportKarmaSkip?: () => void;
+  onHandleChange?: (value: string) => void;
+  onGenerateHandle?: () => void;
+  onChooseNameContinue?: () => void;
+  onChooseNameBack?: () => void;
+}
 
 function formatMessage(template: string, replacements: Record<string, string>) {
   return template.replace(/\{(\w+)\}/gu, (_, key: string) => replacements[key] ?? `{${key}}`);
@@ -44,6 +70,15 @@ function extractVerificationCode(hint: string | undefined): string | null {
   return hint.trim() || null;
 }
 
+function resolveTierLabel(tier: string): string {
+  switch (tier) {
+    case "generated": return "Auto-generated";
+    case "standard": return "Standard";
+    case "premium": return "Premium";
+    default: return tier;
+  }
+}
+
 function resolveDomainEligibilityLength(importedScore: number | null | undefined): string {
   if (typeof importedScore === "number" && Number.isFinite(importedScore)) {
     if (importedScore >= 100_000) return "5";
@@ -51,13 +86,6 @@ function resolveDomainEligibilityLength(importedScore: number | null | undefined
     if (importedScore >= 10_000) return "7";
   }
   return "8+";
-}
-
-function resolveRedditProfileHref(username: string | undefined): string {
-  const normalizedUsername = username?.trim().replace(/^u\//iu, "");
-  if (!normalizedUsername) return "https://www.reddit.com/settings/profile";
-
-  return `https://www.reddit.com/user/${encodeURIComponent(normalizedUsername)}/`;
 }
 
 function formatCheckedTime(value: string | undefined): string | null {
@@ -70,39 +98,7 @@ function formatCheckedTime(value: string | undefined): string | null {
   });
 }
 
-function OnboardingCardHeader({
-  icon,
-  subtitle,
-  title,
-}: {
-  icon?: React.ReactNode;
-  subtitle?: string;
-  title: string;
-}) {
-  return (
-    <div className="space-y-3 text-start">
-      <div className="flex items-center gap-3">
-        <span
-          aria-hidden="true"
-          className="grid size-12 shrink-0 place-items-center rounded-full border border-border-soft bg-muted/45 text-foreground"
-        >
-          {icon ?? <RedditLogo className="size-7" weight="fill" />}
-        </span>
-        <Type as="h2" variant="h2" className="min-w-0 leading-7 sm:leading-8">
-          {title}
-        </Type>
-      </div>
-      {subtitle ? (
-        <Type as="p" variant="body" className="w-full max-w-none leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-          {subtitle}
-        </Type>
-      ) : null}
-    </div>
-  );
-}
-
 function Footer({
-  fixedBottom = false,
   nextLabel,
   skipLabel,
   skipDisabled,
@@ -112,7 +108,6 @@ function Footer({
   onNext,
   copy,
 }: {
-  fixedBottom?: boolean;
   nextLabel?: string;
   skipLabel?: string;
   skipDisabled?: boolean;
@@ -122,28 +117,6 @@ function Footer({
   onNext: () => void;
   copy: OnboardingCopy;
 }) {
-  if (fixedBottom) {
-    return (
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border-soft bg-background/95 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl">
-        <div className={cn("grid gap-3 px-4", onSkip && "sm:grid-cols-2")}>
-          {onSkip ? (
-            <Button className="h-14 w-full text-lg" disabled={skipDisabled} onClick={onSkip} variant="outline">
-              {skipLabel ?? copy.actions.skip}
-            </Button>
-          ) : null}
-          <Button
-            className="h-14 w-full text-lg"
-            disabled={nextDisabled}
-            loading={nextLoading}
-            onClick={onNext}
-          >
-            {nextLabel ?? copy.actions.next}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={onSkip ? "grid gap-3 pt-3 sm:grid-cols-2" : "grid gap-3 pt-3"}>
       {onSkip ? (
@@ -165,7 +138,6 @@ function Footer({
 
 function ImportKarmaPhase({
   busy = false,
-  footerFixedBottom = false,
   phaseError,
   reddit,
   importJob,
@@ -178,7 +150,6 @@ function ImportKarmaPhase({
   copy,
 }: {
   busy?: boolean;
-  footerFixedBottom?: boolean;
   phaseError?: string | null;
   reddit: RedditVerificationState;
   importJob: ImportJobState;
@@ -193,21 +164,23 @@ function ImportKarmaPhase({
   const isVerified = reddit.verificationState === "verified";
   const isChecking = reddit.verificationState === "checking";
   const isFailed = reddit.verificationState === "failed" || reddit.verificationState === "rate_limited";
-  const isCodeReady = reddit.verificationState === "code_ready" && reddit.verificationHint;
+  const isCodeReady = reddit.verificationState === "code_ready" && Boolean(reddit.verificationHint);
   const isImporting = importJob.status === "running" || importJob.status === "queued";
   const isImportDone = importJob.status === "succeeded" || importJob.status === "partial_success";
   const showUsernameField = !isCodeReady && (!isVerified || isImporting);
   const verificationCode = extractVerificationCode(reddit.verificationHint);
   const fieldError = phaseError ?? (isFailed ? reddit.errorTitle : null);
-  const resolvedNextLabel = isImportDone
-    ? copy.actions.continue
-    : isVerified
-      ? copy.importKarmaAction
-      : isCodeReady
-        ? reddit.lastCheckedAt ? copy.actions.checkAgain : copy.actions.check
-        : copy.actions.getCode;
   const surfaceLabel = copy.surfaces[reddit.codePlacementSurface ?? "profile"];
   const checkedTime = formatCheckedTime(reddit.lastCheckedAt);
+  const checkedNote = checkedTime
+    ? formatMessage(
+        reddit.failureCode === "different_code_found"
+          ? copy.notes.checkedRedditDifferentCode
+          : copy.notes.checkedRedditAt,
+        { time: checkedTime },
+      )
+    : null;
+  const redditProfileHref = "https://www.reddit.com/settings/profile";
 
   const canNext =
     !busy && (
@@ -215,6 +188,13 @@ function ImportKarmaPhase({
       || isCodeReady
       || isImportDone
     );
+  const resolvedNextLabel = isImportDone
+    ? copy.actions.continue
+    : isVerified
+      ? copy.importKarmaAction
+      : isCodeReady
+        ? reddit.lastCheckedAt ? copy.actions.checkAgain : copy.actions.check
+        : copy.actions.getCode;
   const headerTitle = isCodeReady
     ? copy.redditImport.title
     : isImportDone
@@ -225,15 +205,27 @@ function ImportKarmaPhase({
     : isImportDone
       ? copy.redditImport.doneSubtitle
       : copy.redditImport.subtitle;
-  const redditProfileHref = footerFixedBottom
-    ? resolveRedditProfileHref(reddit.verifiedUsername ?? reddit.usernameValue)
-    : "https://www.reddit.com/settings/profile";
-  const openProfileInNewTab = !footerFixedBottom;
-  const keepFooterInline = footerFixedBottom && showUsernameField;
 
   return (
     <div className="space-y-6">
-      <OnboardingCardHeader subtitle={headerSubtitle} title={headerTitle} />
+      <div className="space-y-3 text-start">
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="grid size-12 shrink-0 place-items-center rounded-full border border-border-soft bg-muted/45 text-foreground"
+          >
+            <RedditLogo className="size-7" weight="fill" />
+          </span>
+          <Type as="h2" variant="h2" className="min-w-0 leading-7 sm:leading-8">
+            {headerTitle}
+          </Type>
+        </div>
+        {headerSubtitle ? (
+          <Type as="p" variant="body" className="w-full max-w-none leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+            {headerSubtitle}
+          </Type>
+        ) : null}
+      </div>
 
       {showUsernameField ? (
         <div className="space-y-2">
@@ -242,7 +234,7 @@ function ImportKarmaPhase({
             <span className="shrink-0 text-base text-muted-foreground">u/</span>
             <Input
               className="h-auto min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 py-0 text-start shadow-none focus-visible:border-transparent focus-visible:ring-0 disabled:opacity-80"
-              disabled={busy || !!isCodeReady || isChecking || isImporting}
+              disabled={busy || isCodeReady || isChecking || isImporting}
               dir="ltr"
               onChange={(e) => onUsernameChange?.(e.target.value)}
               placeholder={copy.placeholders.redditUsername}
@@ -273,8 +265,8 @@ function ImportKarmaPhase({
               <a
                 className="inline-flex items-center gap-1 underline underline-offset-4"
                 href={redditProfileHref}
-                rel={openProfileInNewTab ? "noreferrer" : undefined}
-                target={openProfileInNewTab ? "_blank" : undefined}
+                rel="noreferrer"
+                target="_blank"
               >
                 {copy.redditImport.redditProfileDescription}
                 <ArrowSquareOut className="size-4" />
@@ -285,9 +277,9 @@ function ImportKarmaPhase({
           {fieldError ? (
             <FormNote tone="warning">{fieldError}</FormNote>
           ) : null}
-          {!fieldError && checkedTime ? (
+          {!fieldError && checkedNote ? (
             <FormNote tone="warning">
-              {formatMessage(copy.notes.checkedRedditAt, { time: checkedTime })}
+              {checkedNote}
             </FormNote>
           ) : null}
         </div>
@@ -298,7 +290,6 @@ function ImportKarmaPhase({
       ) : null}
 
       <Footer
-        fixedBottom={footerFixedBottom && !keepFooterInline}
         nextDisabled={!canNext}
         nextLabel={nextLabel ?? resolvedNextLabel}
         nextLoading={busy || isChecking}
@@ -314,11 +305,9 @@ function ImportKarmaPhase({
 
 function ChooseNamePhase({
   busy = false,
-  footerFixedBottom = false,
   phaseError,
   canGoBack = false,
   handleSuggestion,
-  headerIcon,
   headerSubtitle,
   headerTitle,
   backLabel,
@@ -331,11 +320,9 @@ function ChooseNamePhase({
   copy,
 }: {
   busy?: boolean;
-  footerFixedBottom?: boolean;
   phaseError?: string | null;
   canGoBack?: boolean;
-  handleSuggestion?: { suggestedLabel: string; availability: string; reason?: string };
-  headerIcon?: React.ReactNode;
+  handleSuggestion?: HandleSuggestion;
   headerSubtitle?: string;
   headerTitle?: string;
   backLabel?: string;
@@ -357,18 +344,31 @@ function ChooseNamePhase({
 
   return (
     <div className="space-y-6">
-      <OnboardingCardHeader
-        icon={headerIcon ?? <Flag className="size-7" />}
-        subtitle={headerSubtitle ?? copy.claimDomain.subtitle}
-        title={headerTitle ?? copy.claimDomain.title}
-      />
+      <div className="space-y-3 text-start">
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="grid size-12 shrink-0 place-items-center rounded-full border border-border-soft bg-muted/45 text-foreground"
+          >
+            <RedditLogo className="size-7" weight="fill" />
+          </span>
+          <Type as="h2" variant="h2" className="min-w-0 leading-7 sm:leading-8">
+            {headerTitle ?? copy.claimDomain.title}
+          </Type>
+        </div>
+        {headerSubtitle ? (
+          <Type as="p" variant="body" className="w-full max-w-none leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+            {headerSubtitle}
+          </Type>
+        ) : null}
+      </div>
 
       <div className="space-y-2">
         <FormFieldLabel label={copy.claimDomain.domainLabel} />
         <div className="flex items-center gap-2">
           <div className="relative flex-1" dir="ltr">
             <Input
-              className="pe-12 text-start font-mono text-lg"
+              className="pe-16 text-start font-mono text-lg"
               dir="ltr"
               onChange={(e) => onHandleChange(e.target.value)}
               placeholder={copy.placeholders.handle}
@@ -415,7 +415,6 @@ function ChooseNamePhase({
 
       <Footer
         copy={copy}
-        fixedBottom={footerFixedBottom}
         nextDisabled={!canContinue}
         nextLabel={nextLabel ?? copy.claimDomain.title}
         nextLoading={busy}
@@ -428,103 +427,165 @@ function ChooseNamePhase({
   );
 }
 
-export function OnboardingRedditBootstrap({
-  generatedHandle,
-  canSkip,
+export function DomainsTab({
+  currentHandle,
+  handleTier,
+  redditImportDone,
   busy = false,
-  layout = "card",
   phaseError = null,
-  phase,
-  reddit,
+  phase: controlledPhase,
+  redditVerification,
   importJob,
   redditImportSummary,
+  generatedHandle,
   handleSuggestion,
-  actions = {},
-  callbacks,
-}: OnboardingRedditBootstrapProps) {
+  onPhaseChange,
+  onRedditUsernameChange,
+  onImportKarmaNext,
+  onImportKarmaSkip,
+  onHandleChange,
+  onGenerateHandle,
+  onChooseNameContinue,
+  onChooseNameBack,
+}: DomainsTabProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").onboarding;
-  const importDone = phase === "import_karma" && (
-    importJob.status === "succeeded" || importJob.status === "partial_success"
-  );
-  const canReturnToRedditImport = phase === "choose_name"
-    && importJob.status !== "succeeded"
-    && importJob.status !== "partial_success";
+  const [internalPhase, setInternalPhase] = React.useState<DomainsTabPhase>("options");
+  const phase = controlledPhase ?? internalPhase;
+  const setPhase = (next: DomainsTabPhase) => {
+    if (controlledPhase !== undefined) {
+      onPhaseChange?.(next);
+    } else {
+      setInternalPhase(next);
+    }
+  };
+
+  const importSucceeded = importJob.status === "succeeded" || importJob.status === "partial_success";
+  const importDone = phase === "import_karma" && importSucceeded;
+  const canReturnToRedditImport = phase === "choose_name" && !importSucceeded;
+
+  React.useEffect(() => {
+    if (importDone && controlledPhase === undefined) {
+      setPhase("choose_name");
+    }
+  }, [importDone]);
+
   const importedDomainEligibility = resolveDomainEligibilityLength(redditImportSummary?.importedRedditScore);
   const importedDoneSubtitle = formatMessage(copy.redditImport.doneSubtitle, {
     domainLength: importedDomainEligibility,
   });
-  const footerFixedBottom = layout === "mobile";
-  const content = (
-    <>
-      {importDone ? (
-        <ChooseNamePhase
-          busy={busy}
-          footerFixedBottom={footerFixedBottom}
-          canGoBack={false}
-          handleSuggestion={handleSuggestion}
-          handleValue={generatedHandle}
-          headerIcon={<RedditLogo className="size-7" weight="fill" />}
-          headerSubtitle={importedDoneSubtitle}
-          headerTitle={copy.redditImport.doneTitle}
-          nextLabel={actions.primaryLabel}
-          onContinue={callbacks?.onChooseNameContinue ?? (() => {})}
-          onGenerateHandle={callbacks?.onGenerateHandle ?? (() => {})}
-          onHandleChange={callbacks?.onHandleChange ?? (() => {})}
-          phaseError={phaseError}
-          copy={copy}
-        />
-      ) : phase === "import_karma" ? (
-        <ImportKarmaPhase
-          busy={busy}
-          canSkip={canSkip}
-          footerFixedBottom={footerFixedBottom}
-          importJob={importJob}
-          nextLabel={actions.primaryLabel}
-          onNext={callbacks?.onImportKarmaNext ?? (() => {})}
-          onSkip={callbacks?.onImportKarmaSkip ?? (() => {})}
-          onUsernameChange={callbacks?.onUsernameChange}
-          phaseError={phaseError}
-          reddit={reddit}
-          skipLabel={actions.tertiaryLabel}
-          copy={copy}
-        />
-      ) : null}
-      {phase === "choose_name" ? (
-        <ChooseNamePhase
-          busy={busy}
-          footerFixedBottom={footerFixedBottom}
-          backLabel={actions.tertiaryLabel}
-          canGoBack={canReturnToRedditImport}
-          handleSuggestion={handleSuggestion}
-          handleValue={generatedHandle}
-          nextLabel={actions.primaryLabel}
-          onBack={callbacks?.onChooseNameBack ?? (() => {})}
-          onContinue={callbacks?.onChooseNameContinue ?? (() => {})}
-          onGenerateHandle={callbacks?.onGenerateHandle ?? (() => {})}
-          onHandleChange={callbacks?.onHandleChange ?? (() => {})}
-          phaseError={phaseError}
-          copy={copy}
-        />
-      ) : null}
-    </>
-  );
-
-  if (layout === "mobile") {
-    return (
-      <div className="mx-auto w-full max-w-2xl">
-        {content}
-      </div>
-    );
-  }
+  const handleImportKarmaNext = () => {
+    onImportKarmaNext?.();
+    setPhase("import_karma");
+  };
+  const handleImportKarmaSkip = () => {
+    onImportKarmaSkip?.();
+    setPhase("options");
+  };
+  const handleChooseNameBack = () => {
+    onChooseNameBack?.();
+    setPhase("import_karma");
+  };
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <Card className="overflow-hidden border-border">
-        <CardContent className="p-5">
-          {content}
-        </CardContent>
-      </Card>
+    <div className="space-y-8">
+      {phase === "options" ? (
+        <SettingsSection title="Upgrade your name">
+          <Type as="p" className="text-muted-foreground">
+            Your name is {currentHandle}
+          </Type>
+
+          <Card className="overflow-hidden border-border bg-card shadow-none">
+            <div className="divide-y divide-border-soft">
+              <button
+                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-start opacity-40"
+                disabled
+                type="button"
+              >
+                <span className="flex min-w-0 flex-col items-start gap-0.5">
+                  <Type as="span" variant="label">Buy name</Type>
+                  <Type as="span" className="text-muted-foreground">
+                    Choose from available .pirate names
+                  </Type>
+                  <Type as="span" variant="caption" className="mt-0.5 text-muted-foreground">
+                    Coming later
+                  </Type>
+                </span>
+                <CaretRight className="size-5 shrink-0 text-muted-foreground" />
+              </button>
+
+              <button
+                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-start transition-colors hover:bg-muted/30"
+                disabled={redditImportDone || busy}
+                onClick={() => setPhase("import_karma")}
+                type="button"
+              >
+                <span className="flex min-w-0 flex-col items-start gap-0.5">
+                  <Type as="span" variant="label">Import Reddit</Type>
+                  <Type as="span" className="text-muted-foreground">
+                    Use your Reddit karma to unlock a better domain
+                  </Type>
+                </span>
+                <CaretRight className="size-5 shrink-0 text-muted-foreground" />
+              </button>
+            </div>
+          </Card>
+        </SettingsSection>
+      ) : null}
+
+      {phase === "import_karma" || phase === "choose_name" ? (
+        <Card className="overflow-hidden border-border bg-card shadow-none">
+          <CardContent className="p-5">
+            {importDone ? (
+              <ChooseNamePhase
+                busy={busy}
+                canGoBack={false}
+                handleSuggestion={handleSuggestion}
+                handleValue={generatedHandle ?? ""}
+                headerSubtitle={importedDoneSubtitle}
+                headerTitle={copy.redditImport.doneTitle}
+                nextLabel="Claim domain"
+                onContinue={onChooseNameContinue ?? (() => {})}
+                onGenerateHandle={onGenerateHandle ?? (() => {})}
+                onHandleChange={onHandleChange ?? (() => {})}
+                phaseError={phaseError}
+                copy={copy}
+              />
+            ) : phase === "import_karma" ? (
+              <ImportKarmaPhase
+                busy={busy}
+                canSkip
+                importJob={importJob}
+                nextLabel="Import Reddit"
+                onNext={handleImportKarmaNext}
+                onSkip={handleImportKarmaSkip}
+                onUsernameChange={onRedditUsernameChange}
+                phaseError={phaseError}
+                reddit={redditVerification}
+                skipLabel="Back"
+                copy={copy}
+              />
+            ) : (
+              <ChooseNamePhase
+                busy={busy}
+                backLabel="Back"
+                canGoBack={canReturnToRedditImport}
+                handleSuggestion={handleSuggestion}
+                handleValue={generatedHandle ?? ""}
+                headerSubtitle={importSucceeded ? importedDoneSubtitle : undefined}
+                headerTitle={importSucceeded ? copy.redditImport.doneTitle : undefined}
+                nextLabel="Claim domain"
+                onBack={handleChooseNameBack}
+                onContinue={onChooseNameContinue ?? (() => {})}
+                onGenerateHandle={onGenerateHandle ?? (() => {})}
+                onHandleChange={onHandleChange ?? (() => {})}
+                phaseError={phaseError}
+                copy={copy}
+              />
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

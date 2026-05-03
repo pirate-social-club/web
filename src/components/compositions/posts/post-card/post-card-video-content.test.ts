@@ -10,6 +10,17 @@ const baseVideo: VideoContentSpec = {
 };
 
 describe("deriveVideoUI", () => {
+  test("does not show unlocked badge for public videos", () => {
+    const ui = deriveVideoUI({
+      ...baseVideo,
+      accessMode: "public",
+      hasEntitlement: true,
+    });
+
+    expect(ui.showOwned).toBe(false);
+    expect(ui.canPlay).toBe(true);
+  });
+
   test("does not play locked video previews without entitlement", () => {
     const ui = deriveVideoUI({
       ...baseVideo,
@@ -38,6 +49,13 @@ describe("deriveVideoUI", () => {
       onPlay: () => undefined,
       src: "",
     }).canPlay).toBe(true);
+    expect(deriveVideoUI({
+      ...baseVideo,
+      accessMode: "locked",
+      hasEntitlement: true,
+      onPlay: () => undefined,
+      src: "",
+    }).showOwned).toBe(true);
 
     expect(deriveVideoUI({
       ...baseVideo,

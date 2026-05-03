@@ -23,6 +23,7 @@ export function SettingsTabNav({
     profile: copy.profileTab,
     preferences: copy.preferencesTab,
     agents: copy.agentsTab,
+    domains: copy.domainsTab,
   };
 
   const tabs = Object.keys(tabLabels) as SettingsTab[];

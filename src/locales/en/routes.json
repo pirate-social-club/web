@@ -414,7 +414,8 @@
     "importKarmaAction": "Import Reddit Karma",
     "notes": {
       "addCodeToProfile": "Paste into your Reddit profile description",
-      "checkedRedditAt": "Code not visible yet. Checked at {time}.",
+      "checkedRedditAt": "Verification code not found ({time}).",
+      "checkedRedditDifferentCode": "Different verification code found ({time}).",
       "checkingRedditNow": "Checking Reddit now...",
       "handleAvailable": "{handle}.pirate is available",
       "handleTaken": "{handle}.pirate is taken",
@@ -800,6 +801,7 @@
     "profileUpdated": "Profile updated",
     "profileTab": "Profile",
     "agentsTab": "Agents",
+    "domainsTab": "Domains",
     "removeAvatar": "Remove avatar",
     "removeCover": "Remove cover",
     "renameHandle": "Rename handle",
@@ -1093,7 +1095,6 @@
       "title": "Verify namespace",
       "description": "Attach a verified route to this community.",
       "doneLabel": "Done",
-      "resuming": "Resuming verification...",
       "publishStepLabels": [
         "Check Go",
         "Export your wallet",
@@ -1129,19 +1130,13 @@
       "failure": {
         "expired": "Verification expired. Generate a new challenge.",
         "dnsSetupRequired": "Add the Handshake records, then verify again.",
-        "hnsDefault": "Could not verify this root. Check the TXT record and try again.",
+        "hnsDefault": "Verification failed.",
         "spacesDefault": "Could not verify this root. Check the published records and try again."
       },
       "hns": {
-        "dnsSetupNote": "Add these records to your Handshake name, then verify.",
-        "dnsSetupPendingNote": "The Handshake records are not detected yet.",
-        "txtPendingNote": "Record propagation is still pending.",
-        "txtVerifyNote": "Add these records to your Handshake name, then verify.",
-        "nameserversLabel": "NS record",
-        "nameserversNote": "Update the root records where you manage the Handshake name.",
-        "challengeLabel": "Challenge",
-        "txtRecordNote": "Add this TXT record to the HNS root resource.",
-        "valueLabel": "TXT record"
+        "recordsTitle": "Add records",
+        "nameserversLabel": "NS",
+        "valueLabel": "TXT"
       },
       "shared": {
         "copied": "Copied",

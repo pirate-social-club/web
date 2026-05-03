@@ -414,7 +414,8 @@
     "importKarmaAction": "导入 Reddit Karma",
     "notes": {
       "addCodeToProfile": "把这段代码添加到你的 Reddit 个人资料简介中：",
-      "checkedRedditAt": "已在 {time} 检查 Reddit。代码还没有显示出来。保存个人资料后，等待几秒，再点击“重新检查”。",
+      "checkedRedditAt": "未找到验证码（{time}）。请把上方显示的准确代码粘贴到你的 Reddit 个人资料描述中，然后再次检查。",
+      "checkedRedditDifferentCode": "找到了不同的 Pirate 验证码（{time}）。请将其替换为上方显示的准确代码，然后再次检查。",
       "checkingRedditNow": "正在检查 Reddit...",
       "handleAvailable": "{handle}.pirate 可用",
       "handleTaken": "{handle}.pirate 已被占用",
@@ -800,6 +801,7 @@
     "profileUpdated": "资料已更新",
     "profileTab": "个人资料",
     "agentsTab": "Agents",
+    "domainsTab": "域名",
     "removeAvatar": "移除头像",
     "removeCover": "移除封面",
     "renameHandle": "重命名用户名",
@@ -1067,7 +1069,6 @@
       "title": "验证命名空间",
       "description": "为此社区附加已验证的路由。",
       "doneLabel": "完成",
-      "resuming": "继续验证中...",
       "publishStepLabels": [
         "检查 Go",
         "获取钱包导出文件",
@@ -1103,18 +1104,12 @@
       "failure": {
         "expired": "验证已过期。生成新挑战。",
         "dnsSetupRequired": "添加 Handshake 记录，然后再次验证。",
-        "hnsDefault": "无法验证此根。检查 TXT 记录后重试。",
+        "hnsDefault": "验证失败。",
         "spacesDefault": "无法验证此根。检查已发布记录后重试。"
       },
       "hns": {
-        "dnsSetupNote": "将这些记录添加到你的 Handshake 名称，然后验证。",
-        "dnsSetupPendingNote": "尚未检测到 Handshake 记录。",
-        "txtPendingNote": "记录仍在传播中。",
-        "txtVerifyNote": "将这些记录添加到你的 Handshake 名称，然后验证。",
+        "recordsTitle": "添加这些记录",
         "nameserversLabel": "Nameservers",
-        "nameserversNote": "在你管理 Handshake 名称的地方更新根记录。",
-        "challengeLabel": "挑战",
-        "txtRecordNote": "Add this TXT record to the HNS root resource.",
         "valueLabel": "值"
       },
       "shared": {

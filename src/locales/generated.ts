@@ -532,7 +532,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "importKarmaAction": "Import Reddit Karma",
         "notes": {
           "addCodeToProfile": "Paste into your Reddit profile description",
-          "checkedRedditAt": "Code not visible yet. Checked at {time}.",
+          "checkedRedditAt": "Verification code not found ({time}).",
+          "checkedRedditDifferentCode": "Different verification code found ({time}).",
           "checkingRedditNow": "Checking Reddit now...",
           "handleAvailable": "{handle}.pirate is available",
           "handleTaken": "{handle}.pirate is taken",
@@ -918,6 +919,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "profileUpdated": "Profile updated",
         "profileTab": "Profile",
         "agentsTab": "Agents",
+        "domainsTab": "Domains",
         "removeAvatar": "Remove avatar",
         "removeCover": "Remove cover",
         "renameHandle": "Rename handle",
@@ -1211,7 +1213,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "title": "Verify namespace",
           "description": "Attach a verified route to this community.",
           "doneLabel": "Done",
-          "resuming": "Resuming verification...",
           "publishStepLabels": [
             "Check Go",
             "Export your wallet",
@@ -1247,19 +1248,13 @@ export const GENERATED_LOCALE_CATALOGS = {
           "failure": {
             "expired": "Verification expired. Generate a new challenge.",
             "dnsSetupRequired": "Add the Handshake records, then verify again.",
-            "hnsDefault": "Could not verify this root. Check the TXT record and try again.",
+            "hnsDefault": "Verification failed.",
             "spacesDefault": "Could not verify this root. Check the published records and try again."
           },
           "hns": {
-            "dnsSetupNote": "Add these records to your Handshake name, then verify.",
-            "dnsSetupPendingNote": "The Handshake records are not detected yet.",
-            "txtPendingNote": "Record propagation is still pending.",
-            "txtVerifyNote": "Add these records to your Handshake name, then verify.",
-            "nameserversLabel": "NS record",
-            "nameserversNote": "Update the root records where you manage the Handshake name.",
-            "challengeLabel": "Challenge",
-            "txtRecordNote": "Add this TXT record to the HNS root resource.",
-            "valueLabel": "TXT record"
+            "recordsTitle": "Add records",
+            "nameserversLabel": "NS",
+            "valueLabel": "TXT"
           },
           "shared": {
             "copied": "Copied",
@@ -2100,7 +2095,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "importKarmaAction": "استورد كارما Reddit",
         "notes": {
           "addCodeToProfile": "أضف هذا الرمز إلى وصف ملفك الشخصي على Reddit:",
-          "checkedRedditAt": "تم فحص Reddit عند {time}. الرمز غير ظاهر بعد. احفظ ملفك الشخصي، وانتظر بضع ثوانٍ، ثم اضغط على \"تحقق مرة أخرى\".",
+          "checkedRedditAt": "لم يتم العثور على رمز التحقق ({time}). الصق الرمز الظاهر أعلاه بالضبط في وصف ملفك الشخصي على Reddit، ثم تحقق مرة أخرى.",
+          "checkedRedditDifferentCode": "تم العثور على رمز تحقق Pirate مختلف ({time}). استبدله بالرمز الظاهر أعلاه بالضبط، ثم تحقق مرة أخرى.",
           "checkingRedditNow": "جارٍ فحص Reddit الآن...",
           "handleAvailable": "الاسم {handle}.pirate متاح",
           "handleTaken": "الاسم {handle}.pirate مستخدم",
@@ -2486,6 +2482,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "profileUpdated": "تم تحديث الملف الشخصي",
         "profileTab": "الملف الشخصي",
         "agentsTab": "الوكلاء",
+        "domainsTab": "النطاقات",
         "removeAvatar": "أزل الصورة الشخصية",
         "removeCover": "أزل الغلاف",
         "renameHandle": "أعد تسمية المعرّف",
@@ -2779,7 +2776,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "title": "التحقق من مساحة الاسم",
           "description": "أرفق مسارًا موثقًا بهذا المجتمع.",
           "doneLabel": "تم",
-          "resuming": "استئناف التحقق...",
           "publishStepLabels": [
             "تحقق من Go",
             "صدّر محفظتك",
@@ -2815,18 +2811,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "failure": {
             "expired": "انتهت صلاحية التحقق. أنشئ تحديًا جديدًا.",
             "dnsSetupRequired": "أضف سجلات Handshake، ثم تحقق مرة أخرى.",
-            "hnsDefault": "تعذر التحقق من هذا الجذر. تحقق من سجل TXT وحاول مرة أخرى.",
+            "hnsDefault": "فشل التحقق.",
             "spacesDefault": "تعذر التحقق من هذا الجذر. تحقق من السجلات المنشورة وحاول مرة أخرى."
           },
           "hns": {
-            "dnsSetupNote": "أضف هذه السجلات إلى اسم Handshake، ثم تحقق.",
-            "dnsSetupPendingNote": "لم يتم اكتشاف سجلات Handshake بعد.",
-            "txtPendingNote": "انتشار السجلات لا يزال معلقًا.",
-            "txtVerifyNote": "أضف هذه السجلات إلى اسم Handshake، ثم تحقق.",
+            "recordsTitle": "أضف هذه السجلات",
             "nameserversLabel": "Nameservers",
-            "nameserversNote": "حدّث سجلات الجذر حيث تدير اسم Handshake.",
-            "challengeLabel": "التحدي",
-            "txtRecordNote": "Add this TXT record to the HNS root resource.",
             "valueLabel": "القيمة"
           },
           "shared": {
@@ -3668,7 +3658,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "importKarmaAction": "导入 Reddit Karma",
         "notes": {
           "addCodeToProfile": "把这段代码添加到你的 Reddit 个人资料简介中：",
-          "checkedRedditAt": "已在 {time} 检查 Reddit。代码还没有显示出来。保存个人资料后，等待几秒，再点击“重新检查”。",
+          "checkedRedditAt": "未找到验证码（{time}）。请把上方显示的准确代码粘贴到你的 Reddit 个人资料描述中，然后再次检查。",
+          "checkedRedditDifferentCode": "找到了不同的 Pirate 验证码（{time}）。请将其替换为上方显示的准确代码，然后再次检查。",
           "checkingRedditNow": "正在检查 Reddit...",
           "handleAvailable": "{handle}.pirate 可用",
           "handleTaken": "{handle}.pirate 已被占用",
@@ -4054,6 +4045,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "profileUpdated": "资料已更新",
         "profileTab": "个人资料",
         "agentsTab": "Agents",
+        "domainsTab": "域名",
         "removeAvatar": "移除头像",
         "removeCover": "移除封面",
         "renameHandle": "重命名用户名",
@@ -4321,7 +4313,6 @@ export const GENERATED_LOCALE_CATALOGS = {
           "title": "验证命名空间",
           "description": "为此社区附加已验证的路由。",
           "doneLabel": "完成",
-          "resuming": "继续验证中...",
           "publishStepLabels": [
             "检查 Go",
             "获取钱包导出文件",
@@ -4357,18 +4348,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "failure": {
             "expired": "验证已过期。生成新挑战。",
             "dnsSetupRequired": "添加 Handshake 记录，然后再次验证。",
-            "hnsDefault": "无法验证此根。检查 TXT 记录后重试。",
+            "hnsDefault": "验证失败。",
             "spacesDefault": "无法验证此根。检查已发布记录后重试。"
           },
           "hns": {
-            "dnsSetupNote": "将这些记录添加到你的 Handshake 名称，然后验证。",
-            "dnsSetupPendingNote": "尚未检测到 Handshake 记录。",
-            "txtPendingNote": "记录仍在传播中。",
-            "txtVerifyNote": "将这些记录添加到你的 Handshake 名称，然后验证。",
+            "recordsTitle": "添加这些记录",
             "nameserversLabel": "Nameservers",
-            "nameserversNote": "在你管理 Handshake 名称的地方更新根记录。",
-            "challengeLabel": "挑战",
-            "txtRecordNote": "Add this TXT record to the HNS root resource.",
             "valueLabel": "值"
           },
           "shared": {

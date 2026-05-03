@@ -159,6 +159,19 @@ export function CommunityNamespaceVerificationPage({
       ) : null}
     </>
   );
+  const hnsStatusMessage = flow.isVerifying
+    ? "Checking records..."
+    : flow.isDnsSetupRequired || flow.isChallengePending
+    ? "Records not found."
+    : flow.isFailed
+    ? "Verification failed."
+    : flow.isExpired
+    ? mc.failure.expired
+    : null;
+  const hnsStatusBusy = flow.isVerifying;
+  const hnsStatusTone = flow.isFailed || flow.isExpired || flow.isDnsSetupRequired || flow.isChallengePending
+    ? "warning"
+    : "muted";
 
   if (hasAttachedNamespace) {
     const publicCommunityUrl = attachedRouteSlug ? `https://pirate.sc/c/${attachedRouteSlug}` : null;
@@ -223,7 +236,7 @@ export function CommunityNamespaceVerificationPage({
     <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", isMobile && hasFooterActions && "pb-28")}>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
         <div className="flex min-w-0 items-start gap-4">
-          <Type as="h1" variant="h1" className="md:text-4xl">Import Namespace</Type>
+          <Type as="h1" variant="h1" className="md:text-4xl">Connect Name</Type>
         </div>
         {flow.isVerified ? <Button onClick={() => onBackClick?.()}>{mc.doneLabel}</Button> : null}
       </div>
@@ -269,13 +282,7 @@ export function CommunityNamespaceVerificationPage({
           </>
         ) : null}
 
-        {flow.shouldShowResumeState ? (
-          <div className="flex items-center justify-center py-12 text-base text-muted-foreground">
-            {mc.resuming}
-          </div>
-        ) : null}
-
-        {(flow.isDnsSetupRequired || flow.isChallengeReady || flow.isChallengePending || flow.isVerifying) && flow.isHns && flow.hnsMode ? (
+        {(flow.isDnsSetupRequired || flow.isChallengeReady || flow.isChallengePending || flow.isVerifying || flow.isFailed || flow.isExpired) && flow.isHns && flow.hnsMode ? (
           <NamespaceVerificationHnsPanel
             challengePending={flow.isChallengePending}
             challengeTxtValue={flow.challengeTxtValue}
@@ -284,6 +291,9 @@ export function CommunityNamespaceVerificationPage({
             rootLabel={flow.rootLabel}
             showAbandonAction={false}
             setupNameservers={flow.setupNameservers}
+            statusBusy={hnsStatusBusy}
+            statusMessage={hnsStatusMessage}
+            statusTone={hnsStatusTone}
           />
         ) : null}
 
@@ -303,7 +313,7 @@ export function CommunityNamespaceVerificationPage({
           </div>
         ) : null}
 
-        {(flow.isFailed || flow.isExpired) ? (
+        {(flow.isFailed || flow.isExpired) && !flow.isHns ? (
           <FormNote tone="warning">
             {flow.isExpired
               ? mc.failure.expired
@@ -317,9 +327,6 @@ export function CommunityNamespaceVerificationPage({
           </FormNote>
         ) : null}
 
-        {flow.isDnsSetupRequired && flow.lastCheckStatus === "dns_setup_required" ? (
-          <FormNote tone="warning">{mc.hns.dnsSetupPendingNote}</FormNote>
-        ) : null}
       </div>
 
       {hasFooterActions && isMobile ? (

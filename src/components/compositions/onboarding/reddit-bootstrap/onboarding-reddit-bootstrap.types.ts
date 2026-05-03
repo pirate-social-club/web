@@ -29,6 +29,7 @@ export interface RedditVerificationState {
   verificationHint?: string;
   codePlacementSurface?: CodePlacementSurface;
   lastCheckedAt?: string;
+  failureCode?: string;
   errorTitle?: string;
   errorBody?: string;
 }

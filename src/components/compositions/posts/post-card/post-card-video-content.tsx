@@ -65,7 +65,7 @@ export function deriveVideoUI(content: VideoContentSpec): DerivedVideoUI {
 
   const showLockedThumbnail = isLocked && !hasEntitlement;
   const showAgeGatedThumbnail = isAgeGated;
-  const showOwned = hasEntitlement === true;
+  const showOwned = isLocked && hasEntitlement === true;
 
   const showAttribution = !!(
     videoMode &&

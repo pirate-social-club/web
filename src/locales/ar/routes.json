@@ -414,7 +414,8 @@
     "importKarmaAction": "استورد كارما Reddit",
     "notes": {
       "addCodeToProfile": "أضف هذا الرمز إلى وصف ملفك الشخصي على Reddit:",
-      "checkedRedditAt": "تم فحص Reddit عند {time}. الرمز غير ظاهر بعد. احفظ ملفك الشخصي، وانتظر بضع ثوانٍ، ثم اضغط على \"تحقق مرة أخرى\".",
+      "checkedRedditAt": "لم يتم العثور على رمز التحقق ({time}). الصق الرمز الظاهر أعلاه بالضبط في وصف ملفك الشخصي على Reddit، ثم تحقق مرة أخرى.",
+      "checkedRedditDifferentCode": "تم العثور على رمز تحقق Pirate مختلف ({time}). استبدله بالرمز الظاهر أعلاه بالضبط، ثم تحقق مرة أخرى.",
       "checkingRedditNow": "جارٍ فحص Reddit الآن...",
       "handleAvailable": "الاسم {handle}.pirate متاح",
       "handleTaken": "الاسم {handle}.pirate مستخدم",
@@ -800,6 +801,7 @@
     "profileUpdated": "تم تحديث الملف الشخصي",
     "profileTab": "الملف الشخصي",
     "agentsTab": "الوكلاء",
+    "domainsTab": "النطاقات",
     "removeAvatar": "أزل الصورة الشخصية",
     "removeCover": "أزل الغلاف",
     "renameHandle": "أعد تسمية المعرّف",
@@ -1093,7 +1095,6 @@
       "title": "التحقق من مساحة الاسم",
       "description": "أرفق مسارًا موثقًا بهذا المجتمع.",
       "doneLabel": "تم",
-      "resuming": "استئناف التحقق...",
       "publishStepLabels": [
         "تحقق من Go",
         "صدّر محفظتك",
@@ -1129,18 +1130,12 @@
       "failure": {
         "expired": "انتهت صلاحية التحقق. أنشئ تحديًا جديدًا.",
         "dnsSetupRequired": "أضف سجلات Handshake، ثم تحقق مرة أخرى.",
-        "hnsDefault": "تعذر التحقق من هذا الجذر. تحقق من سجل TXT وحاول مرة أخرى.",
+        "hnsDefault": "فشل التحقق.",
         "spacesDefault": "تعذر التحقق من هذا الجذر. تحقق من السجلات المنشورة وحاول مرة أخرى."
       },
       "hns": {
-        "dnsSetupNote": "أضف هذه السجلات إلى اسم Handshake، ثم تحقق.",
-        "dnsSetupPendingNote": "لم يتم اكتشاف سجلات Handshake بعد.",
-        "txtPendingNote": "انتشار السجلات لا يزال معلقًا.",
-        "txtVerifyNote": "أضف هذه السجلات إلى اسم Handshake، ثم تحقق.",
+        "recordsTitle": "أضف هذه السجلات",
         "nameserversLabel": "Nameservers",
-        "nameserversNote": "حدّث سجلات الجذر حيث تدير اسم Handshake.",
-        "challengeLabel": "التحدي",
-        "txtRecordNote": "Add this TXT record to the HNS root resource.",
         "valueLabel": "القيمة"
       },
       "shared": {

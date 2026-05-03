@@ -1,24 +1,4 @@
-import type { CreateCommunitySample, OnboardingSample, RoutePost } from "./types";
-
-export const ONBOARDING_SAMPLE: OnboardingSample = {
-  generatedHandle: "suspicious-code-7234.pirate",
-  canSkip: true,
-  phase: "import_karma",
-  reddit: {
-    usernameValue: "technohippie",
-    verifiedUsername: "technohippie",
-    verificationState: "verified",
-  },
-  importJob: {
-    status: "succeeded",
-    sourceLabel: "Pushpull archival snapshot",
-  },
-  handleSuggestion: {
-    suggestedLabel: "technohippie",
-    source: "verified_reddit_username",
-    availability: "available",
-  },
-};
+import type { CreateCommunitySample, RoutePost } from "./types";
 
 export const CREATE_COMMUNITY_SAMPLE: CreateCommunitySample = {
   displayName: "American Voices",

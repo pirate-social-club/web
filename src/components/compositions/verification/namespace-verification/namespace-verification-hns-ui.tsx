@@ -4,48 +4,11 @@ import * as React from "react";
 
 import { Button } from "@/components/primitives/button";
 import { CopyField } from "@/components/primitives/copy-field";
-import { FormNote } from "@/components/primitives/form-layout";
+import { Spinner } from "@/components/primitives/spinner";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
-import { CheckCircle, Clock, Info, WarningCircle } from "@phosphor-icons/react";
 
 import type { NamespaceVerificationModalState } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
 import { Type } from "@/components/primitives/type";
-
-function StatusBanner({
-  icon,
-  title,
-  description,
-  tone,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description?: string;
-  tone: "warning" | "info" | "success" | "destructive";
-}) {
-  const toneClassName = {
-    warning: "border-warning/20 bg-warning/5",
-    info: "border-info/20 bg-info/5",
-    success: "border-success/20 bg-success/5",
-    destructive: "border-destructive/20 bg-destructive/5",
-  }[tone];
-
-  const iconClassName = {
-    warning: "text-warning",
-    info: "text-info",
-    success: "text-success",
-    destructive: "text-destructive",
-  }[tone];
-
-  return (
-    <div className={`flex items-start gap-3 rounded-[var(--radius-lg)] border px-4 py-3 ${toneClassName}`}>
-      <span className={`mt-0.5 shrink-0 ${iconClassName}`}>{icon}</span>
-      <div className="space-y-0.5">
-        <Type as="p" className={iconClassName} variant="label">{title}</Type>
-        {description ? <Type as="p" variant="caption">{description}</Type> : null}
-      </div>
-    </div>
-  );
-}
 
 export type HnsVerificationMode =
   | "dns_setup_required"
@@ -84,6 +47,9 @@ export function NamespaceVerificationHnsPanel({
   rootLabel,
   showAbandonAction = true,
   setupNameservers,
+  statusBusy = false,
+  statusMessage,
+  statusTone = "muted",
 }: {
   challengePending: boolean;
   challengeTxtValue: string | null;
@@ -92,6 +58,9 @@ export function NamespaceVerificationHnsPanel({
   rootLabel: string;
   showAbandonAction?: boolean;
   setupNameservers: string[] | null;
+  statusBusy?: boolean;
+  statusMessage?: string | null;
+  statusTone?: "muted" | "warning";
 }) {
   const copy = defaultRouteCopy;
   const mc = copy.moderation.namespaceVerification.hns;
@@ -99,32 +68,7 @@ export function NamespaceVerificationHnsPanel({
 
   return (
     <section className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-5 py-5">
-      {mode === "pirate_managed" ? null : (
-        <div className="space-y-3">
-          {mode === "dns_setup_required" ? (
-            <StatusBanner
-              description={mc.dnsSetupNote}
-              icon={<WarningCircle className="size-5" weight="fill" />}
-              title="DNS setup required"
-              tone="warning"
-            />
-          ) : challengePending ? (
-            <StatusBanner
-              description={mc.txtPendingNote}
-              icon={<Clock className="size-5" weight="duotone" />}
-              title="Propagation pending"
-              tone="info"
-            />
-          ) : (
-            <StatusBanner
-              description={mc.txtVerifyNote}
-              icon={<Info className="size-5" weight="fill" />}
-              title="Ready to verify"
-              tone="success"
-            />
-          )}
-        </div>
-      )}
+      <Type as="h2" variant="h3">{mc.recordsTitle}</Type>
 
       {nameservers.length > 0 ? (
         <div className="space-y-3">
@@ -137,13 +81,25 @@ export function NamespaceVerificationHnsPanel({
         </div>
       ) : null}
 
-      {mode === "owner_managed_txt" && challengeTxtValue ? (
+      {challengeTxtValue ? (
         <div className="space-y-3">
-          <FormNote>{mc.txtRecordNote}</FormNote>
           <div className="space-y-1.5">
             <Type as="div" variant="caption">{mc.valueLabel}</Type>
             <CopyField value={challengeTxtValue} />
           </div>
+        </div>
+      ) : null}
+
+      {statusMessage ? (
+        <div className="flex items-center gap-2">
+          {statusBusy ? <Spinner className="size-4 text-muted-foreground" /> : null}
+          <Type
+            as="p"
+            className={statusTone === "warning" ? "text-warning" : "text-muted-foreground"}
+            variant="caption"
+          >
+            {statusMessage}
+          </Type>
         </div>
       ) : null}
 

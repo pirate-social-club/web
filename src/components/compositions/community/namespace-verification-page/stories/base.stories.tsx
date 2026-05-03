@@ -5,7 +5,11 @@ import {
   mockNamespaceCallbacks,
   mockPirateNameservers,
 } from "@/components/compositions/community/moderation-shell/stories/story-fixtures";
-import type { NamespaceVerificationCallbacks } from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
+import type {
+  NamespaceVerificationCallbacks,
+  NamespaceVerificationStartResult,
+  NamespaceVerificationStatus,
+} from "@/components/compositions/verification/verify-namespace-modal/verify-namespace-modal.types";
 
 const meta = {
   title: "Compositions/Community/Moderation/Namespace",
@@ -22,29 +26,59 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const ownerManagedRecordsCallbacks: NamespaceVerificationCallbacks = {
-  ...mockNamespaceCallbacks,
-  onCompleteSession: async () => ({
-    status: "challenge_pending",
-    namespaceVerificationId: null,
-    failureReason: null,
-  }),
-  onGetSession: async ({ namespaceVerificationSessionId }) => ({
-    namespaceVerificationSessionId,
+function hnsSession(status: NamespaceVerificationStatus): NamespaceVerificationStartResult {
+  return {
+    namespaceVerificationSessionId: "nvs_infinity_records_stub",
     family: "hns",
     rootLabel: "infinity",
     challengeHost: "infinity",
     challengeTxtValue: "pirate-verification=nvs_infinity_records",
     challengePayload: null,
     challengeExpiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-    status: "challenge_required",
+    status,
     operationClass: null,
     pirateDnsAuthorityVerified: false,
     setupNameservers: mockPirateNameservers,
-  }),
-};
+  };
+}
+
+function hnsCallbacks(input: {
+  sessionStatus: NamespaceVerificationStatus;
+  completeStatus?: NamespaceVerificationStatus;
+  neverResolveSession?: boolean;
+}): NamespaceVerificationCallbacks {
+  return {
+    ...mockNamespaceCallbacks,
+    onCompleteSession: async () => ({
+      status: input.completeStatus ?? "challenge_pending",
+      namespaceVerificationId: null,
+      failureReason: input.completeStatus === "failed" ? "TXT record was not found." : null,
+    }),
+    onGetSession: input.neverResolveSession
+      ? async () => new Promise<NamespaceVerificationStartResult>(() => undefined)
+      : async () => hnsSession(input.sessionStatus),
+  };
+}
+
+const ownerManagedRecordsCallbacks = hnsCallbacks({
+  sessionStatus: "challenge_required",
+  completeStatus: "challenge_pending",
+});
+
+const checkingRecordsCallbacks = hnsCallbacks({
+  sessionStatus: "verifying",
+});
+
+const setupNotDetectedCallbacks = hnsCallbacks({
+  sessionStatus: "dns_setup_required",
+});
+
+const verificationFailedCallbacks = hnsCallbacks({
+  sessionStatus: "failed",
+});
 
 export const OwnerManagedRecords: Story = {
+  name: "HNS — Ready",
   render: () => (
     <CommunityNamespaceVerificationPage
       activeSessionId="nvs_infinity_records_stub"
@@ -54,7 +88,41 @@ export const OwnerManagedRecords: Story = {
   ),
 };
 
+export const CheckingRecords: Story = {
+  name: "HNS — Checking",
+  render: () => (
+    <CommunityNamespaceVerificationPage
+      activeSessionId="nvs_infinity_records_stub"
+      callbacks={checkingRecordsCallbacks}
+      initialRootLabel="infinity"
+    />
+  ),
+};
+
+export const RecordsNotFound: Story = {
+  name: "HNS — Records not found",
+  render: () => (
+    <CommunityNamespaceVerificationPage
+      activeSessionId="nvs_infinity_records_stub"
+      callbacks={setupNotDetectedCallbacks}
+      initialRootLabel="infinity"
+    />
+  ),
+};
+
+export const VerificationError: Story = {
+  name: "HNS — Verification failed",
+  render: () => (
+    <CommunityNamespaceVerificationPage
+      activeSessionId="nvs_infinity_records_stub"
+      callbacks={verificationFailedCallbacks}
+      initialRootLabel="infinity"
+    />
+  ),
+};
+
 export const AttachedNamespace: Story = {
+  name: "Connected",
   render: () => (
     <CommunityNamespaceVerificationPage
       attachedNamespaceVerificationId="nvs_abc123"

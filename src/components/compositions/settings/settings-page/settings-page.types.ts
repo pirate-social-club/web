@@ -4,8 +4,9 @@ import type {
   AgentRegistrationState,
   AgentRegistrationUnavailableReason,
 } from "@/components/compositions/settings/owned-agents-panel/owned-agents-panel.types";
+import type { DomainsTabProps } from "./panels/settings-page-domains-tab";
 
-export type SettingsTab = "profile" | "preferences" | "agents";
+export type SettingsTab = "profile" | "preferences" | "agents" | "domains";
 
 export interface SettingsHandle {
   handleId: string | null;
@@ -105,4 +106,5 @@ export interface SettingsPageProps {
     onUpdateHandle?: (agentId: string, handleLabel: string) => Promise<void> | void;
     onUpdateName?: (agentId: string, displayName: string) => Promise<void> | void;
   };
+  domains: DomainsTabProps;
 }

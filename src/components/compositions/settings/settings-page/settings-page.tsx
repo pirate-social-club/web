@@ -3,6 +3,7 @@
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   AgentsTab,
+  DomainsTab,
   PreferencesTab,
   ProfileTab,
   SettingsTabNav,
@@ -12,6 +13,7 @@ import type { SettingsPageProps } from "./settings-page.types";
 export function SettingsPage({
   activeTab,
   agents,
+  domains,
   onTabChange,
   preferences,
   profile,
@@ -27,6 +29,7 @@ export function SettingsPage({
         {activeTab === "profile" ? <ProfileTab profile={profile} /> : null}
         {activeTab === "preferences" ? <PreferencesTab preferences={preferences} /> : null}
         {activeTab === "agents" ? <AgentsTab agents={agents} /> : null}
+        {activeTab === "domains" ? <DomainsTab {...domains} /> : null}
       </div>
     </div>
   );

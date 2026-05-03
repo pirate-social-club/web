@@ -27,6 +27,10 @@ export function CurrentUserSettingsIndexPage() {
       onSelect: () => navigate(buildSettingsPath("profile")),
     },
     {
+      label: copy.settings.domainsTab,
+      onSelect: () => navigate(buildSettingsPath("domains")),
+    },
+    {
       label: copy.settings.preferencesTab,
       onSelect: () => navigate(buildSettingsPath("preferences")),
     },

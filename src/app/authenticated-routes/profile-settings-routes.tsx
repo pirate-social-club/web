@@ -30,6 +30,7 @@ import {
   getSelectedProfileHandleLabel,
   mapProfileLinkedHandles,
 } from "@/app/authenticated-helpers/profile-settings-mapping";
+import { useDomainsTab } from "@/app/authenticated-state/use-domains-tab";
 import { useSettingsOwnedAgents } from "@/app/authenticated-state/use-settings-owned-agents";
 
 export { CurrentUserWalletPage } from "./wallet-settings-route";
@@ -79,6 +80,7 @@ function getSettingsSectionTitle(
 ): string {
   if (activeTab === "profile") return copy.settings.profileTab;
   if (activeTab === "preferences") return copy.settings.preferencesTab;
+  if (activeTab === "domains") return copy.settings.domainsTab;
   return "Agents";
 }
 
@@ -141,6 +143,14 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     messages: ownedAgentsMessages,
     onStartVerification: () => {
       void startAgentOwnerVerification();
+    },
+  });
+  const domains = useDomainsTab({
+    api,
+    enabled: Boolean(profile && activeTab === "domains"),
+    messages: {
+      chooseHandleError: copy.onboarding.errors.chooseHandle,
+      renameFailedError: copy.onboarding.errors.renameFailed,
     },
   });
 
@@ -467,6 +477,27 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
       }}
       title={sectionTitle}
       agents={{ ...agents, showTitle: !isMobile }}
+      domains={{
+        currentHandle: profile.global_handle.label,
+        handleTier: profile.global_handle.tier,
+        redditImportDone: domains.redditImportDone,
+        busy: domains.busy,
+        phaseError: domains.phaseError,
+        phase: domains.phase,
+        redditVerification: domains.redditVerification,
+        importJob: domains.importJob,
+        redditImportSummary: domains.redditImportSummary ?? undefined,
+        generatedHandle: domains.generatedHandle,
+        handleSuggestion: domains.handleSuggestion,
+        onPhaseChange: domains.onPhaseChange,
+        onRedditUsernameChange: domains.onRedditUsernameChange,
+        onImportKarmaNext: domains.onImportKarmaNext,
+        onImportKarmaSkip: domains.onImportKarmaSkip,
+        onHandleChange: domains.onHandleChange,
+        onGenerateHandle: domains.onGenerateHandle,
+        onChooseNameContinue: domains.onChooseNameContinue,
+        onChooseNameBack: domains.onChooseNameBack,
+      }}
     />
   );
 

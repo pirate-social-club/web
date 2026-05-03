@@ -1,8 +1,8 @@
 export { COMMUNITY_RECORDS, HOME_POSTS, YOUR_COMMUNITIES_POSTS } from "./community-fixtures";
 export { createImagePost, createLinkPost, createProfileComment, createProfileScrobble, createSongPost, createTextPost, createVideoPost } from "./post-factories";
 export { PROFILES } from "./profile-fixtures";
-export { buildPostsById, CREATE_COMMUNITY_SAMPLE, ONBOARDING_SAMPLE } from "./scenario-fixtures";
-export type { CommunitySummary, CreateCommunitySample, OnboardingSample, ProfileSummary, RoutePost } from "./types";
+export { buildPostsById, CREATE_COMMUNITY_SAMPLE } from "./scenario-fixtures";
+export type { CommunitySummary, CreateCommunitySample, ProfileSummary, RoutePost } from "./types";
 export { COMMUNITY_IDS, CURRENT_USER_ID, USER_IDS } from "./types";
 
 import { COMMUNITY_RECORDS, HOME_POSTS, YOUR_COMMUNITIES_POSTS } from "./community-fixtures";

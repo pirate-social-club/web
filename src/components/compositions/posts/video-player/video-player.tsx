@@ -26,6 +26,7 @@ export interface VideoPlayerProps {
   playsinline?: boolean;
   loop?: boolean;
   currentTime?: number;
+  autoPlay?: boolean;
   className?: string;
   onEnded?: () => void;
 }
@@ -37,19 +38,22 @@ export function VideoPlayer({
   playsinline = true,
   loop = false,
   currentTime,
+  autoPlay = false,
   className,
   onEnded,
 }: VideoPlayerProps) {
   return (
     <MediaPlayer
       src={src}
+      poster={poster}
       title={title}
-      playsinline={playsinline}
+      autoPlay={autoPlay}
+      playsInline={playsinline}
       loop={loop}
       currentTime={currentTime}
       onEnd={onEnded}
       className={cn(
-        "vp-player relative w-full overflow-hidden rounded-lg bg-black text-white",
+        "vp-player relative aspect-video w-full overflow-hidden rounded-lg bg-black text-white",
         className,
       )}
     >
@@ -62,7 +66,7 @@ export function VideoPlayer({
           />
         )}
       </MediaProvider>
-      <DefaultVideoLayout icons={defaultLayoutIcons} />
+      <DefaultVideoLayout icons={defaultLayoutIcons} noGestures />
     </MediaPlayer>
   );
 }

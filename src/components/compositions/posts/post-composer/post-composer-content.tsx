@@ -44,6 +44,13 @@ export function VideoFramePicker({
     const video = videoRef.current;
     if (!video || !objectUrl) return;
     const seekTo = Math.min(video.duration || selectedSeconds, selectedSeconds);
+    console.debug("[post-composer] video details frame picker: seek requested", {
+      duration: video.duration,
+      frameSeconds,
+      objectUrlPrefix: objectUrl.slice(0, 32),
+      seekTo,
+      selectedSeconds,
+    });
     if (Number.isFinite(seekTo)) {
       video.currentTime = seekTo;
     }
@@ -67,6 +74,21 @@ export function VideoFramePicker({
             const duration = event.currentTarget.duration;
             setDurationSeconds(Number.isFinite(duration) ? duration : 0);
             event.currentTarget.currentTime = selectedSeconds;
+            console.debug("[post-composer] video details frame picker: metadata loaded", {
+              duration,
+              readyState: event.currentTarget.readyState,
+              selectedSeconds,
+              videoHeight: event.currentTarget.videoHeight,
+              videoWidth: event.currentTarget.videoWidth,
+            });
+          }}
+          onSeeked={(event) => {
+            console.debug("[post-composer] video details frame picker: seeked", {
+              currentTime: event.currentTarget.currentTime,
+              readyState: event.currentTarget.readyState,
+              videoHeight: event.currentTarget.videoHeight,
+              videoWidth: event.currentTarget.videoWidth,
+            });
           }}
           playsInline
           preload="metadata"

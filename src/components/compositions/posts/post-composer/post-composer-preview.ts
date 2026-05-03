@@ -12,6 +12,7 @@ export function buildPostComposerPreviewContent({
   price,
   title,
   videoDetails,
+  videoPosterSrc,
 }: {
   access: "free" | "paid";
   attachment: AttachmentState;
@@ -19,6 +20,7 @@ export function buildPostComposerPreviewContent({
   price: string;
   title: string;
   videoDetails?: VideoDetailsState;
+  videoPosterSrc?: string;
 }): PostCardContent {
   const bodyText = body.trim();
   const accessMode = access === "paid" ? "locked" : "public";
@@ -41,7 +43,7 @@ export function buildPostComposerPreviewContent({
     return {
       type: "video",
       src: attachment.previewUrl ?? fallbackVideoSrc,
-      posterSrc: videoDetails?.thumbnail?.previewUrl,
+      posterSrc: videoPosterSrc ?? videoDetails?.thumbnail?.previewUrl,
       title: title || "Video",
       accessMode,
       listingMode: access === "paid" ? "listed" : "not_listed",

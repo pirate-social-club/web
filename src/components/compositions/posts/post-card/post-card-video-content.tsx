@@ -18,10 +18,11 @@ function isBlobUrl(src: string): boolean {
   return src.startsWith("blob:");
 }
 
-function BlobVideoPlayer({ src, poster, title, className }: { src: string; poster?: string; title?: string; className?: string }) {
+function BlobVideoPlayer({ autoPlay, src, poster, title, className }: { autoPlay?: boolean; src: string; poster?: string; title?: string; className?: string }) {
   return (
     <video
       className={cn("aspect-video w-full rounded-lg bg-black object-contain", className)}
+      autoPlay={autoPlay}
       controls
       muted
       playsInline
@@ -145,6 +146,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
       return (
         <div className={cn("flex flex-col gap-2 text-start", className)}>
           <BlobVideoPlayer
+            autoPlay
             src={content.src}
             poster={content.posterSrc}
             title={content.title}
@@ -166,6 +168,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
           }
         >
           <LazyVideoPlayer
+            autoPlay
             src={content.src}
             poster={content.posterSrc}
             title={content.title}

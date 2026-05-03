@@ -100,7 +100,9 @@ export function CommunityPage({
   const ownsCommunity =
     session?.user?.id === community?.created_by_user;
   const canCreatePost =
-    ownsCommunity || eligibility?.status === "already_joined";
+    ownsCommunity
+    || eligibility?.status === "already_joined"
+    || preview?.viewer_membership_status === "member";
   const commerceEnabled = Boolean(session?.user?.id) && canCreatePost;
   const {
     listingsByAssetId,
@@ -193,10 +195,10 @@ export function CommunityPage({
   );
   const communityCreatePostPath = React.useMemo(
     () =>
-      community
-        ? `${buildCommunityPath(community.id, community.route_slug ?? preview?.route_slug)}/submit`
+      preview
+        ? `${buildCommunityPath(preview.id, community?.route_slug ?? preview.route_slug)}/submit`
         : `${buildCommunityPath(communityId)}/submit`,
-    [community, communityId, preview?.route_slug],
+    [community?.route_slug, communityId, preview],
   );
   const moderationEntryPath = React.useMemo(
     () => buildCommunityModerationEntryPath(
@@ -439,7 +441,7 @@ export function CommunityPage({
       />
     );
   }
-  if (!preview || !community) {
+  if (!preview) {
     return (
       <RouteLoadFailureState
         description={copy.routeStatus.community.incomplete}
@@ -535,17 +537,20 @@ export function CommunityPage({
     </div>
   );
   const routeLabel = formatCommunityRouteLabel(
-    community.id,
-    community.route_slug ?? preview.route_slug,
+    community?.id ?? preview.id,
+    community?.route_slug ?? preview.route_slug,
   );
   const previewSidebar = buildCommunityPreviewSidebar(preview, locale);
+  const communityTitle = community?.display_name ?? preview.display_name;
+  const communityAvatarRef = community?.avatar_ref ?? preview.avatar_ref;
+  const communityBannerRef = community?.banner_ref ?? preview.banner_ref;
 
   return (
     <>
       {gateModal}
       {purchaseModal}
       <CommunityJoinRequestModal
-        communityName={community.display_name}
+        communityName={communityTitle}
         error={joinRequestError}
         onOpenChange={handleJoinRequestModalOpenChange}
         onSubmit={handleJoinRequestSubmit}
@@ -602,48 +607,48 @@ export function CommunityPage({
         ) : null}
         <CommunityPageShell
           activeSort={activeSort}
-          avatarSrc={community.avatar_ref ?? undefined}
+          avatarSrc={communityAvatarRef ?? undefined}
           availableSorts={sortOptions}
-          bannerSrc={community.banner_ref ?? undefined}
-          communityId={community.id}
+          bannerSrc={communityBannerRef ?? undefined}
+          communityId={community?.id ?? preview.id}
           headerAction={headerAction}
           items={feedItems}
           onSortChange={setActiveSort}
           routeLabel={routeLabel}
-          routeVerified={Boolean(community.namespace_verification)}
+          routeVerified={Boolean(community?.namespace_verification)}
           sidebar={{
-            ...buildCommunitySidebar(community, locale),
+            ...(community ? buildCommunitySidebar(community, locale) : buildCommunityPreviewSidebar(preview, locale)),
             followerCount,
             memberCount: preview.member_count ?? null,
             owner: previewSidebar.owner,
             moderators: previewSidebar.moderators,
             requirements: buildCommunitySidebarRequirements({
-              defaultAgeGatePolicy: community.default_age_gate_policy ?? "none",
+              defaultAgeGatePolicy: community?.default_age_gate_policy ?? "none",
               gateSummaries: preview.membership_gate_summaries,
               locale,
             }),
             namespacePanel: ownsCommunity
               ? {
                   routeLabel,
-                  status: community.namespace_verification
+                  status: community?.namespace_verification
                     ? "verified"
-                    : community.pending_namespace_verification_session
+                    : community?.pending_namespace_verification_session
                       ? "pending"
                       : "available",
-                  onOpen: community.namespace_verification
+                  onOpen: community?.namespace_verification
                     ? undefined
                     : () =>
                         navigate(
                           buildCommunityModerationPath(
                             communityId,
                             "namespace",
-                            community.route_slug ?? preview.route_slug,
+                            community?.route_slug ?? preview.route_slug,
                           ),
                         ),
                 }
               : null,
           }}
-          title={community.display_name}
+          title={communityTitle}
         />
       </section>
     </>

@@ -68,9 +68,9 @@ function priorityChipProps(priority: ModerationQueueCaseItem["priority"]): {
 } {
   switch (priority) {
     case "high":
-      return { label: "High", className: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300" };
+      return { label: "High", className: "bg-destructive/10 text-destructive" };
     case "medium":
-      return { label: "Medium", className: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" };
+      return { label: "Medium", className: "bg-warning/10 text-warning" };
     case "low":
     default:
       return { label: "Low", className: "bg-muted text-muted-foreground" };
@@ -135,14 +135,16 @@ export function CommunityModerationQueuePage({
                   >
                     {/* Top row: source, priority, time */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span
+                      <Type
+                        as="span"
                         className={cn(
-                          "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-medium",
+                          "inline-flex items-center rounded-full px-2.5 py-0.5",
                           priority.className,
                         )}
+                        variant="caption"
                       >
                         {priority.label}
-                      </span>
+                      </Type>
                       <Type as="span" variant="caption">
                         {source}
                       </Type>

@@ -4,6 +4,7 @@ import * as React from "react";
 import type { CommunityPreview as ApiCommunityPreview } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
+import { Plus } from "@phosphor-icons/react";
 
 import { toCommunityFeedItem } from "@/app/authenticated-route-renderer";
 import { navigate } from "@/app/router";
@@ -575,6 +576,9 @@ export function PublicCommunityRoutePage({
     preview.id,
     preview.route_slug ?? communityId,
   );
+  const canCreatePost = Boolean(session?.user?.id)
+    && (preview.viewer_membership_status === "member" || eligibility?.status === "already_joined");
+  const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
@@ -594,6 +598,14 @@ export function PublicCommunityRoutePage({
       >
         {joinActionLabel}
       </Button>
+      {canCreatePost ? (
+        <Button
+          leadingIcon={<Plus className="size-5" />}
+          onClick={() => navigate(communityCreatePostPath)}
+        >
+          {copy.community.createPostLabel}
+        </Button>
+      ) : null}
     </div>
   );
 

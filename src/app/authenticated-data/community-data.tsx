@@ -92,11 +92,16 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
     setMetadataError(null);
     setMetadataLoading(true);
 
-    void Promise.all([
-      api.communities.get(communityId, { locale: contentLocale }),
-      api.communities.preview(communityId, { locale: contentLocale }),
-    ])
-      .then(([communityResult, previewResult]) => {
+    void api.communities.preview(communityId, { locale: contentLocale })
+      .then(async (previewResult) => {
+        const communityResult = await api.communities.get(communityId, { locale: contentLocale })
+          .catch((error: unknown) => {
+            logger.warn("[community-route] owner community metadata load failed; using preview", {
+              communityId,
+              error,
+            });
+            return null;
+          });
         if (cancelled) return;
         setCommunity(communityResult);
         setPreview(previewResult);

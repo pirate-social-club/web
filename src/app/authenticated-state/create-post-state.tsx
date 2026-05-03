@@ -252,15 +252,23 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setSubmitError(null);
     setCommunityOwnerUserId(null);
 
+    const fullCommunityPromise = api.communities.get(communityId).catch((error: unknown) => {
+      logger.warn("[create-post-route] could not load owner-only community metadata", {
+        communityId,
+        error,
+      });
+      return null;
+    });
+
     void Promise.all([
       api.communities.preview(communityId),
-      api.communities.get(communityId),
+      fullCommunityPromise,
       api.communities.getJoinEligibility(communityId),
     ])
       .then(([communityResult, fullCommunityResult, eligibilityResult]) => {
         if (cancelled) return;
         setCommunity(communityResult);
-        setCommunityOwnerUserId(fullCommunityResult.created_by_user);
+        setCommunityOwnerUserId(fullCommunityResult?.created_by_user ?? null);
         setEligibility(eligibilityResult);
       })
       .catch((error: unknown) => {

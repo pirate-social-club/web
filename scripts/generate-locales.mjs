@@ -132,6 +132,10 @@ export type LocaleNamespace = (typeof LOCALE_NAMESPACES)[number];
 export type GeneratedLocaleCatalogs = typeof GENERATED_LOCALE_CATALOGS;
 `;
 
+  try {
+    const existing = await readFile(outputFile, "utf8");
+    if (existing === content) return;
+  } catch {}
   await writeFile(outputFile, content);
 }
 

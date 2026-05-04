@@ -261,13 +261,13 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           communityLabel: community.display_name,
           communityHref: buildCommunityPath(communityId, community.route_slug),
           avatarSrc: community.avatar_ref ?? null,
-          metricCount: community.follower_count ?? 0,
-          metricLabel: copy.community.followersLabel,
+          metricCount: community.view_count ?? 0,
+          metricLabel: copy.common.viewsLabel,
         };
       })
       .sort((a, b) => b.metricCount - a.metricCount)
       .slice(0, 6);
-  }, [topCommunities]);
+  }, [copy.common.viewsLabel, topCommunities]);
 
   if (error) {
     return <RouteLoadFailureState description={getErrorMessage(error, copy.routeStatus.home.failure)} title={copy.home.title} />;

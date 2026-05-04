@@ -45,6 +45,7 @@ function hnsSession(status: NamespaceVerificationStatus): NamespaceVerificationS
 function hnsCallbacks(input: {
   sessionStatus: NamespaceVerificationStatus;
   completeStatus?: NamespaceVerificationStatus;
+  failureReason?: string;
   neverResolveSession?: boolean;
 }): NamespaceVerificationCallbacks {
   return {
@@ -52,7 +53,7 @@ function hnsCallbacks(input: {
     onCompleteSession: async () => ({
       status: input.completeStatus ?? "challenge_pending",
       namespaceVerificationId: null,
-      failureReason: input.completeStatus === "failed" ? "TXT record was not found." : null,
+      failureReason: input.completeStatus === "failed" ? input.failureReason ?? "challenge_not_published" : null,
     }),
     onGetSession: input.neverResolveSession
       ? async () => new Promise<NamespaceVerificationStartResult>(() => undefined)
@@ -75,6 +76,12 @@ const setupNotDetectedCallbacks = hnsCallbacks({
 
 const verificationFailedCallbacks = hnsCallbacks({
   sessionStatus: "failed",
+});
+
+const txtMismatchCallbacks = hnsCallbacks({
+  sessionStatus: "failed",
+  completeStatus: "failed",
+  failureReason: "challenge_mismatch",
 });
 
 export const OwnerManagedRecords: Story = {
@@ -111,11 +118,22 @@ export const RecordsNotFound: Story = {
 };
 
 export const VerificationError: Story = {
-  name: "HNS — Verification failed",
+  name: "HNS — TXT missing",
   render: () => (
     <CommunityNamespaceVerificationPage
       activeSessionId="nvs_infinity_records_stub"
       callbacks={verificationFailedCallbacks}
+      initialRootLabel="infinity"
+    />
+  ),
+};
+
+export const TxtMismatch: Story = {
+  name: "HNS — TXT mismatch",
+  render: () => (
+    <CommunityNamespaceVerificationPage
+      activeSessionId="nvs_infinity_records_stub"
+      callbacks={txtMismatchCallbacks}
       initialRootLabel="infinity"
     />
   ),

@@ -19,6 +19,9 @@ import {
 import {
   NamespaceVerificationSpacesPanel,
 } from "@/components/compositions/verification/namespace-verification/namespace-verification-shared";
+import {
+  getNamespaceVerificationFailureMessage,
+} from "@/components/compositions/verification/namespace-verification/namespace-verification-failure-message";
 import { OptionCard } from "@/components/primitives/option-card";
 import { PrefixInput } from "@/components/primitives/prefix-input";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
@@ -49,38 +52,6 @@ const namespaceFamilyMeta: Record<
     icon: <img alt="" className="size-full object-cover" src={spacesLogoUrl} />,
   },
 };
-
-function getFailureMessage({
-  copy,
-  failureReason,
-  hnsMode,
-  isExpired,
-  isHns,
-}: {
-  copy: typeof defaultRouteCopy["moderation"]["namespaceVerification"]["failure"];
-  failureReason: string | null;
-  hnsMode: ReturnType<typeof getHnsVerificationMode> | null;
-  isExpired: boolean;
-  isHns: boolean;
-}) {
-  if (isExpired) {
-    return copy.expired;
-  }
-
-  if (failureReason) {
-    return failureReason.replace(/_/g, " ");
-  }
-
-  if (isHns && hnsMode === "dns_setup_required") {
-    return copy.dnsSetupRequired;
-  }
-
-  if (isHns) {
-    return copy.hnsDefault;
-  }
-
-  return copy.spacesDefault;
-}
 
 export function VerifyNamespaceModalView({
   activeFamily,
@@ -213,7 +184,7 @@ export function VerifyNamespaceModalView({
             </>
           ) : null}
 
-          {(isDnsSetupRequired || isChallengeReady || isChallengePending || isVerifying) &&
+          {(isDnsSetupRequired || isChallengeReady || isChallengePending || isVerifying || isFailed) &&
           isHns &&
           hnsMode ? (
             <NamespaceVerificationHnsPanel
@@ -243,7 +214,7 @@ export function VerifyNamespaceModalView({
           {isFailed || isExpired ? (
             <div className="space-y-3">
               <FormNote tone="warning">
-                {getFailureMessage({ copy: mc.failure, failureReason, hnsMode, isExpired, isHns })}
+                {getNamespaceVerificationFailureMessage({ copy: mc.failure, failureReason, hnsMode, isExpired, isHns })}
               </FormNote>
             </div>
           ) : null}
@@ -268,9 +239,11 @@ export function VerifyNamespaceModalView({
               <>
                 <Button onClick={() => onOpenChange(false)} variant="outline">{mc.cancelLabel}</Button>
                 {isFailed && isHns ? (
-                  <Button loading={isVerifying} onClick={onVerify}>{mc.verifyAction}</Button>
+                  <Button loading={isVerifying} onClick={onVerify}>{mc.checkAgain}</Button>
                 ) : null}
-                <Button onClick={onRestart}>{isHns ? mc.continueLabel : mc.newChallenge}</Button>
+                {isFailed && isHns ? null : (
+                  <Button onClick={onRestart}>{isHns ? mc.continueLabel : mc.newChallenge}</Button>
+                )}
               </>
             ) : null}
             {isIdle || isStarting ? (

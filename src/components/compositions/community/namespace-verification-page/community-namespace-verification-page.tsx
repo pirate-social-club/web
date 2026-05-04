@@ -15,6 +15,10 @@ import {
 import {
   NamespaceVerificationSpacesPanel,
 } from "@/components/compositions/verification/namespace-verification/namespace-verification-shared";
+import {
+  getHnsStatusMessage,
+  getNamespaceVerificationFailureMessage,
+} from "@/components/compositions/verification/namespace-verification/namespace-verification-failure-message";
 import { useNamespaceVerificationFlow } from "@/components/compositions/verification/namespace-verification/use-namespace-verification-flow";
 import handshakeLogoUrl from "@/assets/namespace-icons/handshake-logo.png";
 import spacesLogoUrl from "@/assets/namespace-icons/spaces-protocol-logo.jpeg";
@@ -142,9 +146,11 @@ export function CommunityNamespaceVerificationPage({
       {(flow.isFailed || flow.isExpired) ? (
         <>
           {flow.isFailed && flow.isHns ? (
-            <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.verify}>{mc.verifyAction}</Button>
+            <Button className={primaryButtonClassName} loading={flow.isVerifying} onClick={flow.actions.verify}>{mc.checkAgain}</Button>
           ) : null}
-          <Button className={primaryButtonClassName} onClick={flow.actions.restart}>{flow.isHns ? mc.getChallenge : mc.newChallenge}</Button>
+          {flow.isFailed && flow.isHns ? null : (
+            <Button className={primaryButtonClassName} onClick={flow.actions.restart}>{flow.isHns ? mc.getChallenge : mc.newChallenge}</Button>
+          )}
         </>
       ) : null}
       {(flow.isIdle || flow.isStarting) ? (
@@ -159,15 +165,16 @@ export function CommunityNamespaceVerificationPage({
       ) : null}
     </>
   );
-  const hnsStatusMessage = flow.isVerifying
-    ? "Checking records..."
-    : flow.isDnsSetupRequired || flow.isChallengePending
-    ? "Records not found."
-    : flow.isFailed
-    ? "Verification failed."
-    : flow.isExpired
-    ? mc.failure.expired
-    : null;
+  const hnsStatusMessage = getHnsStatusMessage({
+    copy: mc.failure,
+    failureReason: flow.failureReason,
+    hnsMode: flow.hnsMode,
+    isChallengePending: flow.isChallengePending,
+    isDnsSetupRequired: flow.isDnsSetupRequired,
+    isExpired: flow.isExpired,
+    isFailed: flow.isFailed,
+    isVerifying: flow.isVerifying,
+  });
   const hnsStatusBusy = flow.isVerifying;
   const hnsStatusTone = flow.isFailed || flow.isExpired || flow.isDnsSetupRequired || flow.isChallengePending
     ? "warning"
@@ -315,15 +322,13 @@ export function CommunityNamespaceVerificationPage({
 
         {(flow.isFailed || flow.isExpired) && !flow.isHns ? (
           <FormNote tone="warning">
-            {flow.isExpired
-              ? mc.failure.expired
-              : flow.failureReason
-                ? flow.failureReason.replace(/_/g, " ")
-                : flow.isHns && flow.hnsMode === "dns_setup_required"
-                  ? mc.failure.dnsSetupRequired
-                  : flow.isHns
-                  ? mc.failure.hnsDefault
-                  : mc.failure.spacesDefault}
+            {getNamespaceVerificationFailureMessage({
+              copy: mc.failure,
+              failureReason: flow.failureReason,
+              hnsMode: flow.hnsMode,
+              isExpired: flow.isExpired,
+              isHns: flow.isHns,
+            })}
           </FormNote>
         ) : null}
 

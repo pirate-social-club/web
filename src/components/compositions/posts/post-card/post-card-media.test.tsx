@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { PostCardMedia } from "./post-card-media";
 
 describe("PostCardMedia", () => {
-  test("blurs adult images when age proof is required", () => {
+  test("renders blurred adult image with lock button overlay when age proof is required", () => {
     const markup = renderToStaticMarkup(
       <PostCardMedia
         content={{
@@ -24,8 +24,8 @@ describe("PostCardMedia", () => {
     expect(markup).toContain("<img");
     expect(markup).toContain("https://example.test/adult.jpg");
     expect(markup).toContain("blur-md saturate-0");
-    expect(markup).toContain("Prove you&#x27;re 18+ to view");
-    expect(markup).toContain("Verify Age");
+    expect(markup).toContain("18+ to View");
+    expect(markup).toContain("shadow-lg");
   });
 
   test("enables age verification when a launch callback is provided", () => {
@@ -43,11 +43,11 @@ describe("PostCardMedia", () => {
       />,
     );
 
-    expect(markup).toContain("Verify Age");
+    expect(markup).toContain("18+ to View");
     expect(markup).not.toContain("disabled=\"\"");
   });
 
-  test("renders adult images for verified viewers", () => {
+  test("renders adult images unblurred for verified viewers", () => {
     const markup = renderToStaticMarkup(
       <PostCardMedia
         content={{
@@ -63,7 +63,7 @@ describe("PostCardMedia", () => {
 
     expect(markup).toContain("<img");
     expect(markup).toContain("https://example.test/adult.jpg");
-    expect(markup).not.toContain("Prove you&#x27;re 18+ to view");
+    expect(markup).not.toContain("18+ to View");
     expect(markup).not.toContain("blur-md saturate-0");
   });
 });

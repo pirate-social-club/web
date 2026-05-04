@@ -3,6 +3,7 @@ import { Check } from "@phosphor-icons/react";
 import { Lock as FilledLockIcon, Play as PlayIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
+import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { mediaControlButtonVariants } from "@/components/primitives/media-control-button";
@@ -218,7 +219,15 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
 
         {ui.showAgeGatedThumbnail && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-            <FilledLockIcon className="size-6 text-white" weight="fill" />
+            <Button
+              size="lg"
+              className="gap-2 font-semibold shadow-lg"
+              onClick={onVerifyAge}
+              disabled={!onVerifyAge}
+            >
+              <FilledLockIcon className="size-4" weight="fill" />
+              <Type variant="body-strong">{copy.ageGateVerify}</Type>
+            </Button>
           </div>
         )}
 
@@ -272,26 +281,6 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
           <Check className="size-4" weight="bold" />
           <span>Unlocked</span>
         </span>
-      )}
-
-      {ui.isAgeGated && ui.ageGateRequiresProof && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
-          <div className="flex min-w-0 flex-1 items-center text-muted-foreground">
-            <span className={cn("truncate", postCardType.label)}>
-              Prove you're 18+ to watch
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center">
-            <Button
-              size="sm"
-              className="h-8 px-4 font-medium"
-              onClick={onVerifyAge}
-              disabled={!onVerifyAge}
-            >
-              Verify Age
-            </Button>
-          </div>
-        </div>
       )}
     </div>
   );

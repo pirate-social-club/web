@@ -3,6 +3,7 @@ import { Globe, Lock as FilledLockIcon } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
+import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
@@ -182,6 +183,8 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
     case "image": {
       const isAgeGated = content.ageGatePolicy === "18_plus" && content.contentSafetyState === "adult";
       const ageGateRequiresProof = isAgeGated && content.ageGateViewerState !== "verified_allowed";
+      const { locale } = useUiLocale();
+      const copy = getLocaleMessages(locale, "routes").common;
       return (
         <figure className={className}>
           <div className="relative overflow-hidden rounded-lg bg-muted">
@@ -196,26 +199,18 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
             />
             {ageGateRequiresProof && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                <FilledLockIcon className="size-6 text-white" weight="fill" />
+                <Button
+                  size="lg"
+                  className="gap-2 font-semibold shadow-lg"
+                  onClick={content.onVerifyAge}
+                  disabled={!content.onVerifyAge}
+                >
+                  <FilledLockIcon className="size-4" weight="fill" />
+                  <Type variant="body-strong">{copy.ageGateVerify}</Type>
+                </Button>
               </div>
             )}
           </div>
-          {ageGateRequiresProof && (
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <span className={cn("flex items-center gap-1.5 text-muted-foreground", postCardType.label)}>
-                <FilledLockIcon className="size-3.5" weight="fill" />
-                Prove you're 18+ to view
-              </span>
-              <Button
-                size="sm"
-                className="h-8 px-4 font-medium"
-                onClick={content.onVerifyAge}
-                disabled={!content.onVerifyAge}
-              >
-                Verify Age
-              </Button>
-            </div>
-          )}
           {!ageGateRequiresProof && content.caption && (
             <figcaption
               className={cn("mt-1.5 text-start text-muted-foreground", postCardType.caption)}

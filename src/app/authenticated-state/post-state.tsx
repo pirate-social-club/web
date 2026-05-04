@@ -89,6 +89,68 @@ function normalizePostResponse(response: ApiPost): ApiPost {
   };
 }
 
+function toDeletedPostStub(response: ApiPost): ApiPost {
+  return {
+    ...response,
+    post: {
+      ...response.post,
+      author_user: null,
+      agent: null,
+      agent_ownership_record: null,
+      identity_mode: "public",
+      anonymous_scope: null,
+      anonymous_label: null,
+      agent_handle_snapshot: null,
+      agent_display_name_snapshot: null,
+      agent_owner_handle_snapshot: null,
+      agent_ownership_provider_snapshot: null,
+      disclosed_qualifiers_json: null,
+      label: null,
+      post_type: "text",
+      status: "deleted",
+      title: null,
+      body: null,
+      caption: null,
+      link_url: null,
+      link_og_image_url: null,
+      link_og_title: null,
+      link_enrichment: null,
+      embeds: null,
+      media_refs: [],
+      creator_relation: null,
+      promotion_disclosure: null,
+      source_language: null,
+      translation_policy: "none",
+      access_mode: null,
+      asset: null,
+      song_artifact_bundle: null,
+      parent_post: null,
+      song_mode: null,
+      rights_basis: null,
+      upstream_asset_refs: null,
+      analysis_result_ref: null,
+      content_safety_state: "safe",
+      age_gate_policy: "none",
+    },
+    author_community_role: null,
+    market_context: null,
+    label: null,
+    upvote_count: 0,
+    downvote_count: 0,
+    like_count: 0,
+    viewer_vote: null,
+    viewer_reaction_kinds: [],
+    age_gate_viewer_state: null,
+    translation_state: "same_language",
+    machine_translated: false,
+    translated_body: null,
+    translated_title: null,
+    translated_caption: null,
+    translated_embeds: null,
+    source_hash: "",
+  };
+}
+
 async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<AvailableSigningAgent | null> {
   for (const agent of agents) {
     if (agent.status !== "active" || !agent.current_ownership) {
@@ -362,6 +424,24 @@ export function usePost(
     });
   }, [api.posts.vote, post, runGatedCommunityAction]);
 
+  const deletePost = React.useCallback(async () => {
+    if (!post) return;
+    if (typeof window !== "undefined" && !window.confirm("Delete this post?")) return;
+
+    const previousPost = post;
+    setPost(toDeletedPostStub(post));
+    try {
+      await api.posts.delete(post.post.community, post.post.id);
+      const nextPost = await api.posts.get(post.post.id, { locale }).catch(() => null);
+      if (nextPost) {
+        setPost(normalizePostResponse(nextPost));
+      }
+    } catch (nextError) {
+      setPost(previousPost);
+      toast.error(getErrorMessage(nextError, "Could not delete this post."));
+    }
+  }, [api.posts, locale, post]);
+
   const markAgeGateVerified = React.useCallback(() => {
     setPost((current) => current
       ? {
@@ -525,6 +605,7 @@ export function usePost(
     commentCount,
     availableAgent,
     createTopLevelComment,
+    deletePost,
     error,
     gateModal,
     markAgeGateVerified,

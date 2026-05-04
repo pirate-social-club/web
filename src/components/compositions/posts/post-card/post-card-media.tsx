@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Globe } from "@phosphor-icons/react";
+import { Globe, Lock as FilledLockIcon } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
@@ -184,36 +184,39 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
       const ageGateRequiresProof = isAgeGated && content.ageGateViewerState !== "verified_allowed";
       return (
         <figure className={className}>
-          <div className="overflow-hidden rounded-lg">
-            {ageGateRequiresProof ? (
-              <div
-                className="flex w-full items-center justify-center bg-muted"
-                style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
-              >
-                <div className="flex flex-col items-center gap-3 p-6 text-center">
-                  <p className={cn("text-muted-foreground", postCardType.label)}>
-                    18+ content
-                  </p>
-                  <Button
-                    size="sm"
-                    className="h-8 px-4 font-medium"
-                    onClick={content.onVerifyAge}
-                    disabled={!content.onVerifyAge}
-                  >
-                    Verify Age
-                  </Button>
-                </div>
+          <div className="relative overflow-hidden rounded-lg bg-muted">
+            <img
+              alt={content.alt}
+              className={cn(
+                "w-full object-cover transition-[filter,transform]",
+                ageGateRequiresProof && "blur-md saturate-0",
+              )}
+              src={content.src}
+              style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
+            />
+            {ageGateRequiresProof && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <FilledLockIcon className="size-6 text-white" weight="fill" />
               </div>
-            ) : (
-              <img
-                alt={content.alt}
-                className="w-full object-cover"
-                src={content.src}
-                style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
-              />
             )}
           </div>
-          {content.caption && (
+          {ageGateRequiresProof && (
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className={cn("flex items-center gap-1.5 text-muted-foreground", postCardType.label)}>
+                <FilledLockIcon className="size-3.5" weight="fill" />
+                Prove you're 18+ to view
+              </span>
+              <Button
+                size="sm"
+                className="h-8 px-4 font-medium"
+                onClick={content.onVerifyAge}
+                disabled={!content.onVerifyAge}
+              >
+                Verify Age
+              </Button>
+            </div>
+          )}
+          {!ageGateRequiresProof && content.caption && (
             <figcaption
               className={cn("mt-1.5 text-start text-muted-foreground", postCardType.caption)}
               dir={content.captionDir ?? "auto"}

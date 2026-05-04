@@ -37,6 +37,7 @@ export type PostPresentationOptions = {
   onVerifyAge?: () => void;
   onVote?: PostCardProps["onVote"];
   onComment?: PostCardProps["onComment"];
+  onDelete?: () => void;
   preferOriginalText?: boolean;
   showOriginalLabel?: string;
   showTranslationLabel?: string;
@@ -481,6 +482,13 @@ export function toCommunityPostContent(
   opts?: Pick<PostPresentationOptions, "onVerifyAge" | "preferOriginalText"> & { embedMode?: "preview" | "official" },
 ): PostCardProps["content"] {
   const { post, translated_body, translated_caption, translated_title } = postResponse;
+  if (post.status === "deleted") {
+    return {
+      type: "text",
+      body: "Post was deleted",
+    };
+  }
+
   const resolvedBody = opts?.preferOriginalText ? post.body ?? "" : translated_body ?? post.body ?? "";
   const resolvedCaption = opts?.preferOriginalText ? post.caption ?? undefined : translated_caption ?? post.caption ?? undefined;
   const translatedTextPresentation = !opts?.preferOriginalText && postResponse.translation_state === "ready"
@@ -741,10 +749,12 @@ export function toCommunityFeedItem(
 ): FeedItem {
   const { post } = postResponse;
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
+  const canDeletePost = post.status !== "deleted" && Boolean(postResponse.viewer_is_author && opts?.onDelete);
+  const isDeleted = post.status === "deleted";
 
   const localizedPost = withTranslationToggleProps({
       byline: {
-        author: {
+        author: isDeleted ? undefined : {
           kind: "user",
           label: resolvePostAuthorLabel(post, authorProfile),
           avatarSeed: resolvePostAuthorAvatarSeed(post, authorProfile),
@@ -769,13 +779,17 @@ export function toCommunityFeedItem(
         ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)
         : undefined,
       onComment: opts?.onComment,
-      onVote: opts?.onVote,
+      menuItems: canDeletePost ? [{ key: "delete", label: "Delete post", destructive: true }] : undefined,
+      onMenuAction: canDeletePost ? (key) => {
+        if (key === "delete") opts?.onDelete?.();
+      } : undefined,
+      onVote: post.status === "deleted" ? undefined : opts?.onVote,
       postHref: `/p/${post.id}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
-      title: postResponse.translated_title ?? post.title ?? undefined,
+      title: isDeleted ? undefined : postResponse.translated_title ?? post.title ?? undefined,
       titleDir: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined,
       titleLang: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined,
-      titleHref: `/p/${post.id}`,
+      titleHref: isDeleted ? undefined : `/p/${post.id}`,
       viewContext: "community",
     },
     postResponse,
@@ -811,6 +825,8 @@ export function toThreadPostCard(
 ): PostCardProps {
   const { post } = postResponse;
   const communityVerified = Boolean(community?.namespace_verification);
+  const canDeletePost = post.status !== "deleted" && Boolean(postResponse.viewer_is_author && opts?.onDelete);
+  const isDeleted = post.status === "deleted";
   const communityLabel = community?.id
     ? communityVerified
       ? formatCommunityRouteLabel(community.id, community.route_slug)
@@ -819,7 +835,7 @@ export function toThreadPostCard(
 
   return withTranslationToggleProps({
     byline: {
-      author: {
+      author: isDeleted ? undefined : {
         kind: "user",
         label: resolvePostAuthorLabel(post, authorProfile),
         avatarSeed: resolvePostAuthorAvatarSeed(post, authorProfile),
@@ -846,16 +862,20 @@ export function toThreadPostCard(
       viewerVote: toViewerVote(postResponse.viewer_vote),
     },
     authorCommunityRole: postResponse.author_community_role ?? undefined,
-    identityPresentation: "community_with_author",
+    identityPresentation: isDeleted ? "community_primary" : "community_with_author",
     authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
     authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
       ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)
       : undefined,
     onComment: opts?.onComment,
-    onVote: opts?.onVote,
+    menuItems: canDeletePost ? [{ key: "delete", label: "Delete post", destructive: true }] : undefined,
+    onMenuAction: canDeletePost ? (key) => {
+      if (key === "delete") opts?.onDelete?.();
+    } : undefined,
+    onVote: post.status === "deleted" ? undefined : opts?.onVote,
     postHref: `/p/${post.id}`,
     qualifierLabels: resolvePostQualifierLabels(postResponse),
-    title: opts?.preferOriginalText
+    title: isDeleted ? undefined : opts?.preferOriginalText
       ? post.title ?? undefined
       : postResponse.translated_title ?? post.title ?? undefined,
     titleDir: !opts?.preferOriginalText && postResponse.translation_state === "ready"
@@ -864,7 +884,7 @@ export function toThreadPostCard(
     titleLang: !opts?.preferOriginalText && postResponse.translation_state === "ready"
       ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
       : undefined,
-    titleHref: `/p/${post.id}`,
+    titleHref: isDeleted ? undefined : `/p/${post.id}`,
     viewContext: "home",
   }, postResponse, opts);
 }

@@ -6,6 +6,7 @@ import type {
   CreatePostRequest,
   CreateSongArtifactBundleRequest,
   CreateSongArtifactUploadRequest,
+  DeletedPostResponse,
   LocalizedPostResponse,
   Post,
   PostVoteResponse,
@@ -36,6 +37,11 @@ export function createPostsApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify({ value }),
       }),
+    delete: (communityId: string, postId: string): Promise<DeletedPostResponse> =>
+      request<DeletedPostResponse>(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/delete`,
+        { method: "POST" },
+      ),
   };
 }
 

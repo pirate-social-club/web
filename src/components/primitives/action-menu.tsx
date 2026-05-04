@@ -77,9 +77,9 @@ export function ActionMenu({
           <SheetTitle className="text-base leading-snug">Actions</SheetTitle>
         </SheetHeader>
         <div className="mt-4">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <React.Fragment key={item.key}>
-              {item.separatorBefore ? <div className="my-2 h-px bg-border" /> : null}
+              {item.separatorBefore && index > 0 ? <div className="my-2 h-px bg-border" /> : null}
               <button
                 className={cn(
                   "grid w-full grid-cols-[1.25rem_1fr] items-center gap-3 px-4 py-3 text-start text-base leading-snug text-foreground",
@@ -131,9 +131,9 @@ export function ActionMenu({
             contentClassName,
           )}
         >
-          {items.map((item) => (
+          {items.map((item, index) => (
             <React.Fragment key={item.key}>
-              {item.separatorBefore ? (
+              {item.separatorBefore && index > 0 ? (
                 <DropdownMenuPrimitive.Separator className="-mx-1 my-1 h-px bg-border" />
               ) : null}
               <DropdownMenuPrimitive.Item

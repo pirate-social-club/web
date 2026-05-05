@@ -1,13 +1,10 @@
 name: Release
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      deploy_production:
-        description: "Deploy production after staging verification"
-        required: true
-        default: false
-        type: boolean
 
 env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -52,9 +49,7 @@ jobs:
   production:
     name: Deploy production
     needs: staging
-    if: ${{ inputs.deploy_production }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    environment: production
     steps:
       - uses: actions/checkout@v4
         with:

@@ -522,6 +522,11 @@ export function usePost(
 
   React.useEffect(() => {
     let cancelled = false;
+
+    if (!hasSession) {
+      return () => { cancelled = true; };
+    }
+
     setLoading(true);
     setError(null);
     setPost(null);
@@ -531,10 +536,6 @@ export function usePost(
     setAuthorProfilesByUserId({});
     setThreadPartial(false);
     setReadMode(hasSession ? "authenticated" : "public");
-
-    if (!hasSession) {
-      return () => { cancelled = true; };
-    }
 
     const cachedPublicThread = queryClient.getQueryData<PublicThreadQueryData>(
       postKeys.publicThread({ postId, locale, sort: "best" }),

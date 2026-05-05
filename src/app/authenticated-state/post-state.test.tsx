@@ -147,6 +147,40 @@ function createPreview(): CommunityPreview {
 }
 
 describe("usePost", () => {
+  test("keeps a cached feed-seeded thread shell for anonymous post navigation", async () => {
+    __resetSessionStoreForTests();
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+    queryClient.setQueryData<PublicThreadQueryData>(
+      postKeys.publicThread({ postId: "pst_test", locale: "es", sort: "best" }),
+      {
+        post: createPostResponse(),
+        community: createPreview(),
+        comments: [],
+        authorProfiles: {},
+        partial: true,
+        source: "feed_seed",
+      },
+    );
+
+    const publicPosts = api.publicPosts as unknown as {
+      getThread: () => Promise<unknown>;
+    };
+    publicPosts.getThread = () => new Promise<unknown>(() => undefined);
+
+    const { result } = renderHook(() => usePost("pst_test", "es", false, labels), {
+      wrapper: wrapperWithClient(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.threadPartial).toBe(true);
+    expect(result.current.post?.post.id).toBe("pst_test");
+    expect(result.current.community?.display_name).toBe("Preview Community");
+  });
+
   test("renders a cached feed-seeded thread shell before authenticated post fetch resolves", async () => {
     __resetSessionStoreForTests();
     const queryClient = new QueryClient({

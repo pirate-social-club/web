@@ -11,7 +11,7 @@ import { CommunityLabelsEditorPage } from "@/components/compositions/community/l
 import { CommunityLinksEditorPage, createEmptyCommunityLinkEditorItem } from "@/components/compositions/community/links-editor/community-links-editor-page";
 import { CommunityMembershipRequestsPage } from "@/components/compositions/community/membership-requests-page/community-membership-requests-page";
 import { CommunityModerationIndexPage as CommunityModerationIndexPageView } from "@/components/compositions/community/moderation-index-page/community-moderation-index-page";
-import { CommunityModerationQueuePage } from "@/components/compositions/community/moderation-queue-page/community-moderation-queue-page";
+import { CommunityModerationQueuePage, type ModerationQueueCaseItem } from "@/components/compositions/community/moderation-queue-page/community-moderation-queue-page";
 import { CommunityModerationShell } from "@/components/compositions/community/moderation-shell/community-moderation-shell";
 import { CommunityProfileEditorPage } from "@/components/compositions/community/profile-editor/community-profile-editor-page";
 import { CommunityNamespaceVerificationPage } from "@/components/compositions/community/namespace-verification-page/community-namespace-verification-page";
@@ -26,10 +26,12 @@ import type { IdentityGateDraft } from "@/components/compositions/community/crea
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
+import type { ModerationCaseDetail } from "@/lib/api/client-groups-community-moderation";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 import { normalizeCountryCode } from "@/lib/countries";
 import { isValidCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
+import { buildPublicProfilePath } from "@/lib/profile-routing";
 
 import { CommunityModerationGuard, getCommunityModerationTitle } from "@/app/authenticated-helpers/moderation-route-helpers";
 import {
@@ -44,6 +46,127 @@ import { FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-help
 
 function formatModerationCommunityLabel(community: { id: string; route_slug?: string | null; display_name: string }): string {
   return formatCommunityRouteLabel(community.id, community.route_slug ?? community.display_name);
+}
+
+const MODERATION_DETAIL_READ_CONCURRENCY = 4;
+
+async function mapWithConcurrency<T, TResult>(
+  items: T[],
+  limit: number,
+  mapper: (item: T, index: number) => Promise<TResult>,
+): Promise<TResult[]> {
+  const results = new Array<TResult>(items.length);
+  let nextIndex = 0;
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+
+      if (index >= items.length) {
+        return;
+      }
+
+      results[index] = await mapper(items[index] as T, index);
+    }
+  }));
+
+  return results;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object");
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function readableFactValue(value: unknown): string | null {
+  if (value === true) return "yes";
+  if (value === false) return "no";
+  return typeof value === "string" ? value.replaceAll("_", " ") : null;
+}
+
+function formatVisualPolicyReason(code: string): string {
+  switch (code) {
+    case "adult_platform_watermark":
+      return "Adult platform watermark";
+    case "url_in_image":
+      return "URL in image";
+    case "explicit_sexual_activity":
+      return "Explicit sexual activity";
+    case "sexualized_contact":
+      return "Sexualized contact";
+    case "visible_genitals":
+      return "Visible genitals";
+    case "possible_minor_with_adult_content":
+      return "Possible minor with adult content";
+    case "uncertain_age_with_adult_content":
+      return "Uncertain age with adult content";
+    case "model_uncertain":
+      return "Classifier uncertainty";
+    default:
+      return code.replaceAll("_", " ");
+  }
+}
+
+function visualCheckTitle(value: unknown): string {
+  if (value === "reject") return "Image check blocked this post";
+  if (value === "queue") return "Image check needs review";
+  return "Image check";
+}
+
+function visualCheckDescription(value: unknown, reasons: string[]): string {
+  const reasonText = reasons.length === 0
+    ? "the image needs moderator review"
+    : reasons.length === 1
+      ? reasons[0].toLowerCase()
+      : `${reasons.slice(0, -1).map((reason) => reason.toLowerCase()).join(", ")} and ${reasons[reasons.length - 1]?.toLowerCase()}`;
+  if (value === "reject") {
+    return `Blocked because the image appears to include ${reasonText}.`;
+  }
+  if (value === "queue") {
+    return `Needs review because the image appears to include ${reasonText}.`;
+  }
+  return `The image was checked for community safety signals.`;
+}
+
+function extractVisualPolicySummary(detail: ModerationCaseDetail | null): NonNullable<ModerationQueueCaseItem["visualPolicySummary"]> | undefined {
+  if (!detail) return undefined;
+  for (const signal of detail.signals) {
+    if (!signal.evidence_ref) continue;
+    try {
+      const evidence = JSON.parse(signal.evidence_ref) as unknown;
+      if (!isRecord(evidence) || !isRecord(evidence.visual_policy)) continue;
+      const visualPolicy = evidence.visual_policy;
+      const decision = isRecord(visualPolicy.decision) ? visualPolicy.decision : null;
+      const reasonCodes = decision ? stringArray(decision.reasonCodes) : [];
+      const reasons = reasonCodes.map(formatVisualPolicyReason);
+      const firstImage = Array.isArray(visualPolicy.factsByImage) && isRecord(visualPolicy.factsByImage[0])
+        ? visualPolicy.factsByImage[0]
+        : null;
+      const facts = isRecord(firstImage?.facts) ? firstImage.facts : null;
+      const factLabels = facts
+        ? [
+            { label: "Age", value: readableFactValue(facts.apparentAgeRisk) },
+            { label: "Nudity", value: readableFactValue(facts.nudity) },
+            { label: "Sexual activity", value: readableFactValue(facts.sexualActivity) },
+            { label: "Commercial", value: readableFactValue(facts.commercialSignal) },
+          ]
+            .filter((entry): entry is { label: string; value: string } => Boolean(entry.value) && entry.value !== "none")
+        : [];
+      return {
+        title: visualCheckTitle(decision?.policyDecision),
+        description: visualCheckDescription(decision?.policyDecision, reasons),
+        reasons,
+        evidence: factLabels,
+      };
+    } catch {
+      // Ignore malformed evidence from older cases.
+    }
+  }
+  return undefined;
 }
 
 function useIsModerationMobileLayout() {
@@ -278,40 +401,52 @@ export function CommunityModerationPage({
     setModerationCasesLoading(true);
     void api.communities.listModerationCases(communityId)
       .then((result) => {
-        if (!cancelled) {
-          setModerationCases(
-            result.items.map((item) => {
-              const post = item.post;
-              let imageSrc: string | undefined;
-              if (post?.media_refs_json) {
-                try {
-                  const mediaRefs = JSON.parse(post.media_refs_json) as Array<{ storage_ref?: string }>;
-                  const firstImage = mediaRefs?.[0]?.storage_ref;
-                  if (firstImage) {
-                    imageSrc = firstImage;
-                  }
-                } catch {
-                  // ignore parse errors
+        return mapWithConcurrency(
+          result.items,
+          MODERATION_DETAIL_READ_CONCURRENCY,
+          async (item): Promise<ModerationQueueCaseItem> => {
+            const post = item.post;
+            let imageSrc: string | undefined;
+            if (post?.media_refs_json) {
+              try {
+                const mediaRefs = JSON.parse(post.media_refs_json) as Array<{ storage_ref?: string; poster_ref?: string }>;
+                const firstImage = mediaRefs?.[0]?.storage_ref || mediaRefs?.[0]?.poster_ref;
+                if (firstImage) {
+                  imageSrc = firstImage;
                 }
+              } catch {
+                // ignore parse errors
               }
-              return {
-                caseId: item.moderation_case_id,
-                postId: item.post_id,
-                priority: item.priority,
-                openedBy: item.opened_by,
-                status: item.status,
-                createdAt: item.created_at,
-                postPreview: post
-                  ? {
-                      title: post.title ?? undefined,
-                      body: post.body ?? post.caption ?? undefined,
-                      imageSrc: imageSrc ?? undefined,
-                      authorLabel: undefined,
-                    }
-                  : undefined,
-              };
-            }),
-          );
+            }
+
+            const detail = item.status === "open"
+              ? await api.communities.getModerationCaseDetail(communityId, item.moderation_case_id).catch(() => null)
+              : null;
+
+            return {
+              caseId: item.moderation_case_id,
+              postId: item.post_id,
+              priority: item.priority,
+              openedBy: item.opened_by,
+              status: item.status,
+              createdAt: item.created_at,
+              postPreview: post
+                ? {
+                    title: post.title ?? undefined,
+                    body: post.body ?? post.caption ?? undefined,
+                    imageSrc: imageSrc ?? undefined,
+                    authorLabel: post.author_handle ?? undefined,
+                    authorHref: post.author_handle ? buildPublicProfilePath(post.author_handle) : undefined,
+                  }
+                : undefined,
+              visualPolicySummary: extractVisualPolicySummary(detail),
+            };
+          },
+        );
+      })
+      .then((cases) => {
+        if (!cancelled) {
+          setModerationCases(cases);
         }
       })
       .catch(() => {

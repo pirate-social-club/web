@@ -13,7 +13,7 @@ describe("pricing policy moderation helpers", () => {
     expect(buildCommunityModerationEntryPath("cmt_74675bfb653a43809b1238fd6d271867", true))
       .toBe("/c/cmt_74675bfb653a43809b1238fd6d271867/mod");
     expect(buildCommunityModerationEntryPath("cmt_74675bfb653a43809b1238fd6d271867", false))
-      .toBe("/c/cmt_74675bfb653a43809b1238fd6d271867/mod/profile");
+      .toBe("/c/cmt_74675bfb653a43809b1238fd6d271867/mod/queue");
   });
 
   test("canonicalizes emoji community handles in moderation paths", () => {

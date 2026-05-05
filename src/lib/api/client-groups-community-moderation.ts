@@ -8,6 +8,7 @@ export interface ModerationCasePostPreview {
   body: string | null;
   caption: string | null;
   media_refs_json: string | null;
+  author_handle: string | null;
 }
 
 export interface ModerationCase {

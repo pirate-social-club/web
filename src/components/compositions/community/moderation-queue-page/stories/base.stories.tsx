@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { CommunityModerationQueuePage } from "../community-moderation-queue-page";
+import { buildPublicProfilePath } from "@/lib/profile-routing";
 
 const meta = {
   title: "Compositions/Community/Moderation/QueuePage",
@@ -26,7 +27,8 @@ const baseCases = [
       title: "Summer sunset at the beach",
       body: "Caught this amazing gradient last night. The colors were unreal.",
       imageSrc: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=200&h=200&fit=crop",
-      authorLabel: "@photographer",
+      authorLabel: "photographer.pirate",
+      authorHref: buildPublicProfilePath("photographer.pirate"),
     },
   },
   {
@@ -39,7 +41,8 @@ const baseCases = [
     postPreview: {
       title: "Check out this link",
       body: "Hey everyone, I found something interesting you might want to see...",
-      authorLabel: "@newmember",
+      authorLabel: "newmember.pirate",
+      authorHref: buildPublicProfilePath("newmember.pirate"),
     },
   },
   {
@@ -53,7 +56,8 @@ const baseCases = [
       title: "Art study #47",
       body: "Working on figure drawing this week. Feedback welcome!",
       imageSrc: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=200&h=200&fit=crop",
-      authorLabel: "@artist",
+      authorLabel: "artist.pirate",
+      authorHref: buildPublicProfilePath("artist.pirate"),
     },
   },
 ];
@@ -81,6 +85,35 @@ export const Processing: Story = {
   args: {
     cases: baseCases,
     processingCaseId: baseCases[0].caseId,
+  },
+};
+
+export const VisualPolicy: Story = {
+  args: {
+    cases: [
+      {
+        ...baseCases[0],
+        openedBy: "platform_analysis" as const,
+        priority: "medium" as const,
+        postPreview: {
+          title: "Photo set submission",
+          imageSrc: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=200&h=200&fit=crop",
+          authorLabel: "creator.pirate",
+          authorHref: buildPublicProfilePath("creator.pirate"),
+        },
+        visualPolicySummary: {
+          title: "Image check needs review",
+          description: "Needs review because the image appears to include an adult platform watermark and a URL.",
+          reasons: ["Adult platform watermark", "URL in image"],
+          evidence: [
+            { label: "Age", value: "adult" },
+            { label: "Nudity", value: "topless" },
+            { label: "Commercial", value: "adult platform watermark" },
+          ],
+        },
+      },
+      baseCases[1],
+    ],
   },
 };
 

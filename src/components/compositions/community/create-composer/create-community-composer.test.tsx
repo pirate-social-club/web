@@ -377,6 +377,7 @@ describe("CreateCommunityComposer", () => {
       description: "Good posts only.",
       displayName: "Vinyl Club",
       gateDrafts: [minimumAgeGate],
+      gateMatchMode: "all",
       membershipMode: "gated",
     });
   });

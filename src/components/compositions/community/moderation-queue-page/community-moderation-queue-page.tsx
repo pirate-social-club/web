@@ -8,6 +8,10 @@ import { Card } from "@/components/primitives/card";
 import { Separator } from "@/components/primitives/separator";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
+import { PostCardHeader } from "@/components/compositions/posts/post-card/post-card-header";
+import { PostCardMedia } from "@/components/compositions/posts/post-card/post-card-media";
+import { postCardType } from "@/components/compositions/posts/post-card/post-card.styles";
+import type { PostCardContent } from "@/components/compositions/posts/post-card/post-card.types";
 
 export interface ModerationQueueCaseItem {
   caseId: string;
@@ -21,6 +25,13 @@ export interface ModerationQueueCaseItem {
     body?: string;
     imageSrc?: string;
     authorLabel?: string;
+    authorHref?: string;
+  };
+  visualPolicySummary?: {
+    title: string;
+    description: string;
+    reasons: string[];
+    evidence: Array<{ label: string; value: string }>;
   };
 }
 
@@ -68,13 +79,85 @@ function priorityChipProps(priority: ModerationQueueCaseItem["priority"]): {
 } {
   switch (priority) {
     case "high":
-      return { label: "High", className: "bg-destructive/10 text-destructive" };
+      return { label: "High priority", className: "bg-destructive/10 text-destructive" };
     case "medium":
-      return { label: "Medium", className: "bg-warning/10 text-warning" };
+      return { label: "Medium priority", className: "bg-warning/10 text-warning" };
     case "low":
     default:
-      return { label: "Low", className: "bg-muted text-muted-foreground" };
+      return { label: "Low priority", className: "bg-muted text-muted-foreground" };
   }
+}
+
+function previewContent(preview: NonNullable<ModerationQueueCaseItem["postPreview"]>): PostCardContent {
+  if (preview.imageSrc) {
+    return {
+      type: "image",
+      src: preview.imageSrc,
+      alt: preview.title ?? "",
+      caption: preview.body,
+      aspectRatio: 16 / 9,
+    };
+  }
+  return {
+    type: "text",
+    body: preview.body ?? "",
+  };
+}
+
+function formatVisualSummary(summary: NonNullable<ModerationQueueCaseItem["visualPolicySummary"]>): string {
+  if (summary.reasons.length > 0) {
+    return `Flagged: ${summary.reasons.join(", ")}`;
+  }
+  return summary.title;
+}
+
+function formatVisualEvidence(summary: NonNullable<ModerationQueueCaseItem["visualPolicySummary"]>): string | null {
+  const values = summary.evidence
+    .filter((item) => item.label !== "Commercial")
+    .map((item) => item.value)
+    .filter((value) => value && value !== "none");
+  return values.length > 0 ? `Detected: ${values.join(", ")}` : null;
+}
+
+function QueuePostPreview({
+  createdAt,
+  preview,
+}: {
+  createdAt: string;
+  preview: NonNullable<ModerationQueueCaseItem["postPreview"]>;
+}) {
+  const content = previewContent(preview);
+
+  return (
+    <div className="flex max-w-2xl flex-col gap-2.5">
+      <PostCardHeader
+        byline={{
+          author: preview.authorLabel
+            ? {
+                kind: "user",
+                label: preview.authorLabel,
+                href: preview.authorHref,
+                avatarSeed: preview.authorLabel,
+              }
+            : undefined,
+          timestampLabel: formatRelativeTime(createdAt),
+        }}
+        identityPresentation="author_primary"
+        menuItems={[]}
+        viewContext="community"
+      />
+      {preview.title ? (
+        <Type
+          as="p"
+          className={cn(postCardType.title, "max-w-[72ch] self-start text-start font-semibold text-foreground")}
+          variant="body-strong"
+        >
+          {preview.title}
+        </Type>
+      ) : null}
+      <PostCardMedia content={content} />
+    </div>
+  );
 }
 
 export function CommunityModerationQueuePage({
@@ -118,6 +201,12 @@ export function CommunityModerationQueuePage({
               const source = openedByLabel(caseItem.openedBy);
               const priority = priorityChipProps(caseItem.priority);
               const preview = caseItem.postPreview;
+              const visualSummary = caseItem.visualPolicySummary
+                ? formatVisualSummary(caseItem.visualPolicySummary)
+                : null;
+              const visualEvidence = caseItem.visualPolicySummary
+                ? formatVisualEvidence(caseItem.visualPolicySummary)
+                : null;
 
               return (
                 <div key={caseItem.caseId}>
@@ -148,45 +237,29 @@ export function CommunityModerationQueuePage({
                       <Type as="span" variant="caption">
                         {source}
                       </Type>
-                      <span className="text-muted-foreground">·</span>
-                      <Type as="span" variant="caption">
-                        {formatRelativeTime(caseItem.createdAt)}
-                      </Type>
                     </div>
 
                     {/* Post preview */}
                     {preview ? (
-                      <div className="flex gap-3">
-                        {preview.imageSrc ? (
-                          <img
-                            alt=""
-                            className="h-16 w-16 shrink-0 rounded-md object-cover"
-                            src={preview.imageSrc}
-                          />
-                        ) : null}
-                        <div className="min-w-0 flex-1">
-                          {preview.authorLabel ? (
-                            <Type as="p" variant="caption">
-                              {preview.authorLabel}
-                            </Type>
-                          ) : null}
-                          {preview.title ? (
-                            <Type as="p" className="truncate" variant="body-strong">
-                              {preview.title}
-                            </Type>
-                          ) : null}
-                          {preview.body ? (
-                            <Type as="p" className="line-clamp-2 text-muted-foreground" variant="body">
-                              {preview.body}
-                            </Type>
-                          ) : null}
-                        </div>
-                      </div>
+                      <QueuePostPreview createdAt={caseItem.createdAt} preview={preview} />
                     ) : (
                       <Type as="p" className="text-muted-foreground" variant="body">
                         Post preview unavailable.
                       </Type>
                     )}
+
+                    {caseItem.visualPolicySummary ? (
+                      <div className="border-l border-border-soft pl-4">
+                        <Type as="p" variant="body">
+                          {visualSummary}
+                        </Type>
+                        {visualEvidence ? (
+                          <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
+                            {visualEvidence}
+                          </Type>
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2">

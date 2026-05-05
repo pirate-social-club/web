@@ -33,6 +33,9 @@ export interface SongContentSpec {
   // Core metadata
   title: string;
   artist?: string; // Optional - omit when same as post author to avoid redundancy
+  caption?: string;
+  captionDir?: "ltr" | "rtl" | "auto";
+  captionLang?: string;
   artworkSrc?: string;
   durationLabel?: string;
   durationMs?: number;
@@ -75,6 +78,9 @@ export interface VideoContentSpec {
   src: string;
   posterSrc?: string;
   title?: string;
+  caption?: string;
+  captionDir?: "ltr" | "rtl" | "auto";
+  captionLang?: string;
   durationLabel?: string;
   durationMs?: number;
 

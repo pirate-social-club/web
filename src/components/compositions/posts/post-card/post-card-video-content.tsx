@@ -4,6 +4,7 @@ import { Lock as FilledLockIcon, Play as PlayIcon } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
+import { FormattedText } from "@/components/primitives/formatted-text";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { mediaControlButtonVariants } from "@/components/primitives/media-control-button";
@@ -206,6 +207,19 @@ function getDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): str
   return `Derived from ${upstreamAttributions[0].title} +${upstreamAttributions.length - 1}`;
 }
 
+function VideoCaption({ content }: { content: VideoContentSpec }) {
+  if (!content.caption) return null;
+
+  return (
+    <FormattedText
+      className={cn("text-muted-foreground", postCardType.caption)}
+      dir={content.captionDir ?? "auto"}
+      lang={content.captionLang}
+      value={content.caption}
+    />
+  );
+}
+
 export function VideoPostContent({ content, className }: VideoPostContentProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
@@ -256,6 +270,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
               {derivativeSummary}
             </p>
           )}
+          <VideoCaption content={content} />
         </div>
       );
     }
@@ -280,6 +295,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
             {derivativeSummary}
           </p>
         )}
+        <VideoCaption content={content} />
       </div>
     );
   }
@@ -370,6 +386,8 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
           {derivativeSummary}
         </p>
       )}
+
+      <VideoCaption content={content} />
 
       {ui.showOwned && (
         <span

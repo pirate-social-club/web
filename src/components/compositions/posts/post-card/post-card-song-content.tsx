@@ -4,6 +4,7 @@ import { Lock as FilledLockIcon, Pause as PauseIcon, Play as PlayIcon } from "@p
 import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
+import { FormattedText } from "@/components/primitives/formatted-text";
 import { MediaControlButton } from "@/components/primitives/media-control-button";
 import { postCardType } from "./post-card.styles";
 import type { SongContentSpec, UpstreamAttribution } from "./post-card.types";
@@ -124,6 +125,19 @@ function getDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): str
   return `Derived from ${upstreamAttributions[0].title} +${upstreamAttributions.length - 1}`;
 }
 
+function SongCaption({ content }: { content: SongContentSpec }) {
+  if (!content.caption) return null;
+
+  return (
+    <FormattedText
+      className={cn("text-muted-foreground", postCardType.caption)}
+      dir={content.captionDir ?? "auto"}
+      lang={content.captionLang}
+      value={content.caption}
+    />
+  );
+}
+
 export function SongPostContent({ content, className }: SongPostContentProps) {
   const ui = deriveSongUI(content);
   const {
@@ -242,6 +256,8 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
           <span>Unlocked</span>
         </span>
       )}
+
+      <SongCaption content={content} />
 
       {ui.isAgeGated && ui.ageGateRequiresProof && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5">

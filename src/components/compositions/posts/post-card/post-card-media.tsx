@@ -212,13 +212,12 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
             )}
           </div>
           {!ageGateRequiresProof && content.caption && (
-            <figcaption
+            <FormattedText
               className={cn("mt-1.5 text-start text-muted-foreground", postCardType.caption)}
               dir={content.captionDir ?? "auto"}
               lang={content.captionLang}
-            >
-              {content.caption}
-            </figcaption>
+              value={content.caption}
+            />
           )}
         </figure>
       );

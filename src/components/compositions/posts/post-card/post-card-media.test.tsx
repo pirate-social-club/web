@@ -66,4 +66,22 @@ describe("PostCardMedia", () => {
     expect(markup).not.toContain("18+ to View");
     expect(markup).not.toContain("blur-md saturate-0");
   });
+
+  test("renders image captions with formatted text", () => {
+    const markup = renderToStaticMarkup(
+      <PostCardMedia
+        content={{
+          type: "image",
+          alt: "image",
+          src: "https://example.test/image.jpg",
+          caption: "First line\n\n- one\n- two",
+        }}
+      />,
+    );
+
+    expect(markup).toContain("First line");
+    expect(markup).toContain("<ul");
+    expect(markup).toContain("<li>one</li>");
+    expect(markup).toContain("<li>two</li>");
+  });
 });

@@ -47,6 +47,7 @@ export function buildPostComposerPreviewContent({
       src: attachment.previewUrl ?? fallbackVideoSrc,
       posterSrc: videoPosterSrc ?? videoDetails?.thumbnail?.previewUrl,
       title: title || "Video",
+      caption: bodyText || undefined,
       accessMode,
       listingMode: access === "paid" ? "listed" : "not_listed",
       listingStatus: access === "paid" ? "active" : undefined,
@@ -113,6 +114,7 @@ export function buildPostComposerPreviewContent({
     return {
       type: "song",
       title: title || attachment.label || "Untitled track",
+      caption: bodyText || undefined,
       artworkSrc: "https://picsum.photos/seed/post-composer-song-preview/240/240",
       accessMode,
       listingMode: access === "paid" ? "listed" : "not_listed",

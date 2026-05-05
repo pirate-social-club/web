@@ -11,7 +11,7 @@ describe("buildPostComposerPreviewContent", () => {
         label: "clip.mp4",
         previewUrl: "blob:https://app.test/video",
       },
-      body: "",
+      body: "First line\n\n- one\n- two",
       price: "",
       title: "Clip",
       videoPosterSrc: "data:image/jpeg;base64,poster-frame",
@@ -19,8 +19,28 @@ describe("buildPostComposerPreviewContent", () => {
 
     expect(content).toMatchObject({
       type: "video",
+      caption: "First line\n\n- one\n- two",
       posterSrc: "data:image/jpeg;base64,poster-frame",
       src: "blob:https://app.test/video",
+    });
+  });
+
+  test("maps song body text into a caption for the publish preview", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "free",
+      attachment: {
+        kind: "song",
+        label: "track.wav",
+        previewUrl: "blob:https://app.test/song",
+      },
+      body: "First line\n\n- one\n- two",
+      price: "",
+      title: "Track",
+    });
+
+    expect(content).toMatchObject({
+      type: "song",
+      caption: "First line\n\n- one\n- two",
     });
   });
 

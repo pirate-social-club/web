@@ -426,6 +426,52 @@ describe("toHomeFeedItem", () => {
     expect(item.post.content.provider).toBe("x");
     expect(item.post.content.state).toBe("embed");
   });
+
+  test("maps video captions and original translated captions onto cards", () => {
+    const entry = createEntry();
+    entry.post.post.post_type = "video";
+    entry.post.post.title = "Video title";
+    entry.post.post.caption = "Original caption";
+    entry.post.post.media_refs = [{ storage_ref: "https://media.test/video.mp4", mime_type: "video/mp4", size_bytes: 12 }];
+    entry.post.translation_state = "ready";
+    entry.post.resolved_locale = "en";
+    entry.post.translated_caption = "Translated caption";
+
+    const item = toHomeFeedItem(entry, {}, undefined, {
+      showOriginalLabel: "Show original",
+      showTranslationLabel: "Show translation",
+    });
+
+    expect(item.post.content.type).toBe("video");
+    if (item.post.content.type !== "video") throw new Error("expected video content");
+    expect(item.post.content.caption).toBe("Translated caption");
+    expect(item.postOriginal?.content.type).toBe("video");
+    if (!item.postOriginal || item.postOriginal.content.type !== "video") throw new Error("expected original video content");
+    expect(item.postOriginal.content.caption).toBe("Original caption");
+  });
+
+  test("maps song captions and original translated captions onto cards", () => {
+    const entry = createEntry();
+    entry.post.post.post_type = "song";
+    entry.post.post.title = "Song title";
+    entry.post.post.caption = "Original caption";
+    entry.post.post.media_refs = [{ storage_ref: "https://media.test/song.mp3", mime_type: "audio/mpeg", size_bytes: 12 }];
+    entry.post.translation_state = "ready";
+    entry.post.resolved_locale = "en";
+    entry.post.translated_caption = "Translated caption";
+
+    const item = toHomeFeedItem(entry, {}, undefined, {
+      showOriginalLabel: "Show original",
+      showTranslationLabel: "Show translation",
+    });
+
+    expect(item.post.content.type).toBe("song");
+    if (item.post.content.type !== "song") throw new Error("expected song content");
+    expect(item.post.content.caption).toBe("Translated caption");
+    expect(item.postOriginal?.content.type).toBe("song");
+    if (!item.postOriginal || item.postOriginal.content.type !== "song") throw new Error("expected original song content");
+    expect(item.postOriginal.content.caption).toBe("Original caption");
+  });
 });
 
 describe("toCommunityFeedItem", () => {

@@ -439,9 +439,9 @@ function renderedTranslationFields(post: ApiPost["post"]): RenderedTranslationFi
       return ["title", "caption"];
     case "link":
       return ["title", "body"];
-    case "song":
     case "video":
-      return ["title"];
+    case "song":
+      return ["title", "caption"];
     case "text":
     default:
       return ["title", "body"];
@@ -581,6 +581,9 @@ export function toCommunityPostContent(
         ageGatePolicy: post.age_gate_policy,
         ageGateViewerState: postResponse.age_gate_viewer_state ?? undefined,
         analysisState: post.analysis_state,
+        caption: resolvedCaption,
+        captionDir: translatedTextPresentation.dir,
+        captionLang: translatedTextPresentation.lang,
         contentSafetyState: post.content_safety_state,
         durationMs: primaryMedia?.duration_ms ?? undefined,
         hasEntitlement: accessMode === "public"
@@ -766,6 +769,9 @@ export function toCommunityPostContent(
         onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
         onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
         playbackState,
+        caption: resolvedCaption,
+        captionDir: translatedTextPresentation.dir,
+        captionLang: translatedTextPresentation.lang,
         priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
         rightsBasis: post.rights_basis ?? undefined,
         songMode: post.song_mode ?? undefined,

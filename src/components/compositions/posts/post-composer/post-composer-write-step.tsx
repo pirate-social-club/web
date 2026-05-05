@@ -37,9 +37,93 @@ function useObjectUrl(file: File | null | undefined) {
   return objectUrl;
 }
 
+function waitForVideoEvent(
+  video: HTMLVideoElement,
+  eventName: "loadeddata" | "loadedmetadata",
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const handleEvent = () => {
+      cleanup();
+      resolve();
+    };
+    const handleError = () => {
+      cleanup();
+      reject(new Error("Could not read the selected video frame."));
+    };
+    const cleanup = () => {
+      video.removeEventListener(eventName, handleEvent);
+      video.removeEventListener("error", handleError);
+    };
+    video.addEventListener(eventName, handleEvent, { once: true });
+    video.addEventListener("error", handleError, { once: true });
+  });
+}
+
+function useVideoPosterUrl(file: File | null | undefined) {
+  const [posterUrl, setPosterUrl] = React.useState<string | undefined>();
+
+  React.useEffect(() => {
+    if (!file) {
+      setPosterUrl(undefined);
+      return;
+    }
+
+    let cancelled = false;
+    const objectUrl = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+
+    async function extractPoster() {
+      try {
+        video.src = objectUrl;
+        await waitForVideoEvent(video, "loadedmetadata");
+        if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+          await waitForVideoEvent(video, "loadeddata");
+        }
+
+        if (video.videoWidth <= 0 || video.videoHeight <= 0) {
+          throw new Error("Could not read the selected video frame.");
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          throw new Error("Could not prepare the selected video frame.");
+        }
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        if (!cancelled) {
+          setPosterUrl(canvas.toDataURL("image/jpeg", 0.9));
+        }
+      } catch {
+        if (!cancelled) {
+          setPosterUrl(undefined);
+        }
+      }
+    }
+
+    setPosterUrl(undefined);
+    void extractPoster();
+
+    return () => {
+      cancelled = true;
+      URL.revokeObjectURL(objectUrl);
+      video.removeAttribute("src");
+      video.load();
+    };
+  }, [file]);
+
+  return posterUrl;
+}
+
 function attachmentFromController(
   controller: PostComposerController,
   imagePreviewUrl?: string,
+  videoPosterUrl?: string,
   videoPreviewUrl?: string,
 ): AttachmentState {
   const { fields, media, song, tabs } = controller;
@@ -58,6 +142,7 @@ function attachmentFromController(
     return {
       kind: "video",
       label: media.videoState.primaryVideoUpload?.name ?? media.videoState.primaryVideoLabel ?? "Video",
+      posterUrl: videoPosterUrl,
       previewUrl: videoPreviewUrl,
     };
   }
@@ -126,7 +211,8 @@ function useWriteStepController(controller: PostComposerController) {
   const audioInputRef = React.useRef<HTMLInputElement | null>(null);
   const imagePreviewUrl = useObjectUrl(controller.media.activeImageUpload);
   const videoPreviewUrl = useObjectUrl(controller.media.videoState.primaryVideoUpload);
-  const attachment = attachmentFromController(controller, imagePreviewUrl, videoPreviewUrl);
+  const videoPosterUrl = useVideoPosterUrl(controller.media.videoState.primaryVideoUpload);
+  const attachment = attachmentFromController(controller, imagePreviewUrl, videoPosterUrl, videoPreviewUrl);
   const [isDragging, setIsDragging] = React.useState(false);
   const dragCounter = React.useRef(0);
 

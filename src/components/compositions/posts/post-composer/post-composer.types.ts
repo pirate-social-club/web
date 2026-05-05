@@ -8,7 +8,7 @@ export type AttachmentKind = "link" | "image" | "video" | "song" | "live";
 export type AttachmentState =
   | { kind: "link"; url: string }
   | { kind: "image"; label: string; previewUrl?: string }
-  | { kind: "video"; label: string; previewUrl?: string }
+  | { kind: "video"; label: string; posterUrl?: string; previewUrl?: string }
   | { kind: "song"; label: string }
   | { kind: "live" }
   | null;

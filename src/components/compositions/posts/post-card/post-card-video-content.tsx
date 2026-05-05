@@ -20,12 +20,26 @@ function isBlobUrl(src: string): boolean {
 }
 
 function BlobVideoPlayer({ autoPlay, src, poster, title, className }: { autoPlay?: boolean; src: string; poster?: string; title?: string; className?: string }) {
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
+
+  function togglePlayback() {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) {
+      void video.play();
+      return;
+    }
+    video.pause();
+  }
+
   return (
     <video
+      ref={videoRef}
       className={cn("aspect-video w-full rounded-lg bg-black object-contain", className)}
       autoPlay={autoPlay}
       controls
       muted
+      onClick={togglePlayback}
       playsInline
       poster={poster}
       preload="metadata"
@@ -33,6 +47,52 @@ function BlobVideoPlayer({ autoPlay, src, poster, title, className }: { autoPlay
       title={title}
     />
   );
+}
+
+function VideoThumbnail({
+  className,
+  posterSrc,
+  src,
+  title,
+}: {
+  className?: string;
+  posterSrc?: string;
+  src: string;
+  title?: string;
+}) {
+  const [posterFailed, setPosterFailed] = React.useState(false);
+  const videoSrc = src.trim();
+  const showPoster = Boolean(posterSrc && !posterFailed);
+
+  React.useEffect(() => {
+    setPosterFailed(false);
+  }, [posterSrc]);
+
+  if (showPoster) {
+    return (
+      <img
+        alt={title ?? ""}
+        className={className}
+        onError={() => setPosterFailed(true)}
+        src={posterSrc}
+      />
+    );
+  }
+
+  if (videoSrc) {
+    return (
+      <video
+        aria-label={title}
+        className={className}
+        muted
+        playsInline
+        preload="metadata"
+        src={videoSrc}
+      />
+    );
+  }
+
+  return null;
 }
 
 export interface VideoPostContentProps {
@@ -197,15 +257,16 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
         disabled={!ui.canPlay}
         aria-label={content.title ? `Play ${content.title}` : copy.playVideo}
       >
-        {content.posterSrc ? (
-          <img
-            alt={content.title ?? copy.videoThumbnail}
+        {content.posterSrc || content.src.trim() ? (
+          <VideoThumbnail
             className={cn(
               "aspect-video w-full object-cover transition-[filter,transform]",
               ui.showLockedThumbnail && "scale-[1.02] blur-[3px]",
               ui.showAgeGatedThumbnail && "blur-md saturate-0",
             )}
-            src={content.posterSrc}
+            posterSrc={content.posterSrc}
+            src={content.src}
+            title={content.title ?? copy.videoThumbnail}
           />
         ) : (
           <div className="flex aspect-video w-full items-center justify-center bg-muted">

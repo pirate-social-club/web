@@ -88,7 +88,13 @@ export function PostComposerAttachmentCard({
   if (attachment.kind === "video") {
     return (
       <div className="relative aspect-video w-full overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-card">
-        {attachment.previewUrl ? (
+        {attachment.posterUrl ? (
+          <img
+            alt=""
+            className="size-full object-cover"
+            src={attachment.posterUrl}
+          />
+        ) : attachment.previewUrl ? (
           <video
             className="size-full object-cover"
             muted

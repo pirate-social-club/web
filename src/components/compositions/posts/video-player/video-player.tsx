@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  Gesture,
   MediaPlayer,
   MediaProvider,
   Poster,
@@ -57,6 +58,7 @@ export function VideoPlayer({
         className,
       )}
     >
+      <Gesture className="absolute inset-0 z-10" event="pointerup" action="toggle:paused" />
       <MediaProvider>
         {poster && (
           <Poster

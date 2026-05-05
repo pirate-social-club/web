@@ -7,6 +7,7 @@ import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { mediaControlButtonVariants } from "@/components/primitives/media-control-button";
+import { extractVideoPosterFrameSourceDataUrl } from "@/components/compositions/posts/post-composer/video-poster-frame";
 import { postCardType } from "./post-card.styles";
 import type { UpstreamAttribution, VideoContentSpec } from "./post-card.types";
 
@@ -60,21 +61,59 @@ function VideoThumbnail({
   src: string;
   title?: string;
 }) {
+  const imageRef = React.useRef<HTMLImageElement | null>(null);
+  const [generatedPosterSrc, setGeneratedPosterSrc] = React.useState<string | undefined>();
   const [posterFailed, setPosterFailed] = React.useState(false);
   const videoSrc = src.trim();
-  const showPoster = Boolean(posterSrc && !posterFailed);
+  const resolvedPosterSrc = generatedPosterSrc ?? posterSrc;
+  const showPoster = Boolean(resolvedPosterSrc && !posterFailed);
 
   React.useEffect(() => {
+    setGeneratedPosterSrc(undefined);
     setPosterFailed(false);
   }, [posterSrc]);
+
+  async function replaceBlankPoster() {
+    const image = imageRef.current;
+    if (generatedPosterSrc) return;
+    if (!image || !videoSrc) return;
+
+    try {
+      const width = Math.min(64, image.naturalWidth);
+      const height = Math.min(64, image.naturalHeight);
+      if (width <= 0 || height <= 0) return;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) return;
+      context.drawImage(image, 0, 0, width, height);
+      const pixels = context.getImageData(0, 0, width, height).data;
+      let totalLuma = 0;
+      for (let index = 0; index < pixels.length; index += 4) {
+        totalLuma += 0.2126 * pixels[index]! + 0.7152 * pixels[index + 1]! + 0.0722 * pixels[index + 2]!;
+      }
+      if (totalLuma / (pixels.length / 4) >= 10) return;
+
+      const generated = await extractVideoPosterFrameSourceDataUrl(videoSrc, "0");
+      setGeneratedPosterSrc(generated.dataUrl);
+      setPosterFailed(false);
+    } catch {
+      setPosterFailed(true);
+    }
+  }
 
   if (showPoster) {
     return (
       <img
+        ref={imageRef}
+        crossOrigin="anonymous"
         alt={title ?? ""}
         className={className}
         onError={() => setPosterFailed(true)}
-        src={posterSrc}
+        onLoad={() => void replaceBlankPoster()}
+        src={resolvedPosterSrc}
       />
     );
   }

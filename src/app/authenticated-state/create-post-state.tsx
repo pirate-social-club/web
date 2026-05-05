@@ -22,6 +22,7 @@ import type {
   VideoComposerState,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import { isValidHttpUrl, normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
+import { extractVideoPosterFrameFile } from "@/components/compositions/posts/post-composer/video-poster-frame";
 
 import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
 import { formatQualifierLabel } from "@/app/authenticated-helpers/post-presentation";
@@ -45,94 +46,7 @@ type AvailableSigningAgent = {
   privateKeyPem: string;
 };
 
-type ExtractedVideoPosterFrame = {
-  file: File;
-  frameMs: number;
-  height: number;
-  width: number;
-};
-
 const MAX_VIDEO_POSTER_FRAME_WIDTH = 1920;
-
-function parsePosterFrameSeconds(value: string | undefined): number {
-  const parsed = Number.parseFloat(String(value ?? "0"));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-}
-
-function waitForVideoEvent(video: HTMLVideoElement, eventName: "loadeddata" | "loadedmetadata" | "seeked"): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const handleEvent = () => {
-      cleanup();
-      resolve();
-    };
-    const handleError = () => {
-      cleanup();
-      reject(new Error("Could not read the selected video frame."));
-    };
-    const cleanup = () => {
-      video.removeEventListener(eventName, handleEvent);
-      video.removeEventListener("error", handleError);
-    };
-    video.addEventListener(eventName, handleEvent, { once: true });
-    video.addEventListener("error", handleError, { once: true });
-  });
-}
-
-async function extractVideoPosterFrame(file: File, frameSeconds: string | undefined): Promise<ExtractedVideoPosterFrame> {
-  const objectUrl = URL.createObjectURL(file);
-  const video = document.createElement("video");
-  video.muted = true;
-  video.playsInline = true;
-  video.preload = "metadata";
-
-  try {
-    video.src = objectUrl;
-    await waitForVideoEvent(video, "loadedmetadata");
-    if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-      await waitForVideoEvent(video, "loadeddata");
-    }
-    const duration = Number.isFinite(video.duration) ? video.duration : 0;
-    const selectedSeconds = Math.min(Math.max(0, duration), parsePosterFrameSeconds(frameSeconds));
-    if (selectedSeconds > 0) {
-      video.currentTime = selectedSeconds;
-      await waitForVideoEvent(video, "seeked");
-    }
-
-    const sourceWidth = video.videoWidth;
-    const sourceHeight = video.videoHeight;
-    if (sourceWidth <= 0 || sourceHeight <= 0) {
-      throw new Error("Could not read the selected video frame.");
-    }
-    const scale = sourceWidth > MAX_VIDEO_POSTER_FRAME_WIDTH ? MAX_VIDEO_POSTER_FRAME_WIDTH / sourceWidth : 1;
-    const width = Math.max(1, Math.round(sourceWidth * scale));
-    const height = Math.max(1, Math.round(sourceHeight * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
-    if (!context) {
-      throw new Error("Could not prepare the selected video frame.");
-    }
-    context.drawImage(video, 0, 0, sourceWidth, sourceHeight, 0, 0, width, height);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
-    if (!blob) {
-      throw new Error("Could not save the selected video frame.");
-    }
-
-    const posterFile = new File([blob], `${file.name.replace(/\.[^.]+$/, "") || "video"}-cover-frame.jpg`, {
-      type: "image/jpeg",
-    });
-    return {
-      file: posterFile,
-      frameMs: Math.round(selectedSeconds * 1000),
-      height,
-      width,
-    };
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
 
 async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<AvailableSigningAgent | null> {
   for (const agent of agents) {
@@ -603,7 +517,11 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         );
       } else if (composerMode === "video") {
         const uploadedVideo = await uploadVideoArtifact(videoState);
-        const posterFrame = await extractVideoPosterFrame(videoState.primaryVideoUpload!, videoState.posterFrameSeconds);
+        const posterFrame = await extractVideoPosterFrameFile(
+          videoState.primaryVideoUpload!,
+          videoState.posterFrameSeconds,
+          { maxWidth: MAX_VIDEO_POSTER_FRAME_WIDTH },
+        );
         const uploadedPoster = await api.communities.uploadMedia({
           kind: "post_image",
           file: posterFrame.file,

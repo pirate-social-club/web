@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { QualifierSection } from "./post-composer-identity-section";
 import { buildPostComposerPreviewContent } from "./post-composer-preview";
 import type { AttachmentState } from "./post-composer.types";
+import { extractVideoPosterFrameDataUrl } from "./video-poster-frame";
 import type { PostComposerController } from "./use-post-composer-controller";
 
 type PostComposerPublishSettingsProps = {
@@ -39,33 +40,6 @@ function useObjectUrl(file: File | null | undefined) {
   return objectUrl;
 }
 
-function waitForVideoEvent(
-  video: HTMLVideoElement,
-  eventName: "loadeddata" | "loadedmetadata" | "seeked",
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const handleEvent = () => {
-      cleanup();
-      resolve();
-    };
-    const handleError = () => {
-      cleanup();
-      reject(new Error("Could not read the selected video frame."));
-    };
-    const cleanup = () => {
-      video.removeEventListener(eventName, handleEvent);
-      video.removeEventListener("error", handleError);
-    };
-    video.addEventListener(eventName, handleEvent, { once: true });
-    video.addEventListener("error", handleError, { once: true });
-  });
-}
-
-function parseFrameSeconds(value: string | undefined) {
-  const parsed = Number.parseFloat(value ?? "0");
-  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
-}
-
 function useVideoPosterFrameUrl(file: File | null | undefined, frameSeconds: string | undefined) {
   const [posterUrl, setPosterUrl] = useState<string | undefined>();
 
@@ -76,80 +50,16 @@ function useVideoPosterFrameUrl(file: File | null | undefined, frameSeconds: str
       return;
     }
 
-    const activeFile = file;
     let cancelled = false;
-    const objectUrl = URL.createObjectURL(activeFile);
-    const video = document.createElement("video");
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = "metadata";
+    const activeFile = file;
 
     async function extractFrame() {
       try {
-        console.debug("[post-composer] publish preview poster: starting extraction", {
-          fileName: activeFile.name,
-          fileSize: activeFile.size,
-          fileType: activeFile.type,
-          frameSeconds,
-        });
-        video.src = objectUrl;
-        await waitForVideoEvent(video, "loadedmetadata");
-        console.debug("[post-composer] publish preview poster: metadata loaded", {
-          duration: video.duration,
-          readyState: video.readyState,
-          videoHeight: video.videoHeight,
-          videoWidth: video.videoWidth,
-        });
-        if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-          await waitForVideoEvent(video, "loadeddata");
-          console.debug("[post-composer] publish preview poster: data loaded", {
-            readyState: video.readyState,
-            videoHeight: video.videoHeight,
-            videoWidth: video.videoWidth,
-          });
-        }
-
-        const duration = Number.isFinite(video.duration) ? video.duration : 0;
-        const selectedSeconds = Math.min(Math.max(0, duration), parseFrameSeconds(frameSeconds));
-        if (selectedSeconds > 0) {
-          video.currentTime = selectedSeconds;
-          await waitForVideoEvent(video, "seeked");
-          console.debug("[post-composer] publish preview poster: seeked", {
-            currentTime: video.currentTime,
-            selectedSeconds,
-          });
-        }
-
-        const sourceWidth = video.videoWidth;
-        const sourceHeight = video.videoHeight;
-        if (sourceWidth <= 0 || sourceHeight <= 0) {
-          throw new Error("Could not read the selected video frame.");
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = sourceWidth;
-        canvas.height = sourceHeight;
-        const context = canvas.getContext("2d");
-        if (!context) {
-          throw new Error("Could not prepare the selected video frame.");
-        }
-        context.drawImage(video, 0, 0, sourceWidth, sourceHeight);
-
+        const poster = await extractVideoPosterFrameDataUrl(activeFile, frameSeconds);
         if (!cancelled) {
-          const nextPosterUrl = canvas.toDataURL("image/jpeg", 0.9);
-          console.debug("[post-composer] publish preview poster: extracted", {
-            byteLength: nextPosterUrl.length,
-            sourceHeight,
-            sourceWidth,
-          });
-          setPosterUrl(nextPosterUrl);
+          setPosterUrl(poster.dataUrl);
         }
-      } catch (error) {
-        console.debug("[post-composer] publish preview poster: extraction failed", {
-          error,
-          fileName: activeFile.name,
-          frameSeconds,
-        });
+      } catch {
         if (!cancelled) {
           setPosterUrl(undefined);
         }
@@ -161,9 +71,6 @@ function useVideoPosterFrameUrl(file: File | null | undefined, frameSeconds: str
 
     return () => {
       cancelled = true;
-      URL.revokeObjectURL(objectUrl);
-      video.removeAttribute("src");
-      video.load();
     };
   }, [file, frameSeconds]);
 

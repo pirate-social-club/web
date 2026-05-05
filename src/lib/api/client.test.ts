@@ -622,15 +622,18 @@ describe("ApiClient media uploads", () => {
       });
 
       await client.publicPosts.get("pst_test", { locale: "zh-Hans" });
+      await client.publicPosts.getThread("pst_test", { limit: "25", locale: "zh-Hans", sort: "best" });
       await client.publicComments.listPostComments("pst_test", { limit: "25", locale: "zh-Hans", sort: "best" });
       await client.publicComments.listReplies("cmt_test", { locale: "zh-Hans", sort: "new" });
 
       expect(requests[0]?.url).toBe("http://pirate.test/public-posts/pst_test?locale=zh-Hans");
       expect(requests[0]?.headers.get("authorization")).toBe(null);
-      expect(requests[1]?.url).toBe("http://pirate.test/public-comments/posts/pst_test/comments?limit=25&locale=zh-Hans&sort=best");
+      expect(requests[1]?.url).toBe("http://pirate.test/public-posts/pst_test/thread?limit=25&locale=zh-Hans&sort=best");
       expect(requests[1]?.headers.get("authorization")).toBe(null);
-      expect(requests[2]?.url).toBe("http://pirate.test/public-comments/cmt_test/replies?locale=zh-Hans&sort=new");
+      expect(requests[2]?.url).toBe("http://pirate.test/public-comments/posts/pst_test/comments?limit=25&locale=zh-Hans&sort=best");
       expect(requests[2]?.headers.get("authorization")).toBe(null);
+      expect(requests[3]?.url).toBe("http://pirate.test/public-comments/cmt_test/replies?locale=zh-Hans&sort=new");
+      expect(requests[3]?.headers.get("authorization")).toBe(null);
     } finally {
       globalThis.fetch = originalFetch;
     }

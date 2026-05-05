@@ -17,6 +17,12 @@ import type {
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
+export type PublicPostThreadResponse = {
+  post: LocalizedPostResponse;
+  community: CommunityPreview;
+  comments: CommentListResponse;
+};
+
 export function createProfilesApi(request: ApiRequest) {
   return {
     getMe: (): Promise<Profile> => request<Profile>("/profiles/me"),
@@ -134,6 +140,22 @@ export function createPublicPostsApi(request: ApiRequest) {
       return request<LocalizedPostResponse>(buildQueryPath(
         `/public-posts/${encodeURIComponent(postId)}`,
         { locale: opts?.locale },
+      ), {
+        tokenRequired: false,
+      });
+    },
+    getThread: (
+      postId: string,
+      opts?: CommunityListCommentsOptions,
+    ): Promise<PublicPostThreadResponse> => {
+      return request<PublicPostThreadResponse>(buildQueryPath(
+        `/public-posts/${encodeURIComponent(postId)}/thread`,
+        {
+          cursor: opts?.cursor,
+          limit: opts?.limit,
+          locale: opts?.locale,
+          sort: opts?.sort,
+        },
       ), {
         tokenRequired: false,
       });

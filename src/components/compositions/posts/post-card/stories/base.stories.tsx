@@ -406,29 +406,6 @@ export const XEmbedOfficial: Story = {
   ),
 };
 
-export const XEmbedUnavailable: Story = {
-  name: "Embed / X Unavailable",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title={undefined}
-      content={{
-        type: "embed",
-        canonicalUrl: "https://x.com/pirate/status/1234567890123456789",
-        originalUrl: "https://x.com/pirate/status/1234567890123456789",
-        preview: {
-          authorName: "Pirate",
-          hasMedia: false,
-        },
-        provider: "x",
-        renderMode: "preview",
-        state: "unavailable",
-      }}
-      engagement={{ ...basePost.engagement, score: 12, commentCount: 4 }}
-    />
-  ),
-};
-
 export const YouTubeEmbedPreview: Story = {
   name: "Embed / YouTube Preview",
   render: () => (

@@ -462,10 +462,16 @@ export function usePost(
     setAuthorProfilesByUserId({});
     setReadMode(hasSession ? "authenticated" : "public");
 
-    const loadPost = async (): Promise<{ post: ApiPost; readMode: PostReadMode }> => {
+    const loadPost = async (): Promise<{ post: ApiPost; readMode: PostReadMode; publicThread?: Awaited<ReturnType<typeof api.publicPosts.getThread>> }> => {
       if (!hasSession) {
+        const publicThread = await api.publicPosts.getThread(postId, {
+          limit: THREAD_COMMENT_PAGE_LIMIT,
+          locale,
+          sort: commentSort,
+        });
         return {
-          post: normalizePostResponse(await api.publicPosts.get(postId, { locale })),
+          post: normalizePostResponse(publicThread.post),
+          publicThread,
           readMode: "public",
         };
       }
@@ -489,7 +495,7 @@ export function usePost(
     };
 
     void loadPost()
-      .then(({ post: p, readMode: nextReadMode }) => {
+      .then(({ post: p, readMode: nextReadMode, publicThread }) => {
         if (cancelled) return;
         setPost(p);
         setReadMode(nextReadMode);
@@ -520,6 +526,34 @@ export function usePost(
               });
             }
           });
+
+        if (publicThread) {
+          const nextCommentNodes = buildThreadCommentTreeFromItems(publicThread.comments.items);
+          void loadProfilesByUserId(
+            api,
+            collectThreadCommentAuthorUserIds(nextCommentNodes),
+            session?.profile ? { [session.user.id]: session.profile } : {},
+          )
+            .then((commentAuthorProfilesByUserId) => {
+              if (cancelled) return;
+              setCommunity(publicThread.community);
+              setCommentNodes(nextCommentNodes);
+              setAuthorProfilesByUserId((current) => ({ ...current, ...commentAuthorProfilesByUserId }));
+              loadedCommentSortKeyRef.current = `${p.post.community}:${nextReadMode}:${commentSort}`;
+            })
+            .catch((nextError: unknown) => {
+              if (!cancelled) {
+                logger.warn("[post-route] bundled public thread comments profile load failed", {
+                  error: nextError,
+                  postId: p.post.id,
+                });
+                setCommunity(publicThread.community);
+                setCommentNodes(nextCommentNodes);
+                loadedCommentSortKeyRef.current = `${p.post.community}:${nextReadMode}:${commentSort}`;
+              }
+            });
+          return;
+        }
 
         void Promise.all([
           (hasSession

@@ -556,7 +556,7 @@ export function PostEmbedPreview({ content, className }: { content: EmbedContent
   );
 }
 
-function OfficialYouTubeEmbed({ content, className }: { content: EmbedContent; className?: string }) {
+export function OfficialYouTubeEmbed({ content, className }: { content: EmbedContent; className?: string }) {
   const copy = defaultRouteCopy;
   if (content.provider !== "youtube" || content.state !== "embed" || !content.oembedHtml) {
     return <PostEmbedPreview content={content} className={className} />;
@@ -645,20 +645,22 @@ export function OfficialOEmbed({ content, className }: { content: EmbedContent; 
     const embedUrl = `https://platform.twitter.com/embed/Tweet.html?id=${encodeURIComponent(tweetId)}&dnt=true&theme=dark`;
 
     return (
-      <div
-        className={cn("mx-auto w-full max-w-[550px] overflow-hidden rounded-lg border border-border-soft bg-card transition-[height] duration-200", className)}
-        style={{ height: xEmbedHeight }}
-      >
-        <iframe
-          allow="autoplay; fullscreen"
-          className="size-full border-0"
-          data-post-card-interactive="true"
-          loading="lazy"
-          referrerPolicy="strict-origin-when-cross-origin"
-          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-          src={embedUrl}
-          title={content.preview?.text?.trim() || defaultRouteCopy.common.xPost}
-        />
+      <div className={cn("w-full rounded-lg border border-border-soft bg-muted/30 p-3", className)}>
+        <div
+          className="mx-auto w-full max-w-[550px] overflow-hidden rounded-lg bg-card transition-[height] duration-200"
+          style={{ height: xEmbedHeight }}
+        >
+          <iframe
+            allow="autoplay; fullscreen"
+            className="size-full border-0"
+            data-post-card-interactive="true"
+            loading="lazy"
+            referrerPolicy="strict-origin-when-cross-origin"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+            src={embedUrl}
+            title={content.preview?.text?.trim() || defaultRouteCopy.common.xPost}
+          />
+        </div>
       </div>
     );
   }

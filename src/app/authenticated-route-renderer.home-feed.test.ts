@@ -378,6 +378,54 @@ describe("toHomeFeedItem", () => {
     expect(item.post.content.summary?.keyPoints).toEqual(["مصادرة سفن مساعدات غزة", "المنظمون يصفونها بالقرصنة", "اليونان تطلب الانسحاب"]);
     expect(item.post.content.summaryDir).toBe("rtl");
   });
+
+  test("detects X link URLs client-side when backend embeds are missing", () => {
+    const entry = createEntry();
+    entry.post.post.post_type = "link";
+    entry.post.post.title = "X post";
+    entry.post.post.body = "Check this out.";
+    entry.post.post.link_url = "https://x.com/EyeonPalestine/status/2051254727724208522";
+    entry.post.post.embeds = undefined;
+
+    const item = toHomeFeedItem(entry, {});
+
+    expect(item.post.content.type).toBe("embed");
+    if (item.post.content.type !== "embed") throw new Error("expected embed content");
+    expect(item.post.content.provider).toBe("x");
+    expect(item.post.content.state).toBe("embed");
+    expect(item.post.content.canonicalUrl).toBe("https://x.com/EyeonPalestine/status/2051254727724208522");
+    expect(item.post.content.renderMode).toBe("official");
+  });
+
+  test("forces X embed state to embed even when backend marks it unavailable", () => {
+    const entry = createEntry();
+    entry.post.post.post_type = "link";
+    entry.post.post.title = "X post";
+    entry.post.post.body = "Check this out.";
+    entry.post.post.link_url = "https://x.com/EyeonPalestine/status/2051254727724208522";
+    entry.post.post.embeds = [
+      {
+        embed_key: "x:2051254727724208522",
+        provider: "x",
+        provider_ref: "2051254727724208522",
+        canonical_url: "https://x.com/EyeonPalestine/status/2051254727724208522",
+        original_url: "https://x.com/EyeonPalestine/status/2051254727724208522",
+        state: "unavailable",
+        preview: null,
+        oembed_html: null,
+        oembed_cache_age: null,
+        unavailable_reason: "unknown",
+        checked_at: Date.parse("2026-04-18T10:00:00.000Z"),
+      },
+    ];
+
+    const item = toHomeFeedItem(entry, {});
+
+    expect(item.post.content.type).toBe("embed");
+    if (item.post.content.type !== "embed") throw new Error("expected embed content");
+    expect(item.post.content.provider).toBe("x");
+    expect(item.post.content.state).toBe("embed");
+  });
 });
 
 describe("toCommunityFeedItem", () => {

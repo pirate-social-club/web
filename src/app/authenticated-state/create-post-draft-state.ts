@@ -16,6 +16,7 @@ import type {
   ComposerAudienceState,
   ComposerTab,
   DerivativeStepState,
+  LinkPreviewState,
   MonetizationState,
   AssetLicenseState,
   SongComposerState,
@@ -35,6 +36,7 @@ export type CreatePostDraftState = {
   imageUpload: File | null;
   imageUploadLabel: string | undefined;
   linkUrl: string;
+  linkPreview: LinkPreviewState | undefined;
   license: AssetLicenseState;
   lyrics: string;
   monetizationState: MonetizationState;
@@ -59,6 +61,7 @@ type DraftAction =
   | { type: "setImageUpload"; value: React.SetStateAction<File | null> }
   | { type: "setImageUploadLabel"; value: React.SetStateAction<string | undefined> }
   | { type: "setLinkUrl"; value: React.SetStateAction<string> }
+  | { type: "setLinkPreview"; value: React.SetStateAction<LinkPreviewState | undefined> }
   | { type: "setLicense"; value: React.SetStateAction<AssetLicenseState> }
   | { type: "setLyrics"; value: React.SetStateAction<string> }
   | { type: "setMonetizationState"; value: React.SetStateAction<MonetizationState> }
@@ -83,6 +86,7 @@ type CreatePostDraftActions = {
   setImageUpload: React.Dispatch<React.SetStateAction<File | null>>;
   setImageUploadLabel: React.Dispatch<React.SetStateAction<string | undefined>>;
   setLinkUrl: React.Dispatch<React.SetStateAction<string>>;
+  setLinkPreview: React.Dispatch<React.SetStateAction<LinkPreviewState | undefined>>;
   setLicense: React.Dispatch<React.SetStateAction<AssetLicenseState>>;
   setLyrics: React.Dispatch<React.SetStateAction<string>>;
   setMonetizationState: React.Dispatch<React.SetStateAction<MonetizationState>>;
@@ -112,6 +116,7 @@ function createInitialDraftState(): CreatePostDraftState {
     imageUpload: null,
     imageUploadLabel: undefined,
     linkUrl: "",
+    linkPreview: undefined,
     license: defaultAssetLicenseState(),
     lyrics: "",
     monetizationState: defaultMonetizationState(),
@@ -149,6 +154,8 @@ function createPostDraftReducer(state: CreatePostDraftState, action: DraftAction
       return { ...state, imageUploadLabel: resolveSetState(state.imageUploadLabel, action.value) };
     case "setLinkUrl":
       return { ...state, linkUrl: resolveSetState(state.linkUrl, action.value) };
+    case "setLinkPreview":
+      return { ...state, linkPreview: resolveSetState(state.linkPreview, action.value) };
     case "setLicense":
       return { ...state, license: resolveSetState(state.license, action.value) };
     case "setLyrics":
@@ -195,6 +202,7 @@ export function useCreatePostDraftState(initial?: Partial<CreatePostDraftState>)
     setImageUpload: (value) => dispatch({ type: "setImageUpload", value }),
     setImageUploadLabel: (value) => dispatch({ type: "setImageUploadLabel", value }),
     setLinkUrl: (value) => dispatch({ type: "setLinkUrl", value }),
+    setLinkPreview: (value) => dispatch({ type: "setLinkPreview", value }),
     setLicense: (value) => dispatch({ type: "setLicense", value }),
     setLyrics: (value) => dispatch({ type: "setLyrics", value }),
     setMonetizationState: (value) => dispatch({ type: "setMonetizationState", value }),

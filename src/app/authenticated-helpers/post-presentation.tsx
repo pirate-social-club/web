@@ -476,6 +476,47 @@ export function withTranslationToggleProps(
   };
 }
 
+function detectClientSideXEmbed(linkUrl: string | null | undefined): { canonicalUrl: string } | null {
+  const trimmed = String(linkUrl ?? "").trim();
+  if (!trimmed) return null;
+
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+
+  const host = url.hostname.trim().toLowerCase().replace(/\.+$/u, "");
+  if (host !== "x.com" && host !== "www.x.com" && host !== "twitter.com" && host !== "www.twitter.com" && host !== "mobile.twitter.com") {
+    return null;
+  }
+
+  const segments = url.pathname.split("/").filter(Boolean);
+  let postId: string | null = null;
+  let handle: string | null = null;
+
+  const statusIndex = segments.findIndex((segment) => segment.toLowerCase() === "status");
+  if (statusIndex > 0) {
+    handle = segments[statusIndex - 1] ?? null;
+    postId = segments[statusIndex + 1] ?? null;
+  } else if (segments.length >= 4 && segments[0] === "i" && segments[1] === "web" && segments[2] === "status") {
+    postId = segments[3] ?? null;
+  }
+
+  const normalizedPostId = String(postId ?? "").trim();
+  if (!/^\d+$/u.test(normalizedPostId)) return null;
+
+  const normalizedHandle = String(handle ?? "").trim();
+  const canonicalPath = normalizedHandle
+    ? `/${encodeURIComponent(normalizedHandle)}/status/${normalizedPostId}`
+    : `/i/web/status/${normalizedPostId}`;
+
+  return { canonicalUrl: `https://x.com${canonicalPath}` };
+}
+
 export function toCommunityPostContent(
   postResponse: ApiPost,
   songOptions?: SongPresentationOptions,
@@ -563,30 +604,32 @@ export function toCommunityPostContent(
         title,
       };
     }
-    case "link":
-      if (post.embeds?.[0]?.provider === "x") {
-        const embed = post.embeds[0];
+    case "link": {
+      const xEmbed = post.embeds?.[0]?.provider === "x" ? post.embeds[0] : undefined;
+      const clientSideX = !xEmbed ? detectClientSideXEmbed(post.link_url) : null;
+      if (xEmbed || clientSideX) {
         return {
           type: "embed",
           body: resolvedBody || undefined,
           bodyDir: translatedTextPresentation.dir,
           bodyLang: translatedTextPresentation.lang,
-          canonicalUrl: embed.canonical_url,
-          oembedHtml: embed.oembed_html,
-          originalUrl: embed.original_url,
+          canonicalUrl: xEmbed?.canonical_url ?? clientSideX!.canonicalUrl,
+          oembedHtml: xEmbed?.oembed_html ?? null,
+          originalUrl: xEmbed?.original_url ?? post.link_url ?? undefined,
           preview: {
-            authorName: embed.preview?.author_name,
-            authorUrl: embed.preview?.author_url,
-            createdAt: embed.preview?.created,
-            hasMedia: embed.preview?.has_media,
-            mediaUrl: embed.preview?.media_url,
-            text: embed.preview?.text,
+            authorName: xEmbed?.preview?.author_name ?? null,
+            authorUrl: xEmbed?.preview?.author_url ?? null,
+            createdAt: xEmbed?.preview?.created ?? null,
+            hasMedia: xEmbed?.preview?.has_media ?? null,
+            mediaUrl: xEmbed?.preview?.media_url ?? null,
+            text: xEmbed?.preview?.text ?? null,
           },
           provider: "x",
-          renderMode: opts?.embedMode ?? "preview",
-          state: embed.state,
+          renderMode: opts?.embedMode ?? "official",
+          state: "embed",
         };
       }
+    }
       if (post.embeds?.[0]?.provider === "youtube") {
         const embed = post.embeds[0];
         return {
@@ -606,7 +649,7 @@ export function toCommunityPostContent(
             title: embed.preview?.title,
           },
           provider: "youtube",
-          renderMode: opts?.embedMode ?? "preview",
+          renderMode: opts?.embedMode ?? "official",
           state: embed.state,
         };
       }

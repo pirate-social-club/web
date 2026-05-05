@@ -14,6 +14,7 @@ import type {
   ComposerTab,
   DerivativeStepState,
   IdentityMode,
+  LinkPreviewState,
   LiveComposerState,
   LiveRoomKind,
   MonetizationState,
@@ -77,7 +78,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const imageUploadLabel = draft?.imageUploadLabel ?? props.imageUploadLabel;
   const providedLyricsValue = draft?.lyricsValue ?? props.lyricsValue ?? "";
   const providedLinkUrlValue = draft?.linkUrlValue ?? props.linkUrlValue ?? "";
-  const linkPreview = draft?.linkPreview ?? props.linkPreview;
+  const providedLinkPreview = draft?.linkPreview ?? props.linkPreview;
   const songMode = draft?.songMode ?? props.songMode;
   const song = draft?.song ?? props.song;
   const license = draft?.license ?? props.license;
@@ -95,6 +96,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const onImageUploadChange = actions?.onImageUploadChange ?? props.onImageUploadChange;
   const onLyricsValueChange = actions?.onLyricsValueChange ?? props.onLyricsValueChange;
   const onLinkUrlValueChange = actions?.onLinkUrlValueChange ?? props.onLinkUrlValueChange;
+  const onLinkPreviewChange = actions?.onLinkPreviewChange ?? props.onLinkPreviewChange;
   const onSongChange = actions?.onSongChange ?? props.onSongChange;
   const onLicenseChange = actions?.onLicenseChange ?? props.onLicenseChange;
   const onVideoChange = actions?.onVideoChange ?? props.onVideoChange;
@@ -132,6 +134,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const [uncontrolledCaptionValue, setUncontrolledCaptionValue] = React.useState(providedCaptionValue);
   const [uncontrolledLyricsValue, setUncontrolledLyricsValue] = React.useState(providedLyricsValue);
   const [uncontrolledLinkUrlValue, setUncontrolledLinkUrlValue] = React.useState(providedLinkUrlValue);
+  const [uncontrolledLinkPreview, setUncontrolledLinkPreview] = React.useState(props.linkPreview);
   const [uncontrolledComposerStep, setUncontrolledComposerStep] = React.useState<ComposerStep>(
     controlledComposerStep ?? "write",
   );
@@ -179,6 +182,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const captionValue = onCaptionValueChange ? providedCaptionValue : uncontrolledCaptionValue;
   const lyricsValue = onLyricsValueChange ? providedLyricsValue : uncontrolledLyricsValue;
   const linkUrlValue = onLinkUrlValueChange ? providedLinkUrlValue : uncontrolledLinkUrlValue;
+  const linkPreview = onLinkPreviewChange ? providedLinkPreview : uncontrolledLinkPreview;
   const activeSongMode = songMode ?? uncontrolledSongMode;
   const composerStep = controlledComposerStep ?? uncontrolledComposerStep;
   const activeImageUpload = imageUpload === undefined ? uncontrolledImageUpload : imageUpload;
@@ -277,6 +281,13 @@ export function usePostComposerController(props: PostComposerProps) {
     }
     onLinkUrlValueChange?.(next);
   }, [onLinkUrlValueChange]);
+
+  const setLinkPreviewWithCallback = React.useCallback((next: LinkPreviewState | undefined) => {
+    if (!onLinkPreviewChange) {
+      setUncontrolledLinkPreview(next);
+    }
+    onLinkPreviewChange?.(next);
+  }, [onLinkPreviewChange]);
 
   const updateDerivativeState = React.useCallback((updater: (current: DerivativeStepState | undefined) => DerivativeStepState | undefined) => {
     const next = updater(derivativeState);
@@ -393,6 +404,10 @@ export function usePostComposerController(props: PostComposerProps) {
   }, [onLinkUrlValueChange, providedLinkUrlValue]);
 
   React.useEffect(() => {
+    if (!onLinkPreviewChange) setUncontrolledLinkPreview(props.linkPreview);
+  }, [onLinkPreviewChange, props.linkPreview]);
+
+  React.useEffect(() => {
     if (activeTab === "live" && composerStep !== "write") {
       setComposerStepWithCallback("write");
     }
@@ -503,6 +518,7 @@ export function usePostComposerController(props: PostComposerProps) {
       linkUrlValue,
       lyricsValue,
       onCaptionValueChange: setCaptionValueWithCallback,
+      onLinkPreviewChange: setLinkPreviewWithCallback,
       onLinkUrlValueChange: setLinkUrlValueWithCallback,
       onLyricsValueChange: setLyricsValueWithCallback,
       onTextBodyValueChange: setTextBodyValueWithCallback,

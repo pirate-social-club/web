@@ -259,6 +259,7 @@ function buildPreviewPost(
       access: commerce.monetizationState.visible ? "paid" : "free",
       attachment,
       body: previewBody(controller),
+      linkPreview: fields.linkPreview,
       price: commerce.monetizationState.priceUsd ?? "",
       title: fields.titleValue,
       videoPosterSrc: videoPosterPreviewUrl,

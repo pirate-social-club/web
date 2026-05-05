@@ -7,7 +7,7 @@ import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
-import { OfficialOEmbed, PostEmbedPreview } from "./post-card-embed";
+import { OfficialOEmbed, OfficialYouTubeEmbed, PostEmbedPreview } from "./post-card-embed";
 import { postCardType } from "./post-card.styles";
 import type { PostCardContent } from "./post-card.types";
 
@@ -255,7 +255,9 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
             />
           ) : null}
           {content.renderMode === "official"
-            ? <OfficialOEmbed content={content} />
+            ? content.provider === "youtube"
+              ? <OfficialYouTubeEmbed content={content} />
+              : <OfficialOEmbed content={content} />
             : <PostEmbedPreview content={content} />}
         </div>
       );

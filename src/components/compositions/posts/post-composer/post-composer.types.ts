@@ -131,6 +131,21 @@ export interface LinkPreviewState {
   domain: string;
   title?: string;
   imageSrc?: string;
+  provider?: "x" | "youtube" | "kalshi" | "polymarket" | null;
+  canonicalUrl?: string;
+  originalUrl?: string;
+  state?: "embed" | "preview" | "unavailable";
+  embedPreview?: {
+    authorName?: string | null;
+    authorUrl?: string | null;
+    text?: string | null;
+    hasMedia?: boolean | null;
+    mediaUrl?: string | null;
+    thumbnailUrl?: string | null;
+    thumbnailWidth?: number | null;
+    thumbnailHeight?: number | null;
+  };
+  oembedHtml?: string | null;
 }
 
 export interface SongComposerState {
@@ -235,6 +250,7 @@ export interface PostComposerDraftActions {
   onTitleValueChange?: (value: string) => void;
   onLyricsValueChange?: (value: string) => void;
   onLinkUrlValueChange?: (value: string) => void;
+  onLinkPreviewChange?: (value: LinkPreviewState | undefined) => void;
   onSongChange?: (value: SongComposerState) => void;
   onLicenseChange?: (value: AssetLicenseState) => void;
   onVideoChange?: (value: VideoComposerState) => void;

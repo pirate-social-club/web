@@ -156,5 +156,24 @@ export function createCommunityContentApi(request: ApiRequest) {
       request<SongArtifactBundle>(
         `/communities/${encodeURIComponent(communityId)}/song-artifacts/${encodeURIComponent(songArtifactBundleId)}`,
       ),
+    getLinkPreview: (
+      communityId: string,
+      url: string,
+    ): Promise<{
+      kind: "embed" | "link";
+      provider: "x" | "youtube" | "kalshi" | "polymarket" | null;
+      canonical_url: string;
+      original_url: string;
+      state: "embed" | "preview" | "unavailable";
+      title: string | null;
+      image_url: string | null;
+      preview: Record<string, unknown> | null;
+      oembed_html: string | null;
+      oembed_cache_age: number | null;
+    }> =>
+      request(buildQueryPath(
+        `/communities/${encodeURIComponent(communityId)}/link-preview`,
+        { url },
+      )),
   };
 }

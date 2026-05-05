@@ -184,6 +184,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     imageUploadLabel,
     identityMode,
     linkUrl,
+    linkPreview,
     license,
     lyrics,
     monetizationState,
@@ -208,6 +209,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setImageUploadLabel,
     setIdentityMode,
     setLinkUrl,
+    setLinkPreview,
     setLicense,
     setLyrics,
     setMonetizationState,
@@ -369,6 +371,53 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       regionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true ? prev.regionalPricingEnabled ?? false : false,
     }));
   }, [pricingPolicy?.regional_pricing_enabled]);
+
+  React.useEffect(() => {
+    const normalizedLinkUrl = normalizeHttpUrl(linkUrl);
+    if (!normalizedLinkUrl) {
+      setLinkPreview(undefined);
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = setTimeout(async () => {
+      try {
+        const result = await api.communities.getLinkPreview(communityId, normalizedLinkUrl);
+        if (cancelled) return;
+        setLinkPreview({
+          domain: new URL(normalizedLinkUrl).hostname.replace(/^www\./, ""),
+          title: result.title ?? undefined,
+          imageSrc: result.image_url ?? undefined,
+          provider: result.provider ?? undefined,
+          canonicalUrl: result.canonical_url,
+          originalUrl: result.original_url,
+          state: result.state ?? undefined,
+          embedPreview: result.preview
+            ? {
+                authorName: result.preview.author_name as string | null | undefined,
+                authorUrl: result.preview.author_url as string | null | undefined,
+                text: result.preview.text as string | null | undefined,
+                hasMedia: result.preview.has_media as boolean | null | undefined,
+                mediaUrl: result.preview.media_url as string | null | undefined,
+                thumbnailUrl: result.preview.thumbnail_url as string | null | undefined,
+                thumbnailWidth: result.preview.thumbnail_width as number | null | undefined,
+                thumbnailHeight: result.preview.thumbnail_height as number | null | undefined,
+              }
+            : undefined,
+          oembedHtml: result.oembed_html ?? undefined,
+        });
+      } catch {
+        if (!cancelled) {
+          setLinkPreview(undefined);
+        }
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [api.communities, communityId, linkUrl, setLinkPreview]);
 
   const availableIdentityQualifiers = React.useMemo(
     () => (community?.allowed_disclosed_qualifiers ?? []).map((qualifierId) => ({ qualifierId, label: formatQualifierLabel(qualifierId) })),
@@ -686,6 +735,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     audience,
     communityStableAnonymousLabel,
     linkUrl,
+    linkPreview,
     license,
     loadError,
     loading,
@@ -709,6 +759,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setImageUpload: setImageUploadWithLabel,
     setIdentityMode,
     setLinkUrl,
+    setLinkPreview,
     setLicense,
     setLyrics,
     setMonetizationState,

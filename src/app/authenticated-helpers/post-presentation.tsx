@@ -38,9 +38,12 @@ export type PostPresentationOptions = {
   onVote?: PostCardProps["onVote"];
   onComment?: PostCardProps["onComment"];
   onDelete?: () => void;
+  onRemove?: () => void;
+  canModeratePost?: boolean;
   preferOriginalText?: boolean;
   showOriginalLabel?: string;
   showTranslationLabel?: string;
+  viewerContentLocale?: string;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -61,6 +64,23 @@ function normalizeContentLocale(locale: string | null | undefined): string | nul
     : segment.toUpperCase())].join("-") : language;
 }
 
+function sameContentLanguage(left: string | null | undefined, right: string | null | undefined): boolean {
+  const normalizedLeft = normalizeContentLocale(left);
+  const normalizedRight = normalizeContentLocale(right);
+  if (!normalizedLeft || !normalizedRight) return false;
+  if (normalizedLeft === normalizedRight) return true;
+  if (normalizedLeft.startsWith("zh-") || normalizedRight.startsWith("zh-")) {
+    return normalizedLeft === normalizedRight || normalizedLeft === "zh-Hans" && normalizedRight === "zh";
+  }
+  return normalizedLeft.split("-")[0] === normalizedRight.split("-")[0];
+}
+
+function linkEnrichmentSourceLanguage(enrichment: Record<string, unknown> | null | undefined): string | null {
+  return typeof enrichment?.source_language === "string" && enrichment.source_language.trim()
+    ? enrichment.source_language.trim()
+    : null;
+}
+
 function resolveLinkEnrichmentForLocale(
   enrichment: Record<string, unknown> | null | undefined,
   locale: string | null | undefined,
@@ -70,7 +90,7 @@ function resolveLinkEnrichmentForLocale(
   }
 
   const normalizedLocale = normalizeContentLocale(locale);
-  if (!normalizedLocale || normalizedLocale === "en") {
+  if (!normalizedLocale) {
     return enrichment;
   }
 
@@ -520,13 +540,19 @@ function detectClientSideXEmbed(linkUrl: string | null | undefined): { canonical
 export function toCommunityPostContent(
   postResponse: ApiPost,
   songOptions?: SongPresentationOptions,
-  opts?: Pick<PostPresentationOptions, "onVerifyAge" | "preferOriginalText"> & { embedMode?: "preview" | "official" },
+  opts?: Pick<PostPresentationOptions, "onVerifyAge" | "preferOriginalText" | "viewerContentLocale"> & { embedMode?: "preview" | "official" },
 ): PostCardProps["content"] {
   const { post, translated_body, translated_caption, translated_title } = postResponse;
   if (post.status === "deleted") {
     return {
       type: "text",
       body: "Post was deleted",
+    };
+  }
+  if (post.status === "removed") {
+    return {
+      type: "text",
+      body: "Post was removed by moderators",
     };
   }
 
@@ -537,7 +563,9 @@ export function toCommunityPostContent(
     : {};
   const linkLocale = opts?.preferOriginalText
     ? post.source_language
-    : postResponse.translation_state === "ready"
+    : opts?.viewerContentLocale
+      ? opts.viewerContentLocale
+      : postResponse.translation_state === "ready"
       ? postResponse.resolved_locale
       : post.source_language;
   const linkTextPresentation = linkLocale ? resolveTranslatedTextPresentation(linkLocale) : {};
@@ -714,6 +742,10 @@ export function toCommunityPostContent(
         };
       }
       const localizedLinkEnrichment = resolveLinkEnrichmentForLocale(post.link_enrichment, linkLocale);
+      const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, {
+        preferOriginalText: opts?.preferOriginalText,
+        viewerContentLocale: linkLocale ?? undefined,
+      });
       return {
         type: "link",
         body: resolvedBody || undefined,
@@ -723,11 +755,11 @@ export function toCommunityPostContent(
         linkLabel: post.link_url ?? undefined,
         sourceLabel: formatLinkSourceLabel(post.link_url, post.link_enrichment),
         publishedLabel: extractPublishedLabel(post.link_enrichment),
-        previewTitle: typeof localizedLinkEnrichment?.title === "string"
+        previewTitle: localizedLinkTitle.title ?? (typeof localizedLinkEnrichment?.title === "string"
           ? localizedLinkEnrichment.title
-          : post.link_og_title ?? undefined,
-        previewTitleDir: linkTextPresentation.dir,
-        previewTitleLang: linkTextPresentation.lang,
+          : post.link_og_title ?? undefined),
+        previewTitleDir: localizedLinkTitle.dir ?? linkTextPresentation.dir,
+        previewTitleLang: localizedLinkTitle.lang ?? linkTextPresentation.lang,
         previewImageSrc: post.link_og_image_url ?? undefined,
         summary: extractLinkSummary(localizedLinkEnrichment),
         summaryDir: linkTextPresentation.dir,
@@ -790,6 +822,61 @@ export function toCommunityPostContent(
   }
 }
 
+export function resolveLocalizedLinkTitle(
+  postResponse: ApiPost,
+  opts?: Pick<PostPresentationOptions, "preferOriginalText" | "viewerContentLocale">,
+): { dir?: "ltr" | "rtl"; lang?: string; title?: string } {
+  if (postResponse.post.post_type !== "link") {
+    return {};
+  }
+
+  const linkLocale = opts?.preferOriginalText
+    ? postResponse.post.source_language
+    : opts?.viewerContentLocale
+      ? opts.viewerContentLocale
+      : postResponse.translation_state === "ready"
+        ? postResponse.resolved_locale
+        : postResponse.post.source_language;
+  const localized = resolveLinkEnrichmentForLocale(postResponse.post.link_enrichment, linkLocale);
+  const title = typeof localized?.title === "string" ? localized.title.trim() : "";
+  const sourceLanguage = linkEnrichmentSourceLanguage(postResponse.post.link_enrichment);
+  const normalizedLinkLocale = normalizeContentLocale(linkLocale);
+  const translations = isRecord(postResponse.post.link_enrichment?.translations)
+    ? postResponse.post.link_enrichment.translations
+    : null;
+  const translationForLocale = normalizedLinkLocale && translations
+    ? isRecord(translations[normalizedLinkLocale])
+      || Object.entries(translations).some(([key, value]) => key.split("-")[0] === normalizedLinkLocale.split("-")[0] && isRecord(value))
+    : false;
+  if (
+    title
+    && !opts?.preferOriginalText
+    && sameContentLanguage(linkLocale, "en")
+    && sourceLanguage
+    && !sameContentLanguage(sourceLanguage, "en")
+    && !translationForLocale
+  ) {
+    const fallbackTitle = postResponse.translated_title ?? postResponse.post.title;
+    if (fallbackTitle?.trim()) {
+      return {
+        dir: resolveTranslatedTextPresentation("en").dir,
+        lang: resolveTranslatedTextPresentation("en").lang,
+        title: fallbackTitle.trim(),
+      };
+    }
+  }
+  if (!title) {
+    return {};
+  }
+
+  const presentation = linkLocale ? resolveTranslatedTextPresentation(linkLocale) : {};
+  return {
+    dir: presentation.dir,
+    lang: presentation.lang,
+    title,
+  };
+}
+
 export function toCommunityFeedItem(
   postResponse: ApiPost,
   authorProfiles: Record<string, ApiProfile | null>,
@@ -799,11 +886,19 @@ export function toCommunityFeedItem(
   const { post } = postResponse;
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
   const canDeletePost = post.status !== "deleted" && Boolean(postResponse.viewer_is_author && opts?.onDelete);
+  const canRemovePost = post.status !== "deleted" && post.status !== "removed" && !postResponse.viewer_is_author && Boolean(opts?.canModeratePost && opts?.onRemove);
+  const postMenuItems = [
+    ...(canDeletePost ? [{ key: "delete", label: "Delete post", destructive: true }] : []),
+    ...(canRemovePost ? [{ key: "remove", label: "Remove post", destructive: true }] : []),
+  ];
+  const hasPostMenu = postMenuItems.length > 0;
   const isDeleted = post.status === "deleted";
+  const isRemoved = post.status === "removed";
+  const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
 
   const localizedPost = withTranslationToggleProps({
       byline: {
-        author: isDeleted ? undefined : {
+        author: isDeleted || isRemoved ? undefined : {
           kind: "user",
           label: resolvePostAuthorLabel(post, authorProfile),
           avatarSeed: resolvePostAuthorAvatarSeed(post, authorProfile),
@@ -815,7 +910,7 @@ export function toCommunityFeedItem(
         agentAuthor: resolveAgentAuthor(post, authorProfile),
         timestampLabel: formatRelativeTimestamp(post.created),
       },
-      content: toCommunityPostContent(postResponse, songOptions, { embedMode: "official" }),
+      content: toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" }),
       engagement: {
         commentCount: getPostCommentCount(postResponse),
         score: postResponse.upvote_count - postResponse.downvote_count,
@@ -828,17 +923,18 @@ export function toCommunityFeedItem(
         ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)
         : undefined,
       onComment: opts?.onComment,
-      menuItems: canDeletePost ? [{ key: "delete", label: "Delete post", destructive: true }] : undefined,
-      onMenuAction: canDeletePost ? (key) => {
+      menuItems: hasPostMenu ? postMenuItems : undefined,
+      onMenuAction: hasPostMenu ? (key) => {
         if (key === "delete") opts?.onDelete?.();
+        if (key === "remove") opts?.onRemove?.();
       } : undefined,
-      onVote: post.status === "deleted" ? undefined : opts?.onVote,
+      onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
       postHref: `/p/${post.id}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
-      title: isDeleted ? undefined : postResponse.translated_title ?? post.title ?? undefined,
-      titleDir: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined,
-      titleLang: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined,
-      titleHref: isDeleted ? undefined : `/p/${post.id}`,
+      title: isDeleted || isRemoved ? undefined : localizedLinkTitle.title ?? postResponse.translated_title ?? post.title ?? undefined,
+      titleDir: localizedLinkTitle.dir ?? (postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined),
+      titleLang: localizedLinkTitle.lang ?? (postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined),
+      titleHref: isDeleted || isRemoved ? undefined : `/p/${post.id}`,
       viewContext: "community",
     },
     postResponse,
@@ -847,7 +943,7 @@ export function toCommunityFeedItem(
   const originalPost = canShowOriginalToggle(postResponse, opts)
     ? withTranslationToggleProps({
       ...localizedPost,
-      content: toCommunityPostContent(postResponse, songOptions, { preferOriginalText: true }),
+      content: toCommunityPostContent(postResponse, songOptions, { ...opts, preferOriginalText: true }),
       title: post.title ?? undefined,
       titleDir: undefined,
       titleLang: undefined,
@@ -875,7 +971,15 @@ export function toThreadPostCard(
   const { post } = postResponse;
   const communityVerified = Boolean(community?.namespace_verification);
   const canDeletePost = post.status !== "deleted" && Boolean(postResponse.viewer_is_author && opts?.onDelete);
+  const canRemovePost = post.status !== "deleted" && post.status !== "removed" && !postResponse.viewer_is_author && Boolean(opts?.canModeratePost && opts?.onRemove);
+  const postMenuItems = [
+    ...(canDeletePost ? [{ key: "delete", label: "Delete post", destructive: true }] : []),
+    ...(canRemovePost ? [{ key: "remove", label: "Remove post", destructive: true }] : []),
+  ];
+  const hasPostMenu = postMenuItems.length > 0;
   const isDeleted = post.status === "deleted";
+  const isRemoved = post.status === "removed";
+  const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
   const communityLabel = community?.id
     ? communityVerified
       ? formatCommunityRouteLabel(community.id, community.route_slug)
@@ -884,7 +988,7 @@ export function toThreadPostCard(
 
   return withTranslationToggleProps({
     byline: {
-      author: isDeleted ? undefined : {
+      author: isDeleted || isRemoved ? undefined : {
         kind: "user",
         label: resolvePostAuthorLabel(post, authorProfile),
         avatarSeed: resolvePostAuthorAvatarSeed(post, authorProfile),
@@ -911,29 +1015,30 @@ export function toThreadPostCard(
       viewerVote: toViewerVote(postResponse.viewer_vote),
     },
     authorCommunityRole: postResponse.author_community_role ?? undefined,
-    identityPresentation: isDeleted ? "community_primary" : "community_with_author",
+    identityPresentation: isDeleted || isRemoved ? "community_primary" : "community_with_author",
     authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
     authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
       ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)
       : undefined,
     onComment: opts?.onComment,
-    menuItems: canDeletePost ? [{ key: "delete", label: "Delete post", destructive: true }] : undefined,
-    onMenuAction: canDeletePost ? (key) => {
+    menuItems: hasPostMenu ? postMenuItems : undefined,
+    onMenuAction: hasPostMenu ? (key) => {
       if (key === "delete") opts?.onDelete?.();
+      if (key === "remove") opts?.onRemove?.();
     } : undefined,
-    onVote: post.status === "deleted" ? undefined : opts?.onVote,
+    onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
     postHref: `/p/${post.id}`,
     qualifierLabels: resolvePostQualifierLabels(postResponse),
-    title: isDeleted ? undefined : opts?.preferOriginalText
+    title: isDeleted || isRemoved ? undefined : localizedLinkTitle.title ?? (opts?.preferOriginalText
       ? post.title ?? undefined
-      : postResponse.translated_title ?? post.title ?? undefined,
-    titleDir: !opts?.preferOriginalText && postResponse.translation_state === "ready"
+      : postResponse.translated_title ?? post.title ?? undefined),
+    titleDir: localizedLinkTitle.dir ?? (!opts?.preferOriginalText && postResponse.translation_state === "ready"
       ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
-      : undefined,
-    titleLang: !opts?.preferOriginalText && postResponse.translation_state === "ready"
+      : undefined),
+    titleLang: localizedLinkTitle.lang ?? (!opts?.preferOriginalText && postResponse.translation_state === "ready"
       ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
-      : undefined,
-    titleHref: isDeleted ? undefined : `/p/${post.id}`,
+      : undefined),
+    titleHref: isDeleted || isRemoved ? undefined : `/p/${post.id}`,
     viewContext: "home",
   }, postResponse, opts);
 }

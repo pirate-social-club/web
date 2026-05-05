@@ -19,6 +19,7 @@ import {
   resolvePostAuthorAvatarSeed,
   resolvePostQualifierLabels,
   resolveTranslatedTextPresentation,
+  resolveLocalizedLinkTitle,
   withTranslationToggleProps,
   canShowOriginalToggle,
   type SongPresentationOptions,
@@ -56,6 +57,7 @@ export function toHomeFeedItem(
   const communityId = resolveHomeFeedCommunityId(community);
   const postId = post.id ?? (post as typeof post & { post?: string }).post ?? "";
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
+  const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
 
   const localizedPost = withTranslationToggleProps({
       byline: {
@@ -97,9 +99,9 @@ export function toHomeFeedItem(
       onVote: opts?.onVote,
       postHref: `/p/${postId}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
-      title: postResponse.translated_title ?? post.title ?? undefined,
-      titleDir: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined,
-      titleLang: postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined,
+      title: localizedLinkTitle.title ?? postResponse.translated_title ?? post.title ?? undefined,
+      titleDir: localizedLinkTitle.dir ?? (postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined),
+      titleLang: localizedLinkTitle.lang ?? (postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined),
       titleHref: `/p/${postId}`,
       viewContext: "home",
     },

@@ -379,6 +379,88 @@ describe("toHomeFeedItem", () => {
     expect(item.post.content.summaryDir).toBe("rtl");
   });
 
+  test("uses viewer-locale link enrichment even when post translation is policy-blocked", () => {
+    const entry = createEntry();
+    entry.post.post.post_type = "link";
+    entry.post.post.source_language = "en";
+    entry.post.post.title = "Morocco Probes Building Permit Failures in Fez After 22 Killed";
+    entry.post.post.link_url = "https://example.ma/story";
+    entry.post.post.link_og_title = "الداخلية تحقق في اختلالات رخص البناء والتعمير بفاس";
+    entry.post.post.link_enrichment = {
+      version: 1,
+      title: "الداخلية تحقق في اختلالات رخص البناء والتعمير بفاس",
+      source_language: "ar",
+      published_at: "2026-05-05",
+      summary: {
+        status: "ready",
+        summary_paragraph: "The Ministry of Interior is investigating construction irregularities in Fez.",
+        short_summary: "The ministry opened a Fez building-permit probe.",
+        key_points: ["Interior Ministry investigates Fez", "Probe follows 22 deaths", "Permits are under review"],
+      },
+      translations: {
+        ar: {
+          locale: "ar",
+          title: "الداخلية تحقق في اختلالات رخص البناء والتعمير بفاس",
+          description: null,
+          summary: {
+            summary_paragraph: "باشرت وزارة الداخلية تحقيقاً في اختلالات البناء والتعمير بفاس.",
+            short_summary: "وزارة الداخلية تحقق في اختلالات البناء بفاس.",
+            key_points: ["الداخلية تحقق في فاس", "التحقيق يأتي بعد 22 وفاة", "مراجعة رخص البناء"],
+          },
+          generated_at: "2026-05-05T11:08:00.000Z",
+          model: "test",
+          provider: "openrouter",
+        },
+      },
+    };
+    entry.post.translation_state = "policy_blocked";
+    entry.post.resolved_locale = "ar";
+    entry.post.translated_title = null;
+
+    const item = toHomeFeedItem(entry, {}, undefined, { viewerContentLocale: "ar" });
+
+    expect(item.post.title).toBe("الداخلية تحقق في اختلالات رخص البناء والتعمير بفاس");
+    expect(item.post.titleDir).toBe("rtl");
+    expect(item.post.content.type).toBe("link");
+    if (item.post.content.type !== "link") throw new Error("expected link content");
+    expect(item.post.content.previewTitle).toBe("الداخلية تحقق في اختلالات رخص البناء والتعمير بفاس");
+    expect(item.post.content.summary?.summaryParagraph).toBe("باشرت وزارة الداخلية تحقيقاً في اختلالات البناء والتعمير بفاس.");
+    expect(item.post.content.summary?.keyPoints).toEqual(["الداخلية تحقق في فاس", "التحقيق يأتي بعد 22 وفاة", "مراجعة رخص البناء"]);
+    expect(item.post.content.summaryDir).toBe("rtl");
+  });
+
+  test("falls back to curated title for English viewers when source metadata is non-English", () => {
+    const entry = createEntry();
+    entry.post.post.post_type = "link";
+    entry.post.post.source_language = "en";
+    entry.post.post.title = "Morocco Probes Building Permit Failures in Fez After 22 Killed";
+    entry.post.post.link_url = "https://example.ma/story";
+    entry.post.post.link_og_title = "الداخلية تحقق في اختلالات رخص البناء والتعمير بفاس";
+    entry.post.post.link_enrichment = {
+      version: 1,
+      title: "الداخلية تحقق في اختلالات رخص البناء والتعمير بفاس",
+      source_language: "ar",
+      published_at: "2026-05-05",
+      summary: {
+        status: "ready",
+        summary_paragraph: "The Ministry of Interior is investigating construction irregularities in Fez.",
+        short_summary: "The ministry opened a Fez building-permit probe.",
+        key_points: ["Interior Ministry investigates Fez", "Probe follows 22 deaths", "Permits are under review"],
+      },
+    };
+    entry.post.translation_state = "policy_blocked";
+    entry.post.resolved_locale = "en";
+    entry.post.translated_title = null;
+
+    const item = toHomeFeedItem(entry, {}, undefined, { viewerContentLocale: "en" });
+
+    expect(item.post.title).toBe("Morocco Probes Building Permit Failures in Fez After 22 Killed");
+    expect(item.post.content.type).toBe("link");
+    if (item.post.content.type !== "link") throw new Error("expected link content");
+    expect(item.post.content.previewTitle).toBe("Morocco Probes Building Permit Failures in Fez After 22 Killed");
+    expect(item.post.content.summary?.keyPoints).toEqual(["Interior Ministry investigates Fez", "Probe follows 22 deaths", "Permits are under review"]);
+  });
+
   test("detects X link URLs client-side when backend embeds are missing", () => {
     const entry = createEntry();
     entry.post.post.post_type = "link";

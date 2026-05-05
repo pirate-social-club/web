@@ -42,6 +42,11 @@ export function createPostsApi(request: ApiRequest) {
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/delete`,
         { method: "POST" },
       ),
+    remove: (communityId: string, postId: string): Promise<Post> =>
+      request<Post>(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/remove`,
+        { method: "POST" },
+      ),
   };
 }
 

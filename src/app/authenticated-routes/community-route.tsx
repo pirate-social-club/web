@@ -63,6 +63,31 @@ import { updateSessionUser } from "@/lib/api/session-store";
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
 
+function sameUserId(left: string | null | undefined, right: string | null | undefined): boolean {
+  if (!left || !right) return false;
+  return left === right || left.replace(/^usr_/, "") === right.replace(/^usr_/, "");
+}
+
+function viewerCanModerateCommunity(
+  viewerUserId: string | null | undefined,
+  community:
+    | {
+        created_by_user?: string | null;
+        owner?: { user?: string | null } | null;
+        moderators?: Array<{ user?: string | null; role?: "owner" | "admin" | "moderator" | string | null }> | null;
+      }
+    | null
+    | undefined,
+): boolean {
+  if (!viewerUserId || !community) return false;
+  if (sameUserId(viewerUserId, community.created_by_user)) return true;
+  if (sameUserId(viewerUserId, community.owner?.user)) return true;
+  return Boolean(community.moderators?.some((roleHolder) => {
+    if (!sameUserId(viewerUserId, roleHolder.user)) return false;
+    return roleHolder.role === "owner" || roleHolder.role === "admin" || roleHolder.role === "moderator";
+  }));
+}
+
 export function CommunityPage({
   communityId,
   isImportedRoot = false,
@@ -420,6 +445,20 @@ export function CommunityPage({
     ],
   );
 
+  const removePost = React.useCallback(async (postId: string) => {
+    if (typeof window !== "undefined" && !window.confirm("Remove this post?")) return;
+
+    const previousPosts = posts;
+    const targetPost = posts.find((postResponse) => postResponse.post.id === postId);
+    setPosts((current) => current.filter((postResponse) => postResponse.post.id !== postId));
+    try {
+      await api.posts.remove(targetPost?.post.community ?? communityId, postId);
+    } catch (nextError) {
+      setPosts(previousPosts);
+      toast.error(getErrorMessage(nextError, "Could not remove this post."));
+    }
+  }, [api.posts, communityId, posts, setPosts]);
+
   if (loading) {
     return <CommunityRouteLoadingState />;
   }
@@ -454,6 +493,7 @@ export function CommunityPage({
   const joinActionDisabled =
     !eligibility ||
     !isJoinCtaActionable(eligibility);
+  const canModeratePosts = viewerCanModerateCommunity(session?.user?.id, preview);
   const feedItems = posts.map((post) => {
     const assetId = post.post.asset ?? undefined;
     const handleVerifyAge = () => {
@@ -487,9 +527,12 @@ export function CommunityPage({
       {
         onVerifyAge: handleVerifyAge,
         onComment: () => navigate(`/p/${post.post.id}`),
+        onRemove: () => void removePost(post.post.id),
+        canModeratePost: canModeratePosts,
         onVote: (direction) => void voteOnPost(post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
+        viewerContentLocale: contentLocale,
       },
     );
   });

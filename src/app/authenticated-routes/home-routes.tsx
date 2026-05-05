@@ -279,6 +279,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         onVote: (direction) => void voteOnPost(entry.post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
+        viewerContentLocale: contentLocale,
       },
     );
   });

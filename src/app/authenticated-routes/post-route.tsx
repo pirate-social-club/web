@@ -40,6 +40,29 @@ function closeMobileThread(fallbackPath: string) {
   navigate(fallbackPath);
 }
 
+function sameUserId(left: string | null | undefined, right: string | null | undefined): boolean {
+  if (!left || !right) return false;
+  return left === right || left.replace(/^usr_/, "") === right.replace(/^usr_/, "");
+}
+
+function viewerCanModerateCommunity(
+  viewerUserId: string | null | undefined,
+  community:
+    | {
+        owner?: { user?: string | null } | null;
+        moderators?: Array<{ user?: string | null; role?: "owner" | "admin" | "moderator" | string | null }> | null;
+      }
+    | null
+    | undefined,
+): boolean {
+  if (!viewerUserId || !community) return false;
+  if (sameUserId(viewerUserId, community.owner?.user)) return true;
+  return Boolean(community.moderators?.some((roleHolder) => {
+    if (!sameUserId(viewerUserId, roleHolder.user)) return false;
+    return roleHolder.role === "owner" || roleHolder.role === "admin" || roleHolder.role === "moderator";
+  }));
+}
+
 function MobileThreadShell({
   children,
   fallbackPath,
@@ -85,7 +108,7 @@ export function PostPage({ postId }: { postId: string }) {
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, comments, commentCount, createTopLevelComment, deletePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, comments, commentCount, createTopLevelComment, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const {
     handleModalOpenChange: handleAgeSelfModalOpenChange,
     handleSelfQrError: handleAgeSelfQrError,
@@ -203,22 +226,28 @@ export function PostPage({ postId }: { postId: string }) {
     }
     : undefined;
   const localizedPostCard = toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
+    canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
     commentCountOverride: commentCount,
     onDelete: deletePost,
+    onRemove: removePost,
     onVerifyAge: handleVerifyAge,
     onVote: voteOnPost,
     showOriginalLabel: copy.common.showOriginal,
     showTranslationLabel: copy.common.showTranslation,
+    viewerContentLocale: contentLocale,
   });
   const originalPostCard = shouldShowOriginalPost(post)
     ? toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
+      canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
       commentCountOverride: commentCount,
       onDelete: deletePost,
+      onRemove: removePost,
       onVerifyAge: handleVerifyAge,
       onVote: voteOnPost,
       preferOriginalText: true,
       showOriginalLabel: copy.common.showOriginal,
       showTranslationLabel: copy.common.showTranslation,
+      viewerContentLocale: contentLocale,
     })
     : undefined;
   const communityPath = community?.id ? buildCommunityPath(community.id, community.route_slug) : "/";

@@ -154,6 +154,16 @@ function toDeletedPostStub(response: ApiPost): ApiPost {
   };
 }
 
+function toRemovedPostStub(response: ApiPost): ApiPost {
+  return {
+    ...response,
+    post: {
+      ...response.post,
+      status: "removed",
+    },
+  };
+}
+
 async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<AvailableSigningAgent | null> {
   for (const agent of agents) {
     if (agent.status !== "active" || !agent.current_ownership) {
@@ -496,6 +506,29 @@ export function usePost(
     }
   }, [api.posts, locale, post]);
 
+  const removePost = React.useCallback(async () => {
+    if (!post) return;
+    if (typeof window !== "undefined" && !window.confirm("Remove this post?")) return;
+
+    const previousPost = post;
+    setPost(toRemovedPostStub(post));
+    try {
+      const removed = await api.posts.remove(post.post.community, post.post.id);
+      setPost((current) => current
+        ? normalizePostResponse({
+            ...current,
+            post: {
+              ...current.post,
+              ...removed,
+            },
+          })
+        : current);
+    } catch (nextError) {
+      setPost(previousPost);
+      toast.error(getErrorMessage(nextError, "Could not remove this post."));
+    }
+  }, [api.posts, post]);
+
   const markAgeGateVerified = React.useCallback(() => {
     setPost((current) => current
       ? {
@@ -714,6 +747,7 @@ export function usePost(
     availableAgent,
     createTopLevelComment,
     deletePost,
+    removePost,
     error,
     gateModal,
     markAgeGateVerified,

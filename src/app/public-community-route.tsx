@@ -674,6 +674,7 @@ export function PublicCommunityRoutePage({
           onVote: (direction) => void voteOnPost(post.post.id, direction),
           showOriginalLabel: copy.common.showOriginal,
           showTranslationLabel: copy.common.showTranslation,
+          viewerContentLocale: contentLocale,
         }))}
         loading={postsLoading}
         onSortChange={setActiveSort}

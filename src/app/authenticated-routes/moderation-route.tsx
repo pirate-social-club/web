@@ -26,6 +26,7 @@ import type { IdentityGateDraft } from "@/components/compositions/community/crea
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
+import { ApiError } from "@/lib/api/client";
 import type { ModerationCaseDetail } from "@/lib/api/client-groups-community-moderation";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
 import { normalizeCountryCode } from "@/lib/countries";
@@ -484,7 +485,16 @@ export function CommunityModerationPage({
     try {
       await api.communities.resolveModerationCase(communityId, caseId, { action_type: actionType });
       setModerationCases((current) => current.filter((c) => c.caseId !== caseId));
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof ApiError &&
+        error.status === 400 &&
+        error.message === "Moderation case is already resolved"
+      ) {
+        setModerationCases((current) => current.filter((c) => c.caseId !== caseId));
+        toast.info("This moderation case was already resolved.");
+        return;
+      }
       toast.error("Could not apply moderation action.");
     } finally {
       setProcessingModerationCaseId(null);

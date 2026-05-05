@@ -809,7 +809,7 @@ export function toCommunityFeedItem(
         agentAuthor: resolveAgentAuthor(post, authorProfile),
         timestampLabel: formatRelativeTimestamp(post.created),
       },
-      content: toCommunityPostContent(postResponse, songOptions),
+      content: toCommunityPostContent(postResponse, songOptions, { embedMode: "official" }),
       engagement: {
         commentCount: getPostCommentCount(postResponse),
         score: postResponse.upvote_count - postResponse.downvote_count,

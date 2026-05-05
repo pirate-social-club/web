@@ -81,7 +81,7 @@ export function toHomeFeedItem(
         },
         timestampLabel: formatRelativeTimestamp(post.created),
       },
-      content: toCommunityPostContent(postResponse, songOptions, opts),
+      content: toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" }),
       engagement: {
         commentCount: getPostCommentCount(postResponse),
         score: getPostScore(postResponse),

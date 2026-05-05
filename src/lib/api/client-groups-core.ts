@@ -144,5 +144,20 @@ export function createFeedApi(request: ApiRequest) {
         time_range: opts?.timeRange,
       }), { tokenOptional: true });
     },
+    publicHome: (
+      opts?: {
+        cursor?: string | null;
+        locale?: string | null;
+        sort?: HomeFeedSort | null;
+        timeRange?: string | null;
+      },
+    ): Promise<HomeFeedResponse> => {
+      return request<HomeFeedResponse>(buildQueryPath("/feed/home/public", {
+        cursor: opts?.cursor,
+        locale: opts?.locale,
+        sort: opts?.sort,
+        time_range: opts?.timeRange,
+      }), { tokenRequired: false });
+    },
   };
 }

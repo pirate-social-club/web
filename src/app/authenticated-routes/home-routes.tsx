@@ -77,12 +77,13 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     setListingsByAssetId({});
     setPurchasesByAssetId({});
 
-    void api.feed.home({
+    const feedRequest = {
       locale: contentLocale,
       sort: activeSort,
       timeRange: activeSort === "top" ? topTimeRange : null,
-    })
-      .then((result) => {
+    };
+
+    const applyFeedResult = (result: Awaited<ReturnType<typeof api.feed.home>>) => {
         if (cancelled) return;
 
         const nextFeedEntries = result.items;
@@ -129,13 +130,33 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
               // ignore commerce enrichment errors
             });
         }
-      })
+    };
+
+    const loadAuthenticatedFeed = () => api.feed.home(feedRequest)
+      .then(applyFeedResult)
       .catch((nextError: unknown) => {
         if (cancelled) return;
         if ((nextError as { status?: number; code?: string }).status === 401 || (nextError as { code?: string }).code === "auth_error") {
           clearSession();
           return;
         }
+        setError(nextError);
+        setLoading(false);
+      });
+
+    void api.feed.publicHome(feedRequest)
+      .then((result) => {
+        applyFeedResult(result);
+        if (sessionUserId) {
+          void loadAuthenticatedFeed();
+        }
+      })
+      .catch((nextError: unknown) => {
+        if (sessionUserId) {
+          void loadAuthenticatedFeed();
+          return;
+        }
+        if (cancelled) return;
         setError(nextError);
         setLoading(false);
       });

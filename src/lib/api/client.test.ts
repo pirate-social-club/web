@@ -480,6 +480,36 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("loads public home feed without auth headers", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        items: [],
+        next_cursor: null,
+        top_communities: [],
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.feed.publicHome({
+        locale: "es",
+        sort: "top",
+      });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.url).toBe("http://pirate.test/feed/home/public?locale=es&sort=top");
+      expect(capturedRequest.headers.get("authorization")).toBe(null);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("loads public communities without auth headers", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

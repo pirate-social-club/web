@@ -119,6 +119,10 @@ export type ApiCommunitySafetyUpdateRequest = {
   openai_moderation_settings: NonNullable<Community["openai_moderation_settings"]>;
 };
 
+export type ApiCommunityVisualPolicyUpdateRequest = {
+  visual_policy_settings: Omit<Community["visual_policy_settings"], "community" | "policy_origin">;
+};
+
 export type ApiDonationPartnerSummaryInput = {
   donation_partner_id: string;
   display_name: string;

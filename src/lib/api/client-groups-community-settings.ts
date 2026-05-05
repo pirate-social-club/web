@@ -13,6 +13,7 @@ import type {
   ApiCommunityMachineAccessPolicyUpdate,
   ApiCommunityRuleInput,
   ApiCommunitySafetyUpdateRequest,
+  ApiCommunityVisualPolicyUpdateRequest,
   ApiResolveDonationPartnerResponse,
   ApiUpdateCommunityRequest,
   CommunityLabelPolicyInput,
@@ -94,6 +95,14 @@ export function createCommunitySettingsApi(request: ApiRequest) {
       body: ApiCommunitySafetyUpdateRequest,
     ): Promise<Community> =>
       request<Community>(`/communities/${encodeURIComponent(communityId)}/safety`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    updateVisualPolicy: (
+      communityId: string,
+      body: ApiCommunityVisualPolicyUpdateRequest,
+    ): Promise<Community> =>
+      request<Community>(`/communities/${encodeURIComponent(communityId)}/visual-policy`, {
         method: "POST",
         body: JSON.stringify(body),
       }),

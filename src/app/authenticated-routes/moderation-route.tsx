@@ -20,6 +20,7 @@ import { CommunityRulesEditorPage } from "@/components/compositions/community/ru
 import { CommunityAgentPolicyPage } from "@/components/compositions/community/agent-policy/community-agent-policy";
 import { CommunityMachineAccessPage } from "@/components/compositions/community/machine-access/community-machine-access";
 import { CommunitySafetyPage } from "@/components/compositions/community/safety-page/community-safety-page";
+import { CommunityVisualPolicyPage } from "@/components/compositions/community/visual-policy/community-visual-policy";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import { Button } from "@/components/primitives/button";
@@ -612,6 +613,21 @@ export function CommunityModerationPage({
           providerSettings={state.providerSettings}
           saveDisabled={state.savingSafety}
           saveLoading={state.savingSafety}
+        />
+      );
+    } else if (section === "visual-policy") {
+      setMobileSaveAction({
+        disabled: state.savingVisualPolicy,
+        loading: state.savingVisualPolicy,
+        onSave: state.handleSaveVisualPolicy,
+      });
+      content = (
+        <CommunityVisualPolicyPage
+          onSave={state.handleSaveVisualPolicy}
+          onSettingsChange={state.setVisualPolicySettings}
+          saveDisabled={state.savingVisualPolicy}
+          saveLoading={state.savingVisualPolicy}
+          settings={state.visualPolicySettings}
         />
       );
     } else if (section === "agents") {

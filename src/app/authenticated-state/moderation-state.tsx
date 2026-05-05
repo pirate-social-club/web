@@ -19,6 +19,7 @@ import { useCommunityContentPolicyState } from "./use-community-content-policy-s
 import { useCommunityMachineAccessState } from "./use-community-machine-access-state";
 import { useCommunityProfileState } from "./use-community-profile-state";
 import { useCommunitySafetyState } from "./use-community-safety-state";
+import { useCommunityVisualPolicyState } from "./use-community-visual-policy-state";
 
 export function useCommunityModerationState(communityId: string) {
   const api = useApi();
@@ -112,6 +113,7 @@ export function useCommunityModerationState(communityId: string) {
   const profile = useCommunityProfileState({ community, setCommunity });
   const access = useCommunityAccessState({ community, saveCommunity });
   const safety = useCommunitySafetyState({ community, saveCommunity });
+  const visualPolicy = useCommunityVisualPolicyState({ community, saveCommunity });
   const agents = useCommunityAgentPolicyState({ community, saveCommunity });
   const machineAccess = useCommunityMachineAccessState({ community });
 
@@ -127,6 +129,7 @@ export function useCommunityModerationState(communityId: string) {
     setCommunity,
     ...access,
     ...safety,
+    ...visualPolicy,
     ...agents,
     ...machineAccess,
     ...profile,

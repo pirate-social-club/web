@@ -34,6 +34,8 @@ export function getCommunityModerationTitle(
       return copy.nav.gates;
     case "safety":
       return copy.nav.safety;
+    case "visual-policy":
+      return copy.nav.visualPolicy ?? "Visual policy";
     case "agents":
       return copy.nav.agents;
     case "machine-access":

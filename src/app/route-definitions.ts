@@ -13,6 +13,7 @@ export const COMMUNITY_MODERATION_SECTIONS = [
   "namespace",
   "gates",
   "safety",
+  "visual-policy",
   "agents",
   "machine-access",
 ] as const;

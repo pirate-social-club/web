@@ -855,6 +855,7 @@
       "pricing": "Pricing",
       "gates": "Gates",
       "safety": "Safety",
+      "visualPolicy": "Visual policy",
       "agents": "Agents",
       "machineAccess": "Machine access",
       "namespace": "Namespace",

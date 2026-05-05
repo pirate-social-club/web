@@ -855,6 +855,7 @@
       "pricing": "定价",
       "gates": "门槛",
       "safety": "安全",
+      "visualPolicy": "视觉政策",
       "agents": "代理",
       "machineAccess": "机器访问",
       "namespace": "命名空间",

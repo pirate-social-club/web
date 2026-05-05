@@ -102,6 +102,28 @@ function drawPosterFrame(
   return { canvas, height, width };
 }
 
+export function dataUrlToBlob(dataUrl: string, fallbackType = "application/octet-stream"): Blob {
+  const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(dataUrl);
+  if (!match) {
+    throw new Error("Could not save the selected video frame.");
+  }
+
+  const mimeType = match[1] || fallbackType;
+  const isBase64 = match[2] === ";base64";
+  const body = match[3] ?? "";
+
+  if (!isBase64) {
+    return new Blob([decodeURIComponent(body)], { type: mimeType });
+  }
+
+  const binary = atob(body);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: mimeType });
+}
+
 async function extractVideoPosterFrameFromObjectUrl(
   objectUrl: string,
   frameSeconds: string | undefined,
@@ -174,8 +196,7 @@ export async function extractVideoPosterFrameFile(
   options: VideoPosterFrameOptions = {},
 ): Promise<ExtractedVideoPosterFrame & { file: File }> {
   const frame = await extractVideoPosterFrameDataUrl(file, frameSeconds, options);
-  const response = await fetch(frame.dataUrl);
-  const blob = await response.blob();
+  const blob = dataUrlToBlob(frame.dataUrl, "image/jpeg");
   return {
     ...frame,
     file: new File([blob], `${file.name.replace(/\.[^.]+$/, "") || "video"}-cover-frame.jpg`, {

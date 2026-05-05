@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import type * as React from "react";
 import { renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { installDomGlobals } from "@/test/setup-dom";
 
 import type { CommunityPreview, LocalizedPostResponse } from "@pirate/api-contracts";
@@ -7,6 +9,9 @@ import type { CommunityPreview, LocalizedPostResponse } from "@pirate/api-contra
 import { api } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
 import { __resetSessionStoreForTests } from "@/lib/api/session-store";
+import { PirateQueryProvider } from "@/lib/query/query-client";
+import { postKeys } from "@/lib/query/keys";
+import type { PublicThreadQueryData } from "@/lib/query/public-thread-cache";
 
 import { usePost } from "./post-state";
 
@@ -40,6 +45,16 @@ const labels = {
   showTranslationLabel: "Show translation",
   submitReplyLabel: "Post reply",
 };
+
+function wrapper({ children }: { children: React.ReactNode }) {
+  return <PirateQueryProvider>{children}</PirateQueryProvider>;
+}
+
+function wrapperWithClient(queryClient: QueryClient) {
+  return function TestQueryWrapper({ children }: { children: React.ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  };
+}
 
 function createPostResponse(): LocalizedPostResponse {
   return {
@@ -132,6 +147,40 @@ function createPreview(): CommunityPreview {
 }
 
 describe("usePost", () => {
+  test("renders a cached feed-seeded thread shell before authenticated post fetch resolves", async () => {
+    __resetSessionStoreForTests();
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+    queryClient.setQueryData<PublicThreadQueryData>(
+      postKeys.publicThread({ postId: "pst_test", locale: "es", sort: "best" }),
+      {
+        post: createPostResponse(),
+        community: createPreview(),
+        comments: [],
+        authorProfiles: {},
+        partial: true,
+        source: "feed_seed",
+      },
+    );
+
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    posts.get = () => new Promise<LocalizedPostResponse>(() => undefined);
+
+    const { result } = renderHook(() => usePost("pst_test", "es", true, labels), {
+      wrapper: wrapperWithClient(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.threadPartial).toBe(true);
+    expect(result.current.post?.post.id).toBe("pst_test");
+    expect(result.current.community?.display_name).toBe("Preview Community");
+  });
+
   test("loads authenticated post sidebar data through localized community preview", async () => {
     __resetSessionStoreForTests();
     const calls = {
@@ -163,7 +212,7 @@ describe("usePost", () => {
     posts.get = async () => createPostResponse();
     agents.list = async () => ({ items: [] });
 
-    const { result } = renderHook(() => usePost("pst_test", "es", true, labels));
+    const { result } = renderHook(() => usePost("pst_test", "es", true, labels), { wrapper });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     await waitFor(() => expect(result.current.community?.display_name).toBe("Preview Community"));
@@ -195,7 +244,7 @@ describe("usePost", () => {
     communities.listComments = async () => ({ items: [], next_cursor: null });
     agents.list = async () => ({ items: [] });
 
-    const { result } = renderHook(() => usePost("pst_test", "es", true, labels));
+    const { result } = renderHook(() => usePost("pst_test", "es", true, labels), { wrapper });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.post?.post.id).toBe("pst_test");
@@ -252,7 +301,7 @@ describe("usePost", () => {
     publicComments.listPostComments = async () => ({ items: [], next_cursor: null });
     agents.list = async () => ({ items: [] });
 
-    const { result } = renderHook(() => usePost("post_pst_test", "ar", true, labels));
+    const { result } = renderHook(() => usePost("post_pst_test", "ar", true, labels), { wrapper });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     await waitFor(() => expect(result.current.community?.display_name).toBe("Preview Community"));

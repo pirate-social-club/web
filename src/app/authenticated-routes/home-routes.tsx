@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
 import type { CommunityPurchase as ApiCommunityPurchase } from "@pirate/api-contracts";
 import type { HomeFeedCommunitySummary as ApiHomeFeedCommunitySummary } from "@pirate/api-contracts";
@@ -35,6 +36,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { buildFeedSortOptions, buildTopTimeRangeOptions } from "@/lib/feed-sort-options";
 import { EmptyFeedState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
+import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 
 function unixOrIsoMs(value: string | number): number {
@@ -51,6 +53,7 @@ type UseHomeFeedInput = {
 
 export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange }: UseHomeFeedInput) {
   const api = useApi();
+  const queryClient = useQueryClient();
   const sessionProfile = session?.profile;
   const sessionUserId = session?.user.id;
   const [feedEntries, setFeedEntries] = React.useState<ApiHomeFeedItem[]>([]);
@@ -87,6 +90,12 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
         if (cancelled) return;
 
         const nextFeedEntries = result.items;
+        seedPublicThreadQueriesFromFeed({
+          items: nextFeedEntries,
+          locale: contentLocale,
+          queryClient,
+          sort: "best",
+        });
         setFeedEntries(nextFeedEntries);
         setTopCommunities(result.top_communities);
         setLoading(false);
@@ -164,7 +173,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     return () => {
       cancelled = true;
     };
-  }, [activeSort, api, contentLocale, hydrated, sessionProfile, sessionUserId, topTimeRange]);
+  }, [activeSort, api, contentLocale, hydrated, queryClient, sessionProfile, sessionUserId, topTimeRange]);
 
   return {
     feedEntries,

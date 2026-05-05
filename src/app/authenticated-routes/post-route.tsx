@@ -85,7 +85,7 @@ export function PostPage({ postId }: { postId: string }) {
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, comments, commentCount, createTopLevelComment, deletePost, error, gateModal, markAgeGateVerified, loading, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, comments, commentCount, createTopLevelComment, deletePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const {
     handleModalOpenChange: handleAgeSelfModalOpenChange,
     handleSelfQrError: handleAgeSelfQrError,
@@ -267,7 +267,7 @@ export function PostPage({ postId }: { postId: string }) {
           commentsHeading={copy.common.commentsHeading}
           commentsHeadingDir={contentLocale === "ar" ? "rtl" : undefined}
           commentsHeadingLang={contentLocale === "ar" ? "ar" : undefined}
-          emptyCommentsLabel={copy.common.noComments}
+          emptyCommentsLabel={threadPartial ? copy.common.loadingReplies : copy.common.noComments}
           onCommentSortChange={setCommentSort}
           onRootReplySubmit={createTopLevelComment}
           post={localizedPostCard}

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CommunityPreview as ApiCommunityPreview, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
@@ -13,6 +14,8 @@ import { useSession } from "@/lib/api/session-store";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
+import { postKeys } from "@/lib/query/keys";
+import type { PublicThreadQueryData } from "@/lib/query/public-thread-cache";
 import { toast } from "@/components/primitives/sonner";
 import type { PostThreadSubmitResult } from "@/components/compositions/posts/post-thread/post-thread.types";
 
@@ -193,6 +196,7 @@ export function usePost(
   },
 ) {
   const api = useApi();
+  const queryClient = useQueryClient();
   const session = useSession();
   const { locale: uiLocale } = useUiLocale();
   const [post, setPost] = React.useState<ApiPost | null>(null);
@@ -203,6 +207,7 @@ export function usePost(
   const [authorProfilesByUserId, setAuthorProfilesByUserId] = React.useState<Record<string, ApiProfile | null>>({});
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
+  const [threadPartial, setThreadPartial] = React.useState(false);
   const [readMode, setReadMode] = React.useState<PostReadMode>(hasSession ? "authenticated" : "public");
   const [commentSort, setCommentSort] = React.useState<"best" | "new" | "top">("best");
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
@@ -212,6 +217,55 @@ export function usePost(
     routeKind: "post",
     uiLocale,
   });
+
+  const publicThreadQuery = useQuery({
+    queryKey: postKeys.publicThread({ postId, locale, sort: commentSort }),
+    queryFn: async (): Promise<PublicThreadQueryData> => {
+      const publicThread = await api.publicPosts.getThread(postId, {
+        limit: THREAD_COMMENT_PAGE_LIMIT,
+        locale,
+        sort: commentSort,
+      });
+      const nextCommentNodes = buildThreadCommentTreeFromItems(publicThread.comments.items);
+      const nextAuthorProfilesByUserId = await loadProfilesByUserId(
+        api,
+        [
+          ...(publicThread.post.post.identity_mode === "public" && publicThread.post.post.author_user ? [publicThread.post.post.author_user] : []),
+          ...collectThreadCommentAuthorUserIds(nextCommentNodes),
+        ],
+        session?.profile ? { [session.user.id]: session.profile } : {},
+      );
+      return {
+        post: normalizePostResponse(publicThread.post),
+        community: publicThread.community,
+        comments: nextCommentNodes,
+        authorProfiles: nextAuthorProfilesByUserId,
+        partial: false,
+        source: "thread_api",
+      };
+    },
+    enabled: !hasSession,
+  });
+
+  const applyPublicThreadQueryData = React.useCallback((data: PublicThreadQueryData, sort: "best" | "new" | "top") => {
+    const nextPost = normalizePostResponse(data.post);
+    setPost(nextPost);
+    setCommunity(data.community);
+    setCommentNodes(data.comments);
+    setAuthorProfilesByUserId((current) => ({ ...current, ...data.authorProfiles }));
+    setAuthorProfile(
+      nextPost.post.identity_mode === "public" && nextPost.post.author_user
+        ? data.authorProfiles[nextPost.post.author_user] ?? null
+        : null,
+    );
+    setReadMode("public");
+    setThreadPartial(data.partial);
+    setLoading(false);
+    setError(null);
+    if (!data.partial) {
+      loadedCommentSortKeyRef.current = `${nextPost.post.community}:public:${sort}`;
+    }
+  }, []);
 
   const loadTopLevelComments = React.useCallback(async (
     communityId: string,
@@ -452,6 +506,21 @@ export function usePost(
   }, []);
 
   React.useEffect(() => {
+    if (hasSession) return;
+    if (publicThreadQuery.data) {
+      applyPublicThreadQueryData(publicThreadQuery.data, commentSort);
+      return;
+    }
+    if (publicThreadQuery.error) {
+      setError(publicThreadQuery.error);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+  }, [applyPublicThreadQueryData, commentSort, hasSession, publicThreadQuery.data, publicThreadQuery.error]);
+
+  React.useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -460,22 +529,21 @@ export function usePost(
     setAuthorProfile(null);
     setCommentNodes([]);
     setAuthorProfilesByUserId({});
+    setThreadPartial(false);
     setReadMode(hasSession ? "authenticated" : "public");
 
-    const loadPost = async (): Promise<{ post: ApiPost; readMode: PostReadMode; publicThread?: Awaited<ReturnType<typeof api.publicPosts.getThread>> }> => {
-      if (!hasSession) {
-        const publicThread = await api.publicPosts.getThread(postId, {
-          limit: THREAD_COMMENT_PAGE_LIMIT,
-          locale,
-          sort: commentSort,
-        });
-        return {
-          post: normalizePostResponse(publicThread.post),
-          publicThread,
-          readMode: "public",
-        };
-      }
+    if (!hasSession) {
+      return () => { cancelled = true; };
+    }
 
+    const cachedPublicThread = queryClient.getQueryData<PublicThreadQueryData>(
+      postKeys.publicThread({ postId, locale, sort: "best" }),
+    );
+    if (cachedPublicThread) {
+      applyPublicThreadQueryData(cachedPublicThread, "best");
+    }
+
+    const loadPost = async (): Promise<{ post: ApiPost; readMode: PostReadMode; publicThread?: Awaited<ReturnType<typeof api.publicPosts.getThread>> }> => {
       try {
         return {
           post: normalizePostResponse(await api.posts.get(postId, { locale })),
@@ -499,6 +567,7 @@ export function usePost(
         if (cancelled) return;
         setPost(p);
         setReadMode(nextReadMode);
+        setThreadPartial(true);
         setLoading(false);
 
         void loadProfilesByUserId(
@@ -539,6 +608,7 @@ export function usePost(
               setCommunity(publicThread.community);
               setCommentNodes(nextCommentNodes);
               setAuthorProfilesByUserId((current) => ({ ...current, ...commentAuthorProfilesByUserId }));
+              setThreadPartial(false);
               loadedCommentSortKeyRef.current = `${p.post.community}:${nextReadMode}:${commentSort}`;
             })
             .catch((nextError: unknown) => {
@@ -549,6 +619,7 @@ export function usePost(
                 });
                 setCommunity(publicThread.community);
                 setCommentNodes(nextCommentNodes);
+                setThreadPartial(false);
                 loadedCommentSortKeyRef.current = `${p.post.community}:${nextReadMode}:${commentSort}`;
               }
             });
@@ -569,6 +640,7 @@ export function usePost(
             setAvailableAgent(nextAvailableAgent);
             setCommentNodes(commentTree.commentNodes);
             setAuthorProfilesByUserId((current) => ({ ...current, ...commentTree.authorProfilesByUserId }));
+            setThreadPartial(false);
             loadedCommentSortKeyRef.current = `${p.post.community}:${nextReadMode}:${commentSort}`;
           })
           .catch((nextError: unknown) => {
@@ -587,7 +659,7 @@ export function usePost(
       });
 
     return () => { cancelled = true; };
-  }, [api, hasSession, loadTopLevelComments, locale, postId, session]);
+  }, [api, applyPublicThreadQueryData, hasSession, loadTopLevelComments, locale, postId, queryClient, session]);
 
   React.useEffect(() => {
     if (!post || !community || loading) return;
@@ -601,6 +673,7 @@ export function usePost(
         if (cancelled) return;
         setAuthorProfilesByUserId((current) => ({ ...current, ...nextThreadState.authorProfilesByUserId }));
         setCommentNodes(nextThreadState.commentNodes);
+        setThreadPartial(false);
         loadedCommentSortKeyRef.current = sortKey;
       })
       .catch((nextError: unknown) => {
@@ -644,6 +717,7 @@ export function usePost(
     gateModal,
     markAgeGateVerified,
     loading,
+    threadPartial,
     voteOnPost,
     commentSort,
     setCommentSort,

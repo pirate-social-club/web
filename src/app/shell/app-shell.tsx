@@ -9,6 +9,7 @@ import { SidebarInset, SidebarProvider } from "@/components/compositions/system/
 import { PageContainer } from "@/components/primitives/layout-shell";
 import { Toaster } from "@/components/primitives/sonner";
 import { ApiProvider, useSessionRevalidation } from "@/lib/api";
+import { PirateQueryProvider } from "@/lib/query/query-client";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { useSession } from "@/lib/api/session-store";
 import { PirateAuthProvider } from "@/components/auth/privy-provider";
@@ -265,35 +266,37 @@ export function PirateAppShell({
       resetKey={route.path}
       title={copy.rootError.title}
     >
-      <ApiProvider initialHost={initialHost}>
-        <AnalyticsRouteTracker route={route} />
-        {useStandalonePublicProfileShell ? (
-          <>
-            <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
-              <PageContainer>
-                <React.Suspense fallback={<RouteContentFallback route={route} />}>
-                  {route.kind === "public-profile" || route.kind === "public-agent" ? <LazyPublicRouteRenderer route={route} /> : null}
-                </React.Suspense>
-              </PageContainer>
-            </main>
-            <Toaster />
-          </>
-        ) : (
-          <PirateAuthProvider deferPrivyUntilConnect={shouldDeferPrivyUntilConnect}>
-            <SessionRevalidator>
-              <ChatOnboardingPrep />
-              <NotificationShell
-                copy={copy}
-                effectiveDir={effectiveDir}
-                isCommunityModerationRoute={isCommunityModerationRoute}
-                primaryItems={primaryItems}
-                route={route}
-                session={session}
-              />
-            </SessionRevalidator>
-          </PirateAuthProvider>
-        )}
-      </ApiProvider>
+      <PirateQueryProvider>
+        <ApiProvider initialHost={initialHost}>
+          <AnalyticsRouteTracker route={route} />
+          {useStandalonePublicProfileShell ? (
+            <>
+              <main className="min-h-screen bg-background px-3 py-4 md:px-5 md:py-6 lg:px-8">
+                <PageContainer>
+                  <React.Suspense fallback={<RouteContentFallback route={route} />}>
+                    {route.kind === "public-profile" || route.kind === "public-agent" ? <LazyPublicRouteRenderer route={route} /> : null}
+                  </React.Suspense>
+                </PageContainer>
+              </main>
+              <Toaster />
+            </>
+          ) : (
+            <PirateAuthProvider deferPrivyUntilConnect={shouldDeferPrivyUntilConnect}>
+              <SessionRevalidator>
+                <ChatOnboardingPrep />
+                <NotificationShell
+                  copy={copy}
+                  effectiveDir={effectiveDir}
+                  isCommunityModerationRoute={isCommunityModerationRoute}
+                  primaryItems={primaryItems}
+                  route={route}
+                  session={session}
+                />
+              </SessionRevalidator>
+            </PirateAuthProvider>
+          )}
+        </ApiProvider>
+      </PirateQueryProvider>
     </RootErrorBoundary>
   );
 }

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type * as React from "react";
 import { renderHook, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test/setup-dom";
 
@@ -6,6 +7,7 @@ import type { HomeFeedCommunitySummary, HomeFeedItem, LocalizedPostResponse } fr
 
 import { api } from "@/lib/api";
 import { __resetSessionStoreForTests } from "@/lib/api/session-store";
+import { PirateQueryProvider } from "@/lib/query/query-client";
 import { useHomeFeed } from "./home-routes";
 
 installDomGlobals();
@@ -101,6 +103,10 @@ function createTopCommunity(overrides: Partial<HomeFeedCommunitySummary> = {}): 
   };
 }
 
+function wrapper({ children }: { children: React.ReactNode }) {
+  return <PirateQueryProvider>{children}</PirateQueryProvider>;
+}
+
 describe("useHomeFeed", () => {
   test("renders feed entries before slower profile and commerce data resolves", async () => {
     __resetSessionStoreForTests();
@@ -110,6 +116,7 @@ describe("useHomeFeed", () => {
 
     const feedApi = api.feed as unknown as {
       home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
+      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
     };
     const profilesApi = api.profiles as unknown as {
       getByUserId: (userId: string) => Promise<unknown>;
@@ -119,10 +126,12 @@ describe("useHomeFeed", () => {
       listPurchases: () => Promise<{ items: unknown[] }>;
     };
 
-    feedApi.home = async () => ({
+    const feedResponse = {
       items: [createFeedItem({ postId: "pst_1", authorUserId: "usr_1" })],
       top_communities: [createTopCommunity()],
-    });
+    };
+    feedApi.home = async () => feedResponse;
+    feedApi.publicHome = async () => feedResponse;
     profilesApi.getByUserId = async () =>
       new Promise((resolve) => {
         resolveProfile = resolve;
@@ -144,6 +153,7 @@ describe("useHomeFeed", () => {
         session: null,
         topTimeRange: "day",
       }),
+      { wrapper },
     );
 
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -169,6 +179,7 @@ describe("useHomeFeed", () => {
 
     const feedApi = api.feed as unknown as {
       home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
+      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
     };
     const profilesApi = api.profiles as unknown as {
       getByUserId: (userId: string) => Promise<unknown>;
@@ -178,12 +189,14 @@ describe("useHomeFeed", () => {
       listPurchases: () => Promise<{ items: unknown[] }>;
     };
 
-    feedApi.home = async () => ({
+    const feedResponse = {
       items: [
         createFeedItem({ postId: "pst_song", postType: "song", authorUserId: "usr_1" }),
       ],
       top_communities: [],
-    });
+    };
+    feedApi.home = async () => feedResponse;
+    feedApi.publicHome = async () => feedResponse;
     profilesApi.getByUserId = async () => ({ user: "usr_1", display_name: "Test User" });
     communitiesApi.listListings = async () => ({
       items: [{ asset: "asset_1", community: "cmt_test", price_cents: 100 }],
@@ -213,6 +226,7 @@ describe("useHomeFeed", () => {
         } as never,
         topTimeRange: "day",
       }),
+      { wrapper },
     );
 
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -221,4 +235,3 @@ describe("useHomeFeed", () => {
     expect(Object.keys(result.current.purchasesByAssetId).length).toBe(1);
   });
 });
-

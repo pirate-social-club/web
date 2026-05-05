@@ -1,4 +1,4 @@
-const CACHE_NAME = "pirate-pwa-v1";
+const CACHE_NAME = "pirate-pwa-v2";
 const STATIC_EXTENSIONS = new Set([
   ".js",
   ".css",
@@ -55,27 +55,14 @@ self.addEventListener("fetch", (event) => {
   if (!isStaticAsset(request.url)) return;
 
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) {
-        fetch(request).then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, clone);
-            });
-          }
-        }).catch(() => {});
-        return cached;
-      }
-
-      return fetch(request).then((response) => {
-        if (!response || response.status !== 200) return response;
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, clone);
-        });
-        return response;
+    fetch(request).then((response) => {
+      if (!response || response.status !== 200) return response;
+      const clone = response.clone();
+      caches.open(CACHE_NAME).then((cache) => {
+        cache.put(request, clone);
       });
-    }),
+      return response;
+    })
+      .catch(() => caches.match(request)),
   );
 });

@@ -23,6 +23,7 @@ import type {
 import { formatUnits, getAddress, isAddress } from "viem";
 
 import { Avatar } from "@/components/primitives/avatar";
+import { Button } from "@/components/primitives/button";
 import { Card } from "@/components/primitives/card";
 import { Spinner } from "@/components/primitives/spinner";
 import { PageContainer } from "@/components/primitives/layout-shell";
@@ -479,11 +480,17 @@ function NotificationActivityList({
   activityItems,
   copy,
   onOpenActivityItem,
+  onLoadMoreActivity,
   royaltyActivityItems,
   royaltyActivityLoading,
+  hasMoreActivity,
+  loadingMoreActivity,
 }: {
   activityItems: NotificationFeedItem[];
   copy: ReturnType<typeof getLocaleMessages<"routes">>["inbox"];
+  hasMoreActivity?: boolean;
+  loadingMoreActivity?: boolean;
+  onLoadMoreActivity?: () => void;
   onOpenActivityItem?: (item: NotificationFeedItem) => void;
   royaltyActivityItems: RoyaltyActivityItem[];
   royaltyActivityLoading?: boolean;
@@ -567,6 +574,16 @@ function NotificationActivityList({
 
 
       })}
+      {hasMoreActivity ? (
+        <>
+          {timelineItems.length > 0 ? <Separator /> : null}
+          <div className="flex justify-center px-5 py-4">
+            <Button disabled={loadingMoreActivity} onClick={onLoadMoreActivity} size="sm" variant="secondary">
+              {loadingMoreActivity ? copy.loading : copy.loadMoreNotifications}
+            </Button>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -574,6 +591,9 @@ function NotificationActivityList({
 export function NotificationInboxPage({
   activityItems,
   loading = false,
+  hasMoreActivity = false,
+  loadingMoreActivity = false,
+  onLoadMoreActivity,
   onOpenActivityItem,
   onVerifyTask,
   royaltyActivityItems = [],
@@ -586,6 +606,9 @@ export function NotificationInboxPage({
 }: {
   activityItems: NotificationFeedItem[];
   loading?: boolean;
+  hasMoreActivity?: boolean;
+  loadingMoreActivity?: boolean;
+  onLoadMoreActivity?: () => void;
   onOpenActivityItem?: (item: NotificationFeedItem) => void;
   onVerifyTask?: (task: UserTask) => void;
   royaltyActivityItems?: RoyaltyActivityItem[];
@@ -706,6 +729,9 @@ export function NotificationInboxPage({
                       <NotificationActivityList
                         activityItems={activityItems}
                         copy={copy}
+                        hasMoreActivity={hasMoreActivity}
+                        loadingMoreActivity={loadingMoreActivity}
+                        onLoadMoreActivity={onLoadMoreActivity}
                         onOpenActivityItem={onOpenActivityItem}
                         royaltyActivityItems={royaltyActivityItems}
                         royaltyActivityLoading={royaltyActivityLoading}
@@ -716,6 +742,9 @@ export function NotificationInboxPage({
                       <NotificationActivityList
                         activityItems={activityItems}
                         copy={copy}
+                        hasMoreActivity={hasMoreActivity}
+                        loadingMoreActivity={loadingMoreActivity}
+                        onLoadMoreActivity={onLoadMoreActivity}
                         onOpenActivityItem={onOpenActivityItem}
                         royaltyActivityItems={royaltyActivityItems}
                         royaltyActivityLoading={royaltyActivityLoading}

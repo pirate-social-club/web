@@ -129,6 +129,11 @@ function appendCurrentRouteReturnTo(href: string): string {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
+function payloadString(payload: Record<string, unknown> | null | undefined, key: string): string | undefined {
+  const value = payload?.[key];
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
 function trackFeedMarkedReadEvents(items: NotificationFeedItem[], readMode: "auto_visible_load") {
   const countsByType = new Map<string, number>();
 
@@ -177,6 +182,7 @@ export function InboxPlaceholderPage() {
   const [tasks, setTasks] = React.useState<ApiNotificationTasksResponse>({ items: [], next_cursor: null });
   const [feed, setFeed] = React.useState<ApiNotificationFeedResponse>({ items: [], next_cursor: null });
   const [loading, setLoading] = React.useState(true);
+  const [loadingMoreActivity, setLoadingMoreActivity] = React.useState(false);
   const [royaltyActivity, setRoyaltyActivity] = React.useState<RoyaltyActivityResponse>(EMPTY_ROYALTY_ACTIVITY);
   const [royaltiesLoading, setRoyaltiesLoading] = React.useState(false);
   const [royaltyProfilesByWallet, setRoyaltyProfilesByWallet] = React.useState<Record<string, ProfileLink | null>>({});
@@ -310,6 +316,44 @@ export function InboxPlaceholderPage() {
     return () => { cancelled = true; };
   }, [api.publicProfiles, royaltyActivity.items, royaltyProfilesByWallet, session]);
 
+  const loadMoreActivity = React.useCallback(async () => {
+    if (!session || !feed.next_cursor || loadingMoreActivity) {
+      return;
+    }
+
+    try {
+      setLoadingMoreActivity(true);
+      const nextFeed = filterRenderableNotificationFeedItems(await api.notifications.getFeed({ cursor: feed.next_cursor }));
+      const unreadEventIds = unreadFeedEventIds(nextFeed);
+      let readAt: number | null = null;
+      if (unreadEventIds.length > 0) {
+        try {
+          readAt = Math.floor(Date.now() / 1000);
+          await api.notifications.markRead({ event_ids: unreadEventIds });
+          decrementUnreadNotificationActivityCount(unreadEventIds.length);
+          trackFeedMarkedReadEvents(nextFeed.items.filter((item) => unreadEventIds.includes(item.event.id)), "auto_visible_load");
+        } catch (error) {
+          logger.warn("[inbox] failed to mark additional notifications read", error);
+          readAt = null;
+        }
+      }
+
+      setFeed((current) => {
+        const seenEventIds = new Set(current.items.map((item) => item.event.id));
+        const appendedItems = nextFeed.items.filter((item) => !seenEventIds.has(item.event.id));
+        const mergedFeed = {
+          ...nextFeed,
+          items: [...current.items, ...appendedItems],
+        };
+        return readAt ? markFeedItemsRead(mergedFeed, unreadEventIds, readAt) : mergedFeed;
+      });
+    } catch (error) {
+      logger.debug("[inbox] failed to load more notifications", error);
+    } finally {
+      setLoadingMoreActivity(false);
+    }
+  }, [api.notifications, feed.next_cursor, loadingMoreActivity, session]);
+
   if (!session) {
     return (
       <AuthRequiredRouteState
@@ -336,16 +380,19 @@ export function InboxPlaceholderPage() {
     <>
       <NotificationInboxPage
         activityItems={activityItems}
+        hasMoreActivity={Boolean(feed.next_cursor)}
         installPromoUnreadCount={unreadInstallPromoCount}
         loading={loading}
+        loadingMoreActivity={loadingMoreActivity}
+        onLoadMoreActivity={loadMoreActivity}
         onOpenActivityItem={(item) => {
           const href = resolveNotificationActivityHref(item);
           if (!href) return;
           trackAnalyticsEvent({
             eventName: "notification_opened",
-            communityId: typeof item.event.payload?.community === "string" ? item.event.payload.community : undefined,
+            communityId: payloadString(item.event.payload, "community_id") ?? payloadString(item.event.payload, "community"),
             postId: item.event.subject_type === "post" ? item.event.subject : undefined,
-            commentId: item.event.object_type === "comment" ? item.event.subject : undefined,
+            commentId: payloadString(item.event.payload, "comment_id"),
             properties: {
               notification_kind: "activity",
               notification_type: item.event.type,

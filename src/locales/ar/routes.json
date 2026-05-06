@@ -454,6 +454,7 @@
     "description": "تم تجهيز هذا المسار حتى يشير إليه تنقل الهاتف بصدق بينما لا يزال سلوك الوارد غير محدد.",
     "emptyChatsState": "لا توجد دردشات بعد",
     "emptyState": "لا توجد إشعارات بعد",
+    "loadMoreNotifications": "تحميل المزيد",
     "loading": "جارٍ التحميل...",
     "notificationsTab": "الإشعارات",
     "someone": "شخص ما",

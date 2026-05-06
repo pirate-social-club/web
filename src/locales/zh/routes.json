@@ -454,6 +454,7 @@
     "description": "这个路由已搭好外壳，这样移动端导航就能指向一个真实存在的位置，同时保留收件箱行为的后续定义空间。",
     "emptyChatsState": "还没有聊天",
     "emptyState": "还没有通知",
+    "loadMoreNotifications": "加载更多",
     "loading": "加载中...",
     "notificationsTab": "通知",
     "someone": "有人",

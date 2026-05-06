@@ -152,6 +152,34 @@ export function mergeThreadCommentNodes(
   });
 }
 
+function mergeThreadCommentNode(previousNode: ThreadCommentNode, nextNode: ThreadCommentNode): ThreadCommentNode {
+  return {
+    ...previousNode,
+    ...nextNode,
+    children: upsertThreadCommentNodes(previousNode.children, nextNode.children),
+    hasLoadedReplies: previousNode.hasLoadedReplies || nextNode.hasLoadedReplies,
+    loadingReplies: nextNode.loadingReplies,
+    nextRepliesCursor: nextNode.nextRepliesCursor ?? previousNode.nextRepliesCursor,
+  };
+}
+
+export function upsertThreadCommentNodes(
+  previousNodes: ThreadCommentNode[],
+  nextNodes: ThreadCommentNode[],
+): ThreadCommentNode[] {
+  const nextByCommentId = new Map(nextNodes.map((node) => [node.item.comment.id, node] as const));
+  const merged = previousNodes.map((node) => {
+    const nextNode = nextByCommentId.get(node.item.comment.id);
+    if (!nextNode) {
+      return node;
+    }
+    nextByCommentId.delete(node.item.comment.id);
+    return mergeThreadCommentNode(node, nextNode);
+  });
+
+  return [...merged, ...nextByCommentId.values()];
+}
+
 async function listAllCommentPages(
   fetchPage: (cursor: string | null) => Promise<CommentPage>,
 ): Promise<ApiCommentListItem[]> {

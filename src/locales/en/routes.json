@@ -454,6 +454,7 @@
     "description": "This route is scaffolded so the mobile nav can point somewhere truthful while inbox behavior is still undefined.",
     "emptyChatsState": "No chats yet",
     "emptyState": "No notifications",
+    "loadMoreNotifications": "Load more",
     "loading": "Loading...",
     "notificationsTab": "Notifications",
     "someone": "Someone",

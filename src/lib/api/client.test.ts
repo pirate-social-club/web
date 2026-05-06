@@ -101,6 +101,118 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("requests the current community handle", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({ handle: null });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.getMyHandle("cmt_test");
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("GET");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/handles/me");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("quotes community handles as JSON", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        id: "hcq_test",
+        object: "community_handle_quote",
+        community: "com_cmt_test",
+        namespace: "ns_test",
+        desired_label: "amira",
+        label: "amira",
+        label_normalized: "amira",
+        eligible: true,
+        availability: "available",
+        price_cents: 0,
+        currency: "USD",
+        payment_instructions: null,
+        quote_ttl_seconds: 600,
+        quoted_at: 1,
+        expires_at: 2,
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.quoteHandle("cmt_test", { desired_label: "amira" });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("POST");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/handles/quote");
+      expect(await capturedRequest.json()).toEqual({ desired_label: "amira" });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("claims community handles as JSON", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        id: "ch_test",
+        object: "community_handle",
+        community: "com_cmt_test",
+        namespace: "ns_test",
+        user: "usr_test",
+        label: "amira",
+        label_normalized: "amira",
+        status: "active",
+        issuance_source: "claim",
+        quote: "hcq_test",
+        price_cents: 0,
+        currency: "USD",
+        created: 1,
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.claimHandle("cmt_test", {
+        quote: "hcq_test",
+        settlement_wallet_attachment: "wa_test",
+        funding_tx_ref: "0xtx",
+        settlement_tx_ref: "0xtx",
+      });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("POST");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/handles/claim");
+      expect(await capturedRequest.json()).toEqual({
+        quote: "hcq_test",
+        settlement_wallet_attachment: "wa_test",
+        funding_tx_ref: "0xtx",
+        settlement_tx_ref: "0xtx",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("sends profile media uploads as multipart form data", async () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

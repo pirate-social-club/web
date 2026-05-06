@@ -14,6 +14,7 @@ import { submitOptimisticPostVote, updateCommunityPostVote } from "@/app/authent
 import { type FeedSort } from "@/components/compositions/posts/feed/feed";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
+import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
@@ -21,7 +22,7 @@ import { useApi } from "@/lib/api";
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useSession } from "@/lib/api/session-store";
-import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
+import { usePiratePrivyRuntime, usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
@@ -36,10 +37,34 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { PublicRouteMessageState } from "./public-route-states";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
+import { useCommunityHandleClaimController } from "@/app/authenticated-helpers/community-handle-claim";
 import { buildCommunityPreviewSidebar } from "@/lib/community-sidebar-helpers";
 import { buildFeedSortOptions } from "@/lib/feed-sort-options";
 import { CommunityRouteLoadingState } from "./route-loading-states";
 import { useCommunityJoinVerification } from "./authenticated-state/use-community-join-verification";
+
+const HANDLE_CLAIM_DISMISSAL_PREFIX = "pirate:handle-claim-dismissed:";
+
+function communityHandleClaimDismissalKey(communityId: string): string {
+  return `${HANDLE_CLAIM_DISMISSAL_PREFIX}${communityId}`;
+}
+
+function readHandleClaimDismissed(communityId: string): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(communityHandleClaimDismissalKey(communityId)) === "1";
+}
+
+function writeHandleClaimDismissed(communityId: string): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(communityHandleClaimDismissalKey(communityId), "1");
+}
+
+function communityHandleFromRouteLabel(routeLabel: string): string {
+  return routeLabel
+    .replace(/^c\//u, "")
+    .replace(/^@/u, "")
+    || "community";
+}
 
 function usePublicCommunityPageData(communityId: string, localeTag: string, activeSort: FeedSort, hasSession: boolean) {
   const api = useApi();
@@ -227,12 +252,23 @@ export function PublicCommunityRoutePage({
   const [joinRequestModalOpen, setJoinRequestModalOpen] = React.useState(false);
   const [joinRequestSubmitting, setJoinRequestSubmitting] = React.useState(false);
   const [joinRequestError, setJoinRequestError] = React.useState<string | null>(null);
+  const [handleClaimModalOpen, setHandleClaimModalOpen] = React.useState(false);
   const { gateModal, invalidateCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: contentLocale,
     routeKind: "public-community",
     uiLocale: locale,
   });
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
+  const { connectedWallets } = usePiratePrivyWallets({
+    enabled: Boolean(session?.user?.id),
+  });
+  const handleClaim = useCommunityHandleClaimController({
+    api: api.communities,
+    communityId: preview?.id ?? communityId,
+    connectedWallets,
+    primaryWalletAddress: session?.profile.primary_wallet_address,
+    settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
+  });
   const {
     startVerification: startVeryVerification,
     verificationLoading: veryLoading,
@@ -333,6 +369,29 @@ export function PublicCommunityRoutePage({
     setMemberCount((count) => typeof count === "number" ? count + 1 : count);
   }, []);
 
+  const maybeOpenHandleClaimModal = React.useCallback(async () => {
+    const resolvedCommunityId = preview?.id ?? communityId;
+    if (
+      !session?.user?.id ||
+      !preview?.namespace_verification ||
+      readHandleClaimDismissed(resolvedCommunityId)
+    ) {
+      return;
+    }
+
+    try {
+      const current = await api.communities.getMyHandle(resolvedCommunityId);
+      if (!current.handle) {
+        setHandleClaimModalOpen(true);
+      }
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not check community names."));
+    }
+  }, [api.communities, communityId, preview?.id, preview?.namespace_verification, session?.user?.id]);
+  const previousEligibilityStatusRef = React.useRef<ApiJoinEligibility["status"] | null>(
+    eligibility?.status ?? null,
+  );
+
   const requestAuth = React.useCallback((fallbackMessage: string) => {
     if (!isCanonicalAuthOrigin()) {
       const canonicalUrl = buildCanonicalAuthUrl(
@@ -381,6 +440,19 @@ export function PublicCommunityRoutePage({
   React.useEffect(() => {
     if (joinError) toast.error(joinError);
   }, [joinError]);
+
+  React.useEffect(() => {
+    const previousStatus = previousEligibilityStatusRef.current;
+    const nextStatus = eligibility?.status ?? null;
+    previousEligibilityStatusRef.current = nextStatus;
+    if (
+      previousStatus &&
+      previousStatus !== "already_joined" &&
+      nextStatus === "already_joined"
+    ) {
+      void maybeOpenHandleClaimModal();
+    }
+  }, [eligibility?.status, maybeOpenHandleClaimModal]);
 
   const interactionCopy = React.useMemo(
     () => ({
@@ -549,7 +621,10 @@ export function PublicCommunityRoutePage({
       setJoinRequestModalOpen(true);
       return;
     }
-    await handleJoin();
+    const result = await handleJoin();
+    if (result === "joined") {
+      await maybeOpenHandleClaimModal();
+    }
   };
 
   const handleJoinRequestSubmit = async (note: string) => {
@@ -559,6 +634,9 @@ export function PublicCommunityRoutePage({
       const result = await handleJoin({ note });
       if (result === "requested" || result === "joined") {
         setJoinRequestModalOpen(false);
+        if (result === "joined") {
+          await maybeOpenHandleClaimModal();
+        }
       } else if (result === "failed") {
         setJoinRequestError("Could not submit your request. Try again.");
       }
@@ -576,6 +654,17 @@ export function PublicCommunityRoutePage({
     preview.id,
     preview.route_slug ?? communityId,
   );
+  const communityHandleLabel = communityHandleFromRouteLabel(routeLabel);
+  const handleClaimModalOpenChange = (open: boolean) => {
+    setHandleClaimModalOpen(open);
+    if (!open && handleClaim.phase !== "success") {
+      writeHandleClaimDismissed(preview.id);
+    }
+  };
+  const handleClaimNotNow = () => {
+    writeHandleClaimDismissed(preview.id);
+    setHandleClaimModalOpen(false);
+  };
   const canCreatePost = Boolean(session?.user?.id)
     && (preview.viewer_membership_status === "member" || eligibility?.status === "already_joined");
   const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
@@ -612,6 +701,21 @@ export function PublicCommunityRoutePage({
   return (
     <>
       {gateModal}
+      <HandleClaimModal
+        claimedLabel={handleClaim.claimedLabel ?? undefined}
+        communityHandle={communityHandleLabel}
+        communityName={preview.display_name}
+        error={handleClaim.error}
+        onClaim={handleClaim.onClaim}
+        onNotNow={handleClaimNotNow}
+        onOpenChange={handleClaimModalOpenChange}
+        onSearchChange={handleClaim.onSearchChange}
+        open={handleClaimModalOpen}
+        phase={handleClaim.phase}
+        processing={handleClaim.processing}
+        searchResult={handleClaim.searchResult}
+        searchValue={handleClaim.searchValue}
+      />
       <CommunityJoinRequestModal
         communityName={preview.display_name}
         error={joinRequestError}

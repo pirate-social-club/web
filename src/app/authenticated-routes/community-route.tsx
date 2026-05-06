@@ -19,6 +19,7 @@ import {
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
+import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Button } from "@/components/primitives/button";
@@ -52,16 +53,19 @@ import {
   RouteLoadFailureState,
 } from "@/app/authenticated-helpers/route-shell";
 import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
+import { useCommunityHandleClaimController } from "@/app/authenticated-helpers/community-handle-claim";
 import {
   useSongCommerceState,
   useSongPlayback,
 } from "@/app/authenticated-helpers/song-commerce";
+import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { updateSessionUser } from "@/lib/api/session-store";
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
+const HANDLE_CLAIM_DISMISSAL_PREFIX = "pirate:handle-claim-dismissed:";
 
 function sameUserId(left: string | null | undefined, right: string | null | undefined): boolean {
   if (!left || !right) return false;
@@ -86,6 +90,27 @@ function viewerCanModerateCommunity(
     if (!sameUserId(viewerUserId, roleHolder.user)) return false;
     return roleHolder.role === "owner" || roleHolder.role === "admin" || roleHolder.role === "moderator";
   }));
+}
+
+function communityHandleClaimDismissalKey(communityId: string): string {
+  return `${HANDLE_CLAIM_DISMISSAL_PREFIX}${communityId}`;
+}
+
+function readHandleClaimDismissed(communityId: string): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(communityHandleClaimDismissalKey(communityId)) === "1";
+}
+
+function writeHandleClaimDismissed(communityId: string): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(communityHandleClaimDismissalKey(communityId), "1");
+}
+
+function communityHandleFromRouteLabel(routeLabel: string): string {
+  return routeLabel
+    .replace(/^c\//u, "")
+    .replace(/^@/u, "")
+    || "community";
 }
 
 export function CommunityPage({
@@ -218,6 +243,7 @@ export function CommunityPage({
   const [joinRequestError, setJoinRequestError] = React.useState<string | null>(
     null,
   );
+  const [handleClaimModalOpen, setHandleClaimModalOpen] = React.useState(false);
   const communityCreatePostPath = React.useMemo(
     () =>
       preview
@@ -240,6 +266,44 @@ export function CommunityPage({
       routeKind: "community",
       uiLocale: locale,
     });
+  const { connectedWallets } = usePiratePrivyWallets({
+    enabled: Boolean(session?.user?.id),
+  });
+  const handleClaim = useCommunityHandleClaimController({
+    api: api.communities,
+    communityId: previewCommunityId ?? communityId,
+    connectedWallets,
+    primaryWalletAddress: session?.profile.primary_wallet_address,
+    settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
+  });
+
+  const maybeOpenHandleClaimModal = React.useCallback(async () => {
+    const resolvedCommunityId = previewCommunityId ?? community?.id ?? communityId;
+    const hasNamespace = Boolean(community?.namespace_verification ?? preview?.namespace_verification);
+    if (!session?.user?.id || !hasNamespace || readHandleClaimDismissed(resolvedCommunityId)) {
+      return;
+    }
+
+    try {
+      const current = await api.communities.getMyHandle(resolvedCommunityId);
+      if (!current.handle) {
+        setHandleClaimModalOpen(true);
+      }
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not check community names."));
+    }
+  }, [
+    api.communities,
+    community?.id,
+    community?.namespace_verification,
+    communityId,
+    preview?.namespace_verification,
+    previewCommunityId,
+    session?.user?.id,
+  ]);
+  const previousEligibilityStatusRef = React.useRef<ApiJoinEligibility["status"] | null>(
+    eligibility?.status ?? null,
+  );
 
   React.useEffect(() => {
     if (isImportedRoot) return;
@@ -264,6 +328,19 @@ export function CommunityPage({
     preview?.viewer_following,
   ]);
 
+  React.useEffect(() => {
+    const previousStatus = previousEligibilityStatusRef.current;
+    const nextStatus = eligibility?.status ?? null;
+    previousEligibilityStatusRef.current = nextStatus;
+    if (
+      previousStatus &&
+      previousStatus !== "already_joined" &&
+      nextStatus === "already_joined"
+    ) {
+      void maybeOpenHandleClaimModal();
+    }
+  }, [eligibility?.status, maybeOpenHandleClaimModal]);
+
   const handleJoinRequestModalOpenChange = React.useCallback(
     (open: boolean) => {
       setJoinRequestModalOpen(open);
@@ -284,8 +361,11 @@ export function CommunityPage({
       openJoinRequestModal();
       return;
     }
-    await handleJoin();
-  }, [eligibility?.status, handleJoin, openJoinRequestModal]);
+    const result = await handleJoin();
+    if (result === "joined") {
+      await maybeOpenHandleClaimModal();
+    }
+  }, [eligibility?.status, handleJoin, maybeOpenHandleClaimModal, openJoinRequestModal]);
 
   const handleJoinRequestSubmit = React.useCallback(
     async (note: string) => {
@@ -296,6 +376,9 @@ export function CommunityPage({
         if (result === "requested" || result === "joined") {
           invalidateCommunityGate(communityId);
           setJoinRequestModalOpen(false);
+          if (result === "joined") {
+            await maybeOpenHandleClaimModal();
+          }
         } else if (result === "failed") {
           setJoinRequestError("Could not submit your request. Try again.");
         }
@@ -303,8 +386,20 @@ export function CommunityPage({
         setJoinRequestSubmitting(false);
       }
     },
-    [communityId, handleJoin, invalidateCommunityGate],
+    [communityId, handleJoin, invalidateCommunityGate, maybeOpenHandleClaimModal],
   );
+
+  const handleClaimModalOpenChange = React.useCallback((open: boolean) => {
+    setHandleClaimModalOpen(open);
+    if (!open && handleClaim.phase !== "success") {
+      writeHandleClaimDismissed(previewCommunityId ?? community?.id ?? communityId);
+    }
+  }, [community?.id, communityId, handleClaim.phase, previewCommunityId]);
+
+  const handleClaimNotNow = React.useCallback(() => {
+    writeHandleClaimDismissed(previewCommunityId ?? community?.id ?? communityId);
+    setHandleClaimModalOpen(false);
+  }, [community?.id, communityId, previewCommunityId]);
 
   const handleBuySong = React.useCallback(
     async (
@@ -583,6 +678,7 @@ export function CommunityPage({
     community?.id ?? preview.id,
     community?.route_slug ?? preview.route_slug,
   );
+  const communityHandleLabel = communityHandleFromRouteLabel(routeLabel);
   const previewSidebar = buildCommunityPreviewSidebar(preview, locale);
   const communityTitle = community?.display_name ?? preview.display_name;
   const communityAvatarRef = community?.avatar_ref ?? preview.avatar_ref;
@@ -592,6 +688,22 @@ export function CommunityPage({
     <>
       {gateModal}
       {purchaseModal}
+      <HandleClaimModal
+        claimedLabel={handleClaim.claimedLabel ?? undefined}
+        communityHandle={communityHandleLabel}
+        communityName={communityTitle}
+        error={handleClaim.error}
+        forceMobile={isMobileWeb}
+        onClaim={handleClaim.onClaim}
+        onNotNow={handleClaimNotNow}
+        onOpenChange={handleClaimModalOpenChange}
+        onSearchChange={handleClaim.onSearchChange}
+        open={handleClaimModalOpen}
+        phase={handleClaim.phase}
+        processing={handleClaim.processing}
+        searchResult={handleClaim.searchResult}
+        searchValue={handleClaim.searchValue}
+      />
       <CommunityJoinRequestModal
         communityName={communityTitle}
         error={joinRequestError}

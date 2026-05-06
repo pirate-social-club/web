@@ -11,6 +11,7 @@ import type {
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 import { createCommunityCommerceApi } from "./client-groups-community-commerce";
+import { createCommunityHandleApi } from "./client-groups-community-handles";
 import { createCommunityMembershipApi } from "./client-groups-community-membership";
 import { createCommunityModerationApi } from "./client-groups-community-moderation";
 import { createCommunitySettingsApi } from "./client-groups-community-settings";
@@ -56,6 +57,7 @@ export function createCommunitiesApi(request: ApiRequest) {
       ),
     ...createCommunitySettingsApi(request),
     ...createCommunityMembershipApi(request),
+    ...createCommunityHandleApi(request),
     ...createCommunityCommerceApi(request),
     ...createCommunityModerationApi(request),
     listPosts: (

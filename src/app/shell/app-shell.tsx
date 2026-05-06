@@ -23,7 +23,6 @@ import { cn } from "@/lib/utils";
 import { getLocaleMessages, type ShellMessages } from "@/locales";
 
 import { AppShellHeader, AppShellMobileNav } from "./app-shell-header";
-import { ChatOnboardingPrep } from "./chat-onboarding-prep";
 import { DesktopChatWidgetProvider } from "./desktop-chat-widget";
 import { RootErrorBoundary } from "./root-error-boundary";
 import { RouteContentFallback } from "./route-content-fallback";
@@ -283,7 +282,6 @@ export function PirateAppShell({
           ) : (
             <PirateAuthProvider deferPrivyUntilConnect={shouldDeferPrivyUntilConnect}>
               <SessionRevalidator>
-                <ChatOnboardingPrep />
                 <NotificationShell
                   copy={copy}
                   effectiveDir={effectiveDir}

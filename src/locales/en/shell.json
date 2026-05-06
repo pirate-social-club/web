@@ -84,9 +84,9 @@
     "walletLabel": "Wallet"
   },
   "rootError": {
-    "description": "Something went wrong while loading Pirate.",
+    "description": "Refresh the page or return home.",
     "homeLabel": "Go Home",
-    "title": "Something went wrong?"
+    "title": "Pirate didn't load"
   },
   "storybook": {
     "contentAreaLabel": "Content area",

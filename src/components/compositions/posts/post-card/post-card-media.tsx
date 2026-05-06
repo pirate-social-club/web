@@ -4,6 +4,7 @@ import { Globe, Lock as FilledLockIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
 import { Type } from "@/components/primitives/type";
+import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
@@ -36,6 +37,31 @@ function SongPostContentFallback({ className }: { className?: string }) {
 
 function VideoPostContentFallback({ className }: { className?: string }) {
   return <div className={cn("aspect-video w-full rounded-lg bg-muted", className)} aria-busy="true" />;
+}
+
+class LazyPostMediaErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: React.ReactNode; resetKey: string },
+  { hasError: boolean }
+> {
+  public state = { hasError: false };
+
+  public static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  public componentDidCatch(error: Error) {
+    logger.error("[post-card-media] lazy media failed to load", { error });
+  }
+
+  public componentDidUpdate(previousProps: { resetKey: string }) {
+    if (this.state.hasError && previousProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  public render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
 }
 
 type LinkContent = Extract<PostCardContent, { type: "link" }>;
@@ -224,9 +250,14 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
     }
     case "video":
       return (
-        <React.Suspense fallback={<VideoPostContentFallback className={className} />}>
-          <LazyVideoPostContent content={content} className={className} />
-        </React.Suspense>
+        <LazyPostMediaErrorBoundary
+          fallback={<VideoPostContentFallback className={className} />}
+          resetKey={`video:${content.src}`}
+        >
+          <React.Suspense fallback={<VideoPostContentFallback className={className} />}>
+            <LazyVideoPostContent content={content} className={className} />
+          </React.Suspense>
+        </LazyPostMediaErrorBoundary>
       );
     case "link":
       return (
@@ -262,9 +293,14 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
       );
     case "song":
       return (
-        <React.Suspense fallback={<SongPostContentFallback className={className} />}>
-          <LazySongPostContent content={content} className={className} />
-        </React.Suspense>
+        <LazyPostMediaErrorBoundary
+          fallback={<SongPostContentFallback className={className} />}
+          resetKey={`song:${content.title}:${content.artist ?? ""}`}
+        >
+          <React.Suspense fallback={<SongPostContentFallback className={className} />}>
+            <LazySongPostContent content={content} className={className} />
+          </React.Suspense>
+        </LazyPostMediaErrorBoundary>
       );
   }
 }

@@ -126,6 +126,38 @@ describe("CommentTree", () => {
     view.unmount();
   });
 
+  test("renders delete action only when allowed", () => {
+    const deleted: string[] = [];
+    const view = renderTree(
+      <CommentTree
+        comments={[
+          {
+            authorLabel: "nadia",
+            body: "Owned comment",
+            canDelete: true,
+            commentId: "cmt_owned",
+            deleteActionLabel: "Delete",
+            onDelete: () => deleted.push("cmt_owned"),
+            timestampLabel: "4m",
+          },
+          {
+            authorLabel: "eli",
+            body: "Other comment",
+            commentId: "cmt_other",
+            timestampLabel: "3m",
+          },
+        ]}
+      />,
+    );
+
+    expect(view.getAllByRole("button", { name: "Delete" })).toHaveLength(1);
+    fireEvent.click(view.getByRole("button", { name: "Delete" }));
+
+    expect(deleted).toEqual(["cmt_owned"]);
+
+    view.unmount();
+  });
+
   test("uses compact responsive spacing for loaded replies", () => {
     const view = renderTree(
       <CommentTree

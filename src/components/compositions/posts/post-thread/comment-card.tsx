@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChatCircle } from "@phosphor-icons/react";
+import { ChatCircle, Trash } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
@@ -64,6 +64,9 @@ export interface CommentCardProps {
   originalBody?: string;
   status?: PostThreadCommentStatus;
   viewerVote?: "up" | "down" | null;
+  canDelete?: boolean;
+  deleteActionLabel?: string;
+  onDelete?: () => void;
   onVote?: (direction: "up" | "down") => void;
   showOriginalLabel?: string;
   showTranslationLabel?: string;
@@ -97,6 +100,9 @@ export function CommentCard({
   originalBody,
   status,
   viewerVote,
+  canDelete,
+  deleteActionLabel = "Delete",
+  onDelete,
   onVote,
   showOriginalLabel,
   showTranslationLabel,
@@ -135,6 +141,7 @@ export function CommentCard({
     Boolean(showOriginalLabel) &&
     Boolean(showTranslationLabel);
   const canReply = isPublished && Boolean(onReplySubmit);
+  const canDeleteComment = isPublished && Boolean(canDelete && onDelete);
   const visibleMedia = isPublished ? media : undefined;
   const canSubmitReply = Boolean(replyBody.trim() || replyAttachment);
   const handleVote = React.useCallback((direction: "up" | "down" | null) => {
@@ -259,6 +266,20 @@ export function CommentCard({
             >
               <ChatCircle className="size-[18px]" />
               <Type as="span" variant="label" className="text-inherit">{replyActionLabel}</Type>
+            </button>
+          ) : null}
+          {canDeleteComment ? (
+            <button
+              aria-label={deleteActionLabel}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => {
+                triggerCommentTapHaptic();
+                onDelete?.();
+              }}
+              title={deleteActionLabel}
+              type="button"
+            >
+              <Trash className="size-[18px]" />
             </button>
           ) : null}
         </div>

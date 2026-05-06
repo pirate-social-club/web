@@ -313,6 +313,7 @@ export function toThreadComment(
     loadingReplies?: boolean;
     loadMoreRepliesLabel?: string;
     moreRepliesLabel?: string;
+    onDelete?: () => void;
     onLoadMoreReplies?: () => void;
     onReplySubmit?: (input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
     onVote?: (direction: "up" | "down") => void;
@@ -353,6 +354,9 @@ export function toThreadComment(
     loadMoreRepliesLabel: opts?.loadMoreRepliesLabel,
     media: toThreadCommentMedia(comment),
     moreRepliesLabel: opts?.moreRepliesLabel,
+    canDelete: Boolean(item.viewer_can_delete && opts?.onDelete),
+    deleteActionLabel: item.viewer_can_delete && opts?.onDelete ? "Delete" : undefined,
+    onDelete: item.viewer_can_delete ? opts?.onDelete : undefined,
     onLoadMoreReplies: opts?.onLoadMoreReplies,
     onReplySubmit: opts?.onReplySubmit,
     onVote: opts?.onVote,
@@ -407,6 +411,7 @@ export function mapThreadCommentNode(
   onLoadReplies: (commentId: string) => void,
   onReplySubmit?: (commentId: string, input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void>,
   onVote?: (commentId: string, direction: "up" | "down") => void,
+  onDelete?: (commentId: string) => void,
 ): PostThreadComment {
   const loadMoreRepliesLabel = buildThreadMoreRepliesLabel(node, labels);
 
@@ -421,6 +426,9 @@ export function mapThreadCommentNode(
       loadingReplies: node.loadingReplies,
       loadMoreRepliesLabel,
       moreRepliesLabel: loadMoreRepliesLabel,
+      onDelete: onDelete
+        ? () => onDelete(node.item.comment.id)
+        : undefined,
       onLoadMoreReplies: node.item.comment.direct_reply_count > 0
         ? () => onLoadReplies(node.item.comment.id)
         : undefined,
@@ -438,6 +446,7 @@ export function mapThreadCommentNode(
       onLoadReplies,
       onReplySubmit,
       onVote,
+      onDelete,
     )),
   );
 }

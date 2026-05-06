@@ -37,6 +37,7 @@ function createCommentItem(overrides: Partial<CommentListItem["comment"]> = {}):
     translation_state: "same_language",
     translated_body: null,
     viewer_vote: null,
+    viewer_can_delete: false,
   } as unknown as CommentListItem;
 }
 
@@ -83,5 +84,27 @@ describe("thread-state comment mapping", () => {
     await comment.onReplySubmit?.({ attachment, authorMode: "human", body: "" });
 
     expect(seen).toEqual([{ attachment, authorMode: "human", body: "" }]);
+  });
+
+  test("maps comment delete permission into post thread actions", () => {
+    const deleted: string[] = [];
+    const comment = toThreadComment(
+      {
+        ...createCommentItem(),
+        viewer_can_delete: true,
+      },
+      {},
+      labels,
+      {
+        onDelete: () => {
+          deleted.push("cmt_test");
+        },
+      },
+    );
+
+    expect(comment.canDelete).toBe(true);
+    expect(comment.deleteActionLabel).toBe("Delete");
+    comment.onDelete?.();
+    expect(deleted).toEqual(["cmt_test"]);
   });
 });

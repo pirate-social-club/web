@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CommunityPreview as ApiCommunityPreview, CreateCommentRequest, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
+import type { Comment as ApiComment, CommunityPreview as ApiCommunityPreview, CreateCommentRequest, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
@@ -490,6 +490,43 @@ export function usePost(
     });
   }, [api, commentNodes, post, runGatedCommunityAction]);
 
+  const deleteComment = React.useCallback(async (commentId: string) => {
+    if (!post) return;
+    if (typeof window !== "undefined" && !window.confirm("Delete this comment?")) return;
+
+    const previousNodes = commentNodes;
+    const applyDeletedComment = (deleted?: ApiComment) => {
+      setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({
+        ...node,
+        item: {
+          ...node.item,
+          comment: {
+            ...node.item.comment,
+            ...deleted,
+            id: deleted?.id ?? node.item.comment.id,
+            parent_comment: deleted?.parent_comment ?? node.item.comment.parent_comment,
+            body: deleted?.body ?? "[deleted]",
+            media_refs: deleted?.media_refs ?? [],
+            status: "deleted",
+          },
+          machine_translated: false,
+          translated_body: null,
+          translation_state: "same_language",
+          viewer_can_delete: false,
+        },
+      })));
+    };
+
+    applyDeletedComment();
+    try {
+      const deleted = await api.comments.delete(commentId);
+      applyDeletedComment(deleted);
+    } catch (nextError) {
+      setCommentNodes(previousNodes);
+      toast.error(getErrorMessage(nextError, "Could not delete this comment."));
+    }
+  }, [api.comments, commentNodes, post]);
+
   const voteOnPost = React.useCallback(async (direction: "up" | "down" | null) => {
     if (!post) return;
     await runGatedCommunityAction({
@@ -748,7 +785,8 @@ export function usePost(
     loadRepliesForComment,
     createReply,
     voteOnComment,
-  )), [authorProfilesByUserId, commentNodes, createReply, labels, loadRepliesForComment, voteOnComment]);
+    deleteComment,
+  )), [authorProfilesByUserId, commentNodes, createReply, deleteComment, labels, loadRepliesForComment, voteOnComment]);
   const commentCount = React.useMemo(() => countThreadComments(commentNodes), [commentNodes]);
 
   React.useEffect(() => {

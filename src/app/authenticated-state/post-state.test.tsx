@@ -4,7 +4,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { installDomGlobals } from "@/test/setup-dom";
 
-import type { CommentListItem, CommunityPreview, CreateCommentRequest, JoinEligibility, LocalizedPostResponse } from "@pirate/api-contracts";
+import type { Comment, CommentListItem, CommunityPreview, CreateCommentRequest, JoinEligibility, LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { api } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
@@ -533,5 +533,80 @@ describe("usePost", () => {
         size_bytes: 3,
       }],
     });
+  });
+
+  test("deletes owned comments and tombstones them locally", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+    const parentComment = {
+      ...createCommentItem("cmt_owned"),
+      translated_body: "Translated comment",
+      translation_state: "ready",
+      viewer_can_delete: true,
+      comment: {
+        ...createCommentItem("cmt_owned").comment,
+        body: "Original comment",
+        media_refs: [{
+          storage_ref: "https://media.test/comment.gif",
+          mime_type: "image/gif",
+        }],
+      },
+    } as CommentListItem;
+    const calls = {
+      deletedComment: null as string | null,
+    };
+
+    const originalConfirm = window.confirm;
+    Object.defineProperty(window, "confirm", {
+      configurable: true,
+      value: () => true,
+    });
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+    };
+    const comments = api.comments as unknown as {
+      delete: (commentId: string) => Promise<Comment>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = async () => createPreview();
+    communities.listComments = async () => ({ items: [parentComment], next_cursor: null });
+    comments.delete = async (commentId) => {
+      calls.deletedComment = commentId;
+      return {
+        ...parentComment.comment,
+        body: "[deleted]",
+        media_refs: [],
+        status: "deleted",
+      } as Comment;
+    };
+    agents.list = async () => ({ items: [] });
+
+    try {
+      const { result } = renderHook(() => usePost("pst_test", "en", true, labels), { wrapper });
+
+      await waitFor(() => expect(result.current.comments[0]?.canDelete).toBe(true));
+      await act(async () => {
+        result.current.comments[0]?.onDelete?.();
+      });
+      await waitFor(() => expect(calls.deletedComment).toBe("cmt_owned"));
+
+      expect(result.current.comments[0]?.body).toBe("[deleted]");
+      expect(result.current.comments[0]?.media).toBeUndefined();
+      expect(result.current.comments[0]?.canDelete).toBe(false);
+    } finally {
+      Object.defineProperty(window, "confirm", {
+        configurable: true,
+        value: originalConfirm,
+      });
+    }
   });
 });

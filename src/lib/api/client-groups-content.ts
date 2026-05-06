@@ -1,5 +1,6 @@
 import type {
   CommentContext,
+  Comment,
   CommentListResponse,
   CommentVoteResponse,
   CreateCommentRequest,
@@ -83,6 +84,10 @@ export function createCommentsApi(request: ApiRequest) {
       request(`/comments/${encodeURIComponent(commentId)}/replies`, {
         method: "POST",
         body: JSON.stringify(body),
+      }),
+    delete: (commentId: string): Promise<Comment> =>
+      request<Comment>(`/comments/${encodeURIComponent(commentId)}/delete`, {
+        method: "POST",
       }),
     vote: (commentId: string, value: -1 | 1): Promise<CommentVoteResponse> =>
       request<CommentVoteResponse>(`/comments/${encodeURIComponent(commentId)}/vote`, {

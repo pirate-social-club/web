@@ -51,6 +51,8 @@ export interface PostThreadComment {
   loadMoreRepliesLabel?: string;
   loadingReplies?: boolean;
   moreRepliesLabel?: string;
+  canDelete?: boolean;
+  deleteActionLabel?: string;
   replyActionLabel?: string;
   replyPlaceholder?: string;
   cancelReplyLabel?: string;
@@ -58,6 +60,7 @@ export interface PostThreadComment {
   showOriginalLabel?: string;
   showTranslationLabel?: string;
   onLoadMoreReplies?: () => void;
+  onDelete?: () => void;
   onReplySubmit?: (input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   onVote?: (direction: "up" | "down") => void;
   children?: PostThreadComment[];

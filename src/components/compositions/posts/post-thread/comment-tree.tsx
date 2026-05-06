@@ -61,6 +61,7 @@ function commentHasExpandableContent(comment: PostThreadComment): boolean {
     (comment.media?.length ?? 0) > 0 ||
     comment.originalBody ||
     comment.status ||
+    comment.onDelete ||
     comment.onReplySubmit ||
     comment.onVote,
   );
@@ -185,6 +186,9 @@ function CommentTreeNode({
           originalBody={comment.originalBody}
           status={comment.status}
           viewerVote={comment.viewerVote}
+          canDelete={comment.canDelete}
+          deleteActionLabel={comment.deleteActionLabel}
+          onDelete={comment.onDelete}
           onVote={comment.onVote}
           showOriginalLabel={comment.showOriginalLabel}
           showTranslationLabel={comment.showTranslationLabel}

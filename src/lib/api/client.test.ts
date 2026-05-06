@@ -658,6 +658,7 @@ describe("ApiClient media uploads", () => {
       await client.comments.createReply("cmt_reply", {
         body: "Reply body",
       });
+      await client.comments.delete("cmt_reply");
       await client.comments.vote("cmt_reply", 1);
 
       expect(requests[0]?.url).toBe("http://pirate.test/posts/pst_test?locale=nl");
@@ -668,7 +669,9 @@ describe("ApiClient media uploads", () => {
       expect(requests[3]?.url).toBe("http://pirate.test/communities/cmt_test/posts/pst_test/comments");
       expect(requests[4]?.url).toBe("http://pirate.test/comments/cmt_reply/replies?locale=nl&sort=new");
       expect(requests[5]?.url).toBe("http://pirate.test/comments/cmt_reply/replies");
-      expect(requests[6]?.url).toBe("http://pirate.test/comments/cmt_reply/vote");
+      expect(requests[6]?.url).toBe("http://pirate.test/comments/cmt_reply/delete");
+      expect(requests[6]?.method).toBe("POST");
+      expect(requests[7]?.url).toBe("http://pirate.test/comments/cmt_reply/vote");
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -175,6 +175,43 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("sends comment image uploads through community media", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        kind: "comment_image",
+        media_ref: "http://pirate.test/community-media/comment_image/comment_image_test.gif",
+        mime_type: "image/gif",
+        size_bytes: 4,
+        storage_bucket: "pirate-media",
+        storage_object_key: "community-media/comment_image/comment_image_test.gif",
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.uploadMedia({
+        kind: "comment_image",
+        file: makeTestFile("comment.gif", "image/gif"),
+      });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.url).toBe("http://pirate.test/community-media");
+      const formData = await capturedRequest.formData();
+      expect(formData.get("kind")).toBe("comment_image");
+      const file = formData.get("file");
+      expect(file instanceof File).toBe(true);
+      expect((file as File).name).toBe("comment.gif");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("syncs linked handles with a POST request", async () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

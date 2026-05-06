@@ -6,6 +6,26 @@ export type CommentSort = "best" | "new" | "top";
 
 export type PostThreadCommentStatus = "published" | "hidden" | "removed" | "deleted";
 
+export interface PostThreadCommentMedia {
+  storageRef: string;
+  mimeType?: string | null;
+  alt?: string;
+}
+
+export interface PostThreadReplyAttachment {
+  file?: File;
+  label: string;
+  mimeType?: string | null;
+  previewUrl: string;
+  sizeBytes?: number | null;
+}
+
+export interface PostThreadReplyInput {
+  attachment?: PostThreadReplyAttachment | null;
+  authorMode: PostThreadAuthorMode;
+  body: string;
+}
+
 export interface PostThreadComment {
   commentId?: string;
   replyId?: string;
@@ -20,6 +40,7 @@ export interface PostThreadComment {
   body?: string;
   bodyDir?: "ltr" | "rtl" | "auto";
   bodyLang?: string;
+  media?: PostThreadCommentMedia[];
   originalBody?: string;
   status?: PostThreadCommentStatus;
   metadataLabel?: string;
@@ -37,7 +58,7 @@ export interface PostThreadComment {
   showOriginalLabel?: string;
   showTranslationLabel?: string;
   onLoadMoreReplies?: () => void;
-  onReplySubmit?: (input: { body: string; authorMode: PostThreadAuthorMode }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
+  onReplySubmit?: (input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   onVote?: (direction: "up" | "down") => void;
   children?: PostThreadComment[];
 }
@@ -56,7 +77,7 @@ export interface PostThreadProps {
   rootReplyPlaceholder?: string;
   rootReplyCancelLabel?: string;
   rootReplySubmitLabel?: string;
-  onRootReplySubmit?: (input: { body: string; authorMode: PostThreadAuthorMode }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
+  onRootReplySubmit?: (input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
   commentSort?: CommentSort;
   availableCommentSorts?: { label: string; value: CommentSort }[];
   onCommentSortChange?: (sort: CommentSort) => void;

@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import type * as React from "react";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { installDomGlobals } from "@/test/setup-dom";
 
-import type { CommunityPreview, LocalizedPostResponse } from "@pirate/api-contracts";
+import type { CommentListItem, CommunityPreview, CreateCommentRequest, JoinEligibility, LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { api } from "@/lib/api";
 import { ApiError } from "@/lib/api/client";
-import { __resetSessionStoreForTests } from "@/lib/api/session-store";
+import { __resetSessionStoreForTests, setSession } from "@/lib/api/session-store";
 import { PirateQueryProvider } from "@/lib/query/query-client";
 import { postKeys } from "@/lib/query/keys";
 import type { PublicThreadQueryData } from "@/lib/query/public-thread-cache";
@@ -113,6 +113,29 @@ function createPostResponse(): LocalizedPostResponse {
   };
 }
 
+function createCommentItem(commentId = "cmt_parent"): CommentListItem {
+  return {
+    comment: {
+      id: commentId,
+      parent_comment: null,
+      identity_mode: "anonymous",
+      anonymous_label: "anon",
+      author_user: null,
+      status: "published",
+      body: "Existing comment",
+      score: 0,
+      direct_reply_count: 0,
+      descendant_count: 0,
+      created: Date.parse("2026-04-24T00:00:00.000Z"),
+      media_refs: [],
+    },
+    resolved_locale: "en",
+    translation_state: "same_language",
+    translated_body: null,
+    viewer_vote: null,
+  } as unknown as CommentListItem;
+}
+
 function createPreview(): CommunityPreview {
   return {
     id: "cmt_test",
@@ -144,6 +167,31 @@ function createPreview(): CommunityPreview {
     viewer_following: true,
     created: Date.parse("2026-04-24T00:00:00.000Z"),
   };
+}
+
+function createJoinEligibility(): JoinEligibility {
+  return {
+    community: "cmt_test",
+    membership_mode: "open",
+    human_verification_lane: "self",
+    joinable_now: false,
+    status: "already_joined",
+    membership_gate_summaries: [],
+  };
+}
+
+function installLiveSession() {
+  setSession({
+    access_token: "test-token",
+    user: { id: "usr_test" },
+    profile: null,
+    onboarding: {},
+    wallet_attachments: [],
+  } as Parameters<typeof setSession>[0]);
+}
+
+function createCommentFile() {
+  return new File(["gif"], "comment.gif", { type: "image/gif" });
 }
 
 describe("usePost", () => {
@@ -344,5 +392,146 @@ describe("usePost", () => {
     expect(calls.communityPreview).toEqual([{ communityId: "com_cmt_test", locale: "ar" }]);
     expect(result.current.post?.post.id).toBe("post_pst_test");
     expect(result.current.post?.post.community).toBe("com_cmt_test");
+  });
+
+  test("uploads root comment attachments as comment_image and sends media refs", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+    const calls = {
+      createComment: null as CreateCommentRequest | null,
+      uploadKind: null as string | null,
+    };
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+      getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
+      uploadMedia: (input: { kind: string; file: File }) => Promise<{ media_ref: string; mime_type: string; size_bytes: number }>;
+      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<void>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = async () => createPreview();
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    communities.getJoinEligibility = async () => createJoinEligibility();
+    communities.uploadMedia = async (input) => {
+      calls.uploadKind = input.kind;
+      return {
+        media_ref: "https://media.test/comment.gif",
+        mime_type: input.file.type,
+        size_bytes: input.file.size,
+      };
+    };
+    communities.createComment = async (_communityId, _postId, body) => {
+      calls.createComment = body;
+    };
+    agents.list = async () => ({ items: [] });
+
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), { wrapper });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {
+      await result.current.createTopLevelComment({
+        attachment: {
+          file: createCommentFile(),
+          label: "comment.gif",
+          mimeType: "image/gif",
+          previewUrl: "blob:comment",
+        },
+        authorMode: "human",
+        body: "",
+      });
+    });
+
+    expect(calls.uploadKind).toBe("comment_image");
+    expect(calls.createComment).toEqual({
+      body: "",
+      media_refs: [{
+        storage_ref: "https://media.test/comment.gif",
+        mime_type: "image/gif",
+        size_bytes: 3,
+      }],
+    });
+  });
+
+  test("uploads reply attachments as comment_image and sends media refs", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+    const calls = {
+      createReply: null as CreateCommentRequest | null,
+      uploadKind: null as string | null,
+    };
+    const parentComment = createCommentItem("cmt_parent");
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+      getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
+      uploadMedia: (input: { kind: string; file: File }) => Promise<{ media_ref: string; mime_type: string; size_bytes: number }>;
+    };
+    const comments = api.comments as unknown as {
+      createReply: (commentId: string, body: CreateCommentRequest) => Promise<void>;
+      getContext: (commentId: string, opts?: { limit?: string | null; locale?: string | null }) => Promise<{ comment: CommentListItem; replies: CommentListItem[]; next_replies_cursor: null }>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = async () => createPreview();
+    communities.listComments = async () => ({ items: [parentComment], next_cursor: null });
+    communities.getJoinEligibility = async () => createJoinEligibility();
+    communities.uploadMedia = async (input) => {
+      calls.uploadKind = input.kind;
+      return {
+        media_ref: "https://media.test/reply.gif",
+        mime_type: input.file.type,
+        size_bytes: input.file.size,
+      };
+    };
+    comments.createReply = async (_commentId, body) => {
+      calls.createReply = body;
+    };
+    comments.getContext = async () => ({
+      comment: parentComment,
+      replies: [],
+      next_replies_cursor: null,
+    });
+    agents.list = async () => ({ items: [] });
+
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), { wrapper });
+
+    await waitFor(() => expect(result.current.comments).toHaveLength(1));
+    await act(async () => {
+      await result.current.comments[0]?.onReplySubmit?.({
+        attachment: {
+          file: createCommentFile(),
+          label: "comment.gif",
+          mimeType: "image/gif",
+          previewUrl: "blob:comment",
+        },
+        authorMode: "human",
+        body: "",
+      });
+    });
+
+    expect(calls.uploadKind).toBe("comment_image");
+    expect(calls.createReply).toEqual({
+      body: "",
+      media_refs: [{
+        storage_ref: "https://media.test/reply.gif",
+        mime_type: "image/gif",
+        size_bytes: 3,
+      }],
+    });
   });
 });

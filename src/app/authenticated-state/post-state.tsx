@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CommunityPreview as ApiCommunityPreview, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
+import type { CommunityPreview as ApiCommunityPreview, CreateCommentRequest, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
-import { isApiNotFoundError } from "@/lib/api/client";
+import { ApiError, isApiNotFoundError } from "@/lib/api/client";
 import { buildAgentActionProof } from "@/lib/agents/browser-agent-action-proof";
 import { findStoredOwnedAgentKey } from "@/lib/agents/agent-key-store";
 import { useSession } from "@/lib/api/session-store";
@@ -17,7 +17,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { postKeys } from "@/lib/query/keys";
 import type { PublicThreadQueryData } from "@/lib/query/public-thread-cache";
 import { toast } from "@/components/primitives/sonner";
-import type { PostThreadSubmitResult } from "@/components/compositions/posts/post-thread/post-thread.types";
+import type { PostThreadReplyInput, PostThreadSubmitResult } from "@/components/compositions/posts/post-thread/post-thread.types";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { applyPostVote, submitOptimisticPostVote } from "@/app/authenticated-helpers/post-vote";
@@ -298,7 +298,30 @@ export function usePost(
     setCommentNodes((current) => mergeThreadCommentNodes(current, nextThreadState.commentNodes));
   }, [commentSort, loadTopLevelComments, readMode]);
 
-  const signAgentAuthoredCommentBody = React.useCallback(async (path: string, body: { body: string }) => {
+  const buildCommentRequestBody = React.useCallback(async (input: PostThreadReplyInput): Promise<CreateCommentRequest> => {
+    const body: CreateCommentRequest = { body: input.body };
+    if (input.attachment?.file) {
+      const uploaded = await api.communities.uploadMedia({
+        kind: "comment_image",
+        file: input.attachment.file,
+      });
+      body.media_refs = [{
+        storage_ref: uploaded.media_ref,
+        mime_type: uploaded.mime_type,
+        size_bytes: uploaded.size_bytes,
+      }];
+    }
+    return body;
+  }, [api.communities]);
+
+  const getCommentSubmitErrorMessage = React.useCallback((error: unknown) => {
+    if (error instanceof ApiError && error.code === "comment_media_rejected") {
+      return "This image cannot be posted.";
+    }
+    return getErrorMessage(error, "Could not post this reply.");
+  }, []);
+
+  const signAgentAuthoredCommentBody = React.useCallback(async (path: string, body: CreateCommentRequest) => {
     if (!availableAgent) {
       throw new Error("No local agent key is available for this reply.");
     }
@@ -362,7 +385,7 @@ export function usePost(
     }
   }, [api, commentSort, readMode, commentNodes, locale, session]);
 
-  const createTopLevelComment = React.useCallback(async (input: { body: string; authorMode: "human" | "agent" }): Promise<PostThreadSubmitResult> => {
+  const createTopLevelComment = React.useCallback(async (input: PostThreadReplyInput): Promise<PostThreadSubmitResult> => {
     if (!post) return "blocked";
     const communityId = post.post.community;
     const nextPostId = post.post.id;
@@ -371,7 +394,7 @@ export function usePost(
       communityId,
       onAllowed: async () => {
         try {
-          const commentBody = { body: input.body };
+          const commentBody = await buildCommentRequestBody(input);
           await api.communities.createComment(
             communityId,
             nextPostId,
@@ -384,23 +407,23 @@ export function usePost(
           );
           await refreshTopLevelComments(communityId);
         } catch (nextError) {
-          toast.error(getErrorMessage(nextError, "Could not post this reply."));
+          toast.error(getCommentSubmitErrorMessage(nextError));
           throw nextError;
         }
       },
       postId: nextPostId,
     });
     return result === "allowed" ? "submitted" : "blocked";
-  }, [api, post, refreshTopLevelComments, runGatedCommunityAction, signAgentAuthoredCommentBody]);
+  }, [api, buildCommentRequestBody, getCommentSubmitErrorMessage, post, refreshTopLevelComments, runGatedCommunityAction, signAgentAuthoredCommentBody]);
 
-  const createReply = React.useCallback(async (commentId: string, input: { body: string; authorMode: "human" | "agent" }): Promise<PostThreadSubmitResult> => {
+  const createReply = React.useCallback(async (commentId: string, input: PostThreadReplyInput): Promise<PostThreadSubmitResult> => {
     if (!post) return "blocked";
     const result = await runGatedCommunityAction({
       action: "reply_comment",
       communityId: post.post.community,
       onAllowed: async () => {
         try {
-          const commentBody = { body: input.body };
+          const commentBody = await buildCommentRequestBody(input);
           await api.comments.createReply(
             commentId,
             input.authorMode === "agent"
@@ -423,14 +446,14 @@ export function usePost(
             nextRepliesCursor: context.next_replies_cursor,
           })));
         } catch (nextError) {
-          toast.error(getErrorMessage(nextError, "Could not post this reply."));
+          toast.error(getCommentSubmitErrorMessage(nextError));
           throw nextError;
         }
       },
       postId: post.post.id,
     });
     return result === "allowed" ? "submitted" : "blocked";
-  }, [api, locale, post, runGatedCommunityAction, session, signAgentAuthoredCommentBody]);
+  }, [api, buildCommentRequestBody, getCommentSubmitErrorMessage, locale, post, runGatedCommunityAction, session, signAgentAuthoredCommentBody]);
 
   const voteOnComment = React.useCallback(async (commentId: string, direction: "up" | "down") => {
     if (!post) return;

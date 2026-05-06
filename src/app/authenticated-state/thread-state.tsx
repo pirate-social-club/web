@@ -6,7 +6,12 @@ import type { Profile as ApiProfile } from "@pirate/api-contracts";
 import { useApi } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { buildPublicProfilePathForProfile } from "@/lib/profile-routing";
-import type { PostThreadComment, PostThreadSubmitResult } from "@/components/compositions/posts/post-thread/post-thread.types";
+import type {
+  PostThreadComment,
+  PostThreadCommentMedia,
+  PostThreadReplyInput,
+  PostThreadSubmitResult,
+} from "@/components/compositions/posts/post-thread/post-thread.types";
 
 import { getErrorMessage } from "@/lib/error-utils";
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
@@ -35,6 +40,16 @@ function getCommentId(comment: ApiCommentListItem["comment"]): string {
 
 function getParentCommentId(comment: ApiCommentListItem["comment"]): string | null {
   return comment.parent_comment ?? (comment as typeof comment & { parent_comment_id?: string | null }).parent_comment_id ?? null;
+}
+
+function toThreadCommentMedia(comment: ApiCommentListItem["comment"]): PostThreadCommentMedia[] | undefined {
+  const media = (comment.media_refs ?? [])
+    .filter((item) => typeof item.storage_ref === "string" && item.storage_ref.trim())
+    .map((item) => ({
+      storageRef: item.storage_ref,
+      mimeType: item.mime_type ?? null,
+    }));
+  return media.length > 0 ? media : undefined;
 }
 
 export function collectCommentAuthorUserIds(items: ApiCommentListItem[]): string[] {
@@ -299,7 +314,7 @@ export function toThreadComment(
     loadMoreRepliesLabel?: string;
     moreRepliesLabel?: string;
     onLoadMoreReplies?: () => void;
-    onReplySubmit?: (input: { body: string; authorMode: "human" | "agent" }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
+    onReplySubmit?: (input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
     onVote?: (direction: "up" | "down") => void;
     replyCount?: number;
   },
@@ -336,6 +351,7 @@ export function toThreadComment(
     loadedReplyCount: opts?.loadedReplyCount,
     loadingReplies: opts?.loadingReplies,
     loadMoreRepliesLabel: opts?.loadMoreRepliesLabel,
+    media: toThreadCommentMedia(comment),
     moreRepliesLabel: opts?.moreRepliesLabel,
     onLoadMoreReplies: opts?.onLoadMoreReplies,
     onReplySubmit: opts?.onReplySubmit,
@@ -389,7 +405,7 @@ export function mapThreadCommentNode(
   authorProfiles: Record<string, ApiProfile | null>,
   labels: Parameters<typeof toThreadComment>[2],
   onLoadReplies: (commentId: string) => void,
-  onReplySubmit?: (commentId: string, input: { body: string; authorMode: "human" | "agent" }) => Promise<PostThreadSubmitResult | void>,
+  onReplySubmit?: (commentId: string, input: PostThreadReplyInput) => Promise<PostThreadSubmitResult | void>,
   onVote?: (commentId: string, direction: "up" | "down") => void,
 ): PostThreadComment {
   const loadMoreRepliesLabel = buildThreadMoreRepliesLabel(node, labels);

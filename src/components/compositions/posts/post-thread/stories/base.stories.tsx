@@ -53,6 +53,11 @@ const baseComments: PostThreadComment[] = [
         timestampLabel: "18m",
         scoreLabel: "31 score",
         body: "The better thread question is which records still hold up three days later, not just what hit first.",
+        media: [{
+          storageRef: "https://picsum.photos/seed/pirate-comment-sleeve/720/520",
+          mimeType: "image/jpeg",
+          alt: "Album sleeve photo",
+        }],
         children: [
           {
             commentId: "comment_1_1_1",
@@ -82,6 +87,11 @@ const baseComments: PostThreadComment[] = [
     timestampLabel: "15m",
     scoreLabel: "53 score",
     body: "If Pirate wants these threads to feel alive on mobile, the child branches need to stay narrow and fast instead of trying to show the whole tree.",
+    media: [{
+      storageRef: "https://upload.wikimedia.org/wikipedia/commons/2/2c/Rotating_earth_%28large%29.gif",
+      mimeType: "image/gif",
+      alt: "Animated globe",
+    }],
     initiallyCollapsed: true,
     children: [
       {
@@ -175,8 +185,60 @@ export const Default: Story = {
         commentSort={sort}
         comments={comments}
         commentsHeading="Comments"
+        onRootReplySubmit={() => "submitted"}
         onCommentSortChange={setSort}
         post={threadPost}
+        rootReplyActionLabel="Reply"
+        rootReplyCancelLabel="Cancel"
+        rootReplyPlaceholder="Write a reply"
+        rootReplySubmitLabel="Reply"
+      />
+    );
+  },
+};
+
+export const MediaCommentsAndComposer: Story = {
+  render: function MediaCommentsAndComposerStory() {
+    const [submitted, setSubmitted] = React.useState<Array<{ body: string; label?: string }>>([]);
+    const comments: PostThreadComment[] = [
+      ...baseComments,
+      ...submitted.map((item, index) => ({
+        commentId: `submitted_${index}`,
+        authorLabel: "you.pirate",
+        timestampLabel: "now",
+        scoreLabel: "0 score",
+        body: item.body,
+        media: item.label
+          ? [{
+              storageRef: "https://picsum.photos/seed/submitted-comment-image/720/520",
+              mimeType: "image/jpeg",
+              alt: item.label,
+            }]
+          : undefined,
+        replyActionLabel: "Reply",
+        replyPlaceholder: "Write a reply",
+        cancelReplyLabel: "Cancel",
+        submitReplyLabel: "Reply",
+        onReplySubmit: () => "submitted" as const,
+      })),
+    ];
+
+    return (
+      <PostThread
+        comments={withCommentVoting(comments, {}, () => {})}
+        commentsHeading="Comments"
+        onRootReplySubmit={(input) => {
+          setSubmitted((current) => [
+            ...current,
+            { body: input.body, label: input.attachment?.label },
+          ]);
+          return "submitted";
+        }}
+        post={threadPost}
+        rootReplyActionLabel="Reply"
+        rootReplyCancelLabel="Cancel"
+        rootReplyPlaceholder="Write a reply"
+        rootReplySubmitLabel="Reply"
       />
     );
   },

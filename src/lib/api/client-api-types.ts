@@ -42,7 +42,7 @@ export type ApiCreateCommunityRequest = {
 };
 
 export type ApiCommunityMediaUploadResponse = {
-  kind: "avatar" | "banner" | "post_image";
+  kind: "avatar" | "banner" | "post_image" | "comment_image";
   media_ref: string;
   ipfs_cid?: string;
   mime_type: string;

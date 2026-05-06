@@ -58,6 +58,7 @@ function collectInitialCollapsedKeySet(comments: PostThreadComment[]): Set<strin
 function commentHasExpandableContent(comment: PostThreadComment): boolean {
   return Boolean(
     comment.body ||
+    (comment.media?.length ?? 0) > 0 ||
     comment.originalBody ||
     comment.status ||
     comment.onReplySubmit ||
@@ -180,6 +181,7 @@ function CommentTreeNode({
           body={comment.body}
           bodyDir={comment.bodyDir}
           bodyLang={comment.bodyLang}
+          media={comment.media}
           originalBody={comment.originalBody}
           status={comment.status}
           viewerVote={comment.viewerVote}

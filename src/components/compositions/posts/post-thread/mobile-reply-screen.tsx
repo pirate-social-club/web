@@ -8,12 +8,16 @@ import { cn } from "@/lib/utils";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 
+import { ReplyAttachmentControl } from "./comment-media";
 import { MobileThreadScreen } from "./mobile-thread-screen";
+import type { PostThreadReplyAttachment } from "./post-thread.types";
 
 export interface MobileReplyScreenProps {
+  attachment?: PostThreadReplyAttachment | null;
   body: string;
   busy?: boolean;
   context?: React.ReactNode;
+  onAttachmentChange?: (attachment: PostThreadReplyAttachment | null) => void;
   onBodyChange: (value: string) => void;
   onCancel?: () => void;
   onSubmit?: () => void;
@@ -23,9 +27,11 @@ export interface MobileReplyScreenProps {
 }
 
 export function MobileReplyScreen({
+  attachment = null,
   body,
   busy = false,
   context,
+  onAttachmentChange,
   onBodyChange,
   onCancel,
   onSubmit,
@@ -69,7 +75,7 @@ export function MobileReplyScreen({
       trailingAction={(
         <Button
           className="h-11 px-4"
-          disabled={busy || !body.trim()}
+          disabled={busy || !(body.trim() || attachment)}
           loading={busy}
           onClick={onSubmit}
           size="sm"
@@ -93,6 +99,13 @@ export function MobileReplyScreen({
             value={body}
           />
         </div>
+        {onAttachmentChange ? (
+          <ReplyAttachmentControl
+            attachment={attachment}
+            disabled={busy}
+            onChange={onAttachmentChange}
+          />
+        ) : null}
       </div>
     </MobileThreadScreen>
   );

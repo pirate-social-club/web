@@ -11,9 +11,10 @@ import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CommentTree } from "./comment-tree";
+import { ReplyAttachmentControl, revokeReplyAttachment } from "./comment-media";
 import { MobileReplyScreen } from "./mobile-reply-screen";
 import { ReplyContextCard } from "./reply-context-card";
-import type { CommentSort, PostThreadProps } from "./post-thread.types";
+import type { CommentSort, PostThreadProps, PostThreadReplyAttachment, PostThreadReplyInput } from "./post-thread.types";
 import { Type } from "@/components/primitives/type";
 
 export function PostThread({
@@ -39,6 +40,7 @@ export function PostThread({
   const [showOriginalPost, setShowOriginalPost] = React.useState(false);
   const [rootReplyOpen, setRootReplyOpen] = React.useState(false);
   const [rootReplyBody, setRootReplyBody] = React.useState("");
+  const [rootReplyAttachment, setRootReplyAttachment] = React.useState<PostThreadReplyAttachment | null>(null);
   const [rootReplyBusy, setRootReplyBusy] = React.useState(false);
   const rootReplyContainerRef = React.useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -49,9 +51,10 @@ export function PostThread({
     body: string;
     eyebrow?: string;
     metadata?: string;
-    onSubmit: (input: { body: string; authorMode: "human" | "agent" }) => Promise<"blocked" | "submitted" | void> | "blocked" | "submitted" | void;
+    onSubmit: (input: PostThreadReplyInput) => Promise<"blocked" | "submitted" | void> | "blocked" | "submitted" | void;
   } | null>(null);
   const [mobileReplyBody, setMobileReplyBody] = React.useState("");
+  const [mobileReplyAttachment, setMobileReplyAttachment] = React.useState<PostThreadReplyAttachment | null>(null);
   const [mobileReplyBusy, setMobileReplyBusy] = React.useState(false);
 
   React.useEffect(() => {
@@ -59,12 +62,17 @@ export function PostThread({
       rootReplyContainerRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [rootReplyOpen]);
+
+  React.useEffect(() => () => revokeReplyAttachment(rootReplyAttachment), [rootReplyAttachment]);
+  React.useEffect(() => () => revokeReplyAttachment(mobileReplyAttachment), [mobileReplyAttachment]);
   const activePost = showOriginalPost && postOriginal ? postOriginal : post;
   const canToggleOriginalPost = Boolean(postOriginal);
   const canReplyAtRoot = Boolean(onRootReplySubmit);
   const resolvedEmptyCommentsLabel = emptyCommentsLabel === "No comments yet." ? copy.common.noComments : emptyCommentsLabel;
   const resolvedRootReplyPlaceholder = rootReplyPlaceholder || rootReplyActionLabel || copy.common.replyAction;
   const activeSort = commentSort ?? availableCommentSorts?.[0]?.value;
+  const canSubmitRootReply = Boolean(rootReplyBody.trim() || rootReplyAttachment);
+  const canSubmitMobileReply = Boolean(mobileReplyBody.trim() || mobileReplyAttachment);
 
   React.useEffect(() => {
     setShowOriginalPost(false);
@@ -72,43 +80,60 @@ export function PostThread({
 
   const handleRootReplySubmit = React.useCallback(async () => {
     const trimmed = rootReplyBody.trim();
-    if (!trimmed || !onRootReplySubmit) {
+    if (!canSubmitRootReply || !onRootReplySubmit) {
       return;
     }
     try {
       setRootReplyBusy(true);
-      const result = await onRootReplySubmit({ body: trimmed, authorMode: "human" });
+      const result = await onRootReplySubmit({ attachment: rootReplyAttachment, body: trimmed, authorMode: "human" });
       if (result === "blocked") {
         return;
       }
       setRootReplyBody("");
+      setRootReplyAttachment(null);
       setRootReplyOpen(false);
     } finally {
       setRootReplyBusy(false);
     }
-  }, [onRootReplySubmit, rootReplyBody]);
+  }, [canSubmitRootReply, onRootReplySubmit, rootReplyAttachment, rootReplyBody]);
 
   const handleMobileReplySubmit = React.useCallback(async () => {
     const trimmed = mobileReplyBody.trim();
-    if (!trimmed || !mobileReplyTarget) {
+    if (!canSubmitMobileReply || !mobileReplyTarget) {
       return;
     }
     try {
       setMobileReplyBusy(true);
-      const result = await mobileReplyTarget.onSubmit({ body: trimmed, authorMode: "human" });
+      const result = await mobileReplyTarget.onSubmit({ attachment: mobileReplyAttachment, body: trimmed, authorMode: "human" });
       if (result === "blocked") {
         return;
       }
       setMobileReplyBody("");
+      setMobileReplyAttachment(null);
       setMobileReplyTarget(null);
     } finally {
       setMobileReplyBusy(false);
     }
-  }, [mobileReplyBody, mobileReplyTarget]);
+  }, [canSubmitMobileReply, mobileReplyAttachment, mobileReplyBody, mobileReplyTarget]);
 
   const handleMobileReplyCancel = React.useCallback(() => {
     setMobileReplyTarget(null);
     setMobileReplyBody("");
+    setMobileReplyAttachment(null);
+  }, []);
+
+  const handleRootAttachmentChange = React.useCallback((attachment: PostThreadReplyAttachment | null) => {
+    setRootReplyAttachment((current) => {
+      revokeReplyAttachment(current);
+      return attachment;
+    });
+  }, []);
+
+  const handleMobileAttachmentChange = React.useCallback((attachment: PostThreadReplyAttachment | null) => {
+    setMobileReplyAttachment((current) => {
+      revokeReplyAttachment(current);
+      return attachment;
+    });
   }, []);
 
   const handleCommentReplyRequest = React.useCallback((comment: import("./post-thread.types").PostThreadComment) => {
@@ -121,6 +146,7 @@ export function PostThread({
       onSubmit: comment.onReplySubmit,
     });
     setMobileReplyBody("");
+    setMobileReplyAttachment(null);
   }, []);
 
   const openMobileRootReply = React.useCallback(() => {
@@ -141,6 +167,7 @@ export function PostThread({
       onSubmit: onRootReplySubmit,
     });
     setMobileReplyBody("");
+    setMobileReplyAttachment(null);
   }, [onRootReplySubmit, post]);
 
   return (
@@ -193,6 +220,11 @@ export function PostThread({
               placeholder={rootReplyPlaceholder}
               value={rootReplyBody}
             />
+            <ReplyAttachmentControl
+              attachment={rootReplyAttachment}
+              disabled={rootReplyBusy}
+              onChange={handleRootAttachmentChange}
+            />
             <div className="flex items-center justify-end gap-2">
               <Button
                 size="sm"
@@ -200,12 +232,13 @@ export function PostThread({
                 onClick={() => {
                   setRootReplyOpen(false);
                   setRootReplyBody("");
+                  handleRootAttachmentChange(null);
                 }}
               >
                 {rootReplyCancelLabel}
               </Button>
               <Button
-                disabled={rootReplyBusy || !rootReplyBody.trim()}
+                disabled={rootReplyBusy || !canSubmitRootReply}
                 size="sm"
                 onClick={() => void handleRootReplySubmit()}
               >
@@ -242,6 +275,7 @@ export function PostThread({
         <div className="fixed inset-0 z-50">
           <MobileReplyScreen
             body={mobileReplyBody}
+            attachment={mobileReplyAttachment}
             busy={mobileReplyBusy}
             context={(
               <ReplyContextCard
@@ -251,6 +285,7 @@ export function PostThread({
                 metadata={mobileReplyTarget.metadata}
               />
             )}
+            onAttachmentChange={handleMobileAttachmentChange}
             onBodyChange={setMobileReplyBody}
             onCancel={handleMobileReplyCancel}
             onSubmit={handleMobileReplySubmit}

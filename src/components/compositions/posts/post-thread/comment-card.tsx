@@ -15,8 +15,11 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import type { CommunityAuthorRole } from "../post-card/post-card.types";
+import { CommentMediaGrid, ReplyAttachmentControl, revokeReplyAttachment } from "./comment-media";
 import type {
+  PostThreadCommentMedia,
   PostThreadAuthorMode,
+  PostThreadReplyAttachment,
   PostThreadCommentStatus,
   PostThreadSubmitResult,
 } from "./post-thread.types";
@@ -57,6 +60,7 @@ export interface CommentCardProps {
   body?: string;
   bodyDir?: "ltr" | "rtl" | "auto";
   bodyLang?: string;
+  media?: PostThreadCommentMedia[];
   originalBody?: string;
   status?: PostThreadCommentStatus;
   viewerVote?: "up" | "down" | null;
@@ -68,6 +72,7 @@ export interface CommentCardProps {
   cancelReplyLabel?: string;
   submitReplyLabel?: string;
   onReplySubmit?: (input: {
+    attachment?: PostThreadReplyAttachment | null;
     body: string;
     authorMode: PostThreadAuthorMode;
   }) => Promise<PostThreadSubmitResult | void> | PostThreadSubmitResult | void;
@@ -88,6 +93,7 @@ export function CommentCard({
   body,
   bodyDir = "auto",
   bodyLang,
+  media,
   originalBody,
   status,
   viewerVote,
@@ -108,6 +114,7 @@ export function CommentCard({
   const [showOriginal, setShowOriginal] = React.useState(false);
   const [replyOpen, setReplyOpen] = React.useState(false);
   const [replyBody, setReplyBody] = React.useState("");
+  const [replyAttachment, setReplyAttachment] = React.useState<PostThreadReplyAttachment | null>(null);
   const [replyBusy, setReplyBusy] = React.useState(false);
   const replyContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -116,6 +123,8 @@ export function CommentCard({
       replyContainerRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [replyOpen]);
+
+  React.useEffect(() => () => revokeReplyAttachment(replyAttachment), [replyAttachment]);
 
   const isPublished = !status || status === "published";
   const resolvedBody = showOriginal && originalBody ? originalBody : commentBody(body, status);
@@ -126,6 +135,8 @@ export function CommentCard({
     Boolean(showOriginalLabel) &&
     Boolean(showTranslationLabel);
   const canReply = isPublished && Boolean(onReplySubmit);
+  const visibleMedia = isPublished ? media : undefined;
+  const canSubmitReply = Boolean(replyBody.trim() || replyAttachment);
   const handleVote = React.useCallback((direction: "up" | "down" | null) => {
     if (direction) {
       onVote?.(direction);
@@ -134,21 +145,35 @@ export function CommentCard({
 
   const handleReplySubmit = React.useCallback(async () => {
     const trimmed = replyBody.trim();
-    if (!trimmed || !onReplySubmit) {
+    if (!canSubmitReply || !onReplySubmit) {
       return;
     }
     try {
       setReplyBusy(true);
-      const result = await onReplySubmit({ body: trimmed, authorMode: "human" });
+      const result = await onReplySubmit({ attachment: replyAttachment, body: trimmed, authorMode: "human" });
       if (result === "blocked") {
         return;
       }
       setReplyBody("");
+      setReplyAttachment(null);
       setReplyOpen(false);
     } finally {
       setReplyBusy(false);
     }
-  }, [onReplySubmit, replyBody]);
+  }, [canSubmitReply, onReplySubmit, replyAttachment, replyBody]);
+
+  const handleReplyAttachmentChange = React.useCallback((attachment: PostThreadReplyAttachment | null) => {
+    setReplyAttachment((current) => {
+      revokeReplyAttachment(current);
+      return attachment;
+    });
+  }, []);
+
+  const closeReplyComposer = React.useCallback(() => {
+    setReplyOpen(false);
+    setReplyBody("");
+    handleReplyAttachmentChange(null);
+  }, [handleReplyAttachmentChange]);
 
   return (
     <div className={cn("flex min-w-0 flex-1 items-start gap-2", className)}>
@@ -206,6 +231,7 @@ export function CommentCard({
             ) : null}
           </div>
         ) : null}
+        <CommentMediaGrid media={visibleMedia} />
 
         {/* Action row */}
         <div className="mt-2.5 flex flex-wrap items-center gap-x-1 gap-y-1.5">
@@ -247,18 +273,20 @@ export function CommentCard({
               placeholder={replyPlaceholder}
               value={replyBody}
             />
+            <ReplyAttachmentControl
+              attachment={replyAttachment}
+              disabled={replyBusy}
+              onChange={handleReplyAttachmentChange}
+            />
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => {
-                  setReplyOpen(false);
-                  setReplyBody("");
-                }}
+                onClick={closeReplyComposer}
               >
                 {cancelReplyLabel}
               </Button>
-              <Button disabled={replyBusy || !replyBody.trim()} size="sm" onClick={() => void handleReplySubmit()}>
+              <Button disabled={replyBusy || !canSubmitReply} size="sm" onClick={() => void handleReplySubmit()}>
                 {submitReplyLabel}
               </Button>
             </div>

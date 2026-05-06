@@ -1,10 +1,16 @@
 import { describe, expect, test } from "bun:test";
 
+import type {
+  CommunityHandlePaymentInstructions,
+  CommunityPurchaseQuote,
+} from "@pirate/api-contracts";
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 
 import {
   DEFAULT_STORY_CHECKOUT_ROUTE,
   findConnectedFundingWallet,
+  resolveHandleCheckoutTransferInput,
+  resolveStoryCheckoutTransferInput,
 } from "./routed-checkout";
 
 function createWallet(address: `0x${string}`): PirateConnectedEvmWallet {
@@ -52,5 +58,48 @@ describe("routed checkout helpers", () => {
     expect(DEFAULT_STORY_CHECKOUT_ROUTE.funding_asset?.chain_namespace).toBe("eip155");
     expect(DEFAULT_STORY_CHECKOUT_ROUTE.route_provider).toBe("pirate_checkout");
     expect(DEFAULT_STORY_CHECKOUT_ROUTE.source_chain?.chain_namespace).toBe("eip155");
+  });
+
+  test("resolves handle payment instructions to a USDC transfer", () => {
+    const instructions: CommunityHandlePaymentInstructions = {
+      chain: {
+        chain_namespace: "eip155",
+        chain_id: 84532,
+        display_name: "Base Sepolia",
+      },
+      token_address: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+      recipient_address: "0x5000000000000000000000000000000000000005",
+      amount_atomic: "5000000",
+      amount_display: "5.00",
+    };
+
+    expect(resolveHandleCheckoutTransferInput(instructions)).toEqual({
+      chainId: 84532,
+      tokenAddress: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+      recipientAddress: "0x5000000000000000000000000000000000000005",
+      amountAtomic: 5000000n,
+    });
+  });
+
+  test("resolves routed story quotes to the same USDC transfer shape", () => {
+    const quote = {
+      route_provider: "pirate_checkout",
+      funding_asset: {
+        asset_symbol: "USDC",
+      },
+      source_chain: {
+        chain_namespace: "eip155",
+        chain_id: 84532,
+      },
+      funding_destination_address: "0x5000000000000000000000000000000000000005",
+      final_price_cents: 500,
+    } as CommunityPurchaseQuote;
+
+    expect(resolveStoryCheckoutTransferInput(quote)).toEqual({
+      chainId: 84532,
+      tokenAddress: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+      recipientAddress: "0x5000000000000000000000000000000000000005",
+      amountAtomic: 5000000n,
+    });
   });
 });

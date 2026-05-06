@@ -1,0 +1,56 @@
+export type HandleClaimPhase =
+  | "intro"
+  | "search"
+  | "quoting"
+  | "confirm"
+  | "processing"
+  | "success";
+
+export type HandleAvailability =
+  | "available"
+  | "taken"
+  | "reserved"
+  | "already_claimed_by_viewer"
+  | "viewer_has_claim"
+  | "namespace_unavailable"
+  | "unavailable";
+
+export interface HandlePaymentInstructions {
+  chainId: number;
+  chainDisplayName: string;
+  tokenAddress: string;
+  recipientAddress: string;
+  amountAtomic: string;
+  amountDisplay: string;
+}
+
+export interface HandleSearchResult {
+  availability: HandleAvailability;
+  priceCents: number | null;
+  pricingTier?: string;
+  reason?: string;
+  paymentInstructions?: HandlePaymentInstructions | null;
+}
+
+export interface HandleClaimModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  communityName: string;
+  communityHandle: string;
+  phase: HandleClaimPhase;
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  searchResult?: HandleSearchResult;
+  confirmedDiscountPercent?: number | null;
+  selfVerificationSavingsPercent?: number | null;
+  onSelfVerificationClick?: () => void;
+  onClaim: () => void;
+  onNotNow: () => void;
+  processing?: boolean;
+  error?: string | null;
+  claimedLabel?: string | null;
+  forceMobile?: boolean;
+  benefits?: string[];
+  walletBalanceCents?: number | null;
+  onAddFunds?: () => void;
+}

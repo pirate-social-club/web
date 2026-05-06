@@ -102,6 +102,32 @@ describe("CommentTree", () => {
     view.unmount();
   });
 
+  test("renders media attached to comments", () => {
+    const view = renderTree(
+      <CommentTree
+        comments={[
+          {
+            authorLabel: "north",
+            body: "this one came with receipts",
+            commentId: "cmt_media",
+            media: [{
+              storageRef: "https://psc.myfilebase.com/ipfs/comment-image",
+              mimeType: "image/jpeg",
+            }],
+            timestampLabel: "3m",
+          },
+        ]}
+      />,
+    );
+
+    const image = view.container.querySelector('img[src="https://psc.myfilebase.com/ipfs/comment-image"]');
+    expect(image).not.toBeNull();
+    expect(image.getAttribute("src")).toBe("https://psc.myfilebase.com/ipfs/comment-image");
+    expect(Boolean(view.getByText("this one came with receipts"))).toBe(true);
+
+    view.unmount();
+  });
+
   test("renders reply action when status is omitted", () => {
     const view = renderTree(
       <CommentTree

@@ -310,12 +310,6 @@ export const Comments: Story = {
   },
 };
 
-export const Scrobbles: Story = {
-  args: {
-    defaultTab: "scrobbles",
-  },
-};
-
 export const Wallet: Story = {
   args: {
     defaultTab: "wallet",

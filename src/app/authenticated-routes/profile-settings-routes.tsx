@@ -491,6 +491,9 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         redditImportSummary: domains.redditImportSummary ?? undefined,
         generatedHandle: domains.generatedHandle,
         handleSuggestion: domains.handleSuggestion,
+        buyNameValue: domains.buyNameValue,
+        paidQuote: domains.paidQuote,
+        paidClaimedHandle: domains.paidClaimedHandle,
         onPhaseChange: domains.onPhaseChange,
         onRedditUsernameChange: domains.onRedditUsernameChange,
         onImportKarmaNext: domains.onImportKarmaNext,
@@ -499,6 +502,9 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         onGenerateHandle: domains.onGenerateHandle,
         onChooseNameContinue: domains.onChooseNameContinue,
         onChooseNameBack: domains.onChooseNameBack,
+        onBuyNameChange: domains.onBuyNameChange,
+        onBuyNameQuote: domains.onBuyNameQuote,
+        onBuyNameClaim: domains.onBuyNameClaim,
       }}
     />
   );

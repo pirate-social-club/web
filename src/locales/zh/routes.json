@@ -169,6 +169,7 @@
       "freeToView": "免费查看",
       "paidDescription": "动态里显示预览，购买后可解锁完整曲目。",
       "paidUnlock": "付费解锁",
+      "payToAccess": "Pay to access",
       "public": "公开",
       "publicDescription": "任何人都可以播放完整曲目。",
       "rightsAttested": "我确认我有权发布并将此曲目商业化。",
@@ -291,7 +292,7 @@
       "songTitle": "歌曲标题",
       "sourceTrackSearch": "搜索 Pirate / Story 资产",
       "title": "标题",
-      "unlockPrice": "1.00",
+      "unlockPrice": "0",
       "previewStartSeconds": "0",
       "url": "https://"
     },

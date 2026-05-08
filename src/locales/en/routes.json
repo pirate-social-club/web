@@ -169,6 +169,7 @@
       "freeToView": "Free to view",
       "paidDescription": "Preview in feed. Full media unlocks after purchase.",
       "paidUnlock": "Paid unlock",
+      "payToAccess": "Pay to access",
       "public": "Public",
       "publicDescription": "Anyone can play the full media.",
       "rightsAttested": "I have the rights to publish and monetize this media.",
@@ -291,7 +292,7 @@
       "songTitle": "Song title",
       "sourceTrackSearch": "Search Pirate / Story assets",
       "title": "Title",
-      "unlockPrice": "1.00",
+      "unlockPrice": "0",
       "previewStartSeconds": "0",
       "url": "https://"
     },

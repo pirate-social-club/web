@@ -460,10 +460,12 @@ function MobileAttachmentFlow({
           attachment={flow.attachment}
           identity={flow.identity}
           license={flow.license}
-          onAccessChange={flow.setAccess}
           onIdentityChange={flow.setIdentity}
           onLicenseChange={flow.setLicense}
-          onPriceChange={flow.setPrice}
+          onPriceChange={(price, nextAccess) => {
+            flow.setPrice(price);
+            if (nextAccess) flow.setAccess(nextAccess);
+          }}
           onRoyaltyPercentChange={flow.setRoyaltyPercent}
           onVisibilityChange={flow.setVisibility}
           price={flow.price}
@@ -638,10 +640,12 @@ function DesktopAttachmentFlow() {
                   attachment={flow.attachment}
                   identity={flow.identity}
                   license={flow.license}
-                  onAccessChange={flow.setAccess}
                   onIdentityChange={flow.setIdentity}
                   onLicenseChange={flow.setLicense}
-                  onPriceChange={flow.setPrice}
+                  onPriceChange={(price, nextAccess) => {
+                    flow.setPrice(price);
+                    if (nextAccess) flow.setAccess(nextAccess);
+                  }}
                   onRoyaltyPercentChange={flow.setRoyaltyPercent}
                   onVisibilityChange={flow.setVisibility}
                   price={flow.price}

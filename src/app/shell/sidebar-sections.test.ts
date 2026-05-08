@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import type { ShellMessages } from "@/locales";
 
-import { buildSidebarSections, resolveCreatePostPath } from "./sidebar-sections";
+import { buildResourceItems, buildSidebarSections, resolveCreatePostPath } from "./sidebar-sections";
 
 describe("resolveCreatePostPath", () => {
   test("canonicalizes emoji community handles for submit routes", () => {
@@ -68,5 +68,16 @@ describe("buildSidebarSections", () => {
     );
 
     expect(sections).toEqual([]);
+  });
+});
+
+describe("buildResourceItems", () => {
+  test("maps account deletion resources to an icon and route", () => {
+    const [item] = buildResourceItems({
+      resourceItems: [{ id: "account-deletion", label: "Delete account" }],
+    } as unknown as ShellMessages["appSidebar"]);
+
+    expect(item?.icon).toBeDefined();
+    expect(typeof item?.onSelect).toBe("function");
   });
 });

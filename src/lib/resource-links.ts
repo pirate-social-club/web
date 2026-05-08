@@ -1,6 +1,7 @@
 export type ResourceLinkId =
   | "advertise"
   | "blog"
+  | "account-deletion"
   | "terms-of-service"
   | "privacy-policy"
   | "source-github"
@@ -62,6 +63,8 @@ export function resolveResourceHref(
       return null;
     case "blog":
       return "https://blog.pirate.sc";
+    case "account-deletion":
+      return "/delete-account";
     case "source-github":
       return "https://github.com/pirate";
     case "source-freedom-browser":

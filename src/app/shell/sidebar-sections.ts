@@ -13,6 +13,7 @@ import {
   Robot,
   Scroll,
   Shield,
+  Trash,
 } from "@phosphor-icons/react";
 import type { ComponentProps } from "react";
 
@@ -36,6 +37,7 @@ import type { ShellMessages } from "@/locales";
 
 const resourceIcons = {
   advertise: Megaphone,
+  "account-deletion": Trash,
   blog: Newspaper,
   "privacy-policy": Shield,
   "source-freedom-browser": Globe,

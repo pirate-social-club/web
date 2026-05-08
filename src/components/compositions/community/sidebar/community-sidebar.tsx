@@ -304,7 +304,6 @@ export function CommunitySidebar({
       <aside
         className={cn(
           "sticky top-[var(--header-height)] w-full shrink-0",
-          "max-h-[calc(100dvh-4.5rem-3rem)] overflow-y-auto",
           className,
         )}
       >

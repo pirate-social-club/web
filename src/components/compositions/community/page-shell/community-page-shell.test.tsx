@@ -109,4 +109,32 @@ describe("CommunityPageShell", () => {
 
     expect(sortButtons).toHaveLength(2);
   });
+
+  test("does not make the desktop sidebar independently scrollable", () => {
+    mockedIsMobile = false;
+    const markup = renderToStaticMarkup(
+      <CommunityPageShell
+        communityId="cmt_test"
+        items={[]}
+        sidebar={{
+          createdAt: "2026-04-28T00:00:00.000Z",
+          displayName: "Test community",
+          membershipMode: "request",
+          moderators: [],
+          rules: [
+            { body: "Rule one", title: "One" },
+            { body: "Rule two", title: "Two" },
+          ],
+        }}
+        title="Test community"
+      />,
+    );
+    const rendered = parseHTML(markup).document;
+    const sidebars = Array.from(rendered.querySelectorAll("aside"));
+    const communitySidebar = sidebars.find((sidebar) => sidebar.className.includes("sticky"));
+
+    expect(communitySidebar === undefined).toBe(false);
+    expect(communitySidebar!.className).not.toContain("overflow-y-auto");
+    expect(communitySidebar!.className).not.toContain("max-h-");
+  });
 });

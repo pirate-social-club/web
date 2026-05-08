@@ -83,6 +83,58 @@ function nonPayableQuote(input: {
   };
 }
 
+function quoteForLabel(rawLabel: string): HandleUpgradeQuoteResponse {
+  const label = rawLabel.trim().toLowerCase().replace(/\.pirate$/u, "");
+  if (!label) {
+    return nonPayableQuote({
+      label: "",
+      reason: "Enter a name",
+      pricingTier: "invalid",
+    });
+  }
+  if (label === "pirate" || label === "admin" || label === "crown") {
+    return nonPayableQuote({
+      label,
+      reason: "Desired label is reserved",
+      pricingTier: "reserved",
+    });
+  }
+  if (label === "taken") {
+    return nonPayableQuote({
+      label,
+      reason: "Desired label is unavailable",
+      pricingTier: "unavailable",
+    });
+  }
+  if (label === "king") {
+    return paidQuote({
+      label,
+      priceCents: 100_000,
+      pricingTier: "trophy",
+    });
+  }
+  if (label === "olivia") {
+    return paidQuote({
+      label,
+      priceCents: 10_000,
+      pricingTier: "first_name",
+    });
+  }
+  if (label === "oliviia") {
+    return paidQuote({
+      label,
+      priceCents: 1_000,
+      pricingTier: "base",
+    });
+  }
+  return paidQuote({
+    label,
+    priceCents: label.length >= 8 ? 500 : label.length === 7 ? 1_000 : 2_500,
+    pricingTier: "base",
+    tier: label.length >= 8 ? "standard" : "premium",
+  });
+}
+
 function Wrapper({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "2rem 1rem" }}>
@@ -95,13 +147,44 @@ function InteractiveStory(props: DomainsTabProps) {
   const [phase, setPhase] = React.useState<DomainsTabPhase>(props.phase ?? "options");
   const [username, setUsername] = React.useState(props.redditVerification.usernameValue);
   const [handle, setHandle] = React.useState(props.generatedHandle ?? "");
+  const [buyNameValue, setBuyNameValue] = React.useState(props.buyNameValue ?? "");
+  const [paidQuoteState, setPaidQuoteState] = React.useState<HandleUpgradeQuoteResponse | null>(props.paidQuote ?? null);
+  const [claimedHandle, setClaimedHandle] = React.useState<string | null>(props.paidClaimedHandle ?? null);
+  const [busy, setBusy] = React.useState(props.busy ?? false);
   const generateCountRef = React.useRef(0);
+
+  const handleBuyNameChange = (value: string) => {
+    setBuyNameValue(value);
+    setPaidQuoteState(null);
+    setClaimedHandle(null);
+  };
+
+  const handleBuyNameQuote = () => {
+    setBusy(true);
+    window.setTimeout(() => {
+      setPaidQuoteState(quoteForLabel(buyNameValue));
+      setBusy(false);
+    }, 400);
+  };
+
+  const handleBuyNameClaim = () => {
+    setBusy(true);
+    window.setTimeout(() => {
+      const label = paidQuoteState?.desired_label ?? `${buyNameValue}.pirate`;
+      setClaimedHandle(label);
+      setBusy(false);
+    }, 400);
+  };
 
   return (
     <DomainsTab
       {...props}
+      busy={busy}
       phase={phase}
       generatedHandle={handle}
+      buyNameValue={buyNameValue}
+      paidClaimedHandle={claimedHandle}
+      paidQuote={paidQuoteState}
       redditVerification={{ ...props.redditVerification, usernameValue: username }}
       onPhaseChange={setPhase}
       onRedditUsernameChange={setUsername}
@@ -117,6 +200,9 @@ function InteractiveStory(props: DomainsTabProps) {
       onImportKarmaSkip={() => setPhase("options")}
       onChooseNameContinue={() => {}}
       onChooseNameBack={() => setPhase("import_karma")}
+      onBuyNameChange={handleBuyNameChange}
+      onBuyNameClaim={handleBuyNameClaim}
+      onBuyNameQuote={handleBuyNameQuote}
     />
   );
 }

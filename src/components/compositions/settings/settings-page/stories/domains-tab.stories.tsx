@@ -156,25 +156,29 @@ function InteractiveStory(props: DomainsTabProps) {
   const [paidQuoteState, setPaidQuoteState] = React.useState<HandleUpgradeQuoteResponse | null>(props.paidQuote ?? null);
   const [claimedHandle, setClaimedHandle] = React.useState<string | null>(props.paidClaimedHandle ?? null);
   const [busy, setBusy] = React.useState(props.busy ?? false);
+  const [buyNameChecking, setBuyNameChecking] = React.useState(false);
   const generateCountRef = React.useRef(0);
 
   React.useEffect(() => {
     if (phase !== "buy_name" || claimedHandle) return;
     const label = buyNameValue.trim();
     if (!label) {
-      setBusy(false);
+      setBuyNameChecking(false);
       setPaidQuoteState(null);
       return;
     }
 
-    setBusy(true);
+    setBuyNameChecking(true);
     setPaidQuoteState(null);
     const timeout = window.setTimeout(() => {
       setPaidQuoteState(quoteForLabel(label));
-      setBusy(false);
+      setBuyNameChecking(false);
     }, 350);
 
-    return () => window.clearTimeout(timeout);
+    return () => {
+      window.clearTimeout(timeout);
+      setBuyNameChecking(false);
+    };
   }, [buyNameValue, claimedHandle, phase]);
 
   const handleBuyNameChange = (value: string) => {
@@ -207,6 +211,7 @@ function InteractiveStory(props: DomainsTabProps) {
       phase={phase}
       generatedHandle={handle}
       buyNameValue={buyNameValue}
+      buyNameChecking={buyNameChecking}
       paidClaimedHandle={claimedHandle}
       paidQuote={paidQuoteState}
       redditVerification={{ ...props.redditVerification, usernameValue: username }}

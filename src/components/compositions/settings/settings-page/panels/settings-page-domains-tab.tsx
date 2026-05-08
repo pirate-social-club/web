@@ -50,6 +50,7 @@ export interface DomainsTabProps {
   generatedHandle?: string;
   handleSuggestion?: HandleSuggestion;
   buyNameValue?: string;
+  buyNameChecking?: boolean;
   paidQuote?: HandleUpgradeQuoteResponse | null;
   paidClaimedHandle?: string | null;
   onPhaseChange?: (phase: DomainsTabPhase) => void;
@@ -437,6 +438,7 @@ function ChooseNamePhase({
 
 function BuyNamePhase({
   busy = false,
+  checking = false,
   phaseError,
   quote,
   claimedHandle,
@@ -449,6 +451,7 @@ function BuyNamePhase({
   copy,
 }: {
   busy?: boolean;
+  checking?: boolean;
   phaseError?: string | null;
   quote?: HandleUpgradeQuoteResponse | null;
   claimedHandle?: string | null;
@@ -463,7 +466,7 @@ function BuyNamePhase({
   const displayValue = value.endsWith(".pirate") ? value.slice(0, -7) : value;
   const payable = Boolean(quote?.eligible && quote.quote && (quote.price_cents ?? 0) > 0);
   const priceLabel = formatUsdCompactLabel(centsToUsd(quote?.price_cents), localeTag) ?? "$0";
-  const showChecking = busy && !quote && displayValue.trim().length > 0;
+  const showChecking = checking && !quote && displayValue.trim().length > 0;
 
   return (
     <div className="space-y-6">
@@ -549,6 +552,7 @@ export function DomainsTab({
   generatedHandle,
   handleSuggestion,
   buyNameValue,
+  buyNameChecking,
   paidQuote,
   paidClaimedHandle,
   onPhaseChange,
@@ -653,6 +657,7 @@ export function DomainsTab({
           <CardContent className="p-5">
             <BuyNamePhase
               busy={busy}
+              checking={buyNameChecking}
               claimedHandle={paidClaimedHandle}
               onBack={() => setPhase("options")}
               onChange={onBuyNameChange ?? (() => {})}

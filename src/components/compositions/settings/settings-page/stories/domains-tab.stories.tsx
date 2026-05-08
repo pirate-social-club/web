@@ -153,6 +153,25 @@ function InteractiveStory(props: DomainsTabProps) {
   const [busy, setBusy] = React.useState(props.busy ?? false);
   const generateCountRef = React.useRef(0);
 
+  React.useEffect(() => {
+    if (phase !== "buy_name" || claimedHandle) return;
+    const label = buyNameValue.trim();
+    if (!label) {
+      setBusy(false);
+      setPaidQuoteState(null);
+      return;
+    }
+
+    setBusy(true);
+    setPaidQuoteState(null);
+    const timeout = window.setTimeout(() => {
+      setPaidQuoteState(quoteForLabel(label));
+      setBusy(false);
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [buyNameValue, claimedHandle, phase]);
+
   const handleBuyNameChange = (value: string) => {
     setBuyNameValue(value);
     setPaidQuoteState(null);

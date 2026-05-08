@@ -28,6 +28,7 @@ const EMPTY_ROYALTY_ACTIVITY: RoyaltyActivityResponse = {
   items: [],
   next_cursor: null,
 };
+const INBOX_ACTIVITY_PAGE_SIZE = 50;
 
 type ProfileLink = {
   href: string;
@@ -238,7 +239,7 @@ export function InboxPlaceholderPage() {
       try {
         const [tasksResult, feedResult] = await Promise.all([
           api.notifications.getTasks(),
-          api.notifications.getFeed(),
+          api.notifications.getFeed({ limit: INBOX_ACTIVITY_PAGE_SIZE }),
         ]);
         const renderableFeedResult = filterRenderableNotificationFeedItems(feedResult);
 
@@ -323,7 +324,10 @@ export function InboxPlaceholderPage() {
 
     try {
       setLoadingMoreActivity(true);
-      const nextFeed = filterRenderableNotificationFeedItems(await api.notifications.getFeed({ cursor: feed.next_cursor }));
+      const nextFeed = filterRenderableNotificationFeedItems(await api.notifications.getFeed({
+        cursor: feed.next_cursor,
+        limit: INBOX_ACTIVITY_PAGE_SIZE,
+      }));
       const unreadEventIds = unreadFeedEventIds(nextFeed);
       let readAt: number | null = null;
       if (unreadEventIds.length > 0) {

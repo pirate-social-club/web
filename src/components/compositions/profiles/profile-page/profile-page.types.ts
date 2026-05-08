@@ -2,7 +2,7 @@ import type { PostCardProps } from "@/components/compositions/posts/post-card/po
 import type { SongItemData } from "@/components/compositions/profiles/song-item/song-item.types";
 import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
 
-export type ProfilePageTab = "overview" | "posts" | "comments" | "scrobbles" | "wallet";
+export type ProfilePageTab = "overview" | "posts" | "comments" | "wallet";
 
 export interface ProfileHeaderMetaItem {
   label: string;

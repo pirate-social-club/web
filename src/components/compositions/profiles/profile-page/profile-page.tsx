@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Article, ChatCircle, MusicNotes, SquaresFour, Wallet } from "@phosphor-icons/react";
+import { Article, ChatCircle, SquaresFour, Wallet } from "@phosphor-icons/react";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ContentRailShell } from "@/components/compositions/app/content-rail-shell/content-rail-shell";
@@ -12,11 +12,11 @@ import { resolveLocaleLanguageTag } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import type { ProfilePageProps, ProfilePageTab } from "./profile-page.types";
-import { CommentsPanel, OverviewPanel, PostsPanel, ScrobblesPanel, WalletPanel } from "./profile-activity-panels";
+import { CommentsPanel, OverviewPanel, PostsPanel, WalletPanel } from "./profile-activity-panels";
 import { ProfileHero } from "./profile-hero";
 import { ProfileRightRail } from "./profile-right-rail";
 
-const VALID_TABS: ProfilePageTab[] = ["overview", "posts", "comments", "scrobbles", "wallet"];
+const VALID_TABS: ProfilePageTab[] = ["overview", "posts", "comments", "wallet"];
 
 function useHashTab(defaultTab: ProfilePageTab): [ProfilePageTab, (tab: ProfilePageTab) => void] {
   const [tab, setTab] = React.useState<ProfilePageTab>(() => {
@@ -56,14 +56,13 @@ export function ProfilePage({
   posts = [],
   profile,
   rightRail,
-  scrobbles = [],
 }: ProfilePageProps) {
   const { isRtl, locale } = useUiLocale();
   const isMobile = useIsMobile();
   const copy = getLocaleMessages(locale, "routes").profile;
   const localeTag = resolveLocaleLanguageTag(locale);
   const hasWalletTab = Boolean(rightRail.walletAddress || rightRail.walletAssets?.length || rightRail.walletChainSections?.length);
-  const tabColumns = isMobile ? (hasWalletTab ? 5 : 4) : undefined;
+  const tabColumns = isMobile ? (hasWalletTab ? 4 : 3) : undefined;
   const mobileTabIconClassName = "size-5";
   const [activeTab, setActiveTab] = useHashTab(defaultTab);
 
@@ -112,14 +111,6 @@ export function ProfilePage({
                 </>
               ) : copy.commentsTab}
             </FlatTabsTrigger>
-            <FlatTabsTrigger className={!isMobile ? "min-w-fit px-5" : "px-0"} title={copy.scrobblesTab} value="scrobbles">
-              {isMobile ? (
-                <>
-                  <MusicNotes aria-hidden="true" className={mobileTabIconClassName} />
-                  <span className="sr-only">{copy.scrobblesTab}</span>
-                </>
-              ) : copy.scrobblesTab}
-            </FlatTabsTrigger>
             {hasWalletTab ? (
               <FlatTabsTrigger className={!isMobile ? "min-w-fit px-5" : "px-0"} title={copy.walletTitle} value="wallet">
                 {isMobile ? (
@@ -140,9 +131,6 @@ export function ProfilePage({
           </TabsContent>
           <TabsContent className="mt-0" value="comments">
             <CommentsPanel comments={comments} />
-          </TabsContent>
-          <TabsContent className="mt-0" value="scrobbles">
-            <ScrobblesPanel scrobbles={scrobbles} />
           </TabsContent>
           {hasWalletTab ? (
             <TabsContent className="mt-0" value="wallet">

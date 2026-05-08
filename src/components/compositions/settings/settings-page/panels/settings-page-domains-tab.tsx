@@ -17,10 +17,12 @@ import { FormFieldLabel, FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
+import { centsToUsd, formatUsdCompactLabel } from "@/lib/formatting/currency";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
 import type { RoutesMessages } from "@/locales";
+import type { HandleUpgradeQuoteResponse } from "@/lib/api/client-api-types";
 
 import type {
   ImportJobState,
@@ -33,7 +35,7 @@ import { SettingsSection } from "./settings-page-panel-primitives";
 
 type OnboardingCopy = RoutesMessages["onboarding"];
 
-export type DomainsTabPhase = "options" | "import_karma" | "choose_name";
+export type DomainsTabPhase = "options" | "import_karma" | "choose_name" | "buy_name";
 
 export interface DomainsTabProps {
   currentHandle: string;
@@ -47,6 +49,9 @@ export interface DomainsTabProps {
   redditImportSummary?: RedditImportSummaryState | null;
   generatedHandle?: string;
   handleSuggestion?: HandleSuggestion;
+  buyNameValue?: string;
+  paidQuote?: HandleUpgradeQuoteResponse | null;
+  paidClaimedHandle?: string | null;
   onPhaseChange?: (phase: DomainsTabPhase) => void;
   onRedditUsernameChange?: (value: string) => void;
   onImportKarmaNext?: () => void;
@@ -55,6 +60,9 @@ export interface DomainsTabProps {
   onGenerateHandle?: () => void;
   onChooseNameContinue?: () => void;
   onChooseNameBack?: () => void;
+  onBuyNameChange?: (value: string) => void;
+  onBuyNameQuote?: () => void;
+  onBuyNameClaim?: () => void;
 }
 
 function formatMessage(template: string, replacements: Record<string, string>) {
@@ -96,6 +104,16 @@ function formatCheckedTime(value: string | undefined): string | null {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatQuoteValidity(quote: HandleUpgradeQuoteResponse | null | undefined): string | null {
+  const expiresAt = typeof quote?.expires_at === "number" ? quote.expires_at : null;
+  if (!expiresAt) {
+    const ttl = typeof quote?.quote_ttl_seconds === "number" ? quote.quote_ttl_seconds : null;
+    return ttl ? String(Math.max(1, Math.ceil(ttl / 60))) : null;
+  }
+  const secondsLeft = Math.max(0, expiresAt - Math.floor(Date.now() / 1000));
+  return String(Math.max(1, Math.ceil(secondsLeft / 60)));
 }
 
 function Footer({
@@ -427,6 +445,110 @@ function ChooseNamePhase({
   );
 }
 
+function BuyNamePhase({
+  busy = false,
+  phaseError,
+  quote,
+  claimedHandle,
+  value,
+  onBack,
+  onChange,
+  onClaim,
+  onQuote,
+  localeTag,
+  copy,
+}: {
+  busy?: boolean;
+  phaseError?: string | null;
+  quote?: HandleUpgradeQuoteResponse | null;
+  claimedHandle?: string | null;
+  value: string;
+  onBack: () => void;
+  onChange: (value: string) => void;
+  onClaim: () => void;
+  onQuote: () => void;
+  localeTag: string;
+  copy: RoutesMessages["settings"];
+}) {
+  const displayValue = value.endsWith(".pirate") ? value.slice(0, -7) : value;
+  const payable = Boolean(quote?.eligible && quote.quote && (quote.price_cents ?? 0) > 0);
+  const priceLabel = formatUsdCompactLabel(centsToUsd(quote?.price_cents), localeTag) ?? "$0";
+  const quoteValidityMinutes = formatQuoteValidity(quote);
+  const pricingTier = quote?.pricing_tier ?? "base";
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3 text-start">
+        <Type as="h2" variant="h2" className="min-w-0 leading-7 sm:leading-8">
+          {copy.buyNameTitle}
+        </Type>
+        <Type as="p" variant="body" className="w-full max-w-none leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+          {copy.buyNameSubtitle}
+        </Type>
+      </div>
+
+      <div className="space-y-2">
+        <FormFieldLabel label={copy.buyNameNameLabel} />
+        <div className="relative" dir="ltr">
+          <Input
+            className="pe-16 text-start font-mono text-lg"
+            dir="ltr"
+            disabled={busy}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder="captain"
+            size="lg"
+            value={displayValue}
+          />
+          <span className="absolute end-4 top-1/2 -translate-y-1/2 font-mono text-lg text-muted-foreground">.pirate</span>
+        </div>
+
+        {quote ? (
+          <div className="rounded-[var(--radius-lg)] border border-border-soft bg-muted/35 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <Type as="p" variant="body-strong">{quote.desired_label}</Type>
+              <Type as="p" variant="caption" className="text-muted-foreground">
+                {quote.eligible
+                  ? formatMessage(copy.buyNamePricingLabel, { tier: pricingTier })
+                  : quote.reason ?? copy.buyNameUnavailable}
+              </Type>
+              {quote.eligible && quoteValidityMinutes ? (
+                <Type as="p" variant="caption" className="text-muted-foreground">
+                  {formatMessage(copy.buyNameQuoteValid, { minutes: quoteValidityMinutes })}
+                </Type>
+              ) : null}
+            </div>
+              <Type as="p" variant="h3">{quote.eligible ? priceLabel : copy.buyNameManualPrice}</Type>
+            </div>
+          </div>
+        ) : null}
+
+        {claimedHandle ? (
+          <FormNote>{formatMessage(copy.buyNameClaimed, { handle: claimedHandle })}</FormNote>
+        ) : null}
+
+        {phaseError ? (
+          <FormNote tone="warning">{phaseError}</FormNote>
+        ) : null}
+      </div>
+
+      <div className="grid gap-3 pt-3 sm:grid-cols-2">
+        <Button className="h-14 w-full text-lg" disabled={busy} onClick={onBack} variant="outline">
+          {copy.buyNameBackAction}
+        </Button>
+        <Button
+          className="h-14 w-full text-lg"
+          disabled={busy || displayValue.trim().length === 0 || (Boolean(quote) && !payable)}
+          loading={busy}
+          onClick={payable ? onClaim : onQuote}
+        >
+          {payable ? copy.buyNamePayClaimAction : copy.buyNameAction}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function DomainsTab({
   currentHandle,
   handleTier,
@@ -439,6 +561,9 @@ export function DomainsTab({
   redditImportSummary,
   generatedHandle,
   handleSuggestion,
+  buyNameValue,
+  paidQuote,
+  paidClaimedHandle,
   onPhaseChange,
   onRedditUsernameChange,
   onImportKarmaNext,
@@ -447,9 +572,14 @@ export function DomainsTab({
   onGenerateHandle,
   onChooseNameContinue,
   onChooseNameBack,
+  onBuyNameChange,
+  onBuyNameQuote,
+  onBuyNameClaim,
 }: DomainsTabProps) {
   const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").onboarding;
+  const routeCopy = getLocaleMessages(locale, "routes");
+  const copy = routeCopy.onboarding;
+  const settingsCopy = routeCopy.settings;
   const [internalPhase, setInternalPhase] = React.useState<DomainsTabPhase>("options");
   const phase = controlledPhase ?? internalPhase;
   const setPhase = (next: DomainsTabPhase) => {
@@ -490,25 +620,23 @@ export function DomainsTab({
   return (
     <div className="space-y-8">
       {phase === "options" ? (
-        <SettingsSection title="Upgrade your name">
+        <SettingsSection title={settingsCopy.domainsUpgradeTitle}>
           <Type as="p" className="text-muted-foreground">
-            Your name is {currentHandle}
+            {formatMessage(settingsCopy.domainsCurrentName, { handle: currentHandle })}
           </Type>
 
           <Card className="overflow-hidden border-border bg-card shadow-none">
             <div className="divide-y divide-border-soft">
               <button
-                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-start opacity-40"
-                disabled
+                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-start transition-colors hover:bg-muted/30"
+                disabled={busy}
+                onClick={() => setPhase("buy_name")}
                 type="button"
               >
                 <span className="flex min-w-0 flex-col items-start gap-0.5">
-                  <Type as="span" variant="label">Buy name</Type>
+                  <Type as="span" variant="label">{settingsCopy.domainsBuyNameLabel}</Type>
                   <Type as="span" className="text-muted-foreground">
-                    Choose from available .pirate names
-                  </Type>
-                  <Type as="span" variant="caption" className="mt-0.5 text-muted-foreground">
-                    Coming later
+                    {settingsCopy.domainsBuyNameDescription}
                   </Type>
                 </span>
                 <CaretRight className="size-5 shrink-0 text-muted-foreground" />
@@ -521,9 +649,9 @@ export function DomainsTab({
                 type="button"
               >
                 <span className="flex min-w-0 flex-col items-start gap-0.5">
-                  <Type as="span" variant="label">Import Reddit</Type>
+                  <Type as="span" variant="label">{settingsCopy.domainsImportRedditLabel}</Type>
                   <Type as="span" className="text-muted-foreground">
-                    Use your Reddit karma to unlock a better domain
+                    {settingsCopy.domainsImportRedditDescription}
                   </Type>
                 </span>
                 <CaretRight className="size-5 shrink-0 text-muted-foreground" />
@@ -531,6 +659,26 @@ export function DomainsTab({
             </div>
           </Card>
         </SettingsSection>
+      ) : null}
+
+      {phase === "buy_name" ? (
+        <Card className="overflow-hidden border-border bg-card shadow-none">
+          <CardContent className="p-5">
+            <BuyNamePhase
+              busy={busy}
+              claimedHandle={paidClaimedHandle}
+              onBack={() => setPhase("options")}
+              onChange={onBuyNameChange ?? (() => {})}
+              onClaim={onBuyNameClaim ?? (() => {})}
+              onQuote={onBuyNameQuote ?? (() => {})}
+              localeTag={locale}
+              copy={settingsCopy}
+              phaseError={phaseError}
+              quote={paidQuote}
+              value={buyNameValue ?? ""}
+            />
+          </CardContent>
+        </Card>
       ) : null}
 
       {phase === "import_karma" || phase === "choose_name" ? (
@@ -544,7 +692,7 @@ export function DomainsTab({
                 handleValue={generatedHandle ?? ""}
                 headerSubtitle={importedDoneSubtitle}
                 headerTitle={copy.redditImport.doneTitle}
-                nextLabel="Claim domain"
+                nextLabel={copy.claimDomain.title}
                 onContinue={onChooseNameContinue ?? (() => {})}
                 onGenerateHandle={onGenerateHandle ?? (() => {})}
                 onHandleChange={onHandleChange ?? (() => {})}
@@ -556,25 +704,25 @@ export function DomainsTab({
                 busy={busy}
                 canSkip
                 importJob={importJob}
-                nextLabel="Import Reddit"
+                nextLabel={copy.importKarmaAction}
                 onNext={handleImportKarmaNext}
                 onSkip={handleImportKarmaSkip}
                 onUsernameChange={onRedditUsernameChange}
                 phaseError={phaseError}
                 reddit={redditVerification}
-                skipLabel="Back"
+                skipLabel={copy.actions.back}
                 copy={copy}
               />
             ) : (
               <ChooseNamePhase
                 busy={busy}
-                backLabel="Back"
+                backLabel={copy.actions.back}
                 canGoBack={canReturnToRedditImport}
                 handleSuggestion={handleSuggestion}
                 handleValue={generatedHandle ?? ""}
                 headerSubtitle={importSucceeded ? importedDoneSubtitle : undefined}
                 headerTitle={importSucceeded ? copy.redditImport.doneTitle : undefined}
-                nextLabel="Claim domain"
+                nextLabel={copy.claimDomain.title}
                 onBack={handleChooseNameBack}
                 onContinue={onChooseNameContinue ?? (() => {})}
                 onGenerateHandle={onGenerateHandle ?? (() => {})}

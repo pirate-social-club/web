@@ -233,11 +233,29 @@ export type ProfileUpdateInput = {
 };
 
 export type HandleUpgradeQuoteResponse = {
+  quote?: string | null;
   desired_label: string;
   tier: string;
   price_cents: number;
+  currency?: "USD";
   eligible: boolean;
   reason?: string | null;
+  policy_version?: string | null;
+  pricing_tier?: string | null;
+  quote_ttl_seconds?: number | null;
+  quoted_at?: number | null;
+  expires_at?: number | null;
+  payment_instructions?: {
+    chain: {
+      chain_namespace: "eip155";
+      chain_id: number;
+      display_name: string;
+    };
+    token_address: string;
+    recipient_address: string;
+    amount_atomic: string;
+    amount_display: string;
+  } | null;
   benefit_source?: "verified_reddit_username" | "reddit_reputation" | null;
   reputation_discount_cents?: number | null;
   claim_reason?: string | null;

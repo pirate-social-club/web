@@ -14,6 +14,21 @@ export function formatUsdLabel(
   }).format(value);
 }
 
+export function formatUsdCompactLabel(
+  value: number | null | undefined,
+  localeTag = "en",
+): string | undefined {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return undefined;
+  }
+
+  return new Intl.NumberFormat(localeTag, {
+    currency: "USD",
+    maximumFractionDigits: 2,
+    style: "currency",
+  }).format(value);
+}
+
 export function parseUsdInput(value: string | null | undefined): number | null {
   if (!value) {
     return null;

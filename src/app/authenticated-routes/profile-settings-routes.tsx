@@ -149,7 +149,9 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
     api,
     enabled: Boolean(profile && activeTab === "domains"),
     messages: {
+      connectPrimaryWalletError: copy.settings.connectPrimaryWalletClaimName,
       chooseHandleError: copy.onboarding.errors.chooseHandle,
+      reconnectPrimaryWalletError: copy.settings.reconnectPrimaryWalletClaimName,
       renameFailedError: copy.onboarding.errors.renameFailed,
     },
   });

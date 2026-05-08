@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  CommunityHandlePaymentInstructions,
   CommunityPurchaseQuote,
   CommunityPurchaseQuoteRequest,
 } from "@pirate/api-contracts";
@@ -24,6 +25,13 @@ import { readViteEnv } from "@/lib/vite-env";
 const BASE_MAINNET_USDC = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
 const BASE_SEPOLIA_USDC = "0x036cbd53842c5426634e7929541ec2318f3dcf7e";
 const TX_WAIT_TIMEOUT_MS = 90_000;
+
+export type UsdcTransferInput = {
+  chainId: number;
+  tokenAddress: Address;
+  recipientAddress: Address;
+  amountAtomic: bigint;
+};
 
 function normalizeAddress(value: string | null | undefined): Address | null {
   if (!value) return null;
@@ -124,6 +132,28 @@ function resolveUsdAmountAtomic(amountUsd: number): bigint {
   return amount;
 }
 
+function requirePositiveAtomicAmount(value: string): bigint {
+  const trimmed = value.trim();
+  if (!/^[0-9]+$/.test(trimmed)) {
+    throw new Error("This checkout amount is invalid.");
+  }
+  const amount = BigInt(trimmed);
+  if (amount <= 0n) {
+    throw new Error("This checkout amount is below USDC precision.");
+  }
+  return amount;
+}
+
+function requireEip155ChainId(chain: CommunityHandlePaymentInstructions["chain"]): number {
+  if (chain.chain_namespace !== "eip155") {
+    throw new Error("This checkout requires an unsupported chain.");
+  }
+  if (typeof chain.chain_id !== "number" || !Number.isSafeInteger(chain.chain_id) || chain.chain_id <= 0) {
+    throw new Error("This checkout has an invalid chain.");
+  }
+  return chain.chain_id;
+}
+
 const checkoutRouteChain = resolveCheckoutRouteChain();
 
 export const DEFAULT_STORY_CHECKOUT_ROUTE: Pick<
@@ -160,24 +190,56 @@ export function findConnectedFundingWallet(params: {
   return params.connectedWallets[0] ?? null;
 }
 
-export async function executeRoutedStoryCheckout(params: {
-  quote: CommunityPurchaseQuote;
-  wallet: PirateConnectedEvmWallet;
-}): Promise<Hex> {
-  if (params.quote.route_provider !== "pirate_checkout") {
+export function resolveStoryCheckoutTransferInput(quote: CommunityPurchaseQuote): UsdcTransferInput {
+  if (quote.route_provider !== "pirate_checkout") {
     throw new Error("This quote requires an unsupported checkout route.");
   }
-  if (params.quote.funding_asset?.asset_symbol !== "USDC") {
+  if (quote.funding_asset?.asset_symbol !== "USDC") {
     throw new Error("This quote requires USDC checkout.");
   }
 
-  const chainId = resolveQuoteSourceChainId(params.quote);
-  const chain = resolveCheckoutChain(chainId);
-  const recipient = normalizeAddress(params.quote.funding_destination_address);
-  const account = normalizeAddress(params.wallet.address);
-  if (!recipient) {
+  const chainId = resolveQuoteSourceChainId(quote);
+  const recipientAddress = normalizeAddress(quote.funding_destination_address);
+  if (!recipientAddress) {
     throw new Error("This quote is missing its checkout destination.");
   }
+
+  return {
+    chainId,
+    tokenAddress: resolveUsdcTokenAddress(chainId),
+    recipientAddress,
+    amountAtomic: resolveUsdAmountAtomic(quote.final_price_cents / 100),
+  };
+}
+
+export function resolveHandleCheckoutTransferInput(
+  instructions: CommunityHandlePaymentInstructions,
+): UsdcTransferInput {
+  const chainId = requireEip155ChainId(instructions.chain);
+  const tokenAddress = normalizeAddress(instructions.token_address);
+  const recipientAddress = normalizeAddress(instructions.recipient_address);
+  if (!tokenAddress) {
+    throw new Error("This handle quote is missing its USDC token.");
+  }
+  if (!recipientAddress) {
+    throw new Error("This handle quote is missing its checkout destination.");
+  }
+
+  return {
+    chainId,
+    tokenAddress,
+    recipientAddress,
+    amountAtomic: requirePositiveAtomicAmount(instructions.amount_atomic),
+  };
+}
+
+export async function executeUsdcTransfer(params: {
+  transfer: UsdcTransferInput;
+  wallet: PirateConnectedEvmWallet;
+}): Promise<Hex> {
+  const chainId = params.transfer.chainId;
+  const chain = resolveCheckoutChain(chainId);
+  const account = normalizeAddress(params.wallet.address);
   if (!account) {
     throw new Error("Connected wallet address is invalid.");
   }
@@ -197,8 +259,8 @@ export async function executeRoutedStoryCheckout(params: {
   const hash = await walletClient.writeContract({
     abi: erc20Abi,
     account,
-    address: resolveUsdcTokenAddress(chainId),
-    args: [recipient, resolveUsdAmountAtomic(params.quote.final_price_cents / 100)],
+    address: params.transfer.tokenAddress,
+    args: [params.transfer.recipientAddress, params.transfer.amountAtomic],
     chain,
     functionName: "transfer",
   });
@@ -211,4 +273,24 @@ export async function executeRoutedStoryCheckout(params: {
   }
 
   return hash;
+}
+
+export async function executeRoutedStoryCheckout(params: {
+  quote: CommunityPurchaseQuote;
+  wallet: PirateConnectedEvmWallet;
+}): Promise<Hex> {
+  return executeUsdcTransfer({
+    transfer: resolveStoryCheckoutTransferInput(params.quote),
+    wallet: params.wallet,
+  });
+}
+
+export async function executeHandleUsdcCheckout(params: {
+  paymentInstructions: CommunityHandlePaymentInstructions;
+  wallet: PirateConnectedEvmWallet;
+}): Promise<Hex> {
+  return executeUsdcTransfer({
+    transfer: resolveHandleCheckoutTransferInput(params.paymentInstructions),
+    wallet: params.wallet,
+  });
 }

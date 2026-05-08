@@ -5,6 +5,7 @@ import { generateRedditFallbackHandle } from "@/lib/reddit-handle-suggestion";
 
 import { DomainsTab } from "../panels/settings-page-domains-tab";
 import type { DomainsTabProps, DomainsTabPhase } from "../panels/settings-page-domains-tab";
+import type { HandleUpgradeQuoteResponse } from "@/lib/api/client-api-types";
 
 const base: DomainsTabProps = {
   currentHandle: "suspicious-code-7234.pirate",
@@ -19,6 +20,68 @@ const base: DomainsTabProps = {
     status: "not_started",
   },
 };
+
+const baseQuote = {
+  quote_ttl_seconds: 900,
+  quoted_at: 1770000000,
+  expires_at: 1770000900,
+  currency: "USD",
+  eligible: true,
+  reason: null,
+  policy_version: "global_handle_paid_v1",
+  payment_instructions: {
+    chain: {
+      chain_namespace: "eip155",
+      chain_id: 8453,
+      display_name: "Base",
+    },
+    token_address: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    recipient_address: "0x053228674F055FBb94d1B8118638F61a4a6ee512",
+    amount_atomic: "5000000",
+    amount_display: "5.00",
+  },
+} satisfies Partial<HandleUpgradeQuoteResponse>;
+
+function paidQuote(input: {
+  label: string;
+  priceCents: number;
+  pricingTier: string;
+  tier?: HandleUpgradeQuoteResponse["tier"];
+}): HandleUpgradeQuoteResponse {
+  return {
+    ...baseQuote,
+    quote: `ghq_story_${input.label.replace(/[^a-z0-9]/gu, "_")}`,
+    desired_label: `${input.label}.pirate`,
+    tier: input.tier ?? "premium",
+    price_cents: input.priceCents,
+    pricing_tier: input.pricingTier,
+    payment_instructions: {
+      ...baseQuote.payment_instructions,
+      amount_atomic: String(BigInt(input.priceCents) * 10_000n),
+      amount_display: (input.priceCents / 100).toFixed(2),
+    },
+  };
+}
+
+function nonPayableQuote(input: {
+  label: string;
+  reason: string;
+  pricingTier: string;
+}): HandleUpgradeQuoteResponse {
+  return {
+    quote: null,
+    desired_label: `${input.label}.pirate`,
+    tier: "premium",
+    price_cents: 0,
+    currency: "USD",
+    eligible: false,
+    reason: input.reason,
+    policy_version: "global_handle_paid_v1",
+    pricing_tier: input.pricingTier,
+    quote_ttl_seconds: null,
+    payment_instructions: null,
+  };
+}
 
 function Wrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -246,6 +309,116 @@ export const ImportRateLimited: Story = {
   ),
 };
 
+export const BuyNameEmpty: Story = {
+  name: "Buy Name / Empty",
+  render: () => (
+    <InteractiveStory
+      {...base}
+      phase="buy_name"
+      buyNameValue=""
+    />
+  ),
+};
+
+export const BuyNameBaseQuote: Story = {
+  name: "Buy Name / Base Quote",
+  render: () => (
+    <InteractiveStory
+      {...base}
+      phase="buy_name"
+      buyNameValue="randomname"
+      paidQuote={paidQuote({
+        label: "randomname",
+        priceCents: 500,
+        pricingTier: "base",
+        tier: "standard",
+      })}
+    />
+  ),
+};
+
+export const BuyNameFirstNameQuote: Story = {
+  name: "Buy Name / First Name Quote",
+  render: () => (
+    <InteractiveStory
+      {...base}
+      phase="buy_name"
+      buyNameValue="olivia"
+      paidQuote={paidQuote({
+        label: "olivia",
+        priceCents: 10_000,
+        pricingTier: "first_name",
+      })}
+    />
+  ),
+};
+
+export const BuyNameTrophyQuote: Story = {
+  name: "Buy Name / Trophy Quote",
+  render: () => (
+    <InteractiveStory
+      {...base}
+      phase="buy_name"
+      buyNameValue="king"
+      paidQuote={paidQuote({
+        label: "king",
+        priceCents: 100_000,
+        pricingTier: "trophy",
+      })}
+    />
+  ),
+};
+
+export const BuyNameTypoBaseFallback: Story = {
+  name: "Buy Name / Typo Base Fallback",
+  render: () => (
+    <InteractiveStory
+      {...base}
+      phase="buy_name"
+      buyNameValue="oliviia"
+      paidQuote={paidQuote({
+        label: "oliviia",
+        priceCents: 1_000,
+        pricingTier: "base",
+        tier: "premium",
+      })}
+    />
+  ),
+};
+
+export const BuyNameReserved: Story = {
+  name: "Buy Name / Reserved",
+  render: () => (
+    <InteractiveStory
+      {...base}
+      phase="buy_name"
+      buyNameValue="pirate"
+      paidQuote={nonPayableQuote({
+        label: "pirate",
+        reason: "Desired label is reserved",
+        pricingTier: "reserved",
+      })}
+    />
+  ),
+};
+
+export const BuyNameClaimed: Story = {
+  name: "Buy Name / Claimed",
+  render: () => (
+    <InteractiveStory
+      {...base}
+      phase="buy_name"
+      buyNameValue="olivia"
+      paidClaimedHandle="olivia.pirate"
+      paidQuote={paidQuote({
+        label: "olivia",
+        priceCents: 10_000,
+        pricingTier: "first_name",
+      })}
+    />
+  ),
+};
+
 export const MobileOptions: Story = {
   name: "Mobile / Options",
   parameters: {
@@ -301,6 +474,25 @@ export const MobileChooseName: Story = {
         importedRedditScore: 42000,
         coverageNote: null,
       }}
+    />
+  ),
+};
+
+export const MobileBuyNameFirstNameQuote: Story = {
+  name: "Mobile / Buy Name First Name Quote",
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <InteractiveStory
+      {...base}
+      phase="buy_name"
+      buyNameValue="olivia"
+      paidQuote={paidQuote({
+        label: "olivia",
+        priceCents: 10_000,
+        pricingTier: "first_name",
+      })}
     />
   ),
 };

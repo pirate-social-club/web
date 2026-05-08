@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import { buildStarterPricingPolicyDraft } from "@/app/authenticated-helpers/moderation-helpers";
 import { PostComposer } from "../../post-composer";
 import { baseComposer, composerDecorator, composerParameters, InteractivePostComposer } from "../story-helpers";
 
@@ -42,6 +43,26 @@ const sourceLicenseSummary = {
   parentIpId: "0x1234567890abcdef1234567890abcdef12345678",
   licenseTermsId: "3",
   newRemixTerms: "Commercial remix, 10%, WIP",
+};
+
+const starterPolicy = buildStarterPricingPolicyDraft();
+
+const assignmentsByTier = new Map<string, string[]>();
+for (const assignment of starterPolicy.countryAssignments) {
+  const list = assignmentsByTier.get(assignment.tier_key) ?? [];
+  list.push(assignment.country_code);
+  assignmentsByTier.set(assignment.tier_key, list);
+}
+
+const regionalPricingPreview = {
+  defaultTierKey: starterPolicy.defaultTierKey,
+  tiers: starterPolicy.tiers.map((tier) => ({
+    tierKey: tier.tier_key,
+    displayName: tier.display_name,
+    adjustmentType: tier.adjustment_type as "multiplier",
+    adjustmentValue: tier.adjustment_value,
+    countryCodes: assignmentsByTier.get(tier.tier_key) ?? [],
+  })),
 };
 
 export const Original: Story = {
@@ -269,6 +290,7 @@ export const PaidUnlock: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="settings"
       mode="song"
       canCreateSongPost
       titleValue="Benefit single for the club drop"
@@ -290,10 +312,11 @@ export const PaidUnlock: Story = {
 };
 
 export const PaidUnlockRegionalPricing: Story = {
-  name: "Paid Unlock Regional Pricing",
+  name: "Pay to access / Self.xyz regional pricing",
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="settings"
       mode="song"
       canCreateSongPost
       titleValue="Benefit single for the club drop"
@@ -312,6 +335,7 @@ export const PaidUnlockRegionalPricing: Story = {
         regionalPricingAvailable: true,
         regionalPricingEnabled: true,
       }}
+      regionalPricingPreview={regionalPricingPreview}
     />
   ),
 };
@@ -321,6 +345,7 @@ export const WithCharityContribution: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="settings"
       mode="song"
       canCreateSongPost
       titleValue="Benefit single for the club drop"

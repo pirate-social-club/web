@@ -1,19 +1,21 @@
-import type * as React from "react";
+import * as React from "react";
 import {
   Globe,
-  Lock,
   MaskHappy,
   UsersThree,
 } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
+import { Checkbox } from "@/components/primitives/checkbox";
 import { Input } from "@/components/primitives/input";
+import { Label } from "@/components/primitives/label";
 import { RadioIndicator } from "@/components/primitives/radio-indicator";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
 import { normalizePriceInput, normalizeRoyaltyInput } from "./post-composer-utils";
-import type { AssetLicensePresetId, AttachmentState } from "./post-composer.types";
+import { RegionalPricingPreviewDialog } from "./regional-pricing-preview";
+import type { AssetLicensePresetId, AttachmentState, RegionalPricingPreview } from "./post-composer.types";
 
 export type PostComposerSettingsSectionsCopy = {
   postAsTitle: string;
@@ -23,9 +25,11 @@ export type PostComposerSettingsSectionsCopy = {
   publicVisibilityLabel: string;
   communityVisibilityLabel: string;
   paidUnlockTitle: string;
-  paidUnlockLabel: string;
   priceLabel: string;
   pricePlaceholder: string;
+  previewStartLabel: string;
+  previewStartPlaceholder: string;
+  regionalPricingLabel: string;
   licenseLabel: string;
   licenseLabels: Record<AssetLicensePresetId, string>;
   licenseDescriptions: Record<AssetLicensePresetId, string>;
@@ -44,18 +48,23 @@ export type PostComposerSettingsSectionsProps = {
   anonymousIdentityLabel?: string;
   identity: "pseudonym" | "anonymous";
   license: AssetLicensePresetId;
-  onAccessChange: (value: "free" | "paid") => void;
   onIdentityChange: (value: "pseudonym" | "anonymous") => void;
   onLicenseChange: (value: AssetLicensePresetId) => void;
-  onPriceChange: (value: string) => void;
+  onPriceChange: (value: string, nextAccess?: "free" | "paid") => void;
+  onPreviewStartSecondsChange?: (value: string) => void;
+  onRegionalPricingChange?: (value: boolean) => void;
   onRoyaltyPercentChange: (value: string) => void;
   onVisibilityChange: (value: "public" | "community") => void;
   price: string;
+  previewStartSeconds?: string;
   publicAvatarSeed?: string;
   publicAvatarSrc?: string;
   publicIdentityLabel?: string;
   publicIdentityInitials?: string;
   royaltyPercent: string;
+  regionalPricingAvailable?: boolean;
+  regionalPricingEnabled?: boolean;
+  regionalPricingPreview?: RegionalPricingPreview | null;
   showLicenseFields?: boolean;
   showAnonymousIdentity?: boolean;
   visibility: "public" | "community";
@@ -70,9 +79,11 @@ const defaultCopy: PostComposerSettingsSectionsCopy = {
   publicVisibilityLabel: "Public",
   communityVisibilityLabel: "Community",
   paidUnlockTitle: "Paid unlock",
-  paidUnlockLabel: "Paid unlock",
   priceLabel: "Price",
-  pricePlaceholder: "4.99",
+  pricePlaceholder: "0",
+  previewStartLabel: "Preview start (seconds)",
+  previewStartPlaceholder: "0",
+  regionalPricingLabel: "Use community regional pricing",
   licenseLabel: "License",
   licenseLabels: {
     "non-commercial": "No reuse",
@@ -87,6 +98,17 @@ const defaultCopy: PostComposerSettingsSectionsCopy = {
   royaltyLabel: "Royalty",
   royaltyPlaceholder: "15",
 };
+
+function priceInputHasPaidValue(value: string) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0;
+}
+
+function normalizeSecondsInput(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  return String(Math.min(Number.parseInt(digits, 10), 86_400));
+}
 
 export function PostComposerSettingsRow({
   icon,
@@ -170,17 +192,22 @@ export function PostComposerSettingsSections({
   anonymousIdentityLabel = "Pseudonym",
   identity,
   license,
-  onAccessChange,
   onIdentityChange,
   onLicenseChange,
   onPriceChange,
+  onPreviewStartSecondsChange,
+  onRegionalPricingChange,
   onRoyaltyPercentChange,
   onVisibilityChange,
   price,
+  previewStartSeconds,
   publicAvatarSeed,
   publicAvatarSrc,
   publicIdentityLabel = "saint-pablo.pirate",
   publicIdentityInitials = "sp",
+  regionalPricingAvailable = false,
+  regionalPricingEnabled = false,
+  regionalPricingPreview,
   royaltyPercent,
   showLicenseFields,
   showAnonymousIdentity = true,
@@ -202,6 +229,8 @@ export function PostComposerSettingsSections({
       ...copyOverrides?.licenseDescriptions,
     },
   };
+  const canPreviewRegionalPricing = Boolean(regionalPricingPreview?.tiers.length);
+  const regionalPricingId = React.useId();
 
   return (
     <div className={cn("space-y-8", className)}>
@@ -266,48 +295,80 @@ export function PostComposerSettingsSections({
           <Type as="h2" variant="h3" className="text-muted-foreground">
             {copy.paidUnlockTitle}
           </Type>
-          <OptionRow
-            checked={access === "paid"}
-            icon={<Lock className="size-7" />}
-            onClick={() => onAccessChange(access === "paid" ? "free" : "paid")}
-            title={copy.paidUnlockLabel}
-          />
-          {showPaidFields || shouldShowLicenseFields ? (
-            <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
-              {showPaidFields ? (
-                <label className="block space-y-2">
-                  <Type as="span" variant="body-strong">
-                    {copy.priceLabel}
-                  </Type>
-                  <div className="grid grid-cols-[auto_1fr] items-center rounded-[var(--radius-lg)] border border-border-soft bg-background px-4">
-                    <span className="text-base font-semibold text-muted-foreground">$</span>
-                    <Input
-                      className="h-14 rounded-none border-0 bg-transparent px-2 text-end text-lg shadow-none focus-visible:ring-0"
-                      inputMode="decimal"
-                      onChange={(event) => onPriceChange(normalizePriceInput(event.target.value))}
-                      pattern="[0-9]*[.]?[0-9]*"
-                      placeholder={copy.pricePlaceholder}
-                      value={price}
-                    />
-                  </div>
-                </label>
-              ) : null}
-              {shouldShowLicenseFields ? (
-                <div className="space-y-3">
-                  <Type as="div" variant="body-strong">
-                    {copy.licenseLabel}
-                  </Type>
-                  {(["non-commercial", "commercial-use", "commercial-remix"] as const).map((preset) => (
-                    <OptionRow
-                      checked={license === preset}
-                      description={copy.licenseDescriptions[preset]}
-                      key={preset}
-                      onClick={() => onLicenseChange(preset)}
-                      title={copy.licenseLabels[preset]}
-                    />
-                  ))}
+          <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
+            <label className="block space-y-2">
+              <Type as="span" variant="body-strong">
+                {copy.priceLabel}
+              </Type>
+              <div className="grid grid-cols-[auto_1fr] items-center rounded-[var(--radius-lg)] border border-border-soft bg-background px-4">
+                <span className="text-base font-semibold text-muted-foreground">$</span>
+                <Input
+                  className="h-14 rounded-none border-0 bg-transparent px-2 text-end text-lg shadow-none focus-visible:ring-0"
+                  inputMode="decimal"
+                  onChange={(event) => {
+                    const nextPrice = normalizePriceInput(event.target.value);
+                    onPriceChange(nextPrice, priceInputHasPaidValue(nextPrice) ? "paid" : "free");
+                  }}
+                  pattern="[0-9]*[.]?[0-9]*"
+                  placeholder={copy.pricePlaceholder}
+                  value={price}
+                />
+              </div>
+            </label>
+            {attachment?.kind === "song" && onPreviewStartSecondsChange ? (
+              <label className="block space-y-2">
+                <Type as="span" variant="body-strong">
+                  {copy.previewStartLabel}
+                </Type>
+                <div className="grid grid-cols-[1fr_auto] items-center rounded-[var(--radius-lg)] border border-border-soft bg-background px-4">
+                  <Input
+                    className="h-14 rounded-none border-0 bg-transparent px-0 text-lg shadow-none focus-visible:ring-0"
+                    inputMode="numeric"
+                    onChange={(event) => onPreviewStartSecondsChange(normalizeSecondsInput(event.target.value))}
+                    placeholder={copy.previewStartPlaceholder}
+                    value={previewStartSeconds ?? ""}
+                  />
+                  <span className="text-base font-semibold text-muted-foreground">s</span>
                 </div>
-              ) : null}
+              </label>
+            ) : null}
+            {regionalPricingAvailable && onRegionalPricingChange ? (
+              <div className="space-y-2">
+                <div className="flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5">
+                  <Checkbox
+                    checked={regionalPricingEnabled}
+                    id={regionalPricingId}
+                    onCheckedChange={(next) => onRegionalPricingChange(next === true)}
+                  />
+                  <Label className="flex-1 text-base leading-6" htmlFor={regionalPricingId}>
+                    {copy.regionalPricingLabel}
+                  </Label>
+                </div>
+                {canPreviewRegionalPricing ? (
+                  <RegionalPricingPreviewDialog
+                    preview={regionalPricingPreview}
+                    priceUsd={price}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+          {shouldShowLicenseFields ? (
+            <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
+              <div className="space-y-3">
+                <Type as="div" variant="body-strong">
+                  {copy.licenseLabel}
+                </Type>
+                {(["non-commercial", "commercial-use", "commercial-remix"] as const).map((preset) => (
+                  <OptionRow
+                    checked={license === preset}
+                    description={copy.licenseDescriptions[preset]}
+                    key={preset}
+                    onClick={() => onLicenseChange(preset)}
+                    title={copy.licenseLabels[preset]}
+                  />
+                ))}
+              </div>
               {shouldShowLicenseFields && license === "commercial-remix" ? (
                 <label className="block space-y-2">
                   <Type as="span" variant="body-strong">

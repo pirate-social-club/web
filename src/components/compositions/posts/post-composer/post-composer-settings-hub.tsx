@@ -69,6 +69,9 @@ function settingsCopy(controller: PostComposerController) {
   const nonCommercial = licenseCopyForPreset(assetLicenseCopy, "non-commercial");
   const commercialUse = licenseCopyForPreset(assetLicenseCopy, "commercial-use");
   const commercialRemix = licenseCopyForPreset(assetLicenseCopy, "commercial-remix");
+  const paidUnlockTitle = tabs.activeTab === "song"
+    ? copy.access.payToAccess
+    : copy.access.paidUnlock;
 
   return {
     postAsTitle: copy.sections.postAs,
@@ -77,10 +80,12 @@ function settingsCopy(controller: PostComposerController) {
     visibilityTitle: "Who can see this?",
     publicVisibilityLabel: copy.audience.public,
     communityVisibilityLabel: copy.audience.community,
-    paidUnlockTitle: copy.access.paidUnlock,
-    paidUnlockLabel: copy.access.paidUnlock,
+    paidUnlockTitle,
     priceLabel: copy.fields.price ?? copy.fields.unlockPriceUsd,
     pricePlaceholder: copy.placeholders.unlockPrice,
+    previewStartLabel: copy.fields.previewStartSeconds,
+    previewStartPlaceholder: copy.placeholders.previewStartSeconds,
+    regionalPricingLabel: copy.access.useRegionalPricing,
     licenseLabel: copy.sections.license,
     licenseLabels: {
       "non-commercial": nonCommercial.label,
@@ -140,15 +145,6 @@ export function PostComposerSettingsHub({
         copy={settingsCopy(controller)}
         identity={identityFromController(controller)}
         license={license.state.presetId}
-        onAccessChange={(nextAccess) =>
-          commerce.updateMonetizationState((current) => ({
-            ...current,
-            regionalPricingEnabled: nextAccess === "paid"
-              ? current.regionalPricingEnabled
-              : false,
-            visible: nextAccess === "paid",
-          }))
-        }
         onAgentIdentitySelect={() => identity.setAuthorMode("agent")}
         onIdentityChange={(nextIdentity) => {
           identity.setAuthorMode("human");
@@ -162,10 +158,24 @@ export function PostComposerSettingsHub({
               : undefined,
           }))
         }
-        onPriceChange={(priceUsd) =>
+        onPriceChange={(priceUsd, nextAccess) =>
           commerce.updateMonetizationState((current) => ({
             ...current,
             priceUsd,
+            regionalPricingEnabled: nextAccess === "free" ? false : current.regionalPricingEnabled,
+            visible: nextAccess === undefined ? current.visible : nextAccess === "paid",
+          }))
+        }
+        onPreviewStartSecondsChange={(previewStartSeconds) =>
+          controller.song.update((current) => ({
+            ...current,
+            previewStartSeconds,
+          }))
+        }
+        onRegionalPricingChange={(regionalPricingEnabled) =>
+          commerce.updateMonetizationState((current) => ({
+            ...current,
+            regionalPricingEnabled,
           }))
         }
         onRoyaltyPercentChange={(value) =>
@@ -181,10 +191,14 @@ export function PostComposerSettingsHub({
           }))
         }
         price={commerce.monetizationState.priceUsd ?? ""}
+        previewStartSeconds={controller.song.state.previewStartSeconds ?? "0"}
         publicAvatarSrc={identity.publicAvatarSrc ?? undefined}
         publicAvatarSeed={identity.publicAvatarSeed ?? undefined}
         publicIdentityInitials={publicInitials(publicHandle)}
         publicIdentityLabel={publicHandle}
+        regionalPricingAvailable={commerce.monetizationState.regionalPricingAvailable}
+        regionalPricingEnabled={commerce.monetizationState.regionalPricingEnabled}
+        regionalPricingPreview={commerce.regionalPricingPreview}
         royaltyPercent={String(license.state.commercialRevSharePct ?? 10)}
         showLicenseFields={
           attachment?.kind === "video"

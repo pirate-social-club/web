@@ -68,27 +68,38 @@ function walkTree(node: React.ReactNode, visit: (element: TestElement) => void) 
 
   const element = node as TestElement;
   visit(element);
+  const elementTypeName = typeof element.type === "function"
+    ? element.type.name
+    : typeof element.type === "object" && element.type && "displayName" in element.type
+      ? String(element.type.displayName)
+      : "";
   if (
-    typeof element.type === "function"
+    (typeof element.type === "function" || (typeof element.type === "object" && element.type !== null))
     && (
-      element.type.name === "PostComposerDesktopFooter"
-      || element.type.name === "AccessReview"
-      || element.type.name === "FeedPreview"
-      || element.type.name === "IdentityReview"
-      || element.type.name === "PostComposerDetailsStep"
-      || element.type.name === "PostComposerMobileSubmitBar"
-      || element.type.name === "PostComposerPublishSettings"
-      || element.type.name === "PostComposerSettingsHub"
-      || element.type.name === "PostComposerSettingsSections"
-      || element.type.name === "PostComposerAssetLicenseSection"
-      || element.type.name === "PostComposerCommerceAccessSection"
-      || element.type.name === "PostComposerDerivativeSection"
-      || element.type.name === "PublishSummary"
-      || element.type.name === "ReviewOption"
-      || element.type.name === "VisibilityReview"
+      elementTypeName === "PostComposerDesktopFooter"
+      || elementTypeName === "AccessReview"
+      || elementTypeName === "CheckboxCard"
+      || elementTypeName === "FeedPreview"
+      || elementTypeName === "IdentityReview"
+      || elementTypeName === "PostComposerDetailsStep"
+      || elementTypeName === "PostComposerMobileSubmitBar"
+      || elementTypeName === "PostComposerPublishSettings"
+      || elementTypeName === "PostComposerSettingsHub"
+      || elementTypeName === "PostComposerSettingsSections"
+      || elementTypeName === "PostComposerAssetLicenseSection"
+      || elementTypeName === "PostComposerCommerceAccessSection"
+      || elementTypeName === "PostComposerDerivativeSection"
+      || elementTypeName === "PublishSummary"
+      || elementTypeName === "ReviewOption"
+      || elementTypeName === "VisibilityReview"
     )
   ) {
-    walkTree((element.type as (props: Record<string, unknown>) => React.ReactNode)(element.props), visit);
+    const rendered = typeof element.type === "function"
+      ? (element.type as (props: Record<string, unknown>) => React.ReactNode)(element.props)
+      : typeof element.type === "object" && element.type && "render" in element.type && typeof element.type.render === "function"
+        ? (element.type.render as (props: Record<string, unknown>, ref: unknown) => React.ReactNode)(element.props, null)
+        : null;
+    walkTree(rendered, visit);
     return;
   }
   walkTree(element.props.children as React.ReactNode, visit);
@@ -146,6 +157,7 @@ describe("PostComposer monetization", () => {
       visible: false,
       regionalPricingAvailable: true,
     } as MonetizationState);
+    let previewStartSeconds = "0";
 
     const baseProps: PostComposerProps = {
       availableTabs: ["song"],
@@ -157,52 +169,63 @@ describe("PostComposer monetization", () => {
       onMonetizationChange: (next) => {
         monetization = next;
       },
+      onSongChange: (next) => {
+        previewStartSeconds = next.previewStartSeconds ?? "";
+      },
+      song: {
+        previewStartSeconds,
+      },
     };
 
     let tree = renderComposer({
       ...baseProps,
       monetization,
     });
+    expect(findElement(tree, (element) => element.props.children === "Pay to access") === null).toBe(false);
 
-    const paidUnlock = findElement(
+    const priceInput = findElement(
       tree,
-      (element) => element.props.title === "Paid unlock" && typeof element.props.onClick === "function",
+      (element) => element.props.placeholder === "0" && typeof element.props.onChange === "function",
     );
-    if (!paidUnlock) {
-      throw new Error("Missing paid unlock option");
+    if (!priceInput) {
+      throw new Error("Missing unlock price input");
     }
-    (paidUnlock.props.onClick as (() => void) | undefined)?.();
+    const previewStartInput = findElement(
+      tree,
+      (element) => element.props.placeholder === "0" && element.props.inputMode === "numeric" && typeof element.props.onChange === "function",
+    );
+    if (!previewStartInput) {
+      throw new Error("Missing preview start input");
+    }
+    expect(monetization.priceUsd).toBe("0");
+    expect(monetization.visible).toBe(false);
+
+    (previewStartInput.props.onChange as ((event: { target: { value: string } }) => void) | undefined)?.({
+      target: { value: "42" },
+    });
+    expect(previewStartSeconds).toBe("42");
+
+    (priceInput.props.onChange as ((event: { target: { value: string } }) => void) | undefined)?.({
+      target: { value: "4.99" },
+    });
+    expect(monetization.priceUsd).toBe("4.99");
     expect(monetization.visible).toBe(true);
 
     tree = renderComposer({
       ...baseProps,
       monetization,
     });
-    const priceInput = findElement(
+    const updatedPriceInput = findElement(
       tree,
-      (element) => element.props.placeholder === "1.00" && typeof element.props.onChange === "function",
+      (element) => element.props.placeholder === "0" && typeof element.props.onChange === "function",
     );
-    if (!priceInput) {
-      throw new Error("Missing unlock price input");
+    if (!updatedPriceInput) {
+      throw new Error("Missing updated unlock price input");
     }
-    (priceInput.props.onChange as ((event: { target: { value: string } }) => void) | undefined)?.({
-      target: { value: "4.99" },
+    (updatedPriceInput.props.onChange as ((event: { target: { value: string } }) => void) | undefined)?.({
+      target: { value: "0" },
     });
-    expect(monetization.priceUsd).toBe("4.99");
-
-    tree = renderComposer({
-      ...baseProps,
-      monetization,
-    });
-    const paidUnlockOff = findElement(
-      tree,
-      (element) => element.props.title === "Paid unlock" && typeof element.props.onClick === "function",
-    );
-    if (!paidUnlockOff) {
-      throw new Error("Missing paid unlock toggle");
-    }
-    (paidUnlockOff.props.onClick as (() => void) | undefined)?.();
-    expect(monetization.priceUsd).toBe("4.99");
+    expect(monetization.priceUsd).toBe("0");
     expect(monetization.visible).toBe(false);
   });
 
@@ -224,22 +247,37 @@ describe("PostComposer monetization", () => {
     ).toBeNull();
   });
 
-  test("keeps regional pricing collapsed even when the community policy supports it", () => {
+  test("lets paid songs opt into community regional pricing when the policy supports it", () => {
+    let monetization = defaultMonetizationState({
+      regionalPricingAvailable: true,
+      visible: true,
+    } as MonetizationState);
+
     const tree = renderComposer({
       availableTabs: ["song"],
       canCreateSongPost: true,
       clubName: "Lane1",
       composerStep: "settings",
       mode: "song",
-      monetization: defaultMonetizationState({
-        regionalPricingAvailable: true,
-        visible: true,
-      } as MonetizationState),
+      monetization,
+      onMonetizationChange: (next) => {
+        monetization = next;
+      },
     });
 
-    expect(
-      findElement(tree, (element) => element.props.id === "regional-pricing") === null,
-    ).toBe(true);
+    const regionalPricing = findElement(
+      tree,
+      (element) =>
+        element.props.checked === false
+        && typeof element.props.id === "string"
+        && typeof element.props.onCheckedChange === "function",
+    );
+    if (!regionalPricing) {
+      throw new Error("Missing regional pricing option");
+    }
+
+    (regionalPricing.props.onCheckedChange as ((value: boolean) => void) | undefined)?.(true);
+    expect(monetization.regionalPricingEnabled).toBe(true);
   });
 
   test("reuses monetization controls for paid video without song preview fields", () => {
@@ -255,13 +293,22 @@ describe("PostComposer monetization", () => {
     });
 
     expect(
-      findElement(tree, (element) => element.props.placeholder === "1.00") === null,
+      findElement(tree, (element) => element.props.placeholder === "0") === null,
     ).toBe(false);
     expect(
       findElement(tree, (element) => element.props.id === "regional-pricing") === null,
     ).toBe(true);
     expect(
-      findElement(tree, (element) => element.props.placeholder === "0"),
+      findElement(
+        tree,
+        (element) =>
+          element.props.checked === false
+          && typeof element.props.id === "string"
+          && typeof element.props.onCheckedChange === "function",
+      ) === null,
+    ).toBe(false);
+    expect(
+      findElement(tree, (element) => element.props.placeholder === "0" && element.props.inputMode === "numeric"),
     ).toBeNull();
   });
 
@@ -279,7 +326,7 @@ describe("PostComposer monetization", () => {
 
     expect(findElement(tree, (element) => element.props.title === "Free to view")).toBeNull();
     expect(findElement(tree, (element) => element.props.title === "Paid unlock")).toBeNull();
-    expect(findElement(tree, (element) => element.props.placeholder === "1.00")).toBeNull();
+    expect(findElement(tree, (element) => element.props.placeholder === "0")).toBeNull();
   });
 
   test("does not offer paid access controls for text posts", () => {
@@ -448,7 +495,7 @@ describe("PostComposer monetization", () => {
     expect(findElement(writeTree, (element) => element.props.label === "Visibility")).toBeNull();
     expect(findElement(writeTree, (element) => element.props.children === "I have the rights to monetize this post.")).toBeNull();
 
-    expect(findElement(settingsTree, (element) => element.props.title === "Paid unlock") === null).toBe(false);
+    expect(findElement(settingsTree, (element) => element.props.placeholder === "0" && element.props.inputMode === "decimal") === null).toBe(false);
     expect(findElement(settingsTree, (element) => element.props.title === "@saint-pablo") === null).toBe(false);
     expect(findElement(settingsTree, (element) => element.props.title === "Public") === null).toBe(false);
 
@@ -504,7 +551,7 @@ describe("PostComposer monetization", () => {
     );
     const priceInput = findElement(
       tree,
-      (element) => element.props.placeholder === "1.00" && typeof element.props.onChange === "function",
+      (element) => element.props.placeholder === "0" && typeof element.props.onChange === "function",
     );
     const commercialRemix = findElement(
       tree,

@@ -993,8 +993,8 @@ async function main() {
   zhDict["onboarding.placeholders.redditUsername"] = "technohippie";
   arDict["onboarding.stepCount"] = "{current}/{total}";
   zhDict["onboarding.stepCount"] = "{current}/{total}";
-  arDict["createPost.placeholders.unlockPrice"] = "1.00";
-  zhDict["createPost.placeholders.unlockPrice"] = "1.00";
+  arDict["createPost.placeholders.unlockPrice"] = "0";
+  zhDict["createPost.placeholders.unlockPrice"] = "0";
   arDict["createPost.placeholders.previewStartSeconds"] = "0";
   zhDict["createPost.placeholders.previewStartSeconds"] = "0";
   arDict["createPost.placeholders.url"] = "https://";

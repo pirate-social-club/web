@@ -147,7 +147,7 @@ export function defaultMonetizationState(monetization?: MonetizationState): Mone
     priceUsd:
       monetization?.priceUsd ??
       monetization?.priceLabel?.replace(/[^0-9.]/g, "") ??
-      "1.00",
+      "0",
     regionalPricingAvailable: monetization?.regionalPricingAvailable ?? false,
     regionalPricingEnabled: monetization?.regionalPricingEnabled ?? false,
   };

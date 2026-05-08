@@ -169,6 +169,7 @@
       "freeToView": "مجاني للعرض",
       "paidDescription": "تظهر معاينة في الخلاصة، ويُفتح المسار الكامل بعد الشراء.",
       "paidUnlock": "فتح مدفوع",
+      "payToAccess": "Pay to access",
       "public": "عام",
       "publicDescription": "يمكن لأي شخص تشغيل المسار الكامل.",
       "rightsAttested": "أؤكد أن لدي الحقوق لنشر هذا المسار وتحقيق الدخل منه.",
@@ -291,7 +292,7 @@
       "songTitle": "عنوان الأغنية",
       "sourceTrackSearch": "ابحث في أصول Pirate / Story",
       "title": "العنوان",
-      "unlockPrice": "1.00",
+      "unlockPrice": "0",
       "previewStartSeconds": "0",
       "url": "https://"
     },

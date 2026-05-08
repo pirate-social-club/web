@@ -181,6 +181,12 @@ export function buildPrimaryItems(messages: ShellMessages["appSidebar"]): AppSid
       onSelect: () => navigate("/settings/agents"),
     },
     {
+      id: "names",
+      icon: Globe,
+      label: messages.namesLabel,
+      onSelect: () => navigate("/settings/domains"),
+    },
+    {
       id: "create-community",
       icon: Plus,
       label: messages.createCommunityLabel,
@@ -235,7 +241,9 @@ export function activeSidebarItem(route: AppRoute): string | undefined {
     case "settings-index":
       return undefined;
     case "settings":
-      return route.section === "agents" ? "agents" : undefined;
+      if (route.section === "agents") return "agents";
+      if (route.section === "domains") return "names";
+      return undefined;
     case "community":
     case "create-post":
       return `c/${route.communityId}`;

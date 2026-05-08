@@ -69,6 +69,15 @@ export function createProfilesApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify({ desired_label: desiredLabel }),
       }),
+    claimPaidHandle: (input: {
+      quote: string;
+      settlement_wallet_attachment: string;
+      funding_tx_ref: string;
+    }): Promise<GlobalHandle> =>
+      request<GlobalHandle>("/profiles/me/global-handle/claim", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
     publishXmtpInboxId: (xmtpInboxId: string | null): Promise<Profile> =>
       request<Profile>("/profiles/me/xmtp-inbox", {
         method: "POST",

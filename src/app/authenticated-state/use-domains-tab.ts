@@ -4,11 +4,20 @@ import * as React from "react";
 import type { OnboardingStatus } from "@pirate/api-contracts";
 import type { RedditImportSummary as ApiRedditImportSummary } from "@pirate/api-contracts";
 import type { RedditVerification as ApiRedditVerification } from "@pirate/api-contracts";
+import type { Hex } from "viem";
 
-import type { ApiClient } from "@/lib/api/client";
+import { ApiError, type ApiClient } from "@/lib/api/client";
 import { updateSessionOnboarding, updateSessionProfile, useSession } from "@/lib/api/session-store";
 import { trackAnalyticsEvent } from "@/lib/analytics";
+import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
+import {
+  executeHandleUsdcCheckout,
+  findConnectedFundingWallet,
+} from "@/lib/commerce/routed-checkout";
+import { getErrorMessage } from "@/lib/error-utils";
+import { getWalletTransactionErrorMessage } from "@/lib/wallet-error-utils";
 import { generateRedditFallbackHandle } from "@/lib/reddit-handle-suggestion";
+import type { HandleUpgradeQuoteResponse } from "@/lib/api/client-api-types";
 import type {
   HandleSuggestion,
   ImportJobState,
@@ -76,7 +85,9 @@ function normalizeHandleLabel(value: string): string {
 }
 
 type UseDomainsTabMessages = {
+  connectPrimaryWalletError: string;
   chooseHandleError: string;
+  reconnectPrimaryWalletError: string;
   renameFailedError: string;
 };
 
@@ -88,6 +99,7 @@ type UseDomainsTabOptions = {
 
 export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) {
   const session = useSession();
+  const { connectedWallets } = usePiratePrivyWallets({ enabled });
   const [phase, setPhase] = React.useState<DomainsTabPhase>("options");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -101,6 +113,9 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
   const [handleSuggestion, setHandleSuggestion] = React.useState<HandleSuggestion | undefined>(undefined);
   const [generatedHandle, setGeneratedHandle] = React.useState("");
   const [onboardingStatus, setOnboardingStatus] = React.useState<OnboardingStatus | null>(null);
+  const [buyNameValue, setBuyNameValue] = React.useState("");
+  const [paidQuote, setPaidQuote] = React.useState<HandleUpgradeQuoteResponse | null>(null);
+  const [paidClaimedHandle, setPaidClaimedHandle] = React.useState<string | null>(null);
 
   const quoteHandleCandidate = React.useCallback(async (desiredLabel: string): Promise<boolean> => {
     const label = desiredLabel.trim().replace(/\.pirate$/iu, "");
@@ -342,6 +357,80 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
 
   const redditImportDone = importJob.status === "succeeded" || importJob.status === "partial_success";
 
+  const handleBuyNameChange = React.useCallback((value: string) => {
+    setBuyNameValue(value);
+    setPaidQuote(null);
+    setPaidClaimedHandle(null);
+    setError(null);
+  }, []);
+
+  const handleBuyNameQuote = React.useCallback(() => {
+    if (busy) return;
+    const label = buyNameValue.trim().replace(/\.pirate$/iu, "");
+    if (!label) {
+      setError(messages.chooseHandleError);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setPaidClaimedHandle(null);
+    void api.profiles.quoteHandleUpgrade(label)
+      .then((quote) => {
+        setPaidQuote(quote);
+        if (!quote.eligible) {
+          setError(quote.reason ?? "This name is not available.");
+        }
+      })
+      .catch((caught: unknown) => {
+        setPaidQuote(null);
+        setError(getErrorMessage(caught, "Could not quote this name."));
+      })
+      .finally(() => setBusy(false));
+  }, [api, busy, buyNameValue, messages.chooseHandleError]);
+
+  const handleBuyNameClaim = React.useCallback(() => {
+    if (busy || !paidQuote?.quote || (paidQuote.price_cents ?? 0) <= 0) return;
+    setBusy(true);
+    setError(null);
+    let fundingTxRef: Hex | null = null;
+    void (async () => {
+      if (!paidQuote.payment_instructions) {
+        throw new Error("This paid quote is missing payment instructions.");
+      }
+      const settlementWalletAttachment = session?.user.primary_wallet_attachment;
+      if (!settlementWalletAttachment) {
+        throw new Error(messages.connectPrimaryWalletError);
+      }
+      const fundingWallet = findConnectedFundingWallet({
+        connectedWallets,
+        primaryWalletAddress: session.profile.primary_wallet_address,
+      });
+      if (!fundingWallet) {
+        throw new Error(messages.reconnectPrimaryWalletError);
+      }
+      fundingTxRef = await executeHandleUsdcCheckout({
+        paymentInstructions: paidQuote.payment_instructions,
+        wallet: fundingWallet,
+      });
+      const handle = await api.profiles.claimPaidHandle({
+        quote: paidQuote.quote ?? "",
+        settlement_wallet_attachment: settlementWalletAttachment,
+        funding_tx_ref: fundingTxRef,
+      });
+      updateSessionProfile(await api.profiles.getMe());
+      setPaidClaimedHandle(handle.label);
+      setPaidQuote(null);
+      setBuyNameValue(handle.label.replace(/\.pirate$/iu, ""));
+    })()
+      .catch((caught: unknown) => {
+        const fallback = fundingTxRef ? "Could not claim this name." : "Could not complete payment.";
+        setError(caught instanceof ApiError
+          ? getErrorMessage(caught, fallback)
+          : getWalletTransactionErrorMessage(caught, fallback));
+      })
+      .finally(() => setBusy(false));
+  }, [api, busy, connectedWallets, messages.connectPrimaryWalletError, messages.reconnectPrimaryWalletError, paidQuote, session]);
+
   return {
     phase,
     onPhaseChange: setPhase,
@@ -356,12 +445,18 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
     redditImportSummary,
     generatedHandle,
     handleSuggestion,
+    buyNameValue,
+    paidQuote,
+    paidClaimedHandle,
     onImportKarmaNext: handleImportKarmaNext,
     onImportKarmaSkip: handleSkipRedditImport,
     onHandleChange: React.useCallback((value: string) => setGeneratedHandle(value), []),
     onGenerateHandle: handleGenerateHandle,
     onChooseNameContinue: handleChooseNameContinue,
     onChooseNameBack: handleChooseNameBack,
+    onBuyNameChange: handleBuyNameChange,
+    onBuyNameQuote: handleBuyNameQuote,
+    onBuyNameClaim: handleBuyNameClaim,
     redditImportDone,
   };
 }

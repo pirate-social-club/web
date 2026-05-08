@@ -129,7 +129,12 @@ function quoteForLabel(rawLabel: string): HandleUpgradeQuoteResponse {
   }
   return paidQuote({
     label,
-    priceCents: label.length >= 8 ? 500 : label.length === 7 ? 1_000 : 2_500,
+    priceCents: label.length >= 8 ? 500
+      : label.length === 7 ? 1_000
+        : label.length === 6 ? 2_500
+          : label.length === 5 ? 5_000
+            : label.length === 4 ? 10_000
+              : 25_000,
     pricingTier: "base",
     tier: label.length >= 8 ? "standard" : "premium",
   });

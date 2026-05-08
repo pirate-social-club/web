@@ -497,11 +497,11 @@ function BuyNamePhase({
             {copy.checkingAvailability}
           </FormNote>
         ) : quote?.eligible ? (
-          <FormNote className="inline-flex items-center gap-2">
+          <FormNote className="flex min-w-0 items-center gap-2">
             <Check className="size-4" weight="bold" />
-            {copy.buyNameAvailable}
-            <span aria-hidden="true">·</span>
-            <span>{priceLabel}</span>
+            <span className="min-w-0 truncate">
+              {copy.buyNameAvailable} · {priceLabel}
+            </span>
           </FormNote>
         ) : quote ? (
           <FormNote className="inline-flex items-center gap-2" tone="warning">

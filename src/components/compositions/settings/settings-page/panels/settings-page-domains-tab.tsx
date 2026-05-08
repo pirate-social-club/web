@@ -463,6 +463,7 @@ function BuyNamePhase({
   const displayValue = value.endsWith(".pirate") ? value.slice(0, -7) : value;
   const payable = Boolean(quote?.eligible && quote.quote && (quote.price_cents ?? 0) > 0);
   const priceLabel = formatUsdCompactLabel(centsToUsd(quote?.price_cents), localeTag) ?? "$0";
+  const showChecking = busy && !quote && displayValue.trim().length > 0;
 
   return (
     <div className="space-y-6">
@@ -490,17 +491,23 @@ function BuyNamePhase({
           <span className="absolute end-4 top-1/2 -translate-y-1/2 font-mono text-lg text-muted-foreground">.pirate</span>
         </div>
 
-        {quote ? (
-          <div className="rounded-[var(--radius-lg)] border border-border-soft bg-muted/35 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
-                <Type as="p" variant="body-strong">
-                  {quote.eligible ? copy.buyNameAvailable : quote.reason ?? copy.buyNameUnavailable}
-                </Type>
-              </div>
-              <Type as="p" variant="h3">{quote.eligible ? priceLabel : copy.buyNameManualPrice}</Type>
-            </div>
-          </div>
+        {showChecking ? (
+          <FormNote className="inline-flex items-center gap-2">
+            <Spinner className="size-4" />
+            {copy.checkingAvailability}
+          </FormNote>
+        ) : quote?.eligible ? (
+          <FormNote className="inline-flex items-center gap-2">
+            <Check className="size-4" weight="bold" />
+            {copy.buyNameAvailable}
+            <span aria-hidden="true">·</span>
+            <span>{priceLabel}</span>
+          </FormNote>
+        ) : quote ? (
+          <FormNote className="inline-flex items-center gap-2" tone="warning">
+            <X className="size-4" weight="bold" />
+            {quote.reason ?? copy.buyNameUnavailable}
+          </FormNote>
         ) : null}
 
         {claimedHandle ? (

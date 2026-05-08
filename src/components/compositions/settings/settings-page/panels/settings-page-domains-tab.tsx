@@ -106,16 +106,6 @@ function formatCheckedTime(value: string | undefined): string | null {
   });
 }
 
-function formatQuoteValidity(quote: HandleUpgradeQuoteResponse | null | undefined): string | null {
-  const expiresAt = typeof quote?.expires_at === "number" ? quote.expires_at : null;
-  if (!expiresAt) {
-    const ttl = typeof quote?.quote_ttl_seconds === "number" ? quote.quote_ttl_seconds : null;
-    return ttl ? String(Math.max(1, Math.ceil(ttl / 60))) : null;
-  }
-  const secondsLeft = Math.max(0, expiresAt - Math.floor(Date.now() / 1000));
-  return String(Math.max(1, Math.ceil(secondsLeft / 60)));
-}
-
 function Footer({
   nextLabel,
   skipLabel,
@@ -473,8 +463,6 @@ function BuyNamePhase({
   const displayValue = value.endsWith(".pirate") ? value.slice(0, -7) : value;
   const payable = Boolean(quote?.eligible && quote.quote && (quote.price_cents ?? 0) > 0);
   const priceLabel = formatUsdCompactLabel(centsToUsd(quote?.price_cents), localeTag) ?? "$0";
-  const quoteValidityMinutes = formatQuoteValidity(quote);
-  const pricingTier = quote?.pricing_tier ?? "base";
 
   return (
     <div className="space-y-6">
@@ -506,18 +494,10 @@ function BuyNamePhase({
           <div className="rounded-[var(--radius-lg)] border border-border-soft bg-muted/35 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <Type as="p" variant="body-strong">{quote.desired_label}</Type>
-              <Type as="p" variant="caption" className="text-muted-foreground">
-                {quote.eligible
-                  ? formatMessage(copy.buyNamePricingLabel, { tier: pricingTier })
-                  : quote.reason ?? copy.buyNameUnavailable}
-              </Type>
-              {quote.eligible && quoteValidityMinutes ? (
-                <Type as="p" variant="caption" className="text-muted-foreground">
-                  {formatMessage(copy.buyNameQuoteValid, { minutes: quoteValidityMinutes })}
+                <Type as="p" variant="body-strong">
+                  {quote.eligible ? copy.buyNameAvailable : quote.reason ?? copy.buyNameUnavailable}
                 </Type>
-              ) : null}
-            </div>
+              </div>
               <Type as="p" variant="h3">{quote.eligible ? priceLabel : copy.buyNameManualPrice}</Type>
             </div>
           </div>

@@ -26,6 +26,7 @@ export function LegalDocumentPage({
         <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-border px-5 py-5 md:px-8 md:py-6">
           <HeaderLink href="/" label="Home" />
           <HeaderLink href={resolveResourceHref("blog") ?? "https://blog.pirate.sc"} label="Blog" />
+          <HeaderLink href={resolveResourceHref("account-deletion") ?? "/delete-account"} label="Account Deletion" />
           <HeaderLink href={resolveResourceHref("terms-of-service") ?? "/terms"} label="Terms" />
           <HeaderLink href={resolveResourceHref("privacy-policy") ?? "/privacy"} label="Privacy" />
           <a

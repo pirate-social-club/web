@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import type { ShellMessages } from "@/locales";
 
-import { buildResourceItems, buildSidebarSections, resolveCreatePostPath } from "./sidebar-sections";
+import { buildPrimaryItems, buildResourceItems, buildSidebarSections, resolveCreatePostPath } from "./sidebar-sections";
 
 describe("resolveCreatePostPath", () => {
   test("canonicalizes emoji community handles for submit routes", () => {
@@ -68,6 +68,21 @@ describe("buildSidebarSections", () => {
     );
 
     expect(sections).toEqual([]);
+  });
+});
+
+describe("buildPrimaryItems", () => {
+  test("keeps one-time domain purchase out of primary navigation", () => {
+    const items = buildPrimaryItems({
+      agentsLabel: "Agents",
+      createCommunityLabel: "Create",
+      feedSortBestLabel: "Popular",
+      homeLabel: "Home",
+      namesLabel: "Names",
+      yourCommunitiesLabel: "Your communities",
+    } as ShellMessages["appSidebar"]);
+
+    expect(items.map((item) => item.id)).not.toContain("names");
   });
 });
 

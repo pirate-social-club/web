@@ -9,6 +9,7 @@ import { IconButton } from "@/components/primitives/icon-button";
 import { Type } from "@/components/primitives/type";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { ChatRouteMode } from "@/lib/chat/chat-types";
+import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 
 type DesktopChatWidgetApi = {
@@ -21,6 +22,21 @@ type DesktopChatWidgetApi = {
 };
 
 const DesktopChatWidgetContext = React.createContext<DesktopChatWidgetApi | null>(null);
+
+function summarizeMode(mode: ChatRouteMode): Record<string, unknown> {
+  switch (mode.kind) {
+    case "conversation":
+      return { conversationId: mode.conversationId, kind: mode.kind };
+    case "target":
+      return {
+        hasInitialDraft: typeof mode.initialDraft === "string" && mode.initialDraft.length > 0,
+        kind: mode.kind,
+        target: mode.target,
+      };
+    default:
+      return { kind: mode.kind };
+  }
+}
 
 export function useDesktopChatWidget() {
   return React.useContext(DesktopChatWidgetContext);
@@ -70,8 +86,12 @@ export function DesktopChatWidgetProvider({ children }: { children: React.ReactN
   const [mode, setMode] = React.useState<ChatRouteMode>({ kind: "list" });
   const isMobile = useIsMobile();
 
-  const close = React.useCallback(() => setOpen(false), []);
+  const close = React.useCallback(() => {
+    logger.info("[chat:desktop-widget] close", { mode: summarizeMode(mode) });
+    setOpen(false);
+  }, [mode]);
   const openMode = React.useCallback((nextMode: ChatRouteMode) => {
+    logger.info("[chat:desktop-widget] open-mode", { mode: summarizeMode(nextMode) });
     setMode(nextMode);
     setOpen(true);
   }, []);
@@ -82,10 +102,11 @@ export function DesktopChatWidgetProvider({ children }: { children: React.ReactN
     openNew: () => openMode({ kind: "new" }),
     openTarget: (target, options) => openMode({ kind: "target", initialDraft: options?.initialDraft, target }),
     toggleList: () => {
+      logger.info("[chat:desktop-widget] toggle-list", { currentlyOpen: open });
       setMode({ kind: "list" });
       setOpen((current) => !current);
     },
-  }), [close, openMode]);
+  }), [close, open, openMode]);
   const navigation = React.useMemo<ChatNavigationAdapter>(() => ({
     closeMobileChat: close,
     openConversation: api.openConversation,
@@ -98,8 +119,27 @@ export function DesktopChatWidgetProvider({ children }: { children: React.ReactN
   }), [api.openConversation, api.openList, api.openNew, close]);
 
   React.useEffect(() => {
-    if (isMobile) setOpen(false);
-  }, [isMobile]);
+    if (isMobile && open) {
+      logger.info("[chat:desktop-widget] close-mobile-viewport", { wasOpen: open });
+      setOpen(false);
+    }
+  }, [isMobile, open]);
+
+  React.useEffect(() => {
+    logger.info("[chat:desktop-widget] state", {
+      isMobile,
+      mode: summarizeMode(mode),
+      open,
+    });
+  }, [isMobile, mode, open]);
+
+  React.useEffect(() => {
+    if (!open || isMobile) return;
+    logger.info("[chat:desktop-widget] mount-chat-page", { mode: summarizeMode(mode), surface: "widget" });
+    return () => {
+      logger.info("[chat:desktop-widget] unmount-chat-page", { mode: summarizeMode(mode), surface: "widget" });
+    };
+  }, [isMobile, mode, open]);
 
   React.useEffect(() => {
     if (!open) return;

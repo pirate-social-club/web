@@ -10,6 +10,7 @@ import {
 import { navigate } from "@/app/router";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MOBILE_BREAKPOINT_QUERY } from "@/lib/breakpoints";
+import { logger } from "@/lib/logger";
 
 import { useDesktopChatWidget } from "./desktop-chat-widget";
 
@@ -23,6 +24,8 @@ export function useChatLauncher() {
 
   return React.useMemo(() => ({
     openConversation: (conversationId: string) => {
+      const usingWidget = !isMobile && !isMobileViewport() && !!desktopChatWidget;
+      logger.info("[chat:launcher] open-conversation", { conversationId, usingWidget });
       if (!isMobile && !isMobileViewport() && desktopChatWidget) {
         desktopChatWidget.openConversation(conversationId);
         return;
@@ -31,6 +34,8 @@ export function useChatLauncher() {
       navigate(buildChatConversationPath(conversationId));
     },
     openList: () => {
+      const usingWidget = !isMobile && !isMobileViewport() && !!desktopChatWidget;
+      logger.info("[chat:launcher] open-list", { usingWidget });
       if (!isMobile && !isMobileViewport() && desktopChatWidget) {
         desktopChatWidget.openList();
         return;
@@ -39,6 +44,12 @@ export function useChatLauncher() {
       navigate(buildChatListPath());
     },
     openTarget: (target: string, options: { initialMessage?: string } = {}) => {
+      const usingWidget = !isMobile && !isMobileViewport() && !!desktopChatWidget;
+      logger.info("[chat:launcher] open-target", {
+        hasInitialMessage: typeof options.initialMessage === "string" && options.initialMessage.length > 0,
+        target,
+        usingWidget,
+      });
       if (!isMobile && !isMobileViewport() && desktopChatWidget) {
         desktopChatWidget.openTarget(target, { initialDraft: options.initialMessage });
         return;
@@ -47,6 +58,8 @@ export function useChatLauncher() {
       navigate(buildChatTargetPath(target, options));
     },
     toggleList: () => {
+      const usingWidget = !isMobile && !isMobileViewport() && !!desktopChatWidget;
+      logger.info("[chat:launcher] toggle-list", { usingWidget });
       if (!isMobile && !isMobileViewport() && desktopChatWidget) {
         desktopChatWidget.toggleList();
         return;

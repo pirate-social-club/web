@@ -1,6 +1,6 @@
 "use client";
 
-import { CurrencyDollar, Database, Eye, Gavel, Heart, ImageSquare, LinkSimple, Lock, Queue, Robot, SealCheck, Shield, Tag, UserPlus } from "@phosphor-icons/react";
+import { At, CurrencyDollar, Database, Eye, Gavel, Heart, ImageSquare, LinkSimple, Lock, Queue, Robot, SealCheck, Shield, Tag, UserPlus } from "@phosphor-icons/react";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 
@@ -20,7 +20,7 @@ import {
   createDefaultCommunitySafetyProviderSettings,
 } from "@/components/compositions/community/safety-page/community-safety-page";
 
-export type CommunityModerationSection = "queue" | "profile" | "rules" | "links" | "labels" | "donations" | "pricing" | "requests" | "gates" | "safety" | "visual-policy" | "agents" | "machine-access" | "namespace";
+export type CommunityModerationSection = "queue" | "profile" | "rules" | "links" | "labels" | "donations" | "pricing" | "requests" | "gates" | "safety" | "visual-policy" | "agents" | "machine-access" | "namespace" | "handles";
 
 export const DEFAULT_COMMUNITY_MODERATION_SECTION: CommunityModerationSection = "queue";
 
@@ -72,6 +72,7 @@ export function buildCommunityModerationSections(
     items: [
       { active: activeSection === "profile", icon: ImageSquare, label: copy.nav.profile, onSelect: () => navigate(buildCommunityModerationPath(communityId, "profile", routeSlug)) },
       { active: activeSection === "namespace", icon: SealCheck, label: copy.nav.namespace, onSelect: () => navigate(buildCommunityModerationPath(communityId, "namespace", routeSlug)) },
+      { active: activeSection === "handles", icon: At, label: copy.nav.handles ?? "Names", onSelect: () => navigate(buildCommunityModerationPath(communityId, "handles", routeSlug)) },
       { active: activeSection === "rules", icon: Gavel, label: copy.nav.rules, onSelect: () => navigate(buildCommunityModerationPath(communityId, "rules", routeSlug)) },
       { active: activeSection === "links", icon: LinkSimple, label: copy.nav.links, onSelect: () => navigate(buildCommunityModerationPath(communityId, "links", routeSlug)) },
       { active: activeSection === "labels", icon: Tag, label: copy.nav.labels, onSelect: () => navigate(buildCommunityModerationPath(communityId, "labels", routeSlug)) },

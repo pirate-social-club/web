@@ -144,6 +144,48 @@ export function useChatController({
     openProfile: (href) => navigate(href),
   }, [navigation]);
 
+  React.useEffect(() => {
+    logger.info("[chat:controller] state", {
+      activeConversationId,
+      assistantAvailability,
+      authBroken,
+      conversationCount: conversations.length,
+      error,
+      hasSession: !!session,
+      hasWarmXmtpClient,
+      hasXmtpSignerWallet: !!xmtpSignerWallet,
+      listLoading,
+      mode: mode.kind,
+      routeConversationId,
+      routeTarget,
+      routeBusy,
+      surface,
+      walletHydrating,
+      xmtpReady,
+      xmtpSetupError,
+      xmtpSetupPhase,
+    });
+  }, [
+    activeConversationId,
+    assistantAvailability,
+    authBroken,
+    conversations.length,
+    error,
+    hasWarmXmtpClient,
+    listLoading,
+    mode.kind,
+    routeBusy,
+    routeConversationId,
+    routeTarget,
+    session,
+    surface,
+    walletHydrating,
+    xmtpReady,
+    xmtpSetupError,
+    xmtpSetupPhase,
+    xmtpSignerWallet,
+  ]);
+
   const buildAssistantClientContext = React.useCallback(() => ({
     dir,
     locale,
@@ -599,7 +641,8 @@ export function useChatController({
     />
   ) : null;
   const shouldRenderXmtpSetupState = !isAssistantConversationRoute && (
-    mode.kind === "new"
+    mode.kind === "list"
+    || mode.kind === "new"
     || mode.kind === "target"
     || (mode.kind === "conversation" && !isAssistantConversationId(mode.conversationId))
   ) && !!xmtpThreadSetupState;

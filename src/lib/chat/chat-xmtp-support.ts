@@ -6,6 +6,14 @@ import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import type { StoredSession } from "@/lib/api/session-store";
 import { logger } from "@/lib/logger";
 import { withTimeout } from "@/lib/promise-utils";
+import { resolveXmtpWalletAddress } from "./chat-xmtp-wallets";
+
+export {
+  getSessionWalletAddress,
+  getSessionWalletAddresses,
+  resolveXmtpSignerWallet,
+  resolveXmtpWalletAddress,
+} from "./chat-xmtp-wallets";
 
 const XMTP_APP_VERSION = "pirate-social/1.x";
 const XMTP_CLIENT_TIMEOUT_MS = 15_000;
@@ -245,22 +253,6 @@ function createConnectedWalletSigner(
   };
 }
 
-export function getSessionWalletAddress(session: StoredSession): `0x${string}` | null {
-  const primary = session.profile.primary_wallet_address?.trim().toLowerCase();
-  if (primary?.match(/^0x[a-f0-9]{40}$/)) return primary as `0x${string}`;
-  const attached = session.walletAttachments[0]?.wallet_address?.trim().toLowerCase();
-  return attached?.match(/^0x[a-f0-9]{40}$/) ? (attached as `0x${string}`) : null;
-}
-
-export function resolveXmtpSignerWallet(
-  session: StoredSession,
-  connectedWallets: readonly PirateConnectedEvmWallet[],
-): PirateConnectedEvmWallet | null {
-  const walletAddress = getSessionWalletAddress(session);
-  if (!walletAddress) return null;
-  return connectedWallets.find((wallet) => wallet.address.toLowerCase() === walletAddress) ?? null;
-}
-
 function clientOptions(walletAddress: `0x${string}`) {
   return {
     appVersion: XMTP_APP_VERSION,
@@ -352,7 +344,7 @@ export async function ensureXmtpClient(
   options: { allowRegistration: boolean; cache: XmtpClientCache; signerWallet?: PirateConnectedEvmWallet | null },
 ): Promise<{ client: XmtpClient; module: XmtpModule; walletAddress: `0x${string}` }> {
   const { cache } = options;
-  const walletAddress = getSessionWalletAddress(session);
+  const walletAddress = resolveXmtpWalletAddress(session, options.signerWallet);
   if (!walletAddress) {
     resetXmtpClientCache(cache);
     throw new Error("Connect an Ethereum wallet to use encrypted chat.");

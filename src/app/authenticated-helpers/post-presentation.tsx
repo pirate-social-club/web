@@ -211,6 +211,23 @@ function extractPublishedLabel(enrichment: Record<string, unknown> | null | unde
   });
 }
 
+function normalizeHeadlineForComparison(value: string | null | undefined): string {
+  return String(value ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .replace(/\./gu, "")
+    .replace(/[''""`]/gu, "")
+    .replace(/[^\p{Letter}\p{Number}]+/gu, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function isRedundantLinkPreviewTitle(postTitle: string | null | undefined, previewTitle: string | null | undefined): boolean {
+  const normalizedPostTitle = normalizeHeadlineForComparison(postTitle);
+  const normalizedPreviewTitle = normalizeHeadlineForComparison(previewTitle);
+  return Boolean(normalizedPostTitle && normalizedPreviewTitle && normalizedPostTitle === normalizedPreviewTitle);
+}
+
 export function formatQualifierLabel(qualifierTemplateId: string): string {
   const trimmed = qualifierTemplateId.trim();
   if (!trimmed) return "Qualifier";
@@ -386,7 +403,7 @@ function toSongPlaybackDescriptor(
   if (!isLocked && mediaRef) {
     return {
       key: `public:${post.id}`,
-      title: post.title ?? "song",
+      title: post.song_title ?? post.title ?? "song",
       kind: "source",
       sourcePath: mediaRef,
       requiresAuth: false,
@@ -396,7 +413,7 @@ function toSongPlaybackDescriptor(
   if (hasFullAccess && post.asset) {
     return {
       key: `asset:${post.asset}`,
-      title: post.title ?? "song",
+      title: post.song_title ?? post.title ?? "song",
       kind: "asset",
       communityId: post.community,
       assetId: post.asset,
@@ -406,7 +423,7 @@ function toSongPlaybackDescriptor(
   if (mediaRef) {
     return {
       key: `preview:${post.id}`,
-      title: post.title ?? "song preview",
+      title: post.song_title ?? post.title ?? "song preview",
       kind: "source",
       sourcePath: mediaRef,
       requiresAuth: false,
@@ -632,7 +649,7 @@ export function toCommunityPostContent(
         posterSrc: primaryMedia?.poster_ref ?? undefined,
         priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
         src: assetSourceState?.src ?? primaryMedia?.storage_ref ?? "",
-        title,
+        title: post.song_title ?? title,
       };
     }
     case "link": {
@@ -746,6 +763,9 @@ export function toCommunityPostContent(
         preferOriginalText: opts?.preferOriginalText,
         viewerContentLocale: linkLocale ?? undefined,
       });
+      const previewTitle = localizedLinkTitle.title ?? (typeof localizedLinkEnrichment?.title === "string"
+        ? localizedLinkEnrichment.title
+        : post.link_og_title ?? undefined);
       return {
         type: "link",
         body: resolvedBody || undefined,
@@ -755,9 +775,7 @@ export function toCommunityPostContent(
         linkLabel: post.link_url ?? undefined,
         sourceLabel: formatLinkSourceLabel(post.link_url, post.link_enrichment),
         publishedLabel: extractPublishedLabel(post.link_enrichment),
-        previewTitle: localizedLinkTitle.title ?? (typeof localizedLinkEnrichment?.title === "string"
-          ? localizedLinkEnrichment.title
-          : post.link_og_title ?? undefined),
+        previewTitle: isRedundantLinkPreviewTitle(title, previewTitle) ? undefined : previewTitle,
         previewTitleDir: localizedLinkTitle.dir ?? linkTextPresentation.dir,
         previewTitleLang: localizedLinkTitle.lang ?? linkTextPresentation.lang,
         previewImageSrc: post.link_og_image_url ?? undefined,

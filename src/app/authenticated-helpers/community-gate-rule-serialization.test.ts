@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { serializeIdentityGateDrafts } from "@/app/authenticated-helpers/community-gate-rule-serialization";
 
 describe("serializeIdentityGateDrafts", () => {
-  test("serializes Very palm scan drafts as unique-human gate policy", () => {
+  test("serializes verified-human drafts as Self or Very without proof-of-work", () => {
     expect(serializeIdentityGateDrafts([{
       gateType: "unique_human",
       provider: "very",
@@ -12,11 +12,26 @@ describe("serializeIdentityGateDrafts", () => {
       expression: {
         op: "and",
         children: [{
+          op: "or",
+          children: [
+            { op: "gate", gate: { type: "unique_human", provider: "self" } },
+            { op: "gate", gate: { type: "unique_human", provider: "very" } },
+          ],
+        }],
+      },
+    });
+  });
+
+  test("serializes proof-of-work drafts as standalone ALTCHA gates", () => {
+    expect(serializeIdentityGateDrafts([{
+      gateType: "altcha_pow",
+    }])).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [{
           op: "gate",
-          gate: {
-            type: "unique_human",
-            provider: "very",
-          },
+          gate: { type: "altcha_pow" },
         }],
       },
     });

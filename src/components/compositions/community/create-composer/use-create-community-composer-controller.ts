@@ -26,6 +26,7 @@ import type {
   CreateCommunityComposerProps,
   IdentityGateDraft,
 } from "./create-community-composer.types";
+import { DEFAULT_GATED_GATE_DRAFTS } from "./create-community-composer.types";
 
 const DEFAULT_MEMBERSHIP_MODE: CommunityMembershipMode = "gated";
 
@@ -50,6 +51,8 @@ function isValidGateDraft(draft: IdentityGateDraft): boolean {
 
 function summarizeGateDraftForLog(draft: IdentityGateDraft): Record<string, unknown> {
   switch (draft.gateType) {
+    case "altcha_pow":
+      return { gateType: draft.gateType };
     case "wallet_score":
       return { gateType: draft.gateType, provider: draft.provider, minimumScore: draft.minimumScore };
     case "nationality":
@@ -116,7 +119,11 @@ export function useCreateCommunityComposerController({
   const [activeDatabaseRegion, setActiveDatabaseRegion] =
     React.useState<CommunityDatabaseRegion>(databaseRegion);
   const [activeDescription, setActiveDescription] = React.useState(description ?? "");
-  const [activeGateDrafts, setActiveGateDrafts] = React.useState<IdentityGateDraft[]>(gateDrafts);
+  const [activeGateDrafts, setActiveGateDrafts] = React.useState<IdentityGateDraft[]>(
+    initialMembershipMode === "gated" && gateDrafts.length === 0
+      ? DEFAULT_GATED_GATE_DRAFTS
+      : gateDrafts,
+  );
   const [activeGateMatchMode, setActiveGateMatchMode] = React.useState<CommunityGateMatchMode>(gateMatchMode);
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -356,7 +363,9 @@ export function useCreateCommunityComposerController({
                       ? { gate_type: draft.gateType, required_minimum_age: draft.minimumAge }
                       : draft.gateType === "wallet_score"
                         ? { gate_type: draft.gateType, minimum_score: draft.minimumScore }
-                        : { gate_type: draft.gateType, required_value: draft.requiredValue },
+                        : draft.gateType === "altcha_pow"
+                          ? { gate_type: draft.gateType }
+                          : { gate_type: draft.gateType, required_value: draft.requiredValue },
             { audience: "admin" },
           ),
         )

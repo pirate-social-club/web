@@ -86,12 +86,28 @@ function upsertGateDraft(
   drafts: IdentityGateDraft[],
   nextDraft: IdentityGateDraft,
 ): IdentityGateDraft[] {
+  const powExclusiveGateTypes: IdentityGateDraft["gateType"][] = [
+    "unique_human",
+    "nationality",
+    "minimum_age",
+    "wallet_score",
+    "gender",
+  ];
   const existing = drafts.find((draft) => draft.gateType === nextDraft.gateType);
   const preserved = existing?.gateRuleId && !nextDraft.gateRuleId
     ? { ...nextDraft, gateRuleId: existing.gateRuleId }
     : nextDraft;
+  if (nextDraft.gateType === "altcha_pow") {
+    return [
+      ...drafts.filter((draft) => !powExclusiveGateTypes.includes(draft.gateType) && draft.gateType !== "altcha_pow"),
+      preserved,
+    ];
+  }
+  const withoutConflicts = powExclusiveGateTypes.includes(nextDraft.gateType)
+    ? drafts.filter((draft) => draft.gateType !== "altcha_pow")
+    : drafts;
   return [
-    ...drafts.filter((draft) => draft.gateType !== nextDraft.gateType),
+    ...withoutConflicts.filter((draft) => draft.gateType !== nextDraft.gateType),
     preserved,
   ];
 }
@@ -183,6 +199,7 @@ export function CommunityGatesEditorPage({
   const minimumAgeGate = gateDrafts.find((draft) => draft.gateType === "minimum_age");
   const genderGate = gateDrafts.find((draft) => draft.gateType === "gender");
   const walletScoreGate = gateDrafts.find((draft) => draft.gateType === "wallet_score");
+  const altchaPowGate = gateDrafts.find((draft) => draft.gateType === "altcha_pow");
   const erc721Gate = gateDrafts.find((draft) => draft.gateType === "erc721_holding");
   const courtyardInventoryGate = gateDrafts.find((draft) => draft.gateType === "erc721_inventory_match");
   const creatorAgeOver18Verified = creatorVerificationState?.ageOver18Verified ?? true;
@@ -220,6 +237,8 @@ export function CommunityGatesEditorPage({
                   onMembershipModeChange?.(mode);
                   if (mode === "request") {
                     onGateDraftsChange?.([]);
+                  } else if (gateDrafts.length === 0) {
+                    onGateDraftsChange?.([{ gateType: "altcha_pow" }]);
                   }
                 }}
               />
@@ -248,94 +267,20 @@ export function CommunityGatesEditorPage({
                     </div>
                   ) : null}
 
-                  <FormSectionHeading title={mc.walletGateChecksTitle} />
-
-                  <CheckboxCard
-                    className={walletScoreGate ? "border-border bg-muted/30" : undefined}
-                    checked={Boolean(walletScoreGate)}
-                    title={mc.walletScoreTitle}
-                    onCheckedChange={(checked) => onGateDraftsChange?.(
-                      checked
-                        ? upsertGateDraft(gateDrafts, {
-                          gateType: "wallet_score",
-                          provider: "passport",
-                          minimumScore: 20,
-                        })
-                        : removeGateDraft(gateDrafts, "wallet_score"),
-                    )}
-                  />
-
-                  {walletScoreGate ? (
-                    <div className="space-y-2 ps-4">
-                      <FormFieldLabel label={mc.walletScoreLabel} />
-                      <NumericStepper
-                        max={100}
-                        min={0}
-                        value={walletScoreGate.minimumScore}
-                        onChange={(next) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
-                          gateType: "wallet_score",
-                          provider: "passport",
-                          minimumScore: next,
-                          gateRuleId: walletScoreGate.gateRuleId,
-                        }))}
-                      />
-                      {(!Number.isFinite(walletScoreGate.minimumScore) || walletScoreGate.minimumScore < 0 || walletScoreGate.minimumScore > 100) ? (
-                        <FormNote tone="warning">{mc.walletScoreInvalid}</FormNote>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <CheckboxCard
-                    className={erc721Gate ? "border-border bg-muted/30" : undefined}
-                    checked={Boolean(erc721Gate)}
-                    title={mc.erc721Title}
-                    onCheckedChange={(checked) => onGateDraftsChange?.(
-                      checked
-                        ? upsertGateDraft(gateDrafts, {
-                          gateType: "erc721_holding",
-                          chainNamespace: "eip155:1",
-                          contractAddress: "",
-                        })
-                        : removeGateDraft(gateDrafts, "erc721_holding"),
-                    )}
-                  />
-
-                  {erc721Gate ? (
-                    <div className="space-y-2 ps-4">
-                      <FormFieldLabel label={mc.collectionContractLabel} />
-                      <Input
-                        className="h-12 rounded-[var(--radius-lg)]"
-                        onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
-                          gateType: "erc721_holding",
-                          chainNamespace: "eip155:1",
-                          contractAddress: event.target.value,
-                        }))}
-                        placeholder={mc.collectionContractPlaceholder}
-                        value={erc721Gate.contractAddress}
-                      />
-                      {erc721Gate.contractAddress.trim().length > 0 && !isAddress(erc721Gate.contractAddress.trim()) ? (
-                        <FormNote tone="warning">{mc.invalidContractAddress}</FormNote>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <CheckboxCard
-                    className={courtyardInventoryGate ? "border-border bg-muted/30" : undefined}
-                    checked={Boolean(courtyardInventoryGate)}
-                    disabled={!COURTYARD_CATALOG_AUTHORING_ENABLED && !courtyardInventoryGate}
-                    title={mc.courtyardTitle}
-                    onCheckedChange={(checked) => onGateDraftsChange?.(
-                      checked
-                        ? upsertGateDraft(gateDrafts, createDefaultCourtyardInventoryDraft())
-                        : removeGateDraft(gateDrafts, "erc721_inventory_match"),
-                    )}
-                  />
-
-                  {!COURTYARD_CATALOG_AUTHORING_ENABLED && courtyardInventoryGate ? (
-                    <FormNote tone="warning">{mc.courtyardCatalogUnavailable}</FormNote>
-                  ) : null}
-
                   <FormSectionHeading title={mc.biometricGateChecksTitle} />
+
+                  <CheckboxCard
+                    className={altchaPowGate ? "border-border bg-muted/30" : undefined}
+                    checked={Boolean(altchaPowGate)}
+                    title={mc.altchaPowTitle}
+                    onCheckedChange={(checked) => onGateDraftsChange?.(
+                      checked
+                        ? upsertGateDraft(gateDrafts, {
+                          gateType: "altcha_pow",
+                        })
+                        : removeGateDraft(gateDrafts, "altcha_pow"),
+                    )}
+                  />
 
                   <CheckboxCard
                     className={uniqueHumanGate ? "border-border bg-muted/30" : undefined}
@@ -458,6 +403,93 @@ export function CommunityGatesEditorPage({
                         }))}
                       />
                     </div>
+                  ) : null}
+
+                  <FormSectionHeading title={mc.walletGateChecksTitle} />
+
+                  <CheckboxCard
+                    className={walletScoreGate ? "border-border bg-muted/30" : undefined}
+                    checked={Boolean(walletScoreGate)}
+                    title={mc.walletScoreTitle}
+                    onCheckedChange={(checked) => onGateDraftsChange?.(
+                      checked
+                        ? upsertGateDraft(gateDrafts, {
+                          gateType: "wallet_score",
+                          provider: "passport",
+                          minimumScore: 20,
+                        })
+                        : removeGateDraft(gateDrafts, "wallet_score"),
+                    )}
+                  />
+
+                  {walletScoreGate ? (
+                    <div className="space-y-2 ps-4">
+                      <FormFieldLabel label={mc.walletScoreLabel} />
+                      <NumericStepper
+                        max={100}
+                        min={0}
+                        value={walletScoreGate.minimumScore}
+                        onChange={(next) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                          gateType: "wallet_score",
+                          provider: "passport",
+                          minimumScore: next,
+                          gateRuleId: walletScoreGate.gateRuleId,
+                        }))}
+                      />
+                      {(!Number.isFinite(walletScoreGate.minimumScore) || walletScoreGate.minimumScore < 0 || walletScoreGate.minimumScore > 100) ? (
+                        <FormNote tone="warning">{mc.walletScoreInvalid}</FormNote>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <CheckboxCard
+                    className={erc721Gate ? "border-border bg-muted/30" : undefined}
+                    checked={Boolean(erc721Gate)}
+                    title={mc.erc721Title}
+                    onCheckedChange={(checked) => onGateDraftsChange?.(
+                      checked
+                        ? upsertGateDraft(gateDrafts, {
+                          gateType: "erc721_holding",
+                          chainNamespace: "eip155:1",
+                          contractAddress: "",
+                        })
+                        : removeGateDraft(gateDrafts, "erc721_holding"),
+                    )}
+                  />
+
+                  {erc721Gate ? (
+                    <div className="space-y-2 ps-4">
+                      <FormFieldLabel label={mc.collectionContractLabel} />
+                      <Input
+                        className="h-12 rounded-[var(--radius-lg)]"
+                        onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                          gateType: "erc721_holding",
+                          chainNamespace: "eip155:1",
+                          contractAddress: event.target.value,
+                        }))}
+                        placeholder={mc.collectionContractPlaceholder}
+                        value={erc721Gate.contractAddress}
+                      />
+                      {erc721Gate.contractAddress.trim().length > 0 && !isAddress(erc721Gate.contractAddress.trim()) ? (
+                        <FormNote tone="warning">{mc.invalidContractAddress}</FormNote>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <CheckboxCard
+                    className={courtyardInventoryGate ? "border-border bg-muted/30" : undefined}
+                    checked={Boolean(courtyardInventoryGate)}
+                    disabled={!COURTYARD_CATALOG_AUTHORING_ENABLED && !courtyardInventoryGate}
+                    title={mc.courtyardTitle}
+                    onCheckedChange={(checked) => onGateDraftsChange?.(
+                      checked
+                        ? upsertGateDraft(gateDrafts, createDefaultCourtyardInventoryDraft())
+                        : removeGateDraft(gateDrafts, "erc721_inventory_match"),
+                    )}
+                  />
+
+                  {!COURTYARD_CATALOG_AUTHORING_ENABLED && courtyardInventoryGate ? (
+                    <FormNote tone="warning">{mc.courtyardCatalogUnavailable}</FormNote>
                   ) : null}
                 </div>
               ) : null}

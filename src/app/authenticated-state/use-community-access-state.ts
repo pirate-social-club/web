@@ -3,7 +3,10 @@
 import * as React from "react";
 import type { Community as ApiCommunity } from "@pirate/api-contracts";
 
-import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
+import {
+  DEFAULT_GATED_GATE_DRAFTS,
+  type IdentityGateDraft,
+} from "@/components/compositions/community/create-composer/create-community-composer.types";
 import { useApi } from "@/lib/api";
 import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
@@ -32,11 +35,15 @@ export function useCommunityAccessState({
       return;
     }
 
-    setMembershipMode(community.membership_mode === "request" ? "request" : "gated");
+    const nextMembershipMode = community.membership_mode === "request" ? "request" : "gated";
+    const nextGateDrafts = getCommunityGateDrafts(community);
+    setMembershipMode(nextMembershipMode);
     setDefaultAgeGatePolicy(community.default_age_gate_policy ?? "none");
     setAllowAnonymousIdentity(community.allow_anonymous_identity);
     setAnonymousIdentityScope(community.anonymous_identity_scope ?? "community_stable");
-    setGateDrafts(getCommunityGateDrafts(community));
+    setGateDrafts(nextMembershipMode === "gated" && nextGateDrafts.length === 0
+      ? DEFAULT_GATED_GATE_DRAFTS
+      : nextGateDrafts);
     setGateMatchMode(getGatePolicyMatchMode(community.gate_policy));
   }, [community]);
 

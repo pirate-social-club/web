@@ -151,6 +151,22 @@ export const CommunityMembershipScope: Story = {
   ),
 }
 
+export const AltchaPowGate: Story = {
+  name: "ALTCHA PoW — no config",
+  render: () => (
+    <InteractiveBuilder
+      scope="membership"
+      initialExpression={{
+        op: "or",
+        children: [
+          { op: "gate", gate: { type: "unique_human", provider: "very" } },
+          { op: "gate", gate: { type: "altcha_pow" } },
+        ],
+      }}
+    />
+  ),
+}
+
 export const EmptyStart: Story = {
   name: "Empty — start building",
   render: () => (

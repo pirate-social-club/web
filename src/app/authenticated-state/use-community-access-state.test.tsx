@@ -104,6 +104,19 @@ describe("useCommunityAccessState", () => {
     expect(result.current.gateDrafts[0]?.gateType).toBe("nationality");
   });
 
+  test("defaults gated communities without gates to proof-of-work", async () => {
+    installCommunityApiMocks();
+    const { result } = renderAccessHook({
+      community: createCommunity({
+        gate_policy: null,
+      }),
+    });
+
+    await waitFor(() => expect(result.current.membershipMode).toBe("gated"));
+
+    expect(result.current.gateDrafts).toEqual([{ gateType: "altcha_pow" }]);
+  });
+
   test("initializes any match mode from an OR gate policy", async () => {
     installCommunityApiMocks();
     const { result } = renderAccessHook({
@@ -123,6 +136,32 @@ describe("useCommunityAccessState", () => {
 
     await waitFor(() => expect(result.current.gateDrafts).toHaveLength(2));
 
+    expect(result.current.gateMatchMode).toBe("any");
+  });
+
+  test("drops legacy proof-of-work fallback when stronger identity gates are present", async () => {
+    installCommunityApiMocks();
+    const { result } = renderAccessHook({
+      community: createCommunity({
+        gate_policy: {
+          version: 1,
+          expression: {
+            op: "or",
+            children: [
+              { op: "gate", gate: { type: "unique_human", provider: "very" } },
+              { op: "gate", gate: { type: "altcha_pow" } },
+            ],
+          },
+        },
+      }),
+    });
+
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(1));
+
+    expect(result.current.gateDrafts[0]).toEqual({
+      gateType: "unique_human",
+      provider: "very",
+    });
     expect(result.current.gateMatchMode).toBe("any");
   });
 
@@ -348,8 +387,41 @@ describe("useCommunityAccessState", () => {
             gate: { type: "wallet_score", provider: "passport", minimum_score: 10 },
           },
           {
+            op: "or",
+            children: [
+              { op: "gate", gate: { type: "unique_human", provider: "self" } },
+              { op: "gate", gate: { type: "unique_human", provider: "very" } },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
+  test("serializes proof-of-work gate policy when selected", async () => {
+    const calls = installCommunityApiMocks();
+    const save = createSaveCommunityMock();
+    const { result } = renderAccessHook({ saveCommunity: save.saveCommunity });
+
+    await waitFor(() => expect(result.current.membershipMode).toBe("gated"));
+
+    act(() => {
+      result.current.setGateDrafts([{ gateType: "altcha_pow" }]);
+    });
+    act(() => {
+      result.current.handleSaveGates();
+    });
+
+    await waitFor(() => expect(calls.updateGates).toHaveLength(1));
+
+    expect(calls.updateGates[0]?.body.gate_policy).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [
+          {
             op: "gate",
-            gate: { type: "unique_human", provider: "very" },
+            gate: { type: "altcha_pow" },
           },
         ],
       },

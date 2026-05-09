@@ -975,6 +975,7 @@
       "biometricGateChecksTitle": "Identity gates",
       "walletGateChecksTitle": "Wallet gates",
       "uniqueHumanTitle": "Palm scan (Very)",
+      "altchaPowTitle": "Proof-of-work check",
       "nationalityDescription": "Require nationality verification through Self.",
       "nationalityTitle": "Nationality verification (Self.xyz)",
       "allowedNationalityLabel": "Allowed nationalities",

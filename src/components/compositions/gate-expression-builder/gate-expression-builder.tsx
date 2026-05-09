@@ -421,6 +421,8 @@ function makeDefaultGate(scope: GateExpressionScope, forceType?: GateAtom["type"
   switch (type) {
     case "unique_human":
       return { type: "unique_human", provider: "very" }
+    case "altcha_pow":
+      return { type: "altcha_pow" }
     case "minimum_age":
       return { type: "minimum_age", provider: "self", minimum_age: 18 }
     case "wallet_score":

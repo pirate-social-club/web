@@ -31,6 +31,10 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+const proofOfWorkGateDrafts: IdentityGateDraft[] = [
+  { gateType: "altcha_pow" },
+];
+
 function InteractiveCommunityGatesEditorPage({
   allowAnonymousIdentity: initialAllowAnonymousIdentity,
   anonymousIdentityScope: initialAnonymousIdentityScope,
@@ -94,7 +98,7 @@ export const Default: Story = {
       allowAnonymousIdentity
       anonymousIdentityScope="community_stable"
       defaultAgeGatePolicy="18_plus"
-      gateDrafts={[]}
+      gateDrafts={proofOfWorkGateDrafts}
       membershipMode="gated"
       readAccessMode="public"
     />
@@ -166,6 +170,19 @@ export const PalmScanGate: Story = {
       gateDrafts={[
         { gateType: "unique_human", provider: "very" },
       ]}
+      membershipMode="gated"
+      readAccessMode="public"
+    />
+  ),
+};
+
+export const ProofOfWorkGate: Story = {
+  render: () => (
+    <InteractiveCommunityGatesEditorPage
+      allowAnonymousIdentity
+      anonymousIdentityScope="community_stable"
+      defaultAgeGatePolicy="none"
+      gateDrafts={proofOfWorkGateDrafts}
       membershipMode="gated"
       readAccessMode="public"
     />

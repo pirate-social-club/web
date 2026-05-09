@@ -25,6 +25,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "withScore": "Passport Score {minimumScore}+",
           "withoutScore": "Passport Score"
         },
+        "altchaPow": "Proof-of-work check",
         "erc721Holding": {
           "withLabel": "Ethereum NFT from {label}",
           "withoutLabel": "Ethereum NFT"
@@ -101,7 +102,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "nationality": "nationality",
         "gender": "document sex marker",
         "uniqueHuman": "unique human status",
-        "walletScore": "Passport score"
+        "walletScore": "Passport score",
+        "altchaPow": "proof-of-work status"
       },
       "gateFailure": {
         "nationalityMismatch": "Your verified ID does not match this community's requirement.",
@@ -1093,6 +1095,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "biometricGateChecksTitle": "Identity gates",
           "walletGateChecksTitle": "Wallet gates",
           "uniqueHumanTitle": "Palm scan (Very)",
+          "altchaPowTitle": "Proof-of-work check",
           "nationalityDescription": "Require nationality verification through Self.",
           "nationalityTitle": "Nationality verification (Self.xyz)",
           "allowedNationalityLabel": "Allowed nationalities",
@@ -1636,6 +1639,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "withScore": "يتطلب درجة Passport {minimumScore}+",
           "withoutScore": "يتطلب درجة Passport"
         },
+        "altchaPow": "يتطلب فحص إثبات العمل",
         "erc721Holding": {
           "withLabel": "يتطلب امتلاك NFT على إيثريوم من {label}",
           "withoutLabel": "يتطلب امتلاك NFT على إيثريوم"
@@ -1712,7 +1716,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "nationality": "الجنسية",
         "gender": "علامة الجنس في وثيقة الهوية",
         "uniqueHuman": "إثبات أنك إنسان",
-        "walletScore": "درجة Passport"
+        "walletScore": "درجة Passport",
+        "altchaPow": "حالة إثبات العمل"
       },
       "gateFailure": {
         "nationalityMismatch": "لا يطابق فحص هويتك متطلبات هذا المجتمع.",
@@ -2704,6 +2709,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "biometricGateChecksTitle": "بوابات الهوية",
           "walletGateChecksTitle": "بوابات المحفظة",
           "uniqueHumanTitle": "Palm scan (Very)",
+          "altchaPowTitle": "فحص إثبات العمل",
           "nationalityDescription": "اشترط التحقق من الجنسية عبر Self.",
           "nationalityTitle": "التحقق من الجنسية (Self.xyz)",
           "allowedNationalityLabel": "الجنسيات المسموح بها",
@@ -3247,6 +3253,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "withScore": "需要 Passport 分数 {minimumScore}+",
           "withoutScore": "需要 Passport 分数"
         },
+        "altchaPow": "需要工作量证明检查",
         "erc721Holding": {
           "withLabel": "需要持有来自 {label} 的以太坊 NFT",
           "withoutLabel": "需要持有以太坊 NFT"
@@ -3323,7 +3330,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "nationality": "国籍",
         "gender": "证件性别标记",
         "uniqueHuman": "真人状态",
-        "walletScore": "Passport 分数"
+        "walletScore": "Passport 分数",
+        "altchaPow": "工作量证明状态"
       },
       "gateFailure": {
         "nationalityMismatch": "你的身份验证结果不符合该社区要求。",
@@ -4315,6 +4323,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "biometricGateChecksTitle": "身份门槛",
           "walletGateChecksTitle": "钱包门槛",
           "uniqueHumanTitle": "Palm scan (Very)",
+          "altchaPowTitle": "工作量证明检查",
           "nationalityDescription": "要求通过 Self 验证国籍。",
           "nationalityTitle": "国籍验证（Self.xyz）",
           "allowedNationalityLabel": "允许的国籍",

@@ -223,12 +223,26 @@ function extractCourtyardInventoryDraft(config: unknown): Omit<Extract<IdentityG
 }
 
 export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDraft[] {
-  return flattenGatePolicyAtoms(community.gate_policy ?? null)
+  const drafts = flattenGatePolicyAtoms(community.gate_policy ?? null)
     .map((atom) => getCommunityGateDraft(atom))
     .filter((draft): draft is IdentityGateDraft => draft != null);
+  const hasStrongerIdentityGate = drafts.some((draft) =>
+    draft.gateType === "unique_human"
+    || draft.gateType === "nationality"
+    || draft.gateType === "minimum_age"
+    || draft.gateType === "wallet_score"
+    || draft.gateType === "gender"
+  );
+  return hasStrongerIdentityGate
+    ? drafts.filter((draft) => draft.gateType !== "altcha_pow")
+    : drafts;
 }
 
 function getCommunityGateDraft(atom: ReturnType<typeof flattenGatePolicyAtoms>[number]): IdentityGateDraft | null {
+  if (atom.type === "altcha_pow") {
+    return { gateType: "altcha_pow" };
+  }
+
   if (atom.type === "unique_human" && atom.provider === "very") {
     return { gateType: "unique_human", provider: "very" };
   }

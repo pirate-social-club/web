@@ -20,6 +20,10 @@ export type CommunityDatabaseRegion =
 
 export type IdentityGateDraft =
   | {
+    gateType: "altcha_pow";
+    gateRuleId?: string;
+  }
+  | {
     gateType: "unique_human";
     provider: "very";
     gateRuleId?: string;
@@ -75,6 +79,8 @@ export type IdentityGateDraft =
     };
     gateRuleId?: string;
   };
+
+export const DEFAULT_GATED_GATE_DRAFTS: IdentityGateDraft[] = [{ gateType: "altcha_pow" }];
 
 export const DATABASE_REGION_OPTIONS: CommunityDatabaseRegion[] = [
   "aws-us-east-1",

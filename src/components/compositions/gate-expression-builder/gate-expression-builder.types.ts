@@ -14,6 +14,7 @@ export type GateExpression =
 
 export type GateAtom =
   | { type: "unique_human"; provider: "very" | "self" }
+  | { type: "altcha_pow" }
   | { type: "minimum_age"; provider: "self"; minimum_age: number }
   | { type: "nationality"; provider: "self"; allowed: string[] }
   | { type: "gender"; provider: "self"; allowed: Array<"M" | "F"> }
@@ -38,6 +39,7 @@ export type GateAtomConfig = {
 }
 
 export const GATE_ATOM_REGISTRY: GateAtomConfig[] = [
+  { type: "altcha_pow", label: "Proof-of-work check", description: "ALTCHA computational proof", scopes: ["membership", "viewer", "posting"], category: "identity", requiresConfig: false },
   { type: "unique_human", label: "Verified human", description: "Unique human verification", scopes: ["membership", "viewer", "posting", "handle_claim", "handle_renewal", "auction_bid"], category: "identity", requiresConfig: false },
   { type: "minimum_age", label: "Minimum age", description: "Self-verified age requirement", scopes: ["membership", "viewer", "posting", "handle_claim", "handle_renewal", "auction_bid"], category: "identity", requiresConfig: true },
   { type: "nationality", label: "Nationality", description: "Self-verified nationality requirement", scopes: ["membership", "viewer", "posting", "handle_claim", "handle_renewal", "auction_bid"], category: "identity", requiresConfig: true },

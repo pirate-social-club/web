@@ -217,6 +217,7 @@ export function UploadField({
   multiple = false,
   onChange,
   placeholderLabel,
+  previewUrl,
   selectedLabel,
   variant = "default",
 }: {
@@ -229,6 +230,7 @@ export function UploadField({
   multiple?: boolean;
   onChange?: (files: FileList | null) => void;
   placeholderLabel?: string;
+  previewUrl?: string;
   selectedLabel?: string;
   variant?: "default" | "artwork";
 }) {
@@ -256,7 +258,9 @@ export function UploadField({
         {isArtwork ? (
           <>
             <div className="grid size-24 shrink-0 place-items-center rounded-[var(--radius-lg)] border border-border-soft bg-muted">
-              {selectedLabel ? (
+              {previewUrl ? (
+                <img alt="" className="size-full rounded-[var(--radius-lg)] object-cover" src={previewUrl} />
+              ) : selectedLabel ? (
                 <span className="px-3 text-center text-base font-semibold text-foreground">
                   {copy.upload.cover}
                 </span>

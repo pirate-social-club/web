@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import {
   Select,
   SelectContent,
@@ -24,6 +26,23 @@ import type { PostComposerController } from "./use-post-composer-controller";
 
 const acceptedImageMimeTypes = "image/jpeg,image/png,image/webp,image/gif,image/avif";
 
+function useObjectUrl(file: File | null | undefined) {
+  const [objectUrl, setObjectUrl] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (!file) {
+      setObjectUrl(undefined);
+      return;
+    }
+
+    const nextUrl = URL.createObjectURL(file);
+    setObjectUrl(nextUrl);
+    return () => URL.revokeObjectURL(nextUrl);
+  }, [file]);
+
+  return objectUrl;
+}
+
 export function PostComposerDetailsStep({
   controller,
 }: {
@@ -38,6 +57,7 @@ export function PostComposerDetailsStep({
     song,
     tabs,
   } = controller;
+  const coverPreviewUrl = useObjectUrl(song.state.coverUpload);
 
   if (tabs.activeTab === "video") {
     return (
@@ -184,6 +204,7 @@ export function PostComposerDetailsStep({
               coverUpload: files?.[0] ?? null,
             }))
           }
+          previewUrl={coverPreviewUrl}
           selectedLabel={song.state.coverUpload?.name ?? song.state.coverLabel}
           variant="artwork"
         />

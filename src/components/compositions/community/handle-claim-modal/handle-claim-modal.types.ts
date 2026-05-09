@@ -37,6 +37,7 @@ export interface HandleClaimModalProps {
   onOpenChange: (open: boolean) => void;
   communityName: string;
   communityHandle: string;
+  communityRouteLabel?: string | null;
   phase: HandleClaimPhase;
   searchValue: string;
   onSearchChange: (value: string) => void;

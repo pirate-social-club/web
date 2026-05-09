@@ -342,3 +342,13 @@ export function normalizeCountryCode(code: string | null | undefined): { alpha2:
   }
   return null;
 }
+
+export function countryCodeToFlag(code: string | null | undefined): string {
+  if (!code) return "";
+  const normalized = code.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(normalized)) return "";
+  return String.fromCodePoint(
+    0x1F1E6 + normalized.charCodeAt(0) - 65,
+    0x1F1E6 + normalized.charCodeAt(1) - 65,
+  );
+}

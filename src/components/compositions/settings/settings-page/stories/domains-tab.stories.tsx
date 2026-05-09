@@ -2,6 +2,7 @@ import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { generateRedditFallbackHandle } from "@/lib/reddit-handle-suggestion";
+import { generateSignupStyleHandle } from "@/lib/generated-handle-suggestion";
 
 import { DomainsTab } from "../panels/settings-page-domains-tab";
 import type { DomainsTabProps, DomainsTabPhase } from "../panels/settings-page-domains-tab";
@@ -11,7 +12,7 @@ const base: DomainsTabProps = {
   currentHandle: "suspicious-code-7234.pirate",
   handleTier: "generated",
   redditImportDone: false,
-  phase: "options",
+  phase: "buy_name",
   redditVerification: {
     usernameValue: "",
     verificationState: "not_started",
@@ -142,14 +143,18 @@ function quoteForLabel(rawLabel: string): HandleUpgradeQuoteResponse {
 
 function Wrapper({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto", padding: "2rem 1rem" }}>
-      {children}
+    <div style={{ minHeight: "100vh", width: "100%", background: "var(--background)" }}>
+      <div style={{ boxSizing: "border-box", width: "100%", maxWidth: 1024, margin: "0 auto", padding: "2rem 1.5rem" }}>
+        {children}
+      </div>
     </div>
   );
 }
 
 function InteractiveStory(props: DomainsTabProps) {
-  const [phase, setPhase] = React.useState<DomainsTabPhase>(props.phase ?? "options");
+  const [phase, setPhase] = React.useState<DomainsTabPhase>(
+    props.phase ?? "buy_name",
+  );
   const [username, setUsername] = React.useState(props.redditVerification.usernameValue);
   const [handle, setHandle] = React.useState(props.generatedHandle ?? "");
   const [buyNameValue, setBuyNameValue] = React.useState(props.buyNameValue ?? "");
@@ -228,8 +233,23 @@ function InteractiveStory(props: DomainsTabProps) {
       onImportKarmaNext={() => {}}
       onImportKarmaSkip={() => setPhase("options")}
       onChooseNameContinue={() => {}}
-      onChooseNameBack={() => setPhase("import_karma")}
+      onChooseNameBack={() => setPhase("options")}
       onBuyNameChange={handleBuyNameChange}
+      onBuyNameGenerate={() => {
+        const seeds = [0.45, 0.08, 0.7234, 0.88, 0.91, 0.2718, 0.12, 0.19, 0.618];
+        let offset = 0;
+        const random = () => {
+          const seed = seeds[(generateCountRef.current + offset) % seeds.length] ?? 0.5;
+          offset += 1;
+          return seed;
+        };
+        generateCountRef.current += 1;
+        const nextHandle = generateSignupStyleHandle(random);
+        setHandle(nextHandle);
+        setBuyNameValue(nextHandle);
+        setPaidQuoteState(null);
+        setClaimedHandle(null);
+      }}
       onBuyNameClaim={handleBuyNameClaim}
       onBuyNameQuote={handleBuyNameQuote}
     />
@@ -239,6 +259,9 @@ function InteractiveStory(props: DomainsTabProps) {
 const meta = {
   title: "Compositions/Settings/DomainsTab",
   component: DomainsTab,
+  parameters: {
+    layout: "fullscreen",
+  },
   decorators: [
     (Story: () => React.ReactNode) => (
       <Wrapper>
@@ -253,172 +276,40 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  name: "Options / Default",
+  name: "Buy Name / Default",
   render: () => <InteractiveStory {...base} />,
 };
 
-export const AlreadyImported: Story = {
-  name: "Options / Already Imported",
+export const FreeRenameOptions: Story = {
+  name: "Free Rename / Unified Form",
   render: () => (
     <InteractiveStory
       {...base}
-      currentHandle="technohippie.pirate"
-      handleTier="standard"
-      redditImportDone
+      cleanupRenameAvailable
+      phase="buy_name"
+      generatedHandle="suspicious-code-7234"
+      buyNameValue="suspicious-code-7234"
+      paidQuote={paidQuote({
+        label: "suspicious-code-7234",
+        priceCents: 500,
+        pricingTier: "base",
+        tier: "standard",
+      })}
     />
   ),
 };
 
-export const ImportEmpty: Story = {
-  name: "Import Reddit / Empty",
+export const FreeRenameChooseName: Story = {
+  name: "Choose Name / Free Rename",
   render: () => (
     <InteractiveStory
       {...base}
-      phase="import_karma"
-    />
-  ),
-};
-
-export const ImportUsernameEntered: Story = {
-  name: "Import Reddit / Username Entered",
-  render: () => (
-    <InteractiveStory
-      {...base}
-      phase="import_karma"
-      redditVerification={{
-        usernameValue: "technohippie",
-        verificationState: "not_started",
-      }}
-    />
-  ),
-};
-
-export const ImportCodeReady: Story = {
-  name: "Import Reddit / Code Ready",
-  render: () => (
-    <InteractiveStory
-      {...base}
-      phase="import_karma"
-      redditVerification={{
-        usernameValue: "technohippie",
-        verificationState: "code_ready",
-        verificationHint: "pirate-verify=a3f7c9e2",
-        codePlacementSurface: "profile",
-      }}
-    />
-  ),
-};
-
-export const ImportChecking: Story = {
-  name: "Import Reddit / Checking",
-  render: () => (
-    <InteractiveStory
-      {...base}
-      phase="import_karma"
-      redditVerification={{
-        usernameValue: "technohippie",
-        verificationState: "checking",
-        verificationHint: "pirate-verify=a3f7c9e2",
-        codePlacementSurface: "profile",
-      }}
-    />
-  ),
-};
-
-export const ImportImporting: Story = {
-  name: "Import Reddit / Importing",
-  render: () => (
-    <InteractiveStory
-      {...base}
-      phase="import_karma"
-      redditVerification={{
-        usernameValue: "technohippie",
-        verifiedUsername: "technohippie",
-        verificationState: "verified",
-      }}
-      importJob={{
-        status: "running",
-      }}
-    />
-  ),
-};
-
-export const ImportDoneChooseName: Story = {
-  name: "Import Reddit / Karma Imported / Choose Name",
-  render: () => (
-    <InteractiveStory
-      {...base}
+      cleanupRenameAvailable
       phase="choose_name"
-      generatedHandle="technohippie-223764"
-      redditVerification={{
-        usernameValue: "technohippie",
-        verifiedUsername: "technohippie",
-        verificationState: "verified",
-      }}
-      importJob={{
-        status: "succeeded",
-      }}
-      redditImportSummary={{
-        redditUsername: "technohippie",
-        importedRedditScore: 42000,
-        coverageNote: null,
-      }}
-    />
-  ),
-};
-
-export const ImportDoneNoArchiveData: Story = {
-  name: "Import Reddit / No Archive Data",
-  render: () => (
-    <InteractiveStory
-      {...base}
-      phase="choose_name"
-      generatedHandle="quietreader-223764"
-      redditVerification={{
-        usernameValue: "quietreader",
-        verifiedUsername: "quietreader",
-        verificationState: "verified",
-      }}
-      importJob={{
-        status: "succeeded",
-      }}
-      redditImportSummary={{
-        redditUsername: "quietreader",
-        importedRedditScore: null,
-        coverageNote: null,
-      }}
-    />
-  ),
-};
-
-export const ImportVerificationFailed: Story = {
-  name: "Import Reddit / Verification Failed",
-  render: () => (
-    <InteractiveStory
-      {...base}
-      phase="import_karma"
-      redditVerification={{
-        usernameValue: "technohippie",
-        verificationState: "failed",
-        errorTitle: "Verification code not found",
-      }}
-    />
-  ),
-};
-
-export const ImportRateLimited: Story = {
-  name: "Import Reddit / Rate Limited",
-  render: () => (
-    <InteractiveStory
-      {...base}
-      phase="import_karma"
-      phaseError="Too many verification checks. Wait a minute before trying again."
-      redditVerification={{
-        usernameValue: "technohippie",
-        verificationState: "code_ready",
-        verificationHint: "pirate-verification=a3f7c9e2",
-        codePlacementSurface: "profile",
-        lastCheckedAt: new Date().toISOString(),
+      generatedHandle="captain"
+      handleSuggestion={{
+        suggestedLabel: "captain",
+        availability: "available",
       }}
     />
   ),
@@ -534,63 +425,12 @@ export const BuyNameClaimed: Story = {
   ),
 };
 
-export const MobileOptions: Story = {
-  name: "Mobile / Options",
+export const MobileDefault: Story = {
+  name: "Mobile / Default",
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
   render: () => <InteractiveStory {...base} />,
-};
-
-export const MobileImportCodeReady: Story = {
-  name: "Mobile / Code Ready",
-  parameters: {
-    viewport: { defaultViewport: "mobile1" },
-  },
-  render: () => (
-    <InteractiveStory
-      {...base}
-      phase="import_karma"
-      redditVerification={{
-        usernameValue: "technohippie",
-        verificationState: "code_ready",
-        verificationHint: "pirate-verify=a3f7c9e2",
-        codePlacementSurface: "profile",
-      }}
-    />
-  ),
-};
-
-export const MobileChooseName: Story = {
-  name: "Mobile / Choose Name",
-  parameters: {
-    viewport: { defaultViewport: "mobile1" },
-  },
-  render: () => (
-    <InteractiveStory
-      {...base}
-      phase="choose_name"
-      generatedHandle="technohippie-223764"
-      handleSuggestion={{
-        suggestedLabel: "technohippie",
-        source: "verified_reddit_username",
-        availability: "available",
-      }}
-      redditVerification={{
-        usernameValue: "technohippie",
-        verifiedUsername: "technohippie",
-        verificationState: "verified",
-      }}
-      importJob={{
-        status: "succeeded",
-      }}
-      redditImportSummary={{
-        redditUsername: "technohippie",
-        importedRedditScore: 42000,
-        coverageNote: null,
-      }}
-    />
-  ),
 };
 
 export const MobileBuyNameFirstNameQuote: Story = {

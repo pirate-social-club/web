@@ -234,6 +234,50 @@ describe("useCommunityHandleClaimController", () => {
     expect(result.current.error).toBe("Transaction cancelled.");
   });
 
+  test("shows a retry-specific error when server funding confirmation times out", async () => {
+    const instructions = createPaymentInstructions();
+    const api = {
+      quoteHandle: async () => createQuote({
+        price_cents: 500,
+        pricing_model: "flat_by_length",
+        pricing_tier: "standard",
+        payment_instructions: instructions,
+      }),
+      claimHandle: async () => {
+        throw new ApiError(
+          "funding_confirmation_timeout",
+          "Funding transaction confirmation timed out",
+          504,
+          true,
+          {
+            funding_tx_ref: "0xfunded",
+            timeout_ms: 15000,
+          },
+        );
+      },
+    };
+
+    const { result } = renderHook(() => useCommunityHandleClaimController({
+      api,
+      communityId: "cmt_test",
+      connectedWallets: [createWallet()],
+      primaryWalletAddress: "0x1000000000000000000000000000000000000001",
+      settlementWalletAttachmentId: "wa_test",
+      debounceMs: 0,
+      executeCheckout: async () => "0xfunded" as Hex,
+    }));
+
+    act(() => result.current.onSearchChange("amira"));
+    await waitFor(() => expect(result.current.searchResult?.priceCents).toBe(500));
+
+    await act(async () => {
+      await result.current.onClaim();
+    });
+
+    expect(result.current.phase).toBe("confirm");
+    expect(result.current.error).toBe("We could not confirm your payment in time. Try claiming again with the same transaction.");
+  });
+
   test("debounces quote requests while typing", async () => {
     const labels: string[] = [];
     const api = {

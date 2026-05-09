@@ -17,6 +17,7 @@ import {
 import { getErrorMessage } from "@/lib/error-utils";
 import { getWalletTransactionErrorMessage } from "@/lib/wallet-error-utils";
 import { generateRedditFallbackHandle } from "@/lib/reddit-handle-suggestion";
+import { generateSignupStyleHandle } from "@/lib/generated-handle-suggestion";
 import type { HandleUpgradeQuoteResponse } from "@/lib/api/client-api-types";
 import type {
   HandleSuggestion,
@@ -84,6 +85,21 @@ function normalizeHandleLabel(value: string): string {
   return value.trim().replace(/\.pirate$/i, "").toLowerCase();
 }
 
+function isFreeCleanupPaidQuote(input: {
+  cleanupRenameAvailable: boolean;
+  label: string;
+  quote: HandleUpgradeQuoteResponse | null;
+}): boolean {
+  const label = normalizeHandleLabel(input.label);
+  return Boolean(
+    input.cleanupRenameAvailable
+    && input.quote?.eligible
+    && input.quote.pricing_tier === "base"
+    && input.quote.tier === "standard"
+    && label.length >= 8,
+  );
+}
+
 type UseDomainsTabMessages = {
   connectPrimaryWalletError: string;
   chooseHandleError: string;
@@ -100,7 +116,7 @@ type UseDomainsTabOptions = {
 export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) {
   const session = useSession();
   const { connectedWallets } = usePiratePrivyWallets({ enabled });
-  const [phase, setPhase] = React.useState<DomainsTabPhase>("options");
+  const [phase, setPhaseState] = React.useState<DomainsTabPhase>("buy_name");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [redditUsername, setRedditUsername] = React.useState("");
@@ -114,8 +130,18 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
   const [generatedHandle, setGeneratedHandle] = React.useState("");
   const [onboardingStatus, setOnboardingStatus] = React.useState<OnboardingStatus | null>(null);
   const [buyNameValue, setBuyNameValue] = React.useState("");
+  const [buyNameChecking, setBuyNameChecking] = React.useState(false);
   const [paidQuote, setPaidQuote] = React.useState<HandleUpgradeQuoteResponse | null>(null);
   const [paidClaimedHandle, setPaidClaimedHandle] = React.useState<string | null>(null);
+  const buyNameQuoteRequestRef = React.useRef(0);
+  const phaseInitializedRef = React.useRef(false);
+  const phaseTouchedRef = React.useRef(false);
+  const buyNameValueRef = React.useRef("");
+
+  const setPhase = React.useCallback((next: DomainsTabPhase) => {
+    phaseTouchedRef.current = true;
+    setPhaseState(next);
+  }, []);
 
   const quoteHandleCandidate = React.useCallback(async (desiredLabel: string): Promise<boolean> => {
     const label = desiredLabel.trim().replace(/\.pirate$/iu, "");
@@ -155,7 +181,23 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
   const applyOnboardingStatus = React.useCallback((status: OnboardingStatus) => {
     setOnboardingStatus(status);
     setImportJob(mapImportJobStatus(status.reddit_import_status));
-    setGeneratedHandle(session?.profile?.global_handle?.label ?? "");
+    const currentHandle = session?.profile?.global_handle?.label ?? "";
+    setGeneratedHandle(currentHandle);
+    if (status.cleanup_rename_available && buyNameValueRef.current.trim().length === 0) {
+      const currentLabel = normalizeHandleLabel(currentHandle);
+      buyNameValueRef.current = currentLabel;
+      setBuyNameValue(currentLabel);
+    }
+    if (!phaseInitializedRef.current) {
+      setPhaseState("buy_name");
+      phaseInitializedRef.current = true;
+    } else if (
+      status.cleanup_rename_available
+      && !phaseTouchedRef.current
+      && buyNameValueRef.current.trim().length === 0
+    ) {
+      setPhaseState("buy_name");
+    }
 
     if (status.reddit_verification_status === "verified") {
       setRedditVerification((prev) => ({
@@ -196,7 +238,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
           if (status.reddit_import_status === "succeeded") {
             updateSessionOnboarding(status);
             void refreshRedditImportBenefits().catch(() => {});
-            setPhase("choose_name");
+            setPhase("buy_name");
           }
         }
       });
@@ -288,7 +330,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
   const handleChooseNameBack = React.useCallback(() => {
     if (busy) return;
     setError(null);
-    setPhase("import_karma");
+    setPhase("options");
   }, [busy]);
 
   const handleChooseNameContinue = React.useCallback(() => {
@@ -303,7 +345,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
     const currentHandle = session?.profile?.global_handle?.label ?? "";
     if (normalizeHandleLabel(generatedHandle) === normalizeHandleLabel(currentHandle)) {
       setBusy(false);
-      setPhase("options");
+      setPhase("buy_name");
       return;
     }
 
@@ -328,7 +370,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
         if (onboardingStatus) {
           updateSessionOnboarding({ ...onboardingStatus, cleanup_rename_available: false });
         }
-        setPhase("options");
+        setPhase("buy_name");
       })
       .catch((e: unknown) => {
         trackAnalyticsEvent({
@@ -349,51 +391,126 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
     const sourceUsername = (redditImportSummary?.redditUsername
       ?? redditVerification.verifiedUsername
       ?? redditUsername)
-      || "reddit";
+      || session?.profile?.global_handle?.label
+      || "name";
     const fallbackHandle = generateRedditFallbackHandle(sourceUsername);
     setGeneratedHandle(fallbackHandle);
+    buyNameValueRef.current = fallbackHandle;
+    setBuyNameValue(fallbackHandle);
+    setPaidQuote(null);
+    setPaidClaimedHandle(null);
+    setError(null);
     void quoteHandleCandidate(fallbackHandle);
-  }, [quoteHandleCandidate, redditImportSummary?.redditUsername, redditUsername, redditVerification.verifiedUsername]);
+  }, [quoteHandleCandidate, redditImportSummary?.redditUsername, redditUsername, redditVerification.verifiedUsername, session?.profile?.global_handle?.label]);
+
+  const handleGenerateBuyName = React.useCallback(() => {
+    const fallbackHandle = generateSignupStyleHandle();
+    buyNameValueRef.current = fallbackHandle;
+    setBuyNameValue(fallbackHandle);
+    setGeneratedHandle(fallbackHandle);
+    setPaidQuote(null);
+    setPaidClaimedHandle(null);
+    setError(null);
+  }, []);
 
   const redditImportDone = importJob.status === "succeeded" || importJob.status === "partial_success";
+  const cleanupRenameAvailable = Boolean(onboardingStatus?.cleanup_rename_available);
 
   const handleBuyNameChange = React.useCallback((value: string) => {
+    buyNameQuoteRequestRef.current += 1;
+    buyNameValueRef.current = value;
     setBuyNameValue(value);
     setPaidQuote(null);
     setPaidClaimedHandle(null);
     setError(null);
   }, []);
 
-  const handleBuyNameQuote = React.useCallback(() => {
+  const quoteBuyName = React.useCallback((input: {
+    desiredValue?: string;
+    surfaceErrors: boolean;
+  }) => {
     if (busy) return;
-    const label = buyNameValue.trim().replace(/\.pirate$/iu, "");
+    const value = input.desiredValue ?? buyNameValue;
+    const label = value.trim().replace(/\.pirate$/iu, "");
     if (!label) {
-      setError(messages.chooseHandleError);
+      if (input.surfaceErrors) {
+        setError(messages.chooseHandleError);
+      }
+      setPaidQuote(null);
+      setBuyNameChecking(false);
       return;
     }
-    setBusy(true);
+    const requestId = buyNameQuoteRequestRef.current + 1;
+    buyNameQuoteRequestRef.current = requestId;
+    setBuyNameChecking(true);
     setError(null);
     setPaidClaimedHandle(null);
     void api.profiles.quoteHandleUpgrade(label)
       .then((quote) => {
+        if (buyNameQuoteRequestRef.current !== requestId) return;
         setPaidQuote(quote);
-        if (!quote.eligible) {
-          setError(quote.reason ?? "This name is not available.");
-        }
       })
       .catch((caught: unknown) => {
+        if (buyNameQuoteRequestRef.current !== requestId) return;
         setPaidQuote(null);
-        setError(getErrorMessage(caught, "Could not quote this name."));
+        if (input.surfaceErrors) {
+          setError(getErrorMessage(caught, "Could not quote this name."));
+        }
       })
-      .finally(() => setBusy(false));
+      .finally(() => {
+        if (buyNameQuoteRequestRef.current === requestId) {
+          setBuyNameChecking(false);
+        }
+      });
   }, [api, busy, buyNameValue, messages.chooseHandleError]);
 
+  React.useEffect(() => {
+    if (!enabled || phase !== "buy_name" || paidClaimedHandle) return;
+    const label = buyNameValue.trim().replace(/\.pirate$/iu, "");
+    if (!label) {
+      setPaidQuote(null);
+      setBuyNameChecking(false);
+      return;
+    }
+    setBuyNameChecking(true);
+    const timeout = window.setTimeout(() => {
+      quoteBuyName({ desiredValue: label, surfaceErrors: false });
+    }, 350);
+    return () => {
+      window.clearTimeout(timeout);
+      setBuyNameChecking(false);
+    };
+  }, [buyNameValue, enabled, paidClaimedHandle, phase, quoteBuyName]);
+
+  const handleBuyNameQuote = React.useCallback(() => {
+    quoteBuyName({ surfaceErrors: true });
+  }, [quoteBuyName]);
+
   const handleBuyNameClaim = React.useCallback(() => {
-    if (busy || !paidQuote?.quote || (paidQuote.price_cents ?? 0) <= 0) return;
+    const desiredLabel = buyNameValue.trim().replace(/\.pirate$/iu, "");
+    const freeCleanupClaim = isFreeCleanupPaidQuote({
+      cleanupRenameAvailable,
+      label: desiredLabel,
+      quote: paidQuote,
+    });
+    if (busy || !paidQuote?.quote || (!freeCleanupClaim && (paidQuote.price_cents ?? 0) <= 0)) return;
     setBusy(true);
     setError(null);
     let fundingTxRef: Hex | null = null;
     void (async () => {
+      if (freeCleanupClaim) {
+        await api.profiles.renameHandle(desiredLabel);
+        const profile = await api.profiles.getMe();
+        updateSessionProfile(profile);
+        if (onboardingStatus) {
+          updateSessionOnboarding({ ...onboardingStatus, cleanup_rename_available: false });
+          setOnboardingStatus({ ...onboardingStatus, cleanup_rename_available: false });
+        }
+        setPaidClaimedHandle(profile.global_handle.label);
+        setPaidQuote(null);
+        setBuyNameValue(profile.global_handle.label.replace(/\.pirate$/iu, ""));
+        return;
+      }
       if (!paidQuote.payment_instructions) {
         throw new Error("This paid quote is missing payment instructions.");
       }
@@ -430,7 +547,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
           : getWalletTransactionErrorMessage(caught, fallback));
       })
       .finally(() => setBusy(false));
-  }, [api, busy, connectedWallets, messages.connectPrimaryWalletError, messages.reconnectPrimaryWalletError, paidQuote, session]);
+  }, [api, busy, buyNameValue, cleanupRenameAvailable, connectedWallets, messages.connectPrimaryWalletError, messages.reconnectPrimaryWalletError, onboardingStatus, paidQuote, session]);
 
   return {
     phase,
@@ -447,8 +564,10 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
     generatedHandle,
     handleSuggestion,
     buyNameValue,
+    buyNameChecking,
     paidQuote,
     paidClaimedHandle,
+    cleanupRenameAvailable,
     onImportKarmaNext: handleImportKarmaNext,
     onImportKarmaSkip: handleSkipRedditImport,
     onHandleChange: React.useCallback((value: string) => setGeneratedHandle(value), []),
@@ -456,6 +575,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
     onChooseNameContinue: handleChooseNameContinue,
     onChooseNameBack: handleChooseNameBack,
     onBuyNameChange: handleBuyNameChange,
+    onBuyNameGenerate: handleGenerateBuyName,
     onBuyNameQuote: handleBuyNameQuote,
     onBuyNameClaim: handleBuyNameClaim,
     redditImportDone,

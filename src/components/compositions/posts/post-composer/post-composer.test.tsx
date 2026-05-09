@@ -182,6 +182,25 @@ describe("PostComposer monetization", () => {
       monetization,
     });
     expect(findElement(tree, (element) => element.props.children === "Pay to access") === null).toBe(false);
+    expect(findElement(tree, (element) => element.props.children === "Price")).toBe(null);
+    expect(findElement(tree, (element) => element.props.children === "30-second preview starts at")).toBe(null);
+
+    const paidAccessCheckbox = findElement(
+      tree,
+      (element) =>
+        element.props.checked === false
+        && typeof element.props.onCheckedChange === "function",
+    );
+    if (!paidAccessCheckbox) {
+      throw new Error("Missing paid access checkbox");
+    }
+    (paidAccessCheckbox.props.onCheckedChange as ((checked: boolean) => void) | undefined)?.(true);
+    expect(monetization.visible).toBe(true);
+
+    tree = renderComposer({
+      ...baseProps,
+      monetization,
+    });
 
     const priceInput = findElement(
       tree,
@@ -198,7 +217,7 @@ describe("PostComposer monetization", () => {
       throw new Error("Missing preview start input");
     }
     expect(monetization.priceUsd).toBe("0");
-    expect(monetization.visible).toBe(false);
+    expect(monetization.visible).toBe(true);
 
     (previewStartInput.props.onChange as ((event: { target: { value: string } }) => void) | undefined)?.({
       target: { value: "42" },
@@ -226,6 +245,18 @@ describe("PostComposer monetization", () => {
       target: { value: "0" },
     });
     expect(monetization.priceUsd).toBe("0");
+    expect(monetization.visible).toBe(true);
+
+    const updatedPaidAccessCheckbox = findElement(
+      tree,
+      (element) =>
+        element.props.checked === true
+        && typeof element.props.onCheckedChange === "function",
+    );
+    if (!updatedPaidAccessCheckbox) {
+      throw new Error("Missing updated paid access checkbox");
+    }
+    (updatedPaidAccessCheckbox.props.onCheckedChange as ((checked: boolean) => void) | undefined)?.(false);
     expect(monetization.visible).toBe(false);
   });
 

@@ -81,7 +81,7 @@ const defaultCopy: PostComposerSettingsSectionsCopy = {
   paidUnlockTitle: "Paid unlock",
   priceLabel: "Price",
   pricePlaceholder: "0",
-  previewStartLabel: "Preview start (seconds)",
+  previewStartLabel: "30-second preview starts at",
   previewStartPlaceholder: "0",
   regionalPricingLabel: "Use community regional pricing",
   licenseLabel: "License",
@@ -98,11 +98,6 @@ const defaultCopy: PostComposerSettingsSectionsCopy = {
   royaltyLabel: "Royalty",
   royaltyPlaceholder: "15",
 };
-
-function priceInputHasPaidValue(value: string) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0;
-}
 
 function normalizeSecondsInput(value: string): string {
   const digits = value.replace(/\D/g, "");
@@ -230,6 +225,7 @@ export function PostComposerSettingsSections({
     },
   };
   const canPreviewRegionalPricing = Boolean(regionalPricingPreview?.tiers.length);
+  const paidAccessId = React.useId();
   const regionalPricingId = React.useId();
 
   return (
@@ -292,47 +288,55 @@ export function PostComposerSettingsSections({
 
       {showAccess ? (
         <section className="space-y-3">
-          <Type as="h2" variant="h3" className="text-muted-foreground">
-            {copy.paidUnlockTitle}
-          </Type>
           <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
-            <label className="block space-y-2">
-              <Type as="span" variant="body-strong">
-                {copy.priceLabel}
-              </Type>
-              <div className="grid grid-cols-[auto_1fr] items-center rounded-[var(--radius-lg)] border border-border-soft bg-background px-4">
-                <span className="text-base font-semibold text-muted-foreground">$</span>
-                <Input
-                  className="h-14 rounded-none border-0 bg-transparent px-2 text-end text-lg shadow-none focus-visible:ring-0"
-                  inputMode="decimal"
-                  onChange={(event) => {
-                    const nextPrice = normalizePriceInput(event.target.value);
-                    onPriceChange(nextPrice, priceInputHasPaidValue(nextPrice) ? "paid" : "free");
-                  }}
-                  pattern="[0-9]*[.]?[0-9]*"
-                  placeholder={copy.pricePlaceholder}
-                  value={price}
-                />
+            <div className="flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5">
+              <Checkbox
+                checked={access === "paid"}
+                id={paidAccessId}
+                onCheckedChange={(next) => onPriceChange(price, next === true ? "paid" : "free")}
+              />
+              <Label className="flex-1 text-base leading-6" htmlFor={paidAccessId}>
+                {copy.paidUnlockTitle}
+              </Label>
+            </div>
+            {showPaidFields ? (
+              <div className="space-y-4">
+                <label className="block space-y-2">
+                  <Type as="span" variant="body-strong">
+                    {copy.priceLabel}
+                  </Type>
+                  <div className="grid grid-cols-[auto_1fr] items-center rounded-[var(--radius-lg)] border border-border-soft bg-background px-4">
+                    <span className="text-base font-semibold text-muted-foreground">$</span>
+                    <Input
+                      className="h-14 rounded-none border-0 bg-transparent px-2 text-end text-lg shadow-none focus-visible:ring-0"
+                      inputMode="decimal"
+                      onChange={(event) => onPriceChange(normalizePriceInput(event.target.value))}
+                      pattern="[0-9]*[.]?[0-9]*"
+                      placeholder={copy.pricePlaceholder}
+                      value={price}
+                    />
+                  </div>
+                </label>
+                {attachment?.kind === "song" && onPreviewStartSecondsChange ? (
+                  <label className="block space-y-2">
+                    <Type as="span" variant="body-strong">
+                      {copy.previewStartLabel}
+                    </Type>
+                    <div className="grid grid-cols-[1fr_auto] items-center rounded-[var(--radius-lg)] border border-border-soft bg-background px-4">
+                      <Input
+                        className="h-14 rounded-none border-0 bg-transparent px-0 text-lg shadow-none focus-visible:ring-0"
+                        inputMode="numeric"
+                        onChange={(event) => onPreviewStartSecondsChange(normalizeSecondsInput(event.target.value))}
+                        placeholder={copy.previewStartPlaceholder}
+                        value={previewStartSeconds ?? ""}
+                      />
+                      <span className="text-base font-semibold text-muted-foreground">s</span>
+                    </div>
+                  </label>
+                ) : null}
               </div>
-            </label>
-            {attachment?.kind === "song" && onPreviewStartSecondsChange ? (
-              <label className="block space-y-2">
-                <Type as="span" variant="body-strong">
-                  {copy.previewStartLabel}
-                </Type>
-                <div className="grid grid-cols-[1fr_auto] items-center rounded-[var(--radius-lg)] border border-border-soft bg-background px-4">
-                  <Input
-                    className="h-14 rounded-none border-0 bg-transparent px-0 text-lg shadow-none focus-visible:ring-0"
-                    inputMode="numeric"
-                    onChange={(event) => onPreviewStartSecondsChange(normalizeSecondsInput(event.target.value))}
-                    placeholder={copy.previewStartPlaceholder}
-                    value={previewStartSeconds ?? ""}
-                  />
-                  <span className="text-base font-semibold text-muted-foreground">s</span>
-                </div>
-              </label>
             ) : null}
-            {regionalPricingAvailable && onRegionalPricingChange ? (
+            {showPaidFields && regionalPricingAvailable && onRegionalPricingChange ? (
               <div className="space-y-2">
                 <div className="flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5">
                   <Checkbox

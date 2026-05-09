@@ -237,7 +237,7 @@
       "video": "视频",
       "vocalStem": "人声分轨",
       "previewClip": "预览片段",
-      "previewStartSeconds": "预览开始（秒）",
+      "previewStartSeconds": "30 秒预览开始于",
       "charity": "慈善机构"
     },
     "identity": {

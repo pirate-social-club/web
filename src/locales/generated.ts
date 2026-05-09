@@ -355,7 +355,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "video": "Video",
           "vocalStem": "Vocal stem",
           "previewClip": "Preview clip",
-          "previewStartSeconds": "Preview start (seconds)",
+          "previewStartSeconds": "30-second preview starts at",
           "charity": "Charity"
         },
         "identity": {
@@ -1966,7 +1966,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "video": "الفيديو",
           "vocalStem": "المسار الصوتي",
           "previewClip": "مقطع المعاينة",
-          "previewStartSeconds": "بداية المعاينة (ثوانٍ)",
+          "previewStartSeconds": "تبدأ معاينة 30 ثانية عند",
           "charity": "الجهة الخيرية"
         },
         "identity": {
@@ -3577,7 +3577,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "video": "视频",
           "vocalStem": "人声分轨",
           "previewClip": "预览片段",
-          "previewStartSeconds": "预览开始（秒）",
+          "previewStartSeconds": "30 秒预览开始于",
           "charity": "慈善机构"
         },
         "identity": {

@@ -237,7 +237,7 @@
       "video": "Video",
       "vocalStem": "Vocal stem",
       "previewClip": "Preview clip",
-      "previewStartSeconds": "Preview start (seconds)",
+      "previewStartSeconds": "30-second preview starts at",
       "charity": "Charity"
     },
     "identity": {

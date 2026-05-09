@@ -276,6 +276,39 @@ describe("toHomeFeedItem", () => {
     expect(item.post.content.summary?.keyPoints).toEqual(["First key point.", "Second key point."]);
   });
 
+  test("suppresses link preview title when it duplicates the post title", () => {
+    const entry = createEntry();
+    entry.post.post.post_type = "link";
+    entry.post.post.title = "Iran attacks UAE; U.S. says it sank boats in Strait of Hormuz";
+    entry.post.post.link_url = "https://www.cnbc.com/story";
+    entry.post.post.link_og_title = "Iran attacks UAE: US says it sank boats in Strait of Hormuz";
+    entry.post.post.link_enrichment = {
+      version: 1,
+      published_at: "2026-05-04",
+      summary: {
+        status: "ready",
+        key_points: [
+          "UAE reports Iranian missile and drone attacks",
+          "U.S. sank six Iranian boats in strait",
+          "Trump warns Iran against targeting U.S. ships",
+        ],
+      },
+    };
+
+    const item = toHomeFeedItem(entry, {});
+
+    expect(item.post.title).toBe("Iran attacks UAE; U.S. says it sank boats in Strait of Hormuz");
+    expect(item.post.content.type).toBe("link");
+    if (item.post.content.type !== "link") throw new Error("expected link content");
+    expect(item.post.content.previewTitle).toBeUndefined();
+    expect(item.post.content.sourceLabel).toBe("cnbc.com");
+    expect(item.post.content.summary?.keyPoints).toEqual([
+      "UAE reports Iranian missile and drone attacks",
+      "U.S. sank six Iranian boats in strait",
+      "Trump warns Iran against targeting U.S. ships",
+    ]);
+  });
+
   test("uses localized link enrichment when viewing original source text", () => {
     const entry = createEntry();
     entry.post.post.post_type = "link";
@@ -429,7 +462,7 @@ describe("toHomeFeedItem", () => {
     expect(item.post.content.summaryDir).toBe("rtl");
   });
 
-  test("falls back to curated title for English viewers when source metadata is non-English", () => {
+  test("suppresses fallback link preview title when it duplicates the curated title", () => {
     const entry = createEntry();
     entry.post.post.post_type = "link";
     entry.post.post.source_language = "en";
@@ -457,7 +490,7 @@ describe("toHomeFeedItem", () => {
     expect(item.post.title).toBe("Morocco Probes Building Permit Failures in Fez After 22 Killed");
     expect(item.post.content.type).toBe("link");
     if (item.post.content.type !== "link") throw new Error("expected link content");
-    expect(item.post.content.previewTitle).toBe("Morocco Probes Building Permit Failures in Fez After 22 Killed");
+    expect(item.post.content.previewTitle).toBeUndefined();
     expect(item.post.content.summary?.keyPoints).toEqual(["Interior Ministry investigates Fez", "Probe follows 22 deaths", "Permits are under review"]);
   });
 

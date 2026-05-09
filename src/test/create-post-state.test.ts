@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import type { Community } from "@pirate/api-contracts";
 
-import { isPublicAudienceAllowed } from "../app/authenticated-state/create-post-state";
+import {
+  buildLiveRoomRequest,
+  isPublicAudienceAllowed,
+  songArtifactBundleToComposerReference,
+} from "../app/authenticated-state/create-post-state";
 
 function createCommunity(overrides: Partial<Community> = {}): Community {
   return {
@@ -89,5 +93,67 @@ describe("isPublicAudienceAllowed", () => {
     });
 
     expect(isPublicAudienceAllowed(community)).toBe(false);
+  });
+});
+
+describe("live room request mapping", () => {
+  test("preserves real song artifact bundle selections and drops fallback track ids", () => {
+    const request = buildLiveRoomRequest({
+      description: "Testing a local live room",
+      hostUserId: "usr_test_host",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "free",
+        visibility: "public",
+        setlistStatus: "ready",
+        performerAllocations: [{ role: "host", userId: "", sharePct: 100 }],
+        setlistItems: [
+          {
+            declaredTrackId: "sab_song_bundle",
+            titleText: "Catalog Song",
+            artistText: "Catalog Artist",
+            performanceKind: "original",
+          },
+          {
+            declaredTrackId: "trk_fallback",
+            titleText: "Fallback Song",
+            artistText: "Fallback Artist",
+            performanceKind: "cover",
+          },
+        ],
+      },
+      title: "Live with songs",
+    });
+
+    expect(request.performer_allocations?.[0]?.user).toBe("usr_test_host");
+    expect(request.setlist?.items?.[0]?.song_artifact_bundle).toBe("sab_song_bundle");
+    expect(request.setlist?.items?.[1]?.song_artifact_bundle).toBeUndefined();
+    expect(request.setlist?.items?.[1]?.rights_basis).toBe("cover");
+  });
+
+  test("maps song artifact bundles into setlist picker references", () => {
+    const reference = songArtifactBundleToComposerReference({
+      id: "sab_song_bundle",
+      object: "song_artifact_bundle",
+      community: "com_cmt_test",
+      creator_user: "usr_creator",
+      status: "ready",
+      title: "Catalog Song",
+      primary_audio: { storage_ref: "ref", mime_type: "audio/wav" },
+      media_refs: [],
+      lyrics: "line",
+      lyrics_sha256: "0xhash",
+      preview_status: "completed",
+      translation_status: "pending",
+      alignment_status: "completed",
+      moderation_status: "completed",
+      created: 1,
+    });
+
+    expect(reference).toEqual({
+      id: "sab_song_bundle",
+      title: "Catalog Song",
+      subtitle: "usr_creator",
+    });
   });
 });

@@ -12,9 +12,9 @@ import type {
   AttachmentState,
   CharityContributionState,
   ComposerAudienceState,
-  ComposerReference,
   ComposerTab,
   LiveAccessMode,
+  LiveComposerState,
   LiveRoomKind,
   LiveVisibility,
   AssetLicensePresetId,
@@ -96,15 +96,9 @@ export const assetLicensePresetIds: AssetLicensePresetId[] = [
   "commercial-remix",
 ];
 
-export const fallbackTrackOptions: ComposerReference[] = [
-  { id: "trk_01midnightwaves", title: "Midnight Waves", subtitle: "DJ Solar" },
-  { id: "trk_01echoes", title: "Echoes", subtitle: "DJ Solar" },
-  { id: "trk_01afterhours", title: "After Hours", subtitle: "DJ Solar" },
-  { id: "trk_01blue", title: "Blue", subtitle: "Joni Mitchell" },
-];
-
 export function defaultSongState(song?: SongComposerState): SongComposerState {
   return {
+    title: song?.title ?? "",
     genre: song?.genre ?? "Electronic",
     primaryLanguage: song?.primaryLanguage ?? "English",
     secondaryLanguage: song?.secondaryLanguage ?? "",
@@ -164,6 +158,23 @@ export function defaultAudienceState(audience?: ComposerAudienceState): Composer
 export function defaultCharityContributionState(contribution?: CharityContributionState): CharityContributionState {
   return {
     percentagePct: contribution?.percentagePct ?? 0,
+  };
+}
+
+export function defaultLiveComposerState(live?: LiveComposerState): LiveComposerState {
+  return {
+    roomKind: live?.roomKind ?? "solo",
+    accessMode: live?.accessMode ?? "free",
+    visibility: live?.visibility ?? "public",
+    scheduleAt: live?.scheduleAt,
+    description: live?.description,
+    guestUserId: live?.guestUserId,
+    coverUpload: live?.coverUpload ?? null,
+    coverLabel: live?.coverLabel,
+    trackOptions: live?.trackOptions,
+    setlistItems: live?.setlistItems ?? [],
+    setlistStatus: live?.setlistStatus ?? "draft",
+    performerAllocations: live?.performerAllocations ?? [{ userId: "", role: "host", sharePct: 100 }],
   };
 }
 

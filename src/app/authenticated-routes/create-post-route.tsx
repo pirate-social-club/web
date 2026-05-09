@@ -73,7 +73,7 @@ function canAdvanceMobileComposerStep(
   }
 
   if (current === "details" && state.composerMode === "song") {
-    return state.lyrics.trim().length > 0;
+    return Boolean(state.songState.title?.trim() && state.lyrics.trim());
   }
 
   return state.submitState.canContinue;
@@ -117,7 +117,7 @@ function CreatePostComposer({
 
   return (
     <PostComposer
-      availableTabs={["text", "image", "video", "link", "song"]}
+      availableTabs={["text", "image", "video", "link", "song", "live"]}
       canCreateSongPost
       clubAvatarSrc={state.community.avatar_ref ?? undefined}
       clubName={`c/${state.community.display_name}`}
@@ -158,10 +158,12 @@ function CreatePostComposer({
         imageUploadLabel: state.imageUploadLabel,
         linkUrlValue: state.linkUrl,
         linkPreview: state.linkPreview,
+        live: state.liveState,
         license: state.license,
         lyricsValue: state.lyrics,
         mode: state.composerMode,
         monetization: state.monetizationState,
+        regionalPricingPreview: state.regionalPricingPreview,
         song: state.songState,
         songMode: state.songMode,
         textBodyValue: state.body,
@@ -178,6 +180,7 @@ function CreatePostComposer({
         onImageUploadChange: state.setImageUpload,
         onLinkUrlValueChange: state.setLinkUrl,
         onLinkPreviewChange: state.setLinkPreview,
+        onLiveChange: state.setLiveState,
         onLicenseChange: state.setLicense,
         onLyricsValueChange: state.setLyrics,
         onModeChange: state.setComposerMode,

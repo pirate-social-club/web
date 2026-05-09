@@ -27,6 +27,7 @@ import {
   defaultAssetLicenseState,
   defaultAudienceState,
   defaultCharityContributionState,
+  defaultLiveComposerState,
   defaultMonetizationState,
   defaultSongState,
   defaultTabs,
@@ -44,17 +45,6 @@ function deriveSelectedQualifierIds(
   identity: NonNullable<PostComposerProps["identity"]>,
 ): string[] {
   return identity.selectedQualifierIds ?? [];
-}
-
-function defaultLiveState(live?: LiveComposerState): LiveComposerState {
-  return live ?? {
-    roomKind: "solo",
-    accessMode: "free",
-    visibility: "public",
-    setlistItems: [],
-    setlistStatus: "draft",
-    performerAllocations: [{ userId: "", role: "host", sharePct: 100 }],
-  };
 }
 
 export function usePostComposerController(props: PostComposerProps) {
@@ -85,6 +75,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const video = draft?.video ?? props.video;
   const derivativeStep = draft?.derivativeStep ?? props.derivativeStep;
   const monetization = draft?.monetization ?? props.monetization;
+  const regionalPricingPreview = draft?.regionalPricingPreview ?? props.regionalPricingPreview;
   const charityPartner = draft?.charityPartner ?? props.charityPartner;
   const charityContribution = draft?.charityContribution ?? props.charityContribution;
   const audience = draft?.audience ?? props.audience;
@@ -109,6 +100,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const onAuthorModeChange = actions?.onAuthorModeChange ?? props.onAuthorModeChange;
   const onIdentityModeChange = actions?.onIdentityModeChange ?? props.onIdentityModeChange;
   const onSelectedQualifierIdsChange = actions?.onSelectedQualifierIdsChange ?? props.onSelectedQualifierIdsChange;
+  const onLiveChange = actions?.onLiveChange ?? props.onLiveChange;
   const onSubmit = submit?.onSubmit ?? props.onSubmit;
   const baseSubmitDisabled = submit?.disabled ?? props.submitDisabled ?? false;
   const baseContinueDisabled = submit?.canContinue === undefined
@@ -175,7 +167,7 @@ export function usePostComposerController(props: PostComposerProps) {
     derivativeStep,
   );
   const [derivativePickerKey, setDerivativePickerKey] = React.useState(0);
-  const [liveState, setLiveState] = React.useState<LiveComposerState>(() => defaultLiveState(live));
+  const [liveState, setLiveState] = React.useState<LiveComposerState>(() => defaultLiveComposerState(live));
   const [prevRoomKind, setPrevRoomKind] = React.useState<LiveRoomKind>(liveState.roomKind);
   const titleValue = onTitleValueChange ? providedTitleValue : uncontrolledTitleValue;
   const textBodyValue = onTextBodyValueChange ? providedTextBodyValue : uncontrolledTextBodyValue;
@@ -363,16 +355,21 @@ export function usePostComposerController(props: PostComposerProps) {
     onAudienceChange?.(next);
   }, [audience, audienceState, onAudienceChange]);
 
+  const setLiveStateWithCallback = React.useCallback((next: LiveComposerState) => {
+    setLiveState(next);
+    onLiveChange?.(next);
+  }, [onLiveChange]);
+
   React.useEffect(() => {
     const nextLiveState = deriveLiveStateForRoomKindChange({
       current: liveState,
       previousRoomKind: prevRoomKind,
     });
     if (nextLiveState) {
-      setLiveState(nextLiveState);
+      setLiveStateWithCallback(nextLiveState);
       setPrevRoomKind(liveState.roomKind);
     }
-  }, [liveState, prevRoomKind]);
+  }, [liveState, prevRoomKind, setLiveStateWithCallback]);
 
   React.useEffect(() => {
     if (visibleTabs.includes(mode)) {
@@ -500,6 +497,7 @@ export function usePostComposerController(props: PostComposerProps) {
     },
     commerce: {
       monetizationState,
+      regionalPricingPreview,
       updateMonetizationState,
     },
     community: {
@@ -559,7 +557,7 @@ export function usePostComposerController(props: PostComposerProps) {
       derivativeState,
       handleSongModeChange,
       liveState,
-      setLiveState,
+      setLiveState: setLiveStateWithCallback,
       updateDerivativeState,
     },
     song: {

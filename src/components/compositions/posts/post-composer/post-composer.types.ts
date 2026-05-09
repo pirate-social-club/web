@@ -9,7 +9,7 @@ export type AttachmentState =
   | { kind: "link"; url: string }
   | { kind: "image"; label: string; previewUrl?: string }
   | { kind: "video"; label: string; posterUrl?: string; previewUrl?: string }
-  | { kind: "song"; label: string }
+  | { kind: "song"; artworkUrl?: string; label: string; previewUrl?: string }
   | { kind: "live" }
   | null;
 
@@ -99,7 +99,7 @@ export interface LiveComposerState {
   coverLabel?: string;
   trackOptions?: ComposerReference[];
   setlistItems: LiveSetlistItemInput[];
-  setlistStatus: "draft" | "active";
+  setlistStatus: "draft" | "ready" | "locked";
   performerAllocations: LivePerformerAllocation[];
 }
 
@@ -149,6 +149,7 @@ export interface LinkPreviewState {
 }
 
 export interface SongComposerState {
+  title?: string;
   genre?: string;
   primaryLanguage?: string;
   secondaryLanguage?: string;
@@ -182,6 +183,19 @@ export interface MonetizationState {
   priceUsd?: string;
   regionalPricingAvailable?: boolean;
   regionalPricingEnabled?: boolean;
+}
+
+export interface RegionalPricingTierPreview {
+  tierKey: string;
+  displayName: string;
+  adjustmentType: "multiplier";
+  adjustmentValue: number;
+  countryCodes: string[];
+}
+
+export interface RegionalPricingPreview {
+  defaultTierKey?: string | null;
+  tiers: RegionalPricingTierPreview[];
 }
 
 export interface CharityContributionState {
@@ -241,6 +255,7 @@ export interface PostComposerDraftState {
   audience?: ComposerAudienceState;
   identity?: ComposerIdentityState;
   live?: LiveComposerState;
+  regionalPricingPreview?: RegionalPricingPreview | null;
 }
 
 export interface PostComposerDraftActions {
@@ -263,6 +278,7 @@ export interface PostComposerDraftActions {
   onAuthorModeChange?: (value: AuthorMode) => void;
   onIdentityModeChange?: (value: IdentityMode) => void;
   onSelectedQualifierIdsChange?: (value: string[]) => void;
+  onLiveChange?: (value: LiveComposerState) => void;
 }
 
 export interface PostComposerSubmitState {
@@ -288,6 +304,7 @@ export interface PostComposerProps extends Partial<PostComposerDraftState>, Post
   actions?: PostComposerDraftActions;
   submit?: PostComposerSubmitState;
   composerStep?: ComposerStep;
+  regionalPricingPreview?: RegionalPricingPreview | null;
   onComposerStepChange?: (value: ComposerStep) => void;
   onSubmit?: () => void;
   submitDisabled?: boolean;

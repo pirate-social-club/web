@@ -18,6 +18,32 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const syntheticVideoMimeType = "video/webm";
+const regionalPricingPreview = {
+  defaultTierKey: "high_income",
+  tiers: [
+    {
+      tierKey: "high_income",
+      displayName: "High income",
+      adjustmentType: "multiplier" as const,
+      adjustmentValue: 1,
+      countryCodes: ["US", "CA", "GB", "DE", "JP", "AU"],
+    },
+    {
+      tierKey: "standard",
+      displayName: "Standard",
+      adjustmentType: "multiplier" as const,
+      adjustmentValue: 0.65,
+      countryCodes: ["BR", "MX", "PL", "ZA", "TH"],
+    },
+    {
+      tierKey: "reduced",
+      displayName: "Reduced",
+      adjustmentType: "multiplier" as const,
+      adjustmentValue: 0.4,
+      countryCodes: ["CO", "EC", "ID", "PE", "PH"],
+    },
+  ],
+};
 
 async function createSyntheticVideoFile({
   height,
@@ -172,8 +198,9 @@ export const Upload: Story = {
 export const PaidUnlock: Story = {
   name: "Paid Unlock",
   render: () => (
-    <PostComposer
+    <InteractivePostComposer
       {...baseComposer}
+      composerStep="settings"
       mode="video"
       titleValue="Full backstage cut"
       titleCountLabel="18/300"
@@ -182,7 +209,9 @@ export const PaidUnlock: Story = {
         visible: true,
         priceUsd: "4.99",
         regionalPricingAvailable: true,
+        regionalPricingEnabled: true,
       }}
+      regionalPricingPreview={regionalPricingPreview}
       video={{
         primaryVideoLabel: "full-backstage-cut.mp4",
       }}
@@ -195,6 +224,7 @@ export const PaidUnlockLicenseNonCommercial: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="settings"
       mode="video"
       titleValue="Full backstage cut"
       titleCountLabel="18/300"
@@ -219,6 +249,7 @@ export const PaidUnlockLicenseCommercialUse: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="settings"
       mode="video"
       titleValue="Full backstage cut"
       titleCountLabel="18/300"
@@ -243,6 +274,7 @@ export const PaidUnlockLicenseCommercialRemix: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="settings"
       mode="video"
       titleValue="Full backstage cut"
       titleCountLabel="18/300"

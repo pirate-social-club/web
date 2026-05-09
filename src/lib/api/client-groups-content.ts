@@ -12,6 +12,7 @@ import type {
   Post,
   PostVoteResponse,
   SongArtifactBundle,
+  SongArtifactBundleListResponse,
   SongArtifactUpload,
 } from "@pirate/api-contracts";
 
@@ -158,6 +159,16 @@ export function createCommunityContentApi(request: ApiRequest) {
       request<SongArtifactBundle>(
         `/communities/${encodeURIComponent(communityId)}/song-artifacts`,
         { method: "POST", body: JSON.stringify(body) },
+      ),
+    listSongArtifactBundles: (
+      communityId: string,
+      opts?: { q?: string | null; limit?: number | null },
+    ): Promise<SongArtifactBundleListResponse> =>
+      request<SongArtifactBundleListResponse>(
+        buildQueryPath(`/communities/${encodeURIComponent(communityId)}/song-artifacts`, {
+          q: opts?.q,
+          limit: opts?.limit == null ? null : String(opts.limit),
+        }),
       ),
     getSongArtifactBundle: (
       communityId: string,

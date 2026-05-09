@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/primitives/select";
 import { CardContent } from "@/components/primitives/card";
+import { Input } from "@/components/primitives/input";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
@@ -109,6 +110,14 @@ export function PostComposerDetailsStep({
       ) : null}
 
       <section className="space-y-4">
+        <div>
+          <FieldLabel label="Song title" />
+          <Input
+            onChange={(event) => song.update((current) => ({ ...current, title: event.target.value }))}
+            placeholder="Track title"
+            value={song.state.title ?? ""}
+          />
+        </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <FieldLabel label={copy.fields.genre} />

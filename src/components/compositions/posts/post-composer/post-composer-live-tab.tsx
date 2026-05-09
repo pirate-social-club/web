@@ -5,9 +5,6 @@ import { FormNote, FormSectionHeading } from "@/components/primitives/form-layou
 import { Input } from "@/components/primitives/input";
 import { UploadField, FieldLabel } from "./post-composer-fields";
 import { SetlistItemRow, dedupeReferences, buildManualReference } from "./post-composer-references";
-import {
-  fallbackTrackOptions,
-} from "./post-composer-config";
 import type { ComposerReference, LiveComposerState } from "./post-composer.types";
 
 export function LiveTabContent({
@@ -40,7 +37,6 @@ export function LiveTabContent({
     () =>
       dedupeReferences([
         ...(live.trackOptions ?? []),
-        ...fallbackTrackOptions,
         ...live.setlistItems.reduce<ComposerReference[]>((items, item) => {
           const manualReference = buildManualReference(item);
 
@@ -118,7 +114,7 @@ export function LiveTabContent({
 
       <div className="grid gap-3 md:grid-cols-3">
         <div>
-          <FieldLabel label={copy.fields.roomKind} />
+          <FieldLabel label={copy.live.roomKind} />
           <div className="flex flex-wrap gap-2">
             {([
               { value: "solo" as const, label: copy.live.roomKindSolo },
@@ -135,7 +131,7 @@ export function LiveTabContent({
           </div>
         </div>
         <div>
-          <FieldLabel label={copy.fields.access} />
+          <FieldLabel label={copy.live.access} />
           <div className="flex flex-wrap gap-2">
             {([
               { value: "free" as const, label: copy.live.accessFree },
@@ -153,7 +149,7 @@ export function LiveTabContent({
           </div>
         </div>
         <div>
-          <FieldLabel label={copy.fields.visibility} />
+          <FieldLabel label={copy.live.visibility} />
           <div className="flex flex-wrap gap-2">
             {([
               { value: "public" as const, label: copy.live.visibilityPublic },
@@ -173,11 +169,21 @@ export function LiveTabContent({
 
       {live.roomKind === "duet" ? (
         <div>
-          <FieldLabel label={copy.fields.guestPerformer} />
+          <FieldLabel label={copy.live.guestPerformer} />
           <Input
             className="h-10"
-            placeholder={copy.placeholders.collaborator}
-            defaultValue={live.guestUserId ?? ""}
+            placeholder={copy.live.collaboratorPlaceholder}
+            onChange={(event) => {
+              const guestUserId = event.target.value;
+              onLiveChange({
+                ...live,
+                guestUserId,
+                performerAllocations: live.performerAllocations.map((allocation) =>
+                  allocation.role === "guest" ? { ...allocation, userId: guestUserId } : allocation,
+                ),
+              });
+            }}
+            value={live.guestUserId ?? ""}
           />
           <FormNote className="mt-1">{copy.live.collaboratorNote}</FormNote>
         </div>
@@ -190,7 +196,7 @@ export function LiveTabContent({
               ? copy.live.soloProceedsDescription
               : copy.live.duetProceedsDescription
           }
-          title={copy.fields.performerAllocations}
+          title={copy.live.performerAllocations}
         />
         <div className="space-y-2">
           {live.performerAllocations.map((alloc) => (
@@ -234,7 +240,7 @@ export function LiveTabContent({
 
       <div>
         <div className="mb-2 flex items-center justify-between gap-3">
-          <FormSectionHeading title={copy.fields.setlistTitle} />
+          <FormSectionHeading title={copy.live.setlistTitle} />
           <Chip
             leadingIcon={<Plus className="size-4" />}
             onClick={handleAddSetlistItem}

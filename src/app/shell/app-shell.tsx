@@ -45,6 +45,16 @@ const LazyPublicRouteRenderer = React.lazy(async () => {
   return { default: mod.PublicRouteRenderer };
 });
 
+const LazyTelegramMiniAppHomePage = React.lazy(async () => {
+  const mod = await import("@/app/telegram-mini-app/telegram-mini-app-route");
+  return { default: mod.TelegramMiniAppHomePage };
+});
+
+const LazyTelegramMiniAppCommunityPage = React.lazy(async () => {
+  const mod = await import("@/app/telegram-mini-app/telegram-mini-app-route");
+  return { default: mod.TelegramMiniAppCommunityPage };
+});
+
 function SessionRevalidator({ children }: { children: React.ReactNode }) {
   const { revalidate } = useSessionRevalidation();
   const session = useSession();
@@ -247,6 +257,7 @@ export function PirateAppShell({
   const copy = getLocaleMessages(effectiveLocale, "shell");
   const isCommunityModerationRoute = route.kind === "community-moderation" || route.kind === "community-moderation-index";
   const useStandalonePublicProfileShell = isNativePublicIdentityRoute(route);
+  const isTelegramMiniAppRoute = route.kind === "telegram-mini-app" || route.kind === "telegram-community";
   const shouldDeferPrivyUntilConnect =
     route.kind === "create-community"
     || (!session && (
@@ -277,6 +288,15 @@ export function PirateAppShell({
                   </React.Suspense>
                 </PageContainer>
               </main>
+              <Toaster />
+            </>
+          ) : isTelegramMiniAppRoute ? (
+            <>
+              <React.Suspense fallback={<RouteContentFallback route={route} />}>
+                {route.kind === "telegram-community"
+                  ? <LazyTelegramMiniAppCommunityPage communityId={route.communityId} />
+                  : <LazyTelegramMiniAppHomePage />}
+              </React.Suspense>
               <Toaster />
             </>
           ) : (

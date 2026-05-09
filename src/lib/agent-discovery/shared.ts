@@ -2,7 +2,7 @@ import { matchRoute } from "@/app/router";
 
 import type { DiscoveryContext } from "./types";
 
-const INDEXED_STATIC_PATHS = ["/", "/docs/api", "/privacy", "/terms"] as const;
+const INDEXED_STATIC_PATHS = ["/", "/delete-account", "/docs/api", "/privacy", "/terms"] as const;
 
 function normalizePathname(pathname: string): string {
   if (!pathname || pathname === "/") return "/";

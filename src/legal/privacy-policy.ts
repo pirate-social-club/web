@@ -228,12 +228,13 @@ Depending on your location, you may have rights to:
 
 - request access to certain personal information
 - request correction of inaccurate information
-- request deletion of certain information
+- request deletion of certain information or your account
 - object to or restrict certain processing
 - withdraw consent where processing is based on consent
 - appeal a privacy-rights decision
 
-To make a privacy request, contact us at support@pirate.sc.
+To make a privacy request, contact us at support@pirate.sc. To request account deletion, visit
+https://pirate.sc/delete-account or email support@pirate.sc.
 
 We may need to verify your identity before acting on a request. Some rights may be limited where
 an exception applies, including for fraud prevention, legal obligations, security, or public

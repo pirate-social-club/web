@@ -224,9 +224,11 @@ export function resolvePublicCommunityJoinActionLabel(
 
 export function PublicCommunityRoutePage({
   communityId,
+  disableCanonicalRouteReplace = false,
   isImportedRoot = false,
 }: {
   communityId: string;
+  disableCanonicalRouteReplace?: boolean;
   isImportedRoot?: boolean;
 }) {
   const api = useApi();
@@ -325,10 +327,11 @@ export function PublicCommunityRoutePage({
   }, [communityId, error]);
 
   React.useEffect(() => {
+    if (disableCanonicalRouteReplace) return;
     if (isImportedRoot) return;
     if (!preview?.id) return;
     replaceWithCanonicalCommunityRoute(preview.id, preview.route_slug);
-  }, [isImportedRoot, preview?.id, preview?.route_slug]);
+  }, [disableCanonicalRouteReplace, isImportedRoot, preview?.id, preview?.route_slug]);
 
   React.useEffect(() => {
     setViewerFollowing(Boolean(preview?.viewer_following));
@@ -373,13 +376,16 @@ export function PublicCommunityRoutePage({
     const resolvedCommunityId = preview?.id ?? communityId;
     if (
       !session?.user?.id ||
-      !preview?.namespace_verification ||
       readHandleClaimDismissed(resolvedCommunityId)
     ) {
       return;
     }
 
     try {
+      const status = await api.communities.getHandleStatus(resolvedCommunityId);
+      if (!status.available) {
+        return;
+      }
       const current = await api.communities.getMyHandle(resolvedCommunityId);
       if (!current.handle) {
         setHandleClaimModalOpen(true);
@@ -387,7 +393,7 @@ export function PublicCommunityRoutePage({
     } catch (nextError) {
       toast.error(getErrorMessage(nextError, "Could not check community names."));
     }
-  }, [api.communities, communityId, preview?.id, preview?.namespace_verification, session?.user?.id]);
+  }, [api.communities, communityId, preview?.id, session?.user?.id]);
   const previousEligibilityStatusRef = React.useRef<ApiJoinEligibility["status"] | null>(
     eligibility?.status ?? null,
   );
@@ -705,6 +711,7 @@ export function PublicCommunityRoutePage({
         claimedLabel={handleClaim.claimedLabel ?? undefined}
         communityHandle={communityHandleLabel}
         communityName={preview.display_name}
+        communityRouteLabel={routeLabel}
         error={handleClaim.error}
         onClaim={handleClaim.onClaim}
         onNotNow={handleClaimNotNow}

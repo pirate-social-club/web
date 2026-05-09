@@ -183,12 +183,6 @@ export function buildPrimaryItems(messages: ShellMessages["appSidebar"]): AppSid
       onSelect: () => navigate("/settings/agents"),
     },
     {
-      id: "names",
-      icon: Globe,
-      label: messages.namesLabel,
-      onSelect: () => navigate("/settings/domains"),
-    },
-    {
       id: "create-community",
       icon: Plus,
       label: messages.createCommunityLabel,

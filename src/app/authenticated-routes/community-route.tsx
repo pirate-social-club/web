@@ -279,12 +279,15 @@ export function CommunityPage({
 
   const maybeOpenHandleClaimModal = React.useCallback(async () => {
     const resolvedCommunityId = previewCommunityId ?? community?.id ?? communityId;
-    const hasNamespace = Boolean(community?.namespace_verification ?? preview?.namespace_verification);
-    if (!session?.user?.id || !hasNamespace || readHandleClaimDismissed(resolvedCommunityId)) {
+    if (!session?.user?.id || readHandleClaimDismissed(resolvedCommunityId)) {
       return;
     }
 
     try {
+      const status = await api.communities.getHandleStatus(resolvedCommunityId);
+      if (!status.available) {
+        return;
+      }
       const current = await api.communities.getMyHandle(resolvedCommunityId);
       if (!current.handle) {
         setHandleClaimModalOpen(true);
@@ -295,9 +298,7 @@ export function CommunityPage({
   }, [
     api.communities,
     community?.id,
-    community?.namespace_verification,
     communityId,
-    preview?.namespace_verification,
     previewCommunityId,
     session?.user?.id,
   ]);
@@ -692,6 +693,7 @@ export function CommunityPage({
         claimedLabel={handleClaim.claimedLabel ?? undefined}
         communityHandle={communityHandleLabel}
         communityName={communityTitle}
+        communityRouteLabel={routeLabel}
         error={handleClaim.error}
         forceMobile={isMobileWeb}
         onClaim={handleClaim.onClaim}

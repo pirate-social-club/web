@@ -71,6 +71,10 @@ function resolveReplyCount(comment: PostThreadComment, loadedChildrenCount: numb
   return comment.replyCount ?? comment.loadedReplyCount ?? loadedChildrenCount;
 }
 
+function commentAnchorId(comment: PostThreadComment, fallbackKey: string): string {
+  return `comment-${encodeURIComponent(getCommentKey(comment, fallbackKey))}`;
+}
+
 function CollapsedCommentRow({ comment }: { comment: PostThreadComment }) {
   return (
     <div className="min-w-0 flex-1">
@@ -117,6 +121,7 @@ function CommentTreeNode({
   const canCollapse = commentHasExpandableContent(comment) && hasLoadedChildren;
   const collapsed = canCollapse && collapsedIds.has(nodeKey);
   const truncateDeepNesting = depth >= maxDepth && hasLoadedChildren;
+  const articleId = commentAnchorId(comment, nodeKey);
 
   const handleToggleCollapse = React.useCallback(() => {
     if (!canCollapse) return;
@@ -133,7 +138,7 @@ function CommentTreeNode({
 
   if (collapsed) {
     return (
-      <article className={cn("flex gap-1.5 sm:gap-2", depth > 0 && "pt-3")}>
+      <article className={cn("flex scroll-mt-24 gap-1.5 sm:gap-2", depth > 0 && "pt-3")} data-comment-id={comment.commentId ?? comment.replyId ?? nodeKey} id={articleId}>
         <div className="flex w-4 shrink-0 flex-col items-center sm:w-5">
           <button
             className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-transparent text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
@@ -152,7 +157,7 @@ function CommentTreeNode({
   }
 
   return (
-    <article className={cn("flex gap-1.5 sm:gap-2", depth > 0 && "pt-3")}>
+    <article className={cn("flex scroll-mt-24 gap-1.5 sm:gap-2", depth > 0 && "pt-3")} data-comment-id={comment.commentId ?? comment.replyId ?? nodeKey} id={articleId}>
       {canCollapse ? (
         <div className="flex w-4 flex-col items-center sm:w-5">
           <button

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
-import { SlidersHorizontal } from "@phosphor-icons/react";
+import { PlayCircle, SlidersHorizontal } from "@phosphor-icons/react";
 
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { updateSessionUser, useSession } from "@/lib/api/session-store";
@@ -13,9 +13,11 @@ import { CommunitySidebar } from "@/components/compositions/community/sidebar/co
 import { PostThread } from "@/components/compositions/posts/post-thread/post-thread";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { ResponsiveOptionSelect } from "@/components/compositions/system/responsive-option-select/responsive-option-select";
+import { Button } from "@/components/primitives/button";
 import { IconButton } from "@/components/primitives/icon-button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useApi } from "@/lib/api";
+import { resolveApiBaseUrl } from "@/lib/api/base-url";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { useUiLocale } from "@/lib/ui-locale";
 
@@ -61,6 +63,20 @@ function viewerCanModerateCommunity(
     if (!sameUserId(viewerUserId, roleHolder.user)) return false;
     return roleHolder.role === "owner" || roleHolder.role === "admin" || roleHolder.role === "moderator";
   }));
+}
+
+function buildLiveRoomLaunch(input: {
+  communityId?: string | null;
+  liveRoomId?: string | null;
+}): { href: string; liveRoomId: string } | null {
+  const liveRoomId = input.liveRoomId?.trim();
+  const communityId = input.communityId?.trim();
+  if (!liveRoomId || !communityId) return null;
+  const apiBase = resolveApiBaseUrl(typeof window === "undefined" ? null : window.location.hostname);
+  return {
+    href: `freedom://live-room?roomId=${encodeURIComponent(liveRoomId)}&communityId=${encodeURIComponent(communityId)}&apiBase=${encodeURIComponent(apiBase)}`,
+    liveRoomId,
+  };
 }
 
 function MobileThreadShell({
@@ -251,6 +267,10 @@ export function PostPage({ postId }: { postId: string }) {
     })
     : undefined;
   const communityPath = community?.id ? buildCommunityPath(community.id, community.route_slug) : "/";
+  const liveRoomLaunch = buildLiveRoomLaunch({
+    communityId: post.post.community,
+    liveRoomId: post.post.anchor_live_room,
+  });
   const threadSidebarProps = community ? buildCommunityPreviewSidebar(community, locale) : null;
   const commentSortOptions = [
     { label: copy.common.bestTab, value: "best" as const },
@@ -290,6 +310,22 @@ export function PostPage({ postId }: { postId: string }) {
       ) : null}
       {purchaseModal}
       <ContentRailShell rail={!isMobile && threadSidebarProps ? <CommunitySidebar {...threadSidebarProps} /> : undefined} reserveRail={!isMobile}>
+        {liveRoomLaunch ? (
+          <div className="border-b border-border-soft bg-card px-4 py-3 md:px-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-base font-semibold text-foreground">Live room ready</p>
+                <p className="text-sm text-muted-foreground">{liveRoomLaunch.liveRoomId}</p>
+              </div>
+              <Button asChild size="sm">
+                <a href={liveRoomLaunch.href}>
+                  <PlayCircle className="size-4" weight="bold" />
+                  Open in Freedom
+                </a>
+              </Button>
+            </div>
+          </div>
+        ) : null}
         <PostThread
           availableCommentSorts={commentSortOptions}
           commentSort={commentSort}

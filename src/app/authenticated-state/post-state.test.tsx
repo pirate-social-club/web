@@ -136,6 +136,18 @@ function createCommentItem(commentId = "cmt_parent"): CommentListItem {
   } as unknown as CommentListItem;
 }
 
+function createReplyCommentItem(commentId: string, parentCommentId: string): CommentListItem {
+  const item = createCommentItem(commentId);
+  return {
+    ...item,
+    comment: {
+      ...item.comment,
+      parent_comment: parentCommentId,
+      body: "Target reply",
+    },
+  } as CommentListItem;
+}
+
 function createPreview(): CommunityPreview {
   return {
     id: "cmt_test",
@@ -335,6 +347,77 @@ describe("usePost", () => {
     const resolveLoadedPreview = resolvePreview as unknown as (preview: CommunityPreview) => void;
     resolveLoadedPreview(createPreview());
     await waitFor(() => expect(result.current.community?.display_name).toBe("Preview Community"));
+  });
+
+  test("hydrates a notification target comment from the route query", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+    const parentComment = {
+      ...createCommentItem("cmt_parent"),
+      comment: {
+        ...createCommentItem("cmt_parent").comment,
+        direct_reply_count: 6,
+      },
+    } as CommentListItem;
+    const targetComment = createReplyCommentItem("cmt_target", "cmt_parent");
+    const calls = {
+      contextCommentId: null as string | null,
+    };
+    const originalLocation = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: new URL("https://app.pirate.sc/p/pst_test?comment=cmt_target"),
+    });
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+    };
+    const comments = api.comments as unknown as {
+      getContext: (commentId: string, opts?: { limit?: string | null; locale?: string | null }) => Promise<{
+        ancestors: CommentListItem[];
+        comment: CommentListItem;
+        replies: CommentListItem[];
+        next_replies_cursor: null;
+        thread_snapshot: null;
+      }>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = async () => createPreview();
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    comments.getContext = async (commentId) => {
+      calls.contextCommentId = commentId;
+      return {
+        ancestors: [parentComment],
+        comment: targetComment,
+        replies: [],
+        next_replies_cursor: null,
+        thread_snapshot: null,
+      };
+    };
+    agents.list = async () => ({ items: [] });
+
+    try {
+      const { result } = renderHook(() => usePost("pst_test", "en", true, labels), { wrapper });
+
+      await waitFor(() => expect(calls.contextCommentId).toBe("cmt_target"));
+      await waitFor(() => expect(result.current.comments[0]?.children?.[0]?.commentId).toBe("cmt_target"));
+
+      expect(result.current.comments[0]?.commentId).toBe("cmt_parent");
+      expect(result.current.comments[0]?.children?.[0]?.body).toBe("Target reply");
+    } finally {
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: originalLocation,
+      });
+    }
   });
 
   test("normalizes legacy public post fallback before loading community data", async () => {

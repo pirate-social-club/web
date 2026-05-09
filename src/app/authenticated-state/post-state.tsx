@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Comment as ApiComment, CommunityPreview as ApiCommunityPreview, CreateCommentRequest, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
+import type { Comment as ApiComment, CommentContext, CommunityPreview as ApiCommunityPreview, CreateCommentRequest, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
@@ -36,6 +36,7 @@ import {
   THREAD_COMMENT_PAGE_LIMIT,
   type ThreadCommentNode,
   updateThreadCommentNode,
+  upsertThreadCommentNodes,
 } from "./thread-state";
 
 type AvailableSigningAgent = {
@@ -189,6 +190,29 @@ async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<Ava
   return null;
 }
 
+function targetCommentIdFromLocation(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const value = new URLSearchParams(window.location.search).get("comment")?.trim();
+  return value || null;
+}
+
+function scrollToComment(commentId: string): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+  const schedule = typeof window.requestAnimationFrame === "function"
+    ? window.requestAnimationFrame.bind(window)
+    : (callback: FrameRequestCallback) => window.setTimeout(callback, 0);
+  schedule(() => {
+    document.getElementById(`comment-${encodeURIComponent(commentId)}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  });
+}
+
 export function usePost(
   postId: string,
   locale: string,
@@ -222,6 +246,7 @@ export function usePost(
   const [commentSort, setCommentSort] = React.useState<"best" | "new" | "top">("best");
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const loadedCommentSortKeyRef = React.useRef<string | null>(null);
+  const loadedTargetCommentRef = React.useRef<string | null>(null);
   const { gateModal, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: locale,
     routeKind: "post",
@@ -291,6 +316,21 @@ export function usePost(
 
     return { authorProfilesByUserId: nextAuthorProfilesByUserId, commentNodes: nextCommentNodes };
   }, [api, locale, postId, session]);
+
+  const mergeCommentContext = React.useCallback(async (context: CommentContext) => {
+    const contextItems = [...context.ancestors, context.comment, ...context.replies];
+    const nextProfiles = await loadProfilesByUserId(
+      api,
+      collectCommentAuthorUserIds(contextItems),
+      session?.profile ? { [session.user.id]: session.profile } : {},
+    );
+
+    setAuthorProfilesByUserId((current) => ({ ...current, ...nextProfiles }));
+    setCommentNodes((current) => upsertThreadCommentNodes(
+      current,
+      buildThreadCommentTreeFromItems(contextItems),
+    ));
+  }, [api, session]);
 
   const refreshTopLevelComments = React.useCallback(async (communityId: string) => {
     const nextThreadState = await loadTopLevelComments(communityId, readMode, commentSort);
@@ -754,6 +794,41 @@ export function usePost(
 
     return () => { cancelled = true; };
   }, [api, applyPublicThreadQueryData, hasSession, loadTopLevelComments, locale, postId, queryClient, session]);
+
+  React.useEffect(() => {
+    if (!hasSession || !post || loading || threadPartial) return;
+
+    const targetCommentId = targetCommentIdFromLocation();
+    if (!targetCommentId) return;
+
+    const targetKey = `${post.post.id}:${targetCommentId}`;
+    if (loadedTargetCommentRef.current === targetKey) {
+      scrollToComment(targetCommentId);
+      return;
+    }
+
+    let cancelled = false;
+    loadedTargetCommentRef.current = targetKey;
+    void api.comments.getContext(targetCommentId, { limit: THREAD_COMMENT_PAGE_LIMIT, locale })
+      .then(async (context) => {
+        if (cancelled) return;
+        await mergeCommentContext(context);
+        if (!cancelled) {
+          scrollToComment(targetCommentId);
+        }
+      })
+      .catch((nextError: unknown) => {
+        if (!cancelled) {
+          logger.warn("[post-route] target comment context load failed", {
+            commentId: targetCommentId,
+            error: nextError,
+            postId: post.post.id,
+          });
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [api.comments, hasSession, loading, locale, mergeCommentContext, post, threadPartial]);
 
   React.useEffect(() => {
     if (!post || !community || loading) return;

@@ -172,6 +172,18 @@ describe("public profile host routing", () => {
       postId: "pst_cf89c73fe60641debd05c939252a870c",
     });
   });
+
+  test("matches Telegram Mini App routes from path routes", () => {
+    expectJson(matchRoute("/tg"), {
+      kind: "telegram-mini-app",
+      path: "/tg",
+    });
+    expectJson(matchRoute("/tg/c/captain-club"), {
+      kind: "telegram-community",
+      path: "/tg/c/captain-club",
+      communityId: "captain-club",
+    });
+  });
 });
 
 describe("canonicalizeRoutePathname", () => {
@@ -191,6 +203,13 @@ describe("canonicalizeRoutePathname", () => {
   test("leaves existing canonical and non-community routes unchanged", () => {
     expect(canonicalizeRoutePathname("/c/@xn--t77hga")).toBe("/c/@xn--t77hga");
     expect(canonicalizeRoutePathname("/u/%F0%9F%87%B5%F0%9F%87%B8")).toBe("/u/%F0%9F%87%B5%F0%9F%87%B8");
+  });
+
+  test("matches device authorization route", () => {
+    expectJson(matchRoute("/authorize-device"), {
+      kind: "authorize-device",
+      path: "/authorize-device",
+    });
   });
 });
 

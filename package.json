@@ -9,7 +9,7 @@
     "locales:generate": "node ./scripts/generate-locales.mjs",
     "env:check:prod": "node ./scripts/check-vite-env.mjs production VITE_PRIVY_APP_ID VITE_PRIVY_CLIENT_ID",
     "env:check:staging": "node ./scripts/check-vite-env.mjs staging VITE_PRIVY_APP_ID VITE_PRIVY_CLIENT_ID",
-    "dev": "bun run locales:generate && vite --port 5173 --strictPort",
+    "dev": "bun run locales:generate && vite --host :: --port 5173 --strictPort",
     "xmtp:dev:receive": "bun run ./scripts/xmtp-dev-receiver.ts",
     "xmtp:dev:send": "bun run ./scripts/xmtp-dev-send.ts",
     "dev:desktop-shell": "bun run locales:generate && vite --config vite.desktop.config.ts",

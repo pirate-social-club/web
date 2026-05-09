@@ -36,6 +36,9 @@ export type AppRoute =
   | { kind: "advertise"; path: "/advertise" }
   | { kind: "me"; path: "/me" }
   | { kind: "onboarding"; path: "/onboarding" }
+  | { kind: "authorize-device"; path: "/authorize-device" }
+  | { kind: "telegram-mini-app"; path: "/tg" }
+  | { kind: "telegram-community"; path: string; communityId: string }
   | { kind: "not-found"; path: string };
 
 const NAVIGATION_EVENT = "pirate:navigate";
@@ -118,6 +121,14 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
     return { kind: "onboarding", path: normalized };
   }
 
+  if (normalized === "/authorize-device") {
+    return { kind: "authorize-device", path: normalized };
+  }
+
+  if (normalized === "/tg") {
+    return { kind: "telegram-mini-app", path: "/tg" };
+  }
+
   if (normalized === "/submit") {
     return { kind: "create-post-global", path: normalized };
   }
@@ -126,6 +137,14 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
 
   if (segments.length === 2 && segments[0] === "settings" && segments[1] === "wallet") {
     return { kind: "wallet", path: "/wallet" };
+  }
+
+  if (segments.length === 3 && segments[0] === "tg" && segments[1] === "c") {
+    return {
+      kind: "telegram-community",
+      path: normalized,
+      communityId: decodeURIComponent(segments[2]),
+    };
   }
 
   if (segments.length === 2 && segments[0] === "settings") {

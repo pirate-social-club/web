@@ -19,6 +19,13 @@ import type {
 
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
+type OAuthDeviceVerifyResponse = {
+  client_id: string;
+  scope: string;
+  status: "authorized";
+  user_code: string;
+};
+
 export function createAuthApi(request: ApiRequest) {
   return {
     sessionExchange: (
@@ -28,6 +35,11 @@ export function createAuthApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify({ proof }),
         tokenRequired: false,
+      }),
+    verifyDevice: (userCode: string): Promise<OAuthDeviceVerifyResponse> =>
+      request<OAuthDeviceVerifyResponse>("/oauth/device/verify", {
+        method: "POST",
+        body: JSON.stringify({ user_code: userCode }),
       }),
   };
 }

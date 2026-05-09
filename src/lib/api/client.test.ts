@@ -79,6 +79,36 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("authorizes OAuth device codes with the current session token", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        client_id: "freedom-desktop",
+        scope: "live_room:attach live_room:manage",
+        status: "authorized",
+        user_code: "PTR-ABCD-2345",
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.auth.verifyDevice("PTR-ABCD-2345");
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("POST");
+      expect(capturedRequest.url).toBe("http://pirate.test/oauth/device/verify");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+      expect(await capturedRequest.json()).toEqual({ user_code: "PTR-ABCD-2345" });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("sends join request notes as JSON", async () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -905,6 +935,53 @@ describe("ApiClient media uploads", () => {
       expect(result.id).toBe("usr_test");
       expect(requests).toHaveLength(1);
       expect(requests[0]?.headers.get("authorization")).toBe("Bearer fresh-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("lists song artifact bundles for composer pickers", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        items: [{
+          id: "sab_song_bundle",
+          object: "song_artifact_bundle",
+          community: "com_cmt_test",
+          creator_user: "usr_test",
+          status: "ready",
+          title: "Live Room Song",
+          primary_audio: { storage_ref: "ref", mime_type: "audio/wav" },
+          media_refs: [],
+          lyrics: "line",
+          lyrics_sha256: "0xhash",
+          preview_status: "completed",
+          translation_status: "pending",
+          alignment_status: "completed",
+          moderation_status: "completed",
+          created: 1,
+        }],
+        next_cursor: null,
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      const response = await client.communities.listSongArtifactBundles("cmt_test", {
+        q: "Live",
+        limit: 10,
+      });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("GET");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/song-artifacts?q=Live&limit=10");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+      expect(response.items[0]?.id).toBe("sab_song_bundle");
     } finally {
       globalThis.fetch = originalFetch;
     }

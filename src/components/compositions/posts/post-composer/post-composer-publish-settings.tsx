@@ -186,7 +186,7 @@ function previewBody(controller: PostComposerController) {
     return fields.captionValue;
   }
   if (tabs.activeTab === "song") {
-    return fields.lyricsValue;
+    return "";
   }
   return fields.textBodyValue;
 }

@@ -756,6 +756,34 @@ describe("PostComposer monetization", () => {
     expect(byline.author?.avatarSeed).toBe("anon_amber-anchor-00");
   });
 
+  test("does not render song lyrics as the publish preview caption", () => {
+    const tree = renderComposer({
+      availableTabs: ["song"],
+      canCreateSongPost: true,
+      clubName: "Lane1",
+      composerStep: "publish",
+      lyricsValue: "[Verse 1]\nThese are bundle lyrics, not post caption.",
+      mode: "song",
+      song: {
+        primaryAudioLabel: "track.mp3",
+        title: "Palestine",
+      },
+      titleValue: "New song",
+    });
+
+    const previewCard = findElement(
+      tree,
+      (element) => typeof element.type !== "string" && element.type.name === "PostCard",
+    );
+    if (!previewCard) {
+      throw new Error("Missing preview post card");
+    }
+
+    const content = previewCard.props.content as PostCardProps["content"];
+    expect(content.type).toBe("song");
+    expect(content.type === "song" ? content.caption : undefined).toBeUndefined();
+  });
+
   test("blocks continue when a required derivative source is missing", () => {
     const tree = renderComposer({
       availableTabs: ["song"],

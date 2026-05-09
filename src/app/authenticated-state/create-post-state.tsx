@@ -75,6 +75,25 @@ function liveSetlistSongArtifactBundleId(declaredTrackId: string | undefined): s
   return value?.startsWith("sab_") ? value : undefined;
 }
 
+function sameUserId(left: string | null | undefined, right: string | null | undefined): boolean {
+  if (!left || !right) return false;
+  return left === right || left.replace(/^usr_/, "") === right.replace(/^usr_/, "");
+}
+
+function viewerHasCommunityPostingRole(
+  viewerUserId: string | null | undefined,
+  community: ApiCommunityPreview | null,
+  ownerUserId: string | null,
+): boolean {
+  if (!viewerUserId || !community) return false;
+  if (sameUserId(viewerUserId, ownerUserId)) return true;
+  if (sameUserId(viewerUserId, community.owner?.user)) return true;
+  return community.moderators.some((roleHolder) => {
+    if (!sameUserId(viewerUserId, roleHolder.user)) return false;
+    return roleHolder.role === "owner" || roleHolder.role === "admin" || roleHolder.role === "moderator";
+  });
+}
+
 export function songArtifactBundleToComposerReference(bundle: ApiSongArtifactBundle): ComposerReference {
   return {
     id: bundle.id,
@@ -569,7 +588,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     };
   }, [availableAgent]);
   const submitSongPost = useSongSubmit({ communityId, signAgentAuthoredBody });
-  const isCommunityOwner = Boolean(session?.user.id && communityOwnerUserId === session.user.id);
+  const hasCommunityPostingRole = viewerHasCommunityPostingRole(session?.user.id, community, communityOwnerUserId);
   const uploadVideoArtifact = React.useCallback(async (video: VideoComposerState) => {
     const file = video.primaryVideoUpload;
     if (!file) {
@@ -591,19 +610,19 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       composerMode,
       eligibilityStatus: eligibility?.status,
       hasCommunity: Boolean(community),
-      isCommunityOwner,
+      hasCommunityPostingRole,
       monetized: monetizationState.visible,
       title: title.trim(),
     });
 
-    if (!submitState.canPost || !community || (eligibility?.status !== "already_joined" && !isCommunityOwner)) {
+    if (!submitState.canPost || !community || (eligibility?.status !== "already_joined" && !hasCommunityPostingRole)) {
       logger.warn("[create-post] submit blocked before request", {
         canPost: submitState.canPost,
         communityId,
         composerMode,
         eligibilityStatus: eligibility?.status,
         hasCommunity: Boolean(community),
-        isCommunityOwner,
+        hasCommunityPostingRole,
       });
       return;
     }
@@ -879,7 +898,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       setSubmitting(false);
     }
   }, [
-    api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, isCommunityOwner,
+    api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, hasCommunityPostingRole,
     identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, pricingPolicy?.regional_pricing_enabled,
     selectedQualifierIds, session?.user.id, setDerivativeStep, setPendingSongBundleId, setSongMode, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     uploadVideoArtifact, videoState,
@@ -900,7 +919,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     composerMode,
     derivativeStep,
     eligibility,
-    isCommunityOwner,
+    isCommunityOwner: hasCommunityPostingRole,
     authorMode,
     identityMode,
     imageUpload,

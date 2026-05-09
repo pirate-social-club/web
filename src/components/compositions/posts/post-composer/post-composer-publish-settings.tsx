@@ -182,9 +182,13 @@ function attachmentFromController(
 
 function previewBody(controller: PostComposerController) {
   const { fields, tabs } = controller;
-  return tabs.activeTab === "image" || tabs.activeTab === "video"
-    ? fields.captionValue
-    : fields.textBodyValue;
+  if (tabs.activeTab === "image" || tabs.activeTab === "video") {
+    return fields.captionValue;
+  }
+  if (tabs.activeTab === "song") {
+    return fields.lyricsValue;
+  }
+  return fields.textBodyValue;
 }
 
 function shouldShowQualifiers(controller: PostComposerController) {

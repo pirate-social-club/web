@@ -44,6 +44,34 @@ describe("buildPostComposerPreviewContent", () => {
     });
   });
 
+  test("keeps local song artwork and playback wired in the publish preview", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "free",
+      attachment: {
+        kind: "song",
+        artworkUrl: "blob:https://app.test/cover",
+        label: "track.wav",
+        previewUrl: "blob:https://app.test/song",
+      },
+      body: "Lyrics shown on the post",
+      price: "",
+      songPlayback: {
+        onPlay: () => undefined,
+        onPause: () => undefined,
+        state: "idle",
+      },
+      title: "Track",
+    });
+
+    expect(content).toMatchObject({
+      type: "song",
+      artworkSrc: "blob:https://app.test/cover",
+      caption: "Lyrics shown on the post",
+      playbackState: "idle",
+    });
+    expect(typeof (content.type === "song" ? content.onPlay : undefined)).toBe("function");
+  });
+
   test("uses canonical song title instead of upload label for the publish preview", () => {
     const content = buildPostComposerPreviewContent({
       access: "free",

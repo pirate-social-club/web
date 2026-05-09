@@ -483,6 +483,7 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         currentHandle: profile.global_handle.label,
         handleTier: profile.global_handle.tier,
         redditImportDone: domains.redditImportDone,
+        cleanupRenameAvailable: domains.cleanupRenameAvailable,
         busy: domains.busy,
         phaseError: domains.phaseError,
         phase: domains.phase,
@@ -491,6 +492,10 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         redditImportSummary: domains.redditImportSummary ?? undefined,
         generatedHandle: domains.generatedHandle,
         handleSuggestion: domains.handleSuggestion,
+        buyNameValue: domains.buyNameValue,
+        buyNameChecking: domains.buyNameChecking,
+        paidQuote: domains.paidQuote,
+        paidClaimedHandle: domains.paidClaimedHandle,
         onPhaseChange: domains.onPhaseChange,
         onRedditUsernameChange: domains.onRedditUsernameChange,
         onImportKarmaNext: domains.onImportKarmaNext,
@@ -499,6 +504,10 @@ export function CurrentUserSettingsPage({ activeTab }: { activeTab: SettingsTab 
         onGenerateHandle: domains.onGenerateHandle,
         onChooseNameContinue: domains.onChooseNameContinue,
         onChooseNameBack: domains.onChooseNameBack,
+        onBuyNameChange: domains.onBuyNameChange,
+        onBuyNameGenerate: domains.onBuyNameGenerate,
+        onBuyNameQuote: domains.onBuyNameQuote,
+        onBuyNameClaim: domains.onBuyNameClaim,
       }}
     />
   );

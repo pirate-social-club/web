@@ -76,6 +76,17 @@ export function canonicalizeNamespaceRootInput(
   return result.ok ? result.rootLabel : value;
 }
 
+export function namespaceFamilyForRootInput(value: string): NamespaceFamily {
+  return value.trim().startsWith("@") ? "spaces" : "hns";
+}
+
+export function namespaceRootLabelForRequest(
+  family: NamespaceFamily,
+  rootLabel: string,
+): string {
+  return family === "spaces" ? `@${rootLabel}` : rootLabel;
+}
+
 function stripFamilyInputPrefix(family: NamespaceFamily, value: string): string {
   if (family === "spaces" && value.startsWith("@")) {
     return value.slice(1);

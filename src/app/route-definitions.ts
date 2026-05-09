@@ -11,6 +11,7 @@ export const COMMUNITY_MODERATION_SECTIONS = [
   "pricing",
   "requests",
   "namespace",
+  "handles",
   "gates",
   "safety",
   "visual-policy",

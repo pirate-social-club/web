@@ -96,6 +96,13 @@ function conflictDetails(error: unknown): { availability: HandleAvailability; re
   };
 }
 
+function getClaimErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError && error.code === "funding_confirmation_timeout") {
+    return "We could not confirm your payment in time. Try claiming again with the same transaction.";
+  }
+  return getErrorMessage(error, fallback);
+}
+
 export function useCommunityHandleClaimController(input: {
   api: CommunityHandleApi;
   communityId: string;
@@ -202,7 +209,7 @@ export function useCommunityHandleClaimController(input: {
         }));
       }
       setError(fundingTxRef
-        ? getErrorMessage(caught, "Could not claim this name.")
+        ? getClaimErrorMessage(caught, "Could not claim this name.")
         : getWalletTransactionErrorMessage(caught, "Could not claim this name."));
       setPhase("confirm");
     }

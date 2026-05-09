@@ -25,6 +25,7 @@ export function formatUsdCompactLabel(
   return new Intl.NumberFormat(localeTag, {
     currency: "USD",
     maximumFractionDigits: 2,
+    minimumFractionDigits: value % 1 === 0 ? 0 : 2,
     style: "currency",
   }).format(value);
 }

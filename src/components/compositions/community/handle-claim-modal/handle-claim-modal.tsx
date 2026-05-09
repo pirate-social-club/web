@@ -56,6 +56,19 @@ function resolvePrimaryLabel(
   return `Claim for ${formatCents(result.priceCents)}`;
 }
 
+function resolveCommunityRouteLabel(
+  communityHandle: string,
+  communityRouteLabel: string | null | undefined,
+): string {
+  const normalized = communityRouteLabel?.trim().replace(/^\/+/u, "");
+  if (normalized) {
+    return normalized.toLowerCase().startsWith("c/")
+      ? `/${normalized}`
+      : `/c/${normalized}`;
+  }
+  return `/c/${communityHandle}`;
+}
+
 function SearchResultFeedback({
   phase,
   result,
@@ -139,8 +152,8 @@ function SearchResultFeedback({
 export function HandleClaimModal({
   open,
   onOpenChange,
-  communityName,
   communityHandle,
+  communityRouteLabel,
   phase,
   searchValue,
   onSearchChange,
@@ -163,6 +176,10 @@ export function HandleClaimModal({
   const isProcessing = phase === "processing";
   const showInput = !isSuccess;
   const showNotNow = !isSuccess && !isProcessing;
+  const successCommunityLabel = resolveCommunityRouteLabel(
+    communityHandle,
+    communityRouteLabel,
+  );
 
   const priceCents = searchResult?.priceCents ?? 0;
   const needsFunds = priceCents > 0;
@@ -209,7 +226,7 @@ export function HandleClaimModal({
         <StandardModalHeader
           description={
             isSuccess
-              ? `Your name is ready to use in ${communityName}.`
+              ? `Claimed! Your name is ready to use in ${successCommunityLabel}.`
               : `Choose a name in this community.`
           }
           icon={
@@ -329,4 +346,3 @@ export function HandleClaimModal({
     </Modal>
   );
 }
-

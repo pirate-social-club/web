@@ -3,6 +3,8 @@ import { describe, expect, test } from "bun:test";
 import {
   canonicalizeNamespaceRootInput,
   canonicalizeNamespaceRootLabel,
+  namespaceFamilyForRootInput,
+  namespaceRootLabelForRequest,
 } from "./namespace-labels";
 
 describe("namespace label canonicalization", () => {
@@ -68,5 +70,16 @@ describe("namespace label canonicalization", () => {
 
   test("normalizes typed Unicode for input display", () => {
     expect(canonicalizeNamespaceRootInput("spaces", "\u{1F1F5}\u{1F1F8}")).toBe("xn--t77hga");
+  });
+
+  test("infers namespace family from the submitted prefix", () => {
+    expect(namespaceFamilyForRootInput("@myspace")).toBe("spaces");
+    expect(namespaceFamilyForRootInput("myhns")).toBe("hns");
+    expect(namespaceFamilyForRootInput(".myhns")).toBe("hns");
+  });
+
+  test("adds the Spaces prefix for API requests", () => {
+    expect(namespaceRootLabelForRequest("spaces", "myspace")).toBe("@myspace");
+    expect(namespaceRootLabelForRequest("hns", "myhns")).toBe("myhns");
   });
 });

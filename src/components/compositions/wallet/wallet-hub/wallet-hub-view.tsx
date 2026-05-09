@@ -34,7 +34,7 @@ function DesktopAssetRow({ asset }: { asset: WalletHubAssetRow }) {
       <TokenChainIcon
         chainId={asset.chainId}
         chainLabel={asset.chainTitle}
-        showChainBadge
+        showChainBadge={asset.chainId !== "bitcoin"}
         token={{ name: asset.name, symbol: asset.symbol }}
         size="sm"
       />
@@ -61,7 +61,7 @@ function MobileAssetRow({ asset }: { asset: WalletHubAssetRow }) {
       <TokenChainIcon
         chainId={asset.chainId}
         chainLabel={asset.chainTitle}
-        showChainBadge
+        showChainBadge={asset.chainId !== "bitcoin"}
         token={{ name: asset.name, symbol: asset.symbol }}
         size="sm"
       />

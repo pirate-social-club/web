@@ -11,6 +11,8 @@ import {
 import {
   canonicalizeNamespaceRootInput,
   canonicalizeNamespaceRootLabel,
+  namespaceFamilyForRootInput,
+  namespaceRootLabelForRequest,
 } from "@/components/compositions/verification/namespace-verification/namespace-labels";
 
 import type {
@@ -147,7 +149,11 @@ export function useNamespaceVerificationFlow({
   }, []);
 
   const setRootLabelInput = React.useCallback((value: string) => {
-    setRootLabel(canonicalizeNamespaceRootInput(activeFamily, value));
+    const family = namespaceFamilyForRootInput(value) === "spaces" ? "spaces" : activeFamily;
+    if (family !== activeFamily) {
+      setActiveFamily(family);
+    }
+    setRootLabel(canonicalizeNamespaceRootInput(family, value));
   }, [activeFamily]);
 
   const setActiveFamilyInput = React.useCallback((family: NamespaceFamily) => {
@@ -256,7 +262,10 @@ export function useNamespaceVerificationFlow({
     setLastCheckStatus(null);
 
     return callbacksRef.current
-      .onStartSession({ family: activeFamily, rootLabel: rootLabelResult.rootLabel })
+      .onStartSession({
+        family: activeFamily,
+        rootLabel: namespaceRootLabelForRequest(activeFamily, rootLabelResult.rootLabel),
+      })
       .then((result) => {
         applySessionResult(result);
         onSessionStartedRef.current?.(result.namespaceVerificationSessionId);
@@ -347,7 +356,10 @@ export function useNamespaceVerificationFlow({
       setLastCheckStatus(null);
 
       return callbacksRef.current
-        .onStartSession({ family: activeFamily, rootLabel: currentRootLabel.rootLabel })
+        .onStartSession({
+          family: activeFamily,
+          rootLabel: namespaceRootLabelForRequest(activeFamily, currentRootLabel.rootLabel),
+        })
         .then((result) => {
           applySessionResult(result);
           onSessionStartedRef.current?.(result.namespaceVerificationSessionId);

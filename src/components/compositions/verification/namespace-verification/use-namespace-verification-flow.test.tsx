@@ -115,7 +115,7 @@ describe("useNamespaceVerificationFlow", () => {
             return Promise.resolve(
               mockStartResult({
                 family: "spaces",
-                rootLabel,
+                rootLabel: rootLabel.replace(/^@/u, ""),
                 status: "challenge_required",
               }),
             );
@@ -138,7 +138,46 @@ describe("useNamespaceVerificationFlow", () => {
       await result.current.actions.start();
     });
 
-    expect(submittedRootLabel).toBe("xn--t77hga");
+    expect(submittedRootLabel).toBe("@xn--t77hga");
+  });
+
+  test("typing an @ root switches to Spaces and submits the prefixed root", async () => {
+    let submittedFamily = "";
+    let submittedRootLabel = "";
+
+    const { result } = renderHook(() =>
+      useNamespaceVerificationFlow({
+        callbacks: createMockCallbacks({
+          onStartSession: ({ family, rootLabel }) => {
+            submittedFamily = family;
+            submittedRootLabel = rootLabel;
+            return Promise.resolve(
+              mockStartResult({
+                family: "spaces",
+                rootLabel: rootLabel.replace(/^@/u, ""),
+                status: "challenge_required",
+              }),
+            );
+          },
+        }),
+        enabled: true,
+      }),
+    );
+
+    act(() => {
+      result.current.actions.setRootLabel("@myspace");
+    });
+
+    expect(result.current.activeFamily).toBe("spaces");
+    expect(result.current.rootLabel).toBe("myspace");
+    expect(result.current.canonicalNamespaceKey).toBe("@myspace");
+
+    await act(async () => {
+      await result.current.actions.start();
+    });
+
+    expect(submittedFamily).toBe("spaces");
+    expect(submittedRootLabel).toBe("@myspace");
   });
 
   test("hns route preview stays unprefixed", () => {

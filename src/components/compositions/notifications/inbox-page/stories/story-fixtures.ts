@@ -73,7 +73,7 @@ export const globalHandleCleanupTask: UserTask = {
   status: "open",
   priority: 2,
   payload: {
-    target_path: "/settings/profile",
+    target_path: "/settings/domains",
   },
   resolved_at: null,
   dismissed_at: null,

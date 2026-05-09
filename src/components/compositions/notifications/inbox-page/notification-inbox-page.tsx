@@ -241,7 +241,7 @@ export function resolveNotificationTaskHref(task: UserTask): string | null {
     case "profile_completion_suggested":
       return "/settings/profile";
     case "global_handle_cleanup_suggested":
-      return "/settings/profile";
+      return "/settings/domains";
     case "membership_review":
       return `/c/${task.subject}/mod/requests`;
     case "namespace_verification_required":

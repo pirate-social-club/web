@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { CardContent } from "@/components/primitives/card";
 import { PostCard } from "@/components/compositions/posts/post-card/post-card";
-import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
+import type { PlaybackState, PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { cn } from "@/lib/utils";
 
 import { QualifierSection } from "./post-composer-identity-section";
@@ -38,6 +38,69 @@ function useObjectUrl(file: File | null | undefined) {
   }, [file]);
 
   return objectUrl;
+}
+
+function useLocalAudioPreview(src: string | undefined): {
+  onPause: () => void;
+  onPlay: () => Promise<void>;
+  state: PlaybackState;
+} {
+  const audioRef = useState(() => typeof Audio === "undefined" ? null : new Audio())[0];
+  const [state, setState] = useState<PlaybackState>("idle");
+
+  useEffect(() => {
+    if (!audioRef) return undefined;
+
+    const handlePlay = () => setState("playing");
+    const handlePause = () => setState(audioRef.currentTime > 0 && !audioRef.ended ? "paused" : "idle");
+    const handleEnded = () => setState("ended");
+    const handleWaiting = () => setState("buffering");
+    const handleCanPlay = () => {
+      if (!audioRef.paused) setState("playing");
+    };
+
+    audioRef.addEventListener("play", handlePlay);
+    audioRef.addEventListener("pause", handlePause);
+    audioRef.addEventListener("ended", handleEnded);
+    audioRef.addEventListener("waiting", handleWaiting);
+    audioRef.addEventListener("canplay", handleCanPlay);
+
+    return () => {
+      audioRef.pause();
+      audioRef.removeEventListener("play", handlePlay);
+      audioRef.removeEventListener("pause", handlePause);
+      audioRef.removeEventListener("ended", handleEnded);
+      audioRef.removeEventListener("waiting", handleWaiting);
+      audioRef.removeEventListener("canplay", handleCanPlay);
+    };
+  }, [audioRef]);
+
+  useEffect(() => {
+    if (!audioRef) return;
+    audioRef.pause();
+    audioRef.removeAttribute("src");
+    audioRef.load();
+    setState("idle");
+  }, [audioRef, src]);
+
+  async function onPlay() {
+    if (!audioRef || !src) return;
+    setState("buffering");
+    if (audioRef.src !== src) {
+      audioRef.src = src;
+    }
+    try {
+      await audioRef.play();
+    } catch {
+      setState("idle");
+    }
+  }
+
+  function onPause() {
+    audioRef?.pause();
+  }
+
+  return { onPause, onPlay, state };
 }
 
 function useVideoPosterFrameUrl(file: File | null | undefined, frameSeconds: string | undefined) {
@@ -81,6 +144,8 @@ function attachmentFromController(
   controller: PostComposerController,
   imagePreviewUrl?: string,
   videoPreviewUrl?: string,
+  songAudioPreviewUrl?: string,
+  songArtworkPreviewUrl?: string,
 ): AttachmentState {
   const { fields, media, song, tabs } = controller;
 
@@ -104,7 +169,9 @@ function attachmentFromController(
   if (tabs.activeTab === "song") {
     return {
       kind: "song",
-      label: song.state.primaryAudioUpload?.name ?? song.state.primaryAudioLabel ?? "Song",
+      artworkUrl: songArtworkPreviewUrl,
+      label: song.state.title?.trim() || song.state.primaryAudioUpload?.name || song.state.primaryAudioLabel || "Song",
+      previewUrl: songAudioPreviewUrl,
     };
   }
   if (tabs.activeTab === "live") {
@@ -135,6 +202,11 @@ function buildPreviewPost(
   controller: PostComposerController,
   attachment: AttachmentState,
   videoPosterPreviewUrl?: string,
+  songPlayback?: {
+    onPause?: () => void;
+    onPlay?: () => void;
+    state: PlaybackState;
+  },
 ): PostCardProps {
   const { audience, commerce, fields, identity } = controller;
   const priceLabel = commerce.monetizationState.priceUsd
@@ -168,6 +240,8 @@ function buildPreviewPost(
       body: previewBody(controller),
       linkPreview: fields.linkPreview,
       price: commerce.monetizationState.priceUsd ?? "",
+      songTitle: controller.song.state.title,
+      songPlayback,
       title: fields.titleValue,
       videoPosterSrc: videoPosterPreviewUrl,
     }),
@@ -204,12 +278,21 @@ export function PostComposerPublishSettings({
 }: PostComposerPublishSettingsProps) {
   const imagePreviewUrl = useObjectUrl(controller.media.activeImageUpload);
   const videoPreviewUrl = useObjectUrl(controller.media.videoState.primaryVideoUpload);
+  const songAudioPreviewUrl = useObjectUrl(controller.song.state.primaryAudioUpload);
+  const songArtworkPreviewUrl = useObjectUrl(controller.song.state.coverUpload);
+  const songPlayback = useLocalAudioPreview(songAudioPreviewUrl);
   const videoPosterPreviewUrl = useVideoPosterFrameUrl(
     controller.media.videoState.primaryVideoUpload,
     controller.media.videoState.posterFrameSeconds,
   );
-  const attachment = attachmentFromController(controller, imagePreviewUrl, videoPreviewUrl);
-  const previewPost = buildPreviewPost(controller, attachment, videoPosterPreviewUrl);
+  const attachment = attachmentFromController(
+    controller,
+    imagePreviewUrl,
+    videoPreviewUrl,
+    songAudioPreviewUrl,
+    songArtworkPreviewUrl,
+  );
+  const previewPost = buildPreviewPost(controller, attachment, videoPosterPreviewUrl, songPlayback);
 
   return (
     <CardContent className={cn("space-y-6 p-5", controller.isMobile && "px-0 pb-4 pt-3")}>

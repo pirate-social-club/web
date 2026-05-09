@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { Community as ApiCommunity, CommunityPreview as ApiCommunityPreview, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
+import type { Community as ApiCommunity, CommunityPreview as ApiCommunityPreview, SongArtifactBundle as ApiSongArtifactBundle, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { CreatePostRequest, Post as ApiCreatedPost } from "@pirate/api-contracts";
@@ -18,9 +18,14 @@ import { logger } from "@/lib/logger";
 import { getErrorMessage } from "@/lib/error-utils";
 import type {
   CommunityCharityPartner,
+  ComposerReference,
   ComposerAudienceState,
+  LiveComposerState,
+  LiveSetlistItemKind,
+  RegionalPricingPreview,
   VideoComposerState,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
+import type { ApiCreateLiveRoomRequest, ApiLiveRoomRightsBasis } from "@/lib/api/client-api-types";
 import { isValidHttpUrl, normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
 import { extractVideoPosterFrameFile } from "@/components/compositions/posts/post-composer/video-poster-frame";
 
@@ -30,6 +35,10 @@ import { parseUsdInput } from "@/lib/formatting/currency";
 import { buildAssetListingRequest, resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
 import { useSongSubmit } from "./use-song-submit";
 import { buildAnonymousLabel } from "@/lib/anonymous-label";
+import {
+  getPricingCountryAssignmentDrafts,
+  getPricingTierDrafts,
+} from "@/app/authenticated-helpers/moderation-helpers";
 
 export function isPublicAudienceAllowed(community: ApiCommunity | ApiCommunityPreview | null): boolean {
   if (!community) {
@@ -47,6 +56,77 @@ type AvailableSigningAgent = {
 };
 
 const MAX_VIDEO_POSTER_FRAME_WIDTH = 1920;
+
+function liveRightsBasisFromPerformanceKind(kind: LiveSetlistItemKind): ApiLiveRoomRightsBasis {
+  if (kind === "original") return "original";
+  if (kind === "cover") return "cover";
+  return "unknown";
+}
+
+function eventStartFromScheduleAt(scheduleAt: string | undefined): number | null {
+  const value = scheduleAt?.trim();
+  if (!value) return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? Math.floor(timestamp / 1000) : null;
+}
+
+function liveSetlistSongArtifactBundleId(declaredTrackId: string | undefined): string | undefined {
+  const value = declaredTrackId?.trim();
+  return value?.startsWith("sab_") ? value : undefined;
+}
+
+export function songArtifactBundleToComposerReference(bundle: ApiSongArtifactBundle): ComposerReference {
+  return {
+    id: bundle.id,
+    title: bundle.title,
+    subtitle: bundle.creator_user,
+  };
+}
+
+function canSubmitLiveRoom(liveState: LiveComposerState, title: string): boolean {
+  if (!title.trim()) return false;
+  if (liveState.roomKind === "duet" && !liveState.guestUserId?.trim()) return false;
+  if (liveState.setlistItems.length === 0) return false;
+  if (liveState.setlistItems.some((item) => !item.titleText.trim())) return false;
+  return liveState.performerAllocations.reduce((sum, allocation) => sum + allocation.sharePct, 0) === 100;
+}
+
+export function buildLiveRoomRequest(input: {
+  coverRef?: string | null;
+  description: string;
+  hostUserId: string;
+  liveState: LiveComposerState;
+  title: string;
+}): ApiCreateLiveRoomRequest {
+  const guestUserId = input.liveState.roomKind === "duet"
+    ? input.liveState.guestUserId?.trim() || null
+    : null;
+  return {
+    title: input.title.trim(),
+    description: input.description.trim() || undefined,
+    room_kind: input.liveState.roomKind,
+    access_mode: input.liveState.accessMode,
+    visibility: input.liveState.visibility,
+    guest_user: guestUserId,
+    event_start_at: eventStartFromScheduleAt(input.liveState.scheduleAt),
+    cover_ref: input.coverRef ?? undefined,
+    performer_allocations: input.liveState.performerAllocations.map((allocation) => ({
+      user: allocation.role === "host" ? input.hostUserId : allocation.userId.trim() || guestUserId,
+      role: allocation.role,
+      share_bps: Math.round(allocation.sharePct * 100),
+    })),
+    setlist: {
+      status: "ready",
+      items: input.liveState.setlistItems.map((item) => ({
+        song_artifact_bundle: liveSetlistSongArtifactBundleId(item.declaredTrackId),
+        title: item.titleText.trim(),
+        artist: item.artistText?.trim() || undefined,
+        rights_basis: liveRightsBasisFromPerformanceKind(item.performanceKind),
+        rights_status: "pending",
+      })),
+    },
+  };
+}
 
 async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<AvailableSigningAgent | null> {
   for (const agent of agents) {
@@ -99,6 +179,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     identityMode,
     linkUrl,
     linkPreview,
+    liveState,
     license,
     lyrics,
     monetizationState,
@@ -124,6 +205,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setIdentityMode,
     setLinkUrl,
     setLinkPreview,
+    setLiveState,
     setLicense,
     setLyrics,
     setMonetizationState,
@@ -151,6 +233,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, []);
 
   const songBundleInputFingerprint = React.useMemo(() => JSON.stringify({
+    title: songState.title?.trim() ?? "",
     lyrics,
     primary: songState.primaryAudioUpload ? { name: songState.primaryAudioUpload.name, size: songState.primaryAudioUpload.size, lastModified: songState.primaryAudioUpload.lastModified } : null,
     cover: songState.coverUpload ? { name: songState.coverUpload.name, size: songState.coverUpload.size, lastModified: songState.coverUpload.lastModified } : null,
@@ -158,7 +241,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     canvas: songState.canvasVideoUpload ? { name: songState.canvasVideoUpload.name, size: songState.canvasVideoUpload.size, lastModified: songState.canvasVideoUpload.lastModified } : null,
     instrumental: songState.instrumentalAudioUpload ? { name: songState.instrumentalAudioUpload.name, size: songState.instrumentalAudioUpload.size, lastModified: songState.instrumentalAudioUpload.lastModified } : null,
     vocal: songState.vocalAudioUpload ? { name: songState.vocalAudioUpload.name, size: songState.vocalAudioUpload.size, lastModified: songState.vocalAudioUpload.lastModified } : null,
-  }), [lyrics, songState.canvasVideoUpload, songState.coverUpload, songState.instrumentalAudioUpload, songState.previewStartSeconds, songState.primaryAudioUpload, songState.vocalAudioUpload]);
+  }), [lyrics, songState.canvasVideoUpload, songState.coverUpload, songState.instrumentalAudioUpload, songState.previewStartSeconds, songState.primaryAudioUpload, songState.title, songState.vocalAudioUpload]);
   const previousSongBundleInputFingerprint = React.useRef(songBundleInputFingerprint);
 
   React.useEffect(() => {
@@ -252,6 +335,31 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [community]);
 
   React.useEffect(() => {
+    let cancelled = false;
+
+    if (composerMode !== "live") {
+      return () => { cancelled = true; };
+    }
+
+    void api.communities.listSongArtifactBundles(communityId, { limit: 25 })
+      .then((result) => {
+        if (cancelled) return;
+        const trackOptions = result.items.map(songArtifactBundleToComposerReference);
+        setLiveState((current) => ({ ...current, trackOptions }));
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setLiveState((current) => ({ ...current, trackOptions: [] }));
+        logger.warn("[create-post] could not load live setlist song artifacts", {
+          communityId,
+          error,
+        });
+      });
+
+    return () => { cancelled = true; };
+  }, [api, communityId, composerMode, setLiveState]);
+
+  React.useEffect(() => {
     resetCharityContribution();
   }, [communityId, resetCharityContribution]);
 
@@ -285,6 +393,31 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       regionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true ? prev.regionalPricingEnabled ?? false : false,
     }));
   }, [pricingPolicy?.regional_pricing_enabled]);
+
+  const regionalPricingPreview = React.useMemo<RegionalPricingPreview | null>(() => {
+    if (pricingPolicy?.regional_pricing_enabled !== true) return null;
+    const assignments = getPricingCountryAssignmentDrafts(pricingPolicy);
+    const countriesByTier = new Map<string, string[]>();
+    for (const assignment of assignments) {
+      const tierKey = assignment.tier_key.trim();
+      const countryCode = assignment.country_code.trim().toUpperCase();
+      if (!tierKey || !countryCode) continue;
+      const countries = countriesByTier.get(tierKey) ?? [];
+      countries.push(countryCode);
+      countriesByTier.set(tierKey, countries);
+    }
+
+    return {
+      defaultTierKey: pricingPolicy.default_tier_key,
+      tiers: getPricingTierDrafts(pricingPolicy).map((tier) => ({
+        adjustmentType: tier.adjustment_type,
+        adjustmentValue: tier.adjustment_value,
+        countryCodes: countriesByTier.get(tier.tier_key) ?? [],
+        displayName: tier.display_name,
+        tierKey: tier.tier_key,
+      })),
+    };
+  }, [pricingPolicy]);
 
   React.useEffect(() => {
     const normalizedLinkUrl = normalizeHttpUrl(linkUrl);
@@ -376,7 +509,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [community?.allow_anonymous_identity]);
 
   React.useEffect(() => {
-    if (composerMode === "song" || (composerMode === "video" && monetizationState.visible)) setIdentityMode("public");
+    if (composerMode === "song" || composerMode === "live" || (composerMode === "video" && monetizationState.visible)) setIdentityMode("public");
   }, [composerMode, monetizationState.visible]);
 
   React.useEffect(() => {
@@ -395,10 +528,11 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [availableIdentityQualifiers]);
 
   const canSubmitText = title.trim().length > 0;
-  const canSubmitSong = Boolean(songState.primaryAudioUpload && lyrics.trim());
+  const canSubmitSong = Boolean(songState.primaryAudioUpload && songState.title?.trim() && lyrics.trim());
   const canSubmitLink = isValidHttpUrl(linkUrl);
   const canSubmitImage = title.trim().length > 0 && Boolean(imageUpload);
   const canSubmitVideo = title.trim().length > 0 && Boolean(videoState.primaryVideoUpload);
+  const canSubmitLive = canSubmitLiveRoom(liveState, title);
   const canSubmit = composerMode === "song"
     ? canSubmitSong
     : composerMode === "link"
@@ -407,7 +541,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         ? canSubmitImage
         : composerMode === "video"
           ? canSubmitVideo
-          : canSubmitText;
+          : composerMode === "live"
+            ? canSubmitLive
+            : canSubmitText;
   const commercePostMode = composerMode === "song" || composerMode === "video";
   const paidAssetPriceUsd = commercePostMode && monetizationState.visible ? parseUsdInput(monetizationState.priceUsd ?? monetizationState.priceLabel) : null;
   const paidAssetPriceInvalid = commercePostMode && monetizationState.visible && paidAssetPriceUsd == null;
@@ -449,14 +585,45 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [api.communities, communityId]);
 
   const handleSubmit = React.useCallback(async () => {
-    if (!submitState.canPost || !community || (eligibility?.status !== "already_joined" && !isCommunityOwner)) return;
+    logger.info("[create-post] publish clicked", {
+      canPost: submitState.canPost,
+      communityId,
+      composerMode,
+      eligibilityStatus: eligibility?.status,
+      hasCommunity: Boolean(community),
+      isCommunityOwner,
+      monetized: monetizationState.visible,
+      title: title.trim(),
+    });
+
+    if (!submitState.canPost || !community || (eligibility?.status !== "already_joined" && !isCommunityOwner)) {
+      logger.warn("[create-post] submit blocked before request", {
+        canPost: submitState.canPost,
+        communityId,
+        composerMode,
+        eligibilityStatus: eligibility?.status,
+        hasCommunity: Boolean(community),
+        isCommunityOwner,
+      });
+      return;
+    }
 
     setSubmitting(true);
     setSubmitError(null);
+    logger.info("[create-post] submit started", {
+      authorMode,
+      communityId,
+      composerMode,
+      identityMode,
+      visibility: audience.visibility,
+    });
     try {
-      let result: ApiCreatedPost;
+      let result: ApiCreatedPost | null = null;
+      let publishedPostId: string | null = null;
+      let publishedPostType = composerMode;
       const resolvedIdentityMode = authorMode === "agent"
         || composerMode === "song"
+        || composerMode === "live"
         || (composerMode === "video" && monetizationState.visible)
         || !community.allow_anonymous_identity
         ? "public"
@@ -465,6 +632,11 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       const disclosedQualifierIds = resolvedIdentityMode === "anonymous" && selectedQualifierIds.length > 0 ? selectedQualifierIds : undefined;
 
       if (composerMode === "song") {
+        logger.info("[create-post] delegating to song submit", {
+          hasPendingSongBundle: Boolean(pendingSongBundleId),
+          paidAssetPriceUsd,
+          songMode,
+        });
         const songResult = await submitSongPost({
           audience,
           authorMode,
@@ -483,16 +655,58 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           setSubmitError,
           songMode,
           songState,
+          songTitle: songState.title ?? "",
           title,
         });
-        if (!songResult) return;
+        if (!songResult) {
+          logger.info("[create-post] song submit returned without publishing");
+          return;
+        }
         result = songResult;
+      } else if (composerMode === "live") {
+        if (!session?.user.id) {
+          throw new Error("Sign in before creating a live room.");
+        }
+        logger.info("[create-post] creating live room", {
+          accessMode: liveState.accessMode,
+          roomKind: liveState.roomKind,
+          setlistItems: liveState.setlistItems.length,
+        });
+        let coverRef: string | null = null;
+        if (liveState.coverUpload) {
+          const uploadedCover = await api.communities.uploadMedia({
+            kind: "post_image",
+            file: liveState.coverUpload,
+          });
+          coverRef = uploadedCover.media_ref;
+        }
+        const liveRoom = await api.communities.createLiveRoom(
+          communityId,
+          buildLiveRoomRequest({
+            coverRef,
+            description: body,
+            hostUserId: session.user.id,
+            liveState,
+            title,
+          }),
+        );
+        logger.info("[create-post] live room created", {
+          anchorPostId: liveRoom.anchor_post,
+          liveRoomId: liveRoom.id,
+        });
+        publishedPostId = liveRoom.anchor_post;
+        publishedPostType = "live";
       } else if (composerMode === "image") {
         if (!imageUpload) throw new Error("Choose an image before creating this post.");
+        logger.info("[create-post] uploading image media", {
+          filename: imageUpload.name,
+          sizeBytes: imageUpload.size,
+        });
         const uploadedImage = await api.communities.uploadMedia({
           kind: "post_image",
           file: imageUpload,
         });
+        logger.info("[create-post] image uploaded", { mediaRef: uploadedImage.media_ref });
         const imageRequest: CreatePostRequest = {
           idempotency_key: crypto.randomUUID(),
           post_type: "image" as const,
@@ -509,6 +723,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           }],
           visibility: audience.visibility,
         };
+        logger.info("[create-post] creating image post");
         result = await api.communities.createPost(
           communityId,
           authorMode === "agent"
@@ -516,7 +731,18 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
             : imageRequest,
         );
       } else if (composerMode === "video") {
+        logger.info("[create-post] uploading video artifact", {
+          filename: videoState.primaryVideoUpload?.name,
+          monetized: monetizationState.visible,
+          sizeBytes: videoState.primaryVideoUpload?.size,
+        });
         const uploadedVideo = await uploadVideoArtifact(videoState);
+        logger.info("[create-post] video artifact uploaded", {
+          storageRef: uploadedVideo.storage_ref,
+        });
+        logger.info("[create-post] extracting video poster frame", {
+          frameSeconds: videoState.posterFrameSeconds,
+        });
         const posterFrame = await extractVideoPosterFrameFile(
           videoState.primaryVideoUpload!,
           videoState.posterFrameSeconds,
@@ -525,6 +751,11 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         const uploadedPoster = await api.communities.uploadMedia({
           kind: "post_image",
           file: posterFrame.file,
+        });
+        logger.info("[create-post] video poster uploaded", {
+          mediaRef: uploadedPoster.media_ref,
+          posterHeight: posterFrame.height,
+          posterWidth: posterFrame.width,
         });
         const videoRequest: CreatePostRequest = {
           idempotency_key: crypto.randomUUID(),
@@ -554,12 +785,17 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           }],
           visibility: audience.visibility,
         };
+        logger.info("[create-post] creating video post");
         result = await api.communities.createPost(
           communityId,
           authorMode === "agent"
             ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, videoRequest)
             : videoRequest,
         );
+        logger.info("[create-post] video post created", {
+          assetId: result.asset,
+          postId: result.id,
+        });
         if (monetizationState.visible) {
           if (!result.asset) throw new Error("The video published, but the paid asset was not created.");
           const listingRequest = buildAssetListingRequest({
@@ -571,7 +807,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
             charityPartnerId: charityPartner?.partnerId ?? null,
           });
           if (!listingRequest) throw new Error("The video published, but the paid listing payload was not created.");
+          logger.info("[create-post] creating paid video listing", { assetId: result.asset });
           await api.communities.createListing(communityId, listingRequest);
+          logger.info("[create-post] paid video listing created", { assetId: result.asset });
         }
       } else if (composerMode === "link") {
         const normalizedLinkUrl = normalizeHttpUrl(linkUrl);
@@ -590,6 +828,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           link_url: normalizedLinkUrl,
           visibility: audience.visibility,
         };
+        logger.info("[create-post] creating link post", { linkUrl: normalizedLinkUrl });
         result = await api.communities.createPost(
           communityId,
           authorMode === "agent"
@@ -608,6 +847,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           body: body.trim() || undefined,
           visibility: audience.visibility,
         };
+        logger.info("[create-post] creating text post");
         result = await api.communities.createPost(
           communityId,
           authorMode === "agent"
@@ -616,16 +856,32 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         );
       }
 
-      navigate(`/p/${result.id}`);
+      logger.info("[create-post] publish completed", {
+        postId: publishedPostId ?? result?.id,
+        postType: publishedPostType,
+      });
+      const destinationPostId = publishedPostId ?? result?.id;
+      if (!destinationPostId) {
+        throw new Error("The post was created, but no destination post was returned.");
+      }
+      navigate(`/p/${destinationPostId}`);
     } catch (error: unknown) {
+      logger.error("[create-post] publish failed", {
+        error,
+        message: getErrorMessage(error, "Could not create post"),
+      });
       setSubmitError(getErrorMessage(error, "Could not create post"));
     } finally {
+      logger.info("[create-post] submit finished", {
+        communityId,
+        composerMode,
+      });
       setSubmitting(false);
     }
   }, [
     api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, isCommunityOwner,
-    identityMode, imageUpload, license, linkUrl, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, pricingPolicy?.regional_pricing_enabled,
-    selectedQualifierIds, setDerivativeStep, setPendingSongBundleId, setSongMode, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
+    identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, pricingPolicy?.regional_pricing_enabled,
+    selectedQualifierIds, session?.user.id, setDerivativeStep, setPendingSongBundleId, setSongMode, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     uploadVideoArtifact, videoState,
   ]);
 
@@ -654,11 +910,13 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     communityStableAnonymousLabel,
     linkUrl,
     linkPreview,
+    liveState,
     license,
     loadError,
     loading,
     lyrics,
     monetizationState,
+    regionalPricingPreview,
     selectedQualifierIds,
     session,
     songMode,
@@ -678,6 +936,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setIdentityMode,
     setLinkUrl,
     setLinkPreview,
+    setLiveState,
     setLicense,
     setLyrics,
     setMonetizationState,

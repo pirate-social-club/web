@@ -6,7 +6,9 @@ import type {
 
 import type {
   ApiCommunityMediaUploadResponse,
+  ApiCreateLiveRoomRequest,
   ApiCreateCommunityRequest,
+  ApiLiveRoom,
   CommunityListPostsOptions,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
@@ -54,6 +56,18 @@ export function createCommunitiesApi(request: ApiRequest) {
             namespace_verification_session_id: namespaceVerificationSessionId,
           }),
         },
+      ),
+    createLiveRoom: (
+      communityId: string,
+      body: ApiCreateLiveRoomRequest,
+    ): Promise<ApiLiveRoom> =>
+      request<ApiLiveRoom>(`/communities/${encodeURIComponent(communityId)}/live-rooms`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    getLiveRoom: (communityId: string, liveRoomId: string): Promise<ApiLiveRoom> =>
+      request<ApiLiveRoom>(
+        `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}`,
       ),
     ...createCommunitySettingsApi(request),
     ...createCommunityMembershipApi(request),

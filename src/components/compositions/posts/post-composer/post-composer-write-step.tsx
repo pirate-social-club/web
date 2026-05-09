@@ -16,6 +16,7 @@ import {
   PostComposerMobileAttachmentBar,
 } from "./post-composer-attachment-bar";
 import { attachmentActions } from "./post-composer-config";
+import { LiveTabContent } from "./post-composer-live-tab";
 import type { AttachmentKind, AttachmentState } from "./post-composer.types";
 import { extractVideoPosterFrameDataUrl } from "./video-poster-frame";
 import { useKeyboardBottomOffset } from "./use-keyboard-bottom-offset";
@@ -144,6 +145,11 @@ function extensionFromFileName(name: string): string | null {
   return name.slice(dotIndex + 1).toLowerCase();
 }
 
+function titleFromFileName(name: string): string {
+  const dotIndex = name.lastIndexOf(".");
+  return (dotIndex > 0 ? name.slice(0, dotIndex) : name).trim();
+}
+
 function fileKindFromFile(file: File): AttachmentKind | null {
   if (file.type.startsWith("image/")) return "image";
   if (file.type.startsWith("video/")) return "video";
@@ -239,6 +245,7 @@ function useWriteStepController(controller: PostComposerController) {
       ...current,
       primaryAudioLabel: file.name,
       primaryAudioUpload: file,
+      title: current.title?.trim() ? current.title : titleFromFileName(file.name),
     }));
     controller.tabs.onTabChange("song");
   }
@@ -387,6 +394,13 @@ export function PostComposerWriteStep({
           placeholder={write.attachment ? "Optional" : "Body text (optional)"}
           value={bodyValue(controller)}
         />
+        {controller.tabs.activeTab === "live" ? (
+          <LiveTabContent
+            copy={controller.copy}
+            live={controller.primary.liveState}
+            onLiveChange={controller.primary.setLiveState}
+          />
+        ) : null}
         <PostComposerDesktopAttachmentToolbar
           actions={attachmentActions}
           activeKind={write.attachment?.kind ?? null}
@@ -425,6 +439,13 @@ export function PostComposerWriteStep({
           placeholder={write.attachment ? controller.copy.placeholders.optional : controller.copy.placeholders.body}
           value={bodyValue(controller)}
         />
+        {controller.tabs.activeTab === "live" ? (
+          <LiveTabContent
+            copy={controller.copy}
+            live={controller.primary.liveState}
+            onLiveChange={controller.primary.setLiveState}
+          />
+        ) : null}
       </div>
       <PostComposerMobileAttachmentBar
         actions={attachmentActions}

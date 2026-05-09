@@ -1,4 +1,4 @@
-import type { PostCardContent } from "@/components/compositions/posts/post-card/post-card.types";
+import type { PlaybackState, PostCardContent } from "@/components/compositions/posts/post-card/post-card.types";
 
 import type { AttachmentState, LinkPreviewState, VideoDetailsState } from "./post-composer.types";
 
@@ -11,18 +11,26 @@ export function buildPostComposerPreviewContent({
   body,
   linkPreview,
   price,
+  songTitle,
   title,
   videoDetails,
   videoPosterSrc,
+  songPlayback,
 }: {
   access: "free" | "paid";
   attachment: AttachmentState;
   body: string;
   linkPreview?: LinkPreviewState;
   price: string;
+  songTitle?: string;
   title: string;
   videoDetails?: VideoDetailsState;
   videoPosterSrc?: string;
+  songPlayback?: {
+    onPause?: () => void;
+    onPlay?: () => void;
+    state: PlaybackState;
+  };
 }): PostCardContent {
   const bodyText = body.trim();
   const accessMode = access === "paid" ? "locked" : "public";
@@ -111,16 +119,20 @@ export function buildPostComposerPreviewContent({
   }
 
   if (attachment.kind === "song") {
+    const trackTitle = songTitle?.trim() || attachment.label || "Untitled track";
+
     return {
       type: "song",
-      title: title || attachment.label || "Untitled track",
+      title: trackTitle,
       caption: bodyText || undefined,
-      artworkSrc: "https://picsum.photos/seed/post-composer-song-preview/240/240",
+      artworkSrc: attachment.artworkUrl ?? "https://picsum.photos/seed/post-composer-song-preview/240/240",
       accessMode,
       listingMode: access === "paid" ? "listed" : "not_listed",
       listingStatus: access === "paid" ? "active" : undefined,
       priceLabel: access === "paid" ? priceLabel : undefined,
-      playbackState: "idle",
+      onPause: songPlayback?.onPause,
+      onPlay: attachment.previewUrl ? songPlayback?.onPlay : undefined,
+      playbackState: songPlayback?.state ?? "idle",
     };
   }
 

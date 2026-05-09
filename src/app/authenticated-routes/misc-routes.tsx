@@ -21,7 +21,7 @@ import { useCreatePostDraftState, type CreatePostDraftState } from "@/app/authen
 
 export function resolveGlobalCreatePostCanContinue(state: CreatePostDraftState) {
   if (state.composerMode === "song") {
-    return Boolean(state.songState.primaryAudioUpload && state.lyrics.trim());
+    return Boolean(state.songState.primaryAudioUpload && state.songState.title?.trim() && state.lyrics.trim());
   }
   if (state.composerMode === "link") {
     return isValidHttpUrl(state.linkUrl);

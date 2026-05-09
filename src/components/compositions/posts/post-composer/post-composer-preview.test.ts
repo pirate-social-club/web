@@ -44,6 +44,26 @@ describe("buildPostComposerPreviewContent", () => {
     });
   });
 
+  test("uses canonical song title instead of upload label for the publish preview", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "free",
+      attachment: {
+        kind: "song",
+        label: "demo-upload.wav",
+        previewUrl: "blob:https://app.test/song",
+      },
+      body: "",
+      price: "",
+      songTitle: "Midnight Signal",
+      title: "New drop",
+    });
+
+    expect(content).toMatchObject({
+      type: "song",
+      title: "Midnight Signal",
+    });
+  });
+
   test("uses fetched link preview title instead of typed title for generic links", () => {
     const content = buildPostComposerPreviewContent({
       access: "free",

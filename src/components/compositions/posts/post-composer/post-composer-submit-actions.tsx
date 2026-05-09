@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/primitives/button";
 import { CardFooter } from "@/components/primitives/card";
 import { FormNote } from "@/components/primitives/form-layout";
+import { logger } from "@/lib/logger";
 
 import { anonymousEligibleTabs } from "./post-composer-config";
 import {
@@ -58,7 +59,7 @@ export function PostComposerDesktopFooter({
     return (
       <CardFooter className="justify-end gap-3 border-t border-border-soft p-5">
         <Button
-          disabled={!canAdvanceWrite || submit.disabled}
+          disabled={!canAdvanceWrite}
           key="continue"
           onClick={() => step.set(getNextComposerStep("write", tabs.activeTab))}
           size="lg"
@@ -135,7 +136,15 @@ export function PostComposerDesktopFooter({
           disabled={submit.disabled}
           key="publish"
           loading={submit.loading}
-          onClick={submit.onSubmit}
+          onClick={() => {
+            logger.info("[post-composer] desktop publish button clicked", {
+              activeTab: tabs.activeTab,
+              disabled: submit.disabled,
+              loading: submit.loading,
+              step: step.current,
+            });
+            submit.onSubmit?.();
+          }}
           size="lg"
         >
           {publishLabel}
@@ -174,7 +183,7 @@ export function PostComposerMobileSubmitBar({
         <div className="px-4">
           <Button
             className="w-full"
-            disabled={!canAdvanceWrite || submit.disabled}
+            disabled={!canAdvanceWrite}
             onClick={() => step.set(getNextComposerStep("write", tabs.activeTab))}
             size="lg"
           >
@@ -195,7 +204,15 @@ export function PostComposerMobileSubmitBar({
               className="w-full"
               disabled={submit.disabled}
               loading={submit.loading}
-              onClick={submit.onSubmit}
+              onClick={() => {
+                logger.info("[post-composer] mobile publish button clicked", {
+                  activeTab: tabs.activeTab,
+                  disabled: submit.disabled,
+                  loading: submit.loading,
+                  step: step.current,
+                });
+                submit.onSubmit?.();
+              }}
               size="lg"
             >
               {publishLabel}

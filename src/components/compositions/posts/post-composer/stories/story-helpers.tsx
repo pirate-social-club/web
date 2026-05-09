@@ -89,6 +89,7 @@ export const composerParameters = {
 export function InteractivePostComposer(props: PostComposerProps) {
   const [license, setLicense] = React.useState(props.license);
   const [derivativeStep, setDerivativeStep] = React.useState(props.derivativeStep);
+  const [monetization, setMonetization] = React.useState(props.monetization);
   const [songMode, setSongMode] = React.useState(props.songMode);
 
   return (
@@ -96,8 +97,10 @@ export function InteractivePostComposer(props: PostComposerProps) {
       {...props}
       derivativeStep={derivativeStep}
       license={license}
+      monetization={monetization}
       onDerivativeStepChange={setDerivativeStep}
       onLicenseChange={(next) => setLicense(next)}
+      onMonetizationChange={setMonetization}
       onSongModeChange={(next) => setSongMode(next)}
       songMode={songMode}
     />

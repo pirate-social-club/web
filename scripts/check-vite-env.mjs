@@ -20,4 +20,22 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
+if (mode === "production") {
+  const productionMainnetRequirements = {
+    VITE_BASE_NETWORK: "base-mainnet",
+    VITE_EFP_ENVIRONMENT: "mainnet",
+  };
+  const mismatched = Object.entries(productionMainnetRequirements).filter(([key, expected]) => {
+    return String(env[key] ?? "").trim() !== expected;
+  });
+
+  if (mismatched.length > 0) {
+    console.error(
+      "Production Vite env must target mainnet: "
+      + mismatched.map(([key, expected]) => `${key}=${expected}`).join(", "),
+    );
+    process.exit(1);
+  }
+}
+
 console.log(`Vite env check passed for ${mode}: ${keys.join(", ")}`);

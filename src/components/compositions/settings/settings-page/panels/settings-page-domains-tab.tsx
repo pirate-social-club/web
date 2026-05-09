@@ -546,7 +546,7 @@ function BuyNamePhase({
         ) : quote ? (
           <FormNote className="inline-flex items-center gap-2 text-destructive" tone="destructive">
             <XCircle className="size-5 shrink-0" weight="fill" />
-            {quote.reason ?? copy.buyNameUnavailable}
+            {copy.buyNameUnavailable}
           </FormNote>
         ) : null}
 

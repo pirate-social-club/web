@@ -21,6 +21,7 @@ import { CommunityAgentPolicyPage } from "@/components/compositions/community/ag
 import { CommunityMachineAccessPage } from "@/components/compositions/community/machine-access/community-machine-access";
 import { CommunitySafetyPage } from "@/components/compositions/community/safety-page/community-safety-page";
 import { CommunityVisualPolicyPage } from "@/components/compositions/community/visual-policy/community-visual-policy";
+import { CommunityHandlePolicyEditorPage } from "@/components/compositions/community/handle-policy-editor/community-handle-policy-editor-page";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import { Button } from "@/components/primitives/button";
@@ -37,6 +38,7 @@ import { buildPublicProfilePath } from "@/lib/profile-routing";
 import { CommunityModerationGuard, getCommunityModerationTitle } from "@/app/authenticated-helpers/moderation-route-helpers";
 import {
   buildCommunityModerationIndexPath,
+  buildCommunityModerationPath,
   buildCommunityModerationSections,
   type CommunityModerationSection,
 } from "@/app/authenticated-helpers/moderation-helpers";
@@ -805,6 +807,43 @@ export function CommunityModerationPage({
           submitState={state.machineAccessSubmitState}
         />
       );
+    } else if (section === "handles") {
+      setMobileSaveAction({
+        disabled: state.saving || !state.hasChanges || !state.community?.namespace_verification,
+        loading: state.saving,
+        onSave: state.handleSave,
+      });
+      if (state.policyLoading) {
+        content = <FullPageSpinner />;
+      } else if (state.policyError) {
+        content = (
+          <RouteLoadFailureState
+            description={state.policyError instanceof Error ? state.policyError.message : copy.routeStatus.moderation.failure}
+            title="Names"
+          />
+        );
+      } else {
+        content = (
+          <CommunityHandlePolicyEditorPage
+            draft={state.draft}
+            handleOpsLoading={state.handleOpsLoading}
+            handleStatusFilter={state.handleStatusFilter}
+            handles={state.handles}
+            handlesLoading={state.handlesLoading}
+            hasChanges={state.hasChanges}
+            hasNamespace={Boolean(state.community?.namespace_verification)}
+            namespaceLabel={state.community?.route_slug ?? null}
+            onDraftChange={state.setDraft}
+            onNavigateToNamespace={() => navigate(buildCommunityModerationPath(communityId, "namespace", state.community?.route_slug))}
+            onReserveHandle={state.handleReserve}
+            onRevokeHandle={state.handleRevoke}
+            onSave={state.handleSave}
+            onStatusFilterChange={state.setHandleStatusFilter}
+            saveDisabled={state.saving || !state.hasChanges}
+            saveLoading={state.saving}
+          />
+        );
+      }
     } else {
       const clearPendingNamespaceSession = async () => {
         state.setActiveNamespaceSessionId(null);

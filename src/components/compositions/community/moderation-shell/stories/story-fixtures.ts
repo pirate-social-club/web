@@ -8,24 +8,25 @@ export const mockPirateNameservers = ["ns1.pirate.sc."];
 export const mockNamespaceCallbacks: NamespaceVerificationCallbacks = {
   onStartSession: async ({ family, rootLabel }) => {
     if (family === "spaces") {
+      const normalizedRootLabel = rootLabel.replace(/^@/u, "");
       return {
-        namespaceVerificationSessionId: `nvs_${rootLabel}_spaces_stub`,
+        namespaceVerificationSessionId: `nvs_${normalizedRootLabel}_spaces_stub`,
         family: "spaces",
-        rootLabel,
+        rootLabel: normalizedRootLabel,
         challengeHost: null,
         challengeTxtValue: null,
         challengePayload: {
           kind: "fabric_txt_publish",
           domain: "pirate.sc",
-          root_label: rootLabel,
+          root_label: normalizedRootLabel,
           root_pubkey: "stub_root_pubkey",
           nonce: "stub-session-id:abc123",
           issued_at: new Date().toISOString(),
           expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
           txt_key: "pirate-verify",
           txt_value: "pirate-space-verify=stub-session-id:abc123",
-          web_url: `https://pirate.sc/c/@${rootLabel}`,
-          freedom_url: `https://pirate.sc/c/@${rootLabel}`,
+          web_url: `https://pirate.sc/c/@${normalizedRootLabel}`,
+          freedom_url: `https://pirate.sc/c/@${normalizedRootLabel}`,
         },
         challengeExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
         status: "challenge_required",

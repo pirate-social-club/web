@@ -20,6 +20,7 @@ import { useCommunityMachineAccessState } from "./use-community-machine-access-s
 import { useCommunityProfileState } from "./use-community-profile-state";
 import { useCommunitySafetyState } from "./use-community-safety-state";
 import { useCommunityVisualPolicyState } from "./use-community-visual-policy-state";
+import { useCommunityHandlePolicyState } from "./use-community-handle-policy-state";
 
 export function useCommunityModerationState(communityId: string) {
   const api = useApi();
@@ -116,6 +117,10 @@ export function useCommunityModerationState(communityId: string) {
   const visualPolicy = useCommunityVisualPolicyState({ community, saveCommunity });
   const agents = useCommunityAgentPolicyState({ community, saveCommunity });
   const machineAccess = useCommunityMachineAccessState({ community });
+  const handlePolicy = useCommunityHandlePolicyState({
+    communityId: community?.id ?? null,
+    enabled: Boolean(community?.namespace_verification),
+  });
 
   return {
     activeNamespaceSessionId,
@@ -135,5 +140,6 @@ export function useCommunityModerationState(communityId: string) {
     ...profile,
     ...contentPolicy,
     ...commerce,
+    ...handlePolicy,
   };
 }

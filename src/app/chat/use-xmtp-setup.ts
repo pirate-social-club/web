@@ -10,11 +10,11 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { publishChatInboxId } from "@/lib/chat/chat-xmtp-client";
 import {
   ensureXmtpClient,
-  getSessionWalletAddress,
+  getSessionWalletAddresses,
   getSharedXmtpClientCache,
-  getXmtpRegistrationHint,
   isLikelyXmtpTabContentionError,
   resolveXmtpSignerWallet,
+  resolveXmtpWalletAddress,
   setXmtpRegistrationHint,
   XmtpRegistrationRequiredError,
   type XmtpClientCache,
@@ -31,12 +31,20 @@ function summarizeConnectedWallets(wallets: readonly PirateConnectedEvmWallet[])
   }));
 }
 
+function summarizeConnectedWalletAddresses(wallets: readonly PirateConnectedEvmWallet[]) {
+  return wallets.map((wallet) => wallet.address).join(",") || null;
+}
+
 function summarizeSessionWallets(session: StoredSession | null) {
   return (session?.walletAttachments ?? []).map((wallet) => ({
     address: wallet.wallet_address ?? null,
     chainNamespace: wallet.chain_namespace ?? null,
     isPrimary: wallet.is_primary ?? null,
   }));
+}
+
+function summarizeSessionWalletAddresses(session: StoredSession | null) {
+  return session ? getSessionWalletAddresses(session).join(",") || null : null;
 }
 
 function buildMissingSignerDiagnostic({
@@ -59,8 +67,10 @@ function buildMissingSignerDiagnostic({
     userId: session?.user.id ?? null,
     primaryWalletAddress: session?.profile.primary_wallet_address ?? null,
     primaryWalletAttachmentId: session?.user.primary_wallet_attachment ?? null,
+    sessionWalletAddresses: summarizeSessionWalletAddresses(session),
     walletAttachments: summarizeSessionWallets(session),
     walletsReady,
+    connectedWalletAddresses: summarizeConnectedWalletAddresses(connectedWallets),
     connectedWallets: summarizeConnectedWallets(connectedWallets),
     privy: {
       configured: privyRuntime.configured,
@@ -119,7 +129,7 @@ export function useXmtpSetup({
   );
   const walletHydrating = !!session && privyRuntime.configured && (!privyRuntime.privyReady || !walletsReady);
   const authBroken = !!session && !walletHydrating && !xmtpSignerWallet;
-  const sessionWalletAddress = session ? getSessionWalletAddress(session) : null;
+  const sessionWalletAddress = session ? resolveXmtpWalletAddress(session, xmtpSignerWallet) : null;
   const hasWarmXmtpClient = !!sessionWalletAddress
     && xmtpClientCache.clientWalletAddress === sessionWalletAddress
     && !!xmtpClientCache.clientInstance;
@@ -138,16 +148,26 @@ export function useXmtpSetup({
     }
 
     lastMissingSignerDiagnosticRef.current = key;
-    logger.debug("[chat] XMTP signer wallet unavailable", {
+    logger.warn("[chat:xmtp] signer-wallet-unavailable", {
       ...missingSignerDiagnostic,
       source,
     });
   }, [missingSignerDiagnostic]);
 
   const publishInboxBestEffort = React.useCallback((inboxId: string | null) => {
-    void publishChatInboxId(api, inboxId).catch((publishError) => {
-      logger.warn("[chat] failed to publish XMTP inbox id", publishError);
+    logger.info("[chat:xmtp] inbox-publish:start", {
+      hasInboxId: typeof inboxId === "string" && inboxId.trim().length > 0,
+      inboxId: typeof inboxId === "string" ? inboxId : null,
     });
+    void publishChatInboxId(api, inboxId)
+      .then(() => {
+        logger.info("[chat:xmtp] inbox-publish:success", {
+          inboxId: typeof inboxId === "string" ? inboxId : null,
+        });
+      })
+      .catch((publishError) => {
+        logger.warn("[chat:xmtp] inbox-publish:failed", publishError);
+      });
   }, [api]);
 
   React.useEffect(() => {
@@ -155,15 +175,21 @@ export function useXmtpSetup({
       authBroken,
       clientHydrated,
       connectedWalletCount: connectedWallets.length,
+      connectedWalletAddresses: summarizeConnectedWalletAddresses(connectedWallets),
+      connectedWallets: summarizeConnectedWallets(connectedWallets),
       hasConnect: !!privyRuntime.connect,
       hasRouteTarget: !!routeTarget,
       hasSession: !!session,
       hasXmtpSignerWallet: !!xmtpSignerWallet,
       mode: mode.kind,
+      primaryWalletAddress: session?.profile.primary_wallet_address ?? null,
       privyConfigured: privyRuntime.configured,
       privyLoaded: privyRuntime.loaded,
       privyReady: privyRuntime.privyReady,
       routeConversationId,
+      sessionWalletAddress,
+      sessionWalletAddresses: summarizeSessionWalletAddresses(session),
+      walletAttachments: summarizeSessionWallets(session),
       walletHydrating,
       walletsReady,
       xmtpSetupPhase,
@@ -180,11 +206,17 @@ export function useXmtpSetup({
     routeConversationId,
     routeTarget,
     session,
+    sessionWalletAddress,
     walletHydrating,
     walletsReady,
     xmtpSetupPhase,
     xmtpSignerWallet,
   ]);
+
+  React.useEffect(() => {
+    if (!authBroken) return;
+    logMissingXmtpSigner("setup-auth-broken");
+  }, [authBroken, logMissingXmtpSigner]);
 
   const handleEnableMessages = React.useCallback(() => {
     if (!session || !xmtpSignerWallet) {
@@ -206,7 +238,7 @@ export function useXmtpSetup({
           return;
         }
 
-        const walletAddress = getSessionWalletAddress(session);
+        const walletAddress = resolveXmtpWalletAddress(session, xmtpSignerWallet);
         if (walletAddress) setXmtpRegistrationHint(walletAddress);
         publishInboxBestEffort(typeof client.inboxId === "string" ? client.inboxId : null);
         setXmtpSetupPhase("ready");
@@ -242,8 +274,8 @@ export function useXmtpSetup({
       return;
     }
 
-    const walletAddress = getSessionWalletAddress(session);
-    if (!walletAddress || !getXmtpRegistrationHint(walletAddress)) {
+    const walletAddress = resolveXmtpWalletAddress(session, xmtpSignerWallet);
+    if (!walletAddress) {
       setXmtpSetupPhase("needs-enablement");
       return;
     }
@@ -257,8 +289,10 @@ export function useXmtpSetup({
       cache: xmtpClientCache,
       signerWallet: xmtpSignerWallet,
     })
-      .then(() => {
+      .then(({ client }) => {
         if (setupRequestRef.current !== requestId) return;
+        setXmtpRegistrationHint(walletAddress);
+        publishInboxBestEffort(typeof client.inboxId === "string" ? client.inboxId : null);
         setXmtpSetupPhase("ready");
       })
       .catch((error: unknown) => {
@@ -272,7 +306,7 @@ export function useXmtpSetup({
           : getErrorMessage(error, "Could not set up encrypted messages."));
         setXmtpSetupPhase("error");
       });
-  }, [session, walletHydrating, xmtpSignerWallet, xmtpClientCache]);
+  }, [publishInboxBestEffort, session, walletHydrating, xmtpSignerWallet, xmtpClientCache]);
 
   return {
     authBroken,

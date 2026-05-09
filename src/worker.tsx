@@ -580,6 +580,8 @@ const app = defineApp<AppRequestInfo>([
     route("/", AppRoutePage),
     route("/popular", AppRoutePage),
     route("/advertise", AppRoutePage),
+    route("/tg", AppRoutePage),
+    route("/tg/c/:communityId", AppRoutePage),
     route("/your-communities", AppRoutePage),
     route("/communities/new", AppRoutePage),
     route("/submit", AppRoutePage),
@@ -605,6 +607,7 @@ const app = defineApp<AppRequestInfo>([
     route("/u/:handleLabel", AppRoutePage),
     route("/a/:handleLabel", AppRoutePage),
     route("/onboarding", AppRoutePage),
+    route("/authorize-device", AppRoutePage),
   ]),
 ]);
 

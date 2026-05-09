@@ -155,6 +155,89 @@ export type CommunityListPostsOptions = {
   sort?: "best" | "new" | "top" | null;
 };
 
+export type ApiLiveRoomKind = "solo" | "duet";
+export type ApiLiveRoomStatus = "scheduled" | "live" | "ended" | "canceled";
+export type ApiLiveRoomAccessMode = "free" | "gated" | "paid";
+export type ApiLiveRoomVisibility = "public" | "unlisted";
+export type ApiLiveRoomSetlistStatus = "draft" | "ready" | "locked";
+export type ApiLiveRoomRightsBasis = "original" | "licensed" | "cover" | "public_domain" | "unknown";
+export type ApiLiveRoomRightsStatus = "pending" | "ready" | "blocked";
+
+export type ApiCreateLiveRoomRequest = {
+  title?: string | null;
+  description?: string | null;
+  room_kind?: ApiLiveRoomKind | null;
+  access_mode?: ApiLiveRoomAccessMode | null;
+  visibility?: ApiLiveRoomVisibility | null;
+  guest_user?: string | null;
+  event_start_at?: number | null;
+  cover_ref?: string | null;
+  performer_allocations?: Array<{
+    user?: string | null;
+    role?: "host" | "guest" | null;
+    share_bps?: number | null;
+  }> | null;
+  setlist?: {
+    status?: ApiLiveRoomSetlistStatus | null;
+    items?: Array<{
+      song_artifact_bundle?: string | null;
+      title?: string | null;
+      artist?: string | null;
+      rights_basis?: ApiLiveRoomRightsBasis | null;
+      license_ref?: string | null;
+      rights_status?: ApiLiveRoomRightsStatus | null;
+      blocking_rights_failure?: boolean | null;
+    }> | null;
+  } | null;
+};
+
+export type ApiLiveRoom = {
+  id: string;
+  object: "live_room";
+  community: string;
+  anchor_post: string;
+  host_user: string;
+  guest_user: string | null;
+  room_kind: ApiLiveRoomKind;
+  status: ApiLiveRoomStatus;
+  access_mode: ApiLiveRoomAccessMode;
+  visibility: ApiLiveRoomVisibility;
+  title: string;
+  description: string | null;
+  cover_ref: string | null;
+  event_start_at: number | null;
+  live_started_at: number | null;
+  ended_at: number | null;
+  canceled_at: number | null;
+  broadcast_ref: string | null;
+  replay_status: string;
+  performer_allocations: Array<{
+    id: string;
+    object: "live_room_performer_allocation";
+    user: string;
+    role: "host" | "guest";
+    share_bps: number;
+  }>;
+  setlist: {
+    id: string;
+    object: "live_room_setlist";
+    status: ApiLiveRoomSetlistStatus;
+    items: Array<{
+      id: string;
+      object: "live_room_setlist_item";
+      position: number;
+      song_artifact_bundle: string | null;
+      title: string;
+      artist: string | null;
+      rights_basis: ApiLiveRoomRightsBasis;
+      license_ref: string | null;
+      rights_status: ApiLiveRoomRightsStatus;
+      blocking_rights_failure: boolean;
+    }>;
+  };
+  created: number;
+};
+
 export type CommunityListCommentsOptions = {
   limit?: string | null;
   cursor?: string | null;

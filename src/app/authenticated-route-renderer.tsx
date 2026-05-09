@@ -96,6 +96,10 @@ const LazyOnboardingPage = lazyRouteModule(
   () => import("./authenticated-routes/onboarding-route"),
   "OnboardingPage",
 );
+const LazyAuthorizeDevicePage = lazyRouteModule(
+  () => import("./authenticated-routes/authorize-device-route"),
+  "AuthorizeDevicePage",
+);
 const LazyNotFoundPage = lazyRouteModule(
   () => import("./authenticated-routes/misc-routes"),
   "NotFoundPage",
@@ -164,10 +168,14 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyCurrentUserSettingsPage activeTab={route.section} />;
     case "onboarding":
       return <LazyOnboardingPage />;
+    case "authorize-device":
+      return <LazyAuthorizeDevicePage />;
     case "not-found":
       return <LazyNotFoundPage path={route.path} />;
     case "public-profile":
     case "public-agent":
+    case "telegram-mini-app":
+    case "telegram-community":
       return null;
   }
 }

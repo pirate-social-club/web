@@ -28,6 +28,11 @@ jobs:
           repository: pirate-social-club/api
           path: api
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: pirate-social-club/core
+          path: core
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -38,6 +43,9 @@ jobs:
       - name: Install API dependencies
         working-directory: api/services/api
         run: bun install --frozen-lockfile
+      - name: Install core dependencies
+        working-directory: core
+        run: npm ci
       - name: Deploy staging
         working-directory: web
         run: scripts/deploy-staging.sh
@@ -47,6 +55,15 @@ jobs:
       - name: Smoke staging
         working-directory: web
         run: scripts/smoke-test.sh staging
+      - name: Check staging community migration drift
+        working-directory: core
+        env:
+          CONTROL_PLANE_DATABASE_URL: ${{ secrets.STAGING_CONTROL_PLANE_DATABASE_URL }}
+          TURSO_COMMUNITY_DB_WRAP_KEY: ${{ secrets.STAGING_TURSO_COMMUNITY_DB_WRAP_KEY }}
+        run: |
+          test -n "$CONTROL_PLANE_DATABASE_URL"
+          test -n "$TURSO_COMMUNITY_DB_WRAP_KEY"
+          bun scripts/community/apply-remote-community-migrations.ts
 
   production:
     name: Deploy production

@@ -8,15 +8,27 @@ import type {
 
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
+const ALTCHA_HEADER = "x-pirate-altcha";
+
+type JoinOptions = {
+  altchaPayload?: string | null;
+};
+
+function altchaHeaders(options?: JoinOptions): HeadersInit | undefined {
+  const payload = options?.altchaPayload?.trim();
+  return payload ? { [ALTCHA_HEADER]: payload } : undefined;
+}
+
 export function createCommunityMembershipApi(request: ApiRequest) {
   return {
     join: (
       communityId: string,
       body?: { note?: string | null },
+      options?: JoinOptions,
     ): Promise<{ community: string; status: string }> =>
       request<{ community: string; status: string }>(
         `/communities/${encodeURIComponent(communityId)}/join`,
-        { method: "POST", body: JSON.stringify(body ?? {}) },
+        { method: "POST", body: JSON.stringify(body ?? {}), headers: altchaHeaders(options) },
       ),
     follow: (communityId: string): Promise<CommunityFollowResponse> =>
       request<CommunityFollowResponse>(

@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildOAuthAuthorizationServerResponse,
   buildOAuthProtectedResourceResponse,
+  buildAgentSkillsIndexResponse,
   buildOpenIdConfigurationResponse,
   buildMcpServerCardResponse,
   buildWebBotAuthDirectoryResponse,
@@ -100,6 +101,15 @@ describe("agent discovery origins", () => {
     expect(body.jwks_uri).toBe("https://api.pirate.sc/.well-known/jwks.json");
     expect(body.resource_documentation).toBe("https://pirate.sc/docs/api");
     expect(body.scopes_supported).toEqual(["pirate_app_session"]);
+  });
+
+  test("publishes community action agent skill", async () => {
+    const response = await buildAgentSkillsIndexResponse("https://pirate.sc/");
+    const body = await response.json() as {
+      skills: Array<{ name: string }>;
+    };
+
+    expect(body.skills.map((skill) => skill.name)).toContain("community-actions");
   });
 
   test("hides Web Bot Auth directory until signing key is configured", async () => {

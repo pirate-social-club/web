@@ -13,7 +13,7 @@ import { getLocaleMessages } from "@/locales";
 type IdentityGateAudience = "public" | "admin";
 type VerificationProvider = "self" | "very" | "passport";
 type RequirementProviderContext = VerificationProvider | null;
-type MissingCapability = "unique_human" | "age_over_18" | "minimum_age" | "nationality" | "gender" | "wallet_score";
+type MissingCapability = "unique_human" | "age_over_18" | "minimum_age" | "nationality" | "gender" | "wallet_score" | "altcha_pow";
 type RequiredActionNode = Omit<NonNullable<NonNullable<JoinEligibility["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
   items?: RequiredActionNode[];
 };
@@ -131,6 +131,8 @@ export function formatGateRequirement(
       }
       return copy.walletScore.withoutScore;
     }
+    case "altcha_pow":
+      return copy.altchaPow;
     case "erc721_holding": {
       const label = gate.contract_address ? shortenAddress(gate.contract_address) : null;
       if (label) {
@@ -239,6 +241,7 @@ export function getMissingCapabilitiesFromGateEvaluation(
         || capability === "nationality"
         || capability === "gender"
         || capability === "wallet_score"
+        || capability === "altcha_pow"
       );
   }
   const capabilities = new Set<MissingCapability>();
@@ -278,6 +281,7 @@ function getRequiredActionCapabilities(
       || capability === "nationality"
       || capability === "gender"
       || capability === "wallet_score"
+      || capability === "altcha_pow"
       || capability === "erc721_holding"
       || capability === "erc721_inventory_match"
     ) {
@@ -288,14 +292,49 @@ function getRequiredActionCapabilities(
   return Array.from(capabilities);
 }
 
+export function hasAltchaProofAction(
+  input: { gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null },
+): boolean {
+  return getRequiredActionCapabilities(input).includes("altcha_pow");
+}
+
+export function getAltchaProofScope(
+  input: { gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null },
+  fallback = "community_join",
+): string {
+  const actions = (input.gate_evaluation?.required_action_set?.items ?? []) as RequiredActionNode[];
+  const visit = (action: RequiredActionNode): string | null => {
+    if (action.kind === "set") {
+      for (const item of action.items ?? []) {
+        const scope = visit(item);
+        if (scope) return scope;
+      }
+      return null;
+    }
+    if (action.capability === "altcha_pow") {
+      return typeof action.scope === "string" && action.scope.trim() ? action.scope : fallback;
+    }
+    return null;
+  };
+
+  for (const action of actions) {
+    const scope = visit(action);
+    if (scope) return scope;
+  }
+  return fallback;
+}
+
 export function getVerificationRequirementsForGates(
   gates: MembershipGateSummary[] | null | undefined,
 ): VerificationRequirement[] {
   const requirements: VerificationRequirement[] = [];
   const nationalityValues = new Set<string>();
-  const minimumAges = (gates ?? [])
-    .filter((gate) => gate.gate_type === "minimum_age" && Number.isInteger(gate.required_minimum_age))
-    .map((gate) => gate.required_minimum_age as number);
+  const minimumAges = (gates ?? []).reduce<number[]>((result, gate) => {
+    if (gate.gate_type === "minimum_age" && Number.isInteger(gate.required_minimum_age)) {
+      result.push(gate.required_minimum_age as number);
+    }
+    return result;
+  }, []);
   if (minimumAges.length > 0) {
     requirements.push({ proof_type: "minimum_age", minimum_age: Math.max(...minimumAges) });
   }
@@ -326,8 +365,10 @@ export function getVerificationRequirementsForGates(
 
 function getRequiredNationalityValues(gate: MembershipGateSummary): string[] {
   return (gate.required_values?.length ? gate.required_values : gate.required_value ? [gate.required_value] : [])
-    .map((value) => value.trim().toUpperCase())
-    .filter(Boolean);
+    .flatMap((value) => {
+      const requiredValue = value.trim().toUpperCase();
+      return requiredValue ? [requiredValue] : [];
+    });
 }
 
 function getCountryCodeAliases(value: string | null | undefined): Set<string> {
@@ -376,7 +417,10 @@ function nationalityCapabilitySatisfiesGate(
   if (requiredValues.length > 0 && !countryCodeMatchesAny(value, requiredValues)) {
     return false;
   }
-  const excludedValues = (gate.excluded_values ?? []).map((item) => item.trim().toUpperCase()).filter(Boolean);
+  const excludedValues = (gate.excluded_values ?? []).flatMap((item) => {
+    const excludedValue = item.trim().toUpperCase();
+    return excludedValue ? [excludedValue] : [];
+  });
   return !countryCodeMatchesAny(value, excludedValues);
 }
 
@@ -586,6 +630,7 @@ export function getVerificationPromptCopy(
       case "gender": return labels.gender;
       case "unique_human": return labels.uniqueHuman;
       case "wallet_score": return labels.walletScore;
+      case "altcha_pow": return labels.altchaPow;
     }
   });
 

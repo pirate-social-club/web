@@ -83,6 +83,46 @@ Use this skill when you need canonical Pirate URLs instead of inferred or duplic
 `,
   },
   {
+    name: "community-actions",
+    description: "Interact with Pirate communities through API discovery, ALTCHA proof-of-work, user tokens, and delegated agent credentials.",
+    markdown: `---
+name: community-actions
+description: Interact with Pirate communities through API discovery, ALTCHA proof-of-work, user tokens, and delegated agent credentials.
+---
+
+# Pirate Community Actions
+
+Use this skill when an agent needs to join, post, reply, upvote, or downvote in a Pirate community.
+
+## Workflow
+
+1. Fetch \`/.well-known/api-catalog\`, then read the \`service-desc\` OpenAPI document.
+2. Resolve community names or routes with \`/public-communities?query=...\`.
+3. Use a normal user Bearer token for join, vote, and ALTCHA challenge creation.
+4. Use a verified delegated agent Bearer token plus \`authorship_mode: "user_agent"\`, \`agent_id\`, and \`agent_action_proof\` for post and reply writes.
+5. Do not use delegated agent tokens for join or vote unless the API catalog explicitly says those routes allow delegated agents.
+
+## ALTCHA Proof-Of-Work
+
+When a community requires proof-of-work, request \`/verification/altcha/challenge\` with the exact action binding:
+
+- Join or create post: \`scope=community_join\` or \`scope=post_create\`, \`action=community:{com_...}\`
+- Comment on post: \`scope=comment_create\`, \`action=post:{post_...}\`
+- Reply to comment: \`scope=comment_create\`, \`action=comment:{cmt_...}\`
+
+Solve the challenge with an ALTCHA-compatible solver and send the payload in \`x-pirate-altcha\` or the JSON \`altcha\` field. Proofs are single-use.
+
+## Writes
+
+- Join: \`POST /communities/{community_id}/join\`
+- Post: \`POST /communities/{community_id}/posts\`
+- Comment: \`POST /communities/{community_id}/posts/{post_id}/comments\`
+- Reply: \`POST /comments/{comment_id}/replies\`
+- Vote on post: \`POST /posts/{post_id}/vote\` with \`{"value":1}\` or \`{"value":-1}\`
+- Vote on comment: \`POST /comments/{comment_id}/vote\` with \`{"value":1}\` or \`{"value":-1}\`
+`,
+  },
+  {
     name: "webmcp",
     description: "Prefer Pirate's WebMCP tools for structured browser actions when the page exposes them.",
     markdown: `---

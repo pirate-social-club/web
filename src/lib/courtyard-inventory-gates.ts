@@ -82,7 +82,13 @@ export function describeCourtyardInventoryDraft(draft: CourtyardInventoryDraft):
     draft.assetFilter.grader,
     draft.assetFilter.grade,
     draft.assetFilter.condition,
-  ].map((value) => value?.trim()).filter((value): value is string => Boolean(value));
+  ].reduce<string[]>((result, value) => {
+    const trimmed = value?.trim();
+    if (trimmed) {
+      result.push(trimmed);
+    }
+    return result;
+  }, []);
   const asset = draft.assetFilter.category === "watch" ? "watch" : "card";
   const pluralAsset = draft.minQuantity === 1 ? asset : `${asset}s`;
   const label = values.length > 0 ? values.join(" ") : "Courtyard collectible";

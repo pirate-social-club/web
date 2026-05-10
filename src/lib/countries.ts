@@ -266,6 +266,7 @@ const ISO2_BY_ISO3 = new Map(COUNTRY_CODE_PAIRS.map(([alpha2, alpha3]) => [alpha
 const COUNTRY_NAME_BY_CODE = new Map(
   COUNTRIES.map((country) => [country.code, country.name]),
 );
+const regionDisplayNamesByLocale = new Map<string, Intl.DisplayNames>();
 
 export function findCountry(code: string | null | undefined): Country | null {
   if (!code) {
@@ -315,7 +316,12 @@ export function getCountryDisplayName(
   }
 
   try {
-    const displayNames = new Intl.DisplayNames([locale ?? "en"], { type: "region" });
+    const localeKey = locale ?? "en";
+    let displayNames = regionDisplayNamesByLocale.get(localeKey);
+    if (!displayNames) {
+      displayNames = Reflect.construct(Intl.DisplayNames, [[localeKey], { type: "region" }]) as Intl.DisplayNames;
+      regionDisplayNamesByLocale.set(localeKey, displayNames);
+    }
     return displayNames.of(alpha2) ?? getCountryName(normalizedCode) ?? normalizedCode;
   } catch {
     return getCountryName(normalizedCode) ?? normalizedCode;

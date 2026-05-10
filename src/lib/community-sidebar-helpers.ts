@@ -127,6 +127,7 @@ export function buildCommunitySidebarRequirements(input: {
   locale?: string | null;
 }): string[] {
   const requirements: string[] = [];
+  const requirementLabels = new Set<string>();
 
   if (input.defaultAgeGatePolicy === "18_plus") {
     requirements.push("18+");
@@ -143,7 +144,8 @@ export function buildCommunitySidebarRequirements(input: {
         requiredMinimumAge: gate.required_minimum_age ?? null,
         minimumScore: gate.minimum_score ?? null,
       });
-    if (label && !requirements.includes(label)) {
+    if (label && !requirementLabels.has(label)) {
+      requirementLabels.add(label);
       requirements.push(label);
     }
   }

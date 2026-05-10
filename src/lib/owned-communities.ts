@@ -18,7 +18,7 @@ export interface SidebarCommunitySummary {
 }
 
 function sortCommunities(communities: SidebarCommunitySummary[]): SidebarCommunitySummary[] {
-  return [...communities].sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt));
+  return communities.toSorted((a, b) => Number(b.updatedAt) - Number(a.updatedAt));
 }
 
 function mergeCommunities(
@@ -202,9 +202,12 @@ function useValidatedKnownCommunities(ownedCommunities: SidebarCommunitySummary[
         });
       }
 
-      const nextInvalidIds = results
-        .filter((result) => !result.valid)
-        .map((result) => result.communityId);
+      const nextInvalidIds = results.reduce<string[]>((result, validationResult) => {
+        if (!validationResult.valid) {
+          result.push(validationResult.communityId);
+        }
+        return result;
+      }, []);
       if (nextInvalidIds.length === 0) return;
 
       setInvalidCommunityIds((current) => {
@@ -226,15 +229,18 @@ function useValidatedKnownCommunities(ownedCommunities: SidebarCommunitySummary[
   }, [api, invalidCommunityIds, knownCommunities, ownedCommunities]);
 
   return React.useMemo(
-    () => knownCommunities
-      .filter((community) => !invalidCommunityIds.has(community.communityId))
-      .map((community) => ({
-        avatarSrc: community.avatarSrc,
-        communityId: community.communityId,
-        displayName: community.displayName,
-        routeSlug: community.routeSlug ?? null,
-        updatedAt: community.updatedAt,
-      })),
+    () => knownCommunities.reduce<SidebarCommunitySummary[]>((result, community) => {
+      if (!invalidCommunityIds.has(community.communityId)) {
+        result.push({
+          avatarSrc: community.avatarSrc,
+          communityId: community.communityId,
+          displayName: community.displayName,
+          routeSlug: community.routeSlug ?? null,
+          updatedAt: community.updatedAt,
+        });
+      }
+      return result;
+    }, []),
     [invalidCommunityIds, knownCommunities],
   );
 }
@@ -278,9 +284,13 @@ export function useSidebarCommunities(): {
         if (cancelled) return;
 
         const nextOwnedCommunities = sortCommunities(
-          (result.created_communities as PublicProfileCommunitySummary[])
-            .map(publicProfileCommunityToSidebarSummary)
-            .filter((community): community is SidebarCommunitySummary => community !== null),
+          (result.created_communities as PublicProfileCommunitySummary[]).reduce<SidebarCommunitySummary[]>((communities, community) => {
+            const sidebarCommunity = publicProfileCommunityToSidebarSummary(community);
+            if (sidebarCommunity !== null) {
+              communities.push(sidebarCommunity);
+            }
+            return communities;
+          }, []),
         );
 
         logger.debug("[your-communities] loaded created communities", {

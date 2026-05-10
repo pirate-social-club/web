@@ -24,8 +24,10 @@ function normalizeHost(value: string | null): string | null {
 function parseTrustedIps(env: HnsForwardedOriginEnv): Set<string> {
   const configured = env.HNS_FORWARDER_TRUSTED_IPS
     ?.split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
+    .flatMap((entry) => {
+      const ip = entry.trim();
+      return ip ? [ip] : [];
+    });
 
   return new Set(configured && configured.length > 0 ? configured : DEFAULT_TRUSTED_HNS_FORWARDER_IPS);
 }

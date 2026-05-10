@@ -22,6 +22,17 @@ import type {
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
+const ALTCHA_HEADER = "x-pirate-altcha";
+
+type AltchaRequestOptions = {
+  altchaPayload?: string | null;
+};
+
+function altchaHeaders(options?: AltchaRequestOptions): HeadersInit | undefined {
+  const payload = options?.altchaPayload?.trim();
+  return payload ? { [ALTCHA_HEADER]: payload } : undefined;
+}
+
 export function createPostsApi(request: ApiRequest) {
   return {
     get: (
@@ -81,10 +92,15 @@ export function createCommentsApi(request: ApiRequest) {
         },
       ));
     },
-    createReply: (commentId: string, body: CreateCommentRequest): Promise<void> =>
+    createReply: (
+      commentId: string,
+      body: CreateCommentRequest,
+      options?: AltchaRequestOptions,
+    ): Promise<void> =>
       request(`/comments/${encodeURIComponent(commentId)}/replies`, {
         method: "POST",
         body: JSON.stringify(body),
+        headers: altchaHeaders(options),
       }),
     delete: (commentId: string): Promise<Comment> =>
       request<Comment>(`/comments/${encodeURIComponent(commentId)}/delete`, {
@@ -100,10 +116,15 @@ export function createCommentsApi(request: ApiRequest) {
 
 export function createCommunityContentApi(request: ApiRequest) {
   return {
-    createPost: (communityId: string, body: CreatePostRequest): Promise<Post> =>
+    createPost: (
+      communityId: string,
+      body: CreatePostRequest,
+      options?: AltchaRequestOptions,
+    ): Promise<Post> =>
       request<Post>(`/communities/${encodeURIComponent(communityId)}/posts`, {
         method: "POST",
         body: JSON.stringify(body),
+        headers: altchaHeaders(options),
       }),
     listComments: (
       communityId: string,
@@ -124,10 +145,11 @@ export function createCommunityContentApi(request: ApiRequest) {
       communityId: string,
       postId: string,
       body: CreateCommentRequest,
+      options?: AltchaRequestOptions,
     ): Promise<void> =>
       request(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/comments`,
-        { method: "POST", body: JSON.stringify(body) },
+        { method: "POST", body: JSON.stringify(body), headers: altchaHeaders(options) },
       ),
     createArtifactUpload: (
       communityId: string,

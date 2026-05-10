@@ -27,7 +27,7 @@ function notifyAll(): void {
 }
 
 function sortCommunities(communities: KnownCommunity[]): KnownCommunity[] {
-  return [...communities].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return communities.toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 function normalizeCommunities(communities: KnownCommunity[]): KnownCommunity[] {

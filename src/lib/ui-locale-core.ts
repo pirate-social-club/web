@@ -35,8 +35,10 @@ export function resolveRequestLocale(
 
   const requestedTags = acceptLanguageHeader
     .split(",")
-    .map((part) => part.trim().split(";")[0]?.trim().toLowerCase())
-    .filter(Boolean);
+    .flatMap((part) => {
+      const tag = part.trim().split(";")[0]?.trim().toLowerCase();
+      return tag ? [tag] : [];
+    });
 
   for (const tag of requestedTags) {
     if (tag === "ar" || tag.startsWith("ar-")) return "ar";

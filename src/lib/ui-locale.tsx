@@ -103,5 +103,5 @@ export function UiLocaleProvider({
 }
 
 export function useUiLocale() {
-  return React.useContext(UiLocaleContext);
+  return React.use(UiLocaleContext);
 }

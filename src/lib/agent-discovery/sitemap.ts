@@ -23,10 +23,11 @@ async function fetchPublicHomeFeed(ctx: DiscoveryContext): Promise<HomeFeedRespo
 
   for (let pageIndex = 0; pageIndex < MAX_SITEMAP_FEED_PAGES; pageIndex += 1) {
     const endpoint = new URL("/feed/home", ctx.apiOrigin);
-    endpoint.searchParams.set("sort", "new");
-    endpoint.searchParams.set("limit", "50");
+    const { searchParams } = endpoint;
+    searchParams.set("sort", "new");
+    searchParams.set("limit", "50");
     if (nextCursor) {
-      endpoint.searchParams.set("cursor", nextCursor);
+      searchParams.set("cursor", nextCursor);
     }
 
     const response = await fetch(endpoint.toString(), {

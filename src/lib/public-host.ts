@@ -29,7 +29,7 @@ export function extractPublicProfileHost(
     }
 
     const subdomain = normalizedHostname.slice(0, -(hostSuffix.length + 1));
-    if (!subdomain || subdomain.includes(".") || RESERVED_PUBLIC_PROFILE_HOSTS.has(subdomain)) {
+    if (!subdomain || subdomain.indexOf(".") >= 0 || RESERVED_PUBLIC_PROFILE_HOSTS.has(subdomain)) {
       return null;
     }
 

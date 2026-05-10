@@ -26,6 +26,13 @@ type OAuthDeviceVerifyResponse = {
   user_code: string;
 };
 
+export type AltchaScope =
+  | "community_join"
+  | "post_create"
+  | "comment_create";
+
+export type AltchaChallenge = Record<string, unknown>;
+
 export function createAuthApi(request: ApiRequest) {
   return {
     sessionExchange: (
@@ -106,6 +113,13 @@ export function createVerificationApi(request: ApiRequest) {
 	        method: "POST",
 	        body: JSON.stringify(input),
 	      }),
+    createAltchaChallenge: (
+      input: { scope: AltchaScope; action: string },
+    ): Promise<AltchaChallenge> =>
+      request<AltchaChallenge>(buildQueryPath("/verification/altcha/challenge", {
+        scope: input.scope,
+        action: input.action,
+      })),
 	    startNamespaceSession: (
       input: StartNamespaceVerificationSessionRequest,
     ): Promise<NamespaceVerificationSession> =>

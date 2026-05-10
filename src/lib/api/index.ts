@@ -32,7 +32,7 @@ export function ApiProvider({
 }
 
 export function useApi(): ApiClient {
-  return React.useContext(ApiClientContext);
+  return React.use(ApiClientContext);
 }
 
 export function useSessionRevalidation(): {

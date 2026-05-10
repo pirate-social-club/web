@@ -103,9 +103,13 @@ function readLegacyStoredAgentKeys(): StoredOwnedAgentKey[] {
 
     const parsed = JSON.parse(raw) as unknown;
     return Array.isArray(parsed)
-      ? parsed
-        .map((value) => normalizeStoredOwnedAgentKey(value))
-        .filter((value): value is StoredOwnedAgentKey => value !== null)
+      ? parsed.reduce<StoredOwnedAgentKey[]>((result, value) => {
+        const normalizedValue = normalizeStoredOwnedAgentKey(value);
+        if (normalizedValue !== null) {
+          result.push(normalizedValue);
+        }
+        return result;
+      }, [])
       : [];
   } catch {
     return [];
@@ -147,9 +151,13 @@ export async function listStoredOwnedAgentKeys(): Promise<StoredOwnedAgentKey[]>
   try {
     const values = await runStoreRequest(database, "readonly", (store) => store.getAll());
     return Array.isArray(values)
-      ? values
-        .map((value) => normalizeStoredOwnedAgentKey(value))
-        .filter((value): value is StoredOwnedAgentKey => value !== null)
+      ? values.reduce<StoredOwnedAgentKey[]>((result, value) => {
+        const normalizedValue = normalizeStoredOwnedAgentKey(value);
+        if (normalizedValue !== null) {
+          result.push(normalizedValue);
+        }
+        return result;
+      }, [])
       : [];
   } finally {
     database.close();

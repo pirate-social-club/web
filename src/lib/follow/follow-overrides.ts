@@ -20,9 +20,12 @@ function persistOverrides() {
   if (typeof window === "undefined") return;
 
   const snapshot = Object.fromEntries(
-    [...viewerFollowOverrides.entries()]
-      .filter(([, overrides]) => overrides.size > 0)
-      .map(([viewerKey, overrides]) => [viewerKey, Object.fromEntries(overrides.entries())]),
+    [...viewerFollowOverrides.entries()].reduce<Array<[string, Record<string, FollowOverride>]>>((result, [viewerKey, overrides]) => {
+      if (overrides.size > 0) {
+        result.push([viewerKey, Object.fromEntries(overrides.entries())]);
+      }
+      return result;
+    }, []),
   );
 
   window.localStorage.setItem(FOLLOW_OVERRIDE_STORAGE_KEY, JSON.stringify(snapshot));

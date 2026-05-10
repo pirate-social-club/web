@@ -819,6 +819,45 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("sends ALTCHA payload headers only when provided", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      if (request.url.endsWith("/join")) {
+        return Response.json({ community: "cmt_test", status: "joined" });
+      }
+      return Response.json({});
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.join("cmt_test", undefined, { altchaPayload: "join-proof" });
+      await client.communities.createPost("cmt_test", {
+        idempotency_key: "post-proof-test",
+        post_type: "text",
+        title: "Proof test",
+      }, { altchaPayload: "post-proof" });
+      await client.communities.createComment("cmt_test", "pst_test", {
+        body: "Top level",
+      }, { altchaPayload: "comment-proof" });
+      await client.comments.createReply("cmt_reply", {
+        body: "Reply body",
+      }, { altchaPayload: null });
+
+      expect(requests[0]?.headers.get("x-pirate-altcha")).toBe("join-proof");
+      expect(requests[1]?.headers.get("x-pirate-altcha")).toBe("post-proof");
+      expect(requests[2]?.headers.get("x-pirate-altcha")).toBe("comment-proof");
+      expect(requests[3]?.headers.has("x-pirate-altcha")).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("loads public thread routes without auth headers", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

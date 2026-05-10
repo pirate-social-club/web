@@ -187,11 +187,11 @@ export class ApiClient {
     } = init ?? {};
     const body = fetchInit.body;
     const usesFormData = typeof FormData !== "undefined" && body instanceof FormData;
-    const headers: Record<string, string> = usesFormData ? {} : { "Content-Type": "application/json" };
+    const headers = new Headers(usesFormData ? undefined : { "Content-Type": "application/json" });
     if (typeof window !== "undefined") {
       const identity = getAnalyticsIdentity();
-      headers["x-pirate-anonymous-id"] = identity.anonymousId;
-      headers["x-pirate-session-id"] = identity.sessionId;
+      headers.set("x-pirate-anonymous-id", identity.anonymousId);
+      headers.set("x-pirate-session-id", identity.sessionId);
     }
     let token = tokenRequired || tokenOptional ? this.getToken() : null;
 
@@ -205,12 +205,16 @@ export class ApiClient {
       }
 
       if (token) {
-        headers.Authorization = `Bearer ${token}`;
+        headers.set("Authorization", `Bearer ${token}`);
       }
     }
 
     if (tokenOptional && token) {
-      headers.Authorization = `Bearer ${token}`;
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+    const callerHeaders = new Headers(fetchInit.headers);
+    for (const [key, value] of callerHeaders.entries()) {
+      headers.set(key, value);
     }
 
     const method = init?.method ?? "GET";
@@ -220,7 +224,7 @@ export class ApiClient {
     try {
       res = await fetch(`${this.baseUrl}${path}`, {
         ...fetchInit,
-        headers: { ...headers, ...(fetchInit.headers as Record<string, string>) },
+        headers,
       });
     } catch (error) {
       logger.debug("[api-client] network request failed", {

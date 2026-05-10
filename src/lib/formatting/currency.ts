@@ -1,3 +1,33 @@
+const usdLabelFormatters = new Map<string, Intl.NumberFormat>();
+const usdCompactLabelFormatters = new Map<string, Intl.NumberFormat>();
+
+function getUsdLabelFormatter(localeTag: string): Intl.NumberFormat {
+  const existing = usdLabelFormatters.get(localeTag);
+  if (existing) return existing;
+  const formatter = Intl.NumberFormat(localeTag, {
+    currency: "USD",
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+    style: "currency",
+  });
+  usdLabelFormatters.set(localeTag, formatter);
+  return formatter;
+}
+
+function getUsdCompactLabelFormatter(localeTag: string, minimumFractionDigits: number): Intl.NumberFormat {
+  const key = `${localeTag}:${minimumFractionDigits}`;
+  const existing = usdCompactLabelFormatters.get(key);
+  if (existing) return existing;
+  const formatter = Intl.NumberFormat(localeTag, {
+    currency: "USD",
+    maximumFractionDigits: 2,
+    minimumFractionDigits,
+    style: "currency",
+  });
+  usdCompactLabelFormatters.set(key, formatter);
+  return formatter;
+}
+
 export function formatUsdLabel(
   value: number | null | undefined,
   localeTag = "en",
@@ -6,12 +36,7 @@ export function formatUsdLabel(
     return undefined;
   }
 
-  return new Intl.NumberFormat(localeTag, {
-    currency: "USD",
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
-    style: "currency",
-  }).format(value);
+  return getUsdLabelFormatter(localeTag).format(value);
 }
 
 export function formatUsdCompactLabel(
@@ -22,12 +47,7 @@ export function formatUsdCompactLabel(
     return undefined;
   }
 
-  return new Intl.NumberFormat(localeTag, {
-    currency: "USD",
-    maximumFractionDigits: 2,
-    minimumFractionDigits: value % 1 === 0 ? 0 : 2,
-    style: "currency",
-  }).format(value);
+  return getUsdCompactLabelFormatter(localeTag, value % 1 === 0 ? 0 : 2).format(value);
 }
 
 export function parseUsdInput(value: string | null | undefined): number | null {

@@ -14,8 +14,8 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   render: () => (
     <div className="flex items-center gap-4 rounded-[var(--radius-xl)] border border-border-soft bg-card p-5">
-      <PirateBrandMark decorative={false} className="h-12 w-12" />
-      <PirateBrandMark className="h-16 w-16" />
+      <PirateBrandMark decorative={false} className="size-12" />
+      <PirateBrandMark className="size-16" />
     </div>
   ),
 };

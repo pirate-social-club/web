@@ -10,10 +10,7 @@ export interface AutoResizeTextareaProps
   maxRows?: number;
 }
 
-const AutoResizeTextarea = React.forwardRef<
-  HTMLTextAreaElement,
-  AutoResizeTextareaProps
->(({ className, maxRows = 5, rows = 1, onInput, ...props }, ref) => {
+function AutoResizeTextarea({ className, maxRows = 5, onInput, ref, rows = 1, ...props }: AutoResizeTextareaProps) {
   const innerRef = React.useRef<HTMLTextAreaElement>(null);
   React.useImperativeHandle(ref, () => innerRef.current!);
 
@@ -57,7 +54,6 @@ const AutoResizeTextarea = React.forwardRef<
       {...props}
     />
   );
-});
-AutoResizeTextarea.displayName = "AutoResizeTextarea";
+}
 
 export { AutoResizeTextarea };

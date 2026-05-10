@@ -14,7 +14,7 @@ type RadioGroupContextValue = {
 const RadioGroupContext = React.createContext<RadioGroupContextValue | null>(null);
 
 function useRadioGroupContext() {
-  const context = React.useContext(RadioGroupContext);
+  const context = React.use(RadioGroupContext);
 
   if (!context) {
     throw new Error("RadioGroupItem must be used within RadioGroup.");
@@ -23,16 +23,15 @@ function useRadioGroupContext() {
   return context;
 }
 
-const RadioGroup = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<"div"> & {
-    defaultValue?: string;
-    disabled?: boolean;
-    name?: string;
-    onValueChange?: (value: string) => void;
-    value?: string;
-  }
->(({ children, className, defaultValue, disabled = false, name, onValueChange, value, ...props }, ref) => {
+interface RadioGroupProps extends React.ComponentProps<"div"> {
+  defaultValue?: string;
+  disabled?: boolean;
+  name?: string;
+  onValueChange?: (value: string) => void;
+  value?: string;
+}
+
+function RadioGroup({ children, className, defaultValue, disabled = false, name, onValueChange, ref, value, ...props }: RadioGroupProps) {
   const generatedName = React.useId();
   const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue);
   const isControlled = value !== undefined;
@@ -67,17 +66,15 @@ const RadioGroup = React.forwardRef<
       </div>
     </RadioGroupContext.Provider>
   );
-});
-RadioGroup.displayName = "RadioGroup";
+}
 
-const RadioGroupItem = React.forwardRef<
-  HTMLInputElement,
-  Omit<React.ComponentPropsWithoutRef<"input">, "checked" | "defaultChecked" | "onChange" | "type"> & {
-    indicatorClassName?: string;
-    labelClassName?: string;
-    value: string;
-  }
->(({ children, className, disabled, indicatorClassName, labelClassName, value, ...props }, ref) => {
+interface RadioGroupItemProps extends Omit<React.ComponentProps<"input">, "checked" | "defaultChecked" | "onChange" | "type"> {
+  indicatorClassName?: string;
+  labelClassName?: string;
+  value: string;
+}
+
+function RadioGroupItem({ children, className, disabled, indicatorClassName, labelClassName, ref, value, ...props }: RadioGroupItemProps) {
   const group = useRadioGroupContext();
   const checked = group.value === value;
   const itemDisabled = group.disabled || disabled;
@@ -114,7 +111,6 @@ const RadioGroupItem = React.forwardRef<
       </span>
     </label>
   );
-});
-RadioGroupItem.displayName = "RadioGroupItem";
+}
 
 export { RadioGroup, RadioGroupItem };

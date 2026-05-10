@@ -16,7 +16,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Interactive: Story = {
-  render: (args) => {
+  render: function StoryRender(args) {
     const [viewerVote, setViewerVote] = React.useState<"up" | "down" | null>(null);
 
     return (

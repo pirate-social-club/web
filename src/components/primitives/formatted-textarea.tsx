@@ -27,6 +27,7 @@ type ToolbarAction = (typeof toolbar)[number]["action"];
 export interface FormattedTextareaProps
   extends Omit<React.ComponentProps<"textarea">, "onChange" | "value"> {
   containerClassName?: string;
+  focusOnMount?: boolean;
   onChange?: (value: string) => void;
   value: string;
 }
@@ -34,11 +35,18 @@ export interface FormattedTextareaProps
 export function FormattedTextarea({
   className,
   containerClassName,
+  focusOnMount = false,
   onChange,
   value,
   ...props
 }: FormattedTextareaProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+
+  React.useEffect(() => {
+    if (focusOnMount) {
+      textareaRef.current?.focus();
+    }
+  }, [focusOnMount]);
 
   const updateSelection = React.useCallback((selectionStart: number, selectionEnd: number) => {
     requestAnimationFrame(() => {
@@ -130,7 +138,7 @@ export function FormattedTextarea({
   return (
     <div className={cn("overflow-hidden rounded-xl border border-input bg-background shadow-sm", containerClassName)}>
       <TooltipProvider delayDuration={100}>
-        <div className="flex flex-wrap items-center gap-2 border-b border-border-soft px-3 py-3">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border-soft p-3">
           {toolbar.map((item) => (
             <Tooltip key={item.action}>
               <TooltipTrigger asChild>

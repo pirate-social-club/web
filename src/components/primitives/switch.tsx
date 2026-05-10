@@ -4,13 +4,13 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-export interface SwitchProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onChange" | "role"> {
+export interface SwitchProps extends Omit<React.ComponentProps<"button">, "onChange" | "role"> {
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
 }
 
-const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
-  ({ checked = false, className, disabled, onCheckedChange, type = "button", ...props }, ref) => (
+function Switch({ checked = false, className, disabled, onCheckedChange, ref, type = "button", ...props }: SwitchProps) {
+  return (
     <button
       aria-checked={checked}
       className={cn(
@@ -39,8 +39,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         )}
       />
     </button>
-  ),
-);
-Switch.displayName = "Switch";
+  );
+}
 
 export { Switch };

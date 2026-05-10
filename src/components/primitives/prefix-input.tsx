@@ -25,22 +25,19 @@ export interface PrefixInputProps extends Omit<React.ComponentProps<"input">, "s
   prefixClassName?: string;
 }
 
-const PrefixInput = React.forwardRef<HTMLInputElement, PrefixInputProps>(
-  ({ className, prefix, prefixClassName, size, ...props }, ref) => {
-    return (
-      <div className={cn(prefixInputVariants({ size }), className)}>
-        <div className={cn("grid h-full w-12 shrink-0 place-items-center border-e border-border-soft bg-muted/40 text-xl font-semibold text-foreground", prefixClassName)}>
-          {prefix}
-        </div>
-        <input
-          className="h-full w-full rounded-none border-0 bg-transparent px-4 text-base outline-none placeholder:text-muted-foreground focus:ring-0 focus:ring-offset-0"
-          ref={ref}
-          {...props}
-        />
+function PrefixInput({ className, prefix, prefixClassName, ref, size, ...props }: PrefixInputProps) {
+  return (
+    <div className={cn(prefixInputVariants({ size }), className)}>
+      <div className={cn("grid h-full w-12 shrink-0 place-items-center border-e border-border-soft bg-muted/40 text-xl font-semibold text-foreground", prefixClassName)}>
+        {prefix}
       </div>
-    );
-  },
-);
-PrefixInput.displayName = "PrefixInput";
+      <input
+        className="h-full w-full rounded-none border-0 bg-transparent px-4 text-base outline-none placeholder:text-muted-foreground focus:ring-0 focus:ring-offset-0"
+        ref={ref}
+        {...props}
+      />
+    </div>
+  );
+}
 
 export { PrefixInput, prefixInputVariants };

@@ -26,14 +26,14 @@ const itemVariantClasses: Record<ItemVariant, string> = {
 
 const itemSizeClasses: Record<ItemSize, string> = {
   default: "gap-3 p-4",
-  sm: "gap-2.5 px-3 py-3",
+  sm: "gap-2.5 p-3",
   dense: "gap-3 px-3 py-2",
 };
 
 const itemMediaVariantClasses: Record<ItemMediaVariant, string> = {
   default: "",
-  icon: "h-12 w-12 rounded-lg border border-border-soft bg-surface-skeleton",
-  image: "h-12 w-12 overflow-hidden rounded bg-surface-skeleton",
+  icon: "size-12 rounded-lg border border-border-soft bg-surface-skeleton",
+  image: "size-12 overflow-hidden rounded bg-surface-skeleton",
 };
 
 export function ItemGroup({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

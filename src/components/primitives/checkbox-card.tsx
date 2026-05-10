@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/primitives/checkbox";
 import { cn } from "@/lib/utils";
 
 export interface CheckboxCardProps extends Omit<
-  React.HTMLAttributes<HTMLDivElement>,
+  React.ComponentProps<"div">,
   "onChange"
 > {
   title: string;
@@ -17,21 +17,18 @@ export interface CheckboxCardProps extends Omit<
   disabledHint?: string;
 }
 
-export const CheckboxCard = React.forwardRef<HTMLDivElement, CheckboxCardProps>(
-  (
-    {
-      title,
-      description,
-      checked = false,
-      onCheckedChange,
-      disabled,
-      disabledHint,
-      className,
-      ...props
-    },
-    ref,
-  ) => {
-    const handleClick = React.useCallback(() => {
+export function CheckboxCard({
+  checked = false,
+  className,
+  description,
+  disabled,
+  disabledHint,
+  onCheckedChange,
+  ref,
+  title,
+  ...props
+}: CheckboxCardProps) {
+    const toggleChecked = React.useCallback(() => {
       if (disabled) return;
       onCheckedChange?.(!checked);
     }, [checked, disabled, onCheckedChange]);
@@ -40,10 +37,10 @@ export const CheckboxCard = React.forwardRef<HTMLDivElement, CheckboxCardProps>(
       (event: React.KeyboardEvent<HTMLDivElement>) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          handleClick();
+          toggleChecked();
         }
       },
-      [handleClick],
+      [toggleChecked],
     );
 
     return (
@@ -53,10 +50,10 @@ export const CheckboxCard = React.forwardRef<HTMLDivElement, CheckboxCardProps>(
         aria-checked={checked}
         aria-disabled={disabled}
         tabIndex={disabled ? -1 : 0}
-        onClick={handleClick}
+        onClick={toggleChecked}
         onKeyDown={handleKeyDown}
         className={cn(
-          "flex w-full cursor-pointer items-start gap-3 rounded-[var(--radius-lg)] border px-4 py-4 text-start transition-[border-color,background-color]",
+          "flex w-full cursor-pointer items-start gap-3 rounded-[var(--radius-lg)] border p-4 text-start transition-[border-color,background-color]",
           checked
             ? "border-primary bg-primary/10"
             : "border-border-soft bg-background hover:border-primary/40",
@@ -95,6 +92,5 @@ export const CheckboxCard = React.forwardRef<HTMLDivElement, CheckboxCardProps>(
         </div>
       </div>
     );
-  },
-);
+}
 CheckboxCard.displayName = "CheckboxCard";

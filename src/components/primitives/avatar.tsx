@@ -10,10 +10,10 @@ import { Skeleton } from "./skeleton";
 export type AvatarSize = "xs" | "sm" | "md" | "lg";
 
 const sizeClasses: Record<AvatarSize, string> = {
-  xs: "h-6 w-6",
-  sm: "h-9 w-9 text-base",
-  md: "h-12 w-12 text-base",
-  lg: "h-14 w-14 text-base",
+  xs: "size-6",
+  sm: "size-9 text-base",
+  md: "size-12 text-base",
+  lg: "size-14 text-base",
 };
 
 export function isRetryableImageSrc(src: string): boolean {

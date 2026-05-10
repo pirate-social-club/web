@@ -8,55 +8,49 @@ import { cn } from "@/lib/utils";
 
 const Accordion = AccordionPrimitive.Root;
 
-const AccordionItem = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
->(({ className, ...props }, ref) => (
-  <AccordionPrimitive.Item
-    ref={ref}
-    className={cn("border-b border-border", className)}
-    {...props}
-  />
-));
-AccordionItem.displayName = "AccordionItem";
+function AccordionItem({ className, ref, ...props }: React.ComponentProps<typeof AccordionPrimitive.Item>) {
+  return (
+    <AccordionPrimitive.Item
+      ref={ref}
+      className={cn("border-b border-border", className)}
+      {...props}
+    />
+  );
+}
 
-const AccordionTrigger = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header className="flex">
-    <AccordionPrimitive.Trigger
+function AccordionTrigger({ children, className, ref, ...props }: React.ComponentProps<typeof AccordionPrimitive.Trigger>) {
+  return (
+    <AccordionPrimitive.Header className="flex">
+      <AccordionPrimitive.Trigger
+        ref={ref}
+        className={cn(
+          "flex flex-1 items-center justify-between py-4 text-start font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+        <CaretDown className="size-4 shrink-0 transition-transform duration-200" />
+      </AccordionPrimitive.Trigger>
+    </AccordionPrimitive.Header>
+  );
+}
+
+function AccordionContent({ children, className, ref, ...props }: React.ComponentProps<typeof AccordionPrimitive.Content>) {
+  return (
+    <AccordionPrimitive.Content
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between py-4 text-start font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
+        "overflow-hidden text-base data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down [&[data-state=closed]>div]:-translate-y-1 [&[data-state=closed]>div]:opacity-0 [&[data-state=open]>div]:translate-y-0 [&[data-state=open]>div]:opacity-100",
         className,
       )}
       {...props}
     >
-      {children}
-      <CaretDown className="size-4 shrink-0 transition-transform duration-200" />
-    </AccordionPrimitive.Trigger>
-  </AccordionPrimitive.Header>
-));
-AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName;
-
-const AccordionContent = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Content
-    ref={ref}
-    className={cn(
-      "overflow-hidden text-base data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down [&[data-state=closed]>div]:-translate-y-1 [&[data-state=closed]>div]:opacity-0 [&[data-state=open]>div]:translate-y-0 [&[data-state=open]>div]:opacity-100",
-      className,
-    )}
-    {...props}
-  >
-    <div className="pb-4 pt-0 transition-[opacity,transform] duration-200 ease-out">
-      {children}
-    </div>
-  </AccordionPrimitive.Content>
-));
-AccordionContent.displayName = AccordionPrimitive.Content.displayName;
+      <div className="pb-4 pt-0 transition-[opacity,transform] duration-200 ease-out">
+        {children}
+      </div>
+    </AccordionPrimitive.Content>
+  );
+}
 
 export { Accordion, AccordionContent, AccordionItem, AccordionTrigger };

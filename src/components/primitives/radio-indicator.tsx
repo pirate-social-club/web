@@ -4,12 +4,12 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-export interface RadioIndicatorProps extends React.HTMLAttributes<HTMLSpanElement> {
+export interface RadioIndicatorProps extends React.ComponentProps<"span"> {
   checked?: boolean;
 }
 
-const RadioIndicator = React.forwardRef<HTMLSpanElement, RadioIndicatorProps>(
-  ({ checked = false, className, ...props }, ref) => (
+function RadioIndicator({ checked = false, className, ref, ...props }: RadioIndicatorProps) {
+  return (
     <span
       aria-hidden="true"
       className={cn(
@@ -25,8 +25,7 @@ const RadioIndicator = React.forwardRef<HTMLSpanElement, RadioIndicatorProps>(
       role="presentation"
       {...props}
     />
-  ),
-);
-RadioIndicator.displayName = "RadioIndicator";
+  );
+}
 
 export { RadioIndicator };

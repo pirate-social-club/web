@@ -29,7 +29,7 @@ export const Default: Story = {
 };
 
 export const Controlled: Story = {
-  render: () => {
+  render: function StoryRender() {
     const [value, setValue] = React.useState("thread_stable");
 
     return (

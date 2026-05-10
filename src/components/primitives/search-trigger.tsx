@@ -21,38 +21,33 @@ const searchTriggerVariants = cva(
   },
 );
 
-export interface SearchTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface SearchTriggerProps extends React.ComponentProps<"button"> {
   ariaLabel?: string;
   size?: "default" | "compact";
   placeholder?: string;
 }
 
-const SearchTrigger = React.forwardRef<HTMLButtonElement, SearchTriggerProps>(
-  (
-    {
-      ariaLabel = "Search",
-      className,
-      placeholder = "Search",
-      size,
-      type = "button",
-      ...props
-    },
-    ref,
-  ) => {
-    return (
-      <button
-        aria-label={ariaLabel}
-        className={cn(searchTriggerVariants({ size }), className)}
-        ref={ref}
-        type={type}
-        {...props}
-      >
-        <MagnifyingGlass className="size-5 shrink-0" />
-        <span className="truncate text-base">{placeholder}</span>
-      </button>
-    );
-  },
-);
-SearchTrigger.displayName = "SearchTrigger";
+function SearchTrigger({
+  ariaLabel = "Search",
+  className,
+  placeholder = "Search",
+  ref,
+  size,
+  type = "button",
+  ...props
+}: SearchTriggerProps) {
+  return (
+    <button
+      aria-label={ariaLabel}
+      className={cn(searchTriggerVariants({ size }), className)}
+      ref={ref}
+      type={type}
+      {...props}
+    >
+      <MagnifyingGlass className="size-5 shrink-0" />
+      <span className="truncate text-base">{placeholder}</span>
+    </button>
+  );
+}
 
 export { SearchTrigger, searchTriggerVariants };

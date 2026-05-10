@@ -47,7 +47,7 @@ export const Default: Story = {
 };
 
 export const Multiple: Story = {
-  render: () => {
+  render: function StoryRender() {
     const [value, setValue] = React.useState<string[]>([frameworks[0]]);
 
     return (
@@ -82,7 +82,7 @@ export const Multiple: Story = {
 };
 
 export const DropdownMultiselect: Story = {
-  render: () => {
+  render: function StoryRender() {
     const [value, setValue] = React.useState<string[]>([frameworks[0]]);
 
     return (

@@ -44,7 +44,7 @@ function Stepper({ className, currentStep, onStepClick, steps }: StepperProps) {
         const lineClass = currentStep > i ? "bg-foreground" : "bg-border-soft";
 
         return (
-          <React.Fragment key={i}>
+          <React.Fragment key={step.label}>
             <div className="relative flex flex-1 flex-col items-center gap-2">
               <button
                 className={cn(

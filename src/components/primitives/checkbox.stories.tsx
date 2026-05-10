@@ -32,7 +32,7 @@ export const Checked: Story = {
 };
 
 export const Controlled: Story = {
-  render: () => {
+  render: function StoryRender() {
     const [checked, setChecked] = React.useState(false);
 
     return (

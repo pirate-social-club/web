@@ -47,29 +47,26 @@ const iconButtonVariants = cva(
 );
 
 export interface IconButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends React.ComponentProps<"button">,
     VariantProps<typeof iconButtonVariants> {
   active?: boolean;
   asChild?: boolean;
   loading?: boolean;
 }
 
-const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-  ({ className, active = false, disabled, loading = false, size, variant, type = "button", ...props }, ref) => {
-    return (
-      <button
-        className={cn(iconButtonVariants({ active, size, variant }), className)}
-        data-active={active ? "true" : undefined}
-        disabled={disabled || loading}
-        ref={ref}
-        type={type}
-        {...props}
-      >
-        {loading ? <Spinner className="size-4" /> : props.children}
-      </button>
-    );
-  },
-);
-IconButton.displayName = "IconButton";
+function IconButton({ active = false, className, disabled, loading = false, ref, size, type = "button", variant, ...props }: IconButtonProps) {
+  return (
+    <button
+      className={cn(iconButtonVariants({ active, size, variant }), className)}
+      data-active={active ? "true" : undefined}
+      disabled={disabled || loading}
+      ref={ref}
+      type={type}
+      {...props}
+    >
+      {loading ? <Spinner className="size-4" /> : props.children}
+    </button>
+  );
+}
 
 export { IconButton, iconButtonVariants };

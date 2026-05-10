@@ -18,7 +18,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  render: (args) => {
+  render: function StoryRender(args) {
     const [value, setValue] = React.useState(args.value ?? 32);
 
     return (

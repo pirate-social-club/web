@@ -55,7 +55,7 @@ function FormSectionHeading({
   );
 }
 
-type FormNoteProps = React.HTMLAttributes<HTMLParagraphElement> & {
+type FormNoteProps = React.ComponentProps<"p"> & {
   tone?: "default" | "muted" | "destructive" | "warning";
 };
 
@@ -66,8 +66,8 @@ const formNoteToneClassName: Record<NonNullable<FormNoteProps["tone"]>, string> 
   warning: "text-warning",
 };
 
-const FormNote = React.forwardRef<HTMLParagraphElement, FormNoteProps>(
-  ({ className, tone = "muted", ...props }, ref) => (
+function FormNote({ className, ref, tone = "muted", ...props }: FormNoteProps) {
+  return (
     <Type
       as="p"
       className={cn(formNoteToneClassName[tone], className)}
@@ -75,8 +75,7 @@ const FormNote = React.forwardRef<HTMLParagraphElement, FormNoteProps>(
       variant="caption"
       {...props}
     />
-  ),
-);
-FormNote.displayName = "FormNote";
+  );
+}
 
 export { FormFieldLabel, FormNote, FormSectionHeading };

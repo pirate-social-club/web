@@ -65,12 +65,27 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
   return nodes;
 }
 
-function renderParagraph(lines: string[], key: string) {
+function FormattedInline({ text, keyPrefix }: { text: string; keyPrefix: string }) {
+  return <>{renderInline(text, keyPrefix)}</>;
+}
+
+function FormattedParagraph({ lines, textKey }: { lines: string[]; textKey: string }) {
   return (
-    <p className="leading-snug text-inherit" key={key}>
-      {renderInline(lines.join(" "), key)}
+    <p className="leading-snug text-inherit">
+      <FormattedInline keyPrefix={textKey} text={lines.join(" ")} />
     </p>
   );
+}
+
+function nextFormattedTextKey(
+  keyCounts: Map<string, number>,
+  kind: string,
+  value: string,
+): string {
+  const baseKey = `${kind}:${value}`;
+  const occurrence = keyCounts.get(baseKey) ?? 0;
+  keyCounts.set(baseKey, occurrence + 1);
+  return occurrence === 0 ? baseKey : `${baseKey}:${occurrence}`;
 }
 
 export function FormattedText({
@@ -86,6 +101,7 @@ export function FormattedText({
 }) {
   const lines = value.split("\n");
   const blocks: React.ReactNode[] = [];
+  const keyCounts = new Map<string, number>();
   let index = 0;
 
   while (index < lines.length) {
@@ -102,12 +118,13 @@ export function FormattedText({
         quoteLines.push((lines[index] ?? "").trim().replace(/^>\s?/, ""));
         index += 1;
       }
+      const quoteKey = nextFormattedTextKey(keyCounts, "quote", quoteLines.join("\n"));
       blocks.push(
         <blockquote
           className="border-s-2 border-border-soft ps-4 italic text-muted-foreground"
-          key={`quote-${index}`}
+          key={quoteKey}
         >
-          {renderParagraph(quoteLines, `quote-${index}`)}
+          <FormattedParagraph lines={quoteLines} textKey={quoteKey} />
         </blockquote>,
       );
       continue;
@@ -115,13 +132,21 @@ export function FormattedText({
 
     if (/^[-*]\s+/.test(trimmed)) {
       const items: React.ReactNode[] = [];
+      const itemLines: string[] = [];
       while (index < lines.length && /^[-*]\s+/.test(lines[index]?.trim() ?? "")) {
         const itemLine = (lines[index] ?? "").trim().replace(/^[-*]\s+/, "");
-        items.push(<li key={`ul-${index}`}>{renderInline(itemLine, `ul-${index}`)}</li>);
+        const itemKey = nextFormattedTextKey(keyCounts, "ul-item", itemLine);
+        itemLines.push(itemLine);
+        items.push(
+          <li key={itemKey}>
+            <FormattedInline keyPrefix={itemKey} text={itemLine} />
+          </li>,
+        );
         index += 1;
       }
+      const listKey = nextFormattedTextKey(keyCounts, "ul-block", itemLines.join("\n"));
       blocks.push(
-        <ul className="list-disc space-y-1 ps-6 leading-snug text-inherit" key={`ul-block-${index}`}>
+        <ul className="list-disc space-y-1 ps-6 leading-snug text-inherit" key={listKey}>
           {items}
         </ul>,
       );
@@ -130,13 +155,21 @@ export function FormattedText({
 
     if (/^\d+\.\s+/.test(trimmed)) {
       const items: React.ReactNode[] = [];
+      const itemLines: string[] = [];
       while (index < lines.length && /^\d+\.\s+/.test(lines[index]?.trim() ?? "")) {
         const itemLine = (lines[index] ?? "").trim().replace(/^\d+\.\s+/, "");
-        items.push(<li key={`ol-${index}`}>{renderInline(itemLine, `ol-${index}`)}</li>);
+        const itemKey = nextFormattedTextKey(keyCounts, "ol-item", itemLine);
+        itemLines.push(itemLine);
+        items.push(
+          <li key={itemKey}>
+            <FormattedInline keyPrefix={itemKey} text={itemLine} />
+          </li>,
+        );
         index += 1;
       }
+      const listKey = nextFormattedTextKey(keyCounts, "ol-block", itemLines.join("\n"));
       blocks.push(
-        <ol className="list-decimal space-y-1 ps-6 leading-snug text-inherit" key={`ol-block-${index}`}>
+        <ol className="list-decimal space-y-1 ps-6 leading-snug text-inherit" key={listKey}>
           {items}
         </ol>,
       );
@@ -153,7 +186,10 @@ export function FormattedText({
       paragraphLines.push(line);
       index += 1;
     }
-    blocks.push(renderParagraph(paragraphLines, `p-${index}`));
+    const paragraphKey = nextFormattedTextKey(keyCounts, "p", paragraphLines.join("\n"));
+    blocks.push(
+      <FormattedParagraph key={paragraphKey} lines={paragraphLines} textKey={paragraphKey} />,
+    );
   }
 
   return (

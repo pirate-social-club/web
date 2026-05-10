@@ -29,22 +29,19 @@ const typeVariants = cva("", {
 
 type TypeVariant = VariantProps<typeof typeVariants>["variant"];
 
-export interface TypeProps extends React.HTMLAttributes<HTMLElement> {
+export interface TypeProps extends React.ComponentProps<"span"> {
   as?: React.ElementType;
   variant?: TypeVariant;
 }
 
-const Type = React.forwardRef<HTMLElement, TypeProps>(
-  ({ as: Component = "span", className, variant, ...props }, ref) => {
-    return (
-      <Component
-        className={cn(typeVariants({ variant }), className)}
-        ref={ref}
-        {...props}
-      />
-    );
-  },
-);
-Type.displayName = "Type";
+function Type({ as: Component = "span", className, ref, variant, ...props }: TypeProps) {
+  return (
+    <Component
+      className={cn(typeVariants({ variant }), className)}
+      ref={ref}
+      {...props}
+    />
+  );
+}
 
 export { Type, typeVariants };

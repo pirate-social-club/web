@@ -58,10 +58,10 @@ export const Scale: Story = {
       <Type as="h4" variant="h4">
         Heading 4
       </Type>
-      <Type variant="body">Body — The quick brown fox jumps over the lazy dog.</Type>
-      <Type variant="body-strong">Body strong — The quick brown fox jumps over the lazy dog.</Type>
+      <Type variant="body">Body: The quick brown fox jumps over the lazy dog.</Type>
+      <Type variant="body-strong">Body strong: The quick brown fox jumps over the lazy dog.</Type>
       <Type variant="label">Label</Type>
-      <Type variant="caption">Caption — The quick brown fox jumps over the lazy dog.</Type>
+      <Type variant="caption">Caption: The quick brown fox jumps over the lazy dog.</Type>
       <Type variant="overline">Overline</Type>
     </div>
   ),

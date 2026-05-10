@@ -27,10 +27,10 @@ export const InButton: Story = {
   name: "In button (loading)",
   render: () => (
     <div className="flex flex-wrap items-center gap-4">
-      <Button loading>Loading...</Button>
+      <Button loading>Loading&hellip;</Button>
       <Button loading variant="outline">Please wait</Button>
       <Button loading variant="secondary">Processing</Button>
-      <Button loading variant="destructive">Deleting...</Button>
+      <Button loading variant="destructive">Deleting&hellip;</Button>
     </div>
   ),
 };
@@ -40,7 +40,7 @@ export const OnMuted: Story = {
   render: () => (
     <div className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-2 text-base font-medium">
       <Spinner className="size-4" />
-      <span>Syncing...</span>
+      <span>Syncing&hellip;</span>
     </div>
   ),
 };

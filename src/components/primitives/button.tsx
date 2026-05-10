@@ -47,7 +47,7 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends React.ComponentProps<"button">,
     VariantProps<typeof buttonVariants> {
   active?: boolean;
   asChild?: boolean;
@@ -56,53 +56,48 @@ export interface ButtonProps
   loading?: boolean;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    {
-      children,
-      className,
-      disabled,
-      leadingIcon,
-      loading = false,
-      size,
-      trailingIcon,
-      variant,
-      active = false,
-      asChild = false,
-      type = "button",
-      ...props
-    },
-    ref,
-  ) => {
-    const Comp = asChild ? Slot : "button";
-    const iconOnlyLoading = loading && size === "icon";
+function Button({
+  active = false,
+  asChild = false,
+  children,
+  className,
+  disabled,
+  leadingIcon,
+  loading = false,
+  ref,
+  size,
+  trailingIcon,
+  type = "button",
+  variant,
+  ...props
+}: ButtonProps) {
+  const Comp = asChild ? Slot : "button";
+  const iconOnlyLoading = loading && size === "icon";
 
-    return (
-      <Comp
-        className={cn(buttonVariants({ active, variant, size, className }))}
-        ref={ref}
-        data-active={active ? "true" : undefined}
-        disabled={asChild ? undefined : disabled || loading}
-        type={type}
-        {...props}
-      >
-        {asChild ? children : (
-          <>
-            {iconOnlyLoading ? (
-              <Spinner className="size-5" />
-            ) : (
-              <>
-                {loading ? <Spinner className="size-4" /> : leadingIcon}
-                {children ? <span className="inline-flex items-center gap-2">{children}</span> : null}
-                {!loading ? trailingIcon : null}
-              </>
-            )}
-          </>
-        )}
-      </Comp>
-    );
-  },
-);
-Button.displayName = "Button";
+  return (
+    <Comp
+      className={cn(buttonVariants({ active, variant, size, className }))}
+      ref={ref}
+      data-active={active ? "true" : undefined}
+      disabled={asChild ? undefined : disabled || loading}
+      type={type}
+      {...props}
+    >
+      {asChild ? children : (
+        <>
+          {iconOnlyLoading ? (
+            <Spinner className="size-5" />
+          ) : (
+            <>
+              {loading ? <Spinner className="size-4" /> : leadingIcon}
+              {children ? <span className="inline-flex items-center gap-2">{children}</span> : null}
+              {!loading ? trailingIcon : null}
+            </>
+          )}
+        </>
+      )}
+    </Comp>
+  );
+}
 
 export { Button, buttonVariants };

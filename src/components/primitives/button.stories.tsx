@@ -65,7 +65,7 @@ export const WithIcons: Story = {
 export const LoadingStates: Story = {
   render: () => (
     <div className="flex flex-wrap items-center gap-3">
-      <Button loading>Continue</Button>
+      <Button loading>Continue checkout</Button>
       <Button loading size="lg" variant="secondary">Add funds</Button>
       <Button leadingIcon={<Play className="size-5" weight="fill" />} size="lg">
         Preview

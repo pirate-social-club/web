@@ -177,6 +177,24 @@
 }
 
 @layer components {
+  .pirate-altcha-widget {
+    --altcha-border-color: var(--border-soft);
+    --altcha-border-radius: var(--radius-lg);
+    --altcha-color-base: var(--card);
+    --altcha-color-base-content: var(--card-foreground);
+    --altcha-color-border: var(--border-soft);
+    --altcha-color-error-text: var(--warning);
+    --altcha-color-footer-bg: transparent;
+    --altcha-color-primary: var(--primary);
+    --altcha-color-success-text: var(--success);
+    --altcha-font-family: var(--font-sans);
+    --altcha-input-background-color: var(--muted);
+    --altcha-max-width: 100%;
+    --altcha-spinner-color: var(--primary);
+  }
+}
+
+@layer components {
   .notification-count-badge {
     @apply inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-background bg-primary px-1 text-primary-foreground;
     font-family: var(--font-sans);

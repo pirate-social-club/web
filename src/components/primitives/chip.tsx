@@ -28,13 +28,13 @@ const chipVariants = cva(
 );
 
 export interface ChipProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends React.ComponentProps<"button">,
     VariantProps<typeof chipVariants> {
   leadingIcon?: React.ReactNode;
 }
 
-const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(
-  ({ className, variant, size, leadingIcon, children, ...props }, ref) => (
+function Chip({ children, className, leadingIcon, ref, size, variant, ...props }: ChipProps) {
+  return (
     <button
       className={cn(chipVariants({ variant, size }), className)}
       ref={ref}
@@ -44,8 +44,7 @@ const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(
       {leadingIcon ? <span className="me-1.5">{leadingIcon}</span> : null}
       {children}
     </button>
-  ),
-);
-Chip.displayName = "Chip";
+  );
+}
 
 export { Chip, chipVariants };

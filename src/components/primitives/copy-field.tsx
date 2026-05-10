@@ -9,48 +9,44 @@ import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
 import { Button } from "./button";
 import { inputVariants } from "./input";
 
-type CopyFieldProps = React.HTMLAttributes<HTMLDivElement> & {
+type CopyFieldProps = React.ComponentProps<"div"> & {
   value: string;
 };
 
-const CopyField = React.forwardRef<HTMLDivElement, CopyFieldProps>(
-  ({ className, value, ...props }, ref) => {
-    const [copied, setCopied] = React.useState(false);
-    const { schedule: scheduleCopiedReset } = useResettableTimeout();
+function CopyField({ className, ref, value, ...props }: CopyFieldProps) {
+  const [copied, setCopied] = React.useState(false);
+  const { schedule: scheduleCopiedReset } = useResettableTimeout();
 
-    const handleCopy = React.useCallback(async () => {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      scheduleCopiedReset(() => setCopied(false), 2000);
-    }, [scheduleCopiedReset, value]);
+  const handleCopy = React.useCallback(async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    scheduleCopiedReset(() => setCopied(false), 2000);
+  }, [scheduleCopiedReset, value]);
 
-    return (
-      <div
-        className={cn(
-          inputVariants({ size: "lg" }),
-          "items-center gap-2 overflow-hidden pe-2",
-          className,
-        )}
-        ref={ref}
-        {...props}
-      >
-        <div className="min-w-0 flex-1 truncate font-mono text-base text-foreground select-all">
-          {value}
-        </div>
-        <Button
-          aria-label={copied ? "Copied" : "Copy value"}
-          className="size-9 shrink-0"
-          onClick={handleCopy}
-          size="icon"
-          variant="secondary"
-        >
-          {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
-        </Button>
+  return (
+    <div
+      className={cn(
+        inputVariants({ size: "lg" }),
+        "items-center gap-2 overflow-hidden pe-2",
+        className,
+      )}
+      ref={ref}
+      {...props}
+    >
+      <div className="min-w-0 flex-1 truncate font-mono text-base text-foreground select-all">
+        {value}
       </div>
-    );
-  },
-);
-
-CopyField.displayName = "CopyField";
+      <Button
+        aria-label={copied ? "Copied" : "Copy value"}
+        className="size-9 shrink-0"
+        onClick={handleCopy}
+        size="icon"
+        variant="secondary"
+      >
+        {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
+      </Button>
+    </div>
+  );
+}
 
 export { CopyField };

@@ -57,7 +57,7 @@ export const WithDisabledOption: Story = {
 };
 
 export const Interactive: Story = {
-  render: () => {
+  render: function StoryRender() {
     const [value, setValue] = React.useState("best");
     return (
       <ResponsiveOptionSelect

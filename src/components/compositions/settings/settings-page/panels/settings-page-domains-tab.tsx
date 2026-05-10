@@ -244,7 +244,7 @@ function ImportKarmaPhase({
           <div className="flex h-16 items-center gap-2 rounded-full border border-input bg-background px-5 shadow-sm focus-within:border-border focus-within:ring-1 focus-within:ring-border-soft" dir="ltr">
             <span className="shrink-0 text-base text-muted-foreground">u/</span>
             <Input
-              className="h-auto min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 py-0 text-start shadow-none focus-visible:border-transparent focus-visible:ring-0 disabled:opacity-80"
+              className="h-auto min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-start shadow-none focus-visible:border-transparent focus-visible:ring-0 disabled:opacity-80"
               disabled={busy || isCodeReady || isChecking || isImporting}
               dir="ltr"
               onChange={(e) => onUsernameChange?.(e.target.value)}

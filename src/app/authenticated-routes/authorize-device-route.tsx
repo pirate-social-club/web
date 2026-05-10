@@ -22,13 +22,9 @@ function readDeviceUserCode(): string {
 export function AuthorizeDevicePage() {
   const api = useApi();
   const session = useSession();
-  const [userCode, setUserCode] = React.useState("");
+  const [userCode, setUserCode] = React.useState(readDeviceUserCode);
   const [status, setStatus] = React.useState<"idle" | "authorizing" | "authorized" | "failed">("idle");
   const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    setUserCode(readDeviceUserCode());
-  }, []);
 
   const authorize = React.useCallback(async () => {
     const code = normalizeDeviceUserCode(userCode);
@@ -63,7 +59,7 @@ export function AuthorizeDevicePage() {
   return (
     <section className="flex min-w-0 flex-1 flex-col justify-center">
       <PageContainer className="py-8" size="narrow">
-        <CardShell className="mx-auto flex max-w-xl flex-col gap-5 px-5 py-6 md:px-7 md:py-7">
+        <CardShell className="mx-auto flex max-w-xl flex-col gap-5 px-5 py-6 md:p-7">
           <div className="flex flex-col gap-2">
             <h1 className="text-2xl font-semibold tracking-normal text-foreground">
               Authorize Freedom

@@ -98,7 +98,7 @@ function MediaControlCard({
 
   return (
     <Card className={cn("overflow-hidden border-border bg-card shadow-none", isMobile && "border-0 bg-transparent")}>
-      <div className={cn("space-y-4 px-5 py-5", isMobile && "px-0 py-0")}>
+      <div className={cn("space-y-4 p-5", isMobile && "p-0")}>
         <div className="space-y-1">
           <Type as="h3" variant="body-strong">{title}</Type>
           {hint ? <Type as="p" variant="caption">{hint}</Type> : null}
@@ -266,7 +266,7 @@ export function ProfileTab({
       </SettingsSection>
 
       <SettingsSection title={copy.profileSection}>
-        <Card className={cn("space-y-5 border-border bg-card px-5 py-5 shadow-none", isMobile && "border-0 bg-transparent px-0 py-0")}>
+        <Card className={cn("space-y-5 border-border bg-card p-5 shadow-none", isMobile && "border-0 bg-transparent p-0")}>
           <div className="space-y-2">
             <label className="text-base font-medium text-foreground" htmlFor="settings-display-name">
               {copy.displayNameLabel}

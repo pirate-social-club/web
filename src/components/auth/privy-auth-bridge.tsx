@@ -39,6 +39,7 @@ const AUTH_BOOTSTRAP_WAIT_MS = 1_500;
 const AUTH_BOOTSTRAP_POLL_MS = 50;
 const PRIVY_REQUESTED_WALLET_MISMATCH_MESSAGE = "Privy proof does not include the requested wallet";
 const WALLET_MISMATCH_TOAST_ID = "privy-requested-wallet-mismatch";
+const EMPTY_CONNECTED_WALLETS: PirateConnectedEvmWallet[] = [];
 
 export interface PrivyAuthBridgeProps {
   connectedWallets?: PirateConnectedEvmWallet[];
@@ -83,7 +84,7 @@ function formatCompactWalletAddress(address: string): string {
 }
 
 export function PrivyAuthBridge({
-  connectedWallets = [],
+  connectedWallets = EMPTY_CONNECTED_WALLETS,
   onAuthenticatedChange,
   onBusyChange,
   onConnectReady,
@@ -363,12 +364,16 @@ export function PrivyAuthBridge({
     onAuthenticatedChange?.(authenticated);
   }, [authenticated, onAuthenticatedChange]);
 
+  const notifyReadyChange = React.useEffectEvent((nextReady: boolean) => {
+    onReadyChange?.(nextReady);
+  });
+
   React.useEffect(() => {
     const timeoutId = setTimeout(() => {
-      onReadyChange?.(ready);
+      notifyReadyChange?.(ready);
     }, 0);
     return () => clearTimeout(timeoutId);
-  }, [ready, onReadyChange]);
+  }, [ready]);
 
   React.useEffect(() => {
     if (isOpen) {

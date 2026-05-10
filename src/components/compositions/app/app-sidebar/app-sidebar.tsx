@@ -82,9 +82,12 @@ function SidebarSectionBlock({
   sections: readonly AppSidebarSection[];
 }) {
   const defaultValue = React.useMemo(
-    () => sections
-      .filter((section) => section.defaultOpen)
-      .map((section) => section.id),
+    () => sections.reduce<string[]>((result, section) => {
+      if (section.defaultOpen) {
+        result.push(section.id);
+      }
+      return result;
+    }, []),
     [sections],
   );
   const [openSectionIds, setOpenSectionIds] = React.useState<string[]>(defaultValue);
@@ -92,17 +95,20 @@ function SidebarSectionBlock({
 
   React.useEffect(() => {
     const sectionIds = sections.map((section) => section.id);
+    const sectionIdSet = new Set(sectionIds);
     const previousSectionIds = new Set(previousSectionIdsRef.current);
 
     setOpenSectionIds((current) => {
-      const validOpenIds = current.filter((id) => sectionIds.includes(id));
+      const validOpenIds = current.filter((id) => sectionIdSet.has(id));
       const nextOpenIds = [...validOpenIds];
+      const nextOpenIdSet = new Set(nextOpenIds);
 
       for (const section of sections) {
-        if (!section.defaultOpen || previousSectionIds.has(section.id) || nextOpenIds.includes(section.id)) {
+        if (!section.defaultOpen || previousSectionIds.has(section.id) || nextOpenIdSet.has(section.id)) {
           continue;
         }
 
+        nextOpenIdSet.add(section.id);
         nextOpenIds.push(section.id);
       }
 
@@ -129,7 +135,7 @@ function SidebarSectionBlock({
             {section.label}
           </AccordionTrigger>
           <AccordionContent className="pb-0">
-            <SidebarGroup className="gap-0 px-0 py-0">
+            <SidebarGroup className="gap-0 p-0">
               <SidebarGroupContent>
                 <SidebarMenu className="gap-1">
                   {section.items.map((item) => (
@@ -142,7 +148,7 @@ function SidebarSectionBlock({
                       >
                         {item.avatarSrc ? (
                           <Avatar
-                            className="h-7 w-7 border-border-soft"
+                            className="size-7 border-border-soft"
                             fallback={item.label}
                             size="xs"
                             src={item.avatarSrc}
@@ -186,7 +192,7 @@ function SidebarResources({
           {label}
         </AccordionTrigger>
         <AccordionContent className="pb-0">
-          <SidebarGroup className="gap-0 px-0 py-0">
+          <SidebarGroup className="gap-0 p-0">
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
                 {items.map((item) => {
@@ -282,17 +288,15 @@ export function AppSidebar({
     return () => window.removeEventListener(HOME_FEED_SORT_CHANGE_EVENT, handleSortChange);
   }, []);
   const resolvedPrimaryItems = (primaryItems ?? DEFAULT_PRIMARY_ITEMS).map((item) => {
-    if (item.id === "home") return { ...item, label: copy.appSidebar.homeLabel };
-    if (item.id === "popular") return { ...item, label: copy.appSidebar.feedSortBestLabel };
-    if (item.id === "your-communities") return { ...item, label: copy.appSidebar.yourCommunitiesLabel };
-    if (item.id === "agents") return { ...item, label: copy.appSidebar.agentsLabel };
-    if (item.id === "create-community") return { ...item, label: copy.appSidebar.createCommunityLabel };
-    return item;
-  }).map((item) =>
-    item.id === "home" && onHomeClick && item.onSelect === undefined
-      ? { ...item, onSelect: onHomeClick }
-      : item,
-  );
+    let resolvedItem = item;
+    if (item.id === "home") resolvedItem = { ...item, label: copy.appSidebar.homeLabel };
+    if (item.id === "popular") resolvedItem = { ...item, label: copy.appSidebar.feedSortBestLabel };
+    if (item.id === "your-communities") resolvedItem = { ...item, label: copy.appSidebar.yourCommunitiesLabel };
+    if (item.id === "agents") resolvedItem = { ...item, label: copy.appSidebar.agentsLabel };
+    if (item.id === "create-community") resolvedItem = { ...item, label: copy.appSidebar.createCommunityLabel };
+    if (item.id === "home" && onHomeClick && item.onSelect === undefined) return { ...resolvedItem, onSelect: onHomeClick };
+    return resolvedItem;
+  });
   const visiblePrimaryItems = isMobile
     ? resolvedPrimaryItems.filter((item) => item.id !== "home" && item.id !== "popular")
     : resolvedPrimaryItems;

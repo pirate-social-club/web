@@ -105,11 +105,11 @@ function DemoSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" side={resolvedSide} {...props}>
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
+      <SidebarHeader className="border-b border-sidebar-border p-4">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton className="h-12 rounded-xl px-4" size="lg" tooltip={copy.appSidebar.brandLabel}>
-              <PirateBrandMark className="h-10 w-10 shrink-0" decorative={false} />
+              <PirateBrandMark className="size-10 shrink-0" decorative={false} />
               <Type as="div" variant="h4" className="grid flex-1 text-start  leading-tight">
                 <span className="truncate font-semibold">{copy.appSidebar.brandLabel}</span>
               </Type>

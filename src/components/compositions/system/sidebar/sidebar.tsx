@@ -44,26 +44,22 @@ import {
   SidebarTrigger,
 } from "./sidebar.primitives";
 
-const SidebarProvider = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<"div"> & {
-    defaultOpen?: boolean;
-    open?: boolean;
-    onOpenChange?: (open: boolean) => void;
-  }
->(
-  (
-    {
-      defaultOpen = true,
-      open: openProp,
-      onOpenChange: setOpenProp,
-      className,
-      style,
-      children,
-      ...props
-    },
-    ref,
-  ) => {
+type SidebarProviderProps = React.ComponentProps<"div"> & {
+  defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
+function SidebarProvider({
+  children,
+  className,
+  defaultOpen = true,
+  onOpenChange: setOpenProp,
+  open: openProp,
+  ref,
+  style,
+  ...props
+}: SidebarProviderProps) {
     const detectedMobile = useIsMobile();
     const hydrated = useClientHydrated();
     const isMobile = hydrated ? detectedMobile : false;
@@ -144,29 +140,23 @@ const SidebarProvider = React.forwardRef<
         </TooltipProvider>
       </SidebarContext.Provider>
     );
-  },
-);
-SidebarProvider.displayName = "SidebarProvider";
+}
 
-const Sidebar = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<"div"> & {
-    side?: "left" | "right";
-    variant?: "sidebar" | "floating" | "inset";
-    collapsible?: "offcanvas" | "icon" | "none";
-  }
->(
-  (
-    {
-      side = "left",
-      variant = "sidebar",
-      collapsible = "offcanvas",
-      className,
-      children,
-      ...props
-    },
-    ref,
-  ) => {
+type SidebarProps = React.ComponentProps<"div"> & {
+  side?: "left" | "right";
+  variant?: "sidebar" | "floating" | "inset";
+  collapsible?: "offcanvas" | "icon" | "none";
+};
+
+function Sidebar({
+  children,
+  className,
+  collapsible = "offcanvas",
+  ref,
+  side = "left",
+  variant = "sidebar",
+  ...props
+}: SidebarProps) {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
     if (collapsible === "none") {
@@ -255,9 +245,7 @@ const Sidebar = React.forwardRef<
         </div>
       </SidebarSideContext.Provider>
     );
-  },
-);
-Sidebar.displayName = "Sidebar";
+}
 
 export {
   Sidebar,

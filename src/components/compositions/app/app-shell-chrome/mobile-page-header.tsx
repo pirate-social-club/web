@@ -40,7 +40,7 @@ export function MobilePageHeader({
     <span className="flex min-w-0 items-center justify-center gap-2 text-start">
       {titleAvatarFallback || titleAvatarSrc ? (
         <Avatar
-          className="h-8 w-8 shrink-0"
+          className="size-8 shrink-0"
           fallback={titleAvatarFallback ?? title}
           fallbackSeed={titleAvatarSeed}
           size="sm"
@@ -65,7 +65,7 @@ export function MobilePageHeader({
         <button
           aria-label={`Open ${title}`}
           className={cn(
-            "inline-flex max-w-full items-center justify-center rounded-full px-1 py-1",
+            "inline-flex max-w-full items-center justify-center rounded-full p-1",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           )}
           onClick={onTitleClick}

@@ -144,7 +144,7 @@ export function CreatePostGlobalPage({
             </Button>
           )}
         />
-        <section className="flex min-w-0 flex-1 flex-col px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
+        <section className="flex min-w-0 flex-1 flex-col p-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
           <PostComposer
             availableTabs={["text", "image", "video", "link", "song"]}
             canCreateSongPost

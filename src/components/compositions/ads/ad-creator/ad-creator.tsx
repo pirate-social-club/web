@@ -94,7 +94,7 @@ function Section({ value, number, title, children }: SectionProps) {
 
 function AdPreviewContent() {
   return (
-    <div className="px-4 py-4">
+    <div className="p-4">
       <div className="mb-3 flex items-center gap-2.5">
         <div className="size-8 rounded-full bg-primary" />
         <div className="flex flex-col">
@@ -155,7 +155,7 @@ function MobileAdPreview() {
           <AdPreviewContent />
 
           {/* Bottom nav */}
-          <div className="flex items-center justify-around border-t border-border bg-muted px-3 py-3">
+          <div className="flex items-center justify-around border-t border-border bg-muted p-3">
             <House className="size-6 text-foreground" weight="fill" />
             <MagnifyingGlass className="size-6 text-muted-foreground" />
             <Plus className="size-6 text-muted-foreground" />

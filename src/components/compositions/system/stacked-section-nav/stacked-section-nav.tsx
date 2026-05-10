@@ -57,7 +57,7 @@ export function StackedSectionNav({
                 aria-current={item.active ? "page" : undefined}
                 className={cn(
                   "flex w-full items-center justify-between gap-4 text-start transition-colors hover:bg-muted/30",
-                  mobileLayout ? "px-4 py-4" : "px-5 py-4",
+                  mobileLayout ? "p-4" : "px-5 py-4",
                   item.active && "bg-muted/30 text-foreground",
                   index < section.items.length - 1 ? "border-b border-border-soft" : undefined,
                 )}

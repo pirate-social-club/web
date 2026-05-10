@@ -22,7 +22,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const TabBarWithButtons: Story = {
-  render: () => {
+  render: function StoryRender() {
     const [active, setActive] = React.useState("feed");
     return (
       <div className="p-4">
@@ -40,7 +40,7 @@ export const TabBarWithButtons: Story = {
 };
 
 export const TabBarWithActions: Story = {
-  render: () => {
+  render: function StoryRender() {
     const [active, setActive] = React.useState("feed");
     return (
       <div className="p-4">
@@ -65,7 +65,7 @@ export const TabBarWithActions: Story = {
 };
 
 export const TabsListWithTriggers: Story = {
-  render: () => {
+  render: function StoryRender() {
     const [value, setValue] = React.useState("tab1");
     return (
       <div className="p-4">

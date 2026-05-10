@@ -34,6 +34,8 @@ import { getPirateNetworkConfig } from "@/lib/network-config";
 import { getLocaleMessages } from "@/locales";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
+
+const EMPTY_ROYALTY_ACTIVITY_ITEMS: RoyaltyActivityItem[] = [];
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { EmptyInboxState } from "@/components/states/empty-inbox-state";
 import {
@@ -282,7 +284,7 @@ function getActivityMedia(item: NotificationFeedItem): React.ReactNode | null {
 
   return (
     <Avatar
-      className="h-10 w-10 border-none"
+      className="size-10 border-none"
       fallback={actorName}
       fallbackSeed={item.event.actor_user ?? undefined}
       size="sm"
@@ -596,7 +598,7 @@ export function NotificationInboxPage({
   onLoadMoreActivity,
   onOpenActivityItem,
   onVerifyTask,
-  royaltyActivityItems = [],
+  royaltyActivityItems = EMPTY_ROYALTY_ACTIVITY_ITEMS,
   royaltyActivityLoading = false,
 
   installPromoUnreadCount = 0,
@@ -687,7 +689,7 @@ export function NotificationInboxPage({
         isMobile ? "-mx-3 gap-0" : "overflow-hidden rounded-[var(--radius-2xl)] border border-border-soft bg-card",
       )}>
         {!isMobile && (
-          <div className="flex items-center justify-between border-b border-border-soft px-5 py-5 md:px-6 md:py-6">
+          <div className="flex items-center justify-between border-b border-border-soft p-5 md:p-6">
             <Type as="h1" variant="h2">{title ?? copy.notificationsTab}</Type>
           </div>
         )}

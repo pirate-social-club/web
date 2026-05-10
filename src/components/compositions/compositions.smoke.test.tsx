@@ -175,7 +175,7 @@ describe("composition smoke tests", () => {
           <AppHeader
             forceMobile
             hideBrand
-            mobileLeadingContent={<div className="h-11 w-11" aria-hidden="true" />}
+            mobileLeadingContent={<div className="size-11" aria-hidden="true" />}
             onCreateClick={() => undefined}
             showCreateAction
             showMobileCreateAction

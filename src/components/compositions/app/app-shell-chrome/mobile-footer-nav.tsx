@@ -152,7 +152,7 @@ export function MobileFooterNav({
               aria-current={active ? "page" : undefined}
               aria-label={ariaLabelById[item.id]}
               className={cn(
-                "relative mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors",
+                "relative mx-auto inline-flex size-12 items-center justify-center rounded-full transition-colors",
                 active ? "text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
               key={item.id}
@@ -185,14 +185,14 @@ export function MobileFooterNav({
           aria-current={activeItem === "profile" ? "page" : undefined}
           aria-label={profileAriaLabel}
           className={cn(
-            "mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors",
+            "mx-auto inline-flex size-12 items-center justify-center rounded-full transition-colors",
             activeItem === "profile" ? "text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
           onClick={() => handleTap(onProfileClick)}
           type="button"
           >
           <Avatar
-            className="h-9 w-9 bg-card text-base"
+            className="size-9 bg-card text-base"
             fallback={avatarFallback}
             fallbackSeed={userAvatarSeed ?? undefined}
             size="sm"

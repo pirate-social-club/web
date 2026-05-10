@@ -120,7 +120,7 @@ function AgentRow({
 }) {
   const isActive = agent.status === "active";
   const ownership = agent.currentOwnership;
-  const [draftHandle, setDraftHandle] = React.useState(stripClawitzerSuffix(agent.handleLabel));
+  const [draftHandle, setDraftHandle] = React.useState(() => stripClawitzerSuffix(agent.handleLabel));
   const [handleError, setHandleError] = React.useState<string | null>(null);
   const [handleSaving, setHandleSaving] = React.useState(false);
   const [draftName, setDraftName] = React.useState(agent.displayName ?? "");
@@ -347,7 +347,7 @@ function RegistrationCard({
 
   return (
     <Card className="border-border bg-card shadow-none">
-      <CardContent className="space-y-4 px-5 py-5">
+      <CardContent className="space-y-4 p-5">
         <div className="space-y-2">
           <ClawitzerHandleField
             ariaLabel={copy.handleLabel}
@@ -413,7 +413,7 @@ function PairingCodeState({
 }) {
   return (
     <Card className="border-border bg-card shadow-none">
-      <CardContent className="space-y-4 px-5 py-5">
+      <CardContent className="space-y-4 p-5">
         <CopyField value={registrationState.pairingCode} />
         <div className="space-y-2 text-muted-foreground">
           <p>
@@ -439,7 +439,7 @@ function PendingRegistration({
 }) {
   return (
     <Card className="border-border bg-card shadow-none">
-      <CardContent className="space-y-4 px-5 py-5">
+      <CardContent className="space-y-4 p-5">
         <CopyField value={registrationState.registrationUrl} />
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="default">
@@ -473,7 +473,7 @@ function ImportRegistration({
 
   return (
     <Card className="border-border bg-card shadow-none">
-      <CardContent className="space-y-4 px-5 py-5">
+      <CardContent className="space-y-4 p-5">
         <p className="text-muted-foreground">
           {copy.manualFallbackLabel}
           {" "}

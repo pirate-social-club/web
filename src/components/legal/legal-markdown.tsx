@@ -75,22 +75,32 @@ function parseMarkdownBlocks(source: string): MarkdownBlock[] {
   return blocks;
 }
 
-function renderInlineText(text: string): React.ReactNode {
+function LegalInlineText({ text }: { text: string }) {
   const parts = text.split(/(`[^`]+`)/g);
-  return parts.map((part, index) => {
-    if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
-      return (
-        <code
-          className="rounded-md bg-foreground/8 px-1.5 py-0.5 font-mono text-base text-foreground"
-          key={`${part}-${index}`}
-        >
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
+  const partCounts = new Map<string, number>();
 
-    return <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>;
-  });
+  return (
+    <>
+      {parts.map((part) => {
+        const occurrence = partCounts.get(part) ?? 0;
+        partCounts.set(part, occurrence + 1);
+        const key = occurrence === 0 ? part : `${part}:${occurrence}`;
+
+        if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
+          return (
+            <code
+              className="rounded-md bg-foreground/8 px-1.5 py-0.5 font-mono text-base text-foreground"
+              key={key}
+            >
+              {part.slice(1, -1)}
+            </code>
+          );
+        }
+
+        return <React.Fragment key={key}>{part}</React.Fragment>;
+      })}
+    </>
+  );
 }
 
 export function LegalMarkdown({
@@ -101,14 +111,24 @@ export function LegalMarkdown({
   source: string;
 }) {
   const blocks = React.useMemo(() => parseMarkdownBlocks(source), [source]);
+  const blockCounts = new Map<string, number>();
+
+  function getScopedKey(kind: string, value: string): string {
+    const baseKey = `${kind}:${value}`;
+    const occurrence = blockCounts.get(baseKey) ?? 0;
+    blockCounts.set(baseKey, occurrence + 1);
+    return occurrence === 0 ? baseKey : `${baseKey}:${occurrence}`;
+  }
 
   return (
     <div className={cn("grid gap-5", className)}>
-      {blocks.map((block, index) => {
+      {blocks.map((block) => {
         if (block.type === "heading") {
+          const headingKey = getScopedKey(`heading-${block.level}`, block.text);
+
           if (block.level === 1) {
             return (
-              <Type as="h1" variant="display" key={`block-${index}`}>
+              <Type as="h1" variant="display" key={headingKey}>
                 {block.text}
               </Type>
             );
@@ -116,34 +136,42 @@ export function LegalMarkdown({
 
           if (block.level === 2) {
             return (
-              <Type as="h2" variant="h2" className="pt-3" key={`block-${index}`}>
+              <Type as="h2" variant="h2" className="pt-3" key={headingKey}>
                 {block.text}
               </Type>
             );
           }
 
           return (
-            <Type as="h3" variant="h4" key={`block-${index}`}>
+            <Type as="h3" variant="h4" key={headingKey}>
               {block.text}
             </Type>
           );
         }
 
         if (block.type === "list") {
+          const itemCounts = new Map<string, number>();
+
           return (
-            <ul className="grid gap-2 ps-6 text-base leading-7 text-muted-foreground" key={`block-${index}`}>
-              {block.items.map((item, itemIndex) => (
-                <li className="list-disc" key={`item-${index}-${itemIndex}`}>
-                  {renderInlineText(item)}
-                </li>
-              ))}
+            <ul className="grid gap-2 ps-6 text-base leading-7 text-muted-foreground" key={getScopedKey("list", block.items.join("\n"))}>
+              {block.items.map((item) => {
+                const occurrence = itemCounts.get(item) ?? 0;
+                itemCounts.set(item, occurrence + 1);
+                const itemKey = occurrence === 0 ? item : `${item}:${occurrence}`;
+
+                return (
+                  <li className="list-disc" key={itemKey}>
+                    <LegalInlineText text={item} />
+                  </li>
+                );
+              })}
             </ul>
           );
         }
 
         return (
-          <p className="text-base leading-7 text-muted-foreground" key={`block-${index}`}>
-            {renderInlineText(block.text)}
+          <p className="text-base leading-7 text-muted-foreground" key={getScopedKey("paragraph", block.text)}>
+            <LegalInlineText text={block.text} />
           </p>
         );
       })}

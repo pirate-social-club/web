@@ -67,7 +67,7 @@ export function NamespaceVerificationHnsPanel({
   const nameservers = (setupNameservers ?? []).filter((value) => value.trim().length > 0);
 
   return (
-    <section className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-5 py-5">
+    <section className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card p-5">
       <Type as="h2" variant="h3">{mc.recordsTitle}</Type>
 
       {nameservers.length > 0 ? (

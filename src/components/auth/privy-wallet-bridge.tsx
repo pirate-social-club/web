@@ -34,9 +34,13 @@ export function PrivyWalletBridge({
   const lastWalletSnapshotRef = React.useRef<string | null>(null);
 
   const normalizedWallets = React.useMemo(
-    () => wallets
-      .map((wallet) => normalizePirateConnectedEvmWallet(wallet))
-      .filter((wallet): wallet is PirateConnectedEvmWallet => wallet !== null),
+    () => wallets.reduce<PirateConnectedEvmWallet[]>((result, wallet) => {
+      const normalizedWallet = normalizePirateConnectedEvmWallet(wallet);
+      if (normalizedWallet !== null) {
+        result.push(normalizedWallet);
+      }
+      return result;
+    }, []),
     [wallets],
   );
   const walletSnapshot = React.useMemo(

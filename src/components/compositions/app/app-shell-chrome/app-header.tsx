@@ -231,7 +231,7 @@ export function AppHeader({
       key="profile"
     >
       <Avatar
-        className="h-11 w-11 bg-card text-base"
+        className="size-11 bg-card text-base"
         fallback={avatarFallback}
         fallbackSeed={userAvatarSeed ?? undefined}
         size="sm"
@@ -246,11 +246,11 @@ export function AppHeader({
   const brand = (
     <button
       aria-label={homeAriaLabel}
-      className="inline-flex max-w-full items-center gap-3 rounded-full px-1 py-1 text-start align-middle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex max-w-full items-center gap-3 rounded-full p-1 text-start align-middle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       onClick={onHomeClick}
       type="button"
     >
-      <PirateBrandMark className="h-11 w-11 shrink-0" decorative={false} />
+      <PirateBrandMark className="size-11 shrink-0" decorative={false} />
       <Type as="span" variant="h3" className="truncate font-display tracking-wide">PIRATE</Type>
     </button>
   );
@@ -290,7 +290,7 @@ export function AppHeader({
               <div className="flex items-center justify-end gap-1">
                 {mobileActions}
               </div>
-            ) : <div className="h-11 w-11" aria-hidden="true" />)}
+            ) : <div className="size-11" aria-hidden="true" />)}
           </div>
         </div>
       </header>

@@ -23,7 +23,7 @@ export function LegalDocumentPage({
   return (
     <main className="min-h-screen bg-background px-4 py-6 text-foreground md:px-6 md:py-8">
       <div className="mx-auto w-full max-w-4xl">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-border px-5 py-5 md:px-8 md:py-6">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-border p-5 md:px-8 md:py-6">
           <HeaderLink href="/" label="Home" />
           <HeaderLink href={resolveResourceHref("blog") ?? "https://blog.pirate.sc"} label="Blog" />
           <HeaderLink href={resolveResourceHref("account-deletion") ?? "/delete-account"} label="Account Deletion" />
@@ -36,7 +36,7 @@ export function LegalDocumentPage({
             {supportEmail}
           </a>
         </div>
-        <div className="px-5 py-6 md:px-8 md:py-8">
+        <div className="px-5 py-6 md:p-8">
           <LegalMarkdown source={source} />
         </div>
       </div>

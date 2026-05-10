@@ -25,7 +25,7 @@ import {
 export const ModalResponsiveContext = React.createContext<boolean | null>(null);
 
 function useModalIsMobile() {
-  const contextValue = React.useContext(ModalResponsiveContext);
+  const contextValue = React.use(ModalResponsiveContext);
 
   if (contextValue === null) {
     throw new Error("Modal components must be rendered within <Modal>.");
@@ -50,16 +50,13 @@ function Modal({ forceMobile, ...props }: ModalProps) {
 }
 
 interface ModalContentProps
-  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  extends React.ComponentProps<typeof DialogPrimitive.Content> {
   hideCloseButton?: boolean;
   hideCloseButtonOnMobile?: boolean;
   mobileSide?: "top" | "bottom" | "left" | "right";
 }
 
-const ModalContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  ModalContentProps
->(({ className, hideCloseButton = false, hideCloseButtonOnMobile = false, mobileSide = "bottom", ...props }, ref) => {
+function ModalContent({ className, hideCloseButton = false, hideCloseButtonOnMobile = false, mobileSide = "bottom", ref, ...props }: ModalContentProps) {
   const isMobile = useModalIsMobile();
   const shouldHideCloseButton = hideCloseButton || (isMobile && hideCloseButtonOnMobile);
 
@@ -68,8 +65,7 @@ const ModalContent = React.forwardRef<
   }
 
   return <DialogContent className={className} hideCloseButton={shouldHideCloseButton} ref={ref} {...props} />;
-});
-ModalContent.displayName = "ModalContent";
+}
 
 const ModalHeader = ({
   className,
@@ -93,27 +89,19 @@ const ModalFooter = ({
 };
 ModalFooter.displayName = "ModalFooter";
 
-const ModalTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => {
+function ModalTitle({ className, ref, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   const isMobile = useModalIsMobile();
   const Comp = isMobile ? SheetTitle : DialogTitle;
 
   return <Comp className={cn(typeVariants({ variant: "h3" }), className)} ref={ref} {...props} />;
-});
-ModalTitle.displayName = "ModalTitle";
+}
 
-const ModalDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
->(({ className, ...props }, ref) => {
+function ModalDescription({ className, ref, ...props }: React.ComponentProps<typeof DialogPrimitive.Description>) {
   const isMobile = useModalIsMobile();
   const Comp = isMobile ? SheetDescription : DialogDescription;
 
   return <Comp className={cn(className)} ref={ref} {...props} />;
-});
-ModalDescription.displayName = "ModalDescription";
+}
 
 export {
   Modal,

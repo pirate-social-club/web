@@ -46,7 +46,7 @@ export function StackPageShell({
           </div>
         </div>
       ) : showHeader ? (
-        <CardShell className="px-5 py-5 md:px-6 md:py-6">
+        <CardShell className="p-5 md:p-6">
           <div className={headerRowClassName}>
             <div className="flex flex-col gap-2">
               {title.trim() ? (

@@ -126,7 +126,7 @@ export function AppShellHeader({
     </IconButton>
   ) : undefined;
   const mobileTrailingContent = mobileHeaderAction ?? (route.kind === "community" || isPublicProfileRoute || (clientReady && session && routeUsesMobileFooter(route) && !showMobileCreateAction)
-    ? <div className="h-11 w-11" aria-hidden="true" />
+    ? <div className="size-11" aria-hidden="true" />
     : undefined);
   const mobileHeaderTitle = resolveMobileHeaderTitle({ copy, route, session });
   const isChatRoute = route.kind === "chat"

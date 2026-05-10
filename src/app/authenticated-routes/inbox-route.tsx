@@ -69,9 +69,12 @@ function filterRenderableNotificationFeedItems(feed: ApiNotificationFeedResponse
 }
 
 function unreadFeedEventIds(feed: ApiNotificationFeedResponse): string[] {
-  return feed.items
-    .filter((item) => item.event.type !== "xmtp_message" && !item.receipt.read_at)
-    .map((item) => item.event.id);
+  return feed.items.reduce<string[]>((result, item) => {
+    if (item.event.type !== "xmtp_message" && !item.receipt.read_at) {
+      result.push(item.event.id);
+    }
+    return result;
+  }, []);
 }
 
 function markFeedItemsRead(feed: ApiNotificationFeedResponse, eventIds: string[], readAt: number): ApiNotificationFeedResponse {
@@ -139,10 +142,11 @@ function trackFeedMarkedReadEvents(items: NotificationFeedItem[], readMode: "aut
   const countsByType = new Map<string, number>();
 
   for (const item of items) {
-    if (item.event.type === "xmtp_message") {
+    const notificationType = item.event.type;
+    if (notificationType === "xmtp_message") {
       continue;
     }
-    countsByType.set(item.event.type, (countsByType.get(item.event.type) ?? 0) + 1);
+    countsByType.set(notificationType, (countsByType.get(notificationType) ?? 0) + 1);
   }
 
   for (const [notificationType, count] of countsByType) {
@@ -192,9 +196,12 @@ export function InboxPlaceholderPage() {
     try {
       setRoyaltiesLoading(true);
       const activityResult = await api.royalties.listActivity({ limit: 50 });
-      const unreadEventIds = activityResult.items
-        .filter((item) => !item.read_at)
-        .map((item) => item.id);
+      const unreadEventIds = activityResult.items.reduce<string[]>((result, item) => {
+        if (!item.read_at) {
+          result.push(item.id);
+        }
+        return result;
+      }, []);
       let readAt: number | null = null;
         if (unreadEventIds.length > 0) {
           try {
@@ -277,12 +284,14 @@ export function InboxPlaceholderPage() {
       return;
     }
 
-    const walletAddresses = royaltyActivity.items
-      .map((item) => item.buyer_wallet_address)
-      .map((address) => address?.trim().toLowerCase() ?? "")
-      .filter(Boolean);
-    const uniqueWallets = Array.from(new Set(walletAddresses))
-      .filter((address) => !(address in royaltyProfilesByWallet));
+    const walletAddresses = royaltyActivity.items.reduce<string[]>((result, item) => {
+      const address = item.buyer_wallet_address?.trim().toLowerCase() ?? "";
+      if (address) {
+        result.push(address);
+      }
+      return result;
+    }, []);
+    const uniqueWallets = Array.from(new Set(walletAddresses)).filter((address) => !(address in royaltyProfilesByWallet));
 
     if (uniqueWallets.length === 0) {
       return;

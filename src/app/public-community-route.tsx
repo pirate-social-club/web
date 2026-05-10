@@ -16,6 +16,7 @@ import { CommunityPageShell } from "@/components/compositions/community/page-she
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
+import { CommunityProofOfWorkModal } from "@/components/compositions/community/proof-of-work-modal/community-proof-of-work-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
@@ -158,9 +159,13 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
   React.useEffect(() => {
     let cancelled = false;
 
-    const authorUserIds = posts
-      .map((item) => item.post.identity_mode === "public" ? item.post.author_user : null)
-      .filter((userId): userId is string => Boolean(userId));
+    const authorUserIds = posts.reduce<string[]>((result, item) => {
+      const userId = item.post.identity_mode === "public" ? item.post.author_user : null;
+      if (userId) {
+        result.push(userId);
+      }
+      return result;
+    }, []);
 
     if (authorUserIds.length === 0) {
       setAuthorProfiles({});
@@ -254,6 +259,7 @@ export function PublicCommunityRoutePage({
   const [joinRequestModalOpen, setJoinRequestModalOpen] = React.useState(false);
   const [joinRequestSubmitting, setJoinRequestSubmitting] = React.useState(false);
   const [joinRequestError, setJoinRequestError] = React.useState<string | null>(null);
+  const [proofOfWorkModalOpen, setProofOfWorkModalOpen] = React.useState(false);
   const [handleClaimModalOpen, setHandleClaimModalOpen] = React.useState(false);
   const { gateModal, invalidateCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: contentLocale,
@@ -423,6 +429,10 @@ export function PublicCommunityRoutePage({
   }, [authRuntime.connect, authRuntime.loadError, communityId, copy.publicProfile.openInPirate, preview]);
 
   const {
+    altchaAction,
+    altchaPayload,
+    altchaRequired,
+    altchaScope,
     handleJoin,
     handleSelfModalOpenChange: handleJoinSelfModalOpenChange,
     handleSelfQrError: handleJoinSelfQrError,
@@ -434,6 +444,7 @@ export function PublicCommunityRoutePage({
     selfLoading: joinSelfLoading,
     selfModalOpen: joinSelfModalOpen,
     selfPrompt: joinSelfPrompt,
+    setAltchaPayload,
     veryLoading: joinVeryLoading,
   } = useCommunityJoinVerification({
     communityId: preview?.id ?? communityId,
@@ -627,6 +638,10 @@ export function PublicCommunityRoutePage({
       setJoinRequestModalOpen(true);
       return;
     }
+    if (altchaRequired && !altchaPayload) {
+      setProofOfWorkModalOpen(true);
+      return;
+    }
     const result = await handleJoin();
     if (result === "joined") {
       await maybeOpenHandleClaimModal();
@@ -731,6 +746,24 @@ export function PublicCommunityRoutePage({
         open={joinRequestModalOpen}
         submitting={joinRequestSubmitting || joinLoading}
       />
+      {altchaRequired ? (
+        <CommunityProofOfWorkModal
+          action={altchaAction}
+          continueDisabled={!altchaPayload}
+          continueLoading={joinLoading}
+          description="This usually takes a few seconds and runs only on this device."
+          locale={locale}
+          onContinue={async () => {
+            setProofOfWorkModalOpen(false);
+            await handlePrimaryJoinAction();
+          }}
+          onOpenChange={setProofOfWorkModalOpen}
+          onPayloadChange={setAltchaPayload}
+          open={proofOfWorkModalOpen}
+          requirements={preview.membership_gate_summaries}
+          scope={altchaScope}
+        />
+      ) : null}
       {selfPrompt ? (
         <SelfVerificationModal
           actionLabel={selfPrompt.actionLabel}

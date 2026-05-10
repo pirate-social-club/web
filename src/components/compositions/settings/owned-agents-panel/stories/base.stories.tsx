@@ -32,10 +32,13 @@ const sampleAgents: OwnedAgent[] = [
   },
 ];
 
+const importedAgentCreatedAt = "2026-04-20T12:00:00Z";
+
 function InteractiveStory(args: OwnedAgentsPanelProps) {
   const [agents, setAgents] = React.useState(args.agents);
   const [regState, setRegState] = React.useState(args.registrationState);
   const [importValue, setImportValue] = React.useState(args.importValue ?? "");
+  const nextImportedAgentId = React.useRef(1);
 
   return (
     <div className="w-full max-w-xl">
@@ -50,14 +53,14 @@ function InteractiveStory(args: OwnedAgentsPanelProps) {
             setAgents((prev) => [
               ...prev,
               {
-                agentId: "agt_new_" + Date.now(),
+                agentId: `agt_new_${nextImportedAgentId.current++}`,
                 displayName: handleLabel,
                 handleLabel: `${handleLabel.replace(/\.clawitzer$/i, "")}.clawitzer`,
                 status: "active",
-                createdAt: new Date().toISOString(),
+                createdAt: importedAgentCreatedAt,
                 currentOwnership: {
                   ownershipProvider: "clawkey",
-                  verifiedAt: new Date().toISOString(),
+                  verifiedAt: importedAgentCreatedAt,
                   expiresAt: null,
                 },
               },

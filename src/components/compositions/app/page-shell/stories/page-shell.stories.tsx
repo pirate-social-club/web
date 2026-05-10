@@ -21,6 +21,8 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+const fullBleedStoryRows = ["top", "middle", "bottom"] as const;
+
 function FakeMobileHeader() {
   return (
     <div className="fixed inset-x-0 top-0 z-40 h-16 border-b border-border-soft bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur-md">
@@ -46,7 +48,7 @@ function FakeMobileFooter() {
 function StoryContent({ bleed = false }: { bleed?: boolean }) {
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <Card className="rounded-2xl border-border-soft bg-card px-5 py-5 shadow-none">
+      <Card className="rounded-2xl border-border-soft bg-card p-5 shadow-none">
         <Type as="h2" variant="h3" className="text-xl font-semibold">
           Page block
         </Type>
@@ -61,12 +63,12 @@ function StoryContent({ bleed = false }: { bleed?: boolean }) {
               Full-bleed list section
             </Type>
           </div>
-          {Array.from({ length: 3 }, (_, i) => (
+          {fullBleedStoryRows.map((row) => (
             <div
-              key={i}
+              key={row}
               className="flex items-center gap-3 border-b border-border-soft px-5 py-4 last:border-b-0"
             >
-              <div className="h-8 w-8 rounded-full bg-muted" />
+              <div className="size-8 rounded-full bg-muted" />
               <div className="flex-1">
                 <div className="h-3 w-24 rounded bg-muted" />
               </div>
@@ -74,7 +76,7 @@ function StoryContent({ bleed = false }: { bleed?: boolean }) {
           ))}
         </FullBleedMobileListSection>
       ) : null}
-      <Card className="rounded-2xl border-border-soft bg-card px-5 py-5 shadow-none">
+      <Card className="rounded-2xl border-border-soft bg-card p-5 shadow-none">
         <Type as="p" variant="body" className="text-muted-foreground">
           Another block aligned to the gutter.
         </Type>
@@ -115,7 +117,7 @@ export const StandaloneMobile: Story = {
   render: () => (
     <StandaloneMobilePage title="Settings" onBack={() => {}}>
       <div className="flex flex-1 flex-col gap-4 px-[var(--page-gutter-x)] py-4">
-        <Card className="rounded-2xl border-border-soft bg-card px-5 py-5 shadow-none">
+        <Card className="rounded-2xl border-border-soft bg-card p-5 shadow-none">
           <Type as="p" variant="body" className="text-muted-foreground">
             Standalone mobile page content.
           </Type>
@@ -129,7 +131,7 @@ export const PublicRouteDesktop: Story = {
   render: () => (
     <PublicRoutePage size="default">
       <div className="flex flex-col gap-4 py-6">
-        <Card className="rounded-2xl border-border-soft bg-card px-5 py-5 shadow-none">
+        <Card className="rounded-2xl border-border-soft bg-card p-5 shadow-none">
           <Type as="p" variant="body" className="text-muted-foreground">
             Public route content.
           </Type>
@@ -146,7 +148,7 @@ export const PublicRouteMobile: Story = {
   render: () => (
     <PublicRoutePage size="default">
       <div className="flex flex-col gap-4 py-6">
-        <Card className="rounded-2xl border-border-soft bg-card px-5 py-5 shadow-none">
+        <Card className="rounded-2xl border-border-soft bg-card p-5 shadow-none">
           <Type as="p" variant="body" className="text-muted-foreground">
             Public route content.
           </Type>

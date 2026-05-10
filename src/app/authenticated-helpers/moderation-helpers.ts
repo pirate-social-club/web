@@ -223,9 +223,13 @@ function extractCourtyardInventoryDraft(config: unknown): Omit<Extract<IdentityG
 }
 
 export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDraft[] {
-  const drafts = flattenGatePolicyAtoms(community.gate_policy ?? null)
-    .map((atom) => getCommunityGateDraft(atom))
-    .filter((draft): draft is IdentityGateDraft => draft != null);
+  const drafts = flattenGatePolicyAtoms(community.gate_policy ?? null).reduce<IdentityGateDraft[]>((result, atom) => {
+    const draft = getCommunityGateDraft(atom);
+    if (draft != null) {
+      result.push(draft);
+    }
+    return result;
+  }, []);
   const hasStrongerIdentityGate = drafts.some((draft) =>
     draft.gateType === "unique_human"
     || draft.gateType === "nationality"
@@ -411,11 +415,13 @@ export function buildStarterPricingPolicyDraft(input: {
   tiers: PricingTier[];
   verificationProviderRequirement: "self";
 } {
-  const localCountryCodes = Array.from(new Set(
-    (input.localCountryCodes ?? [])
-      .map((code) => normalizeCountryCode(code)?.alpha2)
-      .filter((code): code is string => Boolean(code)),
-  ));
+  const localCountryCodes = Array.from(new Set((input.localCountryCodes ?? []).reduce<string[]>((result, code) => {
+    const normalizedCode = normalizeCountryCode(code)?.alpha2;
+    if (normalizedCode) {
+      result.push(normalizedCode);
+    }
+    return result;
+  }, [])));
   const baseCountryAssignments: PricingCountryAssignment[] = COUNTRIES.map((country) => {
     const tierKey = STARTER_PRICING_TIER_BY_COUNTRY_CODE[country.code];
     if (!tierKey) {

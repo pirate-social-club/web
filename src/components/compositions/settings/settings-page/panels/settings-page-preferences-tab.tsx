@@ -28,7 +28,7 @@ export function PreferencesTab({
   return (
     <div className="space-y-8">
       <SettingsSection title={copy.languageSection}>
-        <Card className={cn("space-y-5 border-border bg-card px-5 py-5 shadow-none", isMobile && "border-0 bg-transparent px-0 py-0")}>
+        <Card className={cn("space-y-5 border-border bg-card p-5 shadow-none", isMobile && "border-0 bg-transparent p-0")}>
           <div className="space-y-2">
             <label className="text-base font-medium text-foreground" htmlFor="settings-language">
               {copy.appLanguageLabel}

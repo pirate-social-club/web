@@ -98,12 +98,12 @@ export function isPrivyConfigured(): boolean {
 }
 
 export function usePiratePrivyRuntime(): PrivyRuntimeState {
-  return React.useContext(PrivyRuntimeContext);
+  return React.use(PrivyRuntimeContext);
 }
 
 export function usePiratePrivyWallets({ enabled = true }: { enabled?: boolean } = {}) {
-  const { connectedWallets, walletsReady } = React.useContext(PrivyRuntimeContext);
-  const { retainWalletSync } = React.useContext(PrivyWalletDemandContext);
+  const { connectedWallets, walletsReady } = React.use(PrivyRuntimeContext);
+  const { retainWalletSync } = React.use(PrivyWalletDemandContext);
 
   React.useEffect(() => {
     if (!enabled) {

@@ -92,7 +92,7 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
       </head>
       <body>
         {children}
-        <script nonce={nonce} type="module" src={clientModuleUrl} />
+        <script defer nonce={nonce} type="module" src={clientModuleUrl} />
       </body>
     </html>
   );

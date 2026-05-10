@@ -24,7 +24,7 @@ export const SidebarContext = React.createContext<SidebarContextProps | null>(nu
 export const SidebarSideContext = React.createContext<"left" | "right">("left");
 
 export function useSidebar() {
-  const context = React.useContext(SidebarContext);
+  const context = React.use(SidebarContext);
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.");
   }
@@ -33,5 +33,5 @@ export function useSidebar() {
 }
 
 export function useSidebarSide() {
-  return React.useContext(SidebarSideContext);
+  return React.use(SidebarSideContext);
 }

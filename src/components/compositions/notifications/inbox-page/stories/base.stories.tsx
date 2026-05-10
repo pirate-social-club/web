@@ -14,9 +14,12 @@ import {
   postCommentedUnread,
 } from "./story-fixtures";
 
+const EMPTY_ACTIVITY_ITEMS: React.ComponentProps<typeof NotificationInboxPage>["activityItems"] = [];
+const EMPTY_TASKS: React.ComponentProps<typeof NotificationInboxPage>["tasks"] = [];
+
 function StatefulStory({
-  activityItems = [],
-  initialTasks = [],
+  activityItems = EMPTY_ACTIVITY_ITEMS,
+  initialTasks = EMPTY_TASKS,
   loading = false,
   installPromoPreviewState,
 }: {

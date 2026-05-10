@@ -5,7 +5,7 @@ import { getAssistantConversation } from "@/lib/chat/chat-assistant-client";
 import type { ChatConversation } from "@/lib/chat/chat-types";
 
 export function sortConversations(conversations: readonly ChatConversation[]): ChatConversation[] {
-  return [...conversations].sort((left, right) => right.updatedAt - left.updatedAt);
+  return conversations.toSorted((left, right) => right.updatedAt - left.updatedAt);
 }
 
 export function upsertConversation(

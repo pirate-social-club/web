@@ -39,20 +39,24 @@ function summarizeMode(mode: ChatRouteMode): Record<string, unknown> {
 }
 
 export function useDesktopChatWidget() {
-  return React.useContext(DesktopChatWidgetContext);
+  return React.use(DesktopChatWidgetContext);
 }
 
-export const DesktopChatWidgetFrame = React.forwardRef<HTMLElement, {
+type DesktopChatWidgetFrameProps = {
   children: React.ReactNode;
   className?: string;
   onClose: () => void;
+  ref?: React.Ref<HTMLElement>;
   title?: string;
-}>(({
+};
+
+export function DesktopChatWidgetFrame({
   children,
   className,
   onClose,
+  ref,
   title = "Chats",
-}, ref) => {
+}: DesktopChatWidgetFrameProps) {
   return (
     <section
       aria-label={title}
@@ -78,8 +82,7 @@ export const DesktopChatWidgetFrame = React.forwardRef<HTMLElement, {
       </div>
     </section>
   );
-});
-DesktopChatWidgetFrame.displayName = "DesktopChatWidgetFrame";
+}
 
 export function DesktopChatWidgetProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
@@ -117,6 +120,7 @@ export function DesktopChatWidgetProvider({ children }: { children: React.ReactN
       navigate(href);
     },
   }), [api.openConversation, api.openList, api.openNew, close]);
+  const closeFromKeydown = React.useEffectEvent(close);
 
   React.useEffect(() => {
     if (isMobile && open) {
@@ -145,13 +149,13 @@ export function DesktopChatWidgetProvider({ children }: { children: React.ReactN
     if (!open) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (event.key === "Escape") closeFromKeydown();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [close, open]);
+  }, [open]);
 
   return (
     <DesktopChatWidgetContext.Provider value={api}>

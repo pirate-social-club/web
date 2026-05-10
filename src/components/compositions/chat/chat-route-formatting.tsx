@@ -97,26 +97,36 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
   return nodes.length > 0 ? nodes : [text];
 }
 
+function ChatInlineMarkdown({ text }: { text: string }) {
+  return <>{renderInlineMarkdown(text)}</>;
+}
+
 export function ChatMessageContent({ content }: { content: string }) {
   const lines = content.split(/\r?\n/);
+  const lineOccurrences = new Map<string, number>();
+  const keyedLines = lines.map((line) => {
+    const occurrence = lineOccurrences.get(line) ?? 0;
+    lineOccurrences.set(line, occurrence + 1);
+    return { key: `${line}:${occurrence}`, line };
+  });
 
   return (
     <div className="grid gap-2 break-words [overflow-wrap:anywhere]">
-      {lines.map((line, index) => {
+      {keyedLines.map(({ key, line }) => {
         const bullet = line.match(/^\s*[-*]\s+(.+)$/);
 
         if (bullet) {
           return (
-            <div className="flex gap-2" key={`${index}-${line}`}>
+            <div className="flex gap-2" key={key}>
               <span aria-hidden className="select-none">•</span>
-              <span className="min-w-0">{renderInlineMarkdown(bullet[1])}</span>
+              <span className="min-w-0"><ChatInlineMarkdown text={bullet[1]} /></span>
             </div>
           );
         }
 
         return (
-          <p key={`${index}-${line}`} className="min-w-0">
-            {line ? renderInlineMarkdown(line) : "\u00a0"}
+          <p key={key} className="min-w-0">
+            {line ? <ChatInlineMarkdown text={line} /> : "\u00a0"}
           </p>
         );
       })}

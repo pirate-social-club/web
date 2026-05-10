@@ -191,7 +191,7 @@ export function ConversationList({
   return (
     <aside className={cn("flex h-full min-h-0 flex-col border-e border-border-soft bg-background md:bg-card", className)}>
       {!hideHeader ? (
-        <div className="flex items-center justify-between gap-3 border-b border-border-soft bg-background px-4 py-4 md:bg-card">
+        <div className="flex items-center justify-between gap-3 border-b border-border-soft bg-background p-4 md:bg-card">
           <Type as="h1" variant="h3">{chat.messagesHeading}</Type>
           <IconButton aria-label={chat.newConversationAriaLabel} onClick={onNew} variant="ghost">
             <Plus aria-hidden className="size-6" weight="bold" />
@@ -294,7 +294,7 @@ export function NewConversationView({
   return (
     <section className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-background">
       {!hideHeader ? (
-        <div className="flex items-center gap-3 border-b border-border-soft bg-background px-4 py-4 md:bg-card">
+        <div className="flex items-center gap-3 border-b border-border-soft bg-background p-4 md:bg-card">
           {onClose ? (
             <Button aria-label={copy.common.close} onClick={onClose} size="icon" variant="ghost">
               <X aria-hidden className="size-5" />
@@ -498,7 +498,7 @@ export function ThreadView({
         )}
       </div>
       <form
-        className="flex items-end gap-3 border-t border-border-soft bg-background px-4 py-4 md:bg-card"
+        className="flex items-end gap-3 border-t border-border-soft bg-background p-4 md:bg-card"
         onSubmit={(event) => {
           event.preventDefault();
           submitDraft();

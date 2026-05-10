@@ -81,7 +81,7 @@ type CanonicalDmRecord = {
 
 export function chooseCanonicalDmRecord(records: readonly CanonicalDmRecord[]): CanonicalDmRecord | null {
   if (records.length === 0) return null;
-  return [...records].sort((left, right) => {
+  return records.toSorted((left, right) => {
     if (right.messageCount !== left.messageCount) {
       return right.messageCount - left.messageCount;
     }

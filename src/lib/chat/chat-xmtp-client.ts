@@ -75,8 +75,7 @@ export async function loadConversations(
     logger.info("[chat:xmtp] conversations:dm:messages", {
       conversationId: String(dm.id),
       duplicateConversationIds: duplicateDms
-        .map((candidate) => (typeof candidate?.id === "string" ? candidate.id : null))
-        .filter(Boolean),
+        .flatMap((candidate) => (typeof candidate?.id === "string" ? [candidate.id] : [])),
       lastMessageId: messages[messages.length - 1]?.id ?? null,
       messageCount: messages.length,
       members: dmDescription.members,
@@ -142,7 +141,14 @@ export async function loadConversations(
       };
   }));
 
-  const rows = await Promise.all(canonicalRecords.filter(Boolean).map(async (record) => {
+  const resolvedCanonicalRecords = canonicalRecords.reduce<NonNullable<typeof canonicalRecords[number]>[]>((result, record) => {
+    if (record) {
+      result.push(record);
+    }
+    return result;
+  }, []);
+
+  const rows = await Promise.all(resolvedCanonicalRecords.map(async (record) => {
     const last = record.messages[record.messages.length - 1];
     const peerAddress = record.peer.peerAddress;
     const target = peerAddress
@@ -184,9 +190,11 @@ export async function loadConversationMessages(
   if (!dm) return { conversation: null, messages: [] };
 
   await dm.sync?.();
-  const rawMessages = await dm.messages();
-  const peer = await resolveDmPeer(dm, client);
-  const dmDescription = await describeDm(dm, client);
+  const [rawMessages, peer, dmDescription] = await Promise.all([
+    dm.messages(),
+    resolveDmPeer(dm, client),
+    describeDm(dm, client),
+  ]);
   logger.info("[chat:xmtp] conversation:load", {
     conversationId,
     inboxId: typeof client?.inboxId === "string" ? client.inboxId : null,
@@ -318,8 +326,10 @@ export async function sendMessage(
   });
   await resolvedDm.sendText(content);
   await resolvedDm.sync?.();
-  const messages = await resolvedDm.messages();
-  const syncedDescription = await describeDm(resolvedDm, client);
+  const [messages, syncedDescription] = await Promise.all([
+    resolvedDm.messages(),
+    describeDm(resolvedDm, client),
+  ]);
   logger.info("[chat:xmtp] conversation:send:success", {
     contentLength: content.length,
     canonicalConversationId: typeof resolvedDm?.id === "string" ? resolvedDm.id : null,

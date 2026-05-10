@@ -179,10 +179,10 @@ function AboutPanel({
 
   return (
     <Card className="overflow-hidden">
-      {bio ? <div className="px-5 py-5 text-base leading-7 text-foreground">{bio}</div> : null}
+      {bio ? <div className="p-5 text-base leading-7 text-foreground">{bio}</div> : null}
       {bio && communities?.length ? <Separator /> : null}
       {communities?.length ? (
-        <div className="px-5 py-5">
+        <div className="p-5">
           <Type as="div" variant="h4" className="mb-3 ">{copy.communitiesTitle}</Type>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             {communities.map((c) =>

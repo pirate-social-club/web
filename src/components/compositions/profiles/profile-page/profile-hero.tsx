@@ -8,6 +8,8 @@ import { getLocaleMessages } from "@/locales";
 import type { ProfileData, ProfileSidebarStat } from "./profile-page.types";
 import { Type } from "@/components/primitives/type";
 
+const EMPTY_PROFILE_STATS: ProfileSidebarStat[] = [];
+
 function formatStatValue(value: string | number, localeTag: string) {
   return typeof value === "number" ? value.toLocaleString(localeTag) : value;
 }
@@ -60,7 +62,7 @@ export function ProfileHero({
   onEditProfile,
   onMessageProfile,
   profile,
-  stats = [],
+  stats = EMPTY_PROFILE_STATS,
 }: {
   localeTag?: string;
   onEditProfile?: () => void;

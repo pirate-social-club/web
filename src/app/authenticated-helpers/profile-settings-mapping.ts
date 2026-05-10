@@ -169,8 +169,12 @@ export function displayNameFromAgentHandle(value: string): string {
   const normalized = normalizeAgentHandleInput(value);
   return normalized
     .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .reduce<string[]>((result, part) => {
+      if (part) {
+        result.push(part.charAt(0).toUpperCase() + part.slice(1));
+      }
+      return result;
+    }, [])
     .join(" ") || normalized;
 }
 

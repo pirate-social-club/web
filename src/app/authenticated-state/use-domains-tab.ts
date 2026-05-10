@@ -504,7 +504,7 @@ export function useDomainsTab({ api, enabled, messages }: UseDomainsTabOptions) 
         updateSessionProfile(profile);
         if (onboardingStatus) {
           updateSessionOnboarding({ ...onboardingStatus, cleanup_rename_available: false });
-          setOnboardingStatus({ ...onboardingStatus, cleanup_rename_available: false });
+          setOnboardingStatus((current) => current ? { ...current, cleanup_rename_available: false } : current);
         }
         setPaidClaimedHandle(profile.global_handle.label);
         setPaidQuote(null);

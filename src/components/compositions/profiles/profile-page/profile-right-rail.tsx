@@ -15,7 +15,7 @@ function formatStatValue(value: string | number, localeTag: string) {
 
 function SidebarStats({ stats, localeTag }: { stats: ProfileSidebarStat[]; localeTag: string }) {
   return (
-    <dl className="grid grid-cols-2 gap-x-5 gap-y-5 px-5 py-5">
+    <dl className="grid grid-cols-2 gap-x-5 gap-y-5 p-5">
       {stats.map((stat) => (
         <div className="space-y-1" key={stat.label}>
           <dt className="text-base text-muted-foreground">{stat.label}</dt>
@@ -44,7 +44,7 @@ function ProfileStatsCard({
     <Card className="overflow-hidden">
       {description ? (
         <>
-          <Type as="p" variant="caption" className="px-5 py-5">
+          <Type as="p" variant="caption" className="p-5">
             {description}
           </Type>
           <Separator />

@@ -75,7 +75,7 @@ export function GlobalHandleField({
     }
   }, [checkAvailability, state.kind]);
 
-  const handleBlur = () => {
+  const syncDraftOnBlur = () => {
     if (state.kind === "idle") {
       checkAvailability();
     } else if (state.kind !== "checking") {
@@ -138,12 +138,12 @@ export function GlobalHandleField({
           <Type as="div" variant="caption">{copy.currentHandleLabel}</Type>
           <Type as="div" variant="label" className="min-w-0 max-w-full truncate  sm:text-end">{currentHandle}</Type>
         </div>
-        <div className="space-y-2 px-4 py-4">
+        <div className="space-y-2 p-4">
           <FormFieldLabel htmlFor="handle-input" label={copy.newHandleLabel} />
           <Input
             disabled={isBusy}
             id="handle-input"
-            onBlur={handleBlur}
+            onBlur={syncDraftOnBlur}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={copy.handlePlaceholder}

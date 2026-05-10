@@ -136,7 +136,7 @@ function CommunitiesPanel({ communities }: { communities?: PublicAgentPageProps[
 
   return (
     <Card className="overflow-hidden">
-      <div className="px-5 py-5">
+      <div className="p-5">
         <Type as="div" variant="h4" className="mb-3">{copy.communitiesTitle}</Type>
         {communities?.length ? (
           <div className="flex flex-wrap gap-x-5 gap-y-2">
@@ -181,7 +181,7 @@ function AboutPanel({
 
   return (
     <Card className="overflow-hidden">
-      <div className="px-5 py-5">
+      <div className="p-5">
         <Type as="div" variant="h4" className="mb-3">{copy.aboutTitle}</Type>
         <div className="space-y-3 text-base leading-7 text-muted-foreground">
           {bio ? <p>{bio}</p> : null}

@@ -11,9 +11,11 @@ type ProfileWalletChainSection = Omit<WalletHubChainSection, "tokens"> & {
   tokens: WalletHubToken[];
 };
 
+const EMPTY_PROFILE_WALLET_ASSETS: ProfileWalletAsset[] = [];
+
 export function WalletPanel({
   walletAddress,
-  walletAssets = [],
+  walletAssets = EMPTY_PROFILE_WALLET_ASSETS,
   walletChainSections,
 }: {
   walletAddress?: string;

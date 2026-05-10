@@ -11,12 +11,15 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { resolveLocaleLanguageTag } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
-import type { ProfilePageProps, ProfilePageTab } from "./profile-page.types";
+import type { ProfileActivityItem, ProfileCommentItem, ProfilePageProps, ProfilePageTab, ProfilePostItem } from "./profile-page.types";
 import { CommentsPanel, OverviewPanel, PostsPanel, WalletPanel } from "./profile-activity-panels";
 import { ProfileHero } from "./profile-hero";
 import { ProfileRightRail } from "./profile-right-rail";
 
 const VALID_TABS: ProfilePageTab[] = ["overview", "posts", "comments", "wallet"];
+const EMPTY_PROFILE_COMMENTS: ProfileCommentItem[] = [];
+const EMPTY_PROFILE_OVERVIEW_ITEMS: ProfileActivityItem[] = [];
+const EMPTY_PROFILE_POSTS: ProfilePostItem[] = [];
 
 function useHashTab(defaultTab: ProfilePageTab): [ProfilePageTab, (tab: ProfilePageTab) => void] {
   const [tab, setTab] = React.useState<ProfilePageTab>(() => {
@@ -48,12 +51,12 @@ function useHashTab(defaultTab: ProfilePageTab): [ProfilePageTab, (tab: ProfileP
 
 export function ProfilePage({
   className,
-  comments = [],
+  comments = EMPTY_PROFILE_COMMENTS,
   defaultTab = "overview",
   onEditProfile,
   onMessageProfile,
-  overviewItems = [],
-  posts = [],
+  overviewItems = EMPTY_PROFILE_OVERVIEW_ITEMS,
+  posts = EMPTY_PROFILE_POSTS,
   profile,
   rightRail,
 }: ProfilePageProps) {

@@ -19,7 +19,7 @@ const { afterEach, beforeEach, mock: bunMock } = BunTest as unknown as {
 
 installDomGlobals();
 
-const WIP_TOKEN_ADDRESS = "0x1514000000000000000000000000000000000000";
+const TEST_TOKEN_CONTRACT_ADDRESS = "0x1514000000000000000000000000000000000000";
 const walletAddress = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 const batchClaimAllRevenue = bunMock(async () => ({
@@ -74,7 +74,7 @@ const recordClaim = bunMock(async () => ({
 
 bunMock.module("@story-protocol/core-sdk", () => ({
   StoryClient: { newClient },
-  WIP_TOKEN_ADDRESS,
+  TEST_TOKEN_CONTRACT_ADDRESS,
 }));
 
 bunMock.module("@/components/auth/privy-provider", () => ({
@@ -143,14 +143,14 @@ describe("useStoryRoyalties", () => {
         {
           ipId: "0x1111111111111111111111111111111111111111",
           claimer: "0x1111111111111111111111111111111111111111",
-          currencyTokens: [WIP_TOKEN_ADDRESS],
+          currencyTokens: [TEST_TOKEN_CONTRACT_ADDRESS],
           childIpIds: [],
           royaltyPolicies: [],
         },
         {
           ipId: "0x2222222222222222222222222222222222222222",
           claimer: "0x2222222222222222222222222222222222222222",
-          currencyTokens: [WIP_TOKEN_ADDRESS],
+          currencyTokens: [TEST_TOKEN_CONTRACT_ADDRESS],
           childIpIds: [],
           royaltyPolicies: [],
         },

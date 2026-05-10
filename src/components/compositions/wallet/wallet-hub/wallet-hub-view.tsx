@@ -30,7 +30,7 @@ function formatWipAmount(wei: string): string {
 
 function DesktopAssetRow({ asset }: { asset: WalletHubAssetRow }) {
   return (
-    <div className="flex items-center gap-4 border-b border-border px-3 py-3 last:border-b-0">
+    <div className="flex items-center gap-4 border-b border-border p-3 last:border-b-0">
       <TokenChainIcon
         chainId={asset.chainId}
         chainLabel={asset.chainTitle}
@@ -95,7 +95,7 @@ function RoyaltiesCard({
   const formattedAmount = hasClaimable && claimableWipWei ? formatWipAmount(claimableWipWei) : "0.00";
 
   return (
-    <Card className="flex flex-col justify-center rounded-2xl border-border bg-card px-5 py-5 shadow-none md:px-6 md:py-6">
+    <Card className="flex flex-col justify-center rounded-2xl border-border bg-card p-5 shadow-none md:p-6">
       <Type as="div" variant="body" className="text-muted-foreground">
         Royalties
       </Type>
@@ -187,7 +187,7 @@ export function DesktopWalletHub({
   if (variant === "embedded") {
     return (
       <Card className="hidden overflow-hidden rounded-2xl border-border bg-card shadow-none md:block">
-        <div className="px-5 py-5 md:px-6 md:py-6">
+        <div className="p-5 md:p-6">
           {balanceBlock}
         </div>
         <div className="border-t border-border px-5 py-2 md:px-6">
@@ -211,7 +211,7 @@ export function DesktopWalletHub({
       </div>
 
       <div className="mb-4 grid grid-cols-[2fr_1fr] gap-4">
-        <Card className="flex flex-col justify-center rounded-2xl border-border bg-card px-5 py-5 shadow-none md:px-6 md:py-6">
+        <Card className="flex flex-col justify-center rounded-2xl border-border bg-card p-5 shadow-none md:p-6">
           {balanceBlock}
         </Card>
 

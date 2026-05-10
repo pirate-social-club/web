@@ -20,7 +20,7 @@ const meta = {
   parameters: {
     layout: "fullscreen",
   },
-  render: (args) => {
+  render: function StoryRender(args) {
     const [open, setOpen] = React.useState(args.open);
     React.useEffect(() => setOpen(args.open), [args.open]);
 

@@ -24,6 +24,8 @@ import { buildSongPostRequest } from "@/app/authenticated-helpers/song-submit";
 const SONG_PREVIEW_DURATION_MS = 30_000;
 const SONG_PREVIEW_POLL_INTERVAL_MS = 2_000;
 const SONG_PREVIEW_POLL_ATTEMPTS = 30;
+const SONG_SUBMIT_SLOW_STEP_MS = 10_000;
+const SONG_SUBMIT_STALLED_STEP_MS = 45_000;
 
 type SignAgentAuthoredBody = <T extends Record<string, unknown>>(
   path: string,
@@ -36,6 +38,7 @@ type UseSongSubmitInput = {
 };
 
 type SongSubmitInput = {
+  altchaPayload?: string | null;
   audience: ComposerAudienceState;
   authorMode: AuthorMode;
   charityContribution: CharityContributionState;
@@ -59,6 +62,51 @@ type SongSubmitInput = {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function withSongSubmitStep<T>(
+  step: string,
+  details: Record<string, unknown>,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const startedAt = Date.now();
+  logger.info("[song-submit] step started", { ...details, step });
+  const slowTimer = window.setTimeout(() => {
+    logger.warn("[song-submit] step still pending", {
+      ...details,
+      elapsedMs: Date.now() - startedAt,
+      step,
+    });
+  }, SONG_SUBMIT_SLOW_STEP_MS);
+  const stalledTimer = window.setTimeout(() => {
+    logger.warn("[song-submit] step appears stalled", {
+      ...details,
+      elapsedMs: Date.now() - startedAt,
+      step,
+    });
+  }, SONG_SUBMIT_STALLED_STEP_MS);
+
+  try {
+    const result = await operation();
+    logger.info("[song-submit] step completed", {
+      ...details,
+      elapsedMs: Date.now() - startedAt,
+      step,
+    });
+    return result;
+  } catch (error) {
+    logger.error("[song-submit] step failed", {
+      ...details,
+      elapsedMs: Date.now() - startedAt,
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      step,
+    });
+    throw error;
+  } finally {
+    window.clearTimeout(slowTimer);
+    window.clearTimeout(stalledTimer);
+  }
 }
 
 function parsePreviewStartMs(value: string | undefined): number | null {
@@ -133,7 +181,10 @@ export function useSongSubmit({
         bundleId: current.id,
         nextAttempt: attempt + 1,
       });
-      current = await api.communities.getSongArtifactBundle(communityId, current.id);
+      current = await withSongSubmitStep("refresh preview status", {
+        attempt: attempt + 1,
+        bundleId: current.id,
+      }, () => api.communities.getSongArtifactBundle(communityId, current.id));
     }
     logger.warn("[song-submit] preview polling timed out", {
       attempts: SONG_PREVIEW_POLL_ATTEMPTS,
@@ -154,17 +205,31 @@ export function useSongSubmit({
       mimeType: file.type,
       sizeBytes: file.size,
     });
-    const intent = await api.communities.createArtifactUpload(communityId, {
+    const intent = await withSongSubmitStep("create artifact upload intent", {
+      artifactKind,
+      filename: file.name,
+      sizeBytes: file.size,
+    }, () => api.communities.createArtifactUpload(communityId, {
       artifact_kind: artifactKind,
       mime_type: file.type,
       filename: file.name,
       size_bytes: file.size,
-    });
+    }));
     logger.info("[song-submit] artifact upload intent created", {
       artifactKind,
       intentId: intent.id,
     });
-    const uploaded = await api.communities.uploadArtifactContent(communityId, intent.id, await file.arrayBuffer());
+    const fileContent = await withSongSubmitStep("read artifact file", {
+      artifactKind,
+      filename: file.name,
+      sizeBytes: file.size,
+    }, () => file.arrayBuffer());
+    const uploaded = await withSongSubmitStep("upload artifact content", {
+      artifactKind,
+      filename: file.name,
+      intentId: intent.id,
+      sizeBytes: file.size,
+    }, () => api.communities.uploadArtifactContent(communityId, intent.id, fileContent));
     logger.info("[song-submit] artifact content uploaded", {
       artifactKind,
       uploadId: uploaded.id,
@@ -174,6 +239,7 @@ export function useSongSubmit({
   }, [api, communityId]);
 
   return React.useCallback(async ({
+    altchaPayload,
     audience,
     authorMode,
     charityContribution,
@@ -229,10 +295,12 @@ export function useSongSubmit({
       logger.info("[song-submit] uploading song artifacts");
       const primaryAudio = await uploadSongArtifact("primary_audio", songState.primaryAudioUpload);
       if (!primaryAudio) throw new Error("Primary audio is required");
-      const coverArt = await uploadSongArtifact("cover_art", songState.coverUpload);
-      const canvasVideo = await uploadSongArtifact("canvas_video", songState.canvasVideoUpload);
-      const instrumentalAudio = await uploadSongArtifact("instrumental_audio", songState.instrumentalAudioUpload);
-      const vocalAudio = await uploadSongArtifact("vocal_audio", songState.vocalAudioUpload);
+      const [coverArt, canvasVideo, instrumentalAudio, vocalAudio] = await Promise.all([
+        uploadSongArtifact("cover_art", songState.coverUpload),
+        uploadSongArtifact("canvas_video", songState.canvasVideoUpload),
+        uploadSongArtifact("instrumental_audio", songState.instrumentalAudioUpload),
+        uploadSongArtifact("vocal_audio", songState.vocalAudioUpload),
+      ]);
       logger.info("[song-submit] creating song artifact bundle", {
         hasCanvasVideo: Boolean(canvasVideo),
         hasCoverArt: Boolean(coverArt),
@@ -240,7 +308,7 @@ export function useSongSubmit({
         hasPreviewWindow: isLockedSong,
         hasVocalAudio: Boolean(vocalAudio),
       });
-      const bundle = await api.communities.createSongArtifactBundle(communityId, {
+      const bundleRequest = {
         primary_audio: { song_artifact_upload: primaryAudio.id },
         title: songTitle.trim(),
         lyrics: lyrics.trim(),
@@ -249,7 +317,16 @@ export function useSongSubmit({
         canvas_video: canvasVideo ? { song_artifact_upload: canvasVideo.id } : null,
         instrumental_audio: instrumentalAudio ? { song_artifact_upload: instrumentalAudio.id } : null,
         vocal_audio: vocalAudio ? { song_artifact_upload: vocalAudio.id } : null,
-      });
+      };
+      const bundle = await withSongSubmitStep("create song artifact bundle", {
+        hasCanvasVideo: Boolean(canvasVideo),
+        hasCoverArt: Boolean(coverArt),
+        hasInstrumentalAudio: Boolean(instrumentalAudio),
+        hasPreviewWindow: isLockedSong,
+        hasVocalAudio: Boolean(vocalAudio),
+        primaryAudioUploadId: primaryAudio.id,
+        songTitle: songTitle.trim(),
+      }, () => api.communities.createSongArtifactBundle(communityId, bundleRequest));
       bundleId = bundle.id;
       bundleForPublish = bundle;
       logger.info("[song-submit] song artifact bundle created", {
@@ -282,10 +359,17 @@ export function useSongSubmit({
       }
     }
 
+    if (!bundleId) {
+      throw new Error("Song artifact bundle was not created.");
+    }
+
     if (isLockedSong) {
+      const previewBundleId = bundleId;
       logger.info("[song-submit] waiting for locked song preview", { bundleId });
       bundleForPublish = await waitForSongPreview(
-        bundleForPublish ?? await api.communities.getSongArtifactBundle(communityId, bundleId),
+        bundleForPublish ?? await withSongSubmitStep("load song artifact bundle before preview wait", {
+          bundleId: previewBundleId,
+        }, () => api.communities.getSongArtifactBundle(communityId, previewBundleId)),
       );
       bundleId = bundleForPublish.id;
     }
@@ -306,12 +390,16 @@ export function useSongSubmit({
       isLockedSong,
       mode: songMode,
     });
-    const result = await api.communities.createPost(
-      communityId,
-      authorMode === "agent"
-        ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, songRequest)
-        : songRequest,
-    );
+    const signedSongRequest = authorMode === "agent"
+      ? await withSongSubmitStep("sign agent-authored song post", {
+        bundleId,
+      }, () => signAgentAuthoredBody(`/communities/${communityId}/posts`, songRequest))
+      : songRequest;
+    const result = await withSongSubmitStep("create song post", {
+      bundleId,
+      isLockedSong,
+      mode: songMode,
+    }, () => api.communities.createPost(communityId, signedSongRequest, { altchaPayload }));
     logger.info("[song-submit] song post created", {
       assetId: result.asset,
       postId: result.id,
@@ -332,7 +420,9 @@ export function useSongSubmit({
         assetId: result.asset,
         regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
       });
-      await api.communities.createListing(communityId, listingRequest);
+      await withSongSubmitStep("create paid song listing", {
+        assetId: result.asset,
+      }, () => api.communities.createListing(communityId, listingRequest));
       logger.info("[song-submit] paid song listing created", { assetId: result.asset });
     }
 

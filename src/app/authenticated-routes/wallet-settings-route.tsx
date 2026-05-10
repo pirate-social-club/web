@@ -35,6 +35,8 @@ const LazyWalletReceiveSheet = React.lazy(async () => {
   return { default: mod.WalletReceiveSheet };
 });
 
+const walletSettingsUsdFormatter = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" });
+
 const LazyWalletSendSheet = React.lazy(async () => {
   const mod = await import("@/components/compositions/wallet/wallet-send-sheet/wallet-send-sheet");
   return { default: mod.WalletSendSheet };
@@ -433,7 +435,7 @@ export function CurrentUserWalletPage() {
         total += balance * token.usdPrice;
       }
     }
-    return new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" }).format(total);
+    return walletSettingsUsdFormatter.format(total);
   }, [chainSections]);
 
   return (

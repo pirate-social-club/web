@@ -198,7 +198,7 @@ export function useSongPurchaseFlow({
     try {
       await api.communities.failPurchase(pendingPurchase.communityId, { quote: pendingPurchase.quote.id });
       const quote = await createQuote(pendingPurchase);
-      setPendingPurchase({ ...pendingPurchase, quote });
+      setPendingPurchase((current) => current ? { ...current, quote } : current);
       setPurchaseError(null);
     } catch (error) {
       const message = getErrorMessage(error, "Could not refresh the discounted quote.");

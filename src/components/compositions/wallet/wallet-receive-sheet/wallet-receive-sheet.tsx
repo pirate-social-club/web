@@ -47,9 +47,11 @@ function getDefaultChainId(
     return defaultChainId;
   }
 
-  return chainSections
-    .filter((section) => section.walletAddress)
-    .sort((left, right) => chainFiatTotal(right) - chainFiatTotal(left))[0]?.chainId;
+  return chainSections.reduce<(typeof chainSections)[number] | undefined>((bestSection, section) => {
+    if (!section.walletAddress) return bestSection;
+    if (!bestSection) return section;
+    return chainFiatTotal(bestSection) >= chainFiatTotal(section) ? bestSection : section;
+  }, undefined)?.chainId;
 }
 
 function truncateAddress(address: string): string {
@@ -161,7 +163,7 @@ export function WalletReceiveSheet({
               Connect a wallet before receiving assets.
             </Type>
             <Button className="mt-5" onClick={() => onOpenChange(false)}>
-              Done
+              Close receive sheet
             </Button>
           </div>
         )}

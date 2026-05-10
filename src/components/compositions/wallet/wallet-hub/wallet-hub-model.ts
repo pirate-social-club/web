@@ -37,6 +37,8 @@ export type WalletHubAssetRow = {
   chainTitle: string;
 };
 
+const usdFormatter = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" });
+
 export function getWalletFamilyId(chainId: WalletHubChainId): WalletFamilyId {
   switch (chainId) {
     case "ethereum":
@@ -135,7 +137,7 @@ function sumFiatValues(values: (string | null | undefined)[]): string | null {
     if (Number.isFinite(num)) total += num;
   }
   if (total === 0) return null;
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(total);
+  return usdFormatter.format(total);
 }
 
 export function formatUsdValue(token: WalletHubToken) {
@@ -143,7 +145,7 @@ export function formatUsdValue(token: WalletHubToken) {
   if (!token.balance || typeof token.usdPrice !== "number") return null;
   const balance = Number.parseFloat(token.balance.replace(/,/g, ""));
   if (!Number.isFinite(balance)) return null;
-  return new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" }).format(balance * token.usdPrice);
+  return usdFormatter.format(balance * token.usdPrice);
 }
 
 export function formatTotalBalanceUsd(chainSections: WalletHubChainSection[]): string {
@@ -160,7 +162,7 @@ export function formatTotalBalanceUsd(chainSections: WalletHubChainSection[]): s
     }
   }
 
-  return new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" }).format(total);
+  return usdFormatter.format(total);
 }
 
 export function hasNonZeroBalance(token: WalletHubToken): boolean {
@@ -205,7 +207,14 @@ export function buildGroupedAssets(chainSections: WalletHubChainSection[]): Grou
     const totalFiatValue = sumFiatValues(group.items.map((i) => i.fiatValue));
 
     const preferredChainOrder: WalletHubChainId[] = ["ethereum", "base", "optimism", "story", "tempo", "bitcoin", "solana", "cosmos"];
-    const iconChainId = preferredChainOrder.find((c) => group.items.some((i) => i.chainId === c)) ?? group.items[0]?.chainId ?? "ethereum";
+    const availableChainIds = new Set(group.items.map((item) => item.chainId));
+    let iconChainId = group.items[0]?.chainId ?? "ethereum";
+    for (const chainId of preferredChainOrder) {
+      if (availableChainIds.has(chainId)) {
+        iconChainId = chainId;
+        break;
+      }
+    }
 
     result.push({
       symbol: group.symbol,
@@ -369,7 +378,7 @@ const CHAIN_ORDER_BY_ID: Record<WalletHubChainId, number> = {
 };
 
 export function sortWalletAssets(assets: WalletFamily["assets"]) {
-  return [...assets].sort((a, b) => {
+  return assets.toSorted((a, b) => {
     const aOrder = TOKEN_ORDER_BY_SYMBOL[a.symbol.toUpperCase()] ?? 100;
     const bOrder = TOKEN_ORDER_BY_SYMBOL[b.symbol.toUpperCase()] ?? 100;
     if (aOrder !== bOrder) return aOrder - bOrder;

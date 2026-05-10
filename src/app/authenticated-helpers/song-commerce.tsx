@@ -78,14 +78,20 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
       ]);
 
       setListingsByAssetId(Object.fromEntries(
-        listingsResult.items
-          .filter((listing) => typeof listing.asset === "string" && listing.asset.length > 0)
-          .map((listing) => [listing.asset as string, listing] as const),
+        listingsResult.items.reduce<Array<readonly [string, typeof listingsResult.items[number]]>>((result, listing) => {
+          if (typeof listing.asset === "string" && listing.asset.length > 0) {
+            result.push([listing.asset, listing] as const);
+          }
+          return result;
+        }, []),
       ));
       setPurchasesByAssetId(Object.fromEntries(
-        purchasesResult.items
-          .filter((purchase) => typeof purchase.asset === "string" && purchase.asset.length > 0)
-          .map((purchase) => [purchase.asset as string, purchase] as const),
+        purchasesResult.items.reduce<Array<readonly [string, typeof purchasesResult.items[number]]>>((result, purchase) => {
+          if (typeof purchase.asset === "string" && purchase.asset.length > 0) {
+            result.push([purchase.asset, purchase] as const);
+          }
+          return result;
+        }, []),
       ));
     } catch (error) {
       logger.warn("[song-commerce] failed to refresh commerce state", {

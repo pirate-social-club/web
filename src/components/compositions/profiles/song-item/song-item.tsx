@@ -17,7 +17,7 @@ function SongItemMeta({ items }: { items: NonNullable<SongItemProps["metaItems"]
   return (
     <Type as="div" variant="caption" className="flex flex-wrap items-center gap-x-2 gap-y-1 ">
       {items.map((item, index) => (
-        <React.Fragment key={`${item.label}-${index}`}>
+        <React.Fragment key={item.href ?? item.label}>
           {index > 0 ? <span aria-hidden>·</span> : null}
           {item.href ? (
             <a className="font-medium text-foreground hover:underline" href={item.href}>

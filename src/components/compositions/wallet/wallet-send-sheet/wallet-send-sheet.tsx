@@ -104,10 +104,11 @@ function AssetStep({
 
   return (
     <div className="mt-5 space-y-4">
-      <label className="relative block">
+      <label className="relative block" htmlFor="wallet-send-asset-search">
         <MagnifyingGlass aria-hidden="true" className="pointer-events-none absolute start-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
         <Input
           className="ps-11"
+          id="wallet-send-asset-search"
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search assets"
           value={query}
@@ -270,7 +271,7 @@ export function WalletSendSheet({
               </Type>
             ) : null}
             <Button className="h-14 w-full" disabled={!recipientIsValid} onClick={() => setStep("amount")}>
-              Continue
+              Continue to amount
             </Button>
           </div>
         ) : null}
@@ -359,7 +360,7 @@ export function WalletSendSheet({
           <div className="mt-8 grid justify-items-center gap-4 py-8 text-center">
             <SpinnerGap aria-hidden="true" className="size-10 animate-spin text-muted-foreground" />
             <Type as="p" variant="body-strong">
-              Submitting transaction...
+              Submitting transaction&hellip;
             </Type>
           </div>
         ) : null}
@@ -373,7 +374,7 @@ export function WalletSendSheet({
             <Type as="p" className="max-w-full truncate font-mono text-muted-foreground" variant="body">
               {txHash}
             </Type>
-            <Button onClick={() => onOpenChange(false)}>Done</Button>
+            <Button onClick={() => onOpenChange(false)}>Close send sheet</Button>
           </div>
         ) : null}
 

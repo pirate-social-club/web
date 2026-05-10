@@ -388,6 +388,25 @@ export function ThreadView({
     el.scrollTo({ top: el.scrollHeight, behavior: "auto" });
   }, [items.length, conversation?.id]);
 
+  const handleFormSubmit = React.useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      submitDraft();
+    },
+    [submitDraft],
+  );
+
+  const handleTextareaKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+        return;
+      }
+      event.preventDefault();
+      submitDraft();
+    },
+    [submitDraft],
+  );
+
   return (
     <section className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-background">
       {!hideHeader ? (
@@ -499,10 +518,7 @@ export function ThreadView({
       </div>
       <form
         className="flex items-end gap-3 border-t border-border-soft bg-background p-4 md:bg-card"
-        onSubmit={(event) => {
-          event.preventDefault();
-          submitDraft();
-        }}
+        onSubmit={handleFormSubmit}
       >
         <AutoResizeTextarea
           aria-label={chat.messageLabel}
@@ -510,13 +526,7 @@ export function ThreadView({
           disabled={!conversation || sending}
           maxRows={5}
           onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
-              return;
-            }
-            event.preventDefault();
-            submitDraft();
-          }}
+          onKeyDown={handleTextareaKeyDown}
           placeholder={chat.messagePlaceholder}
           rows={1}
           value={draft}

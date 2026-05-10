@@ -68,7 +68,7 @@ export function VideoFramePicker({
       </div>
       {objectUrl ? (
         <video
-          className="aspect-video w-full rounded-[var(--radius-lg)] bg-zinc-950 object-contain"
+          className="aspect-video w-full rounded-[var(--radius-lg)] bg-black object-contain"
           muted
           onLoadedMetadata={(event) => {
             const duration = event.currentTarget.duration;

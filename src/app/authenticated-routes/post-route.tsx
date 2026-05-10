@@ -315,7 +315,7 @@ export function PostPage({ postId }: { postId: string }) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-base font-semibold text-foreground">Live room ready</p>
-                <p className="text-sm text-muted-foreground">{liveRoomLaunch.liveRoomId}</p>
+                <p className="text-base text-muted-foreground">{liveRoomLaunch.liveRoomId}</p>
               </div>
               <Button asChild size="sm">
                 <a href={liveRoomLaunch.href}>

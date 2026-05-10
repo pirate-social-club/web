@@ -1,4 +1,5 @@
 import type { CommunityPreview, JoinEligibility } from "@pirate/api-contracts";
+import type * as React from "react";
 
 import type {
   CommunityInteractionGateAction,
@@ -9,6 +10,7 @@ import {
   getJoinCtaLabel,
   getGateFailureMessage,
   getPassportPromptCapabilities,
+  hasAltchaProofAction,
   getMissingCapabilitiesFromGateEvaluation,
   getVerificationCapabilitiesForProvider,
   getVerificationPromptCopy,
@@ -25,6 +27,9 @@ export type InteractionAction =
   | "reply_post"
   | "reply_comment";
 export type InteractionResult = "allowed" | "blocked";
+export type InteractionAllowedContext = {
+  altchaPayload?: string | null;
+};
 
 export type CommunityGateData = {
   eligibility: JoinEligibility;
@@ -47,6 +52,7 @@ export type InteractionGateCopy = ReturnType<
 };
 
 export type ModalState = {
+  body?: React.ReactNode;
   description: string;
   hideCloseButtonOnMobile?: boolean;
   hideSecondaryActionOnMobile?: boolean;
@@ -74,9 +80,10 @@ export type BuildBlockedModalStateArgs = {
 
 export type PendingInteraction = {
   action: InteractionAction;
+  commentId?: string;
   communityId: string;
   gate: CommunityGateData;
-  onAllowed: () => Promise<void> | void;
+  onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
 };
 
@@ -86,8 +93,9 @@ export type RunGatedCommunityActionParams = {
     args: BuildBlockedModalStateArgs,
   ) => ModalState | null | undefined;
   communityId: string;
+  commentId?: string;
   gateData?: CommunityGateData;
-  onAllowed: () => Promise<void> | void;
+  onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
   resolveGateData?: () => Promise<CommunityGateData>;
 };
@@ -517,6 +525,9 @@ export function createCommunityBlockedModalStateFactory(options: {
       action === "vote_post" || action === "vote_comment";
 
     if (gate.eligibility.status === "verification_required") {
+      if (hasAltchaProofAction(gate.eligibility)) {
+        return undefined;
+      }
       const provider = resolveSuggestedVerificationProvider(gate.eligibility);
       if (provider === "passport") {
         return undefined;

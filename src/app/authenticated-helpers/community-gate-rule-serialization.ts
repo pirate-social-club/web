@@ -7,7 +7,13 @@ export function serializeIdentityGateDrafts(
   gateDrafts: IdentityGateDraft[],
   options?: { mode?: "all" | "any"; includeGateRuleIds?: boolean },
 ): SerializedGatePolicy | null {
-  const expressions = gateDrafts.map(draftToExpression).filter((expression): expression is GateExpression => expression != null);
+  const expressions = gateDrafts.reduce<GateExpression[]>((result, draft) => {
+    const expression = draftToExpression(draft);
+    if (expression != null) {
+      result.push(expression);
+    }
+    return result;
+  }, []);
   if (expressions.length === 0) {
     return null;
   }

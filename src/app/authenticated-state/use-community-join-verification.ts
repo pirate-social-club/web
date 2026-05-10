@@ -12,6 +12,7 @@ import {
   getVerificationPromptCopy,
   getVerificationRequirementsForGates,
   getMissingCapabilitiesFromGateEvaluation,
+  hasAltchaProofAction,
   hasOnlyWalletGateRequirements,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
@@ -67,6 +68,8 @@ export function useCommunityJoinVerification({
 	  const [joinError, setJoinError] = React.useState<string | null>(null);
 	  const [joinRequested, setJoinRequested] = React.useState(false);
 	  const [passportLoading, setPassportLoading] = React.useState(false);
+  const [altchaPayload, setAltchaPayload] = React.useState<string | null>(null);
+  const altchaRequired = eligibility ? hasAltchaProofAction(eligibility) : false;
 
   const {
     startVerification: startVeryVerification,
@@ -213,6 +216,32 @@ export function useCommunityJoinVerification({
         }, { locale }));
         return "blocked";
       }
+      if (altchaRequired) {
+        if (!altchaPayload) {
+          setJoinError("Complete the proof-of-work check first.");
+          return "blocked";
+        }
+        try {
+          setJoinLoading(true);
+          const result = await api.communities.join(
+            communityId,
+            { note: options.note ?? null },
+            { altchaPayload },
+          );
+          setAltchaPayload(null);
+          if (result.status === "requested") setJoinRequested(true);
+          if (result.status === "joined") onJoined?.();
+          await refetchEligibility();
+          return result.status === "requested" ? "requested" : "joined";
+        } catch (error: unknown) {
+          const apiError = error as ApiError;
+          setAltchaPayload(null);
+          setJoinError(apiError?.message ?? "Proof-of-work check failed.");
+          return "failed";
+        } finally {
+          setJoinLoading(false);
+        }
+      }
       const provider = resolveSuggestedVerificationProvider(eligibility);
 	      if (provider === "very") {
 	        await startVeryVerification();
@@ -263,10 +292,15 @@ export function useCommunityJoinVerification({
     } finally {
       setJoinLoading(false);
     }
-	  }, [api, communityId, eligibility, locale, onJoined, refetchEligibility, refreshPassportAndJoin, startSelfVerification, startVeryVerification]);
+	  }, [altchaPayload, altchaRequired, api, communityId, eligibility, locale, onJoined, refetchEligibility, refreshPassportAndJoin, startSelfVerification, startVeryVerification]);
 
   return {
     handleJoin,
+    altchaAction: `community:${communityId}`,
+    altchaPayload,
+    altchaRequired,
+    altchaScope: "community_join" as const,
+    setAltchaPayload,
     handleSelfModalOpenChange: handleModalOpenChange,
     handleSelfQrError,
     handleSelfQrSuccess,

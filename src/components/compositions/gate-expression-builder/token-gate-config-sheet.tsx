@@ -200,7 +200,7 @@ export function TokenGateConfigSheet({
             Cancel
           </Button>
           <Button disabled={!addressValid || !hasAddress} onClick={handleDone}>
-            Done
+            Apply token gate
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -303,7 +303,7 @@ function TokenIdAllowlistFields({
   tokenIds: string[]
   onChange: (token_ids: string[]) => void
 }) {
-  const [text, setText] = React.useState(tokenIds.join(", "))
+  const [text, setText] = React.useState(() => tokenIds.join(", "))
 
   React.useEffect(() => {
     setText(tokenIds.join(", "))
@@ -319,8 +319,10 @@ function TokenIdAllowlistFields({
           setText(e.target.value)
           const ids = e.target.value
             .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
+            .flatMap((s) => {
+              const tokenId = s.trim()
+              return tokenId ? [tokenId] : []
+            })
           onChange(ids)
         }}
       />

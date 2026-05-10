@@ -5,6 +5,7 @@ import type { JoinEligibility } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { CommunityInteractionGateModal } from "@/components/compositions/community/interaction-gate-modal/community-interaction-gate-modal";
+import { AltchaPowWidget } from "@/components/compositions/verification/altcha-pow-widget/altcha-pow-widget";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
@@ -16,12 +17,14 @@ import { buildCommunityPath } from "@/lib/community-routing";
 import {
   getVerificationCapabilitiesForProvider,
   getVerificationRequirementsForGates,
+  hasAltchaProofAction,
   getMissingCapabilitiesFromGateEvaluation,
 } from "@/lib/identity-gates";
 import { logger } from "@/lib/logger";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getLocaleMessages } from "@/locales";
+import type { AltchaScope } from "@/lib/api/client-groups-core";
 import {
   COMMUNITY_GATE_CACHE_TTL_MS,
   SELF_INTERACTION_GATE_STORAGE_KEY,
@@ -34,6 +37,7 @@ import {
   getRequirementStatuses,
   resolveCommunityInteractionState,
   type CommunityGateData,
+  type InteractionAction,
   type InteractionResult,
   type ModalState,
   type PendingInteraction,
@@ -42,6 +46,28 @@ import {
 } from "./use-community-interaction-gate.helpers";
 
 export { resolveCommunityInteractionState } from "./use-community-interaction-gate.helpers";
+
+function hasAltchaGate(gate: CommunityGateData): boolean {
+  return gate.preview.membership_gate_summaries.some((summary) => summary.gate_type === "altcha_pow");
+}
+
+function getAltchaActionConfig(input: {
+  action: InteractionAction;
+  commentId?: string;
+  gate: CommunityGateData;
+  postId?: string;
+}): { actionRef: string; scope: AltchaScope } | null {
+  if (!hasAltchaGate(input.gate)) {
+    return null;
+  }
+  if (input.action === "reply_post" && input.postId) {
+    return { actionRef: `post:${input.postId}`, scope: "comment_create" };
+  }
+  if (input.action === "reply_comment" && input.commentId) {
+    return { actionRef: `comment:${input.commentId}`, scope: "comment_create" };
+  }
+  return null;
+}
 
 export function useCommunityInteractionGate({
   previewLocale,
@@ -59,6 +85,9 @@ export function useCommunityInteractionGate({
 	  const [passportLoading, setPassportLoading] = React.useState(false);
   const sessionKey = session?.user.id ?? null;
   const pendingInteractionRef = React.useRef<PendingInteraction | null>(null);
+  const altchaPayloadRef = React.useRef<string | null>(null);
+  const [altchaLoading, setAltchaLoading] = React.useState(false);
+  const [altchaResetKey, setAltchaResetKey] = React.useState(0);
   const interactionCopy = React.useMemo(
     () => {
       const localeMessages = getLocaleMessages(
@@ -213,6 +242,114 @@ export function useCommunityInteractionGate({
     }
   }, [api.communities, closeModal, interactionCopy, invalidateCommunityGate, updateCachedGate]);
 
+  const completeAltchaJoin = React.useCallback(async () => {
+    const pendingInteraction = pendingInteractionRef.current;
+    if (!pendingInteraction) {
+      return;
+    }
+    const payload = altchaPayloadRef.current;
+    if (!payload) {
+      toast.error("Complete the proof-of-work check first.");
+      return;
+    }
+
+    const { action, communityId, gate, onAllowed } = pendingInteraction;
+    setAltchaLoading(true);
+    try {
+      const joinResult = await api.communities.join(communityId, undefined, { altchaPayload: payload });
+      altchaPayloadRef.current = null;
+      invalidateCommunityGate(communityId);
+      if (joinResult.status === "requested") {
+        setModalState({
+          description: gatesPanel.pendingRequestDescription,
+          icon: "pending",
+          requirements: gate.preview.membership_gate_summaries,
+          requirementStatuses: getRequirementStatuses(gate),
+          title: gatesPanel.pendingRequestTitle,
+        });
+        return;
+      }
+
+      const nextEligibility = await api.communities.getJoinEligibility(communityId);
+      updateCachedGate(communityId, { ...gate, eligibility: nextEligibility });
+      if (nextEligibility.status === "already_joined") {
+        setModalState({
+          description: getReadyAfterJoinDescription(gate, action, { locale: interactionCopy.locale }),
+          primaryAction: {
+            label: getReadyActionLabel(action, { locale: interactionCopy.locale }),
+            onClick: async () => {
+              closeModal();
+              pendingInteractionRef.current = null;
+              await onAllowed();
+            },
+          },
+          requirements: [],
+          requirementStatuses: [],
+          icon: "ready",
+          title: interactionCopy.readyTitle,
+        });
+        return;
+      }
+
+      setModalState(createDefaultBlockedModalState({
+        action,
+        closeModal,
+        gate: { ...gate, eligibility: nextEligibility },
+        invalidateCommunityGate,
+        interactionCopy,
+        openCommunity: () => navigate(buildCommunityPath(gate.preview.id)),
+      }));
+    } catch (error: unknown) {
+      altchaPayloadRef.current = null;
+      const nextResetKey = Date.now();
+      setAltchaResetKey(nextResetKey);
+      setModalState((current) => current ? {
+        ...current,
+        body: (
+          <AltchaPowWidget
+            key={nextResetKey}
+            action={`community:${communityId}`}
+            locale={interactionCopy.locale}
+            onPayloadChange={(nextPayload) => {
+              altchaPayloadRef.current = nextPayload;
+            }}
+            scope="community_join"
+          />
+        ),
+        primaryAction: current.primaryAction ? { ...current.primaryAction, loading: false } : current.primaryAction,
+      } : current);
+      toast.error(getErrorMessage(error, "Proof-of-work check failed."));
+    } finally {
+      setAltchaLoading(false);
+    }
+  }, [api.communities, closeModal, gatesPanel, interactionCopy, invalidateCommunityGate, updateCachedGate]);
+
+  const completeAltchaAction = React.useCallback(async () => {
+    const pendingInteraction = pendingInteractionRef.current;
+    if (!pendingInteraction) {
+      return;
+    }
+    const payload = altchaPayloadRef.current;
+    if (!payload) {
+      toast.error("Complete the proof-of-work check first.");
+      return;
+    }
+
+    setAltchaLoading(true);
+    try {
+      closeModal();
+      altchaPayloadRef.current = null;
+      await pendingInteraction.onAllowed({ altchaPayload: payload });
+      pendingInteractionRef.current = null;
+    } catch (error: unknown) {
+      altchaPayloadRef.current = null;
+      setAltchaResetKey((current) => current + 1);
+      toast.error(getErrorMessage(error, "Proof-of-work check failed."));
+    } finally {
+      setAltchaLoading(false);
+    }
+  }, [closeModal]);
+
   const {
     startVerification: startVeryVerification,
     verificationError: veryError,
@@ -364,9 +501,10 @@ export function useCommunityInteractionGate({
     communityId,
     gateData,
     onAllowed,
-    postId,
-    resolveGateData,
-  }: RunGatedCommunityActionParams): Promise<InteractionResult> => {
+	    postId,
+	    commentId,
+	    resolveGateData,
+	  }: RunGatedCommunityActionParams): Promise<InteractionResult> => {
     const hasSession = Boolean(session?.accessToken);
     const logBase = {
       action,
@@ -417,6 +555,46 @@ export function useCommunityInteractionGate({
       hasSession,
     });
 
+    const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId });
+    if (state === "allowed" && actionAltchaConfig) {
+      pendingInteractionRef.current = {
+        action,
+        commentId,
+        communityId,
+        gate,
+        onAllowed,
+        postId,
+      };
+      setModalState({
+        body: (
+          <AltchaPowWidget
+            key={altchaResetKey}
+            action={actionAltchaConfig.actionRef}
+            locale={interactionCopy.locale}
+            onPayloadChange={(payload) => {
+              altchaPayloadRef.current = payload;
+            }}
+            scope={actionAltchaConfig.scope}
+          />
+        ),
+        description: "This usually takes a few seconds and runs only on this device.",
+        icon: "blocked",
+        primaryAction: {
+          label: "Continue",
+          loading: altchaLoading,
+          onClick: completeAltchaAction,
+        },
+        requirements: gate.preview.membership_gate_summaries,
+        requirementStatuses: getRequirementStatuses(gate),
+        secondaryAction: {
+          label: "Cancel",
+          onClick: closeModal,
+        },
+        title: "Checking browser",
+      });
+      return "blocked";
+    }
+
     if (state === "allowed") {
       logger.info("[interaction-gate] allowed", {
         ...logBase,
@@ -428,6 +606,7 @@ export function useCommunityInteractionGate({
 
     pendingInteractionRef.current = {
       action,
+      commentId,
       communityId,
       gate,
       onAllowed,
@@ -443,7 +622,39 @@ export function useCommunityInteractionGate({
       interactionCopy,
       openCommunity,
     });
-    const builtModalState = customModalState === undefined ? createDefaultBlockedModalState({
+    const altchaModalState: ModalState | undefined =
+      customModalState === undefined &&
+      gate.eligibility.status === "verification_required" &&
+      hasAltchaProofAction(gate.eligibility)
+        ? {
+            body: (
+              <AltchaPowWidget
+                key={altchaResetKey}
+                action={`community:${communityId}`}
+                locale={interactionCopy.locale}
+                onPayloadChange={(payload) => {
+                  altchaPayloadRef.current = payload;
+                }}
+	                scope="community_join"
+	              />
+            ),
+            description: "This usually takes a few seconds and runs only on this device.",
+            icon: "blocked",
+            primaryAction: {
+              label: "Continue",
+              loading: altchaLoading,
+              onClick: completeAltchaJoin,
+            },
+            requirements: gate.preview.membership_gate_summaries,
+            requirementStatuses: getRequirementStatuses(gate),
+            secondaryAction: {
+              label: "Cancel",
+              onClick: closeModal,
+            },
+            title: "Checking browser",
+          }
+        : undefined;
+    const builtModalState = customModalState === undefined ? (altchaModalState ?? createDefaultBlockedModalState({
       action,
       closeModal,
       gate,
@@ -452,7 +663,7 @@ export function useCommunityInteractionGate({
       openCommunity,
 	      defaultVerificationLoadingProvider: passportLoading ? "passport" : veryLoading ? "very" : selfLoading ? "self" : null,
 	      startDefaultVerification,
-	    }) : customModalState;
+	    })) : customModalState;
     logger.info("[interaction-gate] blocked", {
       ...logBase,
       eligibilityStatus: gate.eligibility.status,
@@ -463,11 +674,12 @@ export function useCommunityInteractionGate({
       setModalState(builtModalState);
     }
     return "blocked";
-	  }, [closeModal, connect, interactionCopy, loadCommunityGate, routeKind, session?.accessToken, invalidateCommunityGate, passportLoading, selfLoading, startDefaultVerification, veryLoading]);
+	  }, [altchaLoading, altchaResetKey, closeModal, completeAltchaAction, completeAltchaJoin, connect, interactionCopy, loadCommunityGate, routeKind, session?.accessToken, invalidateCommunityGate, passportLoading, selfLoading, startDefaultVerification, veryLoading]);
 
   const interactionModal = modalState ? (
     <CommunityInteractionGateModal
       description={modalState.description}
+      body={modalState.body}
       hideCloseButtonOnMobile={modalState.hideCloseButtonOnMobile}
       hideSecondaryActionOnMobile={modalState.hideSecondaryActionOnMobile}
       icon={modalState.icon}

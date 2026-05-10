@@ -18,6 +18,7 @@
       "withScore": "يتطلب درجة Passport {minimumScore}+",
       "withoutScore": "يتطلب درجة Passport"
     },
+    "altchaPow": "يتطلب فحص إثبات العمل",
     "erc721Holding": {
       "withLabel": "يتطلب امتلاك NFT على إيثريوم من {label}",
       "withoutLabel": "يتطلب امتلاك NFT على إيثريوم"
@@ -94,7 +95,8 @@
     "nationality": "الجنسية",
     "gender": "علامة الجنس في وثيقة الهوية",
     "uniqueHuman": "إثبات أنك إنسان",
-    "walletScore": "درجة Passport"
+    "walletScore": "درجة Passport",
+    "altchaPow": "حالة إثبات العمل"
   },
   "gateFailure": {
     "nationalityMismatch": "لا يطابق فحص هويتك متطلبات هذا المجتمع.",

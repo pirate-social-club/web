@@ -18,6 +18,7 @@
       "withScore": "需要 Passport 分数 {minimumScore}+",
       "withoutScore": "需要 Passport 分数"
     },
+    "altchaPow": "需要工作量证明检查",
     "erc721Holding": {
       "withLabel": "需要持有来自 {label} 的以太坊 NFT",
       "withoutLabel": "需要持有以太坊 NFT"
@@ -94,7 +95,8 @@
     "nationality": "国籍",
     "gender": "证件性别标记",
     "uniqueHuman": "真人状态",
-    "walletScore": "Passport 分数"
+    "walletScore": "Passport 分数",
+    "altchaPow": "工作量证明状态"
   },
   "gateFailure": {
     "nationalityMismatch": "你的身份验证结果不符合该社区要求。",

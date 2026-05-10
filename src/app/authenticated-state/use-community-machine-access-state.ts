@@ -53,9 +53,9 @@ export function useCommunityMachineAccessState({
 }) {
   const api = useApi();
   const [machineAccessSettings, setMachineAccessSettings] =
-    React.useState<CommunityMachineAccessSettings>(createDefaultMachineAccessSettings());
+    React.useState<CommunityMachineAccessSettings>(() => createDefaultMachineAccessSettings());
   const [savedMachineAccessSettings, setSavedMachineAccessSettings] =
-    React.useState<CommunityMachineAccessSettings>(createDefaultMachineAccessSettings());
+    React.useState<CommunityMachineAccessSettings>(() => createDefaultMachineAccessSettings());
   const [loadingMachineAccess, setLoadingMachineAccess] = React.useState(false);
   const [savingMachineAccess, setSavingMachineAccess] = React.useState(false);
   const [machineAccessSaveError, setMachineAccessSaveError] = React.useState<string | null>(null);

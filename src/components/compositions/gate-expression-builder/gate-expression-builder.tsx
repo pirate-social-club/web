@@ -75,6 +75,14 @@ function GateGroupCard({
   const mode = expression.op === "gate" ? "and" : expression.op === "threshold" ? "threshold" : expression.op
   const children = expression.op === "gate" ? [] : expression.children
   const canNest = depth < maxDepth - 1
+  const childKeyCounts = new Map<string, number>()
+
+  const getChildKey = (child: GateExpression) => {
+    const baseKey = JSON.stringify(child)
+    const occurrence = childKeyCounts.get(baseKey) ?? 0
+    childKeyCounts.set(baseKey, occurrence + 1)
+    return occurrence === 0 ? baseKey : `${baseKey}:${occurrence}`
+  }
 
   const handleModeChange = (nextMode: string) => {
     if (nextMode === mode) return
@@ -190,7 +198,7 @@ function GateGroupCard({
         {children.map((child, index) =>
           child.op === "gate" ? (
             <GateRequirementCard
-              key={index}
+              key={getChildKey(child)}
               gate={child.gate}
               scope={scope}
               onChange={(gate) => handleChildChange(index, { op: "gate", gate })}
@@ -198,7 +206,7 @@ function GateGroupCard({
             />
           ) : (
             <GateGroupCard
-              key={index}
+              key={getChildKey(child)}
               expression={child}
               scope={scope}
               depth={depth + 1}

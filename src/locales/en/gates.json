@@ -18,6 +18,7 @@
       "withScore": "Passport Score {minimumScore}+",
       "withoutScore": "Passport Score"
     },
+    "altchaPow": "Proof-of-work check",
     "erc721Holding": {
       "withLabel": "Ethereum NFT from {label}",
       "withoutLabel": "Ethereum NFT"
@@ -94,7 +95,8 @@
     "nationality": "nationality",
     "gender": "document sex marker",
     "uniqueHuman": "unique human status",
-    "walletScore": "Passport score"
+    "walletScore": "Passport score",
+    "altchaPow": "proof-of-work status"
   },
   "gateFailure": {
     "nationalityMismatch": "Your verified ID does not match this community's requirement.",

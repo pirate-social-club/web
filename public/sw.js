@@ -37,9 +37,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((names) =>
       Promise.all(
-        names
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name)),
+        names.flatMap((name) => name !== CACHE_NAME ? [caches.delete(name)] : []),
       ),
     ).then(() => self.clients.claim()),
   );

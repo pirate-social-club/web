@@ -48,6 +48,7 @@ const enableClientWorkerShim =
   process.env.PIRATE_ENABLE_RWSDK_CLIENT_SHIMS === "1" || isWorkerDiagnosticBuild;
 
 export default defineConfig(() => ({
+  root: __dirname,
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
   },

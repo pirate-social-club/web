@@ -19,7 +19,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-function gateEvaluation(capabilities: Array<"gender" | "nationality" | "unique_human" | "wallet_score">, provider: "self" | "very" | "passport" = "self") {
+function gateEvaluation(capabilities: Array<"altcha_pow" | "gender" | "nationality" | "unique_human" | "wallet_score">, provider: "altcha" | "self" | "very" | "passport" = "self") {
   return {
     passed: capabilities.length === 0,
     trace: { kind: "op" as const, op: "and" as const, passed: capabilities.length === 0, children: [] },
@@ -30,6 +30,7 @@ function gateEvaluation(capabilities: Array<"gender" | "nationality" | "unique_h
         mode: "all" as const,
         items: capabilities.map((capability) => {
           if (capability === "wallet_score") return { kind: "action" as const, provider: "passport" as const, capability, minimum_score: 20, actual_score: null };
+          if (capability === "altcha_pow") return { kind: "action" as const, provider: "altcha" as const, capability, scope: "community_join" as const };
           if (capability === "gender") return { kind: "action" as const, provider: "self" as const, capability, allowed_markers: ["F" as const] };
           if (capability === "nationality") return { kind: "action" as const, provider: "self" as const, capability, allowed_countries: ["US"] };
           return { kind: "action" as const, provider, capability };
@@ -56,6 +57,27 @@ export const DocumentMarkerVerificationRequired: Story = {
         gate_evaluation: gateEvaluation(["gender"]),
         suggested_verification_intent: "community_join",
       }}
+    />
+  ),
+};
+
+export const ProofOfWorkRequired: Story = {
+  name: "States / Proof-of-work Required",
+  args: { gates: [] },
+  render: () => (
+    <CommunityMembershipGatePanel
+      gates={[{ gate_type: "altcha_pow" }]}
+      eligibility={{
+        community: "community_pow",
+        membership_mode: "gated",
+        human_verification_lane: "self",
+        joinable_now: false,
+        status: "verification_required",
+        membership_gate_summaries: [{ gate_type: "altcha_pow" }],
+        gate_evaluation: gateEvaluation(["altcha_pow"], "altcha"),
+        suggested_verification_intent: "community_join",
+      }}
+      onJoin={() => {}}
     />
   ),
 };

@@ -82,7 +82,7 @@ export function CreateCommunityBasicsStep({
           </div>
         </div>
 
-        <div className="hidden rounded-[var(--radius-lg)] border border-border-soft bg-card px-5 py-5 lg:block">
+        <div className="hidden rounded-[var(--radius-lg)] border border-border-soft bg-card p-5 lg:block">
           <Type as="h3" variant="h4" className="mb-4">{copy.preview}</Type>
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border-soft bg-background">
             <div
@@ -94,7 +94,7 @@ export function CreateCommunityBasicsStep({
             />
             <div className="-mt-8 flex items-end gap-5 bg-card px-5 pb-5">
               <Avatar
-                className="h-24 w-24 border-4 border-card bg-card"
+                className="size-24 border-4 border-card bg-card"
                 fallback={basics.previewDisplayName}
                 size="lg"
                 src={basics.previewAvatarSrc}

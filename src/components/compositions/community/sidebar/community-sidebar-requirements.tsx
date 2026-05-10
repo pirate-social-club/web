@@ -35,8 +35,8 @@ export function CommunitySidebarRequirements({
         </Type>
       )}
       <ul className="list-disc space-y-1.5 ps-5 text-base leading-snug text-muted-foreground">
-        {items.map((item, index) => (
-          <li key={`${item}-${index}`}>{item}</li>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
         ))}
       </ul>
     </div>

@@ -22,6 +22,7 @@ import { CommunityJoinRequestModal } from "@/components/compositions/community/j
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
+import { CommunityProofOfWorkModal } from "@/components/compositions/community/proof-of-work-modal/community-proof-of-work-modal";
 import { Button } from "@/components/primitives/button";
 import { toast } from "@/components/primitives/sonner";
 import { getGateFailureMessage, getJoinCtaLabel, getMissingCapabilitiesFromGateEvaluation, isJoinCtaActionable } from "@/lib/identity-gates";
@@ -190,6 +191,10 @@ export function CommunityPage({
     }));
   }, [communityId, preview?.follower_count, previewCommunityId]);
   const {
+    altchaAction,
+    altchaPayload,
+    altchaRequired,
+    altchaScope,
     handleJoin,
     handleSelfModalOpenChange,
     handleSelfQrError,
@@ -204,6 +209,7 @@ export function CommunityPage({
     selfPrompt,
     startSelfVerification,
     startVeryVerification,
+    setAltchaPayload,
     veryLoading,
   } = useCommunityJoinVerification({
     communityId,
@@ -243,14 +249,11 @@ export function CommunityPage({
   const [joinRequestError, setJoinRequestError] = React.useState<string | null>(
     null,
   );
+  const [proofOfWorkModalOpen, setProofOfWorkModalOpen] = React.useState(false);
   const [handleClaimModalOpen, setHandleClaimModalOpen] = React.useState(false);
-  const communityCreatePostPath = React.useMemo(
-    () =>
-      preview
-        ? `${buildCommunityPath(preview.id, community?.route_slug ?? preview.route_slug)}/submit`
-        : `${buildCommunityPath(communityId)}/submit`,
-    [community?.route_slug, communityId, preview],
-  );
+  const communityCreatePostPath = preview
+    ? `${buildCommunityPath(preview.id, community?.route_slug ?? preview.route_slug)}/submit`
+    : `${buildCommunityPath(communityId)}/submit`;
   const moderationEntryPath = React.useMemo(
     () => buildCommunityModerationEntryPath(
       communityId,
@@ -362,11 +365,15 @@ export function CommunityPage({
       openJoinRequestModal();
       return;
     }
+    if (altchaRequired && !altchaPayload) {
+      setProofOfWorkModalOpen(true);
+      return;
+    }
     const result = await handleJoin();
     if (result === "joined") {
       await maybeOpenHandleClaimModal();
     }
-  }, [eligibility?.status, handleJoin, maybeOpenHandleClaimModal, openJoinRequestModal]);
+  }, [altchaPayload, altchaRequired, eligibility?.status, handleJoin, maybeOpenHandleClaimModal, openJoinRequestModal]);
 
   const handleJoinRequestSubmit = React.useCallback(
     async (note: string) => {
@@ -714,6 +721,24 @@ export function CommunityPage({
         open={joinRequestModalOpen}
         submitting={joinRequestSubmitting || joinLoading}
       />
+      {altchaRequired ? (
+        <CommunityProofOfWorkModal
+          action={altchaAction}
+          continueDisabled={!altchaPayload}
+          continueLoading={joinLoading}
+          description="This usually takes a few seconds and runs only on this device."
+          locale={locale}
+          onContinue={async () => {
+            setProofOfWorkModalOpen(false);
+            await handlePrimaryJoinAction();
+          }}
+          onOpenChange={setProofOfWorkModalOpen}
+          onPayloadChange={setAltchaPayload}
+          open={proofOfWorkModalOpen}
+          requirements={preview?.membership_gate_summaries}
+          scope={altchaScope}
+        />
+      ) : null}
       {selfPrompt ? (
         <SelfVerificationModal
           actionLabel={selfPrompt.actionLabel}

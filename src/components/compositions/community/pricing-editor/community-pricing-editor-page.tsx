@@ -48,6 +48,13 @@ export type CountryAssignment = {
   tier_key: string;
 };
 
+let nextPricingTierDraftId = 0;
+
+function createPricingTierDraftId(): string {
+  nextPricingTierDraftId += 1;
+  return `pricing-tier-draft-${nextPricingTierDraftId}`;
+}
+
 export interface CommunityPricingEditorPageProps {
   className?: string;
   regionalPricingEnabled: boolean;
@@ -89,6 +96,7 @@ function formatPreviewPrice(
 }
 
 function generateTierKey(name: string, existingKeys: string[]): string {
+  const existingKeySet = new Set(existingKeys);
   let base = name
     .trim()
     .toLowerCase()
@@ -97,7 +105,7 @@ function generateTierKey(name: string, existingKeys: string[]): string {
   if (!base) base = "group";
   let key = base;
   let counter = 1;
-  while (existingKeys.includes(key)) {
+  while (existingKeySet.has(key)) {
     key = `${base}_${counter}`;
     counter++;
   }
@@ -151,7 +159,7 @@ function CountryPicker({
           className="h-10 rounded-[var(--radius-md)] border-0 bg-muted/45 px-3 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           placeholder={searchPlaceholder}
         />
-        <ComboboxEmpty className="px-3 py-3">{emptyLabel}</ComboboxEmpty>
+        <ComboboxEmpty className="p-3">{emptyLabel}</ComboboxEmpty>
         <ComboboxList className="max-h-52 py-1 [scrollbar-color:var(--border)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent">
           {(country) => (
             <ComboboxItem
@@ -193,7 +201,7 @@ function TierRow({
   const mc = copy.moderation.pricing;
 
   return (
-    <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
+    <div className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
       <div className="grid flex-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,auto)]">
         <div>
           <FormFieldLabel label={mc.groupNameLabel} />
@@ -449,7 +457,7 @@ export function CommunityPricingEditorPage({
               onClick={() => {
                 const existingKeys = tiers.map((t) => t.tier_key);
                 const newTier: PricingTier = {
-                  id: Math.random().toString(36).slice(2),
+                  id: createPricingTierDraftId(),
                   tier_key: generateTierKey(mc.newGroup, existingKeys),
                   display_name: "",
                   adjustment_type: "multiplier",

@@ -112,10 +112,12 @@ function formatVisualSummary(summary: NonNullable<ModerationQueueCaseItem["visua
 }
 
 function formatVisualEvidence(summary: NonNullable<ModerationQueueCaseItem["visualPolicySummary"]>): string | null {
-  const values = summary.evidence
-    .filter((item) => item.label !== "Commercial")
-    .map((item) => item.value)
-    .filter((value) => value && value !== "none");
+  const values = summary.evidence.reduce<string[]>((result, item) => {
+    if (item.label !== "Commercial" && item.value && item.value !== "none") {
+      result.push(item.value);
+    }
+    return result;
+  }, []);
   return values.length > 0 ? `Detected: ${values.join(", ")}` : null;
 }
 
@@ -184,7 +186,7 @@ export function CommunityModerationQueuePage({
         {loading ? (
           <div className="px-5 py-8 text-center">
             <Type as="p" className="text-muted-foreground" variant="body">
-              Loading queue...
+              Loading queue&hellip;
             </Type>
           </div>
         ) : cases.length === 0 ? (
@@ -213,11 +215,17 @@ export function CommunityModerationQueuePage({
                   {index > 0 ? <Separator /> : null}
                   <div
                     className={cn(
-                      "flex flex-col gap-4 px-5 py-5",
+                      "flex flex-col gap-4 p-5",
                       onCaseClick && "cursor-pointer hover:bg-muted/40",
                     )}
                     onClick={() => {
                       onCaseClick?.(caseItem.caseId);
+                    }}
+                    onKeyDown={(event) => {
+                      if (!onCaseClick || event.defaultPrevented) return;
+                      if (event.key !== "Enter" && event.key !== " ") return;
+                      event.preventDefault();
+                      onCaseClick(caseItem.caseId);
                     }}
                     role={onCaseClick ? "button" : undefined}
                     tabIndex={onCaseClick ? 0 : undefined}

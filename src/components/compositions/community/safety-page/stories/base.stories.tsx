@@ -11,16 +11,16 @@ import {
 
 function CommunitySafetyPageStory() {
   const [providerSettings, setProviderSettings] = React.useState(
-    createDefaultCommunitySafetyProviderSettings(),
+    () => createDefaultCommunitySafetyProviderSettings(),
   );
   const [adultContentPolicy, setAdultContentPolicy] = React.useState(
-    createDefaultCommunitySafetyAdultContentPolicy(),
+    () => createDefaultCommunitySafetyAdultContentPolicy(),
   );
   const [graphicContentPolicy, setGraphicContentPolicy] = React.useState(
-    createDefaultCommunitySafetyGraphicContentPolicy(),
+    () => createDefaultCommunitySafetyGraphicContentPolicy(),
   );
   const [civilityPolicy, setCivilityPolicy] = React.useState(
-    createDefaultCommunitySafetyCivilityPolicy(),
+    () => createDefaultCommunitySafetyCivilityPolicy(),
   );
 
   return (

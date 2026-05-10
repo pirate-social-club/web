@@ -7,6 +7,7 @@ import type { LabelEditorDefinition } from "@/components/compositions/community/
 import type { CommunityLinkEditorItem } from "@/components/compositions/community/links-editor/community-links-editor-page";
 import type { RuleDraft } from "@/components/compositions/community/rules-editor/community-rules-editor-page";
 import { useApi } from "@/lib/api";
+import type { CommunityReferenceLinksInput } from "@/lib/api/client-api-types";
 
 import { submitCommunitySave, type SaveCommunityAction } from "@/app/authenticated-helpers/community-moderation-save";
 import {
@@ -129,13 +130,20 @@ export function useCommunityContentPolicyState({
   const handleSaveLinks = React.useCallback(() => {
     void submitCommunitySave({
       action: (currentCommunity) => api.communities.updateReferenceLinks(currentCommunity.id, {
-        reference_links: links.filter((link) => link.url.trim()).map((link, index) => ({
-          id: link.id.startsWith("draft-") ? null : link.id,
-          label: link.label.trim() || null,
-          platform: link.platform as NonNullable<ApiCommunity["reference_links"]>[number]["platform"],
-          position: index,
-          url: link.url.trim(),
-        })),
+        reference_links: links.reduce<CommunityReferenceLinksInput["reference_links"]>((result, link) => {
+          const url = link.url.trim();
+          if (!url) {
+            return result;
+          }
+          result.push({
+            id: link.id.startsWith("draft-") ? null : link.id,
+            label: link.label.trim() || null,
+            platform: link.platform as NonNullable<ApiCommunity["reference_links"]>[number]["platform"],
+            position: result.length,
+            url,
+          });
+          return result;
+        }, []),
       }),
       community,
       failureMessage: "Could not save links.",

@@ -235,7 +235,7 @@ function MobileModerationSectionLayout({
         title={title}
         trailingAction={trailingAction}
       />
-      <section className="flex min-w-0 flex-1 flex-col gap-4 px-4 py-4 pt-[calc(env(safe-area-inset-top)+5rem)] md:px-6 md:py-6 [&_.community-moderation-inline-save-action]:hidden [&_.community-moderation-save-footer]:hidden">
+      <section className="flex min-w-0 flex-1 flex-col gap-4 p-4 pt-[calc(env(safe-area-inset-top)+5rem)] md:p-6 [&_.community-moderation-inline-save-action]:hidden [&_.community-moderation-save-footer]:hidden">
         <div className="min-w-0">{children}</div>
       </section>
     </div>

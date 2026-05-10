@@ -4,6 +4,7 @@ import type { MembershipGateSummary } from "@pirate/api-contracts";
 
 import { Button } from "@/components/primitives/button";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
+import { AltchaPowWidget } from "@/components/compositions/verification/altcha-pow-widget/altcha-pow-widget";
 
 import {
   CommunityInteractionGateModal,
@@ -24,6 +25,10 @@ const passportRequirements: MembershipGateSummary[] = [
 
 const failedRequirements: MembershipGateSummary[] = [
   { gate_type: "nationality", required_value: "ET" },
+];
+
+const proofOfWorkRequirements: MembershipGateSummary[] = [
+  { gate_type: "altcha_pow" },
 ];
 
 const meta = {
@@ -156,6 +161,36 @@ export const VerificationRequiredPassport: Story = {
       requirements={passportRequirements}
       requirementStatuses={["unmet"]}
       title="Higher Score Required"
+    />
+  ),
+};
+
+export const ProofOfWorkRequired: Story = {
+  name: "States / Checking browser",
+  render: () => (
+    <GateModalStory
+      body={(
+        <AltchaPowWidget
+          action="community:local-transit"
+          challengeLoader={() => new Promise(() => {})}
+          onPayloadChange={() => {}}
+          scope="community_join"
+        />
+      )}
+      description="This usually takes a few seconds and runs only on this device."
+      icon="blocked"
+      primaryAction={{
+        disabled: true,
+        label: "Continue",
+        onClick: () => {},
+      }}
+      requirements={proofOfWorkRequirements}
+      requirementStatuses={["unmet"]}
+      secondaryAction={{
+        label: "Cancel",
+        onClick: () => {},
+      }}
+      title="Checking browser"
     />
   ),
 };

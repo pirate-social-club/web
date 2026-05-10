@@ -47,6 +47,9 @@ const SAMPLE_LABELS: LabelEditorDefinition[] = [
   { id: "l4", label: "Original", color: "#f0d163", status: "active" },
 ];
 
+const EMPTY_GATE_DRAFTS: IdentityGateDraft[] = [];
+const EMPTY_COMMUNITY_LINKS: CommunityLinkEditorItem[] = [];
+
 const DEFAULT_STORY_RULES: RuleDraft[] = [
   {
     id: "rule-1",
@@ -72,10 +75,10 @@ function ModerationShellStory({
   initialDefaultAgeGatePolicy = "none",
   initialCommunityDescription = "A gated space for producers to trade stems, workflows, and hard feedback.",
   initialCommunityDisplayName = "Infinity Mirror",
-  initialGateDrafts = [],
+  initialGateDrafts = EMPTY_GATE_DRAFTS,
   initialLabelsEnabled = true,
   initialLabels = SAMPLE_LABELS,
-  initialLinks = [],
+  initialLinks = EMPTY_COMMUNITY_LINKS,
   initialEndaomentUrl = "https://app.endaoment.org/orgs/charity-water",
   initialPartnerPreview = {
     donationPartnerId: "endaoment:mock-charity-water",
@@ -122,16 +125,16 @@ function ModerationShellStory({
   const [labels, setLabels] = React.useState<LabelEditorDefinition[]>(initialLabels);
   const [activeView, setActiveView] = React.useState<ModerationView>(initialView);
   const [providerSettings, setProviderSettings] = React.useState(
-    createDefaultCommunitySafetyProviderSettings(),
+    () => createDefaultCommunitySafetyProviderSettings(),
   );
   const [adultContentPolicy, setAdultContentPolicy] = React.useState(
-    createDefaultCommunitySafetyAdultContentPolicy(),
+    () => createDefaultCommunitySafetyAdultContentPolicy(),
   );
   const [graphicContentPolicy, setGraphicContentPolicy] = React.useState(
-    createDefaultCommunitySafetyGraphicContentPolicy(),
+    () => createDefaultCommunitySafetyGraphicContentPolicy(),
   );
   const [civilityPolicy, setCivilityPolicy] = React.useState(
-    createDefaultCommunitySafetyCivilityPolicy(),
+    () => createDefaultCommunitySafetyCivilityPolicy(),
   );
 
   return (

@@ -72,7 +72,7 @@ export function CommunityModerationShell({
                   </IconButton>
                 ) : null}
                 <CommunityAvatar
-                  className="h-10 w-10"
+                  className="size-10"
                   avatarSrc={communityAvatarSrc}
                   communityId={communityLabel}
                   displayName={communityLabel}
@@ -124,7 +124,7 @@ export function CommunityModerationShell({
         </SidebarContent>
       </Sidebar>
       <SidebarInset className="min-h-screen bg-background">
-        <main className="min-w-0 px-8 py-8">
+        <main className="min-w-0 p-8">
           <div className="mx-auto w-full max-w-5xl">
             {children}
           </div>

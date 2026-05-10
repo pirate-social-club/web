@@ -133,7 +133,7 @@ export const NoPreview: Story = {
 };
 
 export const Interactive: Story = {
-  render: () => {
+  render: function StoryRender() {
     const [cases, setCases] = React.useState(baseCases);
     const [processingId, setProcessingId] = React.useState<string | null>(null);
 

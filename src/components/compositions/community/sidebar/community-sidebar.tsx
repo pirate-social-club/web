@@ -211,7 +211,7 @@ export function CommunitySidebarDetails({
   | "rules"
 >) {
   return (
-    <div className={cn("rounded-lg bg-card px-4 py-4", className)}>
+    <div className={cn("rounded-lg bg-card p-4", className)}>
       <div className="flex flex-col gap-5">
         <CommunitySidebarSections
           charity={charity}
@@ -293,7 +293,7 @@ export function CommunitySidebar({
             className,
           )}
         >
-          <div className="px-4 py-4">{content}</div>
+          <div className="p-4">{content}</div>
         </div>
       </SidebarProvider>
     );
@@ -307,7 +307,7 @@ export function CommunitySidebar({
           className,
         )}
       >
-        <div className="animate-in fade-in-0 duration-200 rounded-lg bg-card px-4 py-4">{content}</div>
+        <div className="animate-in fade-in-0 duration-200 rounded-lg bg-card p-4">{content}</div>
       </aside>
     </SidebarProvider>
   );

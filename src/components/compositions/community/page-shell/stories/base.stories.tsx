@@ -197,7 +197,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Overview: Story = {
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
     const [following, setFollowing] = React.useState(false);
     const [citizen, setCitizen] = React.useState(false);
@@ -236,7 +236,7 @@ export const Overview: Story = {
 
 export const EmptyCommunity: Story = {
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("new");
 
     return (
@@ -259,7 +259,7 @@ export const EmptyCommunity: Story = {
 
 export const CommunityWithPosts: Story = {
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
 
     return (
@@ -284,7 +284,7 @@ export const CommunityWithPosts: Story = {
 export const PassportScoreGated: Story = {
   name: "States / Passport Score Gated",
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
 
     return (
@@ -320,7 +320,7 @@ export const PassportScoreGated: Story = {
 export const GatesAndMode: Story = {
   name: "States / AND gates",
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
 
     return (
@@ -357,7 +357,7 @@ export const GatesAndMode: Story = {
 export const GatesOrMode: Story = {
   name: "States / OR gates",
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
 
     return (
@@ -397,7 +397,7 @@ export const CommunityViewportPreset: Story = {
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
 
     return (
@@ -421,7 +421,7 @@ export const CommunityViewportPreset: Story = {
 
 export const FollowingNotCitizen: Story = {
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
     const [following, setFollowing] = React.useState(true);
     const [citizen, setCitizen] = React.useState(false);
@@ -460,7 +460,7 @@ export const FollowingNotCitizen: Story = {
 
 export const CanFollowCannotJoin: Story = {
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("new");
     const [following, setFollowing] = React.useState(false);
     const [citizen, setCitizen] = React.useState(false);

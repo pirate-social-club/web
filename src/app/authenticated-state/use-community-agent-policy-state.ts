@@ -35,7 +35,7 @@ export function useCommunityAgentPolicyState({
 }) {
   const api = useApi();
   const [agentSettings, setAgentSettings] = React.useState<CommunityAgentPolicySettings>(
-    getCommunityAgentPolicySettings(null),
+    () => getCommunityAgentPolicySettings(null),
   );
   const [savingAgents, setSavingAgents] = React.useState(false);
   const [agentSaveError, setAgentSaveError] = React.useState<string | null>(null);

@@ -1,5 +1,4 @@
 "use client";
-
 import type {
   JoinEligibility,
   MembershipGateSummary,
@@ -38,6 +37,7 @@ export interface CommunityMembershipGatePanelProps {
   gates: MembershipGateSummary[];
   eligibility?: JoinEligibility | null;
   joinLoading?: boolean;
+  joinDisabled?: boolean;
   joinRequested?: boolean;
   joinError?: string | null;
   verificationPrompt?: VerificationPrompt | null;
@@ -131,10 +131,12 @@ function getPassportPrompt(
 function getPanelIcon(input: {
   eligibility: JoinEligibility | null | undefined;
   isInlineVerificationRequired: boolean;
+  isProofOfWorkRequired: boolean;
   isVeryVerificationRequired: boolean;
   passportPrompt: VerificationPrompt | null;
 }): VerificationModalIconKind | null {
   if (input.passportPrompt) return "passport";
+  if (input.isProofOfWorkRequired) return "blocked";
   if (input.isVeryVerificationRequired) return "very";
   if (input.isInlineVerificationRequired) return "self";
 
@@ -158,6 +160,7 @@ export function CommunityMembershipGatePanel({
   gates,
   eligibility,
   joinLoading,
+  joinDisabled,
   joinRequested,
   joinError,
   verificationPrompt,
@@ -176,23 +179,30 @@ export function CommunityMembershipGatePanel({
     ? getPassportPrompt(eligibility, panelCopy)
     : null;
   const activePrompt = verificationPrompt ?? passportPrompt;
+  const isProofOfWorkRequired = gates.some((gate) => gate.gate_type === "altcha_pow");
   const isVeryVerificationRequired =
     !activePrompt &&
+    !isProofOfWorkRequired &&
     eligibility?.status === "verification_required" &&
     resolveSuggestedVerificationProvider(eligibility) === "very";
   const eligibilityText = getEligibilityText(eligibility, gates, resolvedLocale, panelCopy);
   const isInlineVerificationRequired =
     !activePrompt &&
+    !isProofOfWorkRequired &&
     eligibility?.status === "verification_required" &&
     !isVeryVerificationRequired;
   const title = isVeryVerificationRequired
     ? panelCopy.veryTitle
+    : isProofOfWorkRequired
+      ? "Proof-of-work required"
     : isInlineVerificationRequired
       ? panelCopy.selfTitle
       : (activePrompt?.title ??
         (joinRequested ? panelCopy.pendingRequestTitle : eligibilityText.title));
   const description = isVeryVerificationRequired
     ? null
+    : isProofOfWorkRequired
+      ? "A quick local proof-of-work check runs when you join."
     : isInlineVerificationRequired
       ? panelCopy.selfDescription
       : (activePrompt?.description ??
@@ -210,6 +220,7 @@ export function CommunityMembershipGatePanel({
   const panelIcon = getPanelIcon({
     eligibility,
     isInlineVerificationRequired,
+    isProofOfWorkRequired,
     isVeryVerificationRequired,
     passportPrompt,
   });
@@ -234,6 +245,7 @@ export function CommunityMembershipGatePanel({
     <Button
       className="h-14 w-full shrink-0 px-9 text-lg shadow-sm md:w-auto md:min-w-44"
       loading={joinLoading}
+      disabled={joinDisabled}
       onClick={onJoin}
       size="lg"
     >

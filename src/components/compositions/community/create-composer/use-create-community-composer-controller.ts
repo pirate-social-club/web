@@ -145,9 +145,13 @@ export function useCreateCommunityComposerController({
     activeMembershipMode !== "gated"
     || (activeGateDrafts.length > 0 && activeGateDrafts.every(isValidGateDraft));
   const invalidGateDrafts = React.useMemo(
-    () => activeGateDrafts
-      .map((draft) => ({ draft: summarizeGateDraftForLog(draft), reason: getInvalidGateDraftReason(draft) }))
-      .filter((item) => item.reason != null),
+    () => activeGateDrafts.reduce<Array<{ draft: ReturnType<typeof summarizeGateDraftForLog>; reason: string }>>((result, draft) => {
+      const reason = getInvalidGateDraftReason(draft);
+      if (reason != null) {
+        result.push({ draft: summarizeGateDraftForLog(draft), reason });
+      }
+      return result;
+    }, []),
     [activeGateDrafts],
   );
   const { locale } = useUiLocale();

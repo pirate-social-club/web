@@ -34,7 +34,7 @@ const DEFAULT_RULES: RuleDraft[] = [
 
 export const Default: Story = {
   args: { rules: [], onSave: () => undefined },
-  render: () => {
+  render: function StoryRender() {
     const [rules, setRules] = React.useState<RuleDraft[]>(DEFAULT_RULES);
     return (
       <CommunityRulesEditorPage
@@ -48,7 +48,7 @@ export const Default: Story = {
 
 export const Blank: Story = {
   args: { rules: [], onSave: () => undefined },
-  render: () => {
+  render: function StoryRender() {
     const [rules, setRules] = React.useState<RuleDraft[]>([]);
     return (
       <CommunityRulesEditorPage

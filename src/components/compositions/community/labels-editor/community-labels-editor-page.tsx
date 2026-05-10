@@ -90,11 +90,13 @@ export function CommunityLabelsEditorPage({
       counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
     }
 
-    return new Set(
-      [...counts.entries()]
-        .filter(([, count]) => count > 1)
-        .map(([name]) => name),
-    );
+    const duplicateLabels = new Set<string>();
+    for (const [name, count] of counts.entries()) {
+      if (count > 1) {
+        duplicateLabels.add(name);
+      }
+    }
+    return duplicateLabels;
   }, [activeLabels]);
 
   const updateLabel = React.useCallback(

@@ -50,7 +50,7 @@ export function CourtyardWalletGateBuilder({
     return (
       <div className="flex items-center gap-3 py-8">
         <Spinner className="size-5 text-muted-foreground" />
-        <span className="text-base text-muted-foreground">Loading your inventory...</span>
+        <span className="text-base text-muted-foreground">Loading your inventory&hellip;</span>
       </div>
     );
   }

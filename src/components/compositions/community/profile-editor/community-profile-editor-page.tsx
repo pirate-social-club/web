@@ -89,7 +89,7 @@ function MediaControlCard({
 }) {
   return (
     <Card className="overflow-hidden border-border bg-card shadow-none">
-      <div className="space-y-4 px-5 py-5">
+      <div className="space-y-4 p-5">
         <div className="space-y-1">
           <Type as="h3" variant="body-strong">{title}</Type>
           {hint ? <Type as="p" variant="caption">{hint}</Type> : null}
@@ -227,7 +227,7 @@ export function CommunityProfileEditorPage({
 
       <section className="space-y-4">
         <Type as="h2" variant="h3">{mc.profileTitle}</Type>
-        <Card className="space-y-5 border-border bg-card px-5 py-5 shadow-none">
+        <Card className="space-y-5 border-border bg-card p-5 shadow-none">
           <div className="space-y-2">
             <label className="text-base font-medium text-foreground" htmlFor="community-profile-display-name">
               Name

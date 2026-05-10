@@ -70,7 +70,7 @@ function InteractiveStory({
   const [assignments, setAssignments] = React.useState(initialAssignments);
   const [defaultKey, setDefaultKey] = React.useState<string | null>(initialTiers[0]?.tier_key ?? null);
 
-  function useStarterTemplate() {
+  function applyStarterTemplate() {
     const starter = buildStarterStoryPolicyDraft({ localCountryCodes: ["EC"] });
     setEnabled(starter.regionalPricingEnabled);
     setTiers(starter.tiers);
@@ -87,12 +87,12 @@ function InteractiveStory({
       onRegionalPricingEnabledChange={(value) => {
         setEnabled(value);
         if (value && tiers.length === 0 && assignments.length === 0 && !defaultKey) {
-          useStarterTemplate();
+          applyStarterTemplate();
         }
       }}
       onSave={() => undefined}
       onTiersChange={setTiers}
-      onUseStarterTemplate={useStarterTemplate}
+      onUseStarterTemplate={applyStarterTemplate}
       regionalPricingEnabled={enabled}
       tiers={tiers}
     />

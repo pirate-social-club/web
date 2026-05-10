@@ -71,7 +71,13 @@ export function NationalityMultiPicker({
   onChange,
 }: NationalityMultiPickerProps) {
   const selectedCountries = React.useMemo(
-    () => values.map((value) => findCountry(value)).filter((country): country is Country => country != null),
+    () => values.reduce<Country[]>((result, value) => {
+      const country = findCountry(value);
+      if (country != null) {
+        result.push(country);
+      }
+      return result;
+    }, []),
     [values],
   );
   const countryOptions = React.useMemo(

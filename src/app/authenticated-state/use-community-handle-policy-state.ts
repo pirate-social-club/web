@@ -79,17 +79,17 @@ function formatSpecialPrices(value: Record<string, number> | null | undefined): 
 export function parseSpecialPricesText(value: string): Record<string, number> {
   const entries = value
     .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
+    .reduce<Array<readonly [string, number]>>((result, rawLine) => {
+      const line = rawLine.trim();
+      if (!line) return result;
       const match = line.match(/^([^:,]+)\s*[:,]\s*\$?([0-9]+(?:\.[0-9]{1,2})?)$/u);
-      if (!match) return null;
+      if (!match) return result;
       const label = labelToAscii(match[1] ?? "");
       const dollars = Number(match[2]);
-      if (!label || !Number.isFinite(dollars) || dollars < 0) return null;
-      return [label, Math.round(dollars * 100)] as const;
-    })
-    .filter((entry): entry is readonly [string, number] => entry != null);
+      if (!label || !Number.isFinite(dollars) || dollars < 0) return result;
+      result.push([label, Math.round(dollars * 100)] as const);
+      return result;
+    }, []);
   return Object.fromEntries(entries);
 }
 
@@ -140,8 +140,13 @@ function buildSavePayload(draft: HandlePolicyDraft): UpdateCommunityHandlePolicy
   }
   const reservedLabels = draft.reservedLabels
     .split(/[\n,]+/)
-    .map((label) => label.trim().toLowerCase())
-    .filter((label) => label.length > 0);
+    .reduce<string[]>((result, label) => {
+      const normalizedLabel = label.trim().toLowerCase();
+      if (normalizedLabel.length > 0) {
+        result.push(normalizedLabel);
+      }
+      return result;
+    }, []);
   if (reservedLabels.length > 0) {
     settings.reserved_labels = Array.from(new Set(reservedLabels));
   }
@@ -169,7 +174,7 @@ export function useCommunityHandlePolicyState({
   const [policy, setPolicy] = React.useState<CommunityHandlePolicy | null>(null);
   const [policyLoading, setPolicyLoading] = React.useState(false);
   const [policyError, setPolicyError] = React.useState<unknown>(null);
-  const [draft, setDraft] = React.useState<HandlePolicyDraft>(buildDraft(null));
+  const [draft, setDraft] = React.useState<HandlePolicyDraft>(() => buildDraft(null));
   const [saving, setSaving] = React.useState(false);
   const [handles, setHandles] = React.useState<CommunityHandle[]>([]);
   const [handlesLoading, setHandlesLoading] = React.useState(false);

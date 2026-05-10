@@ -213,7 +213,7 @@ function PolicySelectRow<T extends string>({
   value: T;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4 md:flex-row md:items-center md:justify-between">
       <div className="text-base font-medium leading-6">{label}</div>
       <Select onValueChange={(next) => onChange(next as T)} value={value}>
         <SelectTrigger className="h-12 w-full rounded-[var(--radius-lg)] md:w-48">
@@ -241,7 +241,7 @@ function StaticPolicyRow({
   value: string;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-2 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4 md:flex-row md:items-center md:justify-between">
       <div>
         <div className="text-base font-medium leading-6">{label}</div>
         {description ? (

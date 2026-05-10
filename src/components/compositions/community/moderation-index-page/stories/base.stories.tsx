@@ -58,7 +58,7 @@ export const MobileLayout: Story = {
 };
 
 export const Interactive: Story = {
-  render: () => {
+  render: function StoryRender() {
     const [active, setActive] = React.useState("Profile");
 
     return (

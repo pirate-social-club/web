@@ -68,7 +68,7 @@ export const Saving: Story = {
 };
 
 export const Interactive: Story = {
-  render: (args) => {
+  render: function StoryRender(args) {
     const [displayName, setDisplayName] = React.useState(args.displayName);
     const [description, setDescription] = React.useState(args.description);
 

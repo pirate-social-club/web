@@ -73,7 +73,7 @@ describe("CommunityPageShell", () => {
     expect(sortButton === undefined).toBe(false);
     const tabRow = feedTab!.parentElement;
     let sortSlot = sortButton!.parentElement;
-    while (sortSlot && !sortSlot.className.includes("fixed")) {
+    while (sortSlot instanceof HTMLElement && !sortSlot.classList.contains("fixed")) {
       sortSlot = sortSlot.parentElement;
     }
 

@@ -94,6 +94,7 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
 
     void api.communities.preview(communityId, { locale: contentLocale })
       .then(async (previewResult) => {
+        if (cancelled) return;
         const communityResult = await api.communities.get(communityId, { locale: contentLocale })
           .catch((error: unknown) => {
             logger.warn("[community-route] owner community metadata load failed; using preview", {
@@ -137,11 +138,13 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
 
   React.useEffect(() => {
     let cancelled = false;
-    const publicAuthorIds = Array.from(new Set(
-      rawPosts
-        .map((item) => item.post.identity_mode === "public" ? item.post.author_user : null)
-        .filter((userId): userId is string => typeof userId === "string" && userId.length > 0),
-    ));
+    const publicAuthorIds = Array.from(new Set(rawPosts.reduce<string[]>((result, item) => {
+      const userId = item.post.identity_mode === "public" ? item.post.author_user : null;
+      if (typeof userId === "string" && userId.length > 0) {
+        result.push(userId);
+      }
+      return result;
+    }, [])));
     const profileFallbacks = session?.profile ? { [session.user.id]: session.profile } : {};
 
     void loadProfilesByUserId(api, publicAuthorIds, profileFallbacks)

@@ -279,7 +279,7 @@ export function HandleClaimModal({
                   dir="ltr"
                 >
                   <Input
-                    className="h-auto min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 py-0 text-start shadow-none focus-visible:border-transparent focus-visible:ring-0 disabled:opacity-80"
+                    className="h-auto min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-start shadow-none focus-visible:border-transparent focus-visible:ring-0 disabled:opacity-80"
                     dir="ltr"
                     disabled={isProcessing}
                     onChange={(e) => handleInputChange(e.target.value)}

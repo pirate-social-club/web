@@ -188,7 +188,7 @@ export function CommunityReviewStep({
       {/* Community section */}
       <div className="pb-8">
         <div className="flex items-center gap-3 pb-6">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
             <Users className="size-5 text-muted-foreground" />
           </div>
           <Type as="h3" variant="h3">{copy.reviewCommunitySection}</Type>
@@ -234,7 +234,7 @@ export function CommunityReviewStep({
       {/* Access policy section */}
       <div className="py-8">
         <div className="flex items-center gap-3 pb-6">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
             <Lock className="size-5 text-muted-foreground" />
           </div>
           <Type as="h3" variant="h3">{copy.reviewAccessPolicySection}</Type>
@@ -339,8 +339,8 @@ export function MediaPicker({
         }}
         type="file"
       />
-      <div className={cn("rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
-        <div className={cn("flex min-h-24 items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-dashed border-border-soft bg-background px-4 py-4", isMobile && "rounded-[var(--radius-lg)] border-solid bg-muted/20")}>
+      <div className={cn("rounded-[var(--radius-lg)] border border-border-soft bg-card p-4", isMobile && "rounded-none border-0 bg-transparent p-0")}>
+        <div className={cn("flex min-h-24 items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-dashed border-border-soft bg-background p-4", isMobile && "rounded-[var(--radius-lg)] border-solid bg-muted/20")}>
           <div className="flex min-w-0 items-center gap-4">
             <ImageSquare className="size-10 shrink-0 text-muted-foreground" />
             <div className="min-w-0 space-y-1">

@@ -22,12 +22,23 @@ export interface PopularCommunitiesRailProps {
   title?: string;
 }
 
-function formatMetricCount(value: number, localeTag: string): string {
-  return new Intl.NumberFormat(localeTag, {
+const metricCountFormatters = new Map<string, Intl.NumberFormat>();
+
+function getMetricCountFormatter(localeTag: string, maximumFractionDigits: number): Intl.NumberFormat {
+  const key = `${localeTag}:${maximumFractionDigits}`;
+  const existing = metricCountFormatters.get(key);
+  if (existing) return existing;
+  const formatter = Intl.NumberFormat(localeTag, {
     notation: "compact",
     compactDisplay: "short",
-    maximumFractionDigits: value >= 1_000_000 ? 1 : 0,
-  }).format(value);
+    maximumFractionDigits,
+  });
+  metricCountFormatters.set(key, formatter);
+  return formatter;
+}
+
+function formatMetricCount(value: number, localeTag: string): string {
+  return getMetricCountFormatter(localeTag, value >= 1_000_000 ? 1 : 0).format(value);
 }
 
 export function PopularCommunitiesRail({

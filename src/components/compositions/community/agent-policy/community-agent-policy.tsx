@@ -58,7 +58,7 @@ function SelectRow<T extends string>({
   value: T;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4 md:flex-row md:items-center md:justify-between">
       <div className="text-base font-medium leading-6">{label}</div>
       <Select onValueChange={(next) => onValueChange(next as T)} value={value}>
         <SelectTrigger className="h-12 w-full rounded-[var(--radius-lg)] md:w-48">
@@ -87,10 +87,44 @@ function ProviderRow({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4">
+    <label className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4">
       <span className="text-base font-medium leading-6">{label}</span>
       <Checkbox checked={checked} onCheckedChange={(next) => onCheckedChange(next === true)} />
     </label>
+  );
+}
+
+function CapInput({
+  label,
+  value,
+  onChange,
+  nonePlaceholder,
+  perDaySuffix,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (value: number | null) => void;
+  nonePlaceholder: string;
+  perDaySuffix: string;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4 md:flex-row md:items-center md:justify-between">
+      <div className="text-base font-medium leading-6">{label}</div>
+      <div className="flex items-center gap-2">
+        <Input
+          className="h-12 w-20 rounded-[var(--radius-lg)] text-center"
+          min={1}
+          onChange={(e) => {
+            const parsed = Number(e.target.value);
+            onChange(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
+          }}
+          placeholder={nonePlaceholder}
+          type="number"
+          value={value ?? ""}
+        />
+        <span className="text-muted-foreground">{perDaySuffix}</span>
+      </div>
+    </div>
   );
 }
 
@@ -104,36 +138,6 @@ export function CommunityAgentPolicyPage({
 }: CommunityAgentPolicyPageProps) {
   const copy = defaultRouteCopy;
   const mc = copy.moderation.agents;
-
-  function CapInput({
-    label,
-    value,
-    onChange,
-  }: {
-    label: string;
-    value: number | null;
-    onChange: (value: number | null) => void;
-  }) {
-    return (
-      <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between">
-        <div className="text-base font-medium leading-6">{label}</div>
-        <div className="flex items-center gap-2">
-          <Input
-            className="h-12 w-20 rounded-[var(--radius-lg)] text-center"
-            min={1}
-            onChange={(e) => {
-              const parsed = Number(e.target.value);
-              onChange(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
-            }}
-            placeholder={mc.nonePlaceholder}
-            type="number"
-            value={value ?? ""}
-          />
-          <span className="text-muted-foreground">{mc.perDaySuffix}</span>
-        </div>
-      </div>
-    );
-  }
 
   const policyOptions: Array<{ label: string; value: AgentPostingPolicy }> = [
     { label: mc.policyDisallow, value: "disallow" },
@@ -222,12 +226,16 @@ export function CommunityAgentPolicyPage({
           <div className="space-y-3">
             <CapInput
               label={mc.agentPostsPerDayLabel}
+              nonePlaceholder={mc.nonePlaceholder}
               onChange={(value) => update({ dailyPostCap: value })}
+              perDaySuffix={mc.perDaySuffix}
               value={settings.dailyPostCap}
             />
             <CapInput
               label={mc.agentRepliesPerDayLabel}
+              nonePlaceholder={mc.nonePlaceholder}
               onChange={(value) => update({ dailyReplyCap: value })}
+              perDaySuffix={mc.perDaySuffix}
               value={settings.dailyReplyCap}
             />
           </div>

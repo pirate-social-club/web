@@ -30,6 +30,39 @@ function getApplicantLabel(request: MembershipRequestSummary): string {
   return request.applicant_handle?.trim() || "Member";
 }
 
+function MembershipRequestApplicantContent({
+  applicantLabel,
+  request,
+}: {
+  applicantLabel: string;
+  request: MembershipRequestSummary;
+}) {
+  return (
+    <>
+      <Avatar fallback={applicantLabel} fallbackSeed={request.applicant_user} size="md" src={request.applicant_avatar_ref ?? undefined} />
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+          <Type as="span" className="min-w-0 truncate" variant="body-strong">
+            {applicantLabel}
+          </Type>
+          <Type as="span" className="text-muted-foreground" variant="caption">
+            {formatDate(request.created)}
+          </Type>
+        </div>
+        {request.note?.trim() ? (
+          <Type as="p" className="mt-2 whitespace-pre-wrap text-muted-foreground" variant="body">
+            {request.note}
+          </Type>
+        ) : (
+          <Type as="p" className="mt-2 text-muted-foreground" variant="body">
+            No message.
+          </Type>
+        )}
+      </div>
+    </>
+  );
+}
+
 export function CommunityMembershipRequestsPage({
   loading = false,
   onApprove,
@@ -49,7 +82,7 @@ export function CommunityMembershipRequestsPage({
       <Card className="overflow-hidden">
         {loading ? (
           <div className="px-5 py-8 text-center">
-            <Type as="p" className="text-muted-foreground" variant="body">Loading requests...</Type>
+            <Type as="p" className="text-muted-foreground" variant="body">Loading requests&hellip;</Type>
           </div>
         ) : requests.length === 0 ? (
           <div className="px-5 py-8 text-center">
@@ -65,35 +98,19 @@ export function CommunityMembershipRequestsPage({
               return (
                 <div key={request.id}>
                   {index > 0 ? <Separator /> : null}
-                  <div className="flex flex-col gap-4 px-5 py-5 md:flex-row md:items-start">
-                    <a
-                      className="flex min-w-0 flex-1 items-start gap-3"
-                      href={profileHref ?? undefined}
-                      onClick={(event) => {
-                        if (!profileHref) event.preventDefault();
-                      }}
-                    >
-                      <Avatar fallback={applicantLabel} fallbackSeed={request.applicant_user} size="md" src={request.applicant_avatar_ref ?? undefined} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-                          <Type as="span" className="min-w-0 truncate" variant="body-strong">
-                            {applicantLabel}
-                          </Type>
-                          <Type as="span" className="text-muted-foreground" variant="caption">
-                            {formatDate(request.created)}
-                          </Type>
-                        </div>
-                        {request.note?.trim() ? (
-                          <Type as="p" className="mt-2 whitespace-pre-wrap text-muted-foreground" variant="body">
-                            {request.note}
-                          </Type>
-                        ) : (
-                          <Type as="p" className="mt-2 text-muted-foreground" variant="body">
-                            No message.
-                          </Type>
-                        )}
+                  <div className="flex flex-col gap-4 p-5 md:flex-row md:items-start">
+                    {profileHref ? (
+                      <a
+                        className="flex min-w-0 flex-1 items-start gap-3"
+                        href={profileHref}
+                      >
+                        <MembershipRequestApplicantContent applicantLabel={applicantLabel} request={request} />
+                      </a>
+                    ) : (
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                        <MembershipRequestApplicantContent applicantLabel={applicantLabel} request={request} />
                       </div>
-                    </a>
+                    )}
 
                     <div className="flex shrink-0 gap-2 md:justify-end">
                       <Button

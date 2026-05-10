@@ -188,10 +188,10 @@ export function CommunityNamespaceVerificationPage({
       <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
           <Type as="h1" variant="h1" className="md:text-4xl">Success!</Type>
-          {onBackClick ? <Button onClick={onBackClick} variant="outline">Done</Button> : null}
+          {onBackClick ? <Button onClick={onBackClick} variant="outline">Finish verification</Button> : null}
         </div>
 
-        <div className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5 md:py-5">
+        <div className="space-y-4 rounded-[var(--radius-2xl)] border border-border-soft bg-card p-4 md:p-5">
           <div className="space-y-2">
             {publicCommunityUrl && handshakeUrl ? (
               <div className="space-y-3">
@@ -308,14 +308,14 @@ export function CommunityNamespaceVerificationPage({
           <NamespaceVerificationSpacesPanel
             busy={flow.busy}
             challengePayload={flow.challengePayload}
-            className="rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5 md:py-5"
+            className="rounded-[var(--radius-2xl)] border border-border-soft bg-card p-4 md:p-5"
             onAbandon={flow.actions.reset}
             showAbandonAction={false}
           />
         ) : null}
 
         {flow.isVerified ? (
-          <div className="rounded-[var(--radius-2xl)] border border-border-soft bg-card px-4 py-4 md:px-5">
+          <div className="rounded-[var(--radius-2xl)] border border-border-soft bg-card p-4 md:px-5">
             <Type as="div" variant="body-strong">{mc.rootVerified}</Type>
           </div>
         ) : null}

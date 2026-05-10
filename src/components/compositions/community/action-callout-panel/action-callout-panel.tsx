@@ -24,7 +24,7 @@ export function ActionCalloutPanel({
   title: React.ReactNode;
 }) {
   return (
-    <CardShell className={cn("px-5 py-5", className)}>
+    <CardShell className={cn("p-5", className)}>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div
           className={cn(

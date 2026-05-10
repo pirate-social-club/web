@@ -1,5 +1,6 @@
 "use client";
 
+import type * as React from "react";
 import type { MembershipGateSummary } from "@pirate/api-contracts";
 import { CheckCircle, Circle } from "@phosphor-icons/react";
 
@@ -22,6 +23,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 
 export interface CommunityInteractionGateAction {
   label: string;
+  disabled?: boolean;
   href?: string;
   loading?: boolean;
   onClick?: () => void | Promise<void>;
@@ -36,6 +38,7 @@ export interface CommunityInteractionGateModalProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   description: string;
+  body?: React.ReactNode;
   icon?: VerificationModalIconKind | null;
   hideCloseButtonOnMobile?: boolean;
   hideSecondaryActionOnMobile?: boolean;
@@ -50,6 +53,7 @@ export function CommunityInteractionGateModal({
   onOpenChange,
   title,
   description,
+  body,
   icon,
   hideCloseButtonOnMobile = false,
   hideSecondaryActionOnMobile = false,
@@ -62,12 +66,16 @@ export function CommunityInteractionGateModal({
   const isMobile = useIsMobile();
   const visibleSecondaryAction = hideSecondaryActionOnMobile && isMobile ? null : secondaryAction;
   const requirementProvider = icon === "self" || icon === "very" || icon === "passport" ? icon : null;
-  const items = (requirements ?? [])
-    .map((gate, index) => ({
-      label: formatGateRequirement(gate, { locale, provider: requirementProvider }),
-      status: requirementStatuses?.[index] ?? "unknown",
-    }))
-    .filter((item) => Boolean(item.label));
+  const items = (requirements ?? []).reduce<Array<{ label: string; status: "met" | "unmet" | "unknown" }>>((result, gate, index) => {
+    const label = formatGateRequirement(gate, { locale, provider: requirementProvider });
+    if (label) {
+      result.push({
+        label,
+        status: requirementStatuses?.[index] ?? "unknown",
+      });
+    }
+    return result;
+  }, []);
   const actionCount = Number(Boolean(primaryAction)) + Number(Boolean(visibleSecondaryAction));
   const hasActions = actionCount > 0;
   const hasTwoActions = actionCount === 2;
@@ -77,6 +85,7 @@ export function CommunityInteractionGateModal({
         <Button
           asChild
           className="h-12 w-full"
+          disabled={action.disabled}
           loading={action.loading}
           variant={variant}
         >
@@ -95,7 +104,7 @@ export function CommunityInteractionGateModal({
     return (
       <Button
         className="h-12 w-full"
-        disabled={!action.onClick}
+        disabled={action.disabled || !action.onClick}
         loading={action.loading}
         onClick={() => void action.onClick?.()}
         variant={variant}
@@ -117,9 +126,9 @@ export function CommunityInteractionGateModal({
         />
 
         {items.length > 1 ? (
-          <div className="mt-5 space-y-2 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 sm:mt-6" role="list">
-            {items.map((item, index) => (
-              <div className="flex items-start gap-2 text-base leading-6 text-foreground" dir="auto" key={`${item.label}-${index}`} role="listitem">
+          <div className="mt-5 space-y-2 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4 sm:mt-6" role="list">
+            {items.map((item) => (
+              <div className="flex items-start gap-2 text-base leading-6 text-foreground" dir="auto" key={`${item.status}:${item.label}`} role="listitem">
                 {item.status === "met" ? (
                   <CheckCircle aria-label="Met" className="mt-0.5 size-5 shrink-0 text-success" weight="fill" />
                 ) : (
@@ -128,6 +137,12 @@ export function CommunityInteractionGateModal({
                 <span className="min-w-0">{item.label}</span>
               </div>
             ))}
+          </div>
+        ) : null}
+
+        {body ? (
+          <div className="mt-6">
+            {body}
           </div>
         ) : null}
 

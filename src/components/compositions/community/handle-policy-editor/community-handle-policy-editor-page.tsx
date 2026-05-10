@@ -26,6 +26,8 @@ import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import { parseSpecialPricesText, type HandlePolicyDraft, type HandlePricingMode, type HandleStatusFilter } from "@/app/authenticated-state/use-community-handle-policy-state";
 
+const EMPTY_HANDLES: CommunityHandle[] = [];
+
 export interface CommunityHandlePolicyEditorPageProps {
   className?: string;
   draft: HandlePolicyDraft;
@@ -77,7 +79,7 @@ function SwitchRow({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4">
+    <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4">
       <Switch
         checked={checked}
         id={id}
@@ -113,7 +115,7 @@ function NumberInputRow({
   prefix?: string;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4 md:flex-row md:items-center md:justify-between">
       <div className="text-base font-medium leading-6">{label}</div>
       <div className="relative w-full md:w-48">
         {prefix ? (
@@ -200,7 +202,7 @@ export function CommunityHandlePolicyEditorPage({
   draft,
   hasChanges,
   hasNamespace,
-  handles = [],
+  handles = EMPTY_HANDLES,
   handlesLoading = false,
   handleOpsLoading = false,
   handleStatusFilter = "all",
@@ -247,7 +249,7 @@ export function CommunityHandlePolicyEditorPage({
       </div>
 
       {!hasNamespace ? (
-        <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-warning/30 bg-warning/5 px-4 py-4">
+        <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-warning/30 bg-warning/5 p-4">
           <Warning className="mt-0.5 size-5 shrink-0 text-warning" weight="bold" />
           <div className="min-w-0 flex-1 space-y-2">
             <Type as="p" variant="body-strong">
@@ -393,7 +395,7 @@ export function CommunityHandlePolicyEditorPage({
       {hasNamespace ? (
         <Section className="border-t border-border-soft pt-6 md:pt-8" title="Operations">
           <div className="space-y-4">
-            <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-4 md:flex-row md:items-end">
+            <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4 md:flex-row md:items-end">
               <div className="min-w-0 flex-1 space-y-2">
                 <FormFieldLabel label="Reserve name" />
                 <Input

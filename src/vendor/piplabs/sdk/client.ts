@@ -1,5 +1,5 @@
 import { createPublicClient, http, type PublicClient, type WalletClient } from "viem";
-import type { Network } from "../contracts/index.js";
+import type { Network } from "../contracts/addresses.js";
 import { Uploader } from "./uploader.js";
 import { Consumer } from "./consumer.js";
 import { Observer, type DkgSource } from "./observer.js";

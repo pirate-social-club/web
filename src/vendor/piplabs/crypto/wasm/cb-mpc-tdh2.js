@@ -2010,13 +2010,13 @@ var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
         // destroy the nodes for this mount, and all its child mounts
         var node = lookup.node;
         var mount = node.mounted;
-        var mounts = FS.getMounts(mount);
+        var mounts = new Set(FS.getMounts(mount));
   
         for (var [hash, current] of Object.entries(FS.nameTable)) {
           while (current) {
             var next = current.name_next;
   
-            if (mounts.includes(current.mount)) {
+            if (mounts.has(current.mount)) {
               FS.destroyNode(current);
             }
   
@@ -2711,9 +2711,7 @@ var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
                 return ret;
               },
               readdir() {
-                return Array.from(FS.streams.entries())
-                  .filter(([k, v]) => v)
-                  .map(([k, v]) => k.toString());
+                return Array.from(FS.streams.entries()).flatMap(([k, v]) => v ? [k.toString()] : []);
               }
             };
             return node;

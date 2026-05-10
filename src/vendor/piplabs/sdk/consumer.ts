@@ -1,6 +1,12 @@
 import { encodeFunctionData, parseEventLogs, toBytes, toHex, fromHex, type PublicClient, type WalletClient } from "viem";
-import { cdrAbi, dkgAbi, contractAddresses, type Network } from "../contracts/index.js";
-import { decryptPartial as eciesDecrypt, tdh2Combine, verifyPartialSignature, decryptFile, generateEphemeralKeyPair, type TDH2Ciphertext, type DecryptedPartial } from "../crypto/index.js";
+import { cdrAbi } from "../contracts/abis/cdr.js";
+import { dkgAbi } from "../contracts/abis/dkg.js";
+import { contractAddresses, type Network } from "../contracts/addresses.js";
+import { decryptPartial as eciesDecrypt, generateEphemeralKeyPair } from "../crypto/ecies.js";
+import { decryptFile } from "../crypto/file-encryption.js";
+import { verifyPartialSignature } from "../crypto/signature.js";
+import { tdh2Combine } from "../crypto/tdh2.js";
+import type { DecryptedPartial, TDH2Ciphertext } from "../crypto/types.js";
 import { PartialCollectionTimeoutError, InvalidParamsError, ObserverRequiredError, CidIntegrityError } from "./errors.js";
 import type { PartialDecryptionEvent } from "./types.js";
 import { uuidToLabel } from "./label.js";
@@ -255,17 +261,18 @@ export class Consumer {
         });
 
         for (const log of parsed) {
-          if (log.args.uuid === uuid) {
-            const key = `${log.args.validator}-${log.args.pid}`;
+          const { args } = log;
+          if (args.uuid === uuid) {
+            const key = `${args.validator}-${args.pid}`;
             if (!collected.has(key)) {
               const event: PartialDecryptionEvent = {
-                validator: log.args.validator,
-                round: log.args.round,
-                pid: log.args.pid,
-                encryptedPartial: log.args.encryptedPartial,
-                ephemeralPubKey: log.args.ephemeralPubKey,
-                pubShare: log.args.pubShare,
-                requesterPubKey: log.args.requesterPubKey,
+                validator: args.validator,
+                round: args.round,
+                pid: args.pid,
+                encryptedPartial: args.encryptedPartial,
+                ephemeralPubKey: args.ephemeralPubKey,
+                pubShare: args.pubShare,
+                requesterPubKey: args.requesterPubKey,
                 uuid: log.args.uuid,
                 signature: log.args.signature,
               };
@@ -343,9 +350,10 @@ export class Consumer {
 
       // Pick the highest-round bucket with submissions — that's the round
       // this decrypt request was serviced under.
-      const active = rounds
-        .filter((r) => r.submissions.length > 0)
-        .sort((a, b) => b.round - a.round)[0];
+      const active = rounds.reduce<(typeof rounds)[number] | undefined>((best, round) => {
+        if (round.submissions.length === 0) return best;
+        return !best || round.round > best.round ? round : best;
+      }, undefined);
 
       const subs = active?.submissions ?? [];
       lastCount = subs.length;

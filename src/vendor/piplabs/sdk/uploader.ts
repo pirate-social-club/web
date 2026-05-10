@@ -1,6 +1,10 @@
 import { parseEventLogs, toHex, toBytes, type PublicClient, type WalletClient } from "viem";
-import { cdrAbi, contractAddresses, type Network } from "../contracts/index.js";
-import { tdh2Encrypt, encryptFile, getWasm, type TDH2Ciphertext } from "../crypto/index.js";
+import { cdrAbi } from "../contracts/abis/cdr.js";
+import { contractAddresses, type Network } from "../contracts/addresses.js";
+import { encryptFile } from "../crypto/file-encryption.js";
+import { tdh2Encrypt } from "../crypto/tdh2.js";
+import type { TDH2Ciphertext } from "../crypto/types.js";
+import { getWasm } from "../crypto/wasm/loader.js";
 import { uuidToLabel } from "./label.js";
 import { ContentSizeExceededError, LabelMismatchError, InvalidConditionContractError } from "./errors.js";
 import type { StorageProvider } from "./storage/types.js";
@@ -143,7 +147,7 @@ export class Uploader {
         const actualLabel = wasm.tdh2ExtractLabel(rawBytes);
         if (actualLabel.length > 0 &&
             (actualLabel.length !== expectedLabel.length ||
-             !actualLabel.every((b, i) => b === expectedLabel[i]))) {
+             (actualLabel.length === expectedLabel.length && !actualLabel.every((b, i) => b === expectedLabel[i])))) {
           throw new LabelMismatchError(toHex(expectedLabel), toHex(actualLabel));
         }
       }

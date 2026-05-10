@@ -6,8 +6,10 @@ import {
   type Log,
   type PublicClient,
 } from "viem";
-import { cdrAbi, dkgAbi, contractAddresses, type Network } from "../contracts/index.js";
-import { CURVE_ED25519 } from "../crypto/index.js";
+import { cdrAbi } from "../contracts/abis/cdr.js";
+import { dkgAbi } from "../contracts/abis/dkg.js";
+import { contractAddresses, type Network } from "../contracts/addresses.js";
+import { CURVE_ED25519 } from "../crypto/wasm/loader.js";
 import type { Vault } from "./types.js";
 import { RpcConsensusError } from "./errors.js";
 import {
@@ -404,7 +406,7 @@ export class Observer {
     }
 
     // Find the highest round that meets the threshold (descending order)
-    const rounds = [...byRound.keys()].sort((a, b) => b - a);
+    const rounds = Array.from(byRound.keys()).toSorted((a, b) => b - a);
     for (const round of rounds) {
       const events = byRound.get(round)!;
       if (events.length >= minRequired) {

@@ -15,6 +15,7 @@ import {
 import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { CommunityMembershipGatePanel } from "@/components/compositions/community/membership-gate-panel/community-membership-gate-panel";
+import { CommunityProofOfWorkModal } from "@/components/compositions/community/proof-of-work-modal/community-proof-of-work-modal";
 import { MobileRouteShell } from "@/components/compositions/app/mobile-route-shell/mobile-route-shell";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { OnboardingVerificationGate } from "@/components/compositions/verification/onboarding-verification-gate/onboarding-verification-gate";
@@ -101,10 +102,6 @@ function CreatePostComposer({
 }) {
   const knownCommunities = useKnownCommunities();
 
-  if (!state.community) {
-    return null;
-  }
-
   const communityPickerItems: CommunityPickerItem[] = React.useMemo(
     () =>
       knownCommunities.map((c) => ({
@@ -115,95 +112,99 @@ function CreatePostComposer({
     [knownCommunities],
   );
 
+  if (!state.community) {
+    return null;
+  }
+
   return (
     <PostComposer
-      availableTabs={["text", "image", "video", "link", "song", "live"]}
-      canCreateSongPost
-      clubAvatarSrc={state.community.avatar_ref ?? undefined}
-      clubName={`c/${state.community.display_name}`}
-      communityPickerItems={communityPickerItems}
-      composerStep={composerStep}
-      onComposerStepChange={onComposerStepChange}
-      onSelectCommunity={(selectedCommunityId) => {
-        navigate(`/c/${selectedCommunityId}/submit`);
-      }}
-      draft={{
-        audience: state.audience,
-        captionValue: state.caption,
-        charityContribution: state.charityContribution,
-        charityPartner: state.charityPartner,
-        derivativeStep: state.derivativeStep,
-        identity: {
-          authorMode: state.authorMode,
-          allowAnonymousIdentity: state.community.allow_anonymous_identity,
-          allowQualifiersOnAnonymousPosts:
-            state.community.allow_qualifiers_on_anonymous_posts ?? true,
-          agentLabel: state.availableAgent?.displayName,
-          identityMode: state.identityMode,
-          publicHandle:
-            resolvePublicIdentityLabel(state.session?.profile) ?? "@handle",
-          publicAvatarSrc: state.session?.profile?.avatar_ref ?? null,
-          publicAvatarSeed: state.session?.profile?.id ?? null,
-          anonymousLabel: state.communityStableAnonymousLabel
-            ?? resolveAnonymousComposerLabel(
+        availableTabs={["text", "image", "video", "link", "song", "live"]}
+        canCreateSongPost
+        clubAvatarSrc={state.community.avatar_ref ?? undefined}
+        clubName={`c/${state.community.display_name}`}
+        communityPickerItems={communityPickerItems}
+        composerStep={composerStep}
+        onComposerStepChange={onComposerStepChange}
+        onSelectCommunity={(selectedCommunityId) => {
+          navigate(`/c/${selectedCommunityId}/submit`);
+        }}
+        draft={{
+          audience: state.audience,
+          captionValue: state.caption,
+          charityContribution: state.charityContribution,
+          charityPartner: state.charityPartner,
+          derivativeStep: state.derivativeStep,
+          identity: {
+            authorMode: state.authorMode,
+            allowAnonymousIdentity: state.community.allow_anonymous_identity,
+            allowQualifiersOnAnonymousPosts:
+              state.community.allow_qualifiers_on_anonymous_posts ?? true,
+            agentLabel: state.availableAgent?.displayName,
+            identityMode: state.identityMode,
+            publicHandle:
+              resolvePublicIdentityLabel(state.session?.profile) ?? "@handle",
+            publicAvatarSrc: state.session?.profile?.avatar_ref ?? null,
+            publicAvatarSeed: state.session?.profile?.id ?? null,
+            anonymousLabel: state.communityStableAnonymousLabel
+              ?? resolveAnonymousComposerLabel(
+                state.community.anonymous_identity_scope,
+              ),
+            anonymousDescription: resolveAnonymousComposerDescription(
               state.community.anonymous_identity_scope,
             ),
-          anonymousDescription: resolveAnonymousComposerDescription(
-            state.community.anonymous_identity_scope,
-          ),
-          availableQualifiers: state.availableIdentityQualifiers,
-          selectedQualifierIds: state.selectedQualifierIds,
-        },
-        imageUpload: state.imageUpload,
-        imageUploadLabel: state.imageUploadLabel,
-        linkUrlValue: state.linkUrl,
-        linkPreview: state.linkPreview,
-        live: state.liveState,
-        license: state.license,
-        lyricsValue: state.lyrics,
-        mode: state.composerMode,
-        monetization: state.monetizationState,
-        regionalPricingPreview: state.regionalPricingPreview,
-        song: state.songState,
-        songMode: state.songMode,
-        textBodyValue: state.body,
-        titleValue: state.title,
-        video: state.videoState,
-      }}
-      actions={{
-        onAudienceChange: state.setAudience,
-        onAuthorModeChange: state.setAuthorMode,
-        onCaptionValueChange: state.setCaption,
-        onCharityContributionChange: state.setCharityContribution,
-        onDerivativeStepChange: state.setDerivativeStep,
-        onIdentityModeChange: state.setIdentityMode,
-        onImageUploadChange: state.setImageUpload,
-        onLinkUrlValueChange: state.setLinkUrl,
-        onLinkPreviewChange: state.setLinkPreview,
-        onLiveChange: state.setLiveState,
-        onLicenseChange: state.setLicense,
-        onLyricsValueChange: state.setLyrics,
-        onModeChange: state.setComposerMode,
-        onMonetizationChange: state.setMonetizationState,
-        onSelectedQualifierIdsChange: state.setSelectedQualifierIds,
-        onSongChange: state.setSongState,
-        onSongModeChange: state.setSongMode,
-        onTextBodyValueChange: state.setBody,
-        onTitleValueChange: state.setTitle,
-        onVideoChange: state.setVideoState,
-      }}
-      submit={{
-        canContinue: state.submitState.canContinue,
-        canPost: state.submitState.canPost,
-        error: state.submitState.submitError,
-        label:
-          state.composerMode === "song" && state.derivativeStep?.required
-            ? copy.createPost.actions.publishRemix
-            : copy.createPost.actions.post,
-        loading: state.submitting || submitLoading,
-        onSubmit: () => void onSubmit(),
-      }}
-    />
+            availableQualifiers: state.availableIdentityQualifiers,
+            selectedQualifierIds: state.selectedQualifierIds,
+          },
+          imageUpload: state.imageUpload,
+          imageUploadLabel: state.imageUploadLabel,
+          linkUrlValue: state.linkUrl,
+          linkPreview: state.linkPreview,
+          live: state.liveState,
+          license: state.license,
+          lyricsValue: state.lyrics,
+          mode: state.composerMode,
+          monetization: state.monetizationState,
+          regionalPricingPreview: state.regionalPricingPreview,
+          song: state.songState,
+          songMode: state.songMode,
+          textBodyValue: state.body,
+          titleValue: state.title,
+          video: state.videoState,
+        }}
+        actions={{
+          onAudienceChange: state.setAudience,
+          onAuthorModeChange: state.setAuthorMode,
+          onCaptionValueChange: state.setCaption,
+          onCharityContributionChange: state.setCharityContribution,
+          onDerivativeStepChange: state.setDerivativeStep,
+          onIdentityModeChange: state.setIdentityMode,
+          onImageUploadChange: state.setImageUpload,
+          onLinkUrlValueChange: state.setLinkUrl,
+          onLinkPreviewChange: state.setLinkPreview,
+          onLiveChange: state.setLiveState,
+          onLicenseChange: state.setLicense,
+          onLyricsValueChange: state.setLyrics,
+          onModeChange: state.setComposerMode,
+          onMonetizationChange: state.setMonetizationState,
+          onSelectedQualifierIdsChange: state.setSelectedQualifierIds,
+          onSongChange: state.setSongState,
+          onSongModeChange: state.setSongMode,
+          onTextBodyValueChange: state.setBody,
+          onTitleValueChange: state.setTitle,
+          onVideoChange: state.setVideoState,
+        }}
+        submit={{
+          canContinue: state.submitState.canContinue,
+          canPost: state.submitState.canPost,
+          error: state.submitState.submitError,
+          label:
+            state.composerMode === "song" && state.derivativeStep?.required
+              ? copy.createPost.actions.publishRemix
+              : copy.createPost.actions.post,
+          loading: state.submitting || submitLoading,
+          onSubmit: () => void onSubmit(),
+        }}
+      />
   );
 }
 
@@ -236,6 +237,8 @@ export function CreatePostPage({
   const [joinRequestError, setJoinRequestError] = React.useState<string | null>(
     null,
   );
+  const [joinProofOfWorkModalOpen, setJoinProofOfWorkModalOpen] = React.useState(false);
+  const [postProofOfWorkModalOpen, setPostProofOfWorkModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     latestHandleSubmitRef.current = state.handleSubmit;
@@ -303,6 +306,10 @@ export function CreatePostPage({
   });
 
   const {
+    altchaAction,
+    altchaPayload,
+    altchaRequired,
+    altchaScope,
     handleJoin,
     handleSelfModalOpenChange: handleJoinSelfModalOpenChange,
     handleSelfQrError: handleJoinSelfQrError,
@@ -316,6 +323,7 @@ export function CreatePostPage({
     selfLoading: joinSelfLoading,
     selfModalOpen: joinSelfModalOpen,
     selfPrompt: joinSelfPrompt,
+    setAltchaPayload,
   } = useCommunityJoinVerification({
     communityId,
     eligibility: state.eligibility,
@@ -339,8 +347,12 @@ export function CreatePostPage({
       setJoinRequestModalOpen(true);
       return;
     }
+    if (altchaRequired && !altchaPayload) {
+      setJoinProofOfWorkModalOpen(true);
+      return;
+    }
     await handleJoin();
-  }, [handleJoin, state.eligibility?.status]);
+  }, [altchaPayload, altchaRequired, handleJoin, state.eligibility?.status]);
 
   const handleJoinRequestSubmit = React.useCallback(
     async (note: string) => {
@@ -400,6 +412,11 @@ export function CreatePostPage({
     hasSelfDocumentFactVerificationRequest(selfVerificationRequest);
 
   const handleSubmit = React.useCallback(async () => {
+    if (state.postAltchaRequired && !state.postAltchaPayload) {
+      setPostProofOfWorkModalOpen(true);
+      return;
+    }
+
     if (hasPostingAccess) {
       await state.handleSubmit();
       return;
@@ -431,6 +448,8 @@ export function CreatePostPage({
     startSelfVerification,
     startVeryPostVerification,
     state.handleSubmit,
+    state.postAltchaPayload,
+    state.postAltchaRequired,
     hasPostingAccess,
     uniqueHumanVerified,
     verifyRequiredDescription,
@@ -586,6 +605,24 @@ export function CreatePostPage({
         title={joinSelfPrompt.title}
       />
     ) : null;
+    const joinProofOfWorkModal = altchaRequired ? (
+      <CommunityProofOfWorkModal
+        action={altchaAction}
+        continueDisabled={!altchaPayload}
+        continueLoading={joinLoading}
+        description="This usually takes a few seconds and runs only on this device."
+        locale={locale}
+        onContinue={async () => {
+          setJoinProofOfWorkModalOpen(false);
+          await handlePrimaryJoinAction();
+        }}
+        onOpenChange={setJoinProofOfWorkModalOpen}
+        onPayloadChange={setAltchaPayload}
+        open={joinProofOfWorkModalOpen}
+        requirements={state.eligibility.membership_gate_summaries}
+        scope={altchaScope}
+      />
+    ) : null;
     const joinRequiresVeryVerification =
       state.eligibility.status === "verification_required" &&
       resolveSuggestedVerificationProvider(state.eligibility) === "very";
@@ -594,7 +631,12 @@ export function CreatePostPage({
       return (
         <MobileRouteShell
           className="justify-start pb-32"
-          footer={joinRequestModal}
+          footer={(
+            <>
+              {joinRequestModal}
+              {joinProofOfWorkModal}
+            </>
+          )}
           onCloseClick={() => navigate(`/c/${communityId}`)}
           title={pageTitle}
         >
@@ -618,6 +660,7 @@ export function CreatePostPage({
             <>
               {joinRequestModal}
               {joinSelfVerificationModal}
+              {joinProofOfWorkModal}
             </>
           }
           onCloseClick={() => navigate(`/c/${communityId}`)}
@@ -653,6 +696,7 @@ export function CreatePostPage({
         </ContentRailShell>
         {joinRequestModal}
         {joinSelfVerificationModal}
+        {joinProofOfWorkModal}
       </>
     );
   }
@@ -669,6 +713,24 @@ export function CreatePostPage({
       open={selfModalOpen}
       selfApp={selfPrompt.selfApp}
       title={selfPrompt.title}
+    />
+  ) : null;
+  const postProofOfWorkModal = state.postAltchaRequired ? (
+    <CommunityProofOfWorkModal
+      action={state.postAltchaAction}
+      continueDisabled={!state.postAltchaPayload}
+      continueLoading={state.submitting}
+      description="This usually takes a few seconds and runs only on this device."
+      locale={locale}
+      onContinue={async () => {
+        setPostProofOfWorkModalOpen(false);
+        await handleSubmit();
+      }}
+      onOpenChange={setPostProofOfWorkModalOpen}
+      onPayloadChange={state.setPostAltchaPayload}
+      open={postProofOfWorkModalOpen}
+      requirements={state.community?.membership_gate_summaries}
+      scope={state.postAltchaScope}
     />
   ) : null;
 
@@ -701,7 +763,12 @@ export function CreatePostPage({
 
     return (
       <MobileRouteShell
-        footer={selfVerificationModal}
+        footer={(
+          <>
+            {selfVerificationModal}
+            {postProofOfWorkModal}
+          </>
+        )}
         onBackClick={getPreviousComposerStep(mobileComposerStep, state.composerMode)
           ? () => setMobileComposerStep(getPreviousComposerStep(mobileComposerStep, state.composerMode) ?? "write")
           : undefined}
@@ -752,6 +819,7 @@ export function CreatePostPage({
         </StackPageShell>
       </ContentRailShell>
       {selfVerificationModal}
+      {postProofOfWorkModal}
     </>
   );
 }

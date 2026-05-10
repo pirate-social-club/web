@@ -31,7 +31,7 @@ export function PostComposerSongDetailsSection({
       <Type as="h2" variant="h3" className="text-muted-foreground">
         Song details
       </Type>
-      <label className="block space-y-2">
+      <div className="block space-y-2">
         <Type as="span" variant="body-strong">
           Genre
         </Type>
@@ -47,8 +47,8 @@ export function PostComposerSongDetailsSection({
             ))}
           </SelectContent>
         </Select>
-      </label>
-      <label className="block space-y-2">
+      </div>
+      <div className="block space-y-2">
         <Type as="span" variant="body-strong">
           Language
         </Type>
@@ -64,13 +64,14 @@ export function PostComposerSongDetailsSection({
             ))}
           </SelectContent>
         </Select>
-      </label>
-      <label className="block space-y-2">
+      </div>
+      <label className="block space-y-2" htmlFor="post-composer-song-lyrics">
         <Type as="span" variant="body-strong">
           Lyrics
         </Type>
         <Textarea
           className="min-h-28 resize-none rounded-[var(--radius-lg)] bg-card"
+          id="post-composer-song-lyrics"
           onChange={(event) => onChange({ ...value, lyrics: event.target.value })}
           placeholder="Paste lyrics or mark instrumental"
           value={value.lyrics}

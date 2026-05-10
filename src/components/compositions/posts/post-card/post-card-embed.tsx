@@ -271,23 +271,44 @@ function formatProbability(value: number | null | undefined): string {
   return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
 }
 
+const postEmbedDateFormatters = new Map<string, Intl.DateTimeFormat>();
+const postEmbedChartDateFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function getPostEmbedDateFormatter(locale?: string | null): Intl.DateTimeFormat {
+  const key = locale || "";
+  const existing = postEmbedDateFormatters.get(key);
+  if (existing) return existing;
+  const formatter = Intl.DateTimeFormat(locale || undefined, {
+    day: "numeric",
+    month: "short",
+  });
+  postEmbedDateFormatters.set(key, formatter);
+  return formatter;
+}
+
+function getPostEmbedChartDateFormatter(locale?: string | null): Intl.DateTimeFormat {
+  const key = locale || "";
+  const existing = postEmbedChartDateFormatters.get(key);
+  if (existing) return existing;
+  const formatter = Intl.DateTimeFormat(locale || undefined, {
+    month: "short",
+  });
+  postEmbedChartDateFormatters.set(key, formatter);
+  return formatter;
+}
+
 function formatDateLabel(value: string | null | undefined, locale?: string | null): string | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(locale || undefined, {
-    day: "numeric",
-    month: "short",
-  }).format(date);
+  return getPostEmbedDateFormatter(locale).format(date);
 }
 
 function formatChartDateLabel(value: number | null | undefined, locale?: string | null): string | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   const date = new Date(value * 1000);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(locale || undefined, {
-    month: "short",
-  }).format(date);
+  return getPostEmbedChartDateFormatter(locale).format(date);
 }
 
 function buildSparkline(points: NonNullable<EmbedContent["preview"]>["chart"], locale?: string | null, width = 320, height = 96): {

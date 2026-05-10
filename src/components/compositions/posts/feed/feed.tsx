@@ -73,6 +73,8 @@ export const topTimeRangeOptions = [
   { value: "all", label: "All time" },
 ] satisfies readonly TopTimeRangeOption[];
 
+const EMPTY_FEED_SORT_OPTIONS: FeedSortOption[] = [];
+
 export function TopTimeRangeControl({
   options = topTimeRangeOptions,
   value,
@@ -104,12 +106,14 @@ export function TopTimeRangeControl({
 }
 
 function FeedLoadingRows({ count }: { count: number }) {
+  const rows = Array.from({ length: count }, (_, index) => index + 1);
+
   return (
     <div className="space-y-0 md:space-y-3">
-      {Array.from({ length: count }, (_, index) => (
+      {rows.map((rowNumber) => (
         <PostCardSkeleton
-          key={`feed-skeleton-${index}`}
-          showMedia={index % 2 === 0}
+          key={`feed-skeleton-${rowNumber}`}
+          showMedia={rowNumber % 2 === 1}
         />
       ))}
     </div>
@@ -159,7 +163,7 @@ export function Feed({
   subtitle,
   items,
   activeSort,
-  availableSorts = [],
+  availableSorts = EMPTY_FEED_SORT_OPTIONS,
   onSortChange,
   headerAction,
   controls,
@@ -184,7 +188,12 @@ export function Feed({
 
   React.useEffect(() => {
     setOriginalPostIds((current) => {
-      const itemIdsWithOriginals = new Set(items.filter((item) => item.postOriginal).map((item) => item.id));
+      const itemIdsWithOriginals = new Set(items.reduce<string[]>((result, item) => {
+        if (item.postOriginal) {
+          result.push(item.id);
+        }
+        return result;
+      }, []));
       const next = new Set<string>();
       for (const id of current) {
         if (itemIdsWithOriginals.has(id)) {

@@ -57,7 +57,7 @@ export function VideoFramePicker({
   }, [objectUrl, selectedSeconds]);
 
   return (
-    <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4">
+    <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-background p-4">
       <div className="flex items-center justify-between gap-3">
         <Type as="div" variant="label">
           {copy.fields.coverFrame}
@@ -68,7 +68,7 @@ export function VideoFramePicker({
       </div>
       {objectUrl ? (
         <video
-          className="aspect-video w-full rounded-[var(--radius-lg)] bg-black object-contain"
+          className="aspect-video w-full rounded-[var(--radius-lg)] bg-zinc-950 object-contain"
           muted
           onLoadedMetadata={(event) => {
             const duration = event.currentTarget.duration;

@@ -118,7 +118,7 @@ export function PostComposerSettingsRow({
 }) {
   return (
     <button
-      className="flex min-h-16 w-full items-center gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4 text-start"
+      className="flex min-h-16 w-full items-center gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4 text-start"
       onClick={onClick}
       type="button"
     >
@@ -149,7 +149,7 @@ function OptionRow({
   return (
     <button
       className={cn(
-        "grid w-full grid-cols-[1fr_auto] items-center gap-4 rounded-[var(--radius-lg)] border px-4 py-4 text-start",
+        "grid w-full grid-cols-[1fr_auto] items-center gap-4 rounded-[var(--radius-lg)] border p-4 text-start",
         icon && "grid-cols-[auto_1fr_auto]",
         checked ? "border-primary bg-primary-subtle" : "border-border-soft bg-card",
       )}
@@ -288,7 +288,7 @@ export function PostComposerSettingsSections({
 
       {showAccess ? (
         <section className="space-y-3">
-          <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
+          <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
             <div className="flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5">
               <Checkbox
                 checked={access === "paid"}
@@ -358,7 +358,7 @@ export function PostComposerSettingsSections({
             ) : null}
           </div>
           {shouldShowLicenseFields ? (
-            <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
+            <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
               <div className="space-y-3">
                 <Type as="div" variant="body-strong">
                   {copy.licenseLabel}

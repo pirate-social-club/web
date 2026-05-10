@@ -52,17 +52,21 @@ export function MobileReplyScreen({
     const previousLeft = body.style.left;
     const previousWidth = body.style.width;
 
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.left = `-${scrollX}px`;
-    body.style.width = "100%";
+    Object.assign(body.style, {
+      left: `-${scrollX}px`,
+      position: "fixed",
+      top: `-${scrollY}px`,
+      width: "100%",
+    });
     textareaRef.current?.focus({ preventScroll: true });
 
     return () => {
-      body.style.position = previousPosition;
-      body.style.top = previousTop;
-      body.style.left = previousLeft;
-      body.style.width = previousWidth;
+      Object.assign(body.style, {
+        left: previousLeft,
+        position: previousPosition,
+        top: previousTop,
+        width: previousWidth,
+      });
       window.scrollTo(scrollX, scrollY);
     };
   }, []);
@@ -89,7 +93,7 @@ export function MobileReplyScreen({
         <div>
           <Textarea
             className={cn(
-              "min-h-80 flex-1 resize-none rounded-none border-0 bg-transparent px-0 py-0 leading-7 shadow-none",
+              "min-h-80 flex-1 resize-none rounded-none border-0 bg-transparent p-0 leading-7 shadow-none",
               "focus-visible:ring-0 focus-visible:ring-offset-0",
             )}
             onFocus={() => textareaRef.current?.focus({ preventScroll: true })}

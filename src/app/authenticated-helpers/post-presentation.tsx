@@ -136,10 +136,16 @@ function extractLinkSummary(
     ? summary.summary_paragraph.trim()
     : null;
   const keyPoints = Array.isArray(summary.key_points)
-    ? summary.key_points
-      .filter((point): point is string => typeof point === "string")
-      .map((point) => point.trim())
-      .filter(Boolean)
+    ? summary.key_points.reduce<string[]>((result, point) => {
+      if (typeof point !== "string") {
+        return result;
+      }
+      const trimmedPoint = point.trim();
+      if (trimmedPoint) {
+        result.push(trimmedPoint);
+      }
+      return result;
+    }, [])
     : [];
   const status = typeof summary.status === "string"
     ? summary.status
@@ -242,8 +248,12 @@ export function formatQualifierLabel(qualifierTemplateId: string): string {
 
   return normalized
     .split(/[_-]+/u)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .reduce<string[]>((result, segment) => {
+      if (segment) {
+        result.push(segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase());
+      }
+      return result;
+    }, [])
     .join(" ");
 }
 
@@ -361,8 +371,13 @@ export function resolveCommentAuthorAvatarSeed(
 
 export function resolvePostQualifierLabels(postResponse: ApiPost): string[] | undefined {
   const disclosedQualifierLabels = postResponse.post.disclosed_qualifiers_json
-    ?.map((qualifier) => qualifier.rendered_label?.trim())
-    .filter((label): label is string => Boolean(label));
+    ?.reduce<string[]>((result, qualifier) => {
+      const label = qualifier.rendered_label?.trim();
+      if (label) {
+        result.push(label);
+      }
+      return result;
+    }, []);
 
   if (disclosedQualifierLabels?.length) {
     return disclosedQualifierLabels;

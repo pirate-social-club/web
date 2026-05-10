@@ -18,7 +18,7 @@ export function useKeyboardBottomOffset() {
 
     updateOffset();
     activeViewport.addEventListener("resize", updateOffset);
-    activeViewport.addEventListener("scroll", updateOffset);
+    activeViewport.addEventListener("scroll", updateOffset, { passive: true });
     return () => {
       activeViewport.removeEventListener("resize", updateOffset);
       activeViewport.removeEventListener("scroll", updateOffset);

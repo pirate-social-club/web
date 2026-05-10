@@ -149,7 +149,7 @@ export function RegionalPricingPreviewDialog({
             <RegionalPricingPreviewBody priceUsd={priceUsd} preview={preview} />
             <DialogFooter className="max-sm:hidden">
               <DialogClose asChild>
-                <Button>Done</Button>
+                <Button>Close preview</Button>
               </DialogClose>
             </DialogFooter>
           </div>

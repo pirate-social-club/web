@@ -102,7 +102,13 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
 
         void loadProfilesByUserId(
           api,
-          nextFeedEntries.map((entry) => entry.post.post.identity_mode === "public" ? entry.post.post.author_user : null).filter((userId): userId is string => Boolean(userId)),
+          nextFeedEntries.reduce<string[]>((result, entry) => {
+            const userId = entry.post.post.identity_mode === "public" ? entry.post.post.author_user : null;
+            if (userId) {
+              result.push(userId);
+            }
+            return result;
+          }, []),
           sessionProfile && sessionUserId ? { [sessionUserId]: sessionProfile } : {},
         )
           .then((profiles) => {
@@ -113,9 +119,12 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
           });
 
         const commerceCommunityIds = sessionUserId
-          ? [...new Set(nextFeedEntries
-            .filter((entry) => entry.post.post.post_type === "song" || entry.post.post.post_type === "video")
-            .map((entry) => entry.community.id))]
+          ? [...new Set(nextFeedEntries.reduce<string[]>((result, entry) => {
+            if (entry.post.post.post_type === "song" || entry.post.post.post_type === "video") {
+              result.push(entry.community.id);
+            }
+            return result;
+          }, []))]
           : [];
 
         if (commerceCommunityIds.length > 0) {
@@ -436,7 +445,7 @@ export function YourCommunitiesPage() {
 export function NotFoundBody({ title, description, body, backHomeLabel }: { title: string; description: string; body: string; backHomeLabel: string }) {
   return (
     <PageContainer className="flex min-w-0 flex-1 flex-col gap-6">
-      <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card px-5 py-5 md:px-6 md:py-6">
+      <div className="rounded-[var(--radius-3xl)] border border-border-soft bg-card p-5 md:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="flex flex-col gap-2">
             <Type as="h1" variant="h1" className="text-2xl md:text-3xl">{title}</Type>

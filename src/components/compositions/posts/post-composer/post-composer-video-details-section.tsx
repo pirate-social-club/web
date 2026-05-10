@@ -53,14 +53,15 @@ export function PostComposerVideoDetailsSection({
             </div>
           )}
         </div>
-        <div className="space-y-4 px-4 py-4">
-          <label className="block space-y-2">
+        <div className="space-y-4 p-4">
+          <label className="block space-y-2" htmlFor="post-composer-video-poster-frame">
             <Type as="span" variant="body-strong">
               Poster frame
             </Type>
             <div className="grid grid-cols-[1fr_auto] items-center rounded-full border border-border-soft bg-background px-4">
               <Input
                 className="h-12 rounded-none border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
+                id="post-composer-video-poster-frame"
                 inputMode="numeric"
                 onChange={(event) => setPosterFrameSeconds(event.target.value)}
                 placeholder="0"

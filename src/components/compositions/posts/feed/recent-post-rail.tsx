@@ -27,12 +27,23 @@ export interface RecentPostRailProps {
   title?: string;
 }
 
-function formatCompactCount(value: number, localeTag: string): string {
-  return new Intl.NumberFormat(localeTag, {
+const compactCountFormatters = new Map<string, Intl.NumberFormat>();
+
+function getCompactCountFormatter(localeTag: string, maximumFractionDigits: number): Intl.NumberFormat {
+  const key = `${localeTag}:${maximumFractionDigits}`;
+  const existing = compactCountFormatters.get(key);
+  if (existing) return existing;
+  const formatter = Intl.NumberFormat(localeTag, {
     compactDisplay: "short",
     notation: "compact",
-    maximumFractionDigits: value >= 1000 ? 1 : 0,
-  }).format(value);
+    maximumFractionDigits,
+  });
+  compactCountFormatters.set(key, formatter);
+  return formatter;
+}
+
+function formatCompactCount(value: number, localeTag: string): string {
+  return getCompactCountFormatter(localeTag, value >= 1000 ? 1 : 0).format(value);
 }
 
 export function RecentPostRail({

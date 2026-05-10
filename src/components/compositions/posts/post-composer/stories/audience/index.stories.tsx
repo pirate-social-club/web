@@ -23,7 +23,7 @@ export const CommunityDefault: Story = {
 
 export const Public: Story = {
   name: "Public",
-  render: () => {
+  render: function StoryRender() {
     const [audience, setAudience] = React.useState<ComposerAudienceState>({
       visibility: "public",
       publicOptionEnabled: true,

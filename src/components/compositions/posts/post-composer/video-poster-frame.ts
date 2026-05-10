@@ -70,12 +70,13 @@ function candidateSeconds(duration: number, selectedSeconds: number): number[] {
     ? [selectedSeconds]
     : [0, 0.5, 1, 2, duration * 0.1, duration * 0.25];
 
-  return Array.from(new Set(
-    rawCandidates
-      .filter((candidate) => Number.isFinite(candidate) && candidate >= 0)
-      .map((candidate) => Math.min(Math.max(0, duration), candidate))
-      .map((candidate) => Math.round(candidate * 10) / 10),
-  ));
+  return Array.from(new Set(rawCandidates.reduce<number[]>((result, candidate) => {
+    if (Number.isFinite(candidate) && candidate >= 0) {
+      const clampedCandidate = Math.min(Math.max(0, duration), candidate);
+      result.push(Math.round(clampedCandidate * 10) / 10);
+    }
+    return result;
+  }, [])));
 }
 
 function drawPosterFrame(

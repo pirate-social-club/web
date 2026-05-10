@@ -432,7 +432,7 @@ export function usePost(
     const result = await runGatedCommunityAction({
       action: "reply_post",
       communityId,
-      onAllowed: async () => {
+      onAllowed: async (allowedContext) => {
         try {
           const commentBody = await buildCommentRequestBody(input);
           await api.communities.createComment(
@@ -444,6 +444,7 @@ export function usePost(
                 commentBody,
               )
               : commentBody,
+            { altchaPayload: allowedContext?.altchaPayload },
           );
           await refreshTopLevelComments(communityId);
         } catch (nextError) {
@@ -460,8 +461,9 @@ export function usePost(
     if (!post) return "blocked";
     const result = await runGatedCommunityAction({
       action: "reply_comment",
+      commentId,
       communityId: post.post.community,
-      onAllowed: async () => {
+      onAllowed: async (allowedContext) => {
         try {
           const commentBody = await buildCommentRequestBody(input);
           await api.comments.createReply(
@@ -469,6 +471,7 @@ export function usePost(
             input.authorMode === "agent"
               ? await signAgentAuthoredCommentBody(`/comments/${commentId}/replies`, commentBody)
               : commentBody,
+            { altchaPayload: allowedContext?.altchaPayload },
           );
           const context = await api.comments.getContext(commentId, { limit: THREAD_COMMENT_PAGE_LIMIT, locale });
           const nextProfiles = await loadProfilesByUserId(api, [

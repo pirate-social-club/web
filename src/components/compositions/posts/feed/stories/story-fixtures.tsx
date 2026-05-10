@@ -35,10 +35,10 @@ export function StoryRail({
       </div>
       <div>
         {items.map((item) => (
-          <a
-            className="flex items-start gap-4 border-b border-border-soft px-5 py-4 last:border-b-0"
-            href="#"
+          <button
+            className="flex w-full items-start gap-4 border-b border-border-soft px-5 py-4 text-start last:border-b-0"
             key={item.id}
+            type="button"
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-3">
@@ -51,11 +51,11 @@ export function StoryRail({
               ) : null}
             </div>
             {item.thumbnailSrc ? (
-              <div className="h-28 w-28 shrink-0 overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-surface-skeleton">
+              <div className="size-28 shrink-0 overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-surface-skeleton">
                 <img alt="" className="h-full w-full object-cover" src={item.thumbnailSrc} />
               </div>
             ) : null}
-          </a>
+          </button>
         ))}
       </div>
     </div>

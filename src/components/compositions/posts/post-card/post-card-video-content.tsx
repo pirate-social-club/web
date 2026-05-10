@@ -224,7 +224,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
   const [expanded, setExpanded] = React.useState(false);
-  const [playRequested, setPlayRequested] = React.useState(false);
+  const playRequestedRef = React.useRef(false);
   const ui = deriveVideoUI(content);
   const {
     durationLabel,
@@ -238,18 +238,18 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
   const isBuffering = content.playbackState === "buffering";
 
   React.useEffect(() => {
-    if (playRequested && hasPlayableSource) {
+    if (playRequestedRef.current && hasPlayableSource) {
       setExpanded(true);
-      setPlayRequested(false);
+      playRequestedRef.current = false;
     }
-  }, [hasPlayableSource, playRequested]);
+  }, [hasPlayableSource]);
 
   const handlePlay = () => {
     if (ui.canPlay) {
       if (hasPlayableSource) {
         setExpanded(true);
       } else {
-        setPlayRequested(true);
+        playRequestedRef.current = true;
       }
       onPlay?.();
     }

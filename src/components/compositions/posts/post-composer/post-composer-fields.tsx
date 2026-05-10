@@ -124,7 +124,7 @@ export function ShellPill({
                   type="button"
                 >
                   <CommunityAvatar
-                    className="h-11 w-11 bg-card text-base"
+                    className="size-11 bg-card text-base"
                     avatarSrc={community.avatarSrc}
                     communityId={community.communityId}
                     displayName={community.displayName}
@@ -173,7 +173,7 @@ export function ShellPill({
                 textValue={community.displayName}
               >
                 <CommunityAvatar
-                  className="h-9 w-9 bg-card text-base"
+                  className="size-9 bg-card text-base"
                   avatarSrc={community.avatarSrc}
                   communityId={community.communityId}
                   displayName={community.displayName}
@@ -251,7 +251,7 @@ export function UploadField({
       <label
         className={cn(
           "flex w-full cursor-pointer rounded-[var(--radius-lg)] border border-border-soft bg-background transition-colors hover:border-primary/40",
-          isArtwork ? "items-center gap-4 px-4 py-4" : "items-center justify-between gap-4 px-4 py-3.5",
+          isArtwork ? "items-center gap-4 p-4" : "items-center justify-between gap-4 px-4 py-3.5",
         )}
         htmlFor={inputId}
       >

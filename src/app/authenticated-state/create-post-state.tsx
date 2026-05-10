@@ -238,6 +238,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   } = draftActions;
   const [availableAgent, setAvailableAgent] = React.useState<AvailableSigningAgent | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
+  const [postAltchaPayload, setPostAltchaPayload] = React.useState<string | null>(null);
+  const [postAltchaResetKey, setPostAltchaResetKey] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
 
   const refetchEligibility = React.useCallback(async () => {
@@ -589,6 +591,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [availableAgent]);
   const submitSongPost = useSongSubmit({ communityId, signAgentAuthoredBody });
   const hasCommunityPostingRole = viewerHasCommunityPostingRole(session?.user.id, community, communityOwnerUserId);
+  const postAltchaRequired = !hasCommunityPostingRole
+    && (community?.membership_gate_summaries ?? []).some((gate) => gate.gate_type === "altcha_pow");
+  const postAltchaRequestOptions = postAltchaPayload ? { altchaPayload: postAltchaPayload } : undefined;
   const uploadVideoArtifact = React.useCallback(async (video: VideoComposerState) => {
     const file = video.primaryVideoUpload;
     if (!file) {
@@ -627,6 +632,11 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       return;
     }
 
+    if (postAltchaRequired && !postAltchaPayload) {
+      setSubmitError("Complete the proof-of-work check first.");
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError(null);
     logger.info("[create-post] submit started", {
@@ -657,6 +667,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           songMode,
         });
         const songResult = await submitSongPost({
+          altchaPayload: postAltchaPayload,
           audience,
           authorMode,
           charityContribution,
@@ -748,6 +759,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           authorMode === "agent"
             ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, imageRequest)
             : imageRequest,
+          postAltchaRequestOptions,
         );
       } else if (composerMode === "video") {
         logger.info("[create-post] uploading video artifact", {
@@ -810,6 +822,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           authorMode === "agent"
             ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, videoRequest)
             : videoRequest,
+          postAltchaRequestOptions,
         );
         logger.info("[create-post] video post created", {
           assetId: result.asset,
@@ -853,6 +866,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           authorMode === "agent"
             ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, linkRequest)
             : linkRequest,
+          postAltchaRequestOptions,
         );
       } else {
         const textRequest: CreatePostRequest = {
@@ -872,9 +886,11 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           authorMode === "agent"
             ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, textRequest)
             : textRequest,
+          postAltchaRequestOptions,
         );
       }
 
+      setPostAltchaPayload(null);
       logger.info("[create-post] publish completed", {
         postId: publishedPostId ?? result?.id,
         postType: publishedPostType,
@@ -889,6 +905,10 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         error,
         message: getErrorMessage(error, "Could not create post"),
       });
+      if (postAltchaRequired) {
+        setPostAltchaPayload(null);
+        setPostAltchaResetKey((current) => current + 1);
+      }
       setSubmitError(getErrorMessage(error, "Could not create post"));
     } finally {
       logger.info("[create-post] submit finished", {
@@ -899,7 +919,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     }
   }, [
     api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, hasCommunityPostingRole,
-    identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, pricingPolicy?.regional_pricing_enabled,
+    identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled,
     selectedQualifierIds, session?.user.id, setDerivativeStep, setPendingSongBundleId, setSongMode, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     uploadVideoArtifact, videoState,
   ]);
@@ -936,6 +956,11 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     lyrics,
     monetizationState,
     regionalPricingPreview,
+    postAltchaAction: `community:${communityId}`,
+    postAltchaPayload,
+    postAltchaRequired,
+    postAltchaResetKey,
+    postAltchaScope: "post_create" as const,
     selectedQualifierIds,
     session,
     songMode,
@@ -959,6 +984,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setLicense,
     setLyrics,
     setMonetizationState,
+    setPostAltchaPayload,
     setSelectedQualifierIds,
     setSongMode,
     setSongState,

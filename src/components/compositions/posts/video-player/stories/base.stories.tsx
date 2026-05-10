@@ -63,7 +63,7 @@ export const StartAt30s: Story = {
 
 export const OnEndCallback: Story = {
   name: "On End Callback",
-  render: () => {
+  render: function StoryRender() {
     const [ended, setEnded] = React.useState(false);
 
     return (

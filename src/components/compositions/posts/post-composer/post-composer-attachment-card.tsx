@@ -127,6 +127,14 @@ export function PostComposerAttachmentCard({
   onRemove: () => void;
   onReplace?: (kind: AttachmentKind) => void;
 }) {
+  const linkInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    if (attachment?.kind === "link") {
+      linkInputRef.current?.focus();
+    }
+  }, [attachment?.kind]);
+
   if (!attachment) return null;
 
   if (attachment.kind === "link") {
@@ -136,15 +144,15 @@ export function PostComposerAttachmentCard({
       <div className="space-y-2">
         <div className="grid grid-cols-[1fr_auto] items-center gap-3">
           <Input
-            autoFocus
             aria-invalid={isInvalid}
             className={cn(
-              "h-auto rounded-none border-0 bg-transparent px-0 py-0 text-2xl shadow-none placeholder:text-muted-foreground focus-visible:ring-0",
+              "h-auto rounded-none border-0 bg-transparent p-0 text-2xl shadow-none placeholder:text-muted-foreground focus-visible:ring-0",
               isInvalid && "text-destructive",
             )}
             inputMode="url"
             onChange={(event) => onChange({ ...attachment, url: event.target.value })}
             placeholder="https://"
+            ref={linkInputRef}
             value={attachment.url}
           />
           <button
@@ -232,7 +240,7 @@ export function PostComposerAttachmentCard({
   }
 
   return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
+    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
       <span className="grid size-12 place-items-center rounded-full bg-muted text-muted-foreground">
         <Microphone className="size-7" />
       </span>

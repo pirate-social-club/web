@@ -38,11 +38,10 @@ export function CommentMediaGrid({
 
   return (
     <div className={cn("mt-2 grid max-w-sm gap-2", className)}>
-      {items.map((item, index) => (
+      {items.map((item) => (
         <div
           className="block overflow-hidden rounded-[var(--radius-lg)] border border-border-soft bg-muted"
-          key={`${item.storageRef}-${index}`}
-          onClick={(event) => event.stopPropagation()}
+          key={item.storageRef}
         >
           <img
             alt={item.alt ?? ""}

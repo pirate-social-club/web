@@ -214,8 +214,8 @@ export function PostThread({
         {rootReplyOpen ? (
           <div ref={rootReplyContainerRef} className="mx-4 mb-5 space-y-3">
             <FormattedTextarea
-              autoFocus
               className="min-h-28"
+              focusOnMount
               onChange={setRootReplyBody}
               placeholder={rootReplyPlaceholder}
               value={rootReplyBody}

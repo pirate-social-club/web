@@ -48,7 +48,7 @@ export function IdentitySection({
   const currentOption: IdentityOption = authorMode === "agent" ? "agent" : identityMode;
   const label = postAsLabel ?? copy.sections.postAs;
 
-  function handleChange(option: IdentityOption) {
+  function selectIdentityOption(option: IdentityOption) {
     if (option === "agent") {
       onAuthorModeChange("agent");
       onIdentityModeChange("public");
@@ -68,7 +68,7 @@ export function IdentitySection({
       size={size}
       triggerClassName={triggerClassName}
       value={currentOption}
-      onChange={handleChange}
+      onChange={selectIdentityOption}
     />
   );
 }
@@ -124,7 +124,7 @@ export function QualifierSection({
       ) : null}
 
       {availableQualifiers.length === 0 ? (
-        <Type as="div" variant="caption" className="rounded-[var(--radius-lg)] border border-dashed border-border-soft px-4 py-4 ">
+        <Type as="div" variant="caption" className="rounded-[var(--radius-lg)] border border-dashed border-border-soft p-4 ">
           {copy.empty.noOptionalQualifiers}
         </Type>
       ) : null}

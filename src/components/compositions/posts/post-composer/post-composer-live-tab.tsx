@@ -189,7 +189,7 @@ export function LiveTabContent({
         </div>
       ) : null}
 
-      <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4">
+      <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
         <FormSectionHeading
           description={
             live.roomKind === "solo"

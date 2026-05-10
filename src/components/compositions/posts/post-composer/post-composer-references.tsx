@@ -25,7 +25,7 @@ export function References({
   const copy = getLocaleMessages(locale, "routes").createPost;
   if (!items || items.length === 0) {
     return (
-      <div className="rounded-[var(--radius-lg)] border border-dashed border-border-soft px-4 py-4 text-base text-muted-foreground">
+      <div className="rounded-[var(--radius-lg)] border border-dashed border-border-soft p-4 text-base text-muted-foreground">
         {copy.empty.noReferences}
       </div>
     );

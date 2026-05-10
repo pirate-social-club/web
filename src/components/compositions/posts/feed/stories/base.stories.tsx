@@ -46,7 +46,7 @@ type Story = StoryObj<typeof meta>;
 
 export const HomeMixed: Story = {
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
     const [topRange, setTopRange] = React.useState("day");
 
@@ -71,7 +71,7 @@ export const HomeMixed: Story = {
 
 export const HomeRecentPostsRail: Story = {
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
     const [topRange, setTopRange] = React.useState("day");
 
@@ -94,7 +94,7 @@ export const HomeRecentPostsRail: Story = {
 
 export const HomeLoadingMore: Story = {
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
     const [topRange, setTopRange] = React.useState("day");
 
@@ -118,7 +118,7 @@ export const HomeLoadingMore: Story = {
 
 export const YourCommunitiesEmpty: Story = {
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("new");
     const [topRange, setTopRange] = React.useState("day");
 
@@ -145,7 +145,7 @@ export const YourCommunitiesEmpty: Story = {
 
 export const CommunityWithFlairFilter: Story = {
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
     const [topRange, setTopRange] = React.useState("day");
 
@@ -173,7 +173,7 @@ export const CommunityWithFlairFilter: Story = {
 
 export const MixedTranslatedAndOriginal: Story = {
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
     const [topRange, setTopRange] = React.useState("day");
 
@@ -199,7 +199,7 @@ export const HomeViewportPreset: Story = {
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
     const [topRange, setTopRange] = React.useState("day");
 
@@ -225,7 +225,7 @@ export const CommunityViewportPreset: Story = {
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
     const [topRange, setTopRange] = React.useState("day");
 
@@ -252,7 +252,7 @@ export const CommunityViewportPreset: Story = {
 
 export const YourCommunitiesMixed: Story = {
   args: {},
-  render: () => {
+  render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("new");
     const [topRange, setTopRange] = React.useState("day");
 

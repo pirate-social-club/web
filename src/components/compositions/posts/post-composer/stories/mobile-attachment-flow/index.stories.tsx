@@ -237,7 +237,7 @@ function ComposeStep({
       >
         <CommunityPill />
         <Textarea
-          className="min-h-18 resize-none break-words rounded-none border-0 bg-transparent px-0 py-0 text-3xl font-semibold leading-tight shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+          className="min-h-18 resize-none break-words rounded-none border-0 bg-transparent p-0 text-3xl font-semibold leading-tight shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
           onChange={(event) => onTitleChange(event.target.value)}
           placeholder="Title"
           value={title}
@@ -249,7 +249,7 @@ function ComposeStep({
           onReplace={handleAttachmentSelect}
         />
         <Textarea
-          className="min-h-[38dvh] resize-none rounded-none border-0 bg-transparent px-0 py-0 text-xl leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+          className="min-h-[38dvh] resize-none rounded-none border-0 bg-transparent p-0 text-xl leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
           onChange={(event) => onBodyChange(event.target.value)}
           placeholder={attachment ? "body text (optional)" : "body text"}
           value={body}
@@ -561,7 +561,7 @@ function DesktopAttachmentFlow() {
             : "Preview";
 
   return (
-    <div className="min-h-screen bg-background px-8 py-8 text-foreground">
+    <div className="min-h-screen bg-background p-8 text-foreground">
       <div className="mx-auto max-w-[980px]">
         <Card className="overflow-hidden bg-card shadow-none">
           <CardHeader className="border-b border-border-soft px-6 py-5">
@@ -573,31 +573,35 @@ function DesktopAttachmentFlow() {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {(["compose", "video-details", "song-details", "settings", "review"] as const)
-                  .filter(
-                    (item) =>
-                      (item !== "song-details" || flow.attachment?.kind === "song") &&
-                      (item !== "video-details" || flow.attachment?.kind === "video"),
-                  )
-                  .map((item) => (
+                  .reduce<React.ReactNode[]>((nodes, item) => {
+                    if (
+                      (item === "song-details" && flow.attachment?.kind !== "song") ||
+                      (item === "video-details" && flow.attachment?.kind !== "video")
+                    ) {
+                      return nodes;
+                    }
+                    nodes.push(
                     <span
                       className={cn(
                         "h-1.5 w-9 rounded-full",
                         flow.step === item ? "bg-primary" : "bg-border-soft",
                       )}
                       key={item}
-                    />
-                  ))}
+                    />,
+                    );
+                    return nodes;
+                  }, [])}
               </div>
             </div>
           </CardHeader>
 
-          <CardContent className="px-6 py-6">
+          <CardContent className="p-6">
             {flow.step === "compose" ? (
               <main className="space-y-8">
                 <CommunityPill />
                 <section className="space-y-6">
                   <Textarea
-                    className="min-h-20 resize-none break-words rounded-none border-0 bg-transparent px-0 py-0 text-3xl font-semibold leading-tight shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+                    className="min-h-20 resize-none break-words rounded-none border-0 bg-transparent p-0 text-3xl font-semibold leading-tight shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
                     onChange={(event) => flow.setTitle(event.target.value)}
                     placeholder="Title"
                     value={flow.title}
@@ -609,7 +613,7 @@ function DesktopAttachmentFlow() {
                     onReplace={handleAttachmentSelect}
                   />
                   <Textarea
-                    className="min-h-56 resize-none rounded-none border-0 bg-transparent px-0 py-0 text-xl leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+                    className="min-h-56 resize-none rounded-none border-0 bg-transparent p-0 text-xl leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
                     onChange={(event) => flow.setBody(event.target.value)}
                     placeholder={flow.attachment ? "body text (optional)" : "body text"}
                     value={flow.body}

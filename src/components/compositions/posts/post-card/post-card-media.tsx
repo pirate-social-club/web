@@ -68,7 +68,10 @@ type LinkContent = Extract<PostCardContent, { type: "link" }>;
 
 function getLinkSummaryBullets(summary: LinkContent["summary"]): string[] {
   const shortSummary = summary?.shortSummary?.trim() ?? "";
-  const keyPoints = summary?.keyPoints?.map((point) => point.trim()).filter(Boolean).slice(0, 3) ?? [];
+  const keyPoints = summary?.keyPoints?.flatMap((point) => {
+    const keyPoint = point.trim();
+    return keyPoint ? [keyPoint] : [];
+  }).slice(0, 3) ?? [];
 
   if (keyPoints.length > 0) {
     return keyPoints;
@@ -76,8 +79,10 @@ function getLinkSummaryBullets(summary: LinkContent["summary"]): string[] {
 
   return shortSummary
     .split(/(?<=[.!?])\s+/u)
-    .map((point) => point.trim())
-    .filter(Boolean)
+    .flatMap((point) => {
+      const bullet = point.trim();
+      return bullet ? [bullet] : [];
+    })
     .slice(0, 3);
 }
 
@@ -134,11 +139,11 @@ function LinkPreviewCard({ content }: { content: LinkContent }) {
           )}
           {summaryBullets.length > 0 ? (
             <ul className="mt-2 space-y-1 ps-4 text-foreground/85">
-              {summaryBullets.map((point, index) => (
+              {summaryBullets.map((point) => (
                 <li
                   className={cn(postCardType.caption, "list-disc")}
                   dir={content.summaryDir ?? "auto"}
-                  key={`${index}:${point}`}
+                  key={point}
                   lang={content.summaryLang}
                 >
                   {point}
@@ -192,6 +197,8 @@ export interface PostCardMediaProps {
 }
 
 export function PostCardMedia({ content, className }: PostCardMediaProps) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").common;
   switch (content.type) {
     case "text":
       return (
@@ -209,8 +216,6 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
     case "image": {
       const isAgeGated = content.ageGatePolicy === "18_plus" && content.contentSafetyState === "adult";
       const ageGateRequiresProof = isAgeGated && content.ageGateViewerState !== "verified_allowed";
-      const { locale } = useUiLocale();
-      const copy = getLocaleMessages(locale, "routes").common;
       return (
         <figure className={className}>
           <div className="relative overflow-hidden rounded-lg bg-muted">

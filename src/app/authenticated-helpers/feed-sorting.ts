@@ -130,7 +130,7 @@ export function sortCommunityFeedPosts(
   sort: FeedSort,
   now = Date.now(),
 ): ApiPost[] {
-  return [...posts].sort((left, right) => compareFeedEntries({
+  return posts.toSorted((left, right) => compareFeedEntries({
     bodyLength: (left.post.body ?? "").trim().length,
     captionLength: (left.post.caption ?? "").trim().length,
     commentCount: getPostCommentCount(left),
@@ -166,7 +166,7 @@ export function sortHomeFeedEntries(
     ? entries
     : entries.filter((entry) => getCreatedAtMs(entry.post.post.created) >= cutoffMs);
 
-  return [...visibleEntries].sort((left, right) => compareFeedEntries({
+  return visibleEntries.toSorted((left, right) => compareFeedEntries({
     bodyLength: (left.post.post.body ?? "").trim().length,
     captionLength: (left.post.post.caption ?? "").trim().length,
     commentCount: getPostCommentCount(left.post),

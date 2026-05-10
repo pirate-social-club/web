@@ -91,7 +91,7 @@ export function PostComposerDerivativeSection({
   }
 
   return (
-    <section className={cn("space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
+    <section className={cn("space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4", isMobile && "rounded-none border-0 bg-transparent p-0")}>
       <FormSectionHeading title={copy.sections.sourceTrack} />
       <SearchReferencePicker
         ariaLabel={copy.derivative.searchSourceTracks}
@@ -213,7 +213,7 @@ export function PostComposerAssetLicenseSection({
   const revSharePct = Math.max(0, Math.min(100, licenseState.commercialRevSharePct ?? 10));
 
   return (
-    <section className={cn("space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
+    <section className={cn("space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4", isMobile && "rounded-none border-0 bg-transparent p-0")}>
       <FormSectionHeading title={sectionTitle} />
       <div className="grid gap-3">
         {assetLicensePresetIds.map((presetId) => (
@@ -235,7 +235,7 @@ export function PostComposerAssetLicenseSection({
       </div>
 
       {requiresRevShare ? (
-        <div className={cn("space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-1")}>
+        <div className={cn("space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-background p-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-1")}>
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
               <Type as="div" variant="label">{licenseCopy.revenueShare}</Type>
@@ -403,7 +403,7 @@ export function PostComposerCommerceAccessSection({
   }
 
   return (
-    <section className={cn("space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
+    <section className={cn("space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4", isMobile && "rounded-none border-0 bg-transparent p-0")}>
       <FormSectionHeading title={copy.sections.access} />
       <div className="grid gap-3 md:grid-cols-2">
         <OptionCard
@@ -432,7 +432,7 @@ export function PostComposerCommerceAccessSection({
       </div>
 
       {monetizationState.visible ? (
-        <div className={cn("space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
+        <div className={cn("space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-background p-4", isMobile && "rounded-none border-0 bg-transparent p-0")}>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <FieldLabel label={priceLabel} />
@@ -517,9 +517,9 @@ export function PostComposerCharitySection({
   );
 
   return (
-    <section className={cn("space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
+    <section className={cn("space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4", isMobile && "rounded-none border-0 bg-transparent p-0")}>
       <FormSectionHeading title={copy.fields.charity} />
-      <div className={cn("flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-4", isMobile && "rounded-none border-0 bg-transparent px-0 py-0")}>
+      <div className={cn("flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-background p-4", isMobile && "rounded-none border-0 bg-transparent p-0")}>
         <div className="flex min-w-0 items-center gap-3">
           <Avatar
             className="border-border-soft bg-card"

@@ -288,8 +288,8 @@ export function CommentCard({
         {replyOpen ? (
           <div ref={replyContainerRef} className="mt-3 space-y-3 border border-border-soft bg-background/60 p-3 md:rounded-[var(--radius-lg)]">
             <FormattedTextarea
-              autoFocus
               className="min-h-28"
+              focusOnMount
               onChange={setReplyBody}
               placeholder={replyPlaceholder}
               value={replyBody}

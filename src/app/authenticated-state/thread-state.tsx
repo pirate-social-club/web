@@ -43,19 +43,27 @@ function getParentCommentId(comment: ApiCommentListItem["comment"]): string | nu
 }
 
 function toThreadCommentMedia(comment: ApiCommentListItem["comment"]): PostThreadCommentMedia[] | undefined {
-  const media = (comment.media_refs ?? [])
-    .filter((item) => typeof item.storage_ref === "string" && item.storage_ref.trim())
-    .map((item) => ({
+  const media = (comment.media_refs ?? []).reduce<PostThreadCommentMedia[]>((result, item) => {
+    if (typeof item.storage_ref !== "string" || !item.storage_ref.trim()) {
+      return result;
+    }
+    result.push({
       storageRef: item.storage_ref,
       mimeType: item.mime_type ?? null,
-    }));
+    });
+    return result;
+  }, []);
   return media.length > 0 ? media : undefined;
 }
 
 export function collectCommentAuthorUserIds(items: ApiCommentListItem[]): string[] {
-  return [...new Set(items
-    .map((item) => item.comment.identity_mode === "public" ? item.comment.author_user : null)
-    .filter((value): value is string => Boolean(value)))];
+  return [...new Set(items.reduce<string[]>((result, item) => {
+    const userId = item.comment.identity_mode === "public" ? item.comment.author_user : null;
+    if (userId) {
+      result.push(userId);
+    }
+    return result;
+  }, []))];
 }
 
 export function collectThreadCommentAuthorUserIds(nodes: ThreadCommentNode[]): string[] {

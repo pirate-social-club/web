@@ -418,7 +418,7 @@ export function PostComposerWriteStep({
         style={{ paddingBottom: 120 + bottomOffset }}
       >
         <Textarea
-          className="min-h-18 resize-none break-words rounded-none border-0 bg-transparent px-0 py-0 text-3xl font-semibold leading-tight shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+          className="min-h-18 resize-none break-words rounded-none border-0 bg-transparent p-0 text-3xl font-semibold leading-tight shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
           maxLength={300}
           onChange={(event) => controller.fields.onTitleValueChange?.(event.target.value)}
           placeholder={controller.copy.placeholders.title}
@@ -432,7 +432,7 @@ export function PostComposerWriteStep({
         />
         <Textarea
           className={cn(
-            "min-h-[38dvh] resize-none rounded-none border-0 bg-transparent px-0 py-0 text-xl leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0",
+            "min-h-[38dvh] resize-none rounded-none border-0 bg-transparent p-0 text-xl leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0",
             write.attachment?.kind === "link" && "min-h-[28dvh]",
           )}
           onChange={(event) => updateBody(controller, event.target.value)}

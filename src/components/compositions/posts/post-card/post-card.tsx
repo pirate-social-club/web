@@ -50,7 +50,8 @@ function formatSourceLanguage(sourceLanguage: string | null | undefined, locale:
   if (!normalized) return null;
 
   try {
-    return new Intl.DisplayNames([locale], { type: "language" }).of(normalized) ?? normalized;
+    const displayNames = Reflect.construct(Intl.DisplayNames, [[locale], { type: "language" }]) as Intl.DisplayNames;
+    return displayNames.of(normalized) ?? normalized;
   } catch {
     return normalized;
   }
@@ -58,6 +59,17 @@ function formatSourceLanguage(sourceLanguage: string | null | undefined, locale:
 
 function shouldHandleCardNavigation(event: React.MouseEvent<HTMLElement>): boolean {
   if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) {
+    return false;
+  }
+
+  const target = event.target instanceof Element ? event.target : null;
+  return !target?.closest(
+    "a,button,input,select,textarea,summary,[role='button'],[data-post-card-interactive='true']",
+  );
+}
+
+function shouldHandleCardKeyboardNavigation(event: React.KeyboardEvent<HTMLElement>): boolean {
+  if (event.defaultPrevented || event.key !== "Enter") {
     return false;
   }
 
@@ -147,10 +159,18 @@ export function PostCard({
           navigate(postHref);
         }
       } : undefined}
+      onKeyDown={postHref ? (event) => {
+        if (shouldHandleCardKeyboardNavigation(event)) {
+          event.preventDefault();
+          navigate(postHref);
+        }
+      } : undefined}
+      role={postHref ? "link" : undefined}
       style={{
         containIntrinsicSize: "560px",
         contentVisibility: "auto",
       }}
+      tabIndex={postHref ? 0 : undefined}
     >
       <div
         className={cn(

@@ -1,6 +1,5 @@
 import {
   Image as ImageIcon,
-  Microphone,
   MusicNotes,
   Pause,
   Play,
@@ -239,27 +238,5 @@ export function PostComposerAttachmentCard({
     );
   }
 
-  return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
-      <span className="grid size-12 place-items-center rounded-full bg-muted text-muted-foreground">
-        <Microphone className="size-7" />
-      </span>
-      <div className="min-w-0">
-        <Type as="div" variant="body-strong" className="truncate">
-          Live event
-        </Type>
-        <Type as="div" variant="body" className="truncate text-muted-foreground">
-          Configure the event on the next step
-        </Type>
-      </div>
-      <button
-        aria-label="Remove live event"
-        className="grid size-10 place-items-center rounded-full text-muted-foreground"
-        onClick={onRemove}
-        type="button"
-      >
-        <X className="size-5" weight="bold" />
-      </button>
-    </div>
-  );
+  return null;
 }

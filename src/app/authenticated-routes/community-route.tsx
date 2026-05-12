@@ -150,8 +150,10 @@ export function CommunityPage({
   } = useCommunityPageData(communityId, contentLocale, activeSort);
   const ownsCommunity =
     session?.user?.id === community?.created_by_user;
+  const canModerateCommunity = viewerCanModerateCommunity(session?.user?.id, preview);
   const canCreatePost =
     ownsCommunity
+    || canModerateCommunity
     || eligibility?.status === "already_joined"
     || preview?.viewer_membership_status === "member";
   const commerceEnabled = Boolean(session?.user?.id) && canCreatePost;
@@ -596,7 +598,7 @@ export function CommunityPage({
   const joinActionDisabled =
     !eligibility ||
     !isJoinCtaActionable(eligibility);
-  const canModeratePosts = viewerCanModerateCommunity(session?.user?.id, preview);
+  const canModeratePosts = canModerateCommunity;
   const feedItems = posts.map((post) => {
     const assetId = post.post.asset ?? undefined;
     const handleVerifyAge = () => {
@@ -662,7 +664,7 @@ export function CommunityPage({
             : copy.community.followLabel}
         </Button>
       ) : null}
-      {!ownsCommunity ? (
+      {!ownsCommunity && !canModerateCommunity ? (
         <Button
           disabled={joinActionDisabled}
           loading={joinLoading || veryLoading || selfLoading || passportLoading}

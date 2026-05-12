@@ -1,6 +1,6 @@
 "use client";
 
-import { encodeFunctionData, encodePacked, type Address } from "viem";
+import { encodeFunctionData, type Address } from "viem";
 
 import type { PirateConnectedEvmWallet } from "@/lib/auth/privy-wallet";
 import { getPirateNetworkConfig } from "@/lib/network-config";
@@ -11,31 +11,26 @@ import type {
 
 import { fetchProfileLists, getListStorageLocation, resolvePrimaryListStorageForAddress } from "./efp-read";
 import {
-  createFollowListOp,
-  generateListNonce,
-  listMinterAbi,
-  listRecordsAbi,
+  buildFollowTransactions as buildSharedFollowTransactions,
+  buildSponsoredFollowIntent,
   normalizeAddress,
   submitTransaction,
   type FollowWriteTransaction,
 } from "./efp-shared";
 
+interface SubmitFollowActionOptions {
+  sendSponsoredIntent?: PirateSponsoredIntentSender | null;
+}
+
 type EfpConfig = ReturnType<typeof getPirateNetworkConfig>["efp"];
 
-function createMintStorageLocationForConfig(slot: bigint, efp: EfpConfig) {
+function getPrimaryListRecordsAddress(efp: EfpConfig): Address {
   const recordsAddress = efp.listRecordsByChain[efp.primaryListChainId];
   if (!recordsAddress) {
     throw new Error(`Missing EFP list-records deployment for chain ${efp.primaryListChainId}.`);
   }
 
-  return encodePacked(
-    ["uint8", "uint8", "uint256", "address", "uint256"],
-    [1, 1, BigInt(efp.primaryListChainId), recordsAddress, slot],
-  );
-}
-
-interface SubmitFollowActionOptions {
-  sendSponsoredIntent?: PirateSponsoredIntentSender | null;
+  return recordsAddress;
 }
 
 function buildFollowTransactions(
@@ -45,41 +40,16 @@ function buildFollowTransactions(
   followed: boolean,
   efp = getPirateNetworkConfig().efp,
 ): FollowWriteTransaction[] {
-  const op = createFollowListOp(targetAddress, followed);
-
-  if (existingStorage) {
-    const recordsAddress = efp.listRecordsByChain[existingStorage.chainId];
-    if (!recordsAddress) {
-      throw new Error(`Unsupported EFP list-records chain (${existingStorage.chainId}).`);
-    }
-
-    return [{
-      abi: listRecordsAbi,
-      address: recordsAddress,
-      args: [existingStorage.slot, [op]],
-      chainId: existingStorage.chainId,
-      functionName: "applyListOps",
-    }];
-  }
-
-  const slot = generateListNonce();
-
-  return [
-    {
-      abi: listRecordsAbi,
-      address: efp.listRecordsByChain[efp.primaryListChainId]!,
-      args: [slot, [{ key: "user", value: viewerAddress }], [op]],
-      chainId: efp.primaryListChainId,
-      functionName: "setMetadataValuesAndApplyListOps",
-    },
-    {
-      abi: listMinterAbi,
-      address: efp.listMinter,
-      args: [createMintStorageLocationForConfig(slot, efp)],
-      chainId: efp.primaryListChainId,
-      functionName: "mintPrimaryListNoMeta",
-    },
-  ];
+  return buildSharedFollowTransactions({
+    existingStorage,
+    followed,
+    listMinter: efp.listMinter,
+    listRecordsAddress: getPrimaryListRecordsAddress(efp),
+    listRecordsByChain: efp.listRecordsByChain,
+    primaryListChainId: efp.primaryListChainId,
+    targetAddress,
+    viewerAddress,
+  });
 }
 
 function isEmbeddedPrivyWallet(wallet: PirateConnectedEvmWallet): boolean {
@@ -88,48 +58,6 @@ function isEmbeddedPrivyWallet(wallet: PirateConnectedEvmWallet): boolean {
 
 function canSponsorFollowTransaction(transaction: FollowWriteTransaction, efp = getPirateNetworkConfig().efp): boolean {
   return efp.environment === "testnet" && transaction.chainId === efp.primaryListChainId;
-}
-
-function resolveFollowTransactionSlot(transaction: FollowWriteTransaction): bigint {
-  if (
-    transaction.functionName === "applyListOps" ||
-    transaction.functionName === "setMetadataValuesAndApplyListOps"
-  ) {
-    return transaction.args[0] as bigint;
-  }
-
-  const storageLocation = transaction.args[0] as `0x${string}`;
-  return BigInt(`0x${storageLocation.slice(-64)}`);
-}
-
-function buildSponsoredFollowIntent(
-  transaction: FollowWriteTransaction,
-  targetAddress: Address,
-  followed: boolean,
-): PirateSponsoredIntent {
-  const slot = resolveFollowTransactionSlot(transaction).toString();
-
-  switch (transaction.functionName) {
-    case "applyListOps":
-      return {
-        type: "pirate.follow.apply",
-        followed,
-        slot,
-        targetAddress,
-      };
-    case "setMetadataValuesAndApplyListOps":
-      return {
-        type: "pirate.follow.create-list-records",
-        followed,
-        slot,
-        targetAddress,
-      };
-    case "mintPrimaryListNoMeta":
-      return {
-        type: "pirate.follow.mint-primary-list",
-        slot,
-      };
-  }
 }
 
 async function submitSponsoredTransaction(
@@ -147,7 +75,7 @@ async function submitSponsoredTransaction(
 
   return await sendSponsoredIntent({
     chainId: transaction.chainId,
-    intent: buildSponsoredFollowIntent(transaction, targetAddress, followed),
+    intent: buildSponsoredFollowIntent(transaction, targetAddress, followed) as PirateSponsoredIntent,
     transaction: {
       data: encodeFunctionData({
         abi: transaction.abi,

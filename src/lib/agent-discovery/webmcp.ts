@@ -1,60 +1,5 @@
-import type { WebMcpToolCard } from "./types";
+import { WEB_MCP_TOOL_DEFINITIONS } from "@/lib/webmcp-tools";
 import { absoluteUrl, getDiscoveryContext, jsonResponse } from "./shared";
-
-const WEB_MCP_TOOLS: WebMcpToolCard[] = [
-  {
-    name: "open_home_feed",
-    description: "Open Pirate's home feed.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-    },
-  },
-  {
-    name: "open_community",
-    description: "Open a Pirate community page by route slug or community ID.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        communityId: { type: "string", description: "Community route slug or community ID." },
-      },
-      required: ["communityId"],
-    },
-  },
-  {
-    name: "open_post",
-    description: "Open a Pirate post by post ID.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        postId: { type: "string", description: "Pirate post ID." },
-      },
-      required: ["postId"],
-    },
-  },
-  {
-    name: "open_profile",
-    description: "Open a Pirate public profile by handle label.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        handleLabel: { type: "string", description: "Pirate handle label." },
-      },
-      required: ["handleLabel"],
-    },
-  },
-  {
-    name: "read_home_feed",
-    description: "Read structured items from Pirate's public home feed without DOM scraping.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        limit: { type: "integer", minimum: 1, maximum: 20 },
-        sort: { type: "string", enum: ["best", "new", "top"] },
-      },
-    },
-  },
-];
 
 export function buildMcpServerCardResponse(input: URL | string): Response {
   const ctx = getDiscoveryContext(input);
@@ -71,7 +16,7 @@ export function buildMcpServerCardResponse(input: URL | string): Response {
     capabilities: {
       tools: {
         listChanged: false,
-        available: WEB_MCP_TOOLS,
+        available: WEB_MCP_TOOL_DEFINITIONS,
       },
       resources: {
         listChanged: false,

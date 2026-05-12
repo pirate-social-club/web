@@ -72,7 +72,8 @@
     "rwsdk": "^1.3.0-canary.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.0",
-    "viem": "^2.48.1"
+    "viem": "^2.48.1",
+    "@pirate/efp-shared": "file:../api/services/efp-shared"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.35.0",

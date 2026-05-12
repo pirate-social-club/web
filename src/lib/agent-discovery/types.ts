@@ -41,12 +41,6 @@ export type AgentSkillDefinition = {
   name: string;
 };
 
-export type WebMcpToolCard = {
-  description: string;
-  inputSchema: Record<string, unknown>;
-  name: string;
-};
-
 export type WebBotAuthEnv = {
   WEB_BOT_AUTH_PRIVATE_JWK?: string;
 };

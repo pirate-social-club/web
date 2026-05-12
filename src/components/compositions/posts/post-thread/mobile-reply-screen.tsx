@@ -17,6 +17,7 @@ export interface MobileReplyScreenProps {
   body: string;
   busy?: boolean;
   context?: React.ReactNode;
+  identityControl?: React.ReactNode;
   onAttachmentChange?: (attachment: PostThreadReplyAttachment | null) => void;
   onBodyChange: (value: string) => void;
   onCancel?: () => void;
@@ -31,6 +32,7 @@ export function MobileReplyScreen({
   body,
   busy = false,
   context,
+  identityControl,
   onAttachmentChange,
   onBodyChange,
   onCancel,
@@ -90,6 +92,7 @@ export function MobileReplyScreen({
     >
       <div className="flex flex-1 flex-col gap-4">
         {context}
+        {identityControl}
         <div>
           <Textarea
             className={cn(

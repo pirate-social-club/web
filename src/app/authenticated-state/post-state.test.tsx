@@ -148,7 +148,7 @@ function createReplyCommentItem(commentId: string, parentCommentId: string): Com
   } as CommentListItem;
 }
 
-function createPreview(): CommunityPreview {
+function createPreview(overrides: Partial<CommunityPreview> = {}): CommunityPreview {
   return {
     id: "cmt_test",
     object: "community_preview",
@@ -178,6 +178,7 @@ function createPreview(): CommunityPreview {
     viewer_membership_status: "member",
     viewer_following: true,
     created: Date.parse("2026-04-24T00:00:00.000Z"),
+    ...overrides,
   };
 }
 
@@ -540,6 +541,58 @@ describe("usePost", () => {
         mime_type: "image/gif",
         size_bytes: 3,
       }],
+    });
+  });
+
+  test("sends anonymous identity policy scope for root comments", async () => {
+    __resetSessionStoreForTests();
+    installLiveSession();
+    const calls = {
+      createComment: null as CreateCommentRequest | null,
+    };
+
+    const communities = api.communities as unknown as {
+      preview: (communityId: string, opts?: { locale?: string | null }) => Promise<CommunityPreview>;
+      listComments: (...args: unknown[]) => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+      getJoinEligibility: (communityId: string) => Promise<JoinEligibility>;
+      createComment: (communityId: string, postId: string, body: CreateCommentRequest) => Promise<void>;
+    };
+    const posts = api.posts as unknown as {
+      get: (postId: string, opts?: { locale?: string | null }) => Promise<LocalizedPostResponse>;
+    };
+    const agents = api.agents as unknown as {
+      list: () => Promise<{ items: [] }>;
+    };
+
+    posts.get = async () => createPostResponse();
+    communities.preview = async () => createPreview({
+      allow_anonymous_identity: true,
+      anonymous_identity_scope: "thread_stable",
+    });
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    communities.getJoinEligibility = async () => createJoinEligibility();
+    communities.createComment = async (_communityId, _postId, body) => {
+      calls.createComment = body;
+    };
+    agents.list = async () => ({ items: [] });
+
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), { wrapper });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.community?.allow_anonymous_identity).toBe(true));
+    await act(async () => {
+      await result.current.createTopLevelComment({
+        anonymousScope: "thread_stable",
+        authorMode: "human",
+        body: "Posting quietly",
+        identityMode: "anonymous",
+      });
+    });
+
+    expect(calls.createComment).toEqual({
+      anonymous_scope: "thread_stable",
+      body: "Posting quietly",
+      identity_mode: "anonymous",
     });
   });
 

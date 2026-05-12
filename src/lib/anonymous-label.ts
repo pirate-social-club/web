@@ -47,9 +47,13 @@ function hashSeed(value: string): number {
 
 export function buildAnonymousLabel(input: {
   communityId: string;
+  entityId?: string;
+  scope?: "community_stable" | "thread_stable" | "post_ephemeral";
   userId: string;
 }): string {
-  const seed = `${input.communityId}:${input.userId}`;
+  const seed = input.scope === "thread_stable" || input.scope === "post_ephemeral"
+    ? `${input.entityId ?? input.communityId}:${input.userId}`
+    : `${input.communityId}:${input.userId}`;
   const hash = hashSeed(seed);
   const adjective =
     ANONYMOUS_ADJECTIVES[hash % ANONYMOUS_ADJECTIVES.length];

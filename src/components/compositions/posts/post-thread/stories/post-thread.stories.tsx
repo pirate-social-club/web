@@ -199,12 +199,12 @@ export const Default: Story = {
 
 export const MediaCommentsAndComposer: Story = {
   render: function MediaCommentsAndComposerStory() {
-    const [submitted, setSubmitted] = React.useState<Array<{ body: string; label?: string }>>([]);
+    const [submitted, setSubmitted] = React.useState<Array<{ body: string; identityMode?: "public" | "anonymous"; label?: string }>>([]);
     const comments: PostThreadComment[] = [
       ...baseComments,
       ...submitted.map((item, index) => ({
         commentId: `submitted_${index}`,
-        authorLabel: "you.pirate",
+        authorLabel: item.identityMode === "anonymous" ? "anon_signal-lantern-28" : "you.pirate",
         timestampLabel: "now",
         scoreLabel: "0 score",
         body: item.body,
@@ -230,17 +230,83 @@ export const MediaCommentsAndComposer: Story = {
         onRootReplySubmit={(input) => {
           setSubmitted((current) => [
             ...current,
-            { body: input.body, label: input.attachment?.label },
+            { body: input.body, identityMode: input.identityMode, label: input.attachment?.label },
           ]);
           return "submitted";
         }}
         post={threadPost}
+        replyIdentity={{
+          allowAnonymousIdentity: true,
+          anonymousLabel: "anon_signal-lantern-28",
+          anonymousScope: "community_stable",
+          publicLabel: "you.pirate",
+        }}
         rootReplyActionLabel="Reply"
         rootReplyCancelLabel="Cancel"
         rootReplyPlaceholder="Write a reply"
         rootReplySubmitLabel="Reply"
       />
     );
+  },
+};
+
+export const AnonymousCommentsEnabled: Story = {
+  render: function AnonymousCommentsEnabledStory() {
+    const [submitted, setSubmitted] = React.useState<Array<{ body: string; identityMode?: "public" | "anonymous" }>>([]);
+    const comments: PostThreadComment[] = [
+      ...submitted.map((item, index) => ({
+        commentId: `anonymous_submitted_${index}`,
+        authorLabel: item.identityMode === "anonymous" ? "anon_signal-lantern-28" : "you.pirate",
+        timestampLabel: "now",
+        scoreLabel: "0 score",
+        body: item.body,
+        replyActionLabel: "Reply",
+        replyPlaceholder: "Write a reply",
+        cancelReplyLabel: "Cancel",
+        submitReplyLabel: "Reply",
+        onReplySubmit: () => "submitted" as const,
+      })),
+      ...baseComments,
+    ];
+
+    return (
+      <PostThread
+        comments={withCommentVoting(comments, {}, () => {})}
+        commentsHeading="Comments"
+        onRootReplySubmit={(input) => {
+          setSubmitted((current) => [...current, { body: input.body, identityMode: input.identityMode }]);
+          return "submitted";
+        }}
+        post={threadPost}
+        replyIdentity={{
+          allowAnonymousIdentity: true,
+          anonymousLabel: "anon_signal-lantern-28",
+          anonymousScope: "community_stable",
+          publicLabel: "you.pirate",
+        }}
+        rootReplyActionLabel="Reply"
+        rootReplyCancelLabel="Cancel"
+        rootReplyPlaceholder="Write a reply"
+        rootReplySubmitLabel="Reply"
+      />
+    );
+  },
+};
+
+export const ThreadStableAnonymousPolicy: Story = {
+  args: {
+    comments: baseComments,
+    onRootReplySubmit: () => "submitted",
+    replyIdentity: {
+      allowAnonymousIdentity: true,
+      anonymousLabel: "anon_fable-corsair-00",
+      anonymousScope: "thread_stable",
+      publicLabel: "you.pirate",
+    },
+    rootReplyActionLabel: "Reply",
+    rootReplyCancelLabel: "Cancel",
+    rootReplyPlaceholder: "Write a reply",
+    rootReplySubmitLabel: "Reply",
   },
 };
 

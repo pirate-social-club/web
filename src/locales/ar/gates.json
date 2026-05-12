@@ -89,6 +89,12 @@
     "allRequired": "كلها مطلوبة",
     "anyRequired": "أي واحد مطلوب"
   },
+  "sidebar": {
+    "accessGatesTitle": "بوابات الوصول",
+    "orDivider": "أو",
+    "anyModeSubtext": "أكمل أي 1 مما يلي",
+    "allModeSubtext": "أكمل كل ما يلي"
+  },
   "capabilityLabels": {
     "ageOver18": "حالة 18+",
     "minimumAge": "العمر",

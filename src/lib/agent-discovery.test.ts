@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildOAuthAuthorizationServerResponse,
   buildOAuthProtectedResourceResponse,
+  buildAgentSkillResponse,
   buildAgentSkillsIndexResponse,
   buildOpenIdConfigurationResponse,
   buildMcpServerCardResponse,
@@ -110,6 +111,15 @@ describe("agent discovery origins", () => {
     };
 
     expect(body.skills.map((skill) => skill.name)).toContain("community-actions");
+  });
+
+  test("points community action agents to the API canonical protocol skill", async () => {
+    const response = buildAgentSkillResponse("community-actions");
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain(
+      "GET {api_origin}/.well-known/agent-skills/pirate-agent-protocol/SKILL.md",
+    );
   });
 
   test("hides Web Bot Auth directory until signing key is configured", async () => {

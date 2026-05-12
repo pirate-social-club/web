@@ -96,6 +96,12 @@ export const GENERATED_LOCALE_CATALOGS = {
         "allRequired": "All required",
         "anyRequired": "Any one required"
       },
+      "sidebar": {
+        "accessGatesTitle": "Access Gates",
+        "orDivider": "OR",
+        "anyModeSubtext": "Complete any 1 of the following",
+        "allModeSubtext": "Complete all of the following"
+      },
       "capabilityLabels": {
         "ageOver18": "18+ status",
         "minimumAge": "age status",
@@ -134,6 +140,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "expandReplies": "Expand replies",
         "expandThread": "Expand thread",
         "joinedStatLabel": "Joined",
+        "loadMore": "Load more",
         "loadMoreReplies": "Load more replies",
         "loadReplies": "Load replies",
         "loading": "Loading...",
@@ -320,7 +327,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "replace": "Replace"
         },
         "derivative": {
-          "acceptSourceTerms": "I understand and accept the selected source license terms for this remix.",
+          "acceptSourceTerms": "I accept these remix terms.",
           "licenseSource": "Source license",
           "licenseUpstreamRoyalty": "Upstream royalty",
           "licenseParentIp": "Story parent IP",
@@ -399,6 +406,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verifyAction": "Verify",
         "verifyRequiredDescription": "Complete your palm scan before you make your first post.",
         "verifyRequiredTitle": "Verify before posting",
+        "requiredFieldsLegend": "Required fields are marked with *",
         "placeholders": {
           "artist": "Artist",
           "body": "Write your post",
@@ -410,7 +418,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "selectLanguage": "Select language",
           "songSearch": "Search your uploaded songs",
           "songTitle": "Song title",
-          "sourceTrackSearch": "Search Pirate / Story assets",
+          "sourceTrackSearch": "Search songs",
           "title": "Title",
           "unlockPrice": "0",
           "previewStartSeconds": "0",
@@ -1710,6 +1718,12 @@ export const GENERATED_LOCALE_CATALOGS = {
         "allRequired": "كلها مطلوبة",
         "anyRequired": "أي واحد مطلوب"
       },
+      "sidebar": {
+        "accessGatesTitle": "بوابات الوصول",
+        "orDivider": "أو",
+        "anyModeSubtext": "أكمل أي 1 مما يلي",
+        "allModeSubtext": "أكمل كل ما يلي"
+      },
       "capabilityLabels": {
         "ageOver18": "حالة 18+",
         "minimumAge": "العمر",
@@ -1748,6 +1762,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "expandReplies": "وسّع الردود",
         "expandThread": "وسّع النقاش",
         "joinedStatLabel": "انضم",
+        "loadMore": "حمّل المزيد",
         "loadMoreReplies": "حمّل المزيد من الردود",
         "loadReplies": "حمّل الردود",
         "loading": "جارٍ التحميل...",
@@ -1934,7 +1949,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "replace": "استبدل"
         },
         "derivative": {
-          "acceptSourceTerms": "أفهم وأقبل شروط ترخيص المصدر المحدد لهذا الريمكس.",
+          "acceptSourceTerms": "أقبل شروط هذا الريمكس.",
           "licenseSource": "ترخيص المصدر",
           "licenseUpstreamRoyalty": "حقوق المنبع",
           "licenseParentIp": "IP الأصل على Story",
@@ -2013,6 +2028,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verifyAction": "تحقق",
         "verifyRequiredDescription": "أكمل مسح راحة اليد قبل أن تنشر أول مشاركة.",
         "verifyRequiredTitle": "تحقق قبل النشر",
+        "requiredFieldsLegend": "الحقول المطلوبة مميزة بـ *",
         "placeholders": {
           "artist": "الفنان",
           "body": "اكتب منشورك",
@@ -2024,7 +2040,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "selectLanguage": "اختر اللغة",
           "songSearch": "ابحث في أغانيك المرفوعة",
           "songTitle": "عنوان الأغنية",
-          "sourceTrackSearch": "ابحث في أصول Pirate / Story",
+          "sourceTrackSearch": "ابحث عن الأغاني",
           "title": "العنوان",
           "unlockPrice": "0",
           "previewStartSeconds": "0",
@@ -3324,6 +3340,12 @@ export const GENERATED_LOCALE_CATALOGS = {
         "allRequired": "全部需要",
         "anyRequired": "任一即可"
       },
+      "sidebar": {
+        "accessGatesTitle": "访问门槛",
+        "orDivider": "或",
+        "anyModeSubtext": "完成以下任意 1 项",
+        "allModeSubtext": "完成以下所有项"
+      },
       "capabilityLabels": {
         "ageOver18": "18+ 状态",
         "minimumAge": "年龄",
@@ -3362,6 +3384,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "expandReplies": "展开回复",
         "expandThread": "展开讨论串",
         "joinedStatLabel": "加入时间",
+        "loadMore": "加载更多",
         "loadMoreReplies": "加载更多回复",
         "loadReplies": "加载回复",
         "loading": "加载中...",
@@ -3548,7 +3571,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "replace": "替换"
         },
         "derivative": {
-          "acceptSourceTerms": "我理解并接受此混音所选来源的许可证条款。",
+          "acceptSourceTerms": "我接受这些混音条款。",
           "licenseSource": "来源许可证",
           "licenseUpstreamRoyalty": "上游版税",
           "licenseParentIp": "Story 父级 IP",
@@ -3627,6 +3650,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "verifyAction": "验证",
         "verifyRequiredDescription": "先完成掌纹扫描，再发你的第一条帖子。",
         "verifyRequiredTitle": "发帖前先验证",
+        "requiredFieldsLegend": "必填项标有 *",
         "placeholders": {
           "artist": "艺人",
           "body": "写下你的帖子",
@@ -3638,7 +3662,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "selectLanguage": "选择语言",
           "songSearch": "搜索你上传的歌曲",
           "songTitle": "歌曲标题",
-          "sourceTrackSearch": "搜索 Pirate / Story 资产",
+          "sourceTrackSearch": "搜索歌曲",
           "title": "标题",
           "unlockPrice": "0",
           "previewStartSeconds": "0",

@@ -56,11 +56,6 @@ function normalizeSecondsInput(value: string): string {
   return String(Math.min(Number.parseInt(digits, 10), 86_400));
 }
 
-function shortenStoryIpId(ipId: string): string {
-  if (ipId.length <= 14) return ipId;
-  return `${ipId.slice(0, 6)}...${ipId.slice(-4)}`;
-}
-
 function licenseRequiresRevShare(presetId: AssetLicensePresetId): boolean {
   return presetId === "commercial-remix";
 }
@@ -142,42 +137,8 @@ export function PostComposerDerivativeSection({
       ) : (
         <References items={derivativeState.references} />
       )}
-      {derivativeState.licenseSummary ? (
-        <div className={cn("space-y-1.5 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-3", isMobile && "rounded-none border-0 bg-transparent px-0 py-2")}>
-          {derivativeState.licenseSummary.sourceLicense ? (
-            <div className="flex items-baseline justify-between gap-3">
-              <Type as="span" variant="caption" className="text-muted-foreground">{copy.derivative.licenseSource}</Type>
-              <Type as="span" variant="body-strong">{derivativeState.licenseSummary.sourceLicense}</Type>
-            </div>
-          ) : null}
-          {derivativeState.licenseSummary.upstreamRoyaltyPct != null ? (
-            <div className="flex items-baseline justify-between gap-3">
-              <Type as="span" variant="caption" className="text-muted-foreground">{copy.derivative.licenseUpstreamRoyalty}</Type>
-              <Type as="span" variant="body-strong">{derivativeState.licenseSummary.upstreamRoyaltyPct}%</Type>
-            </div>
-          ) : null}
-          {derivativeState.licenseSummary.parentIpId ? (
-            <div className="flex items-baseline justify-between gap-3">
-              <Type as="span" variant="caption" className="text-muted-foreground">{copy.derivative.licenseParentIp}</Type>
-              <Type as="span" variant="body">{shortenStoryIpId(derivativeState.licenseSummary.parentIpId)}</Type>
-            </div>
-          ) : null}
-          {derivativeState.licenseSummary.licenseTermsId ? (
-            <div className="flex items-baseline justify-between gap-3">
-              <Type as="span" variant="caption" className="text-muted-foreground">{copy.derivative.licenseTermsId}</Type>
-              <Type as="span" variant="body">{derivativeState.licenseSummary.licenseTermsId}</Type>
-            </div>
-          ) : null}
-          {derivativeState.licenseSummary.newRemixTerms ? (
-            <div className="flex items-baseline justify-between gap-3">
-              <Type as="span" variant="caption" className="text-muted-foreground">{copy.derivative.licenseNewRemixTerms}</Type>
-              <Type as="span" variant="body-strong">{derivativeState.licenseSummary.newRemixTerms}</Type>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
       {derivativeState.references?.length ? (
-        <div className={cn("flex items-start gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-3", isMobile && "rounded-none border-0 bg-transparent px-0 py-2")}>
+        <div className={cn("flex items-start gap-2 px-1 py-1", isMobile && "px-0")}>
           <Checkbox
             checked={derivativeState.sourceTermsAccepted === true}
             className="mt-0.5"
@@ -188,7 +149,7 @@ export function PostComposerDerivativeSection({
                 : current)
             }
           />
-          <Label htmlFor="source-terms-accepted">
+          <Label className="text-muted-foreground" htmlFor="source-terms-accepted">
             {copy.derivative.acceptSourceTerms}
           </Label>
         </div>
@@ -594,8 +555,7 @@ export function PostComposerAudienceSection({
 export function deriveDerivativeSearchResults(
   derivativeState?: DerivativeStepState,
 ): ComposerReference[] {
-  return dedupeReferences([
-    ...(derivativeState?.searchResults ?? []),
-    ...(derivativeState?.references ?? []),
-  ]);
+  const selectedIds = new Set((derivativeState?.references ?? []).map((reference) => reference.id));
+  return dedupeReferences(derivativeState?.searchResults ?? [])
+    .filter((reference) => !selectedIds.has(reference.id));
 }

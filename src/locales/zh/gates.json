@@ -89,6 +89,12 @@
     "allRequired": "全部需要",
     "anyRequired": "任一即可"
   },
+  "sidebar": {
+    "accessGatesTitle": "访问门槛",
+    "orDivider": "或",
+    "anyModeSubtext": "完成以下任意 1 项",
+    "allModeSubtext": "完成以下所有项"
+  },
   "capabilityLabels": {
     "ageOver18": "18+ 状态",
     "minimumAge": "年龄",

@@ -5,7 +5,7 @@ import { PostComposer } from "../../post-composer";
 import { baseComposer, composerDecorator, composerParameters } from "../story-helpers";
 
 const meta = {
-  title: "Compositions/Posts/PostComposer/Legacy Tab Composer/Live",
+  title: "Compositions/Posts/PostComposer/Composer/Live",
   component: PostComposer,
   args: baseComposer,
   decorators: composerDecorator,

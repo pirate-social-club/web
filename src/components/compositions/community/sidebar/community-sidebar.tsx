@@ -18,6 +18,7 @@ import { CommunitySidebarCharity } from "./community-sidebar-charity";
 import { CommunitySidebarFlairs } from "./community-sidebar-flairs";
 import { CommunitySidebarLinks } from "./community-sidebar-links";
 import { CommunitySidebarRoleHolderComponent } from "./community-sidebar-role-holder";
+import { CommunitySidebarGates } from "./community-sidebar-gates";
 import { CommunitySidebarRequirements } from "./community-sidebar-requirements";
 import { CommunitySidebarRules } from "./community-sidebar-rules";
 import type { CommunitySidebarProps } from "./community-sidebar.types";
@@ -43,6 +44,7 @@ function CommunitySidebarSections({
   moderators,
   requirements,
   requirementsMode,
+  gates,
   referenceLinks,
   rules,
   showDescriptionSection = false,
@@ -57,6 +59,7 @@ function CommunitySidebarSections({
   | "moderators"
   | "requirements"
   | "requirementsMode"
+  | "gates"
   | "referenceLinks"
   | "rules"
 > & {
@@ -64,6 +67,7 @@ function CommunitySidebarSections({
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").community;
+  const gatesCopy = getLocaleMessages(locale, "gates").sidebar;
   const localeTag = resolveLocaleLanguageTag(locale);
   const activeRules = (rules ?? [])
     .filter((r) => r.status === "active")
@@ -134,22 +138,23 @@ function CommunitySidebarSections({
           <CommunitySidebarCharity charity={charity} />
         </div>
       )}
+
       <Accordion
         className="border-b-0"
-        defaultValue={["links", "requirements", "rules", "tags"]}
+        defaultValue={["gates", "links", "rules", "tags"]}
         type="multiple"
       >
-        {activeLinks.length > 0 && (
-          <AccordionItem className="border-b-0" value="links">
-            <AccordionTrigger className={SECTION_LABEL}>{copy.linksLabel}</AccordionTrigger>
+        {gates && gates.length > 0 && (
+          <AccordionItem className="border-b-0" value="gates">
+            <AccordionTrigger className={SECTION_LABEL}>{gatesCopy.accessGatesTitle}</AccordionTrigger>
             <AccordionContent className="pb-0">
-              <CommunitySidebarLinks links={activeLinks} />
+              <CommunitySidebarGates items={gates} mode={requirementsMode} />
             </AccordionContent>
           </AccordionItem>
         )}
 
-        {activeRequirements.length > 0 && (
-          <AccordionItem className="border-b-0" value="requirements">
+        {!gates && activeRequirements.length > 0 && (
+          <AccordionItem className="border-b-0" value="gates">
             <AccordionTrigger className={SECTION_LABEL}>{copy.requirementsLabel}</AccordionTrigger>
             <AccordionContent className="pb-0">
               <CommunitySidebarRequirements
@@ -159,6 +164,17 @@ function CommunitySidebarSections({
             </AccordionContent>
           </AccordionItem>
         )}
+
+        {activeLinks.length > 0 && (
+          <AccordionItem className="border-b-0" value="links">
+            <AccordionTrigger className={SECTION_LABEL}>{copy.linksLabel}</AccordionTrigger>
+            <AccordionContent className="pb-0">
+              <CommunitySidebarLinks links={activeLinks} />
+            </AccordionContent>
+          </AccordionItem>
+        )}
+
+
 
         {showRulesSection && (
           <AccordionItem className="border-b-0" value="rules">
@@ -193,6 +209,7 @@ export function CommunitySidebarDetails({
   moderators,
   requirements,
   requirementsMode,
+  gates,
   referenceLinks,
   rules,
 }: Pick<
@@ -207,6 +224,7 @@ export function CommunitySidebarDetails({
   | "moderators"
   | "requirements"
   | "requirementsMode"
+  | "gates"
   | "referenceLinks"
   | "rules"
 >) {
@@ -224,6 +242,7 @@ export function CommunitySidebarDetails({
           referenceLinks={referenceLinks}
           requirements={requirements}
           requirementsMode={requirementsMode}
+          gates={gates}
           rules={rules}
           showDescriptionSection
         />
@@ -246,6 +265,7 @@ export function CommunitySidebar({
   moderators,
   requirements,
   requirementsMode,
+  gates,
   referenceLinks,
   rules,
 }: CommunitySidebarProps) {
@@ -279,6 +299,7 @@ export function CommunitySidebar({
         referenceLinks={referenceLinks}
         requirements={requirements}
         requirementsMode={requirementsMode}
+        gates={gates}
         rules={rules}
       />
     </div>

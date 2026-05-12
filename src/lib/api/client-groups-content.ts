@@ -17,6 +17,8 @@ import type {
 } from "@pirate/api-contracts";
 
 import type {
+  ApiDerivativeSourceListResponse,
+  ApiDerivativeSourceQueryKind,
   ApiSongArtifactUploadContentRequest,
   CommunityListCommentsOptions,
 } from "./client-api-types";
@@ -188,6 +190,17 @@ export function createCommunityContentApi(request: ApiRequest) {
     ): Promise<SongArtifactBundleListResponse> =>
       request<SongArtifactBundleListResponse>(
         buildQueryPath(`/communities/${encodeURIComponent(communityId)}/song-artifacts`, {
+          q: opts?.q,
+          limit: opts?.limit == null ? null : String(opts.limit),
+        }),
+      ),
+    listDerivativeSources: (
+      communityId: string,
+      opts?: { kind?: ApiDerivativeSourceQueryKind | null; q?: string | null; limit?: number | null },
+    ): Promise<ApiDerivativeSourceListResponse> =>
+      request<ApiDerivativeSourceListResponse>(
+        buildQueryPath(`/communities/${encodeURIComponent(communityId)}/derivative-sources`, {
+          kind: opts?.kind,
           q: opts?.q,
           limit: opts?.limit == null ? null : String(opts.limit),
         }),

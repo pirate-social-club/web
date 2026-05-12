@@ -6,7 +6,7 @@ import type { VideoComposerState } from "../../post-composer.types";
 import { baseComposer, composerDecorator, composerParameters, InteractivePostComposer } from "../story-helpers";
 
 const meta = {
-  title: "Compositions/Posts/PostComposer/Legacy Tab Composer/Video",
+  title: "Compositions/Posts/PostComposer/Composer/Video",
   component: PostComposer,
   args: baseComposer,
   decorators: composerDecorator,

@@ -17,11 +17,14 @@ function buildAvatarFallback(name: string): string {
   return `${tokens[0][0] ?? ""}${tokens[1][0] ?? ""}`.toUpperCase();
 }
 
-export function CommunitySidebarCharity({
+function CharityContent({
   charity,
-  className,
-}: CommunitySidebarCharityProps) {
-  const renderContent = (linked: boolean) => (
+  linked,
+}: {
+  charity: CommunitySidebarCharity;
+  linked: boolean;
+}) {
+  return (
     <>
       <Avatar
         className="border-border bg-foreground/10 text-foreground"
@@ -39,7 +42,12 @@ export function CommunitySidebarCharity({
       </span>
     </>
   );
+}
 
+export function CommunitySidebarCharity({
+  charity,
+  className,
+}: CommunitySidebarCharityProps) {
   if (!charity.href) {
     return (
       <div
@@ -48,7 +56,7 @@ export function CommunitySidebarCharity({
           className,
         )}
       >
-        {renderContent(false)}
+        <CharityContent charity={charity} linked={false} />
       </div>
     );
   }
@@ -63,7 +71,7 @@ export function CommunitySidebarCharity({
       rel="noopener noreferrer"
       target="_blank"
     >
-      {renderContent(true)}
+      <CharityContent charity={charity} linked />
     </a>
   );
 }

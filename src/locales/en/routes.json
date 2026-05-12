@@ -14,6 +14,7 @@
     "expandReplies": "Expand replies",
     "expandThread": "Expand thread",
     "joinedStatLabel": "Joined",
+    "loadMore": "Load more",
     "loadMoreReplies": "Load more replies",
     "loadReplies": "Load replies",
     "loading": "Loading...",
@@ -200,7 +201,7 @@
       "replace": "Replace"
     },
     "derivative": {
-      "acceptSourceTerms": "I understand and accept the selected source license terms for this remix.",
+      "acceptSourceTerms": "I accept these remix terms.",
       "licenseSource": "Source license",
       "licenseUpstreamRoyalty": "Upstream royalty",
       "licenseParentIp": "Story parent IP",
@@ -279,6 +280,7 @@
     "verifyAction": "Verify",
     "verifyRequiredDescription": "Complete your palm scan before you make your first post.",
     "verifyRequiredTitle": "Verify before posting",
+    "requiredFieldsLegend": "Required fields are marked with *",
     "placeholders": {
       "artist": "Artist",
       "body": "Write your post",
@@ -290,7 +292,7 @@
       "selectLanguage": "Select language",
       "songSearch": "Search your uploaded songs",
       "songTitle": "Song title",
-      "sourceTrackSearch": "Search Pirate / Story assets",
+      "sourceTrackSearch": "Search songs",
       "title": "Title",
       "unlockPrice": "0",
       "previewStartSeconds": "0",

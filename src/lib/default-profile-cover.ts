@@ -1,3 +1,5 @@
+import { isRenderableImageSrc } from "./media-utils";
+
 const coverCache = new Map<string, string>();
 
 function hashSeed(value: string): number {
@@ -23,29 +25,6 @@ function escapeXml(value: string): string {
     .replace(/</gu, "&lt;")
     .replace(/>/gu, "&gt;")
     .replace(/"/gu, "&quot;");
-}
-
-function isRenderableCoverSrc(src: string): boolean {
-  const trimmed = src.trim();
-  const normalized = trimmed.toLowerCase();
-
-  if (!trimmed) {
-    return false;
-  }
-
-  if (
-    normalized.startsWith("data:")
-    || normalized.startsWith("blob:")
-    || normalized.startsWith("http://")
-    || normalized.startsWith("https://")
-    || normalized.startsWith("/")
-    || normalized.startsWith("./")
-    || normalized.startsWith("../")
-  ) {
-    return true;
-  }
-
-  return !/^[a-z][a-z0-9+.-]*:/iu.test(trimmed);
 }
 
 export function buildDefaultProfileCoverSrc(input: {
@@ -101,7 +80,7 @@ export function resolveProfileCoverSrc(input: {
   userId: string;
 }): string {
   const coverSrc = input.coverSrc?.trim();
-  return coverSrc && isRenderableCoverSrc(coverSrc)
+  return coverSrc && isRenderableImageSrc(coverSrc)
     ? coverSrc
     : buildDefaultProfileCoverSrc(input);
 }

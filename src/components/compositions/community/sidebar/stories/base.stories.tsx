@@ -42,8 +42,11 @@ export const RequirementsAnd: Story = {
     description: "A community for verified humans with high reputation.",
     followerCount: 1200,
     memberCount: 340,
-    requirements: ["Passport score 8+", "Palm scan"],
     requirementsMode: "all",
+    gates: [
+      { gateType: "wallet_score", label: "Passport score 8+", provider: null, status: "met" },
+      { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unmet" },
+    ],
   },
 };
 
@@ -53,8 +56,11 @@ export const RequirementsOr: Story = {
     description: "A community for verified humans or high reputation wallets.",
     followerCount: 5400,
     memberCount: 890,
-    requirements: ["Passport score 8+", "Palm scan"],
     requirementsMode: "any",
+    gates: [
+      { gateType: "wallet_score", label: "Passport score 8+", provider: null, status: "met" },
+      { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unmet" },
+    ],
   },
 };
 
@@ -64,7 +70,9 @@ export const RequirementsSingle: Story = {
     description: "Gated by passport score only.",
     followerCount: 900,
     memberCount: 120,
-    requirements: ["Passport score 20+"],
+    gates: [
+      { gateType: "wallet_score", label: "Passport score 20+", provider: null, status: "unmet" },
+    ],
   },
 };
 
@@ -74,13 +82,13 @@ export const RequirementsManyAnd: Story = {
     description: "A highly gated community.",
     followerCount: 300,
     memberCount: 45,
-    requirements: [
-      "18+",
-      "Passport score 20+",
-      "Palm scan",
-      "US nationality",
-    ],
     requirementsMode: "all",
+    gates: [
+      { gateType: "age_over_18", label: "18+", provider: null, status: "met" },
+      { gateType: "wallet_score", label: "Passport score 20+", provider: null, status: "met" },
+      { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unmet" },
+      { gateType: "nationality", label: "US nationality", provider: null, status: "unmet" },
+    ],
   },
 };
 
@@ -90,12 +98,63 @@ export const RequirementsManyOr: Story = {
     description: "A community with alternative entry paths.",
     followerCount: 2100,
     memberCount: 560,
-    requirements: [
-      "Passport score 20+",
-      "Palm scan",
-      "Ethereum NFT holder",
-    ],
     requirementsMode: "any",
+    gates: [
+      { gateType: "wallet_score", label: "Passport score 20+", provider: null, status: "met" },
+      { gateType: "unique_human", label: "Private ID proof", provider: "self", status: "unmet" },
+      { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unmet" },
+      { gateType: "nationality", label: "US nationality", provider: null, status: "unmet" },
+    ],
+  },
+};
+
+export const GateTypes: Story = {
+  name: "Gates / Type variants",
+  args: {
+    description: "Visual coverage for every supported gate type.",
+    followerCount: 840,
+    memberCount: 210,
+    requirementsMode: "all",
+    gates: [
+      { gateType: "altcha_pow", label: "Proof-of-work check", provider: null, status: "unknown" },
+      { gateType: "unique_human", label: "Private ID proof", provider: "self", status: "unknown" },
+      { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unknown" },
+      { gateType: "nationality", label: "US nationality", provider: null, status: "unknown" },
+      { gateType: "wallet_score", label: "Passport score 20+", provider: null, status: "unknown" },
+      { gateType: "minimum_age", label: "21+", provider: null, status: "unknown" },
+      { gateType: "gender", label: "Document sex marker F", provider: null, status: "unknown" },
+      { gateType: "erc721_holding", label: "Ethereum NFT from 0x1234...5678", provider: null, status: "unknown" },
+      { gateType: "erc721_inventory_match", label: "2 Courtyard Rolexes", provider: null, status: "unknown" },
+      { gateType: "unknown_gate", label: "Custom verification", provider: null, status: "unknown" },
+    ],
+  },
+};
+
+export const GateStatuses: Story = {
+  name: "Gates / Status states",
+  args: {
+    description: "Shows met, unmet, and unknown indicators.",
+    followerCount: 620,
+    memberCount: 80,
+    requirementsMode: "all",
+    gates: [
+      { gateType: "wallet_score", label: "Passport score 20+", provider: null, status: "met" },
+      { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unmet" },
+      { gateType: "erc721_holding", label: "Ethereum NFT from 0x1234...5678", provider: null, status: "unknown" },
+    ],
+  },
+};
+
+export const GatesUnknownMode: Story = {
+  name: "Gates / Unknown mode",
+  args: {
+    description: "Preview data can list gates before match mode is known.",
+    followerCount: 410,
+    memberCount: 36,
+    gates: [
+      { gateType: "wallet_score", label: "Passport score 20+", provider: null, status: "unknown" },
+      { gateType: "erc721_inventory_match", label: "2 Courtyard Rolexes", provider: null, status: "unknown" },
+    ],
   },
 };
 
@@ -107,7 +166,10 @@ export const Mobile: Story = {
     description: "A community for verified humans with high reputation.",
     followerCount: 1200,
     memberCount: 340,
-    requirements: ["Passport score 8+", "Palm scan"],
     requirementsMode: "all",
+    gates: [
+      { gateType: "wallet_score", label: "Passport score 8+", provider: null, status: "met" },
+      { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unmet" },
+    ],
   },
 };

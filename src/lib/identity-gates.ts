@@ -17,7 +17,7 @@ type MissingCapability = "unique_human" | "age_over_18" | "minimum_age" | "natio
 type RequiredActionNode = Omit<NonNullable<NonNullable<JoinEligibility["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
   items?: RequiredActionNode[];
 };
-type RequiredActionCapability = MissingCapability | "erc721_holding" | "erc721_inventory_match";
+export type RequiredActionCapability = MissingCapability | "erc721_holding" | "erc721_inventory_match";
 
 const SELF_CAPABILITY_ORDER: RequestedVerificationCapability[] = [
   "unique_human",
@@ -263,7 +263,7 @@ export function getMissingCapabilitiesFromGateEvaluation(
   return Array.from(capabilities);
 }
 
-function getRequiredActionCapabilities(
+export function getRequiredActionCapabilities(
   input: { gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null },
 ): RequiredActionCapability[] {
   const actions = (input.gate_evaluation?.required_action_set?.items ?? []) as RequiredActionNode[];

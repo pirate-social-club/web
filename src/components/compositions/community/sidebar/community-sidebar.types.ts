@@ -70,6 +70,13 @@ export interface CommunitySidebarCharity {
   name: string;
 }
 
+export interface CommunitySidebarGateItem {
+  gateType: string;
+  label: string;
+  provider?: "self" | "very" | "passport" | null;
+  status?: "unknown" | "met" | "unmet";
+}
+
 export interface CommunitySidebarNamespacePanel {
   routeLabel: string;
   status: "available" | "pending" | "verified";
@@ -93,6 +100,7 @@ export interface CommunitySidebarProps {
   namespacePanel?: CommunitySidebarNamespacePanel | null;
   requirements?: string[];
   requirementsMode?: "all" | "any";
+  gates?: CommunitySidebarGateItem[];
   referenceLinks?: CommunitySidebarReferenceLink[];
   rules?: CommunitySidebarRule[];
 }

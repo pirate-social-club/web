@@ -96,6 +96,12 @@ export const GENERATED_LOCALE_CATALOGS = {
         "allRequired": "All required",
         "anyRequired": "Any one required"
       },
+      "sidebar": {
+        "accessGatesTitle": "Access Gates",
+        "orDivider": "OR",
+        "anyModeSubtext": "Complete any 1 of the following",
+        "allModeSubtext": "Complete all of the following"
+      },
       "capabilityLabels": {
         "ageOver18": "18+ status",
         "minimumAge": "age status",
@@ -1710,6 +1716,12 @@ export const GENERATED_LOCALE_CATALOGS = {
         "allRequired": "كلها مطلوبة",
         "anyRequired": "أي واحد مطلوب"
       },
+      "sidebar": {
+        "accessGatesTitle": "بوابات الوصول",
+        "orDivider": "أو",
+        "anyModeSubtext": "أكمل أي 1 مما يلي",
+        "allModeSubtext": "أكمل كل ما يلي"
+      },
       "capabilityLabels": {
         "ageOver18": "حالة 18+",
         "minimumAge": "العمر",
@@ -3323,6 +3335,12 @@ export const GENERATED_LOCALE_CATALOGS = {
       "matchModeHeader": {
         "allRequired": "全部需要",
         "anyRequired": "任一即可"
+      },
+      "sidebar": {
+        "accessGatesTitle": "访问门槛",
+        "orDivider": "或",
+        "anyModeSubtext": "完成以下任意 1 项",
+        "allModeSubtext": "完成以下所有项"
       },
       "capabilityLabels": {
         "ageOver18": "18+ 状态",

@@ -89,6 +89,12 @@
     "allRequired": "All required",
     "anyRequired": "Any one required"
   },
+  "sidebar": {
+    "accessGatesTitle": "Access Gates",
+    "orDivider": "OR",
+    "anyModeSubtext": "Complete any 1 of the following",
+    "allModeSubtext": "Complete all of the following"
+  },
   "capabilityLabels": {
     "ageOver18": "18+ status",
     "minimumAge": "age status",

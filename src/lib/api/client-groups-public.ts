@@ -17,11 +17,23 @@ import type {
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
+type PublicQueryParams = Record<string, string | number | boolean | null | undefined>;
+
 export type PublicPostThreadResponse = {
   post: LocalizedPostResponse;
   community: CommunityPreview;
   comments: CommentListResponse;
 };
+
+function publicGet<T>(
+  request: ApiRequest,
+  path: string,
+  params?: PublicQueryParams,
+): Promise<T> {
+  return request<T>(params ? buildQueryPath(path, params) : path, {
+    tokenRequired: false,
+  });
+}
 
 export function createProfilesApi(request: ApiRequest) {
   return {
@@ -91,40 +103,34 @@ export function createProfilesApi(request: ApiRequest) {
 export function createPublicProfilesApi(request: ApiRequest) {
   return {
     getByHandle: (handleLabel: string): Promise<PublicProfileResolution> =>
-      request<PublicProfileResolution>(`/public-profiles/${encodeURIComponent(handleLabel)}`, {
-        tokenRequired: false,
-      }),
+      publicGet<PublicProfileResolution>(request, `/public-profiles/${encodeURIComponent(handleLabel)}`),
     getByWalletAddress: (walletAddress: string): Promise<PublicProfileResolution> =>
-      request<PublicProfileResolution>(`/public-profiles/by-wallet/${encodeURIComponent(walletAddress)}`, {
-        tokenRequired: false,
-      }),
+      publicGet<PublicProfileResolution>(request, `/public-profiles/by-wallet/${encodeURIComponent(walletAddress)}`),
   };
 }
 
 export function createPublicAgentsApi(request: ApiRequest) {
   return {
     getByHandle: (handleLabel: string): Promise<PublicAgentResolution> =>
-      request<PublicAgentResolution>(`/public-agents/${encodeURIComponent(handleLabel)}`, {
-        tokenRequired: false,
-      }),
+      publicGet<PublicAgentResolution>(request, `/public-agents/${encodeURIComponent(handleLabel)}`),
   };
 }
 
 export function createPublicCommunitiesApi(request: ApiRequest) {
   return {
     get: (communityId: string, opts?: { locale?: string | null }): Promise<CommunityPreview> => {
-      return request<CommunityPreview>(buildQueryPath(
+      return publicGet<CommunityPreview>(
+        request,
         `/public-communities/${encodeURIComponent(communityId)}`,
         { locale: opts?.locale },
-      ), {
-        tokenRequired: false,
-      });
+      );
     },
     listPosts: (
       communityId: string,
       opts?: CommunityListPostsOptions,
     ): Promise<{ items: LocalizedPostResponse[] }> => {
-      return request<{ items: LocalizedPostResponse[] }>(buildQueryPath(
+      return publicGet<{ items: LocalizedPostResponse[] }>(
+        request,
         `/public-communities/${encodeURIComponent(communityId)}/posts`,
         {
           cursor: opts?.cursor,
@@ -133,9 +139,7 @@ export function createPublicCommunitiesApi(request: ApiRequest) {
           locale: opts?.locale,
           sort: opts?.sort,
         },
-      ), {
-        tokenRequired: false,
-      });
+      );
     },
   };
 }
@@ -146,18 +150,18 @@ export function createPublicPostsApi(request: ApiRequest) {
       postId: string,
       opts?: { locale?: string | null },
     ): Promise<LocalizedPostResponse> => {
-      return request<LocalizedPostResponse>(buildQueryPath(
+      return publicGet<LocalizedPostResponse>(
+        request,
         `/public-posts/${encodeURIComponent(postId)}`,
         { locale: opts?.locale },
-      ), {
-        tokenRequired: false,
-      });
+      );
     },
     getThread: (
       postId: string,
       opts?: CommunityListCommentsOptions,
     ): Promise<PublicPostThreadResponse> => {
-      return request<PublicPostThreadResponse>(buildQueryPath(
+      return publicGet<PublicPostThreadResponse>(
+        request,
         `/public-posts/${encodeURIComponent(postId)}/thread`,
         {
           cursor: opts?.cursor,
@@ -165,9 +169,7 @@ export function createPublicPostsApi(request: ApiRequest) {
           locale: opts?.locale,
           sort: opts?.sort,
         },
-      ), {
-        tokenRequired: false,
-      });
+      );
     },
   };
 }
@@ -178,7 +180,8 @@ export function createPublicCommentsApi(request: ApiRequest) {
       postId: string,
       opts?: CommunityListCommentsOptions,
     ): Promise<CommentListResponse> => {
-      return request<CommentListResponse>(buildQueryPath(
+      return publicGet<CommentListResponse>(
+        request,
         `/public-comments/posts/${encodeURIComponent(postId)}/comments`,
         {
           cursor: opts?.cursor,
@@ -186,15 +189,14 @@ export function createPublicCommentsApi(request: ApiRequest) {
           locale: opts?.locale,
           sort: opts?.sort,
         },
-      ), {
-        tokenRequired: false,
-      });
+      );
     },
     listReplies: (
       commentId: string,
       opts?: CommunityListCommentsOptions,
     ): Promise<CommentListResponse> => {
-      return request<CommentListResponse>(buildQueryPath(
+      return publicGet<CommentListResponse>(
+        request,
         `/public-comments/${encodeURIComponent(commentId)}/replies`,
         {
           cursor: opts?.cursor,
@@ -202,9 +204,7 @@ export function createPublicCommentsApi(request: ApiRequest) {
           locale: opts?.locale,
           sort: opts?.sort,
         },
-      ), {
-        tokenRequired: false,
-      });
+      );
     },
   };
 }

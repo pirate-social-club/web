@@ -5,7 +5,7 @@ import { PostComposer } from "../../post-composer";
 import { baseComposer, composerDecorator, composerParameters, InteractivePostComposer } from "../story-helpers";
 
 const meta = {
-  title: "Compositions/Posts/PostComposer/Legacy Tab Composer/Song",
+  title: "Compositions/Posts/PostComposer/Composer/Song",
   component: PostComposer,
   args: baseComposer,
   decorators: composerDecorator,
@@ -18,22 +18,34 @@ type Story = StoryObj<typeof meta>;
 
 const sourceSearchResults = [
   {
-    id: "ast_01abc",
-    title: "Midnight Waves",
-    subtitle: "DJ Solar",
+    id: "story:asset:asset_ast_01abc",
+    title: "Palestine, Don't Cry",
+    subtitle: "amina.pirate",
+    licensePreset: "commercial-remix" as const,
+    upstreamRoyaltyPct: 10,
+    parentIpId: "0x1234567890abcdef1234567890abcdef12345678",
+    licenseTermsId: "3",
   },
   {
-    id: "ast_01def",
-    title: "Midnight Waves (Acoustic)",
-    subtitle: "DJ Solar",
+    id: "story:asset:asset_ast_01def",
+    title: "Midnight Waves",
+    subtitle: "dj-solar.pirate",
+    licensePreset: "commercial-remix" as const,
+    upstreamRoyaltyPct: 15,
+    parentIpId: "0xabcdef1234567890abcdef1234567890abcdef12",
+    licenseTermsId: "8",
   },
 ];
 
 const sourceReferences = [
   {
-    id: "ast_01abc",
-    title: "Midnight Waves",
-    subtitle: "DJ Solar",
+    id: "story:asset:asset_ast_01abc",
+    title: "Palestine, Don't Cry",
+    subtitle: "amina.pirate",
+    licensePreset: "commercial-remix" as const,
+    upstreamRoyaltyPct: 10,
+    parentIpId: "0x1234567890abcdef1234567890abcdef12345678",
+    licenseTermsId: "3",
   },
 ];
 
@@ -65,6 +77,19 @@ const regionalPricingPreview = {
   })),
 };
 
+function svgCoverFile(name: string, label: string): File {
+  const escapedLabel = label
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4f46e5"/><stop offset="100%" stop-color="#9333ea"/></linearGradient></defs><rect width="400" height="400" fill="url(#g)" rx="24"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="28" font-family="sans-serif" font-weight="600">${escapedLabel}</text></svg>`;
+  return new File([new Blob([svg], { type: "image/svg+xml" })], name, { type: "image/svg+xml" });
+}
+
+const midnightCoverFile = svgCoverFile("midnight-waves-cover.svg", "Midnight Waves");
+const benefitCoverFile = svgCoverFile("benefit-single-cover.svg", "Benefit Single");
+const demoAudioFile = new File([new Uint8Array([1, 2, 3, 4])], "demo-song.mp3", { type: "audio/mpeg" });
+
 export const Original: Story = {
   name: "Original",
   render: () => (
@@ -78,6 +103,8 @@ export const Original: Story = {
       song={{
         genre: "Electronic",
         primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
         coverLabel: "midnight-waves-cover.png",
       }}
       license={{
@@ -100,6 +127,8 @@ export const LicenseNonCommercial: Story = {
       song={{
         genre: "Electronic",
         primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
         coverLabel: "midnight-waves-cover.png",
       }}
       license={{
@@ -122,6 +151,8 @@ export const LicenseCommercialUse: Story = {
       song={{
         genre: "Electronic",
         primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
         coverLabel: "midnight-waves-cover.png",
       }}
       license={{
@@ -144,6 +175,8 @@ export const LicenseCommercialRemix: Story = {
       song={{
         genre: "Electronic",
         primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
         coverLabel: "midnight-waves-cover.png",
       }}
       license={{
@@ -169,15 +202,17 @@ export const RightsRemix: Story = {
         genre: "Electronic",
         primaryLanguage: "English",
         secondaryLanguage: "Spanish",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
         coverLabel: "midnight-waves-cover.png",
       }}
       derivativeStep={{
         visible: true,
         required: true,
         trigger: "remix",
-        query: "midnight waves original",
+        query: "palestine",
         searchResults: sourceSearchResults,
-        references: sourceReferences,
+        references: sourceSearchResults,
         licenseSummary: sourceLicenseSummary,
         sourceTermsAccepted: true,
       }}
@@ -200,6 +235,8 @@ export const RemixSourceTermsBlocked: Story = {
         genre: "Electronic",
         primaryLanguage: "English",
         secondaryLanguage: "Spanish",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
         coverLabel: "midnight-waves-cover.png",
       }}
       derivativeStep={{
@@ -235,6 +272,8 @@ export const RemixSourceTermsAccepted: Story = {
         genre: "Electronic",
         primaryLanguage: "English",
         secondaryLanguage: "Spanish",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
         coverLabel: "midnight-waves-cover.png",
       }}
       derivativeStep={{
@@ -260,6 +299,7 @@ export const AnalysisMatch: Story = {
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
+      composerStep="publish"
       mode="song"
       canCreateSongPost
       titleValue="Midnight Waves (unauthorized flip)"
@@ -269,17 +309,24 @@ export const AnalysisMatch: Story = {
       song={{
         genre: "Electronic",
         primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
         coverLabel: "midnight-waves-cover.png",
       }}
       derivativeStep={{
         visible: true,
         required: true,
         trigger: "analysis",
-        requirementLabel: "This audio matches an existing song. Publish it as a remix and keep the source track attached.",
+        requirementLabel: "This song matches an existing upload. Review the source track below, accept the source terms, then submit it as a remix.",
         searchResults: sourceReferences,
         references: sourceReferences,
         licenseSummary: sourceLicenseSummary,
         sourceTermsAccepted: false,
+      }}
+      submit={{
+        disabled: false,
+        error: "This song matches an existing upload. Review the source track, accept the source terms, then submit again as a remix.",
+        label: "Post",
       }}
     />
   ),
@@ -300,6 +347,8 @@ export const PaidUnlock: Story = {
         genre: "R&B",
         primaryLanguage: "English",
         secondaryLanguage: "French",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: benefitCoverFile,
         coverLabel: "benefit-single-cover.png",
         previewStartSeconds: "42",
       }}
@@ -326,6 +375,8 @@ export const PaidUnlockRegionalPricing: Story = {
         genre: "R&B",
         primaryLanguage: "English",
         secondaryLanguage: "French",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: benefitCoverFile,
         coverLabel: "benefit-single-cover.png",
         previewStartSeconds: "42",
       }}
@@ -355,6 +406,8 @@ export const WithCharityContribution: Story = {
         genre: "R&B",
         primaryLanguage: "English",
         secondaryLanguage: "French",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: benefitCoverFile,
         coverLabel: "benefit-single-cover.png",
         previewStartSeconds: "42",
       }}

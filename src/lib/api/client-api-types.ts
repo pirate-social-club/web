@@ -61,8 +61,63 @@ export type ApiProfileMediaUploadResponse = {
   storage_object_key: string;
 };
 
+export type ApiWalletIdentityPublicName = {
+  id: string;
+  label: string;
+  label_normalized: string;
+  status: "active";
+  owner_kind: "wallet";
+  owner_wallet_address: string;
+  chain_ref: string;
+  price_paid_cents: number;
+  currency: "USD";
+  issued_at: number;
+  expires_at: number | null;
+  pirate_user_id: string | null;
+};
+
+export type ApiWalletIdentityResponse =
+  | {
+    object: "wallet_identity";
+    chain_ref: string;
+    wallet_address: string;
+    display_label: string | null;
+    public_names: ApiWalletIdentityPublicName[];
+  }
+  | {
+    object: "wallet_identity_redirect";
+    chain_ref: string;
+    wallet_address: string;
+    profile: string;
+    profile_handle: string;
+  };
+
 export type ApiSongArtifactUploadContentRequest = {
   content_base64: string;
+};
+
+export type ApiDerivativeSourceKind = "song" | "video";
+export type ApiDerivativeSourceQueryKind = ApiDerivativeSourceKind | "live";
+
+export type ApiDerivativeSource = {
+  id: string;
+  object: "derivative_source";
+  community: string;
+  asset: string;
+  title: string;
+  kind: ApiDerivativeSourceKind;
+  story_ip: string;
+  story_license_terms: string;
+  license_preset?: "non-commercial" | "commercial-use" | "commercial-remix" | null;
+  commercial_rev_share_pct?: number | null;
+  creator_user: string;
+  creator_handle?: string | null;
+  creator_display_name?: string | null;
+};
+
+export type ApiDerivativeSourceListResponse = {
+  items: ApiDerivativeSource[];
+  next_cursor: string | null;
 };
 
 export type ApiCommunityRuleInput = {
@@ -181,6 +236,7 @@ export type ApiCreateLiveRoomRequest = {
     status?: ApiLiveRoomSetlistStatus | null;
     items?: Array<{
       song_artifact_bundle?: string | null;
+      source_asset_ref?: string | null;
       title?: string | null;
       artist?: string | null;
       rights_basis?: ApiLiveRoomRightsBasis | null;
@@ -227,6 +283,7 @@ export type ApiLiveRoom = {
       object: "live_room_setlist_item";
       position: number;
       song_artifact_bundle: string | null;
+      source_asset_ref: string | null;
       title: string;
       artist: string | null;
       rights_basis: ApiLiveRoomRightsBasis;

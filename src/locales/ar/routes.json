@@ -14,6 +14,7 @@
     "expandReplies": "وسّع الردود",
     "expandThread": "وسّع النقاش",
     "joinedStatLabel": "انضم",
+    "loadMore": "حمّل المزيد",
     "loadMoreReplies": "حمّل المزيد من الردود",
     "loadReplies": "حمّل الردود",
     "loading": "جارٍ التحميل...",
@@ -200,7 +201,7 @@
       "replace": "استبدل"
     },
     "derivative": {
-      "acceptSourceTerms": "أفهم وأقبل شروط ترخيص المصدر المحدد لهذا الريمكس.",
+      "acceptSourceTerms": "أقبل شروط هذا الريمكس.",
       "licenseSource": "ترخيص المصدر",
       "licenseUpstreamRoyalty": "حقوق المنبع",
       "licenseParentIp": "IP الأصل على Story",
@@ -279,6 +280,7 @@
     "verifyAction": "تحقق",
     "verifyRequiredDescription": "أكمل مسح راحة اليد قبل أن تنشر أول مشاركة.",
     "verifyRequiredTitle": "تحقق قبل النشر",
+    "requiredFieldsLegend": "الحقول المطلوبة مميزة بـ *",
     "placeholders": {
       "artist": "الفنان",
       "body": "اكتب منشورك",
@@ -290,7 +292,7 @@
       "selectLanguage": "اختر اللغة",
       "songSearch": "ابحث في أغانيك المرفوعة",
       "songTitle": "عنوان الأغنية",
-      "sourceTrackSearch": "ابحث في أصول Pirate / Story",
+      "sourceTrackSearch": "ابحث عن الأغاني",
       "title": "العنوان",
       "unlockPrice": "0",
       "previewStartSeconds": "0",

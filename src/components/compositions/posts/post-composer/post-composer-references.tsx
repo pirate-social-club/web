@@ -12,9 +12,46 @@ import {
 import { Input } from "@/components/primitives/input";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
+import { buildPublicProfilePath } from "@/lib/profile-routing";
 import { FieldLabel } from "./post-composer-fields";
 import type { ComposerReference, LiveSetlistItemInput } from "./post-composer.types";
 import { Type } from "@/components/primitives/type";
+
+function referenceLicenseLabel(item: ComposerReference): string | null {
+  if (item.upstreamRoyaltyPct != null) {
+    return `${item.upstreamRoyaltyPct}% royalty`;
+  }
+  return null;
+}
+
+function isPublicHandle(value: string | undefined): value is string {
+  return Boolean(value?.trim().toLowerCase().endsWith(".pirate"));
+}
+
+function ReferenceMeta({ item }: { item: ComposerReference }) {
+  const royaltyLabel = referenceLicenseLabel(item);
+  if (!item.subtitle && !royaltyLabel) return null;
+
+  return (
+    <Type as="p" className="truncate text-muted-foreground" variant="caption">
+      {isPublicHandle(item.subtitle) ? (
+        <a
+          className="hover:text-foreground hover:underline"
+          href={buildPublicProfilePath(item.subtitle)}
+          onClick={(event) => event.stopPropagation()}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {item.subtitle}
+        </a>
+      ) : item.subtitle ? (
+        <span>{item.subtitle}</span>
+      ) : null}
+      {item.subtitle && royaltyLabel ? <span> · </span> : null}
+      {royaltyLabel ? <span>{royaltyLabel}</span> : null}
+    </Type>
+  );
+}
 
 export function References({
   items,
@@ -40,9 +77,7 @@ export function References({
         >
           <div className="min-w-0">
             <Type as="p" variant="body-strong" className="truncate ">{item.title}</Type>
-            {item.subtitle ? (
-              <p className="truncate text-base text-muted-foreground">{item.subtitle}</p>
-            ) : null}
+            <ReferenceMeta item={item} />
           </div>
           <span className="text-base text-muted-foreground">{copy.labels.source}</span>
         </div>
@@ -112,13 +147,11 @@ export function SearchReferencePicker({
       <ComboboxInput aria-label={ariaLabel} placeholder={placeholder} />
       <ComboboxContent>
         <ComboboxEmpty>{emptyLabel}</ComboboxEmpty>
-        <ComboboxList>
+        <ComboboxList className="py-0">
           {(item) => (
-            <ComboboxItem key={item.id} value={item}>
+            <ComboboxItem className="py-2" key={item.id} value={item}>
               <Type as="p" variant="body-strong" className="truncate ">{item.title}</Type>
-              {item.subtitle ? (
-                <p className="truncate text-base text-muted-foreground">{item.subtitle}</p>
-              ) : null}
+              <ReferenceMeta item={item} />
             </ComboboxItem>
           )}
         </ComboboxList>
@@ -140,9 +173,7 @@ export function SelectedReferenceCard({
     <div className="flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-card px-4 py-3">
       <div className="min-w-0">
         <Type as="p" variant="body-strong" className="truncate ">{item.title}</Type>
-        {item.subtitle ? (
-          <p className="truncate text-base text-muted-foreground">{item.subtitle}</p>
-        ) : null}
+        <ReferenceMeta item={item} />
       </div>
       <Button
         aria-label={`${copy.buttons.clear} ${item.title}`}

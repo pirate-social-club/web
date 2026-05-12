@@ -25,7 +25,7 @@ import type {
   RegionalPricingPreview,
   VideoComposerState,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
-import type { ApiCreateLiveRoomRequest, ApiLiveRoomRightsBasis } from "@/lib/api/client-api-types";
+import type { ApiCreateLiveRoomRequest, ApiDerivativeSource, ApiLiveRoomRightsBasis } from "@/lib/api/client-api-types";
 import { isValidHttpUrl, normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
 import { extractVideoPosterFrameFile } from "@/components/compositions/posts/post-composer/video-poster-frame";
 
@@ -75,6 +75,11 @@ function liveSetlistSongArtifactBundleId(declaredTrackId: string | undefined): s
   return value?.startsWith("sab_") ? value : undefined;
 }
 
+function liveSetlistSourceAssetRef(declaredTrackId: string | undefined): string | undefined {
+  const value = declaredTrackId?.trim();
+  return value?.startsWith("story:asset:") ? value : undefined;
+}
+
 function sameUserId(left: string | null | undefined, right: string | null | undefined): boolean {
   if (!left || !right) return false;
   return left === right || left.replace(/^usr_/, "") === right.replace(/^usr_/, "");
@@ -99,6 +104,18 @@ export function songArtifactBundleToComposerReference(bundle: ApiSongArtifactBun
     id: bundle.id,
     title: bundle.title,
     subtitle: bundle.creator_user,
+  };
+}
+
+export function derivativeSourceToComposerReference(source: ApiDerivativeSource): ComposerReference {
+  return {
+    id: `story:asset:${source.asset}`,
+    title: source.title,
+    subtitle: source.creator_handle ?? source.creator_display_name ?? undefined,
+    licensePreset: source.license_preset,
+    upstreamRoyaltyPct: source.commercial_rev_share_pct,
+    parentIpId: source.story_ip,
+    licenseTermsId: source.story_license_terms,
   };
 }
 
@@ -138,6 +155,7 @@ export function buildLiveRoomRequest(input: {
       status: "ready",
       items: input.liveState.setlistItems.map((item) => ({
         song_artifact_bundle: liveSetlistSongArtifactBundleId(item.declaredTrackId),
+        source_asset_ref: liveSetlistSourceAssetRef(item.declaredTrackId),
         title: item.titleText.trim(),
         artist: item.artistText?.trim() || undefined,
         rights_basis: liveRightsBasisFromPerformanceKind(item.performanceKind),
@@ -179,11 +197,18 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const session = useSession();
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").createPost;
-  const [community, setCommunity] = React.useState<ApiCommunityPreview | null>(null);
-  const [communityOwnerUserId, setCommunityOwnerUserId] = React.useState<string | null>(null);
-  const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
-  const [pricingPolicy, setPricingPolicy] = React.useState<ApiCommunityPricingPolicy | null>(null);
-  const [loadError, setLoadError] = React.useState<unknown>(null);
+  const [pageState, setPageState] = React.useState({
+    community: null as ApiCommunityPreview | null,
+    communityOwnerUserId: null as string | null,
+    eligibility: null as ApiJoinEligibility | null,
+    pricingPolicy: null as ApiCommunityPricingPolicy | null,
+    loadError: null as unknown,
+    availableAgent: null as AvailableSigningAgent | null,
+    submitting: false,
+    postAltchaPayload: null as string | null,
+    postAltchaResetKey: 0,
+    loading: true,
+  });
   const { actions: draftActions, state: draft } = useCreatePostDraftState(initialDraft);
   const {
     audience,
@@ -236,15 +261,11 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setTitle,
     setVideoState,
   } = draftActions;
-  const [availableAgent, setAvailableAgent] = React.useState<AvailableSigningAgent | null>(null);
-  const [submitting, setSubmitting] = React.useState(false);
-  const [postAltchaPayload, setPostAltchaPayload] = React.useState<string | null>(null);
-  const [postAltchaResetKey, setPostAltchaResetKey] = React.useState(0);
-  const [loading, setLoading] = React.useState(true);
+  const { community, communityOwnerUserId, eligibility, pricingPolicy, loadError, availableAgent, submitting, postAltchaPayload, postAltchaResetKey, loading } = pageState;
 
   const refetchEligibility = React.useCallback(async () => {
     const nextEligibility = await api.communities.getJoinEligibility(communityId);
-    setEligibility(nextEligibility);
+    setPageState((current) => ({ ...current, eligibility: nextEligibility }));
     return nextEligibility;
   }, [api, communityId]);
 
@@ -267,10 +288,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
   React.useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setLoadError(null);
+    setPageState((current) => ({ ...current, loading: true, loadError: null }));
     setSubmitError(null);
-    setCommunityOwnerUserId(null);
 
     const fullCommunityPromise = api.communities.get(communityId).catch((error: unknown) => {
       logger.warn("[create-post-route] could not load owner-only community metadata", {
@@ -287,16 +306,19 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     ])
       .then(([communityResult, fullCommunityResult, eligibilityResult]) => {
         if (cancelled) return;
-        setCommunity(communityResult);
-        setCommunityOwnerUserId(fullCommunityResult?.created_by_user ?? null);
-        setEligibility(eligibilityResult);
+        setPageState((current) => ({
+          ...current,
+          community: communityResult,
+          communityOwnerUserId: fullCommunityResult?.created_by_user ?? null,
+          eligibility: eligibilityResult,
+        }));
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        setLoadError(error);
+        setPageState((current) => ({ ...current, loadError: error }));
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setPageState((current) => ({ ...current, loading: false }));
       });
 
     return () => { cancelled = true; };
@@ -304,14 +326,14 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
   React.useEffect(() => {
     let cancelled = false;
-    setPricingPolicy(null);
+    setPageState((current) => ({ ...current, pricingPolicy: null }));
 
     void api.communities.getPricingPolicy(communityId)
       .then((pricingPolicyResult) => {
-        if (!cancelled) setPricingPolicy(pricingPolicyResult);
+        if (!cancelled) setPageState((current) => ({ ...current, pricingPolicy: pricingPolicyResult }));
       })
       .catch(() => {
-        if (!cancelled) setPricingPolicy(null);
+        if (!cancelled) setPageState((current) => ({ ...current, pricingPolicy: null }));
       });
 
     return () => { cancelled = true; };
@@ -319,7 +341,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
   React.useEffect(() => {
     let cancelled = false;
-    setAvailableAgent(null);
+    setPageState((current) => ({ ...current, availableAgent: null }));
 
     if (!session?.accessToken) {
       return () => { cancelled = true; };
@@ -328,10 +350,10 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     void api.agents.list()
       .then(async (ownedAgentsResult) => {
         const nextAvailableAgent = await resolveAvailableSigningAgent(ownedAgentsResult.items);
-        if (!cancelled) setAvailableAgent(nextAvailableAgent);
+        if (!cancelled) setPageState((current) => ({ ...current, availableAgent: nextAvailableAgent }));
       })
       .catch(() => {
-        if (!cancelled) setAvailableAgent(null);
+        if (!cancelled) setPageState((current) => ({ ...current, availableAgent: null }));
       });
 
     return () => { cancelled = true; };
@@ -362,16 +384,16 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       return () => { cancelled = true; };
     }
 
-    void api.communities.listSongArtifactBundles(communityId, { limit: 25 })
+    void api.communities.listDerivativeSources(communityId, { kind: "live", limit: 25 })
       .then((result) => {
         if (cancelled) return;
-        const trackOptions = result.items.map(songArtifactBundleToComposerReference);
+        const trackOptions = result.items.map(derivativeSourceToComposerReference);
         setLiveState((current) => ({ ...current, trackOptions }));
       })
       .catch((error: unknown) => {
         if (cancelled) return;
         setLiveState((current) => ({ ...current, trackOptions: [] }));
-        logger.warn("[create-post] could not load live setlist song artifacts", {
+        logger.warn("[create-post] could not load live setlist derivative sources", {
           communityId,
           error,
         });
@@ -379,6 +401,49 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
     return () => { cancelled = true; };
   }, [api, communityId, composerMode, setLiveState]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (composerMode !== "song" || songMode !== "remix") {
+      return () => { cancelled = true; };
+    }
+
+    void api.communities.listDerivativeSources(communityId, { kind: "song", limit: 25 })
+      .then((result) => {
+        if (cancelled) return;
+        const searchResults = result.items.map(derivativeSourceToComposerReference);
+        setDerivativeStep((current) => {
+          if (current?.trigger === "analysis") {
+            return current;
+          }
+          return {
+            visible: true,
+            required: true,
+            trigger: "remix",
+            requirementLabel: current?.requirementLabel,
+            searchResults,
+            references: current?.references ?? [],
+            licenseSummary: current?.licenseSummary,
+            sourceTermsAccepted: current?.sourceTermsAccepted === true,
+          };
+        });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setDerivativeStep((current) => current?.trigger === "analysis"
+          ? current
+          : current
+            ? { ...current, searchResults: [] }
+            : current);
+        logger.warn("[create-post] could not load derivative song sources", {
+          communityId,
+          error,
+        });
+      });
+
+    return () => { cancelled = true; };
+  }, [api, communityId, composerMode, setDerivativeStep, songMode]);
 
   React.useEffect(() => {
     resetCharityContribution();
@@ -637,7 +702,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       return;
     }
 
-    setSubmitting(true);
+    setPageState((current) => ({ ...current, submitting: true }));
     setSubmitError(null);
     logger.info("[create-post] submit started", {
       authorMode,
@@ -890,7 +955,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         );
       }
 
-      setPostAltchaPayload(null);
+      setPageState((current) => ({ ...current, postAltchaPayload: null }));
       logger.info("[create-post] publish completed", {
         postId: publishedPostId ?? result?.id,
         postType: publishedPostType,
@@ -906,8 +971,11 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         message: getErrorMessage(error, "Could not create post"),
       });
       if (postAltchaRequired) {
-        setPostAltchaPayload(null);
-        setPostAltchaResetKey((current) => current + 1);
+        setPageState((current) => ({
+          ...current,
+          postAltchaPayload: null,
+          postAltchaResetKey: current.postAltchaResetKey + 1,
+        }));
       }
       setSubmitError(getErrorMessage(error, "Could not create post"));
     } finally {
@@ -915,7 +983,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         communityId,
         composerMode,
       });
-      setSubmitting(false);
+      setPageState((current) => ({ ...current, submitting: false }));
     }
   }, [
     api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, hasCommunityPostingRole,
@@ -984,7 +1052,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setLicense,
     setLyrics,
     setMonetizationState,
-    setPostAltchaPayload,
+    setPostAltchaPayload: (payload: string | null) => setPageState((current) => ({ ...current, postAltchaPayload: payload })),
     setSelectedQualifierIds,
     setSongMode,
     setSongState,

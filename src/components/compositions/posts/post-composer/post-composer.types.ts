@@ -79,6 +79,10 @@ export interface ComposerReference {
   id: string;
   title: string;
   subtitle?: string;
+  licensePreset?: AssetLicensePresetId | null;
+  upstreamRoyaltyPct?: number | null;
+  parentIpId?: string | null;
+  licenseTermsId?: string | null;
 }
 
 export interface LiveSetlistItemInput {

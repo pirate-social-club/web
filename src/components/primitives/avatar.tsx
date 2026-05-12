@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { buildDefaultAvatarSrc } from "@/lib/default-avatar";
+import { isRenderableImageSrc } from "@/lib/media-utils";
 import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "./skeleton";
@@ -19,29 +20,6 @@ const sizeClasses: Record<AvatarSize, string> = {
 export function isRetryableImageSrc(src: string): boolean {
   const normalized = src.trim().toLowerCase();
   return isRenderableImageSrc(normalized) && !normalized.startsWith("data:");
-}
-
-export function isRenderableImageSrc(src: string): boolean {
-  const trimmed = src.trim();
-  const normalized = trimmed.toLowerCase();
-
-  if (!trimmed) {
-    return false;
-  }
-
-  if (
-    normalized.startsWith("data:")
-    || normalized.startsWith("blob:")
-    || normalized.startsWith("http://")
-    || normalized.startsWith("https://")
-    || normalized.startsWith("/")
-    || normalized.startsWith("./")
-    || normalized.startsWith("../")
-  ) {
-    return true;
-  }
-
-  return !/^[a-z][a-z0-9+.-]*:/iu.test(trimmed);
 }
 
 export function buildRetriedImageSrc(src: string): string {

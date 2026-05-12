@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { buildRetriedImageSrc, isRenderableImageSrc, isRetryableImageSrc } from "./avatar";
+import { isRenderableImageSrc } from "@/lib/media-utils";
+import { buildRetriedImageSrc, isRetryableImageSrc } from "./avatar";
 
 describe("avatar image retry helpers", () => {
   test("marks browser-renderable image urls", () => {

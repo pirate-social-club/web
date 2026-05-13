@@ -73,5 +73,6 @@ export default defineConfig(() => ({
       "@": resolve(__dirname, "./src"),
       dotenv: resolve(__dirname, "./src/lib/dotenv-browser-shim.ts"),
     },
+    dedupe: ["viem"],
   },
 }));

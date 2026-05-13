@@ -21,6 +21,7 @@ describe("song submit payload helpers", () => {
   test("builds a free original song post without a listing", () => {
     const postRequest = buildSongPostRequest({
       bundleId: "sab_free",
+      caption: "  Listen through the second chorus.  ",
       derivativeStep: undefined,
       idempotencyKey: "key-free",
       license: { presetId: "non-commercial" },
@@ -40,6 +41,7 @@ describe("song submit payload helpers", () => {
 
     expect(postRequest).toEqual({
       access_mode: "public",
+      caption: "Listen through the second chorus.",
       identity_mode: "public",
       idempotency_key: "key-free",
       license_preset: "non-commercial",

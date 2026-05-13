@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
+import { FormattedText } from "@/components/primitives/formatted-text";
 import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -76,6 +77,19 @@ function shouldHandleCardKeyboardNavigation(event: React.KeyboardEvent<HTMLEleme
   const target = event.target instanceof Element ? event.target : null;
   return !target?.closest(
     "a,button,input,select,textarea,summary,[role='button'],[data-post-card-interactive='true']",
+  );
+}
+
+function SongCaptionBeforeMedia({ content }: { content: PostCardProps["content"] }) {
+  if (content.type !== "song" || !content.caption) return null;
+
+  return (
+    <FormattedText
+      className={cn(postCardType.caption, "-mt-1 mb-1 max-w-[72ch] self-start text-start text-muted-foreground")}
+      dir={content.captionDir ?? "auto"}
+      lang={content.captionLang}
+      value={content.caption}
+    />
   );
 }
 
@@ -191,6 +205,7 @@ export function PostCard({
         />
 
         {titleElement}
+        <SongCaptionBeforeMedia content={content} />
         <PostCardMedia content={content} />
         {canToggleOriginal ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-start">

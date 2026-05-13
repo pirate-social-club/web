@@ -180,13 +180,10 @@ function attachmentFromController(
   return null;
 }
 
-function previewBody(controller: PostComposerController) {
+export function getPostComposerPreviewBody(controller: PostComposerController) {
   const { fields, tabs } = controller;
   if (tabs.activeTab === "image" || tabs.activeTab === "video") {
     return fields.captionValue;
-  }
-  if (tabs.activeTab === "song") {
-    return "";
   }
   return fields.textBodyValue;
 }
@@ -241,7 +238,7 @@ function buildPreviewPost(
     content: buildPostComposerPreviewContent({
       access: commerce.monetizationState.visible ? "paid" : "free",
       attachment,
-      body: previewBody(controller),
+      body: getPostComposerPreviewBody(controller),
       linkPreview: fields.linkPreview,
       price: commerce.monetizationState.priceUsd ?? "",
       songTitle: controller.song.state.title,

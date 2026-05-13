@@ -25,7 +25,7 @@ const LazyVideoPostContent = React.lazy(async () => {
 function SongPostContentFallback({ className }: { className?: string }) {
   return (
     <div className={cn("flex items-center gap-3 rounded-lg border border-border-soft bg-muted/30 p-3", className)}>
-      <div className="size-16 shrink-0 rounded-lg bg-muted" />
+      <div className="size-20 shrink-0 rounded-lg bg-muted" />
       <div className="min-w-0 flex-1 space-y-2">
         <div className="h-4 w-32 rounded bg-muted" />
         <div className="h-3 w-24 rounded bg-muted/80" />

@@ -18,8 +18,9 @@ const basePost: Omit<PostCardProps, "content"> = {
 const baseSong: SongContentSpec = {
   type: "song",
   title: "Midnight Waves",
+  caption: "Built this around a late-night synth pass and a vocal chop from the bridge.",
   // artist omitted - same as post author (kevin.tameimpala), shown in byline
-  artworkSrc: "https://picsum.photos/seed/pirate-song/120/120",
+  artworkSrc: "https://picsum.photos/seed/pirate-song/240/240",
   durationLabel: "3:47",
   durationMs: 227000,
   accessMode: "public",
@@ -169,7 +170,7 @@ export const RemixWithAttribution: Story = {
         ...baseSong,
         title: "Midnight Waves (Club Mix)",
         artist: "kevin.tameimpala",
-        artworkSrc: "https://picsum.photos/seed/pirate-remix/120/120",
+        artworkSrc: "https://picsum.photos/seed/pirate-remix/240/240",
         durationLabel: "4:12",
         durationMs: 252000,
         songMode: "remix",
@@ -192,7 +193,7 @@ export const RemixMultipleAttributions: Story = {
         ...baseSong,
         title: "Midnight Ocean Mashup",
         artist: "kevin.tameimpala",
-        artworkSrc: "https://picsum.photos/seed/pirate-mashup/120/120",
+        artworkSrc: "https://picsum.photos/seed/pirate-mashup/240/240",
         songMode: "remix",
         rightsBasis: "derivative",
         upstreamAttributions: [

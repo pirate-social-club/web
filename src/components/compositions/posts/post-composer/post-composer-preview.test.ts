@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { getPostComposerPreviewBody } from "./post-composer-publish-settings";
 import { buildPostComposerPreviewContent } from "./post-composer-preview";
 
 describe("buildPostComposerPreviewContent", () => {
@@ -42,6 +43,19 @@ describe("buildPostComposerPreviewContent", () => {
       type: "song",
       caption: "First line\n\n- one\n- two",
     });
+  });
+
+  test("uses song post body, not media caption or lyrics, for publish preview captions", () => {
+    const body = getPostComposerPreviewBody({
+      fields: {
+        captionValue: "Image/video caption",
+        lyricsValue: "[Verse]\nLyrics should stay on the bundle.",
+        textBodyValue: "Song post caption",
+      },
+      tabs: { activeTab: "song" },
+    } as never);
+
+    expect(body).toBe("Song post caption");
   });
 
   test("keeps local song artwork and playback wired in the publish preview", () => {

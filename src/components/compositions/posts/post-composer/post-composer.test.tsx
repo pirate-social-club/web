@@ -22,6 +22,13 @@ let hookSpies: Array<{ mockRestore: () => void }> = [];
 
 type TestElement = React.ReactElement<Record<string, unknown>>;
 
+const testLocaleContext = {
+  dir: "ltr",
+  isRtl: false,
+  locale: "en",
+  setLocale: () => undefined,
+};
+
 function installHookStubs() {
   hookSpies = [
     spyOn(React, "useState").mockImplementation(((
@@ -36,18 +43,14 @@ function installHookStubs() {
     spyOn(React, "useCallback").mockImplementation(((
       callback: unknown,
     ) => callback) as unknown as typeof React.useCallback),
-    spyOn(React, "useContext").mockImplementation((() => ({
-      dir: "ltr",
-      isRtl: false,
-      locale: "en",
-      setLocale: () => undefined,
-    })) as unknown as typeof React.useContext),
+    spyOn(React, "useContext").mockImplementation((() => testLocaleContext) as unknown as typeof React.useContext),
     spyOn(React, "useEffect").mockImplementation((() => undefined) as unknown as typeof React.useEffect),
     spyOn(React, "useId").mockImplementation((() => "test-id") as unknown as typeof React.useId),
     spyOn(React, "useRef").mockImplementation(((
       initial: unknown,
     ) => ({ current: initial })) as unknown as typeof React.useRef),
     spyOn(React, "useSyncExternalStore").mockImplementation((() => false) as unknown as typeof React.useSyncExternalStore),
+    spyOn(React, "use").mockImplementation((() => testLocaleContext) as unknown as typeof React.use),
   ];
 }
 

@@ -34,7 +34,7 @@ describe("deriveSongUI", () => {
     expect(ui.showUnlock).toBe(false);
   });
 
-  test("renders song captions with formatted text", () => {
+  test("keeps post captions outside the song player", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -44,9 +44,7 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("First line");
-    expect(markup).toContain("<ul");
-    expect(markup).toContain("<li>one</li>");
-    expect(markup).toContain("<li>two</li>");
+    expect(markup).not.toContain("First line");
+    expect(markup).not.toContain("<li>one</li>");
   });
 });

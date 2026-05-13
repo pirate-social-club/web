@@ -735,6 +735,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           altchaPayload: postAltchaPayload,
           audience,
           authorMode,
+          caption: body,
           charityContribution,
           charityPartner,
           derivativeStep,

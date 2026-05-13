@@ -49,6 +49,7 @@ type SongSubmitInput = {
   altchaPayload?: string | null;
   audience: ComposerAudienceState;
   authorMode: AuthorMode;
+  caption?: string;
   charityContribution: CharityContributionState;
   charityPartner: CommunityCharityPartner | null;
   derivativeStep: DerivativeStepState | undefined;
@@ -316,6 +317,7 @@ export function useSongSubmit({
     altchaPayload,
     audience,
     authorMode,
+    caption,
     charityContribution,
     charityPartner,
     derivativeStep,
@@ -452,6 +454,7 @@ export function useSongSubmit({
 
     const songRequest = buildSongPostRequest({
       bundleId,
+      caption,
       derivativeStep,
       idempotencyKey: crypto.randomUUID(),
       license,

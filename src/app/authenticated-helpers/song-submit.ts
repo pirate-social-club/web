@@ -12,6 +12,7 @@ import {
 
 export function buildSongPostRequest(input: {
   bundleId: string | null;
+  caption?: string;
   derivativeStep: AssetDerivativeInput | undefined;
   idempotencyKey: string;
   license: AssetLicenseState | undefined;
@@ -27,6 +28,7 @@ export function buildSongPostRequest(input: {
 
   return {
     access_mode: input.paidSongPriceUsd != null ? "locked" as const : "public" as const,
+    caption: input.caption?.trim() || undefined,
     commercial_rev_share_pct: input.songMode === "original" && input.license?.presetId === "commercial-remix"
       ? input.license.commercialRevSharePct
       : undefined,

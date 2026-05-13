@@ -194,18 +194,24 @@ export function FieldLabel({
   counter,
   className,
   labelClassName,
+  htmlFor,
+  required,
 }: {
   label: string;
   counter?: string;
   className?: string;
   labelClassName?: string;
+  htmlFor?: string;
+  required?: boolean;
 }) {
   return (
     <FormFieldLabel
       className={cn("mb-2", className)}
       counter={counter}
+      htmlFor={htmlFor}
       label={label}
       labelClassName={labelClassName}
+      required={required}
     />
   );
 }
@@ -218,6 +224,7 @@ export function UploadField({
   onChange,
   placeholderLabel,
   previewUrl,
+  required,
   selectedLabel,
   variant = "default",
 }: {
@@ -231,6 +238,7 @@ export function UploadField({
   onChange?: (files: FileList | null) => void;
   placeholderLabel?: string;
   previewUrl?: string;
+  required?: boolean;
   selectedLabel?: string;
   variant?: "default" | "artwork";
 }) {
@@ -239,13 +247,14 @@ export function UploadField({
 
   return (
     <div className="block">
-      <FieldLabel label={label} />
+      <FieldLabel htmlFor={inputId} label={label} required={required} />
       <input
         id={inputId}
         accept={accept}
         className="sr-only"
         multiple={multiple}
         onChange={(event) => onChange?.(event.target.files)}
+        required={required}
         type="file"
       />
       <label
@@ -302,6 +311,8 @@ export function LabeledTextarea({
   labelClassName,
   labelTextClassName,
   variant,
+  required,
+  htmlFor,
 }: {
   label: string;
   placeholder: string;
@@ -312,15 +323,19 @@ export function LabeledTextarea({
   labelClassName?: string;
   labelTextClassName?: string;
   variant?: React.ComponentProps<typeof Textarea>["variant"];
+  required?: boolean;
+  htmlFor?: string;
 }) {
   return (
     <div>
-      <FieldLabel className={labelClassName} label={label} labelClassName={labelTextClassName} />
+      <FieldLabel className={labelClassName} htmlFor={htmlFor} label={label} labelClassName={labelTextClassName} required={required} />
       <Textarea
         className={className}
         defaultValue={value == null ? defaultValue : undefined}
+        id={htmlFor}
         onChange={(event) => onChange?.(event.target.value)}
         placeholder={placeholder}
+        required={required}
         variant={variant}
         value={value}
       />

@@ -13,6 +13,7 @@ type FormFieldLabelProps = {
   htmlFor?: string;
   label: React.ReactNode;
   labelClassName?: string;
+  required?: boolean;
   tone?: "default" | "muted";
 };
 
@@ -22,12 +23,18 @@ function FormFieldLabel({
   htmlFor,
   label,
   labelClassName,
+  required,
   tone = "muted",
 }: FormFieldLabelProps) {
   return (
     <div className={cn("flex items-center justify-between gap-3", className)}>
       <Label htmlFor={htmlFor} tone={tone}>
-        <Type className={labelClassName} variant="label">{label}</Type>
+        <Type className={labelClassName} variant="label">
+          {label}
+          {required ? (
+            <span aria-hidden="true" className="ms-0.5 text-destructive">*</span>
+          ) : null}
+        </Type>
       </Label>
       {counter ? <Type variant="caption">{counter}</Type> : null}
     </div>

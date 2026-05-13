@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import {
   Select,
@@ -58,6 +58,10 @@ export function PostComposerDetailsStep({
     tabs,
   } = controller;
   const coverPreviewUrl = useObjectUrl(song.state.coverUpload);
+  const titleId = useId();
+  const genreId = useId();
+  const primaryLanguageId = useId();
+  const lyricsId = useId();
 
   if (tabs.activeTab === "video") {
     return (
@@ -90,6 +94,9 @@ export function PostComposerDetailsStep({
     <CardContent className={cn("space-y-8 p-5", isMobile && "px-0 pb-4 pt-1")}>
       <Type as="h2" variant="h3" className="text-muted-foreground">
         Song details
+      </Type>
+      <Type as="p" variant="caption" className="text-muted-foreground">
+        {copy.requiredFieldsLegend}
       </Type>
 
       <div className="flex items-center gap-2 rounded-full bg-muted p-1">
@@ -131,23 +138,26 @@ export function PostComposerDetailsStep({
 
       <section className="space-y-4">
         <div>
-          <FieldLabel label="Song title" />
+          <FieldLabel htmlFor={titleId} label="Song title" required />
           <Input
+            id={titleId}
             onChange={(event) => song.update((current) => ({ ...current, title: event.target.value }))}
             placeholder="Track title"
+            required
             value={song.state.title ?? ""}
           />
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <FieldLabel label={copy.fields.genre} />
+            <FieldLabel htmlFor={genreId} label={copy.fields.genre} required />
             <Select
               onValueChange={(value) =>
                 song.update((current) => ({ ...current, genre: value }))
               }
+              required
               value={song.state.genre}
             >
-              <SelectTrigger>
+              <SelectTrigger id={genreId}>
                 <SelectValue placeholder={copy.placeholders.selectGenre} />
               </SelectTrigger>
               <SelectContent>
@@ -161,14 +171,15 @@ export function PostComposerDetailsStep({
           </div>
 
           <div>
-            <FieldLabel label={copy.fields.primaryLanguage} />
+            <FieldLabel htmlFor={primaryLanguageId} label={copy.fields.primaryLanguage} required />
             <Select
               onValueChange={(value) =>
                 song.update((current) => ({ ...current, primaryLanguage: value }))
               }
+              required
               value={song.state.primaryLanguage}
             >
-              <SelectTrigger>
+              <SelectTrigger id={primaryLanguageId}>
                 <SelectValue placeholder={copy.placeholders.selectLanguage} />
               </SelectTrigger>
               <SelectContent>
@@ -184,6 +195,7 @@ export function PostComposerDetailsStep({
 
         <LabeledTextarea
           className="min-h-36"
+          htmlFor={lyricsId}
           label={copy.fields.lyrics}
           onChange={controller.fields.onLyricsValueChange}
           placeholder={copy.placeholders.lyrics}

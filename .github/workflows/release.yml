@@ -82,8 +82,8 @@ jobs:
         working-directory: web
         continue-on-error: true
         env:
-          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ secrets.AUTH_UPSTREAM_JWT_AUDIENCE }}
-          AUTH_UPSTREAM_JWT_ISSUER: ${{ secrets.AUTH_UPSTREAM_JWT_ISSUER }}
+          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
+          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
           AUTH_UPSTREAM_JWT_SHARED_SECRET: ${{ secrets.AUTH_UPSTREAM_JWT_SHARED_SECRET }}
         run: bun run test:e2e:live-staging
       - name: Upload Playwright report

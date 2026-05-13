@@ -21,17 +21,22 @@ responses where needed. The live staging integration uses real staging services:
 it exchanges a JWT-based session, creates a real staging post, and adds a real
 comment in the seeded `MCP Guest Comment Smoke` community.
 
-Required GitHub Actions secrets for the live staging check:
+Required GitHub Actions variables for the live staging check:
 
 ```bash
 AUTH_UPSTREAM_JWT_AUDIENCE
 AUTH_UPSTREAM_JWT_ISSUER
+```
+
+Required GitHub Actions secret for the live staging check:
+
+```bash
 AUTH_UPSTREAM_JWT_SHARED_SECRET
 ```
 
 `AUTH_UPSTREAM_JWT_SHARED_SECRET` is sourced from Infisical staging
-`/services/api` during setup or rotation. The current staging issuer/audience
-values are documented constants:
+`/services/api` during setup or rotation. The staging issuer/audience values are
+public JWT claims and should be stored as GitHub Actions variables:
 
 ```bash
 AUTH_UPSTREAM_JWT_ISSUER=pirate-staging-upstream

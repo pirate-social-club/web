@@ -25,7 +25,7 @@ Production web deploys must go through the Blacksmith GitHub Actions release wor
 
 For production-ready changes, commit and push to the release branch, then use or instruct the user to use the `release.yml` workflow. Local verification should stay to focused tests, `rtk bun run types:safe`, and other cheap checks unless the user explicitly requests a local production build.
 
-The release workflow deploys staging first, runs HTTP smoke plus Playwright browser E2E against staging, runs the guarded live staging integration, applies staging community migrations, and only then deploys production. The live staging integration uses GitHub Actions secrets for `AUTH_UPSTREAM_JWT_AUDIENCE`, `AUTH_UPSTREAM_JWT_ISSUER`, and `AUTH_UPSTREAM_JWT_SHARED_SECRET`; the shared secret should be copied from Infisical staging `/services/api` when rotated.
+The release workflow deploys staging first, runs HTTP smoke plus Playwright browser E2E against staging, runs the guarded live staging integration, applies staging community migrations, and only then deploys production. The live staging integration uses GitHub Actions variables for `AUTH_UPSTREAM_JWT_AUDIENCE` and `AUTH_UPSTREAM_JWT_ISSUER`, and a GitHub Actions secret for `AUTH_UPSTREAM_JWT_SHARED_SECRET`; the shared secret should be copied from Infisical staging `/services/api` when rotated.
 
 ## Browser Automation
 

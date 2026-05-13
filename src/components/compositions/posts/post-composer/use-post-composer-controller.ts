@@ -185,6 +185,10 @@ export function usePostComposerController(props: PostComposerProps) {
   const charityContributionState = charityContribution ?? uncontrolledCharityContribution;
   const audienceState = audience ?? uncontrolledAudienceState;
   const derivativeState = derivativeStep ?? uncontrolledDerivativeState;
+  const songStateRef = React.useRef(songState);
+  const derivativeStateRef = React.useRef(derivativeState);
+  songStateRef.current = songState;
+  derivativeStateRef.current = derivativeState;
 
   const setSongModeWithCallback = React.useCallback((next: NonNullable<PostComposerProps["songMode"]>) => {
     if (songMode === undefined) {
@@ -209,12 +213,12 @@ export function usePostComposerController(props: PostComposerProps) {
   }, [onSelectedQualifierIdsChange]);
 
   const updateSongState = React.useCallback((updater: (current: SongComposerState) => SongComposerState) => {
-    const next = updater(songState);
+    const next = updater(songStateRef.current);
     if (song === undefined) {
       setUncontrolledSongState(next);
     }
     onSongChange?.(next);
-  }, [onSongChange, song, songState]);
+  }, [onSongChange, song]);
 
   const updateLicenseState = React.useCallback((updater: (current: AssetLicenseState) => AssetLicenseState) => {
     const next = updater(licenseState);
@@ -282,12 +286,12 @@ export function usePostComposerController(props: PostComposerProps) {
   }, [onLinkPreviewChange]);
 
   const updateDerivativeState = React.useCallback((updater: (current: DerivativeStepState | undefined) => DerivativeStepState | undefined) => {
-    const next = updater(derivativeState);
+    const next = updater(derivativeStateRef.current);
     if (derivativeStep === undefined) {
       setUncontrolledDerivativeState(next);
     }
     onDerivativeStepChange?.(next);
-  }, [derivativeState, derivativeStep, onDerivativeStepChange]);
+  }, [derivativeStep, onDerivativeStepChange]);
 
   const handleSongModeChange = React.useCallback((next: NonNullable<PostComposerProps["songMode"]>) => {
     setSongModeWithCallback(next);

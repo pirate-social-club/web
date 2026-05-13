@@ -11,6 +11,7 @@ import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
 import { PostComposerAttachmentCard } from "./post-composer-attachment-card";
+import { extractEmbeddedAudioArtworkFile } from "./post-composer-audio-artwork";
 import {
   PostComposerDesktopAttachmentToolbar,
   PostComposerMobileAttachmentBar,
@@ -80,6 +81,7 @@ function attachmentFromController(
   imagePreviewUrl?: string,
   videoPosterUrl?: string,
   videoPreviewUrl?: string,
+  songArtworkUrl?: string,
 ): AttachmentState {
   const { fields, media, song, tabs } = controller;
 
@@ -104,6 +106,7 @@ function attachmentFromController(
   if (tabs.activeTab === "song") {
     return {
       kind: "song",
+      artworkUrl: songArtworkUrl,
       label: song.state.primaryAudioUpload?.name ?? song.state.primaryAudioLabel ?? "Audio file",
     };
   }
@@ -172,7 +175,8 @@ function useWriteStepController(controller: PostComposerController) {
   const imagePreviewUrl = useObjectUrl(controller.media.activeImageUpload);
   const videoPreviewUrl = useObjectUrl(controller.media.videoState.primaryVideoUpload);
   const videoPosterUrl = useVideoPosterUrl(controller.media.videoState.primaryVideoUpload);
-  const attachment = attachmentFromController(controller, imagePreviewUrl, videoPosterUrl, videoPreviewUrl);
+  const songArtworkUrl = useObjectUrl(controller.song.state.coverUpload);
+  const attachment = attachmentFromController(controller, imagePreviewUrl, videoPosterUrl, videoPreviewUrl, songArtworkUrl);
   const [isDragging, setIsDragging] = React.useState(false);
   const dragCounter = React.useRef(0);
 
@@ -216,6 +220,9 @@ function useWriteStepController(controller: PostComposerController) {
     } else if (attachment?.kind === "song") {
       controller.song.update((current) => ({
         ...current,
+        coverLabel: current.coverSource === "embedded" ? undefined : current.coverLabel,
+        coverSource: current.coverSource === "embedded" ? undefined : current.coverSource,
+        coverUpload: current.coverSource === "embedded" ? null : current.coverUpload,
         primaryAudioLabel: undefined,
         primaryAudioUpload: null,
       }));
@@ -243,11 +250,30 @@ function useWriteStepController(controller: PostComposerController) {
   function handleAudioFile(file: File) {
     controller.song.update((current) => ({
       ...current,
+      coverLabel: current.coverSource === "embedded" ? undefined : current.coverLabel,
+      coverSource: current.coverSource === "embedded" ? undefined : current.coverSource,
+      coverUpload: current.coverSource === "embedded" ? null : current.coverUpload,
       primaryAudioLabel: file.name,
       primaryAudioUpload: file,
       title: current.title?.trim() ? current.title : titleFromFileName(file.name),
     }));
     controller.tabs.onTabChange("song");
+
+    void extractEmbeddedAudioArtworkFile(file)
+      .then((coverFile) => {
+        controller.song.update((current) => {
+          if (current.primaryAudioUpload !== file || !coverFile) return current;
+          if (current.coverUpload && current.coverSource !== "embedded") return current;
+
+          return {
+            ...current,
+            coverLabel: coverFile.name,
+            coverSource: "embedded",
+            coverUpload: coverFile,
+          };
+        });
+      })
+      .catch(() => undefined);
   }
 
   function handleFileInputChange(kind: AttachmentKind, files: FileList | null) {

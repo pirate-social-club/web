@@ -43,6 +43,7 @@ describe("buildPostComposerPreviewContent", () => {
       type: "song",
       caption: "First line\n\n- one\n- two",
     });
+    expect(content.type === "song" ? content.artworkSrc : undefined).toBeUndefined();
   });
 
   test("uses song post body, not media caption or lyrics, for publish preview captions", () => {

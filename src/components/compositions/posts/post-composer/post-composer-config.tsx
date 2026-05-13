@@ -106,6 +106,7 @@ export function defaultSongState(song?: SongComposerState): SongComposerState {
     primaryAudioLabel: song?.primaryAudioLabel,
     coverUpload: song?.coverUpload ?? null,
     coverLabel: song?.coverLabel,
+    coverSource: song?.coverSource,
     previewStartSeconds: song?.previewStartSeconds ?? "0",
     canvasVideoUpload: song?.canvasVideoUpload ?? null,
     canvasVideoLabel: song?.canvasVideoLabel,

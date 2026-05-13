@@ -892,15 +892,15 @@ describe("PostComposer monetization", () => {
       songMode: "original",
     });
 
-    const remixButton = findElement(
+    const songModeTabs = findElement(
       tree,
-      (element) => element.props.children === "Remix" && typeof element.props.onClick === "function",
+      (element) => element.props.value === "original" && typeof element.props.onValueChange === "function",
     );
-    if (!remixButton) {
-      throw new Error("Missing remix button");
+    if (!songModeTabs) {
+      throw new Error("Missing song mode tabs");
     }
 
-    (remixButton.props.onClick as (() => void) | undefined)?.();
+    (songModeTabs.props.onValueChange as ((value: string) => void) | undefined)?.("remix");
 
     expect(songMode).toBe("remix");
     expect(derivativeStep).toEqual({
@@ -911,5 +911,45 @@ describe("PostComposer monetization", () => {
       references: [],
       sourceTermsAccepted: false,
     });
+  });
+
+  test("clears the remix derivative step when switching back to original", () => {
+    let derivativeStep: PostComposerProps["derivativeStep"] = {
+      visible: true,
+      required: true,
+      trigger: "remix",
+      searchResults: [],
+      references: [],
+      sourceTermsAccepted: false,
+    };
+    let songMode: PostComposerProps["songMode"] = "remix";
+    const tree = renderComposer({
+      availableTabs: ["song"],
+      canCreateSongPost: true,
+      clubName: "Lane1",
+      composerStep: "details",
+      derivativeStep,
+      mode: "song",
+      onDerivativeStepChange: (next) => {
+        derivativeStep = next;
+      },
+      onSongModeChange: (next) => {
+        songMode = next;
+      },
+      songMode,
+    });
+
+    const songModeTabs = findElement(
+      tree,
+      (element) => element.props.value === "remix" && typeof element.props.onValueChange === "function",
+    );
+    if (!songModeTabs) {
+      throw new Error("Missing song mode tabs");
+    }
+
+    (songModeTabs.props.onValueChange as ((value: string) => void) | undefined)?.("original");
+
+    expect(songMode).toBe("original");
+    expect(derivativeStep).toBeUndefined();
   });
 });

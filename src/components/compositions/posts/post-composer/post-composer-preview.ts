@@ -125,7 +125,7 @@ export function buildPostComposerPreviewContent({
       type: "song",
       title: trackTitle,
       caption: bodyText || undefined,
-      artworkSrc: attachment.artworkUrl ?? "https://picsum.photos/seed/post-composer-song-preview/240/240",
+      artworkSrc: attachment.artworkUrl,
       accessMode,
       listingMode: access === "paid" ? "listed" : "not_listed",
       listingStatus: access === "paid" ? "active" : undefined,

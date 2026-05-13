@@ -11,6 +11,7 @@ import {
 } from "@/components/primitives/select";
 import { CardContent } from "@/components/primitives/card";
 import { Input } from "@/components/primitives/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/primitives/tabs";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
@@ -91,39 +92,34 @@ export function PostComposerDetailsStep({
   }
 
   return (
-    <CardContent className={cn("space-y-8 p-5", isMobile && "px-0 pb-4 pt-1")}>
-      <Type as="h2" variant="h3" className="text-muted-foreground">
-        Song details
-      </Type>
-      <Type as="p" variant="caption" className="text-muted-foreground">
-        {copy.requiredFieldsLegend}
-      </Type>
-
-      <div className="flex items-center gap-2 rounded-full bg-muted p-1">
-        {(["original", "remix"] as const).map((value) => (
-          <button
-            key={value}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-base font-medium capitalize transition-colors",
-              primary.activeSongMode === value
-                ? "bg-card text-foreground shadow-sm"
-                : primary.derivativeState?.trigger === "analysis" && value === "original"
-                  ? "cursor-not-allowed text-muted-foreground/50"
-                  : "text-muted-foreground",
-            )}
-            disabled={Boolean(primary.derivativeState?.trigger === "analysis" && value === "original")}
-            onClick={() => {
-              if (primary.derivativeState?.trigger === "analysis" && value === "original") {
-                return;
-              }
-              primary.handleSongModeChange(value);
-            }}
-            type="button"
-          >
-            {copy.songModes[value]}
-          </button>
-        ))}
+    <CardContent className={cn("space-y-6 p-5", isMobile && "px-0 pb-4 pt-1")}>
+      <div className="space-y-1">
+        <Type as="h2" variant="h3" className="text-muted-foreground">
+          Song details
+        </Type>
+        <Type as="p" variant="caption" className="text-muted-foreground">
+          {copy.requiredFieldsLegend}
+        </Type>
       </div>
+
+      <Tabs
+        className="w-full"
+        onValueChange={(value) => primary.handleSongModeChange(value === "remix" ? "remix" : "original")}
+        value={primary.activeSongMode}
+      >
+        <TabsList className="grid h-auto w-full grid-cols-2 rounded-full border border-border-soft">
+          {(["original", "remix"] as const).map((value) => (
+            <TabsTrigger
+              className="h-10 min-w-0 px-3 font-semibold capitalize"
+              disabled={Boolean(primary.derivativeState?.trigger === "analysis" && value === "original")}
+              key={value}
+              value={value}
+            >
+              {copy.songModes[value]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {primary.derivativeState?.visible ? (
         <PostComposerDerivativeSection
@@ -213,6 +209,7 @@ export function PostComposerDetailsStep({
             song.update((current) => ({
               ...current,
               coverLabel: files?.[0]?.name ?? current.coverLabel,
+              coverSource: files?.[0] ? "upload" : undefined,
               coverUpload: files?.[0] ?? null,
             }))
           }

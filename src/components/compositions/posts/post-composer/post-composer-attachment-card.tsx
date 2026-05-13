@@ -212,8 +212,12 @@ export function PostComposerAttachmentCard({
         role="button"
         tabIndex={0}
       >
-        <span className="grid size-12 place-items-center rounded-[var(--radius-md)] bg-background text-muted-foreground">
-          <MusicNotes className="size-6" />
+        <span className="grid size-12 place-items-center overflow-hidden rounded-[var(--radius-md)] bg-background text-muted-foreground">
+          {attachment.artworkUrl ? (
+            <img alt="" className="size-full object-cover" src={attachment.artworkUrl} />
+          ) : (
+            <MusicNotes className="size-6" />
+          )}
         </span>
         <span className="min-w-0">
           <Type as="span" variant="body-strong" className="block truncate">

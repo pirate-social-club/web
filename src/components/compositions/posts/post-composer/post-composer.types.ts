@@ -161,6 +161,7 @@ export interface SongComposerState {
   primaryAudioLabel?: string;
   coverUpload?: File | null;
   coverLabel?: string;
+  coverSource?: "embedded" | "upload";
   previewStartSeconds?: string;
   canvasVideoUpload?: File | null;
   canvasVideoLabel?: string;

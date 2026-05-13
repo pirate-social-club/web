@@ -99,6 +99,17 @@ export const Deferred: Story = {
   ),
 };
 
+export const EmptyActivity: Story = {
+  args: {
+    recentActivity: [],
+  },
+  render: (args) => (
+    <StandardRoutePage size="rail">
+      <WalletHub {...args} />
+    </StandardRoutePage>
+  ),
+};
+
 export const Mobile: Story = {
   parameters: {
     viewport: { defaultViewport: "mobile1" },

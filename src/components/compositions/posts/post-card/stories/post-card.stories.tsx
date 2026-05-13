@@ -354,395 +354,344 @@ export const LinkPostLongSummary: Story = {
   ),
 };
 
-export const XEmbedPreview: Story = {
-  name: "Embed / X Preview",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title={undefined}
-      content={{
-        type: "embed",
-        canonicalUrl: "https://x.com/pirate/status/1234567890123456789",
-        originalUrl: "https://x.com/pirate/status/1234567890123456789",
-        preview: {
-          authorName: "Pirate",
-          authorUrl: "https://x.com/pirate",
-          hasMedia: true,
-          mediaUrl: "https://picsum.photos/seed/pirate-x-embed/240/240",
-          text: "Embedding should stay fast in the feed and expand only when someone asks for the official post.",
-        },
-        provider: "x",
-        renderMode: "preview",
-        state: "embed",
-      }}
-      engagement={{ ...basePost.engagement, score: 984, commentCount: 61 }}
-    />
-  ),
+type EmbedContent = Extract<PostCardProps["content"], { type: "embed" }>;
+type EmbedVariant = {
+  content: EmbedContent;
+  engagement: PostCardProps["engagement"];
+  label: string;
+  title?: string;
 };
 
-export const XEmbedOfficial: Story = {
-  name: "Embed / X Official",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title={undefined}
-      content={{
-        type: "embed",
-        canonicalUrl: "https://twitter.com/Interior/status/463440424141459456",
-        oembedHtml: `<blockquote class="twitter-tweet" data-theme="dark"><p lang="en" dir="ltr">Sunsets don&#39;t get much better than this one over <a href="https://twitter.com/GrandTetonNPS?ref_src=twsrc%5Etfw">@GrandTetonNPS</a>. <a href="https://twitter.com/hashtag/nature?src=hash&amp;ref_src=twsrc%5Etfw">#nature</a> <a href="https://twitter.com/hashtag/sunset?src=hash&amp;ref_src=twsrc%5Etfw">#sunset</a> <a href="http://t.co/YuKy2rcjyU">pic.x.com/YuKy2rcjyU</a></p>&mdash; US Department of the Interior (@Interior) <a href="https://twitter.com/Interior/status/463440424141459456?ref_src=twsrc%5Etfw">May 5, 2014</a></blockquote>`,
-        originalUrl: "https://x.com/Interior/status/463440424141459456",
-        preview: {
-          authorName: "US Department of the Interior",
-          authorUrl: "https://twitter.com/Interior",
-          hasMedia: false,
-          text: "Sunsets don't get much better than this one over @GrandTetonNPS. #nature #sunset",
-        },
-        provider: "x",
-        renderMode: "official",
-        state: "embed",
-      }}
-      engagement={{ ...basePost.engagement, score: 984, commentCount: 61 }}
-    />
-  ),
-};
+function chart(prices: number[], withVolume = false): NonNullable<NonNullable<EmbedContent["preview"]>["chart"]> {
+  return prices.map((price, index) => ({
+    price,
+    ts: 1_714_000_000 + index * 86_400,
+    ...(withVolume ? { volume: 1200 + index * 90 } : {}),
+  }));
+}
 
-export const YouTubeEmbedPreview: Story = {
-  name: "Embed / YouTube Preview",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title="Tour visuals worth watching"
-      content={{
-        type: "embed",
-        body: "The staging breakdown is the useful part here.",
-        canonicalUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        originalUrl: "https://youtu.be/dQw4w9WgXcQ",
-        preview: {
-          authorName: "Rick Astley",
-          authorUrl: "https://www.youtube.com/@RickAstley",
-          thumbnailHeight: 360,
-          thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
-          thumbnailWidth: 480,
-          title: "Never Gonna Give You Up",
-        },
-        provider: "youtube",
-        renderMode: "preview",
-        state: "embed",
-      }}
-      engagement={{ ...basePost.engagement, score: 412, commentCount: 38 }}
-    />
-  ),
-};
+const kalshiUrl = "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael";
+const polymarketUrl = "https://polymarket.com/event/example-market/will-example-resolve-yes";
+const polymarketEventUrl = "https://polymarket.com/event/fda-bpc157-reclassification";
+const kalshiBaseChart = [
+  0.18, 0.22, 0.2, 0.23, 0.21, 0.24, 0.26, 0.25, 0.27, 0.3,
+  0.29, 0.32, 0.28, 0.31, 0.35, 0.33, 0.37, 0.4, 0.38, 0.36,
+  0.39, 0.42, 0.41, 0.43, 0.44, 0.46, 0.45, 0.48, 0.47, 0.42,
+];
+const polymarketBaseChart = [
+  0.62, 0.58, 0.6, 0.56, 0.52, 0.55, 0.51, 0.49, 0.5, 0.48,
+  0.44, 0.46, 0.43, 0.4, 0.42, 0.45, 0.47, 0.44, 0.49, 0.51,
+  0.5, 0.54, 0.52, 0.55, 0.58, 0.56, 0.53, 0.55, 0.52, 0.53,
+];
 
-export const YouTubeEmbedOfficial: Story = {
-  name: "Embed / YouTube Official",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title="Official YouTube embed"
-      content={{
-        type: "embed",
-        body: "This should stay native in the feed and become the player on detail.",
-        canonicalUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        oembedHtml: `<iframe title="Never Gonna Give You Up" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`,
-        originalUrl: "https://youtu.be/dQw4w9WgXcQ",
-        preview: {
-          authorName: "Rick Astley",
-          thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
-          title: "Never Gonna Give You Up",
-        },
-        provider: "youtube",
-        renderMode: "official",
-        state: "embed",
-      }}
-      engagement={{ ...basePost.engagement, score: 624, commentCount: 74 }}
-    />
-  ),
-};
+const embedVariants = {
+  xPreview: {
+    label: "X Preview",
+    content: {
+      type: "embed",
+      canonicalUrl: "https://x.com/pirate/status/1234567890123456789",
+      originalUrl: "https://x.com/pirate/status/1234567890123456789",
+      preview: {
+        authorName: "Pirate",
+        authorUrl: "https://x.com/pirate",
+        hasMedia: true,
+        mediaUrl: "https://picsum.photos/seed/pirate-x-embed/240/240",
+        text: "Embedding should stay fast in the feed and expand only when someone asks for the official post.",
+      },
+      provider: "x",
+      renderMode: "preview",
+      state: "embed",
+    },
+    engagement: { ...basePost.engagement, score: 984, commentCount: 61 },
+  },
+  xOfficial: {
+    label: "X Official",
+    content: {
+      type: "embed",
+      canonicalUrl: "https://twitter.com/Interior/status/463440424141459456",
+      oembedHtml: `<blockquote class="twitter-tweet" data-theme="dark"><p lang="en" dir="ltr">Sunsets don&#39;t get much better than this one over <a href="https://twitter.com/GrandTetonNPS?ref_src=twsrc%5Etfw">@GrandTetonNPS</a>. <a href="https://twitter.com/hashtag/nature?src=hash&amp;ref_src=twsrc%5Etfw">#nature</a> <a href="https://twitter.com/hashtag/sunset?src=hash&amp;ref_src=twsrc%5Etfw">#sunset</a> <a href="http://t.co/YuKy2rcjyU">pic.x.com/YuKy2rcjyU</a></p>&mdash; US Department of the Interior (@Interior) <a href="https://twitter.com/Interior/status/463440424141459456?ref_src=twsrc%5Etfw">May 5, 2014</a></blockquote>`,
+      originalUrl: "https://x.com/Interior/status/463440424141459456",
+      preview: {
+        authorName: "US Department of the Interior",
+        authorUrl: "https://twitter.com/Interior",
+        hasMedia: false,
+        text: "Sunsets don't get much better than this one over @GrandTetonNPS. #nature #sunset",
+      },
+      provider: "x",
+      renderMode: "official",
+      state: "embed",
+    },
+    engagement: { ...basePost.engagement, score: 984, commentCount: 61 },
+  },
+  youtubePreview: {
+    label: "YouTube Preview",
+    title: "Tour visuals worth watching",
+    content: {
+      type: "embed",
+      body: "The staging breakdown is the useful part here.",
+      canonicalUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      originalUrl: "https://youtu.be/dQw4w9WgXcQ",
+      preview: {
+        authorName: "Rick Astley",
+        authorUrl: "https://www.youtube.com/@RickAstley",
+        thumbnailHeight: 360,
+        thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+        thumbnailWidth: 480,
+        title: "Never Gonna Give You Up",
+      },
+      provider: "youtube",
+      renderMode: "preview",
+      state: "embed",
+    },
+    engagement: { ...basePost.engagement, score: 412, commentCount: 38 },
+  },
+  youtubeOfficial: {
+    label: "YouTube Official",
+    title: "Official YouTube embed",
+    content: {
+      type: "embed",
+      body: "This should stay native in the feed and become the player on detail.",
+      canonicalUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      oembedHtml: `<iframe title="Never Gonna Give You Up" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`,
+      originalUrl: "https://youtu.be/dQw4w9WgXcQ",
+      preview: {
+        authorName: "Rick Astley",
+        thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+        title: "Never Gonna Give You Up",
+      },
+      provider: "youtube",
+      renderMode: "official",
+      state: "embed",
+    },
+    engagement: { ...basePost.engagement, score: 624, commentCount: 74 },
+  },
+  kalshiOpen: {
+    label: "Kalshi Market",
+    content: {
+      type: "embed",
+      canonicalUrl: kalshiUrl,
+      originalUrl: kalshiUrl,
+      preview: {
+        chart: chart(kalshiBaseChart, true),
+        closeTime: "2026-06-01T00:00:00Z",
+        lastPrice: 0.42,
+        openInterest: 18420,
+        question: "Will Kanye visit Israel before June?",
+        status: "open",
+        updatedAt: "2026-05-02T12:00:00Z",
+        volume: 921000,
+        volume24h: 64000,
+        yesAsk: 0.43,
+        yesBid: 0.41,
+        yesPrice: 0.42,
+      },
+      provider: "kalshi",
+      renderMode: "preview",
+      state: "embed",
+    },
+    engagement: { ...basePost.engagement, score: 73, commentCount: 11 },
+  },
+  polymarketOpen: {
+    label: "Polymarket Market",
+    content: {
+      type: "embed",
+      canonicalUrl: polymarketUrl,
+      originalUrl: polymarketUrl,
+      preview: {
+        chart: chart(polymarketBaseChart),
+        closeTime: "2026-07-15T00:00:00Z",
+        imageUrl: "https://picsum.photos/seed/pirate-polymarket/180/180",
+        lastPrice: 0.53,
+        liquidity: 382000,
+        question: "Will the example market resolve Yes?",
+        status: "active",
+        updatedAt: "2026-05-02T12:00:00Z",
+        volume: 2_420_000,
+        volume24h: 182_000,
+        yesAsk: 0.54,
+        yesBid: 0.52,
+        yesPrice: 0.53,
+      },
+      provider: "polymarket",
+      renderMode: "preview",
+      state: "embed",
+    },
+    engagement: { ...basePost.engagement, score: 116, commentCount: 24 },
+  },
+  polymarketArabic: {
+    label: "Polymarket Market Arabic",
+    content: {
+      type: "embed",
+      canonicalUrl: polymarketUrl,
+      originalUrl: polymarketUrl,
+      preview: {
+        chart: chart(polymarketBaseChart),
+        closeTime: "2026-07-15T00:00:00Z",
+        imageUrl: "https://picsum.photos/seed/pirate-polymarket/180/180",
+        lastPrice: 0.53,
+        question: "Will the example market resolve Yes?",
+        questionDir: "rtl",
+        questionLang: "ar",
+        translatedQuestion: "هل سيحسم هذا السوق التجريبي بنعم؟",
+        yesPrice: 0.53,
+      },
+      provider: "polymarket",
+      renderMode: "preview",
+      state: "embed",
+    },
+    engagement: { ...basePost.engagement, score: 116, commentCount: 24 },
+  },
+  kalshiClosed: {
+    label: "Kalshi Market Closed",
+    content: {
+      type: "embed",
+      canonicalUrl: kalshiUrl,
+      originalUrl: kalshiUrl,
+      preview: {
+        chart: chart(kalshiBaseChart),
+        closeTime: "2026-06-01T00:00:00Z",
+        lastPrice: 0.42,
+        question: "Will Kanye visit Israel before June?",
+        status: "closed",
+        yesPrice: 0.42,
+      },
+      provider: "kalshi",
+      renderMode: "preview",
+      state: "embed",
+    },
+    engagement: { ...basePost.engagement, score: 73, commentCount: 11 },
+  },
+  kalshiResolvedYes: {
+    label: "Kalshi Market Resolved Yes",
+    content: {
+      type: "embed",
+      canonicalUrl: kalshiUrl,
+      originalUrl: kalshiUrl,
+      preview: {
+        chart: chart([
+          ...kalshiBaseChart.slice(0, 22),
+          0.49, 0.56, 0.68, 0.74, 0.82, 0.91, 0.97, 1,
+        ]),
+        closeTime: "2026-06-01T00:00:00Z",
+        lastPrice: 1,
+        question: "Will Kanye visit Israel before June?",
+        resolution: "yes",
+        status: "settled",
+        yesPrice: 1,
+      },
+      provider: "kalshi",
+      renderMode: "preview",
+      state: "embed",
+    },
+    engagement: { ...basePost.engagement, score: 73, commentCount: 11 },
+  },
+  polymarketResolvedNo: {
+    label: "Polymarket Market Resolved No",
+    content: {
+      type: "embed",
+      canonicalUrl: polymarketUrl,
+      originalUrl: polymarketUrl,
+      preview: {
+        chart: chart([
+          ...polymarketBaseChart.slice(0, 15),
+          0.39, 0.34, 0.3, 0.24, 0.19, 0.15, 0.13, 0.1, 0.08, 0.06,
+          0.04, 0.03, 0.02, 0.01, 0,
+        ]),
+        closeTime: "2026-07-15T00:00:00Z",
+        imageUrl: "https://picsum.photos/seed/pirate-polymarket/180/180",
+        lastPrice: 0,
+        question: "Will the example market resolve Yes?",
+        resolution: "no",
+        status: "closed",
+        yesPrice: 0,
+      },
+      provider: "polymarket",
+      renderMode: "preview",
+      state: "embed",
+    },
+    engagement: { ...basePost.engagement, score: 116, commentCount: 24 },
+  },
+  polymarketEventMultiOutcome: {
+    label: "Polymarket Event Multi-Outcome",
+    content: {
+      type: "embed",
+      canonicalUrl: polymarketEventUrl,
+      originalUrl: polymarketEventUrl,
+      preview: {
+        closeTime: "2027-01-01T00:00:00Z",
+        imageUrl: "https://picsum.photos/seed/pirate-fda-market/180/180",
+        outcomes: [
+          { label: "Before 2027", probability: 0.77 },
+          { label: "Before November 2026", probability: 0.75 },
+          { label: "Before September 2026", probability: 0.18 },
+        ],
+        question: "When will the FDA reclassify BPC-157 to Category 1?",
+        status: "active",
+      },
+      provider: "polymarket",
+      renderMode: "preview",
+      state: "embed",
+    },
+    engagement: { ...basePost.engagement, score: 89, commentCount: 31 },
+  },
+  polymarketEventResolvedOutcome: {
+    label: "Polymarket Event Resolved Outcome",
+    content: {
+      type: "embed",
+      canonicalUrl: polymarketEventUrl,
+      originalUrl: polymarketEventUrl,
+      preview: {
+        closeTime: "2027-01-01T00:00:00Z",
+        imageUrl: "https://picsum.photos/seed/pirate-fda-market-resolved/180/180",
+        outcomes: [
+          { label: "Before 2027", probability: 1 },
+          { label: "Before November 2026", probability: 0 },
+          { label: "Before September 2026", probability: 0 },
+        ],
+        question: "When will the FDA reclassify BPC-157 to Category 1?",
+        resolvedOutcome: "Before 2027",
+        status: "closed",
+      },
+      provider: "polymarket",
+      renderMode: "preview",
+      state: "embed",
+    },
+    engagement: { ...basePost.engagement, score: 89, commentCount: 31 },
+  },
+} satisfies Record<string, EmbedVariant>;
 
-export const KalshiMarketEmbed: Story = {
-  name: "Embed / Kalshi Market",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title={undefined}
-      content={{
-        type: "embed",
-        canonicalUrl: "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael",
-        originalUrl: "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael",
-        preview: {
-          chart: [
-            0.18, 0.22, 0.2, 0.23, 0.21, 0.24, 0.26, 0.25, 0.27, 0.3,
-            0.29, 0.32, 0.28, 0.31, 0.35, 0.33, 0.37, 0.4, 0.38, 0.36,
-            0.39, 0.42, 0.41, 0.43, 0.44, 0.46, 0.45, 0.48, 0.47, 0.42,
-          ].map((price, index) => ({
-            price,
-            ts: 1_714_000_000 + index * 86_400,
-            volume: 1200 + index * 90,
-          })),
-          closeTime: "2026-06-01T00:00:00Z",
-          lastPrice: 0.42,
-          openInterest: 18420,
-          question: "Will Kanye visit Israel before June?",
-          status: "open",
-          updatedAt: "2026-05-02T12:00:00Z",
-          volume: 921000,
-          volume24h: 64000,
-          yesAsk: 0.43,
-          yesBid: 0.41,
-          yesPrice: 0.42,
-        },
-        provider: "kalshi",
-        renderMode: "preview",
-        state: "embed",
-      }}
-      engagement={{ ...basePost.engagement, score: 73, commentCount: 11 }}
-    />
-  ),
-};
+type EmbedVariantKey = keyof typeof embedVariants;
+const embedVariantKeys = Object.keys(embedVariants) as EmbedVariantKey[];
 
-export const PolymarketMarketEmbed: Story = {
-  name: "Embed / Polymarket Market",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title={undefined}
-      content={{
-        type: "embed",
-        canonicalUrl: "https://polymarket.com/event/example-market/will-example-resolve-yes",
-        originalUrl: "https://polymarket.com/event/example-market/will-example-resolve-yes",
-        preview: {
-          chart: [
-            0.62, 0.58, 0.6, 0.56, 0.52, 0.55, 0.51, 0.49, 0.5, 0.48,
-            0.44, 0.46, 0.43, 0.4, 0.42, 0.45, 0.47, 0.44, 0.49, 0.51,
-            0.5, 0.54, 0.52, 0.55, 0.58, 0.56, 0.53, 0.55, 0.52, 0.53,
-          ].map((price, index) => ({
-            price,
-            ts: 1_714_000_000 + index * 86_400,
-          })),
-          closeTime: "2026-07-15T00:00:00Z",
-          imageUrl: "https://picsum.photos/seed/pirate-polymarket/180/180",
-          lastPrice: 0.53,
-          liquidity: 382000,
-          question: "Will the example market resolve Yes?",
-          status: "active",
-          updatedAt: "2026-05-02T12:00:00Z",
-          volume: 2_420_000,
-          volume24h: 182_000,
-          yesAsk: 0.54,
-          yesBid: 0.52,
-          yesPrice: 0.53,
-        },
-        provider: "polymarket",
-        renderMode: "preview",
-        state: "embed",
-      }}
-      engagement={{ ...basePost.engagement, score: 116, commentCount: 24 }}
-    />
-  ),
-};
+export const EmbedVariants: Story = {
+  name: "Embed / Variants",
+  render: function EmbedVariantsStory() {
+    const [variantKey, setVariantKey] = React.useState<EmbedVariantKey>("xPreview");
+    const variant = embedVariants[variantKey];
 
-export const PolymarketMarketEmbedArabic: Story = {
-  name: "Embed / Polymarket Market Arabic",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title={undefined}
-      content={{
-        type: "embed",
-        canonicalUrl: "https://polymarket.com/event/example-market/will-example-resolve-yes",
-        originalUrl: "https://polymarket.com/event/example-market/will-example-resolve-yes",
-        preview: {
-          chart: [
-            0.62, 0.58, 0.6, 0.56, 0.52, 0.55, 0.51, 0.49, 0.5, 0.48,
-            0.44, 0.46, 0.43, 0.4, 0.42, 0.45, 0.47, 0.44, 0.49, 0.51,
-            0.5, 0.54, 0.52, 0.55, 0.58, 0.56, 0.53, 0.55, 0.52, 0.53,
-          ].map((price, index) => ({
-            price,
-            ts: 1_714_000_000 + index * 86_400,
-          })),
-          closeTime: "2026-07-15T00:00:00Z",
-          imageUrl: "https://picsum.photos/seed/pirate-polymarket/180/180",
-          lastPrice: 0.53,
-          question: "Will the example market resolve Yes?",
-          questionDir: "rtl",
-          questionLang: "ar",
-          translatedQuestion: "هل سيحسم هذا السوق التجريبي بنعم؟",
-          yesPrice: 0.53,
-        },
-        provider: "polymarket",
-        renderMode: "preview",
-        state: "embed",
-      }}
-      engagement={{ ...basePost.engagement, score: 116, commentCount: 24 }}
-    />
-  ),
-};
-
-export const KalshiMarketEmbedClosed: Story = {
-  name: "Embed / Kalshi Market Closed",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title={undefined}
-      content={{
-        type: "embed",
-        canonicalUrl: "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael",
-        originalUrl: "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael",
-        preview: {
-          chart: [
-            0.18, 0.22, 0.2, 0.23, 0.21, 0.24, 0.26, 0.25, 0.27, 0.3,
-            0.29, 0.32, 0.28, 0.31, 0.35, 0.33, 0.37, 0.4, 0.38, 0.36,
-            0.39, 0.42, 0.41, 0.43, 0.44, 0.46, 0.45, 0.48, 0.47, 0.42,
-          ].map((price, index) => ({
-            price,
-            ts: 1_714_000_000 + index * 86_400,
-          })),
-          closeTime: "2026-06-01T00:00:00Z",
-          lastPrice: 0.42,
-          question: "Will Kanye visit Israel before June?",
-          status: "closed",
-          yesPrice: 0.42,
-        },
-        provider: "kalshi",
-        renderMode: "preview",
-        state: "embed",
-      }}
-      engagement={{ ...basePost.engagement, score: 73, commentCount: 11 }}
-    />
-  ),
-};
-
-export const KalshiMarketEmbedResolvedYes: Story = {
-  name: "Embed / Kalshi Market Resolved Yes",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title={undefined}
-      content={{
-        type: "embed",
-        canonicalUrl: "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael",
-        originalUrl: "https://kalshi.com/markets/kxkanyeisrael/will-kanye-visit-area/kxkanyeisrael",
-        preview: {
-          chart: [
-            0.18, 0.22, 0.2, 0.23, 0.21, 0.24, 0.26, 0.25, 0.27, 0.3,
-            0.29, 0.32, 0.28, 0.31, 0.35, 0.33, 0.37, 0.4, 0.38, 0.36,
-            0.39, 0.42, 0.49, 0.56, 0.68, 0.74, 0.82, 0.91, 0.97, 1,
-          ].map((price, index) => ({
-            price,
-            ts: 1_714_000_000 + index * 86_400,
-          })),
-          closeTime: "2026-06-01T00:00:00Z",
-          lastPrice: 1,
-          question: "Will Kanye visit Israel before June?",
-          resolution: "yes",
-          status: "settled",
-          yesPrice: 1,
-        },
-        provider: "kalshi",
-        renderMode: "preview",
-        state: "embed",
-      }}
-      engagement={{ ...basePost.engagement, score: 73, commentCount: 11 }}
-    />
-  ),
-};
-
-export const PolymarketMarketEmbedResolvedNo: Story = {
-  name: "Embed / Polymarket Market Resolved No",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title={undefined}
-      content={{
-        type: "embed",
-        canonicalUrl: "https://polymarket.com/event/example-market/will-example-resolve-yes",
-        originalUrl: "https://polymarket.com/event/example-market/will-example-resolve-yes",
-        preview: {
-          chart: [
-            0.62, 0.58, 0.6, 0.56, 0.52, 0.55, 0.51, 0.49, 0.5, 0.48,
-            0.44, 0.46, 0.43, 0.4, 0.42, 0.39, 0.34, 0.3, 0.24, 0.19,
-            0.15, 0.13, 0.1, 0.08, 0.06, 0.04, 0.03, 0.02, 0.01, 0,
-          ].map((price, index) => ({
-            price,
-            ts: 1_714_000_000 + index * 86_400,
-          })),
-          closeTime: "2026-07-15T00:00:00Z",
-          imageUrl: "https://picsum.photos/seed/pirate-polymarket/180/180",
-          lastPrice: 0,
-          question: "Will the example market resolve Yes?",
-          resolution: "no",
-          status: "closed",
-          yesPrice: 0,
-        },
-        provider: "polymarket",
-        renderMode: "preview",
-        state: "embed",
-      }}
-      engagement={{ ...basePost.engagement, score: 116, commentCount: 24 }}
-    />
-  ),
-};
-
-export const PolymarketEventMultiOutcome: Story = {
-  name: "Embed / Polymarket Event Multi-Outcome",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title={undefined}
-      content={{
-        type: "embed",
-        canonicalUrl: "https://polymarket.com/event/fda-bpc157-reclassification",
-        originalUrl: "https://polymarket.com/event/fda-bpc157-reclassification",
-        preview: {
-          closeTime: "2027-01-01T00:00:00Z",
-          imageUrl: "https://picsum.photos/seed/pirate-fda-market/180/180",
-          outcomes: [
-            { label: "Before 2027", probability: 0.77 },
-            { label: "Before November 2026", probability: 0.75 },
-            { label: "Before September 2026", probability: 0.18 },
-          ],
-          question: "When will the FDA reclassify BPC-157 to Category 1?",
-          status: "active",
-        },
-        provider: "polymarket",
-        renderMode: "preview",
-        state: "embed",
-      }}
-      engagement={{ ...basePost.engagement, score: 89, commentCount: 31 }}
-    />
-  ),
-};
-
-export const PolymarketEventResolvedOutcome: Story = {
-  name: "Embed / Polymarket Event Resolved Outcome",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title={undefined}
-      content={{
-        type: "embed",
-        canonicalUrl: "https://polymarket.com/event/fda-bpc157-reclassification",
-        originalUrl: "https://polymarket.com/event/fda-bpc157-reclassification",
-        preview: {
-          closeTime: "2027-01-01T00:00:00Z",
-          imageUrl: "https://picsum.photos/seed/pirate-fda-market-resolved/180/180",
-          outcomes: [
-            { label: "Before 2027", probability: 1 },
-            { label: "Before November 2026", probability: 0 },
-            { label: "Before September 2026", probability: 0 },
-          ],
-          question: "When will the FDA reclassify BPC-157 to Category 1?",
-          resolvedOutcome: "Before 2027",
-          status: "closed",
-        },
-        provider: "polymarket",
-        renderMode: "preview",
-        state: "embed",
-      }}
-      engagement={{ ...basePost.engagement, score: 89, commentCount: 31 }}
-    />
-  ),
+    return (
+      <div className="flex flex-col gap-3">
+        <label className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+          <span>Embed variant</span>
+          <select
+            className="rounded-md border border-input bg-background px-2 py-1 text-foreground"
+            onChange={(event) => setVariantKey(event.target.value as EmbedVariantKey)}
+            value={variantKey}
+          >
+            {embedVariantKeys.map((key) => (
+              <option key={key} value={key}>{embedVariants[key].label}</option>
+            ))}
+          </select>
+        </label>
+        <PostCard
+          {...basePost}
+          content={variant.content}
+          engagement={variant.engagement}
+          title={variant.title}
+        />
+      </div>
+    );
+  },
 };
 
 // ============================================================================
@@ -925,6 +874,93 @@ export const Loading: Story = {
       <PostCardSkeleton showMedia={false} />
       <PostCardSkeleton />
     </div>
+  ),
+};
+
+export const DeletedPost: Story = {
+  name: "State: Deleted",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        ...basePost.byline,
+        timestampLabel: "4h",
+      }}
+      content={{
+        type: "text",
+        body: "This post was deleted by its author.",
+      }}
+      engagement={{ score: 0, commentCount: 12 }}
+      menuItems={undefined}
+      title={undefined}
+    />
+  ),
+};
+
+export const RemovedByModerator: Story = {
+  name: "State: Removed By Moderator",
+  render: () => (
+    <PostCard
+      {...basePost}
+      authorCommunityRole="moderator"
+      byline={{
+        ...basePost.byline,
+        timestampLabel: "1d",
+      }}
+      content={{
+        type: "text",
+        body: "This post was removed by the moderators of c/tameimpala.",
+      }}
+      engagement={{ score: 0, commentCount: 6 }}
+      menuItems={[
+        { key: "appeal", label: "Appeal removal" },
+        { key: "report", label: "Report", destructive: true },
+      ]}
+      title={undefined}
+      viewContext="community"
+    />
+  ),
+};
+
+export const NsfwBlurred: Story = {
+  name: "State: NSFW Blurred",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        type: "image",
+        src: "https://picsum.photos/seed/pirate-nsfw-blur/600/400",
+        alt: "Age-restricted image preview",
+        ageGatePolicy: "18_plus",
+        ageGateViewerState: "proof_required",
+        contentSafetyState: "adult",
+        onVerifyAge: () => undefined,
+      }}
+      engagement={{ ...basePost.engagement, score: 81, commentCount: 14 }}
+      title="Age-restricted behind-the-scenes photo"
+    />
+  ),
+};
+
+export const FailedEmbed: Story = {
+  name: "State: Failed Embed",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        type: "embed",
+        canonicalUrl: "https://www.youtube.com/watch?v=unavailable",
+        originalUrl: "https://youtu.be/unavailable",
+        preview: {
+          title: "Unavailable video",
+        },
+        provider: "youtube",
+        renderMode: "preview",
+        state: "unavailable",
+      }}
+      engagement={{ ...basePost.engagement, score: 19, commentCount: 3 }}
+      title="The tour breakdown video is gone"
+    />
   ),
 };
 

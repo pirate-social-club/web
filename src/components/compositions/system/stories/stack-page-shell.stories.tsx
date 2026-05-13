@@ -2,9 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Button } from "@/components/primitives/button";
 
-import { EmptyFeedState } from "../empty-feed-state";
-import { StackPageShell } from "../stack-page-shell";
-import { StatusCard } from "../status-card";
+import { EmptyFeedState } from "@/components/states/empty-feed-state";
+import { StackPageShell } from "@/components/states/stack-page-shell";
+import { StatusCard } from "@/components/states/status-card";
 
 const meta = {
   title: "Compositions/System/StackPageShell",

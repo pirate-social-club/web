@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
-import { PostComposer } from "../../post-composer";
-import { baseComposer, composerDecorator, composerParameters } from "../story-helpers";
+import { PostComposer } from "../post-composer";
+import type { ComposerAudienceState } from "../post-composer.types";
+import { baseComposer, composerDecorator, composerParameters } from "./story-helpers";
 
 const meta = {
-  title: "Compositions/Posts/PostComposer/Composer/Live",
+  title: "Compositions/Posts/PostComposer/Composer",
   component: PostComposer,
   args: baseComposer,
   decorators: composerDecorator,
@@ -16,8 +17,84 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+export const Overview: Story = {
+  name: "Overview",
+  render: () => <PostComposer {...baseComposer} />,
+};
+
+export const DragAndDrop: Story = {
+  name: "Drag and Drop",
+  render: () => (
+    <PostComposer
+      {...baseComposer}
+      titleValue="Try dragging a file here"
+      textBodyValue="Drag an image, video, or audio file directly onto this composer."
+    />
+  ),
+};
+
+export const AudiencePublic: Story = {
+  name: "Audience / Public",
+  render: function StoryRender() {
+    const [audience, setAudience] = React.useState<ComposerAudienceState>({
+      visibility: "public",
+      publicOptionEnabled: true,
+    });
+
+    return (
+      <PostComposer
+        {...baseComposer}
+        audience={audience}
+        onAudienceChange={setAudience}
+      />
+    );
+  },
+};
+
+export const AudiencePublicDisabled: Story = {
+  name: "Audience / Public Disabled",
+  render: () => (
+    <PostComposer
+      {...baseComposer}
+      clubName="c/us-politics"
+      audience={{
+        visibility: "members_only",
+        publicOptionEnabled: false,
+        publicOptionDisabledReason: "This community already limits who can read posts.",
+      }}
+    />
+  ),
+};
+
+export const ImageUpload: Story = {
+  name: "Image / Upload",
+  render: () => (
+    <PostComposer
+      {...baseComposer}
+      mode="image"
+      titleValue="Backstage at the show"
+      titleCountLabel="21/300"
+      textBodyValue=""
+      captionValue="Caught this backstage right before the set."
+    />
+  ),
+};
+
+export const LinkPasteUrl: Story = {
+  name: "Link / Paste URL",
+  render: () => (
+    <PostComposer
+      {...baseComposer}
+      mode="link"
+      linkUrlValue="https://032c.com/magazine/kanye-west-tour-design"
+      textBodyValue="Worth posting for the production notes alone."
+      titleValue="A sharp look at tour design"
+    />
+  ),
+};
+
 export const LiveStream: Story = {
-  name: "Default",
+  name: "Live / Stream",
   render: () => (
     <PostComposer
       {...baseComposer}
@@ -62,8 +139,8 @@ export const LiveStream: Story = {
   ),
 };
 
-export const Duet: Story = {
-  name: "Duet",
+export const LiveDuet: Story = {
+  name: "Live / Duet",
   render: () => (
     <PostComposer
       {...baseComposer}

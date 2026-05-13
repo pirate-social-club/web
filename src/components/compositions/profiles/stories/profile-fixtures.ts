@@ -1,18 +1,17 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import * as React from "react";
-
-import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
-import { ProfilePage } from "../profile-page";
 import type {
   ProfileActivityItem,
   ProfileCommentItem,
-  ProfilePageProps,
   ProfilePostItem,
   ProfileScrobbleItem,
-} from "../profile-page.types";
+} from "../profile-page/profile-page.types";
+import type {
+  PublicProfilePostItem,
+  PublicProfileScrobbleItem,
+  PublicProfileVideoItem,
+} from "../public-profile-page/public-profile-page.types";
 import type { WalletHubChainSection } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
 
-const profilePosts: ProfilePostItem[] = [
+export const profilePosts: ProfilePostItem[] = [
   {
     postId: "post_1",
     post: {
@@ -21,15 +20,15 @@ const profilePosts: ProfilePostItem[] = [
         community: { kind: "community", label: "c/interesting", href: "#" },
         author: { kind: "user", label: "u/Pampa_of_Argentina", href: "#" },
         timestampLabel: "28m",
-    },
-    title:
-      "Buenos Aires holds the world record for bookstores per capita, with approximately 25 bookstores for every 100,000 inhabitants.",
-    content: {
-      type: "image",
-      src: "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=900&q=80",
-      alt: "A rainy Buenos Aires street with classic architecture.",
-    },
-    engagement: { score: 1284, commentCount: 86, saved: true },
+      },
+      title:
+        "Buenos Aires holds the world record for bookstores per capita, with approximately 25 bookstores for every 100,000 inhabitants.",
+      content: {
+        type: "image",
+        src: "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=900&q=80",
+        alt: "A rainy Buenos Aires street with classic architecture.",
+      },
+      engagement: { score: 1284, commentCount: 86, saved: true },
       menuItems: [
         { key: "save", label: "Save post" },
         { key: "hide", label: "Hide post" },
@@ -45,8 +44,8 @@ const profilePosts: ProfilePostItem[] = [
         community: { kind: "community", label: "c/lastfm", href: "#" },
         author: { kind: "user", label: "u/Pampa_of_Argentina", href: "#" },
         timestampLabel: "7h",
-    },
-    title: "April listening report from the southern cone",
+      },
+      title: "April listening report from the southern cone",
       content: {
         type: "text",
         body:
@@ -63,21 +62,21 @@ const profilePosts: ProfilePostItem[] = [
         community: { kind: "community", label: "c/argentina", href: "#" },
         author: { kind: "user", label: "u/Pampa_of_Argentina", href: "#" },
         timestampLabel: "2d",
-    },
-    title: "Sunday walk through San Telmo",
-    content: {
-      type: "video",
-      src: "https://www.w3schools.com/html/mov_bbb.mp4",
-      posterSrc: "https://images.unsplash.com/photo-1524499982521-1ffd58dd89ea?auto=format&fit=crop&w=900&q=80",
-      durationLabel: "0:48",
-      accessMode: "public",
-    },
-    engagement: { score: 621, commentCount: 58 },
+      },
+      title: "Sunday walk through San Telmo",
+      content: {
+        type: "video",
+        src: "https://www.w3schools.com/html/mov_bbb.mp4",
+        posterSrc: "https://images.unsplash.com/photo-1524499982521-1ffd58dd89ea?auto=format&fit=crop&w=900&q=80",
+        durationLabel: "0:48",
+        accessMode: "public",
+      },
+      engagement: { score: 621, commentCount: 58 },
     },
   },
 ];
 
-const comments: ProfileCommentItem[] = [
+export const profileComments: ProfileCommentItem[] = [
   {
     commentId: "comment_1",
     authorLabel: "u/Pampa_of_Argentina",
@@ -125,7 +124,7 @@ const comments: ProfileCommentItem[] = [
   },
 ];
 
-const scrobbles: ProfileScrobbleItem[] = [
+export const profileScrobbles: ProfileScrobbleItem[] = [
   {
     scrobbleId: "scrobble_1",
     title: "Cancion Animal",
@@ -161,14 +160,14 @@ const scrobbles: ProfileScrobbleItem[] = [
   },
 ];
 
-const overviewItems: ProfileActivityItem[] = [
+export const overviewItems: ProfileActivityItem[] = [
   { kind: "post", id: "overview_post_1", post: profilePosts[0] },
-  { kind: "comment", id: "overview_comment_1", comment: comments[0] },
-  { kind: "scrobble", id: "overview_scrobble_1", scrobble: scrobbles[0] },
+  { kind: "comment", id: "overview_comment_1", comment: profileComments[0] },
+  { kind: "scrobble", id: "overview_scrobble_1", scrobble: profileScrobbles[0] },
   { kind: "post", id: "overview_post_2", post: profilePosts[1] },
 ];
 
-const walletChainSections: WalletHubChainSection[] = [
+export const walletChainSections: WalletHubChainSection[] = [
   {
     chainId: "ethereum",
     title: "Ethereum",
@@ -232,147 +231,50 @@ const walletChainSections: WalletHubChainSection[] = [
   },
 ];
 
-const baseArgs: ProfilePageProps = {
-  profile: {
-    displayName: "Pampa_of_Argentina",
-    handle: "u/pampa_of_argentina.pirate",
-    bio:
-      "Buenos Aires, bookstores, football, and a listening history that should probably count as public infrastructure.",
-    avatarSrc: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=300&q=80",
-    nationalityBadgeCountryCode: "AR",
-    nationalityBadgeLabel: "Verified Argentina nationality",
-    bannerSrc: "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1600&q=80",
-    viewerContext: "public",
-    viewerFollows: false,
-    canMessage: true,
+export const publicProfilePosts: PublicProfilePostItem[] = profilePosts.slice(0, 2).map((item) => ({
+  postId: item.postId,
+  post: {
+    ...item.post,
+    content: item.post.content.type === "text"
+      ? {
+          ...item.post.content,
+          body: "This month has been all Charly, Sumo, and a lot more post-punk than usual.",
+        }
+      : item.post.content,
+    menuItems: item.postId === "post_1" ? [] : item.post.menuItems,
   },
-  rightRail: {
-    description:
-      "Buenos Aires, bookstores, football, and a listening history that should probably count as public infrastructure.",
-    stats: [
-      { label: "Karma", value: 20028 },
-      { label: "Contributions", value: 1352 },
-      { label: "Wallet age", value: "6 months" },
-      { label: "Followers", value: 842 },
-    ],
-    walletAddress: "0x42a5f77f2d06c9a7e304817b3c177b91e0c2f3a8",
-    walletChainSections,
-    walletAssets: [
-      { assetId: "eth", chainId: "ethereum", label: "ETH", symbol: "ETH", name: "Ethereum", value: "1.284 ETH", fiatValue: "$3,407.21" },
-      { assetId: "base-eth", chainId: "base", label: "ETH", symbol: "ETH", name: "Base", value: "0.382 ETH", fiatValue: "$1,013.94" },
-      { assetId: "usdc", chainId: "base", label: "USDC", symbol: "USDC", name: "USD Coin", value: "2,450.00 USDC", fiatValue: "$2,450.00" },
-      { assetId: "usdt", chainId: "optimism", label: "USDT", symbol: "USDT", name: "Tether USD", value: "250.00 USDT", fiatValue: "$250.00" },
-    ],
-    verificationItems: [
-      { label: "Palm Scan", value: "Verified" },
-      { label: "Wallet Score", value: "19.8" },
-      { label: "Nationality", value: "Argentina" },
-      { label: "Age", value: "18+" },
+}));
+
+export const publicProfileVideos: PublicProfileVideoItem[] = [
+  {
+    videoId: "video_1",
+    post: profilePosts[2].post,
+  },
+];
+
+export const publicProfileSongs: PublicProfileScrobbleItem[] = [
+  {
+    ...profileScrobbles[0],
+    scrobbleId: "song_1",
+    metaItems: [
+      { label: "c/argentina", href: "#" },
+      { label: "418 plays" },
     ],
   },
-  overviewItems,
-  posts: profilePosts,
-  comments,
-  scrobbles,
-};
-
-const meta = {
-  title: "Compositions/Profiles/ProfilePage",
-  component: ProfilePage,
-  args: baseArgs,
-  parameters: {
-    layout: "fullscreen",
+  {
+    ...profileScrobbles[1],
+    scrobbleId: "song_2",
+    metaItems: [
+      { label: "c/classicrock", href: "#" },
+      { label: "302 plays" },
+    ],
   },
-  decorators: [
-    (Story: () => React.ReactNode) => (
-      <div style={{ minHeight: "100vh", maxWidth: "96rem", margin: "0 auto", padding: "0 1.25rem" }}>
-        <Story />
-      </div>
-    ),
-  ],
-} satisfies Meta<typeof ProfilePage>;
+];
 
-export default meta;
-
-type Story = StoryObj<typeof meta>;
-
-export const Overview: Story = {};
-
-export const Posts: Story = {
-  args: {
-    defaultTab: "posts",
+export const publicProfileScrobbles: PublicProfileScrobbleItem[] = [
+  profileScrobbles[0],
+  {
+    ...profileScrobbles[2],
+    scrobbleId: "scrobble_2",
   },
-};
-
-export const Comments: Story = {
-  args: {
-    defaultTab: "comments",
-  },
-};
-
-export const Wallet: Story = {
-  args: {
-    defaultTab: "wallet",
-  },
-};
-
-export const EnsPrimary: Story = {
-  args: {
-    profile: {
-      ...baseArgs.profile,
-      displayName: "Blackbeard",
-      handle: "blackbeard.eth",
-      bio: "ENS primary profile with imported avatar, cover, and bio metadata.",
-      tagline: undefined,
-    },
-    rightRail: {
-      ...baseArgs.rightRail,
-      description: "ENS primary profile with imported avatar, cover, and bio metadata.",
-    },
-  },
-};
-
-export const PublicV0Lean: Story = {
-  args: {
-    rightRail: {
-      stats: [
-        { label: "Karma", value: 20028 },
-        { label: "Contributions", value: 1352 },
-        { label: "Followers", value: 842 },
-        { label: "Following", value: 118 },
-      ],
-    },
-  },
-};
-
-export const OwnProfile: Story = {
-  args: {
-    profile: {
-      ...baseArgs.profile,
-      viewerContext: "self",
-      canMessage: false,
-    },
-  },
-};
-
-export const MobileOverview: Story = {
-  args: {
-    defaultTab: "overview",
-  },
-  parameters: {
-    viewport: { defaultViewport: "mobile1" },
-  },
-};
-
-export const OwnProfileMobile: Story = {
-  args: {
-    profile: {
-      ...baseArgs.profile,
-      viewerContext: "self",
-      canMessage: false,
-    },
-  },
-  parameters: {
-    viewport: { defaultViewport: "mobile1" },
-  },
-};
+];

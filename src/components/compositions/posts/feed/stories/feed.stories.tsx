@@ -116,6 +116,36 @@ export const HomeLoadingMore: Story = {
   },
 };
 
+export const HomeEmpty: Story = {
+  args: {},
+  render: function StoryRender() {
+    const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
+    const [topRange, setTopRange] = React.useState("day");
+
+    return (
+      <Feed
+        activeSort={activeSort}
+        aside={<RecentPostRail items={recentPostRailItems} title="Recent posts" />}
+        availableSorts={sortOptions}
+        controls={
+          activeSort === "top" ? (
+            <TopTimeRangeControl onValueChange={setTopRange} value={topRange} />
+          ) : undefined
+        }
+        emptyState={{
+          title: "No posts in your home feed yet.",
+          body: "The communities you follow have not posted anything recently.",
+          action: <Button variant="secondary">Browse communities</Button>,
+        }}
+        fullBleedMobile
+        items={[]}
+        listClassName="border-t-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
+        onSortChange={setActiveSort}
+      />
+    );
+  },
+};
+
 export const YourCommunitiesEmpty: Story = {
   args: {},
   render: function StoryRender() {

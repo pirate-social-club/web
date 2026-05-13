@@ -11,7 +11,7 @@ import {
   EmptyThread,
   NewConversationView,
   ThreadView,
-} from "./chat-route-views";
+} from "../chat-route-views";
 
 const now = new Date("2026-04-26T15:30:00Z").getTime();
 

@@ -47,7 +47,7 @@ type SettingsSheet = "details" | null;
 type SettingsSectionStoryProps = Omit<PostComposerSettingsSectionsProps, "publicAvatarSrc">;
 
 const meta = {
-  title: "Compositions/Posts/PostComposer/Attachment Flow Prototype",
+  title: "Compositions/Posts/PostComposer/AttachmentFlowPrototype",
   parameters: {
     layout: "fullscreen",
     viewport: { defaultViewport: "mobile2" },

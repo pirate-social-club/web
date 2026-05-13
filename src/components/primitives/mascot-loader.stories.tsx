@@ -4,7 +4,7 @@ import { MascotLoader } from "./mascot-loader";
 
 const meta: Meta<typeof MascotLoader> = {
   component: MascotLoader,
-  title: "Primitives / MascotLoader",
+  title: "Primitives/MascotLoader",
 };
 
 export default meta;

@@ -369,6 +369,20 @@ export const ProfileHandleSuccess: Story = {
   },
 };
 
+export const ProfileSaveError: Story = {
+  args: {
+    profile: {
+      ...baseArgs.profile,
+      bio: "Making internet-native spaces for music and culture. This edit failed to save.",
+      bioSource: "manual",
+      submitState: {
+        kind: "error",
+        message: "Profile changes could not be saved. Try again.",
+      },
+    },
+  },
+};
+
 export const ProfileLinkedHandleStale: Story = {
   args: {
     profile: {

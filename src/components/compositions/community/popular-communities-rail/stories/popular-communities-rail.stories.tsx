@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PopularCommunitiesRail } from "../popular-communities-rail";
 
 const meta = {
-  title: "Compositions/Community/Popular Communities Rail",
+  title: "Compositions/Community/PopularCommunitiesRail",
   component: PopularCommunitiesRail,
   parameters: {
     layout: "centered",

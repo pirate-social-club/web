@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Button } from "@/components/primitives/button";
 
-import { StatusCard } from "../status-card";
+import { StatusCard } from "@/components/states/status-card";
 
 const meta = {
   title: "Compositions/System/StatusCard",

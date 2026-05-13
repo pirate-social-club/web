@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   hygiene:
     runs-on: ubuntu-latest
@@ -20,7 +23,7 @@ jobs:
         uses: ironsh/iron-proxy-action@fa1fd82ec32396d044deba7040a6db576bec927a
         with:
           egress-rules: egress-rules.yaml
-          warn: true
+          warn: false
 
       - name: Check generated locales freshness
         run: |

@@ -25,7 +25,7 @@ function referenceLicenseLabel(item: ComposerReference): string | null {
 }
 
 function isPublicHandle(value: string | undefined): value is string {
-  return Boolean(value?.trim().toLowerCase().endsWith(".pirate"));
+  return Boolean(value?.trim());
 }
 
 function ReferenceMeta({ item }: { item: ComposerReference }) {

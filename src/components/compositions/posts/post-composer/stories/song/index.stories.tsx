@@ -29,7 +29,7 @@ const sourceSearchResults = [
   {
     id: "story:asset:asset_ast_01def",
     title: "Midnight Waves",
-    subtitle: "dj-solar.pirate",
+    subtitle: "dj-solar.eth",
     licensePreset: "commercial-remix" as const,
     upstreamRoyaltyPct: 15,
     parentIpId: "0xabcdef1234567890abcdef1234567890abcdef12",

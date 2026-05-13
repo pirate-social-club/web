@@ -5,6 +5,8 @@ build/
 storybook-static/
 .cache/
 coverage/
+playwright-report/
+test-results/
 *.log
 debug-storybook.log
 .env.local

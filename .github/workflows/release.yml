@@ -82,7 +82,7 @@ jobs:
             web/playwright-report
             web/test-results
           if-no-files-found: ignore
-      - name: Check staging community migration drift
+      - name: Apply staging community migrations
         working-directory: core
         env:
           CONTROL_PLANE_DATABASE_URL: ${{ secrets.STAGING_CONTROL_PLANE_DATABASE_URL }}
@@ -90,7 +90,7 @@ jobs:
         run: |
           test -n "$CONTROL_PLANE_DATABASE_URL"
           test -n "$TURSO_COMMUNITY_DB_WRAP_KEY"
-          bun scripts/community/apply-remote-community-migrations.ts
+          bun scripts/community/apply-remote-community-migrations.ts --execute
 
   production:
     name: Deploy production

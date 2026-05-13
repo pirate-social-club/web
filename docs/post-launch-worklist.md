@@ -157,3 +157,57 @@ Acceptance criteria:
 - No client draft ID path depends on `Math.random()` where `crypto.randomUUID()` is available.
 - Production orphan exports trend down without breaking story/test ergonomics.
 - Large file splits reduce review complexity in touched areas without broad rewrites.
+
+## 5. Video and GIF Sampled Frame Moderation
+
+Goal: extend the visual moderation pipeline beyond still images by sampling frames from uploaded videos and animated GIFs before applying the existing OpenAI and VLM community visual policy checks.
+
+Launch constraint: do not block launch on frame extraction. The current safety posture should remain conservative for adult communities: if reliable frame evidence is unavailable, queue the submission rather than publishing based only on a poster frame.
+
+Architecture direction:
+
+- Use Cloudflare Containers for frame extraction instead of trying to run `ffmpeg` inside the API Worker.
+- Keep the Worker as the orchestrator and policy authority; the container should only download media, extract frames, upload frame images, and call back with frame references.
+- Prefer a `202 Accepted` plus signed callback flow so the Worker does not block while `ffmpeg` runs.
+- Treat animated GIFs like videos when animation is detected or when the backend cannot confidently prove the GIF is static.
+- Reuse the existing visual moderation pipeline once sampled frame URLs exist; do not build a separate moderation decision system for video.
+
+Proposed flow:
+
+- User uploads video or animated GIF.
+- For 18+ communities, create the post as pending review or draft until sampled frames are checked.
+- Enqueue a media frame moderation task with the media ref, community id, post id, desired timestamps, and callback token.
+- Worker invokes the Cloudflare Container extraction endpoint and records that extraction was accepted.
+- Container downloads the media, extracts frames at representative timestamps such as 10%, 30%, 50%, 70%, and 90%, then uploads JPEG frames under a moderation-only storage prefix.
+- Container POSTs a signed callback to the API with frame refs, hashes, duration, and extraction metadata.
+- Worker verifies the callback, stores frame records, runs the existing moderation checks over the sampled frames, and updates the post or moderation queue outcome.
+
+Data model direction:
+
+- Add a media moderation task record with task id, post id, community id, media ref, status, callback nonce, retry count, timestamps, model/policy versions, and error details.
+- Add media moderation frame records with task id, source media ref, frame media ref, timestamp, frame hash, storage key, and created time.
+- Cache extracted frame moderation by media hash, frame hash, visual policy version, prompt version, and model where practical.
+- Keep full provider evidence and resolver reason codes auditable, but avoid storing raw model prose as the product interface.
+
+Security and reliability requirements:
+
+- Authenticate callbacks with a short-lived signed token or HMAC over the payload; include task id, post id, community id, expiry, and nonce.
+- Do not let a callback publish content unless the task belongs to the expected post and community.
+- Use pre-signed GET and PUT URLs where possible so the container does not need broad bucket credentials.
+- If extraction fails, times out, or returns invalid frame metadata for an 18+ community, keep or move the post to review with a clear reason such as `video_frame_moderation_unavailable`.
+- Cap duration, input size, frame count, output dimensions, and retries to avoid unbounded compute or storage use.
+- Preserve the platform floor: possible minors with adult content, CSAM-like content, non-consensual real-person sexual likenesses, and voyeuristic or hidden-camera content remain non-configurable rejects.
+
+Product and moderation UX:
+
+- Show queued video/GIF cases as media awaiting or failing sampled frame review, not as a vague AI failure.
+- When frames are available, show moderators representative thumbnails with the same reason-code hierarchy used for still images.
+- Keep poster frame review as supplemental evidence only; do not treat it as sufficient for adult video moderation.
+- Add an internal evaluation set for videos and animated GIFs so false allows can be measured separately from still-image accuracy.
+
+Acceptance criteria:
+
+- 18+ video and animated GIF submissions are never published solely because the poster frame passed moderation.
+- Extracted frames are stored, auditable, and tied to the exact moderation decision they influenced.
+- A failed extractor path produces a review case with a clear reason and no silent fail-open.
+- The existing visual policy resolver remains the single source for community allow, queue, or reject behavior after frame extraction.

@@ -68,10 +68,8 @@ Routes/surfaces that should apply the guard:
 
 - [x] `public-community-route.tsx` — follow, join CTAs
 - [x] `use-community-interaction-gate.tsx` — unauthenticated vote/comment-style gated actions
-- [ ] `community-route.tsx` — follow, join, create-post CTAs
-- [ ] `post-route.tsx` — vote, comment CTAs
-- [ ] `wallet` route — connect wallet CTA
-- [ ] Home feed — vote CTA (when unauthenticated)
+
+Open items moved to [`TODO-auth-origin-guards.md`](./TODO-auth-origin-guards.md).
 
 ---
 

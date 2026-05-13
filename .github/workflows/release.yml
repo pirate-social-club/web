@@ -7,8 +7,6 @@ on:
   workflow_dispatch:
 
 env:
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   VITE_PRIVY_APP_ID: ${{ secrets.VITE_PRIVY_APP_ID || vars.VITE_PRIVY_APP_ID }}
   VITE_PRIVY_CLIENT_ID: ${{ secrets.VITE_PRIVY_CLIENT_ID || vars.VITE_PRIVY_CLIENT_ID }}
@@ -41,17 +39,32 @@ jobs:
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile
+      - name: Audit web dependencies
+        working-directory: web
+        run: bun audit --audit-level=high
       - name: Install API dependencies
         working-directory: api/services/api
         run: bun install --frozen-lockfile
+      - name: Audit API dependencies
+        working-directory: api/services/api
+        run: bun audit --audit-level=high
       - name: Install core dependencies
         working-directory: core
         run: npm ci
+      - name: Audit core dependencies
+        working-directory: core
+        run: npm audit --audit-level=high
       - name: Deploy staging
         working-directory: web
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: scripts/deploy-staging.sh
       - name: Verify staging/prod metadata
         working-directory: web
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: scripts/check-deployments.sh --no-strict
       - name: Smoke staging
         working-directory: web
@@ -112,9 +125,18 @@ jobs:
       - name: Install web dependencies
         working-directory: web
         run: bun install --frozen-lockfile
+      - name: Audit web dependencies
+        working-directory: web
+        run: bun audit --audit-level=high
       - name: Install API dependencies
         working-directory: api/services/api
         run: bun install --frozen-lockfile
+      - name: Audit API dependencies
+        working-directory: api/services/api
+        run: bun audit --audit-level=high
       - name: Deploy production
         working-directory: web
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: scripts/deploy-production.sh --confirm-production --skip-tests

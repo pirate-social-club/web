@@ -312,7 +312,7 @@ export const RemixSourceTermsAccepted: Story = {
 };
 
 export const AnalysisMatch: Story = {
-  name: "Analysis Match / Publish Blocked",
+  name: "Analysis Match / Blocked",
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
@@ -337,84 +337,6 @@ export const AnalysisMatch: Story = {
         requirementLabel: analysisMatchMessage,
         searchResults: sourceReferences,
         references: sourceReferences,
-        licenseSummary: sourceLicenseSummary,
-        sourceTermsAccepted: false,
-      }}
-      submit={{
-        canContinue: false,
-        canPost: false,
-        error: analysisMatchMessage,
-        label: "Post",
-      }}
-    />
-  ),
-};
-
-export const AnalysisMatchReviewSource: Story = {
-  name: "Analysis Match / Review Source",
-  render: () => (
-    <InteractivePostComposer
-      {...baseComposer}
-      composerStep="details"
-      mode="song"
-      canCreateSongPost
-      titleValue="Midnight Waves (unauthorized flip)"
-      titleCountLabel="36/300"
-      lyricsValue="Meet me in the red light / carry the chorus through the floor..."
-      songMode="remix"
-      song={{
-        genre: "Electronic",
-        primaryLanguage: "English",
-        primaryAudioUpload: demoAudioFile,
-        coverUpload: midnightCoverFile,
-        coverLabel: "midnight-waves-cover.png",
-      }}
-      derivativeStep={{
-        visible: true,
-        required: true,
-        trigger: "analysis",
-        requirementLabel: analysisMatchMessage,
-        searchResults: sourceReferences,
-        references: sourceReferences,
-        licenseSummary: sourceLicenseSummary,
-        sourceTermsAccepted: false,
-      }}
-      submit={{
-        canContinue: false,
-        canPost: false,
-        error: analysisMatchMessage,
-        label: "Post",
-      }}
-    />
-  ),
-};
-
-export const AnalysisMatchMissingSource: Story = {
-  name: "Analysis Match / Missing Source",
-  render: () => (
-    <InteractivePostComposer
-      {...baseComposer}
-      composerStep="publish"
-      mode="song"
-      canCreateSongPost
-      titleValue="Midnight Waves (unmatched source)"
-      titleCountLabel="35/300"
-      lyricsValue="Meet me in the red light / carry the chorus through the floor..."
-      songMode="remix"
-      song={{
-        genre: "Electronic",
-        primaryLanguage: "English",
-        primaryAudioUpload: demoAudioFile,
-        coverUpload: midnightCoverFile,
-        coverLabel: "midnight-waves-cover.png",
-      }}
-      derivativeStep={{
-        visible: true,
-        required: true,
-        trigger: "analysis",
-        requirementLabel: analysisMatchMessage,
-        searchResults: [],
-        references: [],
         licenseSummary: sourceLicenseSummary,
         sourceTermsAccepted: false,
       }}
@@ -451,7 +373,6 @@ export const AnalysisMatchResolved: Story = {
         visible: true,
         required: true,
         trigger: "analysis",
-        requirementLabel: analysisMatchMessage,
         searchResults: sourceReferences,
         references: sourceReferences,
         licenseSummary: sourceLicenseSummary,
@@ -496,7 +417,8 @@ export const AnalysisMatchRawAcrFallback: Story = {
         sourceTermsAccepted: false,
       }}
       submit={{
-        disabled: false,
+        canContinue: false,
+        canPost: false,
         error: analysisMatchMessage,
         label: "Post",
       }}

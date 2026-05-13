@@ -14,6 +14,24 @@ export type AssetDerivativeInput = Pick<DerivativeStepState, "required" | "sourc
   references?: AssetDerivativeReference[];
 };
 
+const ANALYSIS_MATCH_PROMPTS = new Set([
+  "Your uploaded song is too similar to an existing song.",
+]);
+
+function isResolvedAnalysisMatchPrompt(input: {
+  composerMode: ComposerTab;
+  derivativeStep: AssetDerivativeInput | undefined;
+  submitError: string | null;
+}): boolean {
+  return Boolean(
+    input.composerMode === "song"
+    && input.submitError
+    && ANALYSIS_MATCH_PROMPTS.has(input.submitError)
+    && (input.derivativeStep?.references?.length ?? 0) > 0
+    && input.derivativeStep?.sourceTermsAccepted === true,
+  );
+}
+
 export function validateOriginalAssetLicense(license: AssetLicenseState | undefined, contentLabel: "song" | "video"): string | null {
   if (!license) {
     return `Choose license terms before publishing this ${contentLabel}.`;
@@ -85,8 +103,9 @@ export function resolveComposerSubmitState(input: {
   songMode?: SongMode;
   submitError: string | null;
 }) {
+  const resolvedAnalysisMatchPrompt = isResolvedAnalysisMatchPrompt(input);
   const contentError = (() => {
-    if (input.submitError) return input.submitError;
+    if (input.submitError && !resolvedAnalysisMatchPrompt) return input.submitError;
     if (!input.canSubmit) return null;
 
     if (input.composerMode === "song" && input.derivativeStep?.required && !(input.derivativeStep.references?.length ?? 0)) {
@@ -101,7 +120,7 @@ export function resolveComposerSubmitState(input: {
   })();
   const canContinue = input.canSubmit && !contentError;
 
-  if (input.submitError) {
+  if (input.submitError && !resolvedAnalysisMatchPrompt) {
     return {
       canContinue: false,
       canPost: false,

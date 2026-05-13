@@ -281,6 +281,28 @@ describe("song submit payload helpers", () => {
     });
   });
 
+  test("allows an ACRCloud match prompt to be resolved", () => {
+    expect(resolveComposerSubmitState({
+      canSubmit: true,
+      composerMode: "song",
+      derivativeStep: {
+        required: true,
+        references: [{ id: "acr:custom-file:acr_match_1", title: "Matched source 1" }],
+        sourceTermsAccepted: true,
+      },
+      license: undefined,
+      monetizationState: { visible: false },
+      paidSongPriceInvalid: false,
+      songMode: "remix",
+      submitError: "Your uploaded song is too similar to an existing song.",
+    })).toEqual({
+      canContinue: true,
+      canPost: true,
+      disabled: false,
+      submitError: null,
+    });
+  });
+
   test("derives original song license validation from the route state", () => {
     expect(resolveComposerSubmitState({
       canSubmit: true,

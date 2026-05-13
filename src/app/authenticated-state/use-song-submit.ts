@@ -27,6 +27,14 @@ const SONG_PREVIEW_POLL_ATTEMPTS = 30;
 const SONG_SUBMIT_SLOW_STEP_MS = 10_000;
 const SONG_SUBMIT_STALLED_STEP_MS = 45_000;
 
+type RawAcrCustomFile = {
+  acrid?: unknown;
+  title?: unknown;
+  community_id?: unknown;
+  score?: unknown;
+  user_defined?: unknown;
+};
+
 type SignAgentAuthoredBody = <T extends Record<string, unknown>>(
   path: string,
   body: T,
@@ -117,7 +125,54 @@ function parsePreviewStartMs(value: string | undefined): number | null {
   return parsed * 1000;
 }
 
-function buildMatchedSourceReferences(bundle: ApiSongArtifactBundle): ComposerReference[] {
+function parseAcrUserDefined(value: unknown): Record<string, unknown> | null {
+  if (!value) return null;
+  if (typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (typeof value !== "string") return null;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeCommunityId(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  return trimmed.startsWith("com_") ? trimmed.slice("com_".length) : trimmed;
+}
+
+function sameCommunityId(left: string | null | undefined, right: string | null | undefined): boolean {
+  const normalizedLeft = normalizeCommunityId(left);
+  const normalizedRight = normalizeCommunityId(right);
+  return Boolean(normalizedLeft && normalizedRight && normalizedLeft === normalizedRight);
+}
+
+function sourceReferenceFromBundle(bundle: ApiSongArtifactBundle): ComposerReference {
+  return {
+    id: bundle.id,
+    title: bundle.title,
+    subtitle: bundle.creator_user,
+  };
+}
+
+export function fallbackMatchedSourceReference(entry: RawAcrCustomFile, index: number): ComposerReference {
+  const acrid = typeof entry.acrid === "string" ? entry.acrid : null;
+  return {
+    id: acrid ? `acr:custom-file:${acrid}` : `acr:custom-file:match:${index}`,
+    title: `Matched source ${index + 1}`,
+  };
+}
+
+async function buildMatchedSourceReferences(input: {
+  bundle: ApiSongArtifactBundle;
+  communityId: string;
+  resolveBundle: (communityId: string, bundleId: string) => Promise<ApiSongArtifactBundle>;
+}): Promise<ComposerReference[]> {
+  const { bundle, communityId, resolveBundle } = input;
   const moderationResult = bundle.moderation_result && typeof bundle.moderation_result === "object"
     ? bundle.moderation_result as { audio_identification?: { provider_result?: { metadata?: { custom_files?: unknown[] } } } }
     : null;
@@ -125,19 +180,38 @@ function buildMatchedSourceReferences(bundle: ApiSongArtifactBundle): ComposerRe
   if (!Array.isArray(customFiles)) return [];
 
   const seen = new Set<string>();
-  return customFiles.flatMap((entry, index) => {
-    if (!entry || typeof entry !== "object") return [];
-    const acrid = "acrid" in entry && typeof entry.acrid === "string" ? entry.acrid : null;
-    const titleText = "title" in entry && typeof entry.title === "string" && entry.title.trim() ? entry.title.trim() : `Matched source ${index + 1}`;
-    const subtitleParts = [
-      "community_id" in entry && typeof entry.community_id === "string" ? entry.community_id : null,
-      "score" in entry && typeof entry.score === "number" ? `score ${entry.score}` : null,
-    ].filter(Boolean);
-    const id = acrid ? `acr:custom-file:${acrid}` : `acr:custom-file:match:${index}`;
-    if (seen.has(id)) return [];
-    seen.add(id);
-    return [{ id, title: titleText, subtitle: subtitleParts.length ? subtitleParts.join(" - ") : undefined }];
-  });
+  const references: ComposerReference[] = [];
+  for (const [index, entry] of customFiles.entries()) {
+    if (!entry || typeof entry !== "object") continue;
+    const customFile = entry as RawAcrCustomFile;
+    const userDefined = parseAcrUserDefined(customFile.user_defined);
+    const matchedCommunityId = typeof userDefined?.community_id === "string"
+      ? userDefined.community_id
+      : typeof customFile.community_id === "string"
+        ? customFile.community_id
+        : null;
+    const matchedBundleId = typeof userDefined?.song_artifact_bundle_id === "string"
+      ? userDefined.song_artifact_bundle_id
+      : null;
+    let reference = fallbackMatchedSourceReference(customFile, index);
+
+    if (matchedBundleId && sameCommunityId(matchedCommunityId, communityId)) {
+      try {
+        reference = sourceReferenceFromBundle(await resolveBundle(communityId, matchedBundleId));
+      } catch (error) {
+        logger.warn("[song-submit] could not resolve matched source bundle", {
+          bundleId: matchedBundleId,
+          communityId,
+          error,
+        });
+      }
+    }
+
+    if (seen.has(reference.id)) continue;
+    seen.add(reference.id);
+    references.push(reference);
+  }
+  return references;
 }
 
 function resolveBundleAnalysisState(bundle: ApiSongArtifactBundle): string | null {
@@ -336,7 +410,11 @@ export function useSongSubmit({
       });
 
       if (resolveBundleAnalysisState(bundle) === "allow_with_required_reference") {
-        const matchedReferences = buildMatchedSourceReferences(bundle);
+        const matchedReferences = await buildMatchedSourceReferences({
+          bundle,
+          communityId,
+          resolveBundle: api.communities.getSongArtifactBundle,
+        });
         logger.info("[song-submit] source reference required", {
           bundleId: bundle.id,
           matchedReferenceCount: matchedReferences.length,
@@ -347,14 +425,12 @@ export function useSongSubmit({
           visible: true,
           required: true,
           trigger: "analysis",
-          requirementLabel: "This audio matches an existing song. Publish it as a remix and keep the source track attached.",
+          requirementLabel: "Your uploaded song is too similar to an existing song.",
           searchResults: matchedReferences,
           references: matchedReferences.length ? matchedReferences : current?.references,
           sourceTermsAccepted: false,
         }));
-        setSubmitError(matchedReferences.length
-          ? "Review the matched source track, then submit again as a remix."
-          : "This audio matches an existing song. Attach a source track, then submit again as a remix.");
+        setSubmitError("Your uploaded song is too similar to an existing song.");
         return null;
       }
     }

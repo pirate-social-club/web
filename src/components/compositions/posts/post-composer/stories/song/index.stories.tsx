@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { buildStarterPricingPolicyDraft } from "@/app/authenticated-helpers/moderation-helpers";
+import { fallbackMatchedSourceReference } from "@/app/authenticated-state/use-song-submit";
 import { PostComposer } from "../../post-composer";
 import { baseComposer, composerDecorator, composerParameters, InteractivePostComposer } from "../story-helpers";
 
@@ -49,6 +50,20 @@ const sourceReferences = [
   },
 ];
 
+const rawAcrSourceReferences = [
+  fallbackMatchedSourceReference({
+    acrid: "acr_custom_01",
+    title: "pirate-bf4523357c971e2fa512579fc27b7089810c7543824793db5c50d13e859574fe",
+    community_id: "cmt_8fb2fe94333e4d35bb03c726ccb5bcb0",
+    score: 100,
+    user_defined: JSON.stringify({
+      source: "pirate",
+      community_id: "cmt_8fb2fe94333e4d35bb03c726ccb5bcb0",
+      song_artifact_bundle_id: "sab_unresolved_match",
+    }),
+  }, 0),
+];
+
 const sourceLicenseSummary = {
   sourceLicense: "Commercial remix",
   upstreamRoyaltyPct: 10,
@@ -56,6 +71,8 @@ const sourceLicenseSummary = {
   licenseTermsId: "3",
   newRemixTerms: "Commercial remix, 10%, WIP",
 };
+
+const analysisMatchMessage = "Your uploaded song is too similar to an existing song.";
 
 const starterPolicy = buildStarterPricingPolicyDraft();
 
@@ -295,7 +312,7 @@ export const RemixSourceTermsAccepted: Story = {
 };
 
 export const AnalysisMatch: Story = {
-  name: "Analysis Match",
+  name: "Analysis Match / Publish Blocked",
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
@@ -317,15 +334,170 @@ export const AnalysisMatch: Story = {
         visible: true,
         required: true,
         trigger: "analysis",
-        requirementLabel: "This song matches an existing upload. Review the source track below, accept the source terms, then submit it as a remix.",
+        requirementLabel: analysisMatchMessage,
         searchResults: sourceReferences,
         references: sourceReferences,
         licenseSummary: sourceLicenseSummary,
         sourceTermsAccepted: false,
       }}
       submit={{
+        canContinue: false,
+        canPost: false,
+        error: analysisMatchMessage,
+        label: "Post",
+      }}
+    />
+  ),
+};
+
+export const AnalysisMatchReviewSource: Story = {
+  name: "Analysis Match / Review Source",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="details"
+      mode="song"
+      canCreateSongPost
+      titleValue="Midnight Waves (unauthorized flip)"
+      titleCountLabel="36/300"
+      lyricsValue="Meet me in the red light / carry the chorus through the floor..."
+      songMode="remix"
+      song={{
+        genre: "Electronic",
+        primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
+        coverLabel: "midnight-waves-cover.png",
+      }}
+      derivativeStep={{
+        visible: true,
+        required: true,
+        trigger: "analysis",
+        requirementLabel: analysisMatchMessage,
+        searchResults: sourceReferences,
+        references: sourceReferences,
+        licenseSummary: sourceLicenseSummary,
+        sourceTermsAccepted: false,
+      }}
+      submit={{
+        canContinue: false,
+        canPost: false,
+        error: analysisMatchMessage,
+        label: "Post",
+      }}
+    />
+  ),
+};
+
+export const AnalysisMatchMissingSource: Story = {
+  name: "Analysis Match / Missing Source",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="publish"
+      mode="song"
+      canCreateSongPost
+      titleValue="Midnight Waves (unmatched source)"
+      titleCountLabel="35/300"
+      lyricsValue="Meet me in the red light / carry the chorus through the floor..."
+      songMode="remix"
+      song={{
+        genre: "Electronic",
+        primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
+        coverLabel: "midnight-waves-cover.png",
+      }}
+      derivativeStep={{
+        visible: true,
+        required: true,
+        trigger: "analysis",
+        requirementLabel: analysisMatchMessage,
+        searchResults: [],
+        references: [],
+        licenseSummary: sourceLicenseSummary,
+        sourceTermsAccepted: false,
+      }}
+      submit={{
+        canContinue: false,
+        canPost: false,
+        error: analysisMatchMessage,
+        label: "Post",
+      }}
+    />
+  ),
+};
+
+export const AnalysisMatchResolved: Story = {
+  name: "Analysis Match / Resolved",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="publish"
+      mode="song"
+      canCreateSongPost
+      titleValue="Midnight Waves (authorized remix)"
+      titleCountLabel="35/300"
+      lyricsValue="Meet me in the red light / carry the chorus through the floor..."
+      songMode="remix"
+      song={{
+        genre: "Electronic",
+        primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
+        coverLabel: "midnight-waves-cover.png",
+      }}
+      derivativeStep={{
+        visible: true,
+        required: true,
+        trigger: "analysis",
+        requirementLabel: analysisMatchMessage,
+        searchResults: sourceReferences,
+        references: sourceReferences,
+        licenseSummary: sourceLicenseSummary,
+        sourceTermsAccepted: true,
+      }}
+      submit={{
+        canContinue: true,
+        canPost: true,
+        error: null,
+        label: "Post",
+      }}
+    />
+  ),
+};
+
+export const AnalysisMatchRawAcrFallback: Story = {
+  name: "Analysis Match / Raw ACR Fallback",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="publish"
+      mode="song"
+      canCreateSongPost
+      titleValue="Midnight Waves (unauthorized flip)"
+      titleCountLabel="36/300"
+      lyricsValue="Meet me in the red light / carry the chorus through the floor..."
+      songMode="remix"
+      song={{
+        genre: "Electronic",
+        primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
+        coverLabel: "midnight-waves-cover.png",
+      }}
+      derivativeStep={{
+        visible: true,
+        required: true,
+        trigger: "analysis",
+        requirementLabel: analysisMatchMessage,
+        searchResults: rawAcrSourceReferences,
+        references: rawAcrSourceReferences,
+        sourceTermsAccepted: false,
+      }}
+      submit={{
         disabled: false,
-        error: "This song matches an existing upload. Review the source track, accept the source terms, then submit again as a remix.",
+        error: analysisMatchMessage,
         label: "Post",
       }}
     />

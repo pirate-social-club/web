@@ -16,9 +16,9 @@ import {
 
 const baseURL = process.env.E2E_BASE_URL ?? "https://staging.pirate.sc";
 const apiBaseURL = process.env.E2E_API_BASE_URL ?? resolveApiBaseURL(baseURL);
-const liveSubject = process.env.E2E_LIVE_STAGING_SUBJECT ?? "seed-staging-staff";
-const seedCommunityLabel = process.env.E2E_LIVE_STAGING_COMMUNITY_LABEL ?? "@staging-rolex";
-const seedPostTitle = process.env.E2E_LIVE_STAGING_SEED_POST_TITLE ?? "What should this imported space become?";
+const liveSubject = process.env.E2E_LIVE_STAGING_SUBJECT ?? "seed-staging-mcp-smoke-staff";
+const seedCommunityLabel = process.env.E2E_LIVE_STAGING_COMMUNITY_LABEL ?? "MCP Guest Comment Smoke";
+const seedPostTitle = process.env.E2E_LIVE_STAGING_SEED_POST_TITLE ?? "MCP guest comment smoke target";
 const liveSecretsPresent = Boolean(
   process.env.AUTH_UPSTREAM_JWT_AUDIENCE?.trim()
   && process.env.AUTH_UPSTREAM_JWT_ISSUER?.trim()

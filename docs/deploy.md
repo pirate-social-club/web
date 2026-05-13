@@ -1,5 +1,43 @@
 # Deploy
 
+## Release Workflow
+
+Production deploys should go through the Blacksmith GitHub Actions workflow in
+`.github/workflows/release.yml`.
+
+The release workflow:
+
+- deploys staging
+- verifies staging/production metadata
+- runs the existing HTTP smoke check
+- installs Chromium for Playwright
+- runs the blocking browser E2E suite against `https://staging.pirate.sc`
+- runs the non-blocking live staging browser integration
+- applies staging community migrations
+- deploys production only after the staging job succeeds
+
+The blocking browser suite is deterministic and uses mocked authenticated API
+responses where needed. The live staging integration uses real staging services:
+it exchanges a JWT-based session, creates a real staging post, and adds a real
+comment in the seeded `MCP Guest Comment Smoke` community.
+
+Required GitHub Actions secrets for the live staging check:
+
+```bash
+AUTH_UPSTREAM_JWT_AUDIENCE
+AUTH_UPSTREAM_JWT_ISSUER
+AUTH_UPSTREAM_JWT_SHARED_SECRET
+```
+
+`AUTH_UPSTREAM_JWT_SHARED_SECRET` is sourced from Infisical staging
+`/services/api` during setup or rotation. The current staging issuer/audience
+values are documented constants:
+
+```bash
+AUTH_UPSTREAM_JWT_ISSUER=pirate-staging-upstream
+AUTH_UPSTREAM_JWT_AUDIENCE=pirate-api-staging
+```
+
 ## Canonical Validation
 
 Run this before any deploy:

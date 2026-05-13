@@ -14,6 +14,9 @@ bun run ui:audit       # component hygiene and stale-marker checks
 bun run locales:generate
 bun run dev            # dev server on :5173
 bun run test
+bun run test:e2e              # Playwright browser suite, defaults to local base URL
+bun run test:e2e:staging      # Playwright browser suite against staging
+bun run test:e2e:live-staging # real staging JWT session + post/comment flow
 bun run storybook      # component workspace on :6006
 bun run build          # full production build (heavy, avoid by default)
 bun run validate       # canonical pre-deploy validation (broad/heavy)
@@ -22,6 +25,12 @@ bun run validate       # canonical pre-deploy validation (broad/heavy)
 See [AGENTS.md](./AGENTS.md) for validation escalation order and style rules.
 See [docs/ui-structure.md](./docs/ui-structure.md), [docs/ui-best-practices.md](./docs/ui-best-practices.md), and [docs/ui-maintenance.md](./docs/ui-maintenance.md) for the component structure and maintenance rules.
 See [docs/deploy.md](./docs/deploy.md) for the canonical main/public worker deploy commands.
+
+## Browser E2E
+
+The Playwright suite lives in [`e2e/`](./e2e). The default project is deterministic and safe for CI: it checks public staging routes, authenticated app shells, mocked authenticated mutation flows, thread comments, and mobile layout without mutating real backend data.
+
+`bun run test:e2e:live-staging` is the Tier 3 staging integration check. It exchanges a real staging JWT session, opens the deployed browser app, creates a real post, and adds a real comment in the seeded staging smoke community. CI reads its JWT values from GitHub Actions secrets; `AUTH_UPSTREAM_JWT_SHARED_SECRET` should be copied from Infisical staging `/services/api` whenever that secret is rotated.
 
 ## Source Layout
 

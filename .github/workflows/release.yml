@@ -13,6 +13,9 @@ jobs:
   staging:
     name: Deploy staging
     runs-on: blacksmith-4vcpu-ubuntu-2404
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -95,11 +98,17 @@ jobs:
             web/playwright-report
             web/test-results
           if-no-files-found: ignore
-      - name: Apply staging community migrations
+      - name: Fetch staging migration secrets
         working-directory: core
         env:
-          CONTROL_PLANE_DATABASE_URL: ${{ secrets.STAGING_CONTROL_PLANE_DATABASE_URL }}
-          TURSO_COMMUNITY_DB_WRAP_KEY: ${{ secrets.STAGING_TURSO_COMMUNITY_DB_WRAP_KEY }}
+          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
+          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
+          INFISICAL_ENV: staging
+          INFISICAL_SECRET_PATH: /services/api
+          SECRET_NAMES: CONTROL_PLANE_DATABASE_URL TURSO_COMMUNITY_DB_WRAP_KEY
+        run: scripts/ci/fetch-infisical-secrets.sh
+      - name: Apply staging community migrations
+        working-directory: core
         run: |
           test -n "$CONTROL_PLANE_DATABASE_URL"
           test -n "$TURSO_COMMUNITY_DB_WRAP_KEY"

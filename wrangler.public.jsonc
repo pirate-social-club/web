@@ -6,6 +6,7 @@
   "compatibility_date": "2026-04-09",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
+    "DEPLOY_ENV": "production",
     "NODE_ENV": "production",
     "HNS_PUBLIC_API_ORIGIN": "https://api.pirate.sc",
     "HNS_PUBLIC_APP_ORIGIN": "https://pirate.sc"
@@ -18,6 +19,7 @@
     "staging": {
       "name": "pirate-web-public-staging",
       "vars": {
+        "DEPLOY_ENV": "staging",
         "NODE_ENV": "production",
         "HNS_PUBLIC_API_ORIGIN": "https://api-staging.pirate.sc",
         "HNS_PUBLIC_APP_ORIGIN": "https://staging.pirate.sc"

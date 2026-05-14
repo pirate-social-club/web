@@ -190,6 +190,7 @@ log "deploy web production"
   --config wrangler.jsonc \
   --assets dist/client \
   --no-bundle \
+  --var "DEPLOY_ENV:production" \
   --var "BUILD_GIT_SHA:$WEB_SHA" \
   --var "BUILD_GIT_REF:$WEB_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
@@ -197,6 +198,7 @@ log "deploy web production"
 log "deploy web public production worker"
 (cd "$WEB_DIR" && "$WEB_WRANGLER" deploy \
   --config wrangler.public.jsonc \
+  --var "DEPLOY_ENV:production" \
   --var "BUILD_GIT_SHA:$WEB_SHA" \
   --var "BUILD_GIT_REF:$WEB_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")

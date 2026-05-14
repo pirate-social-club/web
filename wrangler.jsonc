@@ -6,6 +6,7 @@
   "compatibility_date": "2026-04-09",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
+    "DEPLOY_ENV": "production",
     "NODE_ENV": "production"
   },
   "routes": [
@@ -29,6 +30,7 @@
     "staging": {
       "name": "pirate-web-staging",
       "vars": {
+        "DEPLOY_ENV": "staging",
         "NODE_ENV": "production"
       },
       "routes": [

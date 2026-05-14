@@ -137,6 +137,7 @@ log "deploy web staging worker"
   --env staging \
   --assets dist/client \
   --no-bundle \
+  --var "DEPLOY_ENV:staging" \
   --var "BUILD_GIT_SHA:$WEB_SHA" \
   --var "BUILD_GIT_REF:$WEB_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
@@ -145,6 +146,7 @@ log "deploy web public staging worker"
 (cd "$WEB_DIR" && "$WEB_WRANGLER" deploy \
   --config wrangler.public.jsonc \
   --env staging \
+  --var "DEPLOY_ENV:staging" \
   --var "BUILD_GIT_SHA:$WEB_SHA" \
   --var "BUILD_GIT_REF:$WEB_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")

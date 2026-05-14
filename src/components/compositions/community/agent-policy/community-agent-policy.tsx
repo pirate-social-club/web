@@ -20,6 +20,7 @@ import type {
   AgentPostingScope,
   CommunityAgentPolicyPageProps,
   CommunityAgentPolicySettings,
+  GuestCommentPolicy,
 } from "./community-agent-policy.types";
 import { Type } from "@/components/primitives/type";
 
@@ -149,6 +150,11 @@ export function CommunityAgentPolicyPage({
     { label: mc.scopeTopLevelAndReplies, value: "top_level_and_replies" },
   ];
 
+  const guestCommentOptions: Array<{ label: string; value: GuestCommentPolicy }> = [
+    { label: mc.guestCommentsDisallow, value: "disallow" },
+    { label: mc.guestCommentsAltchaRequired, value: "altcha_required" },
+  ];
+
   const providerOptions: Array<{ label: string; value: AgentOwnershipProvider }> = [
     { label: mc.providerClawKey, value: "clawkey" },
     { label: mc.providerSelfAgentId, value: "self_agent_id" },
@@ -203,6 +209,12 @@ export function CommunityAgentPolicyPage({
               value={settings.agentPostingScope}
             />
           ) : null}
+          <SelectRow
+            label={mc.guestCommentsLabel}
+            onValueChange={(value) => update({ guestCommentPolicy: value })}
+            options={guestCommentOptions}
+            value={settings.guestCommentPolicy}
+          />
         </div>
       </Section>
 

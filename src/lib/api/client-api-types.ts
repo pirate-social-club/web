@@ -144,6 +144,7 @@ export type ApiUpdateCommunityRequest = {
   banner_ref?: string | null;
   agent_posting_policy?: Community["agent_posting_policy"] | null;
   agent_posting_scope?: Community["agent_posting_scope"] | null;
+  guest_comment_policy?: Community["guest_comment_policy"] | null;
   agent_daily_post_cap?: number | null;
   agent_daily_reply_cap?: number | null;
   human_verification_lane?: Community["human_verification_lane"] | null;

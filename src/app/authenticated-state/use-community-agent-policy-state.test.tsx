@@ -13,6 +13,7 @@ installDomGlobals();
 type AgentBody = {
   agent_posting_policy: "disallow" | "allow";
   agent_posting_scope: "replies_only" | "top_level_and_replies";
+  guest_comment_policy: "disallow" | "altcha_required";
   accepted_agent_ownership_providers: Array<"self_agent_id" | "clawkey">;
   agent_daily_post_cap: number | null;
   agent_daily_reply_cap: number | null;
@@ -24,6 +25,7 @@ function createCommunity(overrides: Partial<ApiCommunity> = {}): ApiCommunity {
     display_name: "Test Community",
     agent_posting_policy: "disallow",
     agent_posting_scope: "top_level_and_replies",
+    guest_comment_policy: "altcha_required",
     accepted_agent_ownership_providers: ["self_agent_id"],
     agent_daily_post_cap: 3,
     agent_daily_reply_cap: 12,
@@ -45,6 +47,7 @@ function installCommunityApiMocks() {
     return createCommunity({
       agent_posting_policy: body.agent_posting_policy,
       agent_posting_scope: body.agent_posting_scope,
+      guest_comment_policy: body.guest_comment_policy,
       accepted_agent_ownership_providers: body.accepted_agent_ownership_providers,
       agent_daily_post_cap: body.agent_daily_post_cap,
       agent_daily_reply_cap: body.agent_daily_reply_cap,
@@ -92,6 +95,7 @@ describe("useCommunityAgentPolicyState", () => {
     await waitFor(() => expect(result.current.agentSettings.agentPostingPolicy).toBe("disallow"));
 
     expect(result.current.agentSettings.agentPostingScope).toBe("top_level_and_replies");
+    expect(result.current.agentSettings.guestCommentPolicy).toBe("altcha_required");
     expect(result.current.agentSettings.acceptedAgentOwnershipProviders).toEqual(["self_agent_id"]);
     expect(result.current.agentSettings.dailyPostCap).toBe(3);
     expect(result.current.agentSubmitState).toEqual({ kind: "idle" });
@@ -108,6 +112,7 @@ describe("useCommunityAgentPolicyState", () => {
       result.current.setAgentSettings({
         agentPostingPolicy: "allow",
         agentPostingScope: "replies_only",
+        guestCommentPolicy: "altcha_required",
         acceptedAgentOwnershipProviders: ["clawkey"],
         dailyPostCap: null,
         dailyReplyCap: 20,
@@ -128,6 +133,7 @@ describe("useCommunityAgentPolicyState", () => {
       body: {
         agent_posting_policy: "allow",
         agent_posting_scope: "replies_only",
+        guest_comment_policy: "altcha_required",
         accepted_agent_ownership_providers: ["clawkey"],
         agent_daily_post_cap: null,
         agent_daily_reply_cap: 20,

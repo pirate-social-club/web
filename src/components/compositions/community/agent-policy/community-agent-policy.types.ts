@@ -2,11 +2,13 @@ import type { AgentOwnershipProvider } from "@pirate/api-contracts";
 
 export type AgentPostingPolicy = "disallow" | "allow";
 export type AgentPostingScope = "replies_only" | "top_level_and_replies";
+export type GuestCommentPolicy = "disallow" | "altcha_required";
 export type { AgentOwnershipProvider };
 
 export interface CommunityAgentPolicySettings {
   agentPostingPolicy: AgentPostingPolicy;
   agentPostingScope: AgentPostingScope;
+  guestCommentPolicy: GuestCommentPolicy;
   acceptedAgentOwnershipProviders: AgentOwnershipProvider[];
   dailyPostCap: number | null;
   dailyReplyCap: number | null;

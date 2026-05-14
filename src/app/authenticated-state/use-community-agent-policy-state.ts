@@ -20,6 +20,7 @@ export function getCommunityAgentPolicySettings(
     agentPostingScope: community?.agent_posting_scope === "top_level_and_replies"
       ? "top_level_and_replies"
       : "replies_only",
+    guestCommentPolicy: community?.guest_comment_policy === "altcha_required" ? "altcha_required" : "disallow",
     acceptedAgentOwnershipProviders: community?.accepted_agent_ownership_providers ?? [],
     dailyPostCap: community?.agent_daily_post_cap ?? null,
     dailyReplyCap: community?.agent_daily_reply_cap ?? null,
@@ -55,6 +56,7 @@ export function useCommunityAgentPolicyState({
       action: (currentCommunity) => api.communities.update(currentCommunity.id, {
         agent_posting_policy: agentSettings.agentPostingPolicy,
         agent_posting_scope: agentSettings.agentPostingScope,
+        guest_comment_policy: agentSettings.guestCommentPolicy,
         accepted_agent_ownership_providers: agentSettings.acceptedAgentOwnershipProviders,
         agent_daily_post_cap: agentSettings.dailyPostCap,
         agent_daily_reply_cap: agentSettings.dailyReplyCap,

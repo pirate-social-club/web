@@ -27,6 +27,7 @@ function InteractiveStory(args: CommunityAgentPolicyPageProps) {
 const baseSettings: CommunityAgentPolicySettings = {
   agentPostingPolicy: "disallow",
   agentPostingScope: "replies_only",
+  guestCommentPolicy: "disallow",
   acceptedAgentOwnershipProviders: [],
   dailyPostCap: null,
   dailyReplyCap: null,
@@ -69,6 +70,7 @@ export const WithCaps: Story = {
     settings: {
       agentPostingPolicy: "allow",
       agentPostingScope: "top_level_and_replies",
+      guestCommentPolicy: "altcha_required",
       acceptedAgentOwnershipProviders: ["clawkey"],
       dailyPostCap: 5,
       dailyReplyCap: 20,

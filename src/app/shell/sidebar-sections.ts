@@ -22,7 +22,7 @@ import { navigate } from "@/app/router";
 import {
   buildCommunityModerationEntryPath,
   buildCommunityModerationIndexPath,
-} from "@/app/authenticated-helpers/moderation-helpers";
+} from "@/app/authenticated-helpers/moderation-paths";
 import type {
   AppSidebarPrimaryItem,
   AppSidebarSection,

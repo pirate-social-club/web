@@ -9,7 +9,6 @@ import type { DonationPartnerPreview } from "@/components/compositions/community
 import type { CommunityLinkEditorItem } from "@/components/compositions/community/links-editor/community-links-editor-page";
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import type { PricingTier, CountryAssignment as PricingCountryAssignment } from "@/components/compositions/community/pricing-editor/community-pricing-editor-page";
-import { buildCommunityPath } from "@/lib/community-routing";
 import { createDefaultCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 import { COUNTRIES, normalizeCountryCode } from "@/lib/countries";
 import { flattenGatePolicyAtoms } from "@/lib/gate-policy-utils";
@@ -19,42 +18,18 @@ import {
   createDefaultCommunitySafetyGraphicContentPolicy,
   createDefaultCommunitySafetyProviderSettings,
 } from "@/components/compositions/community/safety-page/community-safety-page";
-
-export type CommunityModerationSection = "queue" | "profile" | "rules" | "links" | "labels" | "donations" | "pricing" | "requests" | "gates" | "safety" | "visual-policy" | "agents" | "machine-access" | "namespace" | "handles";
-
-export const DEFAULT_COMMUNITY_MODERATION_SECTION: CommunityModerationSection = "queue";
-
-export function buildCommunityModerationIndexPath(
-  communityId: string,
-  routeSlug?: string | null,
-): string {
-  return `${buildCommunityPath(communityId, routeSlug)}/mod`;
-}
-
-export function buildCommunityModerationPath(
-  communityId: string,
-  section: CommunityModerationSection,
-  routeSlug?: string | null,
-): string {
-  return `${buildCommunityPath(communityId, routeSlug)}/mod/${section}`;
-}
-
-export function buildDefaultCommunityModerationPath(
-  communityId: string,
-  routeSlug?: string | null,
-): string {
-  return buildCommunityModerationPath(communityId, DEFAULT_COMMUNITY_MODERATION_SECTION, routeSlug);
-}
-
-export function buildCommunityModerationEntryPath(
-  communityId: string,
-  isMobileWeb: boolean,
-  routeSlug?: string | null,
-): string {
-  return isMobileWeb
-    ? buildCommunityModerationIndexPath(communityId, routeSlug)
-    : buildDefaultCommunityModerationPath(communityId, routeSlug);
-}
+import {
+  buildCommunityModerationPath,
+  type CommunityModerationSection,
+} from "./moderation-paths";
+export {
+  buildCommunityModerationEntryPath,
+  buildCommunityModerationIndexPath,
+  buildCommunityModerationPath,
+  buildDefaultCommunityModerationPath,
+  DEFAULT_COMMUNITY_MODERATION_SECTION,
+  type CommunityModerationSection,
+} from "./moderation-paths";
 
 export function buildCommunityModerationSections(
   activeSection: CommunityModerationSection | null,

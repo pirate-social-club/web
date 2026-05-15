@@ -131,11 +131,18 @@ export const mockJoinEligibility = {
 
 export function createMockPostResponse(input?: {
   body?: string | null;
+  commentCount?: number;
+  created?: number;
+  downvoteCount?: number;
   id?: string;
+  likeCount?: number;
   title?: string;
+  upvoteCount?: number;
   viewerVote?: -1 | 1 | null;
 }) {
   const postId = input?.id ?? mockFeedPostId;
+  const created = input?.created ?? Date.parse("2026-05-01T00:00:00.000Z");
+  const commentCount = input?.commentCount ?? 0;
   return {
     post: {
       id: postId,
@@ -164,7 +171,7 @@ export function createMockPostResponse(input?: {
       link_url: null,
       asset: null,
       access_mode: "public",
-      created: Date.parse("2026-05-01T00:00:00.000Z"),
+      created,
       analysis_state: "allow",
       analysis_result_ref: null,
       content_safety_state: "safe",
@@ -177,16 +184,16 @@ export function createMockPostResponse(input?: {
       thread_root_post: postId,
       thread_root_post_id: postId,
       snapshot_seq: 1,
-      published_through_comment_created: Date.parse("2026-05-01T00:00:00.000Z"),
-      comment_count: 0,
+      published_through_comment_created: created,
+      comment_count: commentCount,
       swarm_manifest_ref: "swarm://comments/pst_e2e",
       swarm_feed_ref: null,
-      created: Date.parse("2026-05-01T00:00:00.000Z"),
+      created,
     },
-    comment_count: 0,
-    upvote_count: input?.viewerVote === 1 ? 5 : 4,
-    downvote_count: 1,
-    like_count: 0,
+    comment_count: commentCount,
+    upvote_count: input?.upvoteCount ?? (input?.viewerVote === 1 ? 5 : 4),
+    downvote_count: input?.downvoteCount ?? 1,
+    like_count: input?.likeCount ?? 0,
     viewer_vote: input?.viewerVote ?? null,
     viewer_reaction_kinds: [],
     resolved_locale: "en",
@@ -199,7 +206,7 @@ export function createMockPostResponse(input?: {
   };
 }
 
-export function createMockHomeFeedItem() {
+export function createMockHomeFeedItem(input?: Parameters<typeof createMockPostResponse>[0]) {
   return {
     community: {
       id: mockCommunityId,
@@ -212,7 +219,7 @@ export function createMockHomeFeedItem() {
       follower_count: 1,
       view_count: 1,
     },
-    post: createMockPostResponse(),
+    post: createMockPostResponse(input),
   };
 }
 

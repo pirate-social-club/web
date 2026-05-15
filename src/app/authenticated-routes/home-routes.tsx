@@ -210,7 +210,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const emptyHomeTitle = copy.home.emptyHomeTitle;
   const emptyHomeVerifyBody = copy.home.emptyHomeVerifyBody;
   const [activeSort, setActiveSort] = React.useState<FeedSort>(() => initialSort ?? getCurrentHomeFeedSort());
-  const [topTimeRange, setTopTimeRange] = React.useState("day");
+  const [topTimeRange, setTopTimeRange] = React.useState("all");
   const {
     feedEntries,
     setFeedEntries,

@@ -20,6 +20,30 @@ test.describe("authenticated smoke with mocked API", () => {
     await expectNoBrowserError(page);
   });
 
+  test("home feed applies New and Top ordering from sort controls", async ({ page }) => {
+    const feedRequests: string[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/feed/home" || url.pathname === "/feed/home/public") {
+        feedRequests.push(url.toString());
+      }
+    });
+
+    await page.goto("/");
+    await expect(page.locator("article").first()).toContainText("E2E feed post", { timeout: 30_000 });
+
+    await page.getByRole("combobox", { name: /sort feed/i }).click();
+    await page.getByRole("option", { name: /^new$/i }).click();
+    await expect(page.locator("article").first()).toContainText("E2E newest post", { timeout: 30_000 });
+
+    await page.getByRole("combobox", { name: /sort feed/i }).click();
+    await page.getByRole("option", { name: /^top$/i }).click();
+    await expect(page.locator("article").first()).toContainText("E2E feed post", { timeout: 30_000 });
+
+    expect(feedRequests.some((url) => url.includes("/feed/home/public") && url.includes("sort=new"))).toBe(true);
+    expect(feedRequests.some((url) => url.includes("/feed/home/public") && url.includes("sort=top") && url.includes("time_range=all"))).toBe(true);
+  });
+
   test("profile settings render from the injected session", async ({ page }) => {
     await page.goto("/settings/profile");
 

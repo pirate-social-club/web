@@ -31,6 +31,37 @@ function emptyCursorList() {
   return { items: [], next_cursor: null };
 }
 
+function createHomeFeedItems(sort: string | null, timeRange: string | null) {
+  const newest = createMockHomeFeedItem({
+    commentCount: 0,
+    created: Date.parse("2026-05-03T00:00:00.000Z"),
+    downvoteCount: 0,
+    id: "pst_e2e_newest",
+    title: "E2E newest post",
+    upvoteCount: 0,
+  });
+  const top = createMockHomeFeedItem({
+    commentCount: 4,
+    created: Date.parse("2026-05-01T00:00:00.000Z"),
+    downvoteCount: 0,
+    id: mockFeedPostId,
+    title: "E2E feed post",
+    upvoteCount: 8,
+  });
+  const middle = createMockHomeFeedItem({
+    commentCount: 1,
+    created: Date.parse("2026-05-02T00:00:00.000Z"),
+    downvoteCount: 0,
+    id: "pst_e2e_middle",
+    title: "E2E middle post",
+    upvoteCount: 1,
+  });
+
+  if (sort === "new") return [newest, middle, top];
+  if (sort === "top" && timeRange === "all") return [top, middle, newest];
+  return [top, middle, newest];
+}
+
 async function fulfillPirateApiRoute(route: Route, state: { commentCreated: boolean }): Promise<void> {
   const request = route.request();
   const url = new URL(request.url());
@@ -69,7 +100,10 @@ async function fulfillPirateApiRoute(route: Route, state: { commentCreated: bool
   }
 
   if (method === "GET" && (path === "/feed/home" || path === "/feed/home/public")) {
-    await route.fulfill(jsonResponse({ items: [createMockHomeFeedItem()], top_communities: [] }));
+    await route.fulfill(jsonResponse({
+      items: createHomeFeedItems(url.searchParams.get("sort"), url.searchParams.get("time_range")),
+      top_communities: [],
+    }));
     return;
   }
 

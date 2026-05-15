@@ -5,8 +5,9 @@ import type { JoinEligibility } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { CommunityInteractionGateModal } from "@/components/compositions/community/interaction-gate-modal/community-interaction-gate-modal";
-import { AltchaPowWidget } from "@/components/compositions/verification/altcha-pow-widget/altcha-pow-widget";
-import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
+import type { AltchaPowWidget } from "@/components/compositions/verification/altcha-pow-widget/altcha-pow-widget";
+import type { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
+import { Spinner } from "@/components/primitives/spinner";
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -46,6 +47,23 @@ import {
 } from "./use-community-interaction-gate.helpers";
 
 export { resolveCommunityInteractionState } from "./use-community-interaction-gate.helpers";
+
+const LazyAltchaPowWidget = React.lazy(async () => {
+  const mod = await import("@/components/compositions/verification/altcha-pow-widget/altcha-pow-widget");
+  return { default: mod.AltchaPowWidget };
+}) as typeof AltchaPowWidget;
+const LazySelfVerificationModal = React.lazy(async () => {
+  const mod = await import("@/components/compositions/verification/self-verification-modal/self-verification-modal");
+  return { default: mod.SelfVerificationModal };
+}) as typeof SelfVerificationModal;
+
+function VerificationWidgetFallback() {
+  return (
+    <div className="flex min-h-28 items-center justify-center">
+      <Spinner className="size-5" />
+    </div>
+  );
+}
 
 function hasAltchaGate(gate: CommunityGateData): boolean {
   return gate.preview.membership_gate_summaries.some((summary) => summary.gate_type === "altcha_pow");
@@ -306,15 +324,17 @@ export function useCommunityInteractionGate({
       setModalState((current) => current ? {
         ...current,
         body: (
-          <AltchaPowWidget
-            key={nextResetKey}
-            action={`community:${communityId}`}
-            locale={interactionCopy.locale}
-            onPayloadChange={(nextPayload) => {
-              altchaPayloadRef.current = nextPayload;
-            }}
-            scope="community_join"
-          />
+          <React.Suspense fallback={<VerificationWidgetFallback />}>
+            <LazyAltchaPowWidget
+              key={nextResetKey}
+              action={`community:${communityId}`}
+              locale={interactionCopy.locale}
+              onPayloadChange={(nextPayload) => {
+                altchaPayloadRef.current = nextPayload;
+              }}
+              scope="community_join"
+            />
+          </React.Suspense>
         ),
         primaryAction: current.primaryAction ? { ...current.primaryAction, loading: false } : current.primaryAction,
       } : current);
@@ -567,15 +587,17 @@ export function useCommunityInteractionGate({
       };
       setModalState({
         body: (
-          <AltchaPowWidget
-            key={altchaResetKey}
-            action={actionAltchaConfig.actionRef}
-            locale={interactionCopy.locale}
-            onPayloadChange={(payload) => {
-              altchaPayloadRef.current = payload;
-            }}
-            scope={actionAltchaConfig.scope}
-          />
+          <React.Suspense fallback={<VerificationWidgetFallback />}>
+            <LazyAltchaPowWidget
+              key={altchaResetKey}
+              action={actionAltchaConfig.actionRef}
+              locale={interactionCopy.locale}
+              onPayloadChange={(payload) => {
+                altchaPayloadRef.current = payload;
+              }}
+              scope={actionAltchaConfig.scope}
+            />
+          </React.Suspense>
         ),
         description: "This usually takes a few seconds and runs only on this device.",
         icon: "blocked",
@@ -628,15 +650,17 @@ export function useCommunityInteractionGate({
       hasAltchaProofAction(gate.eligibility)
         ? {
             body: (
-              <AltchaPowWidget
-                key={altchaResetKey}
-                action={`community:${communityId}`}
-                locale={interactionCopy.locale}
-                onPayloadChange={(payload) => {
-                  altchaPayloadRef.current = payload;
-                }}
-	                scope="community_join"
-	              />
+              <React.Suspense fallback={<VerificationWidgetFallback />}>
+                <LazyAltchaPowWidget
+                  key={altchaResetKey}
+                  action={`community:${communityId}`}
+                  locale={interactionCopy.locale}
+                  onPayloadChange={(payload) => {
+                    altchaPayloadRef.current = payload;
+                  }}
+                  scope="community_join"
+                />
+              </React.Suspense>
             ),
             description: "This usually takes a few seconds and runs only on this device.",
             icon: "blocked",
@@ -696,18 +720,20 @@ export function useCommunityInteractionGate({
   ) : null;
 
   const selfVerificationModal = selfPrompt ? (
-    <SelfVerificationModal
-      actionLabel={selfPrompt.actionLabel}
-      description={selfPrompt.description}
-      error={selfError}
-      href={selfPrompt.href}
-      onOpenChange={handleSelfModalOpenChange}
-      onQrError={handleSelfQrError}
-      onQrSuccess={handleSelfQrSuccess}
-      open={selfModalOpen}
-      selfApp={selfPrompt.selfApp}
-      title={selfPrompt.title}
-    />
+    <React.Suspense fallback={null}>
+      <LazySelfVerificationModal
+        actionLabel={selfPrompt.actionLabel}
+        description={selfPrompt.description}
+        error={selfError}
+        href={selfPrompt.href}
+        onOpenChange={handleSelfModalOpenChange}
+        onQrError={handleSelfQrError}
+        onQrSuccess={handleSelfQrSuccess}
+        open={selfModalOpen}
+        selfApp={selfPrompt.selfApp}
+        title={selfPrompt.title}
+      />
+    </React.Suspense>
   ) : null;
 
   const gateModal = interactionModal || selfVerificationModal ? (

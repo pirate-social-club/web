@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { createVeryWidget } from "@veryai/widget";
+import type { createVeryWidget as createVeryWidgetType } from "@veryai/widget";
 import type { OnboardingStatus, VerificationIntent, VerificationSession } from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
@@ -11,6 +11,12 @@ import { logger } from "@/lib/logger";
 import { installVeryBridgeFetchProxy } from "@/lib/verification/very-bridge-fetch-proxy";
 
 type VeryVerificationState = "not_started" | "pending" | "verified";
+let veryWidgetModulePromise: Promise<{ createVeryWidget: typeof createVeryWidgetType }> | null = null;
+
+async function loadVeryWidgetModule() {
+  veryWidgetModulePromise ??= import("@veryai/widget");
+  return await veryWidgetModulePromise;
+}
 
 export function useVeryVerification(input: {
   onVerified?: (status: OnboardingStatus) => Promise<void> | void;
@@ -62,6 +68,7 @@ export function useVeryVerification(input: {
     }
 
     cleanupWidget();
+    const { createVeryWidget } = await loadVeryWidgetModule();
     bridgeFetchProxyCleanupRef.current = installVeryBridgeFetchProxy(result.id);
     widgetRef.current = createVeryWidget({
       appId: launch.app_id,

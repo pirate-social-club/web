@@ -4,8 +4,9 @@ import * as React from "react";
 import { ChatCircleText, X } from "@phosphor-icons/react";
 
 import { navigate } from "@/app/router";
-import { ChatPage, type ChatNavigationAdapter } from "@/app/chat/chat-route";
+import type { ChatNavigationAdapter } from "@/app/chat/chat-route";
 import { IconButton } from "@/components/primitives/icon-button";
+import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { ChatRouteMode } from "@/lib/chat/chat-types";
@@ -22,6 +23,10 @@ type DesktopChatWidgetApi = {
 };
 
 const DesktopChatWidgetContext = React.createContext<DesktopChatWidgetApi | null>(null);
+const LazyChatPage = React.lazy(async () => {
+  const mod = await import("@/app/chat/chat-route");
+  return { default: mod.ChatPage };
+});
 
 function summarizeMode(mode: ChatRouteMode): Record<string, unknown> {
   switch (mode.kind) {
@@ -162,7 +167,13 @@ export function DesktopChatWidgetProvider({ children }: { children: React.ReactN
       {children}
       {open && !isMobile ? (
         <DesktopChatWidgetFrame onClose={close}>
-          <ChatPage mode={mode} navigation={navigation} surface="widget" />
+          <React.Suspense fallback={(
+            <div className="flex h-full items-center justify-center">
+              <Spinner className="size-6" />
+            </div>
+          )}>
+            <LazyChatPage mode={mode} navigation={navigation} surface="widget" />
+          </React.Suspense>
         </DesktopChatWidgetFrame>
       ) : null}
     </DesktopChatWidgetContext.Provider>

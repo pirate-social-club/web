@@ -44,6 +44,7 @@ import {
   resolveRequestLocale,
   type UiLocaleCode,
 } from "@/lib/ui-locale-core";
+import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getLocaleMessages } from "@/locales";
 import { applySecurityHeaders } from "@/lib/security/csp";
 import { buildVersionResponse, type BuildVersionEnv } from "@/lib/build-version";
@@ -65,6 +66,15 @@ const SEO_METADATA_TIMEOUT_MS = 650;
 const SEO_METADATA_USER_AGENT_PATTERN =
   /(bot|crawler|spider|facebookexternalhit|twitterbot|xbot|slackbot|discordbot|telegrambot|whatsapp|linkedinbot|embedly|pinterest|preview)/i;
 const SHARE_LOCALE_QUERY_KEYS = ["locale", "lang"] as const;
+
+function acceptLanguageTags(acceptLanguageHeader: string | null): string[] {
+  return (acceptLanguageHeader ?? "")
+    .split(",")
+    .flatMap((part) => {
+      const tag = part.trim().split(";")[0]?.trim();
+      return tag ? [tag] : [];
+    });
+}
 
 function parseThemeCookie(cookieHeader: string | null): ThemeMode {
   const match = cookieHeader?.match(/(?:^|;\s*)theme=(dark|light|system)(?:;|$)/);
@@ -167,6 +177,13 @@ function buildPublicApiUrl(apiOrigin: string, path: string, locale: UiLocaleCode
   if (locale && locale !== "pseudo") {
     url.searchParams.set("locale", resolveLocaleLanguageTag(locale));
   }
+  return url.toString();
+}
+
+function buildHomeFeedPreloadUrl(apiOrigin: string, contentLocale: string): string {
+  const url = new URL("/feed/home/public", apiOrigin);
+  url.searchParams.set("locale", contentLocale);
+  url.searchParams.set("sort", "best");
   return url.toString();
 }
 
@@ -540,6 +557,15 @@ const app = defineApp<AppRequestInfo>([
     ctx.canonicalUrl = discovery.canonicalUrl;
     ctx.locale = locale;
     ctx.dir = resolveLocaleDirection(locale);
+    ctx.homeFeedPreloadUrl = route.kind === "home"
+      ? buildHomeFeedPreloadUrl(
+        discovery.apiOrigin,
+        resolveViewerContentLocale({
+          uiLocale: locale,
+          browserLocales: acceptLanguageTags(request.headers.get("accept-language")),
+        }),
+      )
+      : undefined;
     ctx.isIndexable = discovery.isIndexable;
     const seoMetadata = shouldResolveSeoMetadata(request)
       ? await resolveRouteSeoMetadataWithinBudget({

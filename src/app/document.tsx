@@ -35,6 +35,7 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
   const ogType = seo?.type ?? "website";
   const ogLocale = resolveOpenGraphLocale(locale);
   const twitterCard = pageImageUrl ? "summary_large_image" : "summary";
+  const homeFeedPreloadUrl = ctx.homeFeedPreloadUrl ?? null;
   const clientModuleUrl = isDev
     ? "/src/client.tsx"
     : "rwsdk_asset:/src/client.tsx";
@@ -73,6 +74,9 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
         {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
         {!ctx.isIndexable ? <meta name="robots" content="noindex, nofollow" /> : null}
         <link rel="stylesheet" href={stylesUrl} />
+        {homeFeedPreloadUrl ? (
+          <link as="fetch" crossOrigin="anonymous" href={homeFeedPreloadUrl} rel="preload" type="application/json" />
+        ) : null}
         <link rel="modulepreload" href={clientModuleUrl} />
         {isDev ? (
           <script

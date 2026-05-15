@@ -15,6 +15,7 @@ export type AppContext = {
   canonicalUrl?: string;
   dir?: UiDirection;
   effectiveUrl?: string;
+  homeFeedPreloadUrl?: string;
   isIndexable?: boolean;
   locale?: UiLocaleCode;
   seoMetadata?: SeoMetadata | null;

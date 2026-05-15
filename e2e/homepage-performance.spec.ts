@@ -95,10 +95,10 @@ async function warmPublicFeed(request: APIRequestContext): Promise<FeedProbe> {
 }
 
 async function captureBrowserPublicFeed(page: Page): Promise<BrowserFeedProbe> {
-  let feedRequestStartedAt: number | null = null;
+  const feedRequestStartTimes = new Map<string, number>();
   page.on("request", (request) => {
     if (new URL(request.url()).pathname === "/feed/home/public") {
-      feedRequestStartedAt = performance.now();
+      feedRequestStartTimes.set(request.url(), performance.now());
     }
   });
 
@@ -109,7 +109,7 @@ async function captureBrowserPublicFeed(page: Page): Promise<BrowserFeedProbe> {
   const responseFinishedAt = performance.now();
   const headers = response.headers();
   const feed = await response.json().catch(() => null);
-  const startedAt = feedRequestStartedAt ?? responseHeadersAt;
+  const startedAt = feedRequestStartTimes.get(response.url()) ?? responseHeadersAt;
 
   return {
     cacheStatus: responseCacheStatus(headers),

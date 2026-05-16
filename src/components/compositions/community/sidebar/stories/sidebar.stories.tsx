@@ -36,6 +36,42 @@ export const Default: Story = {
   },
 };
 
+export const OwnerAndModerators: Story = {
+  name: "Roles / Owner and moderators",
+  args: {
+    description: "A community with visible creator and moderation roles.",
+    followerCount: 18400,
+    memberCount: 1270,
+    owner: {
+      user: "usr_owner",
+      avatarSeed: "usr_owner",
+      displayName: "Captain Signal",
+      handle: "captain.pirate",
+      nationalityBadgeCountryCode: "US",
+      nationalityBadgeLabel: "Verified United States nationality",
+      role: "owner",
+    },
+    moderators: [
+      {
+        user: "usr_mod_1",
+        avatarSeed: "usr_mod_1",
+        displayName: "Mod Matrix",
+        handle: "modmatrix.pirate",
+        nationalityBadgeCountryCode: "GB",
+        nationalityBadgeLabel: "Verified United Kingdom nationality",
+        role: "moderator",
+      },
+      {
+        user: "usr_mod_2",
+        avatarSeed: "usr_mod_2",
+        displayName: "Admin Current",
+        handle: "admincurrent.pirate",
+        role: "admin",
+      },
+    ],
+  },
+};
+
 export const RequirementsAnd: Story = {
   name: "Gates / AND mode",
   args: {

@@ -4,6 +4,7 @@ import * as React from "react";
 import { AvatarWithBadge } from "@/components/compositions/system/avatar-badge/avatar-with-badge";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
 import { cn } from "@/lib/utils";
+import { CommunityRoleIconBadge } from "../community-role-icon-badge";
 import type { CommunitySidebarRoleHolder } from "./community-sidebar.types";
 
 export interface CommunitySidebarRoleHolderProps {
@@ -45,8 +46,11 @@ export function CommunitySidebarRoleHolderComponent({
         size="md"
         src={roleHolder.avatarSrc?.trim() || undefined}
       />
-      <span className="min-w-0 truncate font-semibold text-foreground hover:underline">
-        {handleLabel}
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className="min-w-0 truncate font-semibold text-foreground hover:underline">
+          {handleLabel}
+        </span>
+        <CommunityRoleIconBadge className="size-4 self-center text-[0.875rem]" role={roleHolder.role} />
       </span>
     </a>
   );

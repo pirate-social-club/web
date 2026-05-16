@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChatCircle, Trash } from "@phosphor-icons/react";
 
+import { CommunityRoleIconBadge } from "@/components/compositions/community/community-role-icon-badge";
 import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
@@ -39,13 +40,7 @@ function commentBody(body: string | undefined, status: PostThreadCommentStatus |
 }
 
 function CommentAuthorRoleBadge({ role }: { role?: CommunityAuthorRole | null }) {
-  if (!role) return null;
-
-  return (
-    <Type as="span" variant="overline" className="inline-flex min-h-5 items-center self-center rounded-full bg-primary px-2 leading-none text-primary-foreground">
-      {role === "owner" ? "Owner" : "Mod"}
-    </Type>
-  );
+  return <CommunityRoleIconBadge className="self-center" role={role} />;
 }
 
 export interface CommentCardProps {

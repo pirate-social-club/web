@@ -1,32 +1,32 @@
 import * as React from "react";
-import { Calendar, Lock as LockIcon, Robot } from "@phosphor-icons/react";
+import { Broadcast, Calendar, DownloadSimple, Lock as LockIcon, Play, Robot } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
 import { cn } from "@/lib/utils";
 import { postCardType } from "./post-card.styles";
-import type { LiveRoomContentSpec } from "./post-card.types";
+import type { LiveRoomContentSpec, PostCardViewContext } from "./post-card.types";
 
 type LiveRoomUiState =
-  | { kind: "can_watch"; cta: string; onClick?: () => void; statusText: string }
-  | { kind: "can_attend"; cta: string; onClick?: () => void; statusText: string }
-  | { kind: "needs_ticket"; cta: string; onClick?: () => void; statusText: string }
-  | { kind: "has_ticket"; statusText: string }
-  | { kind: "needs_membership"; cta: string; onClick?: () => void; statusText: string }
-  | { kind: "needs_verification"; cta: string; onClick?: () => void; statusText: string }
-  | { kind: "tickets_unavailable"; statusText: string }
-  | { kind: "host_setup_incomplete"; cta: string; onClick?: () => void; statusText: string }
-  | { kind: "ended"; statusText: string }
-  | { kind: "canceled"; statusText: string };
+  | { kind: "can_watch"; cta: string; onClick?: () => void }
+  | { kind: "can_watch_replay"; cta: string; onClick?: () => void }
+  | { kind: "needs_ticket"; cta: string; onClick?: () => void }
+  | { kind: "has_ticket" }
+  | { kind: "needs_verification"; cta: string; onClick?: () => void }
+  | { kind: "tickets_unavailable" }
+  | { kind: "replay_processing" }
+  | { kind: "scheduled" }
+  | { kind: "ended" }
+  | { kind: "canceled" };
 
 function priceLabel(content: LiveRoomContentSpec): string | null {
   return content.regionalPriceLabel ?? content.priceLabel ?? null;
 }
 
 function timeLabel(content: LiveRoomContentSpec): string {
-  if (content.status === "live") return "Live now";
-  if (content.status === "ended") return content.endedAtLabel ? `Ended ${content.endedAtLabel}` : "Ended";
+  if (content.status === "live") return content.liveSinceLabel ? `Live for ${content.liveSinceLabel}` : "Live now";
   if (content.status === "canceled") return "Canceled";
-  return content.startsAtLabel ?? "Scheduled";
+  if (content.status === "ended") return content.endedAtLabel ? `Ended ${content.endedAtLabel} ago` : "Ended";
+  return content.startsAtLabel ? `Starts ${content.startsAtLabel}` : "Scheduled";
 }
 
 function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
@@ -36,11 +36,17 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
   const price = priceLabel(content);
 
   if (content.status === "canceled") {
-    return { kind: "canceled", statusText: "Canceled" };
+    return { kind: "canceled" };
   }
 
   if (content.status === "ended" || content.accessState === "ended") {
-    return { kind: "ended", statusText: "Ended" };
+    if (content.replayStatus === "ready") {
+      return { kind: "can_watch_replay", cta: "Watch replay", onClick: content.onWatch };
+    }
+    if (content.replayStatus === "processing") {
+      return { kind: "replay_processing" };
+    }
+    return { kind: "ended" };
   }
 
   if (ageProofRequired) {
@@ -48,24 +54,11 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
       kind: "needs_verification",
       cta: "Verify to attend",
       onClick: content.onVerifyAge,
-      statusText: "Verification required",
     };
   }
 
   if (content.accessState === "missing_listing") {
-    return {
-      kind: "tickets_unavailable",
-      statusText: "Tickets unavailable",
-    };
-  }
-
-  if (content.accessState === "gate_required") {
-    return {
-      kind: "needs_membership",
-      cta: "Join to attend",
-      onClick: content.onGate,
-      statusText: "Members only",
-    };
+    return { kind: "tickets_unavailable" };
   }
 
   if (content.accessState === "purchase_required" || (content.accessMode === "paid" && !content.hasEntitlement)) {
@@ -73,76 +66,205 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
       kind: "needs_ticket",
       cta: price ? `Get ticket ${price}` : "Get ticket",
       onClick: content.onBuy,
-      statusText: price ? `Tickets from ${price}` : "Tickets available",
     };
   }
 
   if (content.accessMode === "paid" && content.hasEntitlement) {
     if (content.status === "live") {
-      return {
-        kind: "can_watch",
-        cta: "Watch live",
-        onClick: content.onWatch,
-        statusText: "Live now",
-      };
+      return { kind: "can_watch", cta: "Watch live", onClick: content.onWatch };
     }
-    return { kind: "has_ticket", statusText: "You're going" };
+    return { kind: "has_ticket" };
   }
 
   if (content.status === "live") {
-    return {
-      kind: "can_watch",
-      cta: "Watch live",
-      onClick: content.onWatch,
-      statusText: content.attendeeCountLabel ? `Live now · ${content.attendeeCountLabel}` : "Live now",
-    };
+    return { kind: "can_watch", cta: "Watch live", onClick: content.onWatch };
   }
 
-  if (content.accessMode === "gated") {
-    return {
-      kind: "needs_membership",
-      cta: "Join to attend",
-      onClick: content.onGate,
-      statusText: "Members only",
-    };
-  }
-
-  return {
-    kind: "can_attend",
-    cta: "View event",
-    onClick: undefined,
-    statusText: "Free event",
-  };
+  return { kind: "scheduled" };
 }
 
 function shouldShowCta(ui: LiveRoomUiState): ui is Extract<LiveRoomUiState, { cta: string }> {
   return "cta" in ui && Boolean(ui.cta);
 }
 
+function ProducerControls({ content }: { content: LiveRoomContentSpec }) {
+  if (!content.producerRole) return null;
+  const isHost = content.producerRole === "host";
+  const isAcceptedGuest = content.producerRole === "guest" && content.guestInviteStatus === "accepted";
+  const showBroadcast = content.freedomDetected && content.freedomHref && (isHost || isAcceptedGuest);
+
+  if (content.producerRole === "guest" && content.guestInviteStatus === "pending") {
+    return (
+      <p className="text-base text-muted-foreground">
+        Accept the producer invite before broadcasting.
+      </p>
+    );
+  }
+
+  if (content.producerRole === "guest" && content.guestInviteStatus === "revoked") {
+    return (
+      <p className="text-base text-muted-foreground">
+        This producer invite has been revoked.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {showBroadcast ? (
+        <Button asChild size="sm">
+          <a href={content.freedomHref}>
+            <Broadcast className="size-4" weight="bold" />
+            {isHost ? "Start broadcast" : "Open producer room"}
+          </a>
+        </Button>
+      ) : null}
+      {!content.freedomDetected ? (
+        <Button asChild size="sm" variant="outline">
+          <a href="https://github.com/pirate-social-club/freedom-browser">
+            <DownloadSimple className="size-4" weight="bold" />
+            Download Freedom
+          </a>
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 export function LiveRoomPostContent({
   className,
   content,
+  viewContext,
 }: {
   className?: string;
   content: LiveRoomContentSpec;
+  viewContext?: PostCardViewContext;
 }) {
   const ui = deriveLiveRoomUi(content);
   const ageProofRequired = content.ageGatePolicy === "18_plus"
     && content.contentSafetyState === "adult"
     && content.ageGateViewerState !== "verified_allowed";
-  const ArtworkWrapper = content.concertHref ? "a" : "div";
+  const inPostPage = viewContext === "post";
+  const eventHref = inPostPage ? undefined : content.concertHref;
+  const ArtworkWrapper = eventHref ? "a" : "div";
   const time = timeLabel(content);
   const timeIsLive = content.status === "live";
-  const showStatusChip = !shouldShowCta(ui);
+  const showPrimaryCta = shouldShowCta(ui);
+
+  if (inPostPage) {
+    return (
+      <div className={cn("flex flex-col gap-4 text-start", className)}>
+        <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
+          {content.coverSrc ? (
+            <>
+              <img
+                alt={content.title}
+                className={cn(
+                  "size-full object-cover transition-[filter,transform]",
+                  ageProofRequired && "blur-md saturate-0",
+                )}
+                src={content.coverSrc}
+              />
+              {ageProofRequired ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/42">
+                  <LockIcon className="size-9 text-white" weight="fill" />
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <div className="grid size-full place-items-center">
+              <Calendar className="size-12 text-muted-foreground" />
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <h2 className="min-w-0 text-xl font-semibold leading-tight text-foreground">
+              {content.title}
+            </h2>
+            {content.roomKind === "duet" ? (
+              <span className="shrink-0 text-base text-muted-foreground">
+                Duet
+              </span>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p
+              className={cn(
+                "text-base font-semibold",
+                timeIsLive ? "text-destructive" : "text-foreground",
+              )}
+            >
+              {time}
+            </p>
+            {content.attendeeCountLabel && timeIsLive ? (
+              <p className="text-base text-muted-foreground">
+                {content.attendeeCountLabel}
+              </p>
+            ) : null}
+            {ui.kind === "has_ticket" ? (
+              <p className="text-base font-medium text-success">You&apos;re going</p>
+            ) : null}
+            {ui.kind === "replay_processing" ? (
+              <p className="text-base text-muted-foreground">Replay processing</p>
+            ) : null}
+          </div>
+
+          {content.description ? (
+            <p className="max-w-[72ch] text-base leading-7 text-muted-foreground">
+              {content.description}
+            </p>
+          ) : null}
+
+          {content.setlistPreview && content.setlistPreview.length > 0 ? (
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {content.setlistPreview.map((track) => (
+                <p key={track.title} className="text-base text-muted-foreground">
+                  {track.title}{track.artist ? ` — ${track.artist}` : ""}
+                </p>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {showPrimaryCta ? (
+            <Button
+              className="h-11 px-5"
+              disabled={!ui.onClick}
+              onClick={ui.onClick}
+              size="sm"
+            >
+              {ui.kind === "can_watch_replay" ? <Play className="mr-1 size-4" weight="bold" /> : null}
+              {ui.cta}
+            </Button>
+          ) : null}
+
+          {content.agentPurchaseUrl ? (
+            <Button asChild size="sm" variant="outline">
+              <a href={content.agentPurchaseUrl}>
+                <Robot className="size-4" weight="duotone" />
+                {content.agentPurchaseLabel ?? "Agent checkout"}
+              </a>
+            </Button>
+          ) : null}
+        </div>
+
+        <ProducerControls content={content} />
+      </div>
+    );
+  }
 
   return (
     <div className={cn("flex flex-col gap-2.5 text-start", className)}>
       <div className="flex items-start gap-3">
         <ArtworkWrapper
-          aria-label={content.concertHref ? `Open ${content.title}` : undefined}
+          aria-label={eventHref ? `Open ${content.title}` : undefined}
           className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          data-post-card-interactive={content.concertHref ? "true" : undefined}
-          href={content.concertHref}
+          data-post-card-interactive={eventHref ? "true" : undefined}
+          href={eventHref}
         >
           {content.coverSrc ? (
             <>
@@ -167,11 +289,11 @@ export function LiveRoomPostContent({
 
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
-            {content.concertHref ? (
+            {eventHref ? (
               <a
                 className={cn("min-w-0 truncate font-semibold text-foreground hover:underline", postCardType.label)}
                 data-post-card-interactive="true"
-                href={content.concertHref}
+                href={eventHref}
               >
                 {content.title}
               </a>
@@ -202,29 +324,17 @@ export function LiveRoomPostContent({
               {content.description}
             </p>
           ) : null}
-
-          {showStatusChip ? (
-            <p
-              className={cn(
-                "mt-1 inline-flex rounded-full border border-border-soft bg-background px-2.5 py-1 font-medium",
-                postCardType.meta,
-                ui.kind === "has_ticket" ? "text-success" : "text-foreground",
-              )}
-            >
-              {ui.statusText}
-            </p>
-          ) : null}
         </div>
       </div>
 
-      {shouldShowCta(ui) ? (
+      {showPrimaryCta ? (
         <Button
           asChild={!ui.onClick && Boolean(content.concertHref)}
           className="h-11 w-full px-5"
           disabled={!ui.onClick && !content.concertHref}
           onClick={ui.onClick}
           size="sm"
-          variant={ui.kind === "can_attend" || ui.kind === "needs_membership" ? "outline" : "default"}
+          variant="default"
         >
           {!ui.onClick && content.concertHref ? <a href={content.concertHref}>{ui.cta}</a> : ui.cta}
         </Button>

@@ -5,7 +5,6 @@ import { LiveRoomBanner } from "../live-room-banner";
 import type { LiveRoomBannerProps } from "../live-room-banner";
 
 const baseBanner: LiveRoomBannerProps = {
-  liveRoomId: "lr_friday_night_set",
   role: "host",
   status: "scheduled",
   title: "Live room ready",
@@ -68,19 +67,6 @@ export const GuestPending: Story = {
   ),
 };
 
-export const ViewerWaiting: Story = {
-  name: "Viewer / Waiting",
-  render: () => (
-    <LiveRoomBanner
-      {...baseBanner}
-      accessLabel="Free room. Come back when the host goes live."
-      freedomHref={undefined}
-      role="viewer"
-      title="Concert scheduled"
-    />
-  ),
-};
-
 export const ViewerLiveAllowed: Story = {
   name: "Viewer / Watch live",
   render: () => (
@@ -108,20 +94,6 @@ export const ViewerNeedsTicket: Story = {
       priceLabel="$12.00"
       role="viewer"
       title="Ticket required"
-    />
-  ),
-};
-
-export const ViewerNeedsGate: Story = {
-  name: "Viewer / Needs gate",
-  render: () => (
-    <LiveRoomBanner
-      {...baseBanner}
-      accessState="gate_required"
-      freedomHref={undefined}
-      onGate={noop}
-      role="viewer"
-      title="Members-only concert"
     />
   ),
 };

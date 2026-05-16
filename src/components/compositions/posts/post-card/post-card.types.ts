@@ -33,10 +33,13 @@ export type LiveRoomVisibility = "public" | "unlisted";
 export type LiveRoomAccessState =
   | "allowed"
   | "purchase_required"
-  | "gate_required"
   | "waiting"
   | "missing_listing"
   | "ended";
+
+export type LiveRoomReplayStatus = "none" | "processing" | "ready" | "failed";
+
+export type LiveRoomProducerRole = "host" | "guest" | null;
 
 export interface LiveRoomContentSpec {
   type: "live_room";
@@ -49,6 +52,7 @@ export interface LiveRoomContentSpec {
   accessMode: LiveRoomAccessMode;
   visibility?: LiveRoomVisibility;
   accessState?: LiveRoomAccessState;
+  replayStatus?: LiveRoomReplayStatus;
   startsAtLabel?: string;
   liveSinceLabel?: string;
   endedAtLabel?: string;
@@ -71,11 +75,12 @@ export interface LiveRoomContentSpec {
   ageGateViewerState?: "proof_required" | "verified_allowed";
   agentPurchaseUrl?: string;
   agentPurchaseLabel?: string;
+  producerRole?: LiveRoomProducerRole;
+  freedomHref?: string;
+  freedomDetected?: boolean;
+  guestInviteStatus?: "pending" | "accepted" | "revoked" | null;
   onWatch?: () => void;
   onBuy?: () => void;
-  onGate?: () => void;
-  onOpenFreedom?: () => void;
-  onCopyLink?: () => void;
   onVerifyAge?: () => void;
 }
 
@@ -314,7 +319,7 @@ export type PostCardByline = {
   timestampLabel: string;
 };
 
-export type PostCardViewContext = "home" | "community" | "profile";
+export type PostCardViewContext = "home" | "community" | "profile" | "post";
 export type PostCardIdentityPresentation =
   | "author_primary"
   | "author_with_community"

@@ -12,7 +12,7 @@ import { getLocaleMessages } from "@/locales";
 import { OfficialOEmbed, OfficialYouTubeEmbed, PostEmbedPreview } from "./post-card-embed";
 import { LiveRoomPostContent } from "./post-card-live-room-content";
 import { postCardType } from "./post-card.styles";
-import type { PostCardContent } from "./post-card.types";
+import type { PostCardContent, PostCardViewContext } from "./post-card.types";
 
 const LazySongPostContent = React.lazy(async () => {
   const module = await import("./post-card-song-content");
@@ -201,9 +201,10 @@ function CrosspostPreviewCard({ content }: { content: CrosspostContent }) {
 export interface PostCardMediaProps {
   content: PostCardContent;
   className?: string;
+  viewContext?: PostCardViewContext;
 }
 
-export function PostCardMedia({ content, className }: PostCardMediaProps) {
+export function PostCardMedia({ content, className, viewContext }: PostCardMediaProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
   switch (content.type) {
@@ -317,6 +318,6 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
         </LazyPostMediaErrorBoundary>
       );
     case "live_room":
-      return <LiveRoomPostContent content={content} className={className} />;
+      return <LiveRoomPostContent content={content} className={className} viewContext={viewContext} />;
   }
 }

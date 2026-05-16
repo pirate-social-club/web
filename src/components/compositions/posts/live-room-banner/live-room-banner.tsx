@@ -11,7 +11,6 @@ export type LiveRoomBannerGuestInviteStatus = "pending" | "accepted" | "revoked"
 export type LiveRoomBannerAccessState =
   | "allowed"
   | "purchase_required"
-  | "gate_required"
   | "waiting"
   | "missing_listing"
   | "ended";
@@ -25,14 +24,12 @@ export type LiveRoomBannerProps = {
   concertUrl?: string;
   freedomHref?: string;
   guestInviteStatus?: LiveRoomBannerGuestInviteStatus | null;
-  liveRoomId: string;
   priceLabel?: string;
   role?: LiveRoomBannerRole;
   shareUrl?: string;
   status: LiveRoomBannerStatus;
   title?: string;
   onBuyTicket?: () => void;
-  onGate?: () => void;
   onWatch?: () => void;
 };
 
@@ -43,15 +40,32 @@ function statusLabel(status: LiveRoomBannerStatus): string {
   return "Live room ready";
 }
 
-function stateDescription(props: LiveRoomBannerProps): string {
+function viewerCanAttemptWatch(status: LiveRoomBannerStatus, accessState: LiveRoomBannerAccessState): boolean {
+  return status === "live"
+    && accessState !== "purchase_required"
+    && accessState !== "missing_listing"
+    && accessState !== "ended";
+}
+
+export function shouldShowLiveRoomBanner({
+  role = "viewer",
+}: Pick<LiveRoomBannerProps, "accessState" | "agentPurchaseUrl" | "role" | "status">): boolean {
+  return role === "host" || role === "guest";
+}
+
+function stateDescription(props: {
+  accessLabel?: string;
+  accessState?: LiveRoomBannerAccessState;
+  guestInviteStatus?: LiveRoomBannerGuestInviteStatus | null;
+  priceLabel?: string;
+  role?: LiveRoomBannerRole;
+  status: LiveRoomBannerStatus;
+}): string {
   if (props.accessState === "missing_listing") {
     return "Ticket setup is incomplete. Finish the listing before sharing this paid room.";
   }
   if (props.accessState === "purchase_required") {
     return `${props.priceLabel ?? "Ticket"} required to watch.`;
-  }
-  if (props.accessState === "gate_required") {
-    return "Community access is required before viewers can watch.";
   }
   if (props.status === "ended" || props.accessState === "ended") {
     return "This room has ended.";
@@ -68,13 +82,14 @@ function stateDescription(props: LiveRoomBannerProps): string {
     }
     return "Open the producer room in Freedom when the host starts.";
   }
-  if (props.status === "live" && props.accessState === "allowed") {
+  if (props.status === "live" && viewerCanAttemptWatch(props.status, props.accessState ?? "allowed")) {
     return "Watch the concert from this page.";
   }
-  return props.accessLabel ?? "Share this concert link with attendees.";
+  return props.accessLabel ?? "Come back when the host goes live.";
 }
 
 export function LiveRoomBanner({
+  accessLabel,
   accessState = "allowed",
   agentPurchaseUrl,
   anchorPostUrl,
@@ -82,22 +97,20 @@ export function LiveRoomBanner({
   concertUrl,
   freedomHref,
   guestInviteStatus,
-  liveRoomId,
   priceLabel,
   role = "viewer",
   shareUrl,
   status,
   title,
   onBuyTicket,
-  onGate,
   onWatch,
 }: LiveRoomBannerProps) {
   const [copied, setCopied] = React.useState(false);
   const { schedule: scheduleCopiedReset } = useResettableTimeout();
   const producerRole = role === "host" || role === "guest";
-  const copyValue = shareUrl ?? concertUrl ?? anchorPostUrl;
+  const copyValue = producerRole ? shareUrl ?? concertUrl ?? anchorPostUrl : undefined;
   const hasSetupProblem = accessState === "missing_listing";
-  const canWatch = !producerRole && status === "live" && accessState === "allowed";
+  const canWatch = !producerRole && viewerCanAttemptWatch(status, accessState);
 
   const handleCopy = React.useCallback(async () => {
     if (!copyValue) return;
@@ -119,8 +132,7 @@ export function LiveRoomBanner({
               </span>
             ) : null}
           </div>
-          <p className="text-base text-muted-foreground">{stateDescription({ accessState, agentPurchaseUrl, anchorPostUrl, concertUrl, freedomHref, guestInviteStatus, liveRoomId, priceLabel, role, shareUrl, status, title, onBuyTicket, onGate, onWatch })}</p>
-          <p className="text-base text-muted-foreground">{liveRoomId}</p>
+          <p className="text-base text-muted-foreground">{stateDescription({ accessLabel, accessState, guestInviteStatus, priceLabel, role, status })}</p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
@@ -150,12 +162,6 @@ export function LiveRoomBanner({
           {!producerRole && accessState === "purchase_required" ? (
             <Button onClick={onBuyTicket} size="sm">
               Buy ticket
-            </Button>
-          ) : null}
-
-          {!producerRole && accessState === "gate_required" ? (
-            <Button onClick={onGate} size="sm">
-              Verify access
             </Button>
           ) : null}
 

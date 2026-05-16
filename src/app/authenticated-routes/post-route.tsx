@@ -10,7 +10,6 @@ import { navigate } from "@/app/router";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
 import { ContentRailShell } from "@/components/compositions/app/content-rail-shell/content-rail-shell";
 import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
-import { LiveRoomBanner } from "@/components/compositions/posts/live-room-banner/live-room-banner";
 import { PostThread } from "@/components/compositions/posts/post-thread/post-thread";
 import { LiveRoomViewerModal } from "@/components/compositions/posts/live-room-viewer/live-room-viewer-modal";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
@@ -20,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useApi } from "@/lib/api";
 import { resolveApiBaseUrl } from "@/lib/api/base-url";
 import { buildCommunityPath } from "@/lib/community-routing";
+import { prefersNativeRadicleLinks } from "@/lib/resource-links";
 import { useUiLocale } from "@/lib/ui-locale";
 
 import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
@@ -407,10 +407,28 @@ export function PostPage({ postId }: { postId: string }) {
       purchase: threadPurchase,
     }
     : undefined;
+  const liveRoom = liveRoomAccess?.room ?? null;
+  const liveRoomLaunch = buildLiveRoomLaunch({
+    communityId: post.post.community,
+    liveRoomId: post.post.anchor_live_room,
+    postId,
+  });
+  const viewerIsLiveRoomHost = sameUserId(session?.user?.id, liveRoom?.host_user);
+  const viewerIsLiveRoomGuest = sameUserId(session?.user?.id, liveRoom?.guest_user);
+  const liveRoomGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
+  const liveRoomFreedomHref = liveRoomLaunch && (
+    viewerIsLiveRoomHost
+    || viewerIsLiveRoomGuest && liveRoomGuestInviteStatus === "accepted"
+  )
+    ? liveRoomLaunch.href
+    : undefined;
   const liveRoomOptions = threadLiveRoomId && community
     ? {
       access: liveRoomAccess,
       currentUserId: session?.user?.id,
+      freedomDetected: typeof window !== "undefined" && prefersNativeRadicleLinks(),
+      freedomHref: liveRoomFreedomHref ?? undefined,
+      guestInviteStatus: liveRoomGuestInviteStatus,
       listing: threadLiveRoomListing,
       localeTag: locale,
       onBuy: threadLiveRoomListing ? () => void handleBuyLiveTicket(
@@ -419,6 +437,11 @@ export function PostPage({ postId }: { postId: string }) {
         community.id,
       ) : undefined,
       onWatch: () => void handleWatchLiveRoom(),
+      producerRole: viewerIsLiveRoomHost
+        ? "host" as const
+        : viewerIsLiveRoomGuest
+          ? "guest" as const
+          : null,
       purchase: threadLiveRoomPurchase,
     }
     : undefined;
@@ -450,37 +473,6 @@ export function PostPage({ postId }: { postId: string }) {
     })
     : undefined;
   const communityPath = community?.id ? buildCommunityPath(community.id, community.route_slug) : "/";
-  const liveRoomLaunch = buildLiveRoomLaunch({
-    communityId: post.post.community,
-    liveRoomId: post.post.anchor_live_room,
-    postId,
-  });
-  const liveRoom = liveRoomAccess?.room ?? null;
-  const publicLiveRoomStatus = post.post.anchor_live_room_status ?? null;
-  const liveRoomStatus = liveRoom?.status ?? publicLiveRoomStatus ?? "scheduled";
-  const viewerIsLiveRoomHost = sameUserId(session?.user?.id, liveRoom?.host_user);
-  const viewerIsLiveRoomGuest = sameUserId(session?.user?.id, liveRoom?.guest_user);
-  const liveRoomBannerRole = viewerIsLiveRoomHost
-    ? "host" as const
-    : viewerIsLiveRoomGuest
-      ? "guest" as const
-      : "viewer" as const;
-  const liveRoomGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
-  const liveRoomFreedomHref = liveRoomLaunch && (
-    liveRoomBannerRole === "host"
-    || liveRoomBannerRole === "guest" && liveRoomGuestInviteStatus === "accepted"
-  )
-    ? liveRoomLaunch.href
-    : undefined;
-  const liveRoomBannerAccessState = liveRoomAccess?.access.decision_reason === "purchase_required"
-    ? "purchase_required" as const
-    : liveRoomAccess?.access.decision_reason === "not_live"
-      ? "waiting" as const
-      : liveRoomAccess?.access.decision_reason === "ended" || liveRoomAccess?.access.decision_reason === "canceled"
-        ? "ended" as const
-        : liveRoomAccess?.access.allowed
-          ? "allowed" as const
-          : "waiting" as const;
   const threadSidebarProps = community ? buildCommunityPreviewSidebar(community, locale) : null;
   const commentSortOptions = [
     { label: copy.common.bestTab, value: "best" as const },
@@ -527,25 +519,6 @@ export function PostPage({ postId }: { postId: string }) {
         title={liveViewerSession?.room.title ?? liveRoomAccess?.room.title ?? post.post.title ?? "Live room"}
       />
         <ContentRailShell rail={!isMobile && threadSidebarProps ? <CommunitySidebar {...threadSidebarProps} /> : undefined} reserveRail={!isMobile}>
-        {liveRoomLaunch ? (
-          <LiveRoomBanner
-            accessState={liveRoomBannerAccessState}
-            freedomHref={liveRoomFreedomHref}
-            guestInviteStatus={liveRoomGuestInviteStatus}
-            liveRoomId={liveRoomLaunch.liveRoomId}
-            onBuyTicket={threadLiveRoomListing ? () => void handleBuyLiveTicket(
-              threadLiveRoomListing,
-              liveRoomAccess?.room.title ?? post.post.title ?? "Live room",
-              post.post.community,
-            ) : undefined}
-            onWatch={() => void handleWatchLiveRoom()}
-            priceLabel={threadLiveRoomListing ? `$${(threadLiveRoomListing.price_cents / 100).toFixed(2)}` : undefined}
-            role={liveRoomBannerRole}
-            shareUrl={liveRoomLaunch.shareUrl ?? undefined}
-            status={liveRoomStatus}
-            title={liveRoomBannerRole === "viewer" && liveRoomStatus === "live" ? "Concert is live" : "Live room ready"}
-          />
-        ) : null}
         <PostThread
           availableCommentSorts={commentSortOptions}
           commentSort={commentSort}

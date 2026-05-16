@@ -4,15 +4,47 @@ import { describe, expect, test } from "bun:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { LiveRoomBanner } from "./live-room-banner";
+import { LiveRoomBanner, shouldShowLiveRoomBanner } from "./live-room-banner";
 
 describe("LiveRoomBanner", () => {
+  test("keeps the route banner producer-only", () => {
+    expect(shouldShowLiveRoomBanner({
+      accessState: "waiting",
+      role: "viewer",
+      status: "scheduled",
+    })).toBe(false);
+
+    expect(shouldShowLiveRoomBanner({
+      accessState: "purchase_required",
+      role: "viewer",
+      status: "scheduled",
+    })).toBe(false);
+
+    expect(shouldShowLiveRoomBanner({
+      accessState: "allowed",
+      role: "host",
+      status: "live",
+    })).toBe(true);
+  });
+
+  test("keeps host copy affordances out of viewer banners", () => {
+    const markup = renderToStaticMarkup(
+      <LiveRoomBanner
+        role="viewer"
+        shareUrl="https://pirate.local/live/lr_viewer_scheduled"
+        status="scheduled"
+      />,
+    );
+
+    expect(markup).not.toContain("Copy concert link");
+    expect(markup).not.toContain("lr_viewer_scheduled");
+  });
+
   test("hides the Freedom broadcast CTA until a guest invite is accepted", () => {
     const pendingMarkup = renderToStaticMarkup(
       <LiveRoomBanner
         freedomHref={undefined}
         guestInviteStatus="pending"
-        liveRoomId="lr_guest_pending"
         role="guest"
         shareUrl="https://pirate.local/p/pst_guest_pending"
         status="scheduled"
@@ -26,7 +58,6 @@ describe("LiveRoomBanner", () => {
       <LiveRoomBanner
         freedomHref="freedom://live-room?roomId=lr_guest_accepted"
         guestInviteStatus="accepted"
-        liveRoomId="lr_guest_accepted"
         role="guest"
         shareUrl="https://pirate.local/p/pst_guest_accepted"
         status="scheduled"

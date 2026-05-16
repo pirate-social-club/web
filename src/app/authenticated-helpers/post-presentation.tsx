@@ -19,6 +19,7 @@ import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 import type { AssetSourceDescriptor, SongPlaybackController, SongPlaybackDescriptor } from "@/app/authenticated-helpers/song-commerce";
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
+import type { LiveRoomProducerRole, LiveRoomReplayStatus } from "@/components/compositions/posts/post-card/post-card.types";
 
 export type HomeFeedEntry = ApiHomeFeedItem;
 export { toHomeFeedItem } from "@/app/authenticated-helpers/home-feed-presentation";
@@ -39,8 +40,11 @@ export type LiveRoomPresentationOptions = {
   listing?: ApiCommunityListing;
   localeTag?: string;
   purchase?: ApiCommunityPurchase;
+  producerRole?: LiveRoomProducerRole;
+  freedomHref?: string;
+  freedomDetected?: boolean;
+  guestInviteStatus?: "pending" | "accepted" | "revoked" | null;
   onBuy?: () => void;
-  onGate?: () => void;
   onWatch?: () => void;
 };
 
@@ -58,6 +62,17 @@ export type PostPresentationOptions = {
   showTranslationLabel?: string;
   viewerContentLocale?: string;
 };
+
+function formatLiveRoomTimestampLabel(value: number | null | undefined): string | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return undefined;
+  const label = formatRelativeTimestamp(value);
+  return label || undefined;
+}
+
+function normalizeReplayStatus(value: string | null | undefined): LiveRoomReplayStatus {
+  if (value === "none" || value === "processing" || value === "ready" || value === "failed") return value;
+  return "none";
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -645,8 +660,13 @@ export function toCommunityPostContent(
       contentSafetyState: post.content_safety_state,
       coverSrc: liveRoom?.cover_ref ?? primaryMedia?.poster_ref ?? primaryMedia?.storage_ref ?? undefined,
       description: liveRoom?.description ?? resolvedCaption,
+      endedAtLabel: formatLiveRoomTimestampLabel(liveRoom?.ended_at),
+      freedomDetected: opts?.liveRoom?.freedomDetected,
+      freedomHref: opts?.liveRoom?.freedomHref,
+      guestInviteStatus: opts?.liveRoom?.guestInviteStatus ?? null,
       hasEntitlement: accessMode !== "paid" || liveAccess?.allowed === true || Boolean(purchase) || viewerOwnsPost,
       liveRoomId: post.anchor_live_room,
+      liveSinceLabel: formatLiveRoomTimestampLabel(liveRoom?.live_started_at),
       listingMode: listing || liveAccess?.listing ? "listed" : "not_listed",
       listingStatus: listing?.status === "active"
         ? "active"
@@ -654,16 +674,18 @@ export function toCommunityPostContent(
         ? "paused"
         : undefined,
       onBuy: opts?.liveRoom?.onBuy,
-      onGate: opts?.liveRoom?.onGate,
       onVerifyAge: opts?.onVerifyAge,
       onWatch: opts?.liveRoom?.onWatch,
       priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), opts?.liveRoom?.localeTag) : undefined,
+      producerRole: opts?.liveRoom?.producerRole ?? null,
+      replayStatus: normalizeReplayStatus(liveRoom?.replay_status),
       roomKind: liveRoom?.room_kind,
       setlistPreview: liveRoom?.setlist.items.slice(0, 3).map((item) => ({
         artist: item.artist ?? undefined,
         rightsStatus: item.rights_status,
         title: item.title,
       })),
+      startsAtLabel: formatLiveRoomTimestampLabel(liveRoom?.event_start_at),
       status: liveRoom?.status ?? publicStatus ?? "scheduled",
       title: liveRoom?.title ?? title,
       visibility: liveRoom?.visibility ?? liveAccess?.visibility,
@@ -1097,6 +1119,8 @@ export function toThreadPostCard(
   const isDeleted = post.status === "deleted";
   const isRemoved = post.status === "removed";
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
+  const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
+  const contentOwnsTitle = content.type === "live_room";
   const communityLabel = community?.id
     ? communityVerified
       ? formatCommunityRouteLabel(community.id, community.route_slug)
@@ -1125,7 +1149,7 @@ export function toThreadPostCard(
         : undefined,
       timestampLabel: formatRelativeTimestamp(post.created),
     },
-    content: toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" }),
+    content,
     engagement: {
       commentCount: opts?.commentCountOverride ?? getPostCommentCount(postResponse),
       score: postResponse.upvote_count - postResponse.downvote_count,
@@ -1144,9 +1168,9 @@ export function toThreadPostCard(
       if (key === "remove") opts?.onRemove?.();
     } : undefined,
     onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
-    postHref: `/p/${post.id}`,
+    postHref: undefined,
     qualifierLabels: resolvePostQualifierLabels(postResponse),
-    title: isDeleted || isRemoved ? undefined : localizedLinkTitle.title ?? (opts?.preferOriginalText
+    title: contentOwnsTitle || isDeleted || isRemoved ? undefined : localizedLinkTitle.title ?? (opts?.preferOriginalText
       ? post.title ?? undefined
       : postResponse.translated_title ?? post.title ?? undefined),
     titleDir: localizedLinkTitle.dir ?? (!opts?.preferOriginalText && postResponse.translation_state === "ready"
@@ -1155,8 +1179,8 @@ export function toThreadPostCard(
     titleLang: localizedLinkTitle.lang ?? (!opts?.preferOriginalText && postResponse.translation_state === "ready"
       ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
       : undefined),
-    titleHref: isDeleted || isRemoved ? undefined : `/p/${post.id}`,
-    viewContext: "home",
+    titleHref: undefined,
+    viewContext: "post",
   }, postResponse, opts);
 }
 

@@ -113,14 +113,14 @@ export function LiveRoomBanner({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-base font-semibold text-foreground">{title ?? statusLabel(status)}</p>
             {hasSetupProblem ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-sm font-medium text-destructive">
+              <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-base font-medium text-destructive">
                 <WarningCircle className="size-4" />
                 Setup needed
               </span>
             ) : null}
           </div>
           <p className="text-base text-muted-foreground">{stateDescription({ accessState, agentPurchaseUrl, anchorPostUrl, concertUrl, freedomHref, guestInviteStatus, liveRoomId, priceLabel, role, shareUrl, status, title, onBuyTicket, onGate, onWatch })}</p>
-          <p className="text-sm text-muted-foreground">{liveRoomId}</p>
+          <p className="text-base text-muted-foreground">{liveRoomId}</p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">

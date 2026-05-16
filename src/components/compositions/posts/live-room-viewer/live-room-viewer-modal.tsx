@@ -211,7 +211,7 @@ export function LiveRoomViewerModal({
                     <Broadcast className="mx-auto size-10 opacity-80" />
                   )}
                   <p className="text-base font-medium">{statusText(status)}</p>
-                  {error ? <p className="text-sm text-white/70">{error}</p> : null}
+                  {error ? <p className="text-base text-white/70">{error}</p> : null}
                 </div>
               </div>
             ) : null}

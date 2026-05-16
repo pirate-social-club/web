@@ -191,7 +191,7 @@ export function LiveRoomPostContent({
             className={cn(
               "mt-0.5 font-medium",
               postCardType.meta,
-              timeIsLive ? "text-red-400" : "text-foreground/90",
+              timeIsLive ? "text-destructive" : "text-foreground/90",
             )}
           >
             {time}

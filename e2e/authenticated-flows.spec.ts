@@ -38,10 +38,12 @@ test.describe("authenticated browser flows with mocked API", () => {
 
     const post = page.locator("article").filter({ hasText: "E2E feed post" });
     await expect(post).toBeVisible({ timeout: 30_000 });
-    await expect(post).toContainText("3");
-    await post.getByRole("button", { name: /^upvote$/i }).click();
+    const upvoteButton = post.getByRole("button", { name: /^upvote$/i });
+    const score = upvoteButton.locator("xpath=following-sibling::span[1]");
+    await expect(score).toHaveText("8");
+    await upvoteButton.click();
 
-    await expect(post).toContainText("4");
+    await expect(score).toHaveText("9");
     await expectNoBrowserError(page);
   });
 

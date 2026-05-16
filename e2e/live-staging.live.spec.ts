@@ -344,6 +344,99 @@ async function settleLiveRoomTicket(input: {
   return settlement.purchase_entitlement;
 }
 
+async function startAgoraPublisher(page: Page, host: AgoraBlock): Promise<() => Promise<void>> {
+  await page.goto("about:blank");
+  await page.addScriptTag({ path: agoraSdkPath });
+  const connectionState = await page.evaluate(async ({ hostAgora }) => {
+    const win = window as unknown as {
+      AgoraRTC?: {
+        createClient: (config: { codec: "vp8"; mode: "live" }) => any;
+        createCustomAudioTrack: (config: { mediaStreamTrack: MediaStreamTrack }) => any;
+        createCustomVideoTrack: (config: { mediaStreamTrack: MediaStreamTrack }) => any;
+      };
+      __pirateLivePublisher?: {
+        audioContext: AudioContext | null;
+        audioTrack: any;
+        drawInterval: number | null;
+        oscillator: OscillatorNode | null;
+        publisher: any;
+        videoTrack: any;
+      } | null;
+    };
+    const AgoraRTC = win.AgoraRTC;
+    if (!AgoraRTC) throw new Error("AgoraRTC global was not loaded");
+
+    const publisher = AgoraRTC.createClient({ codec: "vp8", mode: "live" });
+    await publisher.setClientRole("host");
+    await publisher.join(hostAgora.app_id, hostAgora.channel, hostAgora.token, hostAgora.uid);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 180;
+    document.body.append(canvas);
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas 2D context unavailable");
+    let frame = 0;
+    const draw = () => {
+      context.fillStyle = frame % 2 === 0 ? "#143d5f" : "#285f3d";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#ffffff";
+      context.font = "20px sans-serif";
+      context.fillText(`Paid live room smoke ${frame++}`, 18, 92);
+    };
+    draw();
+    const drawInterval = window.setInterval(draw, 100);
+
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const audioContext = new AudioContextClass();
+    await audioContext.resume();
+    const oscillator = audioContext.createOscillator();
+    const destination = audioContext.createMediaStreamDestination();
+    oscillator.frequency.value = 440;
+    oscillator.connect(destination);
+    oscillator.start();
+
+    const audioTrack = AgoraRTC.createCustomAudioTrack({ mediaStreamTrack: destination.stream.getAudioTracks()[0] });
+    const videoTrack = AgoraRTC.createCustomVideoTrack({ mediaStreamTrack: canvas.captureStream(10).getVideoTracks()[0] });
+    await publisher.publish([audioTrack, videoTrack]);
+    win.__pirateLivePublisher = {
+      audioContext,
+      audioTrack,
+      drawInterval,
+      oscillator,
+      publisher,
+      videoTrack,
+    };
+    return publisher.connectionState as string;
+  }, { hostAgora: host });
+  expect(connectionState).toBe("CONNECTED");
+
+  return async () => {
+    await page.evaluate(async () => {
+      const win = window as unknown as {
+        __pirateLivePublisher?: {
+          audioContext: AudioContext | null;
+          audioTrack: any;
+          drawInterval: number | null;
+          oscillator: OscillatorNode | null;
+          publisher: any;
+          videoTrack: any;
+        } | null;
+      };
+      const state = win.__pirateLivePublisher;
+      win.__pirateLivePublisher = null;
+      if (!state) return;
+      if (state.drawInterval != null) window.clearInterval(state.drawInterval);
+      state.oscillator?.stop();
+      await state.audioContext?.close().catch(() => undefined);
+      state.audioTrack?.close();
+      state.videoTrack?.close();
+      await state.publisher?.leave().catch(() => undefined);
+    }).catch(() => undefined);
+    await page.close().catch(() => undefined);
+  };
+}
+
 async function runAgoraMediaCheck(page: Page, host: AgoraBlock, viewer: AgoraBlock): Promise<{
   events: Array<{ mediaType?: string; state?: string; type: string; uid?: number | string }>;
   publisherConnection: string;
@@ -645,7 +738,7 @@ test.describe("live staging integration", () => {
     }
   });
 
-  test("shows paid ticket UI and unlocks browser watching after settlement", async ({ page }, testInfo) => {
+  test("shows paid ticket UI and unlocks browser watching after settlement", async ({ context, page }, testInfo) => {
     testInfo.setTimeout(180_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
@@ -662,6 +755,7 @@ test.describe("live staging integration", () => {
 
     let roomId: string | null = null;
     let hostAttached = false;
+    let publisherCleanup: (() => Promise<void>) | null = null;
     try {
       const published = await publishPaidLiveRoom({
         communityId,
@@ -696,7 +790,7 @@ test.describe("live staging integration", () => {
         [402],
       );
 
-      await hostAttachLiveRoom(communityId, published.roomId, host);
+      const hostAgora = await hostAttachLiveRoom(communityId, published.roomId, host);
       hostAttached = true;
 
       await page.goto(`/p/${pathSegment(published.postId)}`);
@@ -739,6 +833,7 @@ test.describe("live staging integration", () => {
       expect(accessAfter.access.decision_reason).toBeNull();
       expect(accessAfter.access.purchase_entitlement).toBe(entitlement);
 
+      publisherCleanup = await startAgoraPublisher(await context.newPage(), hostAgora);
       await page.goto(`/p/${pathSegment(published.postId)}?settled=${encodeURIComponent(runId)}`);
       const watchButton = page.getByRole("button", { name: /watch live/i }).first();
       await expect(watchButton).toBeVisible({ timeout: 30_000 });
@@ -749,6 +844,7 @@ test.describe("live staging integration", () => {
       );
       await expectNoBrowserError(page);
     } finally {
+      await publisherCleanup?.().catch(() => undefined);
       if (roomId) {
         await requestJson(
           `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(roomId)}/${hostAttached ? "end" : "cancel"}`,

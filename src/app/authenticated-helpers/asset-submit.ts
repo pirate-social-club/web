@@ -93,6 +93,24 @@ export function buildAssetListingRequest(input: {
   };
 }
 
+export function buildLiveRoomListingRequest(input: {
+  liveRoomId?: string | null;
+  paidLiveRoomPriceUsd: number | null;
+  pricingPolicyRegionalPricingEnabled: boolean;
+  regionalPricingEnabled: boolean;
+}) {
+  if (input.paidLiveRoomPriceUsd == null) {
+    return null;
+  }
+
+  return {
+    live_room: input.liveRoomId ?? null,
+    price_cents: usdToCents(input.paidLiveRoomPriceUsd) ?? 0,
+    regional_pricing_enabled: input.pricingPolicyRegionalPricingEnabled && input.regionalPricingEnabled,
+    status: "active" as const,
+  };
+}
+
 export function resolveComposerSubmitState(input: {
   canSubmit: boolean;
   composerMode: ComposerTab;
@@ -147,7 +165,12 @@ export function resolveComposerSubmitState(input: {
     };
   }
 
-  if ((input.composerMode === "song" || input.composerMode === "video") && input.monetizationState.visible && input.paidSongPriceInvalid) {
+  const paidAssetNeedsPrice = (
+    (input.composerMode === "song" || input.composerMode === "video")
+      && input.monetizationState.visible
+  ) || input.composerMode === "live";
+
+  if (paidAssetNeedsPrice && input.paidSongPriceInvalid) {
     return {
       canContinue,
       canPost: false,
@@ -156,7 +179,7 @@ export function resolveComposerSubmitState(input: {
         ? "Enter a valid unlock price before publishing this song."
         : input.composerMode === "video"
           ? "Enter a valid unlock price before publishing this video."
-          : "Enter a valid unlock price before publishing this post.",
+          : "Enter a valid ticket price before publishing this live room.",
     };
   }
 

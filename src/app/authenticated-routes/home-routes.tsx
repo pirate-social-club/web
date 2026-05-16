@@ -38,6 +38,7 @@ import { EmptyFeedState, RouteLoadFailureState } from "@/app/authenticated-helpe
 import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
+import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 
 function unixOrIsoMs(value: string | number): number {
   return typeof value === "number" ? value * 1000 : Date.parse(value);
@@ -60,7 +61,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   const [topCommunities, setTopCommunities] = React.useState<ApiHomeFeedCommunitySummary[]>([]);
   const [authorProfiles, setAuthorProfiles] = React.useState<Record<string, ApiProfile | null>>({});
   const [listingsByAssetId, setListingsByAssetId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
+  const [listingsByLiveRoomId, setListingsByLiveRoomId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
   const [purchasesByAssetId, setPurchasesByAssetId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
+  const [purchasesByLiveRoomId, setPurchasesByLiveRoomId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
+  const [liveRoomAccessById, setLiveRoomAccessById] = React.useState<Record<string, ApiLiveRoomAccessResponse | undefined>>({});
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -78,7 +82,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     setTopCommunities([]);
     setAuthorProfiles({});
     setListingsByAssetId({});
+    setListingsByLiveRoomId({});
     setPurchasesByAssetId({});
+    setPurchasesByLiveRoomId({});
+    setLiveRoomAccessById({});
 
     const feedRequest = {
       locale: contentLocale,
@@ -120,11 +127,20 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
 
         const commerceCommunityIds = sessionUserId
           ? [...new Set(nextFeedEntries.reduce<string[]>((result, entry) => {
-            if (entry.post.post.post_type === "song" || entry.post.post.post_type === "video") {
+            if (entry.post.post.post_type === "song" || entry.post.post.post_type === "video" || entry.post.post.anchor_live_room) {
               result.push(entry.community.id);
             }
             return result;
           }, []))]
+          : [];
+        const liveRoomRefs = sessionUserId
+          ? nextFeedEntries.reduce<Array<{ communityId: string; liveRoomId: string }>>((result, entry) => {
+            const liveRoomId = entry.post.post.anchor_live_room;
+            if (liveRoomId) {
+              result.push({ communityId: entry.community.id, liveRoomId });
+            }
+            return result;
+          }, [])
           : [];
 
         if (commerceCommunityIds.length > 0) {
@@ -137,15 +153,35 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
           }))
             .then((commerceByCommunity) => {
               if (cancelled) return;
-              setListingsByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.listings.map((listing) => (
+              setListingsByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.listings.flatMap((listing) => (
                 typeof listing.asset === "string" && listing.asset.length > 0 ? [[listing.asset, listing] as const] : []
               )))));
-              setPurchasesByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.purchases.map((purchase) => (
+              setListingsByLiveRoomId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.listings.flatMap((listing) => (
+                typeof listing.live_room === "string" && listing.live_room.length > 0 ? [[listing.live_room, listing] as const] : []
+              )))));
+              setPurchasesByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.purchases.flatMap((purchase) => (
                 typeof purchase.asset === "string" && purchase.asset.length > 0 ? [[purchase.asset, purchase] as const] : []
+              )))));
+              setPurchasesByLiveRoomId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.purchases.flatMap((purchase) => (
+                typeof purchase.live_room === "string" && purchase.live_room.length > 0 ? [[purchase.live_room, purchase] as const] : []
               )))));
             })
             .catch(() => {
               // ignore commerce enrichment errors
+            });
+        }
+
+        if (liveRoomRefs.length > 0) {
+          void Promise.all(liveRoomRefs.map(async ({ communityId, liveRoomId }) => {
+            const access = await api.communities.getLiveRoomAccess(communityId, liveRoomId).catch(() => null);
+            return access ? [liveRoomId, access] as const : null;
+          }))
+            .then((entries) => {
+              if (cancelled) return;
+              setLiveRoomAccessById(Object.fromEntries(entries.filter((entry): entry is [string, ApiLiveRoomAccessResponse] => entry !== null)));
+            })
+            .catch(() => {
+              // ignore live-room enrichment errors
             });
         }
     };
@@ -190,7 +226,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     topCommunities,
     authorProfiles,
     listingsByAssetId,
+    listingsByLiveRoomId,
     purchasesByAssetId,
+    purchasesByLiveRoomId,
+    liveRoomAccessById,
     error,
     loading,
   };
@@ -217,7 +256,10 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     topCommunities,
     authorProfiles,
     listingsByAssetId,
+    listingsByLiveRoomId,
     purchasesByAssetId,
+    purchasesByLiveRoomId,
+    liveRoomAccessById,
     error,
     loading,
   } = useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange });
@@ -271,6 +313,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
 
   const feedItems = feedEntries.map((entry) => {
     const assetId = entry.post.post.asset ?? undefined;
+    const liveRoomId = entry.post.post.anchor_live_room ?? undefined;
     return toHomeFeedItem(
       entry,
       authorProfiles,
@@ -284,6 +327,13 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         }
         : undefined,
       {
+        liveRoom: liveRoomId ? {
+          access: liveRoomAccessById[liveRoomId],
+          currentUserId: session?.user?.id,
+          listing: listingsByLiveRoomId[liveRoomId],
+          localeTag,
+          purchase: purchasesByLiveRoomId[liveRoomId],
+        } : undefined,
         onComment: () => navigate(`/p/${entry.post.post.id}`),
         onVote: (direction) => void voteOnPost(entry.post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,

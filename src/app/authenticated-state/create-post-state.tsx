@@ -32,7 +32,7 @@ import { extractVideoPosterFrameFile } from "@/components/compositions/posts/pos
 import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
 import { formatQualifierLabel } from "@/app/authenticated-helpers/post-presentation";
 import { parseUsdInput } from "@/lib/formatting/currency";
-import { buildAssetListingRequest, resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
+import { buildAssetListingRequest, buildLiveRoomListingRequest, resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
 import { useSongSubmit } from "./use-song-submit";
 import { buildAnonymousLabel } from "@/lib/anonymous-label";
 import {
@@ -82,7 +82,7 @@ function liveSetlistSourceAssetRef(declaredTrackId: string | undefined): string 
 
 function sameUserId(left: string | null | undefined, right: string | null | undefined): boolean {
   if (!left || !right) return false;
-  return left === right || left.replace(/^usr_/, "") === right.replace(/^usr_/, "");
+  return left === right || left.replace(/^(usr_)+/, "") === right.replace(/^(usr_)+/, "");
 }
 
 function viewerHasCommunityPostingRole(
@@ -630,9 +630,10 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           : composerMode === "live"
             ? canSubmitLive
             : canSubmitText;
-  const commercePostMode = composerMode === "song" || composerMode === "video";
-  const paidAssetPriceUsd = commercePostMode && monetizationState.visible ? parseUsdInput(monetizationState.priceUsd ?? monetizationState.priceLabel) : null;
-  const paidAssetPriceInvalid = commercePostMode && monetizationState.visible && paidAssetPriceUsd == null;
+  const paidLiveRoomMode = composerMode === "live" && liveState.accessMode === "paid";
+  const paidCommerceMode = ((composerMode === "song" || composerMode === "video") && monetizationState.visible) || paidLiveRoomMode;
+  const paidAssetPriceUsd = paidCommerceMode ? parseUsdInput(monetizationState.priceUsd ?? monetizationState.priceLabel) : null;
+  const paidAssetPriceInvalid = paidCommerceMode && paidAssetPriceUsd == null;
   const submitState = resolveComposerSubmitState({ canSubmit, composerMode, derivativeStep, license, monetizationState, paidSongPriceInvalid: paidAssetPriceInvalid, songMode, submitError });
 
   const signAgentAuthoredBody = React.useCallback(async <T extends Record<string, unknown>>(path: string, body: T) => {
@@ -776,16 +777,37 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           });
           coverRef = uploadedCover.media_ref;
         }
-        const liveRoom = await api.communities.createLiveRoom(
-          communityId,
-          buildLiveRoomRequest({
-            coverRef,
-            description: body,
-            hostUserId: session.user.id,
-            liveState,
-            title,
-          }),
-        );
+        const roomRequest = buildLiveRoomRequest({
+          coverRef,
+          description: body,
+          hostUserId: session.user.id,
+          liveState,
+          title,
+        });
+        const liveRoom = await (async () => {
+          if (liveState.accessMode !== "paid") {
+            return await api.communities.createLiveRoom(communityId, roomRequest);
+          }
+          const listingRequest = buildLiveRoomListingRequest({
+            liveRoomId: null,
+            paidLiveRoomPriceUsd: paidAssetPriceUsd,
+            pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
+            regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
+          });
+          if (!listingRequest) throw new Error("Build a paid listing payload before publishing this live room.");
+          logger.info("[create-post] publishing paid live room", {
+            accessMode: liveState.accessMode,
+          });
+          const published = await api.communities.publishLiveRoom(communityId, {
+            room: roomRequest,
+            listing: listingRequest,
+          });
+          logger.info("[create-post] paid live room published", {
+            liveRoomId: published.room.id,
+            listingId: published.listing.id,
+          });
+          return published.room;
+        })();
         logger.info("[create-post] live room created", {
           anchorPostId: liveRoom.anchor_post,
           liveRoomId: liveRoom.id,

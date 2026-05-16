@@ -1,8 +1,10 @@
 import type {
   Community,
+  CommunityListing,
   GatePolicy,
   CommunityMoneyPolicy,
   CommunityPricingPolicy,
+  CreateCommunityListingRequest,
 } from "@pirate/api-contracts";
 import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
@@ -218,6 +220,7 @@ export type ApiLiveRoomVisibility = "public" | "unlisted";
 export type ApiLiveRoomSetlistStatus = "draft" | "ready" | "locked";
 export type ApiLiveRoomRightsBasis = "original" | "licensed" | "cover" | "public_domain" | "unknown";
 export type ApiLiveRoomRightsStatus = "pending" | "ready" | "blocked";
+export type ApiLiveRoomGuestInviteStatus = "pending" | "accepted" | "revoked";
 
 export type ApiCreateLiveRoomRequest = {
   title?: string | null;
@@ -246,6 +249,11 @@ export type ApiCreateLiveRoomRequest = {
       blocking_rights_failure?: boolean | null;
     }> | null;
   } | null;
+};
+
+export type ApiPublishLiveRoomRequest = {
+  room: ApiCreateLiveRoomRequest;
+  listing: CreateCommunityListingRequest;
 };
 
 export type ApiLiveRoom = {
@@ -294,6 +302,52 @@ export type ApiLiveRoom = {
     }>;
   };
   created: number;
+};
+
+export type ApiPublishLiveRoomResponse = {
+  room: ApiLiveRoom;
+  listing: CommunityListing;
+};
+
+export type ApiLiveRoomAccessDecisionReason =
+  | "not_live"
+  | "ended"
+  | "canceled"
+  | "unlisted"
+  | "purchase_required"
+  | "allowed";
+
+export type ApiLiveRoomAccessResponse = {
+  room: ApiLiveRoom;
+  access: {
+    allowed: boolean;
+    decision_reason: ApiLiveRoomAccessDecisionReason | null;
+    access_mode: ApiLiveRoomAccessMode;
+    visibility: ApiLiveRoomVisibility;
+    listing: string | null;
+    purchase_entitlement: string | null;
+    guest_invite_status: ApiLiveRoomGuestInviteStatus | null;
+  };
+};
+
+export type ApiLiveRoomViewerAttachResponse = ApiLiveRoomAccessResponse & {
+  runtime: {
+    status: "attached";
+    seat: "viewer";
+    room_runtime_id: string;
+  };
+  agora: {
+    app_id: string | null;
+    channel: string;
+    uid: number;
+    token: string | null;
+    token_expires_at: number | null;
+    configured: boolean;
+  };
+};
+
+export type ApiLiveRoomViewerRenewRequest = {
+  uid: number;
 };
 
 export type CommunityListCommentsOptions = {

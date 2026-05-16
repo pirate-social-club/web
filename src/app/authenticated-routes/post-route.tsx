@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
-import { PlayCircle, SlidersHorizontal } from "@phosphor-icons/react";
+import { SlidersHorizontal } from "@phosphor-icons/react";
 
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
 import { updateSessionUser, useSession } from "@/lib/api/session-store";
@@ -10,10 +10,11 @@ import { navigate } from "@/app/router";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
 import { ContentRailShell } from "@/components/compositions/app/content-rail-shell/content-rail-shell";
 import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
+import { LiveRoomBanner } from "@/components/compositions/posts/live-room-banner/live-room-banner";
 import { PostThread } from "@/components/compositions/posts/post-thread/post-thread";
+import { LiveRoomViewerModal } from "@/components/compositions/posts/live-room-viewer/live-room-viewer-modal";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { ResponsiveOptionSelect } from "@/components/compositions/system/responsive-option-select/responsive-option-select";
-import { Button } from "@/components/primitives/button";
 import { IconButton } from "@/components/primitives/icon-button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useApi } from "@/lib/api";
@@ -32,6 +33,10 @@ import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
 import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import { usePost } from "@/app/authenticated-state/post-state";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
+import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
+import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
+import { toast } from "@/components/primitives/sonner";
+import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
@@ -44,7 +49,7 @@ function closeMobileThread(fallbackPath: string) {
 
 function sameUserId(left: string | null | undefined, right: string | null | undefined): boolean {
   if (!left || !right) return false;
-  return left === right || left.replace(/^usr_/, "") === right.replace(/^usr_/, "");
+  return left === right || left.replace(/^(usr_)+/, "") === right.replace(/^(usr_)+/, "");
 }
 
 function viewerCanModerateCommunity(
@@ -53,11 +58,19 @@ function viewerCanModerateCommunity(
     | {
         owner?: { user?: string | null } | null;
         moderators?: Array<{ user?: string | null; role?: "owner" | "admin" | "moderator" | string | null }> | null;
+        viewer_community_role?: "owner" | "admin" | "moderator" | string | null;
       }
     | null
     | undefined,
 ): boolean {
   if (!viewerUserId || !community) return false;
+  if (
+    community.viewer_community_role === "owner"
+    || community.viewer_community_role === "admin"
+    || community.viewer_community_role === "moderator"
+  ) {
+    return true;
+  }
   if (sameUserId(viewerUserId, community.owner?.user)) return true;
   return Boolean(community.moderators?.some((roleHolder) => {
     if (!sameUserId(viewerUserId, roleHolder.user)) return false;
@@ -68,14 +81,21 @@ function viewerCanModerateCommunity(
 function buildLiveRoomLaunch(input: {
   communityId?: string | null;
   liveRoomId?: string | null;
-}): { href: string; liveRoomId: string } | null {
+  postId?: string | null;
+}): { href: string; liveRoomId: string; shareUrl: string | null } | null {
   const liveRoomId = input.liveRoomId?.trim();
   const communityId = input.communityId?.trim();
+  const postId = input.postId?.trim();
   if (!liveRoomId || !communityId) return null;
   const apiBase = resolveApiBaseUrl(typeof window === "undefined" ? null : window.location.hostname);
+  const sharePath = postId ? `/p/${encodeURIComponent(postId)}` : null;
+  const shareUrl = sharePath && typeof window !== "undefined"
+    ? new URL(sharePath, window.location.origin).toString()
+    : sharePath;
   return {
     href: `freedom://live-room?roomId=${encodeURIComponent(liveRoomId)}&communityId=${encodeURIComponent(communityId)}&apiBase=${encodeURIComponent(apiBase)}`,
     liveRoomId,
+    shareUrl,
   };
 }
 
@@ -125,6 +145,10 @@ export function PostPage({ postId }: { postId: string }) {
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
   const { post, community, authorProfile, comments, commentCount, createTopLevelComment, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const activeLiveRoomId = post?.post.anchor_live_room ?? null;
+  const [liveRoomAccess, setLiveRoomAccess] = React.useState<ApiLiveRoomAccessResponse | null>(null);
+  const [liveViewerSession, setLiveViewerSession] = React.useState<ApiLiveRoomViewerAttachResponse | null>(null);
+  const [liveViewerOpen, setLiveViewerOpen] = React.useState(false);
   const {
     handleModalOpenChange: handleAgeSelfModalOpenChange,
     handleSelfQrError: handleAgeSelfQrError,
@@ -147,20 +171,83 @@ export function PostPage({ postId }: { postId: string }) {
     storageKey: `pirate_pending_self_age_gate:${postId}`,
     verificationIntent: "community_join",
   });
+  const authRuntime = usePiratePrivyRuntime();
+
+  const requestAuth = React.useCallback((fallbackMessage: string) => {
+    if (!isCanonicalAuthOrigin()) {
+      const canonicalUrl = buildCanonicalAuthUrl(`/p/${postId}`);
+      toast.error(fallbackMessage, {
+        action: {
+          label: copy.publicProfile.openInPirate,
+          onClick: () => {
+            window.location.href = canonicalUrl;
+          },
+        },
+      });
+      return;
+    }
+
+    if (authRuntime.connect) {
+      authRuntime.connect();
+      return;
+    }
+
+    toast.error(authRuntime.loadError ?? fallbackMessage);
+  }, [authRuntime.connect, authRuntime.loadError, postId, copy.publicProfile.openInPirate]);
+
   const handleVerifyAge = React.useCallback(() => {
+    if (!session) {
+      requestAuth("Connect your wallet to verify your age and view 18+ content.");
+      return;
+    }
     void startAgeSelfVerification({
       requestedCapabilities: ["age_over_18"],
       unavailableMessage: "Age verification is required to view 18+ content.",
     });
-  }, [startAgeSelfVerification]);
+  }, [session, requestAuth, startAgeSelfVerification]);
+  const refreshLiveRoomAccess = React.useCallback(async () => {
+    if (!session?.accessToken || !community?.id || !activeLiveRoomId) {
+      setLiveRoomAccess(null);
+      return null;
+    }
+
+    try {
+      const access = await api.communities.getLiveRoomAccess(community.id, activeLiveRoomId);
+      setLiveRoomAccess(access);
+      return access;
+    } catch (accessError) {
+      setLiveRoomAccess(null);
+      if (!isApiNotFoundError(accessError)) {
+        toast.error(getErrorMessage(accessError, "Could not load live room access."));
+      }
+      return null;
+    }
+  }, [activeLiveRoomId, api.communities, community?.id, session?.accessToken]);
+
+  React.useEffect(() => {
+    void refreshLiveRoomAccess();
+  }, [refreshLiveRoomAccess]);
+
   const commerceEnabled = Boolean(
     session?.user?.id
       && community?.id
-      && (post?.post.post_type === "song" || post?.post.post_type === "video")
-      && post.post.asset,
+      && (
+        ((post?.post.post_type === "song" || post?.post.post_type === "video") && post.post.asset)
+          || activeLiveRoomId
+      ),
   );
-  const { listingsByAssetId, purchasesByAssetId, refresh: refreshSongCommerce } = useSongCommerceState(community?.id ?? "", commerceEnabled);
-  const { buySong, purchaseModal } = useSongPurchaseFlow({ commerceEnabled, refreshSongCommerce });
+  const {
+    listingsByAssetId,
+    listingsByLiveRoomId,
+    purchasesByAssetId,
+    purchasesByLiveRoomId,
+    refresh: refreshSongCommerce,
+  } = useSongCommerceState(community?.id ?? "", commerceEnabled);
+  const refreshCommerceAndLiveAccess = React.useCallback(async () => {
+    await refreshSongCommerce();
+    await refreshLiveRoomAccess();
+  }, [refreshLiveRoomAccess, refreshSongCommerce]);
+  const { buySong, purchaseModal } = useSongPurchaseFlow({ commerceEnabled, refreshSongCommerce: refreshCommerceAndLiveAccess });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
 
   const handleBuySong = React.useCallback(async (
@@ -177,6 +264,82 @@ export function PostPage({ postId }: { postId: string }) {
       titleText,
     });
   }, [buySong]);
+
+  const handleBuyLiveTicket = React.useCallback(async (
+    listing: ApiCommunityListing,
+    titleText: string,
+    nextCommunityId: string,
+  ) => {
+    await buySong({
+      assetLabel: "ticket",
+      communityId: nextCommunityId,
+      listing,
+      successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} ticket purchased for $${(settlement.purchase_price_cents / 100).toFixed(2)}.`,
+      titleText,
+    });
+  }, [buySong]);
+
+  const handleWatchLiveRoom = React.useCallback(async () => {
+    if (!session) {
+      requestAuth("Connect your wallet to watch this live room.");
+      return;
+    }
+    if (!community?.id || !activeLiveRoomId) return;
+
+    const access = liveRoomAccess ?? await refreshLiveRoomAccess();
+    if (!access) return;
+
+    if (!access.access.allowed) {
+      if (access.access.decision_reason === "purchase_required") {
+        const listing = listingsByLiveRoomId[activeLiveRoomId];
+        if (listing) {
+          await handleBuyLiveTicket(listing, access.room.title, community.id);
+        } else {
+          toast.error("Ticket setup is incomplete for this live room.");
+        }
+        return;
+      }
+      if (access.access.decision_reason === "not_live") {
+        toast.error("This live room is not live yet.");
+        return;
+      }
+      toast.error("This live room is not available.");
+      return;
+    }
+
+    try {
+      const attach = await api.communities.viewerAttachLiveRoom(community.id, activeLiveRoomId);
+      setLiveViewerSession(attach);
+      setLiveViewerOpen(true);
+      setLiveRoomAccess({ room: attach.room, access: attach.access });
+    } catch (attachError) {
+      toast.error(getErrorMessage(attachError, "Could not join this live room."));
+      await refreshLiveRoomAccess();
+    }
+  }, [
+    activeLiveRoomId,
+    api.communities,
+    community?.id,
+    handleBuyLiveTicket,
+    listingsByLiveRoomId,
+    liveRoomAccess,
+    refreshLiveRoomAccess,
+    requestAuth,
+    session,
+  ]);
+
+  const handleRenewLiveRoomViewer = React.useCallback(async (uid: number) => {
+    if (!community?.id || !activeLiveRoomId) return null;
+    try {
+      const renewed = await api.communities.viewerRenewLiveRoom(community.id, activeLiveRoomId, { uid });
+      setLiveRoomAccess({ room: renewed.room, access: renewed.access });
+      return renewed;
+    } catch (renewError) {
+      toast.error(getErrorMessage(renewError, "Could not renew live room access."));
+      await refreshLiveRoomAccess();
+      return null;
+    }
+  }, [activeLiveRoomId, api.communities, community?.id, refreshLiveRoomAccess]);
 
   if (loading) {
     if (isMobile) {
@@ -225,8 +388,11 @@ export function PostPage({ postId }: { postId: string }) {
   }
 
   const threadAssetId = post.post.asset ?? null;
+  const threadLiveRoomId = post.post.anchor_live_room ?? null;
   const threadListing = threadAssetId ? listingsByAssetId[threadAssetId] : undefined;
   const threadPurchase = threadAssetId ? purchasesByAssetId[threadAssetId] : undefined;
+  const threadLiveRoomListing = threadLiveRoomId ? listingsByLiveRoomId[threadLiveRoomId] : undefined;
+  const threadLiveRoomPurchase = threadLiveRoomId ? purchasesByLiveRoomId[threadLiveRoomId] : undefined;
   const songOptions = (post.post.post_type === "song" || post.post.post_type === "video") && community && threadAssetId
     ? {
       currentUserId: session?.user?.id,
@@ -241,9 +407,25 @@ export function PostPage({ postId }: { postId: string }) {
       purchase: threadPurchase,
     }
     : undefined;
+  const liveRoomOptions = threadLiveRoomId && community
+    ? {
+      access: liveRoomAccess,
+      currentUserId: session?.user?.id,
+      listing: threadLiveRoomListing,
+      localeTag: locale,
+      onBuy: threadLiveRoomListing ? () => void handleBuyLiveTicket(
+        threadLiveRoomListing,
+        liveRoomAccess?.room.title ?? post.post.title ?? "Live room",
+        community.id,
+      ) : undefined,
+      onWatch: () => void handleWatchLiveRoom(),
+      purchase: threadLiveRoomPurchase,
+    }
+    : undefined;
   const localizedPostCard = toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
     canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
     commentCountOverride: commentCount,
+    liveRoom: liveRoomOptions,
     onDelete: deletePost,
     onRemove: removePost,
     onVerifyAge: handleVerifyAge,
@@ -256,6 +438,7 @@ export function PostPage({ postId }: { postId: string }) {
     ? toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {
       canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
       commentCountOverride: commentCount,
+      liveRoom: liveRoomOptions,
       onDelete: deletePost,
       onRemove: removePost,
       onVerifyAge: handleVerifyAge,
@@ -270,7 +453,34 @@ export function PostPage({ postId }: { postId: string }) {
   const liveRoomLaunch = buildLiveRoomLaunch({
     communityId: post.post.community,
     liveRoomId: post.post.anchor_live_room,
+    postId,
   });
+  const liveRoom = liveRoomAccess?.room ?? null;
+  const publicLiveRoomStatus = post.post.anchor_live_room_status ?? null;
+  const liveRoomStatus = liveRoom?.status ?? publicLiveRoomStatus ?? "scheduled";
+  const viewerIsLiveRoomHost = sameUserId(session?.user?.id, liveRoom?.host_user);
+  const viewerIsLiveRoomGuest = sameUserId(session?.user?.id, liveRoom?.guest_user);
+  const liveRoomBannerRole = viewerIsLiveRoomHost
+    ? "host" as const
+    : viewerIsLiveRoomGuest
+      ? "guest" as const
+      : "viewer" as const;
+  const liveRoomGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
+  const liveRoomFreedomHref = liveRoomLaunch && (
+    liveRoomBannerRole === "host"
+    || liveRoomBannerRole === "guest" && liveRoomGuestInviteStatus === "accepted"
+  )
+    ? liveRoomLaunch.href
+    : undefined;
+  const liveRoomBannerAccessState = liveRoomAccess?.access.decision_reason === "purchase_required"
+    ? "purchase_required" as const
+    : liveRoomAccess?.access.decision_reason === "not_live"
+      ? "waiting" as const
+      : liveRoomAccess?.access.decision_reason === "ended" || liveRoomAccess?.access.decision_reason === "canceled"
+        ? "ended" as const
+        : liveRoomAccess?.access.allowed
+          ? "allowed" as const
+          : "waiting" as const;
   const threadSidebarProps = community ? buildCommunityPreviewSidebar(community, locale) : null;
   const commentSortOptions = [
     { label: copy.common.bestTab, value: "best" as const },
@@ -309,22 +519,32 @@ export function PostPage({ postId }: { postId: string }) {
         />
       ) : null}
       {purchaseModal}
-      <ContentRailShell rail={!isMobile && threadSidebarProps ? <CommunitySidebar {...threadSidebarProps} /> : undefined} reserveRail={!isMobile}>
+      <LiveRoomViewerModal
+        attachResponse={liveViewerSession}
+        onOpenChange={setLiveViewerOpen}
+        onRenew={handleRenewLiveRoomViewer}
+        open={liveViewerOpen}
+        title={liveViewerSession?.room.title ?? liveRoomAccess?.room.title ?? post.post.title ?? "Live room"}
+      />
+        <ContentRailShell rail={!isMobile && threadSidebarProps ? <CommunitySidebar {...threadSidebarProps} /> : undefined} reserveRail={!isMobile}>
         {liveRoomLaunch ? (
-          <div className="border-b border-border-soft bg-card px-4 py-3 md:px-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-base font-semibold text-foreground">Live room ready</p>
-                <p className="text-base text-muted-foreground">{liveRoomLaunch.liveRoomId}</p>
-              </div>
-              <Button asChild size="sm">
-                <a href={liveRoomLaunch.href}>
-                  <PlayCircle className="size-4" weight="bold" />
-                  Open in Freedom
-                </a>
-              </Button>
-            </div>
-          </div>
+          <LiveRoomBanner
+            accessState={liveRoomBannerAccessState}
+            freedomHref={liveRoomFreedomHref}
+            guestInviteStatus={liveRoomGuestInviteStatus}
+            liveRoomId={liveRoomLaunch.liveRoomId}
+            onBuyTicket={threadLiveRoomListing ? () => void handleBuyLiveTicket(
+              threadLiveRoomListing,
+              liveRoomAccess?.room.title ?? post.post.title ?? "Live room",
+              post.post.community,
+            ) : undefined}
+            onWatch={() => void handleWatchLiveRoom()}
+            priceLabel={threadLiveRoomListing ? `$${(threadLiveRoomListing.price_cents / 100).toFixed(2)}` : undefined}
+            role={liveRoomBannerRole}
+            shareUrl={liveRoomLaunch.shareUrl ?? undefined}
+            status={liveRoomStatus}
+            title={liveRoomBannerRole === "viewer" && liveRoomStatus === "live" ? "Concert is live" : "Live room ready"}
+          />
         ) : null}
         <PostThread
           availableCommentSorts={commentSortOptions}

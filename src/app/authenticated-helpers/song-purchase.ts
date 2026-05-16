@@ -27,7 +27,7 @@ type CommunitiesApi = Pick<
   "createPurchaseQuote" | "failPurchase" | "settlePurchase"
 >;
 
-type PurchaseAssetLabel = "song" | "video" | "asset";
+type PurchaseAssetLabel = "song" | "video" | "ticket" | "asset";
 
 export type SongPurchaseSuccessMessage = (params: {
   settlement: CommunityPurchaseSettlement;

@@ -17,7 +17,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 
 export interface SongPurchaseModalProps {
-  assetLabel?: "song" | "video" | "asset";
+  assetLabel?: "song" | "video" | "ticket" | "asset";
   assetTitle?: string;
   confirmedDiscountPercent?: number | null;
   error?: string | null;

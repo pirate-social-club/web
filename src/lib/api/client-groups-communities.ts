@@ -9,6 +9,11 @@ import type {
   ApiCreateLiveRoomRequest,
   ApiCreateCommunityRequest,
   ApiLiveRoom,
+  ApiLiveRoomAccessResponse,
+  ApiLiveRoomViewerAttachResponse,
+  ApiLiveRoomViewerRenewRequest,
+  ApiPublishLiveRoomRequest,
+  ApiPublishLiveRoomResponse,
   CommunityListPostsOptions,
 } from "./client-api-types";
 import { buildQueryPath, type ApiRequest } from "./client-internal";
@@ -65,9 +70,35 @@ export function createCommunitiesApi(request: ApiRequest) {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    publishLiveRoom: (
+      communityId: string,
+      body: ApiPublishLiveRoomRequest,
+    ): Promise<ApiPublishLiveRoomResponse> =>
+      request<ApiPublishLiveRoomResponse>(`/communities/${encodeURIComponent(communityId)}/live-rooms/publish`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
     getLiveRoom: (communityId: string, liveRoomId: string): Promise<ApiLiveRoom> =>
       request<ApiLiveRoom>(
         `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}`,
+      ),
+    getLiveRoomAccess: (communityId: string, liveRoomId: string): Promise<ApiLiveRoomAccessResponse> =>
+      request<ApiLiveRoomAccessResponse>(
+        `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/access`,
+      ),
+    viewerAttachLiveRoom: (communityId: string, liveRoomId: string): Promise<ApiLiveRoomViewerAttachResponse> =>
+      request<ApiLiveRoomViewerAttachResponse>(
+        `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/viewer_attach`,
+        { method: "POST" },
+      ),
+    viewerRenewLiveRoom: (
+      communityId: string,
+      liveRoomId: string,
+      body: ApiLiveRoomViewerRenewRequest,
+    ): Promise<ApiLiveRoomViewerAttachResponse> =>
+      request<ApiLiveRoomViewerAttachResponse>(
+        `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/viewer_renew`,
+        { method: "POST", body: JSON.stringify(body) },
       ),
     ...createCommunitySettingsApi(request),
     ...createCommunityMembershipApi(request),

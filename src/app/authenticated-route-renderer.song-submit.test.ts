@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   buildAssetListingRequest,
+  buildLiveRoomListingRequest,
   resolveComposerSubmitState,
 } from "@/app/authenticated-helpers/asset-submit";
 import {
@@ -91,6 +92,34 @@ describe("song submit payload helpers", () => {
       regional_pricing_enabled: true,
       donation_partner: "don_charity_water",
       donation_share_bps: 1000,
+      status: "active",
+    });
+  });
+
+  test("builds a paid live-room ticket listing", () => {
+    const listingRequest = buildLiveRoomListingRequest({
+      liveRoomId: "lr_paid_room",
+      paidLiveRoomPriceUsd: 12,
+      pricingPolicyRegionalPricingEnabled: true,
+      regionalPricingEnabled: true,
+    });
+
+    expect(listingRequest).toEqual({
+      live_room: "lr_paid_room",
+      price_cents: 1200,
+      regional_pricing_enabled: true,
+      status: "active",
+    });
+
+    expect(buildLiveRoomListingRequest({
+      liveRoomId: null,
+      paidLiveRoomPriceUsd: 12,
+      pricingPolicyRegionalPricingEnabled: true,
+      regionalPricingEnabled: true,
+    })).toEqual({
+      live_room: null,
+      price_cents: 1200,
+      regional_pricing_enabled: true,
       status: "active",
     });
   });
@@ -280,6 +309,23 @@ describe("song submit payload helpers", () => {
       canPost: true,
       disabled: false,
       submitError: null,
+    });
+  });
+
+  test("requires ticket price for paid live rooms", () => {
+    expect(resolveComposerSubmitState({
+      canSubmit: true,
+      composerMode: "live",
+      derivativeStep: undefined,
+      license: undefined,
+      monetizationState: { visible: false },
+      paidSongPriceInvalid: true,
+      submitError: null,
+    })).toEqual({
+      canContinue: true,
+      canPost: false,
+      disabled: true,
+      submitError: "Enter a valid ticket price before publishing this live room.",
     });
   });
 

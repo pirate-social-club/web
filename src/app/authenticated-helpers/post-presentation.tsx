@@ -11,9 +11,10 @@ import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { buildPublicProfilePathForProfile, getProfileHandleLabel } from "@/lib/profile-routing";
 import type { FeedItem } from "@/components/compositions/posts/feed/feed";
-import type { PostCardProps, SongContentSpec } from "@/components/compositions/posts/post-card/post-card.types";
+import type { LiveRoomContentSpec, PostCardProps, SongContentSpec } from "@/components/compositions/posts/post-card/post-card.types";
 import { buildNationalityBadgeLabel } from "@/components/compositions/posts/post-card/post-card-nationality";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
+import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 
 import type { AssetSourceDescriptor, SongPlaybackController, SongPlaybackDescriptor } from "@/app/authenticated-helpers/song-commerce";
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
@@ -32,8 +33,20 @@ export type SongPresentationOptions = {
   onBuy?: () => void;
 };
 
+export type LiveRoomPresentationOptions = {
+  access?: ApiLiveRoomAccessResponse | null;
+  currentUserId?: string | null;
+  listing?: ApiCommunityListing;
+  localeTag?: string;
+  purchase?: ApiCommunityPurchase;
+  onBuy?: () => void;
+  onGate?: () => void;
+  onWatch?: () => void;
+};
+
 export type PostPresentationOptions = {
   commentCountOverride?: number;
+  liveRoom?: LiveRoomPresentationOptions;
   onVerifyAge?: () => void;
   onVote?: PostCardProps["onVote"];
   onComment?: PostCardProps["onComment"];
@@ -572,7 +585,7 @@ function detectClientSideXEmbed(linkUrl: string | null | undefined): { canonical
 export function toCommunityPostContent(
   postResponse: ApiPost,
   songOptions?: SongPresentationOptions,
-  opts?: Pick<PostPresentationOptions, "onVerifyAge" | "preferOriginalText" | "viewerContentLocale"> & { embedMode?: "preview" | "official" },
+  opts?: Pick<PostPresentationOptions, "onVerifyAge" | "preferOriginalText" | "viewerContentLocale"> & { embedMode?: "preview" | "official"; liveRoom?: LiveRoomPresentationOptions },
 ): PostCardProps["content"] {
   const { post, translated_body, translated_caption, translated_title } = postResponse;
   if (post.status === "deleted") {
@@ -604,6 +617,58 @@ export function toCommunityPostContent(
   const primaryMedia = post.media_refs?.[0];
   const imageMedia = primaryMedia as ({ width?: number | null; height?: number | null } & typeof primaryMedia) | undefined;
   const title = opts?.preferOriginalText ? (post.title ?? "Untitled post") : (translated_title ?? post.title ?? "Untitled post");
+
+  if (post.anchor_live_room) {
+    const liveRoom = opts?.liveRoom?.access?.room;
+    const liveAccess = opts?.liveRoom?.access?.access;
+    const publicStatus = post.anchor_live_room_status ?? undefined;
+    const accessState: LiveRoomContentSpec["accessState"] = liveAccess?.decision_reason === "purchase_required"
+      ? liveAccess.listing ? "purchase_required" : "missing_listing"
+      : liveAccess?.decision_reason === "ended" || liveAccess?.decision_reason === "canceled"
+        ? "ended"
+        : liveAccess?.decision_reason === "not_live"
+          ? "waiting"
+          : liveAccess?.allowed
+            ? "allowed"
+            : undefined;
+    const listing = opts?.liveRoom?.listing;
+    const purchase = opts?.liveRoom?.purchase;
+    const accessMode = liveRoom?.access_mode ?? liveAccess?.access_mode ?? (listing ? "paid" : "free");
+    const viewerOwnsPost = Boolean(opts?.liveRoom?.currentUserId && post.author_user === opts.liveRoom.currentUserId);
+
+    return {
+      type: "live_room",
+      accessMode,
+      accessState,
+      ageGatePolicy: post.age_gate_policy,
+      anchorPostHref: `/p/${post.id}`,
+      contentSafetyState: post.content_safety_state,
+      coverSrc: liveRoom?.cover_ref ?? primaryMedia?.poster_ref ?? primaryMedia?.storage_ref ?? undefined,
+      description: liveRoom?.description ?? resolvedCaption,
+      hasEntitlement: accessMode !== "paid" || liveAccess?.allowed === true || Boolean(purchase) || viewerOwnsPost,
+      liveRoomId: post.anchor_live_room,
+      listingMode: listing || liveAccess?.listing ? "listed" : "not_listed",
+      listingStatus: listing?.status === "active"
+        ? "active"
+        : listing?.status === "paused"
+        ? "paused"
+        : undefined,
+      onBuy: opts?.liveRoom?.onBuy,
+      onGate: opts?.liveRoom?.onGate,
+      onVerifyAge: opts?.onVerifyAge,
+      onWatch: opts?.liveRoom?.onWatch,
+      priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), opts?.liveRoom?.localeTag) : undefined,
+      roomKind: liveRoom?.room_kind,
+      setlistPreview: liveRoom?.setlist.items.slice(0, 3).map((item) => ({
+        artist: item.artist ?? undefined,
+        rightsStatus: item.rights_status,
+        title: item.title,
+      })),
+      status: liveRoom?.status ?? publicStatus ?? "scheduled",
+      title: liveRoom?.title ?? title,
+      visibility: liveRoom?.visibility ?? liveAccess?.visibility,
+    };
+  }
 
   switch (post.post_type) {
     case "crosspost": {

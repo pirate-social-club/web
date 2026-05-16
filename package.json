@@ -46,6 +46,7 @@
     "@dicebear/core": "^9.4.2",
     "@fontsource/anton": "^5.2.7",
     "@pirate/api-contracts": "file:../api/services/contracts",
+    "@pirate/efp-shared": "file:../api/services/efp-shared",
     "@privy-io/react-auth": "^3.21.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-checkbox": "^1.3.3",
@@ -66,6 +67,7 @@
     "@vidstack/react": "^1.12.13",
     "@web3icons/react": "^4.1.17",
     "@xmtp/browser-sdk": "^7.0.0",
+    "agora-rtc-sdk-ng": "^4.24.3",
     "altcha": "^3.0.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -76,8 +78,7 @@
     "rwsdk": "^1.3.0-canary.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.0",
-    "viem": "^2.48.1",
-    "@pirate/efp-shared": "file:../api/services/efp-shared"
+    "viem": "^2.48.1"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.35.0",

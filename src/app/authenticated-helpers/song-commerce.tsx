@@ -25,7 +25,9 @@ async function loadStoryCdrBrowser() {
 
 export type SongCommerceState = {
   listingsByAssetId: Record<string, ApiCommunityListing | undefined>;
+  listingsByLiveRoomId: Record<string, ApiCommunityListing | undefined>;
   purchasesByAssetId: Record<string, ApiCommunityPurchase | undefined>;
+  purchasesByLiveRoomId: Record<string, ApiCommunityPurchase | undefined>;
 };
 
 export type SongPlaybackDescriptor = {
@@ -62,12 +64,16 @@ export type AssetSourceDescriptor = {
 export function useSongCommerceState(communityId: string, enabled: boolean) {
   const api = useApi();
   const [listingsByAssetId, setListingsByAssetId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
+  const [listingsByLiveRoomId, setListingsByLiveRoomId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
   const [purchasesByAssetId, setPurchasesByAssetId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
+  const [purchasesByLiveRoomId, setPurchasesByLiveRoomId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
 
   const refresh = React.useCallback(async () => {
     if (!enabled) {
       setListingsByAssetId({});
+      setListingsByLiveRoomId({});
       setPurchasesByAssetId({});
+      setPurchasesByLiveRoomId({});
       return;
     }
 
@@ -85,10 +91,26 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
           return result;
         }, []),
       ));
+      setListingsByLiveRoomId(Object.fromEntries(
+        listingsResult.items.reduce<Array<readonly [string, typeof listingsResult.items[number]]>>((result, listing) => {
+          if (typeof listing.live_room === "string" && listing.live_room.length > 0) {
+            result.push([listing.live_room, listing] as const);
+          }
+          return result;
+        }, []),
+      ));
       setPurchasesByAssetId(Object.fromEntries(
         purchasesResult.items.reduce<Array<readonly [string, typeof purchasesResult.items[number]]>>((result, purchase) => {
           if (typeof purchase.asset === "string" && purchase.asset.length > 0) {
             result.push([purchase.asset, purchase] as const);
+          }
+          return result;
+        }, []),
+      ));
+      setPurchasesByLiveRoomId(Object.fromEntries(
+        purchasesResult.items.reduce<Array<readonly [string, typeof purchasesResult.items[number]]>>((result, purchase) => {
+          if (typeof purchase.live_room === "string" && purchase.live_room.length > 0) {
+            result.push([purchase.live_room, purchase] as const);
           }
           return result;
         }, []),
@@ -99,7 +121,9 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
         message: error instanceof Error ? error.message : String(error),
       });
       setListingsByAssetId({});
+      setListingsByLiveRoomId({});
       setPurchasesByAssetId({});
+      setPurchasesByLiveRoomId({});
     }
   }, [api, communityId, enabled]);
 
@@ -109,7 +133,9 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
 
   return {
     listingsByAssetId,
+    listingsByLiveRoomId,
     purchasesByAssetId,
+    purchasesByLiveRoomId,
     refresh,
   };
 }

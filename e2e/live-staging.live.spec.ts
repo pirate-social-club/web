@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { createRequire } from "node:module";
 import { expect, test, type Page } from "@playwright/test";
 import type { SessionExchangeResponse } from "@pirate/api-contracts";
@@ -69,9 +69,13 @@ function rawPublicId(value: string, prefix: string): string {
   return value.startsWith(`${prefix}_`) ? value.slice(prefix.length + 1) : value;
 }
 
-function mintUpstreamJwt(subject: string): string {
+function walletAddressForSubject(subject: string): string {
+  return `0x${createHash("sha256").update(subject).digest("hex").slice(0, 40)}`;
+}
+
+function mintUpstreamJwt(subject: string, walletAddressOverride?: string | null): string {
   const nowSeconds = Math.floor(Date.now() / 1000);
-  const walletAddress = process.env.E2E_LIVE_STAGING_WALLET_ADDRESS?.trim();
+  const walletAddress = walletAddressOverride?.trim() || process.env.E2E_LIVE_STAGING_WALLET_ADDRESS?.trim();
   return signHs256Jwt({
     ...(walletAddress ? { wallet_address: walletAddress } : {}),
     aud: requiredEnv("AUTH_UPSTREAM_JWT_AUDIENCE"),
@@ -103,11 +107,11 @@ async function requestJson<T>(
   return body;
 }
 
-async function createLiveSession(subject = liveSubject): Promise<StoredSession> {
+async function createLiveSession(subject = liveSubject, walletAddress?: string | null): Promise<StoredSession> {
   const response = await requestJson<SessionExchangeResponse>("/auth/session/exchange", {
     body: JSON.stringify({
       proof: {
-        jwt: mintUpstreamJwt(subject),
+        jwt: mintUpstreamJwt(subject, walletAddress),
         type: "jwt_based_auth",
       },
     }),
@@ -138,6 +142,206 @@ function expectConfiguredAgora(block: AgoraBlock, label: string): void {
   expect(block.token, `${label} token`).toContain("007");
   expect(Number.isInteger(block.uid), `${label} uid`).toBe(true);
   expect(block.channel, `${label} channel`).toMatch(/^pirate-live-/u);
+}
+
+function walletAttachmentId(session: StoredSession): string {
+  const user = session.user as { primary_wallet_attachment?: unknown };
+  const attachments = session.walletAttachments as Array<{ is_primary?: boolean | null; wallet_attachment?: unknown }>;
+  const attachment = firstString(
+    user.primary_wallet_attachment,
+    attachments.find((candidate) => candidate.is_primary)?.wallet_attachment,
+    attachments[0]?.wallet_attachment,
+  );
+  if (!attachment) throw new Error("Session is missing a wallet attachment");
+  return attachment;
+}
+
+async function waitForJob(jobId: string, token: string): Promise<void> {
+  const deadline = Date.now() + 120_000;
+  let lastStatus = "unknown";
+  while (Date.now() < deadline) {
+    const job = await requestJson<{ error_code?: string | null; id: string; status: string }>(
+      `/jobs/${encodeURIComponent(jobId)}`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    lastStatus = job.status;
+    if (job.status === "succeeded") return;
+    if (job.status === "failed") {
+      throw new Error(`job ${job.id} failed: ${job.error_code ?? "unknown"}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+  }
+  throw new Error(`job ${jobId} did not finish; last status ${lastStatus}`);
+}
+
+async function createSmokeCommunity(runId: string, host: StoredSession): Promise<string> {
+  const createdCommunity = await requestJson<{ community: { id: string }; job?: { id?: string; status?: string } }>("/communities", {
+    body: JSON.stringify({
+      display_name: `Live Room Browser Smoke ${runId}`,
+      handle_policy: { policy_template: "standard" },
+      membership_mode: "request",
+    }),
+    headers: { authorization: `Bearer ${host.accessToken}` },
+    method: "POST",
+  });
+  if (createdCommunity.job?.status && createdCommunity.job.status !== "succeeded") {
+    const jobId = firstString(createdCommunity.job.id);
+    if (!jobId) throw new Error("community creation job id is missing");
+    await waitForJob(jobId, host.accessToken);
+  }
+  return rawPublicId(createdCommunity.community.id, "com");
+}
+
+async function joinCommunityAsViewer(communityId: string, host: StoredSession, viewer: StoredSession): Promise<void> {
+  const joined = await requestJson<{ status: "joined" | "requested" }>(`/communities/${encodeURIComponent(communityId)}/join`, {
+    body: JSON.stringify({}),
+    headers: { authorization: `Bearer ${viewer.accessToken}` },
+    method: "POST",
+  });
+  if (joined.status === "joined") return;
+
+  const requests = await requestJson<{ items: Array<{ applicant_user: string; id: string }> }>(
+    `/communities/${encodeURIComponent(communityId)}/membership-requests?limit=20`,
+    { headers: { authorization: `Bearer ${host.accessToken}` } },
+  );
+  const viewerRequest = requests.items.find((item) => item.applicant_user === viewer.user.id) ?? requests.items[0];
+  expect(viewerRequest, "viewer membership request").toBeTruthy();
+  await requestJson(`/communities/${encodeURIComponent(communityId)}/membership-requests/${encodeURIComponent(viewerRequest.id)}/approve`, {
+    body: JSON.stringify({}),
+    headers: { authorization: `Bearer ${host.accessToken}` },
+    method: "POST",
+  });
+}
+
+async function publishPaidLiveRoom(input: {
+  communityId: string;
+  host: StoredSession;
+  priceCents: number;
+  runId: string;
+}): Promise<{ listingId: string; postId: string; roomId: string; title: string }> {
+  const title = `Paid Live UI Smoke ${input.runId}`;
+  const published = await requestJson<{
+    listing: { id: string; live_room: string | null; price_cents: number };
+    room: { anchor_post: string; id: string; status: string };
+  }>(`/communities/${encodeURIComponent(input.communityId)}/live-rooms/publish`, {
+    body: JSON.stringify({
+      listing: {
+        price_cents: input.priceCents,
+        regional_pricing_enabled: false,
+        status: "active",
+      },
+      room: {
+        access_mode: "paid",
+        performer_allocations: [
+          { role: "host", share_bps: 10000, user: input.host.user.id },
+        ],
+        room_kind: "solo",
+        setlist: {
+          items: [
+            {
+              artist: "Pirate Smoke",
+              rights_basis: "original",
+              rights_status: "ready",
+              title: `Paid UI Smoke Set ${input.runId}`,
+            },
+          ],
+          status: "ready",
+        },
+        title,
+        visibility: "public",
+      },
+    }),
+    headers: { authorization: `Bearer ${input.host.accessToken}` },
+    method: "POST",
+  });
+  expect(published.listing.live_room).toBe(published.room.id);
+  expect(published.listing.price_cents).toBe(input.priceCents);
+  return {
+    listingId: published.listing.id,
+    postId: published.room.anchor_post,
+    roomId: published.room.id,
+    title,
+  };
+}
+
+async function hostAttachLiveRoom(communityId: string, roomId: string, host: StoredSession): Promise<AgoraBlock> {
+  const attached = await requestJson<{ agora: AgoraBlock; runtime: { seat: string } }>(
+    `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(roomId)}/host_attach`,
+    {
+      body: JSON.stringify({}),
+      headers: { authorization: `Bearer ${host.accessToken}` },
+      method: "POST",
+    },
+  );
+  expect(attached.runtime.seat).toBe("host");
+  expectConfiguredAgora(attached.agora, "paid host_attach");
+  return attached.agora;
+}
+
+async function createLiveRoomTicketQuote(input: {
+  buyer: StoredSession;
+  communityId: string;
+  listingId: string;
+  roomId: string;
+}): Promise<{ finalPriceCents: number; id: string }> {
+  const quote = await requestJson<{
+    final_price_cents: number;
+    id: string;
+    live_room: string | null;
+    settlement_mode: string;
+  }>(`/communities/${encodeURIComponent(input.communityId)}/purchase-quotes`, {
+    body: JSON.stringify({
+      client_estimated_hop_count: 1,
+      client_estimated_slippage_bps: 0,
+      funding_asset: {
+        asset_symbol: "USDC",
+        chain_id: 84532,
+        chain_namespace: "eip155",
+        display_name: "USDC on Base Sepolia",
+      },
+      listing: input.listingId,
+      route_provider: "pirate_checkout",
+      source_chain: {
+        chain_id: 84532,
+        chain_namespace: "eip155",
+        display_name: "Base Sepolia",
+      },
+    }),
+    headers: { authorization: `Bearer ${input.buyer.accessToken}` },
+    method: "POST",
+  });
+  expect(quote.live_room).toBe(input.roomId);
+  expect(quote.settlement_mode).toBe("delivery_only_story_settlement");
+  return { finalPriceCents: quote.final_price_cents, id: quote.id };
+}
+
+async function settleLiveRoomTicket(input: {
+  buyer: StoredSession;
+  communityId: string;
+  quoteId: string;
+  roomId: string;
+  runId: string;
+}): Promise<string> {
+  const settlementRef = `live-paid-ui:${input.runId}`;
+  const settlement = await requestJson<{
+    entitlement_kind: string;
+    entitlement_target_ref: string;
+    live_room: string | null;
+    purchase_entitlement: string;
+  }>(`/communities/${encodeURIComponent(input.communityId)}/purchase-settlements`, {
+    body: JSON.stringify({
+      funding_tx_ref: settlementRef,
+      quote: input.quoteId,
+      settlement_tx_ref: settlementRef,
+      settlement_wallet_attachment: walletAttachmentId(input.buyer),
+    }),
+    headers: { authorization: `Bearer ${input.buyer.accessToken}` },
+    method: "POST",
+  });
+  expect(settlement.live_room).toBe(input.roomId);
+  expect(settlement.entitlement_kind).toBe("live_room_access");
+  expect(settlement.entitlement_target_ref).toBe(input.roomId);
+  return settlement.purchase_entitlement;
 }
 
 async function runAgoraMediaCheck(page: Page, host: AgoraBlock, viewer: AgoraBlock): Promise<{
@@ -438,6 +642,124 @@ test.describe("live staging integration", () => {
         },
         [200, 409],
       ).catch(() => undefined);
+    }
+  });
+
+  test("shows paid ticket UI and unlocks browser watching after settlement", async ({ page }, testInfo) => {
+    testInfo.setTimeout(180_000);
+
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const priceCents = 199;
+    const hostSubject = `paid-live-ui-host-${runId}`;
+    const buyerSubject = `paid-live-ui-buyer-${runId}`;
+    const host = await createLiveSession(hostSubject, walletAddressForSubject(hostSubject));
+    const buyer = await createLiveSession(buyerSubject, walletAddressForSubject(buyerSubject));
+    await completeSelfVerification(host);
+    await completeSelfVerification(buyer);
+
+    const communityId = await createSmokeCommunity(runId, host);
+    await joinCommunityAsViewer(communityId, host, buyer);
+
+    let roomId: string | null = null;
+    let hostAttached = false;
+    try {
+      const published = await publishPaidLiveRoom({
+        communityId,
+        host,
+        priceCents,
+        runId,
+      });
+      roomId = published.roomId;
+
+      const publicAccessBefore = await requestJson<{
+        access: { allowed: boolean; decision_reason: string | null; listing: string | null };
+      }>(`/public-communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(published.roomId)}/access`);
+      expect(publicAccessBefore.access.allowed).toBe(false);
+      expect(publicAccessBefore.access.decision_reason).toBe("purchase_required");
+      expect(publicAccessBefore.access.listing).toBe(published.listingId);
+
+      const memberAccessBefore = await requestJson<{
+        access: { allowed: boolean; decision_reason: string | null; listing: string | null };
+      }>(`/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(published.roomId)}/access`, {
+        headers: { authorization: `Bearer ${buyer.accessToken}` },
+      });
+      expect(memberAccessBefore.access.allowed).toBe(false);
+      expect(memberAccessBefore.access.decision_reason).toBe("purchase_required");
+      expect(memberAccessBefore.access.listing).toBe(published.listingId);
+
+      await requestJson(
+        `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(published.roomId)}/viewer_attach`,
+        {
+          headers: { authorization: `Bearer ${buyer.accessToken}` },
+          method: "POST",
+        },
+        [402],
+      );
+
+      await hostAttachLiveRoom(communityId, published.roomId, host);
+      hostAttached = true;
+
+      await page.goto(`/p/${pathSegment(published.postId)}`);
+      await expect(page.locator("body")).toContainText(published.title, { timeout: 30_000 });
+      const anonymousTicketButton = page.getByRole("button", { name: /get ticket|buy ticket/i }).first();
+      await expect(anonymousTicketButton).toBeVisible({ timeout: 30_000 });
+      await expect(anonymousTicketButton).toBeEnabled();
+      await expect(page.getByRole("button", { name: /watch live/i })).toHaveCount(0);
+      await expectNoBrowserError(page);
+
+      await installStoredSession(page, buyer);
+      await page.goto(`/p/${pathSegment(published.postId)}?buyer=${encodeURIComponent(runId)}`);
+      await expect(page.locator("body")).toContainText(published.title, { timeout: 30_000 });
+      await expect(page.locator("body")).toContainText("$1.99", { timeout: 30_000 });
+      const buyerTicketButton = page.getByRole("button", { name: /get ticket/i }).first();
+      await expect(buyerTicketButton).toBeVisible({ timeout: 30_000 });
+      await expect(buyerTicketButton).toBeEnabled();
+      await expect(page.getByRole("button", { name: /watch live/i })).toHaveCount(0);
+
+      const quote = await createLiveRoomTicketQuote({
+        buyer,
+        communityId,
+        listingId: published.listingId,
+        roomId: published.roomId,
+      });
+      expect(quote.finalPriceCents).toBe(priceCents);
+      const entitlement = await settleLiveRoomTicket({
+        buyer,
+        communityId,
+        quoteId: quote.id,
+        roomId: published.roomId,
+        runId,
+      });
+      const accessAfter = await requestJson<{
+        access: { allowed: boolean; decision_reason: string | null; purchase_entitlement: string | null };
+      }>(`/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(published.roomId)}/access`, {
+        headers: { authorization: `Bearer ${buyer.accessToken}` },
+      });
+      expect(accessAfter.access.allowed).toBe(true);
+      expect(accessAfter.access.decision_reason).toBeNull();
+      expect(accessAfter.access.purchase_entitlement).toBe(entitlement);
+
+      await page.goto(`/p/${pathSegment(published.postId)}?settled=${encodeURIComponent(runId)}`);
+      const watchButton = page.getByRole("button", { name: /watch live/i }).first();
+      await expect(watchButton).toBeVisible({ timeout: 30_000 });
+      await watchButton.click();
+      await expect(page.locator("body")).toContainText(
+        /Connected\. Waiting for the broadcaster\.|Watching live\./u,
+        { timeout: 45_000 },
+      );
+      await expectNoBrowserError(page);
+    } finally {
+      if (roomId) {
+        await requestJson(
+          `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(roomId)}/${hostAttached ? "end" : "cancel"}`,
+          {
+            body: JSON.stringify({}),
+            headers: { authorization: `Bearer ${host.accessToken}` },
+            method: "POST",
+          },
+          [200, 404, 409],
+        ).catch(() => undefined);
+      }
     }
   });
 });

@@ -289,6 +289,9 @@ export function PostPage({ postId }: { postId: string }) {
       titleText,
     });
   }, [buySong, requestAuth, session?.accessToken]);
+  const handlePromptLiveTicketAuth = React.useCallback(() => {
+    requestAuth("Connect your wallet to buy a ticket for this live room.");
+  }, [requestAuth]);
 
   const handleWatchLiveRoom = React.useCallback(async () => {
     if (!community?.id || !activeLiveRoomId) return;
@@ -435,6 +438,8 @@ export function PostPage({ postId }: { postId: string }) {
   const threadPurchase = threadAssetId ? purchasesByAssetId[threadAssetId] : undefined;
   const threadLiveRoomListing = threadLiveRoomId ? listingsByLiveRoomId[threadLiveRoomId] : undefined;
   const threadLiveRoomPurchase = threadLiveRoomId ? purchasesByLiveRoomId[threadLiveRoomId] : undefined;
+  const unauthenticatedLiveTicketRequired = !session?.accessToken
+    && liveRoomAccess?.access.decision_reason === "purchase_required";
   const songOptions = (post.post.post_type === "song" || post.post.post_type === "video") && community && threadAssetId
     ? {
       currentUserId: session?.user?.id,
@@ -477,7 +482,7 @@ export function PostPage({ postId }: { postId: string }) {
         threadLiveRoomListing,
         liveRoomAccess?.room.title ?? post.post.title ?? "Live room",
         community.id,
-      ) : undefined,
+      ) : unauthenticatedLiveTicketRequired ? handlePromptLiveTicketAuth : undefined,
       onWatch: () => void handleWatchLiveRoom(),
       producerRole: viewerIsLiveRoomHost
         ? "host" as const

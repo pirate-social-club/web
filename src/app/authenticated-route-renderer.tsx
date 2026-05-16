@@ -47,6 +47,10 @@ const LazyCreatePostGlobalPage = lazyRouteModule(
   () => import("./authenticated-routes/misc-routes"),
   "CreatePostGlobalPage",
 );
+const LazyCrosspostPage = lazyRouteModule(
+  () => import("./authenticated-routes/misc-routes"),
+  "CrosspostPage",
+);
 const LazyCommunityModerationPage = lazyRouteModule(
   () => import("./authenticated-routes/moderation-route"),
   "CommunityModerationPage",
@@ -146,6 +150,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyCreateCommunityPage />;
     case "post":
       return <LazyPostPage postId={route.postId} />;
+    case "crosspost":
+      return <LazyCrosspostPage postId={route.postId} />;
     case "inbox":
       return <LazyInboxPlaceholderPage />;
     case "advertise":

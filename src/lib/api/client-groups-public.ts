@@ -25,6 +25,24 @@ export type PublicPostThreadResponse = {
   comments: CommentListResponse;
 };
 
+export type PublicCommunitySearchResponse = {
+  query: string | null;
+  communities: Array<{
+    community: string;
+    display_name: string;
+    route_slug?: string | null;
+    membership_mode: CommunityPreview["membership_mode"];
+    guest_comment_policy: CommunityPreview["guest_comment_policy"];
+    agent_posting_policy: CommunityPreview["agent_posting_policy"];
+    agent_posting_scope: CommunityPreview["agent_posting_scope"];
+    agent_daily_post_cap?: number | null;
+    agent_daily_reply_cap?: number | null;
+    accepted_agent_ownership_providers: CommunityPreview["accepted_agent_ownership_providers"];
+    membership_gate_summaries: CommunityPreview["membership_gate_summaries"];
+  }>;
+  has_more: boolean;
+};
+
 function publicGet<T>(
   request: ApiRequest,
   path: string,
@@ -118,6 +136,13 @@ export function createPublicAgentsApi(request: ApiRequest) {
 
 export function createPublicCommunitiesApi(request: ApiRequest) {
   return {
+    search: (query: string, opts?: { limit?: number | null }): Promise<PublicCommunitySearchResponse> => {
+      return publicGet<PublicCommunitySearchResponse>(
+        request,
+        "/public-communities",
+        { query, limit: opts?.limit },
+      );
+    },
     get: (communityId: string, opts?: { locale?: string | null }): Promise<CommunityPreview> => {
       return publicGet<CommunityPreview>(
         request,

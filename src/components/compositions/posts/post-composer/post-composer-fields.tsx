@@ -32,6 +32,7 @@ export function ShellPill({
   communities,
   emptyLabel,
   onSelectCommunity,
+  onSearchQueryChange,
   pickerSearchPlaceholder = "Search communities",
   pickerTitle = "Choose a community",
 }: {
@@ -41,12 +42,16 @@ export function ShellPill({
   communities?: CommunityPickerItem[];
   emptyLabel?: string;
   onSelectCommunity?: (communityId: string) => void;
+  onSearchQueryChange?: (query: string) => void;
   pickerSearchPlaceholder?: string;
   pickerTitle?: string;
 }) {
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  React.useEffect(() => {
+    onSearchQueryChange?.(query);
+  }, [onSearchQueryChange, query]);
   const triggerContent = (
     <>
       {avatarSrc ? (
@@ -165,23 +170,36 @@ export function ShellPill({
               {emptyLabel ?? "No recent communities."}
             </div>
           ) : (
-            communities.map((community) => (
-              <DropdownMenuPrimitive.Item
-                className="grid w-full cursor-pointer select-none grid-cols-[2.25rem_1fr] items-center gap-3 px-3 py-2.5 text-base text-popover-foreground outline-none transition-colors hover:bg-muted focus:bg-muted"
-                key={community.communityId}
-                onClick={() => onSelectCommunity(community.communityId)}
-                textValue={community.displayName}
-              >
-                <CommunityAvatar
-                  className="size-9 bg-card text-base"
-                  avatarSrc={community.avatarSrc}
-                  communityId={community.communityId}
-                  displayName={community.displayName}
-                  size="sm"
-                />
-                <span className="truncate">{community.displayName}</span>
-              </DropdownMenuPrimitive.Item>
-            ))
+            <>
+              {onSearchQueryChange ? (
+                <div className="border-b border-border-soft p-2">
+                  <Input
+                    aria-label={pickerTitle}
+                    className="h-10"
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder={pickerSearchPlaceholder}
+                    value={query}
+                  />
+                </div>
+              ) : null}
+              {filteredCommunities.map((community) => (
+                <DropdownMenuPrimitive.Item
+                  className="grid w-full cursor-pointer select-none grid-cols-[2.25rem_1fr] items-center gap-3 px-3 py-2.5 text-base text-popover-foreground outline-none transition-colors hover:bg-muted focus:bg-muted"
+                  key={community.communityId}
+                  onClick={() => onSelectCommunity(community.communityId)}
+                  textValue={community.displayName}
+                >
+                  <CommunityAvatar
+                    className="size-9 bg-card text-base"
+                    avatarSrc={community.avatarSrc}
+                    communityId={community.communityId}
+                    displayName={community.displayName}
+                    size="sm"
+                  />
+                  <span className="truncate">{community.displayName}</span>
+                </DropdownMenuPrimitive.Item>
+              ))}
+            </>
           )}
         </DropdownMenuPrimitive.Content>
       </DropdownMenuPrimitive.Portal>

@@ -4,11 +4,13 @@ import { Globe, Lock as FilledLockIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
 import { Type } from "@/components/primitives/type";
+import { CrosspostSourcePreviewCard } from "../crosspost-source-preview-card";
 import { logger } from "@/lib/logger";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
 import { OfficialOEmbed, OfficialYouTubeEmbed, PostEmbedPreview } from "./post-card-embed";
+import { LiveRoomPostContent } from "./post-card-live-room-content";
 import { postCardType } from "./post-card.styles";
 import type { PostCardContent } from "./post-card.types";
 
@@ -65,6 +67,7 @@ class LazyPostMediaErrorBoundary extends React.Component<
 }
 
 type LinkContent = Extract<PostCardContent, { type: "link" }>;
+type CrosspostContent = Extract<PostCardContent, { type: "crosspost" }>;
 
 function getLinkSummaryBullets(summary: LinkContent["summary"]): string[] {
   const shortSummary = summary?.shortSummary?.trim() ?? "";
@@ -191,6 +194,10 @@ function LinkPreviewCard({ content }: { content: LinkContent }) {
   );
 }
 
+function CrosspostPreviewCard({ content }: { content: CrosspostContent }) {
+  return <CrosspostSourcePreviewCard linkEnabled source={content.source} />;
+}
+
 export interface PostCardMediaProps {
   content: PostCardContent;
   className?: string;
@@ -278,6 +285,8 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
           <LinkPreviewCard content={content} />
         </div>
       );
+    case "crosspost":
+      return <CrosspostPreviewCard content={content} />;
     case "embed":
       return (
         <div className={cn("w-full space-y-2 text-start", className)}>
@@ -307,5 +316,7 @@ export function PostCardMedia({ content, className }: PostCardMediaProps) {
           </React.Suspense>
         </LazyPostMediaErrorBoundary>
       );
+    case "live_room":
+      return <LiveRoomPostContent content={content} className={className} />;
   }
 }

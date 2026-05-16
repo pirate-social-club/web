@@ -49,6 +49,182 @@ export const TextPost: Story = {
   render: () => <PostCard {...basePost} />,
 };
 
+export const CrosspostAvailable: Story = {
+  name: "Crosspost / Available Source",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        community: { kind: "community", label: "c/@🇬🇪", href: "#", avatarSrc: "https://picsum.photos/seed/georgia-community/80/80" },
+        author: { kind: "user", label: "u/nino", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=32" },
+        timestampLabel: "14m",
+      }}
+      title="Bringing this discussion here"
+      content={{
+        type: "crosspost",
+        source: {
+          status: "available",
+          communityLabel: "c/music",
+          communityHref: "#",
+          authorLabel: "u/ana",
+          authorHref: "#",
+          postType: "text",
+          title: "What makes a great opener for a live set?",
+          postHref: "#",
+        },
+      }}
+      engagement={{ score: 12, commentCount: 3 }}
+    />
+  ),
+};
+
+export const CrosspostImageSource: Story = {
+  name: "Crosspost / Image Source",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        community: { kind: "community", label: "c/@🇬🇪", href: "#", avatarSrc: "https://picsum.photos/seed/georgia-community/80/80" },
+        author: { kind: "user", label: "u/nino", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=32" },
+        timestampLabel: "18m",
+      }}
+      title="Photo thread for the Georgian scene"
+      content={{
+        type: "crosspost",
+        source: {
+          status: "available",
+          communityLabel: "c/music",
+          communityHref: "#",
+          authorLabel: "u/ana",
+          authorHref: "#",
+          postType: "image",
+          thumbnailAlt: "Crowd pressed against the stage at a small venue",
+          thumbnailSrc: "https://picsum.photos/seed/crosspost-source-image/320/320",
+          title: "Front row photo from last night",
+          postHref: "#",
+        },
+      }}
+      engagement={{ score: 18, commentCount: 5 }}
+    />
+  ),
+};
+
+export const CrosspostVideoSource: Story = {
+  name: "Crosspost / Video Source",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        community: { kind: "community", label: "c/@🇬🇪", href: "#", avatarSrc: "https://picsum.photos/seed/georgia-community/80/80" },
+        author: { kind: "user", label: "u/nino", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=32" },
+        timestampLabel: "24m",
+      }}
+      title="Encore clip worth discussing"
+      content={{
+        type: "crosspost",
+        source: {
+          status: "available",
+          communityLabel: "c/music",
+          communityHref: "#",
+          authorLabel: "u/ana",
+          authorHref: "#",
+          postType: "video",
+          thumbnailAlt: "Performer lit by red stage lights",
+          thumbnailSrc: "https://picsum.photos/seed/crosspost-source-video/320/320",
+          title: "Five-minute live clip from the encore",
+          postHref: "#",
+        },
+      }}
+      engagement={{ score: 27, commentCount: 8 }}
+    />
+  ),
+};
+
+export const CrosspostLinkSource: Story = {
+  name: "Crosspost / Link Source",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        community: { kind: "community", label: "c/@🇬🇪", href: "#", avatarSrc: "https://picsum.photos/seed/georgia-community/80/80" },
+        author: { kind: "user", label: "u/nino", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=32" },
+        timestampLabel: "28m",
+      }}
+      title="Useful venue context"
+      content={{
+        type: "crosspost",
+        source: {
+          status: "available",
+          communityLabel: "c/music",
+          communityHref: "#",
+          authorLabel: "u/ana",
+          authorHref: "#",
+          postType: "link",
+          thumbnailAlt: "Venue entrance at night",
+          thumbnailSrc: "https://picsum.photos/seed/crosspost-source-link/320/320",
+          title: "Interview: rebuilding underground venues after a shutdown",
+          postHref: "#",
+        },
+      }}
+      engagement={{ score: 31, commentCount: 6 }}
+    />
+  ),
+};
+
+export const CrosspostSongSource: Story = {
+  name: "Crosspost / Song Source",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        community: { kind: "community", label: "c/@🇬🇪", href: "#", avatarSrc: "https://picsum.photos/seed/georgia-community/80/80" },
+        author: { kind: "user", label: "u/nino", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=32" },
+        timestampLabel: "31m",
+      }}
+      title="New local demo"
+      content={{
+        type: "crosspost",
+        source: {
+          status: "available",
+          communityLabel: "c/music",
+          communityHref: "#",
+          authorLabel: "u/ana",
+          authorHref: "#",
+          postType: "song",
+          thumbnailAlt: "Album artwork with a night road",
+          thumbnailSrc: "https://picsum.photos/seed/crosspost-source-song/320/320",
+          title: "New demo: Rustavi night drive",
+          postHref: "#",
+        },
+      }}
+      engagement={{ score: 33, commentCount: 11 }}
+    />
+  ),
+};
+
+export const CrosspostUnavailableSource: Story = {
+  name: "Crosspost / Unavailable Source",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        community: { kind: "community", label: "c/@🇬🇪", href: "#", avatarSrc: "https://picsum.photos/seed/georgia-community/80/80" },
+        author: { kind: "user", label: "u/nino", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=32" },
+        timestampLabel: "1h",
+      }}
+      title="Discussion moved here"
+      content={{
+        type: "crosspost",
+        source: {
+          status: "deleted",
+          communityLabel: "c/music",
+        },
+      }}
+      engagement={{ score: 21, commentCount: 9 }}
+    />
+  ),
+};
+
 export const TranslatedTextPost: Story = {
   name: "Translation: Text Post",
   render: () => (

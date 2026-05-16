@@ -26,6 +26,58 @@ export interface UpstreamAttribution {
 }
 
 export type VideoMode = "original" | "reaction" | "clip" | "remix";
+export type LiveRoomStatus = "scheduled" | "live" | "ended" | "canceled";
+export type LiveRoomKind = "solo" | "duet";
+export type LiveRoomAccessMode = "free" | "gated" | "paid";
+export type LiveRoomVisibility = "public" | "unlisted";
+export type LiveRoomAccessState =
+  | "allowed"
+  | "purchase_required"
+  | "gate_required"
+  | "waiting"
+  | "missing_listing"
+  | "ended";
+
+export interface LiveRoomContentSpec {
+  type: "live_room";
+  liveRoomId: string;
+  title: string;
+  description?: string;
+  coverSrc?: string;
+  roomKind?: LiveRoomKind;
+  status: LiveRoomStatus;
+  accessMode: LiveRoomAccessMode;
+  visibility?: LiveRoomVisibility;
+  accessState?: LiveRoomAccessState;
+  startsAtLabel?: string;
+  liveSinceLabel?: string;
+  endedAtLabel?: string;
+  concertHref?: string;
+  anchorPostHref?: string;
+  shareUrl?: string;
+  attendeeCountLabel?: string;
+  setlistPreview?: Array<{
+    title: string;
+    artist?: string;
+    rightsStatus?: "pending" | "ready" | "blocked";
+  }>;
+  listingMode?: ListingMode;
+  listingStatus?: ListingStatus;
+  priceLabel?: string;
+  regionalPriceLabel?: string;
+  hasEntitlement?: boolean;
+  ageGatePolicy?: AgeGatePolicy;
+  contentSafetyState?: ContentSafetyState;
+  ageGateViewerState?: "proof_required" | "verified_allowed";
+  agentPurchaseUrl?: string;
+  agentPurchaseLabel?: string;
+  onWatch?: () => void;
+  onBuy?: () => void;
+  onGate?: () => void;
+  onOpenFreedom?: () => void;
+  onCopyLink?: () => void;
+  onVerifyAge?: () => void;
+}
 
 // Spec-aligned song content (from specs/domain/post.md, asset.md, marketplace.md)
 export interface SongContentSpec {
@@ -120,6 +172,21 @@ export interface LinkSummaryContent {
   keyPoints?: string[];
 }
 
+export type CrosspostSourceStatus = "available" | "deleted" | "removed" | "unavailable";
+
+export interface CrosspostSourcePreview {
+  status: CrosspostSourceStatus;
+  communityLabel: string;
+  communityHref?: string;
+  authorLabel?: string;
+  authorHref?: string;
+  postType?: "text" | "image" | "video" | "link" | "song";
+  title?: string;
+  postHref?: string;
+  thumbnailAlt?: string;
+  thumbnailSrc?: string;
+}
+
 export type PostCardContent =
   | {
       type: "text";
@@ -157,6 +224,10 @@ export type PostCardContent =
       summary?: LinkSummaryContent | null;
       summaryDir?: "ltr" | "rtl" | "auto";
       summaryLang?: string;
+    }
+  | {
+      type: "crosspost";
+      source: CrosspostSourcePreview;
     }
   | {
       type: "embed";
@@ -213,6 +284,7 @@ export type PostCardContent =
       } | null;
       oembedHtml?: string | null;
     }
+  | LiveRoomContentSpec
   | SongContentSpec;
 
 export type PostCardMenuItem = ActionMenuItem;

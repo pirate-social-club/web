@@ -606,6 +606,25 @@ export function toCommunityPostContent(
   const title = opts?.preferOriginalText ? (post.title ?? "Untitled post") : (translated_title ?? post.title ?? "Untitled post");
 
   switch (post.post_type) {
+    case "crosspost": {
+      const source = post.crosspost_source;
+      return {
+        type: "crosspost",
+        source: {
+          status: source?.status ?? "unavailable",
+          communityLabel: source?.community_label
+            ? `c/${source.community_label}`
+            : source?.community ?? "Source community",
+          communityHref: source?.community ? buildCommunityPath(source.community, source.community_route_slug ?? undefined) : undefined,
+          authorLabel: source?.author_label ?? undefined,
+          postHref: source?.post ? `/p/${source.post}` : undefined,
+          postType: source?.post_type ?? undefined,
+          thumbnailAlt: source?.title ?? undefined,
+          thumbnailSrc: source?.thumbnail_ref ?? undefined,
+          title: source?.title ?? undefined,
+        },
+      };
+    }
     case "image": {
       const aspectRatio = typeof imageMedia?.width === "number" && typeof imageMedia?.height === "number" && imageMedia.height > 0
         ? imageMedia.width / imageMedia.height

@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { LocalizedPostResponse } from "@pirate/api-contracts";
 
-import { toCommunityPostContent } from "@/app/authenticated-helpers/post-presentation";
+import {
+  resolveLocalizedLinkTitle,
+  toCommunityPostContent,
+} from "@/app/authenticated-helpers/post-presentation";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 
 const originalDateNow = Date.now;
@@ -48,6 +51,55 @@ function createAnchoredLivePost(): LocalizedPostResponse {
     machine_translated: false,
     resolved_locale: "en",
     source_hash: "src_live_room",
+    thread_snapshot: null,
+    translated_body: null,
+    translated_caption: null,
+    translated_title: null,
+    translation_state: "same_language",
+    upvote_count: 0,
+    viewer_reaction_kinds: [],
+    viewer_vote: null,
+  } as unknown as LocalizedPostResponse;
+}
+
+function createLinkPost(overrides: Partial<LocalizedPostResponse["post"]> = {}): LocalizedPostResponse {
+  return {
+    post: {
+      access_mode: null,
+      age_gate_policy: "none",
+      analysis_state: "allow",
+      anonymous_label: null,
+      anonymous_scope: null,
+      asset: null,
+      author_user: "usr_author",
+      authorship_mode: "human_direct",
+      body: "Read this.",
+      caption: null,
+      community: "cmt_links",
+      content_safety_state: "safe",
+      created: unixTimestamp("2026-05-16T09:00:00.000Z"),
+      disclosed_qualifiers_json: null,
+      embeds: [],
+      id: "pst_link",
+      identity_mode: "public",
+      link_enrichment: null,
+      link_og_image_url: null,
+      link_og_title: null,
+      link_url: "https://example.com/story",
+      media_refs: [],
+      object: "post",
+      post_type: "link",
+      source_language: "en",
+      status: "published",
+      title: "Story",
+      visibility: "public",
+      ...overrides,
+    },
+    downvote_count: 0,
+    like_count: 0,
+    machine_translated: false,
+    resolved_locale: "en",
+    source_hash: "src_link",
     thread_snapshot: null,
     translated_body: null,
     translated_caption: null,
@@ -166,5 +218,39 @@ describe("post presentation live rooms", () => {
     if (content.type !== "live_room") return;
     expect(content.accessMode).toBe("gated");
     expect(content.accessState).toBe("gate_required");
+  });
+});
+
+describe("post presentation links", () => {
+  test("detects X links without server-side embed enrichment", () => {
+    const content = toCommunityPostContent(createLinkPost({
+      link_url: "https://twitter.com/pirate/status/1234567890",
+    }));
+
+    expect(content.type).toBe("embed");
+    if (content.type !== "embed") return;
+    expect(content.provider).toBe("x");
+    expect(content.canonicalUrl).toBe("https://x.com/pirate/status/1234567890");
+  });
+
+  test("falls back to translated post title when link enrichment is not translated", () => {
+    const post = {
+      ...createLinkPost({
+      link_enrichment: {
+        source_language: "ja",
+        title: "日本語のタイトル",
+      },
+      source_language: "ja",
+      title: "日本語の投稿",
+    }),
+      translated_title: "English fallback",
+      translation_state: "ready" as const,
+    };
+
+    const title = resolveLocalizedLinkTitle(post, {
+      viewerContentLocale: "en",
+    });
+
+    expect(title.title).toBe("English fallback");
   });
 });

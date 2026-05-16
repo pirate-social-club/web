@@ -10,7 +10,6 @@ import { toCommunityFeedItem } from "@/app/authenticated-route-renderer";
 import { navigate } from "@/app/router";
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { useCommunityFeedPosts } from "@/app/authenticated-data/community-feed-data";
-import { submitOptimisticPostVote, updateCommunityPostVote } from "@/app/authenticated-helpers/post-vote";
 import { type FeedSort } from "@/components/compositions/posts/feed/feed";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
@@ -30,6 +29,9 @@ import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canoni
 import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationRequirementsForGates, isJoinCtaActionable } from "@/lib/identity-gates";
 import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
+import { useCommunityFollow } from "@/hooks/use-community-follow";
+import { useCommunityMembershipActions } from "@/hooks/use-community-membership-actions";
+import { useCommunityVoteAction } from "@/hooks/use-community-vote-action";
 import { forgetKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
@@ -43,29 +45,10 @@ import { buildCommunityPreviewSidebar } from "@/lib/community-sidebar-helpers";
 import { buildFeedSortOptions } from "@/lib/feed-sort-options";
 import { CommunityRouteLoadingState } from "./route-loading-states";
 import { useCommunityJoinVerification } from "./authenticated-state/use-community-join-verification";
-
-const HANDLE_CLAIM_DISMISSAL_PREFIX = "pirate:handle-claim-dismissed:";
-
-function communityHandleClaimDismissalKey(communityId: string): string {
-  return `${HANDLE_CLAIM_DISMISSAL_PREFIX}${communityId}`;
-}
-
-function readHandleClaimDismissed(communityId: string): boolean {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(communityHandleClaimDismissalKey(communityId)) === "1";
-}
-
-function writeHandleClaimDismissed(communityId: string): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(communityHandleClaimDismissalKey(communityId), "1");
-}
-
-function communityHandleFromRouteLabel(routeLabel: string): string {
-  return routeLabel
-    .replace(/^c\//u, "")
-    .replace(/^@/u, "")
-    || "community";
-}
+import {
+  communityHandleFromRouteLabel,
+  useCommunityHandleClaimDismissal,
+} from "@/lib/community-handle-claim-dismissal";
 
 function usePublicCommunityPageData(communityId: string, localeTag: string, activeSort: FeedSort, hasSession: boolean) {
   const api = useApi();
@@ -252,21 +235,12 @@ export function PublicCommunityRoutePage({
   const hasSession = Boolean(session?.accessToken);
   const { authorProfiles, error, posts, postsLoading, preview, previewLoading, setPosts } = usePublicCommunityPageData(communityId, contentLocale, activeSort, hasSession);
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
-  const [followLoading, setFollowLoading] = React.useState(false);
-  const [viewerFollowing, setViewerFollowing] = React.useState(false);
-  const [followerCount, setFollowerCount] = React.useState<number | null>(null);
   const [memberCount, setMemberCount] = React.useState<number | null>(null);
-  const [joinRequestModalOpen, setJoinRequestModalOpen] = React.useState(false);
-  const [joinRequestSubmitting, setJoinRequestSubmitting] = React.useState(false);
-  const [joinRequestError, setJoinRequestError] = React.useState<string | null>(null);
-  const [proofOfWorkModalOpen, setProofOfWorkModalOpen] = React.useState(false);
-  const [handleClaimModalOpen, setHandleClaimModalOpen] = React.useState(false);
   const { gateModal, invalidateCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: contentLocale,
     routeKind: "public-community",
     uiLocale: locale,
   });
-  const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const { connectedWallets } = usePiratePrivyWallets({
     enabled: Boolean(session?.user?.id),
   });
@@ -277,6 +251,8 @@ export function PublicCommunityRoutePage({
     primaryWalletAddress: session?.profile.primary_wallet_address,
     settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
   });
+  const handleClaimCommunityId = preview?.id ?? communityId;
+  const handleClaimDismissal = useCommunityHandleClaimDismissal(handleClaimCommunityId);
   const {
     startVerification: startVeryVerification,
     verificationLoading: veryLoading,
@@ -313,12 +289,6 @@ export function PublicCommunityRoutePage({
     storageKey: `pirate_pending_self_join_session:${communityId}`,
     verificationIntent: "community_join",
   });
-  const handleVerifyAge = React.useCallback(() => {
-    void startSelfVerificationFlow({
-      requestedCapabilities: ["age_over_18"],
-      unavailableMessage: "Age verification is required to view 18+ content.",
-    });
-  }, [startSelfVerificationFlow]);
 
   React.useEffect(() => {
     if (veryError) {
@@ -340,10 +310,8 @@ export function PublicCommunityRoutePage({
   }, [disableCanonicalRouteReplace, isImportedRoot, preview?.id, preview?.route_slug]);
 
   React.useEffect(() => {
-    setViewerFollowing(Boolean(preview?.viewer_following));
-    setFollowerCount(preview?.follower_count ?? null);
     setMemberCount(preview?.member_count ?? null);
-  }, [preview?.id, preview?.follower_count, preview?.member_count, preview?.viewer_following]);
+  }, [preview?.id, preview?.member_count]);
 
   const refetchEligibility = React.useCallback(async () => {
     const nextEligibility = await api.communities.getJoinEligibility(preview?.id ?? communityId);
@@ -367,42 +335,6 @@ export function PublicCommunityRoutePage({
       });
     return () => { cancelled = true; };
   }, [api.communities, preview?.id, session]);
-
-  const markViewerJoined = React.useCallback(() => {
-    setViewerFollowing((current) => {
-      if (!current) {
-        setFollowerCount((count) => typeof count === "number" ? count + 1 : count);
-      }
-      return true;
-    });
-    setMemberCount((count) => typeof count === "number" ? count + 1 : count);
-  }, []);
-
-  const maybeOpenHandleClaimModal = React.useCallback(async () => {
-    const resolvedCommunityId = preview?.id ?? communityId;
-    if (
-      !session?.user?.id ||
-      readHandleClaimDismissed(resolvedCommunityId)
-    ) {
-      return;
-    }
-
-    try {
-      const status = await api.communities.getHandleStatus(resolvedCommunityId);
-      if (!status.available) {
-        return;
-      }
-      const current = await api.communities.getMyHandle(resolvedCommunityId);
-      if (!current.handle) {
-        setHandleClaimModalOpen(true);
-      }
-    } catch (nextError) {
-      toast.error(getErrorMessage(nextError, "Could not check community names."));
-    }
-  }, [api.communities, communityId, preview?.id, session?.user?.id]);
-  const previousEligibilityStatusRef = React.useRef<ApiJoinEligibility["status"] | null>(
-    eligibility?.status ?? null,
-  );
 
   const requestAuth = React.useCallback((fallbackMessage: string) => {
     if (!isCanonicalAuthOrigin()) {
@@ -429,6 +361,43 @@ export function PublicCommunityRoutePage({
   }, [authRuntime.connect, authRuntime.loadError, communityId, copy.publicProfile.openInPirate, preview]);
 
   const {
+    followerCount,
+    followLoading,
+    handleToggleFollow,
+    markViewerJoined: markViewerFollowJoined,
+    viewerFollowing,
+  } = useCommunityFollow({
+    communityId: preview?.id ?? communityId,
+    follow: api.communities.follow,
+    hasSession: Boolean(session),
+    initialFollowerCount: preview?.follower_count ?? null,
+    initialViewerFollowing: preview?.viewer_following,
+    onAuthRequired: () => {
+      requestAuth("Connect your wallet to follow communities.");
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Follow failed"));
+    },
+    unfollow: api.communities.unfollow,
+  });
+
+  const markViewerJoined = React.useCallback(() => {
+    markViewerFollowJoined();
+    setMemberCount((count) => typeof count === "number" ? count + 1 : count);
+  }, [markViewerFollowJoined]);
+
+  const handleVerifyAge = React.useCallback(() => {
+    if (!session) {
+      requestAuth("Connect your wallet to verify your age and view 18+ content.");
+      return;
+    }
+    void startSelfVerificationFlow({
+      requestedCapabilities: ["age_over_18"],
+      unavailableMessage: "Age verification is required to view 18+ content.",
+    });
+  }, [session, requestAuth, startSelfVerificationFlow]);
+
+  const {
     altchaAction,
     altchaPayload,
     altchaRequired,
@@ -453,23 +422,40 @@ export function PublicCommunityRoutePage({
     onJoined: markViewerJoined,
     refetchEligibility,
   });
+  const {
+    handleClaimModalOpen,
+    handleClaimModalOpenChange,
+    handleClaimNotNow,
+    handleJoinRequestModalOpenChange,
+    handleJoinRequestSubmit,
+    handlePrimaryJoinAction,
+    joinRequestError,
+    joinRequestModalOpen,
+    joinRequestSubmitting,
+    proofOfWorkModalOpen,
+    setProofOfWorkModalOpen,
+  } = useCommunityMembershipActions({
+    altchaPayload,
+    altchaRequired,
+    communityId,
+    eligibility,
+    handleClaim,
+    handleClaimApi: api.communities,
+    handleClaimCommunityId,
+    handleClaimDismissal,
+    handleJoin,
+    onAuthRequired: () => {
+      requestAuth("Connect your wallet to join communities.");
+    },
+    onHandleClaimCheckError: (error) => {
+      toast.error(getErrorMessage(error, "Could not check community names."));
+    },
+    sessionUserId: session?.user?.id,
+  });
 
   React.useEffect(() => {
     if (joinError) toast.error(joinError);
   }, [joinError]);
-
-  React.useEffect(() => {
-    const previousStatus = previousEligibilityStatusRef.current;
-    const nextStatus = eligibility?.status ?? null;
-    previousEligibilityStatusRef.current = nextStatus;
-    if (
-      previousStatus &&
-      previousStatus !== "already_joined" &&
-      nextStatus === "already_joined"
-    ) {
-      void maybeOpenHandleClaimModal();
-    }
-  }, [eligibility?.status, maybeOpenHandleClaimModal]);
 
   const interactionCopy = React.useMemo(
     () => ({
@@ -533,27 +519,13 @@ export function PublicCommunityRoutePage({
     ],
   );
 
-  const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
-    const previousPost = posts.find((candidate) => candidate.post.id === postId);
-    if (!previousPost) return;
-    await runGatedCommunityAction({
-      action: "vote_post",
-      buildBlockedModalState: buildBlockedModalState ?? undefined,
-      communityId: previousPost.post.community,
-      onAllowed: async () => {
-        await submitOptimisticPostVote({
-          direction,
-          onApply: (nextValue) => setPosts((current) => updateCommunityPostVote(current, postId, nextValue)),
-          onRollback: (restoredPost) => setPosts((current) => current.map((post) => post.post.id === postId ? restoredPost : post)),
-          postId,
-          previousPost,
-          requestIdsRef: voteRequestIdsRef,
-          vote: api.posts.vote,
-        });
-      },
-      postId,
-    });
-  }, [api.posts.vote, buildBlockedModalState, posts, runGatedCommunityAction, setPosts]);
+  const voteOnPost = useCommunityVoteAction({
+    buildBlockedModalState: buildBlockedModalState ?? undefined,
+    posts,
+    runGatedCommunityAction,
+    setPosts,
+    vote: api.posts.vote,
+  });
 
   if (previewLoading && !preview) {
     return <CommunityRouteLoadingState />;
@@ -575,97 +547,6 @@ export function PublicCommunityRoutePage({
     return <PublicCommunityNotFound communityId={communityId} />;
   }
 
-  const handleToggleFollow = async () => {
-    if (followLoading) {
-      return;
-    }
-
-    if (!session) {
-      logger.info("[community-follow] blocked follow without session", {
-        communityId: preview.id,
-      });
-      requestAuth("Connect your wallet to follow communities.");
-      return;
-    }
-
-    setFollowLoading(true);
-    const previousFollowing = viewerFollowing;
-    const nextFollowing = !viewerFollowing;
-    logger.info("[community-follow] submit", {
-      communityId: preview.id,
-      previousFollowing,
-      nextFollowing,
-      followerCount,
-    });
-    setViewerFollowing(nextFollowing);
-    setFollowerCount((count) => {
-      if (typeof count !== "number") return count;
-      return Math.max(0, count + (nextFollowing ? 1 : -1));
-    });
-
-    try {
-      const result = nextFollowing
-        ? await api.communities.follow(preview.id)
-        : await api.communities.unfollow(preview.id);
-      logger.info("[community-follow] saved", {
-        communityId: preview.id,
-        following: result.following,
-        followerCount: result.follower_count,
-      });
-      setViewerFollowing(result.following);
-      setFollowerCount(result.follower_count ?? null);
-    } catch (nextError: unknown) {
-      logger.warn("[community-follow] failed", {
-        communityId: preview.id,
-        attemptedFollowing: nextFollowing,
-        error: nextError,
-      });
-      setViewerFollowing(previousFollowing);
-      setFollowerCount(preview.follower_count ?? null);
-      toast.error(getErrorMessage(nextError, "Follow failed"));
-    } finally {
-      setFollowLoading(false);
-    }
-  };
-
-  const handlePrimaryJoinAction = async () => {
-    if (!session) {
-      requestAuth("Connect your wallet to join communities.");
-      return;
-    }
-    if (eligibility?.status === "requestable") {
-      setJoinRequestError(null);
-      setJoinRequestModalOpen(true);
-      return;
-    }
-    if (altchaRequired && !altchaPayload) {
-      setProofOfWorkModalOpen(true);
-      return;
-    }
-    const result = await handleJoin();
-    if (result === "joined") {
-      await maybeOpenHandleClaimModal();
-    }
-  };
-
-  const handleJoinRequestSubmit = async (note: string) => {
-    setJoinRequestSubmitting(true);
-    setJoinRequestError(null);
-    try {
-      const result = await handleJoin({ note });
-      if (result === "requested" || result === "joined") {
-        setJoinRequestModalOpen(false);
-        if (result === "joined") {
-          await maybeOpenHandleClaimModal();
-        }
-      } else if (result === "failed") {
-        setJoinRequestError("Could not submit your request. Try again.");
-      }
-    } finally {
-      setJoinRequestSubmitting(false);
-    }
-  };
-
   const joinActionLabel = resolvePublicCommunityJoinActionLabel(eligibility, locale);
   const joinActionDisabled = Boolean(session) && (
     !eligibility
@@ -676,16 +557,6 @@ export function PublicCommunityRoutePage({
     preview.route_slug ?? communityId,
   );
   const communityHandleLabel = communityHandleFromRouteLabel(routeLabel);
-  const handleClaimModalOpenChange = (open: boolean) => {
-    setHandleClaimModalOpen(open);
-    if (!open && handleClaim.phase !== "success") {
-      writeHandleClaimDismissed(preview.id);
-    }
-  };
-  const handleClaimNotNow = () => {
-    writeHandleClaimDismissed(preview.id);
-    setHandleClaimModalOpen(false);
-  };
   const canCreatePost = Boolean(session?.user?.id)
     && (preview.viewer_membership_status === "member" || eligibility?.status === "already_joined");
   const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
@@ -741,7 +612,7 @@ export function PublicCommunityRoutePage({
       <CommunityJoinRequestModal
         communityName={preview.display_name}
         error={joinRequestError}
-        onOpenChange={setJoinRequestModalOpen}
+        onOpenChange={handleJoinRequestModalOpenChange}
         onSubmit={handleJoinRequestSubmit}
         open={joinRequestModalOpen}
         submitting={joinRequestSubmitting || joinLoading}

@@ -42,7 +42,7 @@ session continuity.
 ### B. Identity verification information
 
 If you use identity-gated features, we may process identity verification information returned
-through Self.xyz or related verification flows, including:
+through Self.xyz, VeryAI palm verification, or related verification flows, including:
 
 - verification session identifiers
 - verification status
@@ -50,6 +50,7 @@ through Self.xyz or related verification flows, including:
 - nationality or country-related verification attributes
 - attestation identifiers, proof hashes, and verification timestamps
 - identity nullifier or similar anti-fraud identifiers
+- VeryAI user identifiers or app-scoped palm verification identifiers returned after a palm scan
 
 We use this information to determine eligibility for certain features, pricing tiers, fraud
 prevention, compliance, and safety controls.
@@ -163,6 +164,7 @@ processors such as:
 
 - Cloudflare for application hosting, workers, caching, and storage infrastructure
 - Self.xyz for identity verification workflows
+- VeryAI for palm biometric enrollment and verification workflows
 - Agora for live audio/video or voice session infrastructure
 - AI/LLM and speech vendors such as Groq, OpenRouter, Mistral, ElevenLabs, and Honcho
 - storage and content distribution providers such as Filebase, IPFS, and Arweave-related services

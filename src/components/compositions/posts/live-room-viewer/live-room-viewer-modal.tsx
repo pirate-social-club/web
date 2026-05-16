@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { IAgoraRTCClient, IAgoraRTCRemoteUser } from "agora-rtc-sdk-ng";
-import { Broadcast, VideoCameraSlash } from "@phosphor-icons/react";
+import { Broadcast, ArrowsOut, VideoCameraSlash } from "@phosphor-icons/react";
 
 import type { ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 import { Button } from "@/components/primitives/button";
@@ -26,6 +26,18 @@ type LiveRoomViewerModalProps = {
   onRenew?: (uid: number) => Promise<ApiLiveRoomViewerAttachResponse | null>;
 };
 
+type LiveRoomViewerSurfaceProps = {
+  attachResponse: ApiLiveRoomViewerAttachResponse | null;
+  className?: string;
+  contentClassName?: string;
+  footer?: React.ReactNode;
+  open: boolean;
+  showDetails?: boolean;
+  title: string;
+  videoClassName?: string;
+  onRenew?: (uid: number) => Promise<ApiLiveRoomViewerAttachResponse | null>;
+};
+
 const TOKEN_RENEW_LEAD_MS = 120_000;
 const TOKEN_RENEW_RETRY_MS = 15_000;
 const MIN_TOKEN_RENEW_DELAY_MS = 5_000;
@@ -46,6 +58,37 @@ export function LiveRoomViewerModal({
   onOpenChange,
   onRenew,
 }: LiveRoomViewerModalProps) {
+  return (
+    <Modal onOpenChange={onOpenChange} open={open}>
+      <ModalContent className="p-0 max-w-3xl" mobileSide="bottom">
+        <LiveRoomViewerSurface
+          attachResponse={attachResponse}
+          footer={(
+            <Button onClick={() => onOpenChange(false)} variant="outline">
+              Close
+            </Button>
+          )}
+          onRenew={onRenew}
+          open={open}
+          title={title}
+        />
+      </ModalContent>
+    </Modal>
+  );
+}
+
+export function LiveRoomViewerSurface({
+  attachResponse,
+  className,
+  contentClassName,
+  footer,
+  open,
+  showDetails = true,
+  title,
+  videoClassName,
+  onRenew,
+}: LiveRoomViewerSurfaceProps) {
+  const videoWrapperRef = React.useRef<HTMLDivElement | null>(null);
   const videoContainerRef = React.useRef<HTMLDivElement | null>(null);
   const clientRef = React.useRef<IAgoraRTCClient | null>(null);
   const renewingRef = React.useRef(false);
@@ -53,6 +96,7 @@ export function LiveRoomViewerModal({
   const [error, setError] = React.useState<string | null>(null);
   const [hasVideo, setHasVideo] = React.useState(false);
   const [tokenExpiresAt, setTokenExpiresAt] = React.useState<number | null>(null);
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
   const agora = attachResponse?.agora ?? null;
 
   React.useEffect(() => {
@@ -196,40 +240,68 @@ export function LiveRoomViewerModal({
     };
   }, [agora?.configured, agora?.uid, onRenew, open, tokenExpiresAt]);
 
-  return (
-    <Modal onOpenChange={onOpenChange} open={open}>
-      <ModalContent className="max-w-3xl p-0" mobileSide="bottom">
-        <div className="flex flex-col">
-          <div className="relative aspect-video w-full overflow-hidden rounded-t-lg bg-black">
-            <div ref={videoContainerRef} className={cn("size-full", !hasVideo && "hidden")} />
-            {!hasVideo ? (
-              <div className="absolute inset-0 grid place-items-center px-6 text-center text-white">
-                <div className="space-y-3">
-                  {status === "unavailable" ? (
-                    <VideoCameraSlash className="mx-auto size-10 opacity-80" />
-                  ) : (
-                    <Broadcast className="mx-auto size-10 opacity-80" />
-                  )}
-                  <p className="text-base font-medium">{statusText(status)}</p>
-                  {error ? <p className="text-base text-white/70">{error}</p> : null}
-                </div>
-              </div>
-            ) : null}
-          </div>
+  const handleToggleFullscreen = React.useCallback(() => {
+    const el = videoWrapperRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      void el.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      void document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }, []);
 
-          <div className="space-y-4 p-5">
-            <ModalHeader className="space-y-1 text-start">
-              <ModalTitle>{title}</ModalTitle>
-              <ModalDescription>{statusText(status)}</ModalDescription>
-            </ModalHeader>
-            <ModalFooter>
-              <Button onClick={() => onOpenChange(false)} variant="outline">
-                Close
-              </Button>
-            </ModalFooter>
+  React.useEffect(() => {
+    function onChange() {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    }
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  return (
+    <div className={cn("flex min-h-0 flex-col bg-black text-white", isFullscreen && "h-dvh", className)}>
+      <div
+        ref={videoWrapperRef}
+        className={cn(
+          "relative aspect-video w-full overflow-hidden rounded-t-lg bg-black",
+          !showDetails && "min-h-0 flex-1 rounded-none",
+          videoClassName,
+        )}
+      >
+        <div ref={videoContainerRef} className={cn("size-full", !hasVideo && "hidden")} />
+        {!hasVideo ? (
+          <div className="absolute inset-0 grid place-items-center px-6 text-center text-white">
+            <div className="space-y-3">
+              {status === "unavailable" ? (
+                <VideoCameraSlash className="mx-auto size-10 opacity-80" />
+              ) : (
+                <Broadcast className="mx-auto size-10 opacity-80" />
+              )}
+              <p className="text-base font-medium">{statusText(status)}</p>
+              {error ? <p className="text-base text-white/70">{error}</p> : null}
+            </div>
           </div>
+        ) : null}
+        {hasVideo ? (
+          <button
+            className="absolute right-3 top-3 grid size-9 place-items-center rounded-md bg-black/60 text-white transition-colors hover:bg-black/80"
+            onClick={handleToggleFullscreen}
+            type="button"
+          >
+            <ArrowsOut className="size-5" weight="bold" />
+          </button>
+        ) : null}
+      </div>
+
+      {showDetails ? (
+        <div className={cn("space-y-4 bg-background p-5 text-foreground", contentClassName)}>
+          <ModalHeader className="space-y-1 text-start">
+            <ModalTitle>{title}</ModalTitle>
+            <ModalDescription>{statusText(status)}</ModalDescription>
+          </ModalHeader>
+          {footer ? <ModalFooter>{footer}</ModalFooter> : null}
         </div>
-      </ModalContent>
-    </Modal>
+      ) : null}
+    </div>
   );
 }

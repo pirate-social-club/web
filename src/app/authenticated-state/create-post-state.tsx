@@ -4,7 +4,7 @@ import * as React from "react";
 import type { Community as ApiCommunity, CommunityPreview as ApiCommunityPreview, SongArtifactBundle as ApiSongArtifactBundle, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
-import type { CreatePostRequest, Post as ApiCreatedPost } from "@pirate/api-contracts";
+import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
@@ -21,18 +21,22 @@ import type {
   ComposerReference,
   ComposerAudienceState,
   LiveComposerState,
-  LiveSetlistItemKind,
   RegionalPricingPreview,
-  VideoComposerState,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
-import type { ApiCreateLiveRoomRequest, ApiDerivativeSource, ApiLiveRoomRightsBasis } from "@/lib/api/client-api-types";
+import type { ApiDerivativeSource } from "@/lib/api/client-api-types";
 import { isValidHttpUrl, normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
 import { extractVideoPosterFrameFile } from "@/components/compositions/posts/post-composer/video-poster-frame";
 
 import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
-import { formatQualifierLabel } from "@/app/authenticated-helpers/post-presentation";
+import { formatQualifierLabel } from "@/app/authenticated-helpers/post-identity-presentation";
 import { parseUsdInput } from "@/lib/formatting/currency";
-import { buildAssetListingRequest, buildLiveRoomListingRequest, resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
+import { resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
+import { buildBasePostRequest } from "@/app/authenticated-helpers/create-post-submit/base";
+import { submitImagePost } from "@/app/authenticated-helpers/create-post-submit/image";
+import { submitLinkPost } from "@/app/authenticated-helpers/create-post-submit/link";
+import { submitLiveRoom } from "@/app/authenticated-helpers/create-post-submit/live";
+import { submitTextPost } from "@/app/authenticated-helpers/create-post-submit/text";
+import { submitVideoPost } from "@/app/authenticated-helpers/create-post-submit/video";
 import { useSongSubmit } from "./use-song-submit";
 import { buildAnonymousLabel } from "@/lib/anonymous-label";
 import {
@@ -56,29 +60,6 @@ type AvailableSigningAgent = {
 };
 
 const MAX_VIDEO_POSTER_FRAME_WIDTH = 1920;
-
-function liveRightsBasisFromPerformanceKind(kind: LiveSetlistItemKind): ApiLiveRoomRightsBasis {
-  if (kind === "original") return "original";
-  if (kind === "cover") return "cover";
-  return "unknown";
-}
-
-function eventStartFromScheduleAt(scheduleAt: string | undefined): number | null {
-  const value = scheduleAt?.trim();
-  if (!value) return null;
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? Math.floor(timestamp / 1000) : null;
-}
-
-function liveSetlistSongArtifactBundleId(declaredTrackId: string | undefined): string | undefined {
-  const value = declaredTrackId?.trim();
-  return value?.startsWith("sab_") ? value : undefined;
-}
-
-function liveSetlistSourceAssetRef(declaredTrackId: string | undefined): string | undefined {
-  const value = declaredTrackId?.trim();
-  return value?.startsWith("story:asset:") ? value : undefined;
-}
 
 function sameUserId(left: string | null | undefined, right: string | null | undefined): boolean {
   if (!left || !right) return false;
@@ -119,50 +100,14 @@ export function derivativeSourceToComposerReference(source: ApiDerivativeSource)
   };
 }
 
+export { buildLiveRoomRequest } from "@/app/authenticated-helpers/create-post-submit/live";
+
 function canSubmitLiveRoom(liveState: LiveComposerState, title: string): boolean {
   if (!title.trim()) return false;
   if (liveState.roomKind === "duet" && !liveState.guestUserId?.trim()) return false;
   if (liveState.setlistItems.length === 0) return false;
   if (liveState.setlistItems.some((item) => !item.titleText.trim())) return false;
   return liveState.performerAllocations.reduce((sum, allocation) => sum + allocation.sharePct, 0) === 100;
-}
-
-export function buildLiveRoomRequest(input: {
-  coverRef?: string | null;
-  description: string;
-  hostUserId: string;
-  liveState: LiveComposerState;
-  title: string;
-}): ApiCreateLiveRoomRequest {
-  const guestUserId = input.liveState.roomKind === "duet"
-    ? input.liveState.guestUserId?.trim() || null
-    : null;
-  return {
-    title: input.title.trim(),
-    description: input.description.trim() || undefined,
-    room_kind: input.liveState.roomKind,
-    access_mode: input.liveState.accessMode,
-    visibility: input.liveState.visibility,
-    guest_user: guestUserId,
-    event_start_at: eventStartFromScheduleAt(input.liveState.scheduleAt),
-    cover_ref: input.coverRef ?? undefined,
-    performer_allocations: input.liveState.performerAllocations.map((allocation) => ({
-      user: allocation.role === "host" ? input.hostUserId : allocation.userId.trim() || guestUserId,
-      role: allocation.role,
-      share_bps: Math.round(allocation.sharePct * 100),
-    })),
-    setlist: {
-      status: "ready",
-      items: input.liveState.setlistItems.map((item) => ({
-        song_artifact_bundle: liveSetlistSongArtifactBundleId(item.declaredTrackId),
-        source_asset_ref: liveSetlistSourceAssetRef(item.declaredTrackId),
-        title: item.titleText.trim(),
-        artist: item.artistText?.trim() || undefined,
-        rights_basis: liveRightsBasisFromPerformanceKind(item.performanceKind),
-        rights_status: "pending",
-      })),
-    },
-  };
 }
 
 async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<AvailableSigningAgent | null> {
@@ -660,20 +605,6 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const postAltchaRequired = !hasCommunityPostingRole
     && (community?.membership_gate_summaries ?? []).some((gate) => gate.gate_type === "altcha_pow");
   const postAltchaRequestOptions = postAltchaPayload ? { altchaPayload: postAltchaPayload } : undefined;
-  const uploadVideoArtifact = React.useCallback(async (video: VideoComposerState) => {
-    const file = video.primaryVideoUpload;
-    if (!file) {
-      throw new Error("Choose a video before creating this post.");
-    }
-    const intent = await api.communities.createArtifactUpload(communityId, {
-      artifact_kind: "primary_video",
-      mime_type: file.type,
-      filename: file.name,
-      size_bytes: file.size,
-    });
-    return await api.communities.uploadArtifactContent(communityId, intent.id, await file.arrayBuffer());
-  }, [api.communities, communityId]);
-
   const handleSubmit = React.useCallback(async () => {
     logger.info("[create-post] publish clicked", {
       canPost: submitState.canPost,
@@ -761,53 +692,24 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         }
         result = songResult;
       } else if (composerMode === "live") {
-        if (!session?.user.id) {
-          throw new Error("Sign in before creating a live room.");
-        }
         logger.info("[create-post] creating live room", {
           accessMode: liveState.accessMode,
           roomKind: liveState.roomKind,
           setlistItems: liveState.setlistItems.length,
         });
-        let coverRef: string | null = null;
-        if (liveState.coverUpload) {
-          const uploadedCover = await api.communities.uploadMedia({
-            kind: "post_image",
-            file: liveState.coverUpload,
-          });
-          coverRef = uploadedCover.media_ref;
-        }
-        const roomRequest = buildLiveRoomRequest({
-          coverRef,
+        const liveRoom = await submitLiveRoom({
+          communityId,
+          createLiveRoom: api.communities.createLiveRoom,
           description: body,
-          hostUserId: session.user.id,
+          hostUserId: session?.user.id,
           liveState,
+          paidLiveRoomPriceUsd: paidAssetPriceUsd,
+          pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
+          publishLiveRoom: api.communities.publishLiveRoom,
+          regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
           title,
+          uploadMedia: api.communities.uploadMedia,
         });
-        const liveRoom = await (async () => {
-          if (liveState.accessMode !== "paid") {
-            return await api.communities.createLiveRoom(communityId, roomRequest);
-          }
-          const listingRequest = buildLiveRoomListingRequest({
-            liveRoomId: null,
-            paidLiveRoomPriceUsd: paidAssetPriceUsd,
-            pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
-            regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
-          });
-          if (!listingRequest) throw new Error("Build a paid listing payload before publishing this live room.");
-          logger.info("[create-post] publishing paid live room", {
-            accessMode: liveState.accessMode,
-          });
-          const published = await api.communities.publishLiveRoom(communityId, {
-            room: roomRequest,
-            listing: listingRequest,
-          });
-          logger.info("[create-post] paid live room published", {
-            liveRoomId: published.room.id,
-            listingId: published.listing.id,
-          });
-          return published.room;
-        })();
         logger.info("[create-post] live room created", {
           anchorPostId: liveRoom.anchor_post,
           liveRoomId: liveRoom.id,
@@ -815,167 +717,105 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         publishedPostId = liveRoom.anchor_post;
         publishedPostType = "live";
       } else if (composerMode === "image") {
-        if (!imageUpload) throw new Error("Choose an image before creating this post.");
-        logger.info("[create-post] uploading image media", {
-          filename: imageUpload.name,
-          sizeBytes: imageUpload.size,
+        logger.info("[create-post] creating image post", {
+          filename: imageUpload?.name,
+          sizeBytes: imageUpload?.size,
         });
-        const uploadedImage = await api.communities.uploadMedia({
-          kind: "post_image",
-          file: imageUpload,
-        });
-        logger.info("[create-post] image uploaded", { mediaRef: uploadedImage.media_ref });
-        const imageRequest: CreatePostRequest = {
-          idempotency_key: crypto.randomUUID(),
-          post_type: "image" as const,
-          identity_mode: resolvedIdentityMode,
-          anonymous_scope: anonymousScope,
-          disclosed_qualifier_ids: disclosedQualifierIds,
-          translation_policy: "machine_allowed",
-          title: title.trim(),
-          caption: caption.trim() || undefined,
-          media_refs: [{
-            storage_ref: uploadedImage.media_ref,
-            mime_type: uploadedImage.mime_type,
-            size_bytes: uploadedImage.size_bytes,
-          }],
-          visibility: audience.visibility,
-        };
-        logger.info("[create-post] creating image post");
-        result = await api.communities.createPost(
+        result = await submitImagePost({
+          altchaOptions: postAltchaRequestOptions,
+          authorMode,
+          baseRequest: buildBasePostRequest({
+            anonymousScope,
+            disclosedQualifierIds,
+            idempotencyKey: crypto.randomUUID(),
+            identityMode: resolvedIdentityMode,
+            visibility: audience.visibility,
+          }),
+          caption,
           communityId,
-          authorMode === "agent"
-            ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, imageRequest)
-            : imageRequest,
-          postAltchaRequestOptions,
-        );
+          createPost: api.communities.createPost,
+          file: imageUpload,
+          signAgentAuthoredBody,
+          title,
+          uploadMedia: api.communities.uploadMedia,
+        });
       } else if (composerMode === "video") {
-        logger.info("[create-post] uploading video artifact", {
+        logger.info("[create-post] creating video post", {
           filename: videoState.primaryVideoUpload?.name,
           monetized: monetizationState.visible,
           sizeBytes: videoState.primaryVideoUpload?.size,
         });
-        const uploadedVideo = await uploadVideoArtifact(videoState);
-        logger.info("[create-post] video artifact uploaded", {
-          storageRef: uploadedVideo.storage_ref,
-        });
-        logger.info("[create-post] extracting video poster frame", {
-          frameSeconds: videoState.posterFrameSeconds,
-        });
-        const posterFrame = await extractVideoPosterFrameFile(
-          videoState.primaryVideoUpload!,
-          videoState.posterFrameSeconds,
-          { maxWidth: MAX_VIDEO_POSTER_FRAME_WIDTH },
-        );
-        const uploadedPoster = await api.communities.uploadMedia({
-          kind: "post_image",
-          file: posterFrame.file,
-        });
-        logger.info("[create-post] video poster uploaded", {
-          mediaRef: uploadedPoster.media_ref,
-          posterHeight: posterFrame.height,
-          posterWidth: posterFrame.width,
-        });
-        const videoRequest: CreatePostRequest = {
-          idempotency_key: crypto.randomUUID(),
-          post_type: "video" as const,
-          identity_mode: resolvedIdentityMode,
-          anonymous_scope: anonymousScope,
-          disclosed_qualifier_ids: disclosedQualifierIds,
-          translation_policy: "machine_allowed",
-          title: title.trim(),
-          caption: caption.trim() || undefined,
-          access_mode: monetizationState.visible ? "locked" as const : undefined,
-          commercial_rev_share_pct: monetizationState.visible && license?.presetId === "commercial-remix"
-            ? license.commercialRevSharePct
-            : undefined,
-          license_preset: monetizationState.visible ? license?.presetId : undefined,
-          media_refs: [{
-            storage_ref: uploadedVideo.storage_ref,
-            mime_type: uploadedVideo.mime_type,
-            size_bytes: uploadedVideo.size_bytes,
-            content_hash: uploadedVideo.content_hash,
-            poster_ref: uploadedPoster.media_ref,
-            poster_mime_type: uploadedPoster.mime_type,
-            poster_size_bytes: uploadedPoster.size_bytes,
-            poster_width: posterFrame.width,
-            poster_height: posterFrame.height,
-            poster_frame_ms: posterFrame.frameMs,
-          }],
-          visibility: audience.visibility,
-        };
-        logger.info("[create-post] creating video post");
-        result = await api.communities.createPost(
+        result = await submitVideoPost({
+          altchaOptions: postAltchaRequestOptions,
+          authorMode,
+          baseRequest: buildBasePostRequest({
+            anonymousScope,
+            disclosedQualifierIds,
+            idempotencyKey: crypto.randomUUID(),
+            identityMode: resolvedIdentityMode,
+            visibility: audience.visibility,
+          }),
+          caption,
+          charityContributionPct: charityContribution.percentagePct,
+          charityPartnerId: charityPartner?.partnerId ?? null,
           communityId,
-          authorMode === "agent"
-            ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, videoRequest)
-            : videoRequest,
-          postAltchaRequestOptions,
-        );
+          createArtifactUpload: api.communities.createArtifactUpload,
+          createListing: api.communities.createListing,
+          createPost: api.communities.createPost,
+          extractPosterFrameFile: extractVideoPosterFrameFile,
+          license,
+          monetized: monetizationState.visible,
+          paidAssetPriceUsd,
+          posterFrameMaxWidth: MAX_VIDEO_POSTER_FRAME_WIDTH,
+          pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
+          regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
+          signAgentAuthoredBody,
+          title,
+          uploadArtifactContent: api.communities.uploadArtifactContent,
+          uploadMedia: api.communities.uploadMedia,
+          videoState,
+        });
         logger.info("[create-post] video post created", {
           assetId: result.asset,
           postId: result.id,
         });
-        if (monetizationState.visible) {
-          if (!result.asset) throw new Error("The video published, but the paid asset was not created.");
-          const listingRequest = buildAssetListingRequest({
-            assetId: result.asset,
-            paidSongPriceUsd: paidAssetPriceUsd,
-            pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
-            regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
-            charityContributionPct: charityContribution.percentagePct,
-            charityPartnerId: charityPartner?.partnerId ?? null,
-          });
-          if (!listingRequest) throw new Error("The video published, but the paid listing payload was not created.");
-          logger.info("[create-post] creating paid video listing", { assetId: result.asset });
-          await api.communities.createListing(communityId, listingRequest);
-          logger.info("[create-post] paid video listing created", { assetId: result.asset });
-        }
       } else if (composerMode === "link") {
-        const normalizedLinkUrl = normalizeHttpUrl(linkUrl);
-        if (!normalizedLinkUrl) {
-          throw new Error("Enter a valid http or https link.");
-        }
-        const linkRequest: CreatePostRequest = {
-          idempotency_key: crypto.randomUUID(),
-          post_type: "link" as const,
-          identity_mode: resolvedIdentityMode,
-          anonymous_scope: anonymousScope,
-          disclosed_qualifier_ids: disclosedQualifierIds,
-          translation_policy: "machine_allowed",
-          title: title.trim() || undefined,
-          body: body.trim() || undefined,
-          link_url: normalizedLinkUrl,
-          visibility: audience.visibility,
-        };
-        logger.info("[create-post] creating link post", { linkUrl: normalizedLinkUrl });
-        result = await api.communities.createPost(
+        logger.info("[create-post] creating link post", { linkUrl });
+        result = await submitLinkPost({
+          altchaOptions: postAltchaRequestOptions,
+          authorMode,
+          baseRequest: buildBasePostRequest({
+            anonymousScope,
+            disclosedQualifierIds,
+            idempotencyKey: crypto.randomUUID(),
+            identityMode: resolvedIdentityMode,
+            visibility: audience.visibility,
+          }),
+          body,
           communityId,
-          authorMode === "agent"
-            ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, linkRequest)
-            : linkRequest,
-          postAltchaRequestOptions,
-        );
+          createPost: api.communities.createPost,
+          linkUrl,
+          signAgentAuthoredBody,
+          title,
+        });
       } else {
-        const textRequest: CreatePostRequest = {
-          idempotency_key: crypto.randomUUID(),
-          post_type: "text" as const,
-          identity_mode: resolvedIdentityMode,
-          anonymous_scope: anonymousScope,
-          disclosed_qualifier_ids: disclosedQualifierIds,
-          translation_policy: "machine_allowed",
-          title: title.trim(),
-          body: body.trim() || undefined,
-          visibility: audience.visibility,
-        };
         logger.info("[create-post] creating text post");
-        result = await api.communities.createPost(
+        result = await submitTextPost({
+          altchaOptions: postAltchaRequestOptions,
+          authorMode,
+          baseRequest: buildBasePostRequest({
+            anonymousScope,
+            disclosedQualifierIds,
+            idempotencyKey: crypto.randomUUID(),
+            identityMode: resolvedIdentityMode,
+            visibility: audience.visibility,
+          }),
+          body,
           communityId,
-          authorMode === "agent"
-            ? await signAgentAuthoredBody(`/communities/${communityId}/posts`, textRequest)
-            : textRequest,
-          postAltchaRequestOptions,
-        );
+          createPost: api.communities.createPost,
+          signAgentAuthoredBody,
+          title,
+        });
       }
 
       setPageState((current) => ({ ...current, postAltchaPayload: null }));
@@ -1012,7 +852,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, hasCommunityPostingRole,
     identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled,
     selectedQualifierIds, session?.user.id, setDerivativeStep, setPendingSongBundleId, setSongMode, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
-    uploadVideoArtifact, videoState,
+    videoState,
   ]);
 
   const setImageUploadWithLabel = React.useCallback((file: File | null) => {

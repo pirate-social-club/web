@@ -617,6 +617,8 @@ const app = defineApp<AppRequestInfo>([
       route(`/c/:communityId/mod/${section}`, AppRoutePage)
     ),
     route("/c/:communityId", AppRoutePage),
+    route("/p/:postId/crosspost", AppRoutePage),
+    route("/p/:postId/live", AppRoutePage),
     route("/p/:postId", AppRoutePage),
     route("/inbox", AppRoutePage),
     route("/chat", AppRoutePage),

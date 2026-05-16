@@ -28,6 +28,7 @@ export type AppRoute =
   | { kind: "community"; path: string; communityId: string; isImportedRoot?: boolean }
   | { kind: "create-community"; path: "/communities/new" }
   | { kind: "post"; path: string; postId: string }
+  | { kind: "live-room"; path: string; postId: string }
   | { kind: "crosspost"; path: string; postId: string }
   | { kind: "inbox"; path: "/inbox" }
   | { kind: "chat"; path: "/chat" }
@@ -196,6 +197,14 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   if (segments.length === 3 && segments[0] === "p" && segments[2] === "crosspost") {
     return {
       kind: "crosspost",
+      path: normalized,
+      postId: decodeURIComponent(segments[1]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "p" && segments[2] === "live") {
+    return {
+      kind: "live-room",
       path: normalized,
       postId: decodeURIComponent(segments[1]),
     };

@@ -10,21 +10,25 @@ import { buildNationalityBadgeLabel } from "@/components/compositions/posts/post
 
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
 import { resolveCommunityAvatarSrc } from "@/lib/default-community-media";
+import { toCommunityPostContent } from "@/app/authenticated-helpers/post-content-presentation";
 import {
-  toCommunityPostContent,
   getPostCommentCount,
-  toViewerVote,
-  resolvePostAuthorLabel,
   resolveAgentAuthor,
   resolvePostAuthorAvatarSeed,
+  resolvePostAuthorLabel,
   resolvePostQualifierLabels,
+  toViewerVote,
+} from "@/app/authenticated-helpers/post-identity-presentation";
+import { resolveLocalizedLinkTitle } from "@/app/authenticated-helpers/post-link-presentation";
+import type {
+  PostPresentationOptions,
+  SongPresentationOptions,
+} from "@/app/authenticated-helpers/post-presentation-types";
+import {
   resolveTranslatedTextPresentation,
-  resolveLocalizedLinkTitle,
-  withTranslationToggleProps,
   canShowOriginalToggle,
-  type SongPresentationOptions,
-  type PostPresentationOptions,
-} from "@/app/authenticated-helpers/post-presentation";
+  withTranslationToggleProps,
+} from "@/app/authenticated-helpers/post-translation-presentation";
 
 export type HomeFeedEntry = ApiHomeFeedItem;
 

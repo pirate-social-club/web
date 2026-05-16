@@ -128,6 +128,14 @@ describe("public profile host routing", () => {
     });
   });
 
+  test("matches dedicated live room viewer routes", () => {
+    expectJson(matchRoute("/p/pst_cf89c73fe60641debd05c939252a870c/live"), {
+      kind: "live-room",
+      path: "/p/pst_cf89c73fe60641debd05c939252a870c/live",
+      postId: "pst_cf89c73fe60641debd05c939252a870c",
+    });
+  });
+
   test("matches settings agent routes from path routes", () => {
     expectJson(matchRoute("/settings"), {
       kind: "settings-index",

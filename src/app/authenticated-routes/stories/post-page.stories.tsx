@@ -61,7 +61,7 @@ const sidebarProps: CommunitySidebarProps = {
   ],
 };
 
-const coverSrc = "https://placehold.co/960x540/1a1a2e/e0e0e0?text=Friday+Night+Studio+Set";
+const coverSrc = "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=960&h=540&fit=crop&crop=entropy&q=80";
 
 const baseLiveRoom: LiveRoomContentSpec = {
   type: "live_room",

@@ -1,0 +1,192 @@
+import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
+
+import type { PostCardProps, SongContentSpec } from "@/components/compositions/posts/post-card/post-card.types";
+import type {
+  AssetSourceDescriptor,
+  SongPlaybackDescriptor,
+} from "@/app/authenticated-helpers/song-commerce";
+import type { SongPresentationOptions } from "@/app/authenticated-helpers/post-presentation-types";
+import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
+
+function toSongPlaybackDescriptor(
+  postResponse: ApiPost,
+  input: {
+    currentUserId?: string | null;
+    purchase?: SongPresentationOptions["purchase"];
+  },
+): SongPlaybackDescriptor | null {
+  const { post } = postResponse;
+  const mediaRef = post.media_refs?.[0]?.storage_ref ?? null;
+  const viewerOwnsPost = Boolean(input.currentUserId && post.author_user === input.currentUserId);
+  const isLocked = (post.access_mode ?? "public") === "locked";
+  const hasFullAccess = !isLocked || viewerOwnsPost || Boolean(input.purchase);
+
+  if (!isLocked && mediaRef) {
+    return {
+      key: `public:${post.id}`,
+      title: post.song_title ?? post.title ?? "song",
+      kind: "source",
+      sourcePath: mediaRef,
+      requiresAuth: false,
+    };
+  }
+
+  if (hasFullAccess && post.asset) {
+    return {
+      key: `asset:${post.asset}`,
+      title: post.song_title ?? post.title ?? "song",
+      kind: "asset",
+      communityId: post.community,
+      assetId: post.asset,
+    };
+  }
+
+  if (mediaRef) {
+    return {
+      key: `preview:${post.id}`,
+      title: post.song_title ?? post.title ?? "song preview",
+      kind: "source",
+      sourcePath: mediaRef,
+      requiresAuth: false,
+    };
+  }
+
+  return null;
+}
+
+function toVideoAssetSourceDescriptor(
+  postResponse: ApiPost,
+  input: {
+    currentUserId?: string | null;
+    purchase?: SongPresentationOptions["purchase"];
+  },
+): AssetSourceDescriptor | null {
+  const { post } = postResponse;
+  const viewerOwnsPost = Boolean(input.currentUserId && post.author_user === input.currentUserId);
+  const isLocked = (post.access_mode ?? "public") === "locked";
+  const hasFullAccess = isLocked && (viewerOwnsPost || Boolean(input.purchase));
+
+  if (!hasFullAccess || !post.asset) {
+    return null;
+  }
+
+  return {
+    key: `video-asset:${post.asset}`,
+    title: post.title ?? "video",
+    communityId: post.community,
+    assetId: post.asset,
+  };
+}
+
+export function toVideoPostContent(
+  postResponse: ApiPost,
+  songOptions: SongPresentationOptions | undefined,
+  input: {
+    captionDir?: "rtl";
+    captionLang?: string;
+    onVerifyAge?: () => void;
+    resolvedCaption?: string;
+    title: string;
+  },
+): PostCardProps["content"] {
+  const { post } = postResponse;
+  const primaryMedia = post.media_refs?.[0];
+  const listing = songOptions?.listing;
+  const purchase = songOptions?.purchase;
+  const accessMode = post.access_mode ?? "public";
+  const assetSourceDescriptor = toVideoAssetSourceDescriptor(postResponse, {
+    currentUserId: songOptions?.currentUserId,
+    purchase,
+  });
+  const assetSourceState = assetSourceDescriptor && songOptions?.playback
+    ? songOptions.playback.getAssetSourceState(assetSourceDescriptor.key)
+    : undefined;
+  return {
+    type: "video",
+    accessMode,
+    ageGatePolicy: post.age_gate_policy,
+    ageGateViewerState: postResponse.age_gate_viewer_state ?? undefined,
+    analysisState: post.analysis_state,
+    caption: input.resolvedCaption,
+    captionDir: input.captionDir,
+    captionLang: input.captionLang,
+    contentSafetyState: post.content_safety_state,
+    durationMs: primaryMedia?.duration_ms ?? undefined,
+    hasEntitlement: accessMode === "public"
+      || Boolean(purchase)
+      || Boolean(songOptions?.currentUserId && post.author_user === songOptions.currentUserId),
+    listingMode: listing ? "listed" : "not_listed",
+    listingStatus: listing?.status === "active"
+      ? "active"
+      : listing?.status === "paused"
+      ? "paused"
+      : undefined,
+    onBuy: songOptions?.onBuy,
+    onVerifyAge: input.onVerifyAge,
+    onPlay: assetSourceDescriptor && songOptions?.playback
+      ? () => void songOptions.playback?.loadAssetSource(assetSourceDescriptor)
+      : undefined,
+    playbackState: assetSourceState?.playbackState ?? "idle",
+    posterSrc: primaryMedia?.poster_ref ?? undefined,
+    priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
+    src: assetSourceState?.src ?? primaryMedia?.storage_ref ?? "",
+    title: post.song_title ?? input.title,
+  };
+}
+
+export function toSongPostContent(
+  postResponse: ApiPost,
+  songOptions: SongPresentationOptions | undefined,
+  input: {
+    captionDir?: "rtl";
+    captionLang?: string;
+    resolvedCaption?: string;
+    title: string;
+  },
+): PostCardProps["content"] {
+  const { post } = postResponse;
+  const listing = songOptions?.listing;
+  const purchase = songOptions?.purchase;
+  const playback = songOptions?.playback;
+  const playbackDescriptor = toSongPlaybackDescriptor(postResponse, {
+    currentUserId: songOptions?.currentUserId,
+    purchase,
+  });
+  const playbackState: SongContentSpec["playbackState"] = playbackDescriptor && playback
+    ? playback.getPlaybackState(playbackDescriptor.key)
+    : "idle";
+  const upstreamAttributions = post.upstream_asset_refs?.map((assetRef, index) => ({
+    assetId: assetRef,
+    relationshipType: "remix_of" as const,
+    title: `Source ${index + 1}`,
+  }));
+
+  return {
+    type: "song",
+    accessMode: post.access_mode ?? "public",
+    ageGatePolicy: post.age_gate_policy,
+    analysisState: post.analysis_state,
+    contentSafetyState: post.content_safety_state,
+    hasEntitlement: (post.access_mode ?? "public") === "public"
+      || Boolean(purchase)
+      || Boolean(songOptions?.currentUserId && post.author_user === songOptions.currentUserId),
+    listingMode: listing ? "listed" : "not_listed",
+    listingStatus: listing?.status === "active"
+      ? "active"
+      : listing?.status === "paused"
+      ? "paused"
+      : undefined,
+    onBuy: songOptions?.onBuy,
+    onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
+    onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
+    playbackState,
+    caption: input.resolvedCaption,
+    captionDir: input.captionDir,
+    captionLang: input.captionLang,
+    priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
+    rightsBasis: post.rights_basis ?? undefined,
+    songMode: post.song_mode ?? undefined,
+    title: input.title,
+    upstreamAttributions: upstreamAttributions?.length ? upstreamAttributions : undefined,
+  };
+}

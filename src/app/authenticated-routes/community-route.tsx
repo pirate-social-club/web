@@ -42,10 +42,8 @@ import {
   buildCommunityModerationPath,
 } from "@/app/authenticated-helpers/moderation-helpers";
 import { toCommunityFeedItem } from "@/app/authenticated-helpers/post-presentation";
-import {
-  submitOptimisticPostVote,
-  updateCommunityPostVote,
-} from "@/app/authenticated-helpers/post-vote";
+import { useCommunityMembershipActions } from "@/hooks/use-community-membership-actions";
+import { useCommunityVoteAction } from "@/hooks/use-community-vote-action";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { buildFeedSortOptions } from "@/lib/feed-sort-options";
@@ -60,17 +58,21 @@ import {
   useSongPlayback,
 } from "@/app/authenticated-helpers/song-commerce";
 import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
+import { useCommunityFollow } from "@/hooks/use-community-follow";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { updateSessionUser } from "@/lib/api/session-store";
+import {
+  communityHandleFromRouteLabel,
+  useCommunityHandleClaimDismissal,
+} from "@/lib/community-handle-claim-dismissal";
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
-const HANDLE_CLAIM_DISMISSAL_PREFIX = "pirate:handle-claim-dismissed:";
 
 function sameUserId(left: string | null | undefined, right: string | null | undefined): boolean {
   if (!left || !right) return false;
-  return left === right || left.replace(/^usr_/, "") === right.replace(/^usr_/, "");
+  return left === right || left.replace(/^(usr_)+/, "") === right.replace(/^(usr_)+/, "");
 }
 
 function viewerCanModerateCommunity(
@@ -80,38 +82,25 @@ function viewerCanModerateCommunity(
         created_by_user?: string | null;
         owner?: { user?: string | null } | null;
         moderators?: Array<{ user?: string | null; role?: "owner" | "admin" | "moderator" | string | null }> | null;
+        viewer_community_role?: "owner" | "admin" | "moderator" | string | null;
       }
     | null
     | undefined,
 ): boolean {
   if (!viewerUserId || !community) return false;
+  if (
+    community.viewer_community_role === "owner"
+    || community.viewer_community_role === "admin"
+    || community.viewer_community_role === "moderator"
+  ) {
+    return true;
+  }
   if (sameUserId(viewerUserId, community.created_by_user)) return true;
   if (sameUserId(viewerUserId, community.owner?.user)) return true;
   return Boolean(community.moderators?.some((roleHolder) => {
     if (!sameUserId(viewerUserId, roleHolder.user)) return false;
     return roleHolder.role === "owner" || roleHolder.role === "admin" || roleHolder.role === "moderator";
   }));
-}
-
-function communityHandleClaimDismissalKey(communityId: string): string {
-  return `${HANDLE_CLAIM_DISMISSAL_PREFIX}${communityId}`;
-}
-
-function readHandleClaimDismissed(communityId: string): boolean {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(communityHandleClaimDismissalKey(communityId)) === "1";
-}
-
-function writeHandleClaimDismissed(communityId: string): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(communityHandleClaimDismissalKey(communityId), "1");
-}
-
-function communityHandleFromRouteLabel(routeLabel: string): string {
-  return routeLabel
-    .replace(/^c\//u, "")
-    .replace(/^@/u, "")
-    || "community";
 }
 
 export function CommunityPage({
@@ -167,31 +156,23 @@ export function CommunityPage({
     refreshSongCommerce,
   });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
-  const [followLoading, setFollowLoading] = React.useState(false);
-  const [followState, setFollowState] = React.useState<{
-    communityId: string;
-    followerCount: number | null;
-    viewerFollowing: boolean;
-  } | null>(null);
   const previewCommunityId = preview?.id ?? null;
-  const viewerFollowing =
-    followState?.communityId === previewCommunityId
-      ? followState.viewerFollowing
-      : Boolean(preview?.viewer_following);
-  const followerCount =
-    followState?.communityId === previewCommunityId
-      ? followState.followerCount
-      : (preview?.follower_count ?? null);
-  const markViewerJoined = React.useCallback(() => {
-    setFollowState((current) => ({
-      communityId: previewCommunityId ?? communityId,
-      followerCount:
-        current?.communityId === (previewCommunityId ?? communityId)
-          ? current.followerCount
-          : (preview?.follower_count ?? null),
-      viewerFollowing: true,
-    }));
-  }, [communityId, preview?.follower_count, previewCommunityId]);
+  const {
+    followerCount,
+    followLoading,
+    handleToggleFollow,
+    markViewerJoined,
+    viewerFollowing,
+  } = useCommunityFollow({
+    communityId: previewCommunityId ?? communityId,
+    follow: api.communities.follow,
+    initialFollowerCount: preview?.follower_count ?? null,
+    initialViewerFollowing: preview?.viewer_following,
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Follow failed"));
+    },
+    unfollow: api.communities.unfollow,
+  });
   const {
     altchaAction,
     altchaPayload,
@@ -245,14 +226,6 @@ export function CommunityPage({
     storageKey: `pirate_pending_self_age_gate:${communityId}`,
     verificationIntent: "community_join",
   });
-  const [joinRequestModalOpen, setJoinRequestModalOpen] = React.useState(false);
-  const [joinRequestSubmitting, setJoinRequestSubmitting] =
-    React.useState(false);
-  const [joinRequestError, setJoinRequestError] = React.useState<string | null>(
-    null,
-  );
-  const [proofOfWorkModalOpen, setProofOfWorkModalOpen] = React.useState(false);
-  const [handleClaimModalOpen, setHandleClaimModalOpen] = React.useState(false);
   const communityCreatePostPath = preview
     ? `${buildCommunityPath(preview.id, community?.route_slug ?? preview.route_slug)}/submit`
     : `${buildCommunityPath(communityId)}/submit`;
@@ -264,7 +237,6 @@ export function CommunityPage({
     ),
     [community?.route_slug, communityId, isMobileWeb, preview?.route_slug],
   );
-  const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const { gateModal, invalidateCommunityGate, runGatedCommunityAction } =
     useCommunityInteractionGate({
       previewLocale: contentLocale,
@@ -281,35 +253,36 @@ export function CommunityPage({
     primaryWalletAddress: session?.profile.primary_wallet_address,
     settlementWalletAttachmentId: session?.user.primary_wallet_attachment,
   });
-
-  const maybeOpenHandleClaimModal = React.useCallback(async () => {
-    const resolvedCommunityId = previewCommunityId ?? community?.id ?? communityId;
-    if (!session?.user?.id || readHandleClaimDismissed(resolvedCommunityId)) {
-      return;
-    }
-
-    try {
-      const status = await api.communities.getHandleStatus(resolvedCommunityId);
-      if (!status.available) {
-        return;
-      }
-      const current = await api.communities.getMyHandle(resolvedCommunityId);
-      if (!current.handle) {
-        setHandleClaimModalOpen(true);
-      }
-    } catch (nextError) {
-      toast.error(getErrorMessage(nextError, "Could not check community names."));
-    }
-  }, [
-    api.communities,
-    community?.id,
+  const handleClaimCommunityId = previewCommunityId ?? community?.id ?? communityId;
+  const handleClaimDismissal = useCommunityHandleClaimDismissal(handleClaimCommunityId);
+  const {
+    handleClaimModalOpen,
+    handleClaimModalOpenChange,
+    handleClaimNotNow,
+    handleJoinRequestModalOpenChange,
+    handleJoinRequestSubmit,
+    handlePrimaryJoinAction,
+    joinRequestError,
+    joinRequestModalOpen,
+    joinRequestSubmitting,
+    proofOfWorkModalOpen,
+    setProofOfWorkModalOpen,
+  } = useCommunityMembershipActions({
+    altchaPayload,
+    altchaRequired,
     communityId,
-    previewCommunityId,
-    session?.user?.id,
-  ]);
-  const previousEligibilityStatusRef = React.useRef<ApiJoinEligibility["status"] | null>(
-    eligibility?.status ?? null,
-  );
+    eligibility,
+    handleClaim,
+    handleClaimApi: api.communities,
+    handleClaimCommunityId,
+    handleClaimDismissal,
+    handleJoin,
+    invalidateCommunityGate,
+    onHandleClaimCheckError: (error) => {
+      toast.error(getErrorMessage(error, "Could not check community names."));
+    },
+    sessionUserId: session?.user?.id,
+  });
 
   React.useEffect(() => {
     if (isImportedRoot) return;
@@ -320,96 +293,6 @@ export function CommunityPage({
       community?.route_slug ?? preview?.route_slug,
     );
   }, [community?.id, community?.route_slug, isImportedRoot, preview?.id, preview?.route_slug]);
-
-  React.useEffect(() => {
-    if (!preview) return;
-    setFollowState({
-      communityId: preview.id,
-      followerCount: preview.follower_count ?? null,
-      viewerFollowing: Boolean(preview.viewer_following),
-    });
-  }, [
-    preview?.id,
-    preview?.follower_count,
-    preview?.viewer_following,
-  ]);
-
-  React.useEffect(() => {
-    const previousStatus = previousEligibilityStatusRef.current;
-    const nextStatus = eligibility?.status ?? null;
-    previousEligibilityStatusRef.current = nextStatus;
-    if (
-      previousStatus &&
-      previousStatus !== "already_joined" &&
-      nextStatus === "already_joined"
-    ) {
-      void maybeOpenHandleClaimModal();
-    }
-  }, [eligibility?.status, maybeOpenHandleClaimModal]);
-
-  const handleJoinRequestModalOpenChange = React.useCallback(
-    (open: boolean) => {
-      setJoinRequestModalOpen(open);
-      if (open) {
-        setJoinRequestError(null);
-      }
-    },
-    [],
-  );
-
-  const openJoinRequestModal = React.useCallback(() => {
-    setJoinRequestError(null);
-    setJoinRequestModalOpen(true);
-  }, []);
-
-  const handlePrimaryJoinAction = React.useCallback(async () => {
-    if (eligibility?.status === "requestable") {
-      openJoinRequestModal();
-      return;
-    }
-    if (altchaRequired && !altchaPayload) {
-      setProofOfWorkModalOpen(true);
-      return;
-    }
-    const result = await handleJoin();
-    if (result === "joined") {
-      await maybeOpenHandleClaimModal();
-    }
-  }, [altchaPayload, altchaRequired, eligibility?.status, handleJoin, maybeOpenHandleClaimModal, openJoinRequestModal]);
-
-  const handleJoinRequestSubmit = React.useCallback(
-    async (note: string) => {
-      setJoinRequestSubmitting(true);
-      setJoinRequestError(null);
-      try {
-        const result = await handleJoin({ note });
-        if (result === "requested" || result === "joined") {
-          invalidateCommunityGate(communityId);
-          setJoinRequestModalOpen(false);
-          if (result === "joined") {
-            await maybeOpenHandleClaimModal();
-          }
-        } else if (result === "failed") {
-          setJoinRequestError("Could not submit your request. Try again.");
-        }
-      } finally {
-        setJoinRequestSubmitting(false);
-      }
-    },
-    [communityId, handleJoin, invalidateCommunityGate, maybeOpenHandleClaimModal],
-  );
-
-  const handleClaimModalOpenChange = React.useCallback((open: boolean) => {
-    setHandleClaimModalOpen(open);
-    if (!open && handleClaim.phase !== "success") {
-      writeHandleClaimDismissed(previewCommunityId ?? community?.id ?? communityId);
-    }
-  }, [community?.id, communityId, handleClaim.phase, previewCommunityId]);
-
-  const handleClaimNotNow = React.useCallback(() => {
-    writeHandleClaimDismissed(previewCommunityId ?? community?.id ?? communityId);
-    setHandleClaimModalOpen(false);
-  }, [community?.id, communityId, previewCommunityId]);
 
   const handleBuySong = React.useCallback(
     async (
@@ -427,24 +310,6 @@ export function CommunityPage({
     },
     [buySong, communityId],
   );
-
-  const handleToggleFollow = React.useCallback(async () => {
-    setFollowLoading(true);
-    try {
-      const result = viewerFollowing
-        ? await api.communities.unfollow(communityId)
-        : await api.communities.follow(communityId);
-      setFollowState({
-        communityId: result.community,
-        followerCount: result.follower_count ?? null,
-        viewerFollowing: result.following,
-      });
-    } catch (e: unknown) {
-      toast.error(getErrorMessage(e, "Follow failed"));
-    } finally {
-      setFollowLoading(false);
-    }
-  }, [api, communityId, viewerFollowing]);
 
   const interactionCopy = React.useMemo(
     () => ({
@@ -480,7 +345,7 @@ export function CommunityPage({
             href: result.href,
           };
         },
-        onRequestable: () => openJoinRequestModal(),
+        onRequestable: () => handleJoinRequestModalOpenChange(true),
         invalidateCommunityGate,
       }),
     [
@@ -491,64 +356,36 @@ export function CommunityPage({
       handleJoin,
       startVeryVerification,
       startSelfVerification,
-      openJoinRequestModal,
+      handleJoinRequestModalOpenChange,
       invalidateCommunityGate,
     ],
   );
 
-  const voteOnPost = React.useCallback(
-    async (postId: string, direction: "up" | "down" | null) => {
-      if (!preview || !eligibility) return;
-      await runGatedCommunityAction({
-        action: "vote_post",
-        buildBlockedModalState,
-        communityId,
-        gateData: {
+  const voteGateData = React.useMemo(
+    () => preview && eligibility
+      ? {
           eligibility,
           preview: {
             id: preview.id,
             display_name: preview.display_name,
             membership_gate_summaries: preview.membership_gate_summaries,
           },
-        },
-        onAllowed: async () => {
-          const previousPost = posts.find(
-            (postResponse) => postResponse.post.id === postId,
-          );
-          await submitOptimisticPostVote({
-            direction,
-            onApply: (nextValue) =>
-              setPosts((current) =>
-                updateCommunityPostVote(current, postId, nextValue),
-              ),
-            onRollback: (restoredPost) =>
-              setPosts((current) =>
-                current.map((postResponse) =>
-                  postResponse.post.id === postId
-                    ? restoredPost
-                    : postResponse,
-                ),
-              ),
-            postId,
-            previousPost: previousPost ?? null,
-            requestIdsRef: voteRequestIdsRef,
-            vote: api.posts.vote,
-          });
-        },
-        postId,
-      });
-    },
+        }
+      : null,
     [
-      api.posts.vote,
-      buildBlockedModalState,
-      communityId,
       eligibility,
-      posts,
       preview,
-      runGatedCommunityAction,
-      setPosts,
     ],
   );
+  const voteOnPost = useCommunityVoteAction({
+    buildBlockedModalState,
+    communityId,
+    gateData: voteGateData,
+    posts,
+    runGatedCommunityAction,
+    setPosts,
+    vote: api.posts.vote,
+  });
 
   const removePost = React.useCallback(async (postId: string) => {
     if (typeof window !== "undefined" && !window.confirm("Remove this post?")) return;

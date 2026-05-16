@@ -68,7 +68,7 @@ export function resolveResourceHref(
     case "source-github":
       return "https://github.com/pirate";
     case "source-freedom-browser":
-      return "https://github.com/pirate-social-club/freedom-browser";
+      return "https://github.com/pirate-social-club/freedom-browser/releases";
     case "source-radicle-api":
       return resolveRadicleRepositoryHref("api", options);
     case "source-radicle-contracts":

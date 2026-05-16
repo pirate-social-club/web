@@ -1,47 +1,15 @@
 import type {
   Community,
   CommunityListing,
+  CreateCommunityRequest,
   GatePolicy,
-  CommunityMoneyPolicy,
-  CommunityPricingPolicy,
   CreateCommunityListingRequest,
+  WalletIdentityPublicName,
+  WalletIdentityResponse,
 } from "@pirate/api-contracts";
 import type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
-export type ApiCreateCommunityRequest = {
-  display_name: string;
-  database_region?:
-    | "auto"
-    | "aws-us-east-1"
-    | "aws-us-east-2"
-    | "aws-us-west-2"
-    | "aws-eu-west-1"
-    | "aws-ap-south-1"
-    | "aws-ap-northeast-1"
-    | null;
-  description?: string | null;
-  avatar_ref?: string | null;
-  banner_ref?: string | null;
-  community_bootstrap?: {
-    rules?: Array<{
-      title: string;
-      body: string;
-      report_reason?: string | null;
-    }> | null;
-  } | null;
-  membership_mode?: "open" | "request" | "gated";
-  default_age_gate_policy?: CommunityDefaultAgeGatePolicy;
-  allow_anonymous_identity?: boolean;
-  anonymous_identity_scope?: AnonymousIdentityScope | null;
-  handle_policy?: {
-    policy_template: "standard";
-  };
-  governance_mode?: "centralized";
-  gate_policy?: GatePolicy | null;
-  namespace?: {
-    namespace_verification: string;
-  } | null;
-};
+export type ApiCreateCommunityRequest = CreateCommunityRequest;
 
 export type ApiCommunityMediaUploadResponse = {
   kind: "avatar" | "banner" | "post_image" | "comment_image";
@@ -63,36 +31,8 @@ export type ApiProfileMediaUploadResponse = {
   storage_object_key: string;
 };
 
-export type ApiWalletIdentityPublicName = {
-  id: string;
-  label: string;
-  label_normalized: string;
-  status: "active";
-  owner_kind: "wallet";
-  owner_wallet_address: string;
-  chain_ref: string;
-  price_paid_cents: number;
-  currency: "USD";
-  issued_at: number;
-  expires_at: number | null;
-  pirate_user_id: string | null;
-};
-
-export type ApiWalletIdentityResponse =
-  | {
-    object: "wallet_identity";
-    chain_ref: string;
-    wallet_address: string;
-    display_label: string | null;
-    public_names: ApiWalletIdentityPublicName[];
-  }
-  | {
-    object: "wallet_identity_redirect";
-    chain_ref: string;
-    wallet_address: string;
-    profile: string;
-    profile_handle: string;
-  };
+export type ApiWalletIdentityPublicName = WalletIdentityPublicName;
+export type ApiWalletIdentityResponse = WalletIdentityResponse;
 
 export type ApiSongArtifactUploadContentRequest = {
   content_base64: string;

@@ -23,8 +23,7 @@ interface DerivedSongUI {
   isAgeGated: boolean;
   ageGateRequiresProof: boolean;
   
-  // Artwork treatment (split so locked and age-gate don't stack)
-  showLockedArtwork: boolean;
+  // Artwork treatment is reserved for safety gates, not commerce locks.
   showAgeGatedArtwork: boolean;
   
   // Commerce states
@@ -68,8 +67,6 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   const isPlayable = !isAgeGated;
   const canShowPreview = isLocked && !isOwned && !isAgeGated;
   
-  // Artwork treatment — separate so blur/scale/overlay never stack
-  const showLockedArtwork = isLocked && !isOwned;
   const showAgeGatedArtwork = isAgeGated;
   
   // Commerce UI
@@ -102,7 +99,6 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     canShowPreview,
     isAgeGated,
     ageGateRequiresProof,
-    showLockedArtwork,
     showAgeGatedArtwork,
     showPrice,
     showUnlock,
@@ -186,14 +182,10 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
                 alt={content.title}
                 className={cn(
                   "size-full object-cover transition-[filter,transform]",
-                  ui.showLockedArtwork && "scale-[1.03] blur-[3px]",
                   ui.showAgeGatedArtwork && "blur-md saturate-0",
                 )}
                 src={content.artworkSrc}
               />
-              {ui.showLockedArtwork && (
-                <div className="absolute inset-0 bg-black/22" />
-              )}
               {ui.showAgeGatedArtwork && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                   <FilledLockIcon className="size-6 text-white" weight="fill" />

@@ -68,6 +68,10 @@ const LazyCreateCommunityPage = lazyRouteModule(
   "CreateCommunityPage",
 );
 const LazyPostPage = lazyRouteModule(() => import("./authenticated-routes/post-route"), "PostPage");
+const LazyLiveRoomRoutePage = lazyRouteModule(
+  () => import("./authenticated-routes/live-room-route"),
+  "LiveRoomRoutePage",
+);
 const LazyInboxPlaceholderPage = lazyRouteModule(
   () => import("./authenticated-routes/inbox-route"),
   "InboxPlaceholderPage",
@@ -150,6 +154,8 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyCreateCommunityPage />;
     case "post":
       return <LazyPostPage postId={route.postId} />;
+    case "live-room":
+      return <LazyLiveRoomRoutePage postId={route.postId} />;
     case "crosspost":
       return <LazyCrosspostPage postId={route.postId} />;
     case "inbox":

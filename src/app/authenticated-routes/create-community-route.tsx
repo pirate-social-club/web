@@ -47,8 +47,8 @@ export function CreateCommunityPage() {
       : null;
     const rc = getLocaleMessages(locale, "routes").moderation.rules;
     const bootstrapRules = [
-      { title: rc.defaultRule1Title, body: rc.defaultRule1Body, report_reason: rc.defaultRule1Title },
-      { title: rc.defaultRule2Title, body: rc.defaultRule2Body, report_reason: rc.defaultRule2Title },
+      { title: rc.defaultRule1Title, body: rc.defaultRule1Body, report_reason: rc.defaultRule1Title, position: 0 },
+      { title: rc.defaultRule2Title, body: rc.defaultRule2Body, report_reason: rc.defaultRule2Title, position: 1 },
     ];
 
     const result = await api.communities.create({

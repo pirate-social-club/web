@@ -143,12 +143,13 @@ function NotificationShell({
     || route.kind === "chat-conversation"
     || route.kind === "chat-new"
   );
+  const isStandaloneViewerRoute = route.kind === "live-room";
   const isChatRoute = route.kind === "chat"
     || route.kind === "chat-target"
     || route.kind === "chat-conversation"
     || route.kind === "chat-new";
   const isPublicRoute = route.kind === "public-profile" || route.kind === "public-agent";
-  const useStandaloneRouteShell = isCommunityModerationRoute || isMobileStandaloneRoute;
+  const useStandaloneRouteShell = isCommunityModerationRoute || isMobileStandaloneRoute || isStandaloneViewerRoute;
   // Temporary: migrated routes own their own page shell padding.
   // Remove this once all routes are converted.
   const isMigratedRoute = route.kind === "home" || route.kind === "popular" || route.kind === "wallet";
@@ -170,7 +171,7 @@ function NotificationShell({
       } as React.CSSProperties}
     >
       <DesktopChatWidgetProvider>
-        {isMobileStandaloneRoute ? null : (
+        {isMobileStandaloneRoute || isStandaloneViewerRoute ? null : (
           <AppShellHeader
             copy={copy}
             route={route}
@@ -222,7 +223,7 @@ function NotificationShell({
                       : <LazyAuthenticatedRouteRenderer route={route} />}
                   </React.Suspense>
                 </main>
-                {isMobileStandaloneRoute ? null : (
+                {isMobileStandaloneRoute || isStandaloneViewerRoute ? null : (
                   <AppShellMobileNav
                     copy={copy}
                     route={route}
@@ -266,6 +267,7 @@ export function PirateAppShell({
       || route.kind === "community"
       || route.kind === "wallet"
       || route.kind === "post"
+      || route.kind === "live-room"
     ));
   const primaryItems = buildPrimaryItems(copy.appSidebar);
 

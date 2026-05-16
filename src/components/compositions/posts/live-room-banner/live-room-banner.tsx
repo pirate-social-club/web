@@ -10,6 +10,7 @@ export type LiveRoomBannerRole = "host" | "guest" | "viewer";
 export type LiveRoomBannerGuestInviteStatus = "pending" | "accepted" | "revoked";
 export type LiveRoomBannerAccessState =
   | "allowed"
+  | "gate_required"
   | "purchase_required"
   | "waiting"
   | "missing_listing"
@@ -43,6 +44,7 @@ function statusLabel(status: LiveRoomBannerStatus): string {
 function viewerCanAttemptWatch(status: LiveRoomBannerStatus, accessState: LiveRoomBannerAccessState): boolean {
   return status === "live"
     && accessState !== "purchase_required"
+    && accessState !== "gate_required"
     && accessState !== "missing_listing"
     && accessState !== "ended";
 }
@@ -66,6 +68,9 @@ function stateDescription(props: {
   }
   if (props.accessState === "purchase_required") {
     return `${props.priceLabel ?? "Ticket"} required to watch.`;
+  }
+  if (props.accessState === "gate_required") {
+    return "Community access is required before viewers can watch.";
   }
   if (props.status === "ended" || props.accessState === "ended") {
     return "This room has ended.";
@@ -162,6 +167,12 @@ export function LiveRoomBanner({
           {!producerRole && accessState === "purchase_required" ? (
             <Button onClick={onBuyTicket} size="sm">
               Buy ticket
+            </Button>
+          ) : null}
+
+          {!producerRole && accessState === "gate_required" ? (
+            <Button onClick={onWatch} size="sm">
+              Verify access
             </Button>
           ) : null}
 

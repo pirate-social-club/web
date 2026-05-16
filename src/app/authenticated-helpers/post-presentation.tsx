@@ -639,13 +639,15 @@ export function toCommunityPostContent(
     const publicStatus = post.anchor_live_room_status ?? undefined;
     const accessState: LiveRoomContentSpec["accessState"] = liveAccess?.decision_reason === "purchase_required"
       ? liveAccess.listing ? "purchase_required" : "missing_listing"
-      : liveAccess?.decision_reason === "ended" || liveAccess?.decision_reason === "canceled"
-        ? "ended"
-        : liveAccess?.decision_reason === "not_live"
-          ? "waiting"
-          : liveAccess?.allowed
-            ? "allowed"
-            : undefined;
+      : liveAccess?.decision_reason === "membership_required"
+        ? "gate_required"
+        : liveAccess?.decision_reason === "ended" || liveAccess?.decision_reason === "canceled"
+          ? "ended"
+          : liveAccess?.decision_reason === "not_live"
+            ? "waiting"
+            : liveAccess?.allowed
+              ? "allowed"
+              : undefined;
     const listing = opts?.liveRoom?.listing;
     const purchase = opts?.liveRoom?.purchase;
     const accessMode = liveRoom?.access_mode ?? liveAccess?.access_mode ?? (listing ? "paid" : "free");

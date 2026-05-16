@@ -9,6 +9,9 @@ import type {
 } from "@pirate/api-contracts";
 
 import type {
+  ApiLiveRoomAccessResponse,
+  ApiLiveRoomViewerAttachResponse,
+  ApiLiveRoomViewerRenewRequest,
   ApiProfileMediaUploadResponse,
   CommunityListCommentsOptions,
   CommunityListPostsOptions,
@@ -166,6 +169,25 @@ export function createPublicCommunitiesApi(request: ApiRequest) {
         },
       );
     },
+    getLiveRoomAccess: (communityId: string, liveRoomId: string): Promise<ApiLiveRoomAccessResponse> =>
+      publicGet<ApiLiveRoomAccessResponse>(
+        request,
+        `/public-communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/access`,
+      ),
+    viewerAttachLiveRoom: (communityId: string, liveRoomId: string): Promise<ApiLiveRoomViewerAttachResponse> =>
+      request<ApiLiveRoomViewerAttachResponse>(
+        `/public-communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/viewer_attach`,
+        { method: "POST", tokenRequired: false },
+      ),
+    viewerRenewLiveRoom: (
+      communityId: string,
+      liveRoomId: string,
+      body: ApiLiveRoomViewerRenewRequest,
+    ): Promise<ApiLiveRoomViewerAttachResponse> =>
+      request<ApiLiveRoomViewerAttachResponse>(
+        `/public-communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/viewer_renew`,
+        { method: "POST", body: JSON.stringify(body), tokenRequired: false },
+      ),
   };
 }
 

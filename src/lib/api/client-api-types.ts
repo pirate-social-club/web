@@ -314,6 +314,7 @@ export type ApiLiveRoomAccessDecisionReason =
   | "ended"
   | "canceled"
   | "unlisted"
+  | "membership_required"
   | "purchase_required"
   | "allowed";
 

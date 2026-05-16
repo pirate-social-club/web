@@ -56,6 +56,61 @@ describe("PostCard", () => {
     );
 
     expect(ticketMarkup).toContain("Get ticket $12.00");
+
+    const gatedMarkup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "gated",
+            accessState: "gate_required",
+            liveRoomId: "lr_gated",
+            status: "live",
+            title: "Members concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(gatedMarkup).toContain("Verify access");
+    expect(gatedMarkup).not.toContain("Watch live");
+  });
+
+  test("renders scheduled live-room post pages without circular CTAs or status noise", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "waiting",
+            concertHref: "/p/pst_event",
+            description: "A live run through the new material.",
+            liveRoomId: "lr_scheduled_page",
+            startsAtLabel: "in 2h",
+            status: "scheduled",
+            title: "Scheduled concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Scheduled concert");
+    expect(markup).toContain("Starts in 2h");
+    expect(markup).toContain("A live run through the new material.");
+    expect(markup).not.toContain("View event");
+    expect(markup).not.toContain("Scheduled event");
   });
 
   test("renders scheduled live-room post pages without circular CTAs or status noise", () => {

@@ -123,6 +123,23 @@ export const PaidOwned: Story = {
   ),
 };
 
+export const GatedNeedsAccess: Story = {
+  name: "Access / Gated needs access",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseLiveRoom,
+        accessMode: "gated",
+        accessState: "gate_required",
+        status: "live",
+        liveSinceLabel: "8m",
+        onWatch: noop,
+      }}
+    />
+  ),
+};
+
 export const PaidMissingListing: Story = {
   name: "Access / Paid missing listing",
   render: () => (

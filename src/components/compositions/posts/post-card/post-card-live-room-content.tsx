@@ -9,6 +9,7 @@ import type { LiveRoomContentSpec, PostCardViewContext } from "./post-card.types
 type LiveRoomUiState =
   | { kind: "can_watch"; cta: string; onClick?: () => void }
   | { kind: "can_watch_replay"; cta: string; onClick?: () => void }
+  | { kind: "needs_access"; cta: string; onClick?: () => void }
   | { kind: "needs_ticket"; cta: string; onClick?: () => void }
   | { kind: "has_ticket" }
   | { kind: "needs_verification"; cta: string; onClick?: () => void }
@@ -59,6 +60,14 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
 
   if (content.accessState === "missing_listing") {
     return { kind: "tickets_unavailable" };
+  }
+
+  if (content.accessState === "gate_required") {
+    return {
+      kind: "needs_access",
+      cta: "Verify access",
+      onClick: content.onWatch,
+    };
   }
 
   if (content.accessState === "purchase_required" || (content.accessMode === "paid" && !content.hasEntitlement)) {

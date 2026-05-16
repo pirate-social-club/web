@@ -40,6 +40,20 @@ describe("LiveRoomBanner", () => {
     expect(markup).not.toContain("lr_viewer_scheduled");
   });
 
+  test("shows a verification CTA for gated viewer access", () => {
+    const markup = renderToStaticMarkup(
+      <LiveRoomBanner
+        accessState="gate_required"
+        role="viewer"
+        status="live"
+      />,
+    );
+
+    expect(markup).toContain("Community access is required before viewers can watch.");
+    expect(markup).toContain("Verify access");
+    expect(markup).not.toContain("Watch live");
+  });
+
   test("hides the Freedom broadcast CTA until a guest invite is accepted", () => {
     const pendingMarkup = renderToStaticMarkup(
       <LiveRoomBanner

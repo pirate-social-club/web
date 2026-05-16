@@ -149,6 +149,11 @@ export function PostPage({ postId }: { postId: string }) {
   const [liveRoomAccess, setLiveRoomAccess] = React.useState<ApiLiveRoomAccessResponse | null>(null);
   const [liveViewerSession, setLiveViewerSession] = React.useState<ApiLiveRoomViewerAttachResponse | null>(null);
   const [liveViewerOpen, setLiveViewerOpen] = React.useState(false);
+  const autoWatchAttemptedRef = React.useRef(false);
+  const autoWatchLiveRoom = React.useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("watch_live_room") === "1";
+  }, []);
   const {
     handleModalOpenChange: handleAgeSelfModalOpenChange,
     handleSelfQrError: handleAgeSelfQrError,
@@ -206,13 +211,15 @@ export function PostPage({ postId }: { postId: string }) {
     });
   }, [session, requestAuth, startAgeSelfVerification]);
   const refreshLiveRoomAccess = React.useCallback(async () => {
-    if (!session?.accessToken || !community?.id || !activeLiveRoomId) {
+    if (!community?.id || !activeLiveRoomId) {
       setLiveRoomAccess(null);
       return null;
     }
 
     try {
-      const access = await api.communities.getLiveRoomAccess(community.id, activeLiveRoomId);
+      const access = session?.accessToken
+        ? await api.communities.getLiveRoomAccess(community.id, activeLiveRoomId)
+        : await api.publicCommunities.getLiveRoomAccess(community.id, activeLiveRoomId);
       setLiveRoomAccess(access);
       return access;
     } catch (accessError) {
@@ -222,7 +229,7 @@ export function PostPage({ postId }: { postId: string }) {
       }
       return null;
     }
-  }, [activeLiveRoomId, api.communities, community?.id, session?.accessToken]);
+  }, [activeLiveRoomId, api.communities, api.publicCommunities, community?.id, session?.accessToken]);
 
   React.useEffect(() => {
     void refreshLiveRoomAccess();
@@ -270,6 +277,10 @@ export function PostPage({ postId }: { postId: string }) {
     titleText: string,
     nextCommunityId: string,
   ) => {
+    if (!session?.accessToken) {
+      requestAuth("Connect your wallet to buy a ticket for this live room.");
+      return;
+    }
     await buySong({
       assetLabel: "ticket",
       communityId: nextCommunityId,
@@ -277,13 +288,9 @@ export function PostPage({ postId }: { postId: string }) {
       successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} ticket purchased for $${(settlement.purchase_price_cents / 100).toFixed(2)}.`,
       titleText,
     });
-  }, [buySong]);
+  }, [buySong, requestAuth, session?.accessToken]);
 
   const handleWatchLiveRoom = React.useCallback(async () => {
-    if (!session) {
-      requestAuth("Connect your wallet to watch this live room.");
-      return;
-    }
     if (!community?.id || !activeLiveRoomId) return;
 
     const access = liveRoomAccess ?? await refreshLiveRoomAccess();
@@ -291,6 +298,10 @@ export function PostPage({ postId }: { postId: string }) {
 
     if (!access.access.allowed) {
       if (access.access.decision_reason === "purchase_required") {
+        if (!session?.accessToken) {
+          requestAuth("Connect your wallet to buy a ticket for this live room.");
+          return;
+        }
         const listing = listingsByLiveRoomId[activeLiveRoomId];
         if (listing) {
           await handleBuyLiveTicket(listing, access.room.title, community.id);
@@ -303,12 +314,18 @@ export function PostPage({ postId }: { postId: string }) {
         toast.error("This live room is not live yet.");
         return;
       }
+      if (access.access.decision_reason === "membership_required") {
+        requestAuth("Connect your wallet to verify community access for this live room.");
+        return;
+      }
       toast.error("This live room is not available.");
       return;
     }
 
     try {
-      const attach = await api.communities.viewerAttachLiveRoom(community.id, activeLiveRoomId);
+      const attach = session?.accessToken
+        ? await api.communities.viewerAttachLiveRoom(community.id, activeLiveRoomId)
+        : await api.publicCommunities.viewerAttachLiveRoom(community.id, activeLiveRoomId);
       setLiveViewerSession(attach);
       setLiveViewerOpen(true);
       setLiveRoomAccess({ room: attach.room, access: attach.access });
@@ -319,19 +336,44 @@ export function PostPage({ postId }: { postId: string }) {
   }, [
     activeLiveRoomId,
     api.communities,
+    api.publicCommunities,
     community?.id,
     handleBuyLiveTicket,
     listingsByLiveRoomId,
     liveRoomAccess,
     refreshLiveRoomAccess,
     requestAuth,
-    session,
+    session?.accessToken,
+  ]);
+
+  React.useEffect(() => {
+    if (
+      !autoWatchLiveRoom
+      || autoWatchAttemptedRef.current
+      || loading
+      || !post
+      || !community?.id
+      || !activeLiveRoomId
+    ) {
+      return;
+    }
+    autoWatchAttemptedRef.current = true;
+    void handleWatchLiveRoom();
+  }, [
+    activeLiveRoomId,
+    autoWatchLiveRoom,
+    community?.id,
+    handleWatchLiveRoom,
+    loading,
+    post,
   ]);
 
   const handleRenewLiveRoomViewer = React.useCallback(async (uid: number) => {
     if (!community?.id || !activeLiveRoomId) return null;
     try {
-      const renewed = await api.communities.viewerRenewLiveRoom(community.id, activeLiveRoomId, { uid });
+      const renewed = session?.accessToken
+        ? await api.communities.viewerRenewLiveRoom(community.id, activeLiveRoomId, { uid })
+        : await api.publicCommunities.viewerRenewLiveRoom(community.id, activeLiveRoomId, { uid });
       setLiveRoomAccess({ room: renewed.room, access: renewed.access });
       return renewed;
     } catch (renewError) {
@@ -339,7 +381,7 @@ export function PostPage({ postId }: { postId: string }) {
       await refreshLiveRoomAccess();
       return null;
     }
-  }, [activeLiveRoomId, api.communities, community?.id, refreshLiveRoomAccess]);
+  }, [activeLiveRoomId, api.communities, api.publicCommunities, community?.id, refreshLiveRoomAccess, session?.accessToken]);
 
   if (loading) {
     if (isMobile) {

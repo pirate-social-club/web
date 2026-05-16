@@ -151,4 +151,20 @@ describe("post presentation live rooms", () => {
     if (content.type !== "live_room") return;
     expect(content.replayStatus).toBe("none");
   });
+
+  test("maps membership-required live-room access to gate-required UI", () => {
+    const gatedAccess = createLiveRoomAccess();
+    gatedAccess.access.access_mode = "gated";
+    gatedAccess.access.decision_reason = "membership_required";
+    gatedAccess.room.access_mode = "gated";
+
+    const content = toCommunityPostContent(createAnchoredLivePost(), undefined, {
+      liveRoom: { access: gatedAccess },
+    });
+
+    expect(content.type).toBe("live_room");
+    if (content.type !== "live_room") return;
+    expect(content.accessMode).toBe("gated");
+    expect(content.accessState).toBe("gate_required");
+  });
 });

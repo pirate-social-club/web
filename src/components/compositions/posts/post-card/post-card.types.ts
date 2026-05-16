@@ -32,6 +32,7 @@ export type LiveRoomAccessMode = "free" | "gated" | "paid";
 export type LiveRoomVisibility = "public" | "unlisted";
 export type LiveRoomAccessState =
   | "allowed"
+  | "gate_required"
   | "purchase_required"
   | "waiting"
   | "missing_listing"

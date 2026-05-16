@@ -1,49 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import type { JoinEligibility, MembershipGateSummary } from "@pirate/api-contracts";
 
+import {
+  gate,
+  interactionCopy,
+} from "./community-interaction-gate/test-fixtures";
 import {
   createCommunityBlockedModalStateFactory,
   type BuildBlockedModalStateArgs,
   type CommunityGateData,
-  type InteractionGateCopy,
 } from "./use-community-interaction-gate.helpers";
-import { getLocaleMessages } from "@/locales";
-
-const routesCopy = getLocaleMessages("en", "routes");
-const interactionCopy: InteractionGateCopy = {
-  ...routesCopy.interactionGate,
-  locale: "en",
-  taskVerify: routesCopy.createCommunity.startVerification,
-};
-
-const requirement: MembershipGateSummary = {
-  gate_type: "unique_human",
-};
-
-function eligibility(
-  status: JoinEligibility["status"],
-  overrides: Partial<JoinEligibility> = {},
-): JoinEligibility {
-  return {
-    status,
-    failure_reason: null,
-    membership_gate_summaries: [requirement],
-    missing_capabilities: [],
-    suggested_verification_provider: null,
-    ...overrides,
-  } as JoinEligibility;
-}
-
-function gate(status: JoinEligibility["status"], overrides: Partial<JoinEligibility> = {}): CommunityGateData {
-  return {
-    eligibility: eligibility(status, overrides),
-    preview: {
-      id: "community-1",
-      display_name: "Test Community",
-      membership_gate_summaries: [requirement],
-    },
-  };
-}
 
 function args(gateData: CommunityGateData): BuildBlockedModalStateArgs {
   return {

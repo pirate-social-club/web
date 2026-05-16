@@ -39,11 +39,6 @@ export type CommunityGateData = {
   >;
 };
 
-export type CommunityGateCacheEntry = {
-  expiresAt: number;
-  value: CommunityGateData;
-};
-
 export type InteractionGateCopy = ReturnType<
   typeof getLocaleMessages<"routes">
 >["interactionGate"] & {
@@ -89,6 +84,11 @@ export type PendingInteraction = {
 
 export type RunGatedCommunityActionParams = {
   action: InteractionAction;
+  /**
+   * Optional route-owned modal override.
+   * Return `undefined` to let the default gate modal render, `null` when the
+   * route handled the blocked state itself, or a `ModalState` to show it here.
+   */
   buildBlockedModalState?: (
     args: BuildBlockedModalStateArgs,
   ) => ModalState | null | undefined;
@@ -100,14 +100,8 @@ export type RunGatedCommunityActionParams = {
   resolveGateData?: () => Promise<CommunityGateData>;
 };
 
-export const COMMUNITY_GATE_CACHE_TTL_MS = 60_000;
 export const SELF_INTERACTION_GATE_STORAGE_KEY =
   "pirate_pending_self_interaction_gate_session";
-export const communityGateCache = new Map<string, CommunityGateCacheEntry>();
-export const communityGateRequests = new Map<
-  string,
-  Promise<CommunityGateData>
->();
 
 function getInteractionTaskLabel(
   action: InteractionAction,
@@ -471,13 +465,6 @@ export function createDefaultBlockedModalState({
         title: interactionCopy.readyTitle,
       };
   }
-}
-
-export function getGateCacheKey(
-  sessionKey: string | null,
-  communityId: string,
-): string {
-  return `${sessionKey ?? "anon"}:${communityId}`;
 }
 
 export function resolveCommunityInteractionState(input: {

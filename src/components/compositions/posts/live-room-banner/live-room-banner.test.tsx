@@ -70,6 +70,7 @@ describe("LiveRoomBanner", () => {
 
     const acceptedMarkup = renderToStaticMarkup(
       <LiveRoomBanner
+        freedomDetected
         freedomHref="freedom://live-room?roomId=lr_guest_accepted"
         guestInviteStatus="accepted"
         role="guest"
@@ -80,5 +81,24 @@ describe("LiveRoomBanner", () => {
 
     expect(acceptedMarkup).toContain("Open the producer room in Freedom when the host starts.");
     expect(acceptedMarkup).toContain("Broadcast in Freedom");
+    expect(acceptedMarkup).toContain('target="_blank"');
+    expect(acceptedMarkup).toContain('rel="noreferrer"');
+  });
+
+  test("shows Download Freedom instead of broadcast when Freedom detection is missing", () => {
+    const markup = renderToStaticMarkup(
+      <LiveRoomBanner
+        freedomDetected={false}
+        freedomHref="freedom://live-room?roomId=lr_host"
+        role="host"
+        shareUrl="https://pirate.local/p/pst_host"
+        status="scheduled"
+      />,
+    );
+
+    expect(markup).toContain("Download Freedom");
+    expect(markup).not.toContain("Broadcast in Freedom");
+    expect(markup).toContain('target="_blank"');
+    expect(markup).toContain('rel="noreferrer"');
   });
 });

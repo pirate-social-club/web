@@ -44,6 +44,12 @@ function eventStartFromScheduleAt(scheduleAt: string | undefined): number | null
   return Number.isFinite(timestamp) ? Math.floor(timestamp / 1000) : null;
 }
 
+function eventStartFromLiveState(liveState: LiveComposerState): number | null {
+  return liveState.scheduleForLater
+    ? eventStartFromScheduleAt(liveState.scheduleAt)
+    : null;
+}
+
 function liveSetlistSongArtifactBundleId(declaredTrackId: string | undefined): string | undefined {
   const value = declaredTrackId?.trim();
   return value?.startsWith("sab_") ? value : undefined;
@@ -52,6 +58,20 @@ function liveSetlistSongArtifactBundleId(declaredTrackId: string | undefined): s
 function liveSetlistSourceAssetRef(declaredTrackId: string | undefined): string | undefined {
   const value = declaredTrackId?.trim();
   return value?.startsWith("story:asset:") ? value : undefined;
+}
+
+function performerAllocationsFromLiveState(input: {
+  guestUserId: string | null;
+  hostUserId: string;
+  liveState: LiveComposerState;
+}): ApiCreateLiveRoomRequest["performer_allocations"] {
+  if (input.liveState.accessMode !== "paid") return undefined;
+
+  return input.liveState.performerAllocations.map((allocation) => ({
+    user: allocation.role === "host" ? input.hostUserId : allocation.userId.trim() || input.guestUserId,
+    role: allocation.role,
+    share_bps: Math.round(allocation.sharePct * 100),
+  }));
 }
 
 export function buildLiveRoomRequest(input: {
@@ -71,13 +91,13 @@ export function buildLiveRoomRequest(input: {
     access_mode: input.liveState.accessMode,
     visibility: input.liveState.visibility,
     guest_user: guestUserId,
-    event_start_at: eventStartFromScheduleAt(input.liveState.scheduleAt),
+    event_start_at: eventStartFromLiveState(input.liveState),
     cover_ref: input.coverRef ?? undefined,
-    performer_allocations: input.liveState.performerAllocations.map((allocation) => ({
-      user: allocation.role === "host" ? input.hostUserId : allocation.userId.trim() || guestUserId,
-      role: allocation.role,
-      share_bps: Math.round(allocation.sharePct * 100),
-    })),
+    performer_allocations: performerAllocationsFromLiveState({
+      guestUserId,
+      hostUserId: input.hostUserId,
+      liveState: input.liveState,
+    }),
     setlist: {
       status: "ready",
       items: input.liveState.setlistItems.map((item) => ({

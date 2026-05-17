@@ -10,6 +10,7 @@ const baseBanner: LiveRoomBannerProps = {
   title: "Live room ready",
   anchorPostUrl: "https://pirate.local/p/pst_friday_night_set",
   shareUrl: "https://pirate.local/p/pst_friday_night_set",
+  freedomDetected: true,
   freedomHref: "freedom://live-room?roomId=lr_friday_night_set&communityId=cmt_tameimpala&apiBase=https%3A%2F%2Fapi.pirate.local",
 };
 
@@ -40,6 +41,11 @@ type Story = StoryObj<typeof meta>;
 export const HostView: Story = {
   name: "Host / Share and broadcast",
   render: () => <LiveRoomBanner {...baseBanner} />,
+};
+
+export const HostDetectionMissing: Story = {
+  name: "Host / Detection missing",
+  render: () => <LiveRoomBanner {...baseBanner} freedomDetected={false} />,
 };
 
 export const GuestAccepted: Story = {

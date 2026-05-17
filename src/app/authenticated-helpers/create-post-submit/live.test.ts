@@ -56,6 +56,7 @@ describe("live create-post submit helpers", () => {
         accessMode: "paid",
         visibility: "unlisted",
         guestUserId: " usr_guest ",
+        scheduleForLater: true,
         scheduleAt: "2026-05-16T12:30:00.000Z",
         setlistStatus: "ready",
         performerAllocations: [
@@ -130,6 +131,26 @@ describe("live create-post submit helpers", () => {
     });
   });
 
+  test("buildLiveRoomRequest ignores stale schedule values for immediate rooms", () => {
+    const request = buildLiveRoomRequest({
+      description: "",
+      hostUserId: "usr_host",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "free",
+        visibility: "public",
+        scheduleForLater: false,
+        scheduleAt: "2026-05-16T12:30:00.000Z",
+        setlistStatus: "ready",
+        performerAllocations: [{ role: "host", userId: "", sharePct: 100 }],
+        setlistItems: [{ titleText: "Song", performanceKind: "original" }],
+      },
+      title: "Immediate room",
+    });
+
+    expect(request.event_start_at).toBeNull();
+  });
+
   test("submitLiveRoom uploads cover media and creates a free room", async () => {
     const coverFile = createCoverFile();
     const createLiveRoomCalls: Array<{
@@ -186,7 +207,7 @@ describe("live create-post submit helpers", () => {
         guest_user: null,
         event_start_at: null,
         cover_ref: "media_cover",
-        performer_allocations: [{ user: "usr_host", role: "host", share_bps: 10000 }],
+        performer_allocations: undefined,
         setlist: {
           status: "ready",
           items: [{

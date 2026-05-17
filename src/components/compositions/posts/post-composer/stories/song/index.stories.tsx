@@ -131,6 +131,33 @@ export const Original: Story = {
   ),
 };
 
+export const DetailsWithGeniusAnnotations: Story = {
+  name: "Details / Genius annotations",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="details"
+      mode="song"
+      canCreateSongPost
+      titleValue="Midnight Waves"
+      titleCountLabel="14/300"
+      lyricsValue="Meet me in the red light / carry the chorus through the floor..."
+      song={{
+        title: "Midnight Waves",
+        genre: "Electronic",
+        geniusAnnotationsUrl: "https://genius.com/34172986",
+        primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
+        coverLabel: "midnight-waves-cover.png",
+      }}
+      license={{
+        presetId: "non-commercial",
+      }}
+    />
+  ),
+};
+
 export const LicenseNonCommercial: Story = {
   name: "License / Non-commercial",
   render: () => (

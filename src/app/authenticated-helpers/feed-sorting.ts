@@ -37,7 +37,7 @@ function getRichnessScore(input: {
 
 function getBestRank(score: number, createdAt: string | number, now: number): number {
   const ageHours = Math.max(0, (now - getCreatedAtMs(createdAt)) / 3_600_000);
-  return score / Math.pow(ageHours + 2, 1.5);
+  return (score + 1) / Math.pow(ageHours + 2, 1.5);
 }
 
 function getTimeRangeCutoffMs(timeRange: TopTimeRange, now: number): number | null {

@@ -182,7 +182,9 @@ export function buildPostComposerPreviewContent({
           ? "gate_required"
           : "waiting",
       concertHref: "#",
-      startsAtLabel: formatLiveStartsAtLabel(liveState?.scheduleAt),
+      startsAtLabel: liveState?.scheduleForLater
+        ? formatLiveStartsAtLabel(liveState.scheduleAt)
+        : undefined,
       setlistPreview: liveState?.setlistItems
         .filter((item) => item.titleText.trim())
         .slice(0, 3)

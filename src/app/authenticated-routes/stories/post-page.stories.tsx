@@ -337,6 +337,18 @@ export const HostNotInFreedom: Story = {
   },
 };
 
+export const HostDetectionMissing: Story = {
+  name: "Host / Detection missing",
+  args: {
+    liveRoom: {
+      ...baseLiveRoom,
+      freedomDetected: false,
+      freedomHref: "freedom://live-room?roomId=lr_friday_night_set&communityId=cmt_tameimpala&apiBase=https%3A%2F%2Fapi.pirate.local",
+      producerRole: "host",
+    },
+  },
+};
+
 export const EndedReplayReady: Story = {
   name: "Ended / Replay ready",
   args: {

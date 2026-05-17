@@ -32,11 +32,82 @@ const RADICLE_REPOSITORIES = {
 type RadicleRepositoryKey = keyof typeof RADICLE_REPOSITORIES;
 
 interface FreedomBrowserWindow extends Window {
+  electronAPI?: unknown;
   ethereum?: {
+    isFreedomBrowser?: boolean;
+    request?: unknown;
+  };
+  freedomBrowser?: {
     isFreedomBrowser?: boolean;
   };
   swarm?: {
     isFreedomBrowser?: boolean;
+  };
+  freedomAPI?: unknown;
+  internalPages?: unknown;
+  nodeConfig?: unknown;
+  radicle?: unknown;
+  wallet?: unknown;
+}
+
+export type FreedomBrowserDetectionSnapshot = {
+  detected: boolean;
+  explicitFreedomBrowserMarker: boolean;
+  ethereumIsFreedomBrowser: boolean;
+  ethereumPresent: boolean;
+  ethereumRequestPresent: boolean;
+  freedomApiPresent: boolean;
+  freedomShellBridgePresent: boolean;
+  hasWindow: boolean;
+  swarmIsFreedomBrowser: boolean;
+  swarmPresent: boolean;
+  userAgent: string | null;
+};
+
+export function getFreedomBrowserDetectionSnapshot(): FreedomBrowserDetectionSnapshot {
+  if (typeof window === "undefined") {
+    return {
+      detected: false,
+      explicitFreedomBrowserMarker: false,
+      ethereumIsFreedomBrowser: false,
+      ethereumPresent: false,
+      ethereumRequestPresent: false,
+      freedomApiPresent: false,
+      freedomShellBridgePresent: false,
+      hasWindow: false,
+      swarmIsFreedomBrowser: false,
+      swarmPresent: false,
+      userAgent: null,
+    };
+  }
+
+  const freedomWindow = window as FreedomBrowserWindow;
+  const ethereumPresent = Boolean(freedomWindow.ethereum);
+  const swarmPresent = Boolean(freedomWindow.swarm);
+  const explicitFreedomBrowserMarker = freedomWindow.freedomBrowser?.isFreedomBrowser === true;
+  const ethereumIsFreedomBrowser = freedomWindow.ethereum?.isFreedomBrowser === true;
+  const swarmIsFreedomBrowser = freedomWindow.swarm?.isFreedomBrowser === true;
+  const freedomShellBridgePresent = Boolean(
+    freedomWindow.electronAPI
+    && freedomWindow.internalPages
+    && freedomWindow.nodeConfig,
+  );
+
+  return {
+    detected: explicitFreedomBrowserMarker
+      || ethereumIsFreedomBrowser
+      || swarmIsFreedomBrowser
+      || freedomShellBridgePresent,
+    explicitFreedomBrowserMarker,
+    ethereumIsFreedomBrowser,
+    ethereumPresent,
+    ethereumRequestPresent: typeof freedomWindow.ethereum?.request === "function",
+    freedomApiPresent: Boolean(freedomWindow.freedomAPI),
+    freedomShellBridgePresent,
+    hasWindow: true,
+    swarmIsFreedomBrowser,
+    swarmPresent,
+    userAgent: freedomWindow.navigator?.userAgent ?? null,
   };
 }
 
@@ -53,10 +124,7 @@ function resolveRadicleRepositoryHref(
 }
 
 export function prefersNativeRadicleLinks(): boolean {
-  if (typeof window === "undefined") return false;
-  const freedomWindow = window as FreedomBrowserWindow;
-  return freedomWindow.ethereum?.isFreedomBrowser === true
-    || freedomWindow.swarm?.isFreedomBrowser === true;
+  return getFreedomBrowserDetectionSnapshot().detected;
 }
 
 export function resolveResourceHref(

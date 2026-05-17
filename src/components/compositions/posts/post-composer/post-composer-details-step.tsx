@@ -63,6 +63,7 @@ export function PostComposerDetailsStep({
   const genreId = useId();
   const primaryLanguageId = useId();
   const lyricsId = useId();
+  const geniusAnnotationsUrlId = useId();
 
   if (tabs.activeTab === "video") {
     return (
@@ -198,6 +199,22 @@ export function PostComposerDetailsStep({
           variant={isMobile ? "flat" : "default"}
           value={controller.fields.lyricsValue}
         />
+        <div>
+          <FieldLabel htmlFor={geniusAnnotationsUrlId} label={copy.fields.geniusAnnotations} />
+          <Input
+            id={geniusAnnotationsUrlId}
+            inputMode="url"
+            onChange={(event) =>
+              song.update((current) => ({
+                ...current,
+                geniusAnnotationsUrl: event.target.value,
+              }))
+            }
+            placeholder={copy.placeholders.geniusAnnotationsUrl}
+            type="url"
+            value={song.state.geniusAnnotationsUrl ?? ""}
+          />
+        </div>
       </section>
 
       <section className="space-y-4">

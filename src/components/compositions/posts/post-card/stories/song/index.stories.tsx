@@ -83,6 +83,19 @@ export const Paused: Story = {
   ),
 };
 
+export const WithGeniusAnnotations: Story = {
+  name: "Metadata / Genius annotations",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseSong,
+        annotationsUrl: "https://genius.com/34172986",
+      }}
+    />
+  ),
+};
+
 export const Buffering: Story = {
   name: "Playback / Buffering",
   render: () => (

@@ -31,7 +31,7 @@ import { extractVideoPosterFrameFile } from "@/components/compositions/posts/pos
 import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
 import { formatQualifierLabel } from "@/app/authenticated-helpers/post-identity-presentation";
 import { parseUsdInput } from "@/lib/formatting/currency";
-import { prefersNativeRadicleLinks } from "@/lib/resource-links";
+import { getFreedomBrowserDetectionSnapshot, prefersNativeRadicleLinks } from "@/lib/resource-links";
 import { resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
 import { buildBasePostRequest } from "@/app/authenticated-helpers/create-post-submit/base";
 import { submitImagePost } from "@/app/authenticated-helpers/create-post-submit/image";
@@ -113,8 +113,8 @@ export function buildLiveRoomFreedomLaunchHref(input: {
   return `freedom://live-room?roomId=${encodeURIComponent(input.liveRoomId)}&communityId=${encodeURIComponent(input.communityId)}&apiBase=${encodeURIComponent(apiBase)}`;
 }
 
-export function shouldAutoLaunchLiveRoom(liveState: Pick<LiveComposerState, "scheduleAt">): boolean {
-  return !liveState.scheduleAt?.trim();
+export function shouldAutoLaunchLiveRoom(liveState: Pick<LiveComposerState, "scheduleAt" | "scheduleForLater">): boolean {
+  return liveState.scheduleForLater !== true;
 }
 
 async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<AvailableSigningAgent | null> {
@@ -700,9 +700,12 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         }
         result = songResult;
       } else if (composerMode === "live") {
+        const preSubmitFreedomDetection = getFreedomBrowserDetectionSnapshot();
         logger.info("[create-post] creating live room", {
           accessMode: liveState.accessMode,
+          freedomDetection: preSubmitFreedomDetection,
           roomKind: liveState.roomKind,
+          scheduleForLater: liveState.scheduleForLater === true,
           setlistItems: liveState.setlistItems.length,
         });
         const liveRoom = await submitLiveRoom({
@@ -724,14 +727,33 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         });
         publishedPostId = liveRoom.anchor_post;
         publishedPostType = "live";
+        const shouldAutoLaunch = shouldAutoLaunchLiveRoom(liveState);
+        const postSubmitFreedomDetection = getFreedomBrowserDetectionSnapshot();
+        logger.info("[create-post] live room auto-launch decision", {
+          anchorPostId: liveRoom.anchor_post,
+          freedomDetection: postSubmitFreedomDetection,
+          liveRoomId: liveRoom.id,
+          shouldAutoLaunch,
+        });
+        if (shouldAutoLaunch && !postSubmitFreedomDetection.detected) {
+          logger.warn("[create-post] live room did not auto-launch because Freedom Browser was not detected", {
+            anchorPostId: liveRoom.anchor_post,
+            freedomDetection: postSubmitFreedomDetection,
+            liveRoomId: liveRoom.id,
+          });
+        }
         if (
-          shouldAutoLaunchLiveRoom(liveState)
+          shouldAutoLaunch
           && typeof window !== "undefined"
           && prefersNativeRadicleLinks()
         ) {
           liveRoomFreedomHref = buildLiveRoomFreedomLaunchHref({
             communityId,
             hostname: window.location.hostname,
+            liveRoomId: liveRoom.id,
+          });
+          logger.info("[create-post] live room auto-launch href built", {
+            href: liveRoomFreedomHref,
             liveRoomId: liveRoom.id,
           });
         }

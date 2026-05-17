@@ -21,6 +21,7 @@ const defaultSongDetails: SongDetailsState = {
   canvasVideo: null,
   coverArt: null,
   genre: "Electronic",
+  geniusAnnotationsUrl: "",
   instrumentalStem: null,
   language: "English",
   lyrics: "",
@@ -70,9 +71,11 @@ function getNextStep(step: FlowStep, attachment: AttachmentState): FlowStep {
 
 export function useAttachmentFlowState({
   initialAttachment = null,
+  initialSongDetails,
   initialStep = "compose",
 }: {
   initialAttachment?: AttachmentState;
+  initialSongDetails?: Partial<SongDetailsState>;
   initialStep?: FlowStep;
 } = {}) {
   const [step, setStep] = React.useState<FlowStep>(initialStep);
@@ -85,7 +88,10 @@ export function useAttachmentFlowState({
   const [price, setPrice] = React.useState("4.99");
   const [royaltyPercent, setRoyaltyPercent] = React.useState("15");
   const [license, setLicense] = React.useState<AssetLicensePresetId>("non-commercial");
-  const [songDetails, setSongDetails] = React.useState<SongDetailsState>(defaultSongDetails);
+  const [songDetails, setSongDetails] = React.useState<SongDetailsState>({
+    ...defaultSongDetails,
+    ...initialSongDetails,
+  });
   const [videoDetails, setVideoDetails] = React.useState<VideoDetailsState>(defaultVideoDetails);
 
   React.useEffect(() => {

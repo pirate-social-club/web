@@ -388,6 +388,7 @@ export function useSongSubmit({
         primary_audio: { song_artifact_upload: primaryAudio.id },
         title: songTitle.trim(),
         lyrics: lyrics.trim(),
+        genius_annotations_url: songState.geniusAnnotationsUrl?.trim() || null,
         cover_art: coverArt ? { song_artifact_upload: coverArt.id } : null,
         preview_window: isLockedSong ? { start_ms: previewStartMs ?? 0, duration_ms: SONG_PREVIEW_DURATION_MS } : null,
         canvas_video: canvasVideo ? { song_artifact_upload: canvasVideo.id } : null,

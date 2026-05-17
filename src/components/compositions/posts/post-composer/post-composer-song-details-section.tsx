@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/primitives/select";
+import { Input } from "@/components/primitives/input";
 import { Textarea } from "@/components/primitives/textarea";
 import { Type } from "@/components/primitives/type";
 
@@ -75,6 +76,20 @@ export function PostComposerSongDetailsSection({
           onChange={(event) => onChange({ ...value, lyrics: event.target.value })}
           placeholder="Paste lyrics or mark instrumental"
           value={value.lyrics}
+        />
+      </label>
+      <label className="block space-y-2" htmlFor="post-composer-song-genius-annotations">
+        <Type as="span" variant="body-strong">
+          Genius annotations
+        </Type>
+        <Input
+          className="h-12 bg-card"
+          id="post-composer-song-genius-annotations"
+          inputMode="url"
+          onChange={(event) => onChange({ ...value, geniusAnnotationsUrl: event.target.value })}
+          placeholder="https://genius.com/..."
+          type="url"
+          value={value.geniusAnnotationsUrl}
         />
       </label>
       <PostComposerUploadRow

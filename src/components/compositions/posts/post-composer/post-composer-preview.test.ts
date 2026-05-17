@@ -56,6 +56,7 @@ describe("buildPostComposerPreviewContent", () => {
         roomKind: "duet",
         accessMode: "paid",
         visibility: "public",
+        scheduleForLater: true,
         scheduleAt: "2026-05-22T22:00",
         guestUserId: "u/guest",
         coverLabel: "cover.jpg",
@@ -95,6 +96,28 @@ describe("buildPostComposerPreviewContent", () => {
       ],
     });
     expect(content.type === "live_room" ? content.startsAtLabel : undefined).toContain("2026");
+  });
+
+  test("does not show a scheduled start label for immediate live previews", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "free",
+      attachment: { kind: "live" },
+      body: "",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "free",
+        visibility: "public",
+        scheduleForLater: false,
+        scheduleAt: "2026-05-22T22:00",
+        setlistItems: [{ titleText: "After Hours", performanceKind: "original" }],
+        setlistStatus: "draft",
+        performerAllocations: [{ userId: "u/host", role: "host", sharePct: 100 }],
+      },
+      price: "",
+      title: "Live now",
+    });
+
+    expect(content.type === "live_room" ? content.startsAtLabel : undefined).toBeUndefined();
   });
 
   test("uses song post body, not media caption or lyrics, for publish preview captions", () => {

@@ -19,6 +19,21 @@ function normalizeReplayStatus(value: string | null | undefined): LiveRoomConten
   return "none";
 }
 
+function renderableImageRef(value: string | null | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  if (
+    trimmed.startsWith("/")
+    || trimmed.startsWith("http://")
+    || trimmed.startsWith("https://")
+    || trimmed.startsWith("blob:")
+    || trimmed.startsWith("data:")
+  ) {
+    return trimmed;
+  }
+  return undefined;
+}
+
 export function toLiveRoomPostContent(
   postResponse: ApiPost,
   input: {
@@ -48,6 +63,9 @@ export function toLiveRoomPostContent(
   const purchase = input.liveRoom?.purchase;
   const accessMode = liveRoom?.access_mode ?? liveAccess?.access_mode ?? (listing ? "paid" : "free");
   const viewerOwnsPost = Boolean(input.liveRoom?.currentUserId && post.author_user === input.liveRoom.currentUserId);
+  const coverSrc = renderableImageRef(liveRoom?.cover_ref)
+    ?? renderableImageRef(input.primaryMedia?.poster_ref)
+    ?? renderableImageRef(input.primaryMedia?.storage_ref);
 
   return {
     type: "live_room",
@@ -56,7 +74,7 @@ export function toLiveRoomPostContent(
     ageGatePolicy: post.age_gate_policy,
     anchorPostHref: `/p/${post.id}`,
     contentSafetyState: post.content_safety_state,
-    coverSrc: liveRoom?.cover_ref ?? input.primaryMedia?.poster_ref ?? input.primaryMedia?.storage_ref ?? undefined,
+    coverSrc,
     description: liveRoom?.description ?? input.resolvedCaption,
     endedAtLabel: formatLiveRoomTimestampLabel(liveRoom?.ended_at),
     freedomDetected: input.liveRoom?.freedomDetected,

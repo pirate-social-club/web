@@ -111,6 +111,53 @@ function createLinkPost(overrides: Partial<LocalizedPostResponse["post"]> = {}):
   } as unknown as LocalizedPostResponse;
 }
 
+function createSongPost(overrides: Partial<LocalizedPostResponse["post"]> = {}): LocalizedPostResponse {
+  return {
+    post: {
+      access_mode: "public",
+      age_gate_policy: "none",
+      analysis_state: "allow",
+      anonymous_label: null,
+      anonymous_scope: null,
+      asset: null,
+      author_user: "usr_artist",
+      authorship_mode: "human_direct",
+      body: null,
+      caption: "New track.",
+      community: "cmt_songs",
+      content_safety_state: "safe",
+      created: unixTimestamp("2026-05-16T09:00:00.000Z"),
+      disclosed_qualifiers_json: null,
+      id: "pst_song",
+      identity_mode: "public",
+      media_refs: [],
+      object: "post",
+      post_type: "song",
+      song_annotations_url: "https://genius.com/34172986",
+      song_artifact_bundle: "sab_song",
+      song_title: "Midnight Waves",
+      source_language: "en",
+      status: "published",
+      title: "Midnight Waves",
+      visibility: "public",
+      ...overrides,
+    },
+    downvote_count: 0,
+    like_count: 0,
+    machine_translated: false,
+    resolved_locale: "en",
+    source_hash: "src_song",
+    thread_snapshot: null,
+    translated_body: null,
+    translated_caption: null,
+    translated_title: null,
+    translation_state: "same_language",
+    upvote_count: 0,
+    viewer_reaction_kinds: [],
+    viewer_vote: null,
+  } as unknown as LocalizedPostResponse;
+}
+
 function createLiveRoomAccess(): ApiLiveRoomAccessResponse {
   return {
     access: {
@@ -187,6 +234,27 @@ describe("post presentation live rooms", () => {
     expect(content.type).toBe("live_room");
     if (content.type !== "live_room") return;
     expect(content.participants).toEqual(participants);
+  });
+
+  test("falls back to post media when a live room cover ref is not renderable", () => {
+    const post = createAnchoredLivePost();
+    post.post.media_refs = [{
+      storage_ref: "https://media.test/live-cover.jpg",
+      mime_type: "image/jpeg",
+      size_bytes: 12,
+    }];
+    const access = createLiveRoomAccess();
+    access.room.cover_ref = "media_cover";
+
+    const content = toCommunityPostContent(post, undefined, {
+      liveRoom: {
+        access,
+      },
+    });
+
+    expect(content.type).toBe("live_room");
+    if (content.type !== "live_room") return;
+    expect(content.coverSrc).toBe("https://media.test/live-cover.jpg");
   });
 
   test("normalizes replay status from the API room payload", () => {
@@ -270,5 +338,15 @@ describe("post presentation links", () => {
     });
 
     expect(title.title).toBe("English fallback");
+  });
+});
+
+describe("post presentation songs", () => {
+  test("maps song annotations URL into song card content", () => {
+    const content = toCommunityPostContent(createSongPost());
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.annotationsUrl).toBe("https://genius.com/34172986");
   });
 });

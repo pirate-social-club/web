@@ -100,6 +100,7 @@ export function defaultSongState(song?: SongComposerState): SongComposerState {
   return {
     title: song?.title ?? "",
     genre: song?.genre ?? "Electronic",
+    geniusAnnotationsUrl: song?.geniusAnnotationsUrl ?? "",
     primaryLanguage: song?.primaryLanguage ?? "English",
     secondaryLanguage: song?.secondaryLanguage ?? "",
     primaryAudioUpload: song?.primaryAudioUpload ?? null,
@@ -167,6 +168,7 @@ export function defaultLiveComposerState(live?: LiveComposerState): LiveComposer
     roomKind: live?.roomKind ?? "solo",
     accessMode: live?.accessMode ?? "free",
     visibility: live?.visibility ?? "public",
+    scheduleForLater: live?.scheduleForLater ?? Boolean(live?.scheduleAt?.trim()),
     scheduleAt: live?.scheduleAt,
     description: live?.description,
     guestUserId: live?.guestUserId,

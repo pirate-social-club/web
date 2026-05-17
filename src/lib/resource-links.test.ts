@@ -73,6 +73,18 @@ describe("prefersNativeRadicleLinks", () => {
     });
   });
 
+  test("detects the explicit Freedom Browser marker", () => {
+    withWindow({ freedomBrowser: { isFreedomBrowser: true } }, () => {
+      expect(prefersNativeRadicleLinks()).toBe(true);
+    });
+  });
+
+  test("detects Freedom Browser from the shell bridge fallback", () => {
+    withWindow({ electronAPI: {}, internalPages: {}, nodeConfig: {} }, () => {
+      expect(prefersNativeRadicleLinks()).toBe(true);
+    });
+  });
+
   test("returns false outside Freedom Browser", () => {
     withWindow({}, () => {
       expect(prefersNativeRadicleLinks()).toBe(false);

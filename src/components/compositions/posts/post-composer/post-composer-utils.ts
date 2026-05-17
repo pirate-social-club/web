@@ -105,10 +105,11 @@ export function canAdvanceComposerWriteStep({
 
 export function canSubmitLiveRoomDraft(liveState: LiveComposerState, title: string): boolean {
   if (!title.trim()) return false;
-  if (!isValidLiveScheduleAt(liveState.scheduleAt)) return false;
+  if (liveState.scheduleForLater && !isValidLiveScheduleAt(liveState.scheduleAt)) return false;
   if (liveState.roomKind === "duet" && !liveState.guestUserId?.trim()) return false;
   if (liveState.setlistItems.length === 0) return false;
   if (liveState.setlistItems.some((item) => !item.titleText.trim())) return false;
+  if (liveState.accessMode !== "paid") return true;
   return liveState.performerAllocations.reduce((sum, allocation) => sum + allocation.sharePct, 0) === 100;
 }
 

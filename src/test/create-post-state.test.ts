@@ -100,9 +100,10 @@ describe("isPublicAudienceAllowed", () => {
 
 describe("live room request mapping", () => {
   test("builds Freedom launch URLs for immediate live rooms", () => {
-    expect(shouldAutoLaunchLiveRoom({ scheduleAt: "" })).toBe(true);
-    expect(shouldAutoLaunchLiveRoom({ scheduleAt: "   " })).toBe(true);
-    expect(shouldAutoLaunchLiveRoom({ scheduleAt: "2026-06-01T12:00:00Z" })).toBe(false);
+    expect(shouldAutoLaunchLiveRoom({ scheduleForLater: false, scheduleAt: "" })).toBe(true);
+    expect(shouldAutoLaunchLiveRoom({ scheduleForLater: false, scheduleAt: "2026-06-01T12:00:00Z" })).toBe(true);
+    expect(shouldAutoLaunchLiveRoom({ scheduleForLater: true, scheduleAt: "" })).toBe(false);
+    expect(shouldAutoLaunchLiveRoom({ scheduleForLater: true, scheduleAt: "2026-06-01T12:00:00Z" })).toBe(false);
     expect(buildLiveRoomFreedomLaunchHref({
       communityId: "cmt_test",
       hostname: "pirate.sc",
@@ -140,10 +141,35 @@ describe("live room request mapping", () => {
       title: "Live with songs",
     });
 
-    expect(request.performer_allocations?.[0]?.user).toBe("usr_test_host");
+    expect(request.performer_allocations).toBeUndefined();
     expect(request.setlist?.items?.[0]?.song_artifact_bundle).toBe("sab_song_bundle");
     expect(request.setlist?.items?.[1]?.song_artifact_bundle).toBeUndefined();
     expect(request.setlist?.items?.[1]?.rights_basis).toBe("cover");
+  });
+
+  test("keeps performer allocations for paid live rooms", () => {
+    const request = buildLiveRoomRequest({
+      description: "Testing a paid live room",
+      hostUserId: "usr_test_host",
+      liveState: {
+        roomKind: "solo",
+        accessMode: "paid",
+        visibility: "public",
+        setlistStatus: "ready",
+        performerAllocations: [{ role: "host", userId: "", sharePct: 100 }],
+        setlistItems: [
+          {
+            titleText: "Paid Song",
+            artistText: "Paid Artist",
+            performanceKind: "original",
+          },
+        ],
+      },
+      title: "Paid live",
+    });
+
+    expect(request.performer_allocations?.[0]?.user).toBe("usr_test_host");
+    expect(request.performer_allocations?.[0]?.share_bps).toBe(10_000);
   });
 
   test("maps song artifact bundles into setlist picker references", () => {

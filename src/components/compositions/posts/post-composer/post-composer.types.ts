@@ -19,6 +19,7 @@ export interface SongDetailsState {
   canvasVideo: ComposerUploadValue;
   coverArt: ComposerUploadValue;
   genre: string;
+  geniusAnnotationsUrl: string;
   instrumentalStem: ComposerUploadValue;
   language: string;
   lyrics: string;
@@ -96,6 +97,7 @@ export interface LiveComposerState {
   roomKind: LiveRoomKind;
   accessMode: LiveAccessMode;
   visibility: LiveVisibility;
+  scheduleForLater?: boolean;
   scheduleAt?: string;
   description?: string;
   guestUserId?: string;
@@ -155,6 +157,7 @@ export interface LinkPreviewState {
 export interface SongComposerState {
   title?: string;
   genre?: string;
+  geniusAnnotationsUrl?: string;
   primaryLanguage?: string;
   secondaryLanguage?: string;
   primaryAudioUpload?: File | null;

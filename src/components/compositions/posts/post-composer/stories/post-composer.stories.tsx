@@ -108,7 +108,7 @@ export const LinkPasteUrl: Story = {
 };
 
 export const LiveStream: Story = {
-  name: "Live / Stream",
+  name: "Live / Go live now",
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
@@ -121,6 +121,56 @@ export const LiveStream: Story = {
         roomKind: "solo",
         accessMode: "free",
         visibility: "public",
+        scheduleForLater: false,
+        coverUpload: makeLiveCoverUpload("friday-night-set-cover.svg"),
+        coverLabel: "friday-night-set-cover.png",
+        trackOptions: [
+          { id: "trk_01midnightwaves", title: "Midnight Waves", subtitle: "DJ Solar" },
+          { id: "trk_01echoes", title: "Echoes", subtitle: "DJ Solar" },
+          { id: "trk_01afterhours", title: "After Hours", subtitle: "DJ Solar" },
+          { id: "trk_01blue", title: "Blue", subtitle: "Joni Mitchell" },
+        ],
+        setlistItems: [
+          {
+            declaredTrackId: "trk_01midnightwaves",
+            titleText: "Midnight Waves",
+            artistText: "DJ Solar",
+            performanceKind: "original",
+          },
+          {
+            declaredTrackId: "trk_01echoes",
+            titleText: "Echoes",
+            artistText: "DJ Solar",
+            performanceKind: "original",
+          },
+          {
+            titleText: "Blue",
+            artistText: "Joni Mitchell",
+            performanceKind: "cover",
+          },
+        ],
+        setlistStatus: "draft",
+        performerAllocations: [{ userId: "", role: "host", sharePct: 100 }],
+      }}
+    />
+  ),
+};
+
+export const LiveScheduledEvent: Story = {
+  name: "Live / Scheduled event",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      mode="live"
+      availableTabs={["text", "image", "video", "link", "song", "live"]}
+      titleValue="Friday night set"
+      titleCountLabel="16/300"
+      textBodyValue="A Friday night live run through the new material."
+      live={{
+        roomKind: "solo",
+        accessMode: "free",
+        visibility: "public",
+        scheduleForLater: true,
         scheduleAt: "2026-05-22T20:00",
         coverUpload: makeLiveCoverUpload("friday-night-set-cover.svg"),
         coverLabel: "friday-night-set-cover.png",
@@ -175,6 +225,7 @@ export const LiveDuet: Story = {
         roomKind: "duet",
         accessMode: "paid",
         visibility: "public",
+        scheduleForLater: true,
         scheduleAt: "2026-05-22T22:00",
         coverUpload: makeLiveCoverUpload("late-set-cover.svg"),
         coverLabel: "late-set-cover.png",
@@ -222,6 +273,7 @@ export const LivePaidPublishPreview: Story = {
         roomKind: "duet",
         accessMode: "paid",
         visibility: "public",
+        scheduleForLater: true,
         scheduleAt: "2026-05-22T22:00",
         coverUpload: makeLiveCoverUpload("late-set-cover.svg"),
         coverLabel: "late-set-cover.png",

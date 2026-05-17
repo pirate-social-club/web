@@ -47,4 +47,21 @@ describe("deriveSongUI", () => {
     expect(markup).not.toContain("First line");
     expect(markup).not.toContain("<li>one</li>");
   });
+
+  test("renders Genius link as an external pill", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          annotationsUrl: "https://genius.com/34172986",
+        },
+      }),
+    );
+
+    expect(markup).toContain("View on Genius");
+    expect(markup).toContain("rounded-full");
+    expect(markup).toContain('href="https://genius.com/34172986"');
+    expect(markup).toContain('target="_blank"');
+    expect(markup).toContain('rel="noreferrer"');
+  });
 });

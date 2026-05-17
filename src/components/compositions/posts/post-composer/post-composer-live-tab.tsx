@@ -1,8 +1,10 @@
 import * as React from "react";
 import { Plus } from "@phosphor-icons/react";
+import { Checkbox } from "@/components/primitives/checkbox";
 import { Chip } from "@/components/primitives/chip";
 import { FormNote, FormSectionHeading } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
+import { Label } from "@/components/primitives/label";
 import { UploadField, FieldLabel } from "./post-composer-fields";
 import { SetlistItemRow, dedupeReferences, buildManualReference } from "./post-composer-references";
 import type { ComposerReference, LiveComposerState } from "./post-composer.types";
@@ -53,6 +55,7 @@ export function LiveTabContent({
   const coverPreviewUrl = useObjectUrl(live.coverUpload);
   const setlistKeySeed = React.useRef(0);
   const setlistKeysRef = React.useRef<string[]>([]);
+  const scheduleForLater = live.scheduleForLater ?? Boolean(live.scheduleAt?.trim());
 
   if (setlistKeysRef.current.length !== live.setlistItems.length) {
     const next = [...setlistKeysRef.current];
@@ -145,15 +148,34 @@ export function LiveTabContent({
         variant="artwork"
       />
 
-      <div>
-        <FieldLabel label={copy.live.startTime} />
-        <Input
-          className="h-10"
-          onChange={(event) => onLiveChange({ ...live, scheduleAt: event.target.value })}
-          type="datetime-local"
-          value={scheduleInputValue(live.scheduleAt)}
-        />
-        <FormNote className="mt-1">{copy.live.startTimeNote}</FormNote>
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <Checkbox
+            checked={scheduleForLater}
+            id="live-schedule-for-later"
+            onCheckedChange={(checked) =>
+              onLiveChange({
+                ...live,
+                scheduleAt: checked === true ? live.scheduleAt : undefined,
+                scheduleForLater: checked === true,
+              })
+            }
+          />
+          <Label htmlFor="live-schedule-for-later">{copy.live.scheduleForLater}</Label>
+        </div>
+
+        {scheduleForLater ? (
+          <div>
+            <FieldLabel label={copy.live.startTime} />
+            <Input
+              className="h-10"
+              onChange={(event) => onLiveChange({ ...live, scheduleAt: event.target.value, scheduleForLater: true })}
+              type="datetime-local"
+              value={scheduleInputValue(live.scheduleAt)}
+            />
+            <FormNote className="mt-1">{copy.live.startTimeNote}</FormNote>
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -233,54 +255,56 @@ export function LiveTabContent({
         </div>
       ) : null}
 
-      <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
-        <FormSectionHeading
-          description={
-            live.roomKind === "solo"
-              ? copy.live.soloProceedsDescription
-              : copy.live.duetProceedsDescription
-          }
-          title={copy.live.performerAllocations}
-        />
-        <div className="space-y-2">
-          {live.performerAllocations.map((alloc) => (
-            <div
-              key={alloc.role}
-              className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-3"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-base font-medium text-foreground">
-                  {alloc.role === "host" ? copy.live.hostLabel : copy.live.guestLabel}
-                </span>
-                <span className="text-base text-foreground">
-                  {alloc.role === "host" ? copy.live.youLabel : live.guestUserId || copy.live.collaboratorLabel}
-                </span>
+      {live.accessMode === "paid" ? (
+        <div className="space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
+          <FormSectionHeading
+            description={
+              live.roomKind === "solo"
+                ? copy.live.soloProceedsDescription
+                : copy.live.duetProceedsDescription
+            }
+            title={copy.live.performerAllocations}
+          />
+          <div className="space-y-2">
+            {live.performerAllocations.map((alloc) => (
+              <div
+                key={alloc.role}
+                className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border-soft bg-background px-4 py-3"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-base font-medium text-foreground">
+                    {alloc.role === "host" ? copy.live.hostLabel : copy.live.guestLabel}
+                  </span>
+                  <span className="text-base text-foreground">
+                    {alloc.role === "host" ? copy.live.youLabel : live.guestUserId || copy.live.collaboratorLabel}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    className="h-10 w-20 text-center"
+                    defaultValue={String(alloc.sharePct)}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (isNaN(val)) return;
+                      const updated = live.performerAllocations.map((a) =>
+                        a.role === alloc.role ? { ...a, sharePct: val } : a,
+                      );
+                      onLiveChange({ ...live, performerAllocations: updated });
+                    }}
+                    type="number"
+                    min={0}
+                    max={100}
+                  />
+                  <span className="text-base text-muted-foreground">%</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  className="h-10 w-20 text-center"
-                  defaultValue={String(alloc.sharePct)}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    if (isNaN(val)) return;
-                    const updated = live.performerAllocations.map((a) =>
-                      a.role === alloc.role ? { ...a, sharePct: val } : a,
-                    );
-                    onLiveChange({ ...live, performerAllocations: updated });
-                  }}
-                  type="number"
-                  min={0}
-                  max={100}
-                />
-                <span className="text-base text-muted-foreground">%</span>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          {live.performerAllocations.reduce((sum, a) => sum + a.sharePct, 0) !== 100 ? (
+            <FormNote tone="destructive">{copy.live.allocationsError}</FormNote>
+          ) : null}
         </div>
-        {live.performerAllocations.reduce((sum, a) => sum + a.sharePct, 0) !== 100 ? (
-          <FormNote tone="destructive">{copy.live.allocationsError}</FormNote>
-        ) : null}
-      </div>
+      ) : null}
 
       <div>
         <div className="mb-2 flex items-center justify-between gap-3">

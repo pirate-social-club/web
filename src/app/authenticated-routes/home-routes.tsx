@@ -57,6 +57,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   const api = useApi();
   const queryClient = useQueryClient();
   const sessionProfile = session?.profile;
+  const sessionAccessToken = session?.accessToken;
   const sessionUserId = session?.user.id;
   const [feedEntries, setFeedEntries] = React.useState<ApiHomeFeedItem[]>([]);
   const [topCommunities, setTopCommunities] = React.useState<ApiHomeFeedCommunitySummary[]>([]);
@@ -134,15 +135,13 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
             return result;
           }, []))]
           : [];
-        const liveRoomRefs = sessionUserId
-          ? nextFeedEntries.reduce<Array<{ communityId: string; liveRoomId: string }>>((result, entry) => {
-            const liveRoomId = entry.post.post.anchor_live_room;
-            if (liveRoomId) {
-              result.push({ communityId: entry.community.id, liveRoomId });
-            }
-            return result;
-          }, [])
-          : [];
+        const liveRoomRefs = nextFeedEntries.reduce<Array<{ communityId: string; liveRoomId: string }>>((result, entry) => {
+          const liveRoomId = entry.post.post.anchor_live_room;
+          if (liveRoomId) {
+            result.push({ communityId: entry.community.id, liveRoomId });
+          }
+          return result;
+        }, []);
 
         if (commerceCommunityIds.length > 0) {
           void Promise.all(commerceCommunityIds.map(async (communityId) => {
@@ -174,7 +173,11 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
 
         if (liveRoomRefs.length > 0) {
           void Promise.all(liveRoomRefs.map(async ({ communityId, liveRoomId }) => {
-            const access = await api.communities.getLiveRoomAccess(communityId, liveRoomId).catch(() => null);
+            const access = await (
+              sessionAccessToken
+                ? api.communities.getLiveRoomAccess(communityId, liveRoomId)
+                : api.publicCommunities.getLiveRoomAccess(communityId, liveRoomId)
+            ).catch(() => null);
             return access ? [liveRoomId, access] as const : null;
           }))
             .then((entries) => {
@@ -236,7 +239,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     return () => {
       cancelled = true;
     };
-  }, [activeSort, api, contentLocale, hydrated, queryClient, sessionProfile, sessionUserId, topTimeRange]);
+  }, [activeSort, api, contentLocale, hydrated, queryClient, sessionAccessToken, sessionProfile, sessionUserId, topTimeRange]);
 
   return {
     feedEntries,

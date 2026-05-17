@@ -118,6 +118,153 @@ describe("PostCard", () => {
     expect(markup).not.toContain("Scheduled event");
   });
 
+  test("does not invent a scheduled label when a live-room start time is absent", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "waiting",
+            liveRoomId: "lr_immediate_preview",
+            status: "scheduled",
+            title: "Immediate concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Immediate concert");
+    expect(markup).not.toContain("Scheduled");
+    expect(markup).not.toContain("Starts");
+  });
+
+  test("renders live-room setlists with numbered song and artist labels", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "waiting",
+            liveRoomId: "lr_setlist",
+            setlistPreview: [{ artist: "Artist", rightsStatus: "pending", title: "Song" }],
+            status: "scheduled",
+            title: "Setlist concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("1.");
+    expect(markup).toContain("Song");
+    expect(markup).toContain("- Artist");
+  });
+
+  test("opens the Freedom download link in a new tab for producers", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "allowed",
+            freedomDetected: false,
+            liveRoomId: "lr_producer",
+            producerRole: "host",
+            status: "scheduled",
+            title: "Producer concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Download Freedom");
+    expect(markup).toContain('target="_blank"');
+    expect(markup).toContain('rel="noreferrer"');
+  });
+
+  test("does not show producer broadcast launch when Freedom detection is missing", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "allowed",
+            freedomDetected: false,
+            freedomHref: "freedom://live-room?roomId=lr_producer&communityId=cmt_test",
+            liveRoomId: "lr_producer",
+            producerRole: "host",
+            status: "scheduled",
+            title: "Producer concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Download Freedom");
+    expect(markup).toContain('target="_blank"');
+    expect(markup).toContain('rel="noreferrer"');
+    expect(markup).not.toContain("Start broadcast");
+  });
+
+  test("shows producer broadcast launch when Freedom is detected", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "allowed",
+            freedomDetected: true,
+            freedomHref: "freedom://live-room?roomId=lr_producer&communityId=cmt_test",
+            liveRoomId: "lr_producer",
+            producerRole: "host",
+            status: "scheduled",
+            title: "Producer concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Start broadcast");
+    expect(markup).toContain('href="freedom://live-room?roomId=lr_producer&amp;communityId=cmt_test"');
+    expect(markup).toContain('target="_blank"');
+    expect(markup).toContain('rel="noreferrer"');
+    expect(markup).not.toContain("Download Freedom");
+  });
+
   test("renders RSVP state for scheduled free live-room post pages", () => {
     const markup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

@@ -417,13 +417,15 @@ function ReviewStep({
 
 function MobileAttachmentFlow({
   initialAttachment = null,
+  initialSongDetails,
   initialStep = "compose",
 }: {
   initialAttachment?: AttachmentState;
+  initialSongDetails?: Partial<SongDetailsState>;
   initialStep?: FlowStep;
 }) {
   const bottomOffset = useKeyboardBottomOffset();
-  const flow = useAttachmentFlowState({ initialAttachment, initialStep });
+  const flow = useAttachmentFlowState({ initialAttachment, initialSongDetails, initialStep });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -737,6 +739,19 @@ export const SongSettings: Story = {
   render: () => (
     <MobileAttachmentFlow
       initialAttachment={{ kind: "song", label: "midnight-waves.wav" }}
+      initialStep="song-details"
+    />
+  ),
+};
+
+export const SongSettingsWithGeniusAnnotations: Story = {
+  render: () => (
+    <MobileAttachmentFlow
+      initialAttachment={{ kind: "song", label: "midnight-waves.wav" }}
+      initialSongDetails={{
+        geniusAnnotationsUrl: "https://genius.com/34172986",
+        lyrics: "Meet me in the red light / carry the chorus through the floor...",
+      }}
       initialStep="song-details"
     />
   ),

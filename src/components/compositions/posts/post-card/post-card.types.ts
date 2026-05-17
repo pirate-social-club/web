@@ -107,6 +107,7 @@ export interface SongContentSpec {
   caption?: string;
   captionDir?: "ltr" | "rtl" | "auto";
   captionLang?: string;
+  annotationsUrl?: string;
   artworkSrc?: string;
   durationLabel?: string;
   durationMs?: number;

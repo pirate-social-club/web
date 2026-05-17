@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, MusicNote } from "@phosphor-icons/react";
+import { ArrowSquareOut, Check, MusicNote } from "@phosphor-icons/react";
 import { Lock as FilledLockIcon, Pause as PauseIcon, Play as PlayIcon } from "@phosphor-icons/react";
 import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
@@ -213,6 +213,20 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
             <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
               {derivativeSummary}
             </p>
+          )}
+          {content.annotationsUrl && (
+            <a
+              className={cn(
+                "mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-background/40 px-3 py-1 font-medium text-foreground transition-colors hover:border-foreground/40 hover:bg-foreground/5",
+                postCardType.meta,
+              )}
+              href={content.annotationsUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <span className="truncate">View on Genius</span>
+              <ArrowSquareOut className="size-3.5 shrink-0" />
+            </a>
           )}
         </div>
 

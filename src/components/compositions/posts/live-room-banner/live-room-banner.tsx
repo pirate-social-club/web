@@ -1,7 +1,8 @@
 import * as React from "react";
-import { Broadcast, Check, Copy, PlayCircle, Robot, WarningCircle } from "@phosphor-icons/react";
+import { Broadcast, Check, Copy, DownloadSimple, PlayCircle, Robot, WarningCircle } from "@phosphor-icons/react";
 
 import { Button } from "@/components/primitives/button";
+import { resolveResourceHref } from "@/lib/resource-links";
 import { cn } from "@/lib/utils";
 import { useResettableTimeout } from "@/hooks/use-resettable-timeout";
 
@@ -23,6 +24,7 @@ export type LiveRoomBannerProps = {
   anchorPostUrl?: string;
   className?: string;
   concertUrl?: string;
+  freedomDetected?: boolean;
   freedomHref?: string;
   guestInviteStatus?: LiveRoomBannerGuestInviteStatus | null;
   priceLabel?: string;
@@ -100,6 +102,7 @@ export function LiveRoomBanner({
   anchorPostUrl,
   className,
   concertUrl,
+  freedomDetected = false,
   freedomHref,
   guestInviteStatus,
   priceLabel,
@@ -116,6 +119,9 @@ export function LiveRoomBanner({
   const copyValue = producerRole ? shareUrl ?? concertUrl ?? anchorPostUrl : undefined;
   const hasSetupProblem = accessState === "missing_listing";
   const canWatch = !producerRole && viewerCanAttemptWatch(status, accessState);
+  const producerCanOpenRoom = Boolean(producerRole && freedomHref && (role === "host" || guestInviteStatus === "accepted"));
+  const showBroadcast = Boolean(producerCanOpenRoom && freedomDetected);
+  const showDownload = Boolean(producerCanOpenRoom && !freedomDetected);
 
   const handleCopy = React.useCallback(async () => {
     if (!copyValue) return;
@@ -148,11 +154,20 @@ export function LiveRoomBanner({
             </Button>
           ) : null}
 
-          {producerRole && freedomHref ? (
+          {showBroadcast ? (
             <Button asChild size="sm">
-              <a href={freedomHref}>
+              <a href={freedomHref} rel="noreferrer" target="_blank">
                 <Broadcast className="size-4" weight="bold" />
                 Broadcast in Freedom
+              </a>
+            </Button>
+          ) : null}
+
+          {showDownload ? (
+            <Button asChild size="sm" variant="outline">
+              <a href={resolveResourceHref("source-freedom-browser") ?? "#"} rel="noreferrer" target="_blank">
+                <DownloadSimple className="size-4" weight="bold" />
+                Download Freedom
               </a>
             </Button>
           ) : null}

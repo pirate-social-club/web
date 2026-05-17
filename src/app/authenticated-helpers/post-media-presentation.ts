@@ -180,6 +180,7 @@ export function toSongPostContent(
     onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
     onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
     playbackState,
+    annotationsUrl: post.song_annotations_url ?? undefined,
     caption: input.resolvedCaption,
     captionDir: input.captionDir,
     captionLang: input.captionLang,

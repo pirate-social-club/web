@@ -4,6 +4,7 @@ import { Broadcast, Calendar, Clock, DownloadSimple, Lock as LockIcon, Play, Rob
 import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
+import { resolveResourceHref } from "@/lib/resource-links";
 import { cn } from "@/lib/utils";
 import { postCardType } from "./post-card.styles";
 import type { LiveRoomContentSpec, LiveRoomParticipant, PostCardViewContext } from "./post-card.types";
@@ -27,11 +28,11 @@ function priceLabel(content: LiveRoomContentSpec): string | null {
   return content.regionalPriceLabel ?? content.priceLabel ?? null;
 }
 
-function timeLabel(content: LiveRoomContentSpec): string {
+function timeLabel(content: LiveRoomContentSpec): string | null {
   if (content.status === "live") return content.liveSinceLabel ? `Live for ${content.liveSinceLabel}` : "Live now";
   if (content.status === "canceled") return "Canceled";
   if (content.status === "ended") return content.endedAtLabel ? `Ended ${content.endedAtLabel} ago` : "Ended";
-  return content.startsAtLabel ? `Starts ${content.startsAtLabel}` : "Scheduled";
+  return content.startsAtLabel ? `Starts ${content.startsAtLabel}` : null;
 }
 
 function participantsLabel(participants: LiveRoomParticipant[] | undefined): string | null {
@@ -161,6 +162,16 @@ function shouldShowCta(ui: LiveRoomUiState): ui is Extract<LiveRoomUiState, { ct
   return "cta" in ui && Boolean(ui.cta);
 }
 
+function hasPostPageMeta(content: LiveRoomContentSpec, ui: LiveRoomUiState, time: string | null): boolean {
+  return Boolean(
+    time
+    || content.attendeeCountLabel
+    || ui.kind === "has_ticket"
+    || ui.kind === "rsvped"
+    || ui.kind === "replay_processing",
+  );
+}
+
 function LiveRoomCover({
   ageProofRequired,
   className,
@@ -195,28 +206,6 @@ function LiveRoomCover({
           <Calendar className="size-12 text-muted-foreground" />
         </div>
       )}
-      <div className="absolute left-3 top-3">
-        <Type
-          as="span"
-          variant="label"
-          className={cn(
-            "inline-flex items-center gap-1 rounded-full px-2.5 py-1",
-            content.status === "live" || content.status === "scheduled"
-              ? "bg-destructive text-destructive-foreground"
-              : "bg-muted text-muted-foreground",
-          )}
-        >
-          {content.status === "live" && <Broadcast className="size-3.5" weight="fill" />}
-          {content.status === "scheduled" && <Clock className="size-3.5" weight="fill" />}
-          {content.status === "live"
-            ? "LIVE"
-            : content.status === "scheduled"
-              ? "UPCOMING"
-              : content.status === "ended"
-                ? "ENDED"
-                : "CANCELED"}
-        </Type>
-      </div>
     </>
   );
   const coverClassName = cn(
@@ -243,7 +232,7 @@ function ProducerControls({ content }: { content: LiveRoomContentSpec }) {
   if (!content.producerRole) return null;
   const isHost = content.producerRole === "host";
   const isAcceptedGuest = content.producerRole === "guest" && content.guestInviteStatus === "accepted";
-  const showBroadcast = content.freedomDetected && content.freedomHref && (isHost || isAcceptedGuest);
+  const showBroadcast = Boolean(content.freedomDetected && content.freedomHref && (isHost || isAcceptedGuest));
 
   if (content.producerRole === "guest" && content.guestInviteStatus === "pending") {
     return (
@@ -265,15 +254,15 @@ function ProducerControls({ content }: { content: LiveRoomContentSpec }) {
     <div className="flex flex-wrap items-center gap-2">
       {showBroadcast ? (
         <Button asChild size="sm">
-          <a href={content.freedomHref}>
+          <a href={content.freedomHref} rel="noreferrer" target="_blank">
             <Broadcast className="size-4" weight="bold" />
             {isHost ? "Start broadcast" : "Open producer room"}
           </a>
         </Button>
       ) : null}
-      {!content.freedomDetected ? (
+      {!showBroadcast && !content.freedomDetected ? (
         <Button asChild size="sm" variant="outline">
-          <a href="https://github.com/pirate-social-club/freedom-browser">
+          <a href={resolveResourceHref("source-freedom-browser") ?? "#"} rel="noreferrer" target="_blank">
             <DownloadSimple className="size-4" weight="bold" />
             Download Freedom
           </a>
@@ -301,6 +290,7 @@ export function LiveRoomPostContent({
   const time = timeLabel(content);
   const timeIsLive = content.status === "live";
   const showPrimaryCta = shouldShowCta(ui);
+  const showPostPageMeta = hasPostPageMeta(content, ui, time);
 
   if (inPostPage) {
     return (
@@ -330,42 +320,46 @@ export function LiveRoomPostContent({
           <ParticipantAvatars participants={content.participants} />
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Type
-            as="span"
-            variant="label"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3 py-1",
-              timeIsLive
-                ? "bg-destructive/10 text-destructive"
-                : "bg-primary/10 text-primary",
-            )}
-          >
-            <Clock className="size-4" weight="bold" />
-            {time}
-          </Type>
-          {content.attendeeCountLabel ? (
-            <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1">
-              <Users className="size-4" weight="bold" />
-              {content.attendeeCountLabel}
-            </Type>
-          ) : null}
-          {ui.kind === "has_ticket" ? (
-            <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-success">
-              You&apos;re going
-            </Type>
-          ) : null}
-          {ui.kind === "rsvped" ? (
-            <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-success">
-              You&apos;re going
-            </Type>
-          ) : null}
-          {ui.kind === "replay_processing" ? (
-            <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-muted-foreground">
-              Replay processing
-            </Type>
-          ) : null}
-        </div>
+        {showPostPageMeta ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {time ? (
+              <Type
+                as="span"
+                variant="label"
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1",
+                  timeIsLive
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-primary/10 text-primary",
+                )}
+              >
+                <Clock className="size-4" weight="bold" />
+                {time}
+              </Type>
+            ) : null}
+            {content.attendeeCountLabel ? (
+              <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1">
+                <Users className="size-4" weight="bold" />
+                {content.attendeeCountLabel}
+              </Type>
+            ) : null}
+            {ui.kind === "has_ticket" ? (
+              <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-success">
+                You&apos;re going
+              </Type>
+            ) : null}
+            {ui.kind === "rsvped" ? (
+              <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-success">
+                You&apos;re going
+              </Type>
+            ) : null}
+            {ui.kind === "replay_processing" ? (
+              <Type as="span" variant="label" className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-muted-foreground">
+                Replay processing
+              </Type>
+            ) : null}
+          </div>
+        ) : null}
 
         {content.description ? (
           <Type as="p" variant="body" className="max-w-[72ch] leading-7 text-muted-foreground">
@@ -387,12 +381,12 @@ export function LiveRoomPostContent({
               {content.setlistPreview.map((track, index) => (
                 <li key={track.title} className="flex gap-2">
                   <Type variant="caption" className="tabular-nums">
-                    {index + 1}
+                    {index + 1}.
                   </Type>
                   <Type variant="caption">
                     {track.title}
                     {track.artist ? (
-                      <span className="text-muted-foreground/70"> {track.artist}</span>
+                      <span className="text-muted-foreground/70"> - {track.artist}</span>
                     ) : null}
                   </Type>
                 </li>
@@ -448,15 +442,17 @@ export function LiveRoomPostContent({
           )}
         </div>
 
-        <p
-          className={cn(
-            "mt-0.5 font-medium",
-            postCardType.meta,
-            timeIsLive ? "text-destructive" : "text-foreground/90",
-          )}
-        >
-          {time}
-        </p>
+        {time ? (
+          <p
+            className={cn(
+              "mt-0.5 font-medium",
+              postCardType.meta,
+              timeIsLive ? "text-destructive" : "text-foreground/90",
+            )}
+          >
+            {time}
+          </p>
+        ) : null}
 
         {participantsLabel(content.participants) ? (
           <p className={cn("mt-0.5 text-muted-foreground", postCardType.meta)}>

@@ -19,7 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useApi } from "@/lib/api";
 import { resolveApiBaseUrl } from "@/lib/api/base-url";
 import { buildCommunityPath } from "@/lib/community-routing";
-import { prefersNativeRadicleLinks } from "@/lib/resource-links";
+import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
 import { useUiLocale } from "@/lib/ui-locale";
 
 import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
@@ -39,6 +39,7 @@ import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
 import { toast } from "@/components/primitives/sonner";
 import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
+import { logger } from "@/lib/logger";
 
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
@@ -151,6 +152,7 @@ export function PostPage({ postId }: { postId: string }) {
   const [liveRoomAccess, setLiveRoomAccess] = React.useState<ApiLiveRoomAccessResponse | null>(null);
   const [liveViewerSession, setLiveViewerSession] = React.useState<ApiLiveRoomViewerAttachResponse | null>(null);
   const [liveViewerOpen, setLiveViewerOpen] = React.useState(false);
+  const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
   const autoWatchAttemptedRef = React.useRef(false);
   const autoWatchLiveRoom = React.useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -236,6 +238,48 @@ export function PostPage({ postId }: { postId: string }) {
   React.useEffect(() => {
     void refreshLiveRoomAccess();
   }, [refreshLiveRoomAccess]);
+
+  React.useEffect(() => {
+    let attempts = 0;
+    let lastLoggedKey = "";
+
+    const readDetection = () => {
+      attempts += 1;
+      const next = getFreedomBrowserDetectionSnapshot();
+      setFreedomDetection(next);
+      const logKey = JSON.stringify({
+        detected: next.detected,
+        ethereumIsFreedomBrowser: next.ethereumIsFreedomBrowser,
+        ethereumPresent: next.ethereumPresent,
+        explicitFreedomBrowserMarker: next.explicitFreedomBrowserMarker,
+        freedomApiPresent: next.freedomApiPresent,
+        freedomShellBridgePresent: next.freedomShellBridgePresent,
+        swarmIsFreedomBrowser: next.swarmIsFreedomBrowser,
+        swarmPresent: next.swarmPresent,
+      });
+      if (logKey !== lastLoggedKey) {
+        lastLoggedKey = logKey;
+        logger.info("[post-route] Freedom Browser detection", {
+          attempt: attempts,
+          detection: next,
+          postId,
+        });
+      }
+      return next.detected;
+    };
+
+    const detected = readDetection();
+    if (detected) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      const nowDetected = readDetection();
+      if (nowDetected || attempts >= 20) {
+        window.clearInterval(intervalId);
+      }
+    }, 250);
+
+    return () => window.clearInterval(intervalId);
+  }, [postId]);
 
   React.useEffect(() => {
     const guestUserId = liveRoomAccess?.room?.guest_user;
@@ -410,6 +454,61 @@ export function PostPage({ postId }: { postId: string }) {
     }
   }, [activeLiveRoomId, api.communities, api.publicCommunities, community?.id, refreshLiveRoomAccess, session?.accessToken]);
 
+  const diagnosticLiveRoom = liveRoomAccess?.room ?? null;
+  const diagnosticGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
+  const diagnosticViewerIsLiveRoomHost = sameUserId(session?.user?.id, diagnosticLiveRoom?.host_user);
+  const diagnosticViewerIsLiveRoomGuest = sameUserId(session?.user?.id, diagnosticLiveRoom?.guest_user);
+  const diagnosticLiveRoomLaunch = buildLiveRoomLaunch({
+    communityId: post?.post.community,
+    liveRoomId: activeLiveRoomId,
+    postId,
+  });
+  const diagnosticLiveRoomFreedomHref = diagnosticLiveRoomLaunch && (
+    diagnosticViewerIsLiveRoomHost
+    || diagnosticViewerIsLiveRoomGuest && diagnosticGuestInviteStatus === "accepted"
+  )
+    ? diagnosticLiveRoomLaunch.href
+    : undefined;
+
+  React.useEffect(() => {
+    if (!activeLiveRoomId) return;
+    const producerRole = diagnosticViewerIsLiveRoomHost
+      ? "host"
+      : diagnosticViewerIsLiveRoomGuest
+        ? "guest"
+        : null;
+    const payload = {
+      freedomDetected: freedomDetection.detected,
+      freedomDetection,
+      guestInviteStatus: diagnosticGuestInviteStatus,
+      guestUserId: diagnosticLiveRoom?.guest_user ?? null,
+      hasFreedomHref: Boolean(diagnosticLiveRoomFreedomHref),
+      hostUserId: diagnosticLiveRoom?.host_user ?? null,
+      liveRoomId: activeLiveRoomId,
+      postId,
+      producerRole,
+      viewerUserId: session?.user?.id ?? null,
+    };
+    logger.info("[post-route] live room producer controls", payload);
+    if (producerRole && !freedomDetection.detected) {
+      logger.warn("[post-route] producer Freedom Browser detection missing; showing Download Freedom instead of broadcast launch", payload);
+    }
+    if (producerRole && !diagnosticLiveRoomFreedomHref) {
+      logger.warn("[post-route] producer cannot open broadcast because live room launch href is missing", payload);
+    }
+  }, [
+    activeLiveRoomId,
+    diagnosticGuestInviteStatus,
+    diagnosticLiveRoom?.guest_user,
+    diagnosticLiveRoom?.host_user,
+    diagnosticLiveRoomFreedomHref,
+    diagnosticViewerIsLiveRoomGuest,
+    diagnosticViewerIsLiveRoomHost,
+    freedomDetection,
+    postId,
+    session?.user?.id,
+  ]);
+
   if (loading) {
     if (isMobile) {
       return (
@@ -497,7 +596,7 @@ export function PostPage({ postId }: { postId: string }) {
     ? {
       access: liveRoomAccess,
       currentUserId: session?.user?.id,
-      freedomDetected: typeof window !== "undefined" && prefersNativeRadicleLinks(),
+      freedomDetected: freedomDetection.detected,
       freedomHref: liveRoomFreedomHref ?? undefined,
       guestInviteStatus: liveRoomGuestInviteStatus,
       listing: threadLiveRoomListing,

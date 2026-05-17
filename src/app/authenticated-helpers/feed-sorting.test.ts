@@ -155,6 +155,29 @@ describe("feed sorting", () => {
     ]);
   });
 
+  test("best keeps fresh zero-engagement posts ahead of week-old modestly upvoted posts", () => {
+    const fresh = createPost({
+      body: "fresh",
+      createdAt: "2026-04-19T11:55:00.000Z",
+      id: "pst_fresh_zero",
+      title: "Fresh",
+    });
+    const weekOld = createPost({
+      body: "older but upvoted",
+      createdAt: "2026-04-12T12:00:00.000Z",
+      id: "pst_week_old_upvoted",
+      title: "Week old",
+      upvotes: 4,
+    });
+
+    const sorted = sortCommunityFeedPosts([weekOld, fresh], "best", now);
+
+    expect(sorted.map((post) => post.post.id)).toEqual([
+      "pst_fresh_zero",
+      "pst_week_old_upvoted",
+    ]);
+  });
+
   test("home top can filter by time range before sorting", () => {
     const sorted = sortHomeFeedEntries([
       createHomeEntry(oldEngaged),

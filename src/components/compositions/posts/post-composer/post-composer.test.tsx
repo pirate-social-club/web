@@ -674,7 +674,7 @@ describe("PostComposer monetization", () => {
     expect(monetization.visible).toBe(false);
   });
 
-  test("does not render ticket price controls for free live events", () => {
+  test("does not render ticket price or performer allocation controls for free live events", () => {
     const tree = renderComposer({
       availableTabs: ["live"],
       clubName: "Lane1",
@@ -698,6 +698,7 @@ describe("PostComposer monetization", () => {
 
     expect(findElement(tree, (element) => element.props.children === "Ticket price")).toBeNull();
     expect(findElement(tree, (element) => element.props.inputMode === "decimal")).toBeNull();
+    expect(findElement(tree, (element) => element.props.title === "Performer allocations")).toBeNull();
   });
 
   test("desktop write step routes song and video through details", () => {
@@ -752,7 +753,39 @@ describe("PostComposer monetization", () => {
     expect(videoStep).toBe("details");
   });
 
-  test("desktop write step blocks live until the setlist is ready", () => {
+  test("renders optional Genius annotations URL in song details and updates song state", () => {
+    let geniusAnnotationsUrl = "";
+    const tree = renderComposer({
+      availableTabs: ["song"],
+      canCreateSongPost: true,
+      clubName: "Lane1",
+      composerStep: "details",
+      lyricsValue: "Lyrics",
+      mode: "song",
+      onSongChange: (next) => {
+        geniusAnnotationsUrl = next.geniusAnnotationsUrl ?? "";
+      },
+      song: {
+        geniusAnnotationsUrl,
+        title: "Midnight Waves",
+      },
+    });
+
+    const geniusInput = findElement(
+      tree,
+      (element) => element.props.placeholder === "https://genius.com/..." && typeof element.props.onChange === "function",
+    );
+    if (!geniusInput) {
+      throw new Error("Missing Genius annotations URL input");
+    }
+
+    (geniusInput.props.onChange as ((event: { target: { value: string } }) => void) | undefined)?.({
+      target: { value: "https://genius.com/34172986" },
+    });
+    expect(geniusAnnotationsUrl).toBe("https://genius.com/34172986");
+  });
+
+  test("desktop write step blocks live until the setlist is ready and only requires time when scheduling", () => {
     let step: PostComposerProps["composerStep"] = "write";
     const blockedTree = renderComposer({
       availableTabs: ["live"],
@@ -782,7 +815,7 @@ describe("PostComposer monetization", () => {
     }
     expect(blockedContinue.props.disabled).toBe(true);
 
-    const unscheduledTree = renderComposer({
+    const emptyScheduledTree = renderComposer({
       availableTabs: ["live"],
       clubName: "Lane1",
       composerStep: "write",
@@ -790,6 +823,7 @@ describe("PostComposer monetization", () => {
         accessMode: "paid",
         performerAllocations: [{ role: "host", sharePct: 100, userId: "usr_host" }],
         roomKind: "solo",
+        scheduleForLater: true,
         setlistItems: [{ performanceKind: "original", titleText: "Song" }],
         setlistStatus: "ready",
         visibility: "public",
@@ -797,14 +831,39 @@ describe("PostComposer monetization", () => {
       mode: "live",
       titleValue: "Paid room",
     });
-    const unscheduledContinue = findElement(
-      unscheduledTree,
+    const emptyScheduledContinue = findElement(
+      emptyScheduledTree,
       (element) => element.props.children === "Continue" && "disabled" in element.props,
     );
-    if (!unscheduledContinue) {
-      throw new Error("Missing unscheduled live continue button");
+    if (!emptyScheduledContinue) {
+      throw new Error("Missing scheduled live continue button");
     }
-    expect(unscheduledContinue.props.disabled).toBe(true);
+    expect(emptyScheduledContinue.props.disabled).toBe(true);
+
+    const goLiveNowTree = renderComposer({
+      availableTabs: ["live"],
+      clubName: "Lane1",
+      composerStep: "write",
+      live: {
+        accessMode: "paid",
+        performerAllocations: [{ role: "host", sharePct: 100, userId: "usr_host" }],
+        roomKind: "solo",
+        scheduleForLater: false,
+        setlistItems: [{ performanceKind: "original", titleText: "Song" }],
+        setlistStatus: "ready",
+        visibility: "public",
+      },
+      mode: "live",
+      titleValue: "Paid room",
+    });
+    const goLiveNowContinue = findElement(
+      goLiveNowTree,
+      (element) => element.props.children === "Continue" && "disabled" in element.props,
+    );
+    if (!goLiveNowContinue) {
+      throw new Error("Missing go-live-now continue button");
+    }
+    expect(goLiveNowContinue.props.disabled).toBe(false);
 
     const readyTree = renderComposer({
       availableTabs: ["live"],
@@ -814,6 +873,7 @@ describe("PostComposer monetization", () => {
         accessMode: "paid",
         performerAllocations: [{ role: "host", sharePct: 100, userId: "usr_host" }],
         roomKind: "solo",
+        scheduleForLater: true,
         scheduleAt: "2026-05-22T20:00",
         setlistItems: [{ performanceKind: "original", titleText: "Song" }],
         setlistStatus: "ready",
@@ -1144,6 +1204,7 @@ describe("PostComposer monetization", () => {
           eventCover: "Event cover",
           eventCoverHelp: "Upload a 16:9 event cover. Feed, preview, and event page show it wide.",
           eventCoverUpload: "Upload event cover",
+          scheduleForLater: "Schedule for later",
           startTime: "Start time",
           startTimeNote: "Required for scheduled live events.",
         },
@@ -1159,6 +1220,7 @@ describe("PostComposer monetization", () => {
         accessMode: "free",
         performerAllocations: [{ role: "host", sharePct: 100, userId: "usr_host" }],
         roomKind: "solo",
+        scheduleForLater: true,
         scheduleAt: "2026-05-22T20:00",
         setlistItems: [],
         setlistStatus: "ready",
@@ -1179,6 +1241,14 @@ describe("PostComposer monetization", () => {
     expect(coverUpload?.props.artworkPlaceholderLabel).toBe("Upload event cover");
     expect(coverUpload?.props.artworkPreviewAspect).toBe("video");
 
+    const scheduleCheckbox = findElement(
+      tree,
+      (element) => element.props.id === "live-schedule-for-later" && typeof element.props.onCheckedChange === "function",
+    );
+    expect(scheduleCheckbox?.props.checked).toBe(true);
+    (scheduleCheckbox?.props.onCheckedChange as ((checked: boolean) => void) | undefined)?.(false);
+    expect(nextLiveState).toMatchObject({ scheduleAt: undefined, scheduleForLater: false });
+
     const scheduleInput = findElement(
       tree,
       (element) => element.props.type === "datetime-local" && typeof element.props.onChange === "function",
@@ -1187,7 +1257,7 @@ describe("PostComposer monetization", () => {
     (scheduleInput?.props.onChange as ((event: { target: { value: string } }) => void) | undefined)?.({
       target: { value: "2026-05-23T21:30" },
     });
-    expect(nextLiveState).toMatchObject({ scheduleAt: "2026-05-23T21:30" });
+    expect(nextLiveState).toMatchObject({ scheduleAt: "2026-05-23T21:30", scheduleForLater: true });
   });
 
   test("does not force image attachment previews into a square crop", () => {

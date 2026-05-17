@@ -95,6 +95,18 @@ contains a production client id.
 GitHub Actions reads these values from `VITE_PRIVY_APP_ID` and, for production
 only, `VITE_PRIVY_CLIENT_ID` repository or organization secrets/variables.
 
+Required API staging secrets:
+
+```bash
+OPENROUTER_API_KEY
+PRIVY_APP_ID
+PRIVY_APP_SECRET
+```
+
+The staging deploy script checks these Cloudflare Worker secrets before
+deploying `api-staging.pirate.sc`; missing Privy API bindings break
+`/auth/session/exchange` after the web OTP flow completes.
+
 API endpoint selection is host-based at runtime:
 
 - `staging.pirate.sc` uses `https://api-staging.pirate.sc`

@@ -209,9 +209,14 @@ export function PostComposerSettingsSections({
   visibility,
   onAgentIdentitySelect,
 }: PostComposerSettingsSectionsProps) {
-  const showAccess = Boolean(attachment && (attachment.kind === "song" || attachment.kind === "video"));
+  const isLiveAttachment = attachment?.kind === "live";
+  const showAccess = Boolean(attachment && (
+    attachment.kind === "song"
+    || attachment.kind === "video"
+    || (isLiveAttachment && access === "paid")
+  ));
   const showPaidFields = access === "paid" && showAccess;
-  const shouldShowLicenseFields = showLicenseFields ?? showPaidFields;
+  const shouldShowLicenseFields = showLicenseFields ?? (showPaidFields && !isLiveAttachment);
   const copy = {
     ...defaultCopy,
     ...copyOverrides,
@@ -289,16 +294,18 @@ export function PostComposerSettingsSections({
       {showAccess ? (
         <section className="space-y-3">
           <div className="space-y-4 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4">
-            <div className="flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5">
-              <Checkbox
-                checked={access === "paid"}
-                id={paidAccessId}
-                onCheckedChange={(next) => onPriceChange(price, next === true ? "paid" : "free")}
-              />
-              <Label className="flex-1 text-base leading-6" htmlFor={paidAccessId}>
-                {copy.paidUnlockTitle}
-              </Label>
-            </div>
+            {isLiveAttachment ? null : (
+              <div className="flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5">
+                <Checkbox
+                  checked={access === "paid"}
+                  id={paidAccessId}
+                  onCheckedChange={(next) => onPriceChange(price, next === true ? "paid" : "free")}
+                />
+                <Label className="flex-1 text-base leading-6" htmlFor={paidAccessId}>
+                  {copy.paidUnlockTitle}
+                </Label>
+              </div>
+            )}
             {showPaidFields ? (
               <div className="space-y-4">
                 <label className="block space-y-2">

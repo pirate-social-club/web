@@ -7,6 +7,34 @@ import { UploadField, FieldLabel } from "./post-composer-fields";
 import { SetlistItemRow, dedupeReferences, buildManualReference } from "./post-composer-references";
 import type { ComposerReference, LiveComposerState } from "./post-composer.types";
 
+function scheduleInputValue(scheduleAt: string | undefined) {
+  const value = scheduleAt?.trim();
+  if (!value) return "";
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return value;
+
+  const date = new Date(timestamp);
+  const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(timestamp - timezoneOffsetMs).toISOString().slice(0, 16);
+}
+
+function useObjectUrl(file: File | null | undefined) {
+  const [objectUrl, setObjectUrl] = React.useState<string | undefined>();
+
+  React.useEffect(() => {
+    if (!file) {
+      setObjectUrl(undefined);
+      return;
+    }
+
+    const nextUrl = URL.createObjectURL(file);
+    setObjectUrl(nextUrl);
+    return () => URL.revokeObjectURL(nextUrl);
+  }, [file]);
+
+  return objectUrl;
+}
+
 export function LiveTabContent({
   copy,
   live,
@@ -22,6 +50,7 @@ export function LiveTabContent({
   live: LiveComposerState;
   onLiveChange: (state: LiveComposerState) => void;
 }) {
+  const coverPreviewUrl = useObjectUrl(live.coverUpload);
   const setlistKeySeed = React.useRef(0);
   const setlistKeysRef = React.useRef<string[]>([]);
 
@@ -99,8 +128,11 @@ export function LiveTabContent({
     <div className="space-y-5">
       <UploadField
         accept="image/*"
+        artworkHelp={copy.live.eventCoverHelp}
+        artworkPlaceholderLabel={copy.live.eventCoverUpload}
+        artworkPreviewAspect="video"
         copy={copy}
-        label={copy.fields.coverArt}
+        label={copy.live.eventCover}
         onChange={(files) =>
           onLiveChange({
             ...live,
@@ -108,9 +140,21 @@ export function LiveTabContent({
             coverLabel: files?.[0]?.name ?? live.coverLabel,
           })
         }
+        previewUrl={coverPreviewUrl}
         selectedLabel={live.coverUpload?.name ?? live.coverLabel}
         variant="artwork"
       />
+
+      <div>
+        <FieldLabel label={copy.live.startTime} />
+        <Input
+          className="h-10"
+          onChange={(event) => onLiveChange({ ...live, scheduleAt: event.target.value })}
+          type="datetime-local"
+          value={scheduleInputValue(live.scheduleAt)}
+        />
+        <FormNote className="mt-1">{copy.live.startTimeNote}</FormNote>
+      </div>
 
       <div className="grid gap-3 md:grid-cols-3">
         <div>

@@ -5,6 +5,7 @@ import type { Profile as ApiProfile } from "@pirate/api-contracts";
 import { buildPublicProfilePathForProfile } from "@/lib/profile-routing";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import type { FeedItem } from "@/components/compositions/posts/feed/feed";
+import { buildPostCardTitleProps } from "@/components/compositions/posts/post-card/post-card-content-rules";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { buildNationalityBadgeLabel } from "@/components/compositions/posts/post-card/post-card-nationality";
 
@@ -62,6 +63,18 @@ export function toHomeFeedItem(
   const postId = post.id ?? (post as typeof post & { post?: string }).post ?? "";
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
+  const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
+  const titleProps = buildPostCardTitleProps({
+    content,
+    title: localizedLinkTitle.title ?? postResponse.translated_title ?? post.title,
+    titleDir: localizedLinkTitle.dir ?? (postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
+      : undefined),
+    titleHref: `/p/${postId}`,
+    titleLang: localizedLinkTitle.lang ?? (postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
+      : undefined),
+  });
 
   const localizedPost = withTranslationToggleProps({
       byline: {
@@ -87,7 +100,7 @@ export function toHomeFeedItem(
         },
         timestampLabel: formatRelativeTimestamp(post.created),
       },
-      content: toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" }),
+      content,
       engagement: {
         commentCount: getPostCommentCount(postResponse),
         score: getPostScore(postResponse),
@@ -103,23 +116,26 @@ export function toHomeFeedItem(
       onVote: opts?.onVote,
       postHref: `/p/${postId}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
-      title: localizedLinkTitle.title ?? postResponse.translated_title ?? post.title ?? undefined,
-      titleDir: localizedLinkTitle.dir ?? (postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined),
-      titleLang: localizedLinkTitle.lang ?? (postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined),
-      titleHref: `/p/${postId}`,
+      ...titleProps,
       viewContext: "home",
     },
     postResponse,
     opts,
   );
   const originalPost = canShowOriginalToggle(postResponse, opts)
-    ? withTranslationToggleProps({
-      ...localizedPost,
-      content: toCommunityPostContent(postResponse, songOptions, { ...opts, preferOriginalText: true }),
-      title: post.title ?? undefined,
-      titleDir: undefined,
-      titleLang: undefined,
-    }, postResponse, opts)
+    ? (() => {
+      const originalContent = toCommunityPostContent(postResponse, songOptions, { ...opts, preferOriginalText: true });
+      const originalTitleProps = buildPostCardTitleProps({
+        content: originalContent,
+        title: post.title,
+        titleHref: localizedPost.titleHref,
+      });
+      return withTranslationToggleProps({
+        ...localizedPost,
+        content: originalContent,
+        ...originalTitleProps,
+      }, postResponse, opts);
+    })()
     : undefined;
 
   return {

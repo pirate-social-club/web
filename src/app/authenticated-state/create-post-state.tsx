@@ -8,6 +8,7 @@ import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
+import { resolveApiBaseUrl } from "@/lib/api/base-url";
 import { buildAgentActionProof } from "@/lib/agents/browser-agent-action-proof";
 import { findStoredOwnedAgentKey } from "@/lib/agents/agent-key-store";
 import { useSession } from "@/lib/api/session-store";
@@ -24,12 +25,13 @@ import type {
   RegionalPricingPreview,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import type { ApiDerivativeSource } from "@/lib/api/client-api-types";
-import { isValidHttpUrl, normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
+import { canSubmitLiveRoomDraft, isValidHttpUrl, normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
 import { extractVideoPosterFrameFile } from "@/components/compositions/posts/post-composer/video-poster-frame";
 
 import { useCreatePostDraftState, type CreatePostDraftState } from "./create-post-draft-state";
 import { formatQualifierLabel } from "@/app/authenticated-helpers/post-identity-presentation";
 import { parseUsdInput } from "@/lib/formatting/currency";
+import { prefersNativeRadicleLinks } from "@/lib/resource-links";
 import { resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
 import { buildBasePostRequest } from "@/app/authenticated-helpers/create-post-submit/base";
 import { submitImagePost } from "@/app/authenticated-helpers/create-post-submit/image";
@@ -102,12 +104,17 @@ export function derivativeSourceToComposerReference(source: ApiDerivativeSource)
 
 export { buildLiveRoomRequest } from "@/app/authenticated-helpers/create-post-submit/live";
 
-function canSubmitLiveRoom(liveState: LiveComposerState, title: string): boolean {
-  if (!title.trim()) return false;
-  if (liveState.roomKind === "duet" && !liveState.guestUserId?.trim()) return false;
-  if (liveState.setlistItems.length === 0) return false;
-  if (liveState.setlistItems.some((item) => !item.titleText.trim())) return false;
-  return liveState.performerAllocations.reduce((sum, allocation) => sum + allocation.sharePct, 0) === 100;
+export function buildLiveRoomFreedomLaunchHref(input: {
+  communityId: string;
+  hostname?: string | null;
+  liveRoomId: string;
+}): string {
+  const apiBase = resolveApiBaseUrl(input.hostname ?? null);
+  return `freedom://live-room?roomId=${encodeURIComponent(input.liveRoomId)}&communityId=${encodeURIComponent(input.communityId)}&apiBase=${encodeURIComponent(apiBase)}`;
+}
+
+export function shouldAutoLaunchLiveRoom(liveState: Pick<LiveComposerState, "scheduleAt">): boolean {
+  return !liveState.scheduleAt?.trim();
 }
 
 async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<AvailableSigningAgent | null> {
@@ -563,7 +570,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const canSubmitLink = isValidHttpUrl(linkUrl);
   const canSubmitImage = title.trim().length > 0 && Boolean(imageUpload);
   const canSubmitVideo = title.trim().length > 0 && Boolean(videoState.primaryVideoUpload);
-  const canSubmitLive = canSubmitLiveRoom(liveState, title);
+  const canSubmitLive = canSubmitLiveRoomDraft(liveState, title);
   const canSubmit = composerMode === "song"
     ? canSubmitSong
     : composerMode === "link"
@@ -647,6 +654,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       let result: ApiCreatedPost | null = null;
       let publishedPostId: string | null = null;
       let publishedPostType = composerMode;
+      let liveRoomFreedomHref: string | null = null;
       const resolvedIdentityMode = authorMode === "agent"
         || composerMode === "song"
         || composerMode === "live"
@@ -716,6 +724,17 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         });
         publishedPostId = liveRoom.anchor_post;
         publishedPostType = "live";
+        if (
+          shouldAutoLaunchLiveRoom(liveState)
+          && typeof window !== "undefined"
+          && prefersNativeRadicleLinks()
+        ) {
+          liveRoomFreedomHref = buildLiveRoomFreedomLaunchHref({
+            communityId,
+            hostname: window.location.hostname,
+            liveRoomId: liveRoom.id,
+          });
+        }
       } else if (composerMode === "image") {
         logger.info("[create-post] creating image post", {
           filename: imageUpload?.name,
@@ -826,6 +845,13 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       const destinationPostId = publishedPostId ?? result?.id;
       if (!destinationPostId) {
         throw new Error("The post was created, but no destination post was returned.");
+      }
+      if (liveRoomFreedomHref) {
+        logger.info("[create-post] opening immediate live room in Freedom", {
+          postId: destinationPostId,
+        });
+        window.location.assign(liveRoomFreedomHref);
+        return;
       }
       navigate(`/p/${destinationPostId}`);
     } catch (error: unknown) {

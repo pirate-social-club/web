@@ -181,11 +181,20 @@ function EventPostPageStory({
   modalOpen = false,
 }: EventPostPageStoryProps) {
   const [sort, setSort] = React.useState<CommentSort>("best");
+  const [rsvped, setRsvped] = React.useState(liveRoom.rsvpState === "going");
   const [viewerOpen, setViewerOpen] = React.useState(modalOpen);
+  React.useEffect(() => {
+    setRsvped(liveRoom.rsvpState === "going");
+  }, [liveRoom.liveRoomId, liveRoom.rsvpState]);
+  const canRsvp = liveRoom.status === "scheduled"
+    && liveRoom.accessMode === "free"
+    && !liveRoom.producerRole;
   const liveRoomContent: LiveRoomContentSpec = {
     ...liveRoom,
     onBuy: liveRoom.onBuy ?? noop,
+    onRsvp: liveRoom.onRsvp ?? (canRsvp ? () => setRsvped(true) : undefined),
     onWatch: liveRoom.onWatch ?? (() => setViewerOpen(true)),
+    rsvpState: liveRoom.rsvpState ?? (rsvped ? "going" : "none"),
   };
   const post = buildPost(liveRoomContent);
   const body = (
@@ -254,6 +263,14 @@ type Story = StoryObj<typeof meta>;
 
 export const ScheduledEvent: Story = {
   name: "Scheduled event",
+  args: {
+    liveRoom: {
+      ...baseLiveRoom,
+      attendeeCountLabel: "342 going",
+      setlistTotalCount: 18,
+      setlistHref: "#",
+    },
+  },
 };
 
 export const LiveAllowed: Story = {
@@ -366,5 +383,37 @@ export const MobileScheduled: Story = {
   },
   parameters: {
     viewport: { defaultViewport: "mobile1" },
+  },
+};
+
+export const DuetWithGuest: Story = {
+  name: "Participants / Duet with guest",
+  args: {
+    liveRoom: {
+      ...baseLiveRoom,
+      roomKind: "duet",
+      title: "Late set with a guest",
+      participants: [
+        { role: "host", label: "kevin.tameimpala", href: "/u/kevin.tameimpala", avatarSrc: "https://i.pravatar.cc/100?img=11" },
+        { role: "guest", label: "jaywatson.pirate", href: "/u/jaywatson.pirate", avatarSrc: "https://i.pravatar.cc/100?img=12" },
+      ],
+    },
+  },
+};
+
+export const MultiPerformer: Story = {
+  name: "Participants / Multi-performer",
+  args: {
+    liveRoom: {
+      ...baseLiveRoom,
+      roomKind: "duet",
+      title: "Sunday jam session",
+      participants: [
+        { role: "host", label: "kevin.tameimpala", href: "/u/kevin.tameimpala", avatarSrc: "https://i.pravatar.cc/100?img=11" },
+        { role: "guest", label: "jaywatson.pirate", href: "/u/jaywatson.pirate", avatarSrc: "https://i.pravatar.cc/100?img=12" },
+        { role: "guest", label: "domSimmons.pirate", href: "/u/domSimmons.pirate", avatarSrc: "https://i.pravatar.cc/100?img=13" },
+        { role: "guest", label: "amhood.pirate", href: "/u/amhood.pirate" },
+      ],
+    },
   },
 };

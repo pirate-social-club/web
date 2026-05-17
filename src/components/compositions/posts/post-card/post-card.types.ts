@@ -41,6 +41,14 @@ export type LiveRoomAccessState =
 export type LiveRoomReplayStatus = "none" | "processing" | "ready" | "failed";
 
 export type LiveRoomProducerRole = "host" | "guest" | null;
+export type LiveRoomRsvpState = "none" | "going";
+
+export type LiveRoomParticipant = {
+  role: "host" | "guest";
+  label: string;
+  href?: string;
+  avatarSrc?: string;
+};
 
 export interface LiveRoomContentSpec {
   type: "live_room";
@@ -61,11 +69,14 @@ export interface LiveRoomContentSpec {
   anchorPostHref?: string;
   shareUrl?: string;
   attendeeCountLabel?: string;
+  rsvpState?: LiveRoomRsvpState;
   setlistPreview?: Array<{
     title: string;
     artist?: string;
     rightsStatus?: "pending" | "ready" | "blocked";
   }>;
+  setlistTotalCount?: number;
+  setlistHref?: string;
   listingMode?: ListingMode;
   listingStatus?: ListingStatus;
   priceLabel?: string;
@@ -80,6 +91,8 @@ export interface LiveRoomContentSpec {
   freedomHref?: string;
   freedomDetected?: boolean;
   guestInviteStatus?: "pending" | "accepted" | "revoked" | null;
+  participants?: LiveRoomParticipant[];
+  onRsvp?: () => void;
   onWatch?: () => void;
   onBuy?: () => void;
   onVerifyAge?: () => void;

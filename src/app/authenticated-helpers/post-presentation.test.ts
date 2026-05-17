@@ -171,6 +171,24 @@ describe("post presentation live rooms", () => {
     expect(content.endedAtLabel).toBe("1h");
   });
 
+  test("passes participants through from live room options", () => {
+    const participants = [
+      { role: "host" as const, label: "host.pirate", href: "/u/host.pirate" },
+      { role: "guest" as const, label: "guest.pirate", href: "/u/guest.pirate" },
+    ];
+
+    const content = toCommunityPostContent(createAnchoredLivePost(), undefined, {
+      liveRoom: {
+        access: createLiveRoomAccess(),
+        participants,
+      },
+    });
+
+    expect(content.type).toBe("live_room");
+    if (content.type !== "live_room") return;
+    expect(content.participants).toEqual(participants);
+  });
+
   test("normalizes replay status from the API room payload", () => {
     Date.now = () => Date.parse("2026-05-16T12:00:00.000Z");
 

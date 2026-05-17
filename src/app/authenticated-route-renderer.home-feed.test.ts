@@ -587,6 +587,21 @@ describe("toHomeFeedItem", () => {
     if (!item.postOriginal || item.postOriginal.content.type !== "song") throw new Error("expected original song content");
     expect(item.postOriginal.content.caption).toBe("Original caption");
   });
+
+  test("lets live-room content own the title in home feed cards", () => {
+    const entry = createEntry();
+    entry.post.post.anchor_live_room = "lr_alpha";
+    entry.post.post.anchor_live_room_status = "scheduled";
+    entry.post.post.title = "Test event";
+
+    const item = toHomeFeedItem(entry, {});
+
+    expect(item.post.content.type).toBe("live_room");
+    if (item.post.content.type !== "live_room") throw new Error("expected live room content");
+    expect(item.post.content.title).toBe("Test event");
+    expect(item.post.title).toBeUndefined();
+    expect(item.post.titleHref).toBeUndefined();
+  });
 });
 
 describe("toCommunityFeedItem", () => {
@@ -609,6 +624,21 @@ describe("toCommunityFeedItem", () => {
     const item = toCommunityFeedItem(entry.post, {});
 
     expect(item.post.engagement?.commentCount).toBe(1);
+  });
+
+  test("lets live-room content own the title in community feed cards", () => {
+    const entry = createEntry();
+    entry.post.post.anchor_live_room = "lr_alpha";
+    entry.post.post.anchor_live_room_status = "scheduled";
+    entry.post.post.title = "Test event";
+
+    const item = toCommunityFeedItem(entry.post, {});
+
+    expect(item.post.content.type).toBe("live_room");
+    if (item.post.content.type !== "live_room") throw new Error("expected live room content");
+    expect(item.post.content.title).toBe("Test event");
+    expect(item.post.title).toBeUndefined();
+    expect(item.post.titleHref).toBeUndefined();
   });
 });
 

@@ -358,7 +358,12 @@
       "accessGated": "مقيد",
       "accessPaid": "مدفوع",
       "visibilityPublic": "عام",
-      "visibilityUnlisted": "غير مدرج"
+      "visibilityUnlisted": "غير مدرج",
+      "startTime": "وقت البدء",
+      "startTimeNote": "مطلوب للأحداث المباشرة المجدولة.",
+      "eventCover": "غلاف الحدث",
+      "eventCoverUpload": "ارفع غلاف الحدث",
+      "eventCoverHelp": "ارفع غلاف حدث بنسبة 16:9. تعرضه الخلاصة والمعاينة وصفحة الحدث عريضًا."
     },
     "genres": {
       "electronic": "إلكتروني",

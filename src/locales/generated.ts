@@ -484,7 +484,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "accessGated": "Gated",
           "accessPaid": "Paid",
           "visibilityPublic": "Public",
-          "visibilityUnlisted": "Unlisted"
+          "visibilityUnlisted": "Unlisted",
+          "startTime": "Start time",
+          "startTimeNote": "Required for scheduled live events.",
+          "eventCover": "Event cover",
+          "eventCoverUpload": "Upload event cover",
+          "eventCoverHelp": "Upload a 16:9 event cover. Feed, preview, and event page show it wide."
         },
         "genres": {
           "electronic": "Electronic",
@@ -2109,7 +2114,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "accessGated": "مقيد",
           "accessPaid": "مدفوع",
           "visibilityPublic": "عام",
-          "visibilityUnlisted": "غير مدرج"
+          "visibilityUnlisted": "غير مدرج",
+          "startTime": "وقت البدء",
+          "startTimeNote": "مطلوب للأحداث المباشرة المجدولة.",
+          "eventCover": "غلاف الحدث",
+          "eventCoverUpload": "ارفع غلاف الحدث",
+          "eventCoverHelp": "ارفع غلاف حدث بنسبة 16:9. تعرضه الخلاصة والمعاينة وصفحة الحدث عريضًا."
         },
         "genres": {
           "electronic": "إلكتروني",
@@ -3734,7 +3744,12 @@ export const GENERATED_LOCALE_CATALOGS = {
           "accessGated": "受限",
           "accessPaid": "付费",
           "visibilityPublic": "公开",
-          "visibilityUnlisted": "不公开"
+          "visibilityUnlisted": "不公开",
+          "startTime": "开始时间",
+          "startTimeNote": "定时直播活动必填。",
+          "eventCover": "活动封面",
+          "eventCoverUpload": "上传活动封面",
+          "eventCoverHelp": "上传 16:9 活动封面。动态、预览和活动页面都会宽幅显示。"
         },
         "genres": {
           "electronic": "电子",

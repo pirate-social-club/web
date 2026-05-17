@@ -1,12 +1,9 @@
 "use client";
 
-import { Check } from "@phosphor-icons/react";
-
 import { CardContent } from "@/components/primitives/card";
-import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
-import { PostComposerSettingsRow, PostComposerSettingsSections } from "./post-composer-settings-sections";
+import { PostComposerSettingsSections } from "./post-composer-settings-sections";
 import { PostComposerCharitySection } from "./post-composer-sections";
 import type { AssetLicensePresetId, AttachmentState } from "./post-composer.types";
 import type { PostComposerController } from "./use-post-composer-controller";
@@ -42,6 +39,9 @@ function attachmentFromTab(controller: PostComposerController): AttachmentState 
 }
 
 function accessFromController(controller: PostComposerController): "free" | "paid" {
+  if (controller.tabs.activeTab === "live") {
+    return controller.primary.liveState.accessMode === "paid" ? "paid" : "free";
+  }
   return controller.commerce.monetizationState.visible ? "paid" : "free";
 }
 
@@ -70,8 +70,11 @@ function settingsCopy(controller: PostComposerController) {
   const commercialUse = licenseCopyForPreset(assetLicenseCopy, "commercial-use");
   const commercialRemix = licenseCopyForPreset(assetLicenseCopy, "commercial-remix");
   const paidUnlockTitle = tabs.activeTab === "song"
-    ? copy.access.payToAccess
-    : copy.access.paidUnlock;
+      ? copy.access.payToAccess
+      : copy.access.paidUnlock;
+  const priceLabel = tabs.activeTab === "live"
+    ? "Ticket price"
+    : copy.fields.price ?? copy.fields.unlockPriceUsd;
 
   return {
     postAsTitle: copy.sections.postAs,
@@ -81,7 +84,7 @@ function settingsCopy(controller: PostComposerController) {
     publicVisibilityLabel: copy.audience.public,
     communityVisibilityLabel: copy.audience.community,
     paidUnlockTitle,
-    priceLabel: copy.fields.price ?? copy.fields.unlockPriceUsd,
+    priceLabel,
     pricePlaceholder: copy.placeholders.unlockPrice,
     previewStartLabel: copy.fields.previewStartSeconds,
     previewStartPlaceholder: copy.placeholders.previewStartSeconds,
@@ -158,14 +161,20 @@ export function PostComposerSettingsHub({
               : undefined,
           }))
         }
-        onPriceChange={(priceUsd, nextAccess) =>
+        onPriceChange={(priceUsd, nextAccess) => {
           commerce.updateMonetizationState((current) => ({
             ...current,
             priceUsd,
             regionalPricingEnabled: nextAccess === "free" ? false : current.regionalPricingEnabled,
             visible: nextAccess === undefined ? current.visible : nextAccess === "paid",
-          }))
-        }
+          }));
+          if (controller.tabs.activeTab === "live" && nextAccess !== undefined) {
+            primary.setLiveState({
+              ...primary.liveState,
+              accessMode: nextAccess === "paid" ? "paid" : "free",
+            });
+          }
+        }}
         onPreviewStartSecondsChange={(previewStartSeconds) =>
           controller.song.update((current) => ({
             ...current,
@@ -201,27 +210,15 @@ export function PostComposerSettingsHub({
         regionalPricingPreview={commerce.regionalPricingPreview}
         royaltyPercent={String(license.state.commercialRevSharePct ?? 10)}
         showLicenseFields={
-          attachment?.kind === "video"
-            ? commerce.monetizationState.visible
-            : attachment?.kind === "song" && primary.activeSongMode === "original"
+          attachment?.kind === "live"
+            ? false
+            : attachment?.kind === "video"
+              ? commerce.monetizationState.visible
+              : attachment?.kind === "song" && primary.activeSongMode === "original"
         }
         showAnonymousIdentity={identity.identity?.allowAnonymousIdentity === true}
         visibility={visibilityFromController(controller)}
       />
-
-      {attachment?.kind === "live" ? (
-        <section className="space-y-3">
-          <Type as="h2" variant="h3" className="text-muted-foreground">
-            Live event
-          </Type>
-          <PostComposerSettingsRow
-            icon={<Check className="size-7" />}
-            label="Live event"
-            onClick={() => undefined}
-            value={`${primary.liveState.roomKind} · ${primary.liveState.accessMode}`}
-          />
-        </section>
-      ) : null}
 
       {(attachment?.kind === "song" || attachment?.kind === "video")
       && commerce.monetizationState.visible

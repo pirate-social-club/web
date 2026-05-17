@@ -1,4 +1,4 @@
-import type { AttachmentState, ComposerStep, ComposerTab } from "./post-composer.types";
+import type { AttachmentState, ComposerStep, ComposerTab, LiveComposerState } from "./post-composer.types";
 
 export function isValidHttpUrl(value: string) {
   return normalizeHttpUrl(value) !== null;
@@ -80,6 +80,7 @@ export function canAdvanceComposerWriteStep({
   body,
   imageUploadPresent,
   linkUrl,
+  liveState,
   mode,
   songAudioUploadPresent,
   title,
@@ -88,6 +89,7 @@ export function canAdvanceComposerWriteStep({
   body: string;
   imageUploadPresent: boolean;
   linkUrl: string;
+  liveState?: LiveComposerState;
   mode: ComposerTab;
   songAudioUploadPresent: boolean;
   title: string;
@@ -97,8 +99,23 @@ export function canAdvanceComposerWriteStep({
   if (mode === "video") return title.trim().length > 0 && videoUploadPresent;
   if (mode === "image") return title.trim().length > 0 && imageUploadPresent;
   if (mode === "link") return isValidHttpUrl(linkUrl);
-  if (mode === "live") return true;
+  if (mode === "live") return Boolean(liveState && canSubmitLiveRoomDraft(liveState, title));
   return title.trim().length > 0;
+}
+
+export function canSubmitLiveRoomDraft(liveState: LiveComposerState, title: string): boolean {
+  if (!title.trim()) return false;
+  if (!isValidLiveScheduleAt(liveState.scheduleAt)) return false;
+  if (liveState.roomKind === "duet" && !liveState.guestUserId?.trim()) return false;
+  if (liveState.setlistItems.length === 0) return false;
+  if (liveState.setlistItems.some((item) => !item.titleText.trim())) return false;
+  return liveState.performerAllocations.reduce((sum, allocation) => sum + allocation.sharePct, 0) === 100;
+}
+
+export function isValidLiveScheduleAt(scheduleAt: string | undefined): boolean {
+  const value = scheduleAt?.trim();
+  if (!value) return false;
+  return Number.isFinite(Date.parse(value));
 }
 
 export function normalizePriceInput(value: string) {

@@ -32,6 +32,9 @@ const RADICLE_REPOSITORIES = {
 type RadicleRepositoryKey = keyof typeof RADICLE_REPOSITORIES;
 
 interface FreedomBrowserWindow extends Window {
+  ethereum?: {
+    isFreedomBrowser?: boolean;
+  };
   swarm?: {
     isFreedomBrowser?: boolean;
   };
@@ -51,7 +54,9 @@ function resolveRadicleRepositoryHref(
 
 export function prefersNativeRadicleLinks(): boolean {
   if (typeof window === "undefined") return false;
-  return (window as FreedomBrowserWindow).swarm?.isFreedomBrowser === true;
+  const freedomWindow = window as FreedomBrowserWindow;
+  return freedomWindow.ethereum?.isFreedomBrowser === true
+    || freedomWindow.swarm?.isFreedomBrowser === true;
 }
 
 export function resolveResourceHref(

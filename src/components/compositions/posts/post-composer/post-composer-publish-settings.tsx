@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { CardContent } from "@/components/primitives/card";
 import { PostCard } from "@/components/compositions/posts/post-card/post-card";
+import { buildPostCardTitleProps } from "@/components/compositions/posts/post-card/post-card-content-rules";
 import type { PlaybackState, PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { cn } from "@/lib/utils";
 
@@ -203,6 +204,7 @@ function buildPreviewPost(
   controller: PostComposerController,
   attachment: AttachmentState,
   videoPosterPreviewUrl?: string,
+  liveCoverPreviewUrl?: string,
   songPlayback?: {
     onPause?: () => void;
     onPlay?: () => void;
@@ -224,6 +226,28 @@ function buildPreviewPost(
   const authorAvatarSrc = identity.identityMode === "anonymous"
     ? undefined
     : identity.identity?.publicAvatarSrc ?? undefined;
+  const content = buildPostComposerPreviewContent({
+    access: commerce.monetizationState.visible ? "paid" : "free",
+    attachment,
+    body: getPostComposerPreviewBody(controller),
+    linkPreview: fields.linkPreview,
+    liveCoverSrc: liveCoverPreviewUrl,
+    liveGuestLabel: controller.primary.liveState.guestUserId ?? undefined,
+    liveHostIdentity: {
+      label: authorLabel,
+      avatarSrc: authorAvatarSrc,
+    },
+    liveState: controller.primary.liveState,
+    price: commerce.monetizationState.priceUsd ?? "",
+    songTitle: controller.song.state.title,
+    songPlayback,
+    title: fields.titleValue,
+    videoPosterSrc: videoPosterPreviewUrl,
+  });
+  const titleProps = buildPostCardTitleProps({
+    content,
+    title: fields.titleValue.trim(),
+  });
 
   const previewPost: PostCardProps = {
     byline: {
@@ -235,27 +259,17 @@ function buildPreviewPost(
       },
       timestampLabel: audience.state.visibility === "public" ? "Public" : "Community",
     },
-    content: buildPostComposerPreviewContent({
-      access: commerce.monetizationState.visible ? "paid" : "free",
-      attachment,
-      body: getPostComposerPreviewBody(controller),
-      linkPreview: fields.linkPreview,
-      price: commerce.monetizationState.priceUsd ?? "",
-      songTitle: controller.song.state.title,
-      songPlayback,
-      title: fields.titleValue,
-      videoPosterSrc: videoPosterPreviewUrl,
-    }),
+    content,
     engagement: {
       commentCount: 0,
       score: 0,
-      unlock: commerce.monetizationState.visible && priceLabel
+      unlock: attachment?.kind !== "live" && commerce.monetizationState.visible && priceLabel
         ? { label: priceLabel, onBuy: () => undefined }
         : undefined,
     },
     identityPresentation: identity.identityMode === "anonymous" ? "anonymous_primary" : "author_primary",
-    title: fields.titleValue.trim() || undefined,
-    viewContext: "community",
+    ...titleProps,
+    viewContext: attachment?.kind === "live" ? "post" : "community",
   };
 
   if (attachment?.kind === "video") {
@@ -281,6 +295,7 @@ export function PostComposerPublishSettings({
   const videoPreviewUrl = useObjectUrl(controller.media.videoState.primaryVideoUpload);
   const songAudioPreviewUrl = useObjectUrl(controller.song.state.primaryAudioUpload);
   const songArtworkPreviewUrl = useObjectUrl(controller.song.state.coverUpload);
+  const liveCoverPreviewUrl = useObjectUrl(controller.primary.liveState.coverUpload);
   const songPlayback = useLocalAudioPreview(songAudioPreviewUrl);
   const videoPosterPreviewUrl = useVideoPosterFrameUrl(
     controller.media.videoState.primaryVideoUpload,
@@ -293,7 +308,7 @@ export function PostComposerPublishSettings({
     songAudioPreviewUrl,
     songArtworkPreviewUrl,
   );
-  const previewPost = buildPreviewPost(controller, attachment, videoPosterPreviewUrl, songPlayback);
+  const previewPost = buildPreviewPost(controller, attachment, videoPosterPreviewUrl, liveCoverPreviewUrl, songPlayback);
 
   return (
     <CardContent className={cn("space-y-6 p-5", controller.isMobile && "px-0 pb-4 pt-3")}>

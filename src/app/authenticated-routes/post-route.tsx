@@ -23,7 +23,9 @@ import { prefersNativeRadicleLinks } from "@/lib/resource-links";
 import { useUiLocale } from "@/lib/ui-locale";
 
 import { buildCommunityPreviewSidebar } from "@/app/authenticated-helpers/community-sidebar-helpers";
+import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { NotFoundPage } from "./misc-routes";
+import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live-room-participants";
 import { toThreadPostCard, shouldShowOriginalPost } from "@/app/authenticated-helpers/post-presentation";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
@@ -144,7 +146,7 @@ export function PostPage({ postId }: { postId: string }) {
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, comments, commentCount, createTopLevelComment, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const activeLiveRoomId = post?.post.anchor_live_room ?? null;
   const [liveRoomAccess, setLiveRoomAccess] = React.useState<ApiLiveRoomAccessResponse | null>(null);
   const [liveViewerSession, setLiveViewerSession] = React.useState<ApiLiveRoomViewerAttachResponse | null>(null);
@@ -234,6 +236,28 @@ export function PostPage({ postId }: { postId: string }) {
   React.useEffect(() => {
     void refreshLiveRoomAccess();
   }, [refreshLiveRoomAccess]);
+
+  React.useEffect(() => {
+    const guestUserId = liveRoomAccess?.room?.guest_user;
+    if (
+      !guestUserId
+      || guestUserId === post?.post.author_user
+      || Object.prototype.hasOwnProperty.call(authorProfilesByUserId, guestUserId)
+    ) return;
+
+    let cancelled = false;
+    void loadProfilesByUserId(api, [guestUserId], authorProfilesByUserId)
+      .then((profiles) => {
+        if (!cancelled) {
+          setAuthorProfilesByUserId((current) => ({ ...current, ...profiles }));
+        }
+      })
+      .catch(() => {
+        // Participant profile enrichment should not block the thread.
+      });
+
+    return () => { cancelled = true; };
+  }, [api, authorProfilesByUserId, liveRoomAccess?.room?.guest_user, post?.post.author_user, setAuthorProfilesByUserId]);
 
   const commerceEnabled = Boolean(
     session?.user?.id
@@ -484,6 +508,12 @@ export function PostPage({ postId }: { postId: string }) {
         community.id,
       ) : unauthenticatedLiveTicketRequired ? handlePromptLiveTicketAuth : undefined,
       onWatch: () => void handleWatchLiveRoom(),
+      participants: buildLiveRoomParticipants({
+        authorProfile,
+        liveRoom,
+        postAuthorUserId: post.post.author_user,
+        profilesByUserId: authorProfilesByUserId,
+      }),
       producerRole: viewerIsLiveRoomHost
         ? "host" as const
         : viewerIsLiveRoomGuest

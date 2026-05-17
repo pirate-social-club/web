@@ -409,12 +409,6 @@ export function usePostComposerController(props: PostComposerProps) {
   }, [onLinkPreviewChange, props.linkPreview]);
 
   React.useEffect(() => {
-    if (activeTab === "live" && composerStep !== "write") {
-      setComposerStepWithCallback("write");
-    }
-  }, [activeTab, composerStep, setComposerStepWithCallback]);
-
-  React.useEffect(() => {
     setDerivativePickerKey(0);
   }, [derivativeStep]);
 
@@ -570,10 +564,10 @@ export function usePostComposerController(props: PostComposerProps) {
     },
     submit: {
       continueDisabled,
-      disabled: composerStep !== "write" || activeTab === "live"
+      disabled: composerStep !== "write"
         ? postDisabled
         : continueDisabled,
-      error: composerStep !== "write" || activeTab === "live" ? submitError : null,
+      error: composerStep !== "write" ? submitError : null,
       label: submitLabel ?? copy.actions.post,
       loading: submitLoading,
       mobileEnabled: Boolean(submit),
@@ -582,10 +576,10 @@ export function usePostComposerController(props: PostComposerProps) {
     },
     step: {
       current: composerStep,
-      isPublishStep: composerStep === "publish" && activeTab !== "live",
-      isSettingsStep: composerStep === "settings" && activeTab !== "live",
-      isDetailsStep: composerStep === "details" && activeTab !== "live",
-      isWriteStep: composerStep === "write" || activeTab === "live",
+      isPublishStep: composerStep === "publish",
+      isSettingsStep: composerStep === "settings",
+      isDetailsStep: composerStep === "details",
+      isWriteStep: composerStep === "write",
       set: setComposerStepWithCallback,
     },
     tabs: {

@@ -5,6 +5,7 @@ import type {
 
 import type {
   LiveRoomContentSpec,
+  LiveRoomParticipant,
   PostCardProps,
 } from "@/components/compositions/posts/post-card/post-card.types";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
@@ -29,6 +30,7 @@ export type LiveRoomPresentationOptions = {
   freedomHref?: string;
   freedomDetected?: boolean;
   guestInviteStatus?: "pending" | "accepted" | "revoked" | null;
+  participants?: LiveRoomParticipant[];
   onBuy?: () => void;
   onWatch?: () => void;
 };

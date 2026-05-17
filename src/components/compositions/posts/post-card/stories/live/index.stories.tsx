@@ -105,6 +105,47 @@ export const PaidNeedsTicket: Story = {
   ),
 };
 
+export const FeedAndPostPageSurfaces: Story = {
+  name: "Surface / Feed and post page",
+  render: () => (
+    <div style={{ display: "grid", gap: 32, width: "min(100vw - 32px, 760px)" }}>
+      <section>
+        <h2 style={{ fontSize: 14, fontWeight: 700, marginBlock: "0 12px" }}>Feed card: 16:9 cover</h2>
+        <div style={{ width: "min(100%, 560px)" }}>
+          <PostCard
+            {...basePost}
+            content={{
+              ...baseLiveRoom,
+              accessMode: "paid",
+              accessState: "purchase_required",
+              listingMode: "listed",
+              listingStatus: "active",
+              priceLabel: "$12.00",
+              onBuy: noop,
+            }}
+          />
+        </div>
+      </section>
+      <section>
+        <h2 style={{ fontSize: 14, fontWeight: 700, marginBlock: "0 12px" }}>Post page: 16:9 cover</h2>
+        <PostCard
+          {...basePost}
+          content={{
+            ...baseLiveRoom,
+            accessMode: "paid",
+            accessState: "purchase_required",
+            listingMode: "listed",
+            listingStatus: "active",
+            priceLabel: "$12.00",
+            onBuy: noop,
+          }}
+          viewContext="post"
+        />
+      </section>
+    </div>
+  ),
+};
+
 export const PaidOwned: Story = {
   name: "Access / Paid owned",
   render: () => (
@@ -209,5 +250,91 @@ export const MobilePaid: Story = {
         onBuy: noop,
       }}
     />
+  ),
+};
+
+export const DuetFeedAndPostPage: Story = {
+  name: "Participants / Duet feed and post page",
+  render: () => (
+    <div style={{ display: "grid", gap: 32, width: "min(100vw - 32px, 760px)" }}>
+      <section>
+        <h2 style={{ fontSize: 14, fontWeight: 700, marginBlock: "0 12px" }}>Feed card: duet with guest</h2>
+        <div style={{ width: "min(100%, 560px)" }}>
+          <PostCard
+            {...basePost}
+            content={{
+              ...baseLiveRoom,
+              roomKind: "duet",
+              title: "Late set with a guest",
+              participants: [
+                { role: "host", label: "kevin.tameimpala", href: "/u/kevin.tameimpala", avatarSrc: "https://i.pravatar.cc/100?img=11" },
+                { role: "guest", label: "jaywatson.pirate", href: "/u/jaywatson.pirate", avatarSrc: "https://i.pravatar.cc/100?img=12" },
+              ],
+            }}
+          />
+        </div>
+      </section>
+      <section>
+        <h2 style={{ fontSize: 14, fontWeight: 700, marginBlock: "0 12px" }}>Post page: duet with guest</h2>
+        <PostCard
+          {...basePost}
+          content={{
+            ...baseLiveRoom,
+            roomKind: "duet",
+            title: "Late set with a guest",
+            participants: [
+              { role: "host", label: "kevin.tameimpala", href: "/u/kevin.tameimpala", avatarSrc: "https://i.pravatar.cc/100?img=11" },
+              { role: "guest", label: "jaywatson.pirate", href: "/u/jaywatson.pirate", avatarSrc: "https://i.pravatar.cc/100?img=12" },
+            ],
+          }}
+          viewContext="post"
+        />
+      </section>
+    </div>
+  ),
+};
+
+export const MultiPerformer: Story = {
+  name: "Participants / Multi-performer",
+  render: () => (
+    <div style={{ display: "grid", gap: 32, width: "min(100vw - 32px, 760px)" }}>
+      <section>
+        <h2 style={{ fontSize: 14, fontWeight: 700, marginBlock: "0 12px" }}>Feed card: 3 guests</h2>
+        <div style={{ width: "min(100%, 560px)" }}>
+          <PostCard
+            {...basePost}
+            content={{
+              ...baseLiveRoom,
+              roomKind: "duet",
+              title: "Sunday jam session",
+              participants: [
+                { role: "host", label: "kevin.tameimpala", href: "/u/kevin.tameimpala", avatarSrc: "https://i.pravatar.cc/100?img=11" },
+                { role: "guest", label: "jaywatson.pirate", href: "/u/jaywatson.pirate", avatarSrc: "https://i.pravatar.cc/100?img=12" },
+                { role: "guest", label: "domSimmons.pirate", href: "/u/domSimmons.pirate", avatarSrc: "https://i.pravatar.cc/100?img=13" },
+                { role: "guest", label: "amhood.pirate", href: "/u/amhood.pirate" },
+              ],
+            }}
+          />
+        </div>
+      </section>
+      <section>
+        <h2 style={{ fontSize: 14, fontWeight: 700, marginBlock: "0 12px" }}>Post page: 3 guests</h2>
+        <PostCard
+          {...basePost}
+          content={{
+            ...baseLiveRoom,
+            roomKind: "duet",
+            title: "Sunday jam session",
+            participants: [
+              { role: "host", label: "kevin.tameimpala", href: "/u/kevin.tameimpala", avatarSrc: "https://i.pravatar.cc/100?img=11" },
+              { role: "guest", label: "jaywatson.pirate", href: "/u/jaywatson.pirate", avatarSrc: "https://i.pravatar.cc/100?img=12" },
+              { role: "guest", label: "domSimmons.pirate", href: "/u/domSimmons.pirate", avatarSrc: "https://i.pravatar.cc/100?img=13" },
+              { role: "guest", label: "amhood.pirate", href: "/u/amhood.pirate" },
+            ],
+          }}
+          viewContext="post"
+        />
+      </section>
+    </div>
   ),
 };

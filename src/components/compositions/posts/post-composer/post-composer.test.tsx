@@ -4,7 +4,9 @@ import * as React from "react";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 
 import { PostComposer } from "./post-composer";
+import { PostComposerAttachmentCard } from "./post-composer-attachment-card";
 import { defaultMonetizationState } from "./post-composer-config";
+import { LiveTabContent } from "./post-composer-live-tab";
 import type { AssetLicenseState, MonetizationState, PostComposerProps } from "./post-composer.types";
 
 const { describe, expect, test } = BunTest;
@@ -613,6 +615,91 @@ describe("PostComposer monetization", () => {
     });
   });
 
+  test("renders paid live ticket price without a paid access checkbox or summary row", () => {
+    let monetization = defaultMonetizationState({
+      priceUsd: "12",
+      regionalPricingAvailable: true,
+      visible: false,
+    } as MonetizationState);
+
+    const tree = renderComposer({
+      availableTabs: ["live"],
+      clubName: "Lane1",
+      composerStep: "settings",
+      live: {
+        accessMode: "paid",
+        performerAllocations: [{ role: "host", sharePct: 100, userId: "usr_host" }],
+        roomKind: "solo",
+        scheduleAt: "2026-05-22T20:00",
+        setlistItems: [{ performanceKind: "original", titleText: "Song" }],
+        setlistStatus: "ready",
+        visibility: "public",
+      },
+      mode: "live",
+      monetization,
+      onMonetizationChange: (next) => {
+        monetization = next;
+      },
+      titleValue: "Paid room",
+    });
+
+    const ticketPriceLabel = findElement(
+      tree,
+      (element) => element.props.children === "Ticket price",
+    );
+    const priceInput = findElement(
+      tree,
+      (element) => element.props.inputMode === "decimal" && typeof element.props.onChange === "function",
+    );
+    const paidAccessCheckbox = findElement(
+      tree,
+      (element) =>
+        element.props.checked === true
+        && typeof element.props.onCheckedChange === "function"
+        && typeof element.props.id === "string"
+        && element.props.id === "test-id",
+    );
+
+    if (!ticketPriceLabel || !priceInput) {
+      throw new Error("Missing live ticket price controls");
+    }
+
+    expect(paidAccessCheckbox).toBeNull();
+    expect(findElement(tree, (element) => element.props.label === "Live event")).toBeNull();
+
+    (priceInput.props.onChange as ((event: { target: { value: string } }) => void) | undefined)?.({
+      target: { value: "15.50" },
+    });
+    expect(monetization.priceUsd).toBe("15.50");
+    expect(monetization.visible).toBe(false);
+  });
+
+  test("does not render ticket price controls for free live events", () => {
+    const tree = renderComposer({
+      availableTabs: ["live"],
+      clubName: "Lane1",
+      composerStep: "settings",
+      live: {
+        accessMode: "free",
+        performerAllocations: [{ role: "host", sharePct: 100, userId: "usr_host" }],
+        roomKind: "solo",
+        scheduleAt: "2026-05-22T20:00",
+        setlistItems: [{ performanceKind: "original", titleText: "Song" }],
+        setlistStatus: "ready",
+        visibility: "public",
+      },
+      mode: "live",
+      monetization: defaultMonetizationState({
+        regionalPricingAvailable: true,
+        visible: false,
+      } as MonetizationState),
+      titleValue: "Free room",
+    });
+
+    expect(findElement(tree, (element) => element.props.children === "Ticket price")).toBeNull();
+    expect(findElement(tree, (element) => element.props.inputMode === "decimal")).toBeNull();
+  });
+
   test("desktop write step routes song and video through details", () => {
     let songStep: PostComposerProps["composerStep"] = "write";
     const songTree = renderComposer({
@@ -663,6 +750,91 @@ describe("PostComposer monetization", () => {
     expect(videoContinue.props.disabled).toBe(false);
     (videoContinue.props.onClick as (() => void) | undefined)?.();
     expect(videoStep).toBe("details");
+  });
+
+  test("desktop write step blocks live until the setlist is ready", () => {
+    let step: PostComposerProps["composerStep"] = "write";
+    const blockedTree = renderComposer({
+      availableTabs: ["live"],
+      clubName: "Lane1",
+      composerStep: "write",
+      live: {
+        accessMode: "paid",
+        performerAllocations: [{ role: "host", sharePct: 100, userId: "usr_host" }],
+        roomKind: "solo",
+        scheduleAt: "2026-05-22T20:00",
+        setlistItems: [],
+        setlistStatus: "draft",
+        visibility: "public",
+      },
+      mode: "live",
+      onComposerStepChange: (next) => {
+        step = next;
+      },
+      titleValue: "Paid room",
+    });
+    const blockedContinue = findElement(
+      blockedTree,
+      (element) => element.props.children === "Continue" && "disabled" in element.props,
+    );
+    if (!blockedContinue) {
+      throw new Error("Missing blocked live continue button");
+    }
+    expect(blockedContinue.props.disabled).toBe(true);
+
+    const unscheduledTree = renderComposer({
+      availableTabs: ["live"],
+      clubName: "Lane1",
+      composerStep: "write",
+      live: {
+        accessMode: "paid",
+        performerAllocations: [{ role: "host", sharePct: 100, userId: "usr_host" }],
+        roomKind: "solo",
+        setlistItems: [{ performanceKind: "original", titleText: "Song" }],
+        setlistStatus: "ready",
+        visibility: "public",
+      },
+      mode: "live",
+      titleValue: "Paid room",
+    });
+    const unscheduledContinue = findElement(
+      unscheduledTree,
+      (element) => element.props.children === "Continue" && "disabled" in element.props,
+    );
+    if (!unscheduledContinue) {
+      throw new Error("Missing unscheduled live continue button");
+    }
+    expect(unscheduledContinue.props.disabled).toBe(true);
+
+    const readyTree = renderComposer({
+      availableTabs: ["live"],
+      clubName: "Lane1",
+      composerStep: "write",
+      live: {
+        accessMode: "paid",
+        performerAllocations: [{ role: "host", sharePct: 100, userId: "usr_host" }],
+        roomKind: "solo",
+        scheduleAt: "2026-05-22T20:00",
+        setlistItems: [{ performanceKind: "original", titleText: "Song" }],
+        setlistStatus: "ready",
+        visibility: "public",
+      },
+      mode: "live",
+      onComposerStepChange: (next) => {
+        step = next;
+      },
+      titleValue: "Paid room",
+    });
+    const readyContinue = findElement(
+      readyTree,
+      (element) => element.props.children === "Continue" && "disabled" in element.props,
+    );
+    if (!readyContinue) {
+      throw new Error("Missing ready live continue button");
+    }
+    expect(readyContinue.props.disabled).toBe(false);
+    (readyContinue.props.onClick as (() => void) | undefined)?.();
+    expect(step).toBe("settings");
   });
 
   test("desktop settings back returns to details for song and video", () => {
@@ -785,6 +957,55 @@ describe("PostComposer monetization", () => {
     const content = previewCard.props.content as PostCardProps["content"];
     expect(content.type).toBe("song");
     expect(content.type === "song" ? content.caption : undefined).toBeUndefined();
+  });
+
+  test("renders live publish preview as the live post page surface", () => {
+    const tree = renderComposer({
+      availableTabs: ["live"],
+      clubName: "Lane1",
+      composerStep: "publish",
+      mode: "live",
+      monetization: defaultMonetizationState({
+        visible: true,
+        priceUsd: "5",
+      } as MonetizationState),
+      textBodyValue: "A short live set.",
+      titleValue: "Friday night set",
+      live: {
+        roomKind: "solo",
+        accessMode: "paid",
+        visibility: "public",
+        scheduleAt: "2026-05-22T20:00",
+        setlistItems: [
+          {
+            titleText: "After Hours",
+            artistText: "DJ Solar",
+            performanceKind: "original",
+          },
+        ],
+        setlistStatus: "draft",
+        performerAllocations: [{ userId: "", role: "host", sharePct: 100 }],
+      },
+    });
+
+    const previewCard = findElement(
+      tree,
+      (element) => typeof element.type !== "string" && element.type.name === "PostCard",
+    );
+    if (!previewCard) {
+      throw new Error("Missing preview post card");
+    }
+
+    const content = previewCard.props.content as PostCardProps["content"];
+    expect(previewCard.props.title).toBeUndefined();
+    expect(previewCard.props.viewContext).toBe("post");
+    expect(previewCard.props.engagement.unlock).toBeUndefined();
+    expect(content).toMatchObject({
+      type: "live_room",
+      title: "Friday night set",
+      description: "A short live set.",
+    });
+    expect(content.type === "live_room" ? typeof content.onBuy : "missing").toBe("function");
   });
 
   test("blocks continue when a required derivative source is missing", () => {
@@ -911,6 +1132,86 @@ describe("PostComposer monetization", () => {
       references: [],
       sourceTermsAccepted: false,
     });
+  });
+
+  test("describes live event covers as wide across feed, preview, and event page surfaces", () => {
+    let nextLiveState: unknown;
+    const tree = LiveTabContent({
+      copy: {
+        buttons: { chooseFile: "Choose file", replace: "Replace" },
+        fields: { coverArt: "Cover art" },
+        live: {
+          eventCover: "Event cover",
+          eventCoverHelp: "Upload a 16:9 event cover. Feed, preview, and event page show it wide.",
+          eventCoverUpload: "Upload event cover",
+          startTime: "Start time",
+          startTimeNote: "Required for scheduled live events.",
+        },
+        placeholders: {},
+        upload: {
+          artworkHelp: "Shows in feed, release, and player surfaces.",
+          cover: "Cover",
+          noFileSelected: "No file selected",
+          squareArtwork: "Upload square artwork",
+        },
+      },
+      live: {
+        accessMode: "free",
+        performerAllocations: [{ role: "host", sharePct: 100, userId: "usr_host" }],
+        roomKind: "solo",
+        scheduleAt: "2026-05-22T20:00",
+        setlistItems: [],
+        setlistStatus: "ready",
+        visibility: "public",
+      },
+      onLiveChange: (next) => {
+        nextLiveState = next;
+      },
+    });
+
+    const coverUpload = findElement(
+      tree,
+      (element) => typeof element.type === "function" && element.type.name === "UploadField",
+    );
+
+    expect(coverUpload?.props.label).toBe("Event cover");
+    expect(coverUpload?.props.artworkHelp).toBe("Upload a 16:9 event cover. Feed, preview, and event page show it wide.");
+    expect(coverUpload?.props.artworkPlaceholderLabel).toBe("Upload event cover");
+    expect(coverUpload?.props.artworkPreviewAspect).toBe("video");
+
+    const scheduleInput = findElement(
+      tree,
+      (element) => element.props.type === "datetime-local" && typeof element.props.onChange === "function",
+    );
+    expect(scheduleInput?.props.value).toBe("2026-05-22T20:00");
+    (scheduleInput?.props.onChange as ((event: { target: { value: string } }) => void) | undefined)?.({
+      target: { value: "2026-05-23T21:30" },
+    });
+    expect(nextLiveState).toMatchObject({ scheduleAt: "2026-05-23T21:30" });
+  });
+
+  test("does not force image attachment previews into a square crop", () => {
+    const tree = PostComposerAttachmentCard({
+      attachment: {
+        kind: "image",
+        label: "wide-cover.svg",
+        previewUrl: "blob:https://app.test/wide-cover",
+      },
+      onChange: () => undefined,
+      onRemove: () => undefined,
+    });
+
+    const previewImage = findElement(
+      tree,
+      (element) => element.type === "img" && element.props.src === "blob:https://app.test/wide-cover",
+    );
+    const squareContainer = findElement(
+      tree,
+      (element) => typeof element.props.className === "string" && element.props.className.includes("aspect-square"),
+    );
+
+    expect(previewImage?.props.className).toContain("object-contain");
+    expect(squareContainer).toBe(null);
   });
 
   test("clears the remix derivative step when switching back to original", () => {

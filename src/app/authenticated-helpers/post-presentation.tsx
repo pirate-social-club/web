@@ -7,6 +7,7 @@ import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import type { FeedItem } from "@/components/compositions/posts/feed/feed";
+import { buildPostCardTitleProps } from "@/components/compositions/posts/post-card/post-card-content-rules";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { buildNationalityBadgeLabel } from "@/components/compositions/posts/post-card/post-card-nationality";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
@@ -107,6 +108,19 @@ export function toCommunityFeedItem(
   const isDeleted = post.status === "deleted";
   const isRemoved = post.status === "removed";
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
+  const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
+  const titleProps = buildPostCardTitleProps({
+    content,
+    suppressTitle: isDeleted || isRemoved,
+    title: localizedLinkTitle.title ?? postResponse.translated_title ?? post.title,
+    titleDir: localizedLinkTitle.dir ?? (postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
+      : undefined),
+    titleHref: `/p/${post.id}`,
+    titleLang: localizedLinkTitle.lang ?? (postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
+      : undefined),
+  });
 
   const localizedPost = withTranslationToggleProps({
       byline: {
@@ -122,7 +136,7 @@ export function toCommunityFeedItem(
         agentAuthor: resolveAgentAuthor(post, authorProfile),
         timestampLabel: formatRelativeTimestamp(post.created),
       },
-      content: toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" }),
+      content,
       engagement: {
         commentCount: getPostCommentCount(postResponse),
         score: postResponse.upvote_count - postResponse.downvote_count,
@@ -143,23 +157,26 @@ export function toCommunityFeedItem(
       onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
       postHref: `/p/${post.id}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
-      title: isDeleted || isRemoved ? undefined : localizedLinkTitle.title ?? postResponse.translated_title ?? post.title ?? undefined,
-      titleDir: localizedLinkTitle.dir ?? (postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir : undefined),
-      titleLang: localizedLinkTitle.lang ?? (postResponse.translation_state === "ready" ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang : undefined),
-      titleHref: isDeleted || isRemoved ? undefined : `/p/${post.id}`,
+      ...titleProps,
       viewContext: "community",
     },
     postResponse,
     opts,
   );
   const originalPost = canShowOriginalToggle(postResponse, opts)
-    ? withTranslationToggleProps({
-      ...localizedPost,
-      content: toCommunityPostContent(postResponse, songOptions, { ...opts, preferOriginalText: true }),
-      title: post.title ?? undefined,
-      titleDir: undefined,
-      titleLang: undefined,
-    }, postResponse, opts)
+    ? (() => {
+      const originalContent = toCommunityPostContent(postResponse, songOptions, { ...opts, preferOriginalText: true });
+      const originalTitleProps = buildPostCardTitleProps({
+        content: originalContent,
+        title: post.title,
+        titleHref: localizedPost.titleHref,
+      });
+      return withTranslationToggleProps({
+        ...localizedPost,
+        content: originalContent,
+        ...originalTitleProps,
+      }, postResponse, opts);
+    })()
     : undefined;
 
   return {
@@ -192,7 +209,19 @@ export function toThreadPostCard(
   const isRemoved = post.status === "removed";
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
   const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
-  const contentOwnsTitle = content.type === "live_room";
+  const titleProps = buildPostCardTitleProps({
+    content,
+    suppressTitle: isDeleted || isRemoved,
+    title: localizedLinkTitle.title ?? (opts?.preferOriginalText
+      ? post.title
+      : postResponse.translated_title ?? post.title),
+    titleDir: localizedLinkTitle.dir ?? (!opts?.preferOriginalText && postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
+      : undefined),
+    titleLang: localizedLinkTitle.lang ?? (!opts?.preferOriginalText && postResponse.translation_state === "ready"
+      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
+      : undefined),
+  });
   const communityLabel = community?.id
     ? communityVerified
       ? formatCommunityRouteLabel(community.id, community.route_slug)
@@ -242,15 +271,7 @@ export function toThreadPostCard(
     onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
     postHref: undefined,
     qualifierLabels: resolvePostQualifierLabels(postResponse),
-    title: contentOwnsTitle || isDeleted || isRemoved ? undefined : localizedLinkTitle.title ?? (opts?.preferOriginalText
-      ? post.title ?? undefined
-      : postResponse.translated_title ?? post.title ?? undefined),
-    titleDir: localizedLinkTitle.dir ?? (!opts?.preferOriginalText && postResponse.translation_state === "ready"
-      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
-      : undefined),
-    titleLang: localizedLinkTitle.lang ?? (!opts?.preferOriginalText && postResponse.translation_state === "ready"
-      ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
-      : undefined),
+    ...titleProps,
     titleHref: undefined,
     viewContext: "post",
   }, postResponse, opts);

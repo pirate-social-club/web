@@ -74,6 +74,7 @@ export function toLiveRoomPostContent(
     onBuy: input.liveRoom?.onBuy,
     onVerifyAge: input.onVerifyAge,
     onWatch: input.liveRoom?.onWatch,
+    participants: input.liveRoom?.participants,
     priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), input.liveRoom?.localeTag) : undefined,
     producerRole: input.liveRoom?.producerRole ?? null,
     replayStatus: normalizeReplayStatus(liveRoom?.replay_status),

@@ -174,11 +174,11 @@ export function PostComposerAttachmentCard({
 
   if (attachment.kind === "image") {
     return (
-      <div className="relative aspect-square w-full max-w-72 overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-card">
+      <div className="relative w-full max-w-xl overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-card">
         {attachment.previewUrl ? (
-          <img alt="" className="size-full object-cover" src={attachment.previewUrl} />
+          <img alt="" className="max-h-96 w-full object-contain" src={attachment.previewUrl} />
         ) : (
-          <div className="grid size-full place-items-center bg-muted text-muted-foreground">
+          <div className="grid aspect-video w-full place-items-center bg-muted text-muted-foreground">
             <ImageIcon className="size-12" />
           </div>
         )}

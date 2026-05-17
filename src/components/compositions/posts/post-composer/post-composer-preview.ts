@@ -1,9 +1,22 @@
 import type { PlaybackState, PostCardContent } from "@/components/compositions/posts/post-card/post-card.types";
 
-import type { AttachmentState, LinkPreviewState, VideoDetailsState } from "./post-composer.types";
+import type { AttachmentState, LinkPreviewState, LiveComposerState, VideoDetailsState } from "./post-composer.types";
+import type { LiveRoomParticipant } from "@/components/compositions/posts/post-card/post-card.types";
 
 const fallbackImageSrc = "https://picsum.photos/seed/post-composer-image-preview/720/720";
 const fallbackVideoSrc = "https://www.w3schools.com/html/mov_bbb.mp4";
+
+function formatLiveStartsAtLabel(scheduleAt: string | undefined): string | undefined {
+  const value = scheduleAt?.trim();
+  if (!value) return undefined;
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return undefined;
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(timestamp));
+}
 
 export function buildPostComposerPreviewContent({
   access,
@@ -16,11 +29,19 @@ export function buildPostComposerPreviewContent({
   videoDetails,
   videoPosterSrc,
   songPlayback,
+  liveCoverSrc,
+  liveState,
+  liveHostIdentity,
+  liveGuestLabel,
 }: {
   access: "free" | "paid";
   attachment: AttachmentState;
   body: string;
   linkPreview?: LinkPreviewState;
+  liveCoverSrc?: string;
+  liveState?: LiveComposerState;
+  liveHostIdentity?: { label: string; href?: string; avatarSrc?: string };
+  liveGuestLabel?: string;
   price: string;
   songTitle?: string;
   title: string;
@@ -133,6 +154,49 @@ export function buildPostComposerPreviewContent({
       onPause: songPlayback?.onPause,
       onPlay: attachment.previewUrl ? songPlayback?.onPlay : undefined,
       playbackState: songPlayback?.state ?? "idle",
+    };
+  }
+
+  if (attachment.kind === "live") {
+    const liveAccessMode = liveState?.accessMode ?? "free";
+    const participants: LiveRoomParticipant[] | undefined = liveHostIdentity
+      ? [
+          { role: "host", ...liveHostIdentity },
+          ...(liveGuestLabel ? [{ role: "guest" as const, label: liveGuestLabel }] : []),
+        ]
+      : undefined;
+
+    return {
+      type: "live_room",
+      liveRoomId: "composer-preview-live-room",
+      title: title.trim() || "Live event",
+      description: bodyText || liveState?.description,
+      coverSrc: liveCoverSrc,
+      roomKind: liveState?.roomKind ?? "solo",
+      status: "scheduled",
+      accessMode: liveAccessMode,
+      visibility: liveState?.visibility ?? "public",
+      accessState: liveAccessMode === "paid"
+        ? "purchase_required"
+        : liveAccessMode === "gated"
+          ? "gate_required"
+          : "waiting",
+      concertHref: "#",
+      startsAtLabel: formatLiveStartsAtLabel(liveState?.scheduleAt),
+      setlistPreview: liveState?.setlistItems
+        .filter((item) => item.titleText.trim())
+        .slice(0, 3)
+        .map((item) => ({
+          title: item.titleText.trim(),
+          artist: item.artistText?.trim() || undefined,
+          rightsStatus: "pending",
+        })),
+      listingMode: liveAccessMode === "paid" ? "listed" : "not_listed",
+      listingStatus: liveAccessMode === "paid" ? "active" : undefined,
+      onBuy: liveAccessMode === "paid" ? () => undefined : undefined,
+      priceLabel: liveAccessMode === "paid" ? priceLabel : undefined,
+      hasEntitlement: false,
+      participants,
     };
   }
 

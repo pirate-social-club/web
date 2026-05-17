@@ -358,7 +358,12 @@
       "accessGated": "受限",
       "accessPaid": "付费",
       "visibilityPublic": "公开",
-      "visibilityUnlisted": "不公开"
+      "visibilityUnlisted": "不公开",
+      "startTime": "开始时间",
+      "startTimeNote": "定时直播活动必填。",
+      "eventCover": "活动封面",
+      "eventCoverUpload": "上传活动封面",
+      "eventCoverHelp": "上传 16:9 活动封面。动态、预览和活动页面都会宽幅显示。"
     },
     "genres": {
       "electronic": "电子",

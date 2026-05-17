@@ -237,6 +237,9 @@ export function FieldLabel({
 export function UploadField({
   label,
   accept,
+  artworkHelp,
+  artworkPlaceholderLabel,
+  artworkPreviewAspect = "square",
   copy,
   multiple = false,
   onChange,
@@ -248,6 +251,9 @@ export function UploadField({
 }: {
   label: string;
   accept: string;
+  artworkHelp?: string;
+  artworkPlaceholderLabel?: string;
+  artworkPreviewAspect?: "square" | "video";
   copy: {
     buttons: Record<string, string>;
     upload: Record<string, string>;
@@ -284,7 +290,12 @@ export function UploadField({
       >
         {isArtwork ? (
           <>
-            <div className="grid size-24 shrink-0 place-items-center rounded-[var(--radius-lg)] border border-border-soft bg-muted">
+            <div
+              className={cn(
+                "grid shrink-0 place-items-center overflow-hidden rounded-[var(--radius-lg)] border border-border-soft bg-muted",
+                artworkPreviewAspect === "video" ? "aspect-video w-32" : "size-24",
+              )}
+            >
               {previewUrl ? (
                 <img alt="" className="size-full rounded-[var(--radius-lg)] object-cover" src={previewUrl} />
               ) : selectedLabel ? (
@@ -297,10 +308,10 @@ export function UploadField({
             </div>
             <div className="min-w-0 flex-1 space-y-1">
               <p className="truncate text-base font-semibold text-foreground">
-                {selectedLabel || copy.upload.squareArtwork}
+                {selectedLabel || artworkPlaceholderLabel || copy.upload.squareArtwork}
               </p>
               <p className="text-base text-muted-foreground">
-                {copy.upload.artworkHelp}
+                {artworkHelp || copy.upload.artworkHelp}
               </p>
             </div>
           </>

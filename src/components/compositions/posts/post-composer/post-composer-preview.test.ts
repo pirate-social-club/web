@@ -46,6 +46,57 @@ describe("buildPostComposerPreviewContent", () => {
     expect(content.type === "song" ? content.artworkSrc : undefined).toBeUndefined();
   });
 
+  test("builds live room content for live publish preview", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "paid",
+      attachment: { kind: "live" },
+      body: "A short live set.",
+      liveCoverSrc: "blob:https://app.test/live-cover",
+      liveState: {
+        roomKind: "duet",
+        accessMode: "paid",
+        visibility: "public",
+        scheduleAt: "2026-05-22T22:00",
+        guestUserId: "u/guest",
+        coverLabel: "cover.jpg",
+        setlistItems: [
+          {
+            titleText: "After Hours",
+            artistText: "DJ Solar",
+            performanceKind: "original",
+          },
+        ],
+        setlistStatus: "draft",
+        performerAllocations: [
+          { userId: "u/host", role: "host", sharePct: 60 },
+          { userId: "u/guest", role: "guest", sharePct: 40 },
+        ],
+      },
+      price: "5",
+      title: "Late set",
+    });
+
+    expect(content).toMatchObject({
+      type: "live_room",
+      title: "Late set",
+      description: "A short live set.",
+      coverSrc: "blob:https://app.test/live-cover",
+      roomKind: "duet",
+      status: "scheduled",
+      accessMode: "paid",
+      accessState: "purchase_required",
+      priceLabel: "$5",
+      setlistPreview: [
+        {
+          title: "After Hours",
+          artist: "DJ Solar",
+          rightsStatus: "pending",
+        },
+      ],
+    });
+    expect(content.type === "live_room" ? content.startsAtLabel : undefined).toContain("2026");
+  });
+
   test("uses song post body, not media caption or lyrics, for publish preview captions", () => {
     const body = getPostComposerPreviewBody({
       fields: {

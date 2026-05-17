@@ -358,7 +358,12 @@
       "accessGated": "Gated",
       "accessPaid": "Paid",
       "visibilityPublic": "Public",
-      "visibilityUnlisted": "Unlisted"
+      "visibilityUnlisted": "Unlisted",
+      "startTime": "Start time",
+      "startTimeNote": "Required for scheduled live events.",
+      "eventCover": "Event cover",
+      "eventCoverUpload": "Upload event cover",
+      "eventCoverHelp": "Upload a 16:9 event cover. Feed, preview, and event page show it wide."
     },
     "genres": {
       "electronic": "Electronic",

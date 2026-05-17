@@ -3,6 +3,7 @@
 import * as React from "react";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
+import type { Profile as ApiProfile } from "@pirate/api-contracts";
 import { Plus } from "@phosphor-icons/react";
 
 import { PublicCommunityRoutePage } from "@/app/public-community-route";
@@ -30,7 +31,7 @@ import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-i
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 
-import { useCommunityPageData } from "@/app/authenticated-data/community-data";
+import { loadProfilesByUserId, useCommunityPageData } from "@/app/authenticated-data/community-data";
 import {
   buildCommunityPreviewSidebar,
   buildCommunitySidebar,
@@ -41,6 +42,7 @@ import {
   buildCommunityModerationEntryPath,
   buildCommunityModerationPath,
 } from "@/app/authenticated-helpers/moderation-helpers";
+import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live-room-participants";
 import { toCommunityFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { useCommunityMembershipActions } from "@/hooks/use-community-membership-actions";
 import { useCommunityVoteAction } from "@/hooks/use-community-vote-action";
@@ -67,6 +69,7 @@ import {
   communityHandleFromRouteLabel,
   useCommunityHandleClaimDismissal,
 } from "@/lib/community-handle-claim-dismissal";
+import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
 
@@ -148,7 +151,9 @@ export function CommunityPage({
   const commerceEnabled = Boolean(session?.user?.id) && canCreatePost;
   const {
     listingsByAssetId,
+    listingsByLiveRoomId,
     purchasesByAssetId,
+    purchasesByLiveRoomId,
     refresh: refreshSongCommerce,
   } = useSongCommerceState(communityId, commerceEnabled);
   const { buySong, purchaseModal } = useSongPurchaseFlow({
@@ -156,6 +161,12 @@ export function CommunityPage({
     refreshSongCommerce,
   });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
+  const [liveRoomAccessById, setLiveRoomAccessById] = React.useState<Record<string, ApiLiveRoomAccessResponse | undefined>>({});
+  const [liveRoomParticipantProfiles, setLiveRoomParticipantProfiles] = React.useState<Record<string, ApiProfile | null>>({});
+  const liveRoomProfilesByUserId = React.useMemo(
+    () => ({ ...authorProfiles, ...liveRoomParticipantProfiles }),
+    [authorProfiles, liveRoomParticipantProfiles],
+  );
   const previewCommunityId = preview?.id ?? null;
   const {
     followerCount,
@@ -298,7 +309,7 @@ export function CommunityPage({
     async (
       listing: ApiCommunityListing,
       titleText: string,
-      assetLabel: "song" | "video" = "song",
+      assetLabel: "song" | "video" | "ticket" = "song",
     ) => {
       await buySong({
         assetLabel,
@@ -310,6 +321,62 @@ export function CommunityPage({
     },
     [buySong, communityId],
   );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const liveRoomRefs = posts.reduce<string[]>((result, post) => {
+      const liveRoomId = post.post.anchor_live_room;
+      if (liveRoomId) result.push(liveRoomId);
+      return result;
+    }, []);
+
+    if (liveRoomRefs.length === 0) {
+      setLiveRoomAccessById({});
+      setLiveRoomParticipantProfiles({});
+      return () => { cancelled = true; };
+    }
+
+    void Promise.all([...new Set(liveRoomRefs)].map(async (liveRoomId) => {
+      const access = await (
+        session?.accessToken
+          ? api.communities.getLiveRoomAccess(communityId, liveRoomId)
+          : api.publicCommunities.getLiveRoomAccess(communityId, liveRoomId)
+      ).catch(() => null);
+      return access ? [liveRoomId, access] as const : null;
+    }))
+      .then((entries) => {
+        if (cancelled) return;
+        const accessById = Object.fromEntries(entries.filter((entry): entry is [string, ApiLiveRoomAccessResponse] => entry !== null));
+        setLiveRoomAccessById(accessById);
+
+        const participantIds = [...new Set(
+          Object.values(accessById).flatMap((access) => [
+            access.room.host_user,
+            access.room.guest_user,
+          ]).filter((userId): userId is string => Boolean(userId)),
+        )];
+        if (participantIds.length === 0) {
+          setLiveRoomParticipantProfiles({});
+          return;
+        }
+
+        void loadProfilesByUserId(api, participantIds, authorProfiles)
+          .then((profiles) => {
+            if (!cancelled) setLiveRoomParticipantProfiles(profiles);
+          })
+          .catch(() => {
+            if (!cancelled) setLiveRoomParticipantProfiles({});
+          });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLiveRoomAccessById({});
+          setLiveRoomParticipantProfiles({});
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [api, authorProfiles, communityId, posts, session?.accessToken]);
 
   const interactionCopy = React.useMemo(
     () => ({
@@ -438,6 +505,14 @@ export function CommunityPage({
   const canModeratePosts = canModerateCommunity;
   const feedItems = posts.map((post) => {
     const assetId = post.post.asset ?? undefined;
+    const liveRoomId = post.post.anchor_live_room ?? undefined;
+    const liveRoomAccess = liveRoomId ? liveRoomAccessById[liveRoomId] : undefined;
+    const liveRoomListing = liveRoomId ? listingsByLiveRoomId[liveRoomId] : undefined;
+    const liveRoomParticipants = buildLiveRoomParticipants({
+      liveRoom: liveRoomAccess?.room,
+      postAuthorUserId: post.post.author_user,
+      profilesByUserId: liveRoomProfilesByUserId,
+    });
     const handleVerifyAge = () => {
       void startAgeSelfVerification({
         requestedCapabilities: ["age_over_18"],
@@ -446,7 +521,7 @@ export function CommunityPage({
     };
     return toCommunityFeedItem(
       post,
-      authorProfiles,
+      liveRoomProfilesByUserId,
       post.post.post_type === "song" || post.post.post_type === "video"
         ? {
             currentUserId: session?.user?.id,
@@ -467,6 +542,19 @@ export function CommunityPage({
           }
       : undefined,
       {
+        liveRoom: liveRoomId ? {
+          access: liveRoomAccess,
+          currentUserId: session?.user?.id,
+          listing: liveRoomListing,
+          localeTag,
+          onBuy: liveRoomListing ? () => void handleBuySong(
+            liveRoomListing,
+            liveRoomAccess?.room.title ?? post.post.title ?? "Live room",
+            "ticket",
+          ) : undefined,
+          participants: liveRoomParticipants,
+          purchase: liveRoomId ? purchasesByLiveRoomId[liveRoomId] : undefined,
+        } : undefined,
         onVerifyAge: handleVerifyAge,
         onComment: () => navigate(`/p/${post.post.id}`),
         onRemove: () => void removePost(post.post.id),

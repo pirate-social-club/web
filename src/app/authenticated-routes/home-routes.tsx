@@ -27,6 +27,7 @@ import { Type } from "@/components/primitives/type";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { resolveHomeFeedCommunityId } from "@/app/authenticated-helpers/home-feed-presentation";
+import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live-room-participants";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { submitOptimisticPostVote, updateHomeFeedEntryPostVote } from "@/app/authenticated-helpers/post-vote";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
@@ -178,7 +179,24 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
           }))
             .then((entries) => {
               if (cancelled) return;
-              setLiveRoomAccessById(Object.fromEntries(entries.filter((entry): entry is [string, ApiLiveRoomAccessResponse] => entry !== null)));
+              const accessById = Object.fromEntries(entries.filter((entry): entry is [string, ApiLiveRoomAccessResponse] => entry !== null));
+              setLiveRoomAccessById(accessById);
+
+              const participantIds = [...new Set(
+                Object.values(accessById).flatMap((access) => [
+                  access.room.host_user,
+                  access.room.guest_user,
+                ]).filter((userId): userId is string => Boolean(userId)),
+              )];
+              if (participantIds.length > 0) {
+                void loadProfilesByUserId(api, participantIds, authorProfiles)
+                  .then((profiles) => {
+                    if (!cancelled) setAuthorProfiles((current) => ({ ...current, ...profiles }));
+                  })
+                  .catch(() => {
+                    // Participant profiles are enrichment only.
+                  });
+              }
             })
             .catch(() => {
               // ignore live-room enrichment errors
@@ -314,6 +332,12 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const feedItems = feedEntries.map((entry) => {
     const assetId = entry.post.post.asset ?? undefined;
     const liveRoomId = entry.post.post.anchor_live_room ?? undefined;
+    const liveRoomAccess = liveRoomId ? liveRoomAccessById[liveRoomId] : undefined;
+    const liveRoomParticipants = buildLiveRoomParticipants({
+      liveRoom: liveRoomAccess?.room,
+      postAuthorUserId: entry.post.post.author_user,
+      profilesByUserId: authorProfiles,
+    });
     return toHomeFeedItem(
       entry,
       authorProfiles,
@@ -328,10 +352,11 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         : undefined,
       {
         liveRoom: liveRoomId ? {
-          access: liveRoomAccessById[liveRoomId],
+          access: liveRoomAccess,
           currentUserId: session?.user?.id,
           listing: listingsByLiveRoomId[liveRoomId],
           localeTag,
+          participants: liveRoomParticipants,
           purchase: purchasesByLiveRoomId[liveRoomId],
         } : undefined,
         onComment: () => navigate(`/p/${entry.post.post.id}`),

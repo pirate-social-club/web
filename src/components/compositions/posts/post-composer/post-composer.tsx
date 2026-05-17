@@ -60,8 +60,8 @@ export function PostComposer(props: PostComposerProps) {
             ? "Create post"
             : step.isDetailsStep
               ? "Post details"
-              : step.isSettingsStep
-                ? "Post settings"
+            : step.isSettingsStep
+              ? "Post settings"
                 : "Post preview"}
         </Type>
         {step.isWriteStep ? (

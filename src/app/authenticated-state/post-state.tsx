@@ -881,6 +881,8 @@ export function usePost(
     post,
     community,
     authorProfile,
+    authorProfilesByUserId,
+    setAuthorProfilesByUserId,
     comments,
     commentCount,
     availableAgent,

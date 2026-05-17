@@ -21,6 +21,7 @@ describe("PostCard", () => {
             type: "live_room",
             accessMode: "free",
             accessState: "allowed",
+            coverSrc: "https://media.test/live-cover.jpg",
             liveRoomId: "lr_live",
             onWatch: () => undefined,
             status: "live",
@@ -33,6 +34,8 @@ describe("PostCard", () => {
 
     expect(liveMarkup).toContain("Live now");
     expect(liveMarkup).toContain("Watch live");
+    expect(liveMarkup).toContain("aspect-video");
+    expect(liveMarkup).not.toContain("size-20");
 
     const ticketMarkup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">
@@ -81,7 +84,7 @@ describe("PostCard", () => {
     expect(gatedMarkup).not.toContain("Watch live");
   });
 
-  test("renders scheduled live-room post pages without circular CTAs or status noise", () => {
+  test("renders scheduled free live-room post pages with RSVP when available", () => {
     const markup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">
         <PostCard
@@ -96,6 +99,7 @@ describe("PostCard", () => {
             concertHref: "/p/pst_event",
             description: "A live run through the new material.",
             liveRoomId: "lr_scheduled_page",
+            onRsvp: () => undefined,
             startsAtLabel: "in 2h",
             status: "scheduled",
             title: "Scheduled concert",
@@ -108,12 +112,13 @@ describe("PostCard", () => {
 
     expect(markup).toContain("Scheduled concert");
     expect(markup).toContain("Starts in 2h");
+    expect(markup).toContain("RSVP");
     expect(markup).toContain("A live run through the new material.");
     expect(markup).not.toContain("View event");
     expect(markup).not.toContain("Scheduled event");
   });
 
-  test("renders scheduled live-room post pages without circular CTAs or status noise", () => {
+  test("renders RSVP state for scheduled free live-room post pages", () => {
     const markup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">
         <PostCard
@@ -125,9 +130,9 @@ describe("PostCard", () => {
             type: "live_room",
             accessMode: "free",
             accessState: "waiting",
-            concertHref: "/p/pst_event",
-            description: "A live run through the new material.",
+            attendeeCountLabel: "342 going",
             liveRoomId: "lr_scheduled_page",
+            rsvpState: "going",
             startsAtLabel: "in 2h",
             status: "scheduled",
             title: "Scheduled concert",
@@ -138,11 +143,9 @@ describe("PostCard", () => {
       </UiLocaleProvider>,
     );
 
-    expect(markup).toContain("Scheduled concert");
-    expect(markup).toContain("Starts in 2h");
-    expect(markup).toContain("A live run through the new material.");
-    expect(markup).not.toContain("View event");
-    expect(markup).not.toContain("Scheduled event");
+    expect(markup).toContain("342 going");
+    expect(markup).toContain("You&#x27;re going");
+    expect(markup).not.toContain("RSVP");
   });
 
   test("renders song captions above the song preview", () => {

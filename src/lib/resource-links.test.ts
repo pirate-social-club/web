@@ -1,6 +1,23 @@
 import { describe, expect, test } from "bun:test";
 
-import { resolveResourceHref } from "./resource-links";
+import { prefersNativeRadicleLinks, resolveResourceHref } from "./resource-links";
+
+function withWindow(value: unknown, callback: () => void) {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value,
+  });
+  try {
+    callback();
+  } finally {
+    if (descriptor) {
+      Object.defineProperty(globalThis, "window", descriptor);
+    } else {
+      Reflect.deleteProperty(globalThis, "window");
+    }
+  }
+}
 
 describe("resolveResourceHref", () => {
   test("resolves blog and legal resource links", () => {
@@ -40,5 +57,25 @@ describe("resolveResourceHref", () => {
 
   test("returns null for unknown resource ids", () => {
     expect(resolveResourceHref("unknown")).toBeNull();
+  });
+});
+
+describe("prefersNativeRadicleLinks", () => {
+  test("detects Freedom Browser from the current ethereum marker", () => {
+    withWindow({ ethereum: { isFreedomBrowser: true } }, () => {
+      expect(prefersNativeRadicleLinks()).toBe(true);
+    });
+  });
+
+  test("keeps the legacy swarm marker as a fallback", () => {
+    withWindow({ swarm: { isFreedomBrowser: true } }, () => {
+      expect(prefersNativeRadicleLinks()).toBe(true);
+    });
+  });
+
+  test("returns false outside Freedom Browser", () => {
+    withWindow({}, () => {
+      expect(prefersNativeRadicleLinks()).toBe(false);
+    });
   });
 });

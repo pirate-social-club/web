@@ -2,8 +2,10 @@ import { describe, expect, test } from "bun:test";
 import type { Community } from "@pirate/api-contracts";
 
 import {
+  buildLiveRoomFreedomLaunchHref,
   buildLiveRoomRequest,
   isPublicAudienceAllowed,
+  shouldAutoLaunchLiveRoom,
   songArtifactBundleToComposerReference,
 } from "../app/authenticated-state/create-post-state";
 
@@ -97,6 +99,19 @@ describe("isPublicAudienceAllowed", () => {
 });
 
 describe("live room request mapping", () => {
+  test("builds Freedom launch URLs for immediate live rooms", () => {
+    expect(shouldAutoLaunchLiveRoom({ scheduleAt: "" })).toBe(true);
+    expect(shouldAutoLaunchLiveRoom({ scheduleAt: "   " })).toBe(true);
+    expect(shouldAutoLaunchLiveRoom({ scheduleAt: "2026-06-01T12:00:00Z" })).toBe(false);
+    expect(buildLiveRoomFreedomLaunchHref({
+      communityId: "cmt_test",
+      hostname: "pirate.sc",
+      liveRoomId: "lr_test",
+    })).toBe(
+      "freedom://live-room?roomId=lr_test&communityId=cmt_test&apiBase=https%3A%2F%2Fapi.pirate.sc",
+    );
+  });
+
   test("preserves real song artifact bundle selections and drops fallback track ids", () => {
     const request = buildLiveRoomRequest({
       description: "Testing a local live room",

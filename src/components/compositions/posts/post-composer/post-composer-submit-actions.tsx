@@ -39,17 +39,18 @@ export function PostComposerDesktopFooter({
 }: {
   controller: PostComposerController;
 }) {
-  const { copy, fields, isMobile, media, song, step, submit, tabs } = controller;
+  const { copy, fields, isMobile, media, primary, song, step, submit, tabs } = controller;
 
   if (isMobile) {
     return null;
   }
 
-  if (step.isWriteStep && tabs.activeTab !== "live") {
+  if (step.isWriteStep) {
     const canAdvanceWrite = canAdvanceComposerWriteStep({
       body: fields.textBodyValue,
       imageUploadPresent: Boolean(media.activeImageUpload),
       linkUrl: fields.linkUrlValue,
+      liveState: primary.liveState,
       mode: tabs.activeTab,
       songAudioUploadPresent: Boolean(song.state.primaryAudioUpload),
       title: fields.titleValue,
@@ -159,7 +160,7 @@ export function PostComposerMobileSubmitBar({
 }: {
   controller: PostComposerController;
 }) {
-  const { copy, fields, isMobile, media, song, step, submit, tabs } = controller;
+  const { copy, fields, isMobile, media, primary, song, step, submit, tabs } = controller;
 
   if (!isMobile || !submit.mobileEnabled) {
     return null;
@@ -167,11 +168,12 @@ export function PostComposerMobileSubmitBar({
 
   let bar: React.ReactNode = null;
 
-  if (step.isWriteStep && tabs.activeTab !== "live") {
+  if (step.isWriteStep) {
     const canAdvanceWrite = canAdvanceComposerWriteStep({
       body: fields.textBodyValue,
       imageUploadPresent: Boolean(media.activeImageUpload),
       linkUrl: fields.linkUrlValue,
+      liveState: primary.liveState,
       mode: tabs.activeTab,
       songAudioUploadPresent: Boolean(song.state.primaryAudioUpload),
       title: fields.titleValue,

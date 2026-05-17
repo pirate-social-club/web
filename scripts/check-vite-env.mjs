@@ -22,6 +22,7 @@ if (missing.length > 0) {
 
 if (mode === "production") {
   const productionMainnetRequirements = {
+    VITE_PIRATE_APP_ENV: "prod",
     VITE_BASE_NETWORK: "base-mainnet",
     VITE_EFP_ENVIRONMENT: "mainnet",
   };
@@ -32,6 +33,30 @@ if (mode === "production") {
   if (mismatched.length > 0) {
     console.error(
       "Production Vite env must target mainnet: "
+      + mismatched.map(([key, expected]) => `${key}=${expected}`).join(", "),
+    );
+    process.exit(1);
+  }
+}
+
+if (mode === "staging") {
+  if (String(env.VITE_PRIVY_CLIENT_ID ?? "").trim().length > 0) {
+    console.error("Staging Vite env must omit VITE_PRIVY_CLIENT_ID so Privy uses app-level allowed origins.");
+    process.exit(1);
+  }
+
+  const stagingTestnetRequirements = {
+    VITE_PIRATE_APP_ENV: "staging",
+    VITE_BASE_NETWORK: "base-sepolia",
+    VITE_EFP_ENVIRONMENT: "testnet",
+  };
+  const mismatched = Object.entries(stagingTestnetRequirements).filter(([key, expected]) => {
+    return String(env[key] ?? "").trim() !== expected;
+  });
+
+  if (mismatched.length > 0) {
+    console.error(
+      "Staging Vite env must target staging/testnet: "
       + mismatched.map(([key, expected]) => `${key}=${expected}`).join(", "),
     );
     process.exit(1);

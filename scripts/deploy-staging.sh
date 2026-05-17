@@ -31,6 +31,7 @@ BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 WEB_ORIGIN="${WEB_ORIGIN:-https://staging.pirate.sc}"
 API_ORIGIN="${API_ORIGIN:-https://api-staging.pirate.sc}"
+export VITE_PRIVY_CLIENT_ID=""
 
 log() {
   printf '\n==> %s\n' "$*"

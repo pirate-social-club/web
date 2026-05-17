@@ -8,7 +8,7 @@
   "scripts": {
     "locales:generate": "node ./scripts/generate-locales.mjs",
     "env:check:prod": "node ./scripts/check-vite-env.mjs production VITE_PRIVY_APP_ID VITE_PRIVY_CLIENT_ID",
-    "env:check:staging": "node ./scripts/check-vite-env.mjs staging VITE_PRIVY_APP_ID VITE_PRIVY_CLIENT_ID",
+    "env:check:staging": "node ./scripts/check-vite-env.mjs staging VITE_PRIVY_APP_ID",
     "dev": "bun run locales:generate && vite --host :: --port 5173 --strictPort",
     "xmtp:dev:receive": "bun run ./scripts/xmtp-dev-receiver.ts",
     "xmtp:dev:send": "bun run ./scripts/xmtp-dev-send.ts",
@@ -16,7 +16,7 @@
     "dev:init": "rw-scripts dev-init",
     "build": "bun run locales:generate && vite build",
     "build:prod": "bun run env:check:prod && bun run build -- --mode production --minify false --sourcemap false",
-    "build:staging": "bun run env:check:staging && bun run build -- --mode staging --minify false --sourcemap false",
+    "build:staging": "VITE_PRIVY_CLIENT_ID= bun run env:check:staging && VITE_PRIVY_CLIENT_ID= bun run build -- --mode staging --minify false --sourcemap false",
     "build:desktop-shell": "bun run locales:generate && vite build --config vite.desktop.config.ts",
     "preview": "bun run locales:generate && vite preview",
     "storybook": "bun run locales:generate && storybook dev -p 6006 --disable-telemetry",

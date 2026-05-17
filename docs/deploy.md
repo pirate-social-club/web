@@ -72,7 +72,13 @@ These commands:
 - attach `dist/client` assets
 - pass `--no-bundle`
 
-Required client env for the main staging/production build:
+Required client env for the main staging build:
+
+```bash
+VITE_PRIVY_APP_ID
+```
+
+Required client env for the main production build:
 
 ```bash
 VITE_PRIVY_APP_ID
@@ -80,10 +86,14 @@ VITE_PRIVY_CLIENT_ID
 ```
 
 These are read at Vite build time and baked into the browser bundle. A deploy
-machine without them will produce a client where Connect is disabled.
+machine without `VITE_PRIVY_APP_ID` will produce a client where Connect is
+disabled. Staging intentionally omits `VITE_PRIVY_CLIENT_ID` so Privy uses the
+app-level allowed origins, including `https://staging.pirate.sc`; the staging
+build and deploy scripts force this value empty even when a local `.env.local`
+contains a production client id.
 
-GitHub Actions reads these values from `VITE_PRIVY_APP_ID` and
-`VITE_PRIVY_CLIENT_ID` repository or organization secrets/variables.
+GitHub Actions reads these values from `VITE_PRIVY_APP_ID` and, for production
+only, `VITE_PRIVY_CLIENT_ID` repository or organization secrets/variables.
 
 API endpoint selection is host-based at runtime:
 

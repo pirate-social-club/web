@@ -335,7 +335,7 @@ export const Reference: Story = {
       derivativeStep={{
         visible: true,
         required: true,
-        trigger: "analysis",
+        trigger: "declaration",
         query: "encore live original",
         references: [
           {

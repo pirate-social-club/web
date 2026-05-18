@@ -417,12 +417,6 @@ export function usePostComposerController(props: PostComposerProps) {
   }, [identity?.authorMode]);
 
   React.useEffect(() => {
-    if (derivativeState?.trigger === "analysis" && activeSongMode !== "remix") {
-      setSongModeWithCallback("remix");
-    }
-  }, [activeSongMode, derivativeState?.trigger, setSongModeWithCallback]);
-
-  React.useEffect(() => {
     if (live) {
       setLiveState(live);
     }

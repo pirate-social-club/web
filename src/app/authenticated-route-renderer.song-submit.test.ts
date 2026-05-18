@@ -8,6 +8,9 @@ import {
 import {
   buildSongPostRequest,
 } from "@/app/authenticated-helpers/song-submit";
+import {
+  countUniqueRawAcrMatches,
+} from "@/app/authenticated-state/use-song-submit";
 
 function captureErrorMessage(fn: () => unknown): string | null {
   try {
@@ -19,6 +22,44 @@ function captureErrorMessage(fn: () => unknown): string | null {
 }
 
 describe("song submit payload helpers", () => {
+  test("counts unique raw ACR source matches for logging", () => {
+    const count = countUniqueRawAcrMatches({
+      moderation_result: {
+        audio_identification: {
+          provider_result: {
+            metadata: {
+              custom_files: [
+                {
+                  acrid: "acr_1",
+                  user_defined: JSON.stringify({
+                    community_id: "com_lane",
+                    song_artifact_bundle_id: "sab_unresolved",
+                  }),
+                },
+                {
+                  acrid: "acr_2",
+                  user_defined: JSON.stringify({
+                    community_id: "com_lane",
+                    song_artifact_bundle_id: "sab_unresolved",
+                  }),
+                },
+                {
+                  acrid: "acr_3",
+                  user_defined: JSON.stringify({
+                    community_id: "com_lane",
+                    song_artifact_bundle_id: "sab_resolved",
+                  }),
+                },
+              ],
+            },
+          },
+        },
+      },
+    } as never);
+
+    expect(count).toBe(2);
+  });
+
   test("builds a free original song post without a listing", () => {
     const postRequest = buildSongPostRequest({
       bundleId: "sab_free",
@@ -329,13 +370,13 @@ describe("song submit payload helpers", () => {
     });
   });
 
-  test("allows an ACRCloud match prompt to be resolved", () => {
+  test("keeps an ACRCloud match prompt blocking even when source refs exist", () => {
     expect(resolveComposerSubmitState({
       canSubmit: true,
       composerMode: "song",
       derivativeStep: {
         required: true,
-        references: [{ id: "acr:custom-file:acr_match_1", title: "Matched source 1" }],
+        references: [{ id: "ast_resolved_source", title: "Resolved source" }],
         sourceTermsAccepted: true,
       },
       license: undefined,
@@ -345,10 +386,30 @@ describe("song submit payload helpers", () => {
       submitError: "Your uploaded song is too similar to an existing song.",
     })).toEqual({
       canContinue: true,
-      canPost: true,
-      disabled: false,
-      submitError: null,
+      canPost: false,
+      disabled: true,
+      submitError: "Your uploaded song is too similar to an existing song.",
     });
+  });
+
+  test("does not send unresolved ACR fallback references in remix post payloads", () => {
+    expect(buildSongPostRequest({
+      bundleId: "sab_remix",
+      derivativeStep: {
+        required: true,
+        references: [
+          { id: "acr:custom-file:acr_match_1", title: "Matched source 1" },
+          { id: "ast_resolved_source", title: "Resolved source" },
+        ],
+        sourceTermsAccepted: true,
+      },
+      idempotencyKey: "key-remix",
+      license: undefined,
+      paidSongPriceUsd: null,
+      songMode: "remix",
+      title: "Remix",
+      visibility: "public",
+    }).upstream_asset_refs).toEqual(["ast_resolved_source"]);
   });
 
   test("derives original song license validation from the route state", () => {

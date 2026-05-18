@@ -14,22 +14,12 @@ export type AssetDerivativeInput = Pick<DerivativeStepState, "required" | "sourc
   references?: AssetDerivativeReference[];
 };
 
-const ANALYSIS_MATCH_PROMPTS = new Set([
-  "Your uploaded song is too similar to an existing song.",
-]);
+export function isResolvedDerivativeReference(reference: AssetDerivativeReference): boolean {
+  return !reference.id.startsWith("acr:custom-file:") && !reference.id.startsWith("acr:unresolved-bundle:");
+}
 
-function isResolvedAnalysisMatchPrompt(input: {
-  composerMode: ComposerTab;
-  derivativeStep: AssetDerivativeInput | undefined;
-  submitError: string | null;
-}): boolean {
-  return Boolean(
-    input.composerMode === "song"
-    && input.submitError
-    && ANALYSIS_MATCH_PROMPTS.has(input.submitError)
-    && (input.derivativeStep?.references?.length ?? 0) > 0
-    && input.derivativeStep?.sourceTermsAccepted === true,
-  );
+export function resolvedDerivativeReferences(input: AssetDerivativeInput | undefined): AssetDerivativeReference[] {
+  return input?.references?.filter(isResolvedDerivativeReference) ?? [];
 }
 
 export function validateOriginalAssetLicense(license: AssetLicenseState | undefined, contentLabel: "song" | "video"): string | null {
@@ -121,12 +111,10 @@ export function resolveComposerSubmitState(input: {
   songMode?: SongMode;
   submitError: string | null;
 }) {
-  const resolvedAnalysisMatchPrompt = isResolvedAnalysisMatchPrompt(input);
   const contentError = (() => {
-    if (input.submitError && !resolvedAnalysisMatchPrompt) return input.submitError;
     if (!input.canSubmit) return null;
 
-    if (input.composerMode === "song" && input.derivativeStep?.required && !(input.derivativeStep.references?.length ?? 0)) {
+    if (input.composerMode === "song" && input.derivativeStep?.required && resolvedDerivativeReferences(input.derivativeStep).length === 0) {
       return "Attach a source track before publishing this remix.";
     }
 
@@ -138,9 +126,9 @@ export function resolveComposerSubmitState(input: {
   })();
   const canContinue = input.canSubmit && !contentError;
 
-  if (input.submitError && !resolvedAnalysisMatchPrompt) {
+  if (input.submitError) {
     return {
-      canContinue: false,
+      canContinue,
       canPost: false,
       disabled: true,
       submitError: input.submitError,

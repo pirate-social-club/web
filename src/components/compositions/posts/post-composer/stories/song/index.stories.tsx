@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { buildStarterPricingPolicyDraft } from "@/app/authenticated-helpers/moderation-helpers";
-import { fallbackMatchedSourceReference } from "@/app/authenticated-state/use-song-submit";
 import { PostComposer } from "../../post-composer";
 import { baseComposer, composerDecorator, composerParameters, InteractivePostComposer } from "../story-helpers";
 
@@ -48,20 +47,6 @@ const sourceReferences = [
     parentIpId: "0x1234567890abcdef1234567890abcdef12345678",
     licenseTermsId: "3",
   },
-];
-
-const rawAcrSourceReferences = [
-  fallbackMatchedSourceReference({
-    acrid: "acr_custom_01",
-    title: "pirate-bf4523357c971e2fa512579fc27b7089810c7543824793db5c50d13e859574fe",
-    community_id: "cmt_8fb2fe94333e4d35bb03c726ccb5bcb0",
-    score: 100,
-    user_defined: JSON.stringify({
-      source: "pirate",
-      community_id: "cmt_8fb2fe94333e4d35bb03c726ccb5bcb0",
-      song_artifact_bundle_id: "sab_unresolved_match",
-    }),
-  }, 0),
 ];
 
 const sourceLicenseSummary = {
@@ -339,7 +324,7 @@ export const RemixSourceTermsAccepted: Story = {
 };
 
 export const AnalysisMatch: Story = {
-  name: "Analysis Match / Blocked",
+  name: "Publish step / Analysis error only",
   render: () => (
     <InteractivePostComposer
       {...baseComposer}
@@ -349,7 +334,7 @@ export const AnalysisMatch: Story = {
       titleValue="Midnight Waves (unauthorized flip)"
       titleCountLabel="36/300"
       lyricsValue="Meet me in the red light / carry the chorus through the floor..."
-      songMode="remix"
+      songMode="original"
       song={{
         genre: "Electronic",
         primaryLanguage: "English",
@@ -357,91 +342,8 @@ export const AnalysisMatch: Story = {
         coverUpload: midnightCoverFile,
         coverLabel: "midnight-waves-cover.png",
       }}
-      derivativeStep={{
-        visible: true,
-        required: true,
-        trigger: "analysis",
-        requirementLabel: analysisMatchMessage,
-        searchResults: sourceReferences,
-        references: sourceReferences,
-        licenseSummary: sourceLicenseSummary,
-        sourceTermsAccepted: false,
-      }}
-      submit={{
-        canContinue: false,
-        canPost: false,
-        error: analysisMatchMessage,
-        label: "Post",
-      }}
-    />
-  ),
-};
-
-export const AnalysisMatchResolved: Story = {
-  name: "Analysis Match / Resolved",
-  render: () => (
-    <InteractivePostComposer
-      {...baseComposer}
-      composerStep="publish"
-      mode="song"
-      canCreateSongPost
-      titleValue="Midnight Waves (authorized remix)"
-      titleCountLabel="35/300"
-      lyricsValue="Meet me in the red light / carry the chorus through the floor..."
-      songMode="remix"
-      song={{
-        genre: "Electronic",
-        primaryLanguage: "English",
-        primaryAudioUpload: demoAudioFile,
-        coverUpload: midnightCoverFile,
-        coverLabel: "midnight-waves-cover.png",
-      }}
-      derivativeStep={{
-        visible: true,
-        required: true,
-        trigger: "analysis",
-        searchResults: sourceReferences,
-        references: sourceReferences,
-        licenseSummary: sourceLicenseSummary,
-        sourceTermsAccepted: true,
-      }}
-      submit={{
-        canContinue: true,
-        canPost: true,
-        error: null,
-        label: "Post",
-      }}
-    />
-  ),
-};
-
-export const AnalysisMatchRawAcrFallback: Story = {
-  name: "Analysis Match / Raw ACR Fallback",
-  render: () => (
-    <InteractivePostComposer
-      {...baseComposer}
-      composerStep="publish"
-      mode="song"
-      canCreateSongPost
-      titleValue="Midnight Waves (unauthorized flip)"
-      titleCountLabel="36/300"
-      lyricsValue="Meet me in the red light / carry the chorus through the floor..."
-      songMode="remix"
-      song={{
-        genre: "Electronic",
-        primaryLanguage: "English",
-        primaryAudioUpload: demoAudioFile,
-        coverUpload: midnightCoverFile,
-        coverLabel: "midnight-waves-cover.png",
-      }}
-      derivativeStep={{
-        visible: true,
-        required: true,
-        trigger: "analysis",
-        requirementLabel: analysisMatchMessage,
-        searchResults: rawAcrSourceReferences,
-        references: rawAcrSourceReferences,
-        sourceTermsAccepted: false,
+      license={{
+        presetId: "non-commercial",
       }}
       submit={{
         canContinue: false,

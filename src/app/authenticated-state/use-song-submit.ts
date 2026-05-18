@@ -10,7 +10,6 @@ import type {
   CharityContributionState,
   CommunityCharityPartner,
   ComposerAudienceState,
-  ComposerReference,
   DerivativeStepState,
   MonetizationState,
   AssetLicenseState,
@@ -18,7 +17,7 @@ import type {
   SongMode,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 
-import { buildAssetListingRequest } from "@/app/authenticated-helpers/asset-submit";
+import { buildAssetListingRequest, resolvedDerivativeReferences } from "@/app/authenticated-helpers/asset-submit";
 import { buildSongPostRequest } from "@/app/authenticated-helpers/song-submit";
 
 const SONG_PREVIEW_DURATION_MS = 30_000;
@@ -59,9 +58,6 @@ type SongSubmitInput = {
   paidSongPriceUsd: number | null;
   pendingSongBundleId: string | null;
   pricingPolicyRegionalPricingEnabled: boolean;
-  setDerivativeStep: (updater: (current: DerivativeStepState | undefined) => DerivativeStepState | undefined) => void;
-  setPendingSongBundleId: (bundleId: string | null) => void;
-  setSongMode: (mode: SongMode) => void;
   setSubmitError: (error: string | null) => void;
   songMode: SongMode;
   songState: SongComposerState;
@@ -140,79 +136,35 @@ function parseAcrUserDefined(value: unknown): Record<string, unknown> | null {
   }
 }
 
-function normalizeCommunityId(value: string | null | undefined): string | null {
-  const trimmed = value?.trim();
-  if (!trimmed) return null;
-  return trimmed.startsWith("com_") ? trimmed.slice("com_".length) : trimmed;
+function rawAcrMatchKey(input: {
+  customFile: RawAcrCustomFile;
+  index: number;
+  matchedBundleId: string | null;
+}): string {
+  if (input.matchedBundleId) return `bundle:${input.matchedBundleId}`;
+  const acrid = typeof input.customFile.acrid === "string" ? input.customFile.acrid : null;
+  if (acrid) return `acr:${acrid}`;
+  return `index:${input.index}`;
 }
 
-function sameCommunityId(left: string | null | undefined, right: string | null | undefined): boolean {
-  const normalizedLeft = normalizeCommunityId(left);
-  const normalizedRight = normalizeCommunityId(right);
-  return Boolean(normalizedLeft && normalizedRight && normalizedLeft === normalizedRight);
-}
-
-function sourceReferenceFromBundle(bundle: ApiSongArtifactBundle): ComposerReference {
-  return {
-    id: bundle.id,
-    title: bundle.title,
-    subtitle: bundle.creator_user,
-  };
-}
-
-export function fallbackMatchedSourceReference(entry: RawAcrCustomFile, index: number): ComposerReference {
-  const acrid = typeof entry.acrid === "string" ? entry.acrid : null;
-  return {
-    id: acrid ? `acr:custom-file:${acrid}` : `acr:custom-file:match:${index}`,
-    title: `Matched source ${index + 1}`,
-  };
-}
-
-async function buildMatchedSourceReferences(input: {
-  bundle: ApiSongArtifactBundle;
-  communityId: string;
-  resolveBundle: (communityId: string, bundleId: string) => Promise<ApiSongArtifactBundle>;
-}): Promise<ComposerReference[]> {
-  const { bundle, communityId, resolveBundle } = input;
+export function countUniqueRawAcrMatches(bundle: ApiSongArtifactBundle): number {
   const moderationResult = bundle.moderation_result && typeof bundle.moderation_result === "object"
     ? bundle.moderation_result as { audio_identification?: { provider_result?: { metadata?: { custom_files?: unknown[] } } } }
     : null;
   const customFiles = moderationResult?.audio_identification?.provider_result?.metadata?.custom_files;
-  if (!Array.isArray(customFiles)) return [];
+  if (!Array.isArray(customFiles)) return 0;
 
   const seen = new Set<string>();
-  const references: ComposerReference[] = [];
   for (const [index, entry] of customFiles.entries()) {
     if (!entry || typeof entry !== "object") continue;
     const customFile = entry as RawAcrCustomFile;
     const userDefined = parseAcrUserDefined(customFile.user_defined);
-    const matchedCommunityId = typeof userDefined?.community_id === "string"
-      ? userDefined.community_id
-      : typeof customFile.community_id === "string"
-        ? customFile.community_id
-        : null;
     const matchedBundleId = typeof userDefined?.song_artifact_bundle_id === "string"
       ? userDefined.song_artifact_bundle_id
       : null;
-    let reference = fallbackMatchedSourceReference(customFile, index);
-
-    if (matchedBundleId && sameCommunityId(matchedCommunityId, communityId)) {
-      try {
-        reference = sourceReferenceFromBundle(await resolveBundle(communityId, matchedBundleId));
-      } catch (error) {
-        logger.warn("[song-submit] could not resolve matched source bundle", {
-          bundleId: matchedBundleId,
-          communityId,
-          error,
-        });
-      }
-    }
-
-    if (seen.has(reference.id)) continue;
-    seen.add(reference.id);
-    references.push(reference);
+    seen.add(rawAcrMatchKey({ customFile, index, matchedBundleId }));
   }
-  return references;
+  return seen.size;
 }
 
 function resolveBundleAnalysisState(bundle: ApiSongArtifactBundle): string | null {
@@ -327,9 +279,6 @@ export function useSongSubmit({
     paidSongPriceUsd,
     pendingSongBundleId,
     pricingPolicyRegionalPricingEnabled,
-    setDerivativeStep,
-    setPendingSongBundleId,
-    setSongMode,
     setSubmitError,
     songMode,
     songState,
@@ -351,7 +300,7 @@ export function useSongSubmit({
     if (monetizationState.visible && paidSongPriceUsd == null) throw new Error("Enter a valid unlock price before publishing this song.");
     const previewStartMs = isLockedSong ? parsePreviewStartMs(songState.previewStartSeconds) : null;
     if (isLockedSong && previewStartMs == null) throw new Error("Choose where the 30 second preview starts.");
-    const selectedSourceRefs = derivativeStep?.references?.map((reference) => reference.id) ?? [];
+    const selectedSourceRefs = resolvedDerivativeReferences(derivativeStep).map((reference) => reference.id);
     if (derivativeStep?.required && selectedSourceRefs.length === 0) throw new Error("Attach a source track before publishing this remix");
     if (derivativeStep?.required && derivativeStep.sourceTermsAccepted !== true) throw new Error("Accept the source license terms before publishing this remix.");
     if (songMode === "original" && !license) throw new Error("Choose license terms before publishing this song.");
@@ -413,26 +362,10 @@ export function useSongSubmit({
       });
 
       if (resolveBundleAnalysisState(bundle) === "allow_with_required_reference") {
-        const matchedReferences = await buildMatchedSourceReferences({
-          bundle,
-          communityId,
-          resolveBundle: api.communities.getSongArtifactBundle,
-        });
-        logger.info("[song-submit] source reference required", {
+        logger.info("[song-submit] source reference required; blocking original upload", {
           bundleId: bundle.id,
-          matchedReferenceCount: matchedReferences.length,
+          rawMatchCount: countUniqueRawAcrMatches(bundle),
         });
-        setPendingSongBundleId(bundle.id);
-        setSongMode("remix");
-        setDerivativeStep((current) => ({
-          visible: true,
-          required: true,
-          trigger: "analysis",
-          requirementLabel: "Your uploaded song is too similar to an existing song.",
-          searchResults: matchedReferences,
-          references: matchedReferences.length ? matchedReferences : current?.references,
-          sourceTermsAccepted: false,
-        }));
         setSubmitError("Your uploaded song is too similar to an existing song.");
         return null;
       }

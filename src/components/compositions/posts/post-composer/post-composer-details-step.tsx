@@ -112,7 +112,6 @@ export function PostComposerDetailsStep({
           {(["original", "remix"] as const).map((value) => (
             <TabsTrigger
               className="h-10 min-w-0 px-3 font-semibold capitalize"
-              disabled={Boolean(primary.derivativeState?.trigger === "analysis" && value === "original")}
               key={value}
               value={value}
             >

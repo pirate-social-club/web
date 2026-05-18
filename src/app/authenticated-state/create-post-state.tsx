@@ -223,8 +223,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
   const clearPendingSongBundle = React.useCallback(() => {
     setPendingSongBundleId(null);
-    setDerivativeStep((current) => current?.trigger === "analysis" ? undefined : current);
-  }, []);
+  }, [setPendingSongBundleId]);
 
   const songBundleInputFingerprint = React.useMemo(() => JSON.stringify({
     title: songState.title?.trim() ?? "",
@@ -366,9 +365,6 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         if (cancelled) return;
         const searchResults = result.items.map(derivativeSourceToComposerReference);
         setDerivativeStep((current) => {
-          if (current?.trigger === "analysis") {
-            return current;
-          }
           return {
             visible: true,
             required: true,
@@ -383,11 +379,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        setDerivativeStep((current) => current?.trigger === "analysis"
-          ? current
-          : current
-            ? { ...current, searchResults: [] }
-            : current);
+        setDerivativeStep((current) => current
+          ? { ...current, searchResults: [] }
+          : current);
         logger.warn("[create-post] could not load derivative song sources", {
           communityId,
           error,
@@ -685,9 +679,6 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           paidSongPriceUsd: paidAssetPriceUsd,
           pendingSongBundleId,
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
-          setDerivativeStep,
-          setPendingSongBundleId,
-          setSongMode,
           setSubmitError,
           songMode,
           songState,
@@ -899,7 +890,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [
     api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, hasCommunityPostingRole,
     identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled,
-    selectedQualifierIds, session?.user.id, setDerivativeStep, setPendingSongBundleId, setSongMode, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
+    selectedQualifierIds, session?.user.id, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     videoState,
   ]);
 

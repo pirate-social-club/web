@@ -57,7 +57,7 @@ export interface LivePerformerAllocation {
   sharePct: number;
 }
 
-export type DerivativeTrigger = "remix" | "declaration" | "analysis";
+export type DerivativeTrigger = "remix" | "declaration";
 
 export type { AnonymousIdentityScope };
 

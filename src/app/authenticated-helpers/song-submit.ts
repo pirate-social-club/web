@@ -7,6 +7,7 @@ import type {
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import {
   type AssetDerivativeInput,
+  resolvedDerivativeReferences,
   validateOriginalAssetLicense,
 } from "@/app/authenticated-helpers/asset-submit";
 
@@ -42,7 +43,7 @@ export function buildSongPostRequest(input: {
     title: input.title.trim(),
     translation_policy: "machine_allowed" as const,
     upstream_asset_refs: input.songMode === "remix"
-      ? input.derivativeStep?.references?.map((reference) => reference.id)
+      ? resolvedDerivativeReferences(input.derivativeStep).map((reference) => reference.id)
       : undefined,
     visibility: input.visibility,
   };

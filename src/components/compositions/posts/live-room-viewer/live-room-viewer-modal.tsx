@@ -18,6 +18,11 @@ import { cn } from "@/lib/utils";
 
 type ViewerStatus = "idle" | "connecting" | "waiting" | "watching" | "unavailable" | "error";
 
+type RemoteVideoUser = {
+  uid: string;
+  user: IAgoraRTCRemoteUser;
+};
+
 type LiveRoomViewerModalProps = {
   attachResponse: ApiLiveRoomViewerAttachResponse | null;
   open: boolean;
@@ -50,6 +55,50 @@ function statusText(status: ViewerStatus): string {
   if (status === "unavailable") return "Browser playback is unavailable for this room.";
   if (status === "error") return "Could not join the live room.";
   return "Ready to join.";
+}
+
+function remoteUserKey(user: IAgoraRTCRemoteUser): string {
+  return String(user.uid);
+}
+
+function remoteMediaKey(user: IAgoraRTCRemoteUser, mediaType: "audio" | "video"): string {
+  return `${remoteUserKey(user)}:${mediaType}`;
+}
+
+function updateMediaKeySet(
+  previous: Set<string>,
+  key: string,
+  active: boolean,
+): Set<string> {
+  if (active && previous.has(key)) return previous;
+  if (!active && !previous.has(key)) return previous;
+  const next = new Set(previous);
+  if (active) {
+    next.add(key);
+  } else {
+    next.delete(key);
+  }
+  return next;
+}
+
+function RemoteVideoTile({ user }: { user: IAgoraRTCRemoteUser }) {
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const videoTrack = user.videoTrack;
+
+  React.useEffect(() => {
+    const target = containerRef.current;
+    if (!target || !videoTrack) return;
+    videoTrack.play(target);
+    return () => {
+      target.replaceChildren();
+    };
+  }, [videoTrack]);
+
+  return (
+    <div className="relative min-h-0 min-w-0 overflow-hidden bg-black" data-live-room-video-tile="">
+      <div ref={containerRef} className="size-full" />
+    </div>
+  );
 }
 
 export function LiveRoomViewerModal({
@@ -91,15 +140,16 @@ export function LiveRoomViewerSurface({
   onRenew,
 }: LiveRoomViewerSurfaceProps) {
   const videoWrapperRef = React.useRef<HTMLDivElement | null>(null);
-  const videoContainerRef = React.useRef<HTMLDivElement | null>(null);
   const clientRef = React.useRef<IAgoraRTCClient | null>(null);
   const renewingRef = React.useRef(false);
   const [status, setStatus] = React.useState<ViewerStatus>("idle");
   const [error, setError] = React.useState<string | null>(null);
-  const [hasVideo, setHasVideo] = React.useState(false);
+  const [remoteVideoUsers, setRemoteVideoUsers] = React.useState<RemoteVideoUser[]>([]);
+  const [activeMediaKeys, setActiveMediaKeys] = React.useState<Set<string>>(() => new Set());
   const [tokenExpiresAt, setTokenExpiresAt] = React.useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const agora = attachResponse?.agora ?? null;
+  const hasVideo = remoteVideoUsers.length > 0;
 
   React.useEffect(() => {
     setTokenExpiresAt(open ? agora?.token_expires_at ?? null : null);
@@ -109,7 +159,8 @@ export function LiveRoomViewerSurface({
     if (!open) {
       setStatus("idle");
       setError(null);
-      setHasVideo(false);
+      setRemoteVideoUsers([]);
+      setActiveMediaKeys(new Set());
       setTokenExpiresAt(null);
       return;
     }
@@ -133,19 +184,20 @@ export function LiveRoomViewerSurface({
       if (disposed) return;
 
       if (mediaType === "video" && user.videoTrack) {
-        setHasVideo(true);
-        setStatus("watching");
-        window.requestAnimationFrame(() => {
-          const target = videoContainerRef.current;
-          if (target && user.videoTrack) {
-            user.videoTrack.play(target);
-          }
+        setRemoteVideoUsers((current) => {
+          const key = remoteUserKey(user);
+          const index = current.findIndex((entry) => entry.uid === key);
+          if (index === -1) return [...current, { uid: key, user }];
+          const next = [...current];
+          next[index] = { uid: key, user };
+          return next;
         });
+        setActiveMediaKeys((current) => updateMediaKeySet(current, remoteMediaKey(user, "video"), true));
       }
 
       if (mediaType === "audio" && user.audioTrack) {
         user.audioTrack.play();
-        setStatus((current) => current === "waiting" ? "watching" : current);
+        setActiveMediaKeys((current) => updateMediaKeySet(current, remoteMediaKey(user, "audio"), true));
       }
     }
 
@@ -169,18 +221,38 @@ export function LiveRoomViewerSurface({
             });
           }
         });
-        client.on("user-unpublished", (_user, mediaType) => {
+        client.on("user-unpublished", (user, mediaType) => {
           if (mediaType === "video") {
-            setHasVideo(false);
+            const key = remoteUserKey(user);
+            setRemoteVideoUsers((current) => current.filter((entry) => entry.uid !== key));
+            setActiveMediaKeys((current) => updateMediaKeySet(current, remoteMediaKey(user, "video"), false));
           }
-          setStatus("waiting");
+          if (mediaType === "audio") {
+            setActiveMediaKeys((current) => updateMediaKeySet(current, remoteMediaKey(user, "audio"), false));
+          }
         });
-        client.on("user-left", () => {
-          setHasVideo(false);
-          setStatus("waiting");
+        client.on("user-left", (user) => {
+          const key = remoteUserKey(user);
+          setRemoteVideoUsers((current) => current.filter((entry) => entry.uid !== key));
+          setActiveMediaKeys((current) => {
+            const next = new Set(current);
+            next.delete(`${key}:audio`);
+            next.delete(`${key}:video`);
+            return next.size === current.size ? current : next;
+          });
         });
 
         await client.join(credentials.appId, credentials.channel, credentials.token, credentials.uid);
+        await Promise.all(client.remoteUsers.flatMap((user) => {
+          const subscriptions: Array<Promise<void>> = [];
+          if (user.hasAudio) {
+            subscriptions.push(subscribeToUser(client, user, "audio"));
+          }
+          if (user.hasVideo) {
+            subscriptions.push(subscribeToUser(client, user, "video"));
+          }
+          return subscriptions;
+        }));
         if (!disposed) {
           setStatus("waiting");
         }
@@ -197,12 +269,21 @@ export function LiveRoomViewerSurface({
       disposed = true;
       const client = clientRef.current;
       clientRef.current = null;
-      setHasVideo(false);
+      setRemoteVideoUsers([]);
+      setActiveMediaKeys(new Set());
       if (client) {
         void client.leave().catch(() => undefined);
       }
     };
   }, [agora?.app_id, agora?.channel, agora?.configured, agora?.token, agora?.uid, open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setStatus((current) => {
+      if (current !== "waiting" && current !== "watching") return current;
+      return activeMediaKeys.size > 0 ? "watching" : "waiting";
+    });
+  }, [activeMediaKeys.size, open]);
 
   React.useEffect(() => {
     if (!open || !onRenew || !agora?.configured || agora.uid == null || !tokenExpiresAt) return;
@@ -270,7 +351,17 @@ export function LiveRoomViewerSurface({
           videoClassName,
         )}
       >
-        <div ref={videoContainerRef} className={cn("size-full", !hasVideo && "hidden")} />
+        <div
+          className={cn(
+            "grid size-full",
+            remoteVideoUsers.length > 1 && "grid-cols-2",
+            !hasVideo && "hidden",
+          )}
+        >
+          {remoteVideoUsers.map((remote) => (
+            <RemoteVideoTile key={remote.uid} user={remote.user} />
+          ))}
+        </div>
         {!hasVideo ? (
           <div className="absolute inset-0 grid place-items-center px-6 text-center text-white">
             {placeholderSrc ? (

@@ -1,8 +1,10 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 import { Plus } from "@phosphor-icons/react";
 
+import { AppHeader } from "@/components/compositions/app/app-shell-chrome/app-header";
 import { Button } from "@/components/primitives/button";
+import { IconButton } from "@/components/primitives/icon-button";
 import { CommunityPageShell } from "../community-page-shell";
 import type { CommunitySidebarProps } from "@/components/compositions/community/sidebar/community-sidebar.types";
 import {
@@ -168,6 +170,45 @@ function CommunityRelationshipAction({
   );
 }
 
+function MobileCreatePostAction() {
+  return (
+    <IconButton aria-label="Create Post" variant="ghost">
+      <Plus className="size-6" weight="bold" />
+    </IconButton>
+  );
+}
+
+function MobileCommunityStoryShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-svh bg-background">
+      <AppHeader
+        forceMobile
+        hideBrand
+        labels={{ backAriaLabel: "Back" }}
+        mobileTrailingContent={<div className="size-11" aria-hidden="true" />}
+        onBackClick={() => undefined}
+        showNotificationsAction={false}
+        showProfileAction={false}
+      />
+      <main className="px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.5rem)]">
+        {children}
+      </main>
+    </div>
+  );
+}
+
+const pageShellDecorators: Decorator[] = [
+  (Story, context) => context.parameters.fullscreenStory ? (
+    <Story />
+  ) : (
+    <div style={{ padding: 16 }}>
+      <div style={{ margin: "0 auto", width: "min(100%, 1200px)" }}>
+        <Story />
+      </div>
+    </div>
+  ),
+];
+
 const meta = {
   title: "Compositions/Community/PageShell",
   component: CommunityPageShell,
@@ -180,15 +221,7 @@ const meta = {
   parameters: {
     layout: "fullscreen",
   },
-  decorators: [
-    (Story: () => React.ReactNode) => (
-      <div style={{ padding: 16 }}>
-        <div style={{ margin: "0 auto", width: "min(100%, 1200px)" }}>
-          <Story />
-        </div>
-      </div>
-    ),
-  ],
+  decorators: pageShellDecorators,
 } satisfies Meta<typeof CommunityPageShell>;
 
 export default meta;
@@ -392,29 +425,38 @@ export const GatesOrMode: Story = {
 };
 
 export const CommunityViewportPreset: Story = {
-  name: "Community (viewport preset)",
+  name: "Mobile / Feed header actions",
   args: {},
   parameters: {
+    fullscreenStory: true,
     viewport: { defaultViewport: "mobile1" },
   },
   render: function StoryRender() {
     const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
 
     return (
-      <CommunityPageShell
-        activeSort={activeSort}
-        availableSorts={sortOptions}
-        avatarSrc={tameImpalaAvatarPlaceholder}
-        bannerSrc={tameImpalaBannerPlaceholder}
-        communityId="cmt_tame_impala"
-        headerAction={<Button leadingIcon={<Plus className="size-5" />}>Create Post</Button>}
-        items={tameImpalaFeedItems}
-        onSortChange={setActiveSort}
-        routeLabel="c/tameimpala"
-        routeVerified
-        sidebar={tameImpalaSidebar}
-        title="Tame Impala"
-      />
+      <MobileCommunityStoryShell>
+        <CommunityPageShell
+          activeSort={activeSort}
+          availableSorts={sortOptions}
+          avatarSrc={tameImpalaAvatarPlaceholder}
+          bannerSrc={tameImpalaBannerPlaceholder}
+          communityId="cmt_tame_impala"
+          headerAction={(
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <Button variant="secondary">Following</Button>
+              <Button disabled variant="secondary">Joined</Button>
+            </div>
+          )}
+          items={tameImpalaFeedItems}
+          mobileHeaderAction={<MobileCreatePostAction />}
+          onSortChange={setActiveSort}
+          routeLabel="c/tameimpala"
+          routeVerified
+          sidebar={tameImpalaSidebar}
+          title="Tame Impala"
+        />
+      </MobileCommunityStoryShell>
     );
   },
 };

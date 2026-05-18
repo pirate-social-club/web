@@ -37,6 +37,7 @@ export interface CommunityPageShellProps {
   headerAction?: React.ReactNode;
   items: FeedItem[];
   loading?: boolean;
+  mobileHeaderAction?: React.ReactNode;
   onSortChange?: (sort: FeedSort) => void;
   routeLabel?: string | null;
   routeVerified?: boolean;
@@ -56,6 +57,7 @@ export function CommunityPageShell({
   headerAction,
   items,
   loading = false,
+  mobileHeaderAction,
   onSortChange,
   routeLabel,
   routeVerified,
@@ -100,13 +102,18 @@ export function CommunityPageShell({
   );
 
   if (isMobile) {
+    const mobileHeaderActions = (
+      mobileSortControl || mobileHeaderAction
+    ) ? (
+      <div className="fixed end-3 top-[calc(env(safe-area-inset-top)+0.625rem)] z-50 flex items-center justify-end gap-1.5">
+        {mobileView === "feed" ? mobileSortControl : null}
+        {mobileHeaderAction}
+      </div>
+    ) : null;
+
     return (
       <section className={cn("mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-4", className)}>
-        {mobileView === "feed" && mobileSortControl ? (
-          <div className="fixed end-3 top-[calc(env(safe-area-inset-top)+0.625rem)] z-50">
-            {mobileSortControl}
-          </div>
-        ) : null}
+        {mobileHeaderActions}
         <div className="min-w-0">{hero}</div>
         <div className="flex flex-col gap-3">
           <FlatTabBar columns={2}>
@@ -134,6 +141,7 @@ export function CommunityPageShell({
               <CommunitySidebarDetails
                 charity={sidebar.charity}
                 className="-mx-3 rounded-none bg-transparent px-3 py-0"
+                communityId={sidebar.communityId}
                 description={sidebar.description}
                 flairPolicy={sidebar.flairPolicy}
                 followerCount={sidebar.followerCount}
@@ -143,6 +151,7 @@ export function CommunityPageShell({
                 referenceLinks={sidebar.referenceLinks}
                 requirements={sidebar.requirements}
                 rules={sidebar.rules}
+                store={sidebar.store}
               />
             </div>
           )}

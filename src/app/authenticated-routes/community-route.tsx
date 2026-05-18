@@ -25,6 +25,7 @@ import { CommunityPageShell } from "@/components/compositions/community/page-she
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { CommunityProofOfWorkModal } from "@/components/compositions/community/proof-of-work-modal/community-proof-of-work-modal";
 import { Button } from "@/components/primitives/button";
+import { IconButton } from "@/components/primitives/icon-button";
 import { toast } from "@/components/primitives/sonner";
 import { getGateFailureMessage, getJoinCtaLabel, getMissingCapabilitiesFromGateEvaluation, isJoinCtaActionable } from "@/lib/identity-gates";
 import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
@@ -646,7 +647,7 @@ export function CommunityPage({
           {joinActionLabel}
         </Button>
       ) : null}
-      {canCreatePost ? (
+      {!isMobileWeb && canCreatePost ? (
         <Button
           leadingIcon={<Plus className="size-5" />}
           onClick={() => navigate(communityCreatePostPath)}
@@ -656,6 +657,15 @@ export function CommunityPage({
       ) : null}
     </div>
   );
+  const mobileHeaderAction = canCreatePost ? (
+    <IconButton
+      aria-label={createPostLabel}
+      onClick={() => navigate(communityCreatePostPath)}
+      variant="ghost"
+    >
+      <Plus className="size-6" weight="bold" />
+    </IconButton>
+  ) : null;
   const routeLabel = formatCommunityRouteLabel(
     community?.id ?? preview.id,
     community?.route_slug ?? preview.route_slug,
@@ -769,6 +779,7 @@ export function CommunityPage({
           communityId={community?.id ?? preview.id}
           headerAction={headerAction}
           items={feedItems}
+          mobileHeaderAction={mobileHeaderAction}
           onSortChange={setActiveSort}
           routeLabel={routeLabel}
           routeVerified={Boolean(community?.namespace_verification)}

@@ -120,6 +120,43 @@ describe("buildPostComposerPreviewContent", () => {
     expect(content.type === "live_room" ? content.startsAtLabel : undefined).toBeUndefined();
   });
 
+  test("does not mark gated live publish previews as needing viewer verification", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "free",
+      attachment: { kind: "live" },
+      body: "",
+      liveState: {
+        roomKind: "duet",
+        accessMode: "gated",
+        visibility: "public",
+        scheduleForLater: true,
+        scheduleAt: "2026-05-22T22:00",
+        guestUserId: "name.pirate",
+        setlistItems: [{ titleText: "After Hours", performanceKind: "original" }],
+        setlistStatus: "draft",
+        performerAllocations: [
+          { userId: "u/host", role: "host", sharePct: 50 },
+          { userId: "name.pirate", role: "guest", sharePct: 50 },
+        ],
+      },
+      liveGuestLabel: "name.pirate",
+      liveHostIdentity: { label: "Host" },
+      price: "",
+      title: "Duet preview",
+    });
+
+    expect(content).toMatchObject({
+      type: "live_room",
+      accessMode: "gated",
+      participants: [
+        { role: "host", label: "Host" },
+        { role: "guest", label: "name.pirate" },
+      ],
+    });
+    expect(content.type === "live_room" ? content.accessState : undefined).toBeUndefined();
+    expect(content.type === "live_room" ? content.onWatch : undefined).toBeUndefined();
+  });
+
   test("uses song post body, not media caption or lyrics, for publish preview captions", () => {
     const body = getPostComposerPreviewBody({
       fields: {

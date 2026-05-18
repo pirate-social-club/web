@@ -178,9 +178,9 @@ export function buildPostComposerPreviewContent({
       visibility: liveState?.visibility ?? "public",
       accessState: liveAccessMode === "paid"
         ? "purchase_required"
-        : liveAccessMode === "gated"
-          ? "gate_required"
-          : "waiting",
+        : liveAccessMode === "free"
+          ? "waiting"
+          : undefined,
       concertHref: "#",
       startsAtLabel: liveState?.scheduleForLater
         ? formatLiveStartsAtLabel(liveState.scheduleAt)

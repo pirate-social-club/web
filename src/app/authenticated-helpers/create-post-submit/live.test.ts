@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { PublicProfileResolution } from "@pirate/api-contracts";
 import type {
   ApiCreateLiveRoomRequest,
   ApiLiveRoom,
@@ -6,7 +7,7 @@ import type {
   ApiPublishLiveRoomResponse,
 } from "@/lib/api/client-api-types";
 
-import { buildLiveRoomRequest, submitLiveRoom } from "./live";
+import { buildLiveRoomRequest, resolveLiveRoomGuestUserId, submitLiveRoom } from "./live";
 
 function createLiveRoom(overrides: Partial<ApiLiveRoom> = {}): ApiLiveRoom {
   return {
@@ -43,6 +44,16 @@ function createLiveRoom(overrides: Partial<ApiLiveRoom> = {}): ApiLiveRoom {
 
 function createCoverFile() {
   return new File(["cover"], "cover.jpg", { type: "image/jpeg" });
+}
+
+function createPublicProfileResolution(userId: string): PublicProfileResolution {
+  return {
+    profile: { id: userId },
+    requested_handle_label: "name.pirate",
+    resolved_handle_label: "name.pirate",
+    is_canonical: true,
+    created_communities: [],
+  } as PublicProfileResolution;
 }
 
 describe("live create-post submit helpers", () => {
@@ -151,6 +162,36 @@ describe("live create-post submit helpers", () => {
     expect(request.event_start_at).toBeNull();
   });
 
+  test("resolveLiveRoomGuestUserId preserves Pirate user ids", async () => {
+    let resolveCalls = 0;
+
+    const resolved = await resolveLiveRoomGuestUserId({
+      guestUserId: " usr_guest ",
+      resolveProfileByHandle: async () => {
+        resolveCalls += 1;
+        return createPublicProfileResolution("usr_other");
+      },
+    });
+
+    expect(resolved).toBe("usr_guest");
+    expect(resolveCalls).toBe(0);
+  });
+
+  test("resolveLiveRoomGuestUserId resolves cohost handles to Pirate user ids", async () => {
+    const handleCalls: string[] = [];
+
+    const resolved = await resolveLiveRoomGuestUserId({
+      guestUserId: " @name.pirate ",
+      resolveProfileByHandle: async (handleLabel) => {
+        handleCalls.push(handleLabel);
+        return createPublicProfileResolution("usr_guest");
+      },
+    });
+
+    expect(resolved).toBe("usr_guest");
+    expect(handleCalls).toEqual(["name.pirate"]);
+  });
+
   test("submitLiveRoom uploads cover media and creates a free room", async () => {
     const coverFile = createCoverFile();
     const createLiveRoomCalls: Array<{
@@ -222,6 +263,56 @@ describe("live create-post submit helpers", () => {
       },
     }]);
     expect(publishLiveRoomCalls).toEqual([]);
+  });
+
+  test("submitLiveRoom resolves duet cohost handles before publishing", async () => {
+    const publishLiveRoomCalls: Array<{
+      communityId: string;
+      request: ApiPublishLiveRoomRequest;
+    }> = [];
+    const handleCalls: string[] = [];
+
+    await submitLiveRoom({
+      communityId: "com_test",
+      createLiveRoom: async () => createLiveRoom(),
+      description: "",
+      hostUserId: "usr_host",
+      liveState: {
+        roomKind: "duet",
+        accessMode: "paid",
+        visibility: "public",
+        guestUserId: "name.pirate",
+        setlistStatus: "ready",
+        performerAllocations: [
+          { role: "host", userId: "", sharePct: 50 },
+          { role: "guest", userId: "name.pirate", sharePct: 50 },
+        ],
+        setlistItems: [{
+          titleText: "Song",
+          performanceKind: "original",
+        }],
+      },
+      paidLiveRoomPriceUsd: 5,
+      pricingPolicyRegionalPricingEnabled: false,
+      publishLiveRoom: async (communityId, request) => {
+        publishLiveRoomCalls.push({ communityId, request });
+        return { room: createLiveRoom({ room_kind: "duet", guest_user: "usr_guest" }), listing: {} as ApiPublishLiveRoomResponse["listing"] };
+      },
+      regionalPricingEnabled: false,
+      resolveProfileByHandle: async (handleLabel) => {
+        handleCalls.push(handleLabel);
+        return createPublicProfileResolution("usr_guest");
+      },
+      title: "Duet room",
+      uploadMedia: async () => ({ media_ref: "media_cover" }),
+    });
+
+    expect(handleCalls).toEqual(["name.pirate"]);
+    expect(publishLiveRoomCalls[0]?.request.room.guest_user).toBe("usr_guest");
+    expect(publishLiveRoomCalls[0]?.request.room.performer_allocations).toEqual([
+      { user: "usr_host", role: "host", share_bps: 5000 },
+      { user: "usr_guest", role: "guest", share_bps: 5000 },
+    ]);
   });
 
   test("submitLiveRoom publishes paid rooms with listing payload", async () => {

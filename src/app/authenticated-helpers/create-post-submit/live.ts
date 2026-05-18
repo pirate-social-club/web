@@ -1,5 +1,6 @@
 "use client";
 
+import type { PublicProfileResolution } from "@pirate/api-contracts";
 import type {
   ApiCreateLiveRoomRequest,
   ApiLiveRoom,
@@ -31,6 +32,8 @@ type PublishLiveRoom = (
   request: ApiPublishLiveRoomRequest,
 ) => Promise<ApiPublishLiveRoomResponse>;
 
+type ResolvePublicProfileByHandle = (handleLabel: string) => Promise<PublicProfileResolution>;
+
 function liveRightsBasisFromPerformanceKind(kind: LiveSetlistItemKind): ApiLiveRoomRightsBasis {
   if (kind === "original") return "original";
   if (kind === "cover") return "cover";
@@ -60,6 +63,42 @@ function liveSetlistSourceAssetRef(declaredTrackId: string | undefined): string 
   return value?.startsWith("story:asset:") ? value : undefined;
 }
 
+function isPirateUserId(value: string): boolean {
+  return value.startsWith("usr_");
+}
+
+export function normalizeLiveRoomGuestHandle(value: string): string {
+  return value.trim().replace(/^@+/, "").replace(/^\/?u\//, "");
+}
+
+export async function resolveLiveRoomGuestUserId(input: {
+  guestUserId?: string | null;
+  resolveProfileByHandle?: ResolvePublicProfileByHandle;
+}): Promise<string | null> {
+  const rawGuestUserId = input.guestUserId?.trim();
+  if (!rawGuestUserId) return null;
+  if (isPirateUserId(rawGuestUserId)) return rawGuestUserId;
+
+  const handleLabel = normalizeLiveRoomGuestHandle(rawGuestUserId);
+  if (!handleLabel) return null;
+  if (!input.resolveProfileByHandle) {
+    throw new Error("Choose a Pirate profile for the cohost before creating a duet live room.");
+  }
+
+  let resolution: PublicProfileResolution;
+  try {
+    resolution = await input.resolveProfileByHandle(handleLabel);
+  } catch {
+    throw new Error(`Could not find a Pirate user for "${rawGuestUserId}".`);
+  }
+
+  const resolvedUserId = resolution.profile.id.trim();
+  if (!isPirateUserId(resolvedUserId)) {
+    throw new Error(`The cohost "${rawGuestUserId}" did not resolve to a Pirate user id.`);
+  }
+  return resolvedUserId;
+}
+
 function performerAllocationsFromLiveState(input: {
   guestUserId: string | null;
   hostUserId: string;
@@ -68,7 +107,7 @@ function performerAllocationsFromLiveState(input: {
   if (input.liveState.accessMode !== "paid") return undefined;
 
   return input.liveState.performerAllocations.map((allocation) => ({
-    user: allocation.role === "host" ? input.hostUserId : allocation.userId.trim() || input.guestUserId,
+    user: allocation.role === "host" ? input.hostUserId : input.guestUserId,
     role: allocation.role,
     share_bps: Math.round(allocation.sharePct * 100),
   }));
@@ -79,10 +118,12 @@ export function buildLiveRoomRequest(input: {
   description: string;
   hostUserId: string;
   liveState: LiveComposerState;
+  resolvedGuestUserId?: string | null;
   title: string;
 }): ApiCreateLiveRoomRequest {
+  const rawGuestUserId = input.liveState.guestUserId?.trim() || null;
   const guestUserId = input.liveState.roomKind === "duet"
-    ? input.liveState.guestUserId?.trim() || null
+    ? input.resolvedGuestUserId ?? rawGuestUserId
     : null;
   return {
     title: input.title.trim(),
@@ -122,6 +163,7 @@ export async function submitLiveRoom({
   pricingPolicyRegionalPricingEnabled,
   publishLiveRoom,
   regionalPricingEnabled,
+  resolveProfileByHandle,
   title,
   uploadMedia,
 }: {
@@ -134,12 +176,20 @@ export async function submitLiveRoom({
   pricingPolicyRegionalPricingEnabled: boolean;
   publishLiveRoom: PublishLiveRoom;
   regionalPricingEnabled: boolean;
+  resolveProfileByHandle?: ResolvePublicProfileByHandle;
   title: string;
   uploadMedia: UploadLiveCoverMedia;
 }): Promise<ApiLiveRoom> {
   if (!hostUserId) {
     throw new Error("Sign in before creating a live room.");
   }
+
+  const resolvedGuestUserId = liveState.roomKind === "duet"
+    ? await resolveLiveRoomGuestUserId({
+      guestUserId: liveState.guestUserId,
+      resolveProfileByHandle,
+    })
+    : null;
 
   let coverRef: string | null = null;
   if (liveState.coverUpload) {
@@ -155,6 +205,7 @@ export async function submitLiveRoom({
     description,
     hostUserId,
     liveState,
+    resolvedGuestUserId,
     title,
   });
 

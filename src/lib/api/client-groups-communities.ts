@@ -86,6 +86,11 @@ export function createCommunitiesApi(request: ApiRequest) {
       request<ApiLiveRoomAccessResponse>(
         `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/access`,
       ),
+    acceptLiveRoomGuestInvite: (communityId: string, liveRoomId: string): Promise<ApiLiveRoom> =>
+      request<ApiLiveRoom>(
+        `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/guest_accept`,
+        { method: "POST" },
+      ),
     viewerAttachLiveRoom: (communityId: string, liveRoomId: string): Promise<ApiLiveRoomViewerAttachResponse> =>
       request<ApiLiveRoomViewerAttachResponse>(
         `/communities/${encodeURIComponent(communityId)}/live-rooms/${encodeURIComponent(liveRoomId)}/viewer_attach`,

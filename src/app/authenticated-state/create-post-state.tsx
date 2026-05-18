@@ -127,6 +127,25 @@ export function shouldAutoLaunchLiveRoom(liveState: Pick<LiveComposerState, "sch
   return liveState.scheduleForLater !== true;
 }
 
+export function openLiveRoomFreedomLaunch(href: string): boolean {
+  if (typeof window === "undefined") return false;
+
+  if (typeof document !== "undefined" && document.body) {
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    anchor.target = "_blank";
+    anchor.rel = "noreferrer";
+    anchor.style.display = "none";
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    return true;
+  }
+
+  window.open(href, "_blank", "noreferrer");
+  return true;
+}
+
 async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<AvailableSigningAgent | null> {
   for (const agent of agents) {
     if (agent.status !== "active" || !agent.current_ownership) {
@@ -719,6 +738,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
           publishLiveRoom: api.communities.publishLiveRoom,
           regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
+          resolveProfileByHandle: api.publicProfiles.getByHandle,
           title,
           uploadMedia: api.communities.uploadMedia,
         });
@@ -875,8 +895,11 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         logger.info("[create-post] opening immediate live room in Freedom", {
           postId: destinationPostId,
         });
-        window.location.assign(liveRoomFreedomHref);
-        return;
+        const opened = openLiveRoomFreedomLaunch(liveRoomFreedomHref);
+        logger.info("[create-post] immediate live room launch requested", {
+          opened,
+          postId: destinationPostId,
+        });
       }
       navigate(`/p/${destinationPostId}`);
     } catch (error: unknown) {

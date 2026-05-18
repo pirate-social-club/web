@@ -67,6 +67,7 @@ export const GuestPending: Story = {
       {...baseBanner}
       freedomHref={undefined}
       guestInviteStatus="pending"
+      onAcceptGuestInvite={noop}
       role="guest"
       title="Guest invite pending"
     />

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Broadcast, Calendar, Clock, DownloadSimple, Lock as LockIcon, Play, Robot, Users } from "@phosphor-icons/react";
+import { Broadcast, Calendar, Check, Clock, DownloadSimple, Lock as LockIcon, Play, Robot, Users } from "@phosphor-icons/react";
 
 import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
@@ -249,9 +249,21 @@ function ProducerControls({
 
   if (content.producerRole === "guest" && content.guestInviteStatus === "pending") {
     return (
-      <p className="text-base text-muted-foreground">
-        Accept the producer invite before broadcasting.
-      </p>
+      <div className={cn("flex flex-wrap items-center gap-2", className)}>
+        {content.onAcceptGuestInvite ? (
+          <Button className={buttonClassName} onClick={content.onAcceptGuestInvite} size="sm">
+            <Check className="size-4" weight="bold" />
+            Accept invite
+          </Button>
+        ) : content.anchorPostHref ? (
+          <Button asChild className={buttonClassName} size="sm">
+            <a href={content.anchorPostHref}>Open invite</a>
+          </Button>
+        ) : null}
+        <p className="text-base text-muted-foreground">
+          Accept the producer invite before broadcasting.
+        </p>
+      </div>
     );
   }
 
@@ -310,8 +322,7 @@ export function LiveRoomPostContent({
     && !content.producerRole
     ? content.viewerAttachResponse ?? null
     : null;
-  const showProducerPrimaryControl = Boolean(content.producerRole)
-    && !(content.producerRole === "guest" && content.guestInviteStatus !== "accepted");
+  const showProducerPrimaryControl = Boolean(content.producerRole);
   const showPrimaryCta = !content.producerRole && shouldShowCta(ui) && !inlineViewerAttach;
   const showPostPageMeta = hasPostPageMeta(content, ui, postPageTime);
 

@@ -94,6 +94,7 @@ export interface LiveRoomContentSpec {
   guestInviteStatus?: "pending" | "accepted" | "revoked" | null;
   participants?: LiveRoomParticipant[];
   viewerAttachResponse?: ApiLiveRoomViewerAttachResponse | null;
+  onAcceptGuestInvite?: () => void;
   onRsvp?: () => void;
   onWatch?: () => void;
   onBuy?: () => void;

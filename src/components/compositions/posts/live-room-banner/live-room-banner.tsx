@@ -32,6 +32,7 @@ export type LiveRoomBannerProps = {
   shareUrl?: string;
   status: LiveRoomBannerStatus;
   title?: string;
+  onAcceptGuestInvite?: () => void;
   onBuyTicket?: () => void;
   onWatch?: () => void;
 };
@@ -110,6 +111,7 @@ export function LiveRoomBanner({
   shareUrl,
   status,
   title,
+  onAcceptGuestInvite,
   onBuyTicket,
   onWatch,
 }: LiveRoomBannerProps) {
@@ -169,6 +171,13 @@ export function LiveRoomBanner({
                 <DownloadSimple className="size-4" weight="bold" />
                 Download Freedom
               </a>
+            </Button>
+          ) : null}
+
+          {role === "guest" && guestInviteStatus === "pending" && onAcceptGuestInvite ? (
+            <Button onClick={onAcceptGuestInvite} size="sm">
+              <Check className="size-4" weight="bold" />
+              Accept invite
             </Button>
           ) : null}
 

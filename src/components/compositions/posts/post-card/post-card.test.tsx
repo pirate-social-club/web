@@ -314,6 +314,66 @@ describe("PostCard", () => {
     expect(markup).not.toContain("Watch live");
   });
 
+  test("renders pending guest invites as producer controls", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "allowed",
+            guestInviteStatus: "pending",
+            liveRoomId: "lr_pending_guest",
+            onAcceptGuestInvite: () => undefined,
+            onWatch: () => undefined,
+            producerRole: "guest",
+            status: "scheduled",
+            title: "Guest invite",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Accept invite");
+    expect(markup).toContain("Accept the producer invite before broadcasting.");
+    expect(markup).not.toContain("Watch live");
+  });
+
+  test("links pending guest feed cards back to the post when accept is not wired locally", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "allowed",
+            anchorPostHref: "/p/post_pending_guest",
+            guestInviteStatus: "pending",
+            liveRoomId: "lr_pending_guest",
+            onWatch: () => undefined,
+            producerRole: "guest",
+            status: "scheduled",
+            title: "Guest invite",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Open invite");
+    expect(markup).toContain('href="/p/post_pending_guest"');
+    expect(markup).not.toContain("Watch live");
+  });
+
   test("renders scheduled free live-room post pages with RSVP when available", () => {
     const markup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

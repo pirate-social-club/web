@@ -14,6 +14,7 @@ import {
   ModalHeader,
   ModalTitle,
 } from "@/components/compositions/system/modal/modal";
+import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 
 type ViewerStatus = "idle" | "connecting" | "waiting" | "watching" | "unavailable" | "error";
@@ -79,6 +80,17 @@ function updateMediaKeySet(
     next.delete(key);
   }
   return next;
+}
+
+function liveRoomViewerLogContext(agora: ApiLiveRoomViewerAttachResponse["agora"] | null) {
+  return {
+    channel: agora?.channel ?? null,
+    configured: agora?.configured === true,
+    hasAppId: Boolean(agora?.app_id),
+    hasToken: Boolean(agora?.token),
+    tokenExpiresAt: agora?.token_expires_at ?? null,
+    uid: agora?.uid ?? null,
+  };
 }
 
 function RemoteVideoTile({ user }: { user: IAgoraRTCRemoteUser }) {
@@ -157,6 +169,7 @@ export function LiveRoomViewerSurface({
 
   React.useEffect(() => {
     if (!open) {
+      logger.info("[live-room-viewer] closed", liveRoomViewerLogContext(agora));
       setStatus("idle");
       setError(null);
       setRemoteVideoUsers([]);
@@ -166,6 +179,7 @@ export function LiveRoomViewerSurface({
     }
 
     if (!agora?.configured || !agora.app_id) {
+      logger.warn("[live-room-viewer] Agora unavailable", liveRoomViewerLogContext(agora));
       setStatus("unavailable");
       setError(null);
       return;
@@ -180,6 +194,13 @@ export function LiveRoomViewerSurface({
     let disposed = false;
 
     async function subscribeToUser(client: IAgoraRTCClient, user: IAgoraRTCRemoteUser, mediaType: "audio" | "video") {
+      logger.info("[live-room-viewer] subscribing to remote media", {
+        ...liveRoomViewerLogContext(agora),
+        hasAudio: user.hasAudio === true,
+        hasVideo: user.hasVideo === true,
+        mediaType,
+        remoteUid: user.uid,
+      });
       await client.subscribe(user, mediaType);
       if (disposed) return;
 
@@ -199,10 +220,16 @@ export function LiveRoomViewerSurface({
         user.audioTrack.play();
         setActiveMediaKeys((current) => updateMediaKeySet(current, remoteMediaKey(user, "audio"), true));
       }
+      logger.info("[live-room-viewer] subscribed to remote media", {
+        ...liveRoomViewerLogContext(agora),
+        mediaType,
+        remoteUid: user.uid,
+      });
     }
 
     async function joinRoom() {
       try {
+        logger.info("[live-room-viewer] join requested", liveRoomViewerLogContext(agora));
         setStatus("connecting");
         setError(null);
         const { default: AgoraRTC } = await import("agora-rtc-sdk-ng");
@@ -211,17 +238,37 @@ export function LiveRoomViewerSurface({
         const client = AgoraRTC.createClient({ codec: "vp8", mode: "live" });
         clientRef.current = client;
         await client.setClientRole("audience");
+        logger.info("[live-room-viewer] client role set", {
+          ...liveRoomViewerLogContext(agora),
+          role: "audience",
+        });
 
         client.on("user-published", (user, mediaType) => {
+          logger.info("[live-room-viewer] remote user published", {
+            ...liveRoomViewerLogContext(agora),
+            mediaType,
+            remoteUid: user.uid,
+          });
           if (mediaType === "audio" || mediaType === "video") {
             void subscribeToUser(client, user, mediaType).catch((subscribeError: unknown) => {
               if (disposed) return;
+              logger.error("[live-room-viewer] subscribe failed", {
+                ...liveRoomViewerLogContext(agora),
+                mediaType,
+                message: subscribeError instanceof Error ? subscribeError.message : String(subscribeError),
+                remoteUid: user.uid,
+              });
               setStatus("error");
               setError(subscribeError instanceof Error ? subscribeError.message : String(subscribeError));
             });
           }
         });
         client.on("user-unpublished", (user, mediaType) => {
+          logger.info("[live-room-viewer] remote user unpublished", {
+            ...liveRoomViewerLogContext(agora),
+            mediaType,
+            remoteUid: user.uid,
+          });
           if (mediaType === "video") {
             const key = remoteUserKey(user);
             setRemoteVideoUsers((current) => current.filter((entry) => entry.uid !== key));
@@ -232,6 +279,10 @@ export function LiveRoomViewerSurface({
           }
         });
         client.on("user-left", (user) => {
+          logger.info("[live-room-viewer] remote user left", {
+            ...liveRoomViewerLogContext(agora),
+            remoteUid: user.uid,
+          });
           const key = remoteUserKey(user);
           setRemoteVideoUsers((current) => current.filter((entry) => entry.uid !== key));
           setActiveMediaKeys((current) => {
@@ -243,6 +294,14 @@ export function LiveRoomViewerSurface({
         });
 
         await client.join(credentials.appId, credentials.channel, credentials.token, credentials.uid);
+        logger.info("[live-room-viewer] joined Agora channel", {
+          ...liveRoomViewerLogContext(agora),
+          existingRemoteUsers: client.remoteUsers.map((user) => ({
+            hasAudio: user.hasAudio === true,
+            hasVideo: user.hasVideo === true,
+            uid: user.uid,
+          })),
+        });
         await Promise.all(client.remoteUsers.flatMap((user) => {
           const subscriptions: Array<Promise<void>> = [];
           if (user.hasAudio) {
@@ -258,6 +317,10 @@ export function LiveRoomViewerSurface({
         }
       } catch (joinError) {
         if (disposed) return;
+        logger.error("[live-room-viewer] join failed", {
+          ...liveRoomViewerLogContext(agora),
+          message: joinError instanceof Error ? joinError.message : String(joinError),
+        });
         setStatus("error");
         setError(joinError instanceof Error ? joinError.message : String(joinError));
       }
@@ -272,6 +335,7 @@ export function LiveRoomViewerSurface({
       setRemoteVideoUsers([]);
       setActiveMediaKeys(new Set());
       if (client) {
+        logger.info("[live-room-viewer] leaving Agora channel", liveRoomViewerLogContext(agora));
         void client.leave().catch(() => undefined);
       }
     };
@@ -299,6 +363,7 @@ export function LiveRoomViewerSurface({
     const timeout = window.setTimeout(() => {
       if (renewingRef.current) return;
       renewingRef.current = true;
+      logger.info("[live-room-viewer] renewing Agora token", liveRoomViewerLogContext(agora));
       void onRenew(agora.uid)
         .then(async (renewed) => {
           if (canceled || !renewed?.agora.token) return;
@@ -306,9 +371,14 @@ export function LiveRoomViewerSurface({
           if (canceled) return;
           setTokenExpiresAt(renewed.agora.token_expires_at);
           setError(null);
+          logger.info("[live-room-viewer] renewed Agora token", liveRoomViewerLogContext(renewed.agora));
         })
         .catch((renewError: unknown) => {
           if (canceled) return;
+          logger.error("[live-room-viewer] renew Agora token failed", {
+            ...liveRoomViewerLogContext(agora),
+            message: renewError instanceof Error ? renewError.message : String(renewError),
+          });
           setError(renewError instanceof Error ? renewError.message : String(renewError));
           setTokenExpiresAt(Math.floor((Date.now() + TOKEN_RENEW_RETRY_MS + TOKEN_RENEW_LEAD_MS) / 1000));
         })

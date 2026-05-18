@@ -5,6 +5,7 @@ import {
   buildLiveRoomFreedomLaunchHref,
   buildLiveRoomRequest,
   isPublicAudienceAllowed,
+  openLiveRoomFreedomLaunch,
   shouldAutoLaunchLiveRoom,
   songArtifactBundleToComposerReference,
 } from "../app/authenticated-state/create-post-state";
@@ -122,6 +123,34 @@ describe("live room request mapping", () => {
     })).toBe(
       "freedom://live-room?roomId=lr_test&communityId=cmt_test&apiBase=http%3A%2F%2F127.0.0.1%3A8787&webBase=http%3A%2F%2Flocalhost%3A5173&seat=host",
     );
+  });
+
+  test("opens immediate live room launches in a new target", () => {
+    const opened: Array<{ features?: string; target?: string; url?: string | URL }> = [];
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: {
+        open: (url?: string | URL, target?: string, features?: string) => {
+          opened.push({ features, target, url });
+          return null;
+        },
+      },
+    });
+
+    try {
+      expect(openLiveRoomFreedomLaunch("freedom://live-room?roomId=lr_test")).toBe(true);
+      expect(opened).toEqual([{
+        features: "noreferrer",
+        target: "_blank",
+        url: "freedom://live-room?roomId=lr_test",
+      }]);
+    } finally {
+      Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: originalWindow,
+      });
+    }
   });
 
   test("preserves real song artifact bundle selections and drops fallback track ids", () => {

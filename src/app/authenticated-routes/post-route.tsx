@@ -165,6 +165,7 @@ export function PostPage({ postId }: { postId: string }) {
   const autoWatchAttemptedRef = React.useRef(false);
   const inlineLiveViewerAttemptedRef = React.useRef<string | null>(null);
   const liveViewerAttachInFlightRef = React.useRef(false);
+  const liveRoomGuestInviteAcceptInFlightRef = React.useRef(false);
   const autoWatchLiveRoom = React.useMemo(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("watch_live_room") === "1";
@@ -496,6 +497,34 @@ export function PostPage({ postId }: { postId: string }) {
     await attachLiveRoomViewer({ openModal: true });
   }, [attachLiveRoomViewer]);
 
+  const handleAcceptLiveRoomGuestInvite = React.useCallback(async () => {
+    if (!community?.id || !activeLiveRoomId) return;
+    if (!session?.accessToken) {
+      requestAuth("Connect your wallet to accept this producer invite.");
+      return;
+    }
+    if (liveRoomGuestInviteAcceptInFlightRef.current) return;
+
+    liveRoomGuestInviteAcceptInFlightRef.current = true;
+    try {
+      await api.communities.acceptLiveRoomGuestInvite(community.id, activeLiveRoomId);
+      toast.success("Producer invite accepted.");
+      await refreshLiveRoomAccess();
+    } catch (acceptError) {
+      toast.error(getErrorMessage(acceptError, "Could not accept this producer invite."));
+      await refreshLiveRoomAccess();
+    } finally {
+      liveRoomGuestInviteAcceptInFlightRef.current = false;
+    }
+  }, [
+    activeLiveRoomId,
+    api.communities,
+    community?.id,
+    refreshLiveRoomAccess,
+    requestAuth,
+    session?.accessToken,
+  ]);
+
   React.useEffect(() => {
     if (
       !autoWatchLiveRoom
@@ -740,6 +769,7 @@ export function PostPage({ postId }: { postId: string }) {
       guestInviteStatus: liveRoomGuestInviteStatus,
       listing: threadLiveRoomListing,
       localeTag: locale,
+      onAcceptGuestInvite: handleAcceptLiveRoomGuestInvite,
       onBuy: threadLiveRoomListing ? () => void handleBuyLiveTicket(
         threadLiveRoomListing,
         liveRoomAccess?.room.title ?? post.post.title ?? "Live room",

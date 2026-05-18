@@ -32,6 +32,7 @@ export type LiveRoomPresentationOptions = {
   guestInviteStatus?: "pending" | "accepted" | "revoked" | null;
   participants?: LiveRoomParticipant[];
   viewerAttachResponse?: ApiLiveRoomViewerAttachResponse | null;
+  onAcceptGuestInvite?: () => void;
   onBuy?: () => void;
   onWatch?: () => void;
   onViewerRenew?: (uid: number) => Promise<ApiLiveRoomViewerAttachResponse | null>;

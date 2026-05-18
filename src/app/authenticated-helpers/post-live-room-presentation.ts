@@ -89,6 +89,7 @@ export function toLiveRoomPostContent(
       : listing?.status === "paused"
       ? "paused"
       : undefined,
+    onAcceptGuestInvite: input.liveRoom?.onAcceptGuestInvite,
     onBuy: input.liveRoom?.onBuy,
     onVerifyAge: input.onVerifyAge,
     onViewerRenew: input.liveRoom?.onViewerRenew,

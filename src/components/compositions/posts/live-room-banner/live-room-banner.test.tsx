@@ -59,6 +59,7 @@ describe("LiveRoomBanner", () => {
       <LiveRoomBanner
         freedomHref={undefined}
         guestInviteStatus="pending"
+        onAcceptGuestInvite={() => undefined}
         role="guest"
         shareUrl="https://pirate.local/p/pst_guest_pending"
         status="scheduled"
@@ -66,6 +67,7 @@ describe("LiveRoomBanner", () => {
     );
 
     expect(pendingMarkup).toContain("Accept the producer invite before broadcasting from Freedom.");
+    expect(pendingMarkup).toContain("Accept invite");
     expect(pendingMarkup).not.toContain("Broadcast in Freedom");
 
     const acceptedMarkup = renderToStaticMarkup(

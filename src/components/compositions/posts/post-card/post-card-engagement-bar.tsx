@@ -51,8 +51,17 @@ export function PostCardEngagementBar({
         className,
       )}
     >
-      <VotePill score={score} viewerVote={viewerVote} onVote={onVote} />
-      <CommentPill count={commentCount} onComment={onComment} />
+      <VotePill
+        className="w-32 shrink-0 justify-center"
+        score={score}
+        viewerVote={viewerVote}
+        onVote={onVote}
+      />
+      <CommentPill
+        className="w-32 shrink-0 justify-center whitespace-nowrap"
+        count={commentCount}
+        onComment={onComment}
+      />
       {onShare && (
         <button
           className={cn(

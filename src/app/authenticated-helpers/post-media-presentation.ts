@@ -16,6 +16,7 @@ function toSongPlaybackDescriptor(
   },
 ): SongPlaybackDescriptor | null {
   const { post } = postResponse;
+  const songTitle = postResponse.song_presentation?.title ?? post.song_title ?? post.title ?? "song";
   const mediaRef = post.media_refs?.[0]?.storage_ref ?? null;
   const viewerOwnsPost = Boolean(input.currentUserId && post.author_user === input.currentUserId);
   const isLocked = (post.access_mode ?? "public") === "locked";
@@ -24,7 +25,7 @@ function toSongPlaybackDescriptor(
   if (!isLocked && mediaRef) {
     return {
       key: `public:${post.id}`,
-      title: post.song_title ?? post.title ?? "song",
+      title: songTitle,
       kind: "source",
       sourcePath: mediaRef,
       requiresAuth: false,
@@ -34,7 +35,7 @@ function toSongPlaybackDescriptor(
   if (hasFullAccess && post.asset) {
     return {
       key: `asset:${post.asset}`,
-      title: post.song_title ?? post.title ?? "song",
+      title: songTitle,
       kind: "asset",
       communityId: post.community,
       assetId: post.asset,
@@ -44,7 +45,7 @@ function toSongPlaybackDescriptor(
   if (mediaRef) {
     return {
       key: `preview:${post.id}`,
-      title: post.song_title ?? post.title ?? "song preview",
+      title: songTitle,
       kind: "source",
       sourcePath: mediaRef,
       requiresAuth: false,
@@ -145,6 +146,7 @@ export function toSongPostContent(
   },
 ): PostCardProps["content"] {
   const { post } = postResponse;
+  const songPresentation = postResponse.song_presentation;
   const listing = songOptions?.listing;
   const purchase = songOptions?.purchase;
   const playback = songOptions?.playback;
@@ -187,7 +189,9 @@ export function toSongPostContent(
     priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
     rightsBasis: post.rights_basis ?? undefined,
     songMode: post.song_mode ?? undefined,
-    title: input.title,
+    title: songPresentation?.title ?? post.song_title ?? input.title,
+    artworkSrc: songPresentation?.cover_art_ref ?? undefined,
+    durationMs: songPresentation?.duration_ms ?? undefined,
     upstreamAttributions: upstreamAttributions?.length ? upstreamAttributions : undefined,
   };
 }

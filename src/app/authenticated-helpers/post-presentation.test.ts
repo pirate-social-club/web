@@ -146,6 +146,7 @@ function createSongPost(overrides: Partial<LocalizedPostResponse["post"]> = {}):
     like_count: 0,
     machine_translated: false,
     resolved_locale: "en",
+    song_presentation: null,
     source_hash: "src_song",
     thread_snapshot: null,
     translated_body: null,
@@ -348,5 +349,25 @@ describe("post presentation songs", () => {
     expect(content.type).toBe("song");
     if (content.type !== "song") return;
     expect(content.annotationsUrl).toBe("https://genius.com/34172986");
+  });
+
+  test("maps canonical song presentation into song card content", () => {
+    const post = createSongPost({
+      song_title: "Legacy song title",
+      title: "Launch announcement",
+    });
+    post.song_presentation = {
+      title: "Canonical track title",
+      cover_art_ref: "https://media.test/cover.jpg",
+      duration_ms: 123456,
+    };
+
+    const content = toCommunityPostContent(post);
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.title).toBe("Canonical track title");
+    expect(content.artworkSrc).toBe("https://media.test/cover.jpg");
+    expect(content.durationMs).toBe(123456);
   });
 });

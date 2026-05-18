@@ -172,7 +172,7 @@ describe("useGatedActionRunner", () => {
     expect(runner.hook.result.current.modalState).toBe(null);
   });
 
-  test("does not run action Altcha for vote actions because vote endpoints do not accept Altcha payloads", async () => {
+  test("does not run action Altcha for vote actions because votes are gated by community membership", async () => {
     const runner = renderRunner({
       gateData: gate("already_joined", {}, [altchaRequirement]),
     });

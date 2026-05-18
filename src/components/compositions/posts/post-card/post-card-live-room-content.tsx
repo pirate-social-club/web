@@ -3,6 +3,7 @@ import { Broadcast, Calendar, Clock, DownloadSimple, Lock as LockIcon, Play, Rob
 
 import { Avatar } from "@/components/primitives/avatar";
 import { Button } from "@/components/primitives/button";
+import { LiveRoomViewerSurface } from "@/components/compositions/posts/live-room-viewer/live-room-viewer-modal";
 import { Type } from "@/components/primitives/type";
 import { resolveResourceHref } from "@/lib/resource-links";
 import { cn } from "@/lib/utils";
@@ -29,7 +30,7 @@ function priceLabel(content: LiveRoomContentSpec): string | null {
 }
 
 function timeLabel(content: LiveRoomContentSpec): string | null {
-  if (content.status === "live") return content.liveSinceLabel ? `Live for ${content.liveSinceLabel}` : "Live now";
+  if (content.status === "live") return null;
   if (content.status === "canceled") return "Canceled";
   if (content.status === "ended") return content.endedAtLabel ? `Ended ${content.endedAtLabel} ago` : "Ended";
   return content.startsAtLabel ? `Starts ${content.startsAtLabel}` : null;
@@ -151,6 +152,10 @@ function deriveLiveRoomUi(content: LiveRoomContentSpec): LiveRoomUiState {
     if (content.onRsvp) return { kind: "can_rsvp", cta: "RSVP", onClick: content.onRsvp };
   }
 
+  if (content.status === "live" && !content.accessState && !content.producerRole) {
+    return { kind: "scheduled" };
+  }
+
   if (content.status === "live") {
     return { kind: "can_watch", cta: "Watch live", onClick: content.onWatch };
   }
@@ -228,7 +233,15 @@ function LiveRoomCover({
   );
 }
 
-function ProducerControls({ content }: { content: LiveRoomContentSpec }) {
+function ProducerControls({
+  buttonClassName,
+  className,
+  content,
+}: {
+  buttonClassName?: string;
+  className?: string;
+  content: LiveRoomContentSpec;
+}) {
   if (!content.producerRole) return null;
   const isHost = content.producerRole === "host";
   const isAcceptedGuest = content.producerRole === "guest" && content.guestInviteStatus === "accepted";
@@ -251,9 +264,9 @@ function ProducerControls({ content }: { content: LiveRoomContentSpec }) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className={cn("flex flex-wrap items-center gap-2", className)}>
       {showBroadcast ? (
-        <Button asChild size="sm">
+        <Button asChild className={buttonClassName} size="sm">
           <a href={content.freedomHref} rel="noreferrer" target="_blank">
             <Broadcast className="size-4" weight="bold" />
             {isHost ? "Start broadcast" : "Open producer room"}
@@ -261,7 +274,7 @@ function ProducerControls({ content }: { content: LiveRoomContentSpec }) {
         </Button>
       ) : null}
       {!showBroadcast && !content.freedomDetected ? (
-        <Button asChild size="sm" variant="outline">
+        <Button asChild className={buttonClassName} size="sm" variant="outline">
           <a href={resolveResourceHref("source-freedom-browser") ?? "#"} rel="noreferrer" target="_blank">
             <DownloadSimple className="size-4" weight="bold" />
             Download Freedom
@@ -288,14 +301,36 @@ export function LiveRoomPostContent({
   const inPostPage = viewContext === "post";
   const eventHref = inPostPage ? undefined : content.concertHref;
   const time = timeLabel(content);
+  const postPageTime = inPostPage && content.status === "live" ? null : time;
   const timeIsLive = content.status === "live";
-  const showPrimaryCta = shouldShowCta(ui);
-  const showPostPageMeta = hasPostPageMeta(content, ui, time);
+  const inlineViewerAttach = inPostPage
+    && content.status === "live"
+    && content.accessMode === "free"
+    && content.hasEntitlement
+    && !content.producerRole
+    ? content.viewerAttachResponse ?? null
+    : null;
+  const showProducerPrimaryControl = Boolean(content.producerRole)
+    && !(content.producerRole === "guest" && content.guestInviteStatus !== "accepted");
+  const showPrimaryCta = !content.producerRole && shouldShowCta(ui) && !inlineViewerAttach;
+  const showPostPageMeta = hasPostPageMeta(content, ui, postPageTime);
 
   if (inPostPage) {
     return (
       <div className={cn("flex flex-col gap-5 text-start", className)}>
-        <LiveRoomCover ageProofRequired={ageProofRequired} content={content} />
+        {inlineViewerAttach ? (
+          <LiveRoomViewerSurface
+            attachResponse={inlineViewerAttach}
+            className="overflow-hidden rounded-xl border border-border-soft"
+            onRenew={content.onViewerRenew}
+            open
+            placeholderSrc={content.coverSrc}
+            showDetails={false}
+            title={content.title}
+          />
+        ) : (
+          <LiveRoomCover ageProofRequired={ageProofRequired} content={content} />
+        )}
 
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="flex min-w-0 items-center gap-2">
@@ -303,7 +338,9 @@ export function LiveRoomPostContent({
               {content.title}
             </Type>
           </div>
-          {showPrimaryCta ? (
+          {showProducerPrimaryControl ? (
+            <ProducerControls content={content} />
+          ) : showPrimaryCta ? (
             <Button
               className="h-11 shrink-0 px-5 md:self-start"
               disabled={!ui.onClick}
@@ -322,7 +359,7 @@ export function LiveRoomPostContent({
 
         {showPostPageMeta ? (
           <div className="flex flex-wrap items-center gap-2">
-            {time ? (
+            {postPageTime ? (
               <Type
                 as="span"
                 variant="label"
@@ -334,7 +371,7 @@ export function LiveRoomPostContent({
                 )}
               >
                 <Clock className="size-4" weight="bold" />
-                {time}
+                {postPageTime}
               </Type>
             ) : null}
             {content.attendeeCountLabel ? (
@@ -416,7 +453,7 @@ export function LiveRoomPostContent({
           ) : null}
         </div>
 
-        <ProducerControls content={content} />
+        {showProducerPrimaryControl ? null : <ProducerControls content={content} />}
       </div>
     );
   }
@@ -467,7 +504,9 @@ export function LiveRoomPostContent({
         ) : null}
       </div>
 
-      {showPrimaryCta ? (
+      {showProducerPrimaryControl ? (
+        <ProducerControls buttonClassName="h-11 w-full px-5" className="w-full" content={content} />
+      ) : showPrimaryCta ? (
         <Button
           asChild={!ui.onClick && Boolean(content.concertHref)}
           className="h-11 w-full px-5"

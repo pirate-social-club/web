@@ -91,6 +91,7 @@ export function toLiveRoomPostContent(
       : undefined,
     onBuy: input.liveRoom?.onBuy,
     onVerifyAge: input.onVerifyAge,
+    onViewerRenew: input.liveRoom?.onViewerRenew,
     onWatch: input.liveRoom?.onWatch,
     participants: input.liveRoom?.participants,
     priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), input.liveRoom?.localeTag) : undefined,
@@ -106,5 +107,6 @@ export function toLiveRoomPostContent(
     status: liveRoom?.status ?? publicStatus ?? "scheduled",
     title: liveRoom?.title ?? input.title,
     visibility: liveRoom?.visibility ?? liveAccess?.visibility,
+    viewerAttachResponse: input.liveRoom?.viewerAttachResponse ?? null,
   };
 }

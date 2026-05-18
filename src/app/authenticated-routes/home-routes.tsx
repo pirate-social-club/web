@@ -26,10 +26,12 @@ import { PopularCommunitiesRail, type PopularCommunityItem } from "@/components/
 import { Type } from "@/components/primitives/type";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
+import { buildLiveRoomFreedomHref } from "@/app/authenticated-helpers/live-room-launch";
 import { resolveHomeFeedCommunityId } from "@/app/authenticated-helpers/home-feed-presentation";
 import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live-room-participants";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { submitOptimisticPostVote, updateHomeFeedEntryPostVote } from "@/app/authenticated-helpers/post-vote";
+import { sameUserId } from "@/app/authenticated-helpers/user-id";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
@@ -40,6 +42,7 @@ import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
+import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
 
 function unixOrIsoMs(value: string | number): number {
   return typeof value === "number" ? value * 1000 : Date.parse(value);
@@ -67,8 +70,27 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   const [purchasesByAssetId, setPurchasesByAssetId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
   const [purchasesByLiveRoomId, setPurchasesByLiveRoomId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
   const [liveRoomAccessById, setLiveRoomAccessById] = React.useState<Record<string, ApiLiveRoomAccessResponse | undefined>>({});
+  const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!hydrated) return undefined;
+    let attempts = 0;
+    const readDetection = () => {
+      attempts += 1;
+      const next = getFreedomBrowserDetectionSnapshot();
+      setFreedomDetection(next);
+      return next.detected;
+    };
+    if (readDetection()) return undefined;
+    const intervalId = window.setInterval(() => {
+      if (readDetection() || attempts >= 20) {
+        window.clearInterval(intervalId);
+      }
+    }, 250);
+    return () => window.clearInterval(intervalId);
+  }, [hydrated]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -173,11 +195,16 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
 
         if (liveRoomRefs.length > 0) {
           void Promise.all(liveRoomRefs.map(async ({ communityId, liveRoomId }) => {
-            const access = await (
-              sessionAccessToken
-                ? api.communities.getLiveRoomAccess(communityId, liveRoomId)
-                : api.publicCommunities.getLiveRoomAccess(communityId, liveRoomId)
-            ).catch(() => null);
+            const access = await (async () => {
+              if (!sessionAccessToken) {
+                return api.publicCommunities.getLiveRoomAccess(communityId, liveRoomId);
+              }
+              try {
+                return await api.communities.getLiveRoomAccess(communityId, liveRoomId);
+              } catch {
+                return api.publicCommunities.getLiveRoomAccess(communityId, liveRoomId);
+              }
+            })().catch(() => null);
             return access ? [liveRoomId, access] as const : null;
           }))
             .then((entries) => {
@@ -251,6 +278,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     purchasesByAssetId,
     purchasesByLiveRoomId,
     liveRoomAccessById,
+    freedomDetected: freedomDetection.detected,
     error,
     loading,
   };
@@ -281,6 +309,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     purchasesByAssetId,
     purchasesByLiveRoomId,
     liveRoomAccessById,
+    freedomDetected,
     error,
     loading,
   } = useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange });
@@ -341,6 +370,23 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
       postAuthorUserId: entry.post.post.author_user,
       profilesByUserId: authorProfiles,
     });
+    const liveRoomGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
+    const viewerIsLiveRoomHost = sameUserId(session?.user?.id, liveRoomAccess?.room.host_user)
+      || Boolean(liveRoomId && sameUserId(session?.user?.id, entry.post.post.author_user));
+    const viewerIsLiveRoomGuest = sameUserId(session?.user?.id, liveRoomAccess?.room.guest_user);
+    const liveRoomSeat = viewerIsLiveRoomHost
+      ? "host" as const
+      : viewerIsLiveRoomGuest && liveRoomGuestInviteStatus === "accepted"
+        ? "guest" as const
+        : null;
+    const liveRoomFreedomHref = liveRoomSeat && liveRoomId
+      ? buildLiveRoomFreedomHref({
+        communityId: entry.community.id,
+        liveRoomId,
+        postId: entry.post.post.id,
+        seat: liveRoomSeat,
+      })
+      : undefined;
     return toHomeFeedItem(
       entry,
       authorProfiles,
@@ -357,9 +403,19 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         liveRoom: liveRoomId ? {
           access: liveRoomAccess,
           currentUserId: session?.user?.id,
+          freedomDetected,
+          freedomHref: liveRoomFreedomHref,
+          guestInviteStatus: liveRoomGuestInviteStatus,
           listing: listingsByLiveRoomId[liveRoomId],
           localeTag,
+          onBuy: listingsByLiveRoomId[liveRoomId] ? () => navigate(`/p/${entry.post.post.id}`) : undefined,
+          onWatch: () => navigate(`/p/${entry.post.post.id}`),
           participants: liveRoomParticipants,
+          producerRole: viewerIsLiveRoomHost
+            ? "host"
+            : viewerIsLiveRoomGuest
+              ? "guest"
+              : null,
           purchase: purchasesByLiveRoomId[liveRoomId],
         } : undefined,
         onComment: () => navigate(`/p/${entry.post.post.id}`),

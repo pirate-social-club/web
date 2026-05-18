@@ -32,6 +32,7 @@ type LiveRoomViewerSurfaceProps = {
   contentClassName?: string;
   footer?: React.ReactNode;
   open: boolean;
+  placeholderSrc?: string;
   showDetails?: boolean;
   title: string;
   videoClassName?: string;
@@ -83,6 +84,7 @@ export function LiveRoomViewerSurface({
   contentClassName,
   footer,
   open,
+  placeholderSrc,
   showDetails = true,
   title,
   videoClassName,
@@ -271,7 +273,18 @@ export function LiveRoomViewerSurface({
         <div ref={videoContainerRef} className={cn("size-full", !hasVideo && "hidden")} />
         {!hasVideo ? (
           <div className="absolute inset-0 grid place-items-center px-6 text-center text-white">
-            <div className="space-y-3">
+            {placeholderSrc ? (
+              <>
+                <img
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 size-full object-cover"
+                  src={placeholderSrc}
+                />
+                <div className="absolute inset-0 bg-black/55" />
+              </>
+            ) : null}
+            <div className="relative z-10 space-y-3">
               {status === "unavailable" ? (
                 <VideoCameraSlash className="mx-auto size-10 opacity-80" />
               ) : (

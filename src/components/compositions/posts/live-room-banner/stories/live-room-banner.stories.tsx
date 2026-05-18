@@ -11,7 +11,7 @@ const baseBanner: LiveRoomBannerProps = {
   anchorPostUrl: "https://pirate.local/p/pst_friday_night_set",
   shareUrl: "https://pirate.local/p/pst_friday_night_set",
   freedomDetected: true,
-  freedomHref: "freedom://live-room?roomId=lr_friday_night_set&communityId=cmt_tameimpala&apiBase=https%3A%2F%2Fapi.pirate.local",
+  freedomHref: "freedom://live-room?roomId=lr_friday_night_set&communityId=cmt_tameimpala&apiBase=https%3A%2F%2Fapi-staging.pirate.sc&webBase=https%3A%2F%2Fstaging.pirate.sc&seat=host",
 };
 
 const noop = () => {};

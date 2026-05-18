@@ -1,4 +1,5 @@
 import type { ActionMenuItem } from "@/components/primitives/action-menu";
+import type { ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 
 // Domain-aligned types from specs/domain/asset.md and specs/domain/post.md
@@ -92,9 +93,11 @@ export interface LiveRoomContentSpec {
   freedomDetected?: boolean;
   guestInviteStatus?: "pending" | "accepted" | "revoked" | null;
   participants?: LiveRoomParticipant[];
+  viewerAttachResponse?: ApiLiveRoomViewerAttachResponse | null;
   onRsvp?: () => void;
   onWatch?: () => void;
   onBuy?: () => void;
+  onViewerRenew?: (uid: number) => Promise<ApiLiveRoomViewerAttachResponse | null>;
   onVerifyAge?: () => void;
 }
 

@@ -40,6 +40,7 @@ import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin"
 import { toast } from "@/components/primitives/sonner";
 import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 import { logger } from "@/lib/logger";
+import { sameUserId } from "@/app/authenticated-helpers/user-id";
 
 function closeMobileThread(fallbackPath: string) {
   if (typeof window !== "undefined" && window.history.length > 1) {
@@ -48,11 +49,6 @@ function closeMobileThread(fallbackPath: string) {
   }
 
   navigate(fallbackPath);
-}
-
-function sameUserId(left: string | null | undefined, right: string | null | undefined): boolean {
-  if (!left || !right) return false;
-  return left === right || left.replace(/^(usr_)+/, "") === right.replace(/^(usr_)+/, "");
 }
 
 function viewerCanModerateCommunity(
@@ -85,18 +81,31 @@ function buildLiveRoomLaunch(input: {
   communityId?: string | null;
   liveRoomId?: string | null;
   postId?: string | null;
+  seat?: "host" | "guest" | null;
 }): { href: string; liveRoomId: string; shareUrl: string | null } | null {
   const liveRoomId = input.liveRoomId?.trim();
   const communityId = input.communityId?.trim();
   const postId = input.postId?.trim();
   if (!liveRoomId || !communityId) return null;
   const apiBase = resolveApiBaseUrl(typeof window === "undefined" ? null : window.location.hostname);
+  const webBase = typeof window === "undefined" ? null : window.location.origin;
   const sharePath = postId ? `/p/${encodeURIComponent(postId)}` : null;
   const shareUrl = sharePath && typeof window !== "undefined"
     ? new URL(sharePath, window.location.origin).toString()
     : sharePath;
+  const hrefParams = [
+    `roomId=${encodeURIComponent(liveRoomId)}`,
+    `communityId=${encodeURIComponent(communityId)}`,
+    `apiBase=${encodeURIComponent(apiBase)}`,
+  ];
+  if (webBase) {
+    hrefParams.push(`webBase=${encodeURIComponent(webBase)}`);
+  }
+  if (input.seat) {
+    hrefParams.push(`seat=${encodeURIComponent(input.seat)}`);
+  }
   return {
-    href: `freedom://live-room?roomId=${encodeURIComponent(liveRoomId)}&communityId=${encodeURIComponent(communityId)}&apiBase=${encodeURIComponent(apiBase)}`,
+    href: `freedom://live-room?${hrefParams.join("&")}`,
     liveRoomId,
     shareUrl,
   };
@@ -154,6 +163,8 @@ export function PostPage({ postId }: { postId: string }) {
   const [liveViewerOpen, setLiveViewerOpen] = React.useState(false);
   const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
   const autoWatchAttemptedRef = React.useRef(false);
+  const inlineLiveViewerAttemptedRef = React.useRef<string | null>(null);
+  const liveViewerAttachInFlightRef = React.useRef(false);
   const autoWatchLiveRoom = React.useMemo(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("watch_live_room") === "1";
@@ -220,24 +231,59 @@ export function PostPage({ postId }: { postId: string }) {
       return null;
     }
 
+    const loadPublicAccess = async () => api.publicCommunities.getLiveRoomAccess(community.id, activeLiveRoomId);
+
     try {
       const access = session?.accessToken
         ? await api.communities.getLiveRoomAccess(community.id, activeLiveRoomId)
-        : await api.publicCommunities.getLiveRoomAccess(community.id, activeLiveRoomId);
+        : await loadPublicAccess();
       setLiveRoomAccess(access);
       return access;
     } catch (accessError) {
+      if (session?.accessToken) {
+        try {
+          const publicAccess = await loadPublicAccess();
+          logger.warn("[post-route] authenticated live room access failed; using public access fallback", {
+            communityId: community.id,
+            error: getErrorMessage(accessError, "Could not load live room access."),
+            liveRoomId: activeLiveRoomId,
+            postId,
+          });
+          setLiveRoomAccess(publicAccess);
+          return publicAccess;
+        } catch (publicAccessError) {
+          setLiveRoomAccess(null);
+          if (!isApiNotFoundError(publicAccessError)) {
+            toast.error(getErrorMessage(publicAccessError, "Could not load live room access."));
+          }
+          logger.warn("[post-route] live room access failed", {
+            authenticatedError: getErrorMessage(accessError, "Could not load live room access."),
+            communityId: community.id,
+            liveRoomId: activeLiveRoomId,
+            postId,
+            publicError: getErrorMessage(publicAccessError, "Could not load live room access."),
+          });
+          return null;
+        }
+      }
       setLiveRoomAccess(null);
       if (!isApiNotFoundError(accessError)) {
         toast.error(getErrorMessage(accessError, "Could not load live room access."));
       }
       return null;
     }
-  }, [activeLiveRoomId, api.communities, api.publicCommunities, community?.id, session?.accessToken]);
+  }, [activeLiveRoomId, api.communities, api.publicCommunities, community?.id, postId, session?.accessToken]);
 
   React.useEffect(() => {
     void refreshLiveRoomAccess();
   }, [refreshLiveRoomAccess]);
+
+  React.useEffect(() => {
+    autoWatchAttemptedRef.current = false;
+    inlineLiveViewerAttemptedRef.current = null;
+    setLiveViewerOpen(false);
+    setLiveViewerSession(null);
+  }, [activeLiveRoomId]);
 
   React.useEffect(() => {
     let attempts = 0;
@@ -361,48 +407,75 @@ export function PostPage({ postId }: { postId: string }) {
     requestAuth("Connect your wallet to buy a ticket for this live room.");
   }, [requestAuth]);
 
-  const handleWatchLiveRoom = React.useCallback(async () => {
+  const attachLiveRoomViewer = React.useCallback(async (options?: { openModal?: boolean }) => {
     if (!community?.id || !activeLiveRoomId) return;
-
-    const access = liveRoomAccess ?? await refreshLiveRoomAccess();
-    if (!access) return;
-
-    if (!access.access.allowed) {
-      if (access.access.decision_reason === "purchase_required") {
-        if (!session?.accessToken) {
-          requestAuth("Connect your wallet to buy a ticket for this live room.");
-          return;
-        }
-        const listing = listingsByLiveRoomId[activeLiveRoomId];
-        if (listing) {
-          await handleBuyLiveTicket(listing, access.room.title, community.id);
-        } else {
-          toast.error("Ticket setup is incomplete for this live room.");
-        }
-        return;
-      }
-      if (access.access.decision_reason === "not_live") {
-        toast.error("This live room is not live yet.");
-        return;
-      }
-      if (access.access.decision_reason === "membership_required") {
-        requestAuth("Connect your wallet to verify community access for this live room.");
-        return;
-      }
-      toast.error("This live room is not available.");
+    const openModal = options?.openModal ?? true;
+    if (liveViewerSession?.room.id === activeLiveRoomId) {
+      if (openModal) setLiveViewerOpen(true);
       return;
     }
+    if (liveViewerAttachInFlightRef.current) return;
+    liveViewerAttachInFlightRef.current = true;
 
     try {
-      const attach = session?.accessToken
-        ? await api.communities.viewerAttachLiveRoom(community.id, activeLiveRoomId)
-        : await api.publicCommunities.viewerAttachLiveRoom(community.id, activeLiveRoomId);
+      const access = liveRoomAccess ?? await refreshLiveRoomAccess();
+      if (!access) return;
+
+      if (!access.access.allowed) {
+        if (access.access.decision_reason === "purchase_required") {
+          if (!session?.accessToken) {
+            requestAuth("Connect your wallet to buy a ticket for this live room.");
+            return;
+          }
+          const listing = listingsByLiveRoomId[activeLiveRoomId];
+          if (listing) {
+            await handleBuyLiveTicket(listing, access.room.title, community.id);
+          } else {
+            toast.error("Ticket setup is incomplete for this live room.");
+          }
+          return;
+        }
+        if (access.access.decision_reason === "not_live") {
+          toast.error("This live room is not live yet.");
+          return;
+        }
+        if (access.access.decision_reason === "membership_required") {
+          requestAuth("Connect your wallet to verify community access for this live room.");
+          return;
+        }
+        toast.error("This live room is not available.");
+        return;
+      }
+
+      const attach = await (async () => {
+        if (!session?.accessToken) {
+          return api.publicCommunities.viewerAttachLiveRoom(community.id, activeLiveRoomId);
+        }
+        try {
+          return await api.communities.viewerAttachLiveRoom(community.id, activeLiveRoomId);
+        } catch (authenticatedAttachError) {
+          if (access.room.access_mode === "free" && access.room.visibility === "public") {
+            logger.warn("[post-route] authenticated viewer attach failed; retrying public viewer attach", {
+              communityId: community.id,
+              error: getErrorMessage(authenticatedAttachError, "Could not join this live room."),
+              liveRoomId: activeLiveRoomId,
+              postId,
+            });
+            return api.publicCommunities.viewerAttachLiveRoom(community.id, activeLiveRoomId);
+          }
+          throw authenticatedAttachError;
+        }
+      })();
       setLiveViewerSession(attach);
-      setLiveViewerOpen(true);
+      if (openModal) {
+        setLiveViewerOpen(true);
+      }
       setLiveRoomAccess({ room: attach.room, access: attach.access });
     } catch (attachError) {
       toast.error(getErrorMessage(attachError, "Could not join this live room."));
       await refreshLiveRoomAccess();
+    } finally {
+      liveViewerAttachInFlightRef.current = false;
     }
   }, [
     activeLiveRoomId,
@@ -412,10 +485,16 @@ export function PostPage({ postId }: { postId: string }) {
     handleBuyLiveTicket,
     listingsByLiveRoomId,
     liveRoomAccess,
+    liveViewerSession?.room.id,
+    postId,
     refreshLiveRoomAccess,
     requestAuth,
     session?.accessToken,
   ]);
+
+  const handleWatchLiveRoom = React.useCallback(async () => {
+    await attachLiveRoomViewer({ openModal: true });
+  }, [attachLiveRoomViewer]);
 
   React.useEffect(() => {
     if (
@@ -439,6 +518,51 @@ export function PostPage({ postId }: { postId: string }) {
     post,
   ]);
 
+  React.useEffect(() => {
+    if (
+      loading
+      || autoWatchLiveRoom
+      || !post
+      || !community?.id
+      || !activeLiveRoomId
+      || liveViewerSession?.room.id === activeLiveRoomId
+    ) {
+      return;
+    }
+
+    const room = liveRoomAccess?.room;
+    const access = liveRoomAccess?.access;
+    if (
+      room?.status !== "live"
+      || room.access_mode !== "free"
+      || room.visibility !== "public"
+      || access?.allowed !== true
+    ) {
+      return;
+    }
+
+    const viewerIsProducer = sameUserId(session?.user?.id, room.host_user)
+      || sameUserId(session?.user?.id, room.guest_user);
+    if (viewerIsProducer) return;
+
+    const attemptKey = `${community.id}:${activeLiveRoomId}:${session?.accessToken ? "auth" : "public"}`;
+    if (inlineLiveViewerAttemptedRef.current === attemptKey) return;
+    inlineLiveViewerAttemptedRef.current = attemptKey;
+    void attachLiveRoomViewer({ openModal: false });
+  }, [
+    activeLiveRoomId,
+    attachLiveRoomViewer,
+    autoWatchLiveRoom,
+    community?.id,
+    liveRoomAccess?.access,
+    liveRoomAccess?.room,
+    liveViewerSession?.room.id,
+    loading,
+    post,
+    session?.accessToken,
+    session?.user?.id,
+  ]);
+
   const handleRenewLiveRoomViewer = React.useCallback(async (uid: number) => {
     if (!community?.id || !activeLiveRoomId) return null;
     try {
@@ -459,9 +583,14 @@ export function PostPage({ postId }: { postId: string }) {
   const diagnosticViewerIsLiveRoomHost = sameUserId(session?.user?.id, diagnosticLiveRoom?.host_user);
   const diagnosticViewerIsLiveRoomGuest = sameUserId(session?.user?.id, diagnosticLiveRoom?.guest_user);
   const diagnosticLiveRoomLaunch = buildLiveRoomLaunch({
-    communityId: post?.post.community,
+    communityId: community?.id,
     liveRoomId: activeLiveRoomId,
     postId,
+    seat: diagnosticViewerIsLiveRoomHost
+      ? "host"
+      : diagnosticViewerIsLiveRoomGuest && diagnosticGuestInviteStatus === "accepted"
+        ? "guest"
+        : null,
   });
   const diagnosticLiveRoomFreedomHref = diagnosticLiveRoomLaunch && (
     diagnosticViewerIsLiveRoomHost
@@ -484,7 +613,9 @@ export function PostPage({ postId }: { postId: string }) {
       guestUserId: diagnosticLiveRoom?.guest_user ?? null,
       hasFreedomHref: Boolean(diagnosticLiveRoomFreedomHref),
       hostUserId: diagnosticLiveRoom?.host_user ?? null,
+      launchCommunityId: community?.id ?? null,
       liveRoomId: activeLiveRoomId,
+      postCommunityId: post?.post.community ?? null,
       postId,
       producerRole,
       viewerUserId: session?.user?.id ?? null,
@@ -505,6 +636,8 @@ export function PostPage({ postId }: { postId: string }) {
     diagnosticViewerIsLiveRoomGuest,
     diagnosticViewerIsLiveRoomHost,
     freedomDetection,
+    community?.id,
+    post?.post.community,
     postId,
     session?.user?.id,
   ]);
@@ -578,14 +711,20 @@ export function PostPage({ postId }: { postId: string }) {
     }
     : undefined;
   const liveRoom = liveRoomAccess?.room ?? null;
-  const liveRoomLaunch = buildLiveRoomLaunch({
-    communityId: post.post.community,
-    liveRoomId: post.post.anchor_live_room,
-    postId,
-  });
-  const viewerIsLiveRoomHost = sameUserId(session?.user?.id, liveRoom?.host_user);
+  const viewerIsLiveRoomHost = sameUserId(session?.user?.id, liveRoom?.host_user)
+    || Boolean(threadLiveRoomId && sameUserId(session?.user?.id, post.post.author_user));
   const viewerIsLiveRoomGuest = sameUserId(session?.user?.id, liveRoom?.guest_user);
   const liveRoomGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
+  const liveRoomLaunch = buildLiveRoomLaunch({
+    communityId: community?.id,
+    liveRoomId: post.post.anchor_live_room,
+    postId,
+    seat: viewerIsLiveRoomHost
+      ? "host"
+      : viewerIsLiveRoomGuest && liveRoomGuestInviteStatus === "accepted"
+        ? "guest"
+        : null,
+  });
   const liveRoomFreedomHref = liveRoomLaunch && (
     viewerIsLiveRoomHost
     || viewerIsLiveRoomGuest && liveRoomGuestInviteStatus === "accepted"
@@ -607,6 +746,7 @@ export function PostPage({ postId }: { postId: string }) {
         community.id,
       ) : unauthenticatedLiveTicketRequired ? handlePromptLiveTicketAuth : undefined,
       onWatch: () => void handleWatchLiveRoom(),
+      onViewerRenew: handleRenewLiveRoomViewer,
       participants: buildLiveRoomParticipants({
         authorProfile,
         liveRoom,
@@ -619,6 +759,7 @@ export function PostPage({ postId }: { postId: string }) {
           ? "guest" as const
           : null,
       purchase: threadLiveRoomPurchase,
+      viewerAttachResponse: liveViewerOpen ? null : liveViewerSession,
     }
     : undefined;
   const localizedPostCard = toThreadPostCard(post, community, authorProfile ?? undefined, songOptions, {

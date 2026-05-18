@@ -45,6 +45,7 @@ import {
   getPricingCountryAssignmentDrafts,
   getPricingTierDrafts,
 } from "@/app/authenticated-helpers/moderation-helpers";
+import { sameUserId } from "@/app/authenticated-helpers/user-id";
 
 export function isPublicAudienceAllowed(community: ApiCommunity | ApiCommunityPreview | null): boolean {
   if (!community) {
@@ -62,11 +63,6 @@ type AvailableSigningAgent = {
 };
 
 const MAX_VIDEO_POSTER_FRAME_WIDTH = 1920;
-
-function sameUserId(left: string | null | undefined, right: string | null | undefined): boolean {
-  if (!left || !right) return false;
-  return left === right || left.replace(/^(usr_)+/, "") === right.replace(/^(usr_)+/, "");
-}
 
 function viewerHasCommunityPostingRole(
   viewerUserId: string | null | undefined,
@@ -108,9 +104,23 @@ export function buildLiveRoomFreedomLaunchHref(input: {
   communityId: string;
   hostname?: string | null;
   liveRoomId: string;
+  seat?: "host" | "guest" | null;
+  webBaseUrl?: string | null;
 }): string {
   const apiBase = resolveApiBaseUrl(input.hostname ?? null);
-  return `freedom://live-room?roomId=${encodeURIComponent(input.liveRoomId)}&communityId=${encodeURIComponent(input.communityId)}&apiBase=${encodeURIComponent(apiBase)}`;
+  const params = [
+    `roomId=${encodeURIComponent(input.liveRoomId)}`,
+    `communityId=${encodeURIComponent(input.communityId)}`,
+    `apiBase=${encodeURIComponent(apiBase)}`,
+  ];
+  const webBaseUrl = input.webBaseUrl?.trim();
+  if (webBaseUrl) {
+    params.push(`webBase=${encodeURIComponent(webBaseUrl)}`);
+  }
+  if (input.seat) {
+    params.push(`seat=${encodeURIComponent(input.seat)}`);
+  }
+  return `freedom://live-room?${params.join("&")}`;
 }
 
 export function shouldAutoLaunchLiveRoom(liveState: Pick<LiveComposerState, "scheduleAt" | "scheduleForLater">): boolean {
@@ -742,6 +752,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
             communityId,
             hostname: window.location.hostname,
             liveRoomId: liveRoom.id,
+            seat: "host",
+            webBaseUrl: window.location.origin,
           });
           logger.info("[create-post] live room auto-launch href built", {
             href: liveRoomFreedomHref,

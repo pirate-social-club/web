@@ -32,6 +32,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 
 import { loadProfilesByUserId, useCommunityPageData } from "@/app/authenticated-data/community-data";
+import { buildLiveRoomFreedomHref } from "@/app/authenticated-helpers/live-room-launch";
 import {
   buildCommunityPreviewSidebar,
   buildCommunitySidebar,
@@ -65,18 +66,15 @@ import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-g
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { updateSessionUser } from "@/lib/api/session-store";
+import { sameUserId } from "@/app/authenticated-helpers/user-id";
 import {
   communityHandleFromRouteLabel,
   useCommunityHandleClaimDismissal,
 } from "@/lib/community-handle-claim-dismissal";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
+import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
-
-function sameUserId(left: string | null | undefined, right: string | null | undefined): boolean {
-  if (!left || !right) return false;
-  return left === right || left.replace(/^(usr_)+/, "") === right.replace(/^(usr_)+/, "");
-}
 
 function viewerCanModerateCommunity(
   viewerUserId: string | null | undefined,
@@ -163,10 +161,28 @@ export function CommunityPage({
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const [liveRoomAccessById, setLiveRoomAccessById] = React.useState<Record<string, ApiLiveRoomAccessResponse | undefined>>({});
   const [liveRoomParticipantProfiles, setLiveRoomParticipantProfiles] = React.useState<Record<string, ApiProfile | null>>({});
+  const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
   const liveRoomProfilesByUserId = React.useMemo(
     () => ({ ...authorProfiles, ...liveRoomParticipantProfiles }),
     [authorProfiles, liveRoomParticipantProfiles],
   );
+
+  React.useEffect(() => {
+    let attempts = 0;
+    const readDetection = () => {
+      attempts += 1;
+      const next = getFreedomBrowserDetectionSnapshot();
+      setFreedomDetection(next);
+      return next.detected;
+    };
+    if (readDetection()) return undefined;
+    const intervalId = window.setInterval(() => {
+      if (readDetection() || attempts >= 20) {
+        window.clearInterval(intervalId);
+      }
+    }, 250);
+    return () => window.clearInterval(intervalId);
+  }, []);
   const previewCommunityId = preview?.id ?? null;
   const {
     followerCount,
@@ -337,11 +353,16 @@ export function CommunityPage({
     }
 
     void Promise.all([...new Set(liveRoomRefs)].map(async (liveRoomId) => {
-      const access = await (
-        session?.accessToken
-          ? api.communities.getLiveRoomAccess(communityId, liveRoomId)
-          : api.publicCommunities.getLiveRoomAccess(communityId, liveRoomId)
-      ).catch(() => null);
+      const access = await (async () => {
+        if (!session?.accessToken) {
+          return api.publicCommunities.getLiveRoomAccess(communityId, liveRoomId);
+        }
+        try {
+          return await api.communities.getLiveRoomAccess(communityId, liveRoomId);
+        } catch {
+          return api.publicCommunities.getLiveRoomAccess(communityId, liveRoomId);
+        }
+      })().catch(() => null);
       return access ? [liveRoomId, access] as const : null;
     }))
       .then((entries) => {
@@ -513,6 +534,23 @@ export function CommunityPage({
       postAuthorUserId: post.post.author_user,
       profilesByUserId: liveRoomProfilesByUserId,
     });
+    const liveRoomGuestInviteStatus = liveRoomAccess?.access.guest_invite_status ?? null;
+    const viewerIsLiveRoomHost = sameUserId(session?.user?.id, liveRoomAccess?.room.host_user)
+      || Boolean(liveRoomId && sameUserId(session?.user?.id, post.post.author_user));
+    const viewerIsLiveRoomGuest = sameUserId(session?.user?.id, liveRoomAccess?.room.guest_user);
+    const liveRoomSeat = viewerIsLiveRoomHost
+      ? "host" as const
+      : viewerIsLiveRoomGuest && liveRoomGuestInviteStatus === "accepted"
+        ? "guest" as const
+        : null;
+    const liveRoomFreedomHref = liveRoomSeat && liveRoomId
+      ? buildLiveRoomFreedomHref({
+        communityId,
+        liveRoomId,
+        postId: post.post.id,
+        seat: liveRoomSeat,
+      })
+      : undefined;
     const handleVerifyAge = () => {
       void startAgeSelfVerification({
         requestedCapabilities: ["age_over_18"],
@@ -545,6 +583,9 @@ export function CommunityPage({
         liveRoom: liveRoomId ? {
           access: liveRoomAccess,
           currentUserId: session?.user?.id,
+          freedomDetected: freedomDetection.detected,
+          freedomHref: liveRoomFreedomHref,
+          guestInviteStatus: liveRoomGuestInviteStatus,
           listing: liveRoomListing,
           localeTag,
           onBuy: liveRoomListing ? () => void handleBuySong(
@@ -552,7 +593,13 @@ export function CommunityPage({
             liveRoomAccess?.room.title ?? post.post.title ?? "Live room",
             "ticket",
           ) : undefined,
+          onWatch: () => navigate(`/p/${post.post.id}`),
           participants: liveRoomParticipants,
+          producerRole: viewerIsLiveRoomHost
+            ? "host"
+            : viewerIsLiveRoomGuest
+              ? "guest"
+              : null,
           purchase: liveRoomId ? purchasesByLiveRoomId[liveRoomId] : undefined,
         } : undefined,
         onVerifyAge: handleVerifyAge,

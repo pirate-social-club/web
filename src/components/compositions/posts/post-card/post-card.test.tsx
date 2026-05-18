@@ -4,6 +4,7 @@ import { describe, expect, test } from "bun:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import type { ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 import { UiLocaleProvider } from "@/lib/ui-locale";
 
 import { PostCard } from "./post-card";
@@ -32,10 +33,11 @@ describe("PostCard", () => {
       </UiLocaleProvider>,
     );
 
-    expect(liveMarkup).toContain("Live now");
     expect(liveMarkup).toContain("Watch live");
     expect(liveMarkup).toContain("aspect-video");
     expect(liveMarkup).not.toContain("size-20");
+    expect(liveMarkup).not.toContain("Live now");
+    expect(liveMarkup).not.toContain("Live for");
 
     const ticketMarkup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">
@@ -82,6 +84,234 @@ describe("PostCard", () => {
 
     expect(gatedMarkup).toContain("Verify access");
     expect(gatedMarkup).not.toContain("Watch live");
+  });
+
+  test("renders free live-room post pages with an inline viewer once attached", () => {
+    const viewerAttachResponse = {
+      room: {
+        id: "lr_live_inline",
+        object: "live_room",
+        community: "cmt_test",
+        anchor_post: "pst_live_inline",
+        host_user: "usr_host",
+        guest_user: null,
+        room_kind: "solo",
+        status: "live",
+        access_mode: "free",
+        visibility: "public",
+        title: "Live concert",
+        description: null,
+        cover_ref: null,
+        event_start_at: null,
+        live_started_at: 1779047801,
+        ended_at: null,
+        canceled_at: null,
+        broadcast_ref: "cmt_test:lr_live_inline",
+        replay_status: "none",
+        performer_allocations: [],
+        setlist: {
+          id: "lrs_test",
+          object: "live_room_setlist",
+          status: "ready",
+          items: [],
+        },
+        created: 1779041451,
+      },
+      access: {
+        allowed: true,
+        decision_reason: "allowed",
+        access_mode: "free",
+        visibility: "public",
+        listing: null,
+        purchase_entitlement: null,
+        guest_invite_status: null,
+      },
+      runtime: {
+        status: "attached",
+        seat: "viewer",
+        room_runtime_id: "cmt_test:lr_live_inline",
+      },
+      agora: {
+        app_id: "agora_app",
+        channel: "pirate-live-lr_live_inline",
+        uid: 42,
+        token: "token",
+        token_expires_at: 1779050000,
+        configured: true,
+      },
+    } satisfies ApiLiveRoomViewerAttachResponse;
+
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "allowed",
+            coverSrc: "https://media.test/live-cover.jpg",
+            hasEntitlement: true,
+            liveRoomId: "lr_live_inline",
+            onWatch: () => undefined,
+            status: "live",
+            title: "Live concert",
+            viewerAttachResponse,
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Ready to join.");
+    expect(markup).toContain('src="https://media.test/live-cover.jpg"');
+    expect(markup).not.toContain("Watch live");
+    expect(markup).not.toContain("Live now");
+  });
+
+  test("does not show watch live from bare live-room anchor state before access hydrates", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            liveRoomId: "lr_loading",
+            onWatch: () => undefined,
+            status: "live",
+            title: "Loading live room",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Loading live room");
+    expect(markup).not.toContain("Watch live");
+  });
+
+  test("renders producer launch in the post-page primary action slot without viewer controls", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "allowed",
+            freedomDetected: true,
+            freedomHref: "freedom://live-room?roomId=lr_producer&communityId=cmt_test",
+            hasEntitlement: true,
+            liveRoomId: "lr_producer",
+            onWatch: () => undefined,
+            producerRole: "host",
+            status: "live",
+            title: "Producer concert",
+            viewerAttachResponse: {
+              access: {
+                access_mode: "free",
+                allowed: true,
+                decision_reason: "allowed",
+                guest_invite_status: null,
+                listing: null,
+                purchase_entitlement: null,
+                visibility: "public",
+              },
+              agora: {
+                app_id: "agora_app",
+                channel: "pirate-live-lr_producer",
+                configured: true,
+                token: "token",
+                token_expires_at: 1779050000,
+                uid: 42,
+              },
+              room: {
+                access_mode: "free",
+                anchor_post: "pst_producer",
+                broadcast_ref: "cmt_test:lr_producer",
+                canceled_at: null,
+                community: "cmt_test",
+                cover_ref: null,
+                created: 1779041451,
+                description: null,
+                ended_at: null,
+                event_start_at: null,
+                guest_user: null,
+                host_user: "usr_host",
+                id: "lr_producer",
+                live_started_at: 1779047801,
+                object: "live_room",
+                performer_allocations: [],
+                replay_status: "none",
+                room_kind: "solo",
+                setlist: {
+                  id: "lrs_test",
+                  items: [],
+                  object: "live_room_setlist",
+                  status: "ready",
+                },
+                status: "live",
+                title: "Producer concert",
+                visibility: "public",
+              },
+              runtime: {
+                room_runtime_id: "cmt_test:lr_producer",
+                seat: "viewer",
+                status: "attached",
+              },
+            },
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Start broadcast");
+    expect(markup).not.toContain("Watch live");
+    expect(markup).not.toContain("Ready to join.");
+    expect(markup).not.toContain("Live for");
+  });
+
+  test("renders producer launch in the feed primary action slot", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            accessState: "allowed",
+            freedomDetected: true,
+            freedomHref: "freedom://live-room?roomId=lr_producer&communityId=cmt_test",
+            liveRoomId: "lr_producer",
+            onWatch: () => undefined,
+            producerRole: "host",
+            status: "live",
+            title: "Producer concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Start broadcast");
+    expect(markup).toContain('href="freedom://live-room?roomId=lr_producer&amp;communityId=cmt_test"');
+    expect(markup).not.toContain("Watch live");
   });
 
   test("renders scheduled free live-room post pages with RSVP when available", () => {

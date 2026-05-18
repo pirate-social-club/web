@@ -8,7 +8,7 @@ import type {
   LiveRoomParticipant,
   PostCardProps,
 } from "@/components/compositions/posts/post-card/post-card.types";
-import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
+import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 import type { SongPlaybackController } from "@/app/authenticated-helpers/song-commerce";
 
 export type SongPresentationOptions = {
@@ -31,8 +31,10 @@ export type LiveRoomPresentationOptions = {
   freedomDetected?: boolean;
   guestInviteStatus?: "pending" | "accepted" | "revoked" | null;
   participants?: LiveRoomParticipant[];
+  viewerAttachResponse?: ApiLiveRoomViewerAttachResponse | null;
   onBuy?: () => void;
   onWatch?: () => void;
+  onViewerRenew?: (uid: number) => Promise<ApiLiveRoomViewerAttachResponse | null>;
 };
 
 export type PostPresentationOptions = {

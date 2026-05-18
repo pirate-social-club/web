@@ -108,8 +108,19 @@ describe("live room request mapping", () => {
       communityId: "cmt_test",
       hostname: "pirate.sc",
       liveRoomId: "lr_test",
+      seat: "host",
+      webBaseUrl: "https://pirate.sc",
     })).toBe(
-      "freedom://live-room?roomId=lr_test&communityId=cmt_test&apiBase=https%3A%2F%2Fapi.pirate.sc",
+      "freedom://live-room?roomId=lr_test&communityId=cmt_test&apiBase=https%3A%2F%2Fapi.pirate.sc&webBase=https%3A%2F%2Fpirate.sc&seat=host",
+    );
+    expect(buildLiveRoomFreedomLaunchHref({
+      communityId: "cmt_test",
+      hostname: "localhost",
+      liveRoomId: "lr_test",
+      seat: "host",
+      webBaseUrl: "http://localhost:5173",
+    })).toBe(
+      "freedom://live-room?roomId=lr_test&communityId=cmt_test&apiBase=http%3A%2F%2F127.0.0.1%3A8787&webBase=http%3A%2F%2Flocalhost%3A5173&seat=host",
     );
   });
 

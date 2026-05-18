@@ -12,6 +12,7 @@ import type { CommentSort, PostThreadComment } from "@/components/compositions/p
 import type { LiveRoomContentSpec, PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { ResponsiveOptionSelect } from "@/components/compositions/system/responsive-option-select/responsive-option-select";
 import { IconButton } from "@/components/primitives/icon-button";
+import type { ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 
 const noop = () => {};
 
@@ -82,6 +83,60 @@ const baseLiveRoom: LiveRoomContentSpec = {
     { artist: "Tame Impala", rightsStatus: "ready", title: "Echoes" },
     { artist: "Tame Impala", rightsStatus: "pending", title: "After Hours" },
   ],
+};
+
+const inlineViewerAttachResponse: ApiLiveRoomViewerAttachResponse = {
+  room: {
+    id: "lr_friday_night_set",
+    object: "live_room",
+    community: "cmt_tameimpala",
+    anchor_post: "pst_friday_night_set",
+    host_user: "usr_kevin",
+    guest_user: null,
+    room_kind: "solo",
+    status: "live",
+    access_mode: "free",
+    visibility: "public",
+    title: "Friday Night Studio Set",
+    description: "A live run through the new material with a short Q&A after the set.",
+    cover_ref: coverSrc,
+    event_start_at: null,
+    live_started_at: 1779047801,
+    ended_at: null,
+    canceled_at: null,
+    broadcast_ref: "cmt_tameimpala:lr_friday_night_set",
+    replay_status: "none",
+    performer_allocations: [],
+    setlist: {
+      id: "lrs_friday_night_set",
+      object: "live_room_setlist",
+      status: "ready",
+      items: [],
+    },
+    created: 1779041451,
+  },
+  access: {
+    allowed: true,
+    decision_reason: "allowed",
+    access_mode: "free",
+    visibility: "public",
+    listing: null,
+    purchase_entitlement: null,
+    guest_invite_status: null,
+  },
+  runtime: {
+    status: "attached",
+    seat: "viewer",
+    room_runtime_id: "cmt_tameimpala:lr_friday_night_set",
+  },
+  agora: {
+    app_id: null,
+    channel: "pirate-live-lr_friday_night_set",
+    uid: 1607854678,
+    token: null,
+    token_expires_at: null,
+    configured: false,
+  },
 };
 
 const comments: PostThreadComment[] = [
@@ -286,6 +341,21 @@ export const LiveAllowed: Story = {
   },
 };
 
+export const LiveInlineViewer: Story = {
+  name: "Live / Inline viewer",
+  args: {
+    liveRoom: {
+      ...baseLiveRoom,
+      accessState: "allowed",
+      attendeeCountLabel: "1.2k watching",
+      hasEntitlement: true,
+      liveSinceLabel: "12m",
+      status: "live",
+      viewerAttachResponse: inlineViewerAttachResponse,
+    },
+  },
+};
+
 export const PaidNeedsTicket: Story = {
   name: "Paid / Needs ticket",
   args: {
@@ -320,7 +390,7 @@ export const HostBroadcast: Story = {
     liveRoom: {
       ...baseLiveRoom,
       freedomDetected: true,
-      freedomHref: "freedom://live-room?roomId=lr_friday_night_set&communityId=cmt_tameimpala&apiBase=https%3A%2F%2Fapi.pirate.local",
+      freedomHref: "freedom://live-room?roomId=lr_friday_night_set&communityId=cmt_tameimpala&apiBase=https%3A%2F%2Fapi-staging.pirate.sc&webBase=https%3A%2F%2Fstaging.pirate.sc&seat=host",
       producerRole: "host",
     },
   },
@@ -343,7 +413,7 @@ export const HostDetectionMissing: Story = {
     liveRoom: {
       ...baseLiveRoom,
       freedomDetected: false,
-      freedomHref: "freedom://live-room?roomId=lr_friday_night_set&communityId=cmt_tameimpala&apiBase=https%3A%2F%2Fapi.pirate.local",
+      freedomHref: "freedom://live-room?roomId=lr_friday_night_set&communityId=cmt_tameimpala&apiBase=https%3A%2F%2Fapi-staging.pirate.sc&webBase=https%3A%2F%2Fstaging.pirate.sc&seat=host",
       producerRole: "host",
     },
   },

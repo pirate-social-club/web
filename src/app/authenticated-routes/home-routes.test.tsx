@@ -355,4 +355,114 @@ describe("useHomeFeed", () => {
     await waitFor(() => expect(result.current.listingsByLiveRoomId.lr_live?.price_cents).toBe(1200));
     expect(result.current.purchasesByLiveRoomId.lr_live?.live_room).toBe("lr_live");
   });
+
+  test("falls back to public live-room access when authenticated access fails", async () => {
+    __resetSessionStoreForTests();
+
+    const feedApi = api.feed as unknown as {
+      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
+      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: HomeFeedCommunitySummary[] }>;
+    };
+    const profilesApi = api.profiles as unknown as {
+      getByUserId: (userId: string) => Promise<unknown>;
+    };
+    const communitiesApi = api.communities as unknown as {
+      getLiveRoomAccess: (communityId: string, liveRoomId: string) => Promise<unknown>;
+      listListings: () => Promise<{ items: unknown[] }>;
+      listPurchases: () => Promise<{ items: unknown[] }>;
+    };
+    const publicCommunitiesApi = api.publicCommunities as unknown as {
+      getLiveRoomAccess: (communityId: string, liveRoomId: string) => Promise<unknown>;
+    };
+    let authenticatedAccessCalls = 0;
+    let publicAccessCalls = 0;
+
+    const feedResponse = {
+      items: [
+        createFeedItem({
+          anchorLiveRoom: "lr_live",
+          postId: "pst_live",
+          postType: "video",
+          authorUserId: "usr_1",
+        }),
+      ],
+      top_communities: [],
+    };
+    feedApi.home = async () => feedResponse;
+    feedApi.publicHome = async () => feedResponse;
+    profilesApi.getByUserId = async () => ({ user: "usr_1", display_name: "Test User" });
+    communitiesApi.listListings = async () => ({ items: [] });
+    communitiesApi.listPurchases = async () => ({ items: [] });
+    communitiesApi.getLiveRoomAccess = async () => {
+      authenticatedAccessCalls += 1;
+      throw new Error("auth access failed");
+    };
+    publicCommunitiesApi.getLiveRoomAccess = async () => {
+      publicAccessCalls += 1;
+      return {
+        room: {
+          id: "lr_live",
+          object: "live_room",
+          community: "cmt_test",
+          anchor_post: "pst_live",
+          host_user: "usr_1",
+          guest_user: null,
+          room_kind: "solo",
+          status: "live",
+          access_mode: "free",
+          visibility: "public",
+          title: "Live room",
+          description: null,
+          cover_ref: "https://media.test/live-cover.jpg",
+          event_start_at: null,
+          live_started_at: null,
+          ended_at: null,
+          canceled_at: null,
+          broadcast_ref: null,
+          replay_status: "none",
+          performer_allocations: [],
+          setlist: { id: "lrs_test", object: "live_room_setlist", status: "ready", items: [] },
+          created: Date.parse("2026-04-24T00:00:00.000Z"),
+        },
+        access: {
+          allowed: true,
+          decision_reason: null,
+          access_mode: "free",
+          visibility: "public",
+          listing: null,
+          purchase_entitlement: null,
+          guest_invite_status: null,
+        },
+      };
+    };
+
+    const { result } = renderHook(() =>
+      useHomeFeed({
+        activeSort: "best",
+        contentLocale: "en",
+        hydrated: true,
+        session: {
+          accessToken: "token",
+          user: {
+            id: "usr_2",
+            object: "user",
+            created: Date.parse("2026-04-24T00:00:00.000Z"),
+            verification_capabilities: {},
+            verification_state: "verified",
+          },
+          profile: null,
+          onboarding: { unique_human_verification_status: "verified" },
+          walletAttachments: [],
+          storedAt: new Date().toISOString(),
+        } as never,
+        topTimeRange: "day",
+      }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.liveRoomAccessById.lr_live?.room.cover_ref).toBe("https://media.test/live-cover.jpg"));
+    expect(authenticatedAccessCalls).toBeGreaterThan(0);
+    expect(publicAccessCalls).toBeGreaterThan(0);
+  });
 });

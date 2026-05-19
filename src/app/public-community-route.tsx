@@ -548,6 +548,7 @@ export function PublicCommunityRoutePage({
   }
 
   const joinActionLabel = resolvePublicCommunityJoinActionLabel(eligibility, locale);
+  const joinedActionLabel = getJoinCtaLabel({ status: "already_joined" } as ApiJoinEligibility, { locale });
   const joinActionDisabled = Boolean(session) && (
     !eligibility
       || !isJoinCtaActionable(eligibility)
@@ -557,28 +558,36 @@ export function PublicCommunityRoutePage({
     preview.route_slug ?? communityId,
   );
   const communityHandleLabel = communityHandleFromRouteLabel(routeLabel);
-  const canCreatePost = Boolean(session?.user?.id)
-    && (preview.viewer_membership_status === "member" || eligibility?.status === "already_joined");
+  const viewerIsMember = preview.viewer_membership_status === "member" || eligibility?.status === "already_joined";
+  const canCreatePost = Boolean(session?.user?.id) && viewerIsMember;
   const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
-      <Button
-        className={FOLLOW_BUTTON_CLASS_NAME}
-        loading={followLoading || (!session && authRuntime.busy)}
-        onClick={() => void handleToggleFollow()}
-        variant={viewerFollowing ? "secondary" : "default"}
-      >
-        {viewerFollowing ? copy.community.followingLabel : copy.community.followLabel}
-      </Button>
-      <Button
-        disabled={joinActionDisabled}
-        loading={joinLoading || joinVeryLoading || joinSelfLoading || passportLoading || (!session && authRuntime.busy)}
-        onClick={() => void handlePrimaryJoinAction()}
-        variant="secondary"
-      >
-        {joinActionLabel}
-      </Button>
+      {!viewerIsMember ? (
+        <Button
+          className={FOLLOW_BUTTON_CLASS_NAME}
+          loading={followLoading || (!session && authRuntime.busy)}
+          onClick={() => void handleToggleFollow()}
+          variant={viewerFollowing ? "secondary" : "default"}
+        >
+          {viewerFollowing ? copy.community.followingLabel : copy.community.followLabel}
+        </Button>
+      ) : null}
+      {viewerIsMember ? (
+        <Button disabled variant="secondary">
+          {joinedActionLabel}
+        </Button>
+      ) : (
+        <Button
+          disabled={joinActionDisabled}
+          loading={joinLoading || joinVeryLoading || joinSelfLoading || passportLoading || (!session && authRuntime.busy)}
+          onClick={() => void handlePrimaryJoinAction()}
+          variant="secondary"
+        >
+          {joinActionLabel}
+        </Button>
+      )}
       {canCreatePost ? (
         <Button
           leadingIcon={<Plus className="size-5" />}

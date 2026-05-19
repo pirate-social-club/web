@@ -142,11 +142,13 @@ export function CommunityPage({
   const ownsCommunity =
     session?.user?.id === community?.created_by_user;
   const canModerateCommunity = viewerCanModerateCommunity(session?.user?.id, preview);
+  const viewerIsMember =
+    eligibility?.status === "already_joined"
+    || preview?.viewer_membership_status === "member";
   const canCreatePost =
     ownsCommunity
     || canModerateCommunity
-    || eligibility?.status === "already_joined"
-    || preview?.viewer_membership_status === "member";
+    || viewerIsMember;
   const commerceEnabled = Boolean(session?.user?.id) && canCreatePost;
   const {
     listingsByAssetId,
@@ -521,6 +523,7 @@ export function CommunityPage({
   }
 
   const joinActionLabel = eligibility ? getJoinCtaLabel(eligibility, { locale }) : copy.community.followLabel;
+  const joinedActionLabel = getJoinCtaLabel({ status: "already_joined" } as ApiJoinEligibility, { locale });
   const joinActionDisabled =
     !eligibility ||
     !isJoinCtaActionable(eligibility);
@@ -625,7 +628,7 @@ export function CommunityPage({
           {modToolsLabel}
         </Button>
       ) : null}
-      {!ownsCommunity ? (
+      {!ownsCommunity && !viewerIsMember ? (
         <Button
           className={FOLLOW_BUTTON_CLASS_NAME}
           loading={followLoading}
@@ -637,7 +640,12 @@ export function CommunityPage({
             : copy.community.followLabel}
         </Button>
       ) : null}
-      {!ownsCommunity && !canModerateCommunity ? (
+      {!ownsCommunity && !canModerateCommunity && viewerIsMember ? (
+        <Button disabled variant="secondary">
+          {joinedActionLabel}
+        </Button>
+      ) : null}
+      {!ownsCommunity && !canModerateCommunity && !viewerIsMember ? (
         <Button
           disabled={joinActionDisabled}
           loading={joinLoading || veryLoading || selfLoading || passportLoading}

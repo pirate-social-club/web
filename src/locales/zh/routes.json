@@ -126,6 +126,7 @@
     "ownerLabel": "所有者",
     "requirementsLabel": "要求",
     "rulesLabel": "规则",
+    "storeLabel": "商店",
     "tagsLabel": "标签",
     "title": "社区"
   },
@@ -366,7 +367,11 @@
       "startTimeNote": "定时直播活动必填。",
       "eventCover": "活动封面",
       "eventCoverUpload": "上传活动封面",
-      "eventCoverHelp": "上传 16:9 活动封面。动态、预览和活动页面都会宽幅显示。"
+      "eventCoverHelp": "上传 16:9 活动封面。动态、预览和活动页面都会宽幅显示。",
+      "storeUrl": "商店 URL",
+      "storeUrlPlaceholder": "https://store.example.com",
+      "storeLabel": "商店标签",
+      "storeLabelPlaceholder": "活动周边"
     },
     "genres": {
       "electronic": "电子",
@@ -985,6 +990,8 @@
       "biometricGateChecksTitle": "身份门槛",
       "walletGateChecksTitle": "钱包门槛",
       "uniqueHumanTitle": "Palm scan (Very)",
+      "uniqueHumanPowFallbackLabel": "允许工作量证明备用方式",
+      "uniqueHumanPowFallbackDetail": "成员可以通过掌纹扫描或工作量证明检查加入。",
       "altchaPowTitle": "工作量证明检查",
       "nationalityDescription": "要求通过 Self 验证国籍。",
       "nationalityTitle": "国籍验证（Self.xyz）",

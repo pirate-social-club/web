@@ -126,6 +126,7 @@
     "ownerLabel": "المالك",
     "requirementsLabel": "المتطلبات",
     "rulesLabel": "القواعد",
+    "storeLabel": "المتجر",
     "tagsLabel": "الوسوم",
     "title": "المجتمع"
   },
@@ -366,7 +367,11 @@
       "startTimeNote": "مطلوب للأحداث المباشرة المجدولة.",
       "eventCover": "غلاف الحدث",
       "eventCoverUpload": "ارفع غلاف الحدث",
-      "eventCoverHelp": "ارفع غلاف حدث بنسبة 16:9. تعرضه الخلاصة والمعاينة وصفحة الحدث عريضًا."
+      "eventCoverHelp": "ارفع غلاف حدث بنسبة 16:9. تعرضه الخلاصة والمعاينة وصفحة الحدث عريضًا.",
+      "storeUrl": "رابط المتجر",
+      "storeUrlPlaceholder": "https://store.example.com",
+      "storeLabel": "تسمية المتجر",
+      "storeLabelPlaceholder": "منتجات الحدث"
     },
     "genres": {
       "electronic": "إلكتروني",
@@ -985,6 +990,8 @@
       "biometricGateChecksTitle": "بوابات الهوية",
       "walletGateChecksTitle": "بوابات المحفظة",
       "uniqueHumanTitle": "Palm scan (Very)",
+      "uniqueHumanPowFallbackLabel": "السماح بإثبات العمل كخيار بديل",
+      "uniqueHumanPowFallbackDetail": "يمكن للأعضاء الانضمام بإكمال مسح راحة اليد أو فحص إثبات العمل.",
       "altchaPowTitle": "فحص إثبات العمل",
       "nationalityDescription": "اشترط التحقق من الجنسية عبر Self.",
       "nationalityTitle": "التحقق من الجنسية (Self.xyz)",

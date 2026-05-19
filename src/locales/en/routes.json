@@ -126,6 +126,7 @@
     "ownerLabel": "Owner",
     "requirementsLabel": "Requirements",
     "rulesLabel": "Rules",
+    "storeLabel": "Store",
     "tagsLabel": "Tags",
     "title": "Community"
   },
@@ -366,7 +367,11 @@
       "startTimeNote": "Required for scheduled live events.",
       "eventCover": "Event cover",
       "eventCoverUpload": "Upload event cover",
-      "eventCoverHelp": "Upload a 16:9 event cover. Feed, preview, and event page show it wide."
+      "eventCoverHelp": "Upload a 16:9 event cover. Feed, preview, and event page show it wide.",
+      "storeUrl": "Store URL",
+      "storeUrlPlaceholder": "https://store.example.com",
+      "storeLabel": "Store label",
+      "storeLabelPlaceholder": "Event merch"
     },
     "genres": {
       "electronic": "Electronic",
@@ -985,6 +990,8 @@
       "biometricGateChecksTitle": "Identity gates",
       "walletGateChecksTitle": "Wallet gates",
       "uniqueHumanTitle": "Palm scan (Very)",
+      "uniqueHumanPowFallbackLabel": "Allow proof-of-work fallback",
+      "uniqueHumanPowFallbackDetail": "Members can join by completing either the palm scan or the proof-of-work check.",
       "altchaPowTitle": "Proof-of-work check",
       "nationalityDescription": "Require nationality verification through Self.",
       "nationalityTitle": "Nationality verification (Self.xyz)",

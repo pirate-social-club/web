@@ -81,6 +81,25 @@ function summarizeGateDraftForLog(draft: IdentityGateDraft): Record<string, unkn
   }
 }
 
+function formatGateRequirementList(
+  requirements: string[],
+  mode: CommunityGateMatchMode,
+  locale: string,
+): string {
+  if (requirements.length <= 1) {
+    return requirements[0] ?? "";
+  }
+  try {
+    return new Intl.ListFormat(locale, {
+      style: "long",
+      type: mode === "any" ? "disjunction" : "conjunction",
+    }).format(requirements);
+  } catch {
+    const separator = mode === "any" ? " or " : " and ";
+    return requirements.join(separator);
+  }
+}
+
 export function useCreateCommunityComposerController({
   avatarRef = "",
   bannerRef = "",
@@ -344,36 +363,41 @@ export function useCreateCommunityComposerController({
   })[activeDatabaseRegion];
   const activeReviewGateDrafts = activeMembershipMode === "gated" ? activeGateDrafts : [];
   const gateRequirementSummary = activeReviewGateDrafts.length > 0
-    ? activeReviewGateDrafts
-        .map((draft) =>
-          formatGateRequirement(
-            draft.gateType === "erc721_holding"
-              ? { gate_type: draft.gateType, chain_namespace: draft.chainNamespace, contract_address: draft.contractAddress }
-              : draft.gateType === "erc721_inventory_match"
-                ? {
-                  gate_type: draft.gateType,
-                  chain_namespace: draft.chainNamespace,
-                  contract_address: draft.contractAddress,
-                  inventory_provider: draft.inventoryProvider,
-                  min_quantity: draft.minQuantity,
-                  asset_filter_label: describeCourtyardInventoryDraft(draft).replace(/^\d+ Courtyard /u, ""),
-                  asset_category: draft.assetFilter.category,
-                }
-                : draft.gateType === "nationality"
-                  ? { gate_type: draft.gateType, required_values: draft.requiredValues }
-                  : draft.gateType === "unique_human"
-                    ? { gate_type: draft.gateType, accepted_providers: [draft.provider] }
-                    : draft.gateType === "minimum_age"
-                      ? { gate_type: draft.gateType, required_minimum_age: draft.minimumAge }
-                      : draft.gateType === "wallet_score"
-                        ? { gate_type: draft.gateType, minimum_score: draft.minimumScore }
-                        : draft.gateType === "altcha_pow"
-                          ? { gate_type: draft.gateType }
-                          : { gate_type: draft.gateType, required_value: draft.requiredValue },
-            { audience: "admin" },
-          ),
-        )
-        .join(", ")
+    ? formatGateRequirementList(
+      activeReviewGateDrafts.map((draft) =>
+        formatGateRequirement(
+          draft.gateType === "erc721_holding"
+            ? { gate_type: draft.gateType, chain_namespace: draft.chainNamespace, contract_address: draft.contractAddress }
+            : draft.gateType === "erc721_inventory_match"
+              ? {
+                gate_type: draft.gateType,
+                chain_namespace: draft.chainNamespace,
+                contract_address: draft.contractAddress,
+                inventory_provider: draft.inventoryProvider,
+                min_quantity: draft.minQuantity,
+                asset_filter_label: describeCourtyardInventoryDraft(draft).replace(/^\d+ Courtyard /u, ""),
+                asset_category: draft.assetFilter.category,
+              }
+              : draft.gateType === "nationality"
+                ? { gate_type: draft.gateType, required_values: draft.requiredValues }
+                : draft.gateType === "unique_human"
+                  ? { gate_type: draft.gateType, accepted_providers: [draft.provider] }
+                  : draft.gateType === "minimum_age"
+                    ? { gate_type: draft.gateType, required_minimum_age: draft.minimumAge }
+                    : draft.gateType === "wallet_score"
+                      ? { gate_type: draft.gateType, minimum_score: draft.minimumScore }
+                      : draft.gateType === "altcha_pow"
+                        ? { gate_type: draft.gateType }
+                        : { gate_type: draft.gateType, required_value: draft.requiredValue },
+          {
+            audience: "admin",
+            provider: draft.gateType === "unique_human" ? draft.provider : undefined,
+          },
+        ),
+      ),
+      activeGateMatchMode,
+      locale,
+    )
     : null;
   const previewDisplayName = activeDisplayName.trim() || cc.previewFallback;
   const previewAvatarOverride = useCommunityPreviewMedia(activeAvatarFile, activeAvatarRef);

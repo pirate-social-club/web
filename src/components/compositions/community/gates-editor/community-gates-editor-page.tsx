@@ -82,28 +82,51 @@ function CheckboxRow({
   );
 }
 
-function upsertGateDraft(
+const POW_EXCLUSIVE_GATE_TYPES: IdentityGateDraft["gateType"][] = [
+  "unique_human",
+  "nationality",
+  "minimum_age",
+  "wallet_score",
+  "gender",
+];
+
+export function normalizeGateDraftsForMatchMode(
+  drafts: IdentityGateDraft[],
+  gateMatchMode: "all" | "any",
+): IdentityGateDraft[] {
+  if (gateMatchMode === "any") {
+    return drafts;
+  }
+  const hasPow = drafts.some((draft) => draft.gateType === "altcha_pow");
+  const hasPowExclusiveGate = drafts.some((draft) => POW_EXCLUSIVE_GATE_TYPES.includes(draft.gateType));
+  if (!hasPow || !hasPowExclusiveGate) {
+    return drafts;
+  }
+  return drafts.filter((draft) => draft.gateType !== "altcha_pow");
+}
+
+export function upsertGateDraftForMatchMode(
   drafts: IdentityGateDraft[],
   nextDraft: IdentityGateDraft,
+  gateMatchMode: "all" | "any",
 ): IdentityGateDraft[] {
-  const powExclusiveGateTypes: IdentityGateDraft["gateType"][] = [
-    "unique_human",
-    "nationality",
-    "minimum_age",
-    "wallet_score",
-    "gender",
-  ];
   const existing = drafts.find((draft) => draft.gateType === nextDraft.gateType);
   const preserved = existing?.gateRuleId && !nextDraft.gateRuleId
     ? { ...nextDraft, gateRuleId: existing.gateRuleId }
     : nextDraft;
-  if (nextDraft.gateType === "altcha_pow") {
+  if (gateMatchMode === "any") {
     return [
-      ...drafts.filter((draft) => !powExclusiveGateTypes.includes(draft.gateType) && draft.gateType !== "altcha_pow"),
+      ...drafts.filter((draft) => draft.gateType !== nextDraft.gateType),
       preserved,
     ];
   }
-  const withoutConflicts = powExclusiveGateTypes.includes(nextDraft.gateType)
+  if (nextDraft.gateType === "altcha_pow") {
+    return [
+      ...drafts.filter((draft) => !POW_EXCLUSIVE_GATE_TYPES.includes(draft.gateType) && draft.gateType !== "altcha_pow"),
+      preserved,
+    ];
+  }
+  const withoutConflicts = POW_EXCLUSIVE_GATE_TYPES.includes(nextDraft.gateType)
     ? drafts.filter((draft) => draft.gateType !== "altcha_pow")
     : drafts;
   return [
@@ -117,6 +140,16 @@ function removeGateDraft(
   gateType: IdentityGateDraft["gateType"],
 ): IdentityGateDraft[] {
   return drafts.filter((draft) => draft.gateType !== gateType);
+}
+
+function shouldResetMatchModeAfterRemovingPowFallback(
+  drafts: IdentityGateDraft[],
+  gateMatchMode: "all" | "any",
+): boolean {
+  if (gateMatchMode !== "any") {
+    return false;
+  }
+  return removeGateDraft(drafts, "altcha_pow").length <= 1;
 }
 
 export interface CommunityGatesEditorPageProps {
@@ -212,6 +245,20 @@ export function CommunityGatesEditorPage({
   const showGateMatchModeControl =
     effectiveMembershipMode === "gated"
     && (onGateMatchModeChange != null || gateMatchMode === "any");
+  const palmScanPowFallbackEnabled = Boolean(uniqueHumanGate && altchaPowGate && gateMatchMode === "any");
+  const handlePalmScanPowFallbackChange = React.useCallback((checked: boolean) => {
+    if (checked) {
+      onGateMatchModeChange?.("any");
+      onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
+        gateType: "altcha_pow",
+      }, "any"));
+      return;
+    }
+    if (shouldResetMatchModeAfterRemovingPowFallback(gateDrafts, gateMatchMode)) {
+      onGateMatchModeChange?.("all");
+    }
+    onGateDraftsChange?.(removeGateDraft(gateDrafts, "altcha_pow"));
+  }, [gateDrafts, gateMatchMode, onGateDraftsChange, onGateMatchModeChange]);
 
   return (
     <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
@@ -254,7 +301,10 @@ export function CommunityGatesEditorPage({
                           description="Members must pass every selected gate."
                           selected={gateMatchMode === "all"}
                           title="All selected gates"
-                          onClick={() => onGateMatchModeChange?.("all")}
+                          onClick={() => {
+                            onGateMatchModeChange?.("all");
+                            onGateDraftsChange?.(normalizeGateDraftsForMatchMode(gateDrafts, "all"));
+                          }}
                         />
                         <OptionCard
                           className={gateMatchMode === "any" ? "border-border bg-muted/30" : undefined}
@@ -273,28 +323,50 @@ export function CommunityGatesEditorPage({
                     className={altchaPowGate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(altchaPowGate)}
                     title={mc.altchaPowTitle}
-                    onCheckedChange={(checked) => onGateDraftsChange?.(
-                      checked
-                        ? upsertGateDraft(gateDrafts, {
-                          gateType: "altcha_pow",
-                        })
-                        : removeGateDraft(gateDrafts, "altcha_pow"),
-                    )}
+                    onCheckedChange={(checked) => {
+                      if (!checked && shouldResetMatchModeAfterRemovingPowFallback(gateDrafts, gateMatchMode)) {
+                        onGateMatchModeChange?.("all");
+                      }
+                      onGateDraftsChange?.(
+                        checked
+                          ? upsertGateDraftForMatchMode(gateDrafts, {
+                            gateType: "altcha_pow",
+                          }, gateMatchMode)
+                          : removeGateDraft(gateDrafts, "altcha_pow"),
+                      );
+                    }}
                   />
 
                   <CheckboxCard
                     className={uniqueHumanGate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(uniqueHumanGate)}
                     title={mc.uniqueHumanTitle}
-                    onCheckedChange={(checked) => onGateDraftsChange?.(
-                      checked
-                        ? upsertGateDraft(gateDrafts, {
-                          gateType: "unique_human",
-                          provider: "very",
-                        })
-                        : removeGateDraft(gateDrafts, "unique_human"),
-                    )}
+                    onCheckedChange={(checked) => {
+                      if (!checked && palmScanPowFallbackEnabled) {
+                        onGateMatchModeChange?.("all");
+                      }
+                      onGateDraftsChange?.(
+                        checked
+                          ? upsertGateDraftForMatchMode(gateDrafts, {
+                            gateType: "unique_human",
+                            provider: "very",
+                          }, gateMatchMode)
+                          : removeGateDraft(gateDrafts, "unique_human"),
+                      );
+                    }}
                   />
+
+                  {uniqueHumanGate ? (
+                    <div className="ps-4">
+                      <OptionCard
+                        className={palmScanPowFallbackEnabled ? "border-border bg-muted/30" : undefined}
+                        description={mc.uniqueHumanPowFallbackDetail}
+                        selected={palmScanPowFallbackEnabled}
+                        title={mc.uniqueHumanPowFallbackLabel}
+                        onClick={() => handlePalmScanPowFallbackChange(!palmScanPowFallbackEnabled)}
+                      />
+                    </div>
+                  ) : null}
 
                   <CheckboxCard
                     className={nationalityGate ? "border-border bg-muted/30" : undefined}
@@ -302,11 +374,11 @@ export function CommunityGatesEditorPage({
                     title={mc.nationalityTitle}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
                       checked
-                        ? upsertGateDraft(gateDrafts, {
+                        ? upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "nationality",
                           provider: "self",
                           requiredValues: [],
-                        })
+                        }, gateMatchMode)
                         : removeGateDraft(gateDrafts, "nationality"),
                     )}
                   />
@@ -315,11 +387,11 @@ export function CommunityGatesEditorPage({
                     <div className="space-y-2 ps-4">
                       <FormFieldLabel label={mc.allowedNationalityLabel} />
                       <NationalityMultiPicker
-                        onChange={(codes) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                        onChange={(codes) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "nationality",
                           provider: "self",
                           requiredValues: codes,
-                        }))}
+                        }, gateMatchMode))}
                         values={nationalityGate.requiredValues}
                       />
                       {nationalityGate.requiredValues.some((value) => !isCountryCode(value)) ? (
@@ -334,11 +406,11 @@ export function CommunityGatesEditorPage({
                     title={mc.minimumAgeTitle}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
                       checked
-                        ? upsertGateDraft(gateDrafts, {
+                        ? upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "minimum_age",
                           provider: "self",
                           minimumAge: 30,
-                        })
+                        }, gateMatchMode)
                         : removeGateDraft(gateDrafts, "minimum_age"),
                     )}
                   />
@@ -350,12 +422,12 @@ export function CommunityGatesEditorPage({
                         max={125}
                         min={18}
                         value={minimumAgeGate.minimumAge}
-                        onChange={(next) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                        onChange={(next) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "minimum_age",
                           provider: "self",
                           minimumAge: next,
                           gateRuleId: minimumAgeGate.gateRuleId,
-                        }))}
+                        }, gateMatchMode))}
                       />
                       {(!Number.isInteger(minimumAgeGate.minimumAge) || minimumAgeGate.minimumAge < 18 || minimumAgeGate.minimumAge > 125) ? (
                         <FormNote tone="warning">{mc.minimumAgeInvalid}</FormNote>
@@ -369,11 +441,11 @@ export function CommunityGatesEditorPage({
                     title={mc.genderTitle}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
                       checked
-                        ? upsertGateDraft(gateDrafts, {
+                        ? upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "gender",
                           provider: "self",
                           requiredValue: genderGate?.requiredValue ?? "F",
-                        })
+                        }, gateMatchMode)
                         : removeGateDraft(gateDrafts, "gender"),
                     )}
                   />
@@ -384,23 +456,23 @@ export function CommunityGatesEditorPage({
                         className={genderGate.requiredValue === "F" ? "border-border bg-muted/30" : undefined}
                         selected={genderGate.requiredValue === "F"}
                         title={mc.fMarkerLabel}
-                        onClick={() => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                        onClick={() => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "gender",
                           provider: "self",
                           requiredValue: "F",
                           gateRuleId: genderGate.gateRuleId,
-                        }))}
+                        }, gateMatchMode))}
                       />
                       <OptionCard
                         className={genderGate.requiredValue === "M" ? "border-border bg-muted/30" : undefined}
                         selected={genderGate.requiredValue === "M"}
                         title={mc.mMarkerLabel}
-                        onClick={() => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                        onClick={() => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "gender",
                           provider: "self",
                           requiredValue: "M",
                           gateRuleId: genderGate.gateRuleId,
-                        }))}
+                        }, gateMatchMode))}
                       />
                     </div>
                   ) : null}
@@ -413,11 +485,11 @@ export function CommunityGatesEditorPage({
                     title={mc.walletScoreTitle}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
                       checked
-                        ? upsertGateDraft(gateDrafts, {
+                        ? upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "wallet_score",
                           provider: "passport",
                           minimumScore: 20,
-                        })
+                        }, gateMatchMode)
                         : removeGateDraft(gateDrafts, "wallet_score"),
                     )}
                   />
@@ -429,12 +501,12 @@ export function CommunityGatesEditorPage({
                         max={100}
                         min={0}
                         value={walletScoreGate.minimumScore}
-                        onChange={(next) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                        onChange={(next) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "wallet_score",
                           provider: "passport",
                           minimumScore: next,
                           gateRuleId: walletScoreGate.gateRuleId,
-                        }))}
+                        }, gateMatchMode))}
                       />
                       {(!Number.isFinite(walletScoreGate.minimumScore) || walletScoreGate.minimumScore < 0 || walletScoreGate.minimumScore > 100) ? (
                         <FormNote tone="warning">{mc.walletScoreInvalid}</FormNote>
@@ -448,11 +520,11 @@ export function CommunityGatesEditorPage({
                     title={mc.erc721Title}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
                       checked
-                        ? upsertGateDraft(gateDrafts, {
+                        ? upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "erc721_holding",
                           chainNamespace: "eip155:1",
                           contractAddress: "",
-                        })
+                        }, gateMatchMode)
                         : removeGateDraft(gateDrafts, "erc721_holding"),
                     )}
                   />
@@ -462,11 +534,11 @@ export function CommunityGatesEditorPage({
                       <FormFieldLabel label={mc.collectionContractLabel} />
                       <Input
                         className="h-12 rounded-[var(--radius-lg)]"
-                        onChange={(event) => onGateDraftsChange?.(upsertGateDraft(gateDrafts, {
+                        onChange={(event) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "erc721_holding",
                           chainNamespace: "eip155:1",
                           contractAddress: event.target.value,
-                        }))}
+                        }, gateMatchMode))}
                         placeholder={mc.collectionContractPlaceholder}
                         value={erc721Gate.contractAddress}
                       />
@@ -483,7 +555,7 @@ export function CommunityGatesEditorPage({
                     title={mc.courtyardTitle}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
                       checked
-                        ? upsertGateDraft(gateDrafts, createDefaultCourtyardInventoryDraft())
+                        ? upsertGateDraftForMatchMode(gateDrafts, createDefaultCourtyardInventoryDraft(), gateMatchMode)
                         : removeGateDraft(gateDrafts, "erc721_inventory_match"),
                     )}
                   />

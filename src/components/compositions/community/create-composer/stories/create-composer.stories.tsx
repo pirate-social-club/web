@@ -33,6 +33,11 @@ const palmScanGateDrafts: IdentityGateDraft[] = [
   { gateType: "unique_human", provider: "very" },
 ];
 
+const proofOfWorkOrPalmScanGateDrafts: IdentityGateDraft[] = [
+  { gateType: "altcha_pow" },
+  { gateType: "unique_human", provider: "very" },
+];
+
 const meta = {
   title: "Compositions/Community/CreateCommunityComposer",
   component: CreateCommunityComposer,
@@ -126,6 +131,19 @@ export const AccessStepWithPalmScanGate: Story = {
   ),
 };
 
+export const AccessStepWithProofOfWorkOrPalmScan: Story = {
+  name: "Flow / Access Step With Proof Of Work Or Palm Scan",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[...proofOfWorkOrPalmScanGateDrafts]}
+      gateMatchMode="any"
+      initialStep={2}
+      membershipMode="gated"
+    />
+  ),
+};
+
 export const ReviewWithNationalityGate: Story = {
   name: "Flow / Review With Nationality Gate",
   render: () => (
@@ -156,6 +174,19 @@ export const ReviewWithPalmScanGate: Story = {
     <CreateCommunityComposer
       {...baseComposer}
       gateDrafts={[...palmScanGateDrafts]}
+      initialStep={3}
+      membershipMode="gated"
+    />
+  ),
+};
+
+export const ReviewWithProofOfWorkOrPalmScan: Story = {
+  name: "Flow / Review With Proof Of Work Or Palm Scan",
+  render: () => (
+    <CreateCommunityComposer
+      {...baseComposer}
+      gateDrafts={[...proofOfWorkOrPalmScanGateDrafts]}
+      gateMatchMode="any"
       initialStep={3}
       membershipMode="gated"
     />

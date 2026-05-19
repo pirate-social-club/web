@@ -11,7 +11,7 @@ import type { IdentityGateDraft } from "@/components/compositions/community/crea
 import type { PricingTier, CountryAssignment as PricingCountryAssignment } from "@/components/compositions/community/pricing-editor/community-pricing-editor-page";
 import { createDefaultCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 import { COUNTRIES, normalizeCountryCode } from "@/lib/countries";
-import { flattenGatePolicyAtoms } from "@/lib/gate-policy-utils";
+import { flattenGatePolicyAtoms, getGatePolicyMatchMode } from "@/lib/gate-policy-utils";
 import {
   createDefaultCommunitySafetyAdultContentPolicy,
   createDefaultCommunitySafetyCivilityPolicy,
@@ -205,6 +205,9 @@ export function getCommunityGateDrafts(community: ApiCommunity): IdentityGateDra
     }
     return result;
   }, []);
+  if (getGatePolicyMatchMode(community.gate_policy) === "any") {
+    return drafts;
+  }
   const hasStrongerIdentityGate = drafts.some((draft) =>
     draft.gateType === "unique_human"
     || draft.gateType === "nationality"

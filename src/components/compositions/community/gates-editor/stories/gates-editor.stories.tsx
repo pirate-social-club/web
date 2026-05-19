@@ -35,6 +35,11 @@ const proofOfWorkGateDrafts: IdentityGateDraft[] = [
   { gateType: "altcha_pow" },
 ];
 
+const proofOfWorkOrPalmScanGateDrafts: IdentityGateDraft[] = [
+  { gateType: "altcha_pow" },
+  { gateType: "unique_human", provider: "very" },
+];
+
 function InteractiveCommunityGatesEditorPage({
   allowAnonymousIdentity: initialAllowAnonymousIdentity,
   anonymousIdentityScope: initialAnonymousIdentityScope,
@@ -199,6 +204,20 @@ export const PassportScoreOrPalmScan: Story = {
         { gateType: "wallet_score", provider: "passport", minimumScore: 10 },
         { gateType: "unique_human", provider: "very" },
       ]}
+      gateMatchMode="any"
+      membershipMode="gated"
+      readAccessMode="public"
+    />
+  ),
+};
+
+export const ProofOfWorkOrPalmScan: Story = {
+  render: () => (
+    <InteractiveCommunityGatesEditorPage
+      allowAnonymousIdentity
+      anonymousIdentityScope="community_stable"
+      defaultAgeGatePolicy="none"
+      gateDrafts={proofOfWorkOrPalmScanGateDrafts}
       gateMatchMode="any"
       membershipMode="gated"
       readAccessMode="public"

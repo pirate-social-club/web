@@ -139,7 +139,7 @@ describe("useCommunityAccessState", () => {
     expect(result.current.gateMatchMode).toBe("any");
   });
 
-  test("drops legacy proof-of-work fallback when stronger identity gates are present", async () => {
+  test("preserves proof-of-work fallback when OR identity gates are present", async () => {
     installCommunityApiMocks();
     const { result } = renderAccessHook({
       community: createCommunity({
@@ -156,13 +156,39 @@ describe("useCommunityAccessState", () => {
       }),
     });
 
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(2));
+
+    expect(result.current.gateDrafts).toEqual([
+      { gateType: "unique_human", provider: "very" },
+      { gateType: "altcha_pow" },
+    ]);
+    expect(result.current.gateMatchMode).toBe("any");
+  });
+
+  test("drops legacy proof-of-work fallback when AND identity gates are present", async () => {
+    installCommunityApiMocks();
+    const { result } = renderAccessHook({
+      community: createCommunity({
+        gate_policy: {
+          version: 1,
+          expression: {
+            op: "and",
+            children: [
+              { op: "gate", gate: { type: "unique_human", provider: "very" } },
+              { op: "gate", gate: { type: "altcha_pow" } },
+            ],
+          },
+        },
+      }),
+    });
+
     await waitFor(() => expect(result.current.gateDrafts).toHaveLength(1));
 
     expect(result.current.gateDrafts[0]).toEqual({
       gateType: "unique_human",
       provider: "very",
     });
-    expect(result.current.gateMatchMode).toBe("any");
+    expect(result.current.gateMatchMode).toBe("all");
   });
 
   test("preserves any-nationality Self gate drafts from empty allowed lists", async () => {
@@ -387,11 +413,8 @@ describe("useCommunityAccessState", () => {
             gate: { type: "wallet_score", provider: "passport", minimum_score: 10 },
           },
           {
-            op: "or",
-            children: [
-              { op: "gate", gate: { type: "unique_human", provider: "self" } },
-              { op: "gate", gate: { type: "unique_human", provider: "very" } },
-            ],
+            op: "gate",
+            gate: { type: "unique_human", provider: "very" },
           },
         ],
       },

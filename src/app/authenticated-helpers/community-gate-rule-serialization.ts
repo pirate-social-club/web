@@ -29,11 +29,8 @@ export function serializeIdentityGateDrafts(
 function draftToExpression(draft: IdentityGateDraft): GateExpression | null {
   if (draft.gateType === "unique_human") {
     return {
-      op: "or",
-      children: [
-        { op: "gate", gate: { type: "unique_human", provider: "self" } },
-        { op: "gate", gate: { type: "unique_human", provider: "very" } },
-      ],
+      op: "gate",
+      gate: { type: "unique_human", provider: draft.provider },
     };
   }
 

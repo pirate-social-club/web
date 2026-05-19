@@ -41,6 +41,12 @@ function installHookStubs() {
       locale: "en",
       setLocale: () => undefined,
     })) as unknown as typeof React.useContext),
+    spyOn(React, "use").mockImplementation((() => ({
+      dir: "ltr",
+      isRtl: false,
+      locale: "en",
+      setLocale: () => undefined,
+    })) as unknown as typeof React.use),
     spyOn(React, "useSyncExternalStore").mockImplementation(((
       _subscribe: unknown,
       _getSnapshot: unknown,
@@ -317,6 +323,10 @@ describe("CreateCommunityComposer", () => {
       accessTree,
       (element) => element.props.title === "Palm scan (Very)",
     );
+    const fallbackOption = findElement(
+      accessTree,
+      (element) => element.props.title === "Allow proof-of-work fallback",
+    );
     const next = findElement(
       accessTree,
       (element) => element.props.children === "Next" && "disabled" in element.props,
@@ -332,8 +342,32 @@ describe("CreateCommunityComposer", () => {
     (createButton.props.onClick as (() => void) | undefined)?.();
 
     expect(palmScanOption === null).toBe(false);
+    expect(fallbackOption === null).toBe(false);
     expect(next?.props.disabled).toBe(false);
     expect((submitted as unknown as { gateDrafts?: IdentityGateDraft[] } | null)?.gateDrafts).toEqual([palmScanGate]);
+  });
+
+  test("summarizes proof-of-work OR Very palm scan in review", () => {
+    const tree = renderComposer({
+      creatorVerificationState: {
+        ageOver18Verified: true,
+      },
+      displayName: "Human Club",
+      gateDrafts: [
+        { gateType: "altcha_pow" },
+        { gateType: "unique_human", provider: "very" },
+      ],
+      gateMatchMode: "any",
+      initialStep: 3,
+      membershipMode: "gated",
+    });
+
+    const summary = findElement(
+      tree,
+      (element) => element.props.children === "Proof-of-work check or Palm scan",
+    );
+
+    expect(summary === null).toBe(false);
   });
 
   test("submits the trimmed final payload with the effective age policy", () => {

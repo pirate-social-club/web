@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { serializeIdentityGateDrafts } from "@/app/authenticated-helpers/community-gate-rule-serialization";
 
 describe("serializeIdentityGateDrafts", () => {
-  test("serializes verified-human drafts as Self or Very without proof-of-work", () => {
+  test("serializes verified-human drafts with the selected provider", () => {
     expect(serializeIdentityGateDrafts([{
       gateType: "unique_human",
       provider: "very",
@@ -12,11 +12,8 @@ describe("serializeIdentityGateDrafts", () => {
       expression: {
         op: "and",
         children: [{
-          op: "or",
-          children: [
-            { op: "gate", gate: { type: "unique_human", provider: "self" } },
-            { op: "gate", gate: { type: "unique_human", provider: "very" } },
-          ],
+          op: "gate",
+          gate: { type: "unique_human", provider: "very" },
         }],
       },
     });
@@ -149,6 +146,25 @@ describe("serializeIdentityGateDrafts", () => {
     expect(result!.expression.op).toBe("or");
     const children = (result!.expression as { children: unknown[] }).children;
     expect(children).toHaveLength(2);
+  });
+
+  test("serializes proof-of-work OR Very palm scan", () => {
+    expect(serializeIdentityGateDrafts(
+      [
+        { gateType: "altcha_pow" },
+        { gateType: "unique_human", provider: "very" },
+      ],
+      { mode: "any" },
+    )).toEqual({
+      version: 1,
+      expression: {
+        op: "or",
+        children: [
+          { op: "gate", gate: { type: "altcha_pow" } },
+          { op: "gate", gate: { type: "unique_human", provider: "very" } },
+        ],
+      },
+    });
   });
 
   test("returns null for empty drafts", () => {

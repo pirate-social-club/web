@@ -252,6 +252,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "ownerLabel": "Owner",
         "requirementsLabel": "Requirements",
         "rulesLabel": "Rules",
+        "storeLabel": "Store",
         "tagsLabel": "Tags",
         "title": "Community"
       },
@@ -492,7 +493,11 @@ export const GENERATED_LOCALE_CATALOGS = {
           "startTimeNote": "Required for scheduled live events.",
           "eventCover": "Event cover",
           "eventCoverUpload": "Upload event cover",
-          "eventCoverHelp": "Upload a 16:9 event cover. Feed, preview, and event page show it wide."
+          "eventCoverHelp": "Upload a 16:9 event cover. Feed, preview, and event page show it wide.",
+          "storeUrl": "Store URL",
+          "storeUrlPlaceholder": "https://store.example.com",
+          "storeLabel": "Store label",
+          "storeLabelPlaceholder": "Event merch"
         },
         "genres": {
           "electronic": "Electronic",
@@ -1111,6 +1116,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "biometricGateChecksTitle": "Identity gates",
           "walletGateChecksTitle": "Wallet gates",
           "uniqueHumanTitle": "Palm scan (Very)",
+          "uniqueHumanPowFallbackLabel": "Allow proof-of-work fallback",
+          "uniqueHumanPowFallbackDetail": "Members can join by completing either the palm scan or the proof-of-work check.",
           "altchaPowTitle": "Proof-of-work check",
           "nationalityDescription": "Require nationality verification through Self.",
           "nationalityTitle": "Nationality verification (Self.xyz)",
@@ -1885,6 +1892,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "ownerLabel": "المالك",
         "requirementsLabel": "المتطلبات",
         "rulesLabel": "القواعد",
+        "storeLabel": "المتجر",
         "tagsLabel": "الوسوم",
         "title": "المجتمع"
       },
@@ -2125,7 +2133,11 @@ export const GENERATED_LOCALE_CATALOGS = {
           "startTimeNote": "مطلوب للأحداث المباشرة المجدولة.",
           "eventCover": "غلاف الحدث",
           "eventCoverUpload": "ارفع غلاف الحدث",
-          "eventCoverHelp": "ارفع غلاف حدث بنسبة 16:9. تعرضه الخلاصة والمعاينة وصفحة الحدث عريضًا."
+          "eventCoverHelp": "ارفع غلاف حدث بنسبة 16:9. تعرضه الخلاصة والمعاينة وصفحة الحدث عريضًا.",
+          "storeUrl": "رابط المتجر",
+          "storeUrlPlaceholder": "https://store.example.com",
+          "storeLabel": "تسمية المتجر",
+          "storeLabelPlaceholder": "منتجات الحدث"
         },
         "genres": {
           "electronic": "إلكتروني",
@@ -2744,6 +2756,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "biometricGateChecksTitle": "بوابات الهوية",
           "walletGateChecksTitle": "بوابات المحفظة",
           "uniqueHumanTitle": "Palm scan (Very)",
+          "uniqueHumanPowFallbackLabel": "السماح بإثبات العمل كخيار بديل",
+          "uniqueHumanPowFallbackDetail": "يمكن للأعضاء الانضمام بإكمال مسح راحة اليد أو فحص إثبات العمل.",
           "altchaPowTitle": "فحص إثبات العمل",
           "nationalityDescription": "اشترط التحقق من الجنسية عبر Self.",
           "nationalityTitle": "التحقق من الجنسية (Self.xyz)",
@@ -3518,6 +3532,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "ownerLabel": "所有者",
         "requirementsLabel": "要求",
         "rulesLabel": "规则",
+        "storeLabel": "商店",
         "tagsLabel": "标签",
         "title": "社区"
       },
@@ -3758,7 +3773,11 @@ export const GENERATED_LOCALE_CATALOGS = {
           "startTimeNote": "定时直播活动必填。",
           "eventCover": "活动封面",
           "eventCoverUpload": "上传活动封面",
-          "eventCoverHelp": "上传 16:9 活动封面。动态、预览和活动页面都会宽幅显示。"
+          "eventCoverHelp": "上传 16:9 活动封面。动态、预览和活动页面都会宽幅显示。",
+          "storeUrl": "商店 URL",
+          "storeUrlPlaceholder": "https://store.example.com",
+          "storeLabel": "商店标签",
+          "storeLabelPlaceholder": "活动周边"
         },
         "genres": {
           "electronic": "电子",
@@ -4377,6 +4396,8 @@ export const GENERATED_LOCALE_CATALOGS = {
           "biometricGateChecksTitle": "身份门槛",
           "walletGateChecksTitle": "钱包门槛",
           "uniqueHumanTitle": "Palm scan (Very)",
+          "uniqueHumanPowFallbackLabel": "允许工作量证明备用方式",
+          "uniqueHumanPowFallbackDetail": "成员可以通过掌纹扫描或工作量证明检查加入。",
           "altchaPowTitle": "工作量证明检查",
           "nationalityDescription": "要求通过 Self 验证国籍。",
           "nationalityTitle": "国籍验证（Self.xyz）",

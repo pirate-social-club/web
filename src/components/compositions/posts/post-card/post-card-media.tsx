@@ -11,31 +11,14 @@ import { cn } from "@/lib/utils";
 import { getLocaleMessages } from "@/locales";
 import { OfficialOEmbed, OfficialYouTubeEmbed, PostEmbedPreview } from "./post-card-embed";
 import { LiveRoomPostContent } from "./post-card-live-room-content";
+import { SongPostContent } from "./post-card-song-content";
 import { postCardType } from "./post-card.styles";
 import type { PostCardContent, PostCardViewContext } from "./post-card.types";
-
-const LazySongPostContent = React.lazy(async () => {
-  const module = await import("./post-card-song-content");
-  return { default: module.SongPostContent };
-});
 
 const LazyVideoPostContent = React.lazy(async () => {
   const module = await import("./post-card-video-content");
   return { default: module.VideoPostContent };
 });
-
-function SongPostContentFallback({ className }: { className?: string }) {
-  return (
-    <div className={cn("flex items-center gap-3 rounded-lg border border-border-soft bg-muted/30 p-3", className)}>
-      <div className="size-20 shrink-0 rounded-lg bg-muted" />
-      <div className="min-w-0 flex-1 space-y-2">
-        <div className="h-4 w-32 rounded bg-muted" />
-        <div className="h-3 w-24 rounded bg-muted/80" />
-      </div>
-      <div className="size-10 shrink-0 rounded-full bg-muted" />
-    </div>
-  );
-}
 
 function VideoPostContentFallback({ className }: { className?: string }) {
   return <div className={cn("aspect-video w-full rounded-lg bg-muted", className)} aria-busy="true" />;
@@ -227,15 +210,21 @@ export function PostCardMedia({ content, className, viewContext }: PostCardMedia
       return (
         <figure className={className}>
           <div className="relative overflow-hidden rounded-lg bg-muted">
-            <img
-              alt={content.alt}
-              className={cn(
-                "w-full object-cover transition-[filter,transform]",
-                ageGateRequiresProof && "blur-md saturate-0",
-              )}
-              src={content.src}
-              style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
-            />
+            {ageGateRequiresProof ? (
+              <div
+                aria-label={content.alt}
+                className="min-h-64 w-full bg-muted"
+                role="img"
+                style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
+              />
+            ) : (
+              <img
+                alt={content.alt}
+                className="w-full object-cover"
+                src={content.src}
+                style={content.aspectRatio ? { aspectRatio: content.aspectRatio } : undefined}
+              />
+            )}
             {ageGateRequiresProof && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                 <Button
@@ -307,16 +296,7 @@ export function PostCardMedia({ content, className, viewContext }: PostCardMedia
         </div>
       );
     case "song":
-      return (
-        <LazyPostMediaErrorBoundary
-          fallback={<SongPostContentFallback className={className} />}
-          resetKey={`song:${content.title}:${content.artist ?? ""}`}
-        >
-          <React.Suspense fallback={<SongPostContentFallback className={className} />}>
-            <LazySongPostContent content={content} className={className} />
-          </React.Suspense>
-        </LazyPostMediaErrorBoundary>
-      );
+      return <SongPostContent content={content} className={className} />;
     case "live_room":
       return <LiveRoomPostContent content={content} className={className} viewContext={viewContext} />;
   }

@@ -19,6 +19,7 @@ import type {
 import type {
   ApiDerivativeSourceListResponse,
   ApiDerivativeSourceQueryKind,
+  ApiDerivativeSourceScope,
   ApiSongArtifactUploadContentRequest,
   CommunityListCommentsOptions,
 } from "./client-api-types";
@@ -196,11 +197,17 @@ export function createCommunityContentApi(request: ApiRequest) {
       ),
     listDerivativeSources: (
       communityId: string,
-      opts?: { kind?: ApiDerivativeSourceQueryKind | null; q?: string | null; limit?: number | null },
+      opts?: {
+        kind?: ApiDerivativeSourceQueryKind | null;
+        scope?: ApiDerivativeSourceScope | null;
+        q?: string | null;
+        limit?: number | null;
+      },
     ): Promise<ApiDerivativeSourceListResponse> =>
       request<ApiDerivativeSourceListResponse>(
         buildQueryPath(`/communities/${encodeURIComponent(communityId)}/derivative-sources`, {
           kind: opts?.kind,
+          scope: opts?.scope,
           q: opts?.q,
           limit: opts?.limit == null ? null : String(opts.limit),
         }),

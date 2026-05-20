@@ -125,6 +125,8 @@ export function buildLiveRoomRequest(input: {
   const guestUserId = input.liveState.roomKind === "duet"
     ? input.resolvedGuestUserId ?? rawGuestUserId
     : null;
+  const storeUrl = input.liveState.storeUrl?.trim();
+  const storeLabel = input.liveState.storeLabel?.trim();
   return {
     title: input.title.trim(),
     description: input.description.trim() || undefined,
@@ -134,6 +136,8 @@ export function buildLiveRoomRequest(input: {
     guest_user: guestUserId,
     event_start_at: eventStartFromLiveState(input.liveState),
     cover_ref: input.coverRef ?? undefined,
+    ...(storeUrl ? { store_url: storeUrl } : {}),
+    ...(storeLabel ? { store_label: storeLabel } : {}),
     performer_allocations: performerAllocationsFromLiveState({
       guestUserId,
       hostUserId: input.hostUserId,

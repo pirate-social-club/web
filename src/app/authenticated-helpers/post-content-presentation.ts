@@ -126,6 +126,7 @@ export function toCommunityPostContent(
       return toSongPostContent(postResponse, songOptions, {
         captionDir: translatedTextPresentation.dir,
         captionLang: translatedTextPresentation.lang,
+        onVerifyAge: opts?.onVerifyAge,
         resolvedCaption,
         title,
       });

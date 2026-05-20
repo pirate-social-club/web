@@ -334,14 +334,14 @@ export const GENERATED_LOCALE_CATALOGS = {
           "licenseParentIp": "Story parent IP",
           "licenseTermsId": "License terms",
           "licenseNewRemixTerms": "New remix terms",
-          "searchSourceTracks": "Search source tracks"
+          "searchSourceTracks": "Search remix-eligible source tracks"
         },
         "empty": {
           "noOptionalQualifiers": "No optional qualifiers are available for this community.",
           "noQualifiers": "No qualifiers found.",
-          "noReferences": "No upstream works attached yet.",
+          "noReferences": "No remix sources attached yet.",
           "noSongs": "No songs found.",
-          "noSourceTracks": "No source tracks found."
+          "noSourceTracks": "No remix-eligible source tracks yet. Songs appear here after Story registration completes."
         },
         "fields": {
           "audio": "Audio",
@@ -421,7 +421,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "selectLanguage": "Select language",
           "songSearch": "Search your uploaded songs",
           "songTitle": "Song title",
-          "sourceTrackSearch": "Search songs",
+          "sourceTrackSearch": "Search remix-eligible source tracks",
           "title": "Title",
           "unlockPrice": "0",
           "previewStartSeconds": "0",
@@ -435,7 +435,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "preview": "Preview",
           "publishSettings": "Publish settings",
           "qualifiers": "Qualifiers",
-          "sourceTrack": "Source track",
+          "sourceTrack": "Remix source",
           "license": "License"
         },
         "setlist": {
@@ -1974,14 +1974,14 @@ export const GENERATED_LOCALE_CATALOGS = {
           "licenseParentIp": "IP الأصل على Story",
           "licenseTermsId": "معرّف شروط الترخيص",
           "licenseNewRemixTerms": "شروط الريمكس الجديدة",
-          "searchSourceTracks": "ابحث عن المسارات المصدر"
+          "searchSourceTracks": "ابحث عن المسارات المصدر المؤهلة للريمكس"
         },
         "empty": {
           "noOptionalQualifiers": "لا توجد مؤهلات اختيارية متاحة لهذا المجتمع.",
           "noQualifiers": "لم يتم العثور على مؤهلات.",
-          "noReferences": "لا توجد أعمال مصدر مرفقة بعد.",
+          "noReferences": "لا توجد مصادر ريمكس مرفقة بعد.",
           "noSongs": "لم يتم العثور على أغانٍ.",
-          "noSourceTracks": "لم يتم العثور على مسارات مصدر."
+          "noSourceTracks": "لا توجد مسارات مصدر مؤهلة للريمكس بعد. ستظهر الأغاني هنا بعد اكتمال تسجيل Story."
         },
         "fields": {
           "audio": "الصوت",
@@ -2061,7 +2061,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "selectLanguage": "اختر اللغة",
           "songSearch": "ابحث في أغانيك المرفوعة",
           "songTitle": "عنوان الأغنية",
-          "sourceTrackSearch": "ابحث عن الأغاني",
+          "sourceTrackSearch": "ابحث عن المسارات المصدر المؤهلة للريمكس",
           "title": "العنوان",
           "unlockPrice": "0",
           "previewStartSeconds": "0",
@@ -2075,7 +2075,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "preview": "معاينة",
           "publishSettings": "إعدادات النشر",
           "qualifiers": "المؤهلات",
-          "sourceTrack": "المسار المصدر",
+          "sourceTrack": "مصدر الريمكس",
           "license": "الترخيص"
         },
         "setlist": {
@@ -3614,14 +3614,14 @@ export const GENERATED_LOCALE_CATALOGS = {
           "licenseParentIp": "Story 父级 IP",
           "licenseTermsId": "许可证条款 ID",
           "licenseNewRemixTerms": "新混音条款",
-          "searchSourceTracks": "搜索源曲目"
+          "searchSourceTracks": "搜索可用于混音的源曲目"
         },
         "empty": {
           "noOptionalQualifiers": "这个社区没有可选的资格标签。",
           "noQualifiers": "未找到资格标签。",
-          "noReferences": "还没有附加源作品。",
+          "noReferences": "还没有附加混音来源。",
           "noSongs": "未找到歌曲。",
-          "noSourceTracks": "未找到源曲目。"
+          "noSourceTracks": "还没有可用于混音的源曲目。歌曲完成 Story 注册后会显示在这里。"
         },
         "fields": {
           "audio": "音频",
@@ -3701,7 +3701,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "selectLanguage": "选择语言",
           "songSearch": "搜索你上传的歌曲",
           "songTitle": "歌曲标题",
-          "sourceTrackSearch": "搜索歌曲",
+          "sourceTrackSearch": "搜索可用于混音的源曲目",
           "title": "标题",
           "unlockPrice": "0",
           "previewStartSeconds": "0",
@@ -3715,7 +3715,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "preview": "预览",
           "publishSettings": "发布设置",
           "qualifiers": "资格标签",
-          "sourceTrack": "源曲目",
+          "sourceTrack": "混音来源",
           "license": "许可证"
         },
         "setlist": {

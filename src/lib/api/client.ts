@@ -12,6 +12,7 @@ import {
   createPostsApi,
 } from "./client-groups-content";
 import { createCommunitiesApi } from "./client-groups-communities";
+import { createCommunityCommerceApi } from "./client-groups-community-commerce";
 import {
   createProfilesApi,
   createPublicAgentsApi,
@@ -82,6 +83,7 @@ export class ApiClient {
   readonly communities = {
     ...createCommunitiesApi(this.request.bind(this)),
     ...createCommunityContentApi(this.request.bind(this)),
+    ...createCommunityCommerceApi(this.request.bind(this)),
   };
   readonly posts = createPostsApi(this.request.bind(this));
   readonly comments = createCommentsApi(this.request.bind(this));

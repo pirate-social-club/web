@@ -113,6 +113,7 @@ export function PostCard({
   showTranslationLabel,
   engagement,
   menuItems,
+  shareActions,
   onVote,
   onComment,
   onShare,
@@ -226,6 +227,7 @@ export function PostCard({
         <PostCardEngagementBar
           engagement={engagement}
           unlock={unlock ? { label: unlock.label, onClick: unlock.onBuy } : undefined}
+          shareActions={shareActions}
           onVote={onVote}
           onComment={onComment}
           onShare={onShare}

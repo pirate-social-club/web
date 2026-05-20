@@ -208,14 +208,14 @@
       "licenseParentIp": "Story 父级 IP",
       "licenseTermsId": "许可证条款 ID",
       "licenseNewRemixTerms": "新混音条款",
-      "searchSourceTracks": "搜索源曲目"
+      "searchSourceTracks": "搜索可用于混音的源曲目"
     },
     "empty": {
       "noOptionalQualifiers": "这个社区没有可选的资格标签。",
       "noQualifiers": "未找到资格标签。",
-      "noReferences": "还没有附加源作品。",
+      "noReferences": "还没有附加混音来源。",
       "noSongs": "未找到歌曲。",
-      "noSourceTracks": "未找到源曲目。"
+      "noSourceTracks": "还没有可用于混音的源曲目。歌曲完成 Story 注册后会显示在这里。"
     },
     "fields": {
       "audio": "音频",
@@ -295,7 +295,7 @@
       "selectLanguage": "选择语言",
       "songSearch": "搜索你上传的歌曲",
       "songTitle": "歌曲标题",
-      "sourceTrackSearch": "搜索歌曲",
+      "sourceTrackSearch": "搜索可用于混音的源曲目",
       "title": "标题",
       "unlockPrice": "0",
       "previewStartSeconds": "0",
@@ -309,7 +309,7 @@
       "preview": "预览",
       "publishSettings": "发布设置",
       "qualifiers": "资格标签",
-      "sourceTrack": "源曲目",
+      "sourceTrack": "混音来源",
       "license": "许可证"
     },
     "setlist": {

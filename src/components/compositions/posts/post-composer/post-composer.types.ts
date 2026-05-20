@@ -101,6 +101,8 @@ export interface LiveComposerState {
   scheduleAt?: string;
   description?: string;
   guestUserId?: string;
+  storeUrl?: string;
+  storeLabel?: string;
   coverUpload?: File | null;
   coverLabel?: string;
   trackOptions?: ComposerReference[];
@@ -124,6 +126,7 @@ export interface DerivativeStepState {
   query?: string;
   references?: ComposerReference[];
   searchResults?: ComposerReference[];
+  searchLoading?: boolean;
   requirementLabel?: string;
   licenseSummary?: DerivativeLicenseSummary;
   sourceTermsAccepted?: boolean;

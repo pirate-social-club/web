@@ -115,6 +115,8 @@ export function SearchReferencePicker({
   ariaLabel,
   emptyLabel,
   items,
+  loading = false,
+  onQueryChange,
   onSelect,
   placeholder,
   resetKey,
@@ -123,13 +125,15 @@ export function SearchReferencePicker({
   ariaLabel: string;
   emptyLabel: string;
   items: ComposerReference[];
+  loading?: boolean;
+  onQueryChange?: (query: string) => void;
   onSelect: (item: ComposerReference) => void;
   placeholder: string;
   resetKey?: number;
   value?: ComposerReference;
 }) {
   const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").createPost;
+  const copy = getLocaleMessages(locale, "routes");
   return (
     <Combobox
       key={resetKey}
@@ -137,6 +141,7 @@ export function SearchReferencePicker({
       items={items}
       itemToStringLabel={(item) => item.title}
       itemToStringValue={(item) => item.id}
+      onInputValueChange={(query) => onQueryChange?.(query)}
       onValueChange={(item) => {
         if (item) {
           onSelect(item);
@@ -146,7 +151,7 @@ export function SearchReferencePicker({
     >
       <ComboboxInput aria-label={ariaLabel} placeholder={placeholder} />
       <ComboboxContent>
-        <ComboboxEmpty>{emptyLabel}</ComboboxEmpty>
+        <ComboboxEmpty>{loading ? copy.common.loading : emptyLabel}</ComboboxEmpty>
         <ComboboxList className="py-0">
           {(item) => (
             <ComboboxItem className="py-2" key={item.id} value={item}>

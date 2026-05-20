@@ -86,6 +86,34 @@ describe("PostCard", () => {
     expect(gatedMarkup).not.toContain("Watch live");
   });
 
+  test("does not render age-gated live-room cover source before proof", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "live_room",
+            accessMode: "free",
+            ageGatePolicy: "18_plus",
+            ageGateViewerState: "proof_required",
+            contentSafetyState: "adult",
+            coverSrc: "https://media.test/adult-live-cover.jpg",
+            liveRoomId: "lr_live_adult",
+            status: "live",
+            title: "Live concert",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).not.toContain("https://media.test/adult-live-cover.jpg");
+    expect(markup).toContain('role="img"');
+  });
+
   test("renders free live-room post pages with an inline viewer once attached", () => {
     const viewerAttachResponse = {
       room: {

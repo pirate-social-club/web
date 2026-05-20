@@ -10,6 +10,7 @@ import { getLocaleMessages } from "@/locales";
 import { mediaControlButtonVariants } from "@/components/primitives/media-control-button";
 import { extractVideoPosterFrameSourceDataUrl } from "@/components/compositions/posts/post-composer/video-poster-frame";
 import { postCardType } from "./post-card.styles";
+import { StoryRegistrationBadge } from "./post-card-story-registration";
 import type { UpstreamAttribution, VideoContentSpec } from "./post-card.types";
 
 const LazyVideoPlayer = React.lazy(async () => {
@@ -166,7 +167,7 @@ export function deriveVideoUI(content: VideoContentSpec): DerivedVideoUI {
   const isLocked = accessMode === "locked";
 
   const showLockedThumbnail = isLocked && !hasEntitlement;
-  const showAgeGatedThumbnail = isAgeGated;
+  const showAgeGatedThumbnail = ageGateRequiresProof;
   const showOwned = isLocked && hasEntitlement === true;
 
   const showAttribution = !!(
@@ -271,6 +272,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
             </p>
           )}
           <VideoCaption content={content} />
+          <StoryRegistrationBadge status={content.storyRegistration} />
         </div>
       );
     }
@@ -296,6 +298,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
           </p>
         )}
         <VideoCaption content={content} />
+        <StoryRegistrationBadge status={content.storyRegistration} />
       </div>
     );
   }
@@ -312,12 +315,17 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
         disabled={!ui.canPlay}
         aria-label={content.title ? `Play ${content.title}` : copy.playVideo}
       >
-        {content.posterSrc || content.src.trim() ? (
+        {ui.ageGateRequiresProof ? (
+          <div
+            aria-label={content.title ?? copy.videoThumbnail}
+            className="aspect-video w-full bg-muted"
+            role="img"
+          />
+        ) : content.posterSrc || content.src.trim() ? (
           <VideoThumbnail
             className={cn(
               "aspect-video w-full object-cover transition-[filter,transform]",
               ui.showLockedThumbnail && "scale-[1.02] blur-[3px]",
-              ui.showAgeGatedThumbnail && "blur-md saturate-0",
             )}
             posterSrc={content.posterSrc}
             src={content.src}
@@ -367,7 +375,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
           </div>
         )}
 
-        {durationLabel && !ui.isAgeGated && (
+        {durationLabel && !ui.ageGateRequiresProof && (
           <div className="absolute bottom-2 end-2">
             <span
               className={cn(
@@ -388,6 +396,8 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
       )}
 
       <VideoCaption content={content} />
+
+      <StoryRegistrationBadge status={content.storyRegistration} />
 
       {ui.showOwned && (
         <span

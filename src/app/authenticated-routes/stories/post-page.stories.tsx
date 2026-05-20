@@ -6,6 +6,7 @@ import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome
 import { ContentRailShell } from "@/components/compositions/app/content-rail-shell/content-rail-shell";
 import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
 import type { CommunitySidebarProps } from "@/components/compositions/community/sidebar/community-sidebar.types";
+import { PostEventStoreLink } from "@/components/compositions/posts/post-event-store-link";
 import { LiveRoomViewerModal } from "@/components/compositions/posts/live-room-viewer/live-room-viewer-modal";
 import { PostThread } from "@/components/compositions/posts/post-thread/post-thread";
 import type { CommentSort, PostThreadComment } from "@/components/compositions/posts/post-thread/post-thread.types";
@@ -31,6 +32,10 @@ const sidebarProps: CommunitySidebarProps = {
   followerCount: 18400,
   memberCount: 1270,
   membershipMode: "gated",
+  store: {
+    label: "Band store",
+    url: "https://psc-zim-shop.fourthwall.com/",
+  },
   moderators: [
     {
       displayName: "Kevin Parker",
@@ -202,6 +207,7 @@ function buildPost(liveRoom: LiveRoomContentSpec): PostCardProps {
 }
 
 type EventPostPageStoryProps = {
+  eventStore?: { label: string; url: string } | null;
   liveRoom?: LiveRoomContentSpec;
   mobile?: boolean;
   modalOpen?: boolean;
@@ -231,6 +237,10 @@ function SortAction({
 }
 
 function EventPostPageStory({
+  eventStore = {
+    label: "Event merch",
+    url: "https://psc-zim-shop.fourthwall.com/",
+  },
   liveRoom = baseLiveRoom,
   mobile = false,
   modalOpen = false,
@@ -261,9 +271,32 @@ function EventPostPageStory({
         title={liveRoom.title}
       />
       <ContentRailShell
-        rail={!mobile ? <CommunitySidebar {...sidebarProps} /> : undefined}
+        rail={!mobile ? (
+          <div className="flex flex-col gap-3">
+            {eventStore ? (
+              <PostEventStoreLink
+                communityId="cmt_tameimpala"
+                label={eventStore.label}
+                liveRoomId={liveRoom.liveRoomId}
+                postId="pst_friday_night_set"
+                url={eventStore.url}
+              />
+            ) : null}
+            <CommunitySidebar {...sidebarProps} />
+          </div>
+        ) : undefined}
         reserveRail={!mobile}
       >
+        {mobile && eventStore ? (
+          <PostEventStoreLink
+            className="mx-3 mb-3"
+            communityId="cmt_tameimpala"
+            label={eventStore.label}
+            liveRoomId={liveRoom.liveRoomId}
+            postId="pst_friday_night_set"
+            url={eventStore.url}
+          />
+        ) : null}
         <PostThread
           availableCommentSorts={commentSortOptions}
           commentSort={sort}

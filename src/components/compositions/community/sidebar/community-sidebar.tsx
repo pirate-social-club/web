@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ShoppingBag } from "@phosphor-icons/react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Accordion,
@@ -23,6 +24,7 @@ import { CommunitySidebarRequirements } from "./community-sidebar-requirements";
 import { CommunitySidebarRules } from "./community-sidebar-rules";
 import type { CommunitySidebarProps } from "./community-sidebar.types";
 import { Type } from "@/components/primitives/type";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 
 function formatMemberCount(count: number, localeTag: string): string {
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
@@ -34,8 +36,51 @@ function formatMemberCount(count: number, localeTag: string): string {
 const SECTION_LABEL =
   "py-3 text-base font-semibold uppercase tracking-[0.03em] text-sidebar-foreground/55 hover:no-underline";
 
+function getUrlHost(url: string): string | null {
+  try {
+    return new URL(url).host || null;
+  } catch {
+    return null;
+  }
+}
+
+function CommunitySidebarStoreLink({
+  communityId,
+  label,
+  url,
+}: {
+  communityId?: string;
+  label: string;
+  url: string;
+}) {
+  const destinationHost = getUrlHost(url);
+
+  return (
+    <a
+      className="flex min-h-11 items-center gap-3 rounded-lg border border-border-soft bg-sidebar-accent/60 px-3 py-2.5 text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent"
+      href={url}
+      onClick={() => {
+        trackAnalyticsEvent({
+          communityId,
+          eventName: "store_link_clicked",
+          properties: {
+            destination_host: destinationHost,
+            scope: "community",
+          },
+        });
+      }}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      <ShoppingBag className="size-5 shrink-0 opacity-70" weight="fill" />
+      <span className="min-w-0 flex-1 truncate font-semibold">{label}</span>
+    </a>
+  );
+}
+
 function CommunitySidebarSections({
   charity,
+  communityId,
   description,
   flairPolicy,
   followerCount,
@@ -48,9 +93,11 @@ function CommunitySidebarSections({
   referenceLinks,
   rules,
   showDescriptionSection = false,
+  store,
 }: Pick<
   CommunitySidebarProps,
   | "charity"
+  | "communityId"
   | "description"
   | "flairPolicy"
   | "followerCount"
@@ -62,6 +109,7 @@ function CommunitySidebarSections({
   | "gates"
   | "referenceLinks"
   | "rules"
+  | "store"
 > & {
   showDescriptionSection?: boolean;
 }) {
@@ -139,6 +187,17 @@ function CommunitySidebarSections({
         </div>
       )}
 
+      {store ? (
+        <div className="flex flex-col gap-1.5">
+          <div className={SECTION_LABEL}>{copy.storeLabel ?? "Store"}</div>
+          <CommunitySidebarStoreLink
+            communityId={communityId}
+            label={store.label?.trim() || copy.storeLabel || "Store"}
+            url={store.url}
+          />
+        </div>
+      ) : null}
+
       <Accordion
         className="border-b-0"
         defaultValue={["gates", "links", "rules", "tags"]}
@@ -201,6 +260,7 @@ function CommunitySidebarSections({
 export function CommunitySidebarDetails({
   charity,
   className,
+  communityId,
   description,
   flairPolicy,
   followerCount,
@@ -212,10 +272,12 @@ export function CommunitySidebarDetails({
   gates,
   referenceLinks,
   rules,
+  store,
 }: Pick<
   CommunitySidebarProps,
   | "charity"
   | "className"
+  | "communityId"
   | "description"
   | "flairPolicy"
   | "followerCount"
@@ -227,12 +289,14 @@ export function CommunitySidebarDetails({
   | "gates"
   | "referenceLinks"
   | "rules"
+  | "store"
 >) {
   return (
     <div className={cn("rounded-lg bg-card p-4", className)}>
       <div className="flex flex-col gap-5">
         <CommunitySidebarSections
           charity={charity}
+          communityId={communityId}
           description={description}
           flairPolicy={flairPolicy}
           followerCount={followerCount}
@@ -244,6 +308,7 @@ export function CommunitySidebarDetails({
           requirementsMode={requirementsMode}
           gates={gates}
           rules={rules}
+          store={store}
           showDescriptionSection
         />
       </div>
@@ -268,6 +333,7 @@ export function CommunitySidebar({
   gates,
   referenceLinks,
   rules,
+  store,
 }: CommunitySidebarProps) {
   const isMobile = useIsMobile();
 
@@ -290,6 +356,7 @@ export function CommunitySidebar({
 
       <CommunitySidebarSections
         charity={charity}
+        communityId={communityId}
         description={description}
         flairPolicy={flairPolicy}
         followerCount={followerCount}
@@ -301,6 +368,7 @@ export function CommunitySidebar({
         requirementsMode={requirementsMode}
         gates={gates}
         rules={rules}
+        store={store}
       />
     </div>
   );

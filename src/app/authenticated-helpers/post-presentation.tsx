@@ -32,6 +32,7 @@ import {
   resolveTranslatedTextPresentation,
   withTranslationToggleProps,
 } from "@/app/authenticated-helpers/post-translation-presentation";
+import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
 
 export type HomeFeedEntry = ApiHomeFeedItem;
 export { toHomeFeedItem } from "@/app/authenticated-helpers/home-feed-presentation";
@@ -150,6 +151,7 @@ export function toCommunityFeedItem(
         : undefined,
       onComment: opts?.onComment,
       menuItems: hasPostMenu ? postMenuItems : undefined,
+      shareActions: buildPostShareActions(post),
       onMenuAction: hasPostMenu ? (key) => {
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
@@ -264,6 +266,7 @@ export function toThreadPostCard(
       : undefined,
     onComment: opts?.onComment,
     menuItems: hasPostMenu ? postMenuItems : undefined,
+    shareActions: buildPostShareActions(post),
     onMenuAction: hasPostMenu ? (key) => {
       if (key === "delete") opts?.onDelete?.();
       if (key === "remove") opts?.onRemove?.();

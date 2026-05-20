@@ -137,4 +137,33 @@ describe("CommunityPageShell", () => {
     expect(communitySidebar!.className).not.toContain("overflow-y-auto");
     expect(communitySidebar!.className).not.toContain("max-h-");
   });
+
+  test("renders the community store link in the desktop sidebar", () => {
+    mockedIsMobile = false;
+    const markup = renderToStaticMarkup(
+      <CommunityPageShell
+        communityId="cmt_test"
+        items={[]}
+        sidebar={{
+          createdAt: "2026-04-28T00:00:00.000Z",
+          displayName: "Test community",
+          membershipMode: "request",
+          moderators: [],
+          store: {
+            label: "Merch",
+            url: "https://store.example.com/test",
+          },
+        }}
+        title="Test community"
+      />,
+    );
+    const rendered = parseHTML(markup).document;
+    const storeLink = Array.from(rendered.querySelectorAll("a"))
+      .find((link) => link.getAttribute("href") === "https://store.example.com/test");
+
+    expect(storeLink === undefined).toBe(false);
+    expect(storeLink?.textContent).toContain("Merch");
+    expect(storeLink?.getAttribute("target")).toBe("_blank");
+    expect(storeLink?.getAttribute("rel")).toBe("noopener noreferrer");
+  });
 });

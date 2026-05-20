@@ -335,6 +335,12 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
     displayName: community.display_name,
     memberCount: community.member_count ?? undefined,
     membershipMode: normalizeCommunityMembershipMode(community.membership_mode),
+    store: community.store_url
+      ? {
+        label: community.store_label ?? null,
+        url: community.store_url,
+      }
+      : null,
     requirements: buildCommunitySidebarRequirements({
       defaultAgeGatePolicy: community.default_age_gate_policy ?? "none",
       gateSummaries,
@@ -419,6 +425,12 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
     followerCount: preview.follower_count ?? undefined,
     memberCount: preview.member_count ?? undefined,
     membershipMode: normalizeCommunityMembershipMode(preview.membership_mode),
+    store: preview.store_url
+      ? {
+        label: preview.store_label ?? null,
+        url: preview.store_url,
+      }
+      : null,
     owner: preview.owner
       ? {
         user: preview.owner.user,

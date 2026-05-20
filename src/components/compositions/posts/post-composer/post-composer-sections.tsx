@@ -85,6 +85,9 @@ export function PostComposerDerivativeSection({
     return null;
   }
 
+  const searchLoading = derivativeState.searchLoading === true
+    || derivativeState.searchResults === undefined;
+
   return (
     <section className={cn("space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4", isMobile && "rounded-none border-0 bg-transparent p-0")}>
       <FormSectionHeading title={copy.sections.sourceTrack} />
@@ -92,13 +95,21 @@ export function PostComposerDerivativeSection({
         ariaLabel={copy.derivative.searchSourceTracks}
         emptyLabel={copy.empty.noSourceTracks}
         items={derivativeSearchResults}
+        loading={searchLoading}
+        onQueryChange={(query) => {
+          updateDerivativeState((current) => current
+            ? { ...current, query, searchLoading: true }
+            : current);
+        }}
         onSelect={(reference) => {
           updateDerivativeState((current) => ({
             visible: true,
             trigger: current?.trigger ?? "remix",
+            query: "",
             requirementLabel: current?.requirementLabel,
             required: current?.required,
             searchResults: current?.searchResults,
+            searchLoading: false,
             references: dedupeReferences([...(current?.references ?? []), reference]),
             licenseSummary: current?.licenseSummary,
             sourceTermsAccepted: false,

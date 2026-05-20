@@ -7,6 +7,7 @@ import { PostComposer } from "./post-composer";
 import { PostComposerAttachmentCard } from "./post-composer-attachment-card";
 import { defaultMonetizationState } from "./post-composer-config";
 import { LiveTabContent } from "./post-composer-live-tab";
+import { SearchReferencePicker } from "./post-composer-references";
 import type { AssetLicenseState, MonetizationState, PostComposerProps } from "./post-composer.types";
 
 const { describe, expect, test } = BunTest;
@@ -1322,5 +1323,57 @@ describe("PostComposer monetization", () => {
 
     expect(songMode).toBe("original");
     expect(derivativeStep).toBeUndefined();
+  });
+});
+
+describe("SearchReferencePicker", () => {
+  beforeEach(() => {
+    installHookStubs();
+  });
+
+  afterEach(() => {
+    restoreHookStubs();
+  });
+
+  test("forwards typed source search queries to the caller", () => {
+    let query = "";
+    const tree = SearchReferencePicker({
+      ariaLabel: "Search remix-eligible source tracks",
+      emptyLabel: "No source tracks",
+      items: [],
+      onQueryChange: (nextQuery) => {
+        query = nextQuery;
+      },
+      onSelect: () => undefined,
+      placeholder: "Search songs",
+    });
+    const combobox = findElement(
+      tree,
+      (element) => typeof element.props.onInputValueChange === "function",
+    );
+
+    if (!combobox) {
+      throw new Error("Combobox not found");
+    }
+    (combobox.props.onInputValueChange as (value: string) => void)("Travel Guide");
+
+    expect(query).toBe("Travel Guide");
+  });
+
+  test("shows loading copy before source search results settle", () => {
+    const tree = SearchReferencePicker({
+      ariaLabel: "Search remix-eligible source tracks",
+      emptyLabel: "No source tracks",
+      items: [],
+      loading: true,
+      onSelect: () => undefined,
+      placeholder: "Search songs",
+    });
+    const loadingEmpty = findElement(
+      tree,
+      (element) => element.props.children === "Loading...",
+    );
+
+    expect(loadingEmpty).not.toBeNull();
   });
 });

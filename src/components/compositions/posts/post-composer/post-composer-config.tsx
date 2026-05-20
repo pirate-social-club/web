@@ -172,6 +172,8 @@ export function defaultLiveComposerState(live?: LiveComposerState): LiveComposer
     scheduleAt: live?.scheduleAt,
     description: live?.description,
     guestUserId: live?.guestUserId,
+    storeUrl: live?.storeUrl,
+    storeLabel: live?.storeLabel,
     coverUpload: live?.coverUpload ?? null,
     coverLabel: live?.coverLabel,
     trackOptions: live?.trackOptions,

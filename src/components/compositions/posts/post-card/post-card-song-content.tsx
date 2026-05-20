@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
 import { MediaControlButton } from "@/components/primitives/media-control-button";
 import { postCardType } from "./post-card.styles";
+import { StoryRegistrationBadge } from "./post-card-story-registration";
 import type { SongContentSpec, UpstreamAttribution } from "./post-card.types";
 
 export interface SongPostContentProps {
@@ -53,7 +54,7 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   } = content;
 
   const isAgeGated = ageGatePolicy === "18_plus" && contentSafetyState === "adult";
-  const ageGateRequiresProof = isAgeGated && ageGateViewerState !== "verified_blocked";
+  const ageGateRequiresProof = isAgeGated && ageGateViewerState !== "verified_allowed";
   
   // Access checks
   const isLocked = accessMode === "locked";
@@ -64,10 +65,10 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   const isOwned = hasEntitlement === true;
   
   // Playback availability
-  const isPlayable = !isAgeGated;
-  const canShowPreview = isLocked && !isOwned && !isAgeGated;
+  const isPlayable = !ageGateRequiresProof;
+  const canShowPreview = isLocked && !isOwned && !ageGateRequiresProof;
   
-  const showAgeGatedArtwork = isAgeGated;
+  const showAgeGatedArtwork = ageGateRequiresProof;
   
   // Commerce UI
   const showPrice = isListed && isListingActive && !isOwned && isLocked;
@@ -176,21 +177,24 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
       <div className="flex items-center gap-3">
         {/* Artwork */}
         <div className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted">
-          {content.artworkSrc ? (
+          {ui.showAgeGatedArtwork ? (
+            <>
+              <div
+                aria-label={content.title}
+                className="size-full bg-muted"
+                role="img"
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <FilledLockIcon className="size-6 text-white" weight="fill" />
+              </div>
+            </>
+          ) : content.artworkSrc ? (
             <>
               <img
                 alt={content.title}
-                className={cn(
-                  "size-full object-cover transition-[filter,transform]",
-                  ui.showAgeGatedArtwork && "blur-md saturate-0",
-                )}
+                className="size-full object-cover"
                 src={content.artworkSrc}
               />
-              {ui.showAgeGatedArtwork && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                  <FilledLockIcon className="size-6 text-white" weight="fill" />
-                </div>
-              )}
             </>
           ) : (
             <MusicNote className="size-5 text-muted-foreground" />
@@ -203,7 +207,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
             <p className={cn("min-w-0 truncate font-semibold text-foreground", postCardType.label)}>
               {content.title}
             </p>
-            {content.durationLabel && !ui.isAgeGated && (
+            {content.durationLabel && !ui.ageGateRequiresProof && (
               <span className={cn("shrink-0 font-normal text-muted-foreground", postCardType.label)}>
                 ({content.durationLabel})
               </span>
@@ -236,6 +240,8 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
           </div>
         ) : null}
       </div>
+
+      <StoryRegistrationBadge status={content.storyRegistration} />
 
       {ui.showOwned && (
         <span

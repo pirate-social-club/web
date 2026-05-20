@@ -135,10 +135,14 @@ export interface CommunityProfileEditorPageProps {
   onDescriptionChange?: (value: string) => void;
   onDisplayNameChange?: (value: string) => void;
   onSave?: () => void;
+  onStoreLabelChange?: (value: string) => void;
+  onStoreUrlChange?: (value: string) => void;
   pendingAvatarLabel?: string;
   pendingBannerLabel?: string;
   saveDisabled?: boolean;
   saveLoading?: boolean;
+  storeLabel?: string;
+  storeUrl?: string;
 }
 
 export function CommunityProfileEditorPage({
@@ -156,10 +160,14 @@ export function CommunityProfileEditorPage({
   onDescriptionChange,
   onDisplayNameChange,
   onSave,
+  onStoreLabelChange,
+  onStoreUrlChange,
   pendingAvatarLabel,
   pendingBannerLabel,
   saveDisabled,
   saveLoading,
+  storeLabel = "",
+  storeUrl = "",
 }: CommunityProfileEditorPageProps) {
   const copy = defaultRouteCopy;
   const mc = copy.moderation.profile;
@@ -250,6 +258,32 @@ export function CommunityProfileEditorPage({
               rows={5}
               value={description}
             />
+          </div>
+          <div className="grid gap-5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <div className="space-y-2">
+              <label className="text-base font-medium text-foreground" htmlFor="community-profile-store-url">
+                Store URL
+              </label>
+              <Input
+                id="community-profile-store-url"
+                onChange={(event) => onStoreUrlChange?.(event.target.value)}
+                placeholder="https://store.example.com"
+                type="url"
+                value={storeUrl}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-base font-medium text-foreground" htmlFor="community-profile-store-label">
+                Store label
+              </label>
+              <Input
+                id="community-profile-store-label"
+                maxLength={80}
+                onChange={(event) => onStoreLabelChange?.(event.target.value)}
+                placeholder="Store"
+                value={storeLabel}
+              />
+            </div>
           </div>
           <div className="community-moderation-inline-save-action flex items-center justify-end gap-3 border-t border-border pt-5">
             {onBackClick ? (

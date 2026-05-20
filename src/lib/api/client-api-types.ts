@@ -40,12 +40,14 @@ export type ApiSongArtifactUploadContentRequest = {
 
 export type ApiDerivativeSourceKind = "song" | "video";
 export type ApiDerivativeSourceQueryKind = ApiDerivativeSourceKind | "live";
+export type ApiDerivativeSourceScope = "community" | "global";
 
 export type ApiDerivativeSource = {
   id: string;
   object: "derivative_source";
   community: string;
   asset: string;
+  source_ref: string;
   title: string;
   kind: ApiDerivativeSourceKind;
   story_ip: string;
@@ -84,6 +86,8 @@ export type ApiUpdateCommunityRequest = {
   description?: string | null;
   avatar_ref?: string | null;
   banner_ref?: string | null;
+  store_url?: string | null;
+  store_label?: string | null;
   agent_posting_policy?: Community["agent_posting_policy"] | null;
   agent_posting_scope?: Community["agent_posting_scope"] | null;
   guest_comment_policy?: Community["guest_comment_policy"] | null;
@@ -171,6 +175,8 @@ export type ApiCreateLiveRoomRequest = {
   guest_user?: string | null;
   event_start_at?: number | null;
   cover_ref?: string | null;
+  store_url?: string | null;
+  store_label?: string | null;
   performer_allocations?: Array<{
     user?: string | null;
     role?: "host" | "guest" | null;
@@ -210,6 +216,8 @@ export type ApiLiveRoom = {
   title: string;
   description: string | null;
   cover_ref: string | null;
+  store_url: string | null;
+  store_label: string | null;
   event_start_at: number | null;
   live_started_at: number | null;
   ended_at: number | null;

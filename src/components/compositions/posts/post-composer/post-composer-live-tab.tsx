@@ -178,6 +178,29 @@ export function LiveTabContent({
         ) : null}
       </div>
 
+      <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div>
+          <FieldLabel label={copy.live.storeUrl} />
+          <Input
+            className="h-10"
+            onChange={(event) => onLiveChange({ ...live, storeUrl: event.target.value })}
+            placeholder={copy.live.storeUrlPlaceholder}
+            type="url"
+            value={live.storeUrl ?? ""}
+          />
+        </div>
+        <div>
+          <FieldLabel label={copy.live.storeLabel} />
+          <Input
+            className="h-10"
+            maxLength={80}
+            onChange={(event) => onLiveChange({ ...live, storeLabel: event.target.value })}
+            placeholder={copy.live.storeLabelPlaceholder}
+            value={live.storeLabel ?? ""}
+          />
+        </div>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-3">
         <div>
           <FieldLabel label={copy.live.roomKind} />

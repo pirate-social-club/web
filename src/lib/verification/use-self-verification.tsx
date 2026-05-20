@@ -12,6 +12,7 @@ import { useApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getVerificationPromptCopy } from "@/lib/identity-gates";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { isAndroidRuntime } from "@/lib/platform-detection";
 import {
   buildSelfVerificationLaunch,
   buildSelfVerificationCallbackHref,
@@ -123,6 +124,7 @@ export function useSelfVerification(input: {
   const [selfModalOpen, setSelfModalOpen] = React.useState(false);
   const onVerifiedRef = React.useRef(onVerified);
   const completionInFlightRef = React.useRef(false);
+  const shouldUseSameDeviceLaunch = isMobile || isAndroidRuntime();
 
   React.useEffect(() => {
     onVerifiedRef.current = onVerified;
@@ -154,7 +156,7 @@ export function useSelfVerification(input: {
         verification_requirements: nextVerificationRequirements,
       });
       const launch = result.launch?.self_app;
-      const deeplinkCallback = isMobile && typeof window !== "undefined"
+      const deeplinkCallback = shouldUseSameDeviceLaunch && typeof window !== "undefined"
         ? buildSelfVerificationCallbackHref(window.location.href, result.id)
         : null;
       const launchResult = buildSelfVerificationLaunch(launch, { deeplinkCallback });
@@ -170,7 +172,7 @@ export function useSelfVerification(input: {
 
       setRequestedCapabilities(result.requested_capabilities);
       setSelfSession(result);
-      const openedModal = !options.skipModal || !isMobile;
+      const openedModal = !options.skipModal || !shouldUseSameDeviceLaunch;
       if (openedModal) {
         setSelfModalOpen(true);
       }
@@ -186,7 +188,7 @@ export function useSelfVerification(input: {
     } finally {
       setSelfLoading(false);
     }
-  }, [api, isMobile, startErrorMessage, storageKey, verificationIntent]);
+  }, [api, shouldUseSameDeviceLaunch, startErrorMessage, storageKey, verificationIntent]);
 
   const handleModalOpenChange = React.useCallback((open: boolean) => {
     setSelfModalOpen(open);
@@ -344,7 +346,7 @@ export function useSelfVerification(input: {
     }
 
     const launch = selfSession.launch?.self_app;
-    const deeplinkCallback = isMobile && typeof window !== "undefined"
+    const deeplinkCallback = shouldUseSameDeviceLaunch && typeof window !== "undefined"
       ? buildSelfVerificationCallbackHref(window.location.href, selfSession.id)
       : null;
     const launchResult = buildSelfVerificationLaunch(launch, { deeplinkCallback });
@@ -356,7 +358,7 @@ export function useSelfVerification(input: {
       href: launchResult.href,
       selfApp: launchResult.selfApp,
     };
-  }, [isMobile, locale, requestedCapabilities, selfSession]);
+  }, [locale, requestedCapabilities, selfSession, shouldUseSameDeviceLaunch]);
 
   return {
     handleModalOpenChange,

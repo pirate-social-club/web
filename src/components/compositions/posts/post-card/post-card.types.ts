@@ -6,7 +6,7 @@ import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types
 export type AccessMode = "public" | "locked";
 export type PublicationState = "draft" | "story_requested" | "story_published" | "story_failed";
 export type SongMode = "original" | "remix";
-export type RightsBasis = "none" | "original" | "derivative" | "attribution_only";
+export type RightsBasis = "none" | "original" | "derivative" | "attribution_only" | "licensed_performance";
 export type AnalysisState = "pending" | "allow" | "allow_with_required_reference" | "review_required" | "blocked";
 export type ContentSafetyState = "pending" | "safe" | "sensitive" | "adult";
 export type AgeGatePolicy = CommunityDefaultAgeGatePolicy;
@@ -24,6 +24,14 @@ export interface UpstreamAttribution {
   relationshipType: "remix_of" | "references_song" | "references_video" | "inspired_by" | "samples";
   title: string;
   artist?: string;
+}
+
+export type StoryRegistrationState = "registered" | "pending" | "failed";
+
+export interface StoryRegistrationStatus {
+  state: StoryRegistrationState;
+  label: string;
+  description?: string;
 }
 
 export type VideoMode = "original" | "reaction" | "clip" | "remix";
@@ -128,9 +136,10 @@ export interface SongContentSpec {
   analysisState?: AnalysisState;
   contentSafetyState?: ContentSafetyState;
   ageGatePolicy?: AgeGatePolicy;
-  ageGateViewerState?: "proof_required" | "verified_blocked";
+  ageGateViewerState?: "proof_required" | "verified_allowed";
 
   upstreamAttributions?: UpstreamAttribution[];
+  storyRegistration?: StoryRegistrationStatus;
 
   // Commerce axis - from specs/domain/marketplace.md
   listingMode?: ListingMode;
@@ -172,6 +181,7 @@ export interface VideoContentSpec {
   ageGatePolicy?: AgeGatePolicy;
   ageGateViewerState?: "proof_required" | "verified_allowed";
   upstreamAttributions?: UpstreamAttribution[];
+  storyRegistration?: StoryRegistrationStatus;
 
   listingMode?: ListingMode;
   listingStatus?: ListingStatus;
@@ -312,6 +322,9 @@ export type PostCardContent =
   | SongContentSpec;
 
 export type PostCardMenuItem = ActionMenuItem;
+export type PostCardShareAction = ActionMenuItem & {
+  onSelect?: () => void | Promise<void>;
+};
 
 export type PostCardIdentity = {
   kind: "community" | "user";
@@ -378,6 +391,7 @@ export interface PostCardProps {
   showTranslationLabel?: string;
   engagement: PostCardEngagement;
   menuItems?: PostCardMenuItem[];
+  shareActions?: PostCardShareAction[];
   onVote?: (direction: "up" | "down" | null) => void;
   onComment?: () => void;
   onShare?: () => void;

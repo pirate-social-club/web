@@ -1,12 +1,57 @@
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
-import type { PostCardProps, SongContentSpec } from "@/components/compositions/posts/post-card/post-card.types";
+import type { PostCardProps, SongContentSpec, StoryRegistrationStatus } from "@/components/compositions/posts/post-card/post-card.types";
 import type {
   AssetSourceDescriptor,
   SongPlaybackDescriptor,
 } from "@/app/authenticated-helpers/song-commerce";
 import type { SongPresentationOptions } from "@/app/authenticated-helpers/post-presentation-types";
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
+
+type StoryRoyaltyAsset = NonNullable<SongPresentationOptions["asset"]>;
+
+function formatStoryRegistrationFailure(error: string | null | undefined): string {
+  const normalized = error?.trim() ?? "";
+  if (normalized.includes("story_royalty_config_missing")) {
+    return "Story royalty configuration is missing. This will not appear as a remix source until registration is retried.";
+  }
+  if (normalized.includes("story_royalty_registration_unavailable")) {
+    return "Story registration is unavailable. This will not appear as a remix source until registration succeeds.";
+  }
+  if (normalized) {
+    const readable = normalized
+      .replace(/^royalty_registration_failed:/, "")
+      .replace(/_/g, " ");
+    return `Story registration failed: ${readable}.`;
+  }
+  return "This will not appear as a remix source until Story registration succeeds.";
+}
+
+function toStoryRegistrationStatus(asset: StoryRoyaltyAsset | null | undefined): StoryRegistrationStatus | undefined {
+  switch (asset?.story_royalty_registration_status) {
+    case "registered":
+      return {
+        state: "registered",
+        label: "Remix-eligible",
+        description: "Story IP registration is complete.",
+      };
+    case "pending":
+      return {
+        state: "pending",
+        label: "IP registration in progress",
+        description: "This will appear as a remix source after Story registration completes.",
+      };
+    case "failed":
+      return {
+        state: "failed",
+        label: "IP registration failed",
+        description: formatStoryRegistrationFailure(asset.story_error),
+      };
+    case "none":
+    default:
+      return undefined;
+  }
+}
 
 function toSongPlaybackDescriptor(
   postResponse: ApiPost,
@@ -130,6 +175,7 @@ export function toVideoPostContent(
     playbackState: assetSourceState?.playbackState ?? "idle",
     posterSrc: primaryMedia?.poster_ref ?? undefined,
     priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
+    storyRegistration: toStoryRegistrationStatus(songOptions?.asset),
     src: assetSourceState?.src ?? primaryMedia?.storage_ref ?? "",
     title: post.song_title ?? input.title,
   };
@@ -141,6 +187,7 @@ export function toSongPostContent(
   input: {
     captionDir?: "rtl";
     captionLang?: string;
+    onVerifyAge?: () => void;
     resolvedCaption?: string;
     title: string;
   },
@@ -167,6 +214,7 @@ export function toSongPostContent(
     type: "song",
     accessMode: post.access_mode ?? "public",
     ageGatePolicy: post.age_gate_policy,
+    ageGateViewerState: postResponse.age_gate_viewer_state ?? undefined,
     analysisState: post.analysis_state,
     contentSafetyState: post.content_safety_state,
     hasEntitlement: (post.access_mode ?? "public") === "public"
@@ -181,6 +229,7 @@ export function toSongPostContent(
     onBuy: songOptions?.onBuy,
     onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
     onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
+    onVerifyAge: input.onVerifyAge,
     playbackState,
     annotationsUrl: post.song_annotations_url ?? undefined,
     caption: input.resolvedCaption,
@@ -189,6 +238,7 @@ export function toSongPostContent(
     priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
     rightsBasis: post.rights_basis ?? undefined,
     songMode: post.song_mode ?? undefined,
+    storyRegistration: toStoryRegistrationStatus(songOptions?.asset),
     title: songPresentation?.title ?? post.song_title ?? input.title,
     artworkSrc: songPresentation?.cover_art_ref ?? undefined,
     durationMs: songPresentation?.duration_ms ?? undefined,

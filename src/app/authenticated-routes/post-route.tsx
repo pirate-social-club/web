@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
+import type { Asset as ApiAsset, CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
 import { SlidersHorizontal } from "@phosphor-icons/react";
 
 import { isApiAuthError, isApiNotFoundError } from "@/lib/api/client";
@@ -10,6 +10,7 @@ import { navigate } from "@/app/router";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
 import { ContentRailShell } from "@/components/compositions/app/content-rail-shell/content-rail-shell";
 import { CommunitySidebar } from "@/components/compositions/community/sidebar/community-sidebar";
+import { PostEventStoreLink } from "@/components/compositions/posts/post-event-store-link";
 import { PostThread } from "@/components/compositions/posts/post-thread/post-thread";
 import { LiveRoomViewerModal } from "@/components/compositions/posts/live-room-viewer/live-room-viewer-modal";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
@@ -158,6 +159,9 @@ export function PostPage({ postId }: { postId: string }) {
   const hasSession = Boolean(session?.accessToken);
   const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const activeLiveRoomId = post?.post.anchor_live_room ?? null;
+  const activeAssetId = post?.post.asset ?? null;
+  const activeAssetPostType = post?.post.post_type ?? null;
+  const [threadAsset, setThreadAsset] = React.useState<ApiAsset | null>(null);
   const [liveRoomAccess, setLiveRoomAccess] = React.useState<ApiLiveRoomAccessResponse | null>(null);
   const [liveViewerSession, setLiveViewerSession] = React.useState<ApiLiveRoomViewerAttachResponse | null>(null);
   const [liveViewerOpen, setLiveViewerOpen] = React.useState(false);
@@ -226,6 +230,48 @@ export function PostPage({ postId }: { postId: string }) {
       unavailableMessage: "Age verification is required to view 18+ content.",
     });
   }, [session, requestAuth, startAgeSelfVerification]);
+
+  React.useEffect(() => {
+    const communityId = community?.id;
+    const shouldLoadAsset = Boolean(
+      session?.accessToken
+        && communityId
+        && activeAssetId
+        && (activeAssetPostType === "song" || activeAssetPostType === "video"),
+    );
+
+    if (!shouldLoadAsset || !communityId || !activeAssetId) {
+      setThreadAsset(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setThreadAsset(null);
+
+    void api.communities.getAsset(communityId, activeAssetId)
+      .then((asset) => {
+        if (!cancelled) {
+          setThreadAsset(asset);
+        }
+      })
+      .catch((assetError) => {
+        if (cancelled) return;
+        setThreadAsset(null);
+        if (!isApiAuthError(assetError) && !isApiNotFoundError(assetError)) {
+          logger.warn("[post-route] asset status load failed", {
+            assetId: activeAssetId,
+            communityId,
+            error: getErrorMessage(assetError, "Could not load asset status."),
+            postId,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAssetId, activeAssetPostType, api.communities, community?.id, postId, session?.accessToken]);
+
   const refreshLiveRoomAccess = React.useCallback(async () => {
     if (!community?.id || !activeLiveRoomId) {
       setLiveRoomAccess(null);
@@ -717,7 +763,7 @@ export function PostPage({ postId }: { postId: string }) {
     return <RouteLoadFailureState description={copy.routeStatus.post.incomplete} title={pageTitle} />;
   }
 
-  const threadAssetId = post.post.asset ?? null;
+  const threadAssetId = activeAssetId;
   const threadLiveRoomId = post.post.anchor_live_room ?? null;
   const threadListing = threadAssetId ? listingsByAssetId[threadAssetId] : undefined;
   const threadPurchase = threadAssetId ? purchasesByAssetId[threadAssetId] : undefined;
@@ -728,6 +774,7 @@ export function PostPage({ postId }: { postId: string }) {
   const songOptions = (post.post.post_type === "song" || post.post.post_type === "video") && community && threadAssetId
     ? {
       currentUserId: session?.user?.id,
+      asset: threadAsset,
       listing: threadListing,
       onBuy: threadListing ? () => void handleBuySong(
         threadListing,
@@ -740,6 +787,12 @@ export function PostPage({ postId }: { postId: string }) {
     }
     : undefined;
   const liveRoom = liveRoomAccess?.room ?? null;
+  const eventStore = liveRoom?.store_url
+    ? {
+      label: liveRoom.store_label?.trim() || copy.community.storeLabel || "Store",
+      url: liveRoom.store_url,
+    }
+    : null;
   const viewerIsLiveRoomHost = sameUserId(session?.user?.id, liveRoom?.host_user)
     || Boolean(threadLiveRoomId && sameUserId(session?.user?.id, post.post.author_user));
   const viewerIsLiveRoomGuest = sameUserId(session?.user?.id, liveRoom?.guest_user);
@@ -865,7 +918,33 @@ export function PostPage({ postId }: { postId: string }) {
         open={liveViewerOpen}
         title={liveViewerSession?.room.title ?? liveRoomAccess?.room.title ?? post.post.title ?? "Live room"}
       />
-        <ContentRailShell rail={!isMobile && threadSidebarProps ? <CommunitySidebar {...threadSidebarProps} /> : undefined} reserveRail={!isMobile}>
+      <ContentRailShell
+        rail={!isMobile && (eventStore || threadSidebarProps) ? (
+          <div className="flex flex-col gap-3">
+            {eventStore ? (
+              <PostEventStoreLink
+                communityId={community?.id}
+                label={eventStore.label}
+                liveRoomId={threadLiveRoomId}
+                postId={postId}
+                url={eventStore.url}
+              />
+            ) : null}
+            {threadSidebarProps ? <CommunitySidebar {...threadSidebarProps} /> : null}
+          </div>
+        ) : undefined}
+        reserveRail={!isMobile}
+      >
+        {isMobile && eventStore ? (
+          <PostEventStoreLink
+            className="mx-3 mb-3"
+            communityId={community?.id}
+            label={eventStore.label}
+            liveRoomId={threadLiveRoomId}
+            postId={postId}
+            url={eventStore.url}
+          />
+        ) : null}
         <PostThread
           availableCommentSorts={commentSortOptions}
           commentSort={commentSort}

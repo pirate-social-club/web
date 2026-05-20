@@ -1,4 +1,5 @@
 import type {
+  Asset as ApiAsset,
   CommunityListing as ApiCommunityListing,
   CommunityPurchase as ApiCommunityPurchase,
 } from "@pirate/api-contracts";
@@ -12,6 +13,7 @@ import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from 
 import type { SongPlaybackController } from "@/app/authenticated-helpers/song-commerce";
 
 export type SongPresentationOptions = {
+  asset?: ApiAsset | null;
   currentUserId?: string | null;
   listing?: ApiCommunityListing;
   localeTag?: string;

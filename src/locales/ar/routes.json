@@ -208,14 +208,14 @@
       "licenseParentIp": "IP الأصل على Story",
       "licenseTermsId": "معرّف شروط الترخيص",
       "licenseNewRemixTerms": "شروط الريمكس الجديدة",
-      "searchSourceTracks": "ابحث عن المسارات المصدر"
+      "searchSourceTracks": "ابحث عن المسارات المصدر المؤهلة للريمكس"
     },
     "empty": {
       "noOptionalQualifiers": "لا توجد مؤهلات اختيارية متاحة لهذا المجتمع.",
       "noQualifiers": "لم يتم العثور على مؤهلات.",
-      "noReferences": "لا توجد أعمال مصدر مرفقة بعد.",
+      "noReferences": "لا توجد مصادر ريمكس مرفقة بعد.",
       "noSongs": "لم يتم العثور على أغانٍ.",
-      "noSourceTracks": "لم يتم العثور على مسارات مصدر."
+      "noSourceTracks": "لا توجد مسارات مصدر مؤهلة للريمكس بعد. ستظهر الأغاني هنا بعد اكتمال تسجيل Story."
     },
     "fields": {
       "audio": "الصوت",
@@ -295,7 +295,7 @@
       "selectLanguage": "اختر اللغة",
       "songSearch": "ابحث في أغانيك المرفوعة",
       "songTitle": "عنوان الأغنية",
-      "sourceTrackSearch": "ابحث عن الأغاني",
+      "sourceTrackSearch": "ابحث عن المسارات المصدر المؤهلة للريمكس",
       "title": "العنوان",
       "unlockPrice": "0",
       "previewStartSeconds": "0",
@@ -309,7 +309,7 @@
       "preview": "معاينة",
       "publishSettings": "إعدادات النشر",
       "qualifiers": "المؤهلات",
-      "sourceTrack": "المسار المصدر",
+      "sourceTrack": "مصدر الريمكس",
       "license": "الترخيص"
     },
     "setlist": {

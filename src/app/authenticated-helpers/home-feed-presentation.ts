@@ -30,6 +30,7 @@ import {
   canShowOriginalToggle,
   withTranslationToggleProps,
 } from "@/app/authenticated-helpers/post-translation-presentation";
+import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
 
 export type HomeFeedEntry = ApiHomeFeedItem;
 
@@ -113,6 +114,7 @@ export function toHomeFeedItem(
         ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)
         : undefined,
       onComment: opts?.onComment,
+      shareActions: buildPostShareActions(post),
       onVote: opts?.onVote,
       postHref: `/p/${postId}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),

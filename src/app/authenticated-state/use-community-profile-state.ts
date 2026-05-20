@@ -18,6 +18,8 @@ export function useCommunityProfileState({
   const api = useApi();
   const [profileDisplayName, setProfileDisplayName] = React.useState("");
   const [profileDescription, setProfileDescription] = React.useState("");
+  const [profileStoreUrl, setProfileStoreUrl] = React.useState("");
+  const [profileStoreLabel, setProfileStoreLabel] = React.useState("");
   const [profileAvatarFile, setProfileAvatarFile] = React.useState<File | null>(null);
   const [profileBannerFile, setProfileBannerFile] = React.useState<File | null>(null);
   const [profileAvatarRemoved, setProfileAvatarRemoved] = React.useState(false);
@@ -32,6 +34,8 @@ export function useCommunityProfileState({
 
     setProfileDisplayName(community.display_name);
     setProfileDescription(community.description ?? "");
+    setProfileStoreUrl(community.store_url ?? "");
+    setProfileStoreLabel(community.store_label ?? "");
     setProfileAvatarFile(null);
     setProfileBannerFile(null);
     setProfileAvatarRemoved(community.avatar_ref == null);
@@ -42,6 +46,8 @@ export function useCommunityProfileState({
   const profileHasChanges = community == null ? false : (
     profileDisplayName.trim() !== community.display_name.trim()
     || profileDescription !== (community.description ?? "")
+    || profileStoreUrl.trim() !== (community.store_url ?? "")
+    || profileStoreLabel.trim() !== (community.store_label ?? "")
     || profileAvatarFile !== null
     || profileBannerFile !== null
     || (profileAvatarRemoved && community.avatar_ref != null)
@@ -74,6 +80,8 @@ export function useCommunityProfileState({
         description: profileDescription.trim() ? profileDescription : null,
         avatar_ref: avatarRef,
         banner_ref: bannerRef,
+        store_url: profileStoreUrl.trim() || null,
+        store_label: profileStoreLabel.trim() || null,
       });
       setCommunity(updatedCommunity);
       setProfileAvatarFile(null);
@@ -95,6 +103,8 @@ export function useCommunityProfileState({
     profileBannerRemoved,
     profileDescription,
     profileDisplayName,
+    profileStoreLabel,
+    profileStoreUrl,
     savingProfile,
     setCommunity,
   ]);
@@ -109,6 +119,8 @@ export function useCommunityProfileState({
     profileDisplayName,
     profileDisplayNameError,
     profileHasChanges,
+    profileStoreLabel,
+    profileStoreUrl,
     savingProfile,
     setProfileAvatarFile,
     setProfileAvatarRemoved,
@@ -117,5 +129,7 @@ export function useCommunityProfileState({
     setProfileDescription,
     setProfileDisplayName,
     setProfileDisplayNameError,
+    setProfileStoreLabel,
+    setProfileStoreUrl,
   };
 }

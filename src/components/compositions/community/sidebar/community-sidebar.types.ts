@@ -70,6 +70,11 @@ export interface CommunitySidebarCharity {
   name: string;
 }
 
+export interface CommunitySidebarStore {
+  label?: string | null;
+  url: string;
+}
+
 export interface CommunitySidebarGateItem {
   gateType: string;
   label: string;
@@ -98,6 +103,7 @@ export interface CommunitySidebarProps {
   owner?: CommunitySidebarRoleHolder | null;
   moderators: CommunitySidebarRoleHolder[];
   namespacePanel?: CommunitySidebarNamespacePanel | null;
+  store?: CommunitySidebarStore | null;
   requirements?: string[];
   requirementsMode?: "all" | "any";
   gates?: CommunitySidebarGateItem[];

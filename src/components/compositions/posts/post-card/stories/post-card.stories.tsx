@@ -1,10 +1,22 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
+import { ArrowsClockwise, Copy, ShareNetwork } from "@phosphor-icons/react";
 
 import { PostCard } from "../post-card";
 import { PostCardSkeleton } from "../post-card-skeleton";
-import type { PostCardProps } from "../post-card.types";
+import type { PostCardProps, PostCardShareAction } from "../post-card.types";
 import { UiLocaleProvider } from "@/lib/ui-locale";
+
+const shareActions: PostCardShareAction[] = [
+  { key: "crosspost", label: "Crosspost", icon: <ArrowsClockwise className="size-5" /> },
+  { key: "copy-link", label: "Copy link", icon: <Copy className="size-5" /> },
+  { key: "native-share", label: "Share...", icon: <ShareNetwork className="size-5" /> },
+];
+
+const ineligibleShareActions: PostCardShareAction[] = [
+  { key: "copy-link", label: "Copy link", icon: <Copy className="size-5" /> },
+  { key: "native-share", label: "Share...", icon: <ShareNetwork className="size-5" /> },
+];
 
 const basePost: PostCardProps = {
   viewContext: "home",
@@ -16,6 +28,7 @@ const basePost: PostCardProps = {
   title: "What's everyone listening to this week?",
   content: { type: "text", body: "Drop your top tracks below. Looking for new stuff across all genres." },
   engagement: { score: 342, commentCount: 47 },
+  shareActions,
   menuItems: [
     { key: "save", label: "Save post" },
     { key: "hide", label: "Hide post" },
@@ -49,6 +62,43 @@ export const TextPost: Story = {
   render: () => <PostCard {...basePost} />,
 };
 
+export const SharePillActions: Story = {
+  name: "Share Pill / Crosspost and Link",
+  render: () => (
+    <PostCard
+      {...basePost}
+      shareActions={shareActions.map((action) => ({
+        ...action,
+        onSelect: () => undefined,
+      }))}
+    />
+  ),
+};
+
+export const SharePillCrosspostIneligible: Story = {
+  name: "Share Pill / Link Only",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Crosspost source is not eligible to be crossposted again"
+      content={{
+        type: "crosspost",
+        source: {
+          status: "available",
+          communityLabel: "c/music",
+          communityHref: "#",
+          authorLabel: "u/ana",
+          authorHref: "#",
+          postType: "text",
+          title: "What makes a great opener for a live set?",
+          postHref: "#",
+        },
+      }}
+      shareActions={ineligibleShareActions}
+    />
+  ),
+};
+
 export const CrosspostAvailable: Story = {
   name: "Crosspost / Available Source",
   render: () => (
@@ -74,6 +124,7 @@ export const CrosspostAvailable: Story = {
         },
       }}
       engagement={{ score: 12, commentCount: 3 }}
+      shareActions={ineligibleShareActions}
     />
   ),
 };
@@ -105,6 +156,7 @@ export const CrosspostImageSource: Story = {
         },
       }}
       engagement={{ score: 18, commentCount: 5 }}
+      shareActions={ineligibleShareActions}
     />
   ),
 };
@@ -136,6 +188,7 @@ export const CrosspostVideoSource: Story = {
         },
       }}
       engagement={{ score: 27, commentCount: 8 }}
+      shareActions={ineligibleShareActions}
     />
   ),
 };
@@ -167,6 +220,7 @@ export const CrosspostLinkSource: Story = {
         },
       }}
       engagement={{ score: 31, commentCount: 6 }}
+      shareActions={ineligibleShareActions}
     />
   ),
 };
@@ -198,6 +252,7 @@ export const CrosspostSongSource: Story = {
         },
       }}
       engagement={{ score: 33, commentCount: 11 }}
+      shareActions={ineligibleShareActions}
     />
   ),
 };
@@ -221,6 +276,7 @@ export const CrosspostUnavailableSource: Story = {
         },
       }}
       engagement={{ score: 21, commentCount: 9 }}
+      shareActions={ineligibleShareActions}
     />
   ),
 };

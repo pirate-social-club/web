@@ -100,6 +100,10 @@ const tameImpalaSidebar: CommunitySidebarProps = {
   membershipMode: "request",
   memberCount: 48231,
   moderators: [],
+  store: {
+    label: "Band store",
+    url: "https://psc-zim-shop.fourthwall.com/",
+  },
   referenceLinks: [
     {
       communityReferenceLinkId: "spotify",

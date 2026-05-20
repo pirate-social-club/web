@@ -74,5 +74,6 @@ describe("deriveVideoUI", () => {
 
     expect(ui.ageGateRequiresProof).toBe(false);
     expect(ui.canPlay).toBe(true);
+    expect(ui.showAgeGatedThumbnail).toBe(false);
   });
 });

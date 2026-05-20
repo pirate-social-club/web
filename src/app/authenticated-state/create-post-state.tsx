@@ -17,6 +17,7 @@ import { getLocaleMessages } from "@/locales";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import { getErrorMessage } from "@/lib/error-utils";
+import { toast } from "@/components/primitives/sonner";
 import type {
   CommunityCharityPartner,
   ComposerReference,
@@ -34,6 +35,7 @@ import { parseUsdInput } from "@/lib/formatting/currency";
 import { getFreedomBrowserDetectionSnapshot, prefersNativeRadicleLinks } from "@/lib/resource-links";
 import { resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
 import { buildBasePostRequest } from "@/app/authenticated-helpers/create-post-submit/base";
+import { buildStoryRegistrationCreationWarning } from "@/app/authenticated-helpers/story-registration-warning";
 import { submitImagePost } from "@/app/authenticated-helpers/create-post-submit/image";
 import { submitLinkPost } from "@/app/authenticated-helpers/create-post-submit/link";
 import { submitLiveRoom } from "@/app/authenticated-helpers/create-post-submit/live";
@@ -86,15 +88,32 @@ export function songArtifactBundleToComposerReference(bundle: ApiSongArtifactBun
   };
 }
 
-export function derivativeSourceToComposerReference(source: ApiDerivativeSource): ComposerReference {
+export function derivativeSourceToComposerReference(
+  source: ApiDerivativeSource,
+  options: { preferDirectStoryRef?: boolean } = {},
+): ComposerReference {
   return {
-    id: `story:asset:${source.asset}`,
+    id: options.preferDirectStoryRef && source.source_ref ? source.source_ref : `story:asset:${source.asset}`,
     title: source.title,
     subtitle: source.creator_handle ?? source.creator_display_name ?? undefined,
     licensePreset: source.license_preset,
     upstreamRoyaltyPct: source.commercial_rev_share_pct,
     parentIpId: source.story_ip,
     licenseTermsId: source.story_license_terms,
+  };
+}
+
+export function buildDerivativeSourceSearchOptions(query: string | null | undefined): {
+  kind: "song";
+  scope: "global";
+  q: string | null;
+  limit: 25;
+} {
+  return {
+    kind: "song",
+    scope: "global",
+    q: query?.trim() || null,
+    limit: 25,
   };
 }
 
@@ -367,7 +386,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     void api.communities.listDerivativeSources(communityId, { kind: "live", limit: 25 })
       .then((result) => {
         if (cancelled) return;
-        const trackOptions = result.items.map(derivativeSourceToComposerReference);
+        const trackOptions = result.items.map((source) => derivativeSourceToComposerReference(source));
         setLiveState((current) => ({ ...current, trackOptions }));
       })
       .catch((error: unknown) => {
@@ -389,36 +408,51 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       return () => { cancelled = true; };
     }
 
-    void api.communities.listDerivativeSources(communityId, { kind: "song", limit: 25 })
-      .then((result) => {
-        if (cancelled) return;
-        const searchResults = result.items.map(derivativeSourceToComposerReference);
-        setDerivativeStep((current) => {
-          return {
-            visible: true,
-            required: true,
-            trigger: "remix",
-            requirementLabel: current?.requirementLabel,
-            searchResults,
-            references: current?.references ?? [],
-            licenseSummary: current?.licenseSummary,
-            sourceTermsAccepted: current?.sourceTermsAccepted === true,
-          };
+    const query = derivativeStep?.query?.trim() || null;
+    const searchOptions = buildDerivativeSourceSearchOptions(query);
+    setDerivativeStep((current) => current
+      ? { ...current, searchLoading: true }
+      : current);
+    const timeout = setTimeout(() => {
+      void api.communities.listDerivativeSources(communityId, searchOptions)
+        .then((result) => {
+          if (cancelled) return;
+          const searchResults = result.items.map((source) => derivativeSourceToComposerReference(source, {
+            preferDirectStoryRef: true,
+          }));
+          setDerivativeStep((current) => {
+            return {
+              visible: true,
+              required: true,
+              trigger: "remix",
+              query: current?.query,
+              requirementLabel: current?.requirementLabel,
+              searchResults,
+              searchLoading: false,
+              references: current?.references ?? [],
+              licenseSummary: current?.licenseSummary,
+              sourceTermsAccepted: current?.sourceTermsAccepted === true,
+            };
+          });
+        })
+        .catch((error: unknown) => {
+          if (cancelled) return;
+          setDerivativeStep((current) => current
+            ? { ...current, searchResults: [], searchLoading: false }
+            : current);
+          logger.warn("[create-post] could not load derivative song sources", {
+            communityId,
+            error,
+            query,
+          });
         });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setDerivativeStep((current) => current
-          ? { ...current, searchResults: [] }
-          : current);
-        logger.warn("[create-post] could not load derivative song sources", {
-          communityId,
-          error,
-        });
-      });
+    }, query ? 200 : 0);
 
-    return () => { cancelled = true; };
-  }, [api, communityId, composerMode, setDerivativeStep, songMode]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [api, communityId, composerMode, derivativeStep?.query, setDerivativeStep, songMode]);
 
   React.useEffect(() => {
     resetCharityContribution();
@@ -610,6 +644,26 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const paidAssetPriceUsd = paidCommerceMode ? parseUsdInput(monetizationState.priceUsd ?? monetizationState.priceLabel) : null;
   const paidAssetPriceInvalid = paidCommerceMode && paidAssetPriceUsd == null;
   const submitState = resolveComposerSubmitState({ canSubmit, composerMode, derivativeStep, license, monetizationState, paidSongPriceInvalid: paidAssetPriceInvalid, songMode, submitError });
+  const warnIfStoryRegistrationIncomplete = React.useCallback(async (
+    post: ApiCreatedPost | null,
+    postType: "song" | "video",
+  ) => {
+    if (!post?.asset) return;
+    try {
+      const asset = await api.communities.getAsset(communityId, post.asset);
+      const warning = buildStoryRegistrationCreationWarning(asset, postType);
+      if (warning) {
+        toast.warning(warning.title, { description: warning.description });
+      }
+    } catch (error) {
+      logger.warn("[create-post] could not load created asset Story registration status", {
+        assetId: post.asset,
+        communityId,
+        error,
+        postId: post.id,
+      });
+    }
+  }, [api.communities, communityId]);
 
   const signAgentAuthoredBody = React.useCallback(async <T extends Record<string, unknown>>(path: string, body: T) => {
     if (!availableAgent) {
@@ -887,6 +941,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         postId: publishedPostId ?? result?.id,
         postType: publishedPostType,
       });
+      if (publishedPostType === "song" || publishedPostType === "video") {
+        await warnIfStoryRegistrationIncomplete(result, publishedPostType);
+      }
       const destinationPostId = publishedPostId ?? result?.id;
       if (!destinationPostId) {
         throw new Error("The post was created, but no destination post was returned.");
@@ -927,6 +984,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled,
     selectedQualifierIds, session?.user.id, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     videoState,
+    warnIfStoryRegistrationIncomplete,
   ]);
 
   const setImageUploadWithLabel = React.useCallback((file: File | null) => {

@@ -45,6 +45,7 @@ import { buildCommunityPreviewSidebar } from "@/lib/community-sidebar-helpers";
 import { buildFeedSortOptions } from "@/lib/feed-sort-options";
 import { CommunityRouteLoadingState } from "./route-loading-states";
 import { useCommunityJoinVerification } from "./authenticated-state/use-community-join-verification";
+import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import {
   communityHandleFromRouteLabel,
   useCommunityHandleClaimDismissal,
@@ -234,6 +235,7 @@ export function PublicCommunityRoutePage({
   const [activeSort, setActiveSort] = React.useState<FeedSort>("best");
   const hasSession = Boolean(session?.accessToken);
   const { authorProfiles, error, posts, postsLoading, preview, previewLoading, setPosts } = usePublicCommunityPageData(communityId, contentLocale, activeSort, hasSession);
+  const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
   const [memberCount, setMemberCount] = React.useState<number | null>(null);
   const { gateModal, invalidateCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
@@ -692,14 +694,25 @@ export function PublicCommunityRoutePage({
           ),
         }}
         headerAction={headerAction}
-        items={posts.map((post) => toCommunityFeedItem(post, authorProfiles, undefined, {
-          onComment: () => navigate(`/p/${post.post.id}`),
-          onVerifyAge: handleVerifyAge,
-          onVote: (direction) => void voteOnPost(post.post.id, direction),
-          showOriginalLabel: copy.common.showOriginal,
-          showTranslationLabel: copy.common.showTranslation,
-          viewerContentLocale: contentLocale,
-        }))}
+        items={posts.map((post) => toCommunityFeedItem(
+          post,
+          authorProfiles,
+          post.post.post_type === "song" || post.post.post_type === "video"
+            ? {
+                currentUserId: session?.user?.id,
+                localeTag: contentLocale,
+                playback: songPlayback,
+              }
+            : undefined,
+          {
+            onComment: () => navigate(`/p/${post.post.id}`),
+            onVerifyAge: handleVerifyAge,
+            onVote: (direction) => void voteOnPost(post.post.id, direction),
+            showOriginalLabel: copy.common.showOriginal,
+            showTranslationLabel: copy.common.showTranslation,
+            viewerContentLocale: contentLocale,
+          },
+        ))}
         loading={postsLoading}
         onSortChange={setActiveSort}
         routeLabel={routeLabel}

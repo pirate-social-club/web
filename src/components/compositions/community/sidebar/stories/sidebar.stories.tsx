@@ -72,6 +72,20 @@ export const OwnerAndModerators: Story = {
   },
 };
 
+export const StoreLink: Story = {
+  name: "Store link",
+  args: {
+    communityId: "cmt_store_story",
+    description: "A community with ongoing merch.",
+    followerCount: 18400,
+    memberCount: 1270,
+    store: {
+      label: "Band store",
+      url: "https://psc-zim-shop.fourthwall.com/",
+    },
+  },
+};
+
 export const RequirementsAnd: Story = {
   name: "Gates / AND mode",
   args: {

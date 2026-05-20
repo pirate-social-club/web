@@ -7,7 +7,26 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { PostCardMedia } from "./post-card-media";
 
 describe("PostCardMedia", () => {
-  test("renders blurred adult image with lock button overlay when age proof is required", () => {
+  test("renders song content eagerly instead of a lazy fallback", () => {
+    const markup = renderToStaticMarkup(
+      <PostCardMedia
+        content={{
+          type: "song",
+          title: "4D Monster Lobsters - Travel Guide",
+          accessMode: "public",
+          artworkSrc: "https://example.test/cover.jpg",
+          contentSafetyState: "safe",
+          ageGatePolicy: "none",
+        }}
+      />,
+    );
+
+    expect(markup).toContain("4D Monster Lobsters - Travel Guide");
+    expect(markup).toContain("https://example.test/cover.jpg");
+    expect(markup).toContain("aria-label=\"Play\"");
+  });
+
+  test("renders a locked placeholder without fetching adult image when age proof is required", () => {
     const markup = renderToStaticMarkup(
       <PostCardMedia
         content={{
@@ -21,9 +40,9 @@ describe("PostCardMedia", () => {
       />,
     );
 
-    expect(markup).toContain("<img");
-    expect(markup).toContain("https://example.test/adult.jpg");
-    expect(markup).toContain("blur-md saturate-0");
+    expect(markup).not.toContain("<img");
+    expect(markup).not.toContain("https://example.test/adult.jpg");
+    expect(markup).toContain('role="img"');
     expect(markup).toContain("18+ to View");
     expect(markup).toContain("shadow-lg");
   });

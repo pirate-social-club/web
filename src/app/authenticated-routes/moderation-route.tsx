@@ -555,10 +555,14 @@ export function CommunityModerationPage({
           onDescriptionChange={state.setProfileDescription}
           onDisplayNameChange={state.setProfileDisplayName}
           onSave={state.handleSaveProfile}
+          onStoreLabelChange={state.setProfileStoreLabel}
+          onStoreUrlChange={state.setProfileStoreUrl}
           pendingAvatarLabel={state.profileAvatarFile?.name}
           pendingBannerLabel={state.profileBannerFile?.name}
           saveDisabled={state.savingProfile || !state.profileHasChanges}
           saveLoading={state.savingProfile}
+          storeLabel={state.profileStoreLabel}
+          storeUrl={state.profileStoreUrl}
         />
       );
     } else if (section === "rules") {

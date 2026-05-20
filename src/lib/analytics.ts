@@ -21,6 +21,7 @@ export type AnalyticsEventName =
   | "funding_route_selected"
   | "asset_accessed"
   | "donation_selected"
+  | "store_link_clicked"
   | "notification_inbox_viewed"
   | "notification_opened"
   | "notification_marked_read"

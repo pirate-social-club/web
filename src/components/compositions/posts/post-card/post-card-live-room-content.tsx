@@ -190,21 +190,24 @@ function LiveRoomCover({
 }) {
   const cover = (
     <>
-      {content.coverSrc ? (
+      {ageProofRequired ? (
+        <>
+          <div
+            aria-label={content.title}
+            className="size-full bg-muted"
+            role="img"
+          />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/42">
+            <LockIcon className="size-9 text-white" weight="fill" />
+          </div>
+        </>
+      ) : content.coverSrc ? (
         <>
           <img
             alt={content.title}
-            className={cn(
-              "size-full object-cover transition-[filter,transform]",
-              ageProofRequired && "blur-md saturate-0",
-            )}
+            className="size-full object-cover"
             src={content.coverSrc}
           />
-          {ageProofRequired ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/42">
-              <LockIcon className="size-9 text-white" weight="fill" />
-            </div>
-          ) : null}
         </>
       ) : (
         <div className="grid size-full place-items-center">

@@ -24,6 +24,8 @@ function createLiveRoom(overrides: Partial<ApiLiveRoom> = {}): ApiLiveRoom {
     title: "Live room",
     description: null,
     cover_ref: null,
+    store_url: null,
+    store_label: null,
     event_start_at: null,
     live_started_at: null,
     ended_at: null,
@@ -69,6 +71,8 @@ describe("live create-post submit helpers", () => {
         guestUserId: " usr_guest ",
         scheduleForLater: true,
         scheduleAt: "2026-05-16T12:30:00.000Z",
+        storeUrl: " https://psc-zim-shop.fourthwall.com/ ",
+        storeLabel: " Event merch ",
         setlistStatus: "ready",
         performerAllocations: [
           { role: "host", userId: "", sharePct: 60 },
@@ -106,6 +110,8 @@ describe("live create-post submit helpers", () => {
       guest_user: "usr_guest",
       event_start_at: Date.parse("2026-05-16T12:30:00.000Z") / 1000,
       cover_ref: "media_cover",
+      store_url: "https://psc-zim-shop.fourthwall.com/",
+      store_label: "Event merch",
       performer_allocations: [
         { user: "usr_host", role: "host", share_bps: 6000 },
         { user: "usr_guest", role: "guest", share_bps: 4000 },

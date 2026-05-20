@@ -34,6 +34,30 @@ describe("deriveSongUI", () => {
     expect(ui.showUnlock).toBe(false);
   });
 
+  test("requires age proof until the viewer is verified allowed", () => {
+    const lockedUi = deriveSongUI({
+      ...baseSong,
+      ageGatePolicy: "18_plus",
+      ageGateViewerState: "proof_required",
+      contentSafetyState: "adult",
+    });
+
+    expect(lockedUi.ageGateRequiresProof).toBe(true);
+    expect(lockedUi.primaryAction).toBe("locked");
+    expect(lockedUi.showAgeGatedArtwork).toBe(true);
+
+    const verifiedUi = deriveSongUI({
+      ...baseSong,
+      ageGatePolicy: "18_plus",
+      ageGateViewerState: "verified_allowed",
+      contentSafetyState: "adult",
+    });
+
+    expect(verifiedUi.ageGateRequiresProof).toBe(false);
+    expect(verifiedUi.primaryAction).toBe("play");
+    expect(verifiedUi.showAgeGatedArtwork).toBe(false);
+  });
+
   test("keeps post captions outside the song player", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
@@ -63,5 +87,41 @@ describe("deriveSongUI", () => {
     expect(markup).toContain('href="https://genius.com/34172986"');
     expect(markup).toContain('target="_blank"');
     expect(markup).toContain('rel="noreferrer"');
+  });
+
+  test("renders Story registration status", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          storyRegistration: {
+            state: "registered",
+            label: "Remix-eligible",
+            description: "Story IP registration is complete.",
+          },
+        },
+      }),
+    );
+
+    expect(markup).toContain("Remix-eligible");
+    expect(markup).toContain("Story IP registration is complete.");
+  });
+
+  test("does not render age-gated artwork source before proof", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          ageGatePolicy: "18_plus",
+          ageGateViewerState: "proof_required",
+          artworkSrc: "https://example.test/adult-cover.jpg",
+          contentSafetyState: "adult",
+        },
+      }),
+    );
+
+    expect(markup).not.toContain("https://example.test/adult-cover.jpg");
+    expect(markup).toContain('role="img"');
+    expect(markup).toContain("Verify Age");
   });
 });

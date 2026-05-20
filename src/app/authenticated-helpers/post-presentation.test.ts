@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { LocalizedPostResponse } from "@pirate/api-contracts";
+import type { Asset, LocalizedPostResponse } from "@pirate/api-contracts";
 
 import {
   resolveLocalizedLinkTitle,
@@ -157,6 +157,30 @@ function createSongPost(overrides: Partial<LocalizedPostResponse["post"]> = {}):
     viewer_reaction_kinds: [],
     viewer_vote: null,
   } as unknown as LocalizedPostResponse;
+}
+
+function createSongAsset(overrides: Partial<Asset> = {}): Asset {
+  return {
+    access_mode: "public",
+    asset_kind: "song_audio",
+    commercial_rev_share_pct: 10,
+    community: "com_cmt_songs",
+    created: unixTimestamp("2026-05-16T09:00:00.000Z"),
+    creator_user: "usr_artist",
+    display_title: "Midnight Waves",
+    id: "asset_ast_song",
+    license_preset: "commercial-remix",
+    locked_delivery_status: "none",
+    object: "asset",
+    primary_content_ref: "storage://song",
+    publication_status: "draft",
+    rights_basis: "original",
+    source_post: "post_pst_song",
+    story_error: null,
+    story_status: "none",
+    story_royalty_registration_status: "none",
+    ...overrides,
+  };
 }
 
 function createLiveRoomAccess(): ApiLiveRoomAccessResponse {
@@ -369,5 +393,45 @@ describe("post presentation songs", () => {
     expect(content.title).toBe("Canonical track title");
     expect(content.artworkSrc).toBe("https://media.test/cover.jpg");
     expect(content.durationMs).toBe(123456);
+  });
+
+  test("maps song age gate state and verification callback into song card content", () => {
+    const onVerifyAge = () => undefined;
+    const content = toCommunityPostContent(
+      {
+        ...createSongPost({
+          age_gate_policy: "18_plus",
+          content_safety_state: "adult",
+        }),
+        age_gate_viewer_state: "verified_allowed",
+      } as LocalizedPostResponse,
+      undefined,
+      { onVerifyAge },
+    );
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.ageGatePolicy).toBe("18_plus");
+    expect(content.ageGateViewerState).toBe("verified_allowed");
+    expect(content.contentSafetyState).toBe("adult");
+    expect(content.onVerifyAge).toBe(onVerifyAge);
+  });
+
+  test("maps Story royalty registration failures into song card content", () => {
+    const content = toCommunityPostContent(
+      createSongPost({ asset: "asset_ast_song" }),
+      {
+        asset: createSongAsset({
+          story_error: "royalty_registration_failed:story_royalty_config_missing",
+          story_royalty_registration_status: "failed",
+        }),
+      },
+    );
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.storyRegistration?.state).toBe("failed");
+    expect(content.storyRegistration?.label).toBe("IP registration failed");
+    expect(content.storyRegistration?.description).toContain("configuration is missing");
   });
 });

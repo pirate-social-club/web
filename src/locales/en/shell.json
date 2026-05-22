@@ -62,6 +62,7 @@
     "resourceItems": [
       { "id": "blog", "label": "Blog" },
       { "id": "advertise", "label": "Advertise" },
+      { "id": "child-safety", "label": "Child Safety" },
       { "id": "terms-of-service", "label": "Terms of Service" },
       { "id": "privacy-policy", "label": "Privacy Policy" }
     ],

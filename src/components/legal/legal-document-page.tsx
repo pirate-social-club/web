@@ -27,6 +27,7 @@ export function LegalDocumentPage({
           <HeaderLink href="/" label="Home" />
           <HeaderLink href={resolveResourceHref("blog") ?? "https://blog.pirate.sc"} label="Blog" />
           <HeaderLink href={resolveResourceHref("account-deletion") ?? "/delete-account"} label="Account Deletion" />
+          <HeaderLink href={resolveResourceHref("child-safety") ?? "/child-safety"} label="Child Safety" />
           <HeaderLink href={resolveResourceHref("terms-of-service") ?? "/terms"} label="Terms" />
           <HeaderLink href={resolveResourceHref("privacy-policy") ?? "/privacy"} label="Privacy" />
           <a

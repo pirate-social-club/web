@@ -9,6 +9,7 @@ import {
   mockCommunityId,
   mockCommunityPreview,
   mockCreatedPostId,
+  mockDerivativeSources,
   mockFeedPostId,
   mockJoinEligibility,
   mockOnboarding,
@@ -186,7 +187,7 @@ async function fulfillPirateApiRoute(route: Route, state: { commentCreated: bool
   }
 
   if (method === "GET" && path === `/communities/${encodeURIComponent(mockCommunityId)}/derivative-sources`) {
-    await route.fulfill(jsonResponse(emptyCursorList()));
+    await route.fulfill(jsonResponse({ items: mockDerivativeSources, next_cursor: null }));
     return;
   }
 

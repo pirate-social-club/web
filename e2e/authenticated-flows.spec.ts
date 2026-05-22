@@ -60,4 +60,29 @@ test.describe("authenticated browser flows with mocked API", () => {
     await expect(page).toHaveURL(new RegExp(`/p/${mockCreatedPostId}$`, "u"));
     await expectNoBrowserError(page);
   });
+
+  test("selects a Story derivative source for a remix song", async ({ page }) => {
+    await page.goto(`/c/${mockCommunityId}/submit`);
+    await page.locator('input[type="file"][accept="audio/*"]').setInputFiles({
+      name: "e2e-remix.mp3",
+      mimeType: "audio/mpeg",
+      buffer: Buffer.from("e2e-audio"),
+    });
+
+    await expect(page.getByText("e2e-remix.mp3")).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("button", { name: /^continue$/i }).click();
+    await page.getByRole("tab", { name: /^remix$/i }).click();
+
+    const sourceSearch = page.getByRole("combobox", { name: /search remix-eligible source tracks/i });
+    await sourceSearch.click();
+    await page.getByRole("option", { name: /E2E Story Remix Source/i }).click();
+
+    await expect(page.getByText("E2E Story Remix Source")).toBeVisible();
+    await expect(page.getByText("10% royalty")).toBeVisible();
+
+    await page.getByRole("checkbox", { name: /accept these remix terms/i }).check();
+    await page.getByPlaceholder("Paste lyrics").fill("E2E remix lyrics");
+    await expect(page.getByRole("button", { name: /^continue$/i })).toBeEnabled();
+    await expectNoBrowserError(page);
+  });
 });

@@ -77,6 +77,25 @@ export const mockCreatedPostId = "pst_e2e_created";
 export const mockFeedPostId = "pst_e2e_feed";
 export const mockCommentId = "cmt_e2e_new";
 export const mockCommentBody = "E2E browser comment";
+export const mockDerivativeSourceRef = "story:ip:0x1111111111111111111111111111111111111111#licenseTermsId=17";
+export const mockDerivativeSources = [
+  {
+    id: "asset_ast_e2e_source",
+    object: "derivative_source",
+    community: mockCommunityId,
+    asset: "asset_ast_e2e_source",
+    source_ref: mockDerivativeSourceRef,
+    title: "E2E Story Remix Source",
+    kind: "song",
+    story_ip: "0x1111111111111111111111111111111111111111",
+    story_license_terms: "17",
+    license_preset: "commercial-remix",
+    commercial_rev_share_pct: 10,
+    creator_user: "usr_source_artist",
+    creator_handle: "source-artist.pirate",
+    creator_display_name: "Source Artist",
+  },
+] as const;
 
 export const mockCommunityPreview = {
   id: mockCommunityId,

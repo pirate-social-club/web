@@ -1360,6 +1360,41 @@ describe("SearchReferencePicker", () => {
     expect(query).toBe("Travel Guide");
   });
 
+  test("ignores the input fill emitted by selecting a source", () => {
+    const source = {
+      id: "story:ip:0x1111111111111111111111111111111111111111#licenseTermsId=17",
+      title: "Story Source",
+    };
+    let query = "";
+    let selected: typeof source | undefined;
+    const tree = SearchReferencePicker({
+      ariaLabel: "Search remix-eligible source tracks",
+      emptyLabel: "No source tracks",
+      items: [source],
+      onQueryChange: (nextQuery) => {
+        query = nextQuery;
+      },
+      onSelect: (next) => {
+        selected = next;
+      },
+      placeholder: "Search songs",
+    });
+    const combobox = findElement(
+      tree,
+      (element) => typeof element.props.onInputValueChange === "function"
+        && typeof element.props.onValueChange === "function",
+    );
+
+    if (!combobox) {
+      throw new Error("Combobox not found");
+    }
+    (combobox.props.onValueChange as (value: typeof source) => void)(source);
+    (combobox.props.onInputValueChange as (value: string) => void)("Story Source");
+
+    expect(selected).toBe(source);
+    expect(query).toBe("");
+  });
+
   test("shows loading copy before source search results settle", () => {
     const tree = SearchReferencePicker({
       ariaLabel: "Search remix-eligible source tracks",

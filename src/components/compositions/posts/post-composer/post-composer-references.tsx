@@ -28,13 +28,13 @@ function isPublicHandle(value: string | undefined): value is string {
   return Boolean(value?.trim());
 }
 
-function ReferenceMeta({ item }: { item: ComposerReference }) {
+function ReferenceMeta({ item, linkSubtitle = true }: { item: ComposerReference; linkSubtitle?: boolean }) {
   const royaltyLabel = referenceLicenseLabel(item);
   if (!item.subtitle && !royaltyLabel) return null;
 
   return (
     <Type as="p" className="truncate text-muted-foreground" variant="caption">
-      {isPublicHandle(item.subtitle) ? (
+      {linkSubtitle && isPublicHandle(item.subtitle) ? (
         <a
           className="hover:text-foreground hover:underline"
           href={buildPublicProfilePath(item.subtitle)}
@@ -111,6 +111,10 @@ export function buildManualReference(item: LiveSetlistItemInput): ComposerRefere
   };
 }
 
+function referenceComboboxValue(item: ComposerReference): string {
+  return encodeURIComponent(item.id);
+}
+
 export function SearchReferencePicker({
   ariaLabel,
   emptyLabel,
@@ -134,16 +138,25 @@ export function SearchReferencePicker({
 }) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes");
+  const ignoreSelectedLabelInputRef = React.useRef<string | null>(null);
+
   return (
     <Combobox
       key={resetKey}
       autoHighlight
       items={items}
       itemToStringLabel={(item) => item.title}
-      itemToStringValue={(item) => item.id}
-      onInputValueChange={(query) => onQueryChange?.(query)}
+      itemToStringValue={referenceComboboxValue}
+      onInputValueChange={(query) => {
+        if (ignoreSelectedLabelInputRef.current === query) {
+          ignoreSelectedLabelInputRef.current = null;
+          return;
+        }
+        onQueryChange?.(query);
+      }}
       onValueChange={(item) => {
         if (item) {
+          ignoreSelectedLabelInputRef.current = item.title;
           onSelect(item);
         }
       }}
@@ -156,7 +169,7 @@ export function SearchReferencePicker({
           {(item) => (
             <ComboboxItem className="py-2" key={item.id} value={item}>
               <Type as="p" variant="body-strong" className="truncate ">{item.title}</Type>
-              <ReferenceMeta item={item} />
+              <ReferenceMeta item={item} linkSubtitle={false} />
             </ComboboxItem>
           )}
         </ComboboxList>

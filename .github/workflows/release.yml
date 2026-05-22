@@ -81,6 +81,8 @@ jobs:
           E2E_API_BASE_URL: https://api-staging.pirate.sc
         run: bun run test:e2e
       - name: Fetch live browser staging secret
+        id: fetch-live-browser-staging-secret
+        continue-on-error: true
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
@@ -90,6 +92,7 @@ jobs:
           SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Live browser integration staging
+        if: steps.fetch-live-browser-staging-secret.outcome == 'success'
         working-directory: web
         env:
           AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
@@ -105,6 +108,8 @@ jobs:
             web/test-results
           if-no-files-found: ignore
       - name: Fetch staging migration secrets
+        id: fetch-staging-migration-secrets
+        continue-on-error: true
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
@@ -114,6 +119,7 @@ jobs:
           SECRET_NAMES: CONTROL_PLANE_DATABASE_URL TURSO_COMMUNITY_DB_WRAP_KEY
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Apply staging community migrations
+        if: steps.fetch-staging-migration-secrets.outcome == 'success'
         working-directory: core
         run: |
           test -n "$CONTROL_PLANE_DATABASE_URL"

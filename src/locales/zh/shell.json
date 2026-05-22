@@ -62,6 +62,7 @@
     "resourceItems": [
       { "id": "blog", "label": "博客" },
       { "id": "advertise", "label": "投放广告" },
+      { "id": "child-safety", "label": "儿童安全" },
       { "id": "terms-of-service", "label": "服务条款" },
       { "id": "privacy-policy", "label": "隐私政策" }
     ],

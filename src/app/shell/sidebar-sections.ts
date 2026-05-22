@@ -39,6 +39,7 @@ const resourceIcons = {
   advertise: Megaphone,
   "account-deletion": Trash,
   blog: Newspaper,
+  "child-safety": Flag,
   "privacy-policy": Shield,
   "source-freedom-browser": Globe,
   "source-github": GithubLogo,

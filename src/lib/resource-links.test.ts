@@ -23,6 +23,7 @@ describe("resolveResourceHref", () => {
   test("resolves blog and legal resource links", () => {
     expect(resolveResourceHref("blog")).toBe("https://blog.pirate.sc");
     expect(resolveResourceHref("account-deletion")).toBe("/delete-account");
+    expect(resolveResourceHref("child-safety")).toBe("/child-safety");
     expect(resolveResourceHref("terms-of-service")).toBe("/terms");
     expect(resolveResourceHref("privacy-policy")).toBe("/privacy");
   });

@@ -1602,6 +1602,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "Advertise"
           },
           {
+            "id": "child-safety",
+            "label": "Child Safety"
+          },
+          {
             "id": "terms-of-service",
             "label": "Terms of Service"
           },
@@ -3242,6 +3246,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "أعلن"
           },
           {
+            "id": "child-safety",
+            "label": "سلامة الأطفال"
+          },
+          {
             "id": "terms-of-service",
             "label": "شروط الخدمة"
           },
@@ -4880,6 +4888,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           {
             "id": "advertise",
             "label": "投放广告"
+          },
+          {
+            "id": "child-safety",
+            "label": "儿童安全"
           },
           {
             "id": "terms-of-service",

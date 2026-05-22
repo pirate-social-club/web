@@ -11,6 +11,7 @@ import { matchRoute } from "@/app/router";
 import { PRIVACY_POLICY_SOURCE } from "@/legal/privacy-policy";
 import { TERMS_OF_SERVICE_SOURCE } from "@/legal/terms-of-service";
 import { ACCOUNT_DELETION_SOURCE } from "@/legal/account-deletion";
+import { CHILD_SAFETY_SOURCE } from "@/legal/child-safety";
 import type { PublicAgentResolution, PublicProfileResolution } from "@/worker-public.types";
 import {
   applyDiscoveryHeaders,
@@ -465,6 +466,10 @@ function AccountDeletionRoutePage() {
   return <LegalDocumentPage source={ACCOUNT_DELETION_SOURCE} />;
 }
 
+function ChildSafetyRoutePage() {
+  return <LegalDocumentPage source={CHILD_SAFETY_SOURCE} />;
+}
+
 function ServerErrorFallback({
   locale,
 }: {
@@ -601,6 +606,7 @@ const app = defineApp<AppRequestInfo>([
     route("/.well-known/agent-skills/index.json", ({ ctx, request }) => buildAgentSkillsIndexResponse(ctx.effectiveUrl ?? request.url)),
     route("/.well-known/agent-skills/:skillName/SKILL.md", ({ params }) => buildAgentSkillResponse(params.skillName)),
     route("/delete-account", AccountDeletionRoutePage),
+    route("/child-safety", ChildSafetyRoutePage),
     route("/privacy", PrivacyRoutePage),
     route("/terms", TermsRoutePage),
     route("/", AppRoutePage),

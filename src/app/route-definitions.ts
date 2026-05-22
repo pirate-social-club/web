@@ -16,6 +16,7 @@ export const COMMUNITY_MODERATION_SECTIONS = [
   "safety",
   "visual-policy",
   "agents",
+  "assistant",
   "machine-access",
 ] as const;
 export type CommunityModerationSectionName = (typeof COMMUNITY_MODERATION_SECTIONS)[number];

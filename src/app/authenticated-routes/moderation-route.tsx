@@ -18,6 +18,7 @@ import { CommunityNamespaceVerificationPage } from "@/components/compositions/co
 import { CommunityPricingEditorPage } from "@/components/compositions/community/pricing-editor/community-pricing-editor-page";
 import { CommunityRulesEditorPage } from "@/components/compositions/community/rules-editor/community-rules-editor-page";
 import { CommunityAgentPolicyPage } from "@/components/compositions/community/agent-policy/community-agent-policy";
+import { CommunityAssistantPolicyPage } from "@/components/compositions/community/assistant-policy/community-assistant-policy";
 import { CommunityMachineAccessPage } from "@/components/compositions/community/machine-access/community-machine-access";
 import { CommunitySafetyPage } from "@/components/compositions/community/safety-page/community-safety-page";
 import { CommunityVisualPolicyPage } from "@/components/compositions/community/visual-policy/community-visual-policy";
@@ -796,6 +797,43 @@ export function CommunityModerationPage({
           submitState={state.agentSubmitState}
         />
       );
+    } else if (section === "assistant") {
+      if (!state.loadingAssistantPolicy && !state.assistantPolicyLoadError) {
+        setMobileSaveAction({
+          disabled: state.savingAssistantPolicy
+            || state.savingAssistantCredential
+            || !state.assistantPolicyDirty,
+          loading: state.assistantPolicySubmitState.kind === "saving",
+          onSave: state.handleSaveAssistantPolicy,
+        });
+      }
+      content = state.loadingAssistantPolicy
+        ? (
+          <FullPageSpinner />
+        )
+        : state.assistantPolicyLoadError
+          ? (
+            <RouteLoadFailureState
+              description={state.assistantPolicyLoadError}
+              title="Assistant"
+            />
+          )
+          : (
+            <CommunityAssistantPolicyPage
+              onAvatarFileSelect={state.setAssistantAvatarFile}
+              onOpenRouterKeyRevoke={state.handleRevokeAssistantOpenRouterKey}
+              onOpenRouterKeySave={state.handleSaveAssistantOpenRouterKey}
+              onSave={state.handleSaveAssistantPolicy}
+              onSettingsChange={state.setAssistantPolicySettings}
+              saveDisabled={
+                state.savingAssistantPolicy
+                || state.savingAssistantCredential
+                || !state.assistantPolicyDirty
+              }
+              settings={state.assistantPolicySettings}
+              submitState={state.assistantPolicySubmitState}
+            />
+          );
     } else if (section === "machine-access") {
       setMobileSaveAction({
         disabled: state.savingMachineAccess || state.loadingMachineAccess || !state.machineAccessDirty,

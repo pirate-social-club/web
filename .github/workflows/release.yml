@@ -165,4 +165,4 @@ jobs:
           VITE_PIRATE_APP_ENV: ${{ vars.VITE_PIRATE_APP_ENV || 'prod' }}
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
           VITE_PRIVY_CLIENT_ID: ${{ vars.VITE_PRIVY_CLIENT_ID }}
-        run: scripts/deploy-production.sh --confirm-production --skip-tests
+        run: scripts/deploy-production.sh --confirm-production --skip-tests --hotfix -m "child safety standards page"

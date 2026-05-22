@@ -59,7 +59,7 @@ function LiveRoomRouteMessage({
         <h1 className="text-xl font-semibold leading-tight">{title}</h1>
         <p className="text-base leading-7 text-white/70">{message}</p>
         <a
-          className="inline-flex h-11 items-center justify-center rounded-md border border-white/25 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+          className="inline-flex h-11 items-center justify-center rounded-md border border-white/25 px-4 text-base font-semibold text-white transition-colors hover:bg-white/10"
           href={`/p/${encodeURIComponent(postId)}`}
         >
           Open post

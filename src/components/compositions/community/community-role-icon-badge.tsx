@@ -22,7 +22,7 @@ export function CommunityRoleIconBadge({
 
   const label = getRoleBadgeCopy(role);
   const Icon = role === "owner" ? CrownCrossIcon : ShieldIcon;
-  const colorClassName = role === "owner" ? "text-amber-400" : "text-foreground/70";
+  const colorClassName = role === "owner" ? "text-warning" : "text-foreground/70";
 
   return (
     <span

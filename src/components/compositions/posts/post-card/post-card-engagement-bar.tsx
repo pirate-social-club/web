@@ -40,12 +40,12 @@ function SharePillMenu({
 
   const button = (
     <button
-      className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border-soft bg-background px-3 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground"
+      className="inline-flex h-11 items-center gap-2 rounded-full border border-border-soft bg-background px-4 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground"
       data-post-card-interactive="true"
       onClick={hasMenu ? undefined : handleFallbackShare}
       type="button"
     >
-      <ShareFat className="size-[17px]" />
+      <ShareFat className="size-[23px]" />
       Share
     </button>
   );
@@ -126,13 +126,13 @@ export function PostCardEngagementBar({
       )}
     >
       <VotePill
-        className="w-32 shrink-0 justify-center"
+        className="shrink-0 justify-center"
         score={score}
         viewerVote={viewerVote}
         onVote={onVote}
       />
       <CommentPill
-        className="w-32 shrink-0 justify-center whitespace-nowrap"
+        className="shrink-0 justify-center whitespace-nowrap"
         count={commentCount}
         onComment={onComment}
       />

@@ -14,6 +14,13 @@ export type AgeGatePolicy = CommunityDefaultAgeGatePolicy;
 // From specs/domain/marketplace.md
 export type ListingMode = "not_listed" | "listed";
 export type ListingStatus = "active" | "paused" | "sold_out" | "removed";
+export type VinylReleaseProvider = "elasticstage";
+
+export interface VinylReleaseSpec {
+  available: boolean;
+  provider: VinylReleaseProvider;
+  url?: string | null;
+}
 
 // Playback axis - purely UI state
 export type PlaybackState = "idle" | "playing" | "paused" | "buffering" | "ended";
@@ -147,6 +154,7 @@ export interface SongContentSpec {
   priceLabel?: string;
   regionalPriceLabel?: string;
   hasEntitlement?: boolean; // Derived from purchase/ownership state
+  vinylRelease?: VinylReleaseSpec;
 
   // Callbacks
   onPlay?: () => void;
@@ -214,7 +222,7 @@ export interface CrosspostSourcePreview {
   communityHref?: string;
   authorLabel?: string;
   authorHref?: string;
-  postType?: "text" | "image" | "video" | "link" | "song";
+  postType?: "text" | "image" | "video" | "link" | "song" | "live_room";
   title?: string;
   postHref?: string;
   thumbnailAlt?: string;

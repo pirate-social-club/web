@@ -1,12 +1,7 @@
 import type { CommunityPickerItem } from "@/components/compositions/posts/post-composer/post-composer.types";
 import type { CrosspostSourcePreview } from "@/components/compositions/posts/post-card/post-card.types";
 
-export type CrosspostTargetStatus = "ready" | "needs_join" | "pending" | "blocked";
-
-export interface CrosspostTargetCommunity extends CommunityPickerItem {
-  status?: CrosspostTargetStatus;
-  statusLabel?: string;
-}
+export type CrosspostTargetCommunity = CommunityPickerItem;
 
 export interface CrosspostComposerSubmitState {
   disabled?: boolean;

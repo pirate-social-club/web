@@ -65,7 +65,7 @@ function shouldHandleCardNavigation(event: React.MouseEvent<HTMLElement>): boole
 
   const target = event.target instanceof Element ? event.target : null;
   return !target?.closest(
-    "a,button,input,select,textarea,summary,[role='button'],[data-post-card-interactive='true']",
+    "a,button,input,select,textarea,summary,[role='button'],[role='menu'],[role='menuitem'],[data-post-card-interactive='true']",
   );
 }
 
@@ -76,7 +76,7 @@ function shouldHandleCardKeyboardNavigation(event: React.KeyboardEvent<HTMLEleme
 
   const target = event.target instanceof Element ? event.target : null;
   return !target?.closest(
-    "a,button,input,select,textarea,summary,[role='button'],[data-post-card-interactive='true']",
+    "a,button,input,select,textarea,summary,[role='button'],[role='menu'],[role='menuitem'],[data-post-card-interactive='true']",
   );
 }
 

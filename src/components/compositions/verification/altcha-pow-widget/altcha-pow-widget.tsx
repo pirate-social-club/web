@@ -90,6 +90,38 @@ export function AltchaPowWidget({
       return;
     }
 
+    const handleVerified = (event: Event) => {
+      const payload = (event as AltchaVerifiedEvent).detail?.payload;
+      onPayloadChange(payload?.trim() ? payload : null);
+      setVerified(Boolean(payload?.trim()));
+    };
+    const handleStateChange = (event: Event) => {
+      const detail = (event as AltchaStateChangeEvent).detail;
+      if (detail?.state === "verified" && detail.payload?.trim()) {
+        onPayloadChange(detail.payload);
+        setVerified(true);
+        return;
+      }
+      if (detail?.state === "expired" || detail?.state === "error" || detail?.state === "unverified") {
+        onPayloadChange(null);
+        setVerified(false);
+      }
+    };
+
+    widget.addEventListener("verified", handleVerified);
+    widget.addEventListener("statechange", handleStateChange);
+    return () => {
+      widget.removeEventListener("verified", handleVerified);
+      widget.removeEventListener("statechange", handleStateChange);
+    };
+  }, [challenge, onPayloadChange]);
+
+  React.useEffect(() => {
+    const widget = widgetRef.current;
+    if (!widget || !challenge) {
+      return;
+    }
+
     const language = locale?.toLowerCase().startsWith("ar")
       ? "ar"
       : locale?.toLowerCase().startsWith("zh")
@@ -119,38 +151,6 @@ export function AltchaPowWidget({
       widget.removeEventListener("load", configureWidget);
     };
   }, [challenge, locale]);
-
-  React.useEffect(() => {
-    const widget = widgetRef.current;
-    if (!widget) {
-      return;
-    }
-
-    const handleVerified = (event: Event) => {
-      const payload = (event as AltchaVerifiedEvent).detail?.payload;
-      onPayloadChange(payload?.trim() ? payload : null);
-      setVerified(Boolean(payload?.trim()));
-    };
-    const handleStateChange = (event: Event) => {
-      const detail = (event as AltchaStateChangeEvent).detail;
-      if (detail?.state === "verified" && detail.payload?.trim()) {
-        onPayloadChange(detail.payload);
-        setVerified(true);
-        return;
-      }
-      if (detail?.state === "expired" || detail?.state === "error" || detail?.state === "unverified") {
-        onPayloadChange(null);
-        setVerified(false);
-      }
-    };
-
-    widget.addEventListener("verified", handleVerified);
-    widget.addEventListener("statechange", handleStateChange);
-    return () => {
-      widget.removeEventListener("verified", handleVerified);
-      widget.removeEventListener("statechange", handleStateChange);
-    };
-  }, [onPayloadChange]);
 
   if (loading) {
     return (

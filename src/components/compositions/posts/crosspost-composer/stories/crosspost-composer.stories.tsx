@@ -9,23 +9,13 @@ const communities: CrosspostTargetCommunity[] = [
     avatarSrc: "https://picsum.photos/seed/georgia-community/80/80",
     communityId: "@xn--nodehld6b",
     displayName: "@🇬🇪",
-    status: "ready",
   },
   {
     avatarSrc: "https://picsum.photos/seed/music-community/80/80",
     communityId: "music",
     displayName: "music",
-    status: "ready",
   },
 ];
-
-const blockedCommunity: CrosspostTargetCommunity = {
-  avatarSrc: "https://picsum.photos/seed/club-community/80/80",
-  communityId: "vinyl-club",
-  displayName: "vinyl-club",
-  status: "needs_join",
-  statusLabel: "You do not have posting access to this community.",
-};
 
 const baseComposer: CrosspostComposerProps = {
   communityPickerItems: communities,
@@ -65,7 +55,7 @@ function InteractiveCrosspostComposer(props: CrosspostComposerProps) {
       selectedCommunity={selectedCommunity}
       submit={{
         ...props.submit,
-        disabled: props.submit?.disabled || selectedCommunity?.status !== "ready",
+        disabled: props.submit?.disabled || !selectedCommunity,
       }}
       titleValue={title}
     />
@@ -98,13 +88,13 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const ReadyTarget: Story = {
-  name: "Ready Target",
+export const TextSource: Story = {
+  name: "Source Type / Text",
   render: () => <InteractiveCrosspostComposer {...baseComposer} />,
 };
 
-export const ImageSource: Story = {
-  name: "Source Type / Image",
+export const PhotoSource: Story = {
+  name: "Source Type / Photo",
   render: () => (
     <InteractiveCrosspostComposer
       {...baseComposer}
@@ -171,17 +161,19 @@ export const SongSource: Story = {
   ),
 };
 
-export const GatedTarget: Story = {
-  name: "Gated Target",
+export const LivestreamSource: Story = {
+  name: "Source Type / Livestream",
   render: () => (
     <InteractiveCrosspostComposer
       {...baseComposer}
-      selectedCommunity={blockedCommunity}
-      submit={{
-        disabled: true,
-        error: "You do not have posting access to this community.",
-        label: "Post",
+      source={{
+        ...baseComposer.source,
+        postType: "live_room",
+        thumbnailAlt: "Host at a turntable during a live vinyl set",
+        thumbnailSrc: "https://picsum.photos/seed/crosspost-source-livestream/320/320",
+        title: "Live now: late-night vinyl openers",
       }}
+      titleValue="Bringing this live set to the Georgian scene"
     />
   ),
 };
@@ -216,7 +208,6 @@ export const PublicSearchResults: Story = {
           avatarSrc: "https://picsum.photos/seed/georgia-folk/80/80",
           communityId: "georgian-folk",
           displayName: "georgian-folk",
-          status: "ready",
         },
       ]}
       selectedCommunity={null}

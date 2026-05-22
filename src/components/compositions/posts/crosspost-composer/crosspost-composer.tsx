@@ -15,12 +15,6 @@ function selectedTargetLabel(selectedCommunity: CrosspostTargetCommunity | null 
   return selectedCommunity ? `c/${selectedCommunity.displayName}` : "Choose community";
 }
 
-function targetStatusLabel(selectedCommunity: CrosspostTargetCommunity | null | undefined) {
-  if (selectedCommunity?.status === "ready") return null;
-  if (!selectedCommunity?.statusLabel) return null;
-  return selectedCommunity.statusLabel;
-}
-
 export function CrosspostComposer({
   communityPickerEmptyLabel,
   communityPickerItems,
@@ -37,7 +31,6 @@ export function CrosspostComposer({
   titleValue = "",
 }: CrosspostComposerProps) {
   const titleInputId = React.useId();
-  const statusLabel = targetStatusLabel(selectedCommunity);
   const selectedCommunityLabel = selectedTargetLabel(selectedCommunity);
 
   return (
@@ -72,12 +65,6 @@ export function CrosspostComposer({
           </div>
 
           <CrosspostSourcePreviewCard source={source} />
-
-          {statusLabel ? (
-            <Type as="p" variant="caption" className="text-muted-foreground">
-              {statusLabel}
-            </Type>
-          ) : null}
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-border-soft px-4 py-3 sm:px-5">

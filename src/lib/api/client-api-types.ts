@@ -364,6 +364,167 @@ export type ApiCommunityMachineAccessPolicyUpdate = {
   included_surfaces?: Partial<ApiCommunityMachineAccessPolicy["included_surfaces"]>;
 };
 
+export type ApiAssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector";
+export type ApiAssistantActionMode = "answer_only" | "draft_only" | "confirmed_writes";
+export type ApiAssistantVoiceMode = "off" | "transcription_only" | "voice_replies";
+export type ApiAssistantSttProvider = "mistral" | "openai" | "none";
+export type ApiAssistantRetentionMode = "per_user_private" | "community_visible_to_mods" | "ephemeral";
+
+export type ApiAssistantOpenRouterKeyStatus =
+  | { kind: "missing" }
+  | { kind: "connected"; last4: string; connectedAt?: string }
+  | { kind: "invalid"; last4: string; message: string };
+
+export type ApiAssistantModelOption = {
+  id: string;
+  label: string;
+  description?: string;
+};
+
+export type ApiAssistantContextSources = {
+  communityProfile: boolean;
+  rules: boolean;
+  referenceLinks: boolean;
+  recentThreads: boolean;
+  threadBodies: boolean;
+  topComments: boolean;
+  membershipState: boolean;
+  moderationQueue: boolean;
+  pinnedKnowledge: boolean;
+};
+
+export type ApiCommunityAssistantPolicy = {
+  object: "community_assistant_policy";
+  community: string;
+  policyOrigin: "default" | "explicit";
+  enabled: boolean;
+  displayName: string;
+  shortBio: string;
+  avatarRef: string | null;
+  systemPrompt: string;
+  defaultPrompt: string;
+  starterPrompts: string[];
+  openRouterKeyStatus: ApiAssistantOpenRouterKeyStatus;
+  selectedModelId: string;
+  availableModels: ApiAssistantModelOption[];
+  contextMode: ApiAssistantContextMode;
+  contextSources: ApiAssistantContextSources;
+  maxContextThreads: number;
+  maxLookbackDays: number | null;
+  memoryEnabled: boolean;
+  retentionMode: ApiAssistantRetentionMode;
+  retentionDays: number;
+  saveChatsToCommunityDb: boolean;
+  actionMode: ApiAssistantActionMode;
+  requireModeratorApprovalForWrites: boolean;
+  perUserDailyMessageCap: number | null;
+  voiceMode: ApiAssistantVoiceMode;
+  sttProvider: ApiAssistantSttProvider;
+  sttModel: string;
+  ttsVoice: string;
+  includeInSovereignExport: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ApiCommunityAssistantPublicPolicy = {
+  object: "community_assistant_policy_public";
+  community: string;
+  enabled: boolean;
+  displayName: string;
+  shortBio: string;
+  avatarRef: string | null;
+  defaultPrompt: string;
+  starterPrompts: string[];
+};
+
+export type ApiCommunityAssistantPolicyResponse =
+  | ApiCommunityAssistantPolicy
+  | ApiCommunityAssistantPublicPolicy;
+
+export type ApiCommunityAssistantPolicyUpdate = Partial<{
+  enabled: boolean;
+  displayName: string;
+  shortBio: string;
+  avatarRef: string | null;
+  systemPrompt: string;
+  defaultPrompt: string;
+  starterPrompts: string[];
+  selectedModelId: string;
+  contextMode: ApiAssistantContextMode;
+  contextSources: ApiAssistantContextSources;
+  maxContextThreads: number;
+  maxLookbackDays: number | null;
+  memoryEnabled: boolean;
+  retentionMode: ApiAssistantRetentionMode;
+  retentionDays: number;
+  saveChatsToCommunityDb: boolean;
+  actionMode: ApiAssistantActionMode;
+  requireModeratorApprovalForWrites: boolean;
+  perUserDailyMessageCap: number | null;
+  voiceMode: ApiAssistantVoiceMode;
+  sttProvider: ApiAssistantSttProvider;
+  sttModel: string;
+  ttsVoice: string;
+  includeInSovereignExport: boolean;
+}>;
+
+export type ApiCommunityAssistantCredentialResponse = {
+  object: "community_assistant_credential";
+  provider: "openrouter";
+  openRouterKeyStatus: ApiAssistantOpenRouterKeyStatus;
+};
+
+export type ApiCommunityAssistantModelList = {
+  object: "list";
+  data: ApiAssistantModelOption[];
+};
+
+export type ApiCommunityAssistantChat = {
+  id: string;
+  object: "community_assistant_chat";
+  community: string;
+  user: string;
+  title: string | null;
+  status: "active" | "archived" | "deleted";
+  created_at: string;
+  updated_at: string;
+};
+
+export type ApiCommunityAssistantMessage = {
+  id: string;
+  object: "community_assistant_message";
+  chat: string;
+  community: string;
+  user: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  model_id: string | null;
+  provider_message_id: string | null;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  total_tokens: number | null;
+  created_at: string;
+};
+
+export type ApiCommunityAssistantChatResponse = {
+  object: "community_assistant_chat_response";
+  chat: ApiCommunityAssistantChat;
+  user_message: ApiCommunityAssistantMessage;
+  assistant_message: ApiCommunityAssistantMessage;
+};
+
+export type ApiCommunityAssistantChatListResponse = {
+  object: "list";
+  data: ApiCommunityAssistantChat[];
+};
+
+export type ApiCommunityAssistantChatDetailResponse = {
+  object: "community_assistant_chat_detail";
+  chat: ApiCommunityAssistantChat;
+  messages: ApiCommunityAssistantMessage[];
+};
+
 export type ProfileUpdateInput = {
   display_name?: string | null;
   avatar_ref?: string | null;

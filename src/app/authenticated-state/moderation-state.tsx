@@ -14,6 +14,7 @@ import { useCommunityRecord } from "@/app/authenticated-data/moderation-data";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useCommunityAccessState } from "./use-community-access-state";
 import { useCommunityAgentPolicyState } from "./use-community-agent-policy-state";
+import { useCommunityAssistantPolicyState } from "./use-community-assistant-policy-state";
 import { useCommunityCommerceState } from "./use-community-commerce-state";
 import { useCommunityContentPolicyState } from "./use-community-content-policy-state";
 import { useCommunityMachineAccessState } from "./use-community-machine-access-state";
@@ -116,6 +117,7 @@ export function useCommunityModerationState(communityId: string) {
   const safety = useCommunitySafetyState({ community, saveCommunity });
   const visualPolicy = useCommunityVisualPolicyState({ community, saveCommunity });
   const agents = useCommunityAgentPolicyState({ community, saveCommunity });
+  const assistantPolicy = useCommunityAssistantPolicyState({ community });
   const machineAccess = useCommunityMachineAccessState({ community });
   const handlePolicy = useCommunityHandlePolicyState({
     communityId: community?.id ?? null,
@@ -136,6 +138,7 @@ export function useCommunityModerationState(communityId: string) {
     ...safety,
     ...visualPolicy,
     ...agents,
+    ...assistantPolicy,
     ...machineAccess,
     ...profile,
     ...contentPolicy,

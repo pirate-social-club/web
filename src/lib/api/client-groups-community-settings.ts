@@ -8,6 +8,13 @@ import type {
 
 import type {
   ApiCommunityDonationPolicyResponse,
+  ApiCommunityAssistantCredentialResponse,
+  ApiCommunityAssistantChatDetailResponse,
+  ApiCommunityAssistantChatListResponse,
+  ApiCommunityAssistantChatResponse,
+  ApiCommunityAssistantModelList,
+  ApiCommunityAssistantPolicyResponse,
+  ApiCommunityAssistantPolicyUpdate,
   ApiCommunityGatesUpdateRequest,
   ApiCommunityMachineAccessPolicy,
   ApiCommunityMachineAccessPolicyUpdate,
@@ -81,6 +88,54 @@ export function createCommunitySettingsApi(request: ApiRequest) {
       request<ApiCommunityMachineAccessPolicy>(
         `/communities/${encodeURIComponent(communityId)}/machine-access-policy`,
         { method: "POST", body: JSON.stringify(body) },
+      ),
+    getAssistantPolicy: (communityId: string): Promise<ApiCommunityAssistantPolicyResponse> =>
+      request<ApiCommunityAssistantPolicyResponse>(
+        `/communities/${encodeURIComponent(communityId)}/assistant-policy`,
+      ),
+    updateAssistantPolicy: (
+      communityId: string,
+      body: ApiCommunityAssistantPolicyUpdate,
+    ): Promise<ApiCommunityAssistantPolicyResponse> =>
+      request<ApiCommunityAssistantPolicyResponse>(
+        `/communities/${encodeURIComponent(communityId)}/assistant-policy`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    saveAssistantCredential: (
+      communityId: string,
+      body: { api_key: string },
+    ): Promise<ApiCommunityAssistantCredentialResponse> =>
+      request<ApiCommunityAssistantCredentialResponse>(
+        `/communities/${encodeURIComponent(communityId)}/assistant-credential`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    revokeAssistantCredential: (communityId: string): Promise<ApiCommunityAssistantCredentialResponse> =>
+      request<ApiCommunityAssistantCredentialResponse>(
+        `/communities/${encodeURIComponent(communityId)}/assistant-credential/revoke`,
+        { method: "POST" },
+      ),
+    getAssistantModels: (communityId: string): Promise<ApiCommunityAssistantModelList> =>
+      request<ApiCommunityAssistantModelList>(
+        `/communities/${encodeURIComponent(communityId)}/assistant-models`,
+      ),
+    sendAssistantMessage: (
+      communityId: string,
+      body: { message: string; chat_id?: string | null },
+    ): Promise<ApiCommunityAssistantChatResponse> =>
+      request<ApiCommunityAssistantChatResponse>(
+        `/communities/${encodeURIComponent(communityId)}/assistant/chat`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    listAssistantChats: (communityId: string): Promise<ApiCommunityAssistantChatListResponse> =>
+      request<ApiCommunityAssistantChatListResponse>(
+        `/communities/${encodeURIComponent(communityId)}/assistant/chats`,
+      ),
+    getAssistantChat: (
+      communityId: string,
+      chatId: string,
+    ): Promise<ApiCommunityAssistantChatDetailResponse> =>
+      request<ApiCommunityAssistantChatDetailResponse>(
+        `/communities/${encodeURIComponent(communityId)}/assistant/chats/${encodeURIComponent(chatId)}`,
       ),
     updateGates: (
       communityId: string,

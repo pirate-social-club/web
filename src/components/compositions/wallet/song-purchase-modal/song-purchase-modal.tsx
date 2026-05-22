@@ -31,6 +31,7 @@ export interface SongPurchaseModalProps {
   processing?: boolean;
   selfVerificationSavingsPercent?: number | null;
   songTitle: string;
+  vinylReleaseAvailable?: boolean;
 }
 
 function SummaryRow({
@@ -71,6 +72,7 @@ export function SongPurchaseModal({
   processing = false,
   selfVerificationSavingsPercent,
   songTitle,
+  vinylReleaseAvailable = false,
 }: SongPurchaseModalProps) {
   const { dir } = useUiLocale();
   const displayTitle = assetTitle ?? songTitle;
@@ -113,6 +115,12 @@ export function SongPurchaseModal({
             ) : null}
             <SummaryRow label="Pay with" value={fundingAssetLabel} />
           </div>
+
+          {vinylReleaseAvailable ? (
+            <FormNote>
+              Vinyl available after unlock. Sold separately on ElasticStage.
+            </FormNote>
+          ) : null}
 
           {selfVerificationLabel ? (
             <div className="flex flex-col gap-3 rounded-lg border border-border-soft bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">

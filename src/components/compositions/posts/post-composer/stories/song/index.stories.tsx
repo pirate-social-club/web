@@ -383,6 +383,35 @@ export const PaidUnlock: Story = {
   ),
 };
 
+export const PaidUnlockWithVinyl: Story = {
+  name: "Paid Unlock / ElasticStage vinyl",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="settings"
+      mode="song"
+      canCreateSongPost
+      titleValue="Benefit single for the club drop"
+      titleCountLabel="36/300"
+      lyricsValue="Raise the room up / hold the line / send the chorus over..."
+      song={{
+        genre: "R&B",
+        primaryLanguage: "English",
+        secondaryLanguage: "French",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: benefitCoverFile,
+        coverLabel: "benefit-single-cover.png",
+        previewStartSeconds: "42",
+      }}
+      monetization={{
+        visible: true,
+        priceUsd: "3.99",
+        vinylReleaseUrl: "https://elasticstage.com/saint-pablo/releases/benefit-single",
+      }}
+    />
+  ),
+};
+
 export const PaidUnlockRegionalPricing: Story = {
   name: "Pay to access / Self.xyz regional pricing",
   render: () => (

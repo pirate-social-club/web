@@ -88,6 +88,8 @@ function settingsCopy(controller: PostComposerController) {
     pricePlaceholder: copy.placeholders.unlockPrice,
     previewStartLabel: copy.fields.previewStartSeconds,
     previewStartPlaceholder: copy.placeholders.previewStartSeconds,
+    vinylReleaseUrlLabel: copy.fields.vinylReleaseUrl,
+    vinylReleaseUrlPlaceholder: copy.placeholders.vinylReleaseUrl,
     regionalPricingLabel: copy.access.useRegionalPricing,
     licenseLabel: copy.sections.license,
     licenseLabels: {
@@ -166,6 +168,7 @@ export function PostComposerSettingsHub({
             ...current,
             priceUsd,
             regionalPricingEnabled: nextAccess === "free" ? false : current.regionalPricingEnabled,
+            vinylReleaseUrl: nextAccess === "free" ? "" : current.vinylReleaseUrl,
             visible: nextAccess === undefined ? current.visible : nextAccess === "paid",
           }));
           if (controller.tabs.activeTab === "live" && nextAccess !== undefined) {
@@ -185,6 +188,12 @@ export function PostComposerSettingsHub({
           commerce.updateMonetizationState((current) => ({
             ...current,
             regionalPricingEnabled,
+          }))
+        }
+        onVinylReleaseUrlChange={(vinylReleaseUrl) =>
+          commerce.updateMonetizationState((current) => ({
+            ...current,
+            vinylReleaseUrl,
           }))
         }
         onRoyaltyPercentChange={(value) =>
@@ -217,6 +226,7 @@ export function PostComposerSettingsHub({
               : attachment?.kind === "song" && primary.activeSongMode === "original"
         }
         showAnonymousIdentity={identity.identity?.allowAnonymousIdentity === true}
+        vinylReleaseUrl={commerce.monetizationState.vinylReleaseUrl ?? ""}
         visibility={visibilityFromController(controller)}
       />
 

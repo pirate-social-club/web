@@ -29,6 +29,8 @@ export type PostComposerSettingsSectionsCopy = {
   pricePlaceholder: string;
   previewStartLabel: string;
   previewStartPlaceholder: string;
+  vinylReleaseUrlLabel: string;
+  vinylReleaseUrlPlaceholder: string;
   regionalPricingLabel: string;
   licenseLabel: string;
   licenseLabels: Record<AssetLicensePresetId, string>;
@@ -54,6 +56,7 @@ export type PostComposerSettingsSectionsProps = {
   onPreviewStartSecondsChange?: (value: string) => void;
   onRegionalPricingChange?: (value: boolean) => void;
   onRoyaltyPercentChange: (value: string) => void;
+  onVinylReleaseUrlChange?: (value: string) => void;
   onVisibilityChange: (value: "public" | "community") => void;
   price: string;
   previewStartSeconds?: string;
@@ -67,6 +70,7 @@ export type PostComposerSettingsSectionsProps = {
   regionalPricingPreview?: RegionalPricingPreview | null;
   showLicenseFields?: boolean;
   showAnonymousIdentity?: boolean;
+  vinylReleaseUrl?: string;
   visibility: "public" | "community";
   onAgentIdentitySelect?: () => void;
 };
@@ -83,6 +87,8 @@ const defaultCopy: PostComposerSettingsSectionsCopy = {
   pricePlaceholder: "0",
   previewStartLabel: "30-second preview starts at",
   previewStartPlaceholder: "0",
+  vinylReleaseUrlLabel: "ElasticStage vinyl URL",
+  vinylReleaseUrlPlaceholder: "https://elasticstage.com/artist/releases/release-singleep",
   regionalPricingLabel: "Use community regional pricing",
   licenseLabel: "License",
   licenseLabels: {
@@ -193,6 +199,7 @@ export function PostComposerSettingsSections({
   onPreviewStartSecondsChange,
   onRegionalPricingChange,
   onRoyaltyPercentChange,
+  onVinylReleaseUrlChange,
   onVisibilityChange,
   price,
   previewStartSeconds,
@@ -206,6 +213,7 @@ export function PostComposerSettingsSections({
   royaltyPercent,
   showLicenseFields,
   showAnonymousIdentity = true,
+  vinylReleaseUrl = "",
   visibility,
   onAgentIdentitySelect,
 }: PostComposerSettingsSectionsProps) {
@@ -339,6 +347,20 @@ export function PostComposerSettingsSections({
                       />
                       <span className="text-base font-semibold text-muted-foreground">s</span>
                     </div>
+                  </label>
+                ) : null}
+                {attachment?.kind === "song" && onVinylReleaseUrlChange ? (
+                  <label className="block space-y-2">
+                    <Type as="span" variant="body-strong">
+                      {copy.vinylReleaseUrlLabel}
+                    </Type>
+                    <Input
+                      className="h-14 rounded-[var(--radius-lg)] border-border-soft bg-background text-lg shadow-none"
+                      inputMode="url"
+                      onChange={(event) => onVinylReleaseUrlChange(event.target.value)}
+                      placeholder={copy.vinylReleaseUrlPlaceholder}
+                      value={vinylReleaseUrl}
+                    />
                   </label>
                 ) : null}
               </div>

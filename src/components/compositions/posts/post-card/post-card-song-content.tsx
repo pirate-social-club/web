@@ -31,6 +31,8 @@ interface DerivedSongUI {
   showPrice: boolean;
   showUnlock: boolean;
   showOwned: boolean;
+  showVinylAvailable: boolean;
+  showVinylLink: boolean;
   
   // Attributions
   showAttribution: boolean;
@@ -49,6 +51,7 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     listingMode,
     listingStatus,
     hasEntitlement,
+    vinylRelease,
     songMode,
     upstreamAttributions,
   } = content;
@@ -63,6 +66,8 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   const isListed = listingMode === "listed";
   const isListingActive = listingStatus === "active";
   const isOwned = hasEntitlement === true;
+  const hasVinylRelease = vinylRelease?.available === true;
+  const hasVinylReleaseUrl = Boolean(vinylRelease?.url?.trim());
   
   // Playback availability
   const isPlayable = !ageGateRequiresProof;
@@ -74,6 +79,8 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   const showPrice = isListed && isListingActive && !isOwned && isLocked;
   const showUnlock = isLocked && !isOwned && (!isListed || !isListingActive);
   const showOwned = isLocked && isOwned;
+  const showVinylAvailable = hasVinylRelease && isLocked && !isOwned && isListed && isListingActive && !ageGateRequiresProof;
+  const showVinylLink = showOwned && hasVinylReleaseUrl;
   
   // Attribution
   const showAttribution = !!(songMode === "remix" && upstreamAttributions && upstreamAttributions.length > 0);
@@ -104,6 +111,8 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     showPrice,
     showUnlock,
     showOwned,
+    showVinylAvailable,
+    showVinylLink,
     showAttribution,
     primaryAction,
   };
@@ -170,6 +179,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
   };
 
   const derivativeSummary = ui.showAttribution ? getDerivativeSummary(upstreamAttributions) : null;
+  const vinylReleaseUrl = content.vinylRelease?.url?.trim();
 
   return (
     <div className={cn("flex flex-col gap-2 text-start", className)}>
@@ -243,16 +253,38 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
 
       <StoryRegistrationBadge status={content.storyRegistration} />
 
-      {ui.showOwned && (
-        <span
+      {ui.showVinylAvailable ? (
+        <span className={cn("font-medium text-muted-foreground", postCardType.label)}>
+          Vinyl available after unlock
+        </span>
+      ) : null}
+
+      {(ui.showOwned || ui.showVinylLink) && (
+        <div
           className={cn(
-            "inline-flex items-center gap-1.5 font-medium text-success",
+            "flex flex-wrap items-center gap-x-4 gap-y-2",
             postCardType.label,
           )}
         >
-          <Check className="size-4" weight="bold" />
-          <span>Unlocked</span>
-        </span>
+          {ui.showOwned ? (
+            <span className="inline-flex items-center gap-1.5 font-medium text-success">
+              <Check className="size-4" weight="bold" />
+              <span>Unlocked</span>
+            </span>
+          ) : null}
+          {ui.showVinylLink && vinylReleaseUrl ? (
+            <a
+              className="inline-flex min-w-0 items-center gap-1.5 font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+              data-post-card-interactive="true"
+              href={vinylReleaseUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <span className="truncate">Buy vinyl on ElasticStage</span>
+              <ArrowSquareOut className="size-4 shrink-0" />
+            </a>
+          ) : null}
+        </div>
       )}
       {ui.isAgeGated && ui.ageGateRequiresProof && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5">

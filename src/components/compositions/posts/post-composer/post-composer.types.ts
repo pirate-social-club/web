@@ -194,6 +194,7 @@ export interface MonetizationState {
   priceUsd?: string;
   regionalPricingAvailable?: boolean;
   regionalPricingEnabled?: boolean;
+  vinylReleaseUrl?: string;
 }
 
 export interface RegionalPricingTierPreview {

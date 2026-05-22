@@ -137,6 +137,27 @@ describe("song submit payload helpers", () => {
     });
   });
 
+  test("adds ElasticStage vinyl release metadata to paid song listings", () => {
+    const listingRequest = buildAssetListingRequest({
+      assetId: "ast_vinyl",
+      paidSongPriceUsd: 7,
+      pricingPolicyRegionalPricingEnabled: true,
+      regionalPricingEnabled: false,
+      vinylReleaseUrl: "  https://elasticstage.com/saint-pablo/releases/benefit-single  ",
+    });
+
+    expect(listingRequest).toEqual({
+      asset: "ast_vinyl",
+      price_cents: 700,
+      regional_pricing_enabled: false,
+      donation_partner: null,
+      donation_share_bps: null,
+      vinyl_release_provider: "elasticstage",
+      vinyl_release_url: "https://elasticstage.com/saint-pablo/releases/benefit-single",
+      status: "active",
+    });
+  });
+
   test("builds a paid live-room ticket listing", () => {
     const listingRequest = buildLiveRoomListingRequest({
       liveRoomId: "lr_paid_room",

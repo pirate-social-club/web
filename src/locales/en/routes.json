@@ -241,6 +241,7 @@
       "vocalStem": "Vocal stem",
       "previewClip": "Preview clip",
       "previewStartSeconds": "30-second preview starts at",
+      "vinylReleaseUrl": "ElasticStage vinyl URL",
       "charity": "Charity"
     },
     "identity": {
@@ -299,6 +300,7 @@
       "title": "Title",
       "unlockPrice": "0",
       "previewStartSeconds": "0",
+      "vinylReleaseUrl": "https://elasticstage.com/artist/releases/release-singleep",
       "url": "https://"
     },
     "sections": {

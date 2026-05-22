@@ -46,6 +46,30 @@ describe("buildPostComposerPreviewContent", () => {
     expect(content.type === "song" ? content.artworkSrc : undefined).toBeUndefined();
   });
 
+  test("exposes only vinyl availability in paid song previews", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "paid",
+      attachment: {
+        kind: "song",
+        label: "track.wav",
+        previewUrl: "blob:https://app.test/song",
+      },
+      body: "",
+      price: "3.99",
+      title: "Track",
+      vinylReleaseUrl: "https://elasticstage.com/artist/releases/track",
+    });
+
+    expect(content).toMatchObject({
+      type: "song",
+      vinylRelease: {
+        available: true,
+        provider: "elasticstage",
+      },
+    });
+    expect(content.type === "song" ? content.vinylRelease?.url : undefined).toBeUndefined();
+  });
+
   test("builds live room content for live publish preview", () => {
     const content = buildPostComposerPreviewContent({
       access: "paid",

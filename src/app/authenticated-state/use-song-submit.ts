@@ -427,6 +427,7 @@ export function useSongSubmit({
         regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
         charityContributionPct: charityContribution.percentagePct,
         charityPartnerId: charityPartner?.partnerId ?? null,
+        vinylReleaseUrl: monetizationState.vinylReleaseUrl,
       });
       if (!listingRequest) throw new Error("The song published, but the paid listing payload was not created.");
       logger.info("[song-submit] creating paid song listing", {

@@ -66,6 +66,7 @@ type PrivyWalletDemandContextValue = {
 };
 
 const REFRESH_WINDOW_MS = 5 * 60 * 1000;
+const E2E_CONNECTED_WALLET_STORAGE_KEY = "pirate:e2e:connected-wallet:v1";
 
 const PrivyRuntimeContext = React.createContext<PrivyRuntimeState>({
   busy: false,
@@ -84,6 +85,29 @@ const PrivyRuntimeContext = React.createContext<PrivyRuntimeState>({
 const PrivyWalletDemandContext = React.createContext<PrivyWalletDemandContextValue>({
   retainWalletSync: () => () => undefined,
 });
+
+function isLocalE2eHost(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+}
+
+function readLocalE2eConnectedWallets(): PirateConnectedEvmWallet[] {
+  if (!isLocalE2eHost()) return [];
+  const address = window.localStorage.getItem(E2E_CONNECTED_WALLET_STORAGE_KEY)?.trim().toLowerCase();
+  if (!address || !/^0x[a-f0-9]{40}$/u.test(address)) return [];
+
+  return [{
+    address: address as `0x${string}`,
+    getEthereumProvider: async () => ({
+      request: async () => {
+        throw new Error("E2E wallet provider should not be used outside local checkout bypass.");
+      },
+    }),
+    id: "e2e-wallet",
+    switchChain: async () => undefined,
+    walletClientType: "e2e",
+  }];
+}
 
 export function getPrivyAppId(): string | null {
   return readViteEnv("VITE_PRIVY_APP_ID");
@@ -134,8 +158,9 @@ export function PirateAuthProvider({
   const appId = getPrivyAppId();
   const clientId = getPrivyClientId();
   const session = useSession();
+  const e2eConnectedWallets = React.useMemo(() => readLocalE2eConnectedWallets(), []);
   const [busy, setBusy] = React.useState(false);
-  const [connectedWallets, setConnectedWallets] = React.useState<PirateConnectedEvmWallet[]>([]);
+  const [connectedWallets, setConnectedWallets] = React.useState<PirateConnectedEvmWallet[]>(e2eConnectedWallets);
   const [pendingConnect, setPendingConnect] = React.useState(false);
   const [connectMountRequested, setConnectMountRequested] = React.useState(false);
   const [loadedConnect, setLoadedConnect] = React.useState<(() => void) | null>(null);
@@ -147,7 +172,7 @@ export function PirateAuthProvider({
   const [WalletBridgeComponent, setWalletBridgeComponent] = React.useState<PrivyWalletBridgeComponent | null>(null);
   const [refreshWindowReached, setRefreshWindowReached] = React.useState(false);
   const [walletSyncDemand, setWalletSyncDemand] = React.useState(0);
-  const [walletsReady, setWalletsReady] = React.useState(false);
+  const [walletsReady, setWalletsReady] = React.useState(e2eConnectedWallets.length > 0);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [privyAuthenticated, setPrivyAuthenticated] = React.useState(false);
   const [privyReady, setPrivyReady] = React.useState(false);
@@ -310,6 +335,13 @@ export function PirateAuthProvider({
   }, [appId, shouldLoadPrivy]);
 
   React.useEffect(() => {
+    if (e2eConnectedWallets.length > 0) {
+      setConnectedWallets(e2eConnectedWallets);
+      setWalletsReady(true);
+      setWalletBridgeComponent(null);
+      return;
+    }
+
     if (!appId || !shouldLoadPrivy || !shouldLoadWalletSync) {
       setConnectedWallets([]);
       setWalletsReady(false);
@@ -335,7 +367,7 @@ export function PirateAuthProvider({
     return () => {
       cancelled = true;
     };
-  }, [appId, shouldLoadPrivy, shouldLoadWalletSync]);
+  }, [appId, e2eConnectedWallets, shouldLoadPrivy, shouldLoadWalletSync]);
 
   const connect = React.useCallback(() => {
     logger.debug("[auth-provider] connect requested", {

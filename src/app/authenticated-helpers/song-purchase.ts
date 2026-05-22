@@ -44,6 +44,7 @@ export async function executeSongPurchase(params: {
   onSuccess: (message: string) => void;
   primaryWalletAddress?: string | null;
   refreshSongCommerce: () => Promise<void> | void;
+  onSettledPurchase?: (settlement: CommunityPurchaseSettlement) => void;
   settlementWalletAttachmentId?: string | null;
   successMessage: SongPurchaseSuccessMessage;
   titleText: string;
@@ -81,7 +82,8 @@ export async function executeSongPurchase(params: {
       funding_tx_ref: fundingTxRef,
       settlement_tx_ref: fundingTxRef,
     });
-    await params.refreshSongCommerce();
+    params.onSettledPurchase?.(settlement);
+    void Promise.resolve().then(() => params.refreshSongCommerce()).catch(() => undefined);
     params.onSuccess(params.successMessage({ settlement, titleText: params.titleText }));
   } catch (error) {
     if (quoteId && !fundingTxRef) {
@@ -93,9 +95,11 @@ export async function executeSongPurchase(params: {
 
 export function useSongPurchase({
   commerceEnabled,
+  onSettledPurchase,
   refreshSongCommerce,
 }: {
   commerceEnabled: boolean;
+  onSettledPurchase?: (settlement: CommunityPurchaseSettlement) => void;
   refreshSongCommerce: () => Promise<void> | void;
 }) {
   const api = useApi();
@@ -115,6 +119,7 @@ export function useSongPurchase({
     connectedWallets,
     listing: params.listing,
     onError: toast.error,
+    onSettledPurchase,
     onSuccess: toast.success,
     primaryWalletAddress: session?.profile.primary_wallet_address,
     refreshSongCommerce,
@@ -124,6 +129,7 @@ export function useSongPurchase({
   }), [
     api.communities,
     connectedWallets,
+    onSettledPurchase,
     refreshSongCommerce,
     session?.profile.primary_wallet_address,
     session?.user.primary_wallet_attachment,
@@ -136,6 +142,7 @@ type PendingSongPurchase = {
   listing: ApiCommunityListing;
   successMessage: SongPurchaseSuccessMessage;
   titleText: string;
+  vinylReleaseAvailable?: boolean;
 };
 
 type QuotedSongPurchase = PendingSongPurchase & {
@@ -161,9 +168,11 @@ export function resolveQuoteDiscountPercent(quote: Pick<CommunityPurchaseQuote, 
 
 export function useSongPurchaseFlow({
   commerceEnabled,
+  onSettledPurchase,
   refreshSongCommerce,
 }: {
   commerceEnabled: boolean;
+  onSettledPurchase?: (settlement: CommunityPurchaseSettlement) => void;
   refreshSongCommerce: () => Promise<void> | void;
 }) {
   const api = useApi();
@@ -315,9 +324,10 @@ export function useSongPurchaseFlow({
         funding_tx_ref: fundingTxRef,
         settlement_tx_ref: fundingTxRef,
       });
-      await refreshSongCommerce();
+      onSettledPurchase?.(settlement);
       toast.success(pendingPurchase.successMessage({ settlement, titleText: pendingPurchase.titleText }));
       setPendingPurchase(null);
+      void Promise.resolve().then(() => refreshSongCommerce()).catch(() => undefined);
     } catch (error) {
       if (!fundingTxRef) {
         void api.communities.failPurchase(pendingPurchase.communityId, { quote: pendingPurchase.quote.id }).catch(() => undefined);
@@ -332,6 +342,7 @@ export function useSongPurchaseFlow({
   }, [
     api.communities,
     connectedWallets,
+    onSettledPurchase,
     pendingPurchase,
     purchaseProcessing,
     refreshSongCommerce,
@@ -358,6 +369,7 @@ export function useSongPurchaseFlow({
         assetLabel: pendingPurchase.assetLabel ?? "song",
         assetTitle: pendingPurchase.titleText,
         songTitle: pendingPurchase.titleText,
+        vinylReleaseAvailable: pendingPurchase.vinylReleaseAvailable === true,
       }),
       selfPrompt
         ? React.createElement(SelfVerificationModal, {

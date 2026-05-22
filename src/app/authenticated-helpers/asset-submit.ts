@@ -62,6 +62,7 @@ export function buildAssetListingRequest(input: {
   regionalPricingEnabled: boolean;
   charityContributionPct?: number | null;
   charityPartnerId?: string | null;
+  vinylReleaseUrl?: string | null;
 }) {
   if (input.paidSongPriceUsd == null) {
     return null;
@@ -72,6 +73,7 @@ export function buildAssetListingRequest(input: {
     && (input.charityContributionPct ?? 0) <= 100
     ? input.charityContributionPct ?? null
     : null;
+  const vinylReleaseUrl = input.vinylReleaseUrl?.trim() || null;
 
   return {
     asset: input.assetId,
@@ -79,6 +81,12 @@ export function buildAssetListingRequest(input: {
     regional_pricing_enabled: input.pricingPolicyRegionalPricingEnabled && input.regionalPricingEnabled,
     donation_partner: donationSharePct && input.charityPartnerId ? input.charityPartnerId : null,
     donation_share_bps: donationSharePct == null ? null : donationSharePct * 100,
+    ...(vinylReleaseUrl
+      ? {
+          vinyl_release_provider: "elasticstage" as const,
+          vinyl_release_url: vinylReleaseUrl,
+        }
+      : {}),
     status: "active" as const,
   };
 }

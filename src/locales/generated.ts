@@ -367,6 +367,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "vocalStem": "Vocal stem",
           "previewClip": "Preview clip",
           "previewStartSeconds": "30-second preview starts at",
+          "vinylReleaseUrl": "ElasticStage vinyl URL",
           "charity": "Charity"
         },
         "identity": {
@@ -425,6 +426,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "title": "Title",
           "unlockPrice": "0",
           "previewStartSeconds": "0",
+          "vinylReleaseUrl": "https://elasticstage.com/artist/releases/release-singleep",
           "url": "https://"
         },
         "sections": {
@@ -1602,6 +1604,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "Advertise"
           },
           {
+            "id": "child-safety",
+            "label": "Child Safety"
+          },
+          {
             "id": "terms-of-service",
             "label": "Terms of Service"
           },
@@ -2007,6 +2013,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "vocalStem": "المسار الصوتي",
           "previewClip": "مقطع المعاينة",
           "previewStartSeconds": "تبدأ معاينة 30 ثانية عند",
+          "vinylReleaseUrl": "رابط فينيل ElasticStage",
           "charity": "الجهة الخيرية"
         },
         "identity": {
@@ -2065,6 +2072,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "title": "العنوان",
           "unlockPrice": "0",
           "previewStartSeconds": "0",
+          "vinylReleaseUrl": "https://elasticstage.com/artist/releases/release-singleep",
           "url": "https://"
         },
         "sections": {
@@ -3242,6 +3250,10 @@ export const GENERATED_LOCALE_CATALOGS = {
             "label": "أعلن"
           },
           {
+            "id": "child-safety",
+            "label": "سلامة الأطفال"
+          },
+          {
             "id": "terms-of-service",
             "label": "شروط الخدمة"
           },
@@ -3647,6 +3659,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "vocalStem": "人声分轨",
           "previewClip": "预览片段",
           "previewStartSeconds": "30 秒预览开始于",
+          "vinylReleaseUrl": "ElasticStage 黑胶链接",
           "charity": "慈善机构"
         },
         "identity": {
@@ -3705,6 +3718,7 @@ export const GENERATED_LOCALE_CATALOGS = {
           "title": "标题",
           "unlockPrice": "0",
           "previewStartSeconds": "0",
+          "vinylReleaseUrl": "https://elasticstage.com/artist/releases/release-singleep",
           "url": "https://"
         },
         "sections": {
@@ -4880,6 +4894,10 @@ export const GENERATED_LOCALE_CATALOGS = {
           {
             "id": "advertise",
             "label": "投放广告"
+          },
+          {
+            "id": "child-safety",
+            "label": "儿童安全"
           },
           {
             "id": "terms-of-service",

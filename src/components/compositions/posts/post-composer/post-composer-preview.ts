@@ -28,6 +28,7 @@ export function buildPostComposerPreviewContent({
   title,
   videoDetails,
   videoPosterSrc,
+  vinylReleaseUrl,
   songPlayback,
   liveCoverSrc,
   liveState,
@@ -47,6 +48,7 @@ export function buildPostComposerPreviewContent({
   title: string;
   videoDetails?: VideoDetailsState;
   videoPosterSrc?: string;
+  vinylReleaseUrl?: string;
   songPlayback?: {
     onPause?: () => void;
     onPlay?: () => void;
@@ -141,6 +143,7 @@ export function buildPostComposerPreviewContent({
 
   if (attachment.kind === "song") {
     const trackTitle = songTitle?.trim() || attachment.label || "Untitled track";
+    const normalizedVinylReleaseUrl = vinylReleaseUrl?.trim();
 
     return {
       type: "song",
@@ -151,6 +154,12 @@ export function buildPostComposerPreviewContent({
       listingMode: access === "paid" ? "listed" : "not_listed",
       listingStatus: access === "paid" ? "active" : undefined,
       priceLabel: access === "paid" ? priceLabel : undefined,
+      vinylRelease: access === "paid" && normalizedVinylReleaseUrl
+        ? {
+            available: true,
+            provider: "elasticstage",
+          }
+        : undefined,
       onPause: songPlayback?.onPause,
       onPlay: attachment.previewUrl ? songPlayback?.onPlay : undefined,
       playbackState: songPlayback?.state ?? "idle",

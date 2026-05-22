@@ -243,6 +243,7 @@ function buildPreviewPost(
     songPlayback,
     title: fields.titleValue,
     videoPosterSrc: videoPosterPreviewUrl,
+    vinylReleaseUrl: commerce.monetizationState.vinylReleaseUrl,
   });
   const titleProps = buildPostCardTitleProps({
     content,

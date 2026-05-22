@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { Asset, LocalizedPostResponse } from "@pirate/api-contracts";
+import type {
+  Asset,
+  CommunityListing,
+  CommunityPurchase,
+  LocalizedPostResponse,
+} from "@pirate/api-contracts";
 
 import {
   resolveLocalizedLinkTitle,
@@ -179,6 +184,45 @@ function createSongAsset(overrides: Partial<Asset> = {}): Asset {
     story_error: null,
     story_status: "none",
     story_royalty_registration_status: "none",
+    ...overrides,
+  };
+}
+
+function createSongListing(overrides: Partial<CommunityListing> = {}): CommunityListing {
+  return {
+    id: "lst_song",
+    object: "community_listing",
+    community: "com_cmt_songs",
+    asset: "asset_ast_song",
+    listing_mode: "fixed_price",
+    status: "active",
+    price_cents: 700,
+    regional_pricing_enabled: false,
+    created_by_user: "usr_artist",
+    created: unixTimestamp("2026-05-16T09:00:00.000Z"),
+    ...overrides,
+  };
+}
+
+function createSongPurchase(overrides: Partial<CommunityPurchase> = {}): CommunityPurchase {
+  return {
+    id: "pur_song",
+    object: "community_purchase",
+    community: "com_cmt_songs",
+    listing: "lst_song",
+    asset: "asset_ast_song",
+    buyer_user: "usr_fan",
+    settlement_wallet_attachment: "wa_fan",
+    purchase_price_cents: 700,
+    settlement_mode: "delivery_only_story_settlement",
+    settlement_chain: { chain_namespace: "eip155", chain_id: 1315, display_name: "Story Aeneid" },
+    settlement_token: "IP",
+    settlement_tx_ref: "0xabc",
+    allocations: [],
+    purchase_entitlement: "pe_song",
+    entitlement_kind: "asset_access",
+    entitlement_target_ref: "asset_ast_song",
+    created: unixTimestamp("2026-05-16T09:01:00.000Z"),
     ...overrides,
   };
 }
@@ -433,5 +477,49 @@ describe("post presentation songs", () => {
     expect(content.storyRegistration?.state).toBe("failed");
     expect(content.storyRegistration?.label).toBe("IP registration failed");
     expect(content.storyRegistration?.description).toContain("configuration is missing");
+  });
+
+  test("surfaces vinyl availability from listing metadata without exposing the URL", () => {
+    const content = toCommunityPostContent(
+      createSongPost({ access_mode: "locked", asset: "asset_ast_song" }),
+      {
+        listing: createSongListing({
+          vinyl_release_available: true,
+          vinyl_release_provider: "elasticstage",
+        }),
+      },
+    );
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.vinylRelease).toEqual({
+      available: true,
+      provider: "elasticstage",
+    });
+  });
+
+  test("surfaces the ElasticStage vinyl URL from owned purchase metadata", () => {
+    const releaseUrl = "https://elasticstage.com/saint-pablo/releases/benefit-single";
+    const content = toCommunityPostContent(
+      createSongPost({ access_mode: "locked", asset: "asset_ast_song" }),
+      {
+        listing: createSongListing({
+          vinyl_release_available: true,
+          vinyl_release_provider: "elasticstage",
+        }),
+        purchase: createSongPurchase({
+          vinyl_release_provider: "elasticstage",
+          vinyl_release_url: releaseUrl,
+        }),
+      },
+    );
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.vinylRelease).toEqual({
+      available: true,
+      provider: "elasticstage",
+      url: releaseUrl,
+    });
   });
 });

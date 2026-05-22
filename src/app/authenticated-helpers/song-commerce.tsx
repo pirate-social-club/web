@@ -1,8 +1,11 @@
 "use client";
 
 import * as React from "react";
-import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
-import type { CommunityPurchase as ApiCommunityPurchase } from "@pirate/api-contracts";
+import type {
+  CommunityListing as ApiCommunityListing,
+  CommunityPurchase as ApiCommunityPurchase,
+  CommunityPurchaseSettlement as ApiCommunityPurchaseSettlement,
+} from "@pirate/api-contracts";
 
 import { useApi } from "@/lib/api";
 import { resolveApiUrl } from "@/lib/api/base-url";
@@ -29,6 +32,35 @@ export type SongCommerceState = {
   purchasesByAssetId: Record<string, ApiCommunityPurchase | undefined>;
   purchasesByLiveRoomId: Record<string, ApiCommunityPurchase | undefined>;
 };
+
+export function purchaseFromSettlement(settlement: ApiCommunityPurchaseSettlement): ApiCommunityPurchase {
+  return {
+    id: settlement.id,
+    object: "community_purchase",
+    community: settlement.community,
+    listing: settlement.listing,
+    asset: settlement.asset,
+    live_room: settlement.live_room,
+    buyer_user: settlement.buyer_user,
+    settlement_wallet_attachment: settlement.settlement_wallet_attachment,
+    purchase_price_cents: settlement.purchase_price_cents,
+    pricing_tier: settlement.pricing_tier,
+    settlement_mode: settlement.settlement_mode,
+    settlement_chain: settlement.settlement_chain,
+    settlement_token: settlement.settlement_token,
+    settlement_tx_ref: settlement.settlement_tx_ref,
+    allocations: settlement.allocations,
+    donation_partner: settlement.donation_partner,
+    donation_share_bps: settlement.donation_share_bps,
+    donation_amount_cents: settlement.donation_amount_cents,
+    vinyl_release_provider: settlement.vinyl_release_provider,
+    vinyl_release_url: settlement.vinyl_release_url,
+    purchase_entitlement: settlement.purchase_entitlement,
+    entitlement_kind: settlement.entitlement_kind,
+    entitlement_target_ref: settlement.entitlement_target_ref,
+    created: settlement.settled_at,
+  };
+}
 
 export type SongPlaybackDescriptor = {
   key: string;
@@ -67,6 +99,22 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
   const [listingsByLiveRoomId, setListingsByLiveRoomId] = React.useState<Record<string, ApiCommunityListing | undefined>>({});
   const [purchasesByAssetId, setPurchasesByAssetId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
   const [purchasesByLiveRoomId, setPurchasesByLiveRoomId] = React.useState<Record<string, ApiCommunityPurchase | undefined>>({});
+
+  const recordPurchaseSettlement = React.useCallback((settlement: ApiCommunityPurchaseSettlement) => {
+    const purchase = purchaseFromSettlement(settlement);
+    if (purchase.asset) {
+      setPurchasesByAssetId((current) => ({
+        ...current,
+        [purchase.asset!]: purchase,
+      }));
+    }
+    if (purchase.live_room) {
+      setPurchasesByLiveRoomId((current) => ({
+        ...current,
+        [purchase.live_room!]: purchase,
+      }));
+    }
+  }, []);
 
   const refresh = React.useCallback(async () => {
     if (!enabled) {
@@ -136,6 +184,7 @@ export function useSongCommerceState(communityId: string, enabled: boolean) {
     listingsByLiveRoomId,
     purchasesByAssetId,
     purchasesByLiveRoomId,
+    recordPurchaseSettlement,
     refresh,
   };
 }

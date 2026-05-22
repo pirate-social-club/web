@@ -75,6 +75,11 @@ export const mockWalletAttachments = [
 export const mockCommunityId = "cmt_e2e";
 export const mockCreatedPostId = "pst_e2e_created";
 export const mockFeedPostId = "pst_e2e_feed";
+export const mockVinylPostId = "pst_e2e_vinyl_song";
+export const mockVinylAssetId = "asset_ast_e2e_vinyl_song";
+export const mockVinylListingId = "lst_e2e_vinyl_song";
+export const mockVinylPurchaseId = "pur_e2e_vinyl_song";
+export const mockVinylReleaseUrl = "https://elasticstage.com/e2e-artist/releases/e2e-vinyl-song";
 export const mockCommentId = "cmt_e2e_new";
 export const mockCommentBody = "E2E browser comment";
 export const mockDerivativeSourceRef = "story:ip:0x1111111111111111111111111111111111111111#licenseTermsId=17";
@@ -222,6 +227,82 @@ export function createMockPostResponse(input?: {
     translated_caption: null,
     machine_translated: false,
     source_hash: "e2e-source-hash",
+  };
+}
+
+export function createMockVinylSongPostResponse() {
+  const created = Date.parse("2026-05-02T00:00:00.000Z");
+  return {
+    post: {
+      id: mockVinylPostId,
+      object: "post",
+      post: mockVinylPostId,
+      community: mockCommunityId,
+      post_type: "song",
+      title: "E2E Vinyl Song",
+      body: null,
+      caption: "A locked song with a post-purchase vinyl offer.",
+      status: "published",
+      visibility: "public",
+      identity_mode: "public",
+      author_user: "usr_e2e_artist",
+      anonymous_label: null,
+      anonymous_scope: null,
+      authorship_mode: "human_direct",
+      agent_display_name_snapshot: null,
+      agent_owner_handle_snapshot: null,
+      source_language: "en",
+      translation_policy: "machine_allowed",
+      label_id: null,
+      disclosed_qualifiers_json: null,
+      media_refs: [{
+        storage_ref: "/e2e/song-preview.mp3",
+        mime_type: "audio/mpeg",
+        size_bytes: 128,
+        duration_ms: 30_000,
+      }],
+      embeds: [],
+      link_url: null,
+      asset: mockVinylAssetId,
+      access_mode: "locked",
+      created,
+      analysis_state: "allow",
+      analysis_result_ref: null,
+      content_safety_state: "safe",
+      age_gate_policy: "none",
+      rights_basis: "original",
+      song_artifact_bundle: "sab_e2e_vinyl_song",
+      song_mode: "original",
+      song_title: "E2E Vinyl Song",
+    },
+    song_presentation: {
+      title: "E2E Vinyl Song",
+      cover_art_ref: null,
+      duration_ms: 180_000,
+    },
+    thread_snapshot: {
+      thread_root_post: mockVinylPostId,
+      thread_root_post_id: mockVinylPostId,
+      snapshot_seq: 1,
+      published_through_comment_created: created,
+      comment_count: 0,
+      swarm_manifest_ref: "swarm://comments/pst_e2e_vinyl_song",
+      swarm_feed_ref: null,
+      created,
+    },
+    comment_count: 0,
+    upvote_count: 0,
+    downvote_count: 0,
+    like_count: 0,
+    viewer_vote: null,
+    viewer_reaction_kinds: [],
+    resolved_locale: "en",
+    translation_state: "same_language",
+    translated_title: null,
+    translated_body: null,
+    translated_caption: null,
+    machine_translated: false,
+    source_hash: "e2e-vinyl-source-hash",
   };
 }
 

@@ -241,6 +241,7 @@
       "vocalStem": "المسار الصوتي",
       "previewClip": "مقطع المعاينة",
       "previewStartSeconds": "تبدأ معاينة 30 ثانية عند",
+      "vinylReleaseUrl": "رابط فينيل ElasticStage",
       "charity": "الجهة الخيرية"
     },
     "identity": {
@@ -299,6 +300,7 @@
       "title": "العنوان",
       "unlockPrice": "0",
       "previewStartSeconds": "0",
+      "vinylReleaseUrl": "https://elasticstage.com/artist/releases/release-singleep",
       "url": "https://"
     },
     "sections": {

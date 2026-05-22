@@ -25,6 +25,7 @@ import { readViteEnv } from "@/lib/vite-env";
 const BASE_MAINNET_USDC = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
 const BASE_SEPOLIA_USDC = "0x036cbd53842c5426634e7929541ec2318f3dcf7e";
 const TX_WAIT_TIMEOUT_MS = 90_000;
+const E2E_CHECKOUT_TX_REF_STORAGE_KEY = "pirate:e2e:checkout-tx-ref:v1";
 
 export type UsdcTransferInput = {
   chainId: number;
@@ -37,6 +38,13 @@ function normalizeAddress(value: string | null | undefined): Address | null {
   if (!value) return null;
   const trimmed = value.trim();
   return isAddress(trimmed) ? trimmed.toLowerCase() as Address : null;
+}
+
+function readLocalE2eCheckoutTxRef(): Hex | null {
+  if (typeof window === "undefined") return null;
+  if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") return null;
+  const txRef = window.localStorage.getItem(E2E_CHECKOUT_TX_REF_STORAGE_KEY)?.trim();
+  return txRef && /^0x[a-fA-F0-9]+$/u.test(txRef) ? txRef as Hex : null;
 }
 
 function readChainIdEnv(name: string): number | null {
@@ -279,6 +287,11 @@ export async function executeRoutedStoryCheckout(params: {
   quote: CommunityPurchaseQuote;
   wallet: PirateConnectedEvmWallet;
 }): Promise<Hex> {
+  const e2eTxRef = readLocalE2eCheckoutTxRef();
+  if (e2eTxRef) {
+    return e2eTxRef;
+  }
+
   return executeUsdcTransfer({
     transfer: resolveStoryCheckoutTransferInput(params.quote),
     wallet: params.wallet,

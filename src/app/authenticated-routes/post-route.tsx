@@ -409,13 +409,18 @@ export function PostPage({ postId }: { postId: string }) {
     listingsByLiveRoomId,
     purchasesByAssetId,
     purchasesByLiveRoomId,
+    recordPurchaseSettlement,
     refresh: refreshSongCommerce,
   } = useSongCommerceState(community?.id ?? "", commerceEnabled);
   const refreshCommerceAndLiveAccess = React.useCallback(async () => {
     await refreshSongCommerce();
     await refreshLiveRoomAccess();
   }, [refreshLiveRoomAccess, refreshSongCommerce]);
-  const { buySong, purchaseModal } = useSongPurchaseFlow({ commerceEnabled, refreshSongCommerce: refreshCommerceAndLiveAccess });
+  const { buySong, purchaseModal } = useSongPurchaseFlow({
+    commerceEnabled,
+    onSettledPurchase: recordPurchaseSettlement,
+    refreshSongCommerce: refreshCommerceAndLiveAccess,
+  });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
 
   const handleBuySong = React.useCallback(async (
@@ -430,6 +435,7 @@ export function PostPage({ postId }: { postId: string }) {
       listing,
       successMessage: ({ settlement, titleText: nextTitle }) => `${nextTitle} unlocked for $${(settlement.purchase_price_cents / 100).toFixed(2)}.`,
       titleText,
+      vinylReleaseAvailable: assetLabel === "song" && listing.vinyl_release_available === true,
     });
   }, [buySong]);
 

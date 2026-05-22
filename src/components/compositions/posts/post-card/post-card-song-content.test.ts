@@ -34,6 +34,60 @@ describe("deriveSongUI", () => {
     expect(ui.showUnlock).toBe(false);
   });
 
+  test("shows vinyl availability only before ownership", () => {
+    const ui = deriveSongUI({
+      ...baseSong,
+      accessMode: "locked",
+      listingMode: "listed",
+      listingStatus: "active",
+      vinylRelease: {
+        available: true,
+        provider: "elasticstage",
+      },
+    });
+
+    expect(ui.showVinylAvailable).toBe(true);
+    expect(ui.showVinylLink).toBe(false);
+  });
+
+  test("shows vinyl link for owned songs with a release URL", () => {
+    const releaseUrl = "https://elasticstage.com/kevin-tameimpala/releases/midnight-waves";
+    const ui = deriveSongUI({
+      ...baseSong,
+      accessMode: "locked",
+      hasEntitlement: true,
+      vinylRelease: {
+        available: true,
+        provider: "elasticstage",
+        url: releaseUrl,
+      },
+    });
+
+    expect(ui.showOwned).toBe(true);
+    expect(ui.showVinylAvailable).toBe(false);
+    expect(ui.showVinylLink).toBe(true);
+
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          accessMode: "locked",
+          hasEntitlement: true,
+          vinylRelease: {
+            available: true,
+            provider: "elasticstage",
+            url: releaseUrl,
+          },
+        },
+      }),
+    );
+
+    expect(markup).toContain("Buy vinyl on ElasticStage");
+    expect(markup).toContain(`href="${releaseUrl}"`);
+    expect(markup).toContain('target="_blank"');
+    expect(markup).toContain('rel="noreferrer"');
+  });
+
   test("requires age proof until the viewer is verified allowed", () => {
     const lockedUi = deriveSongUI({
       ...baseSong,

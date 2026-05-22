@@ -124,6 +124,33 @@ function toVideoAssetSourceDescriptor(
   };
 }
 
+function toSongVinylRelease(input: {
+  listing?: SongPresentationOptions["listing"];
+  purchase?: SongPresentationOptions["purchase"];
+}): SongContentSpec["vinylRelease"] {
+  const provider = input.purchase?.vinyl_release_provider
+    ?? input.listing?.vinyl_release_provider
+    ?? null;
+  const purchaseUrl = input.purchase?.vinyl_release_url?.trim() || null;
+  const available = provider === "elasticstage"
+    && (input.listing?.vinyl_release_available === true || Boolean(purchaseUrl));
+
+  if (!available) {
+    return undefined;
+  }
+
+  return purchaseUrl
+    ? {
+        available: true,
+        provider: "elasticstage",
+        url: purchaseUrl,
+      }
+    : {
+        available: true,
+        provider: "elasticstage",
+      };
+}
+
 export function toVideoPostContent(
   postResponse: ApiPost,
   songOptions: SongPresentationOptions | undefined,
@@ -243,5 +270,6 @@ export function toSongPostContent(
     artworkSrc: songPresentation?.cover_art_ref ?? undefined,
     durationMs: songPresentation?.duration_ms ?? undefined,
     upstreamAttributions: upstreamAttributions?.length ? upstreamAttributions : undefined,
+    vinylRelease: toSongVinylRelease({ listing, purchase }),
   };
 }

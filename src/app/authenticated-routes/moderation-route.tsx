@@ -173,6 +173,35 @@ function extractVisualPolicySummary(detail: ModerationCaseDetail | null): NonNul
   return undefined;
 }
 
+const REPORT_REASON_LABELS: Record<string, string> = {
+  spam: "Spam",
+  harassment: "Harassment",
+  hate: "Hate",
+  sexual_content: "Sexual content",
+  graphic_content: "Graphic content",
+  misleading: "Misleading",
+  other: "Other",
+};
+
+function formatReportReason(report: ModerationCaseDetail["reports"][number]): string {
+  if (report.reason_code === "sexual_content" && report.note?.trim().toLowerCase().startsWith("child safety concern")) {
+    return "Child safety concern";
+  }
+  return REPORT_REASON_LABELS[report.reason_code] ?? report.reason_code;
+}
+
+function extractReportSummary(detail: ModerationCaseDetail | null): NonNullable<ModerationQueueCaseItem["reportSummary"]> | undefined {
+  const reports = detail?.reports ?? [];
+  const firstReport = reports[0];
+  if (!firstReport) return undefined;
+  const note = firstReport.note?.trim();
+  return {
+    reasonLabel: formatReportReason(firstReport),
+    note: note || undefined,
+    reportCount: reports.length,
+  };
+}
+
 function useIsModerationMobileLayout() {
   const [isMobileLayout, setIsMobileLayout] = React.useState(() => {
     if (typeof window === "undefined") {
@@ -444,6 +473,7 @@ export function CommunityModerationPage({
                   }
                 : undefined,
               visualPolicySummary: extractVisualPolicySummary(detail),
+              reportSummary: extractReportSummary(detail),
             };
           },
         );

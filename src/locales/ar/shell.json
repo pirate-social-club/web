@@ -62,6 +62,7 @@
     "resourceItems": [
       { "id": "blog", "label": "المدونة" },
       { "id": "advertise", "label": "أعلن" },
+      { "id": "child-safety", "label": "سلامة الأطفال" },
       { "id": "terms-of-service", "label": "شروط الخدمة" },
       { "id": "privacy-policy", "label": "سياسة الخصوصية" }
     ],

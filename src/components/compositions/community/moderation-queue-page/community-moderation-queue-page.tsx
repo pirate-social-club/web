@@ -33,6 +33,11 @@ export interface ModerationQueueCaseItem {
     reasons: string[];
     evidence: Array<{ label: string; value: string }>;
   };
+  reportSummary?: {
+    reasonLabel: string;
+    note?: string;
+    reportCount: number;
+  };
 }
 
 export interface CommunityModerationQueuePageProps {
@@ -119,6 +124,11 @@ function formatVisualEvidence(summary: NonNullable<ModerationQueueCaseItem["visu
     return result;
   }, []);
   return values.length > 0 ? `Detected: ${values.join(", ")}` : null;
+}
+
+function formatReportSummary(summary: NonNullable<ModerationQueueCaseItem["reportSummary"]>): string {
+  const countLabel = summary.reportCount > 1 ? ` (${summary.reportCount} reports)` : "";
+  return `Reported: ${summary.reasonLabel}${countLabel}`;
 }
 
 function QueuePostPreview({
@@ -209,6 +219,9 @@ export function CommunityModerationQueuePage({
               const visualEvidence = caseItem.visualPolicySummary
                 ? formatVisualEvidence(caseItem.visualPolicySummary)
                 : null;
+              const reportSummary = caseItem.reportSummary
+                ? formatReportSummary(caseItem.reportSummary)
+                : null;
 
               return (
                 <div key={caseItem.caseId}>
@@ -264,6 +277,19 @@ export function CommunityModerationQueuePage({
                         {visualEvidence ? (
                           <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
                             {visualEvidence}
+                          </Type>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {caseItem.reportSummary ? (
+                      <div className="border-l border-destructive/40 pl-4">
+                        <Type as="p" variant="body">
+                          {reportSummary}
+                        </Type>
+                        {caseItem.reportSummary.note ? (
+                          <Type as="p" className="mt-1 text-muted-foreground" variant="caption">
+                            {caseItem.reportSummary.note}
                           </Type>
                         ) : null}
                       </div>

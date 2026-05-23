@@ -117,6 +117,56 @@ export const VisualPolicy: Story = {
   },
 };
 
+export const ChildSafetyReport: Story = {
+  args: {
+    cases: [
+      {
+        ...baseCases[1],
+        priority: "high" as const,
+        openedBy: "user_report" as const,
+        postPreview: {
+          title: "Needs urgent moderator review",
+          body: "A community member reported this post through the child safety flow.",
+          authorLabel: "reported-user.pirate",
+          authorHref: buildPublicProfilePath("reported-user.pirate"),
+        },
+        reportSummary: {
+          reasonLabel: "Child safety concern",
+          note: "Child safety concern: suspected grooming behavior",
+          reportCount: 1,
+        },
+      },
+    ],
+  },
+};
+
+export const AutomatedChildSafetyFlag: Story = {
+  args: {
+    cases: [
+      {
+        ...baseCases[0],
+        priority: "high" as const,
+        openedBy: "platform_analysis" as const,
+        postPreview: {
+          title: "Image post held for review",
+          imageSrc: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=200&h=200&fit=crop",
+          authorLabel: "creator.pirate",
+          authorHref: buildPublicProfilePath("creator.pirate"),
+        },
+        visualPolicySummary: {
+          title: "Image check needs review",
+          description: "Needs review because the image appears to include a possible minor with adult content.",
+          reasons: ["Possible minor with adult content"],
+          evidence: [
+            { label: "Age", value: "possible minor" },
+            { label: "Nudity", value: "adult content" },
+          ],
+        },
+      },
+    ],
+  },
+};
+
 export const NoPreview: Story = {
   args: {
     cases: [

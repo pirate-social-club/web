@@ -364,6 +364,61 @@ export type ApiCommunityMachineAccessPolicyUpdate = {
   included_surfaces?: Partial<ApiCommunityMachineAccessPolicy["included_surfaces"]>;
 };
 
+export type ApiTelegramLinkedChatLinkMode = "invite_link" | "join_request";
+
+export type ApiTelegramBotAdminStatus =
+  | "unknown"
+  | "ready"
+  | "missing"
+  | "insufficient_permissions"
+  | "left_chat";
+
+export type ApiTelegramSetupIntent = {
+  id: string;
+  object: "telegram_setup_intent";
+  community: string;
+  status: "pending" | "completed" | "expired" | "canceled";
+  expires_at: number;
+  bot_start_parameter: string;
+  bot_deep_link: string | null;
+};
+
+export type ApiTelegramCommunityBot = {
+  id: string;
+  object: "telegram_community_bot";
+  community: string;
+  status: "missing" | "connected" | "invalid";
+  bot_username: string | null;
+  bot_display_name: string | null;
+  token_last4: string | null;
+  webhook_status: "pending" | "active" | "failed" | "disabled" | null;
+  connected_at: number | null;
+};
+
+export type ApiTelegramLinkedChat = {
+  id: string;
+  object: "telegram_linked_chat";
+  community: string;
+  title: string;
+  username: string | null;
+  link_mode: ApiTelegramLinkedChatLinkMode;
+  bot_admin_status: ApiTelegramBotAdminStatus;
+  directory_visible: boolean;
+  linked_at: number;
+};
+
+export type ApiCommunityTelegramChatSettings = {
+  id: string;
+  object: "community_telegram_chat_settings";
+  community: string;
+  linked_chat: ApiTelegramLinkedChat | null;
+};
+
+export type ApiCommunityTelegramChatSettingsUpdate = {
+  link_mode?: ApiTelegramLinkedChatLinkMode;
+  directory_visible?: boolean;
+};
+
 export type ApiAssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector";
 export type ApiAssistantActionMode = "answer_only" | "draft_only" | "confirmed_writes";
 export type ApiAssistantVoiceMode = "off" | "transcription_only" | "voice_replies";

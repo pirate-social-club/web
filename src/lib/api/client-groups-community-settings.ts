@@ -18,10 +18,14 @@ import type {
   ApiCommunityGatesUpdateRequest,
   ApiCommunityMachineAccessPolicy,
   ApiCommunityMachineAccessPolicyUpdate,
+  ApiCommunityTelegramChatSettings,
+  ApiCommunityTelegramChatSettingsUpdate,
+  ApiTelegramCommunityBot,
   ApiCommunityRuleInput,
   ApiCommunitySafetyUpdateRequest,
   ApiCommunityVisualPolicyUpdateRequest,
   ApiResolveDonationPartnerResponse,
+  ApiTelegramSetupIntent,
   ApiUpdateCommunityRequest,
   CommunityLabelPolicyInput,
   CommunityReferenceLinksInput,
@@ -88,6 +92,42 @@ export function createCommunitySettingsApi(request: ApiRequest) {
       request<ApiCommunityMachineAccessPolicy>(
         `/communities/${encodeURIComponent(communityId)}/machine-access-policy`,
         { method: "POST", body: JSON.stringify(body) },
+      ),
+    getTelegramChatSettings: (communityId: string): Promise<ApiCommunityTelegramChatSettings> =>
+      request<ApiCommunityTelegramChatSettings>(
+        `/communities/${encodeURIComponent(communityId)}/telegram-chat`,
+      ),
+    getTelegramBot: (communityId: string): Promise<ApiTelegramCommunityBot> =>
+      request<ApiTelegramCommunityBot>(
+        `/communities/${encodeURIComponent(communityId)}/telegram-bot`,
+      ),
+    saveTelegramBot: (communityId: string, body: { bot_token: string }): Promise<ApiTelegramCommunityBot> =>
+      request<ApiTelegramCommunityBot>(
+        `/communities/${encodeURIComponent(communityId)}/telegram-bot`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    revokeTelegramBot: (communityId: string): Promise<ApiTelegramCommunityBot> =>
+      request<ApiTelegramCommunityBot>(
+        `/communities/${encodeURIComponent(communityId)}/telegram-bot/revoke`,
+        { method: "POST" },
+      ),
+    createTelegramSetupIntent: (communityId: string): Promise<ApiTelegramSetupIntent> =>
+      request<ApiTelegramSetupIntent>(
+        `/communities/${encodeURIComponent(communityId)}/telegram-chat/setup-intents`,
+        { method: "POST" },
+      ),
+    updateTelegramChatSettings: (
+      communityId: string,
+      body: ApiCommunityTelegramChatSettingsUpdate,
+    ): Promise<ApiCommunityTelegramChatSettings> =>
+      request<ApiCommunityTelegramChatSettings>(
+        `/communities/${encodeURIComponent(communityId)}/telegram-chat`,
+        { method: "POST", body: JSON.stringify(body) },
+      ),
+    unlinkTelegramChat: (communityId: string): Promise<ApiCommunityTelegramChatSettings> =>
+      request<ApiCommunityTelegramChatSettings>(
+        `/communities/${encodeURIComponent(communityId)}/telegram-chat/unlink`,
+        { method: "POST" },
       ),
     getAssistantPolicy: (communityId: string): Promise<ApiCommunityAssistantPolicyResponse> =>
       request<ApiCommunityAssistantPolicyResponse>(

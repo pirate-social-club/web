@@ -67,6 +67,39 @@ describe("machine-access moderation wiring", () => {
     expect(path).toBe("/c/gld_123/mod/machine-access");
   });
 
+  test("telegram is in the section type and builds a path", () => {
+    const section: CommunityModerationSection = "telegram";
+    const path = buildCommunityModerationPath("gld_123", section);
+
+    expect(path).toBe("/c/gld_123/mod/telegram");
+  });
+
+  test("getCommunityModerationTitle returns the telegram label", () => {
+    expect(getCommunityModerationTitle("telegram", mockCopy)).toBe("Telegram");
+  });
+
+  test("buildCommunityModerationSections includes telegram in the Access group", () => {
+    const sections = buildCommunityModerationSections(null, "gld_123", mockCopy);
+    const accessSection = sections.find((s) => s.label === "Access");
+    const telegramItem = accessSection?.items.find(
+      (item) => item.label === "Telegram",
+    );
+
+    expect(accessSection == null).toBe(false);
+    expect(telegramItem == null).toBe(false);
+    expect(telegramItem!.active).toBe(false);
+  });
+
+  test("telegram sidebar item is active when passed as activeSection", () => {
+    const sections = buildCommunityModerationSections("telegram", "gld_123", mockCopy);
+    const accessSection = sections.find((s) => s.label === "Access");
+    const telegramItem = accessSection!.items.find(
+      (item) => item.label === "Telegram",
+    );
+
+    expect(telegramItem!.active).toBe(true);
+  });
+
   test("getCommunityModerationTitle returns the machine-access nav label", () => {
     expect(getCommunityModerationTitle("machine-access", mockCopy)).toBe("Machine access");
   });
@@ -100,8 +133,10 @@ describe("machine-access moderation wiring", () => {
 
     expect(labels).toContain("Agents");
     expect(labels).toContain("Assistant");
+    expect(labels).toContain("Telegram");
     expect(labels).toContain("Machine access");
+    expect(labels.indexOf("Assistant") < labels.indexOf("Telegram")).toBe(true);
+    expect(labels.indexOf("Telegram") < labels.indexOf("Machine access")).toBe(true);
     expect(labels.indexOf("Agents") < labels.indexOf("Machine access")).toBe(true);
-    expect(labels.indexOf("Assistant") < labels.indexOf("Machine access")).toBe(true);
   });
 });

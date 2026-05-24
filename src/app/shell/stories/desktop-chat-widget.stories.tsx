@@ -50,6 +50,19 @@ const conversations: ChatConversation[] = [
     unreadCount: 0,
     updatedAt: now - 1000 * 60 * 95,
   },
+  {
+    assistantKind: "community",
+    avatarSeed: "community-assistant-infinity-mirror",
+    communityId: "com_infinity_mirror",
+    id: "community-assistant:com_infinity_mirror",
+    preview: "Ask with Infinity Mirror rules and recent thread context",
+    profileHref: "/c/infinity-mirror",
+    targetLabel: "Infinity Mirror assistant",
+    title: "Infinity Mirror",
+    transport: "assistant",
+    unreadCount: 1,
+    updatedAt: now - 1000 * 60 * 96,
+  },
 ];
 
 const messages: ChatMessageRecord[] = [
@@ -72,6 +85,23 @@ const messages: ChatMessageRecord[] = [
     conversationId: "xmtp-conversation-1",
     createdAt: now - 1000 * 60 * 5,
     id: "message-3",
+    sender: "peer",
+  },
+];
+
+const assistantMessages: ChatMessageRecord[] = [
+  {
+    content: "What are the latest threads I should catch up on?",
+    conversationId: "community-assistant:com_infinity_mirror",
+    createdAt: now - 1000 * 60 * 12,
+    id: "assistant-message-1",
+    sender: "user",
+  },
+  {
+    content: "The build-log thread and the weekly intro thread are most relevant. The community rules also ask members to include context and avoid broad launch announcements.",
+    conversationId: "community-assistant:com_infinity_mirror",
+    createdAt: now - 1000 * 60 * 11,
+    id: "assistant-message-2",
     sender: "peer",
   },
 ];
@@ -137,7 +167,8 @@ function ChatWidgetStoryContent() {
               ) : activeConversation ? (
                 <ThreadView
                   conversation={activeConversation}
-                  items={messages.map((message) => ({ ...message, conversationId: activeConversation.id }))}
+                  items={(activeConversation.assistantKind === "community" ? assistantMessages : messages)
+                    .map((message) => ({ ...message, conversationId: activeConversation.id }))}
                   onBack={() => setView({ kind: "list" })}
                   onOpenProfile={() => {}}
                   onSend={() => {}}

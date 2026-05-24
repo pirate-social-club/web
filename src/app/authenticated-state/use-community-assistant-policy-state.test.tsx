@@ -67,8 +67,8 @@ function createPolicy(overrides: Partial<ApiCommunityAssistantPolicy> = {}): Api
   };
 }
 
-function installAssistantApiMocks() {
-  let policy = createPolicy();
+function installAssistantApiMocks(input: { initialPolicy?: ApiCommunityAssistantPolicy } = {}) {
+  let policy = input.initialPolicy ?? createPolicy();
   const modelList: ApiCommunityAssistantModelList = {
     object: "list",
     data: [
@@ -170,6 +170,25 @@ describe("useCommunityAssistantPolicyState", () => {
     expect(result.current.assistantPolicyDirty).toBe(false);
   });
 
+  test("refreshes live model options when a saved OpenRouter key exists", async () => {
+    const { calls, modelList } = installAssistantApiMocks({
+      initialPolicy: createPolicy({
+        openRouterKeyStatus: {
+          kind: "connected",
+          last4: "9abc",
+          connectedAt: "2026-05-22T01:00:00.000Z",
+        },
+      }),
+    });
+    const { result } = renderAssistantHook();
+
+    await waitFor(() => expect(result.current.loadingAssistantPolicy).toBe(false));
+    await waitFor(() => expect(calls.getAssistantModels).toEqual(["community-1"]));
+
+    expect(result.current.assistantPolicySettings.availableModels).toEqual(modelList.data);
+    expect(result.current.assistantPolicyDirty).toBe(false);
+  });
+
   test("saves policy changes and uploads a pending avatar", async () => {
     const { calls } = installAssistantApiMocks();
     const { result } = renderAssistantHook();
@@ -246,12 +265,36 @@ describe("useCommunityAssistantPolicyState", () => {
     expect(result.current.assistantPolicyDirty).toBe(false);
   });
 
-  test("policy update payload excludes frontend-only fields", () => {
-    const settings = createDefaultCommunityAssistantPolicySettings();
+  test("policy update payload excludes frontend-only fields and pins hidden settings", () => {
+    const settings = {
+      ...createDefaultCommunityAssistantPolicySettings(),
+      actionMode: "confirmed_writes" as const,
+      includeInSovereignExport: false,
+      memoryEnabled: false,
+      requireModeratorApprovalForWrites: false,
+      retentionMode: "ephemeral" as const,
+      saveChatsToCommunityDb: false,
+      sttModel: "custom-stt",
+      sttProvider: "openai" as const,
+      ttsVoice: "voice_123",
+      voiceMode: "voice_replies" as const,
+    };
     const payload = assistantSettingsToPolicyUpdate(settings);
 
     expect(payload).not.toHaveProperty("avatarPreviewUrl");
     expect(payload).not.toHaveProperty("availableModels");
     expect(payload).not.toHaveProperty("openRouterKeyStatus");
+    expect(payload).toMatchObject({
+      actionMode: "answer_only",
+      includeInSovereignExport: true,
+      memoryEnabled: true,
+      requireModeratorApprovalForWrites: true,
+      retentionMode: "per_user_private",
+      saveChatsToCommunityDb: true,
+      sttModel: "voxtral-mini-latest",
+      sttProvider: "mistral",
+      ttsVoice: "",
+      voiceMode: "off",
+    });
   });
 });

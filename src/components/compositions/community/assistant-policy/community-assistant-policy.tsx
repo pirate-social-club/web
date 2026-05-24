@@ -19,11 +19,7 @@ import { Textarea } from "@/components/primitives/textarea";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import type {
-  AssistantActionMode,
   AssistantContextMode,
-  AssistantRetentionMode,
-  AssistantSttProvider,
-  AssistantVoiceMode,
   CommunityAssistantPolicyPageProps,
   CommunityAssistantPolicySettings,
 } from "./community-assistant-policy.types";
@@ -35,34 +31,12 @@ type Option<T extends string> = {
   value: T;
 };
 
+type AssistantModelOption = CommunityAssistantPolicySettings["availableModels"][number];
+
 const contextModeOptions: Array<Option<AssistantContextMode>> = [
   { label: "Live SQL", value: "live_sql" },
   { label: "Summary cache", value: "summary_cache" },
   { label: "Hybrid vector", value: "hybrid_vector" },
-];
-
-const actionModeOptions: Array<Option<AssistantActionMode>> = [
-  { label: "Answer only", value: "answer_only" },
-  { label: "Draft only", value: "draft_only" },
-  { label: "Confirmed writes", value: "confirmed_writes" },
-];
-
-const retentionModeOptions: Array<Option<AssistantRetentionMode>> = [
-  { label: "Per-user private", value: "per_user_private" },
-  { label: "Visible to mods", value: "community_visible_to_mods" },
-  { label: "Ephemeral", value: "ephemeral" },
-];
-
-const voiceModeOptions: Array<Option<AssistantVoiceMode>> = [
-  { label: "Off", value: "off" },
-  { label: "Transcription only", value: "transcription_only" },
-  { label: "Voice replies", value: "voice_replies" },
-];
-
-const sttProviderOptions: Array<Option<AssistantSttProvider>> = [
-  { label: "Mistral", value: "mistral" },
-  { label: "OpenAI", value: "openai" },
-  { label: "None", value: "none" },
 ];
 
 const sourceRows: Array<{
@@ -176,6 +150,119 @@ function SelectRow<T extends string>({
   );
 }
 
+function selectedModelLabel(model: AssistantModelOption | undefined, selectedModelId: string): string {
+  return model?.label ?? selectedModelId;
+}
+
+function modelSearchText(model: AssistantModelOption): string {
+  return [
+    model.label,
+    model.id,
+  ].join(" ").toLowerCase();
+}
+
+function getModelOptions(settings: CommunityAssistantPolicySettings): AssistantModelOption[] {
+  const byId = new Map(settings.availableModels.map((model) => [model.id, model]));
+  if (settings.selectedModelId && !byId.has(settings.selectedModelId)) {
+    byId.set(settings.selectedModelId, {
+      id: settings.selectedModelId,
+      label: settings.selectedModelId,
+      description: "Selected model is not in the latest OpenRouter response.",
+    });
+  }
+  return [...byId.values()];
+}
+
+function ModelSearchInput({
+  connected,
+  onModelChange,
+  settings,
+}: {
+  connected: boolean;
+  onModelChange: (modelId: string) => void;
+  settings: CommunityAssistantPolicySettings;
+}) {
+  const options = React.useMemo(() => getModelOptions(settings), [settings]);
+  const selectedModel = options.find((model) => model.id === settings.selectedModelId);
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState(() => selectedModelLabel(selectedModel, settings.selectedModelId));
+  const listId = React.useId();
+
+  React.useEffect(() => {
+    if (!open) {
+      setQuery(selectedModelLabel(selectedModel, settings.selectedModelId));
+    }
+  }, [open, selectedModel, settings.selectedModelId]);
+
+  const filteredModels = React.useMemo(() => {
+    const trimmed = query.trim().toLowerCase();
+    const matches = trimmed
+      ? options.filter((model) => modelSearchText(model).includes(trimmed))
+      : options;
+    return matches.slice(0, 50);
+  }, [options, query]);
+
+  return (
+    <div className="relative">
+      <Input
+        aria-autocomplete="list"
+        aria-controls={listId}
+        aria-expanded={open}
+        aria-label="OpenRouter model"
+        autoComplete="off"
+        className="h-11 rounded-md"
+        disabled={!connected}
+        onBlur={() => {
+          window.setTimeout(() => setOpen(false), 120);
+        }}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder="Search OpenRouter models"
+        role="combobox"
+        value={query}
+      />
+      {open && connected ? (
+        <div
+          className="absolute z-50 mt-2 max-h-80 w-full overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-lg"
+          id={listId}
+          role="listbox"
+        >
+          {filteredModels.length === 0 ? (
+            <div className="px-3 py-3 text-base leading-6 text-muted-foreground">
+              No OpenRouter models found.
+            </div>
+          ) : filteredModels.map((model) => {
+            const selected = model.id === settings.selectedModelId;
+            return (
+              <button
+                aria-selected={selected}
+                className={cn(
+                  "flex h-10 w-full min-w-0 items-center rounded-md px-3 text-start hover:bg-muted",
+                  selected && "bg-muted",
+                )}
+                key={model.id}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onModelChange(model.id);
+                  setQuery(model.label);
+                  setOpen(false);
+                }}
+                role="option"
+                type="button"
+              >
+                <span className="min-w-0 truncate font-medium">{model.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ModelBillingSection({
   onKeyRevoke,
   onKeySave,
@@ -241,23 +328,8 @@ function ModelBillingSection({
             </div>
           </div>
         </FieldRow>
-        <FieldRow description="Loaded from OpenRouter and filtered by Pirate policy." label="Model">
-          <Select
-            disabled={!connected}
-            onValueChange={onModelChange}
-            value={settings.selectedModelId}
-          >
-            <SelectTrigger aria-label="OpenRouter model">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {settings.availableModels.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  {model.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <FieldRow description="Search the live OpenRouter model list for this community's key." label="Model">
+          <ModelSearchInput connected={connected} onModelChange={onModelChange} settings={settings} />
           {!connected ? (
             <p className="mt-2 text-base leading-6 text-muted-foreground">Save an OpenRouter key to choose a model.</p>
           ) : null}
@@ -637,85 +709,6 @@ export function CommunityAssistantPolicyPage({
         </div>
       </Section>
 
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Memory">
-        <div className="border-y border-border-soft">
-          <ToggleRow
-            checked={settings.memoryEnabled}
-            label="Use chat memory"
-            onCheckedChange={(memoryEnabled) => update({ memoryEnabled })}
-          />
-          <ToggleRow
-            checked={settings.saveChatsToCommunityDb}
-            description="Persist each user's community-assistant thread in the community Turso database."
-            label="Save chats in community DB"
-            onCheckedChange={(saveChatsToCommunityDb) => update({ saveChatsToCommunityDb })}
-          />
-          <SelectRow
-            label="Retention scope"
-            onValueChange={(retentionMode) => update({ retentionMode })}
-            options={retentionModeOptions}
-            value={settings.retentionMode}
-          />
-          <NumberRow
-            label="Retention"
-            min={1}
-            onChange={(retentionDays) => update({ retentionDays: retentionDays ?? settings.retentionDays })}
-            suffix="days"
-            value={settings.retentionDays}
-          />
-        </div>
-      </Section>
-
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Actions">
-        <div className="border-y border-border-soft">
-          <SelectRow
-            label="Allowed actions"
-            onValueChange={(actionMode) => update({ actionMode })}
-            options={actionModeOptions}
-            value={settings.actionMode}
-          />
-          <ToggleRow
-            checked={settings.requireModeratorApprovalForWrites}
-            label="Require approval for writes"
-            onCheckedChange={(requireModeratorApprovalForWrites) => update({ requireModeratorApprovalForWrites })}
-          />
-        </div>
-      </Section>
-
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Voice">
-        <div className="border-y border-border-soft">
-          <SelectRow
-            ariaLabel="Voice mode"
-            label="Voice mode"
-            onValueChange={(voiceMode) => update({ voiceMode })}
-            options={voiceModeOptions}
-            value={settings.voiceMode}
-          />
-          <SelectRow
-            label="STT provider"
-            onValueChange={(sttProvider) => update({ sttProvider })}
-            options={sttProviderOptions}
-            value={settings.sttProvider}
-          />
-          <FieldRow label="STT model">
-            <Input
-              className="h-11 rounded-md font-mono text-base"
-              onChange={(event) => update({ sttModel: event.target.value })}
-              value={settings.sttModel}
-            />
-          </FieldRow>
-          <FieldRow description="Disabled until TTS ships." label="TTS voice">
-            <Input
-              className="h-11 rounded-md"
-              disabled={settings.voiceMode !== "voice_replies"}
-              onChange={(event) => update({ ttsVoice: event.target.value })}
-              placeholder="voice id"
-              value={settings.ttsVoice}
-            />
-          </FieldRow>
-        </div>
-      </Section>
-
       <Section className="border-t border-border-soft pt-6 md:pt-8" title="Limits">
         <div className="border-y border-border-soft">
           <NumberRow
@@ -725,11 +718,12 @@ export function CommunityAssistantPolicyPage({
             suffix="messages"
             value={settings.perUserDailyMessageCap}
           />
-          <ToggleRow
-            checked={settings.includeInSovereignExport}
-            description="Include assistant settings, prompt revisions, and context index metadata in community exports."
-            label="Sovereign export"
-            onCheckedChange={(includeInSovereignExport) => update({ includeInSovereignExport })}
+          <NumberRow
+            label="Retention"
+            min={1}
+            onChange={(retentionDays) => update({ retentionDays: retentionDays ?? settings.retentionDays })}
+            suffix="days"
+            value={settings.retentionDays}
           />
         </div>
       </Section>

@@ -173,6 +173,51 @@ describe("CommunityAssistantPolicyPage", () => {
     view.unmount();
   });
 
+  test("searches live OpenRouter model options and selects a model", async () => {
+    const view = renderPolicy({
+      initialSettings: {
+        ...createDefaultCommunityAssistantPolicySettings(),
+        openRouterKeyStatus: {
+          connectedAt: "2026-05-22T00:00:00.000Z",
+          kind: "connected",
+          last4: "9f3a",
+        },
+        selectedModelId: "mistralai/mistral-small-3.2-24b-instruct",
+        availableModels: [
+          {
+            contextLength: 1_000_000,
+            description: "Fresh OpenRouter model.",
+            id: "openai/gpt-5.4",
+            inputCostUsdPerMillionTokens: 1.25,
+            label: "GPT-5.4",
+            outputCostUsdPerMillionTokens: 10,
+          },
+          {
+            id: "mistralai/mistral-small-3.2-24b-instruct",
+            label: "Mistral Small 3.2",
+          },
+        ],
+      },
+    });
+
+    const input = modelSelect(view);
+
+    editTextInput(input, "gpt");
+
+    await waitFor(() => {
+      expect(view.getByText("GPT-5.4")).not.toBeNull();
+    });
+    expect(view.queryByText("Fresh OpenRouter model.")).toBeNull();
+    expect(view.queryByText("1M context")).toBeNull();
+    expect(view.queryByText("$1.3 in / $10 out per 1M")).toBeNull();
+    fireEvent.click(view.getByRole("option", { name: "GPT-5.4" }));
+
+    await waitFor(() => {
+      expect(view.getLatestSettings().selectedModelId).toBe("openai/gpt-5.4");
+    });
+    view.unmount();
+  });
+
   test("revoking a key clears key state and disables model selection", async () => {
     const view = renderPolicy({
       initialSettings: {
@@ -265,30 +310,24 @@ describe("CommunityAssistantPolicyPage", () => {
     view.unmount();
   });
 
-  test("disables TTS voice unless voice replies are selected", async () => {
-    const voiceRepliesSettings = {
-      ...createDefaultCommunityAssistantPolicySettings(),
-      voiceMode: "voice_replies" as const,
-    };
+  test("hides future-only memory, action, voice, and export controls", () => {
+    const view = renderPolicy();
+    const renderedText = view.container.textContent ?? "";
 
-    const offView = renderPolicy({
-      initialSettings: {
-        ...createDefaultCommunityAssistantPolicySettings(),
-        voiceMode: "off",
-      },
-    });
-    const disabledVoiceInput = offView.getByPlaceholderText("voice id");
-
-    expect(isDisabled(disabledVoiceInput)).toBe(true);
-    offView.unmount();
-
-    const repliesView = renderPolicy({ initialSettings: voiceRepliesSettings });
-    const enabledVoiceInput = repliesView.getByPlaceholderText("voice id");
-
-    await waitFor(() => {
-      expect(isDisabled(enabledVoiceInput)).toBe(false);
-    });
-    repliesView.unmount();
+    expect(view.queryByText("Memory")).toBeNull();
+    expect(renderedText).not.toContain("Use chat memory");
+    expect(renderedText).not.toContain("Save chats in community DB");
+    expect(renderedText).not.toContain("Retention scope");
+    expect(view.queryByText("Actions")).toBeNull();
+    expect(renderedText).not.toContain("Allowed actions");
+    expect(renderedText).not.toContain("Require approval for writes");
+    expect(view.queryByText("Voice")).toBeNull();
+    expect(renderedText).not.toContain("Voice mode");
+    expect(renderedText).not.toContain("STT provider");
+    expect(renderedText).not.toContain("TTS voice");
+    expect(renderedText).not.toContain("Sovereign export");
+    expect(view.getByText("Retention")).not.toBeNull();
+    view.unmount();
   });
 
   test("does not render removed model configuration copy", () => {

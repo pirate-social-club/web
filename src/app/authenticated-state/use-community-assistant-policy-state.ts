@@ -117,18 +117,18 @@ export function assistantSettingsToPolicyUpdate(
     },
     maxContextThreads: settings.maxContextThreads,
     maxLookbackDays: settings.maxLookbackDays,
-    memoryEnabled: settings.memoryEnabled,
-    retentionMode: settings.retentionMode,
+    memoryEnabled: true,
+    retentionMode: "per_user_private",
     retentionDays: settings.retentionDays,
-    saveChatsToCommunityDb: settings.saveChatsToCommunityDb,
-    actionMode: settings.actionMode,
-    requireModeratorApprovalForWrites: settings.requireModeratorApprovalForWrites,
+    saveChatsToCommunityDb: true,
+    actionMode: "answer_only",
+    requireModeratorApprovalForWrites: true,
     perUserDailyMessageCap: settings.perUserDailyMessageCap,
-    voiceMode: settings.voiceMode,
-    sttProvider: settings.sttProvider,
-    sttModel: settings.sttModel,
-    ttsVoice: settings.ttsVoice,
-    includeInSovereignExport: settings.includeInSovereignExport,
+    voiceMode: "off",
+    sttProvider: "mistral",
+    sttModel: "voxtral-mini-latest",
+    ttsVoice: "",
+    includeInSovereignExport: true,
   };
 }
 
@@ -191,6 +191,19 @@ export function useCommunityAssistantPolicyState({
         setAssistantPolicySettings(settings);
         setSavedAssistantPolicySettings(settings);
         setAssistantAvatarFile(null);
+        if (settings.openRouterKeyStatus.kind === "connected") {
+          void api.communities.getAssistantModels(community.id)
+            .then((modelList) => {
+              if (cancelled) return;
+              setAssistantPolicySettings((current) => settingsWithModels(current, modelList.data));
+              setSavedAssistantPolicySettings((current) => settingsWithModels(current, modelList.data));
+            })
+            .catch(() => {
+              if (!cancelled) {
+                toast.error("Could not load assistant model list.");
+              }
+            });
+        }
       })
       .catch((error: unknown) => {
         if (!cancelled) {

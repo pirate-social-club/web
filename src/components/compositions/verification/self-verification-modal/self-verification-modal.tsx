@@ -14,8 +14,7 @@ import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
 import { FormNote } from "@/components/primitives/form-layout";
 import { VerificationAppDownloadLinks } from "@/components/compositions/verification/verification-app-download-links/verification-app-download-links";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { isAndroidRuntime } from "@/lib/platform-detection";
+import { isMobileDeviceRuntime } from "@/lib/platform-detection";
 
 export interface SelfVerificationModalProps {
   actionLabel: string;
@@ -44,8 +43,7 @@ export function SelfVerificationModal({
   selfApp,
   title,
 }: SelfVerificationModalProps) {
-  const isMobile = useIsMobile();
-  const shouldShowQr = Boolean(selfApp) && !forceMobile && !isMobile && !isAndroidRuntime();
+  const shouldShowQr = Boolean(selfApp) && !forceMobile && !isMobileDeviceRuntime();
   const hasPrimaryAction = Boolean(href) && !shouldShowQr;
   const missingLaunchTarget = !shouldShowQr && !hasPrimaryAction;
 

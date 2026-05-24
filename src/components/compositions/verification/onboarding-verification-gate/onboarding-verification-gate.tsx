@@ -16,6 +16,7 @@ const VERY_DOWNLOADS = VERIFICATION_MOBILE_APP_DOWNLOADS.very;
 
 export function OnboardingVerificationGate({
   verificationState,
+  verificationHref,
   verificationLoading,
   verificationError,
   onVerify,
@@ -48,13 +49,21 @@ export function OnboardingVerificationGate({
             <FormNote tone="warning">{verificationError}</FormNote>
           ) : null}
 
-          <Button
-            className="h-14 w-full"
-            loading={verificationLoading}
-            onClick={onVerify}
-          >
-            {isPending ? copy.reopenVerification : copy.verifyAction}
-          </Button>
+          {isPending && verificationHref ? (
+            <Button asChild className="h-14 w-full">
+              <a href={verificationHref}>
+                {copy.reopenVerification}
+              </a>
+            </Button>
+          ) : (
+            <Button
+              className="h-14 w-full"
+              loading={verificationLoading}
+              onClick={onVerify}
+            >
+              {isPending ? copy.reopenVerification : copy.verifyAction}
+            </Button>
+          )}
 
           <div className="flex items-center gap-4">
             <span aria-hidden="true" className="h-px flex-1 bg-border-soft" />

@@ -75,6 +75,7 @@ export function useCommunityJoinVerification({
     startVerification: startVeryVerification,
     verificationLoading: veryLoading,
     verificationError: veryError,
+    verificationHref: veryHref,
   } = useVeryVerification({
     verified: false,
     verificationIntent: "community_join",
@@ -316,5 +317,6 @@ export function useCommunityJoinVerification({
     startSelfVerification,
     startVeryVerification,
     veryLoading,
+    veryHref,
   };
 }

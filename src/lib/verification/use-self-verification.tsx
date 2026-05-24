@@ -11,8 +11,7 @@ import type { SelfApp } from "@selfxyz/sdk-common";
 import { useApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getVerificationPromptCopy } from "@/lib/identity-gates";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { isAndroidRuntime } from "@/lib/platform-detection";
+import { isMobileDeviceRuntime } from "@/lib/platform-detection";
 import {
   buildSelfVerificationLaunch,
   buildSelfVerificationCallbackHref,
@@ -116,7 +115,6 @@ export function useSelfVerification(input: {
     storageKey,
     verificationIntent,
   } = input;
-  const isMobile = useIsMobile();
   const [selfSession, setSelfSession] = React.useState<VerificationSession | null>(null);
   const [requestedCapabilities, setRequestedCapabilities] = React.useState<VerificationSession["requested_capabilities"]>([]);
   const [selfLoading, setSelfLoading] = React.useState(false);
@@ -124,7 +122,7 @@ export function useSelfVerification(input: {
   const [selfModalOpen, setSelfModalOpen] = React.useState(false);
   const onVerifiedRef = React.useRef(onVerified);
   const completionInFlightRef = React.useRef(false);
-  const shouldUseSameDeviceLaunch = isMobile || isAndroidRuntime();
+  const shouldUseSameDeviceLaunch = isMobileDeviceRuntime();
 
   React.useEffect(() => {
     onVerifiedRef.current = onVerified;

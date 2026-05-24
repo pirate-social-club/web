@@ -50,6 +50,7 @@ export function OnboardingPage() {
   const {
     startVerification: startHumanVerification,
     verificationError: humanVerificationError,
+    verificationHref: humanVerificationHref,
     verificationLoading: humanVerificationLoading,
     verificationState: humanVerificationState,
   } = useVeryVerification({
@@ -133,6 +134,7 @@ export function OnboardingPage() {
     <OnboardingVerificationGate
       onVerify={() => void startHumanVerification()}
       verificationError={humanVerificationError}
+      verificationHref={humanVerificationHref}
       verificationLoading={humanVerificationLoading}
       verificationState={humanVerificationState === "pending" ? "pending" : "not_started"}
     />

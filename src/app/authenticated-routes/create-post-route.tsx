@@ -280,6 +280,7 @@ export function CreatePostPage({
   const {
     startVerification: startVeryPostVerification,
     verificationError: veryPostVerificationError,
+    verificationHref: veryPostVerificationHref,
     verificationLoading: veryPostVerificationLoading,
     verificationState: veryPostVerificationState,
   } = useVeryVerification({
@@ -318,6 +319,7 @@ export function CreatePostPage({
     joinLoading,
     joinRequested,
     passportLoading,
+    veryHref: joinVeryHref,
     veryLoading: joinVeryLoading,
     selfError: joinSelfError,
     selfLoading: joinSelfLoading,
@@ -643,9 +645,10 @@ export function CreatePostPage({
           <OnboardingVerificationGate
             onVerify={() => void handlePrimaryJoinAction()}
             verificationError={joinError}
+            verificationHref={joinVeryHref}
             verificationLoading={joinLoading || joinVeryLoading}
             verificationState={
-              joinLoading || joinVeryLoading ? "pending" : "not_started"
+              joinVeryHref || joinLoading || joinVeryLoading ? "pending" : "not_started"
             }
           />
         </MobileRouteShell>
@@ -750,6 +753,7 @@ export function CreatePostPage({
               });
             }}
             verificationError={veryPostVerificationError}
+            verificationHref={veryPostVerificationHref}
             verificationLoading={veryPostVerificationLoading}
             verificationState={
               veryPostVerificationState === "pending"

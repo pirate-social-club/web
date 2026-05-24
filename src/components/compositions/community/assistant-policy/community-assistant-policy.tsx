@@ -231,7 +231,7 @@ function ModelSearchInput({
           role="listbox"
         >
           {filteredModels.length === 0 ? (
-            <div className="px-3 py-3 text-sm leading-5 text-muted-foreground">
+            <div className="px-3 py-3 text-base leading-6 text-muted-foreground">
               No OpenRouter models found.
             </div>
           ) : filteredModels.map((model) => {

@@ -155,6 +155,62 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("calls community Telegram chat settings endpoints", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+
+      if (request.url.endsWith("/setup-intents")) {
+        return Response.json({
+          id: "tsi_test",
+          object: "telegram_setup_intent",
+          community: "cmt_test",
+          status: "pending",
+          expires_at: 1_777_000_000,
+          bot_start_parameter: "tgsetup_test",
+          bot_deep_link: "https://t.me/pirate_bot?start=tgsetup_test",
+        });
+      }
+
+      return Response.json({
+        id: "cmt_test",
+        object: "community_telegram_chat_settings",
+        community: "cmt_test",
+        linked_chat: null,
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.communities.getTelegramChatSettings("cmt_test");
+      await client.communities.createTelegramSetupIntent("cmt_test");
+      await client.communities.updateTelegramChatSettings("cmt_test", {
+        directory_visible: false,
+        link_mode: "invite_link",
+      });
+      await client.communities.unlinkTelegramChat("cmt_test");
+
+      expect(requests.map((request) => `${request.method} ${request.url}`)).toEqual([
+        "GET http://pirate.test/communities/cmt_test/telegram-chat",
+        "POST http://pirate.test/communities/cmt_test/telegram-chat/setup-intents",
+        "POST http://pirate.test/communities/cmt_test/telegram-chat",
+        "POST http://pirate.test/communities/cmt_test/telegram-chat/unlink",
+      ]);
+      expect(requests.every((request) => request.headers.get("authorization") === "Bearer session-token")).toBe(true);
+      expect(await requests[2]!.json()).toEqual({
+        directory_visible: false,
+        link_mode: "invite_link",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("quotes community handles as JSON", async () => {
     let request: Request | null = null;
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

@@ -21,6 +21,7 @@ import { CommunityAgentPolicyPage } from "@/components/compositions/community/ag
 import { CommunityAssistantPolicyPage } from "@/components/compositions/community/assistant-policy/community-assistant-policy";
 import { CommunityMachineAccessPage } from "@/components/compositions/community/machine-access/community-machine-access";
 import { CommunitySafetyPage } from "@/components/compositions/community/safety-page/community-safety-page";
+import { CommunityTelegramIntegrationPage } from "@/components/compositions/community/telegram-integration/community-telegram-integration";
 import { CommunityVisualPolicyPage } from "@/components/compositions/community/visual-policy/community-visual-policy";
 import { CommunityHandlePolicyEditorPage } from "@/components/compositions/community/handle-policy-editor/community-handle-policy-editor-page";
 import { MobilePageHeader } from "@/components/compositions/app/app-shell-chrome/mobile-page-header";
@@ -879,6 +880,41 @@ export function CommunityModerationPage({
           submitState={state.machineAccessSubmitState}
         />
       );
+    } else if (section === "telegram") {
+      const telegramSaveDisabled = state.savingTelegram
+        || state.loadingTelegram
+        || !state.telegramDirty
+        || state.telegramSettings.linkedChat.status !== "connected";
+      if (!state.loadingTelegram && !state.telegramLoadError) {
+        setMobileSaveAction({
+          disabled: telegramSaveDisabled,
+          loading: state.savingTelegram,
+          onSave: state.handleSaveTelegramChat,
+        });
+      }
+      content = state.loadingTelegram
+        ? (
+          <FullPageSpinner />
+        )
+        : state.telegramLoadError
+          ? (
+            <RouteLoadFailureState
+              description={state.telegramLoadError}
+              title="Telegram"
+            />
+          )
+          : (
+            <CommunityTelegramIntegrationPage
+              onConnectChat={state.handleConnectTelegramChat}
+              onRevokeBot={state.handleRevokeTelegramBot}
+              onSave={state.handleSaveTelegramChat}
+              onSaveBotToken={state.handleSaveTelegramBotToken}
+              onSettingsChange={state.setTelegramSettings}
+              saveDisabled={telegramSaveDisabled}
+              settings={state.telegramSettings}
+              submitState={state.telegramSubmitState}
+            />
+          );
     } else if (section === "handles") {
       setMobileSaveAction({
         disabled: state.saving || !state.hasChanges || !state.community?.namespace_verification,

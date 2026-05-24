@@ -20,6 +20,7 @@ import { useCommunityContentPolicyState } from "./use-community-content-policy-s
 import { useCommunityMachineAccessState } from "./use-community-machine-access-state";
 import { useCommunityProfileState } from "./use-community-profile-state";
 import { useCommunitySafetyState } from "./use-community-safety-state";
+import { useCommunityTelegramState } from "./use-community-telegram-state";
 import { useCommunityVisualPolicyState } from "./use-community-visual-policy-state";
 import { useCommunityHandlePolicyState } from "./use-community-handle-policy-state";
 
@@ -119,6 +120,7 @@ export function useCommunityModerationState(communityId: string) {
   const agents = useCommunityAgentPolicyState({ community, saveCommunity });
   const assistantPolicy = useCommunityAssistantPolicyState({ community });
   const machineAccess = useCommunityMachineAccessState({ community });
+  const telegram = useCommunityTelegramState({ community });
   const handlePolicy = useCommunityHandlePolicyState({
     communityId: community?.id ?? null,
     enabled: Boolean(community?.namespace_verification),
@@ -140,6 +142,7 @@ export function useCommunityModerationState(communityId: string) {
     ...agents,
     ...assistantPolicy,
     ...machineAccess,
+    ...telegram,
     ...profile,
     ...contentPolicy,
     ...commerce,

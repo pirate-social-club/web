@@ -35,6 +35,8 @@ type Option<T extends string> = {
   value: T;
 };
 
+type AssistantModelOption = CommunityAssistantPolicySettings["availableModels"][number];
+
 const contextModeOptions: Array<Option<AssistantContextMode>> = [
   { label: "Live SQL", value: "live_sql" },
   { label: "Summary cache", value: "summary_cache" },
@@ -176,6 +178,119 @@ function SelectRow<T extends string>({
   );
 }
 
+function selectedModelLabel(model: AssistantModelOption | undefined, selectedModelId: string): string {
+  return model?.label ?? selectedModelId;
+}
+
+function modelSearchText(model: AssistantModelOption): string {
+  return [
+    model.label,
+    model.id,
+  ].join(" ").toLowerCase();
+}
+
+function getModelOptions(settings: CommunityAssistantPolicySettings): AssistantModelOption[] {
+  const byId = new Map(settings.availableModels.map((model) => [model.id, model]));
+  if (settings.selectedModelId && !byId.has(settings.selectedModelId)) {
+    byId.set(settings.selectedModelId, {
+      id: settings.selectedModelId,
+      label: settings.selectedModelId,
+      description: "Selected model is not in the latest OpenRouter response.",
+    });
+  }
+  return [...byId.values()];
+}
+
+function ModelSearchInput({
+  connected,
+  onModelChange,
+  settings,
+}: {
+  connected: boolean;
+  onModelChange: (modelId: string) => void;
+  settings: CommunityAssistantPolicySettings;
+}) {
+  const options = React.useMemo(() => getModelOptions(settings), [settings]);
+  const selectedModel = options.find((model) => model.id === settings.selectedModelId);
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState(() => selectedModelLabel(selectedModel, settings.selectedModelId));
+  const listId = React.useId();
+
+  React.useEffect(() => {
+    if (!open) {
+      setQuery(selectedModelLabel(selectedModel, settings.selectedModelId));
+    }
+  }, [open, selectedModel, settings.selectedModelId]);
+
+  const filteredModels = React.useMemo(() => {
+    const trimmed = query.trim().toLowerCase();
+    const matches = trimmed
+      ? options.filter((model) => modelSearchText(model).includes(trimmed))
+      : options;
+    return matches.slice(0, 50);
+  }, [options, query]);
+
+  return (
+    <div className="relative">
+      <Input
+        aria-autocomplete="list"
+        aria-controls={listId}
+        aria-expanded={open}
+        aria-label="OpenRouter model"
+        autoComplete="off"
+        className="h-11 rounded-md"
+        disabled={!connected}
+        onBlur={() => {
+          window.setTimeout(() => setOpen(false), 120);
+        }}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder="Search OpenRouter models"
+        role="combobox"
+        value={query}
+      />
+      {open && connected ? (
+        <div
+          className="absolute z-50 mt-2 max-h-80 w-full overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-lg"
+          id={listId}
+          role="listbox"
+        >
+          {filteredModels.length === 0 ? (
+            <div className="px-3 py-3 text-sm leading-5 text-muted-foreground">
+              No OpenRouter models found.
+            </div>
+          ) : filteredModels.map((model) => {
+            const selected = model.id === settings.selectedModelId;
+            return (
+              <button
+                aria-selected={selected}
+                className={cn(
+                  "flex h-10 w-full min-w-0 items-center rounded-md px-3 text-start hover:bg-muted",
+                  selected && "bg-muted",
+                )}
+                key={model.id}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onModelChange(model.id);
+                  setQuery(model.label);
+                  setOpen(false);
+                }}
+                role="option"
+                type="button"
+              >
+                <span className="min-w-0 truncate font-medium">{model.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ModelBillingSection({
   onKeyRevoke,
   onKeySave,
@@ -241,23 +356,8 @@ function ModelBillingSection({
             </div>
           </div>
         </FieldRow>
-        <FieldRow description="Loaded from OpenRouter and filtered by Pirate policy." label="Model">
-          <Select
-            disabled={!connected}
-            onValueChange={onModelChange}
-            value={settings.selectedModelId}
-          >
-            <SelectTrigger aria-label="OpenRouter model">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {settings.availableModels.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  {model.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <FieldRow description="Search the live OpenRouter model list for this community's key." label="Model">
+          <ModelSearchInput connected={connected} onModelChange={onModelChange} settings={settings} />
           {!connected ? (
             <p className="mt-2 text-base leading-6 text-muted-foreground">Save an OpenRouter key to choose a model.</p>
           ) : null}

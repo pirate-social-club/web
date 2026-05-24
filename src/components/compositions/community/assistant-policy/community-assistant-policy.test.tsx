@@ -173,6 +173,51 @@ describe("CommunityAssistantPolicyPage", () => {
     view.unmount();
   });
 
+  test("searches live OpenRouter model options and selects a model", async () => {
+    const view = renderPolicy({
+      initialSettings: {
+        ...createDefaultCommunityAssistantPolicySettings(),
+        openRouterKeyStatus: {
+          connectedAt: "2026-05-22T00:00:00.000Z",
+          kind: "connected",
+          last4: "9f3a",
+        },
+        selectedModelId: "mistralai/mistral-small-3.2-24b-instruct",
+        availableModels: [
+          {
+            contextLength: 1_000_000,
+            description: "Fresh OpenRouter model.",
+            id: "openai/gpt-5.4",
+            inputCostUsdPerMillionTokens: 1.25,
+            label: "GPT-5.4",
+            outputCostUsdPerMillionTokens: 10,
+          },
+          {
+            id: "mistralai/mistral-small-3.2-24b-instruct",
+            label: "Mistral Small 3.2",
+          },
+        ],
+      },
+    });
+
+    const input = modelSelect(view);
+
+    editTextInput(input, "gpt");
+
+    await waitFor(() => {
+      expect(view.getByText("GPT-5.4")).not.toBeNull();
+    });
+    expect(view.queryByText("Fresh OpenRouter model.")).toBeNull();
+    expect(view.queryByText("1M context")).toBeNull();
+    expect(view.queryByText("$1.3 in / $10 out per 1M")).toBeNull();
+    fireEvent.click(view.getByRole("option", { name: "GPT-5.4" }));
+
+    await waitFor(() => {
+      expect(view.getLatestSettings().selectedModelId).toBe("openai/gpt-5.4");
+    });
+    view.unmount();
+  });
+
   test("revoking a key clears key state and disables model selection", async () => {
     const view = renderPolicy({
       initialSettings: {

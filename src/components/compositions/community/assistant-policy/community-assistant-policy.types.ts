@@ -19,9 +19,13 @@ export type AssistantOpenRouterKeyStatus =
   | { kind: "invalid"; last4: string; message: string };
 
 export type AssistantModelOption = {
+  contextLength?: number;
+  createdAt?: string;
   id: string;
   label: string;
   description?: string;
+  inputCostUsdPerMillionTokens?: number;
+  outputCostUsdPerMillionTokens?: number;
 };
 
 export type AssistantContextSources = {

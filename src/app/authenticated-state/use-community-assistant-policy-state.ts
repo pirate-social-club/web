@@ -191,6 +191,19 @@ export function useCommunityAssistantPolicyState({
         setAssistantPolicySettings(settings);
         setSavedAssistantPolicySettings(settings);
         setAssistantAvatarFile(null);
+        if (settings.openRouterKeyStatus.kind === "connected") {
+          void api.communities.getAssistantModels(community.id)
+            .then((modelList) => {
+              if (cancelled) return;
+              setAssistantPolicySettings((current) => settingsWithModels(current, modelList.data));
+              setSavedAssistantPolicySettings((current) => settingsWithModels(current, modelList.data));
+            })
+            .catch(() => {
+              if (!cancelled) {
+                toast.error("Could not load assistant model list.");
+              }
+            });
+        }
       })
       .catch((error: unknown) => {
         if (!cancelled) {

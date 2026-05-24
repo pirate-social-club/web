@@ -67,8 +67,8 @@ function createPolicy(overrides: Partial<ApiCommunityAssistantPolicy> = {}): Api
   };
 }
 
-function installAssistantApiMocks() {
-  let policy = createPolicy();
+function installAssistantApiMocks(input: { initialPolicy?: ApiCommunityAssistantPolicy } = {}) {
+  let policy = input.initialPolicy ?? createPolicy();
   const modelList: ApiCommunityAssistantModelList = {
     object: "list",
     data: [
@@ -167,6 +167,25 @@ describe("useCommunityAssistantPolicyState", () => {
     expect(calls.getAssistantPolicy).toEqual(["community-1"]);
     expect(result.current.assistantPolicySettings.enabled).toBe(false);
     expect(result.current.assistantPolicySettings.avatarPreviewUrl).toBe("media_existing_avatar");
+    expect(result.current.assistantPolicyDirty).toBe(false);
+  });
+
+  test("refreshes live model options when a saved OpenRouter key exists", async () => {
+    const { calls, modelList } = installAssistantApiMocks({
+      initialPolicy: createPolicy({
+        openRouterKeyStatus: {
+          kind: "connected",
+          last4: "9abc",
+          connectedAt: "2026-05-22T01:00:00.000Z",
+        },
+      }),
+    });
+    const { result } = renderAssistantHook();
+
+    await waitFor(() => expect(result.current.loadingAssistantPolicy).toBe(false));
+    await waitFor(() => expect(calls.getAssistantModels).toEqual(["community-1"]));
+
+    expect(result.current.assistantPolicySettings.availableModels).toEqual(modelList.data);
     expect(result.current.assistantPolicyDirty).toBe(false);
   });
 

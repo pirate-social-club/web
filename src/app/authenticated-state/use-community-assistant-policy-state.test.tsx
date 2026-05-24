@@ -265,12 +265,36 @@ describe("useCommunityAssistantPolicyState", () => {
     expect(result.current.assistantPolicyDirty).toBe(false);
   });
 
-  test("policy update payload excludes frontend-only fields", () => {
-    const settings = createDefaultCommunityAssistantPolicySettings();
+  test("policy update payload excludes frontend-only fields and pins hidden settings", () => {
+    const settings = {
+      ...createDefaultCommunityAssistantPolicySettings(),
+      actionMode: "confirmed_writes" as const,
+      includeInSovereignExport: false,
+      memoryEnabled: false,
+      requireModeratorApprovalForWrites: false,
+      retentionMode: "ephemeral" as const,
+      saveChatsToCommunityDb: false,
+      sttModel: "custom-stt",
+      sttProvider: "openai" as const,
+      ttsVoice: "voice_123",
+      voiceMode: "voice_replies" as const,
+    };
     const payload = assistantSettingsToPolicyUpdate(settings);
 
     expect(payload).not.toHaveProperty("avatarPreviewUrl");
     expect(payload).not.toHaveProperty("availableModels");
     expect(payload).not.toHaveProperty("openRouterKeyStatus");
+    expect(payload).toMatchObject({
+      actionMode: "answer_only",
+      includeInSovereignExport: true,
+      memoryEnabled: true,
+      requireModeratorApprovalForWrites: true,
+      retentionMode: "per_user_private",
+      saveChatsToCommunityDb: true,
+      sttModel: "voxtral-mini-latest",
+      sttProvider: "mistral",
+      ttsVoice: "",
+      voiceMode: "off",
+    });
   });
 });

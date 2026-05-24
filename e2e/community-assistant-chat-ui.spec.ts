@@ -9,6 +9,8 @@ const communityName = "E2E Assistant Community";
 const assistantName = "E2E Community Guide";
 const assistantReply = "BROWSER_ASSISTANT_E2E_OK";
 const chatId = "asc_e2e_assistant";
+const pirateApiPattern = /https?:\/\/(?:api-staging\.pirate\.sc|api\.pirate\.sc|127\.0\.0\.1:8787)\/.*/u;
+const assistantApiPattern = /https?:\/\/(?:assistant-staging\.pirate\.sc|assistant\.pirate\.sc|127\.0\.0\.1:8791)\/.*/u;
 
 type CapturedAssistantSend = {
   body: {
@@ -22,11 +24,11 @@ test.describe("community assistant chat UI", () => {
     const sends: CapturedAssistantSend[] = [];
     let sent = false;
 
-    await page.route("http://127.0.0.1:8791/**", async (route) => {
+    await page.route(assistantApiPattern, async (route) => {
       await route.fulfill({ json: { ok: true }, status: 200 });
     });
 
-    await page.route("http://127.0.0.1:8787/**", async (route) => {
+    await page.route(pirateApiPattern, async (route) => {
       const request = route.request();
       const url = new URL(request.url());
       const path = url.pathname;

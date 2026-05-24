@@ -310,30 +310,24 @@ describe("CommunityAssistantPolicyPage", () => {
     view.unmount();
   });
 
-  test("disables TTS voice unless voice replies are selected", async () => {
-    const voiceRepliesSettings = {
-      ...createDefaultCommunityAssistantPolicySettings(),
-      voiceMode: "voice_replies" as const,
-    };
+  test("hides future-only memory, action, voice, and export controls", () => {
+    const view = renderPolicy();
+    const renderedText = view.container.textContent ?? "";
 
-    const offView = renderPolicy({
-      initialSettings: {
-        ...createDefaultCommunityAssistantPolicySettings(),
-        voiceMode: "off",
-      },
-    });
-    const disabledVoiceInput = offView.getByPlaceholderText("voice id");
-
-    expect(isDisabled(disabledVoiceInput)).toBe(true);
-    offView.unmount();
-
-    const repliesView = renderPolicy({ initialSettings: voiceRepliesSettings });
-    const enabledVoiceInput = repliesView.getByPlaceholderText("voice id");
-
-    await waitFor(() => {
-      expect(isDisabled(enabledVoiceInput)).toBe(false);
-    });
-    repliesView.unmount();
+    expect(view.queryByText("Memory")).toBeNull();
+    expect(renderedText).not.toContain("Use chat memory");
+    expect(renderedText).not.toContain("Save chats in community DB");
+    expect(renderedText).not.toContain("Retention scope");
+    expect(view.queryByText("Actions")).toBeNull();
+    expect(renderedText).not.toContain("Allowed actions");
+    expect(renderedText).not.toContain("Require approval for writes");
+    expect(view.queryByText("Voice")).toBeNull();
+    expect(renderedText).not.toContain("Voice mode");
+    expect(renderedText).not.toContain("STT provider");
+    expect(renderedText).not.toContain("TTS voice");
+    expect(renderedText).not.toContain("Sovereign export");
+    expect(view.getByText("Retention")).not.toBeNull();
+    view.unmount();
   });
 
   test("does not render removed model configuration copy", () => {

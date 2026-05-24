@@ -65,34 +65,14 @@ export const AdvancedContext: Story = {
         ...defaults.contextSources,
         moderationQueue: true,
       },
-      actionMode: "draft_only",
       perUserDailyMessageCap: 100,
     },
     submitState: { kind: "idle" },
   },
 };
 
-export const VoiceReady: Story = {
-  name: "Voice ready",
-  args: {
-    settings: {
-      ...defaults,
-      openRouterKeyStatus: {
-        kind: "connected",
-        connectedAt: "2026-05-22T00:00:00.000Z",
-        last4: "9f3a",
-      },
-      voiceMode: "transcription_only",
-      sttProvider: "mistral",
-      sttModel: "voxtral-mini-latest",
-      defaultPrompt: "Ask by voice or text about this community.",
-    },
-    submitState: { kind: "idle" },
-  },
-};
-
-export const LockedDown: Story = {
-  name: "Locked down",
+export const StrictContext: Story = {
+  name: "Strict context",
   args: {
     settings: {
       ...defaults,
@@ -103,12 +83,20 @@ export const LockedDown: Story = {
         topComments: false,
         membershipState: false,
       },
-      memoryEnabled: false,
-      retentionMode: "ephemeral",
-      retentionDays: 7,
-      saveChatsToCommunityDb: false,
-      actionMode: "answer_only",
+      retentionDays: 30,
       perUserDailyMessageCap: 10,
+    },
+    submitState: { kind: "idle" },
+  },
+};
+
+export const ShortRetention: Story = {
+  name: "Short retention",
+  args: {
+    settings: {
+      ...defaults,
+      retentionDays: 7,
+      perUserDailyMessageCap: 25,
     },
     submitState: { kind: "idle" },
   },

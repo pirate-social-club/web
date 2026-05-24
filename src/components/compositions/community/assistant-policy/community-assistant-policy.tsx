@@ -19,11 +19,7 @@ import { Textarea } from "@/components/primitives/textarea";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import type {
-  AssistantActionMode,
   AssistantContextMode,
-  AssistantRetentionMode,
-  AssistantSttProvider,
-  AssistantVoiceMode,
   CommunityAssistantPolicyPageProps,
   CommunityAssistantPolicySettings,
 } from "./community-assistant-policy.types";
@@ -41,30 +37,6 @@ const contextModeOptions: Array<Option<AssistantContextMode>> = [
   { label: "Live SQL", value: "live_sql" },
   { label: "Summary cache", value: "summary_cache" },
   { label: "Hybrid vector", value: "hybrid_vector" },
-];
-
-const actionModeOptions: Array<Option<AssistantActionMode>> = [
-  { label: "Answer only", value: "answer_only" },
-  { label: "Draft only", value: "draft_only" },
-  { label: "Confirmed writes", value: "confirmed_writes" },
-];
-
-const retentionModeOptions: Array<Option<AssistantRetentionMode>> = [
-  { label: "Per-user private", value: "per_user_private" },
-  { label: "Visible to mods", value: "community_visible_to_mods" },
-  { label: "Ephemeral", value: "ephemeral" },
-];
-
-const voiceModeOptions: Array<Option<AssistantVoiceMode>> = [
-  { label: "Off", value: "off" },
-  { label: "Transcription only", value: "transcription_only" },
-  { label: "Voice replies", value: "voice_replies" },
-];
-
-const sttProviderOptions: Array<Option<AssistantSttProvider>> = [
-  { label: "Mistral", value: "mistral" },
-  { label: "OpenAI", value: "openai" },
-  { label: "None", value: "none" },
 ];
 
 const sourceRows: Array<{
@@ -737,85 +709,6 @@ export function CommunityAssistantPolicyPage({
         </div>
       </Section>
 
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Memory">
-        <div className="border-y border-border-soft">
-          <ToggleRow
-            checked={settings.memoryEnabled}
-            label="Use chat memory"
-            onCheckedChange={(memoryEnabled) => update({ memoryEnabled })}
-          />
-          <ToggleRow
-            checked={settings.saveChatsToCommunityDb}
-            description="Persist each user's community-assistant thread in the community Turso database."
-            label="Save chats in community DB"
-            onCheckedChange={(saveChatsToCommunityDb) => update({ saveChatsToCommunityDb })}
-          />
-          <SelectRow
-            label="Retention scope"
-            onValueChange={(retentionMode) => update({ retentionMode })}
-            options={retentionModeOptions}
-            value={settings.retentionMode}
-          />
-          <NumberRow
-            label="Retention"
-            min={1}
-            onChange={(retentionDays) => update({ retentionDays: retentionDays ?? settings.retentionDays })}
-            suffix="days"
-            value={settings.retentionDays}
-          />
-        </div>
-      </Section>
-
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Actions">
-        <div className="border-y border-border-soft">
-          <SelectRow
-            label="Allowed actions"
-            onValueChange={(actionMode) => update({ actionMode })}
-            options={actionModeOptions}
-            value={settings.actionMode}
-          />
-          <ToggleRow
-            checked={settings.requireModeratorApprovalForWrites}
-            label="Require approval for writes"
-            onCheckedChange={(requireModeratorApprovalForWrites) => update({ requireModeratorApprovalForWrites })}
-          />
-        </div>
-      </Section>
-
-      <Section className="border-t border-border-soft pt-6 md:pt-8" title="Voice">
-        <div className="border-y border-border-soft">
-          <SelectRow
-            ariaLabel="Voice mode"
-            label="Voice mode"
-            onValueChange={(voiceMode) => update({ voiceMode })}
-            options={voiceModeOptions}
-            value={settings.voiceMode}
-          />
-          <SelectRow
-            label="STT provider"
-            onValueChange={(sttProvider) => update({ sttProvider })}
-            options={sttProviderOptions}
-            value={settings.sttProvider}
-          />
-          <FieldRow label="STT model">
-            <Input
-              className="h-11 rounded-md font-mono text-sm"
-              onChange={(event) => update({ sttModel: event.target.value })}
-              value={settings.sttModel}
-            />
-          </FieldRow>
-          <FieldRow description="Disabled until TTS ships." label="TTS voice">
-            <Input
-              className="h-11 rounded-md"
-              disabled={settings.voiceMode !== "voice_replies"}
-              onChange={(event) => update({ ttsVoice: event.target.value })}
-              placeholder="voice id"
-              value={settings.ttsVoice}
-            />
-          </FieldRow>
-        </div>
-      </Section>
-
       <Section className="border-t border-border-soft pt-6 md:pt-8" title="Limits">
         <div className="border-y border-border-soft">
           <NumberRow
@@ -825,11 +718,12 @@ export function CommunityAssistantPolicyPage({
             suffix="messages"
             value={settings.perUserDailyMessageCap}
           />
-          <ToggleRow
-            checked={settings.includeInSovereignExport}
-            description="Include assistant settings, prompt revisions, and context index metadata in community exports."
-            label="Sovereign export"
-            onCheckedChange={(includeInSovereignExport) => update({ includeInSovereignExport })}
+          <NumberRow
+            label="Retention"
+            min={1}
+            onChange={(retentionDays) => update({ retentionDays: retentionDays ?? settings.retentionDays })}
+            suffix="days"
+            value={settings.retentionDays}
           />
         </div>
       </Section>

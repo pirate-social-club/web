@@ -246,8 +246,12 @@ async function fetchAssistantHealth(): Promise<boolean> {
   }
 }
 
-export function isAssistantConversationId(conversationId: string): boolean {
+export function isBedsheetAssistantConversationId(conversationId: string): boolean {
   return conversationId === ASSISTANT_CONVERSATION_ID;
+}
+
+export function isAssistantConversationId(conversationId: string): boolean {
+  return isBedsheetAssistantConversationId(conversationId);
 }
 
 export async function probeAssistantAvailability(options?: { force?: boolean }): Promise<boolean> {

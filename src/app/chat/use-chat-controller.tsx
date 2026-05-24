@@ -23,14 +23,21 @@ import {
 import {
   AssistantUnavailableError,
   getAssistantConversation,
-  isAssistantConversationId,
+  isBedsheetAssistantConversationId,
   loadAssistantConversationMessages,
   probeAssistantAvailability,
   seedAssistantWelcome,
   sendAssistantMessage,
 } from "@/lib/chat/chat-assistant-client";
 import {
-  assistantConversationForAvailability,
+  isCommunityAssistantConversationId,
+  loadCommunityAssistantConversation,
+  loadCommunityAssistantConversationMessages,
+  loadCommunityAssistantConversations,
+  parseCommunityAssistantConversationId,
+  sendCommunityAssistantConversationMessage,
+} from "@/lib/chat/community-assistant-chat-client";
+import {
   buildVisibleConversations,
   mergeTransportConversations,
   sortConversations,
@@ -58,10 +65,22 @@ import type {
   ChatMessageRecord,
   ChatRouteMode,
 } from "@/lib/chat/chat-types";
+import { useSidebarCommunities } from "@/lib/owned-communities";
 
 const INITIAL_MESSAGE_QUERY_PARAM = "message";
 
 type ChatSetupStateProps = React.ComponentProps<typeof ChatSetupState>;
+
+function isAssistantTransportConversationId(conversationId: string): boolean {
+  return isBedsheetAssistantConversationId(conversationId)
+    || isCommunityAssistantConversationId(conversationId);
+}
+
+function parseApiTimestamp(value: string | null | undefined): number {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
 export type UseChatControllerResult = {
   clientHydrated: boolean;
@@ -82,6 +101,7 @@ export function useChatController({
   const api = useApi();
   const clientHydrated = useClientHydrated();
   const session = useSession();
+  const { recentCommunities } = useSidebarCommunities();
   const { dir, locale } = useUiLocale();
   const { copy } = useRouteMessages();
   const chat = copy.chat;
@@ -91,6 +111,7 @@ export function useChatController({
     session ? "checking" : "unavailable",
   );
   const [conversations, setConversations] = React.useState<ChatConversation[]>([]);
+  const [communityAssistantConversations, setCommunityAssistantConversations] = React.useState<ChatConversation[]>([]);
   const [messages, setMessages] = React.useState<Record<string, ChatMessageRecord[]>>({});
   const [activeConversation, setActiveConversation] = React.useState<ChatConversation | null>(null);
   const [listLoading, setListLoading] = React.useState(false);
@@ -99,6 +120,8 @@ export function useChatController({
   const [error, setError] = React.useState<string | null>(null);
   const activeConversationIdRef = React.useRef<string | null>(null);
   const assistantAvailabilityRef = React.useRef<typeof assistantAvailability>(assistantAvailability);
+  const communityAssistantChatIdsRef = React.useRef<Record<string, string | null>>({});
+  const communityAssistantConversationsRef = React.useRef<ChatConversation[]>([]);
   const loadThreadRequestRef = React.useRef(0);
   const sendQueueRef = React.useRef(Promise.resolve());
 
@@ -136,13 +159,22 @@ export function useChatController({
   const showList = !isMobile || mode.kind === "list";
   const showThread = !isMobile || mode.kind === "conversation" || mode.kind === "target" || mode.kind === "new";
   const isMobileStandalone = isMobile && (mode.kind === "target" || mode.kind === "conversation" || mode.kind === "new");
-  const isAssistantConversationRoute = mode.kind === "conversation" && isAssistantConversationId(mode.conversationId);
+  const isAssistantConversationRoute = mode.kind === "conversation"
+    && isAssistantTransportConversationId(mode.conversationId);
   const chatNavigation = React.useMemo<ChatNavigationAdapter>(() => navigation ?? {
     openConversation: (conversationId) => navigate(buildChatConversationPath(conversationId)),
     openList: () => navigate(buildChatListPath()),
     openNew: () => navigate(buildNewChatPath()),
     openProfile: (href) => navigate(href),
   }, [navigation]);
+  const getAssistantConversations = React.useCallback((): ChatConversation[] => [
+    getAssistantConversation(),
+    ...communityAssistantConversationsRef.current,
+  ], []);
+
+  React.useEffect(() => {
+    communityAssistantConversationsRef.current = communityAssistantConversations;
+  }, [communityAssistantConversations]);
 
   React.useEffect(() => {
     logger.info("[chat:controller] state", {
@@ -205,6 +237,8 @@ export function useChatController({
   React.useEffect(() => {
     if (!session) {
       setConversations([]);
+      setCommunityAssistantConversations([]);
+      communityAssistantChatIdsRef.current = {};
       setMessages({});
       setActiveConversation(null);
       setAssistantAvailability("unavailable");
@@ -215,7 +249,7 @@ export function useChatController({
     let cancelled = false;
     setAssistantAvailability("checking");
     setConversations((current) => mergeTransportConversations(
-      getAssistantConversation(),
+      getAssistantConversations(),
       current.filter((item) => item.transport === "xmtp"),
     ));
 
@@ -224,13 +258,63 @@ export function useChatController({
         if (cancelled) return;
         setAssistantAvailability(available ? "available" : "unavailable");
         setConversations((current) => mergeTransportConversations(
-          getAssistantConversation(),
+          getAssistantConversations(),
           current.filter((item) => item.transport === "xmtp"),
         ));
       })
       .catch(() => {
         if (cancelled) return;
         setAssistantAvailability("unavailable");
+        setConversations((current) => mergeTransportConversations(
+          getAssistantConversations(),
+          current.filter((item) => item.transport === "xmtp"),
+        ));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getAssistantConversations, session]);
+
+  const communityAssistantCandidateKey = React.useMemo(
+    () => recentCommunities.map((community) => community.communityId).join("|"),
+    [recentCommunities],
+  );
+
+  React.useEffect(() => {
+    if (!session) {
+      setCommunityAssistantConversations([]);
+      communityAssistantConversationsRef.current = [];
+      setConversations([]);
+      return;
+    }
+
+    if (recentCommunities.length === 0) {
+      setCommunityAssistantConversations([]);
+      communityAssistantConversationsRef.current = [];
+      setConversations((current) => mergeTransportConversations(
+        getAssistantConversation(),
+        current.filter((item) => item.transport === "xmtp"),
+      ));
+      return;
+    }
+
+    let cancelled = false;
+    void loadCommunityAssistantConversations(api, recentCommunities)
+      .then((nextConversations) => {
+        if (cancelled) return;
+        setCommunityAssistantConversations(nextConversations);
+        communityAssistantConversationsRef.current = nextConversations;
+        setConversations((current) => mergeTransportConversations(
+          [getAssistantConversation(), ...nextConversations],
+          current.filter((item) => item.transport === "xmtp"),
+        ));
+      })
+      .catch((nextError: unknown) => {
+        if (cancelled) return;
+        logger.warn("[chat] failed to load community assistants", nextError);
+        setCommunityAssistantConversations([]);
+        communityAssistantConversationsRef.current = [];
         setConversations((current) => mergeTransportConversations(
           getAssistantConversation(),
           current.filter((item) => item.transport === "xmtp"),
@@ -240,7 +324,7 @@ export function useChatController({
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [api, communityAssistantCandidateKey, recentCommunities, session]);
 
   React.useEffect(() => {
     if (!authBroken) {
@@ -249,7 +333,7 @@ export function useChatController({
 
     setConversations((current) => current.filter((item) => item.transport === "assistant"));
     setMessages((current) => Object.fromEntries(
-      Object.entries(current).filter(([conversationId]) => isAssistantConversationId(conversationId)),
+      Object.entries(current).filter(([conversationId]) => isAssistantTransportConversationId(conversationId)),
     ));
     setActiveConversation((current) => current?.transport === "assistant" ? current : null);
     setError(null);
@@ -262,19 +346,19 @@ export function useChatController({
       return;
     }
 
-    const assistantConversation = assistantConversationForAvailability();
+    const assistantConversations = getAssistantConversations();
     if (!xmtpReady || !xmtpSignerWallet) {
-      setConversations(mergeTransportConversations(assistantConversation, []));
+      setConversations(mergeTransportConversations(assistantConversations, []));
       return;
     }
 
     setListLoading(true);
     try {
       const next = await loadConversations(session, xmtpSignerWallet, xmtpClientCache, api);
-      setConversations(mergeTransportConversations(assistantConversation, next));
+      setConversations(mergeTransportConversations(getAssistantConversations(), next));
       setError((current) => {
         const activeId = activeConversationIdRef.current;
-        return activeId && isAssistantConversationId(activeId) ? current : null;
+        return activeId && isAssistantTransportConversationId(activeId) ? current : null;
       });
     } catch (nextError) {
       logger.warn("[chat] failed to load conversations", nextError);
@@ -283,7 +367,7 @@ export function useChatController({
         return;
       }
 
-      if (!activeConversationIdRef.current || !isAssistantConversationId(activeConversationIdRef.current)) {
+      if (!activeConversationIdRef.current || !isAssistantTransportConversationId(activeConversationIdRef.current)) {
         setError(isLikelyXmtpTabContentionError(nextError)
           ? chat.errorChatInAnotherTab
           : getErrorMessage(nextError, chat.couldNotLoadConversations));
@@ -291,7 +375,7 @@ export function useChatController({
     } finally {
       setListLoading(false);
     }
-  }, [api, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
+  }, [api, getAssistantConversations, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
 
   React.useEffect(() => {
     activeConversationIdRef.current = activeConversation?.id ?? activeConversationId;
@@ -332,8 +416,57 @@ export function useChatController({
       return;
     }
 
+    const communityAssistantCommunityId = parseCommunityAssistantConversationId(conversationId);
+    if (communityAssistantCommunityId) {
+      const requestId = loadThreadRequestRef.current + 1;
+      loadThreadRequestRef.current = requestId;
+      activeConversationIdRef.current = conversationId;
+      setRouteBusy(true);
+      setError(null);
+      try {
+        const existingConversation = communityAssistantConversationsRef.current.find(
+          (conversation) => conversation.id === conversationId,
+        ) ?? null;
+        const community = recentCommunities.find(
+          (candidate) => candidate.communityId === communityAssistantCommunityId,
+        ) ?? {
+          avatarSrc: null,
+          communityId: communityAssistantCommunityId,
+          displayName: communityAssistantCommunityId,
+          routeSlug: null,
+          updatedAt: 0,
+        };
+        const assistantConversation = existingConversation
+          ?? await loadCommunityAssistantConversation(api, community);
+        if (loadThreadRequestRef.current !== requestId) return;
+        if (!assistantConversation) {
+          throw new Error("Community assistant is not available.");
+        }
+
+        setActiveConversation(assistantConversation);
+        setConversations((current) => upsertConversation(current, assistantConversation));
+        const result = await loadCommunityAssistantConversationMessages(api, assistantConversation);
+        if (loadThreadRequestRef.current !== requestId) return;
+        communityAssistantChatIdsRef.current[conversationId] = result.chat?.id ?? null;
+        setActiveConversation(result.conversation);
+        setCommunityAssistantConversations((current) => upsertConversation(current, result.conversation));
+        communityAssistantConversationsRef.current = upsertConversation(
+          communityAssistantConversationsRef.current,
+          result.conversation,
+        );
+        setConversations((current) => upsertConversation(current, result.conversation));
+        setMessages((current) => ({ ...current, [conversationId]: result.messages }));
+      } catch (nextError) {
+        if (loadThreadRequestRef.current !== requestId) return;
+        setError(getErrorMessage(nextError, chat.couldNotLoadConversation));
+      } finally {
+        if (loadThreadRequestRef.current === requestId) setRouteBusy(false);
+      }
+      return;
+    }
+
     const assistantConversation = getAssistantConversation();
-    if (isAssistantConversationId(conversationId)) {
+    if (isBedsheetAssistantConversationId(conversationId)) {
       const requestId = loadThreadRequestRef.current + 1;
       loadThreadRequestRef.current = requestId;
       activeConversationIdRef.current = conversationId;
@@ -378,7 +511,7 @@ export function useChatController({
 
     if (!xmtpReady || !xmtpSignerWallet) {
       setConversations((current) => mergeTransportConversations(
-        assistantConversation,
+        getAssistantConversations(),
         current.filter((item) => item.transport === "xmtp"),
       ));
       return;
@@ -409,7 +542,7 @@ export function useChatController({
     } finally {
       setRouteBusy(false);
     }
-  }, [api, buildAssistantClientContext, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
+  }, [api, buildAssistantClientContext, chat.couldNotLoadConversation, getAssistantConversations, recentCommunities, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
 
   React.useEffect(() => {
     void refreshList();
@@ -542,15 +675,43 @@ export function useChatController({
       .catch(() => undefined)
       .then(async () => {
         try {
-          const nextMessages = conversation.transport === "assistant"
-            ? await sendAssistantMessage(session, conversation.id, content, buildAssistantClientContext(), { markRead: true })
-            : !xmtpReady || !xmtpSignerWallet
-              ? (() => { throw new Error("Encrypted messages are still starting."); })()
-              : await sendMessage(session, conversation.id, content, xmtpSignerWallet, xmtpClientCache);
-          const refreshedConversation = conversation.transport === "assistant"
-            ? getAssistantConversation()
-            : { ...conversation, preview: content, updatedAt: now };
-          setMessages((current) => ({ ...current, [conversation.id]: nextMessages }));
+          let refreshedConversation: ChatConversation;
+          if (conversation.assistantKind === "community" && conversation.communityId) {
+            const result = await sendCommunityAssistantConversationMessage(api, {
+              chatId: communityAssistantChatIdsRef.current[conversation.id] ?? null,
+              communityId: conversation.communityId,
+              content,
+              conversationId: conversation.id,
+            });
+            communityAssistantChatIdsRef.current[conversation.id] = result.chat.id;
+            refreshedConversation = {
+              ...conversation,
+              preview: result.messages[result.messages.length - 1]?.content ?? content,
+              updatedAt: parseApiTimestamp(result.chat.updated_at) || now,
+            };
+            setMessages((current) => ({
+              ...current,
+              [conversation.id]: [
+                ...(current[conversation.id] ?? []).filter((message) => message.id !== localMessage.id),
+                ...result.messages,
+              ],
+            }));
+            setCommunityAssistantConversations((current) => upsertConversation(current, refreshedConversation));
+            communityAssistantConversationsRef.current = upsertConversation(
+              communityAssistantConversationsRef.current,
+              refreshedConversation,
+            );
+          } else {
+            const nextMessages = conversation.transport === "assistant"
+              ? await sendAssistantMessage(session, conversation.id, content, buildAssistantClientContext(), { markRead: true })
+              : !xmtpReady || !xmtpSignerWallet
+                ? (() => { throw new Error("Encrypted messages are still starting."); })()
+                : await sendMessage(session, conversation.id, content, xmtpSignerWallet, xmtpClientCache);
+            refreshedConversation = conversation.transport === "assistant"
+              ? getAssistantConversation()
+              : { ...conversation, preview: content, updatedAt: now };
+            setMessages((current) => ({ ...current, [conversation.id]: nextMessages }));
+          }
           setConversations((current) => upsertConversation(current, refreshedConversation));
           setActiveConversation((current) => current?.id === refreshedConversation.id ? refreshedConversation : current);
         } catch (nextError) {
@@ -563,7 +724,7 @@ export function useChatController({
     void sendTask.finally(() => {
       if (sendQueueRef.current === sendTask) setSending(false);
     });
-  }, [activeConversation, buildAssistantClientContext, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
+  }, [activeConversation, api, buildAssistantClientContext, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
 
   const listVisibleConversations = buildVisibleConversations({
     conversations,
@@ -644,7 +805,7 @@ export function useChatController({
     mode.kind === "list"
     || mode.kind === "new"
     || mode.kind === "target"
-    || (mode.kind === "conversation" && !isAssistantConversationId(mode.conversationId))
+    || (mode.kind === "conversation" && !isAssistantTransportConversationId(mode.conversationId))
   ) && !!xmtpThreadSetupState;
   const threadLoading = mode.kind === "conversation"
     ? (

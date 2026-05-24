@@ -241,22 +241,24 @@ test.describe("live staging community assistant", () => {
       await completeSelfVerification(owner);
 
       communityId = await createAssistantSmokeCommunity(runId, owner);
+      const communityName = `Assistant E2E Smoke ${runId}`;
       await seedCommunityRules(communityId, owner);
       await configureAssistant(communityId, owner);
 
       await installStoredSession(page, owner);
       await page.goto(`/c/${pathSegment(communityId)}`);
-      await expect(page.getByRole("button", { name: /^assistant$/i })).toBeVisible({ timeout: 30_000 });
-      await page.getByRole("button", { name: /^assistant$/i }).click();
-      await expect(page.getByRole("dialog")).toContainText("Assistant Smoke");
+      await expect(page.locator("body")).toContainText(communityName, { timeout: 30_000 });
+      await page.goto("/chat");
+      const assistantThread = page.getByRole("button").filter({ hasText: communityName }).first();
+      await expect(assistantThread).toBeVisible({ timeout: 30_000 });
+      await assistantThread.click();
+      await expect(page.locator("body")).toContainText("Assistant Smoke");
 
-      await page.getByRole("textbox", { name: /message assistant/i }).fill("Run the assistant staging smoke.");
-      await page.getByRole("button", { name: /send assistant message/i }).click();
+      await page.getByRole("textbox", { name: /message/i }).fill("Run the assistant staging smoke.");
+      await page.getByRole("button", { name: /send message/i }).click();
       await expect(page.locator("body")).toContainText(expectedAssistantText, { timeout: 45_000 });
 
       await page.reload();
-      await expect(page.getByRole("button", { name: /^assistant$/i })).toBeVisible({ timeout: 30_000 });
-      await page.getByRole("button", { name: /^assistant$/i }).click();
       await expect(page.locator("body")).toContainText(expectedAssistantText, { timeout: 30_000 });
       await expectNoBrowserError(page);
     } finally {

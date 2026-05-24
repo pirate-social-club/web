@@ -20,7 +20,7 @@ import { toast } from "@/components/primitives/sonner";
 import type { PostThreadReplyInput, PostThreadSubmitResult } from "@/components/compositions/posts/post-thread/post-thread.types";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
-import { applyPostVote, submitOptimisticPostVote } from "@/app/authenticated-helpers/post-vote";
+import { applyPostVote, submitOptimisticPostVote, toPostVoteValue } from "@/app/authenticated-helpers/post-vote";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { getErrorMessage } from "@/lib/error-utils";
 import {
@@ -500,11 +500,12 @@ export function usePost(
 
   const voteOnComment = React.useCallback(async (commentId: string, direction: "up" | "down") => {
     if (!post) return;
+    const nextValue = toPostVoteValue(direction);
     await runGatedCommunityAction({
       action: "vote_comment",
+      commentId,
       communityId: post.post.community,
-      onAllowed: async () => {
-        const nextValue = direction === "up" ? 1 : -1;
+      onAllowed: async (context) => {
         const currentNode = findThreadCommentNode(commentNodes, commentId);
         const previousVote = currentNode?.item.viewer_vote ?? null;
         const previousScore = currentNode?.item.comment.score ?? 0;
@@ -519,7 +520,9 @@ export function usePost(
         })));
 
         try {
-          const response = await api.comments.vote(commentId, nextValue);
+          const response = await api.comments.vote(commentId, nextValue, {
+            altchaPayload: context?.altchaPayload,
+          });
           setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({ ...node, item: { ...node.item, viewer_vote: response.value } })));
         } catch (nextError) {
           setCommentNodes((current) => updateThreadCommentNode(current, commentId, (node) => ({
@@ -530,6 +533,7 @@ export function usePost(
         }
       },
       postId: post.post.id,
+      voteValue: nextValue,
     });
   }, [api, commentNodes, post, runGatedCommunityAction]);
 
@@ -572,12 +576,15 @@ export function usePost(
 
   const voteOnPost = React.useCallback(async (direction: "up" | "down" | null) => {
     if (!post) return;
+    if (!direction) return;
+    const voteValue = toPostVoteValue(direction);
     await runGatedCommunityAction({
       action: "vote_post",
       communityId: post.post.community,
-      onAllowed: async () => {
+      onAllowed: async (context) => {
         const nextPostId = post.post.id;
         await submitOptimisticPostVote({
+          altchaPayload: context?.altchaPayload,
           direction,
           onApply: (nextValue) => setPost((current) => current ? applyPostVote(current, nextValue) : current),
           onRollback: (restoredPost) => setPost(restoredPost),
@@ -588,6 +595,7 @@ export function usePost(
         });
       },
       postId: post.post.id,
+      voteValue,
     });
   }, [api.posts.vote, post, runGatedCommunityAction]);
 

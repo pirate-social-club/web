@@ -47,9 +47,16 @@ function getAltchaActionConfig(input: {
   commentId?: string;
   gate: CommunityGateData;
   postId?: string;
+  voteValue?: -1 | 1;
 }): { actionRef: string; scope: AltchaScope } | null {
   if (!hasAltchaGate(input.gate)) {
     return null;
+  }
+  if (input.action === "vote_post" && input.postId && input.voteValue) {
+    return { actionRef: `post:${input.postId}:${input.voteValue}`, scope: "vote" };
+  }
+  if (input.action === "vote_comment" && input.commentId && input.voteValue) {
+    return { actionRef: `comment:${input.commentId}:${input.voteValue}`, scope: "vote" };
   }
   if (input.action === "reply_post" && input.postId) {
     return { actionRef: `post:${input.postId}`, scope: "comment_create" };
@@ -118,6 +125,7 @@ export function useGatedActionRunner({
     postId,
     commentId,
     resolveGateData,
+    voteValue,
   }: RunGatedCommunityActionParams): Promise<InteractionResult> => {
     const hasSession = Boolean(sessionAccessToken);
     const logBase = {
@@ -176,7 +184,7 @@ export function useGatedActionRunner({
       hasSession,
     });
 
-    const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId });
+    const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId, voteValue });
     if (state === "allowed" && actionAltchaConfig) {
       setPendingInteraction({
         action,
@@ -185,6 +193,7 @@ export function useGatedActionRunner({
         gate,
         onAllowed,
         postId,
+        voteValue,
       });
       setModalState({
         body: buildAltchaBody({
@@ -225,6 +234,7 @@ export function useGatedActionRunner({
       gate,
       onAllowed,
       postId,
+      voteValue,
     });
 
     const openCommunityAction = () => {

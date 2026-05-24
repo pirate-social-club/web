@@ -901,14 +901,20 @@ describe("ApiClient media uploads", () => {
       await client.communities.createComment("cmt_test", "pst_test", {
         body: "Top level",
       }, { altchaPayload: "comment-proof" });
+      await client.posts.vote("pst_test", 1, { altchaPayload: "post-vote-proof" });
+      await client.comments.vote("cmt_vote", -1, { altchaPayload: "comment-vote-proof" });
       await client.comments.createReply("cmt_reply", {
         body: "Reply body",
       }, { altchaPayload: null });
+      await client.posts.vote("pst_no_proof", 1);
 
       expect(requests[0]?.headers.get("x-pirate-altcha")).toBe("join-proof");
       expect(requests[1]?.headers.get("x-pirate-altcha")).toBe("post-proof");
       expect(requests[2]?.headers.get("x-pirate-altcha")).toBe("comment-proof");
-      expect(requests[3]?.headers.has("x-pirate-altcha")).toBe(false);
+      expect(requests[3]?.headers.get("x-pirate-altcha")).toBe("post-vote-proof");
+      expect(requests[4]?.headers.get("x-pirate-altcha")).toBe("comment-vote-proof");
+      expect(requests[5]?.headers.has("x-pirate-altcha")).toBe(false);
+      expect(requests[6]?.headers.has("x-pirate-altcha")).toBe(false);
     } finally {
       globalThis.fetch = originalFetch;
     }

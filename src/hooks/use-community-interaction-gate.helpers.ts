@@ -80,6 +80,7 @@ export type PendingInteraction = {
   gate: CommunityGateData;
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
+  voteValue?: -1 | 1;
 };
 
 export type RunGatedCommunityActionParams = {
@@ -98,6 +99,7 @@ export type RunGatedCommunityActionParams = {
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
   resolveGateData?: () => Promise<CommunityGateData>;
+  voteValue?: -1 | 1;
 };
 
 export const SELF_INTERACTION_GATE_STORAGE_KEY =

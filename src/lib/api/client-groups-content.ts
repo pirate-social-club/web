@@ -28,7 +28,7 @@ import { buildQueryPath, type ApiRequest } from "./client-internal";
 const ALTCHA_HEADER = "x-pirate-altcha";
 
 type AltchaRequestOptions = {
-  altchaPayload?: string | null;
+  altchaPayload?: string | null | undefined;
 };
 
 function altchaHeaders(options?: AltchaRequestOptions): HeadersInit | undefined {
@@ -48,10 +48,11 @@ export function createPostsApi(request: ApiRequest) {
         }),
       );
     },
-    vote: (postId: string, value: -1 | 1): Promise<PostVoteResponse> =>
+    vote: (postId: string, value: -1 | 1, options?: AltchaRequestOptions): Promise<PostVoteResponse> =>
       request<PostVoteResponse>(`/posts/${encodeURIComponent(postId)}/vote`, {
         method: "POST",
         body: JSON.stringify({ value }),
+        headers: altchaHeaders(options),
       }),
     delete: (communityId: string, postId: string): Promise<DeletedPostResponse> =>
       request<DeletedPostResponse>(
@@ -109,10 +110,11 @@ export function createCommentsApi(request: ApiRequest) {
       request<Comment>(`/comments/${encodeURIComponent(commentId)}/delete`, {
         method: "POST",
       }),
-    vote: (commentId: string, value: -1 | 1): Promise<CommentVoteResponse> =>
+    vote: (commentId: string, value: -1 | 1, options?: AltchaRequestOptions): Promise<CommentVoteResponse> =>
       request<CommentVoteResponse>(`/comments/${encodeURIComponent(commentId)}/vote`, {
         method: "POST",
         body: JSON.stringify({ value }),
+        headers: altchaHeaders(options),
       }),
   };
 }

@@ -172,7 +172,55 @@ describe("useGatedActionRunner", () => {
     expect(runner.hook.result.current.modalState).toBe(null);
   });
 
-  test("does not run action Altcha for vote actions because votes are gated by community membership", async () => {
+  test("blocks Altcha-gated post votes for a vote-bound proof", async () => {
+    const runner = renderRunner({
+      gateData: gate("already_joined", {}, [altchaRequirement]),
+    });
+    const allowedCalls: string[] = [];
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => {
+          allowedCalls.push("allowed");
+        },
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("blocked");
+    });
+
+    expect(allowedCalls).toEqual([]);
+    expect(runner.pendingInteraction?.action).toBe("vote_post");
+    expect(runner.pendingInteraction?.voteValue).toBe(1);
+    expect(runner.hook.result.current.modalState?.title).toBe("Checking browser");
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
+  });
+
+  test("blocks Altcha-gated comment votes for a vote-bound proof", async () => {
+    const runner = renderRunner({
+      gateData: gate("already_joined", {}, [altchaRequirement]),
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_comment",
+        commentId: "cmt-1",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        voteValue: -1,
+      });
+      expect(result).toBe("blocked");
+    });
+
+    expect(runner.pendingInteraction?.action).toBe("vote_comment");
+    expect(runner.pendingInteraction?.commentId).toBe("cmt-1");
+    expect(runner.pendingInteraction?.voteValue).toBe(-1);
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:comment:cmt-1:-1:vote");
+  });
+
+  test("does not build an invalid vote Altcha challenge when vote value is missing", async () => {
     const runner = renderRunner({
       gateData: gate("already_joined", {}, [altchaRequirement]),
     });

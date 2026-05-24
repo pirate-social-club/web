@@ -29,7 +29,8 @@ type OAuthDeviceVerifyResponse = {
 export type AltchaScope =
   | "community_join"
   | "post_create"
-  | "comment_create";
+  | "comment_create"
+  | "vote";
 
 export type AltchaChallenge = Record<string, unknown>;
 

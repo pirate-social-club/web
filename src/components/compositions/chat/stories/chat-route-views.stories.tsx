@@ -27,6 +27,20 @@ const bedsheetConversation: ChatConversation = {
   updatedAt: now + 1000,
 };
 
+const communityAssistantConversation: ChatConversation = {
+  assistantKind: "community",
+  avatarSeed: "community-assistant-infinity-mirror",
+  communityId: "com_infinity_mirror",
+  id: "community-assistant:com_infinity_mirror",
+  preview: "I can answer with Infinity Mirror rules, top threads, and recent member context.",
+  profileHref: "/c/infinity-mirror",
+  targetLabel: "Infinity Mirror assistant",
+  title: "Infinity Mirror",
+  transport: "assistant",
+  unreadCount: 0,
+  updatedAt: now + 500,
+};
+
 const conversations: ChatConversation[] = [
   {
     id: "xmtp-conversation-1",
@@ -59,6 +73,7 @@ const conversations: ChatConversation[] = [
     updatedAt: now - 1000 * 60 * 95,
   },
   bedsheetConversation,
+  communityAssistantConversation,
 ];
 
 const unreadTruncationConversations: ChatConversation[] = [
@@ -91,6 +106,23 @@ const messages: ChatMessageRecord[] = [
     conversationId: "xmtp-conversation-1",
     createdAt: now - 1000 * 60 * 5,
     id: "message-3",
+    sender: "peer",
+  },
+];
+
+const communityAssistantMessages: ChatMessageRecord[] = [
+  {
+    content: "What should I read before posting in Infinity Mirror?",
+    conversationId: communityAssistantConversation.id,
+    createdAt: now - 1000 * 60 * 8,
+    id: "community-assistant-message-1",
+    sender: "user",
+  },
+  {
+    content: "Start with the community rules and the weekly introduction thread. The board prefers specific build notes over broad announcements.",
+    conversationId: communityAssistantConversation.id,
+    createdAt: now - 1000 * 60 * 7,
+    id: "community-assistant-message-2",
     sender: "peer",
   },
 ];
@@ -222,6 +254,34 @@ export const DesktopThread: Story = {
 
 export const DesktopLongThread: Story = {
   render: () => <DesktopChatStory items={longMessages} />,
+};
+
+export const DesktopCommunityAssistantThread: Story = {
+  render: () => (
+    <div className="flex h-screen min-h-0 w-full bg-background p-4">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-background shadow-sm">
+        <div className="h-full min-h-0 w-96 shrink-0">
+          <ConversationList
+            activeConversationId={communityAssistantConversation.id}
+            conversations={conversations}
+            loading={false}
+            onNew={() => {}}
+            onSelect={() => {}}
+          />
+        </div>
+        <div className="min-h-0 flex-1">
+          <ThreadView
+            conversation={communityAssistantConversation}
+            items={communityAssistantMessages}
+            onBack={() => {}}
+            onOpenProfile={() => {}}
+            onSend={() => {}}
+            sending={false}
+          />
+        </div>
+      </div>
+    </div>
+  ),
 };
 
 export const DesktopEmptyThread: Story = {
@@ -396,6 +456,34 @@ export const MobileStandaloneBedsheetThread: Story = {
           conversation={bedsheetConversation}
           hideHeader
           items={messages.map((message) => ({ ...message, conversationId: bedsheetConversation.id }))}
+          onBack={() => {}}
+          onClose={() => {}}
+          onOpenProfile={() => {}}
+          onSend={() => {}}
+          sending={false}
+        />
+      </div>
+    </div>
+  ),
+};
+
+export const MobileStandaloneCommunityAssistantThread: Story = {
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
+      <MobilePageHeader
+        onCloseClick={() => {}}
+        onTitleClick={() => {}}
+        title={communityAssistantConversation.title}
+        titleAvatarFallback={communityAssistantConversation.title}
+      />
+      <div className="h-screen pt-[calc(env(safe-area-inset-top)+4rem)]">
+        <ThreadView
+          conversation={communityAssistantConversation}
+          hideHeader
+          items={communityAssistantMessages}
           onBack={() => {}}
           onClose={() => {}}
           onOpenProfile={() => {}}

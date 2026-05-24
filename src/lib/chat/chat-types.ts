@@ -3,9 +3,10 @@
 export type ChatTransport = "xmtp" | "assistant";
 
 export interface ChatConversation {
-  assistantKind?: "bedsheet";
+  assistantKind?: "bedsheet" | "community";
   avatarSeed?: string;
   avatarUrl?: string;
+  communityId?: string;
   id: string;
   peerAddress?: `0x${string}`;
   preview: string;

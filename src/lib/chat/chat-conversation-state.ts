@@ -5,7 +5,11 @@ import { getAssistantConversation } from "@/lib/chat/chat-assistant-client";
 import type { ChatConversation } from "@/lib/chat/chat-types";
 
 export function sortConversations(conversations: readonly ChatConversation[]): ChatConversation[] {
-  return conversations.toSorted((left, right) => right.updatedAt - left.updatedAt);
+  return conversations.toSorted((left, right) => {
+    if (left.transport === "assistant" && right.transport !== "assistant") return -1;
+    if (left.transport !== "assistant" && right.transport === "assistant") return 1;
+    return right.updatedAt - left.updatedAt;
+  });
 }
 
 export function upsertConversation(
@@ -19,11 +23,16 @@ export function upsertConversation(
 }
 
 export function mergeTransportConversations(
-  assistantConversation: ChatConversation | null,
+  assistantConversation: ChatConversation | readonly ChatConversation[] | null,
   xmtpConversations: readonly ChatConversation[],
 ): ChatConversation[] {
+  const assistantConversations = Array.isArray(assistantConversation)
+    ? assistantConversation
+    : assistantConversation
+      ? [assistantConversation]
+      : [];
   return sortConversations([
-    ...(assistantConversation ? [assistantConversation] : []),
+    ...assistantConversations,
     ...xmtpConversations.filter((item) => item.transport === "xmtp"),
   ]);
 }

@@ -4,7 +4,7 @@ import * as React from "react";
 import type { CommunityListing as ApiCommunityListing } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { Profile as ApiProfile } from "@pirate/api-contracts";
-import { ChatCircleDots, Plus } from "@phosphor-icons/react";
+import { Plus } from "@phosphor-icons/react";
 
 import { PublicCommunityRoutePage } from "@/app/public-community-route";
 import { CommunityRouteLoadingState } from "@/app/route-loading-states";
@@ -22,7 +22,6 @@ import { CommunityMembershipGatePanel } from "@/components/compositions/communit
 import { CommunityJoinRequestModal } from "@/components/compositions/community/join-request-modal/community-join-request-modal";
 import { HandleClaimModal } from "@/components/compositions/community/handle-claim-modal/handle-claim-modal";
 import { CommunityPageShell } from "@/components/compositions/community/page-shell/community-page-shell";
-import { CommunityAssistantChatModal } from "@/components/compositions/community/assistant-chat/community-assistant-chat";
 import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { CommunityProofOfWorkModal } from "@/components/compositions/community/proof-of-work-modal/community-proof-of-work-modal";
 import { Button } from "@/components/primitives/button";
@@ -66,7 +65,6 @@ import { usePiratePrivyWallets } from "@/components/auth/privy-provider";
 import { useCommunityFollow } from "@/hooks/use-community-follow";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
-import { useCommunityAssistantChatState } from "@/app/authenticated-state/use-community-assistant-chat-state";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { updateSessionUser } from "@/lib/api/session-store";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
@@ -152,10 +150,6 @@ export function CommunityPage({
     ownsCommunity
     || canModerateCommunity
     || viewerIsMember;
-  const assistantChat = useCommunityAssistantChatState({
-    communityId: previewCommunityId ?? communityId,
-    enabled: Boolean(session?.user?.id) && canCreatePost,
-  });
   const commerceEnabled = Boolean(session?.user?.id) && canCreatePost;
   const {
     listingsByAssetId,
@@ -629,15 +623,6 @@ export function CommunityPage({
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
-      {assistantChat.assistantAvailable ? (
-        <Button
-          leadingIcon={<ChatCircleDots className="size-5" weight="bold" />}
-          onClick={() => assistantChat.setOpen(true)}
-          variant="outline"
-        >
-          Assistant
-        </Button>
-      ) : null}
       {ownsCommunity ? (
         <Button
           onClick={() => navigate(moderationEntryPath)}
@@ -685,15 +670,6 @@ export function CommunityPage({
   );
   const mobileHeaderAction = canCreatePost ? (
     <>
-      {assistantChat.assistantAvailable ? (
-        <IconButton
-          aria-label="Open assistant"
-          onClick={() => assistantChat.setOpen(true)}
-          variant="ghost"
-        >
-          <ChatCircleDots className="size-6" weight="bold" />
-        </IconButton>
-      ) : null}
       <IconButton
         aria-label={createPostLabel}
         onClick={() => navigate(communityCreatePostPath)}
@@ -786,21 +762,6 @@ export function CommunityPage({
           open={ageSelfModalOpen}
           selfApp={ageSelfPrompt.selfApp}
           title={ageSelfPrompt.title}
-        />
-      ) : null}
-      {assistantChat.policy ? (
-        <CommunityAssistantChatModal
-          draft={assistantChat.draft}
-          error={assistantChat.error}
-          loading={assistantChat.loadingHistory}
-          messages={assistantChat.messages}
-          onDraftChange={assistantChat.setDraft}
-          onNewChat={assistantChat.startNewChat}
-          onOpenChange={assistantChat.setOpen}
-          onSend={assistantChat.sendMessage}
-          open={assistantChat.open}
-          policy={assistantChat.policy}
-          sending={assistantChat.sending}
         />
       ) : null}
       <section className="flex min-w-0 flex-1 flex-col gap-6">

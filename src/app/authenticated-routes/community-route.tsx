@@ -493,6 +493,26 @@ export function CommunityPage({
     }
   }, [api.posts, communityId, posts, setPosts]);
 
+  const rememberedCommunityId = community?.id ?? preview?.id;
+  const rememberedCommunityRouteSlug = community?.route_slug ?? preview?.route_slug;
+  const rememberedCommunityTitle = community?.display_name ?? preview?.display_name;
+  const rememberedCommunityAvatarRef = community?.avatar_ref ?? preview?.avatar_ref;
+
+  React.useEffect(() => {
+    if (!rememberedCommunityId || !rememberedCommunityTitle) return;
+    rememberKnownCommunity({
+      avatarSrc: rememberedCommunityAvatarRef ?? null,
+      communityId: rememberedCommunityId,
+      displayName: rememberedCommunityTitle,
+      routeSlug: rememberedCommunityRouteSlug,
+    });
+  }, [
+    rememberedCommunityAvatarRef,
+    rememberedCommunityId,
+    rememberedCommunityRouteSlug,
+    rememberedCommunityTitle,
+  ]);
+
   if (loading) {
     return <CommunityRouteLoadingState />;
   }
@@ -684,22 +704,6 @@ export function CommunityPage({
   const communityTitle = community?.display_name ?? preview.display_name;
   const communityAvatarRef = community?.avatar_ref ?? preview.avatar_ref;
   const communityBannerRef = community?.banner_ref ?? preview.banner_ref;
-
-  React.useEffect(() => {
-    rememberKnownCommunity({
-      avatarSrc: communityAvatarRef ?? null,
-      communityId: community?.id ?? preview.id,
-      displayName: communityTitle,
-      routeSlug: community?.route_slug ?? preview.route_slug,
-    });
-  }, [
-    community?.id,
-    community?.route_slug,
-    communityAvatarRef,
-    communityTitle,
-    preview.id,
-    preview.route_slug,
-  ]);
 
   return (
     <>

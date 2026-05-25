@@ -80,11 +80,15 @@ export function TelegramMiniAppExchangePage() {
   const [status, setStatus] = React.useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = React.useState("Linking your Telegram account...");
   const [exchangeResponse, setExchangeResponse] = React.useState<TelegramOnboardingExchangeResponse | null>(null);
+  const [attempt, setAttempt] = React.useState(0);
 
   React.useEffect(() => {
     const webApp = window.Telegram?.WebApp;
     webApp?.ready?.();
     webApp?.expand?.();
+    setStatus("loading");
+    setMessage("Linking your Telegram account...");
+    setExchangeResponse(null);
 
     const token = new URL(window.location.href).searchParams.get("token")?.trim();
     const initData = webApp?.initData?.trim();
@@ -126,7 +130,7 @@ export function TelegramMiniAppExchangePage() {
       });
 
     return () => controller.abort();
-  }, []);
+  }, [attempt]);
 
   return (
     <main className="min-h-screen bg-background px-4 py-6">
@@ -144,7 +148,10 @@ export function TelegramMiniAppExchangePage() {
               <Button onClick={() => window.Telegram?.WebApp?.close?.()}>Return to Telegram</Button>
             ) : null}
             {status === "error" ? (
-              <Button onClick={() => navigate("/tg")} variant="secondary">Open Telegram home</Button>
+              <>
+                <Button onClick={() => setAttempt((value) => value + 1)}>Try again</Button>
+                <Button onClick={() => navigate("/tg")} variant="secondary">Open Telegram home</Button>
+              </>
             ) : null}
           </div>
         </section>

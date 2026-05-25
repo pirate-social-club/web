@@ -475,7 +475,7 @@ describe("PostComposer monetization", () => {
     });
   });
 
-  test("renders asset license controls for original songs only", () => {
+  test("renders asset license controls for original and remix songs", () => {
     const originalSongTree = renderComposer({
       availableTabs: ["song"],
       canCreateSongPost: true,
@@ -504,7 +504,10 @@ describe("PostComposer monetization", () => {
     ).toBe(false);
     expect(
       findElement(remixSongTree, (element) => element.props.title === "Non-commercial only"),
-    ).toBeNull();
+    ).not.toBeNull();
+    expect(
+      findElement(remixSongTree, (element) => element.props.children === "New remix terms"),
+    ).not.toBeNull();
   });
 
   test("keeps editable controls in settings and off write/review", () => {

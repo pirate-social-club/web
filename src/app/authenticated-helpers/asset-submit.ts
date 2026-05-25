@@ -22,7 +22,7 @@ export function resolvedDerivativeReferences(input: AssetDerivativeInput | undef
   return input?.references?.filter(isResolvedDerivativeReference) ?? [];
 }
 
-export function validateOriginalAssetLicense(license: AssetLicenseState | undefined, contentLabel: "song" | "video"): string | null {
+export function validateAssetLicense(license: AssetLicenseState | undefined, contentLabel: "song" | "video"): string | null {
   if (!license) {
     return `Choose license terms before publishing this ${contentLabel}.`;
   }
@@ -179,8 +179,8 @@ export function resolveComposerSubmitState(input: {
     };
   }
 
-  if (input.composerMode === "song" && (input.songMode ?? "original") === "original") {
-    const licenseError = validateOriginalAssetLicense(input.license, "song");
+  if (input.composerMode === "song") {
+    const licenseError = validateAssetLicense(input.license, "song");
     if (licenseError) {
       return {
         canContinue,
@@ -192,7 +192,7 @@ export function resolveComposerSubmitState(input: {
   }
 
   if (input.composerMode === "video" && input.monetizationState.visible) {
-    const licenseError = validateOriginalAssetLicense(input.license, "video");
+    const licenseError = validateAssetLicense(input.license, "video");
     if (licenseError) {
       return {
         canContinue,

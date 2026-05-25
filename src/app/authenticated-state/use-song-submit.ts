@@ -303,14 +303,14 @@ export function useSongSubmit({
     const selectedSourceRefs = resolvedDerivativeReferences(derivativeStep).map((reference) => reference.id);
     if (derivativeStep?.required && selectedSourceRefs.length === 0) throw new Error("Attach a source track before publishing this remix");
     if (derivativeStep?.required && derivativeStep.sourceTermsAccepted !== true) throw new Error("Accept the source license terms before publishing this remix.");
-    if (songMode === "original" && !license) throw new Error("Choose license terms before publishing this song.");
-    if (songMode === "original" && license.presetId === "commercial-remix") {
+    if (!license) throw new Error("Choose license terms before publishing this song.");
+    if (license.presetId === "commercial-remix") {
       const revSharePct = license.commercialRevSharePct;
       if (revSharePct == null || !Number.isInteger(revSharePct) || revSharePct < 0 || revSharePct > 100) {
         throw new Error("Choose a valid remix revenue share before publishing this song.");
       }
     }
-    if (songMode === "original" && license.presetId !== "commercial-remix" && license.commercialRevSharePct != null) {
+    if (license.presetId !== "commercial-remix" && license.commercialRevSharePct != null) {
       throw new Error("Revenue share is only available for commercial remix licenses.");
     }
 

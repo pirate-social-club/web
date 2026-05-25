@@ -197,7 +197,7 @@ describe("song submit payload helpers", () => {
         ],
       },
       idempotencyKey: "key-remix",
-      license: undefined,
+      license: { presetId: "commercial-remix", commercialRevSharePct: 15 },
       paidSongPriceUsd: 1,
       songMode: "remix",
       title: "Paid remix",
@@ -216,8 +216,8 @@ describe("song submit payload helpers", () => {
       access_mode: "locked",
       identity_mode: "public",
       idempotency_key: "key-remix",
-      license_preset: undefined,
-      commercial_rev_share_pct: undefined,
+      license_preset: "commercial-remix",
+      commercial_rev_share_pct: 15,
       post_type: "song",
       rights_basis: "derivative",
       song_artifact_bundle: "sab_remix",
@@ -329,7 +329,7 @@ describe("song submit payload helpers", () => {
       canSubmit: true,
       composerMode: "song",
       derivativeStep: { required: true, references: [] },
-      license: undefined,
+      license: { presetId: "non-commercial" },
       monetizationState: { visible: true },
       paidSongPriceInvalid: false,
       songMode: "remix",
@@ -345,7 +345,7 @@ describe("song submit payload helpers", () => {
       canSubmit: true,
       composerMode: "song",
       derivativeStep: { required: true, references: [{ id: "ast_1", title: "Source" }] },
-      license: undefined,
+      license: { presetId: "non-commercial" },
       monetizationState: { visible: true },
       paidSongPriceInvalid: false,
       songMode: "remix",
@@ -361,7 +361,7 @@ describe("song submit payload helpers", () => {
       canSubmit: true,
       composerMode: "song",
       derivativeStep: { required: true, references: [{ id: "ast_1", title: "Source" }], sourceTermsAccepted: true },
-      license: undefined,
+      license: { presetId: "non-commercial" },
       monetizationState: { visible: true },
       paidSongPriceInvalid: false,
       songMode: "remix",
@@ -400,7 +400,7 @@ describe("song submit payload helpers", () => {
         references: [{ id: "ast_resolved_source", title: "Resolved source" }],
         sourceTermsAccepted: true,
       },
-      license: undefined,
+      license: { presetId: "non-commercial" },
       monetizationState: { visible: false },
       paidSongPriceInvalid: false,
       songMode: "remix",
@@ -425,12 +425,49 @@ describe("song submit payload helpers", () => {
         sourceTermsAccepted: true,
       },
       idempotencyKey: "key-remix",
-      license: undefined,
+      license: { presetId: "non-commercial" },
       paidSongPriceUsd: null,
       songMode: "remix",
       title: "Remix",
       visibility: "public",
     }).upstream_asset_refs).toEqual(["ast_resolved_source"]);
+  });
+
+  test("requires and sends remix song license payloads", () => {
+    expect(captureErrorMessage(() => buildSongPostRequest({
+      bundleId: "sab_remix_missing",
+      derivativeStep: {
+        required: true,
+        references: [{ id: "ast_source", title: "Source" }],
+        sourceTermsAccepted: true,
+      },
+      idempotencyKey: "key-remix-missing",
+      license: undefined,
+      paidSongPriceUsd: null,
+      songMode: "remix",
+      title: "Missing remix license",
+      visibility: "public",
+    }))).toBe("Choose license terms before publishing this song.");
+
+    const request = buildSongPostRequest({
+      bundleId: "sab_remix_license",
+      derivativeStep: {
+        required: true,
+        references: [{ id: "ast_source", title: "Source" }],
+        sourceTermsAccepted: true,
+      },
+      idempotencyKey: "key-remix-license",
+      license: { presetId: "commercial-remix", commercialRevSharePct: 20 },
+      paidSongPriceUsd: null,
+      songMode: "remix",
+      title: "Licensed remix",
+      visibility: "public",
+    });
+
+    expect(request.license_preset).toBe("commercial-remix");
+    expect(request.commercial_rev_share_pct).toBe(20);
+    expect(request.rights_basis).toBe("derivative");
+    expect(request.upstream_asset_refs).toEqual(["ast_source"]);
   });
 
   test("derives original song license validation from the route state", () => {

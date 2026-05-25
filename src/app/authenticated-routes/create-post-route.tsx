@@ -44,6 +44,10 @@ import {
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { getErrorMessage } from "@/lib/error-utils";
 import {
+  canSubmitPostWithProofOfWork,
+  shouldPromptUniqueHumanForPost,
+} from "@/app/authenticated-helpers/create-post-verification";
+import {
   AuthRequiredRouteState,
   FullPageSpinner,
   RouteLoadFailureState,
@@ -422,6 +426,15 @@ export function CreatePostPage({
       return;
     }
 
+    if (canSubmitPostWithProofOfWork({
+      hasPostingAccess,
+      postAltchaPayload: state.postAltchaPayload,
+      postAltchaRequired: state.postAltchaRequired,
+    })) {
+      await state.handleSubmit();
+      return;
+    }
+
     const refreshedUser = await api.users.getMe();
     updateSessionUser(refreshedUser);
     const refreshedSelfVerificationRequest = getSelfVerificationRequestForGates({
@@ -755,7 +768,11 @@ export function CreatePostPage({
   ) : null;
 
   if (isMobile) {
-    if (!uniqueHumanVerified && !needsSelfDocumentFactVerification) {
+    if (shouldPromptUniqueHumanForPost({
+      needsSelfDocumentFactVerification,
+      postAltchaRequired: state.postAltchaRequired,
+      uniqueHumanVerified,
+    })) {
       return (
         <MobileRouteShell
           className="justify-start pb-32"

@@ -613,6 +613,7 @@ const app = defineApp<AppRequestInfo>([
     route("/popular", AppRoutePage),
     route("/advertise", AppRoutePage),
     route("/tg", AppRoutePage),
+    route("/tg/exchange", AppRoutePage),
     route("/tg/c/:communityId", AppRoutePage),
     route("/your-communities", AppRoutePage),
     route("/communities/new", AppRoutePage),

@@ -40,6 +40,7 @@ export type AppRoute =
   | { kind: "onboarding"; path: "/onboarding" }
   | { kind: "authorize-device"; path: "/authorize-device" }
   | { kind: "telegram-mini-app"; path: "/tg" }
+  | { kind: "telegram-exchange"; path: "/tg/exchange" }
   | { kind: "telegram-community"; path: string; communityId: string }
   | { kind: "not-found"; path: string };
 
@@ -129,6 +130,10 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
 
   if (normalized === "/tg") {
     return { kind: "telegram-mini-app", path: "/tg" };
+  }
+
+  if (normalized === "/tg/exchange") {
+    return { kind: "telegram-exchange", path: "/tg/exchange" };
   }
 
   if (normalized === "/submit") {

@@ -422,13 +422,17 @@ export type ApiCommunityTelegramChatSettingsUpdate = {
 export type ApiAssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector";
 export type ApiAssistantActionMode = "answer_only" | "draft_only" | "confirmed_writes";
 export type ApiAssistantVoiceMode = "off" | "transcription_only" | "voice_replies";
-export type ApiAssistantSttProvider = "mistral" | "openai" | "none";
+export type ApiAssistantSttProvider = "elevenlabs" | "mistral" | "openai" | "none";
+export type ApiAssistantTtsProvider = "elevenlabs" | "none";
 export type ApiAssistantRetentionMode = "per_user_private" | "community_visible_to_mods" | "ephemeral";
 
-export type ApiAssistantOpenRouterKeyStatus =
+export type ApiAssistantProviderKeyStatus =
   | { kind: "missing" }
   | { kind: "connected"; last4: string; connectedAt?: string }
   | { kind: "invalid"; last4: string; message: string };
+
+export type ApiAssistantOpenRouterKeyStatus = ApiAssistantProviderKeyStatus;
+export type ApiAssistantElevenLabsKeyStatus = ApiAssistantProviderKeyStatus;
 
 export type ApiAssistantModelOption = {
   contextLength?: number;
@@ -464,6 +468,7 @@ export type ApiCommunityAssistantPolicy = {
   defaultPrompt: string;
   starterPrompts: string[];
   openRouterKeyStatus: ApiAssistantOpenRouterKeyStatus;
+  elevenLabsKeyStatus: ApiAssistantElevenLabsKeyStatus;
   selectedModelId: string;
   availableModels: ApiAssistantModelOption[];
   contextMode: ApiAssistantContextMode;
@@ -480,6 +485,7 @@ export type ApiCommunityAssistantPolicy = {
   voiceMode: ApiAssistantVoiceMode;
   sttProvider: ApiAssistantSttProvider;
   sttModel: string;
+  ttsProvider: ApiAssistantTtsProvider;
   ttsVoice: string;
   includeInSovereignExport: boolean;
   createdAt: string;
@@ -495,6 +501,13 @@ export type ApiCommunityAssistantPublicPolicy = {
   avatarRef: string | null;
   defaultPrompt: string;
   starterPrompts: string[];
+  voiceMode: ApiAssistantVoiceMode;
+  sttProvider: ApiAssistantSttProvider;
+  ttsProvider: ApiAssistantTtsProvider;
+  ttsVoiceConfigured: boolean;
+  elevenLabsKeyConfigured: boolean;
+  voiceTranscriptionConfigured: boolean;
+  voiceRepliesConfigured: boolean;
 };
 
 export type ApiCommunityAssistantPolicyResponse =
@@ -524,15 +537,26 @@ export type ApiCommunityAssistantPolicyUpdate = Partial<{
   voiceMode: ApiAssistantVoiceMode;
   sttProvider: ApiAssistantSttProvider;
   sttModel: string;
+  ttsProvider: ApiAssistantTtsProvider;
   ttsVoice: string;
   includeInSovereignExport: boolean;
 }>;
 
-export type ApiCommunityAssistantCredentialResponse = {
-  object: "community_assistant_credential";
-  provider: "openrouter";
-  openRouterKeyStatus: ApiAssistantOpenRouterKeyStatus;
-};
+export type ApiCommunityAssistantCredentialProvider = "openrouter" | "elevenlabs";
+
+export type ApiCommunityAssistantCredentialResponse =
+  | {
+    object: "community_assistant_credential";
+    provider: "openrouter";
+    keyStatus: ApiAssistantOpenRouterKeyStatus;
+    openRouterKeyStatus: ApiAssistantOpenRouterKeyStatus;
+  }
+  | {
+    object: "community_assistant_credential";
+    provider: "elevenlabs";
+    keyStatus: ApiAssistantElevenLabsKeyStatus;
+    elevenLabsKeyStatus: ApiAssistantElevenLabsKeyStatus;
+  };
 
 export type ApiCommunityAssistantModelList = {
   object: "list";
@@ -563,6 +587,18 @@ export type ApiCommunityAssistantMessage = {
   prompt_tokens: number | null;
   completion_tokens: number | null;
   total_tokens: number | null;
+  source: {
+    kind: "voice";
+    provider: "elevenlabs";
+    model: string;
+    confidence: number | null;
+    language_code: string | null;
+    language_probability: number | null;
+    duration_seconds: number | null;
+    audio_mime_type: string | null;
+    audio_size_bytes: number | null;
+    audio_retention: "not_stored";
+  } | null;
   created_at: string;
 };
 
@@ -582,6 +618,17 @@ export type ApiCommunityAssistantChatDetailResponse = {
   object: "community_assistant_chat_detail";
   chat: ApiCommunityAssistantChat;
   messages: ApiCommunityAssistantMessage[];
+};
+
+export type ApiCommunityAssistantTranscriptionResponse = {
+  object: "community_assistant_transcription";
+  provider: "elevenlabs";
+  model: string;
+  text: string;
+  confidence: number | null;
+  language_code: string | null;
+  language_probability: number | null;
+  duration_seconds: number | null;
 };
 
 export type ProfileUpdateInput = {

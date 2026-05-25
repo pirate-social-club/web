@@ -11,6 +11,7 @@ export type ApiRequestInit = RequestInit & {
   tokenOptional?: boolean;
   replayedAfterRefresh?: boolean;
   replayedWithoutOptionalToken?: boolean;
+  responseType?: "json" | "response";
 };
 
 export type ApiRequest = <T>(path: string, init?: ApiRequestInit) => Promise<T>;

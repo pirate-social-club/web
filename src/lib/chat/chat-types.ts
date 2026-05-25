@@ -14,6 +14,9 @@ export interface ChatConversation {
   targetLabel?: string;
   title: string;
   transport: ChatTransport;
+  voiceMode?: "off" | "transcription_only" | "voice_replies";
+  voiceRepliesEnabled?: boolean;
+  voiceTranscriptionEnabled?: boolean;
   unreadCount: number;
   updatedAt: number;
 }
@@ -24,6 +27,11 @@ export interface ChatMessageRecord {
   createdAt: number;
   id: string;
   sender: "peer" | "user";
+  source?: {
+    kind: "voice";
+    transcript: string;
+    audioRetained: boolean;
+  };
 }
 
 export type ChatRouteMode =

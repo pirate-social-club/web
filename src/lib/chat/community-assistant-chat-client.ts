@@ -9,6 +9,7 @@ import type {
   ApiCommunityAssistantPolicyResponse,
 } from "@/lib/api/client-api-types";
 import { isApiNotFoundError } from "@/lib/api/client";
+import { logger } from "@/lib/logger";
 import type { SidebarCommunitySummary } from "@/lib/owned-communities";
 import type { ChatConversation, ChatMessageRecord } from "./chat-types";
 
@@ -26,6 +27,10 @@ type CommunityAssistantApi = {
     sendAssistantMessage: (
       communityId: string,
       body: { message: string; chat_id?: string | null },
+    ) => Promise<ApiCommunityAssistantChatResponse>;
+    sendAssistantAudioMessage: (
+      communityId: string,
+      input: { file: File; chat_id?: string | null },
     ) => Promise<ApiCommunityAssistantChatResponse>;
   };
 };
@@ -49,10 +54,25 @@ function publicPolicyPreview(policy: ApiCommunityAssistantPolicyResponse): {
   displayName: string;
   enabled: boolean;
   shortBio: string;
+  voiceMode: "off" | "transcription_only" | "voice_replies";
+  voiceRepliesEnabled: boolean;
+  voiceTranscriptionEnabled: boolean;
 } | null {
   if (!policy || typeof policy !== "object" || policy.enabled !== true) {
     return null;
   }
+  const voiceMode = "voiceMode" in policy ? policy.voiceMode : "off";
+  const sttProvider = "sttProvider" in policy ? policy.sttProvider : "none";
+  const ttsProvider = "ttsProvider" in policy ? policy.ttsProvider : "none";
+  const ttsVoiceConfigured = "ttsVoiceConfigured" in policy
+    ? policy.ttsVoiceConfigured
+    : "ttsVoice" in policy && typeof policy.ttsVoice === "string" && Boolean(policy.ttsVoice.trim());
+  const voiceRepliesConfigured = "voiceRepliesConfigured" in policy
+    ? policy.voiceRepliesConfigured
+    : voiceMode === "voice_replies" && ttsProvider === "elevenlabs" && ttsVoiceConfigured;
+  const voiceTranscriptionConfigured = "voiceTranscriptionConfigured" in policy
+    ? policy.voiceTranscriptionConfigured
+    : voiceMode !== "off" && sttProvider === "elevenlabs";
 
   return {
     avatarRef: typeof policy.avatarRef === "string" ? policy.avatarRef : null,
@@ -62,7 +82,26 @@ function publicPolicyPreview(policy: ApiCommunityAssistantPolicyResponse): {
       : "Assistant",
     enabled: true,
     shortBio: typeof policy.shortBio === "string" ? policy.shortBio : "",
+    voiceMode,
+    voiceRepliesEnabled: voiceRepliesConfigured,
+    voiceTranscriptionEnabled: voiceTranscriptionConfigured,
   };
+}
+
+function logPolicySkip(
+  communityId: string,
+  policy: ApiCommunityAssistantPolicyResponse | null,
+  reason: string,
+): void {
+  const enabled = policy && typeof policy === "object" ? policy.enabled : null;
+  const voiceMode = policy && typeof policy === "object" && "voiceMode" in policy ? policy.voiceMode : null;
+  logger.info(`[chat:community-assistant] skipped reason=${reason} community=${communityId} enabled=${String(enabled)}`, {
+    communityId,
+    enabled,
+    object: policy && typeof policy === "object" ? policy.object : null,
+    reason,
+    voiceMode,
+  });
 }
 
 function messageToRecord(
@@ -82,6 +121,13 @@ function messageToRecord(
     createdAt: parseTimestamp(message.created_at) || Date.now(),
     id: message.id,
     sender,
+    source: message.source?.kind === "voice"
+      ? {
+        kind: "voice",
+        transcript: message.content,
+        audioRetained: message.source.audio_retention !== "not_stored",
+      }
+      : undefined,
   };
 }
 
@@ -131,6 +177,9 @@ function buildConversation(input: {
     targetLabel: input.policy.displayName,
     title: input.community.displayName || input.policy.displayName,
     transport: "assistant",
+    voiceMode: input.policy.voiceMode,
+    voiceRepliesEnabled: input.policy.voiceRepliesEnabled,
+    voiceTranscriptionEnabled: input.policy.voiceTranscriptionEnabled,
     unreadCount: 0,
     updatedAt,
   };
@@ -165,14 +214,36 @@ export async function loadCommunityAssistantConversation(
   api: CommunityAssistantApi,
   community: Pick<SidebarCommunitySummary, "avatarSrc" | "communityId" | "displayName" | "routeSlug" | "updatedAt">,
 ): Promise<ChatConversation | null> {
+  logger.debug("[chat:community-assistant] loading", {
+    communityId: community.communityId,
+    displayName: community.displayName,
+  });
   const policyResponse = await ignoreNotFound(api.communities.getAssistantPolicy(community.communityId));
-  if (!policyResponse) return null;
+  if (!policyResponse) {
+    logPolicySkip(community.communityId, null, "policy_not_found_or_inaccessible");
+    return null;
+  }
 
   const policy = publicPolicyPreview(policyResponse);
-  if (!policy) return null;
+  if (!policy) {
+    logPolicySkip(
+      community.communityId,
+      policyResponse,
+      policyResponse.enabled === false ? "assistant_disabled" : "policy_unavailable",
+    );
+    return null;
+  }
 
   const chatList = await ignoreNotFound(api.communities.listAssistantChats(community.communityId));
   const latestChat = chatList?.data[0] ?? null;
+  logger.info("[chat:community-assistant] loaded", {
+    communityId: community.communityId,
+    displayName: policy.displayName,
+    latestChatId: latestChat?.id ?? null,
+    voiceMode: policy.voiceMode,
+    voiceRepliesEnabled: policy.voiceRepliesEnabled,
+    voiceTranscriptionEnabled: policy.voiceTranscriptionEnabled,
+  });
   return buildConversation({ community, latestChat, policy });
 }
 
@@ -180,10 +251,19 @@ export async function loadCommunityAssistantConversations(
   api: CommunityAssistantApi,
   communities: readonly SidebarCommunitySummary[],
 ): Promise<ChatConversation[]> {
+  logger.info("[chat:community-assistant] discovery:start", {
+    communityCount: communities.length,
+    communityIds: communities.map((community) => community.communityId),
+  });
   const results = await Promise.all(
     communities.map((community) => loadCommunityAssistantConversation(api, community)),
   );
-  return results.filter((conversation): conversation is ChatConversation => conversation !== null);
+  const conversations = results.filter((conversation): conversation is ChatConversation => conversation !== null);
+  logger.info("[chat:community-assistant] discovery:complete", {
+    conversationCount: conversations.length,
+    conversationIds: conversations.map((conversation) => conversation.id),
+  });
+  return conversations;
 }
 
 export async function loadCommunityAssistantConversationMessages(
@@ -257,6 +337,30 @@ export async function sendCommunityAssistantConversationMessage(
   const response = await api.communities.sendAssistantMessage(input.communityId, {
     chat_id: input.chatId,
     message: input.content,
+  });
+  return {
+    chat: response.chat,
+    messages: [response.user_message, response.assistant_message]
+      .map((message) => messageToRecord(message, input.conversationId))
+      .filter((message): message is ChatMessageRecord => message !== null),
+  };
+}
+
+export async function sendCommunityAssistantConversationAudioMessage(
+  api: CommunityAssistantApi,
+  input: {
+    chatId: string | null;
+    communityId: string;
+    conversationId: string;
+    file: File;
+  },
+): Promise<{
+  chat: ApiCommunityAssistantChat;
+  messages: ChatMessageRecord[];
+}> {
+  const response = await api.communities.sendAssistantAudioMessage(input.communityId, {
+    chat_id: input.chatId,
+    file: input.file,
   });
   return {
     chat: response.chat,

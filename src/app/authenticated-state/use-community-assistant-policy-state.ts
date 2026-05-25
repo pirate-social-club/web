@@ -5,6 +5,7 @@ import type { Community as ApiCommunity } from "@pirate/api-contracts";
 
 import { toast } from "@/components/primitives/sonner";
 import type {
+  ApiAssistantElevenLabsKeyStatus,
   ApiAssistantOpenRouterKeyStatus,
   ApiCommunityAssistantPolicy,
   ApiCommunityAssistantPolicyResponse,
@@ -12,7 +13,9 @@ import type {
 } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-utils";
+import { logger } from "@/lib/logger";
 import type {
+  AssistantElevenLabsKeyStatus,
   AssistantOpenRouterKeyStatus,
   CommunityAssistantPolicyPageProps,
   CommunityAssistantPolicySettings,
@@ -26,8 +29,17 @@ function isFullPolicy(
 }
 
 function keyStatusToSettings(
-  status: ApiAssistantOpenRouterKeyStatus | AssistantOpenRouterKeyStatus,
+  status:
+    | ApiAssistantOpenRouterKeyStatus
+    | ApiAssistantElevenLabsKeyStatus
+    | AssistantOpenRouterKeyStatus
+    | AssistantElevenLabsKeyStatus
+    | null
+    | undefined,
 ): AssistantOpenRouterKeyStatus {
+  if (!status) {
+    return { kind: "missing" };
+  }
   if (status.kind === "connected") {
     return {
       kind: "connected",
@@ -72,6 +84,7 @@ export function assistantPolicyToSettings(
     defaultPrompt: policy.defaultPrompt,
     starterPrompts: policy.starterPrompts,
     openRouterKeyStatus: keyStatusToSettings(policy.openRouterKeyStatus),
+    elevenLabsKeyStatus: keyStatusToSettings(policy.elevenLabsKeyStatus),
     selectedModelId: policy.selectedModelId,
     availableModels: policy.availableModels,
     contextMode: policy.contextMode,
@@ -92,6 +105,7 @@ export function assistantPolicyToSettings(
     voiceMode: policy.voiceMode,
     sttProvider: policy.sttProvider,
     sttModel: policy.sttModel,
+    ttsProvider: policy.ttsProvider,
     ttsVoice: policy.ttsVoice,
     includeInSovereignExport: policy.includeInSovereignExport,
   };
@@ -124,10 +138,11 @@ export function assistantSettingsToPolicyUpdate(
     actionMode: "answer_only",
     requireModeratorApprovalForWrites: true,
     perUserDailyMessageCap: settings.perUserDailyMessageCap,
-    voiceMode: "off",
-    sttProvider: "mistral",
-    sttModel: "voxtral-mini-latest",
-    ttsVoice: "",
+    voiceMode: settings.voiceMode,
+    sttProvider: settings.sttProvider,
+    sttModel: settings.sttModel,
+    ttsProvider: settings.ttsProvider,
+    ttsVoice: settings.ttsVoice,
     includeInSovereignExport: true,
   };
 }
@@ -182,24 +197,51 @@ export function useCommunityAssistantPolicyState({
     setLoadingAssistantPolicy(true);
     setAssistantPolicyLoadError(null);
     setAssistantPolicySaveError(null);
+    logger.info("[community-assistant-policy] load:start", {
+      communityId: community.id,
+      displayName: community.display_name,
+    });
     void api.communities.getAssistantPolicy(community.id)
       .then((policy) => {
         if (cancelled) {
           return;
         }
         const settings = assistantPolicyToSettings(policy);
+        logger.info("[community-assistant-policy] load:success", {
+          communityId: community.id,
+          enabled: settings.enabled,
+          openRouterKeyStatus: settings.openRouterKeyStatus.kind,
+          elevenLabsKeyStatus: settings.elevenLabsKeyStatus.kind,
+          selectedModelId: settings.selectedModelId,
+          voiceMode: settings.voiceMode,
+          sttProvider: settings.sttProvider,
+          ttsProvider: settings.ttsProvider,
+          ttsVoiceConfigured: Boolean(settings.ttsVoice.trim()),
+        });
         setAssistantPolicySettings(settings);
         setSavedAssistantPolicySettings(settings);
         setAssistantAvatarFile(null);
         if (settings.openRouterKeyStatus.kind === "connected") {
+          logger.info("[community-assistant-policy] models:load:start", {
+            communityId: community.id,
+          });
           void api.communities.getAssistantModels(community.id)
             .then((modelList) => {
               if (cancelled) return;
+              logger.info("[community-assistant-policy] models:load:success", {
+                communityId: community.id,
+                modelCount: modelList.data.length,
+                selectedModelId: settings.selectedModelId,
+              });
               setAssistantPolicySettings((current) => settingsWithModels(current, modelList.data));
               setSavedAssistantPolicySettings((current) => settingsWithModels(current, modelList.data));
             })
-            .catch(() => {
+            .catch((error: unknown) => {
               if (!cancelled) {
+                logger.warn("[community-assistant-policy] models:load:failed", {
+                  communityId: community.id,
+                  message: getErrorMessage(error, "Could not load assistant model list."),
+                });
                 toast.error("Could not load assistant model list.");
               }
             });
@@ -207,7 +249,12 @@ export function useCommunityAssistantPolicyState({
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setAssistantPolicyLoadError(getErrorMessage(error, "Could not load assistant settings."));
+          const message = getErrorMessage(error, "Could not load assistant settings.");
+          logger.warn("[community-assistant-policy] load:failed", {
+            communityId: community.id,
+            message,
+          });
+          setAssistantPolicyLoadError(message);
         }
       })
       .finally(() => {
@@ -241,6 +288,15 @@ export function useCommunityAssistantPolicyState({
 
     setAssistantPolicySaveError(null);
     setSavingAssistantPolicy(true);
+    logger.info("[community-assistant-policy] save:start", {
+      communityId: community.id,
+      enabled: assistantPolicySettings.enabled,
+      selectedModelId: assistantPolicySettings.selectedModelId,
+      voiceMode: assistantPolicySettings.voiceMode,
+      sttProvider: assistantPolicySettings.sttProvider,
+      ttsProvider: assistantPolicySettings.ttsProvider,
+      ttsVoiceConfigured: Boolean(assistantPolicySettings.ttsVoice.trim()),
+    });
     void (async () => {
       let settingsToSave = assistantPolicySettings;
       if (assistantAvatarFile) {
@@ -260,6 +316,15 @@ export function useCommunityAssistantPolicyState({
         assistantSettingsToPolicyUpdate(settingsToSave),
       );
       const settings = assistantPolicyToSettings(policy);
+      logger.info("[community-assistant-policy] save:success", {
+        communityId: community.id,
+        enabled: settings.enabled,
+        selectedModelId: settings.selectedModelId,
+        voiceMode: settings.voiceMode,
+        sttProvider: settings.sttProvider,
+        ttsProvider: settings.ttsProvider,
+        ttsVoiceConfigured: Boolean(settings.ttsVoice.trim()),
+      });
       setAssistantPolicySettings(settings);
       setSavedAssistantPolicySettings(settings);
       setAssistantAvatarFile(null);
@@ -267,6 +332,10 @@ export function useCommunityAssistantPolicyState({
     })()
       .catch((error: unknown) => {
         const message = getErrorMessage(error, "Could not save assistant settings.");
+        logger.warn("[community-assistant-policy] save:failed", {
+          communityId: community.id,
+          message,
+        });
         setAssistantPolicySaveError(message);
         toast.error(message);
       })
@@ -288,8 +357,15 @@ export function useCommunityAssistantPolicyState({
 
     setAssistantPolicySaveError(null);
     setSavingAssistantCredential(true);
-    void api.communities.saveAssistantCredential(community.id, { api_key: apiKey })
+    logger.info("[community-assistant-policy] credential:save:start", {
+      communityId: community.id,
+      provider: "openrouter",
+    });
+    void api.communities.saveAssistantCredential(community.id, { provider: "openrouter", api_key: apiKey })
       .then(async (response) => {
+        if (response.provider !== "openrouter") {
+          throw new Error("Unexpected credential provider response.");
+        }
         const nextStatus = keyStatusToSettings(response.openRouterKeyStatus);
         setAssistantPolicySettings((current) => ({
           ...current,
@@ -299,6 +375,12 @@ export function useCommunityAssistantPolicyState({
           ...current,
           openRouterKeyStatus: nextStatus,
         }));
+        logger.info("[community-assistant-policy] credential:save:success", {
+          communityId: community.id,
+          provider: "openrouter",
+          status: nextStatus.kind,
+          last4: nextStatus.kind === "connected" || nextStatus.kind === "invalid" ? nextStatus.last4 : null,
+        });
         if (nextStatus.kind === "connected") {
           await refreshAssistantModels(community.id).catch(() => {
             toast.error("Could not load assistant model list.");
@@ -308,6 +390,11 @@ export function useCommunityAssistantPolicyState({
       })
       .catch((error: unknown) => {
         const message = getErrorMessage(error, "Could not save OpenRouter key.");
+        logger.warn("[community-assistant-policy] credential:save:failed", {
+          communityId: community.id,
+          provider: "openrouter",
+          message,
+        });
         setAssistantPolicySaveError(message);
         toast.error(message);
       })
@@ -323,8 +410,15 @@ export function useCommunityAssistantPolicyState({
 
     setAssistantPolicySaveError(null);
     setSavingAssistantCredential(true);
-    void api.communities.revokeAssistantCredential(community.id)
+    logger.info("[community-assistant-policy] credential:revoke:start", {
+      communityId: community.id,
+      provider: "openrouter",
+    });
+    void api.communities.revokeAssistantCredential(community.id, { provider: "openrouter" })
       .then((response) => {
+        if (response.provider !== "openrouter") {
+          throw new Error("Unexpected credential provider response.");
+        }
         const nextStatus = keyStatusToSettings(response.openRouterKeyStatus);
         setAssistantPolicySettings((current) => ({
           ...current,
@@ -334,10 +428,115 @@ export function useCommunityAssistantPolicyState({
           ...current,
           openRouterKeyStatus: nextStatus,
         }));
+        logger.info("[community-assistant-policy] credential:revoke:success", {
+          communityId: community.id,
+          provider: "openrouter",
+          status: nextStatus.kind,
+        });
         toast.success("OpenRouter key revoked.");
       })
       .catch((error: unknown) => {
         const message = getErrorMessage(error, "Could not revoke OpenRouter key.");
+        logger.warn("[community-assistant-policy] credential:revoke:failed", {
+          communityId: community.id,
+          provider: "openrouter",
+          message,
+        });
+        setAssistantPolicySaveError(message);
+        toast.error(message);
+      })
+      .finally(() => {
+        setSavingAssistantCredential(false);
+      });
+  }, [api.communities, community, savingAssistantCredential]);
+
+  const handleSaveAssistantElevenLabsKey = React.useCallback((apiKey: string) => {
+    if (!community || savingAssistantCredential) {
+      return;
+    }
+
+    setAssistantPolicySaveError(null);
+    setSavingAssistantCredential(true);
+    logger.info("[community-assistant-policy] credential:save:start", {
+      communityId: community.id,
+      provider: "elevenlabs",
+    });
+    void api.communities.saveAssistantCredential(community.id, { provider: "elevenlabs", api_key: apiKey })
+      .then((response) => {
+        if (response.provider !== "elevenlabs") {
+          throw new Error("Unexpected credential provider response.");
+        }
+        const nextStatus = keyStatusToSettings(response.elevenLabsKeyStatus);
+        setAssistantPolicySettings((current) => ({
+          ...current,
+          elevenLabsKeyStatus: nextStatus,
+        }));
+        setSavedAssistantPolicySettings((current) => ({
+          ...current,
+          elevenLabsKeyStatus: nextStatus,
+        }));
+        logger.info("[community-assistant-policy] credential:save:success", {
+          communityId: community.id,
+          provider: "elevenlabs",
+          status: nextStatus.kind,
+          last4: nextStatus.kind === "connected" || nextStatus.kind === "invalid" ? nextStatus.last4 : null,
+        });
+        toast.success("ElevenLabs key saved.");
+      })
+      .catch((error: unknown) => {
+        const message = getErrorMessage(error, "Could not save ElevenLabs key.");
+        logger.warn("[community-assistant-policy] credential:save:failed", {
+          communityId: community.id,
+          provider: "elevenlabs",
+          message,
+        });
+        setAssistantPolicySaveError(message);
+        toast.error(message);
+      })
+      .finally(() => {
+        setSavingAssistantCredential(false);
+      });
+  }, [api.communities, community, savingAssistantCredential]);
+
+  const handleRevokeAssistantElevenLabsKey = React.useCallback(() => {
+    if (!community || savingAssistantCredential) {
+      return;
+    }
+
+    setAssistantPolicySaveError(null);
+    setSavingAssistantCredential(true);
+    logger.info("[community-assistant-policy] credential:revoke:start", {
+      communityId: community.id,
+      provider: "elevenlabs",
+    });
+    void api.communities.revokeAssistantCredential(community.id, { provider: "elevenlabs" })
+      .then((response) => {
+        if (response.provider !== "elevenlabs") {
+          throw new Error("Unexpected credential provider response.");
+        }
+        const nextStatus = keyStatusToSettings(response.elevenLabsKeyStatus);
+        setAssistantPolicySettings((current) => ({
+          ...current,
+          elevenLabsKeyStatus: nextStatus,
+        }));
+        setSavedAssistantPolicySettings((current) => ({
+          ...current,
+          elevenLabsKeyStatus: nextStatus,
+        }));
+        logger.info("[community-assistant-policy] credential:revoke:success", {
+          communityId: community.id,
+          provider: "elevenlabs",
+          status: nextStatus.kind,
+        });
+        toast.success("ElevenLabs key revoked.");
+      })
+      .catch((error: unknown) => {
+        const message = getErrorMessage(error, "Could not revoke ElevenLabs key.");
+        logger.warn("[community-assistant-policy] credential:revoke:failed", {
+          communityId: community.id,
+          provider: "elevenlabs",
+          message,
+        });
         setAssistantPolicySaveError(message);
         toast.error(message);
       })
@@ -358,7 +557,9 @@ export function useCommunityAssistantPolicyState({
     assistantPolicyLoadError,
     assistantPolicySettings,
     assistantPolicySubmitState,
+    handleRevokeAssistantElevenLabsKey,
     handleRevokeAssistantOpenRouterKey,
+    handleSaveAssistantElevenLabsKey,
     handleSaveAssistantOpenRouterKey,
     handleSaveAssistantPolicy,
     loadingAssistantPolicy,

@@ -6,8 +6,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { ConversationList, ThreadView } from "./chat-route-views";
 import type { ChatConversation, ChatMessageRecord } from "@/lib/chat/chat-types";
+import { getLocaleMessages } from "@/locales";
 
 const originalDateNow = Date.now;
+const chat = getLocaleMessages("en", "routes").chat;
 
 function renderList(conversations: ChatConversation[]) {
   return renderToStaticMarkup(
@@ -244,5 +246,88 @@ describe("ThreadView timestamps", () => {
     expect(markup).toContain("Pirate</code>");
     expect(markup.includes("**Important**")).toBe(false);
     expect(markup.includes("`Pirate`")).toBe(false);
+  });
+
+  test("renders voice send control only when the conversation supports voice input", () => {
+    const withoutVoice = renderToStaticMarkup(
+      <ThreadView
+        conversation={conversation({ id: "thread", title: "Thread" })}
+        items={[]}
+        onBack={() => undefined}
+        onSend={() => undefined}
+        sending={false}
+      />,
+    );
+    const withVoice = renderToStaticMarkup(
+      <ThreadView
+        conversation={conversation({
+          id: "community-assistant:com_test",
+          title: "Community Assistant",
+          voiceTranscriptionEnabled: true,
+        })}
+        items={[]}
+        onBack={() => undefined}
+        onSend={() => undefined}
+        onSendAudio={async () => {}}
+        sending={false}
+      />,
+    );
+
+    expect(withoutVoice).not.toContain("Record voice message");
+    expect(withVoice).toContain("Record voice message");
+    expect(withVoice).toContain('type="button"');
+    expect(withVoice).not.toContain(chat.sendMessageAriaLabel);
+  });
+
+  test("renders voice reply playback for assistant messages when enabled", () => {
+    const markup = renderToStaticMarkup(
+      <ThreadView
+        conversation={conversation({
+          id: "community-assistant:com_test",
+          title: "Community Assistant",
+          voiceRepliesEnabled: true,
+        })}
+        items={[{
+          content: "Spoken answer",
+          conversationId: "community-assistant:com_test",
+          createdAt: new Date(2026, 3, 28, 11, 0).getTime(),
+          id: "assistant-message",
+          sender: "peer",
+        }]}
+        onBack={() => undefined}
+        onSend={() => undefined}
+        onSynthesizeSpeech={async () => new Blob()}
+        sending={false}
+      />,
+    );
+
+    expect(markup).toContain("Play voice reply");
+  });
+
+  test("renders server-transcribed user audio as a voice message", () => {
+    const markup = renderToStaticMarkup(
+      <ThreadView
+        conversation={conversation({ id: "community-assistant:com_test", title: "Community Assistant" })}
+        items={[{
+          content: "Gamarjoba, rogor khar?",
+          conversationId: "community-assistant:com_test",
+          createdAt: new Date(2026, 3, 28, 11, 0).getTime(),
+          id: "voice-message",
+          sender: "user",
+          source: {
+            kind: "voice",
+            transcript: "Gamarjoba, rogor khar?",
+            audioRetained: false,
+          },
+        }]}
+        onBack={() => undefined}
+        onSend={() => undefined}
+        sending={false}
+      />,
+    );
+
+    expect(markup).toContain("Voice message");
+    expect(markup).toContain("Gamarjoba, rogor khar?");
+    expect(markup).toContain("Transcript:");
   });
 });

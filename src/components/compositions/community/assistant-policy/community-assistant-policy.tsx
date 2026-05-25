@@ -20,6 +20,8 @@ import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 import type {
   AssistantContextMode,
+  AssistantProviderKeyStatus,
+  AssistantVoiceMode,
   CommunityAssistantPolicyPageProps,
   CommunityAssistantPolicySettings,
 } from "./community-assistant-policy.types";
@@ -37,6 +39,12 @@ const contextModeOptions: Array<Option<AssistantContextMode>> = [
   { label: "Live SQL", value: "live_sql" },
   { label: "Summary cache", value: "summary_cache" },
   { label: "Hybrid vector", value: "hybrid_vector" },
+];
+
+const voiceModeOptions: Array<Option<AssistantVoiceMode>> = [
+  { label: "Off", value: "off" },
+  { label: "Transcription only", value: "transcription_only" },
+  { label: "Voice replies", value: "voice_replies" },
 ];
 
 const sourceRows: Array<{
@@ -70,7 +78,7 @@ function Section({
     <section className={cn("space-y-4", className)}>
       <div className="space-y-1">
         <Type as="h2" variant="h2">{title}</Type>
-        {subtitle ? <p className="max-w-3xl text-base leading-6 text-muted-foreground">{subtitle}</p> : null}
+        {subtitle ? <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{subtitle}</p> : null}
       </div>
       {children}
     </section>
@@ -90,7 +98,7 @@ function FieldRow({
     <div className="grid gap-3 border-b border-border-soft py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] md:items-center">
       <div className="space-y-1">
         <div className="text-base font-medium leading-6">{label}</div>
-        {description ? <p className="text-base leading-6 text-muted-foreground">{description}</p> : null}
+        {description ? <p className="text-sm leading-5 text-muted-foreground">{description}</p> : null}
       </div>
       <div className="min-w-0">{children}</div>
     </div>
@@ -173,6 +181,81 @@ function getModelOptions(settings: CommunityAssistantPolicySettings): AssistantM
   return [...byId.values()];
 }
 
+function ProviderKeyField({
+  connectedPrefix,
+  description,
+  invalidPrefix,
+  keyStatus,
+  label,
+  saveLabel,
+  saveNewLabel,
+  onKeyRevoke,
+  onKeySave,
+  placeholder,
+}: {
+  connectedPrefix: string;
+  description: string;
+  invalidPrefix: string;
+  keyStatus: AssistantProviderKeyStatus;
+  label: string;
+  saveLabel: string;
+  saveNewLabel: string;
+  onKeyRevoke: () => void;
+  onKeySave: (apiKey: string) => void;
+  placeholder: string;
+}) {
+  const [apiKeyDraft, setApiKeyDraft] = React.useState("");
+  const connected = keyStatus.kind === "connected";
+  const invalid = keyStatus.kind === "invalid";
+  const canSaveKey = apiKeyDraft.trim().length > 0;
+
+  return (
+    <FieldRow
+      description={invalid ? keyStatus.message : description}
+      label={label}
+    >
+      <div className="space-y-2">
+        {connected || invalid ? (
+          <div className={cn(
+            "text-sm leading-5",
+            connected ? "text-foreground" : "text-destructive",
+          )}>
+            {connected
+              ? `Current key: ${connectedPrefix}${keyStatus.last4}`
+              : `Invalid key: ${invalidPrefix}${keyStatus.last4}`}
+          </div>
+        ) : null}
+        <Input
+          autoComplete="off"
+          className="h-11 rounded-md font-mono text-sm"
+          onChange={(event) => setApiKeyDraft(event.target.value)}
+          placeholder={connected || invalid ? "Paste a new key to rotate" : placeholder}
+          type="password"
+          value={apiKeyDraft}
+        />
+        <div className="flex flex-wrap gap-2">
+          <Button
+            disabled={!canSaveKey}
+            onClick={() => {
+              onKeySave(apiKeyDraft);
+              setApiKeyDraft("");
+            }}
+            size="sm"
+            variant="outline"
+          >
+            {connected || invalid ? saveNewLabel : saveLabel}
+          </Button>
+          {connected || invalid ? (
+            <Button onClick={onKeyRevoke} size="sm" variant="ghost">
+              Revoke
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </FieldRow>
+  );
+}
+
 function ModelSearchInput({
   connected,
   onModelChange,
@@ -231,7 +314,7 @@ function ModelSearchInput({
           role="listbox"
         >
           {filteredModels.length === 0 ? (
-            <div className="px-3 py-3 text-base leading-6 text-muted-foreground">
+            <div className="px-3 py-3 text-sm leading-5 text-muted-foreground">
               No OpenRouter models found.
             </div>
           ) : filteredModels.map((model) => {
@@ -274,11 +357,8 @@ function ModelBillingSection({
   onModelChange: (modelId: string) => void;
   settings: CommunityAssistantPolicySettings;
 }) {
-  const [apiKeyDraft, setApiKeyDraft] = React.useState("");
   const keyStatus = settings.openRouterKeyStatus;
   const connected = keyStatus.kind === "connected";
-  const invalid = keyStatus.kind === "invalid";
-  const canSaveKey = apiKeyDraft.trim().length > 0;
 
   return (
     <Section
@@ -287,51 +367,22 @@ function ModelBillingSection({
       title="Model and billing"
     >
       <div className="border-y border-border-soft">
-        <FieldRow
-          description={invalid ? keyStatus.message : "Paste this community's OpenRouter API key. Pirate stores it encrypted and never shows it again."}
+        <ProviderKeyField
+          connectedPrefix="sk-or-..."
+          description="Paste this community's OpenRouter API key. Pirate stores it encrypted and never shows it again."
+          invalidPrefix="sk-or-..."
+          keyStatus={keyStatus}
           label="OpenRouter key"
-        >
-          <div className="space-y-2">
-            {connected || invalid ? (
-              <div className={cn(
-                "text-base leading-6",
-                connected ? "text-foreground" : "text-destructive",
-              )}>
-                {connected ? `Current key: sk-or-...${keyStatus.last4}` : `Invalid key: sk-or-...${keyStatus.last4}`}
-              </div>
-            ) : null}
-            <Input
-              autoComplete="off"
-              className="h-11 rounded-md font-mono text-base"
-              onChange={(event) => setApiKeyDraft(event.target.value)}
-              placeholder={connected || invalid ? "Paste a new key to rotate" : "sk-or-..."}
-              type="password"
-              value={apiKeyDraft}
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button
-                disabled={!canSaveKey}
-                onClick={() => {
-                  onKeySave(apiKeyDraft);
-                  setApiKeyDraft("");
-                }}
-                size="sm"
-                variant="outline"
-              >
-                {connected || invalid ? "Save new key" : "Save key"}
-              </Button>
-              {connected || invalid ? (
-                <Button onClick={onKeyRevoke} size="sm" variant="ghost">
-                  Revoke
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        </FieldRow>
+          onKeyRevoke={onKeyRevoke}
+          onKeySave={onKeySave}
+          placeholder="sk-or-..."
+          saveLabel="Save OpenRouter key"
+          saveNewLabel="Save new OpenRouter key"
+        />
         <FieldRow description="Search the live OpenRouter model list for this community's key." label="Model">
           <ModelSearchInput connected={connected} onModelChange={onModelChange} settings={settings} />
           {!connected ? (
-            <p className="mt-2 text-base leading-6 text-muted-foreground">Save an OpenRouter key to choose a model.</p>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">Save an OpenRouter key to choose a model.</p>
           ) : null}
         </FieldRow>
       </div>
@@ -372,9 +423,95 @@ function NumberRow({
           type="number"
           value={value ?? ""}
         />
-        {suffix ? <span className="text-base text-muted-foreground">{suffix}</span> : null}
+        {suffix ? <span className="text-sm text-muted-foreground">{suffix}</span> : null}
       </div>
     </FieldRow>
+  );
+}
+
+function VoiceSection({
+  onChange,
+  onKeyRevoke,
+  onKeySave,
+  settings,
+}: {
+  onChange: (partial: Partial<CommunityAssistantPolicySettings>) => void;
+  onKeyRevoke: () => void;
+  onKeySave: (apiKey: string) => void;
+  settings: CommunityAssistantPolicySettings;
+}) {
+  const voiceEnabled = settings.voiceMode !== "off";
+  const voiceRepliesEnabled = settings.voiceMode === "voice_replies";
+  const elevenLabsConnected = settings.elevenLabsKeyStatus.kind === "connected";
+
+  function updateVoiceMode(voiceMode: AssistantVoiceMode) {
+    onChange({
+      voiceMode,
+      sttProvider: voiceMode === "off" ? settings.sttProvider : "elevenlabs",
+      sttModel: voiceMode === "off" ? settings.sttModel : settings.sttModel.trim() || "scribe_v2",
+      ttsProvider: voiceMode === "voice_replies" ? "elevenlabs" : settings.ttsProvider,
+    });
+  }
+
+  return (
+    <Section
+      className="border-t border-border-soft pt-6 md:pt-8"
+      subtitle="Voice input uses ElevenLabs Scribe. Voice replies use the configured ElevenLabs voice."
+      title="Voice"
+    >
+      <div className="border-y border-border-soft">
+        <ProviderKeyField
+          connectedPrefix="..."
+          description="Paste this community's ElevenLabs API key. Pirate stores it encrypted and uses it for Scribe and TTS."
+          invalidPrefix="..."
+          keyStatus={settings.elevenLabsKeyStatus}
+          label="ElevenLabs key"
+          onKeyRevoke={onKeyRevoke}
+          onKeySave={onKeySave}
+          placeholder="ElevenLabs API key"
+          saveLabel="Save ElevenLabs key"
+          saveNewLabel="Save new ElevenLabs key"
+        />
+        <SelectRow
+          description={elevenLabsConnected
+            ? "Transcription only accepts spoken input and replies with text. Voice replies can speak assistant responses where supported."
+            : "Save an ElevenLabs key before enabling transcription or voice replies."}
+          label="Voice mode"
+          onValueChange={updateVoiceMode}
+          options={voiceModeOptions}
+          value={settings.voiceMode}
+        />
+        {voiceEnabled ? (
+          <>
+            <FieldRow description="Speech-to-text provider used for web mic input and Telegram voice notes." label="STT provider">
+              <Input className="h-11 rounded-md" disabled value="ElevenLabs Scribe" />
+            </FieldRow>
+            <FieldRow description="ElevenLabs Scribe model. Use scribe_v2 unless testing a newer model." label="STT model">
+              <Input
+                className="h-11 rounded-md font-mono"
+                onChange={(event) => onChange({ sttModel: event.target.value, sttProvider: "elevenlabs" })}
+                value={settings.sttModel}
+              />
+            </FieldRow>
+          </>
+        ) : null}
+        {voiceRepliesEnabled ? (
+          <>
+            <FieldRow description="Text-to-speech provider used for assistant voice playback and Telegram voice replies." label="TTS provider">
+              <Input className="h-11 rounded-md" disabled value="ElevenLabs" />
+            </FieldRow>
+            <FieldRow description="The ElevenLabs voice ID for spoken assistant replies." label="TTS voice">
+              <Input
+                className="h-11 rounded-md font-mono"
+                onChange={(event) => onChange({ ttsProvider: "elevenlabs", ttsVoice: event.target.value })}
+                placeholder="ElevenLabs voice ID"
+                value={settings.ttsVoice}
+              />
+            </FieldRow>
+          </>
+        ) : null}
+      </div>
+    </Section>
   );
 }
 
@@ -395,10 +532,10 @@ function PromptField({
     <div className="space-y-2 border-b border-border-soft py-4 last:border-b-0">
       <div className="space-y-1">
         <Label className="text-base font-medium leading-6">{label}</Label>
-        {description ? <p className="text-base leading-6 text-muted-foreground">{description}</p> : null}
+        {description ? <p className="text-sm leading-5 text-muted-foreground">{description}</p> : null}
       </div>
       <Textarea
-        className="min-h-0 rounded-md font-mono text-base leading-6"
+        className="min-h-0 rounded-md font-mono text-sm leading-6"
         onChange={(event) => onChange(event.target.value)}
         rows={rows}
         value={value}
@@ -459,6 +596,8 @@ function StarterPromptRow({
 export function CommunityAssistantPolicyPage({
   className,
   onAvatarFileSelect,
+  onElevenLabsKeyRevoke,
+  onElevenLabsKeySave,
   onOpenRouterKeyRevoke,
   onOpenRouterKeySave,
   onSave,
@@ -513,8 +652,26 @@ export function CommunityAssistantPolicyPage({
     update({ openRouterKeyStatus: { kind: "missing" } });
   }
 
+  function saveElevenLabsKey(apiKey: string) {
+    const trimmed = apiKey.trim();
+    if (!trimmed) return;
+    update({
+      elevenLabsKeyStatus: {
+        kind: "connected",
+        connectedAt: new Date().toISOString(),
+        last4: trimmed.slice(-4),
+      },
+    });
+  }
+
+  function revokeElevenLabsKey() {
+    update({ elevenLabsKeyStatus: { kind: "missing" } });
+  }
+
   const handleOpenRouterKeySave = onOpenRouterKeySave ?? saveOpenRouterKey;
   const handleOpenRouterKeyRevoke = onOpenRouterKeyRevoke ?? revokeKey;
+  const handleElevenLabsKeySave = onElevenLabsKeySave ?? saveElevenLabsKey;
+  const handleElevenLabsKeyRevoke = onElevenLabsKeyRevoke ?? revokeElevenLabsKey;
 
   return (
     <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
@@ -618,6 +775,17 @@ export function CommunityAssistantPolicyPage({
         settings={settings}
       />
 
+      <VoiceSection
+        onChange={update}
+        onKeyRevoke={() => {
+          void handleElevenLabsKeyRevoke();
+        }}
+        onKeySave={(apiKey) => {
+          void handleElevenLabsKeySave(apiKey);
+        }}
+        settings={settings}
+      />
+
       <Section
         className="border-t border-border-soft pt-6 md:pt-8"
         subtitle="Moderator instructions sit below the platform safety prompt and above retrieved board context."
@@ -642,7 +810,7 @@ export function CommunityAssistantPolicyPage({
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="space-y-1">
                 <div className="text-base font-medium leading-6">Suggested questions</div>
-                <p className="text-base leading-6 text-muted-foreground">
+                <p className="text-sm leading-5 text-muted-foreground">
                   Example questions users can tap before they type their first message.
                 </p>
               </div>

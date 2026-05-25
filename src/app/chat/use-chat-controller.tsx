@@ -35,6 +35,7 @@ import {
   loadCommunityAssistantConversationMessages,
   loadCommunityAssistantConversations,
   parseCommunityAssistantConversationId,
+  sendCommunityAssistantConversationAudioMessage,
   sendCommunityAssistantConversationMessage,
 } from "@/lib/chat/community-assistant-chat-client";
 import {
@@ -726,6 +727,63 @@ export function useChatController({
     });
   }, [activeConversation, api, buildAssistantClientContext, session, xmtpClientCache, xmtpReady, xmtpSignerWallet]);
 
+  const handleSendAudio = React.useCallback(async (file: File): Promise<void> => {
+    const conversation = activeConversation;
+    if (!session || !conversation?.communityId || conversation.assistantKind !== "community") {
+      throw new Error("Community assistant voice is not available.");
+    }
+    setSending(true);
+    const now = Date.now();
+    const sendTask = sendQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          const result = await sendCommunityAssistantConversationAudioMessage(api, {
+            chatId: communityAssistantChatIdsRef.current[conversation.id] ?? null,
+            communityId: conversation.communityId!,
+            conversationId: conversation.id,
+            file,
+          });
+          communityAssistantChatIdsRef.current[conversation.id] = result.chat.id;
+          const refreshedConversation: ChatConversation = {
+            ...conversation,
+            preview: result.messages[result.messages.length - 1]?.content ?? conversation.preview,
+            updatedAt: parseApiTimestamp(result.chat.updated_at) || now,
+          };
+          setMessages((current) => ({
+            ...current,
+            [conversation.id]: [
+              ...(current[conversation.id] ?? []),
+              ...result.messages,
+            ],
+          }));
+          setCommunityAssistantConversations((current) => upsertConversation(current, refreshedConversation));
+          communityAssistantConversationsRef.current = upsertConversation(
+            communityAssistantConversationsRef.current,
+            refreshedConversation,
+          );
+          setConversations((current) => upsertConversation(current, refreshedConversation));
+          setActiveConversation((current) => current?.id === refreshedConversation.id ? refreshedConversation : current);
+        } catch (nextError) {
+          setError(getErrorMessage(nextError, "Could not send voice message."));
+          throw nextError;
+        }
+      });
+    sendQueueRef.current = sendTask;
+    await sendTask.finally(() => {
+      if (sendQueueRef.current === sendTask) setSending(false);
+    });
+  }, [activeConversation, api, session]);
+
+  const handleSynthesizeSpeech = React.useCallback(async (text: string): Promise<Blob> => {
+    const conversation = activeConversation;
+    if (!session || !conversation?.communityId || conversation.assistantKind !== "community") {
+      throw new Error("Community assistant voice replies are not available.");
+    }
+    const response = await api.communities.synthesizeAssistantSpeech(conversation.communityId, { text });
+    return response.blob();
+  }, [activeConversation, api, session]);
+
   const listVisibleConversations = buildVisibleConversations({
     conversations,
   });
@@ -839,6 +897,8 @@ export function useChatController({
       handleSend: (content) => {
         void handleSend(content);
       },
+      handleSendAudio,
+      handleSynthesizeSpeech,
       initialDraft,
       isMobile,
       isMobileStandalone,

@@ -9,14 +9,19 @@ export type AssistantActionMode = "answer_only" | "draft_only" | "confirmed_writ
 
 export type AssistantVoiceMode = "off" | "transcription_only" | "voice_replies";
 
-export type AssistantSttProvider = "mistral" | "openai" | "none";
+export type AssistantSttProvider = "elevenlabs" | "mistral" | "openai" | "none";
+
+export type AssistantTtsProvider = "elevenlabs" | "none";
 
 export type AssistantRetentionMode = "per_user_private" | "community_visible_to_mods" | "ephemeral";
 
-export type AssistantOpenRouterKeyStatus =
+export type AssistantProviderKeyStatus =
   | { kind: "missing" }
   | { kind: "connected"; last4: string; connectedAt?: string }
   | { kind: "invalid"; last4: string; message: string };
+
+export type AssistantOpenRouterKeyStatus = AssistantProviderKeyStatus;
+export type AssistantElevenLabsKeyStatus = AssistantProviderKeyStatus;
 
 export type AssistantModelOption = {
   contextLength?: number;
@@ -50,6 +55,7 @@ export type CommunityAssistantPolicySettings = {
   defaultPrompt: string;
   starterPrompts: string[];
   openRouterKeyStatus: AssistantOpenRouterKeyStatus;
+  elevenLabsKeyStatus: AssistantElevenLabsKeyStatus;
   selectedModelId: string;
   availableModels: AssistantModelOption[];
   contextMode: AssistantContextMode;
@@ -66,6 +72,7 @@ export type CommunityAssistantPolicySettings = {
   voiceMode: AssistantVoiceMode;
   sttProvider: AssistantSttProvider;
   sttModel: string;
+  ttsProvider: AssistantTtsProvider;
   ttsVoice: string;
   includeInSovereignExport: boolean;
 };
@@ -73,6 +80,8 @@ export type CommunityAssistantPolicySettings = {
 export type CommunityAssistantPolicyPageProps = {
   className?: string;
   onAvatarFileSelect?: (file: File | null) => void;
+  onElevenLabsKeyRevoke?: () => void | Promise<void>;
+  onElevenLabsKeySave?: (apiKey: string) => void | Promise<void>;
   onOpenRouterKeyRevoke?: () => void | Promise<void>;
   onOpenRouterKeySave?: (apiKey: string) => void | Promise<void>;
   onSave?: () => void;
@@ -102,6 +111,7 @@ export function createDefaultCommunityAssistantPolicySettings(): CommunityAssist
       "Where should I post this question?",
     ],
     openRouterKeyStatus: { kind: "missing" },
+    elevenLabsKeyStatus: { kind: "missing" },
     selectedModelId: "mistralai/mistral-small-3.2-24b-instruct",
     availableModels: [
       {
@@ -147,8 +157,9 @@ export function createDefaultCommunityAssistantPolicySettings(): CommunityAssist
     requireModeratorApprovalForWrites: true,
     perUserDailyMessageCap: 40,
     voiceMode: "off",
-    sttProvider: "mistral",
-    sttModel: "voxtral-mini-latest",
+    sttProvider: "elevenlabs",
+    sttModel: "scribe_v2",
+    ttsProvider: "elevenlabs",
     ttsVoice: "",
     includeInSovereignExport: true,
   };

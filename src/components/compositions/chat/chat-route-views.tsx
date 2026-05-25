@@ -6,9 +6,12 @@ import {
   ArrowRight,
   ChatCircleText,
   Check,
+  Microphone,
   PaperPlaneRight,
   Plus,
   Signature,
+  SpeakerHigh,
+  Stop,
   WarningCircle,
   X,
 } from "@phosphor-icons/react";
@@ -346,6 +349,8 @@ export function ThreadView({
   onClose,
   onOpenProfile,
   onSend,
+  onSynthesizeSpeech,
+  onSendAudio,
   sending,
 }: {
   conversation: ChatConversation | null;
@@ -358,22 +363,54 @@ export function ThreadView({
   onClose?: () => void;
   onOpenProfile?: (href: string) => void;
   onSend: (message: string) => void;
+  onSynthesizeSpeech?: (text: string) => Promise<Blob>;
+  onSendAudio?: (file: File) => Promise<void>;
   sending: boolean;
 }) {
   const [draft, setDraft] = React.useState("");
+  const [playingMessageId, setPlayingMessageId] = React.useState<string | null>(null);
+  const [voiceState, setVoiceState] = React.useState<"idle" | "requesting" | "recording" | "sending" | "error">("idle");
+  const [voiceError, setVoiceError] = React.useState<string | null>(null);
   const { isRtl, locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes");
   const chat = copy.chat;
   const seededInitialDraftRef = React.useRef<string | null>(null);
+  const recorderRef = React.useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = React.useRef<BlobPart[]>([]);
+  const recordingStreamRef = React.useRef<MediaStream | null>(null);
+  const suppressNextVoiceClickRef = React.useRef(false);
+  const speechAudioRef = React.useRef<HTMLAudioElement | null>(null);
+  const speechUrlRef = React.useRef<string | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const [renderedAt] = React.useState(() => Date.now());
   const profileHref = conversation?.profileHref;
+  const voiceInputAvailable = Boolean(conversation?.voiceTranscriptionEnabled && onSendAudio);
+  const voiceRepliesAvailable = Boolean(conversation?.voiceRepliesEnabled && onSynthesizeSpeech);
+  const voiceBusy = voiceState === "requesting" || voiceState === "sending";
+  const recording = voiceState === "recording";
+  const draftHasText = Boolean(draft.trim());
+  const showComposerVoiceAction = voiceInputAvailable && !draftHasText;
   const submitDraft = React.useCallback(() => {
     const next = draft.trim();
     if (!next || !conversation || sending) return;
     setDraft("");
     onSend(next);
   }, [conversation, draft, onSend, sending]);
+
+  const stopRecordingStream = React.useCallback(() => {
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    recordingStreamRef.current = null;
+  }, []);
+
+  const stopSpeechPlayback = React.useCallback(() => {
+    speechAudioRef.current?.pause();
+    speechAudioRef.current = null;
+    if (speechUrlRef.current) {
+      URL.revokeObjectURL(speechUrlRef.current);
+      speechUrlRef.current = null;
+    }
+    setPlayingMessageId(null);
+  }, []);
 
   React.useEffect(() => {
     const nextDraft = initialDraft?.trim();
@@ -387,6 +424,12 @@ export function ThreadView({
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "auto" });
   }, [items.length, conversation?.id]);
+
+  React.useEffect(() => () => {
+    recorderRef.current?.state === "recording" && recorderRef.current.stop();
+    stopRecordingStream();
+    stopSpeechPlayback();
+  }, [stopRecordingStream, stopSpeechPlayback]);
 
   const handleFormSubmit = React.useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -406,6 +449,145 @@ export function ThreadView({
     },
     [submitDraft],
   );
+
+  const stopVoiceRecording = React.useCallback(() => {
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.stop();
+    }
+  }, []);
+
+  const startVoiceRecording = React.useCallback(async () => {
+    if (!voiceInputAvailable || sending) {
+      return;
+    }
+    if (recorderRef.current?.state === "recording" || voiceState === "requesting" || voiceState === "sending") {
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined" || !onSendAudio) {
+      setVoiceState("error");
+      setVoiceError("Voice recording is not available in this browser.");
+      return;
+    }
+
+    setVoiceState("requesting");
+    setVoiceError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/mp4",
+      ].find((candidate) => MediaRecorder.isTypeSupported(candidate));
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      recordingStreamRef.current = stream;
+      recorderRef.current = recorder;
+      recordingChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordingChunksRef.current.push(event.data);
+        }
+      };
+      recorder.onerror = () => {
+        stopRecordingStream();
+        setVoiceState("error");
+        setVoiceError("Could not record audio.");
+      };
+      recorder.onstop = () => {
+        const chunks = recordingChunksRef.current;
+        const type = recorder.mimeType || mimeType || "audio/webm";
+        stopRecordingStream();
+        recorderRef.current = null;
+        if (chunks.length === 0) {
+          setVoiceState("error");
+          setVoiceError("No audio was recorded.");
+          return;
+        }
+        const blob = new Blob(chunks, { type });
+        if (blob.size <= 0) {
+          setVoiceState("error");
+          setVoiceError("No audio was recorded.");
+          return;
+        }
+        setVoiceState("sending");
+        void onSendAudio(new File([blob], "assistant-voice.webm", { type }))
+          .then(() => {
+            setVoiceState("idle");
+          })
+          .catch((nextError) => {
+            setVoiceState("error");
+            setVoiceError(nextError instanceof Error ? nextError.message : "Could not send voice message.");
+          });
+      };
+      recorder.start();
+      setVoiceState("recording");
+    } catch (nextError) {
+      stopRecordingStream();
+      setVoiceState("error");
+      setVoiceError(nextError instanceof Error && nextError.name === "NotAllowedError"
+        ? "Microphone permission was denied."
+        : "Could not start voice recording.");
+    }
+  }, [onSendAudio, sending, stopRecordingStream, voiceInputAvailable, voiceState]);
+
+  const handleVoiceButtonClick = React.useCallback(() => {
+    if (suppressNextVoiceClickRef.current) {
+      suppressNextVoiceClickRef.current = false;
+      return;
+    }
+    if (recording) {
+      stopVoiceRecording();
+      return;
+    }
+    void startVoiceRecording();
+  }, [recording, startVoiceRecording, stopVoiceRecording]);
+
+  const handleVoicePointerDown = React.useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType !== "touch" && event.pointerType !== "pen") {
+      return;
+    }
+    event.preventDefault();
+    suppressNextVoiceClickRef.current = true;
+    void startVoiceRecording();
+  }, [startVoiceRecording]);
+
+  const handleVoicePointerEnd = React.useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType !== "touch" && event.pointerType !== "pen") {
+      return;
+    }
+    event.preventDefault();
+    suppressNextVoiceClickRef.current = true;
+    stopVoiceRecording();
+  }, [stopVoiceRecording]);
+
+  const handlePlaySpeech = React.useCallback(async (message: ChatMessageRecord) => {
+    if (!voiceRepliesAvailable || !onSynthesizeSpeech) {
+      return;
+    }
+    if (playingMessageId === message.id) {
+      stopSpeechPlayback();
+      return;
+    }
+    stopSpeechPlayback();
+    setVoiceError(null);
+    setPlayingMessageId(message.id);
+    try {
+      const audioBlob = await onSynthesizeSpeech(message.content);
+      const url = URL.createObjectURL(audioBlob);
+      const audio = new Audio(url);
+      speechUrlRef.current = url;
+      speechAudioRef.current = audio;
+      audio.onended = stopSpeechPlayback;
+      audio.onerror = () => {
+        setVoiceError("Could not play voice reply.");
+        stopSpeechPlayback();
+      };
+      await audio.play();
+    } catch (nextError) {
+      setVoiceError(nextError instanceof Error ? nextError.message : "Could not play voice reply.");
+      stopSpeechPlayback();
+    }
+  }, [onSynthesizeSpeech, playingMessageId, stopSpeechPlayback, voiceRepliesAvailable]);
 
   return (
     <section className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-background">
@@ -479,6 +661,7 @@ export function ThreadView({
               const timestampLabel = formatThreadTimeDivider(message.createdAt, renderedAt, undefined, chat.yesterday);
               const showTimeDivider = shouldShowThreadTimeDivider(message, items[index - 1]);
               const sentTimeLabel = timestampLabel ? `Sent ${timestampLabel}.` : "";
+              const voiceSource = message.source?.kind === "voice" ? message.source : null;
               return (
                 <React.Fragment key={message.id}>
                   {showTimeDivider && timestampLabel ? (
@@ -499,15 +682,67 @@ export function ThreadView({
                       title={timestampLabel}
                     >
                       {sentTimeLabel ? <span className="sr-only">{sentTimeLabel}</span> : null}
-                      <Type
-                        as="div"
-                        variant="body"
-                        className={cn(
-                          message.sender === "user" ? "text-primary-foreground" : undefined,
-                        )}
-                      >
-                        <ChatMessageContent content={message.content} />
-                      </Type>
+                      {voiceSource ? (
+                        <div className="grid gap-2">
+                          <div className="flex items-center gap-2">
+                            <span
+                              aria-hidden
+                              className={cn(
+                                "grid size-8 shrink-0 place-items-center rounded-full",
+                                message.sender === "user" ? "bg-primary-foreground/15" : "bg-muted",
+                              )}
+                            >
+                              <Microphone className="size-4" weight="fill" />
+                            </span>
+                            <Type
+                              as="div"
+                              variant="body"
+                              className={cn("font-medium", message.sender === "user" ? "text-primary-foreground" : undefined)}
+                            >
+                              Voice message
+                            </Type>
+                          </div>
+                          <Type
+                            as="div"
+                            variant="body"
+                            className={cn(
+                              "leading-relaxed",
+                              message.sender === "user" ? "text-primary-foreground/85" : "text-muted-foreground",
+                            )}
+                          >
+                            <span className="sr-only">Transcript: </span>
+                            <ChatMessageContent content={voiceSource.transcript} />
+                          </Type>
+                        </div>
+                      ) : (
+                        <Type
+                          as="div"
+                          variant="body"
+                          className={cn(
+                            message.sender === "user" ? "text-primary-foreground" : undefined,
+                          )}
+                        >
+                          <ChatMessageContent content={message.content} />
+                        </Type>
+                      )}
+                      {voiceRepliesAvailable && message.sender === "peer" ? (
+                        <div className="mt-2 flex justify-end">
+                          <Button
+                            aria-label={playingMessageId === message.id ? "Stop voice reply" : "Play voice reply"}
+                            className="size-8"
+                            onClick={() => {
+                              void handlePlaySpeech(message);
+                            }}
+                            size="icon"
+                            type="button"
+                            variant="ghost"
+                          >
+                            {playingMessageId === message.id
+                              ? <Stop aria-hidden className="size-4" weight="fill" />
+                              : <SpeakerHigh aria-hidden className="size-4" weight="fill" />}
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </React.Fragment>
@@ -523,7 +758,7 @@ export function ThreadView({
         <AutoResizeTextarea
           aria-label={chat.messageLabel}
           className="min-h-11 rounded-[var(--radius-2_5xl)] py-2.5 leading-5"
-          disabled={!conversation || sending}
+          disabled={!conversation || sending || voiceState === "sending"}
           maxRows={5}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={handleTextareaKeyDown}
@@ -531,10 +766,35 @@ export function ThreadView({
           rows={1}
           value={draft}
         />
-        <Button aria-label={chat.sendMessageAriaLabel} className="shrink-0" disabled={!draft.trim() || !conversation} loading={sending} size="icon" type="submit">
-          <PaperPlaneRight aria-hidden className="size-5" weight="fill" />
-        </Button>
+        {showComposerVoiceAction ? (
+          <Button
+            aria-label={recording ? "Stop voice recording" : "Record voice message"}
+            active={recording}
+            className="shrink-0 touch-none select-none"
+            disabled={!conversation || sending || voiceBusy}
+            loading={voiceBusy}
+            onClick={handleVoiceButtonClick}
+            onPointerCancel={handleVoicePointerEnd}
+            onPointerDown={handleVoicePointerDown}
+            onPointerLeave={recording ? handleVoicePointerEnd : undefined}
+            onPointerUp={handleVoicePointerEnd}
+            size="icon"
+            type="button"
+            variant={recording ? "destructive" : "default"}
+          >
+            {recording ? <Stop aria-hidden className="size-5" weight="fill" /> : <Microphone aria-hidden className="size-5" weight="fill" />}
+          </Button>
+        ) : (
+          <Button aria-label={chat.sendMessageAriaLabel} className="shrink-0" disabled={!draftHasText || !conversation || voiceState === "sending"} loading={sending} size="icon" type="submit">
+            <PaperPlaneRight aria-hidden className="size-5" weight="fill" />
+          </Button>
+        )}
       </form>
+      {voiceError ? (
+        <div className="border-t border-border-soft bg-background px-4 pb-3 text-sm text-destructive md:bg-card">
+          {voiceError}
+        </div>
+      ) : null}
     </section>
   );
 }

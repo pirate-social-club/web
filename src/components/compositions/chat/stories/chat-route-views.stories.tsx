@@ -37,6 +37,9 @@ const communityAssistantConversation: ChatConversation = {
   targetLabel: "Infinity Mirror assistant",
   title: "Infinity Mirror",
   transport: "assistant",
+  voiceMode: "voice_replies",
+  voiceRepliesEnabled: true,
+  voiceTranscriptionEnabled: true,
   unreadCount: 0,
   updatedAt: now + 500,
 };
@@ -168,6 +171,7 @@ function DesktopChatStory({ items = messages }: { items?: ChatMessageRecord[] } 
           onClose={() => {}}
           onOpenProfile={() => {}}
           onSend={() => {}}
+          onSendAudio={async () => {}}
           sending={false}
         />
       </div>
@@ -193,6 +197,7 @@ function DesktopChatStory({ items = messages }: { items?: ChatMessageRecord[] } 
             onBack={() => {}}
             onOpenProfile={() => {}}
             onSend={() => {}}
+            onSendAudio={async () => {}}
             sending={false}
           />
         </div>
@@ -276,6 +281,8 @@ export const DesktopCommunityAssistantThread: Story = {
             onBack={() => {}}
             onOpenProfile={() => {}}
             onSend={() => {}}
+            onSynthesizeSpeech={async () => new Blob([new Uint8Array([1, 2, 3])], { type: "audio/mpeg" })}
+            onSendAudio={async () => {}}
             sending={false}
           />
         </div>
@@ -431,6 +438,8 @@ export const MobileStandaloneXmtpThread: Story = {
           onClose={() => {}}
           onOpenProfile={() => {}}
           onSend={() => {}}
+          onSynthesizeSpeech={async () => new Blob([new Uint8Array([1, 2, 3])], { type: "audio/mpeg" })}
+          onSendAudio={async () => {}}
           sending={false}
         />
       </div>

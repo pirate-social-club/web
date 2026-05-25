@@ -26,6 +26,8 @@ export function ChatPageView({
   error,
   handleCloseMobileChat,
   handleSend,
+  handleSendAudio,
+  handleSynthesizeSpeech,
   initialDraft,
   isMobile,
   isMobileStandalone,
@@ -94,8 +96,10 @@ export function ChatPageView({
             onClose={isMobileStandalone ? handleCloseMobileChat : undefined}
             onOpenProfile={chatNavigation.openProfile}
             onSend={handleSend}
+            onSendAudio={handleSendAudio}
+            onSynthesizeSpeech={handleSynthesizeSpeech}
             sending={sending}
-          />
+/>
         ) : (
           <EmptyThread onNew={chatNavigation.openNew} />
         )}
@@ -151,6 +155,8 @@ export type ChatPageViewProps = {
   error: string | null;
   handleCloseMobileChat: () => void;
   handleSend: (content: string) => void;
+  handleSendAudio?: (file: File) => Promise<void>;
+  handleSynthesizeSpeech?: (text: string) => Promise<Blob>;
   initialDraft?: string;
   isMobile: boolean;
   isMobileStandalone: boolean;

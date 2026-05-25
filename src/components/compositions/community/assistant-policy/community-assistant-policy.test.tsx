@@ -160,7 +160,7 @@ describe("CommunityAssistantPolicyPage", () => {
     });
 
     editTextInput(view.getByPlaceholderText("sk-or-..."), "sk-or-123456789abc");
-    fireEvent.click(view.getByRole("button", { name: "Save key" }));
+    fireEvent.click(view.getByRole("button", { name: "Save OpenRouter key" }));
 
     await waitFor(() => {
       expect(view.getByText("Current key: sk-or-...9abc")).not.toBeNull();
@@ -169,6 +169,27 @@ describe("CommunityAssistantPolicyPage", () => {
     expect(view.getLatestSettings().openRouterKeyStatus).toMatchObject({
       kind: "connected",
       last4: "9abc",
+    });
+    view.unmount();
+  });
+
+  test("saving an ElevenLabs key masks the last four characters", async () => {
+    const view = renderPolicy({
+      initialSettings: {
+        ...createDefaultCommunityAssistantPolicySettings(),
+        elevenLabsKeyStatus: { kind: "missing" },
+      },
+    });
+
+    editTextInput(view.getByPlaceholderText("ElevenLabs API key"), "elevenlabs-secret-route-key-7xyz");
+    fireEvent.click(view.getByRole("button", { name: "Save ElevenLabs key" }));
+
+    await waitFor(() => {
+      expect(view.getByText("Current key: ...7xyz")).not.toBeNull();
+    });
+    expect(view.getLatestSettings().elevenLabsKeyStatus).toMatchObject({
+      kind: "connected",
+      last4: "7xyz",
     });
     view.unmount();
   });
@@ -310,7 +331,7 @@ describe("CommunityAssistantPolicyPage", () => {
     view.unmount();
   });
 
-  test("hides future-only memory, action, voice, and export controls", () => {
+  test("hides future-only memory, action, and export controls", () => {
     const view = renderPolicy();
     const renderedText = view.container.textContent ?? "";
 
@@ -321,12 +342,46 @@ describe("CommunityAssistantPolicyPage", () => {
     expect(view.queryByText("Actions")).toBeNull();
     expect(renderedText).not.toContain("Allowed actions");
     expect(renderedText).not.toContain("Require approval for writes");
-    expect(view.queryByText("Voice")).toBeNull();
-    expect(renderedText).not.toContain("Voice mode");
-    expect(renderedText).not.toContain("STT provider");
-    expect(renderedText).not.toContain("TTS voice");
     expect(renderedText).not.toContain("Sovereign export");
     expect(view.getByText("Retention")).not.toBeNull();
+    view.unmount();
+  });
+
+  test("renders voice configuration controls", () => {
+    const view = renderPolicy({
+      initialSettings: {
+        ...createDefaultCommunityAssistantPolicySettings(),
+        voiceMode: "voice_replies",
+        sttModel: "scribe_v2",
+        ttsVoice: "voice_123",
+      },
+    });
+
+    expect(view.getByText("Voice")).not.toBeNull();
+    expect(view.getByText("ElevenLabs key")).not.toBeNull();
+    expect(view.getByText("Voice mode")).not.toBeNull();
+    expect(view.getByText("STT provider")).not.toBeNull();
+    expect(view.getByDisplayValue("ElevenLabs Scribe")).not.toBeNull();
+    expect(view.getByDisplayValue("scribe_v2")).not.toBeNull();
+    expect(view.getByText("TTS provider")).not.toBeNull();
+    expect(view.getByDisplayValue("ElevenLabs")).not.toBeNull();
+    expect(view.getByDisplayValue("voice_123")).not.toBeNull();
+    view.unmount();
+  });
+
+  test("updates TTS voice", () => {
+    const view = renderPolicy({
+      initialSettings: {
+        ...createDefaultCommunityAssistantPolicySettings(),
+        voiceMode: "voice_replies",
+        ttsVoice: "",
+      },
+    });
+
+    editTextInput(view.getByPlaceholderText("ElevenLabs voice ID"), "voice_new");
+
+    expect(view.getLatestSettings().ttsVoice).toBe("voice_new");
+    expect(view.getLatestSettings().ttsProvider).toBe("elevenlabs");
     view.unmount();
   });
 

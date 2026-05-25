@@ -185,6 +185,7 @@ export class ApiClient {
       tokenOptional: _tokenOptional,
       replayedAfterRefresh: _replayedAfterRefresh,
       replayedWithoutOptionalToken: _replayedWithoutOptionalToken,
+      responseType = "json",
       ...fetchInit
     } = init ?? {};
     const body = fetchInit.body;
@@ -314,6 +315,10 @@ export class ApiClient {
 
     if (res.status === 204) {
       return undefined as T;
+    }
+
+    if (responseType === "response") {
+      return res as T;
     }
 
     return res.json() as Promise<T>;

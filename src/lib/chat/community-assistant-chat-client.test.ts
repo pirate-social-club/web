@@ -13,6 +13,7 @@ import {
   loadCommunityAssistantConversation,
   loadCommunityAssistantConversationMessages,
   parseCommunityAssistantConversationId,
+  sendCommunityAssistantConversationAudioMessage,
   sendCommunityAssistantConversationMessage,
 } from "./community-assistant-chat-client";
 
@@ -37,6 +38,13 @@ function createPolicy(overrides: Partial<ApiCommunityAssistantPolicyResponse> = 
     object: "community_assistant_policy_public",
     shortBio: "Helpful local context.",
     starterPrompts: [],
+    sttProvider: "elevenlabs",
+    elevenLabsKeyConfigured: false,
+    ttsProvider: "elevenlabs",
+    ttsVoiceConfigured: false,
+    voiceRepliesConfigured: false,
+    voiceTranscriptionConfigured: false,
+    voiceMode: "off",
     ...overrides,
   };
 }
@@ -72,6 +80,7 @@ function createMessage(
     prompt_tokens: null,
     provider_message_id: null,
     role,
+    source: null,
     total_tokens: null,
     user: "usr_test",
     ...overrides,
@@ -87,6 +96,12 @@ function createApi(overrides: Partial<{
     messages: ApiCommunityAssistantMessage[];
   }>;
   sendAssistantMessage: () => Promise<{
+    object: "community_assistant_chat_response";
+    chat: ApiCommunityAssistantChat;
+    user_message: ApiCommunityAssistantMessage;
+    assistant_message: ApiCommunityAssistantMessage;
+  }>;
+  sendAssistantAudioMessage: () => Promise<{
     object: "community_assistant_chat_response";
     chat: ApiCommunityAssistantChat;
     user_message: ApiCommunityAssistantMessage;
@@ -112,6 +127,12 @@ function createApi(overrides: Partial<{
         chat,
         user_message: createMessage("user", "Question"),
         assistant_message: createMessage("assistant", "Answer"),
+      }),
+      sendAssistantAudioMessage: async () => ({
+        object: "community_assistant_chat_response" as const,
+        chat,
+        user_message: createMessage("user", "Voice question"),
+        assistant_message: createMessage("assistant", "Voice answer"),
       }),
       ...overrides,
     },
@@ -141,8 +162,31 @@ describe("community assistant chat client", () => {
       targetLabel: "Community Guide",
       title: "Test Community",
       transport: "assistant",
+      voiceMode: "off",
+      voiceRepliesEnabled: false,
+      voiceTranscriptionEnabled: false,
     });
     expect(conversation?.updatedAt).toBe(Date.parse("2026-05-24T10:05:00.000Z"));
+  });
+
+  test("maps public voice capabilities onto community assistant conversations", async () => {
+    const conversation = await loadCommunityAssistantConversation(createApi({
+      getAssistantPolicy: async () => createPolicy({
+        sttProvider: "elevenlabs",
+        elevenLabsKeyConfigured: true,
+        ttsProvider: "elevenlabs",
+        ttsVoiceConfigured: true,
+        voiceRepliesConfigured: true,
+        voiceTranscriptionConfigured: true,
+        voiceMode: "voice_replies",
+      }),
+    }), createCommunity());
+
+    expect(conversation).toMatchObject({
+      voiceMode: "voice_replies",
+      voiceRepliesEnabled: true,
+      voiceTranscriptionEnabled: true,
+    });
   });
 
   test("ignores disabled or missing community assistants", async () => {
@@ -182,5 +226,59 @@ describe("community assistant chat client", () => {
       expect.objectContaining({ content: "Question", sender: "user" }),
       expect.objectContaining({ content: "Answer", sender: "peer" }),
     ]);
+  });
+
+  test("sends an audio message through the community assistant API", async () => {
+    const result = await sendCommunityAssistantConversationAudioMessage(createApi(), {
+      chatId: "asc_test",
+      communityId: "com_test",
+      conversationId: "community-assistant:com_test",
+      file: new File([new Uint8Array([1, 2, 3])], "voice.webm", { type: "audio/webm" }),
+    });
+
+    expect(result.chat.id).toBe("asc_test");
+    expect(result.messages).toEqual([
+      expect.objectContaining({ content: "Voice question", sender: "user" }),
+      expect.objectContaining({ content: "Voice answer", sender: "peer" }),
+    ]);
+  });
+
+  test("maps server-transcribed audio messages as voice records", async () => {
+    const result = await sendCommunityAssistantConversationAudioMessage(createApi({
+      sendAssistantAudioMessage: async () => ({
+        object: "community_assistant_chat_response" as const,
+        chat: createChat(),
+        user_message: createMessage("user", "Gamarjoba", {
+          source: {
+            kind: "voice",
+            provider: "elevenlabs",
+            model: "scribe_v2",
+            confidence: null,
+            language_code: "ka",
+            language_probability: 0.97,
+            duration_seconds: 1.2,
+            audio_mime_type: "audio/webm",
+            audio_size_bytes: 1234,
+            audio_retention: "not_stored",
+          },
+        }),
+        assistant_message: createMessage("assistant", "Answer"),
+      }),
+    }), {
+      chatId: "asc_test",
+      communityId: "com_test",
+      conversationId: "community-assistant:com_test",
+      file: new File([new Uint8Array([1, 2, 3])], "voice.webm", { type: "audio/webm" }),
+    });
+
+    expect(result.messages[0]).toMatchObject({
+      content: "Gamarjoba",
+      sender: "user",
+      source: {
+        kind: "voice",
+        transcript: "Gamarjoba",
+        audioRetained: false,
+      },
+    });
   });
 });

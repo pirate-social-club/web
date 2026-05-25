@@ -15,6 +15,7 @@ import type {
   ApiCommunityAssistantModelList,
   ApiCommunityAssistantPolicyResponse,
   ApiCommunityAssistantPolicyUpdate,
+  ApiCommunityAssistantTranscriptionResponse,
   ApiCommunityGatesUpdateRequest,
   ApiCommunityMachineAccessPolicy,
   ApiCommunityMachineAccessPolicyUpdate,
@@ -143,17 +144,27 @@ export function createCommunitySettingsApi(request: ApiRequest) {
       ),
     saveAssistantCredential: (
       communityId: string,
-      body: { api_key: string },
-    ): Promise<ApiCommunityAssistantCredentialResponse> =>
-      request<ApiCommunityAssistantCredentialResponse>(
-        `/communities/${encodeURIComponent(communityId)}/assistant-credential`,
+      body: { api_key: string; provider?: "openrouter" | "elevenlabs" },
+    ): Promise<ApiCommunityAssistantCredentialResponse> => {
+      const providerPath = body.provider ? `/${encodeURIComponent(body.provider)}` : "";
+      return request<ApiCommunityAssistantCredentialResponse>(
+        `/communities/${encodeURIComponent(communityId)}/assistant-credential${providerPath}`,
         { method: "POST", body: JSON.stringify(body) },
-      ),
-    revokeAssistantCredential: (communityId: string): Promise<ApiCommunityAssistantCredentialResponse> =>
-      request<ApiCommunityAssistantCredentialResponse>(
-        `/communities/${encodeURIComponent(communityId)}/assistant-credential/revoke`,
-        { method: "POST" },
-      ),
+      );
+    },
+    revokeAssistantCredential: (
+      communityId: string,
+      body?: { provider?: "openrouter" | "elevenlabs" },
+    ): Promise<ApiCommunityAssistantCredentialResponse> => {
+      const providerPath = body?.provider ? `/${encodeURIComponent(body.provider)}` : "";
+      return request<ApiCommunityAssistantCredentialResponse>(
+        `/communities/${encodeURIComponent(communityId)}/assistant-credential${providerPath}/revoke`,
+        {
+          method: "POST",
+          ...(body ? { body: JSON.stringify(body) } : {}),
+        },
+      );
+    },
     getAssistantModels: (communityId: string): Promise<ApiCommunityAssistantModelList> =>
       request<ApiCommunityAssistantModelList>(
         `/communities/${encodeURIComponent(communityId)}/assistant-models`,
@@ -165,6 +176,39 @@ export function createCommunitySettingsApi(request: ApiRequest) {
       request<ApiCommunityAssistantChatResponse>(
         `/communities/${encodeURIComponent(communityId)}/assistant/chat`,
         { method: "POST", body: JSON.stringify(body) },
+      ),
+    sendAssistantAudioMessage: (
+      communityId: string,
+      input: { file: File; chat_id?: string | null },
+    ): Promise<ApiCommunityAssistantChatResponse> => {
+      const body = new FormData();
+      body.set("file", input.file);
+      if (input.chat_id) {
+        body.set("chat_id", input.chat_id);
+      }
+      return request<ApiCommunityAssistantChatResponse>(
+        `/communities/${encodeURIComponent(communityId)}/assistant/chat/audio`,
+        { method: "POST", body },
+      );
+    },
+    transcribeAssistantAudio: (
+      communityId: string,
+      input: { file: File },
+    ): Promise<ApiCommunityAssistantTranscriptionResponse> => {
+      const body = new FormData();
+      body.set("file", input.file);
+      return request<ApiCommunityAssistantTranscriptionResponse>(
+        `/communities/${encodeURIComponent(communityId)}/assistant/transcriptions`,
+        { method: "POST", body },
+      );
+    },
+    synthesizeAssistantSpeech: (
+      communityId: string,
+      body: { text: string },
+    ): Promise<Response> =>
+      request<Response>(
+        `/communities/${encodeURIComponent(communityId)}/assistant/speech`,
+        { method: "POST", body: JSON.stringify(body), responseType: "response" },
       ),
     listAssistantChats: (communityId: string): Promise<ApiCommunityAssistantChatListResponse> =>
       request<ApiCommunityAssistantChatListResponse>(

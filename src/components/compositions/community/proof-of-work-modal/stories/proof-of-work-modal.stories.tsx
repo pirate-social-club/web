@@ -104,11 +104,26 @@ export const Complete: Story = {
   },
 };
 
+export const MixedVeryOrProofOfWork: Story = {
+  name: "States / Mixed Very or proof-of-work",
+  args: {
+    challengeLoader: async () => readyChallenge,
+    requirements: [
+      { gate_type: "unique_human", accepted_providers: ["very"] },
+      { gate_type: "altcha_pow" },
+    ],
+    requirementStatuses: ["unmet", "unmet"],
+  },
+  render: (args) => {
+    return <ProofOfWorkModalStory {...args} />;
+  },
+};
+
 export const Error: Story = {
   name: "States / Error",
   args: {
     challengeLoader: async () => {
-      throw new Error("Could not start proof-of-work check.");
+      throw new globalThis.Error("Could not start proof-of-work check.");
     },
   },
   render: (args) => {
@@ -123,7 +138,7 @@ export const RetryThenRunning: Story = {
     const challengeLoader = async () => {
       attempts += 1;
       if (attempts === 1) {
-        throw new Error("Could not start proof-of-work check.");
+        throw new globalThis.Error("Could not start proof-of-work check.");
       }
       return readyChallenge;
     };

@@ -5,6 +5,7 @@ import type { MembershipGateSummary } from "@pirate/api-contracts";
 import { CommunityInteractionGateModal, type CommunityInteractionGateRequirementStatus } from "@/components/compositions/community/interaction-gate-modal/community-interaction-gate-modal";
 import { AltchaPowWidget } from "@/components/compositions/verification/altcha-pow-widget/altcha-pow-widget";
 import type { AltchaScope } from "@/lib/api/client-groups-core";
+import { getProofOfWorkGateRequirements } from "@/lib/identity-gates";
 
 export interface CommunityProofOfWorkModalProps {
   action: string;
@@ -23,6 +24,25 @@ export interface CommunityProofOfWorkModalProps {
   title?: string;
 }
 
+function getProofOfWorkRequirementStatuses(
+  requirements: MembershipGateSummary[] | null | undefined,
+  requirementStatuses: CommunityInteractionGateRequirementStatus[] | null | undefined,
+): CommunityInteractionGateRequirementStatus[] | undefined {
+  if (!requirementStatuses) {
+    return undefined;
+  }
+  if (!requirements?.length) {
+    return requirementStatuses.length > 0 ? [requirementStatuses[0]] : undefined;
+  }
+
+  const proofOfWorkStatuses = requirements.flatMap((requirement, index) =>
+    requirement.gate_type === "altcha_pow"
+      ? [requirementStatuses[index] ?? "unknown"]
+      : []
+  );
+  return proofOfWorkStatuses.length > 0 ? proofOfWorkStatuses : undefined;
+}
+
 export function CommunityProofOfWorkModal({
   action,
   challengeLoader,
@@ -39,6 +59,12 @@ export function CommunityProofOfWorkModal({
   scope,
   title = "Checking browser",
 }: CommunityProofOfWorkModalProps) {
+  const proofOfWorkRequirements = getProofOfWorkGateRequirements(requirements);
+  const proofOfWorkRequirementStatuses = getProofOfWorkRequirementStatuses(
+    requirements,
+    requirementStatuses,
+  );
+
   return (
     <CommunityInteractionGateModal
       body={(
@@ -61,8 +87,8 @@ export function CommunityProofOfWorkModal({
         loading: continueLoading,
         onClick: onContinue,
       }}
-      requirements={requirements}
-      requirementStatuses={requirementStatuses}
+      requirements={proofOfWorkRequirements}
+      requirementStatuses={proofOfWorkRequirementStatuses}
       secondaryAction={{
         label: "Cancel",
         onClick: () => onOpenChange(false),

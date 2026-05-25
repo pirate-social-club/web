@@ -9,6 +9,7 @@ import { buildCommunityPath } from "@/lib/community-routing";
 import type { AltchaScope } from "@/lib/api/client-groups-core";
 import {
   getMissingCapabilitiesFromGateEvaluation,
+  getProofOfWorkGateRequirements,
   hasAltchaProofAction,
 } from "@/lib/identity-gates";
 import { logger } from "@/lib/logger";
@@ -38,8 +39,11 @@ type GatedActionRunnerCopy = InteractionGateCopy & {
   openInPirate: string;
 };
 
-function hasAltchaGate(gate: CommunityGateData): boolean {
-  return gate.preview.membership_gate_summaries.some((summary) => summary.gate_type === "altcha_pow");
+function requiresActionAltchaProof(gate: CommunityGateData): boolean {
+  const requirements = gate.preview.membership_gate_summaries;
+  // Joined-member eligibility does not carry action-level requirements, so only
+  // preflight the action challenge when the published policy is unambiguously PoW.
+  return requirements.length > 0 && requirements.every((summary) => summary.gate_type === "altcha_pow");
 }
 
 function getAltchaActionConfig(input: {
@@ -48,7 +52,7 @@ function getAltchaActionConfig(input: {
   gate: CommunityGateData;
   postId?: string;
 }): { actionRef: string; scope: AltchaScope } | null {
-  if (!hasAltchaGate(input.gate)) {
+  if (!requiresActionAltchaProof(input.gate)) {
     return null;
   }
   if (input.action === "reply_post" && input.postId) {
@@ -118,6 +122,7 @@ export function useGatedActionRunner({
     postId,
     commentId,
     resolveGateData,
+    voteValue,
   }: RunGatedCommunityActionParams): Promise<InteractionResult> => {
     const hasSession = Boolean(sessionAccessToken);
     const logBase = {
@@ -178,6 +183,7 @@ export function useGatedActionRunner({
 
     const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId });
     if (state === "allowed" && actionAltchaConfig) {
+      const requirements = getProofOfWorkGateRequirements(gate.preview.membership_gate_summaries);
       setPendingInteraction({
         action,
         commentId,
@@ -185,6 +191,7 @@ export function useGatedActionRunner({
         gate,
         onAllowed,
         postId,
+        voteValue,
       });
       setModalState({
         body: buildAltchaBody({
@@ -198,8 +205,8 @@ export function useGatedActionRunner({
           loading: altchaLoading,
           onClick: completeAltchaAction,
         },
-        requirements: gate.preview.membership_gate_summaries,
-        requirementStatuses: getRequirementStatuses(gate),
+        requirements,
+        requirementStatuses: getRequirementStatuses(gate, requirements),
         secondaryAction: {
           label: "Cancel",
           onClick: closeModal,
@@ -225,6 +232,7 @@ export function useGatedActionRunner({
       gate,
       onAllowed,
       postId,
+      voteValue,
     });
 
     const openCommunityAction = () => {
@@ -246,26 +254,29 @@ export function useGatedActionRunner({
       customModalState === undefined &&
       gate.eligibility.status === "verification_required" &&
       hasAltchaProofAction(gate.eligibility)
-        ? {
-            body: buildAltchaBody({
-              action: `community:${communityId}`,
-              scope: "community_join",
-            }),
-            description: "This usually takes a few seconds and runs only on this device.",
-            icon: "blocked",
-            primaryAction: {
-              label: "Continue",
-              loading: altchaLoading,
-              onClick: completeAltchaJoin,
-            },
-            requirements: gate.preview.membership_gate_summaries,
-            requirementStatuses: getRequirementStatuses(gate),
-            secondaryAction: {
-              label: "Cancel",
-              onClick: closeModal,
-            },
-            title: "Checking browser",
-          }
+        ? (() => {
+            const requirements = getProofOfWorkGateRequirements(gate.preview.membership_gate_summaries);
+            return {
+              body: buildAltchaBody({
+                action: `community:${communityId}`,
+                scope: "community_join",
+              }),
+              description: "This usually takes a few seconds and runs only on this device.",
+              icon: "blocked",
+              primaryAction: {
+                label: "Continue",
+                loading: altchaLoading,
+                onClick: completeAltchaJoin,
+              },
+              requirements,
+              requirementStatuses: getRequirementStatuses(gate, requirements),
+              secondaryAction: {
+                label: "Cancel",
+                onClick: closeModal,
+              },
+              title: "Checking browser",
+            };
+          })()
         : undefined;
     const builtModalState = customModalState === undefined
       ? (altchaModalState ?? createDefaultBlockedModalState({

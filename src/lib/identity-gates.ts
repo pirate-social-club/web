@@ -89,6 +89,30 @@ function isSelfRequestedCapability(capability: MissingCapability): capability is
   return SELF_REQUESTED_CAPABILITY_ORDER.some((candidate) => candidate === capability);
 }
 
+function resolveUniqueHumanRequirementProvider(
+  gate: MembershipGateSummary,
+  provider: RequirementProviderContext,
+): "self" | "very" | null {
+  if (provider === "self" || provider === "very") {
+    return provider;
+  }
+  const acceptedProviders = gate.accepted_providers ?? [];
+  if (acceptedProviders.length === 1) {
+    const [acceptedProvider] = acceptedProviders;
+    if (acceptedProvider === "self" || acceptedProvider === "very") {
+      return acceptedProvider;
+    }
+  }
+  return null;
+}
+
+export function getProofOfWorkGateRequirements(
+  gates: MembershipGateSummary[] | null | undefined,
+): MembershipGateSummary[] {
+  const proofOfWorkGates = (gates ?? []).filter((gate) => gate.gate_type === "altcha_pow");
+  return proofOfWorkGates.length > 0 ? proofOfWorkGates : [{ gate_type: "altcha_pow" }];
+}
+
 export function formatGateRequirement(
   gate: MembershipGateSummary,
   options?: { audience?: IdentityGateAudience; locale?: string | null; provider?: RequirementProviderContext },
@@ -118,7 +142,9 @@ export function formatGateRequirement(
       return copy.gender.public;
     }
     case "unique_human":
-      return provider === "very" ? copy.uniqueHuman.very : copy.uniqueHuman.self;
+      return resolveUniqueHumanRequirementProvider(gate, provider) === "very"
+        ? copy.uniqueHuman.very
+        : copy.uniqueHuman.self;
     case "age_over_18":
       return copy.ageOver18;
     case "minimum_age": {

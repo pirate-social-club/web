@@ -3,6 +3,7 @@ import {
   formatGateRequirement,
   getGateFailureMessage,
   getJoinCtaLabel,
+  getProofOfWorkGateRequirements,
   getSelfVerificationRequestForGates,
   getVerificationPromptCopy,
   hasSelfDocumentFactVerificationRequest,
@@ -62,6 +63,11 @@ describe("formatGateRequirement", () => {
     expect(formatGateRequirement(gate, { provider: "very" })).toBe("Palm scan");
   });
 
+  test("formats Very-only unique human gate as palm scan", () => {
+    const gate: MembershipGateSummary = { gate_type: "unique_human", accepted_providers: ["very"] };
+    expect(formatGateRequirement(gate)).toBe("Palm scan");
+  });
+
   test("formats gender gate generically for public previews", () => {
     const gate: MembershipGateSummary = { gate_type: "gender", required_value: "F" };
     expect(formatGateRequirement(gate)).toBe("ID check");
@@ -88,6 +94,17 @@ describe("formatGateRequirement", () => {
     expect(formatGateRequirement(gate)).toBe("Passport Score 20+");
   });
 
+});
+
+describe("getProofOfWorkGateRequirements", () => {
+  test("keeps only proof-of-work from mixed gate summaries", () => {
+    const gates: MembershipGateSummary[] = [
+      { gate_type: "unique_human", accepted_providers: ["very"] },
+      { gate_type: "altcha_pow" },
+    ];
+
+    expect(getProofOfWorkGateRequirements(gates)).toEqual([{ gate_type: "altcha_pow" }]);
+  });
 });
 
 describe("getJoinCtaLabel", () => {

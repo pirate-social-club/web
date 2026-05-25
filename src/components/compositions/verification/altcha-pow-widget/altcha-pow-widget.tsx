@@ -8,7 +8,6 @@ import { CheckCircle, WarningCircle } from "@phosphor-icons/react";
 import type { AltchaScope } from "@/lib/api/client-groups-core";
 import { ActionBanner } from "@/components/primitives/action-banner";
 import { Button } from "@/components/primitives/button";
-import { Card, CardContent } from "@/components/primitives/card";
 import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useApi } from "@/lib/api";
@@ -86,7 +85,39 @@ export function AltchaPowWidget({
 
   React.useEffect(() => {
     const widget = widgetRef.current;
-    if (!widget || !challenge) {
+    if (!widget || !challenge || loading || verified) {
+      return;
+    }
+
+    const handleVerified = (event: Event) => {
+      const payload = (event as AltchaVerifiedEvent).detail?.payload;
+      onPayloadChange(payload?.trim() ? payload : null);
+      setVerified(Boolean(payload?.trim()));
+    };
+    const handleStateChange = (event: Event) => {
+      const detail = (event as AltchaStateChangeEvent).detail;
+      if (detail?.state === "verified" && detail.payload?.trim()) {
+        onPayloadChange(detail.payload);
+        setVerified(true);
+        return;
+      }
+      if (detail?.state === "expired" || detail?.state === "error" || detail?.state === "unverified") {
+        onPayloadChange(null);
+        setVerified(false);
+      }
+    };
+
+    widget.addEventListener("verified", handleVerified);
+    widget.addEventListener("statechange", handleStateChange);
+    return () => {
+      widget.removeEventListener("verified", handleVerified);
+      widget.removeEventListener("statechange", handleStateChange);
+    };
+  }, [challenge, loading, onPayloadChange, verified]);
+
+  React.useEffect(() => {
+    const widget = widgetRef.current;
+    if (!widget || !challenge || loading || verified) {
       return;
     }
 
@@ -118,105 +149,59 @@ export function AltchaPowWidget({
     return () => {
       widget.removeEventListener("load", configureWidget);
     };
-  }, [challenge, locale]);
-
-  React.useEffect(() => {
-    const widget = widgetRef.current;
-    if (!widget) {
-      return;
-    }
-
-    const handleVerified = (event: Event) => {
-      const payload = (event as AltchaVerifiedEvent).detail?.payload;
-      onPayloadChange(payload?.trim() ? payload : null);
-      setVerified(Boolean(payload?.trim()));
-    };
-    const handleStateChange = (event: Event) => {
-      const detail = (event as AltchaStateChangeEvent).detail;
-      if (detail?.state === "verified" && detail.payload?.trim()) {
-        onPayloadChange(detail.payload);
-        setVerified(true);
-        return;
-      }
-      if (detail?.state === "expired" || detail?.state === "error" || detail?.state === "unverified") {
-        onPayloadChange(null);
-        setVerified(false);
-      }
-    };
-
-    widget.addEventListener("verified", handleVerified);
-    widget.addEventListener("statechange", handleStateChange);
-    return () => {
-      widget.removeEventListener("verified", handleVerified);
-      widget.removeEventListener("statechange", handleStateChange);
-    };
-  }, [onPayloadChange]);
+  }, [challenge, loading, locale, verified]);
 
   if (loading) {
     return (
-      <Card className={cn("shadow-none", className)}>
-        <CardContent className="p-4">
-          <Type as="div" className="flex items-center gap-3 text-muted-foreground" variant="body">
-            <Spinner className="size-5" />
-            <span>Preparing proof-of-work check&hellip;</span>
-          </Type>
-        </CardContent>
-      </Card>
+      <Type as="div" className={cn("flex items-center gap-3 text-muted-foreground", className)} variant="body">
+        <Spinner className="size-5" />
+        <span>Preparing proof-of-work check&hellip;</span>
+      </Type>
     );
   }
 
   if (error) {
     return (
-      <Card className={cn("border-warning/40 bg-warning/10 shadow-none", className)}>
-        <CardContent className="p-4">
-          <ActionBanner
-            action={(
-              <Button
-                onClick={() => setRetryKey((current) => current + 1)}
-                size="sm"
-                variant="secondary"
-              >
-                Retry
-              </Button>
-            )}
-            title={(
-              <span className="flex items-center gap-2 text-warning">
-                <WarningCircle aria-hidden className="size-5 shrink-0" weight="fill" />
-                Proof-of-work unavailable
-              </span>
-            )}
-            subtitle={error}
-          />
-        </CardContent>
-      </Card>
+      <ActionBanner
+        action={(
+          <Button
+            onClick={() => setRetryKey((current) => current + 1)}
+            size="sm"
+            variant="secondary"
+          >
+            Retry
+          </Button>
+        )}
+        className={className}
+        title={(
+          <span className="flex items-center gap-2 text-warning">
+            <WarningCircle aria-hidden className="size-5 shrink-0" weight="fill" />
+            Proof-of-work unavailable
+          </span>
+        )}
+        subtitle={error}
+      />
     );
   }
 
   if (verified) {
     return (
-      <Card className={cn("border-success/40 bg-success/10 shadow-none", className)}>
-        <CardContent className="p-4">
-          <ActionBanner
-            title={(
-              <span className="flex items-center gap-2 text-success">
-                <CheckCircle aria-hidden className="size-5 shrink-0" weight="fill" />
-                Proof-of-work complete
-              </span>
-            )}
-            subtitle="Continue to finish this action."
-          />
-        </CardContent>
-      </Card>
+      <ActionBanner
+        className={className}
+        title={(
+          <span className="flex items-center gap-2 text-success">
+            <CheckCircle aria-hidden className="size-5 shrink-0" weight="fill" />
+            Proof-of-work complete
+          </span>
+        )}
+        subtitle="Continue to finish this action."
+      />
     );
   }
 
   return (
-    <Card className={cn("shadow-none", className)}>
-      <CardContent className="p-4">
-        <div className="pirate-altcha-widget">
-          <altcha-widget ref={widgetRef} />
-        </div>
-      </CardContent>
-    </Card>
+    <div className={cn("pirate-altcha-widget", className)}>
+      <altcha-widget ref={widgetRef} />
+    </div>
   );
 }

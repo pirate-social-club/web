@@ -80,6 +80,7 @@ export type PendingInteraction = {
   gate: CommunityGateData;
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
+  voteValue?: -1 | 1;
 };
 
 export type RunGatedCommunityActionParams = {
@@ -98,6 +99,7 @@ export type RunGatedCommunityActionParams = {
   onAllowed: (context?: InteractionAllowedContext) => Promise<void> | void;
   postId?: string;
   resolveGateData?: () => Promise<CommunityGateData>;
+  voteValue?: -1 | 1;
 };
 
 export const SELF_INTERACTION_GATE_STORAGE_KEY =
@@ -252,6 +254,8 @@ function gateMatchesMissingCapability(
       return missing.includes("unique_human");
     case "wallet_score":
       return missing.includes("wallet_score");
+    case "altcha_pow":
+      return missing.includes("altcha_pow");
     default:
       return false;
   }

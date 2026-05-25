@@ -72,6 +72,7 @@ import {
   communityHandleFromRouteLabel,
   useCommunityHandleClaimDismissal,
 } from "@/lib/community-handle-claim-dismissal";
+import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
 
@@ -683,6 +684,22 @@ export function CommunityPage({
   const communityTitle = community?.display_name ?? preview.display_name;
   const communityAvatarRef = community?.avatar_ref ?? preview.avatar_ref;
   const communityBannerRef = community?.banner_ref ?? preview.banner_ref;
+
+  React.useEffect(() => {
+    rememberKnownCommunity({
+      avatarSrc: communityAvatarRef ?? null,
+      communityId: community?.id ?? preview.id,
+      displayName: communityTitle,
+      routeSlug: community?.route_slug ?? preview.route_slug,
+    });
+  }, [
+    community?.id,
+    community?.route_slug,
+    communityAvatarRef,
+    communityTitle,
+    preview.id,
+    preview.route_slug,
+  ]);
 
   return (
     <>

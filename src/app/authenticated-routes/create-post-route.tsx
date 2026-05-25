@@ -389,7 +389,7 @@ export function CreatePostPage({
   const hasPostingAccess =
     state.isCommunityOwner || state.eligibility?.status === "already_joined";
   const uniqueHumanVerified =
-    hasPostingAccess ||
+    state.isCommunityOwner ||
     state.session?.user.verification_capabilities.unique_human.state ===
       "verified";
 
@@ -417,7 +417,7 @@ export function CreatePostPage({
       return;
     }
 
-    if (hasPostingAccess) {
+    if (state.isCommunityOwner) {
       await state.handleSubmit();
       return;
     }
@@ -441,7 +441,9 @@ export function CreatePostPage({
       return;
     }
 
-    await state.handleSubmit();
+    if (hasPostingAccess) {
+      await state.handleSubmit();
+    }
   }, [
     needsSelfDocumentFactVerification,
     selfVerificationRequest,
@@ -451,6 +453,7 @@ export function CreatePostPage({
     state.postAltchaPayload,
     state.postAltchaRequired,
     hasPostingAccess,
+    state.isCommunityOwner,
     uniqueHumanVerified,
     verifyRequiredDescription,
   ]);
@@ -715,6 +718,10 @@ export function CreatePostPage({
       title={selfPrompt.title}
     />
   ) : null;
+  const postProofOfWorkRequirements = state.community?.membership_gate_summaries.filter((gate) => gate.gate_type === "altcha_pow");
+  const postProofOfWorkRequirementStatuses = postProofOfWorkRequirements?.map(() =>
+    state.postAltchaPayload ? "met" as const : "unmet" as const
+  );
   const postProofOfWorkModal = state.postAltchaRequired ? (
     <CommunityProofOfWorkModal
       action={state.postAltchaAction}
@@ -729,7 +736,8 @@ export function CreatePostPage({
       onOpenChange={setPostProofOfWorkModalOpen}
       onPayloadChange={state.setPostAltchaPayload}
       open={postProofOfWorkModalOpen}
-      requirements={state.community?.membership_gate_summaries}
+      requirements={postProofOfWorkRequirements}
+      requirementStatuses={postProofOfWorkRequirementStatuses}
       scope={state.postAltchaScope}
     />
   ) : null;

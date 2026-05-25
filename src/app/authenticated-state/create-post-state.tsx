@@ -1047,7 +1047,11 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setLicense,
     setLyrics,
     setMonetizationState,
-    setPostAltchaPayload: (payload: string | null) => setPageState((current) => ({ ...current, postAltchaPayload: payload })),
+    setPostAltchaPayload: (payload: string | null) => setPageState((current) =>
+      current.postAltchaPayload === payload
+        ? current
+        : { ...current, postAltchaPayload: payload }
+    ),
     setSelectedQualifierIds,
     setSongMode,
     setSongState,

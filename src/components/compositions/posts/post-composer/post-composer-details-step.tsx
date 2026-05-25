@@ -229,6 +229,14 @@ export function PostComposerDetailsStep({
               coverUpload: files?.[0] ?? null,
             }))
           }
+          onClear={() =>
+            song.update((current) => ({
+              ...current,
+              coverLabel: undefined,
+              coverSource: undefined,
+              coverUpload: null,
+            }))
+          }
           previewUrl={coverPreviewUrl}
           selectedLabel={song.state.coverUpload?.name ?? song.state.coverLabel}
           variant="artwork"
@@ -245,6 +253,13 @@ export function PostComposerDetailsStep({
                 instrumentalAudioUpload: files?.[0] ?? null,
               }))
             }
+            onClear={() =>
+              song.update((current) => ({
+                ...current,
+                instrumentalAudioLabel: undefined,
+                instrumentalAudioUpload: null,
+              }))
+            }
             selectedLabel={song.state.instrumentalAudioUpload?.name ?? song.state.instrumentalAudioLabel}
           />
           <UploadField
@@ -256,6 +271,13 @@ export function PostComposerDetailsStep({
                 ...current,
                 vocalAudioLabel: files?.[0]?.name ?? current.vocalAudioLabel,
                 vocalAudioUpload: files?.[0] ?? null,
+              }))
+            }
+            onClear={() =>
+              song.update((current) => ({
+                ...current,
+                vocalAudioLabel: undefined,
+                vocalAudioUpload: null,
               }))
             }
             selectedLabel={song.state.vocalAudioUpload?.name ?? song.state.vocalAudioLabel}
@@ -270,6 +292,13 @@ export function PostComposerDetailsStep({
               ...current,
               canvasVideoLabel: files?.[0]?.name ?? current.canvasVideoLabel,
               canvasVideoUpload: files?.[0] ?? null,
+            }))
+          }
+          onClear={() =>
+            song.update((current) => ({
+              ...current,
+              canvasVideoLabel: undefined,
+              canvasVideoUpload: null,
             }))
           }
           selectedLabel={song.state.canvasVideoUpload?.name ?? song.state.canvasVideoLabel}

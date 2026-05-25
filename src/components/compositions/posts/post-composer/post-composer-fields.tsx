@@ -3,6 +3,7 @@ import {
   CaretDown,
   Image as ImageIcon,
   Users,
+  X,
 } from "@phosphor-icons/react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { CommunityAvatar } from "@/components/primitives/community-avatar";
@@ -243,6 +244,7 @@ export function UploadField({
   copy,
   multiple = false,
   onChange,
+  onClear,
   placeholderLabel,
   previewUrl,
   required,
@@ -260,6 +262,7 @@ export function UploadField({
   };
   multiple?: boolean;
   onChange?: (files: FileList | null) => void;
+  onClear?: () => void;
   placeholderLabel?: string;
   previewUrl?: string;
   required?: boolean;
@@ -267,65 +270,86 @@ export function UploadField({
   variant?: "default" | "artwork";
 }) {
   const inputId = React.useId();
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
   const isArtwork = variant === "artwork";
+  const showClear = Boolean(selectedLabel && onClear);
 
   return (
     <div className="block">
       <FieldLabel htmlFor={inputId} label={label} required={required} />
-      <input
-        id={inputId}
-        accept={accept}
-        className="sr-only"
-        multiple={multiple}
-        onChange={(event) => onChange?.(event.target.files)}
-        required={required}
-        type="file"
-      />
-      <label
-        className={cn(
-          "flex w-full cursor-pointer rounded-[var(--radius-lg)] border border-border-soft bg-background transition-colors hover:border-primary/40",
-          isArtwork ? "items-center gap-4 p-4" : "items-center justify-between gap-4 px-4 py-3.5",
-        )}
-        htmlFor={inputId}
-      >
-        {isArtwork ? (
-          <>
-            <div
-              className={cn(
-                "grid shrink-0 place-items-center overflow-hidden rounded-[var(--radius-lg)] border border-border-soft bg-muted",
-                artworkPreviewAspect === "video" ? "aspect-video w-32" : "size-24",
-              )}
-            >
-              {previewUrl ? (
-                <img alt="" className="size-full rounded-[var(--radius-lg)] object-cover" src={previewUrl} />
-              ) : selectedLabel ? (
-                <span className="px-3 text-center text-base font-semibold text-foreground">
-                  {copy.upload.cover}
-                </span>
-              ) : (
-                <ImageIcon className="size-8 text-muted-foreground" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1 space-y-1">
+      <div className="flex items-stretch gap-2">
+        <input
+          id={inputId}
+          accept={accept}
+          className="sr-only"
+          multiple={multiple}
+          onChange={(event) => {
+            onChange?.(event.currentTarget.files);
+            event.currentTarget.value = "";
+          }}
+          ref={inputRef}
+          required={required}
+          type="file"
+        />
+        <label
+          className={cn(
+            "flex min-w-0 flex-1 cursor-pointer rounded-[var(--radius-lg)] border border-border-soft bg-background transition-colors hover:border-primary/40",
+            isArtwork ? "items-center gap-4 p-4" : "items-center justify-between gap-4 px-4 py-3.5",
+          )}
+          htmlFor={inputId}
+        >
+          {isArtwork ? (
+            <>
+              <div
+                className={cn(
+                  "grid shrink-0 place-items-center overflow-hidden rounded-[var(--radius-lg)] border border-border-soft bg-muted",
+                  artworkPreviewAspect === "video" ? "aspect-video w-32" : "size-24",
+                )}
+              >
+                {previewUrl ? (
+                  <img alt="" className="size-full rounded-[var(--radius-lg)] object-cover" src={previewUrl} />
+                ) : selectedLabel ? (
+                  <span className="px-3 text-center text-base font-semibold text-foreground">
+                    {copy.upload.cover}
+                  </span>
+                ) : (
+                  <ImageIcon className="size-8 text-muted-foreground" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="truncate text-base font-semibold text-foreground">
+                  {selectedLabel || artworkPlaceholderLabel || copy.upload.squareArtwork}
+                </p>
+                <p className="text-base text-muted-foreground">
+                  {artworkHelp || copy.upload.artworkHelp}
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="min-w-0">
               <p className="truncate text-base font-semibold text-foreground">
-                {selectedLabel || artworkPlaceholderLabel || copy.upload.squareArtwork}
-              </p>
-              <p className="text-base text-muted-foreground">
-                {artworkHelp || copy.upload.artworkHelp}
+                {selectedLabel || placeholderLabel || copy.upload.noFileSelected}
               </p>
             </div>
-          </>
-        ) : (
-          <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-foreground">
-              {selectedLabel || placeholderLabel || copy.upload.noFileSelected}
-            </p>
-          </div>
-        )}
-        <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-3.5 py-2 text-base font-semibold text-foreground">
-          {selectedLabel ? copy.buttons.replace : copy.buttons.chooseFile}
-        </span>
-      </label>
+          )}
+          <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-3.5 py-2 text-base font-semibold text-foreground">
+            {selectedLabel ? copy.buttons.replace : copy.buttons.chooseFile}
+          </span>
+        </label>
+        {showClear ? (
+          <button
+            aria-label={`Remove ${label.toLowerCase()}`}
+            className="grid w-12 shrink-0 place-items-center rounded-full border border-border-soft bg-background text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            onClick={() => {
+              if (inputRef.current) inputRef.current.value = "";
+              onClear?.();
+            }}
+            type="button"
+          >
+            <X className="size-5" weight="bold" />
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

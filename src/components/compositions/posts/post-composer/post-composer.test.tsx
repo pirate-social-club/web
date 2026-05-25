@@ -786,6 +786,52 @@ describe("PostComposer monetization", () => {
     expect(geniusAnnotationsUrl).toBe("https://genius.com/34172986");
   });
 
+  test("allows optional stem uploads to be removed from song details", () => {
+    const instrumental = new File(["stem"], "instrumental.wav", { type: "audio/wav" });
+    const vocal = new File(["stem"], "vocal.wav", { type: "audio/wav" });
+    let songState: PostComposerProps["song"] = {
+      instrumentalAudioUpload: instrumental,
+      title: "Midnight Waves",
+      vocalAudioUpload: vocal,
+    };
+    const tree = renderComposer({
+      availableTabs: ["song"],
+      canCreateSongPost: true,
+      clubName: "Lane1",
+      composerStep: "details",
+      lyricsValue: "",
+      mode: "song",
+      onSongChange: (next) => {
+        songState = next;
+      },
+      song: songState,
+    });
+
+    const instrumentalUpload = findElement(
+      tree,
+      (element) => typeof element.type === "function" && element.type.name === "UploadField" && element.props.label === "Instrumental stem",
+    );
+    if (!instrumentalUpload) {
+      throw new Error("Missing instrumental stem upload");
+    }
+    expect(instrumentalUpload.props.selectedLabel).toBe("instrumental.wav");
+    (instrumentalUpload.props.onClear as (() => void) | undefined)?.();
+    expect(songState?.instrumentalAudioUpload).toBeNull();
+    expect(songState?.instrumentalAudioLabel).toBeUndefined();
+
+    const vocalUpload = findElement(
+      tree,
+      (element) => typeof element.type === "function" && element.type.name === "UploadField" && element.props.label === "Vocal stem",
+    );
+    if (!vocalUpload) {
+      throw new Error("Missing vocal stem upload");
+    }
+    expect(vocalUpload.props.selectedLabel).toBe("vocal.wav");
+    (vocalUpload.props.onClear as (() => void) | undefined)?.();
+    expect(songState?.vocalAudioUpload).toBeNull();
+    expect(songState?.vocalAudioLabel).toBeUndefined();
+  });
+
   test("desktop write step blocks live until the setlist is ready and only requires time when scheduling", () => {
     let step: PostComposerProps["composerStep"] = "write";
     const blockedTree = renderComposer({

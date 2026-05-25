@@ -623,7 +623,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [availableIdentityQualifiers]);
 
   const canSubmitText = title.trim().length > 0;
-  const canSubmitSong = Boolean(songState.primaryAudioUpload && songState.title?.trim() && lyrics.trim());
+  const canSubmitSong = Boolean(songState.primaryAudioUpload && songState.title?.trim());
   const canSubmitLink = isValidHttpUrl(linkUrl);
   const canSubmitImage = title.trim().length > 0 && Boolean(imageUpload);
   const canSubmitVideo = title.trim().length > 0 && Boolean(videoState.primaryVideoUpload);

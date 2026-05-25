@@ -74,7 +74,7 @@ function canAdvanceMobileComposerStep(
   }
 
   if (current === "details" && state.composerMode === "song") {
-    return Boolean(state.songState.title?.trim() && state.lyrics.trim());
+    return Boolean(state.songState.title?.trim());
   }
 
   return state.submitState.canContinue;

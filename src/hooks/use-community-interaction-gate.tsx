@@ -125,7 +125,7 @@ export function useCommunityInteractionGate({
     await completeVerificationJoinWithPending(pendingInteractionRef.current);
   }, [completeVerificationJoinWithPending]);
 
-  const completeAltchaJoin = React.useCallback(async () => {
+  const completeAltchaJoin = React.useCallback(async (payloadOverride?: string | null) => {
     const pendingInteraction = pendingInteractionRef.current;
     if (!pendingInteraction) {
       return;
@@ -157,10 +157,10 @@ export function useCommunityInteractionGate({
         primaryAction: current.primaryAction ? { ...current.primaryAction, loading: false } : current.primaryAction,
       } : current);
       toast.error(getErrorMessage(error, "Proof-of-work check failed."));
-    });
+    }, payloadOverride);
   }, [api.communities, buildAltchaBody, closeModal, completeAltchaJoinWithPayload, gatesPanel, interactionCopy, invalidateCommunityGate, updateCachedGate]);
 
-  const completeAltchaAction = React.useCallback(async () => {
+  const completeAltchaAction = React.useCallback(async (payloadOverride?: string | null) => {
     const pendingInteraction = pendingInteractionRef.current;
     if (!pendingInteraction) {
       return;
@@ -177,7 +177,7 @@ export function useCommunityInteractionGate({
       });
     }, (error) => {
       toast.error(getErrorMessage(error, "Proof-of-work check failed."));
-    });
+    }, payloadOverride);
   }, [closeModal, completeAltchaActionWithPayload]);
 
   const {

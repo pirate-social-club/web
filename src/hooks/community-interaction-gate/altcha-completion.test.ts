@@ -56,7 +56,7 @@ describe("completeAltchaJoin", () => {
     expect(modal.modalState?.icon).toBe("pending");
   });
 
-  test("builds the ready action after Altcha join succeeds", async () => {
+  test("runs the pending interaction after Altcha join succeeds", async () => {
     const calls: string[] = [];
     const modal = createModalSetter();
     const communitiesApi: AltchaCommunitiesApi = {
@@ -87,16 +87,13 @@ describe("completeAltchaJoin", () => {
       },
     });
 
-    expect(modal.modalState?.title).toBe(interactionCopy.readyTitle);
-    expect(modal.modalState?.primaryAction?.label).toBe("Reply now");
-
-    await modal.modalState?.primaryAction?.onClick?.();
+    expect(modal.modalState).toBeNull();
     expect(calls).toEqual([
       "invalidate:community-1",
       "cache:community-1:already_joined",
       "close",
-      "clear-pending",
       "allowed",
+      "clear-pending",
     ]);
   });
 });

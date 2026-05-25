@@ -623,7 +623,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   }, [availableIdentityQualifiers]);
 
   const canSubmitText = title.trim().length > 0;
-  const canSubmitSong = Boolean(songState.primaryAudioUpload && songState.title?.trim() && lyrics.trim());
+  const canSubmitSong = Boolean(songState.primaryAudioUpload && songState.title?.trim());
   const canSubmitLink = isValidHttpUrl(linkUrl);
   const canSubmitImage = title.trim().length > 0 && Boolean(imageUpload);
   const canSubmitVideo = title.trim().length > 0 && Boolean(videoState.primaryVideoUpload);
@@ -688,8 +688,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const hasCommunityPostingRole = viewerHasCommunityPostingRole(session?.user.id, community, communityOwnerUserId);
   const postAltchaRequired = !hasCommunityPostingRole
     && (community?.membership_gate_summaries ?? []).some((gate) => gate.gate_type === "altcha_pow");
-  const postAltchaRequestOptions = postAltchaPayload ? { altchaPayload: postAltchaPayload } : undefined;
-  const handleSubmit = React.useCallback(async () => {
+  const handleSubmit = React.useCallback(async (options: { altchaPayload?: string | null } = {}) => {
+    const resolvedPostAltchaPayload = options.altchaPayload ?? postAltchaPayload;
+    const resolvedPostAltchaRequestOptions = resolvedPostAltchaPayload ? { altchaPayload: resolvedPostAltchaPayload } : undefined;
     logger.info("[create-post] publish clicked", {
       canPost: submitState.canPost,
       communityId,
@@ -713,7 +714,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       return;
     }
 
-    if (postAltchaRequired && !postAltchaPayload) {
+    if (postAltchaRequired && !resolvedPostAltchaPayload) {
       setSubmitError("Complete the proof-of-work check first.");
       return;
     }
@@ -749,7 +750,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           songMode,
         });
         const songResult = await submitSongPost({
-          altchaPayload: postAltchaPayload,
+          altchaPayload: resolvedPostAltchaPayload,
           audience,
           authorMode,
           caption: body,
@@ -840,7 +841,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           sizeBytes: imageUpload?.size,
         });
         result = await submitImagePost({
-          altchaOptions: postAltchaRequestOptions,
+          altchaOptions: resolvedPostAltchaRequestOptions,
           authorMode,
           baseRequest: buildBasePostRequest({
             anonymousScope,
@@ -864,7 +865,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           sizeBytes: videoState.primaryVideoUpload?.size,
         });
         result = await submitVideoPost({
-          altchaOptions: postAltchaRequestOptions,
+          altchaOptions: resolvedPostAltchaRequestOptions,
           authorMode,
           baseRequest: buildBasePostRequest({
             anonymousScope,
@@ -900,7 +901,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       } else if (composerMode === "link") {
         logger.info("[create-post] creating link post", { linkUrl });
         result = await submitLinkPost({
-          altchaOptions: postAltchaRequestOptions,
+          altchaOptions: resolvedPostAltchaRequestOptions,
           authorMode,
           baseRequest: buildBasePostRequest({
             anonymousScope,
@@ -919,7 +920,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       } else {
         logger.info("[create-post] creating text post");
         result = await submitTextPost({
-          altchaOptions: postAltchaRequestOptions,
+          altchaOptions: resolvedPostAltchaRequestOptions,
           authorMode,
           baseRequest: buildBasePostRequest({
             anonymousScope,
@@ -981,7 +982,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     }
   }, [
     api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, hasCommunityPostingRole,
-    identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled,
+    identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, postAltchaPayload, postAltchaRequired, pricingPolicy?.regional_pricing_enabled,
     selectedQualifierIds, session?.user.id, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     videoState,
     warnIfStoryRegistrationIncomplete,

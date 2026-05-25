@@ -51,9 +51,16 @@ function getAltchaActionConfig(input: {
   commentId?: string;
   gate: CommunityGateData;
   postId?: string;
+  voteValue?: -1 | 1;
 }): { actionRef: string; scope: AltchaScope } | null {
   if (!requiresActionAltchaProof(input.gate)) {
     return null;
+  }
+  if (input.action === "vote_post" && input.postId && input.voteValue) {
+    return { actionRef: `post:${input.postId}:vote:${input.voteValue}`, scope: "vote" };
+  }
+  if (input.action === "vote_comment" && input.commentId && input.voteValue) {
+    return { actionRef: `comment:${input.commentId}:vote:${input.voteValue}`, scope: "vote" };
   }
   if (input.action === "reply_post" && input.postId) {
     return { actionRef: `post:${input.postId}`, scope: "comment_create" };
@@ -90,12 +97,14 @@ export function useGatedActionRunner({
   altchaLoading: boolean;
   buildAltchaBody: (input: {
     action: string;
+    onVerified?: (payload: string) => void | Promise<void>;
     resetKey?: React.Key;
     scope: AltchaScope;
+    verifiedSubtitle?: string;
   }) => React.ReactNode;
   closeModal: () => void;
-  completeAltchaAction: () => Promise<void>;
-  completeAltchaJoin: () => Promise<void>;
+  completeAltchaAction: (payloadOverride?: string | null) => Promise<void>;
+  completeAltchaJoin: (payloadOverride?: string | null) => Promise<void>;
   connect?: (() => void) | null;
   defaultVerificationLoadingProvider: "self" | "very" | "passport" | null;
   interactionCopy: GatedActionRunnerCopy;
@@ -181,7 +190,7 @@ export function useGatedActionRunner({
       hasSession,
     });
 
-    const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId });
+    const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId, voteValue });
     if (state === "allowed" && actionAltchaConfig) {
       const requirements = getProofOfWorkGateRequirements(gate.preview.membership_gate_summaries);
       setPendingInteraction({
@@ -196,15 +205,13 @@ export function useGatedActionRunner({
       setModalState({
         body: buildAltchaBody({
           action: actionAltchaConfig.actionRef,
+          onVerified: completeAltchaAction,
           scope: actionAltchaConfig.scope,
+          verifiedSubtitle: "Finishing this action automatically.",
         }),
         description: "This usually takes a few seconds and runs only on this device.",
         icon: "blocked",
-        primaryAction: {
-          label: "Continue",
-          loading: altchaLoading,
-          onClick: completeAltchaAction,
-        },
+        primaryAction: null,
         requirements,
         requirementStatuses: getRequirementStatuses(gate, requirements),
         secondaryAction: {
@@ -259,15 +266,13 @@ export function useGatedActionRunner({
             return {
               body: buildAltchaBody({
                 action: `community:${communityId}`,
+                onVerified: completeAltchaJoin,
                 scope: "community_join",
+                verifiedSubtitle: "Finishing this action automatically.",
               }),
               description: "This usually takes a few seconds and runs only on this device.",
               icon: "blocked",
-              primaryAction: {
-                label: "Continue",
-                loading: altchaLoading,
-                onClick: completeAltchaJoin,
-              },
+              primaryAction: null,
               requirements,
               requirementStatuses: getRequirementStatuses(gate, requirements),
               secondaryAction: {

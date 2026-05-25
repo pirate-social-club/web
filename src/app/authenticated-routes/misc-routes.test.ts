@@ -53,4 +53,16 @@ describe("resolveGlobalCreatePostCanContinue", () => {
       linkUrl: "sdkljfn",
     }))).toBe(false);
   });
+
+  test("allows instrumental song drafts without lyrics before a community is selected", () => {
+    expect(resolveGlobalCreatePostCanContinue(createDraft({
+      composerMode: "song",
+      lyrics: "",
+      songState: {
+        ...defaultSongState(),
+        primaryAudioUpload: new File(["audio"], "instrumental.mp3", { type: "audio/mpeg" }),
+        title: "Instrumental Draft",
+      },
+    }))).toBe(true);
+  });
 });

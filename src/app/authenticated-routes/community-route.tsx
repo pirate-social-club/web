@@ -721,16 +721,15 @@ export function CommunityPage({
       {altchaRequired ? (
         <CommunityProofOfWorkModal
           action={altchaAction}
-          continueDisabled={!altchaPayload}
           continueLoading={joinLoading}
           description="This usually takes a few seconds and runs only on this device."
           locale={locale}
-          onContinue={async () => {
-            setProofOfWorkModalOpen(false);
-            await handlePrimaryJoinAction();
-          }}
           onOpenChange={setProofOfWorkModalOpen}
           onPayloadChange={setAltchaPayload}
+          onVerified={async (payload) => {
+            await handleJoin({ altchaPayload: payload });
+            setProofOfWorkModalOpen(false);
+          }}
           open={proofOfWorkModalOpen}
           requirements={preview?.membership_gate_summaries}
           scope={altchaScope}

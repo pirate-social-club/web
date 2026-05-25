@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import "altcha";
 import type {} from "altcha/types/react";
 import { CheckCircle, WarningCircle } from "@phosphor-icons/react";
 
@@ -35,22 +34,57 @@ export function AltchaPowWidget({
   challengeLoader,
   locale,
   onPayloadChange,
+  onVerified,
   scope,
+  verifiedSubtitle = "Continue to finish this action.",
 }: {
   action: string;
   className?: string;
   challengeLoader?: (input: { action: string; scope: AltchaScope }) => Promise<Record<string, unknown>>;
   locale?: string | null;
   onPayloadChange: (payload: string | null) => void;
+  onVerified?: (payload: string) => void | Promise<void>;
   scope: AltchaScope;
+  verifiedSubtitle?: string;
 }) {
   const api = useApi();
   const widgetRef = React.useRef<AltchaWidgetElement | null>(null);
+  const verifiedPayloadRef = React.useRef<string | null>(null);
   const [challenge, setChallenge] = React.useState<Record<string, unknown> | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [retryKey, setRetryKey] = React.useState(0);
   const [verified, setVerified] = React.useState(false);
+  const [widgetReady, setWidgetReady] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        if (
+          typeof window !== "undefined" &&
+          window.customElements &&
+          typeof globalThis.customElements === "undefined"
+        ) {
+          Object.defineProperty(globalThis, "customElements", {
+            configurable: true,
+            value: window.customElements,
+          });
+        }
+        await import("altcha");
+        if (!cancelled) {
+          setWidgetReady(true);
+        }
+      } catch (nextError: unknown) {
+        if (!cancelled) {
+          setError(getErrorMessage(nextError, "Could not start proof-of-work check."));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -58,6 +92,7 @@ export function AltchaPowWidget({
     setError(null);
     setChallenge(null);
     setVerified(false);
+    verifiedPayloadRef.current = null;
     onPayloadChange(null);
 
     const loadChallenge = challengeLoader ?? api.verification.createAltchaChallenge;
@@ -85,24 +120,39 @@ export function AltchaPowWidget({
 
   React.useEffect(() => {
     const widget = widgetRef.current;
-    if (!widget || !challenge || loading || verified) {
+    if (!widget || !challenge || loading || verified || !widgetReady) {
       return;
     }
 
+    const acceptPayload = (payload: string | null | undefined) => {
+      const nextPayload = payload?.trim() ? payload.trim() : null;
+      if (!nextPayload) {
+        onPayloadChange(null);
+        verifiedPayloadRef.current = null;
+        setVerified(false);
+        return;
+      }
+      if (verifiedPayloadRef.current === nextPayload) {
+        return;
+      }
+      verifiedPayloadRef.current = nextPayload;
+      onPayloadChange(nextPayload);
+      setVerified(true);
+      void onVerified?.(nextPayload);
+    };
     const handleVerified = (event: Event) => {
       const payload = (event as AltchaVerifiedEvent).detail?.payload;
-      onPayloadChange(payload?.trim() ? payload : null);
-      setVerified(Boolean(payload?.trim()));
+      acceptPayload(payload);
     };
     const handleStateChange = (event: Event) => {
       const detail = (event as AltchaStateChangeEvent).detail;
-      if (detail?.state === "verified" && detail.payload?.trim()) {
-        onPayloadChange(detail.payload);
-        setVerified(true);
+      if (detail?.state === "verified") {
+        acceptPayload(detail.payload);
         return;
       }
       if (detail?.state === "expired" || detail?.state === "error" || detail?.state === "unverified") {
         onPayloadChange(null);
+        verifiedPayloadRef.current = null;
         setVerified(false);
       }
     };
@@ -113,7 +163,7 @@ export function AltchaPowWidget({
       widget.removeEventListener("verified", handleVerified);
       widget.removeEventListener("statechange", handleStateChange);
     };
-  }, [challenge, loading, onPayloadChange, verified]);
+  }, [challenge, loading, onPayloadChange, onVerified, verified]);
 
   React.useEffect(() => {
     const widget = widgetRef.current;
@@ -149,9 +199,9 @@ export function AltchaPowWidget({
     return () => {
       widget.removeEventListener("load", configureWidget);
     };
-  }, [challenge, loading, locale, verified]);
+  }, [challenge, loading, locale, verified, widgetReady]);
 
-  if (loading) {
+  if (loading || (!widgetReady && !error)) {
     return (
       <Type as="div" className={cn("flex items-center gap-3 text-muted-foreground", className)} variant="body">
         <Spinner className="size-5" />
@@ -194,7 +244,7 @@ export function AltchaPowWidget({
             Proof-of-work complete
           </span>
         )}
-        subtitle="Continue to finish this action."
+        subtitle={verifiedSubtitle}
       />
     );
   }

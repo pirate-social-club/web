@@ -74,7 +74,7 @@ function canAdvanceMobileComposerStep(
   }
 
   if (current === "details" && state.composerMode === "song") {
-    return Boolean(state.songState.title?.trim() && state.lyrics.trim());
+    return Boolean(state.songState.title?.trim());
   }
 
   return state.submitState.canContinue;
@@ -413,14 +413,15 @@ export function CreatePostPage({
   const needsSelfDocumentFactVerification =
     hasSelfDocumentFactVerificationRequest(selfVerificationRequest);
 
-  const handleSubmit = React.useCallback(async () => {
-    if (state.postAltchaRequired && !state.postAltchaPayload) {
+  const handleSubmit = React.useCallback(async (options: { altchaPayload?: string | null } = {}) => {
+    const resolvedPostAltchaPayload = options.altchaPayload ?? state.postAltchaPayload;
+    if (state.postAltchaRequired && !resolvedPostAltchaPayload) {
       setPostProofOfWorkModalOpen(true);
       return;
     }
 
     if (hasPostingAccess) {
-      await state.handleSubmit();
+      await state.handleSubmit({ altchaPayload: resolvedPostAltchaPayload });
       return;
     }
 
@@ -443,7 +444,7 @@ export function CreatePostPage({
       return;
     }
 
-    await state.handleSubmit();
+    await state.handleSubmit({ altchaPayload: resolvedPostAltchaPayload });
   }, [
     needsSelfDocumentFactVerification,
     selfVerificationRequest,
@@ -610,16 +611,15 @@ export function CreatePostPage({
     const joinProofOfWorkModal = altchaRequired ? (
       <CommunityProofOfWorkModal
         action={altchaAction}
-        continueDisabled={!altchaPayload}
         continueLoading={joinLoading}
         description="This usually takes a few seconds and runs only on this device."
         locale={locale}
-        onContinue={async () => {
-          setJoinProofOfWorkModalOpen(false);
-          await handlePrimaryJoinAction();
-        }}
         onOpenChange={setJoinProofOfWorkModalOpen}
         onPayloadChange={setAltchaPayload}
+        onVerified={async (payload) => {
+          await handleJoin({ altchaPayload: payload });
+          setJoinProofOfWorkModalOpen(false);
+        }}
         open={joinProofOfWorkModalOpen}
         requirements={state.eligibility.membership_gate_summaries}
         scope={altchaScope}
@@ -721,16 +721,15 @@ export function CreatePostPage({
   const postProofOfWorkModal = state.postAltchaRequired ? (
     <CommunityProofOfWorkModal
       action={state.postAltchaAction}
-      continueDisabled={!state.postAltchaPayload}
       continueLoading={state.submitting}
       description="This usually takes a few seconds and runs only on this device."
       locale={locale}
-      onContinue={async () => {
-        setPostProofOfWorkModalOpen(false);
-        await handleSubmit();
-      }}
       onOpenChange={setPostProofOfWorkModalOpen}
       onPayloadChange={state.setPostAltchaPayload}
+      onVerified={async (payload) => {
+        await handleSubmit({ altchaPayload: payload });
+        setPostProofOfWorkModalOpen(false);
+      }}
       open={postProofOfWorkModalOpen}
       requirements={state.community?.membership_gate_summaries}
       scope={state.postAltchaScope}

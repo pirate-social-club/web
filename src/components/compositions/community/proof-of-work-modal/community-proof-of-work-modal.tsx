@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import type { MembershipGateSummary } from "@pirate/api-contracts";
 
 import { CommunityInteractionGateModal, type CommunityInteractionGateRequirementStatus } from "@/components/compositions/community/interaction-gate-modal/community-interaction-gate-modal";
@@ -14,9 +15,10 @@ export interface CommunityProofOfWorkModalProps {
   continueLoading?: boolean;
   description?: string;
   locale?: string | null;
-  onContinue: () => void | Promise<void>;
+  onContinue?: () => void | Promise<void>;
   onOpenChange: (open: boolean) => void;
   onPayloadChange: (payload: string | null) => void;
+  onVerified?: (payload: string) => void | Promise<void>;
   open: boolean;
   requirements?: MembershipGateSummary[];
   requirementStatuses?: CommunityInteractionGateRequirementStatus[];
@@ -53,17 +55,36 @@ export function CommunityProofOfWorkModal({
   onContinue,
   onOpenChange,
   onPayloadChange,
+  onVerified,
   open,
   requirements,
   requirementStatuses,
   scope,
   title = "Checking browser",
 }: CommunityProofOfWorkModalProps) {
+  const [verified, setVerified] = React.useState(false);
   const proofOfWorkRequirements = getProofOfWorkGateRequirements(requirements);
   const proofOfWorkRequirementStatuses = getProofOfWorkRequirementStatuses(
     requirements,
     requirementStatuses,
   );
+  const autoContinue = Boolean(onVerified);
+
+  React.useEffect(() => {
+    if (!open) {
+      setVerified(false);
+    }
+  }, [action, open, scope]);
+
+  const handlePayloadChange = React.useCallback((payload: string | null) => {
+    setVerified(Boolean(payload));
+    onPayloadChange(payload);
+  }, [onPayloadChange]);
+
+  const handleVerified = React.useCallback((payload: string) => {
+    setVerified(true);
+    void onVerified?.(payload);
+  }, [onVerified]);
 
   return (
     <CommunityInteractionGateModal
@@ -73,24 +94,28 @@ export function CommunityProofOfWorkModal({
           action={action}
           challengeLoader={challengeLoader}
           locale={locale}
-          onPayloadChange={onPayloadChange}
+          onPayloadChange={handlePayloadChange}
+          onVerified={onVerified ? handleVerified : undefined}
           scope={scope}
+          verifiedSubtitle={autoContinue ? "Finishing this action automatically." : undefined}
         />
       )}
       description={description}
       icon="blocked"
       onOpenChange={onOpenChange}
       open={open}
-      primaryAction={{
-        disabled: continueDisabled,
-        label: "Continue",
-        loading: continueLoading,
-        onClick: onContinue,
-      }}
+      primaryAction={autoContinue
+        ? null
+        : {
+            disabled: continueDisabled,
+            label: "Continue",
+            loading: continueLoading,
+            onClick: onContinue,
+          }}
       requirements={proofOfWorkRequirements}
       requirementStatuses={proofOfWorkRequirementStatuses}
       secondaryAction={{
-        label: "Cancel",
+        label: autoContinue && verified ? "Close" : "Cancel",
         onClick: () => onOpenChange(false),
       }}
       title={title}

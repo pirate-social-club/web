@@ -38,12 +38,16 @@ export function useInteractionAltcha({
 
   const buildAltchaBody = React.useCallback(({
     action,
+    onVerified,
     resetKey,
     scope,
+    verifiedSubtitle,
   }: {
     action: string;
+    onVerified?: (payload: string) => void | Promise<void>;
     resetKey?: React.Key;
     scope: AltchaScope;
+    verifiedSubtitle?: string;
   }) => (
     <React.Suspense fallback={<VerificationWidgetFallback />}>
       <LazyAltchaPowWidget
@@ -51,7 +55,9 @@ export function useInteractionAltcha({
         action={action}
         locale={locale}
         onPayloadChange={setAltchaPayload}
+        onVerified={onVerified}
         scope={scope}
+        verifiedSubtitle={verifiedSubtitle}
       />
     </React.Suspense>
   ), [altchaResetKey, locale, setAltchaPayload]);
@@ -59,12 +65,13 @@ export function useInteractionAltcha({
   const completeAltchaJoin = React.useCallback(async (
     onJoinComplete: (payload: string) => Promise<void> | void,
     onJoinError: (error: unknown, resetKey: number) => void,
+    payloadOverride?: string | null,
   ) => {
     if (completionLoadingRef.current) {
       return;
     }
 
-    const payload = altchaPayloadRef.current;
+    const payload = payloadOverride ?? altchaPayloadRef.current;
     if (!payload) {
       onMissingPayload();
       return;
@@ -89,12 +96,13 @@ export function useInteractionAltcha({
   const completeAltchaAction = React.useCallback(async (
     onActionAllowed: (context: InteractionAllowedContext) => Promise<void> | void,
     onActionError: (error: unknown) => void,
+    payloadOverride?: string | null,
   ) => {
     if (completionLoadingRef.current) {
       return;
     }
 
-    const payload = altchaPayloadRef.current;
+    const payload = payloadOverride ?? altchaPayloadRef.current;
     if (!payload) {
       onMissingPayload();
       return;

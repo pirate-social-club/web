@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import type { CommunityPreview } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { AdCreator } from "@/components/compositions/ads/ad-creator/ad-creator";
+import { CommunityProofOfWorkModal } from "@/components/compositions/community/proof-of-work-modal/community-proof-of-work-modal";
 import { CrosspostComposer } from "@/components/compositions/posts/crosspost-composer/crosspost-composer";
 import type { CrosspostTargetCommunity } from "@/components/compositions/posts/crosspost-composer/crosspost-composer.types";
 import type { CommunityPickerItem } from "@/components/compositions/posts/post-composer/post-composer.types";
@@ -19,6 +21,7 @@ import { useApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useRecentCommunities } from "@/lib/owned-communities";
 import { forgetKnownCommunity } from "@/lib/known-communities-store";
+import { useUiLocale } from "@/lib/ui-locale";
 
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { NotFoundRouteState } from "@/app/authenticated-helpers/route-shell";
@@ -26,7 +29,7 @@ import { useCreatePostDraftState, type CreatePostDraftState } from "@/app/authen
 
 export function resolveGlobalCreatePostCanContinue(state: CreatePostDraftState) {
   if (state.composerMode === "song") {
-    return Boolean(state.songState.primaryAudioUpload && state.songState.title?.trim() && state.lyrics.trim());
+    return Boolean(state.songState.primaryAudioUpload && state.songState.title?.trim());
   }
   if (state.composerMode === "link") {
     return isValidHttpUrl(state.linkUrl);
@@ -197,14 +200,20 @@ export function CreatePostGlobalPage({
 
 export function CrosspostPage({ postId }: { postId: string }) {
   const api = useApi();
+  const { locale } = useUiLocale();
   const recentCommunities = useRecentCommunities();
   const [source, setSource] = React.useState<Awaited<ReturnType<typeof api.publicPosts.get>> | null>(null);
   const [sourceCommunityLabel, setSourceCommunityLabel] = React.useState<string | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [selectedCommunity, setSelectedCommunity] = React.useState<CrosspostTargetCommunity | null>(null);
+  const [selectedCommunityGateSummaries, setSelectedCommunityGateSummaries] = React.useState<CommunityPreview["membership_gate_summaries"] | null>(null);
+  const [selectedCommunityGateError, setSelectedCommunityGateError] = React.useState<string | null>(null);
   const [communitySearchQuery, setCommunitySearchQuery] = React.useState("");
   const [communitySearchResults, setCommunitySearchResults] = React.useState<CrosspostTargetCommunity[]>([]);
   const [postableRecentCommunityIds, setPostableRecentCommunityIds] = React.useState<Set<string> | null>(null);
+  const [postAltchaPayload, setPostAltchaPayload] = React.useState<string | null>(null);
+  const [postAltchaResetKey, setPostAltchaResetKey] = React.useState(0);
+  const [postProofOfWorkModalOpen, setPostProofOfWorkModalOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [title, setTitle] = React.useState("");
@@ -218,7 +227,6 @@ export function CrosspostPage({ postId }: { postId: string }) {
           avatarSrc: community.avatarSrc,
           communityId: community.communityId,
           displayName: community.displayName,
-          status: "ready",
         }));
     },
     [postableRecentCommunityIds, recentCommunities],
@@ -296,9 +304,9 @@ export function CrosspostPage({ postId }: { postId: string }) {
           const eligibility = await api.communities.getJoinEligibility(community.community).catch(() => null);
           if (eligibility?.status !== "already_joined") return null;
           return {
+            avatarSrc: (community as { avatar_ref?: string | null }).avatar_ref ?? undefined,
             communityId: community.community,
             displayName: community.display_name,
-            status: "ready",
           } satisfies CrosspostTargetCommunity;
         }));
         if (cancelled) return;
@@ -326,9 +334,43 @@ export function CrosspostPage({ postId }: { postId: string }) {
     );
   }, [communityPickerItems]);
 
+  React.useEffect(() => {
+    setPostAltchaPayload(null);
+    setPostProofOfWorkModalOpen(false);
+    setSubmitError(null);
+
+    if (!selectedCommunity) {
+      setSelectedCommunityGateSummaries(null);
+      setSelectedCommunityGateError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setSelectedCommunityGateSummaries(null);
+    setSelectedCommunityGateError(null);
+
+    void api.communities.preview(selectedCommunity.communityId, { locale })
+      .then((preview) => {
+        if (!cancelled) {
+          setSelectedCommunityGateSummaries(preview.membership_gate_summaries);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setSelectedCommunityGateError(getErrorMessage(error, "Could not check posting requirements."));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, locale, selectedCommunity]);
+
   const sourcePost = source?.post ?? null;
   const sourceIsCrosspost = sourcePost?.post_type === "crosspost";
-  const sourcePostType = sourcePost?.post_type === "text"
+  const sourcePostType = sourcePost?.anchor_live_room
+    ? "live_room"
+    : sourcePost?.post_type === "text"
     || sourcePost?.post_type === "image"
     || sourcePost?.post_type === "video"
     || sourcePost?.post_type === "link"
@@ -344,10 +386,20 @@ export function CrosspostPage({ postId }: { postId: string }) {
     : sourcePost?.post_type === "song"
     ? source?.song_presentation?.cover_art_ref ?? undefined
     : undefined;
-  const canSubmit = Boolean(sourcePost && selectedCommunity?.status === "ready" && title.trim()) && !sourceIsCrosspost;
+  const selectedCommunityGateLoading = Boolean(selectedCommunity && selectedCommunityGateSummaries === null && !selectedCommunityGateError);
+  const postAltchaRequired = (selectedCommunityGateSummaries ?? []).some((gate) => gate.gate_type === "altcha_pow");
+  const canSubmit = Boolean(sourcePost && selectedCommunity && title.trim())
+    && !sourceIsCrosspost
+    && !selectedCommunityGateLoading
+    && !selectedCommunityGateError;
 
-  const handleSubmit = React.useCallback(async () => {
+  const handleSubmit = React.useCallback(async (options: { altchaPayload?: string | null } = {}) => {
     if (!sourcePost || !selectedCommunity || !canSubmit) return;
+    const resolvedPostAltchaPayload = options.altchaPayload ?? postAltchaPayload;
+    if (postAltchaRequired && !resolvedPostAltchaPayload) {
+      setPostProofOfWorkModalOpen(true);
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -358,14 +410,19 @@ export function CrosspostPage({ postId }: { postId: string }) {
         source_post: sourcePost.id,
         source_community: sourcePost.community,
         translation_policy: "machine_allowed",
-      });
-      navigate(`/p/${result.id}`);
+      }, { altchaPayload: resolvedPostAltchaPayload });
+      setPostAltchaPayload(null);
+      navigate("/p/" + result.id);
     } catch (error) {
+      if (postAltchaRequired) {
+        setPostAltchaPayload(null);
+        setPostAltchaResetKey((current) => current + 1);
+      }
       setSubmitError(getErrorMessage(error, "Could not crosspost."));
     } finally {
       setSubmitting(false);
     }
-  }, [api, canSubmit, selectedCommunity, sourcePost, title]);
+  }, [api, canSubmit, postAltchaPayload, postAltchaRequired, selectedCommunity, sourcePost, title]);
 
   if (loadError) {
     return <NotFoundRouteState description={loadError} path={`/p/${postId}/crosspost`} title="Crosspost unavailable" />;
@@ -382,33 +439,52 @@ export function CrosspostPage({ postId }: { postId: string }) {
   }
 
   return (
-    <PageContainer className="min-w-0" size="rail">
-      <CrosspostComposer
-        communityPickerEmptyLabel={postableRecentCommunityIds ? "No communities you can post to." : "Checking posting access..."}
-        communityPickerItems={communityPickerItems}
-        onCommunitySearchQueryChange={setCommunitySearchQuery}
-        onSelectCommunity={handleSelectCommunity}
-        onTitleValueChange={setTitle}
-        selectedCommunity={selectedCommunity}
-        source={{
-          status: sourceIsCrosspost ? "unavailable" : "available",
-          communityLabel: sourceCommunityLabel ?? sourcePost.community,
-          postHref: `/p/${sourcePost.id}`,
-          postType: sourcePostType,
-          thumbnailAlt: sourcePost.title ?? undefined,
-          thumbnailSrc: sourceThumbnailSrc,
-          title: sourcePost.title ?? "Untitled source post",
-        }}
-        submit={{
-          disabled: !canSubmit || submitting,
-          error: sourceIsCrosspost ? "Crossposting a crosspost is not supported." : submitError,
-          label: "Post",
-          loading: submitting,
-          onSubmit: handleSubmit,
-        }}
-        titleValue={title}
-      />
-    </PageContainer>
+    <>
+      <PageContainer className="min-w-0" size="rail">
+        <CrosspostComposer
+          communityPickerEmptyLabel={postableRecentCommunityIds ? "No communities you can crosspost to." : "Checking where you can post..."}
+          communityPickerItems={communityPickerItems}
+          onCommunitySearchQueryChange={setCommunitySearchQuery}
+          onSelectCommunity={handleSelectCommunity}
+          onTitleValueChange={setTitle}
+          selectedCommunity={selectedCommunity}
+          source={{
+            status: sourceIsCrosspost ? "unavailable" : "available",
+            communityLabel: sourceCommunityLabel ?? sourcePost.community,
+            postHref: "/p/" + sourcePost.id,
+            postType: sourcePostType,
+            thumbnailAlt: sourcePost.title ?? undefined,
+            thumbnailSrc: sourceThumbnailSrc,
+            title: sourcePost.title ?? "Untitled source post",
+          }}
+          submit={{
+            disabled: !canSubmit || submitting,
+            error: sourceIsCrosspost ? "Crossposting a crosspost is not supported." : selectedCommunityGateError ?? submitError,
+            label: "Crosspost",
+            loading: submitting,
+            onSubmit: handleSubmit,
+          }}
+          titleValue={title}
+        />
+      </PageContainer>
+      {selectedCommunity && postAltchaRequired ? (
+        <CommunityProofOfWorkModal
+          key={selectedCommunity.communityId + ":" + postAltchaResetKey}
+          action={"community:" + selectedCommunity.communityId}
+          continueLoading={submitting}
+          locale={locale}
+          onOpenChange={setPostProofOfWorkModalOpen}
+          onPayloadChange={setPostAltchaPayload}
+          onVerified={async (payload) => {
+            await handleSubmit({ altchaPayload: payload });
+            setPostProofOfWorkModalOpen(false);
+          }}
+          open={postProofOfWorkModalOpen}
+          requirements={selectedCommunityGateSummaries ?? undefined}
+          scope="post_create"
+        />
+      ) : null}
+    </>
   );
 }
 

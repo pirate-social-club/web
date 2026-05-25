@@ -173,52 +173,48 @@ describe("useGatedActionRunner", () => {
     expect(runner.hook.result.current.modalState).toBe(null);
   });
 
-  test("does not run action Altcha for post votes because votes are membership-gated", async () => {
+  test("blocks allowed post votes for an action Altcha proof", async () => {
     const runner = renderRunner({
       gateData: gate("already_joined", {}, [altchaRequirement]),
     });
-    const allowedCalls: string[] = [];
 
     await act(async () => {
       const result = await runner.hook.result.current.run({
         action: "vote_post",
         communityId: "community-1",
-        onAllowed: () => {
-          allowedCalls.push("allowed");
-        },
+        onAllowed: () => undefined,
         postId: "post-1",
         voteValue: 1,
       });
-      expect(result).toBe("allowed");
+      expect(result).toBe("blocked");
     });
 
-    expect(allowedCalls).toEqual(["allowed"]);
-    expect(runner.pendingInteraction).toBe(null);
-    expect(runner.hook.result.current.modalState).toBe(null);
+    expect(runner.pendingInteraction?.action).toBe("vote_post");
+    expect(runner.hook.result.current.modalState?.title).toBe("Checking browser");
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:vote:1:vote");
+    expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
   });
 
-  test("does not run action Altcha for comment votes because votes are membership-gated", async () => {
+  test("blocks allowed comment votes for an action Altcha proof", async () => {
     const runner = renderRunner({
       gateData: gate("already_joined", {}, [altchaRequirement]),
     });
-    const allowedCalls: string[] = [];
 
     await act(async () => {
       const result = await runner.hook.result.current.run({
         action: "vote_comment",
         commentId: "cmt-1",
         communityId: "community-1",
-        onAllowed: () => {
-          allowedCalls.push("allowed");
-        },
+        onAllowed: () => undefined,
         voteValue: -1,
       });
-      expect(result).toBe("allowed");
+      expect(result).toBe("blocked");
     });
 
-    expect(allowedCalls).toEqual(["allowed"]);
-    expect(runner.pendingInteraction).toBe(null);
-    expect(runner.hook.result.current.modalState).toBe(null);
+    expect(runner.pendingInteraction?.action).toBe("vote_comment");
+    expect(runner.hook.result.current.modalState?.title).toBe("Checking browser");
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:comment:cmt-1:vote:-1:vote");
+    expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
   });
 
   test("does not build an invalid vote Altcha challenge when vote value is missing", async () => {
@@ -262,6 +258,7 @@ describe("useGatedActionRunner", () => {
     expect(runner.pendingInteraction?.action).toBe("reply_post");
     expect(runner.hook.result.current.modalState?.title).toBe("Checking browser");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:comment_create");
+    expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
   });
 
   test("does not run action Altcha for mixed Very-or-PoW gates when already joined", async () => {
@@ -318,6 +315,7 @@ describe("useGatedActionRunner", () => {
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:community:community-1:community_join");
     expect(runner.hook.result.current.modalState?.requirements).toEqual([altchaRequirement]);
     expect(runner.hook.result.current.modalState?.requirementStatuses).toEqual(["unmet"]);
+    expect(runner.hook.result.current.modalState?.primaryAction).toBeNull();
   });
 
   test("routes verification-required non-Altcha gates through the default modal", async () => {

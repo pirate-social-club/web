@@ -45,6 +45,7 @@ type JoinCompletionInput = {
   setModalState: (modalState: ModalState) => void;
   startDefaultVerification?: BuildBlockedModalStateArgs["startDefaultVerification"];
   updateCachedGate: (communityId: string, gate: CommunityGateData) => void;
+  autoRunPendingInteraction?: boolean;
 };
 
 function resolveJoinCompletionContext(input: JoinCompletionInput): JoinCompletionContext | null {
@@ -166,6 +167,12 @@ async function finishCommunityJoinWithEligibility(
   }
 
   if (nextEligibility.status === "already_joined") {
+    if (input.autoRunPendingInteraction && context.pendingInteraction && context.onAllowed) {
+      input.closeModal();
+      await context.onAllowed();
+      input.clearPendingInteraction();
+      return;
+    }
     setReadyModal(input, context);
     return;
   }

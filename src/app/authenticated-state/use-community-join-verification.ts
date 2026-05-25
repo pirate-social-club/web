@@ -44,6 +44,7 @@ type UseCommunityJoinVerificationInput = {
 };
 
 type JoinAttemptOptions = {
+  altchaPayload?: string | null;
   note?: string | null;
 };
 
@@ -200,6 +201,7 @@ export function useCommunityJoinVerification({
 	  }, [api, communityId, locale, onJoined, refetchEligibility]);
 
   const handleJoin = React.useCallback(async (options: JoinAttemptOptions = {}): Promise<JoinAttemptResult> => {
+    const resolvedAltchaPayload = options.altchaPayload ?? altchaPayload;
     setJoinLoading(true);
     setJoinError(null);
     trackAnalyticsEvent({
@@ -218,7 +220,7 @@ export function useCommunityJoinVerification({
         return "blocked";
       }
       if (altchaRequired) {
-        if (!altchaPayload) {
+        if (!resolvedAltchaPayload) {
           setJoinError("Complete the proof-of-work check first.");
           return "blocked";
         }
@@ -227,7 +229,7 @@ export function useCommunityJoinVerification({
           const result = await api.communities.join(
             communityId,
             { note: options.note ?? null },
-            { altchaPayload },
+            { altchaPayload: resolvedAltchaPayload },
           );
           setAltchaPayload(null);
           if (result.status === "requested") setJoinRequested(true);

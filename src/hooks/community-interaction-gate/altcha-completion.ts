@@ -44,6 +44,7 @@ export async function completeAltchaJoin(input: {
   }
 
   await completeCommunityJoinStartingWithJoin({
+    autoRunPendingInteraction: true,
     clearPendingInteraction: input.clearPendingInteraction,
     closeModal: input.closeModal,
     gatesPanel: input.gatesPanel,

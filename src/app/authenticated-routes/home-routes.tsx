@@ -30,7 +30,7 @@ import { buildLiveRoomFreedomHref } from "@/app/authenticated-helpers/live-room-
 import { resolveHomeFeedCommunityId } from "@/app/authenticated-helpers/home-feed-presentation";
 import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live-room-participants";
 import { toHomeFeedItem } from "@/app/authenticated-helpers/post-presentation";
-import { submitOptimisticPostVote, updateHomeFeedEntryPostVote } from "@/app/authenticated-helpers/post-vote";
+import { submitOptimisticPostVote, toPostVoteValue, updateHomeFeedEntryPostVote } from "@/app/authenticated-helpers/post-vote";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
 import { useClientHydrated } from "@/hooks/use-client-hydrated";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
@@ -342,12 +342,15 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const voteOnPost = React.useCallback(async (postId: string, direction: "up" | "down" | null) => {
     const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
     if (!entry) return;
+    if (!direction) return;
+    const voteValue = toPostVoteValue(direction);
     await runGatedCommunityAction({
       action: "vote_post",
       communityId: entry.community.id,
-      onAllowed: async () => {
+      onAllowed: async (context) => {
         const previousPost = entry.post;
         await submitOptimisticPostVote({
+          altchaPayload: context?.altchaPayload,
           direction,
           onApply: (nextValue) => setFeedEntries((current) => updateHomeFeedEntryPostVote(current, postId, nextValue)),
           onRollback: (restoredPost) => setFeedEntries((current) => current.map((currentEntry) => currentEntry.post.post.id === postId ? { ...currentEntry, post: restoredPost } : currentEntry)),
@@ -358,6 +361,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         });
       },
       postId,
+      voteValue,
     });
   }, [api.posts.vote, feedEntries, runGatedCommunityAction]);
 

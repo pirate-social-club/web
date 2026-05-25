@@ -117,6 +117,8 @@ When a community requires proof-of-work, request \`/verification/altcha/challeng
 - Join or create post: \`scope=community_join\` or \`scope=post_create\`, \`action=community:{com_...}\`
 - Comment on post: \`scope=comment_create\`, \`action=post:{post_...}\`
 - Reply to comment: \`scope=comment_create\`, \`action=comment:{cmt_...}\`
+- Vote on post: \`scope=vote\`, \`action=post:{post_...}:vote:{1|-1}\`
+- Vote on comment: \`scope=vote\`, \`action=comment:{cmt_...}:vote:{1|-1}\`
 
 Solve the challenge with an ALTCHA-compatible solver and send the payload in \`x-pirate-altcha\` or the JSON \`altcha\` field. Proofs are single-use.
 

@@ -198,6 +198,10 @@ describe("public profile host routing", () => {
       kind: "telegram-mini-app",
       path: "/tg",
     });
+    expectJson(matchRoute("/tg/exchange"), {
+      kind: "telegram-exchange",
+      path: "/tg/exchange",
+    });
     expectJson(matchRoute("/tg/c/captain-club"), {
       kind: "telegram-community",
       path: "/tg/c/captain-club",

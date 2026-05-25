@@ -41,6 +41,7 @@ const EXPECTED_DOMAIN_KINDS: Record<RouteRenderingDomain, readonly AppRoute["kin
   ],
   telegram: [
     "telegram-mini-app",
+    "telegram-exchange",
     "telegram-community",
   ],
 };

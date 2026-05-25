@@ -47,6 +47,7 @@ export function AltchaPowWidget({
 }) {
   const api = useApi();
   const widgetRef = React.useRef<AltchaWidgetElement | null>(null);
+  const onPayloadChangeRef = React.useRef(onPayloadChange);
   const [challenge, setChallenge] = React.useState<Record<string, unknown> | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -54,12 +55,16 @@ export function AltchaPowWidget({
   const [verified, setVerified] = React.useState(false);
 
   React.useEffect(() => {
+    onPayloadChangeRef.current = onPayloadChange;
+  }, [onPayloadChange]);
+
+  React.useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
     setChallenge(null);
     setVerified(false);
-    onPayloadChange(null);
+    onPayloadChangeRef.current(null);
 
     const loadChallenge = challengeLoader ?? api.verification.createAltchaChallenge;
     void loadChallenge({ action, scope })
@@ -82,7 +87,7 @@ export function AltchaPowWidget({
     return () => {
       cancelled = true;
     };
-  }, [action, api.verification.createAltchaChallenge, challengeLoader, onPayloadChange, retryKey, scope]);
+  }, [action, api.verification.createAltchaChallenge, challengeLoader, retryKey, scope]);
 
   React.useEffect(() => {
     const widget = widgetRef.current;
@@ -92,18 +97,18 @@ export function AltchaPowWidget({
 
     const handleVerified = (event: Event) => {
       const payload = (event as AltchaVerifiedEvent).detail?.payload;
-      onPayloadChange(payload?.trim() ? payload : null);
+      onPayloadChangeRef.current(payload?.trim() ? payload : null);
       setVerified(Boolean(payload?.trim()));
     };
     const handleStateChange = (event: Event) => {
       const detail = (event as AltchaStateChangeEvent).detail;
       if (detail?.state === "verified" && detail.payload?.trim()) {
-        onPayloadChange(detail.payload);
+        onPayloadChangeRef.current(detail.payload);
         setVerified(true);
         return;
       }
       if (detail?.state === "expired" || detail?.state === "error" || detail?.state === "unverified") {
-        onPayloadChange(null);
+        onPayloadChangeRef.current(null);
         setVerified(false);
       }
     };
@@ -114,7 +119,7 @@ export function AltchaPowWidget({
       widget.removeEventListener("verified", handleVerified);
       widget.removeEventListener("statechange", handleStateChange);
     };
-  }, [challenge, onPayloadChange]);
+  }, [challenge]);
 
   React.useEffect(() => {
     const widget = widgetRef.current;

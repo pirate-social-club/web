@@ -422,19 +422,32 @@ export function CreatePostPage({
       return;
     }
 
-    if (needsSelfDocumentFactVerification) {
+    const refreshedUser = await api.users.getMe();
+    updateSessionUser(refreshedUser);
+    const refreshedSelfVerificationRequest = getSelfVerificationRequestForGates({
+      gates: hasPostingAccess
+        ? []
+        : state.community?.membership_gate_summaries ?? [],
+      includeUniqueHuman: true,
+      verificationCapabilities: refreshedUser.verification_capabilities,
+    });
+
+    if (hasSelfDocumentFactVerificationRequest(refreshedSelfVerificationRequest)) {
       pendingSubmitRef.current = true;
       const result = await startSelfVerification({
-        requestedCapabilities: selfVerificationRequest.requestedCapabilities,
+        requestedCapabilities: refreshedSelfVerificationRequest.requestedCapabilities,
         unavailableMessage: verifyRequiredDescription,
         verificationRequirements:
-          selfVerificationRequest.verificationRequirements,
+          refreshedSelfVerificationRequest.verificationRequirements,
       });
       if (!result.started) pendingSubmitRef.current = false;
       return;
     }
 
-    if (!uniqueHumanVerified) {
+    if (
+      refreshedUser.verification_capabilities.unique_human.state !==
+      "verified"
+    ) {
       pendingSubmitRef.current = true;
       const result = await startVeryPostVerification();
       if (!result.started) pendingSubmitRef.current = false;
@@ -445,16 +458,15 @@ export function CreatePostPage({
       await state.handleSubmit();
     }
   }, [
-    needsSelfDocumentFactVerification,
-    selfVerificationRequest,
+    api,
     startSelfVerification,
     startVeryPostVerification,
+    state.community?.membership_gate_summaries,
     state.handleSubmit,
     state.postAltchaPayload,
     state.postAltchaRequired,
     hasPostingAccess,
     state.isCommunityOwner,
-    uniqueHumanVerified,
     verifyRequiredDescription,
   ]);
 

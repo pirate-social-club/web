@@ -463,7 +463,7 @@ export function usePostComposerController(props: PostComposerProps) {
     [derivativeState],
   );
   const shouldShowAssetLicense =
-    (activeTab === "song" && activeSongMode === "original")
+    activeTab === "song"
     || (activeTab === "video" && monetizationState.visible);
   const assetLicenseCopy = activeTab === "song" || activeTab === "video"
     ? copy.assetLicense[activeTab]

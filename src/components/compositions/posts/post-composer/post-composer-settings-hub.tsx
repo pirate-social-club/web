@@ -89,7 +89,9 @@ function settingsCopy(controller: PostComposerController) {
     previewStartLabel: copy.fields.previewStartSeconds,
     previewStartPlaceholder: copy.placeholders.previewStartSeconds,
     regionalPricingLabel: copy.access.useRegionalPricing,
-    licenseLabel: copy.sections.license,
+    licenseLabel: tabs.activeTab === "song" && controller.primary.activeSongMode === "remix"
+      ? copy.derivative.licenseNewRemixTerms
+      : copy.sections.license,
     licenseLabels: {
       "non-commercial": nonCommercial.label,
       "commercial-use": commercialUse.label,
@@ -214,7 +216,7 @@ export function PostComposerSettingsHub({
             ? false
             : attachment?.kind === "video"
               ? commerce.monetizationState.visible
-              : attachment?.kind === "song" && primary.activeSongMode === "original"
+              : attachment?.kind === "song"
         }
         showAnonymousIdentity={identity.identity?.allowAnonymousIdentity === true}
         visibility={visibilityFromController(controller)}

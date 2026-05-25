@@ -8,7 +8,7 @@ import type {
 import {
   type AssetDerivativeInput,
   resolvedDerivativeReferences,
-  validateOriginalAssetLicense,
+  validateAssetLicense,
 } from "@/app/authenticated-helpers/asset-submit";
 
 export function buildSongPostRequest(input: {
@@ -22,7 +22,7 @@ export function buildSongPostRequest(input: {
   title: string;
   visibility: PostAudience;
 }) {
-  const licenseError = input.songMode === "original" ? validateOriginalAssetLicense(input.license, "song") : null;
+  const licenseError = validateAssetLicense(input.license, "song");
   if (licenseError) {
     throw new Error(licenseError);
   }
@@ -30,12 +30,12 @@ export function buildSongPostRequest(input: {
   return {
     access_mode: input.paidSongPriceUsd != null ? "locked" as const : "public" as const,
     caption: input.caption?.trim() || undefined,
-    commercial_rev_share_pct: input.songMode === "original" && input.license?.presetId === "commercial-remix"
+    commercial_rev_share_pct: input.license?.presetId === "commercial-remix"
       ? input.license.commercialRevSharePct
       : undefined,
     identity_mode: "public" as const,
     idempotency_key: input.idempotencyKey,
-    license_preset: input.songMode === "original" ? input.license?.presetId : undefined,
+    license_preset: input.license?.presetId,
     post_type: "song" as const,
     rights_basis: input.songMode === "original" ? "original" as const : "derivative" as const,
     song_artifact_bundle: input.bundleId,

@@ -159,7 +159,10 @@ log "deploy api staging worker"
   --env staging \
   --var "BUILD_GIT_SHA:$API_SHA" \
   --var "BUILD_GIT_REF:$API_REF" \
-  --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
+  --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
+  --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA\"" \
+  --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
+  --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\"")
 
 log "smoke checks"
 check_status "$WEB_ORIGIN/" "200"

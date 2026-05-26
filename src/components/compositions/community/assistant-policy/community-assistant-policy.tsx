@@ -79,7 +79,7 @@ function Section({
     <section className={cn("space-y-4", className)}>
       <div className="space-y-1">
         <Type as="h2" variant="h2">{title}</Type>
-        {subtitle ? <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{subtitle}</p> : null}
+        {subtitle ? <p className="max-w-3xl text-base leading-6 text-muted-foreground">{subtitle}</p> : null}
       </div>
       {children}
     </section>
@@ -99,7 +99,7 @@ function FieldRow({
     <div className="grid gap-3 border-b border-border-soft py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] md:items-center">
       <div className="space-y-1">
         <div className="text-base font-medium leading-6">{label}</div>
-        {description ? <p className="text-sm leading-5 text-muted-foreground">{description}</p> : null}
+        {description ? <p className="text-base leading-6 text-muted-foreground">{description}</p> : null}
       </div>
       <div className="min-w-0">{children}</div>
     </div>
@@ -218,7 +218,7 @@ function ProviderKeyField({
       <div className="space-y-2">
         {connected || invalid ? (
           <div className={cn(
-            "text-sm leading-5",
+            "text-base leading-6",
             connected ? "text-foreground" : "text-destructive",
           )}>
             {connected
@@ -228,7 +228,7 @@ function ProviderKeyField({
         ) : null}
         <Input
           autoComplete="off"
-          className="h-11 rounded-md font-mono text-sm"
+          className="h-11 rounded-md font-mono text-base"
           onChange={(event) => setApiKeyDraft(event.target.value)}
           placeholder={connected || invalid ? "Paste a new key to rotate" : placeholder}
           type="password"
@@ -315,7 +315,7 @@ function ModelSearchInput({
           role="listbox"
         >
           {filteredModels.length === 0 ? (
-            <div className="px-3 py-3 text-sm leading-5 text-muted-foreground">
+            <div className="px-3 py-3 text-base leading-6 text-muted-foreground">
               No OpenRouter models found.
             </div>
           ) : filteredModels.map((model) => {
@@ -383,7 +383,7 @@ function ModelBillingSection({
         <FieldRow description="Search the live OpenRouter model list for this community's key." label="Model">
           <ModelSearchInput connected={connected} onModelChange={onModelChange} settings={settings} />
           {!connected ? (
-            <p className="mt-2 text-sm leading-5 text-muted-foreground">Save an OpenRouter key to choose a model.</p>
+            <p className="mt-2 text-base leading-6 text-muted-foreground">Save an OpenRouter key to choose a model.</p>
           ) : null}
         </FieldRow>
       </div>
@@ -424,7 +424,7 @@ function NumberRow({
           type="number"
           value={value ?? ""}
         />
-        {suffix ? <span className="text-sm text-muted-foreground">{suffix}</span> : null}
+        {suffix ? <span className="text-base text-muted-foreground">{suffix}</span> : null}
       </div>
     </FieldRow>
   );
@@ -542,10 +542,10 @@ function PromptField({
     <div className="space-y-2 border-b border-border-soft py-4 last:border-b-0">
       <div className="space-y-1">
         <Label className="text-base font-medium leading-6">{label}</Label>
-        {description ? <p className="text-sm leading-5 text-muted-foreground">{description}</p> : null}
+        {description ? <p className="text-base leading-6 text-muted-foreground">{description}</p> : null}
       </div>
       <Textarea
-        className="min-h-0 rounded-md font-mono text-sm leading-6"
+        className="min-h-0 rounded-md font-mono text-base leading-6"
         onChange={(event) => onChange(event.target.value)}
         rows={rows}
         value={value}
@@ -820,7 +820,7 @@ export function CommunityAssistantPolicyPage({
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="space-y-1">
                 <div className="text-base font-medium leading-6">Suggested questions</div>
-                <p className="text-sm leading-5 text-muted-foreground">
+                <p className="text-base leading-6 text-muted-foreground">
                   Example questions users can tap before they type their first message.
                 </p>
               </div>

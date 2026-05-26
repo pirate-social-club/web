@@ -791,7 +791,7 @@ export function ThreadView({
         )}
       </form>
       {voiceError ? (
-        <div className="border-t border-border-soft bg-background px-4 pb-3 text-sm text-destructive md:bg-card">
+        <div className="border-t border-border-soft bg-background px-4 pb-3 text-base text-destructive md:bg-card">
           {voiceError}
         </div>
       ) : null}

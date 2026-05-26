@@ -443,12 +443,18 @@ function VoiceSection({
   const voiceEnabled = settings.voiceMode !== "off";
   const voiceRepliesEnabled = settings.voiceMode === "voice_replies";
   const elevenLabsConnected = settings.elevenLabsKeyStatus.kind === "connected";
+  const scribeModel = settings.sttProvider === "elevenlabs"
+    && settings.sttModel.trim()
+    && settings.sttModel !== "voxtral-mini-latest"
+    && settings.sttModel !== "whisper-1"
+    ? settings.sttModel.trim()
+    : "scribe_v2";
 
   function updateVoiceMode(voiceMode: AssistantVoiceMode) {
     onChange({
       voiceMode,
       sttProvider: voiceMode === "off" ? settings.sttProvider : "elevenlabs",
-      sttModel: voiceMode === "off" ? settings.sttModel : settings.sttModel.trim() || "scribe_v2",
+      sttModel: voiceMode === "off" ? settings.sttModel : scribeModel,
       ttsProvider: voiceMode === "voice_replies" ? "elevenlabs" : settings.ttsProvider,
     });
   }

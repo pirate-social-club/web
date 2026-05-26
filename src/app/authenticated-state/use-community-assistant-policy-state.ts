@@ -114,6 +114,13 @@ export function assistantPolicyToSettings(
 export function assistantSettingsToPolicyUpdate(
   settings: CommunityAssistantPolicySettings,
 ): ApiCommunityAssistantPolicyUpdate {
+  const voiceEnabled = settings.voiceMode !== "off";
+  const scribeModel = settings.sttProvider === "elevenlabs"
+    && settings.sttModel.trim()
+    && settings.sttModel !== "voxtral-mini-latest"
+    && settings.sttModel !== "whisper-1"
+    ? settings.sttModel.trim()
+    : "scribe_v2";
   return {
     enabled: settings.enabled,
     displayName: settings.displayName,
@@ -139,8 +146,8 @@ export function assistantSettingsToPolicyUpdate(
     requireModeratorApprovalForWrites: true,
     perUserDailyMessageCap: settings.perUserDailyMessageCap,
     voiceMode: settings.voiceMode,
-    sttProvider: settings.sttProvider,
-    sttModel: settings.sttModel,
+    sttProvider: voiceEnabled ? "elevenlabs" : settings.sttProvider,
+    sttModel: voiceEnabled ? scribeModel : settings.sttModel,
     ttsProvider: settings.ttsProvider,
     ttsVoice: settings.ttsVoice,
     includeInSovereignExport: true,

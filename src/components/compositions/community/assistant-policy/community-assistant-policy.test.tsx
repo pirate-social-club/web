@@ -221,6 +221,33 @@ describe("CommunityAssistantPolicyPage", () => {
     view.unmount();
   });
 
+  test("revoking an ElevenLabs key calls the external credential handler", async () => {
+    const onElevenLabsKeyRevoke = mock(() => Promise.resolve());
+    const view = renderPolicy({
+      initialSettings: {
+        ...createDefaultCommunityAssistantPolicySettings(),
+        elevenLabsKeyStatus: {
+          connectedAt: "2026-05-22T00:00:00.000Z",
+          kind: "connected",
+          last4: "7xyz",
+        },
+      },
+      onElevenLabsKeyRevoke,
+    });
+
+    fireEvent.click(view.getByRole("button", { name: "Revoke" }));
+
+    await waitFor(() => {
+      expect(onElevenLabsKeyRevoke).toHaveBeenCalled();
+    });
+    expect(view.getByText("Current key: ...7xyz")).not.toBeNull();
+    expect(view.getLatestSettings().elevenLabsKeyStatus).toMatchObject({
+      kind: "connected",
+      last4: "7xyz",
+    });
+    view.unmount();
+  });
+
   test("searches live OpenRouter model options and selects a model", async () => {
     const view = renderPolicy({
       initialSettings: {

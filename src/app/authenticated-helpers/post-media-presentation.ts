@@ -204,12 +204,6 @@ export function toSongPostContent(
   const playbackState: SongContentSpec["playbackState"] = playbackDescriptor && playback
     ? playback.getPlaybackState(playbackDescriptor.key)
     : "idle";
-  const upstreamAttributions = post.upstream_asset_refs?.map((assetRef, index) => ({
-    assetId: assetRef,
-    relationshipType: "remix_of" as const,
-    title: `Source ${index + 1}`,
-  }));
-
   return {
     type: "song",
     accessMode: post.access_mode ?? "public",
@@ -242,6 +236,6 @@ export function toSongPostContent(
     title: songPresentation?.title ?? post.song_title ?? input.title,
     artworkSrc: songPresentation?.cover_art_ref ?? undefined,
     durationMs: songPresentation?.duration_ms ?? undefined,
-    upstreamAttributions: upstreamAttributions?.length ? upstreamAttributions : undefined,
+    upstreamAttributions: undefined,
   };
 }

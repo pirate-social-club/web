@@ -822,6 +822,8 @@ export function CommunityModerationPage({
           : (
             <CommunityAssistantPolicyPage
               onAvatarFileSelect={state.setAssistantAvatarFile}
+              onElevenLabsKeyRevoke={state.handleRevokeAssistantElevenLabsKey}
+              onElevenLabsKeySave={state.handleSaveAssistantElevenLabsKey}
               onOpenRouterKeyRevoke={state.handleRevokeAssistantOpenRouterKey}
               onOpenRouterKeySave={state.handleSaveAssistantOpenRouterKey}
               onSave={state.handleSaveAssistantPolicy}

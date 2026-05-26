@@ -153,7 +153,7 @@ function extractMinimumScore(config: unknown): number | null {
 }
 
 function extractDocumentProofProviders(atom: ReturnType<typeof flattenGatePolicyAtoms>[number]): DocumentProofProvider[] | undefined {
-  const acceptedProviders = (atom as { accepted_providers?: unknown }).accepted_providers;
+  const acceptedProviders = atom.accepted_providers;
   if (!Array.isArray(acceptedProviders)) {
     return undefined;
   }

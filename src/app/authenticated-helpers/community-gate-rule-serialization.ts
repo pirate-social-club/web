@@ -76,7 +76,7 @@ function draftToAtom(draft: IdentityGateDraft): GateAtom | null {
       provider: "self",
       ...acceptedProvidersField(draft.acceptedProviders),
       minimum_age: draft.minimumAge,
-    } as GateAtom;
+    };
   }
 
   if (draft.gateType === "wallet_score") {
@@ -93,7 +93,7 @@ function draftToAtom(draft: IdentityGateDraft): GateAtom | null {
       provider: "self",
       ...acceptedProvidersField(draft.acceptedProviders),
       allowed: draft.requiredValues,
-    } as GateAtom;
+    };
   }
 
   if (draft.gateType === "gender") {
@@ -102,7 +102,7 @@ function draftToAtom(draft: IdentityGateDraft): GateAtom | null {
       provider: "self",
       ...acceptedProvidersField(draft.acceptedProviders),
       allowed: [draft.requiredValue],
-    } as GateAtom;
+    };
   }
 
   return null;

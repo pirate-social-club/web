@@ -14,7 +14,7 @@ export interface ChatConversation {
   targetLabel?: string;
   title: string;
   transport: ChatTransport;
-  voiceMode?: "off" | "transcription_only" | "voice_replies";
+  voiceMode?: "off" | "transcription_only" | "voice_replies" | "text_and_voice_replies";
   voiceRepliesEnabled?: boolean;
   voiceTranscriptionEnabled?: boolean;
   unreadCount: number;

@@ -423,6 +423,22 @@ describe("CommunityAssistantPolicyPage", () => {
     view.unmount();
   });
 
+  test("renders TTS controls for text and voice replies", () => {
+    const view = renderPolicy({
+      initialSettings: {
+        ...createDefaultCommunityAssistantPolicySettings(),
+        voiceMode: "text_and_voice_replies",
+        sttModel: "scribe_v2",
+        ttsVoice: "voice_both",
+      },
+    });
+
+    expect(view.getByText("TTS provider")).not.toBeNull();
+    expect(view.getByDisplayValue("ElevenLabs")).not.toBeNull();
+    expect(view.getByDisplayValue("voice_both")).not.toBeNull();
+    view.unmount();
+  });
+
   test("updates TTS voice", () => {
     const view = renderPolicy({
       initialSettings: {

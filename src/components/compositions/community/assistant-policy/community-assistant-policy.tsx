@@ -45,6 +45,7 @@ const voiceModeOptions: Array<Option<AssistantVoiceMode>> = [
   { label: "Off", value: "off" },
   { label: "Transcription only", value: "transcription_only" },
   { label: "Voice replies", value: "voice_replies" },
+  { label: "Text + voice replies", value: "text_and_voice_replies" },
 ];
 
 const sourceRows: Array<{
@@ -441,7 +442,8 @@ function VoiceSection({
   settings: CommunityAssistantPolicySettings;
 }) {
   const voiceEnabled = settings.voiceMode !== "off";
-  const voiceRepliesEnabled = settings.voiceMode === "voice_replies";
+  const voiceRepliesEnabled = settings.voiceMode === "voice_replies"
+    || settings.voiceMode === "text_and_voice_replies";
   const elevenLabsConnected = settings.elevenLabsKeyStatus.kind === "connected";
   const scribeModel = settings.sttProvider === "elevenlabs"
     && settings.sttModel.trim()
@@ -455,7 +457,9 @@ function VoiceSection({
       voiceMode,
       sttProvider: voiceMode === "off" ? settings.sttProvider : "elevenlabs",
       sttModel: voiceMode === "off" ? settings.sttModel : scribeModel,
-      ttsProvider: voiceMode === "voice_replies" ? "elevenlabs" : settings.ttsProvider,
+      ttsProvider: voiceMode === "voice_replies" || voiceMode === "text_and_voice_replies"
+        ? "elevenlabs"
+        : settings.ttsProvider,
     });
   }
 

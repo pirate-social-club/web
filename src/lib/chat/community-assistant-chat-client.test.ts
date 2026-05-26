@@ -189,6 +189,26 @@ describe("community assistant chat client", () => {
     });
   });
 
+  test("treats text and voice replies as voice-reply capable", async () => {
+    const conversation = await loadCommunityAssistantConversation(createApi({
+      getAssistantPolicy: async () => createPolicy({
+        sttProvider: "elevenlabs",
+        elevenLabsKeyConfigured: true,
+        ttsProvider: "elevenlabs",
+        ttsVoiceConfigured: true,
+        voiceRepliesConfigured: true,
+        voiceTranscriptionConfigured: true,
+        voiceMode: "text_and_voice_replies",
+      }),
+    }), createCommunity());
+
+    expect(conversation).toMatchObject({
+      voiceMode: "text_and_voice_replies",
+      voiceRepliesEnabled: true,
+      voiceTranscriptionEnabled: true,
+    });
+  });
+
   test("ignores disabled or missing community assistants", async () => {
     await expect(loadCommunityAssistantConversation(createApi({
       getAssistantPolicy: async () => createPolicy({ enabled: false }),

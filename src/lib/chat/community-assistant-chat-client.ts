@@ -54,7 +54,7 @@ function publicPolicyPreview(policy: ApiCommunityAssistantPolicyResponse): {
   displayName: string;
   enabled: boolean;
   shortBio: string;
-  voiceMode: "off" | "transcription_only" | "voice_replies";
+  voiceMode: "off" | "transcription_only" | "voice_replies" | "text_and_voice_replies";
   voiceRepliesEnabled: boolean;
   voiceTranscriptionEnabled: boolean;
 } | null {
@@ -69,7 +69,9 @@ function publicPolicyPreview(policy: ApiCommunityAssistantPolicyResponse): {
     : "ttsVoice" in policy && typeof policy.ttsVoice === "string" && Boolean(policy.ttsVoice.trim());
   const voiceRepliesConfigured = "voiceRepliesConfigured" in policy
     ? policy.voiceRepliesConfigured
-    : voiceMode === "voice_replies" && ttsProvider === "elevenlabs" && ttsVoiceConfigured;
+    : (voiceMode === "voice_replies" || voiceMode === "text_and_voice_replies")
+      && ttsProvider === "elevenlabs"
+      && ttsVoiceConfigured;
   const voiceTranscriptionConfigured = "voiceTranscriptionConfigured" in policy
     ? policy.voiceTranscriptionConfigured
     : voiceMode !== "off" && sttProvider === "elevenlabs";

@@ -421,7 +421,7 @@ export type ApiCommunityTelegramChatSettingsUpdate = {
 
 export type ApiAssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector";
 export type ApiAssistantActionMode = "answer_only" | "draft_only" | "confirmed_writes";
-export type ApiAssistantVoiceMode = "off" | "transcription_only" | "voice_replies";
+export type ApiAssistantVoiceMode = "off" | "transcription_only" | "voice_replies" | "text_and_voice_replies";
 export type ApiAssistantSttProvider = "elevenlabs" | "mistral" | "openai" | "none";
 export type ApiAssistantTtsProvider = "elevenlabs" | "none";
 export type ApiAssistantRetentionMode = "per_user_private" | "community_visible_to_mods" | "ephemeral";

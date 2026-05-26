@@ -7,7 +7,7 @@ export type AssistantContextMode = "live_sql" | "summary_cache" | "hybrid_vector
 
 export type AssistantActionMode = "answer_only" | "draft_only" | "confirmed_writes";
 
-export type AssistantVoiceMode = "off" | "transcription_only" | "voice_replies";
+export type AssistantVoiceMode = "off" | "transcription_only" | "voice_replies" | "text_and_voice_replies";
 
 export type AssistantSttProvider = "elevenlabs" | "mistral" | "openai" | "none";
 

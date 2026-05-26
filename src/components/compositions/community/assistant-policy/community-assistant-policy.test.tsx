@@ -47,12 +47,16 @@ afterEach(() => {
 
 type RenderOptions = {
   initialSettings?: CommunityAssistantPolicySettings;
+  onElevenLabsKeyRevoke?: () => void | Promise<void>;
+  onElevenLabsKeySave?: (apiKey: string) => void | Promise<void>;
   saveDisabled?: boolean;
   submitState?: CommunityAssistantSubmitState;
 };
 
 function renderPolicy({
   initialSettings = createDefaultCommunityAssistantPolicySettings(),
+  onElevenLabsKeyRevoke,
+  onElevenLabsKeySave,
   saveDisabled = false,
   submitState = { kind: "idle" },
 }: RenderOptions = {}) {
@@ -67,6 +71,8 @@ function renderPolicy({
 
     return (
       <CommunityAssistantPolicyPage
+        onElevenLabsKeyRevoke={onElevenLabsKeyRevoke}
+        onElevenLabsKeySave={onElevenLabsKeySave}
         onSave={onSave}
         onSettingsChange={(next) => {
           onSettingsChange(next);
@@ -191,6 +197,27 @@ describe("CommunityAssistantPolicyPage", () => {
       kind: "connected",
       last4: "7xyz",
     });
+    view.unmount();
+  });
+
+  test("saving an ElevenLabs key calls the external credential handler", async () => {
+    const onElevenLabsKeySave = mock(() => Promise.resolve());
+    const view = renderPolicy({
+      initialSettings: {
+        ...createDefaultCommunityAssistantPolicySettings(),
+        elevenLabsKeyStatus: { kind: "missing" },
+      },
+      onElevenLabsKeySave,
+    });
+
+    editTextInput(view.getByPlaceholderText("ElevenLabs API key"), "elevenlabs-secret-route-key-7xyz");
+    fireEvent.click(view.getByRole("button", { name: "Save ElevenLabs key" }));
+
+    await waitFor(() => {
+      expect(onElevenLabsKeySave).toHaveBeenCalledWith("elevenlabs-secret-route-key-7xyz");
+    });
+    expect(view.queryByText("Current key: ...7xyz")).toBeNull();
+    expect(view.getLatestSettings().elevenLabsKeyStatus).toEqual({ kind: "missing" });
     view.unmount();
   });
 

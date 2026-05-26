@@ -7,7 +7,11 @@ import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirat
 import { navigate } from "@/app/router";
 import type { DonationPartnerPreview } from "@/components/compositions/community/donations-editor/community-donations-editor-page";
 import type { CommunityLinkEditorItem } from "@/components/compositions/community/links-editor/community-links-editor-page";
-import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
+import {
+  DEFAULT_DOCUMENT_PROOF_PROVIDERS,
+  type DocumentProofProvider,
+  type IdentityGateDraft,
+} from "@/components/compositions/community/create-composer/create-community-composer.types";
 import type { PricingTier, CountryAssignment as PricingCountryAssignment } from "@/components/compositions/community/pricing-editor/community-pricing-editor-page";
 import { createDefaultCourtyardInventoryDraft } from "@/lib/courtyard-inventory-gates";
 import { COUNTRIES, normalizeCountryCode } from "@/lib/countries";
@@ -148,6 +152,15 @@ function extractMinimumScore(config: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function extractDocumentProofProviders(atom: ReturnType<typeof flattenGatePolicyAtoms>[number]): DocumentProofProvider[] | undefined {
+  const acceptedProviders = (atom as { accepted_providers?: unknown }).accepted_providers;
+  if (!Array.isArray(acceptedProviders)) {
+    return undefined;
+  }
+  const providers = DEFAULT_DOCUMENT_PROOF_PROVIDERS.filter((provider) => acceptedProviders.includes(provider));
+  return providers.length > 0 ? providers : undefined;
+}
+
 function extractContractAddress(config: unknown): string | null {
   if (!config || typeof config !== "object") {
     return null;
@@ -268,12 +281,22 @@ function getCommunityGateDraft(atom: ReturnType<typeof flattenGatePolicyAtoms>[n
   }
 
   if (atom.type === "nationality") {
-    return { gateType: "nationality", provider: "self", requiredValues: atom.allowed ?? [] };
+    return {
+      gateType: "nationality",
+      provider: "self",
+      acceptedProviders: extractDocumentProofProviders(atom),
+      requiredValues: atom.allowed ?? [],
+    };
   }
 
   if (atom.type === "minimum_age") {
     return typeof atom.minimum_age === "number" && Number.isInteger(atom.minimum_age)
-      ? { gateType: "minimum_age", provider: "self", minimumAge: atom.minimum_age }
+      ? {
+          gateType: "minimum_age",
+          provider: "self",
+          acceptedProviders: extractDocumentProofProviders(atom),
+          minimumAge: atom.minimum_age,
+        }
       : null;
   }
 
@@ -283,7 +306,14 @@ function getCommunityGateDraft(atom: ReturnType<typeof flattenGatePolicyAtoms>[n
 
   if (atom.type === "gender") {
     const marker = atom.allowed?.[0];
-    return marker === "M" || marker === "F" ? { gateType: "gender", provider: "self", requiredValue: marker } : null;
+    return marker === "M" || marker === "F"
+      ? {
+          gateType: "gender",
+          provider: "self",
+          acceptedProviders: extractDocumentProofProviders(atom),
+          requiredValue: marker,
+        }
+      : null;
   }
 
   return null;

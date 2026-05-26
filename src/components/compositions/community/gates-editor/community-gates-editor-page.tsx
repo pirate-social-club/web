@@ -15,13 +15,15 @@ import { Label } from "@/components/primitives/label";
 import { CheckboxCard } from "@/components/primitives/checkbox-card";
 import { OptionCard } from "@/components/primitives/option-card";
 import { NationalityMultiPicker } from "@/components/compositions/community/create-composer/nationality-picker";
-import type {
-  AnonymousIdentityScope,
-  CommunityDefaultAgeGatePolicy,
-  CommunityMembershipMode,
-  CommunityReadAccessMode,
-  CreatorVerificationState,
-  IdentityGateDraft,
+import {
+  DEFAULT_DOCUMENT_PROOF_PROVIDERS,
+  type AnonymousIdentityScope,
+  type CommunityDefaultAgeGatePolicy,
+  type CommunityMembershipMode,
+  type CommunityReadAccessMode,
+  type CreatorVerificationState,
+  type DocumentProofProvider,
+  type IdentityGateDraft,
 } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import { isCountryCode } from "@/lib/countries";
 import {
@@ -59,23 +61,31 @@ function Section({
 
 function CheckboxRow({
   checked,
+  disabled = false,
   id,
   label,
   onCheckedChange,
 }: {
   checked: boolean;
+  disabled?: boolean;
   id: string;
   label: string;
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5">
+    <div className={cn(
+      "flex min-h-14 items-center gap-3 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 px-4 py-3.5",
+      disabled && "opacity-60",
+    )}>
       <Checkbox
         checked={checked}
+        disabled={disabled}
         id={id}
-        onCheckedChange={(next) => onCheckedChange(next === true)}
+        onCheckedChange={(next) => {
+          if (!disabled) onCheckedChange(next === true);
+        }}
       />
-      <Label className="flex-1 text-base leading-6" htmlFor={id}>
+      <Label className={cn("flex-1 text-base leading-6", disabled && "text-muted-foreground")} htmlFor={id}>
         {label}
       </Label>
     </div>
@@ -89,6 +99,75 @@ const POW_EXCLUSIVE_GATE_TYPES: IdentityGateDraft["gateType"][] = [
   "wallet_score",
   "gender",
 ];
+
+type DocumentGateDraft = Extract<IdentityGateDraft, { gateType: "nationality" | "minimum_age" | "gender" }>;
+
+const DOCUMENT_PROOF_PROVIDER_OPTIONS: Array<{ value: DocumentProofProvider; label: string }> = [
+  { value: "self", label: "Self.xyz" },
+  { value: "zkpassport", label: "ZKPassport" },
+];
+
+function getInitialDocumentProofProviders(): DocumentProofProvider[] {
+  return [...DEFAULT_DOCUMENT_PROOF_PROVIDERS];
+}
+
+export function normalizeDocumentProofProviders(
+  providers: readonly DocumentProofProvider[] | null | undefined,
+): DocumentProofProvider[] {
+  const selected = DEFAULT_DOCUMENT_PROOF_PROVIDERS.filter((provider) => providers?.includes(provider));
+  return selected.length > 0 ? selected : ["self"];
+}
+
+function getDocumentProofProviders(draft: DocumentGateDraft | null | undefined): DocumentProofProvider[] {
+  return normalizeDocumentProofProviders(draft?.acceptedProviders);
+}
+
+export function toggleDocumentProofProvider(
+  providers: readonly DocumentProofProvider[],
+  provider: DocumentProofProvider,
+  checked: boolean,
+): DocumentProofProvider[] {
+  const current = normalizeDocumentProofProviders(providers);
+  if (checked) {
+    return DEFAULT_DOCUMENT_PROOF_PROVIDERS.filter((candidate) => candidate === provider || current.includes(candidate));
+  }
+  if (!current.includes(provider) || current.length === 1) {
+    return current;
+  }
+  return current.filter((candidate) => candidate !== provider);
+}
+
+function DocumentProofProviderRows({
+  draft,
+  onChange,
+}: {
+  draft: DocumentGateDraft;
+  onChange: (providers: DocumentProofProvider[]) => void;
+}) {
+  const providers = getDocumentProofProviders(draft);
+  const idPrefix = `community-${draft.gateType.replaceAll("_", "-")}-proof-provider`;
+
+  return (
+    <div className="space-y-2">
+      <FormFieldLabel label="Accepted proof apps" />
+      <div className="space-y-2">
+        {DOCUMENT_PROOF_PROVIDER_OPTIONS.map((option) => {
+          const checked = providers.includes(option.value);
+          return (
+            <CheckboxRow
+              key={option.value}
+              checked={checked}
+              disabled={checked && providers.length === 1}
+              id={`${idPrefix}-${option.value}`}
+              label={option.label}
+              onCheckedChange={(next) => onChange(toggleDocumentProofProvider(providers, option.value, next))}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function normalizeGateDraftsForMatchMode(
   drafts: IdentityGateDraft[],
@@ -175,6 +254,7 @@ export interface CommunityGatesEditorPageProps {
   saveDisabled?: boolean;
   showReadAccessSection?: boolean;
   showSaveAction?: boolean;
+  showExperimentalZkPassportProviders?: boolean;
   showTitle?: boolean;
 }
 
@@ -201,6 +281,7 @@ export function CommunityGatesEditorPage({
   saveDisabled = false,
   showReadAccessSection = true,
   showSaveAction = true,
+  showExperimentalZkPassportProviders = true,
   showTitle = true,
 }: CommunityGatesEditorPageProps) {
   const { locale } = useUiLocale();
@@ -371,12 +452,13 @@ export function CommunityGatesEditorPage({
                   <CheckboxCard
                     className={nationalityGate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(nationalityGate)}
-                    title={mc.nationalityTitle}
+                    title={showExperimentalZkPassportProviders ? "Nationality verification" : mc.nationalityTitle}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
                       checked
                         ? upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "nationality",
                           provider: "self",
+                          acceptedProviders: getInitialDocumentProofProviders(),
                           requiredValues: [],
                         }, gateMatchMode)
                         : removeGateDraft(gateDrafts, "nationality"),
@@ -385,11 +467,19 @@ export function CommunityGatesEditorPage({
 
                   {nationalityGate ? (
                     <div className="space-y-2 ps-4">
+                      {showExperimentalZkPassportProviders ? (
+                        <DocumentProofProviderRows
+                          draft={nationalityGate}
+                          onChange={(providers) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
+                            ...nationalityGate,
+                            acceptedProviders: providers,
+                          }, gateMatchMode))}
+                        />
+                      ) : null}
                       <FormFieldLabel label={mc.allowedNationalityLabel} />
                       <NationalityMultiPicker
                         onChange={(codes) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
-                          gateType: "nationality",
-                          provider: "self",
+                          ...nationalityGate,
                           requiredValues: codes,
                         }, gateMatchMode))}
                         values={nationalityGate.requiredValues}
@@ -403,12 +493,13 @@ export function CommunityGatesEditorPage({
                   <CheckboxCard
                     className={minimumAgeGate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(minimumAgeGate)}
-                    title={mc.minimumAgeTitle}
+                    title={showExperimentalZkPassportProviders ? "Minimum age" : mc.minimumAgeTitle}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
                       checked
                         ? upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "minimum_age",
                           provider: "self",
+                          acceptedProviders: getInitialDocumentProofProviders(),
                           minimumAge: 30,
                         }, gateMatchMode)
                         : removeGateDraft(gateDrafts, "minimum_age"),
@@ -417,16 +508,23 @@ export function CommunityGatesEditorPage({
 
                   {minimumAgeGate ? (
                     <div className="space-y-2 ps-4">
+                      {showExperimentalZkPassportProviders ? (
+                        <DocumentProofProviderRows
+                          draft={minimumAgeGate}
+                          onChange={(providers) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
+                            ...minimumAgeGate,
+                            acceptedProviders: providers,
+                          }, gateMatchMode))}
+                        />
+                      ) : null}
                       <FormFieldLabel label={mc.minimumAgeLabel} />
                       <NumericStepper
                         max={125}
                         min={18}
                         value={minimumAgeGate.minimumAge}
                         onChange={(next) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
-                          gateType: "minimum_age",
-                          provider: "self",
+                          ...minimumAgeGate,
                           minimumAge: next,
-                          gateRuleId: minimumAgeGate.gateRuleId,
                         }, gateMatchMode))}
                       />
                       {(!Number.isInteger(minimumAgeGate.minimumAge) || minimumAgeGate.minimumAge < 18 || minimumAgeGate.minimumAge > 125) ? (
@@ -438,12 +536,13 @@ export function CommunityGatesEditorPage({
                   <CheckboxCard
                     className={genderGate ? "border-border bg-muted/30" : undefined}
                     checked={Boolean(genderGate)}
-                    title={mc.genderTitle}
+                    title={showExperimentalZkPassportProviders ? "Document sex marker (verified ID)" : mc.genderTitle}
                     onCheckedChange={(checked) => onGateDraftsChange?.(
                       checked
                         ? upsertGateDraftForMatchMode(gateDrafts, {
                           gateType: "gender",
                           provider: "self",
+                          acceptedProviders: getInitialDocumentProofProviders(),
                           requiredValue: genderGate?.requiredValue ?? "F",
                         }, gateMatchMode)
                         : removeGateDraft(gateDrafts, "gender"),
@@ -451,29 +550,36 @@ export function CommunityGatesEditorPage({
                   />
 
                   {genderGate ? (
-                    <div className="grid gap-3 ps-4 sm:grid-cols-2">
-                      <OptionCard
-                        className={genderGate.requiredValue === "F" ? "border-border bg-muted/30" : undefined}
-                        selected={genderGate.requiredValue === "F"}
-                        title={mc.fMarkerLabel}
-                        onClick={() => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
-                          gateType: "gender",
-                          provider: "self",
-                          requiredValue: "F",
-                          gateRuleId: genderGate.gateRuleId,
-                        }, gateMatchMode))}
-                      />
-                      <OptionCard
-                        className={genderGate.requiredValue === "M" ? "border-border bg-muted/30" : undefined}
-                        selected={genderGate.requiredValue === "M"}
-                        title={mc.mMarkerLabel}
-                        onClick={() => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
-                          gateType: "gender",
-                          provider: "self",
-                          requiredValue: "M",
-                          gateRuleId: genderGate.gateRuleId,
-                        }, gateMatchMode))}
-                      />
+                    <div className="space-y-2 ps-4">
+                      {showExperimentalZkPassportProviders ? (
+                        <DocumentProofProviderRows
+                          draft={genderGate}
+                          onChange={(providers) => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
+                            ...genderGate,
+                            acceptedProviders: providers,
+                          }, gateMatchMode))}
+                        />
+                      ) : null}
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <OptionCard
+                          className={genderGate.requiredValue === "F" ? "border-border bg-muted/30" : undefined}
+                          selected={genderGate.requiredValue === "F"}
+                          title={mc.fMarkerLabel}
+                          onClick={() => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
+                            ...genderGate,
+                            requiredValue: "F",
+                          }, gateMatchMode))}
+                        />
+                        <OptionCard
+                          className={genderGate.requiredValue === "M" ? "border-border bg-muted/30" : undefined}
+                          selected={genderGate.requiredValue === "M"}
+                          title={mc.mMarkerLabel}
+                          onClick={() => onGateDraftsChange?.(upsertGateDraftForMatchMode(gateDrafts, {
+                            ...genderGate,
+                            requiredValue: "M",
+                          }, gateMatchMode))}
+                        />
+                      </div>
                     </div>
                   ) : null}
 

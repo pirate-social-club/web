@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import {
+  normalizeDocumentProofProviders,
   normalizeGateDraftsForMatchMode,
+  toggleDocumentProofProvider,
   upsertGateDraftForMatchMode,
 } from "./community-gates-editor-page";
 
@@ -44,5 +46,19 @@ describe("CommunityGatesEditorPage gate draft helpers", () => {
       powGate,
       palmScanGate,
     ]);
+  });
+
+  test("normalizes document proof providers with Self as the backward-compatible default", () => {
+    expect(normalizeDocumentProofProviders(undefined)).toEqual(["self"]);
+    expect(normalizeDocumentProofProviders([])).toEqual(["self"]);
+    expect(normalizeDocumentProofProviders(["zkpassport"])).toEqual(["zkpassport"]);
+    expect(normalizeDocumentProofProviders(["zkpassport", "self"])).toEqual(["self", "zkpassport"]);
+  });
+
+  test("toggles document proof providers without allowing an empty provider set", () => {
+    expect(toggleDocumentProofProvider(["self"], "self", false)).toEqual(["self"]);
+    expect(toggleDocumentProofProvider(["self"], "zkpassport", true)).toEqual(["self", "zkpassport"]);
+    expect(toggleDocumentProofProvider(["self", "zkpassport"], "self", false)).toEqual(["zkpassport"]);
+    expect(toggleDocumentProofProvider(["zkpassport"], "self", true)).toEqual(["self", "zkpassport"]);
   });
 });

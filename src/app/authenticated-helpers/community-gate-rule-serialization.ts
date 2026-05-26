@@ -1,5 +1,9 @@
 import type { GateAtom, GateExpression, GatePolicy } from "@pirate/api-contracts";
-import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
+import {
+  DEFAULT_DOCUMENT_PROOF_PROVIDERS,
+  type DocumentProofProvider,
+  type IdentityGateDraft,
+} from "@/components/compositions/community/create-composer/create-community-composer.types";
 
 export type SerializedGatePolicy = GatePolicy;
 
@@ -70,8 +74,9 @@ function draftToAtom(draft: IdentityGateDraft): GateAtom | null {
     return {
       type: "minimum_age",
       provider: "self",
+      ...acceptedProvidersField(draft.acceptedProviders),
       minimum_age: draft.minimumAge,
-    };
+    } as GateAtom;
   }
 
   if (draft.gateType === "wallet_score") {
@@ -86,17 +91,26 @@ function draftToAtom(draft: IdentityGateDraft): GateAtom | null {
     return {
       type: "nationality",
       provider: "self",
+      ...acceptedProvidersField(draft.acceptedProviders),
       allowed: draft.requiredValues,
-    };
+    } as GateAtom;
   }
 
   if (draft.gateType === "gender") {
     return {
       type: "gender",
       provider: "self",
+      ...acceptedProvidersField(draft.acceptedProviders),
       allowed: [draft.requiredValue],
-    };
+    } as GateAtom;
   }
 
   return null;
+}
+
+function acceptedProvidersField(
+  providers: readonly DocumentProofProvider[] | null | undefined,
+): { accepted_providers?: DocumentProofProvider[] } {
+  const selected = DEFAULT_DOCUMENT_PROOF_PROVIDERS.filter((provider) => providers?.includes(provider));
+  return selected.length > 0 ? { accepted_providers: selected } : {};
 }

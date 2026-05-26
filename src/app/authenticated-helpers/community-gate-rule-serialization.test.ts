@@ -134,6 +134,29 @@ describe("serializeIdentityGateDrafts", () => {
     });
   });
 
+  test("serializes accepted document proof providers", () => {
+    expect(serializeIdentityGateDrafts([{
+      gateType: "nationality",
+      provider: "self",
+      acceptedProviders: ["self", "zkpassport"],
+      requiredValues: ["US"],
+    }])).toEqual({
+      version: 1,
+      expression: {
+        op: "and",
+        children: [{
+          op: "gate",
+          gate: {
+            type: "nationality",
+            provider: "self",
+            accepted_providers: ["self", "zkpassport"],
+            allowed: ["US"],
+          },
+        }],
+      },
+    });
+  });
+
   test("wraps in or when mode is any", () => {
     const result = serializeIdentityGateDrafts(
       [

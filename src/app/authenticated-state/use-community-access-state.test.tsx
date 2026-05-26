@@ -214,6 +214,38 @@ describe("useCommunityAccessState", () => {
     });
   });
 
+  test("preserves accepted document proof providers from gate policy atoms", async () => {
+    installCommunityApiMocks();
+    const { result } = renderAccessHook({
+      community: createCommunity({
+        gate_policy: {
+          version: 1,
+          expression: {
+            op: "and",
+            children: [{
+              op: "gate",
+              gate: {
+                type: "nationality",
+                provider: "self",
+                accepted_providers: ["self", "zkpassport"],
+                allowed: ["US"],
+              },
+            }],
+          },
+        },
+      }),
+    });
+
+    await waitFor(() => expect(result.current.gateDrafts).toHaveLength(1));
+
+    expect(result.current.gateDrafts[0]).toEqual({
+      gateType: "nationality",
+      provider: "self",
+      acceptedProviders: ["self", "zkpassport"],
+      requiredValues: ["US"],
+    });
+  });
+
   test("initializes Courtyard inventory gate drafts from active token rules", async () => {
     installCommunityApiMocks();
     const { result } = renderAccessHook({

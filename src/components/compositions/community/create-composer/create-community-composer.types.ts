@@ -6,6 +6,7 @@ import type {
 
 export type CommunityMembershipMode = "request" | "gated";
 export type CommunityGateMatchMode = "all" | "any";
+export type DocumentProofProvider = "self" | "zkpassport";
 export type { CourtyardWalletInventoryGroup };
 export type { AnonymousIdentityScope, CommunityDefaultAgeGatePolicy };
 export type CommunityReadAccessMode = "public" | "members_only";
@@ -17,6 +18,8 @@ export type CommunityDatabaseRegion =
   | "aws-eu-west-1"
   | "aws-ap-south-1"
   | "aws-ap-northeast-1";
+
+export const DEFAULT_DOCUMENT_PROOF_PROVIDERS: DocumentProofProvider[] = ["self", "zkpassport"];
 
 export type IdentityGateDraft =
   | {
@@ -31,12 +34,14 @@ export type IdentityGateDraft =
   | {
     gateType: "nationality";
     provider: "self";
+    acceptedProviders?: DocumentProofProvider[];
     requiredValues: string[];
     gateRuleId?: string;
   }
   | {
     gateType: "minimum_age";
     provider: "self";
+    acceptedProviders?: DocumentProofProvider[];
     minimumAge: number;
     gateRuleId?: string;
   }
@@ -49,6 +54,7 @@ export type IdentityGateDraft =
   | {
     gateType: "gender";
     provider: "self";
+    acceptedProviders?: DocumentProofProvider[];
     requiredValue: "M" | "F";
     gateRuleId?: string;
   }

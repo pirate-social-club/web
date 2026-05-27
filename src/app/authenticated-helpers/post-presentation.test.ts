@@ -500,6 +500,23 @@ describe("post presentation songs", () => {
       .toBe("https://aeneid.portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48");
   });
 
+  test("maps transient Story license reuse notices into song card content", () => {
+    const content = toCommunityPostContent(
+      createSongPost({ asset: "asset_ast_song" }),
+      {
+        storyLicenseNotice: {
+          label: "Story license reused",
+          description: "This upload reused an existing Story registration, so it keeps the original terms: Commercial remix, 10% royalty.",
+        },
+      },
+    );
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.storyLicenseNotice?.label).toBe("Story license reused");
+    expect(content.storyLicenseNotice?.description).toContain("Commercial remix, 10% royalty");
+  });
+
   test("surfaces vinyl availability from listing metadata without exposing the URL", () => {
     const content = toCommunityPostContent(
       createSongPost({ access_mode: "locked", asset: "asset_ast_song" }),

@@ -1,9 +1,9 @@
 import * as React from "react";
-import { ArrowSquareOut, CheckCircle, Clock, WarningCircle } from "@phosphor-icons/react";
+import { ArrowSquareOut, CheckCircle, Clock, Info, WarningCircle } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
 import { postCardType } from "./post-card.styles";
-import type { StoryRegistrationStatus } from "./post-card.types";
+import type { StoryLicenseNotice, StoryRegistrationStatus } from "./post-card.types";
 
 const statusClassName: Record<StoryRegistrationStatus["state"], string> = {
   registered: "border-success/20 bg-success/10 text-success",
@@ -65,6 +65,37 @@ export function StoryRegistrationBadge({
             <span className="truncate">View on Story</span>
             <ArrowSquareOut aria-hidden="true" className="size-3.5 shrink-0" />
           </a>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
+export function StoryLicenseNoticeBadge({
+  className,
+  notice,
+}: {
+  className?: string;
+  notice?: StoryLicenseNotice;
+}) {
+  if (!notice) return null;
+
+  return (
+    <div
+      className={cn(
+        "inline-flex max-w-full items-start gap-2 rounded-lg border border-warning/25 bg-warning/10 px-3 py-2 text-start text-warning",
+        className,
+      )}
+    >
+      <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" weight="bold" />
+      <span className="min-w-0">
+        <span className={cn("block font-medium", postCardType.label)}>
+          {notice.label}
+        </span>
+        {notice.description ? (
+          <span className={cn("block text-warning/90", postCardType.meta)}>
+            {notice.description}
+          </span>
         ) : null}
       </span>
     </div>

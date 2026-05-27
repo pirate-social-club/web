@@ -20,6 +20,7 @@ export type SongPresentationOptions = {
   localeTag?: string;
   purchase?: ApiCommunityPurchase;
   playback?: SongPlaybackController;
+  storyLicenseNotice?: Extract<PostCardProps["content"], { type: "song" }>["storyLicenseNotice"];
   storyNetwork?: PirateStoryNetwork;
   onBuy?: () => void;
 };

@@ -34,6 +34,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { AuthRequiredRouteState, FullPageSpinner, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPurchaseFlow } from "@/app/authenticated-helpers/song-purchase";
 import { useSongCommerceState, useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
+import { takeStoryLicenseReuseNotice, type StoryLicenseReuseNotice } from "@/app/authenticated-helpers/story-license-reuse-notice";
 import { usePost } from "@/app/authenticated-state/post-state";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
@@ -166,10 +167,15 @@ export function PostPage({ postId }: { postId: string }) {
   const [liveViewerSession, setLiveViewerSession] = React.useState<ApiLiveRoomViewerAttachResponse | null>(null);
   const [liveViewerOpen, setLiveViewerOpen] = React.useState(false);
   const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
+  const [storyLicenseReuseNotice, setStoryLicenseReuseNotice] = React.useState<StoryLicenseReuseNotice | null>(null);
   const autoWatchAttemptedRef = React.useRef(false);
   const inlineLiveViewerAttemptedRef = React.useRef<string | null>(null);
   const liveViewerAttachInFlightRef = React.useRef(false);
   const liveRoomGuestInviteAcceptInFlightRef = React.useRef(false);
+
+  React.useEffect(() => {
+    setStoryLicenseReuseNotice(takeStoryLicenseReuseNotice(postId));
+  }, [postId]);
   const autoWatchLiveRoom = React.useMemo(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("watch_live_room") === "1";
@@ -790,6 +796,7 @@ export function PostPage({ postId }: { postId: string }) {
       ) : undefined,
       playback: songPlayback,
       purchase: threadPurchase,
+      storyLicenseNotice: storyLicenseReuseNotice ?? undefined,
     }
     : undefined;
   const liveRoom = liveRoomAccess?.room ?? null;

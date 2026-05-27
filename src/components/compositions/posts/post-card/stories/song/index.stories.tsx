@@ -115,6 +115,65 @@ export const StoryRegisteredWithPortalLink: Story = {
   ),
 };
 
+export const StoryRegistrationPending: Story = {
+  name: "Story / Registration pending",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Original awaiting Story registration"
+      content={{
+        ...baseSong,
+        storyRegistration: {
+          state: "pending",
+          label: "IP registration in progress",
+          description: "This will appear as a remix source after Story registration completes.",
+        },
+      }}
+    />
+  ),
+};
+
+export const StoryRegistrationFailed: Story = {
+  name: "Story / Registration failed",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Original with Story registration failure"
+      content={{
+        ...baseSong,
+        storyRegistration: {
+          state: "failed",
+          label: "IP registration failed",
+          description: "Story royalty configuration is missing. This will not appear as a remix source until registration is retried.",
+        },
+      }}
+    />
+  ),
+};
+
+export const StoryLicenseReused: Story = {
+  name: "Story / License reused after reupload",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Reuploaded original"
+      content={{
+        ...baseSong,
+        storyRegistration: {
+          state: "registered",
+          label: "Remix-eligible",
+          description: "Story IP registration is complete.",
+          portalHref: "https://aeneid.portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48",
+        },
+        storyLicenseNotice: {
+          label: "Story license reused",
+          description: "This upload reused an existing Story registration, so it keeps the original terms: Commercial remix, 10% royalty.",
+        },
+      }}
+    />
+  ),
+};
+
 export const Buffering: Story = {
   name: "Playback / Buffering",
   render: () => (

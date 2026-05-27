@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { Community as ApiCommunity, CommunityPreview as ApiCommunityPreview, SongArtifactBundle as ApiSongArtifactBundle, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
+import type { Asset as ApiAsset, Community as ApiCommunity, CommunityPreview as ApiCommunityPreview, SongArtifactBundle as ApiSongArtifactBundle, UserAgent as ApiUserAgent } from "@pirate/api-contracts";
 import type { CommunityPricingPolicy as ApiCommunityPricingPolicy } from "@pirate/api-contracts";
 import type { JoinEligibility as ApiJoinEligibility } from "@pirate/api-contracts";
 import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
@@ -36,6 +36,7 @@ import { getFreedomBrowserDetectionSnapshot, prefersNativeRadicleLinks } from "@
 import { resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
 import { buildBasePostRequest } from "@/app/authenticated-helpers/create-post-submit/base";
 import { buildStoryRegistrationCreationWarning } from "@/app/authenticated-helpers/story-registration-warning";
+import { buildStoryLicenseReuseNotice, rememberStoryLicenseReuseNotice } from "@/app/authenticated-helpers/story-license-reuse-notice";
 import { submitImagePost } from "@/app/authenticated-helpers/create-post-submit/image";
 import { submitLinkPost } from "@/app/authenticated-helpers/create-post-submit/link";
 import { submitLiveRoom } from "@/app/authenticated-helpers/create-post-submit/live";
@@ -647,14 +648,15 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const warnIfStoryRegistrationIncomplete = React.useCallback(async (
     post: ApiCreatedPost | null,
     postType: "song" | "video",
-  ) => {
-    if (!post?.asset) return;
+  ): Promise<ApiAsset | null> => {
+    if (!post?.asset) return null;
     try {
       const asset = await api.communities.getAsset(communityId, post.asset);
       const warning = buildStoryRegistrationCreationWarning(asset, postType);
       if (warning) {
         toast.warning(warning.title, { description: warning.description });
       }
+      return asset;
     } catch (error) {
       logger.warn("[create-post] could not load created asset Story registration status", {
         assetId: post.asset,
@@ -662,6 +664,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         error,
         postId: post.id,
       });
+      return null;
     }
   }, [api.communities, communityId]);
 
@@ -943,7 +946,16 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         postType: publishedPostType,
       });
       if (publishedPostType === "song" || publishedPostType === "video") {
-        await warnIfStoryRegistrationIncomplete(result, publishedPostType);
+        const asset = await warnIfStoryRegistrationIncomplete(result, publishedPostType);
+        if (result?.id && publishedPostType === "song") {
+          rememberStoryLicenseReuseNotice(
+            result.id,
+            buildStoryLicenseReuseNotice({
+              asset,
+              submittedLicense: license,
+            }),
+          );
+        }
       }
       const destinationPostId = publishedPostId ?? result?.id;
       if (!destinationPostId) {

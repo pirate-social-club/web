@@ -16,6 +16,7 @@ if [[ -z "${API_DIR:-}" ]]; then
 fi
 WEB_WRANGLER="$WEB_DIR/node_modules/.bin/wrangler"
 API_WRANGLER="$API_DIR/node_modules/.bin/wrangler"
+API_PRODUCTION_WORKER_NAME="${API_PRODUCTION_WORKER_NAME:-api-core}"
 
 HOTFIX=0
 HOTFIX_REASON=""

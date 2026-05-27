@@ -163,7 +163,7 @@ export function AltchaPowWidget({
       widget.removeEventListener("verified", handleVerified);
       widget.removeEventListener("statechange", handleStateChange);
     };
-  }, [challenge, loading, onPayloadChange, onVerified, verified]);
+  }, [challenge, loading, onPayloadChange, onVerified, verified, widgetReady]);
 
   React.useEffect(() => {
     const widget = widgetRef.current;
@@ -184,7 +184,7 @@ export function AltchaPowWidget({
       widget.configure({
         auto: "off",
         challenge,
-        display: "standard",
+        display: "invisible",
         hideFooter: true,
         hideLogo: true,
         language,
@@ -251,7 +251,11 @@ export function AltchaPowWidget({
 
   return (
     <div className={cn("pirate-altcha-widget", className)}>
-      <altcha-widget ref={widgetRef} />
+      <altcha-widget auto="off" display="invisible" ref={widgetRef} />
+      <Type as="div" className="flex items-center gap-3 text-muted-foreground" variant="body">
+        <Spinner className="size-5" />
+        <span>Running proof-of-work check&hellip;</span>
+      </Type>
     </div>
   );
 }

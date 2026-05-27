@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
 import { MediaControlButton } from "@/components/primitives/media-control-button";
 import { postCardType } from "./post-card.styles";
-import { StoryRegistrationBadge } from "./post-card-story-registration";
+import { StoryLicenseNoticeBadge, StoryRegistrationBadge } from "./post-card-story-registration";
 import type { SongContentSpec, UpstreamAttribution } from "./post-card.types";
 
 export interface SongPostContentProps {
@@ -242,6 +242,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
       </div>
 
       <StoryRegistrationBadge status={content.storyRegistration} />
+      <StoryLicenseNoticeBadge notice={content.storyLicenseNotice} />
 
       {ui.showOwned && (
         <span

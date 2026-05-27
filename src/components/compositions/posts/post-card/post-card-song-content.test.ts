@@ -107,6 +107,24 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("Story IP registration is complete.");
   });
 
+  test("renders Story license reuse notice", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          storyLicenseNotice: {
+            label: "Story license reused",
+            description: "This upload reused an existing Story registration, so it keeps the original terms: Commercial remix, 10% royalty.",
+          },
+        },
+      }),
+    );
+
+    expect(markup).toContain("Story license reused");
+    expect(markup).toContain("keeps the original terms");
+    expect(markup).toContain("Commercial remix, 10% royalty");
+  });
+
   test("does not render age-gated artwork source before proof", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {

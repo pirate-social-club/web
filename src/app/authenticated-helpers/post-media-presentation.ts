@@ -233,6 +233,7 @@ export function toSongPostContent(
     rightsBasis: post.rights_basis ?? undefined,
     songMode: post.song_mode ?? undefined,
     storyRegistration: toStoryRegistrationStatus(songOptions?.asset),
+    storyLicenseNotice: songOptions?.storyLicenseNotice,
     title: songPresentation?.title ?? post.song_title ?? input.title,
     artworkSrc: songPresentation?.cover_art_ref ?? undefined,
     durationMs: songPresentation?.duration_ms ?? undefined,

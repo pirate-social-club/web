@@ -41,6 +41,11 @@ export interface StoryRegistrationStatus {
   description?: string;
 }
 
+export interface StoryLicenseNotice {
+  label: string;
+  description?: string;
+}
+
 export type VideoMode = "original" | "reaction" | "clip" | "remix";
 export type LiveRoomStatus = "scheduled" | "live" | "ended" | "canceled";
 export type LiveRoomKind = "solo" | "duet";
@@ -147,6 +152,7 @@ export interface SongContentSpec {
 
   upstreamAttributions?: UpstreamAttribution[];
   storyRegistration?: StoryRegistrationStatus;
+  storyLicenseNotice?: StoryLicenseNotice;
 
   // Commerce axis - from specs/domain/marketplace.md
   listingMode?: ListingMode;

@@ -434,4 +434,21 @@ describe("post presentation songs", () => {
     expect(content.storyRegistration?.label).toBe("IP registration failed");
     expect(content.storyRegistration?.description).toContain("configuration is missing");
   });
+
+  test("maps transient Story license reuse notices into song card content", () => {
+    const content = toCommunityPostContent(
+      createSongPost({ asset: "asset_ast_song" }),
+      {
+        storyLicenseNotice: {
+          label: "Story license reused",
+          description: "This upload reused an existing Story registration, so it keeps the original terms: Commercial remix, 10% royalty.",
+        },
+      },
+    );
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.storyLicenseNotice?.label).toBe("Story license reused");
+    expect(content.storyLicenseNotice?.description).toContain("Commercial remix, 10% royalty");
+  });
 });

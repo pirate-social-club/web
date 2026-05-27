@@ -107,6 +107,65 @@ async function requestJson<T>(
   return body;
 }
 
+async function requestOctetJson<T>(
+  path: string,
+  body: ArrayBuffer,
+  init: RequestInit = {},
+  okStatuses = [200, 201, 202],
+): Promise<T> {
+  const response = await fetch(new URL(path, apiBaseURL), {
+    ...init,
+    body,
+    headers: {
+      accept: "application/json",
+      "content-type": "application/octet-stream",
+      ...init.headers,
+    },
+  });
+  const text = await response.text();
+  const parsed = (text.trim() ? JSON.parse(text) : null) as T;
+  if (!okStatuses.includes(response.status)) {
+    throw new Error(`${init.method ?? "PUT"} ${path} failed with ${response.status}: ${text}`);
+  }
+  return parsed;
+}
+
+function createSineWaveWav(): ArrayBuffer {
+  const sampleRate = 8_000;
+  const durationSeconds = 1;
+  const sampleCount = sampleRate * durationSeconds;
+  const bytesPerSample = 2;
+  const dataSize = sampleCount * bytesPerSample;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+  const writeAscii = (offset: number, value: string) => {
+    for (let index = 0; index < value.length; index += 1) {
+      view.setUint8(offset + index, value.charCodeAt(index));
+    }
+  };
+
+  writeAscii(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeAscii(8, "WAVE");
+  writeAscii(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * bytesPerSample, true);
+  view.setUint16(32, bytesPerSample, true);
+  view.setUint16(34, 8 * bytesPerSample, true);
+  writeAscii(36, "data");
+  view.setUint32(40, dataSize, true);
+
+  for (let sample = 0; sample < sampleCount; sample += 1) {
+    const value = Math.sin((sample / sampleRate) * 440 * Math.PI * 2);
+    view.setInt16(44 + sample * bytesPerSample, Math.round(value * 16_000), true);
+  }
+
+  return buffer;
+}
+
 async function createLiveSession(subject = liveSubject, walletAddress?: string | null): Promise<StoredSession> {
   const response = await requestJson<SessionExchangeResponse>("/auth/session/exchange", {
     body: JSON.stringify({
@@ -617,6 +676,93 @@ test.describe("live staging integration", () => {
 
     await expect(page.locator("body")).toContainText(comment, { timeout: 30_000 });
     await expectNoBrowserError(page);
+  });
+
+  test("publishes a real song only after Story registration", async ({}, testInfo) => {
+    testInfo.setTimeout(180_000);
+
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const session = await createLiveSession(`song-story-smoke-${runId}`);
+    await completeSelfVerification(session);
+    const communityId = await createSmokeCommunity(runId, session);
+    const title = `Story registered song smoke ${runId}`;
+    const audio = createSineWaveWav();
+
+    const upload = await requestJson<{ id: string }>(`/communities/${encodeURIComponent(communityId)}/song-artifact-uploads`, {
+      body: JSON.stringify({
+        artifact_kind: "primary_audio",
+        filename: `story-smoke-${runId}.wav`,
+        mime_type: "audio/wav",
+        size_bytes: audio.byteLength,
+      }),
+      headers: { authorization: `Bearer ${session.accessToken}` },
+      method: "POST",
+    });
+    expect(upload.id, "song artifact upload id").toMatch(/^sau_/u);
+
+    await requestOctetJson(
+      `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/content`,
+      audio,
+      {
+        headers: { authorization: `Bearer ${session.accessToken}` },
+        method: "PUT",
+      },
+    );
+
+    const bundle = await requestJson<{ id: string }>(`/communities/${encodeURIComponent(communityId)}/song-artifacts`, {
+      body: JSON.stringify({
+        canvas_video: null,
+        cover_art: null,
+        genius_annotations_url: null,
+        instrumental_audio: null,
+        lyrics: "E2E Story registration smoke lyrics",
+        preview_window: null,
+        primary_audio: { song_artifact_upload: upload.id },
+        title,
+        vocal_audio: null,
+      }),
+      headers: { authorization: `Bearer ${session.accessToken}` },
+      method: "POST",
+    });
+    expect(bundle.id, "song artifact bundle id").toMatch(/^sab_/u);
+
+    const post = await requestJson<{ asset?: string | null; id: string }>(`/communities/${encodeURIComponent(communityId)}/posts`, {
+      body: JSON.stringify({
+        access_mode: "public",
+        commercial_rev_share_pct: 10,
+        identity_mode: "public",
+        idempotency_key: `story-song-smoke-${runId}`,
+        license_preset: "commercial-remix",
+        post_type: "song",
+        rights_basis: "original",
+        song_artifact_bundle: bundle.id,
+        song_mode: "original",
+        title,
+        translation_policy: "machine_allowed",
+        visibility: "public",
+      }),
+      headers: { authorization: `Bearer ${session.accessToken}` },
+      method: "POST",
+    });
+    expect(post.asset, "song post asset").toBeTruthy();
+
+    const asset = await requestJson<{
+      publication_status?: string | null;
+      story_ip?: string | null;
+      story_ip_id?: string | null;
+      story_license_terms?: string | null;
+      story_license_terms_id?: string | null;
+      story_royalty_registration_status?: string | null;
+    }>(`/communities/${encodeURIComponent(communityId)}/assets/${encodeURIComponent(post.asset ?? "")}`, {
+      headers: { authorization: `Bearer ${session.accessToken}` },
+    });
+    expect(asset.publication_status).toBe("story_published");
+    expect(asset.story_royalty_registration_status).toBe("registered");
+    expect(asset.story_ip ?? asset.story_ip_id, "Story IP id").toMatch(/^0x[a-f0-9]{40}$/iu);
+    expect(asset.story_license_terms ?? asset.story_license_terms_id, "Story license terms").toBeTruthy();
+
+    const publicPost = await requestJson<{ post?: { title?: string | null } }>(`/public-posts/${encodeURIComponent(post.id)}`);
+    expect(publicPost.post?.title).toBe(title);
   });
 
   test("publishes and subscribes to a real Agora live-room channel", async ({ page }, testInfo) => {

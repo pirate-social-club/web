@@ -148,7 +148,7 @@ try {
   throw new Error(`Unable to parse API production secret list: ${error.message}`);
 }
 const available = new Set(listedSecrets.map((entry) => entry?.name).filter(Boolean));
-const required = ["STORY_ROYALTY_SPG_NFT_CONTRACT"];
+const required = ["STORY_OPERATOR_PRIVATE_KEY", "STORY_ROYALTY_SPG_NFT_CONTRACT"];
 const missing = required.filter((name) => !available.has(name));
 if (missing.length > 0) {
   console.error(`Missing API production Story royalty secret(s): ${missing.join(", ")}`);

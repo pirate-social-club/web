@@ -45,7 +45,7 @@ export async function loadProfilesByUserId(
   return Object.fromEntries(profileEntries);
 }
 
-export function useCommunityPageData(communityId: string, contentLocale: string, activeSort: FeedSort) {
+export function useCommunityPageData(communityId: string, contentLocale: string, activeSort: FeedSort, activeFlairId?: string | null) {
   const api = useApi();
   const session = useSession();
   const [community, setCommunity] = React.useState<ApiCommunity | null>(null);
@@ -64,11 +64,13 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
     setMetadataError(null);
   }, [communityId, contentLocale]);
 
-  const loadPosts = React.useCallback(async ({ communityId: nextCommunityId, locale, sort }: {
+  const loadPosts = React.useCallback(async ({ communityId: nextCommunityId, flairId, locale, sort }: {
     communityId: string;
+    flairId?: string | null;
     locale: string;
     sort: FeedSort;
   }) => api.communities.listPosts(nextCommunityId, {
+    flair_id: flairId,
     limit: "100",
     locale,
     sort,
@@ -82,6 +84,7 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
     setPosts,
   } = useCommunityFeedPosts({
     communityId,
+    flairId: activeFlairId,
     locale: contentLocale,
     sort: activeSort,
     loadPosts,

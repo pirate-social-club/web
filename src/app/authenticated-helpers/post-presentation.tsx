@@ -19,6 +19,7 @@ import {
   resolveAgentAuthor,
   resolvePostAuthorAvatarSeed,
   resolvePostAuthorLabel,
+  resolvePostLabelPill,
   resolvePostQualifierLabels,
   toViewerVote,
 } from "@/app/authenticated-helpers/post-identity-presentation";
@@ -81,6 +82,7 @@ export function toCommunityFeedItem(
     canModeratePost: opts?.canModeratePost,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
+    onSetLabel: opts?.onSetLabel,
     post,
     viewerIsAuthor: postResponse.viewer_is_author,
   });
@@ -88,6 +90,7 @@ export function toCommunityFeedItem(
   const isRemoved = post.status === "removed";
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
   const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
+  const postHref = opts?.postHref ?? `/p/${post.id}`;
   const titleProps = buildPostCardTitleProps({
     content,
     suppressTitle: isDeleted || isRemoved,
@@ -95,7 +98,7 @@ export function toCommunityFeedItem(
     titleDir: localizedLinkTitle.dir ?? (postResponse.translation_state === "ready"
       ? resolveTranslatedTextPresentation(postResponse.resolved_locale).dir
       : undefined),
-    titleHref: `/p/${post.id}`,
+    titleHref: postHref,
     titleLang: localizedLinkTitle.lang ?? (postResponse.translation_state === "ready"
       ? resolveTranslatedTextPresentation(postResponse.resolved_locale).lang
       : undefined),
@@ -133,9 +136,11 @@ export function toCommunityFeedItem(
       onMenuAction: hasPostMenu ? (key) => {
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
+        if (key === "set-label") opts?.onSetLabel?.();
       } : undefined,
       onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
-      postHref: `/p/${post.id}`,
+      postHref,
+      postLabel: resolvePostLabelPill(postResponse),
       qualifierLabels: resolvePostQualifierLabels(postResponse),
       ...titleProps,
       viewContext: "community",
@@ -182,6 +187,7 @@ export function toThreadPostCard(
     canModeratePost: opts?.canModeratePost,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
+    onSetLabel: opts?.onSetLabel,
     post,
     viewerIsAuthor: postResponse.viewer_is_author,
   });
@@ -248,9 +254,11 @@ export function toThreadPostCard(
     onMenuAction: hasPostMenu ? (key) => {
       if (key === "delete") opts?.onDelete?.();
       if (key === "remove") opts?.onRemove?.();
+      if (key === "set-label") opts?.onSetLabel?.();
     } : undefined,
     onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
     postHref: undefined,
+    postLabel: resolvePostLabelPill(postResponse),
     qualifierLabels: resolvePostQualifierLabels(postResponse),
     ...titleProps,
     titleHref: undefined,

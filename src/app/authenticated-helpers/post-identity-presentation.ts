@@ -142,20 +142,24 @@ export function resolveCommentAuthorAvatarSeed(
 }
 
 export function resolvePostQualifierLabels(postResponse: ApiPost): string[] | undefined {
-  const disclosedQualifierLabels = postResponse.post.disclosed_qualifiers_json
+  const labels = postResponse.post.disclosed_qualifiers_json
     ?.reduce<string[]>((result, qualifier) => {
       const label = qualifier.rendered_label?.trim();
       if (label) {
         result.push(label);
       }
       return result;
-    }, []);
+    }, []) ?? [];
 
-  if (disclosedQualifierLabels?.length) {
-    return disclosedQualifierLabels;
-  }
+  return labels.length ? labels : undefined;
+}
 
-  return postResponse.label?.label ? [postResponse.label.label] : undefined;
+export function resolvePostLabelPill(postResponse: ApiPost): PostCardProps["postLabel"] {
+  if (!postResponse.label?.label) return null;
+  return {
+    label: postResponse.label.label,
+    colorToken: postResponse.label.color_token ?? null,
+  };
 }
 
 export function toViewerVote(value: ApiPost["viewer_vote"]): PostCardProps["engagement"]["viewerVote"] {

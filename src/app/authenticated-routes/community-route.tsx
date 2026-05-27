@@ -45,6 +45,7 @@ import {
   buildCommunityModerationPath,
 } from "@/app/authenticated-helpers/moderation-helpers";
 import { buildLiveRoomParticipants } from "@/app/authenticated-helpers/post-live-room-participants";
+import { getActiveCommunityLabels, PostLabelDialog } from "@/app/authenticated-helpers/post-label-dialog";
 import { toCommunityFeedItem } from "@/app/authenticated-helpers/post-presentation";
 import { useCommunityMembershipActions } from "@/hooks/use-community-membership-actions";
 import { useCommunityVoteAction } from "@/hooks/use-community-vote-action";
@@ -73,6 +74,7 @@ import {
   communityHandleFromRouteLabel,
   useCommunityHandleClaimDismissal,
 } from "@/lib/community-handle-claim-dismissal";
+import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
 
@@ -106,6 +108,11 @@ function viewerCanModerateCommunity(
   }));
 }
 
+function readActiveFlairId(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("flair")?.trim() || null;
+}
+
 export function CommunityPage({
   communityId,
   isImportedRoot = false,
@@ -130,6 +137,12 @@ export function CommunityPage({
   const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">(
     "best",
   );
+  const [activeFlairId, setActiveFlairId] = React.useState<string | null>(() => readActiveFlairId());
+  React.useEffect(() => {
+    const handleLocationChange = () => setActiveFlairId(readActiveFlairId());
+    window.addEventListener("popstate", handleLocationChange);
+    return () => window.removeEventListener("popstate", handleLocationChange);
+  }, []);
   const {
     authorProfiles,
     community,
@@ -140,7 +153,7 @@ export function CommunityPage({
     posts,
     refetchEligibility,
     setPosts,
-  } = useCommunityPageData(communityId, contentLocale, activeSort);
+  } = useCommunityPageData(communityId, contentLocale, activeSort, activeFlairId);
   const ownsCommunity =
     session?.user?.id === community?.created_by_user;
   const canModerateCommunity = viewerCanModerateCommunity(session?.user?.id, preview);
@@ -170,6 +183,8 @@ export function CommunityPage({
   const [liveRoomAccessById, setLiveRoomAccessById] = React.useState<Record<string, ApiLiveRoomAccessResponse | undefined>>({});
   const [liveRoomParticipantProfiles, setLiveRoomParticipantProfiles] = React.useState<Record<string, ApiProfile | null>>({});
   const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
+  const [labelTargetPost, setLabelTargetPost] = React.useState<typeof posts[number] | null>(null);
+  const [labelSaving, setLabelSaving] = React.useState(false);
   const liveRoomProfilesByUserId = React.useMemo(
     () => ({ ...authorProfiles, ...liveRoomParticipantProfiles }),
     [authorProfiles, liveRoomParticipantProfiles],
@@ -511,6 +526,48 @@ export function CommunityPage({
     }
   }, [api.posts, communityId, posts, setPosts]);
 
+  const activeLabels = React.useMemo(() => getActiveCommunityLabels(community ?? preview), [community, preview]);
+
+  const setPostLabel = React.useCallback(async (labelId: string | null) => {
+    if (!labelTargetPost) return;
+    setLabelSaving(true);
+    try {
+      const updated = await api.posts.setLabel(
+        labelTargetPost.post.community ?? communityId,
+        labelTargetPost.post.id,
+        labelId,
+      );
+      setPosts((current) => current.map((postResponse) =>
+        postResponse.post.id === updated.post.id ? updated : postResponse
+      ));
+      setLabelTargetPost(null);
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not update tag."));
+    } finally {
+      setLabelSaving(false);
+    }
+  }, [api.posts, communityId, labelTargetPost, setPosts]);
+
+  const rememberedCommunityId = community?.id ?? preview?.id;
+  const rememberedCommunityRouteSlug = community?.route_slug ?? preview?.route_slug;
+  const rememberedCommunityTitle = community?.display_name ?? preview?.display_name;
+  const rememberedCommunityAvatarRef = community?.avatar_ref ?? preview?.avatar_ref;
+
+  React.useEffect(() => {
+    if (!rememberedCommunityId || !rememberedCommunityTitle) return;
+    rememberKnownCommunity({
+      avatarSrc: rememberedCommunityAvatarRef ?? null,
+      communityId: rememberedCommunityId,
+      displayName: rememberedCommunityTitle,
+      routeSlug: rememberedCommunityRouteSlug,
+    });
+  }, [
+    rememberedCommunityAvatarRef,
+    rememberedCommunityId,
+    rememberedCommunityRouteSlug,
+    rememberedCommunityTitle,
+  ]);
+
   if (loading) {
     return <CommunityRouteLoadingState />;
   }
@@ -548,6 +605,7 @@ export function CommunityPage({
     !isJoinCtaActionable(eligibility);
   const canModeratePosts = canModerateCommunity;
   const feedItems = posts.map((post) => {
+    const canSetPostLabel = activeLabels.length > 0;
     const assetId = post.post.asset ?? undefined;
     const liveRoomId = post.post.anchor_live_room ?? undefined;
     const liveRoomAccess = liveRoomId ? liveRoomAccessById[liveRoomId] : undefined;
@@ -630,6 +688,7 @@ export function CommunityPage({
         onComment: () => navigate(`/p/${post.post.id}`),
         onDelete: () => void deletePost(post.post.id),
         onRemove: () => void removePost(post.post.id),
+        onSetLabel: canSetPostLabel ? () => setLabelTargetPost(post) : undefined,
         canModeratePost: canModeratePosts,
         onVote: (direction) => void voteOnPost(post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
@@ -848,6 +907,16 @@ export function CommunityPage({
           title={communityTitle}
         />
       </section>
+      <PostLabelDialog
+        busy={labelSaving}
+        labels={activeLabels}
+        onOpenChange={(open) => {
+          if (!open && !labelSaving) setLabelTargetPost(null);
+        }}
+        onSubmit={(labelId) => void setPostLabel(labelId)}
+        open={Boolean(labelTargetPost)}
+        post={labelTargetPost}
+      />
     </>
   );
 }

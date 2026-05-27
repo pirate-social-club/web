@@ -394,6 +394,10 @@ export interface PostCardProps {
   authorNationalityBadgeCountry?: string | null;
   authorNationalityBadgeLabel?: string;
   qualifierLabels?: string[];
+  postLabel?: {
+    label: string;
+    colorToken?: string | null;
+  } | null;
   title?: string;
   titleDir?: "ltr" | "rtl" | "auto";
   titleLang?: string;

@@ -640,6 +640,18 @@ export function usePost(
     }
   }, [api.posts, post]);
 
+  const setPostLabel = React.useCallback(async (labelId: string | null) => {
+    if (!post) return;
+    const previousPost = post;
+    try {
+      const updated = await api.posts.setLabel(post.post.community, post.post.id, labelId);
+      setPost(normalizePostResponse(updated));
+    } catch (nextError) {
+      setPost(previousPost);
+      toast.error(getErrorMessage(nextError, "Could not update tag."));
+    }
+  }, [api.posts, post]);
+
   const markAgeGateVerified = React.useCallback(() => {
     setPost((current) => current
       ? {
@@ -897,6 +909,7 @@ export function usePost(
     createTopLevelComment,
     deletePost,
     removePost,
+    setPostLabel,
     error,
     gateModal,
     markAgeGateVerified,

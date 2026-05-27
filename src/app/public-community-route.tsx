@@ -66,11 +66,13 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
     setPreviewLoading(true);
   }, [communityId, localeTag]);
 
-  const loadPosts = React.useCallback(async ({ communityId: nextCommunityId, locale, sort }: {
+  const loadPosts = React.useCallback(async ({ communityId: nextCommunityId, flairId, locale, sort }: {
     communityId: string;
+    flairId?: string | null;
     locale: string;
     sort: FeedSort;
   }) => api.publicCommunities.listPosts(nextCommunityId, {
+    flair_id: flairId,
     limit: "100",
     locale,
     sort,
@@ -83,6 +85,9 @@ function usePublicCommunityPageData(communityId: string, localeTag: string, acti
     setPosts,
   } = useCommunityFeedPosts({
     communityId,
+    flairId: typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("flair")?.trim() || null
+      : null,
     locale: localeTag,
     sort: activeSort,
     loadPosts,
@@ -214,10 +219,12 @@ export function resolvePublicCommunityJoinActionLabel(
 
 export function PublicCommunityRoutePage({
   communityId,
+  buildPostPath,
   disableCanonicalRouteReplace = false,
   isImportedRoot = false,
 }: {
   communityId: string;
+  buildPostPath?: (postId: string) => string;
   disableCanonicalRouteReplace?: boolean;
   isImportedRoot?: boolean;
 }) {
@@ -377,7 +384,7 @@ export function PublicCommunityRoutePage({
     initialFollowerCount: preview?.follower_count ?? null,
     initialViewerFollowing: preview?.viewer_following,
     onAuthRequired: () => {
-      requestAuth("Connect your wallet to follow communities.");
+      requestAuth("Sign in to follow communities.");
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Follow failed"));
@@ -392,7 +399,7 @@ export function PublicCommunityRoutePage({
 
   const handleVerifyAge = React.useCallback(() => {
     if (!session) {
-      requestAuth("Connect your wallet to verify your age and view 18+ content.");
+      requestAuth("Sign in to verify your age and view 18+ content.");
       return;
     }
     void startSelfVerificationFlow({
@@ -449,7 +456,7 @@ export function PublicCommunityRoutePage({
     handleClaimDismissal,
     handleJoin,
     onAuthRequired: () => {
-      requestAuth("Connect your wallet to join communities.");
+      requestAuth("Sign in to join communities.");
     },
     onHandleClaimCheckError: (error) => {
       toast.error(getErrorMessage(error, "Could not check community names."));
@@ -721,10 +728,11 @@ export function PublicCommunityRoutePage({
               }
             : undefined,
           {
-            onComment: () => navigate(`/p/${post.post.id}`),
+            onComment: () => navigate(buildPostPath?.(post.post.id) ?? `/p/${post.post.id}`),
             onDelete: () => void deletePost(post.post.id),
             onVerifyAge: handleVerifyAge,
             onVote: (direction) => void voteOnPost(post.post.id, direction),
+            postHref: buildPostPath?.(post.post.id),
             showOriginalLabel: copy.common.showOriginal,
             showTranslationLabel: copy.common.showTranslation,
             viewerContentLocale: contentLocale,

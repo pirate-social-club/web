@@ -31,6 +31,22 @@ function normalizeCommunityMembershipMode(mode: ApiCommunity["membership_mode"] 
   return mode === "request" ? "request" : "gated";
 }
 
+function buildSidebarFlairPolicy(community: { label_policy?: ApiCommunity["label_policy"] | ApiCommunityPreview["label_policy"] | null }) {
+  const policy = community.label_policy;
+  if (!policy?.label_enabled) return null;
+
+  return {
+    flairEnabled: true,
+    definitions: policy.definitions.map((definition) => ({
+      flairId: definition.id,
+      label: definition.label,
+      colorToken: definition.color_token ?? null,
+      status: definition.status,
+      position: definition.position,
+    })),
+  };
+}
+
 function getRequirementLocale(locale: string | null | undefined): "ar" | "zh" | "en" {
   const normalized = String(locale ?? "").toLowerCase();
   if (normalized.startsWith("ar")) return "ar";
@@ -352,6 +368,7 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       locale,
       eligibility,
     }),
+    flairPolicy: buildSidebarFlairPolicy(community),
     requirementsMode: getGatePolicyMatchMode(community.gate_policy),
     referenceLinks: community.reference_links?.map((link) => ({
       communityReferenceLinkId: link.community_reference_link,
@@ -462,6 +479,7 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       locale,
       eligibility,
     }),
+    flairPolicy: buildSidebarFlairPolicy(preview),
     referenceLinks: preview.reference_links?.map((link) => ({
       communityReferenceLinkId: link.community_reference_link,
       label: resolveCommunityLocalizedText(

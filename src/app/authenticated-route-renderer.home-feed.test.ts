@@ -167,7 +167,7 @@ describe("toHomeFeedItem", () => {
     expect(item.post.engagement?.commentCount).toBe(1);
   });
 
-  test("prefers disclosed qualifier snapshots over the label badge", () => {
+  test("shows post labels separately from disclosed qualifier snapshots", () => {
     const entry = createEntry();
     entry.post.post.disclosed_qualifiers_json = [
       {
@@ -187,11 +187,18 @@ describe("toHomeFeedItem", () => {
         sensitivity_level: null,
       },
     ];
-    entry.post.label = { id: "lbl_legacy", object: "post_label", label: "Legacy Label", status: "active" };
+    entry.post.label = {
+      id: "lbl_legacy",
+      object: "post_label",
+      label: "Legacy Label",
+      color_token: "#f97316",
+      status: "active",
+    };
 
     const item = toHomeFeedItem(entry, {});
 
     expect(item.post.qualifierLabels).toEqual(["Unique Human", "18+"]);
+    expect(item.post.postLabel).toEqual({ label: "Legacy Label", colorToken: "#f97316" });
   });
 
   test("uses hydrated public handles before raw user id fallback", () => {

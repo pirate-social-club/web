@@ -17,6 +17,7 @@ import {
   resolveAgentAuthor,
   resolvePostAuthorAvatarSeed,
   resolvePostAuthorLabel,
+  resolvePostLabelPill,
   resolvePostQualifierLabels,
   toViewerVote,
 } from "@/app/authenticated-helpers/post-identity-presentation";
@@ -68,6 +69,7 @@ export function toHomeFeedItem(
     canModeratePost: opts?.canModeratePost,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
+    onSetLabel: opts?.onSetLabel,
     post,
     viewerIsAuthor: postResponse.viewer_is_author,
   });
@@ -127,9 +129,11 @@ export function toHomeFeedItem(
       onMenuAction: hasPostMenu ? (key) => {
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
+        if (key === "set-label") opts?.onSetLabel?.();
       } : undefined,
       onVote: opts?.onVote,
       postHref: `/p/${postId}`,
+      postLabel: resolvePostLabelPill(postResponse),
       qualifierLabels: resolvePostQualifierLabels(postResponse),
       ...titleProps,
       viewContext: "home",

@@ -9,18 +9,20 @@ import { sortCommunityFeedPosts } from "@/app/authenticated-helpers/feed-sorting
 
 type CommunityFeedLoader = (input: {
   communityId: string;
+  flairId?: string | null;
   locale: string;
   sort: FeedSort;
 }) => Promise<{ items: ApiPost[] }>;
 
 export function useCommunityFeedPosts(input: {
   communityId: string;
+  flairId?: string | null;
   locale: string;
   sort: FeedSort;
   loadPosts: CommunityFeedLoader;
 }) {
-  const { communityId, locale, sort, loadPosts } = input;
-  const feedKey = `${communityId}:${locale}`;
+  const { communityId, flairId, locale, sort, loadPosts } = input;
+  const feedKey = `${communityId}:${locale}:${flairId ?? ""}`;
   const [rawPosts, setRawPosts] = React.useState<ApiPost[]>([]);
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
@@ -41,7 +43,7 @@ export function useCommunityFeedPosts(input: {
     setLoading(isInitialLoad);
     setRefreshing(!isInitialLoad);
 
-    void loadPosts({ communityId, locale, sort })
+    void loadPosts({ communityId, locale, sort, flairId })
       .then((response) => {
         if (cancelled) return;
         setRawPosts(response.items);
@@ -60,7 +62,7 @@ export function useCommunityFeedPosts(input: {
     return () => {
       cancelled = true;
     };
-  }, [communityId, feedKey, loadPosts, locale, sort]);
+  }, [communityId, feedKey, flairId, loadPosts, locale, sort]);
 
   const posts = React.useMemo(() => sortCommunityFeedPosts(rawPosts, sort), [rawPosts, sort]);
 

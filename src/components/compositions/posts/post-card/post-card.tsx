@@ -65,7 +65,7 @@ function shouldHandleCardNavigation(event: React.MouseEvent<HTMLElement>): boole
 
   const target = event.target instanceof Element ? event.target : null;
   return !target?.closest(
-    "a,button,input,select,textarea,summary,[role='button'],[data-post-card-interactive='true']",
+    "a,button,input,select,textarea,summary,[role='button'],[role='menu'],[role='menuitem'],[data-post-card-interactive='true']",
   );
 }
 
@@ -76,7 +76,7 @@ function shouldHandleCardKeyboardNavigation(event: React.KeyboardEvent<HTMLEleme
 
   const target = event.target instanceof Element ? event.target : null;
   return !target?.closest(
-    "a,button,input,select,textarea,summary,[role='button'],[data-post-card-interactive='true']",
+    "a,button,input,select,textarea,summary,[role='button'],[role='menu'],[role='menuitem'],[data-post-card-interactive='true']",
   );
 }
 
@@ -93,6 +93,35 @@ function SongCaptionBeforeMedia({ content }: { content: PostCardProps["content"]
   );
 }
 
+function getReadableTagTextColor(backgroundColor?: string | null): string {
+  const normalized = backgroundColor?.trim().replace(/^#/u, "");
+  if (!normalized || !/^[\da-f]{6}$/iu.test(normalized)) return "var(--foreground)";
+
+  const red = Number.parseInt(normalized.slice(0, 2), 16);
+  const green = Number.parseInt(normalized.slice(2, 4), 16);
+  const blue = Number.parseInt(normalized.slice(4, 6), 16);
+  const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255;
+  return luminance > 0.58 ? "#111827" : "#ffffff";
+}
+
+function PostLabelPill({ postLabel }: { postLabel?: PostCardProps["postLabel"] }) {
+  if (!postLabel?.label) return null;
+
+  const backgroundColor = postLabel.colorToken?.trim() || "var(--muted)";
+  const color = postLabel.colorToken ? getReadableTagTextColor(postLabel.colorToken) : "var(--muted-foreground)";
+
+  return (
+    <div className="flex max-w-[72ch] self-start">
+      <span
+        className="inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-xs font-bold leading-tight"
+        style={{ backgroundColor, color }}
+      >
+        <bdi className="truncate">{postLabel.label}</bdi>
+      </span>
+    </div>
+  );
+}
+
 export function PostCard({
   viewContext = "home",
   identityPresentation,
@@ -100,6 +129,7 @@ export function PostCard({
   authorNationalityBadgeCountry,
   authorNationalityBadgeLabel,
   byline,
+  postLabel,
   qualifierLabels,
   title,
   titleDir,
@@ -206,6 +236,7 @@ export function PostCard({
         />
 
         {titleElement}
+        <PostLabelPill postLabel={postLabel} />
         <SongCaptionBeforeMedia content={content} />
         <PostCardMedia content={content} viewContext={viewContext} />
         {canToggleOriginal ? (

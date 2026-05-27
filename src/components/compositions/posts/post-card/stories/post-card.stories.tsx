@@ -481,6 +481,59 @@ export const LinkPost: Story = {
   ),
 };
 
+export const TaggedPostTypes: Story = {
+  name: "Tags / Text Image Video Link",
+  render: () => (
+    <div className="flex flex-col">
+      <PostCard
+        {...basePost}
+        postLabel={{ label: "Discussion", colorToken: "#0079d3" }}
+        title="What is everyone listening to this week?"
+      />
+      <PostCard
+        {...basePost}
+        content={{
+          type: "image",
+          src: "https://picsum.photos/seed/pirate-tagged-image/600/400",
+          alt: "Album artwork",
+          caption: "Cover art by @visuals",
+        }}
+        engagement={{ ...basePost.engagement, score: 1203, commentCount: 89 }}
+        postLabel={{ label: "Artwork", colorToken: "#46d160" }}
+        title="Album art for the new EP just dropped"
+      />
+      <PostCard
+        {...basePost}
+        byline={{ ...basePost.byline, timestampLabel: "2h" }}
+        content={{
+          type: "video",
+          src: "https://www.w3schools.com/html/mov_bbb.mp4",
+          posterSrc: "https://picsum.photos/seed/pirate-tagged-video/600/340",
+          durationLabel: "4:32",
+          accessMode: "public",
+        }}
+        engagement={{ ...basePost.engagement, score: 567 }}
+        postLabel={{ label: "Live", colorToken: "#ff4500" }}
+        title="Live session from the studio last night"
+      />
+      <PostCard
+        {...basePost}
+        content={{
+          type: "link",
+          href: "https://blog.pirate.sc/feed-ranking",
+          previewTitle: "How We Think About Ranking Music Communities",
+          linkLabel: "blog.pirate.sc/feed-ranking",
+          sourceLabel: "blog.pirate.sc",
+          previewImageSrc: "https://picsum.photos/seed/pirate-tagged-link/240/240",
+        }}
+        engagement={{ ...basePost.engagement, score: 731, commentCount: 52 }}
+        postLabel={{ label: "News", colorToken: "#ea0027" }}
+        title={undefined}
+      />
+    </div>
+  ),
+};
+
 export const LinkPostWithSummary: Story = {
   name: "Link Post / Summary",
   render: () => (

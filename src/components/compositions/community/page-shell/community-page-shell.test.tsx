@@ -166,4 +166,37 @@ describe("CommunityPageShell", () => {
     expect(storeLink?.getAttribute("target")).toBe("_blank");
     expect(storeLink?.getAttribute("rel")).toBe("noopener noreferrer");
   });
+
+  test("renders schemeless community reference links as external URLs", () => {
+    mockedIsMobile = false;
+    const markup = renderToStaticMarkup(
+      <CommunityPageShell
+        communityId="cmt_test"
+        items={[]}
+        sidebar={{
+          createdAt: "2026-04-28T00:00:00.000Z",
+          displayName: "Test community",
+          membershipMode: "request",
+          moderators: [],
+          referenceLinks: [{
+            communityReferenceLinkId: "lnk_instagram",
+            label: "Instagram",
+            linkStatus: "active",
+            metadata: {},
+            platform: "instagram",
+            position: 0,
+            url: "instagram.com/svetsafita",
+            verified: false,
+          }],
+        }}
+        title="Test community"
+      />,
+    );
+    const rendered = parseHTML(markup).document;
+    const referenceLink = Array.from(rendered.querySelectorAll("a"))
+      .find((link) => link.textContent?.includes("Instagram"));
+
+    expect(referenceLink?.getAttribute("href")).toBe("https://instagram.com/svetsafita");
+    expect(referenceLink?.getAttribute("target")).toBe("_blank");
+  });
 });

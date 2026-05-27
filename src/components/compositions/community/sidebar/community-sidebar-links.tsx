@@ -16,6 +16,7 @@ import {
   YoutubeLogo,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
+import { normalizeExternalHttpUrl } from "@/lib/external-url";
 import type { CommunitySidebarReferenceLink, ReferenceLinkPlatform } from "./community-sidebar.types";
 
 const PLATFORM_CONFIG: Record<
@@ -55,11 +56,12 @@ export function CommunitySidebarLinks({
         const config = PLATFORM_CONFIG[link.platform];
         const label =
           link.label ?? config?.label ?? link.platform;
+        const href = normalizeExternalHttpUrl(link.url);
 
-        return (
+        return href ? (
           <a
             className="flex items-center gap-2.5 py-1.5"
-            href={link.url}
+            href={href}
             key={link.communityReferenceLinkId}
             rel="noopener noreferrer"
             target="_blank"
@@ -80,7 +82,7 @@ export function CommunitySidebarLinks({
               />
             )}
           </a>
-        );
+        ) : null;
       })}
     </div>
   );

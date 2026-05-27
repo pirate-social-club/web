@@ -262,7 +262,7 @@ describe("useCommunityContentPolicyState", () => {
           id: "draft-1",
           label: " Main ",
           platform: "official_website",
-          url: " https://pirate.example ",
+          url: " pirate.example ",
           verified: false,
         },
         {
@@ -288,7 +288,7 @@ describe("useCommunityContentPolicyState", () => {
           label: "Main",
           platform: "official_website",
           position: 0,
-          url: "https://pirate.example",
+          url: "https://pirate.example/",
         }],
       },
     });

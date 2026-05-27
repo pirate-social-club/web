@@ -8,6 +8,7 @@ import type { CommunityLinkEditorItem } from "@/components/compositions/communit
 import type { RuleDraft } from "@/components/compositions/community/rules-editor/community-rules-editor-page";
 import { useApi } from "@/lib/api";
 import type { CommunityReferenceLinksInput } from "@/lib/api/client-api-types";
+import { normalizeExternalHttpUrl } from "@/lib/external-url";
 
 import { submitCommunitySave, type SaveCommunityAction } from "@/app/authenticated-helpers/community-moderation-save";
 import {
@@ -131,7 +132,7 @@ export function useCommunityContentPolicyState({
     void submitCommunitySave({
       action: (currentCommunity) => api.communities.updateReferenceLinks(currentCommunity.id, {
         reference_links: links.reduce<CommunityReferenceLinksInput["reference_links"]>((result, link) => {
-          const url = link.url.trim();
+          const url = normalizeExternalHttpUrl(link.url);
           if (!url) {
             return result;
           }

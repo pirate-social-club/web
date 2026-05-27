@@ -134,6 +134,30 @@ require_clean_main() {
   fi
 }
 
+check_api_story_royalty_secret() {
+  local secrets_json
+  secrets_json="$(cd "$API_DIR" && "$API_WRANGLER" secret list --name "$API_PRODUCTION_WORKER_NAME" --env production --format json)"
+
+  node - "$secrets_json" <<'NODE'
+const [rawSecrets = "[]"] = process.argv.slice(2);
+let listedSecrets;
+try {
+  listedSecrets = JSON.parse(rawSecrets);
+} catch (error) {
+  throw new Error(`Unable to parse API production secret list: ${error.message}`);
+}
+const available = new Set(listedSecrets.map((entry) => entry?.name).filter(Boolean));
+const required = ["STORY_ROYALTY_SPG_NFT_CONTRACT"];
+const missing = required.filter((name) => !available.has(name));
+if (missing.length > 0) {
+  console.error(`Missing API production Story royalty secret(s): ${missing.join(", ")}`);
+  console.error("Sync /services/api commerce secrets to the production API worker before deploying.");
+  process.exit(1);
+}
+console.log(`API production Story royalty secrets present: ${required.join(", ")}`);
+NODE
+}
+
 require_command bun
 require_command curl
 require_command git
@@ -172,6 +196,9 @@ if [[ "$SKIP_TESTS" != "1" ]]; then
   log "focused api provisioning tests"
   (cd "$API_DIR" && bun test tests/routes/communities/community-provisioning-routes.test.ts tests/community-provision-operator-client.test.ts)
 fi
+
+log "check api production Story royalty secrets"
+check_api_story_royalty_secret
 
 if [[ "$SKIP_BUILD" != "1" ]]; then
   log "build web production bundle"

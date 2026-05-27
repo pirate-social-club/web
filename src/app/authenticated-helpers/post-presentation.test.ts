@@ -479,7 +479,7 @@ describe("post presentation songs", () => {
     expect(content.storyRegistration?.description).toContain("configuration is missing");
   });
 
-  test("maps Story portal links from feed asset story summaries", () => {
+  test("does not surface completed Story registration as a song card badge", () => {
     const content = toCommunityPostContent(
       {
         ...createSongPost({ asset: "asset_ast_song" }),
@@ -495,9 +495,7 @@ describe("post presentation songs", () => {
 
     expect(content.type).toBe("song");
     if (content.type !== "song") return;
-    expect(content.storyRegistration?.state).toBe("registered");
-    expect(content.storyRegistration?.portalHref)
-      .toBe("https://aeneid.portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48");
+    expect(content.storyRegistration).toBeUndefined();
   });
 
   test("maps transient Story license reuse notices into song card content", () => {

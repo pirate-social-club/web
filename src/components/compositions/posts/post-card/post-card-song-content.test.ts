@@ -143,7 +143,7 @@ describe("deriveSongUI", () => {
     expect(markup).toContain('rel="noreferrer"');
   });
 
-  test("renders Story registration status", () => {
+  test("does not render completed Story registration status", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -158,12 +158,9 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("Remix-eligible");
-    expect(markup).toContain("Story IP registration is complete.");
-    expect(markup).toContain("View on Story");
-    expect(markup).toContain('href="https://aeneid.portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48"');
-    expect(markup).toContain('target="_blank"');
-    expect(markup).toContain('rel="noopener noreferrer"');
+    expect(markup).not.toContain("Remix-eligible");
+    expect(markup).not.toContain("Story IP registration is complete.");
+    expect(markup).not.toContain("View on Story");
   });
 
   test("renders Story license reuse notice", () => {

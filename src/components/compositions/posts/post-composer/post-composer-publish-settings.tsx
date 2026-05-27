@@ -239,6 +239,7 @@ function buildPreviewPost(
     },
     liveState: controller.primary.liveState,
     price: commerce.monetizationState.priceUsd ?? "",
+    songAnnotationsUrl: controller.song.state.geniusAnnotationsUrl,
     songTitle: controller.song.state.title,
     songPlayback,
     title: fields.titleValue,

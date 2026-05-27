@@ -25,6 +25,7 @@ export function buildPostComposerPreviewContent({
   linkPreview,
   price,
   songTitle,
+  songAnnotationsUrl,
   title,
   videoDetails,
   videoPosterSrc,
@@ -45,6 +46,7 @@ export function buildPostComposerPreviewContent({
   liveGuestLabel?: string;
   price: string;
   songTitle?: string;
+  songAnnotationsUrl?: string;
   title: string;
   videoDetails?: VideoDetailsState;
   videoPosterSrc?: string;
@@ -144,10 +146,12 @@ export function buildPostComposerPreviewContent({
   if (attachment.kind === "song") {
     const trackTitle = songTitle?.trim() || attachment.label || "Untitled track";
     const normalizedVinylReleaseUrl = vinylReleaseUrl?.trim();
+    const normalizedSongAnnotationsUrl = songAnnotationsUrl?.trim();
 
     return {
       type: "song",
       title: trackTitle,
+      annotationsUrl: normalizedSongAnnotationsUrl || undefined,
       caption: bodyText || undefined,
       artworkSrc: attachment.artworkUrl,
       accessMode,

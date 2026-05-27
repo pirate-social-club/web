@@ -34,7 +34,7 @@ export function StoryRegistrationBadge({
   className?: string;
   status?: StoryRegistrationStatus;
 }) {
-  if (!status) return null;
+  if (!status || status.state === "registered") return null;
 
   return (
     <div

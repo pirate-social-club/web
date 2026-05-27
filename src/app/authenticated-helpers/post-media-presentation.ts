@@ -7,8 +7,6 @@ import type {
 } from "@/app/authenticated-helpers/song-commerce";
 import type { SongPresentationOptions } from "@/app/authenticated-helpers/post-presentation-types";
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
-import type { PirateStoryNetwork } from "@/lib/network-config";
-import { buildStoryPortalAssetUrl } from "@/lib/story/story-portal";
 
 type StoryRoyaltyAsset = Pick<
   NonNullable<SongPresentationOptions["asset"]>,
@@ -34,18 +32,10 @@ function formatStoryRegistrationFailure(error: string | null | undefined): strin
 
 function toStoryRegistrationStatus(
   asset: StoryRoyaltyAsset | null | undefined,
-  storyNetwork: PirateStoryNetwork | null | undefined,
 ): StoryRegistrationStatus | undefined {
   switch (asset?.story_royalty_registration_status) {
-    case "registered": {
-      const portalHref = buildStoryPortalAssetUrl(asset.story_ip, storyNetwork);
-      return {
-        state: "registered",
-        label: "Remix-eligible",
-        description: "Story IP registration is complete.",
-        portalHref: portalHref ?? undefined,
-      };
-    }
+    case "registered":
+      return undefined;
     case "pending":
       return {
         state: "pending",
@@ -214,7 +204,7 @@ export function toVideoPostContent(
     playbackState: assetSourceState?.playbackState ?? "idle",
     posterSrc: primaryMedia?.poster_ref ?? undefined,
     priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
-    storyRegistration: toStoryRegistrationStatus(storyAsset, songOptions?.storyNetwork),
+    storyRegistration: toStoryRegistrationStatus(storyAsset),
     src: assetSourceState?.src ?? primaryMedia?.storage_ref ?? "",
     title: post.song_title ?? input.title,
   };
@@ -278,7 +268,7 @@ export function toSongPostContent(
     priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
     rightsBasis: post.rights_basis ?? undefined,
     songMode: post.song_mode ?? undefined,
-    storyRegistration: toStoryRegistrationStatus(storyAsset, songOptions?.storyNetwork),
+    storyRegistration: toStoryRegistrationStatus(storyAsset),
     storyLicenseNotice: songOptions?.storyLicenseNotice,
     title: songPresentation?.title ?? post.song_title ?? input.title,
     artworkSrc: songPresentation?.cover_art_ref ?? undefined,

@@ -242,6 +242,27 @@ describe("buildPostComposerPreviewContent", () => {
     });
   });
 
+  test("maps song Genius annotations URL into the publish preview", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "free",
+      attachment: {
+        kind: "song",
+        label: "demo-upload.wav",
+        previewUrl: "blob:https://app.test/song",
+      },
+      body: "",
+      price: "",
+      songAnnotationsUrl: " https://genius.com/34172986 ",
+      songTitle: "Midnight Signal",
+      title: "New drop",
+    });
+
+    expect(content).toMatchObject({
+      type: "song",
+      annotationsUrl: "https://genius.com/34172986",
+    });
+  });
+
   test("uses fetched link preview title instead of typed title for generic links", () => {
     const content = buildPostComposerPreviewContent({
       access: "free",

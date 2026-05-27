@@ -27,6 +27,7 @@ import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin"
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { replaceWithCanonicalCommunityRoute } from "@/app/community-route-canonicalization";
 import { resolveViewerContentLocale } from "@/lib/content-locale";
+import { getPirateNetworkConfig } from "@/lib/network-config";
 import { getJoinCtaLabel, getVerificationCapabilitiesForProvider, getVerificationRequirementsForGates, isJoinCtaActionable } from "@/lib/identity-gates";
 import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
 import { useCommunityFollow } from "@/hooks/use-community-follow";
@@ -226,6 +227,7 @@ export function PublicCommunityRoutePage({
   const { locale } = useUiLocale();
   const copy = React.useMemo(() => getLocaleMessages(locale, "routes"), [locale]);
   const sortOptions = React.useMemo(() => buildFeedSortOptions(copy.common), [copy.common]);
+  const storyNetwork = React.useMemo(() => getPirateNetworkConfig().story.network, []);
   const contentLocale = React.useMemo(() => resolveViewerContentLocale({
     uiLocale: locale,
     browserLocales: typeof navigator === "undefined"
@@ -529,6 +531,20 @@ export function PublicCommunityRoutePage({
     vote: api.posts.vote,
   });
 
+  const deletePost = React.useCallback(async (postId: string) => {
+    if (typeof window !== "undefined" && !window.confirm("Delete this post?")) return;
+
+    const previousPosts = posts;
+    const targetPost = posts.find((postResponse) => postResponse.post.id === postId);
+    setPosts((current) => current.filter((postResponse) => postResponse.post.id !== postId));
+    try {
+      await api.posts.delete(targetPost?.post.community ?? communityId, postId);
+    } catch (nextError) {
+      setPosts(previousPosts);
+      toast.error(getErrorMessage(nextError, "Could not delete this post."));
+    }
+  }, [api.posts, communityId, posts, setPosts]);
+
   if (previewLoading && !preview) {
     return <CommunityRouteLoadingState />;
   }
@@ -701,10 +717,12 @@ export function PublicCommunityRoutePage({
                 currentUserId: session?.user?.id,
                 localeTag: contentLocale,
                 playback: songPlayback,
+                storyNetwork,
               }
             : undefined,
           {
             onComment: () => navigate(`/p/${post.post.id}`),
+            onDelete: () => void deletePost(post.post.id),
             onVerifyAge: handleVerifyAge,
             onVote: (direction) => void voteOnPost(post.post.id, direction),
             showOriginalLabel: copy.common.showOriginal,

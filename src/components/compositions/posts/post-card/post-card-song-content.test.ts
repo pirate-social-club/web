@@ -152,6 +152,7 @@ describe("deriveSongUI", () => {
             state: "registered",
             label: "Remix-eligible",
             description: "Story IP registration is complete.",
+            portalHref: "https://aeneid.portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48",
           },
         },
       }),
@@ -159,6 +160,10 @@ describe("deriveSongUI", () => {
 
     expect(markup).toContain("Remix-eligible");
     expect(markup).toContain("Story IP registration is complete.");
+    expect(markup).toContain("View on Story");
+    expect(markup).toContain('href="https://aeneid.portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48"');
+    expect(markup).toContain('target="_blank"');
+    expect(markup).toContain('rel="noopener noreferrer"');
   });
 
   test("does not render age-gated artwork source before proof", () => {

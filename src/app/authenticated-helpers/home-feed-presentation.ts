@@ -31,6 +31,7 @@ import {
   withTranslationToggleProps,
 } from "@/app/authenticated-helpers/post-translation-presentation";
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
+import { buildPostMenu } from "@/app/authenticated-helpers/post-menu-presentation";
 
 export type HomeFeedEntry = ApiHomeFeedItem;
 
@@ -63,6 +64,13 @@ export function toHomeFeedItem(
   const communityId = resolveHomeFeedCommunityId(community);
   const postId = post.id ?? (post as typeof post & { post?: string }).post ?? "";
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
+  const { hasPostMenu, postMenuItems } = buildPostMenu({
+    canModeratePost: opts?.canModeratePost,
+    onDelete: opts?.onDelete,
+    onRemove: opts?.onRemove,
+    post,
+    viewerIsAuthor: postResponse.viewer_is_author,
+  });
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
   const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
   const titleProps = buildPostCardTitleProps({
@@ -114,7 +122,12 @@ export function toHomeFeedItem(
         ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)
         : undefined,
       onComment: opts?.onComment,
+      menuItems: hasPostMenu ? postMenuItems : undefined,
       shareActions: buildPostShareActions(post),
+      onMenuAction: hasPostMenu ? (key) => {
+        if (key === "delete") opts?.onDelete?.();
+        if (key === "remove") opts?.onRemove?.();
+      } : undefined,
       onVote: opts?.onVote,
       postHref: `/p/${postId}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),

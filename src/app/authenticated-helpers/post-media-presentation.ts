@@ -7,8 +7,13 @@ import type {
 } from "@/app/authenticated-helpers/song-commerce";
 import type { SongPresentationOptions } from "@/app/authenticated-helpers/post-presentation-types";
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
+import type { PirateStoryNetwork } from "@/lib/network-config";
+import { buildStoryPortalAssetUrl } from "@/lib/story/story-portal";
 
-type StoryRoyaltyAsset = NonNullable<SongPresentationOptions["asset"]>;
+type StoryRoyaltyAsset = Pick<
+  NonNullable<SongPresentationOptions["asset"]>,
+  "story_error" | "story_ip" | "story_royalty_registration_status"
+>;
 
 function formatStoryRegistrationFailure(error: string | null | undefined): string {
   const normalized = error?.trim() ?? "";
@@ -27,14 +32,20 @@ function formatStoryRegistrationFailure(error: string | null | undefined): strin
   return "This will not appear as a remix source until Story registration succeeds.";
 }
 
-function toStoryRegistrationStatus(asset: StoryRoyaltyAsset | null | undefined): StoryRegistrationStatus | undefined {
+function toStoryRegistrationStatus(
+  asset: StoryRoyaltyAsset | null | undefined,
+  storyNetwork: PirateStoryNetwork | null | undefined,
+): StoryRegistrationStatus | undefined {
   switch (asset?.story_royalty_registration_status) {
-    case "registered":
+    case "registered": {
+      const portalHref = buildStoryPortalAssetUrl(asset.story_ip, storyNetwork);
       return {
         state: "registered",
         label: "Remix-eligible",
         description: "Story IP registration is complete.",
+        portalHref: portalHref ?? undefined,
       };
+    }
     case "pending":
       return {
         state: "pending",
@@ -174,6 +185,7 @@ export function toVideoPostContent(
   const assetSourceState = assetSourceDescriptor && songOptions?.playback
     ? songOptions.playback.getAssetSourceState(assetSourceDescriptor.key)
     : undefined;
+  const storyAsset = songOptions?.asset ?? postResponse.asset_story;
   return {
     type: "video",
     accessMode,
@@ -202,7 +214,7 @@ export function toVideoPostContent(
     playbackState: assetSourceState?.playbackState ?? "idle",
     posterSrc: primaryMedia?.poster_ref ?? undefined,
     priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
-    storyRegistration: toStoryRegistrationStatus(songOptions?.asset),
+    storyRegistration: toStoryRegistrationStatus(storyAsset, songOptions?.storyNetwork),
     src: assetSourceState?.src ?? primaryMedia?.storage_ref ?? "",
     title: post.song_title ?? input.title,
   };
@@ -237,6 +249,7 @@ export function toSongPostContent(
     title: `Source ${index + 1}`,
   }));
 
+  const storyAsset = songOptions?.asset ?? postResponse.asset_story;
   return {
     type: "song",
     accessMode: post.access_mode ?? "public",
@@ -265,7 +278,7 @@ export function toSongPostContent(
     priceLabel: listing ? formatUsdLabel(centsToUsd(listing.price_cents), songOptions?.localeTag) : undefined,
     rightsBasis: post.rights_basis ?? undefined,
     songMode: post.song_mode ?? undefined,
-    storyRegistration: toStoryRegistrationStatus(songOptions?.asset),
+    storyRegistration: toStoryRegistrationStatus(storyAsset, songOptions?.storyNetwork),
     title: songPresentation?.title ?? post.song_title ?? input.title,
     artworkSrc: songPresentation?.cover_art_ref ?? undefined,
     durationMs: songPresentation?.duration_ms ?? undefined,

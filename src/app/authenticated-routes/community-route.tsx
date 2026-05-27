@@ -51,6 +51,7 @@ import { useCommunityVoteAction } from "@/hooks/use-community-vote-action";
 import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { buildFeedSortOptions } from "@/lib/feed-sort-options";
+import { getPirateNetworkConfig } from "@/lib/network-config";
 import {
   AuthRequiredRouteState,
   RouteLoadFailureState,
@@ -117,6 +118,7 @@ export function CommunityPage({
   const isMobileWeb = useIsMobile();
   const { locale } = useUiLocale();
   const { copy, localeTag } = useRouteMessages();
+  const storyNetwork = React.useMemo(() => getPirateNetworkConfig().story.network, []);
   const pageTitle = copy.community.title;
   const createPostLabel = copy.community.createPostLabel;
   const modToolsLabel = copy.community.modToolsLabel;
@@ -495,6 +497,20 @@ export function CommunityPage({
     }
   }, [api.posts, communityId, posts, setPosts]);
 
+  const deletePost = React.useCallback(async (postId: string) => {
+    if (typeof window !== "undefined" && !window.confirm("Delete this post?")) return;
+
+    const previousPosts = posts;
+    const targetPost = posts.find((postResponse) => postResponse.post.id === postId);
+    setPosts((current) => current.filter((postResponse) => postResponse.post.id !== postId));
+    try {
+      await api.posts.delete(targetPost?.post.community ?? communityId, postId);
+    } catch (nextError) {
+      setPosts(previousPosts);
+      toast.error(getErrorMessage(nextError, "Could not delete this post."));
+    }
+  }, [api.posts, communityId, posts, setPosts]);
+
   if (loading) {
     return <CommunityRouteLoadingState />;
   }
@@ -584,6 +600,7 @@ export function CommunityPage({
                 : undefined,
             playback: songPlayback,
             purchase: assetId ? purchasesByAssetId[assetId] : undefined,
+            storyNetwork,
           }
       : undefined,
       {
@@ -611,6 +628,7 @@ export function CommunityPage({
         } : undefined,
         onVerifyAge: handleVerifyAge,
         onComment: () => navigate(`/p/${post.post.id}`),
+        onDelete: () => void deletePost(post.post.id),
         onRemove: () => void removePost(post.post.id),
         canModeratePost: canModeratePosts,
         onVote: (direction) => void voteOnPost(post.post.id, direction),

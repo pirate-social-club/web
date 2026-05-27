@@ -33,6 +33,7 @@ import {
   withTranslationToggleProps,
 } from "@/app/authenticated-helpers/post-translation-presentation";
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
+import { buildPostMenu } from "@/app/authenticated-helpers/post-menu-presentation";
 
 export type HomeFeedEntry = ApiHomeFeedItem;
 export { toHomeFeedItem } from "@/app/authenticated-helpers/home-feed-presentation";
@@ -67,29 +68,6 @@ export {
   shouldShowOriginalPost,
   withTranslationToggleProps,
 } from "@/app/authenticated-helpers/post-translation-presentation";
-
-function buildPostMenu(input: {
-  canModeratePost?: boolean;
-  onDelete?: () => void;
-  onRemove?: () => void;
-  post: Pick<ApiPost["post"], "status">;
-  viewerIsAuthor?: boolean | null;
-}) {
-  const canDeletePost = input.post.status !== "deleted" && Boolean(input.viewerIsAuthor && input.onDelete);
-  const canRemovePost = input.post.status !== "deleted"
-    && input.post.status !== "removed"
-    && !input.viewerIsAuthor
-    && Boolean(input.canModeratePost && input.onRemove);
-  const postMenuItems = [
-    ...(canDeletePost ? [{ key: "delete", label: "Delete post", destructive: true }] : []),
-    ...(canRemovePost ? [{ key: "remove", label: "Remove post", destructive: true }] : []),
-  ];
-
-  return {
-    hasPostMenu: postMenuItems.length > 0,
-    postMenuItems,
-  };
-}
 
 export function toCommunityFeedItem(
   postResponse: ApiPost,

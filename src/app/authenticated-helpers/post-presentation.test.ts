@@ -479,6 +479,27 @@ describe("post presentation songs", () => {
     expect(content.storyRegistration?.description).toContain("configuration is missing");
   });
 
+  test("maps Story portal links from feed asset story summaries", () => {
+    const content = toCommunityPostContent(
+      {
+        ...createSongPost({ asset: "asset_ast_song" }),
+        asset_story: {
+          story_ip: "0xbB0a33bd07e7c813963b569f1202047a92b38d48",
+          story_royalty_registration_status: "registered",
+        },
+      },
+      {
+        storyNetwork: "story-aeneid",
+      },
+    );
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.storyRegistration?.state).toBe("registered");
+    expect(content.storyRegistration?.portalHref)
+      .toBe("https://aeneid.portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48");
+  });
+
   test("surfaces vinyl availability from listing metadata without exposing the URL", () => {
     const content = toCommunityPostContent(
       createSongPost({ access_mode: "locked", asset: "asset_ast_song" }),

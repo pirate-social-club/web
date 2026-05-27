@@ -39,6 +39,7 @@ export interface StoryRegistrationStatus {
   state: StoryRegistrationState;
   label: string;
   description?: string;
+  portalHref?: string;
 }
 
 export type VideoMode = "original" | "reaction" | "clip" | "remix";

@@ -16,6 +16,7 @@ import { buildCommunityPath } from "@/lib/community-routing";
 import { getCurrentHomeFeedSort, HOME_FEED_SORT_CHANGE_EVENT, setCurrentHomeFeedSort, type HomeFeedSort } from "@/lib/home-feed-sort";
 import { useSidebarCommunities } from "@/lib/owned-communities";
 import { useUiLocale } from "@/lib/ui-locale";
+import { toast } from "@/components/primitives/sonner";
 import { Button } from "@/components/primitives/button";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
 import { PageContainer } from "@/components/primitives/layout-shell";
@@ -37,6 +38,7 @@ import { useRouteContentLocale } from "@/hooks/use-route-content-locale";
 import { useRouteMessages } from "@/hooks/use-route-messages";
 import { getErrorMessage } from "@/lib/error-utils";
 import { buildFeedSortOptions, buildTopTimeRangeOptions } from "@/lib/feed-sort-options";
+import { getPirateNetworkConfig } from "@/lib/network-config";
 import { EmptyFeedState, RouteLoadFailureState } from "@/app/authenticated-helpers/route-shell";
 import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
@@ -293,6 +295,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   const sortOptions = React.useMemo(() => buildFeedSortOptions(copy.common), [copy.common]);
   const topTimeRangeOptions = React.useMemo(() => buildTopTimeRangeOptions(copy.common), [copy.common]);
   const contentLocale = useRouteContentLocale();
+  const storyNetwork = React.useMemo(() => getPirateNetworkConfig().story.network, []);
   const createCommunityLabel = copy.home.createCommunityLabel;
   const emptyHomeBody = copy.home.emptyHomeBody;
   const emptyHomeTitle = copy.home.emptyHomeTitle;
@@ -365,6 +368,21 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     });
   }, [api.posts.vote, feedEntries, runGatedCommunityAction]);
 
+  const deletePost = React.useCallback(async (postId: string) => {
+    const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
+    if (!entry) return;
+    if (typeof window !== "undefined" && !window.confirm("Delete this post?")) return;
+
+    const previousEntries = feedEntries;
+    setFeedEntries((current) => current.filter((candidate) => candidate.post.post.id !== postId));
+    try {
+      await api.posts.delete(entry.post.post.community, postId);
+    } catch (nextError) {
+      setFeedEntries(previousEntries);
+      toast.error(getErrorMessage(nextError, "Could not delete this post."));
+    }
+  }, [api.posts, feedEntries, setFeedEntries]);
+
   const feedItems = feedEntries.map((entry) => {
     const assetId = entry.post.post.asset ?? undefined;
     const liveRoomId = entry.post.post.anchor_live_room ?? undefined;
@@ -401,6 +419,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           localeTag,
           playback: songPlayback,
           purchase: assetId ? purchasesByAssetId[assetId] : undefined,
+          storyNetwork,
         }
         : undefined,
       {
@@ -422,6 +441,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
               : null,
           purchase: purchasesByLiveRoomId[liveRoomId],
         } : undefined,
+        onDelete: () => void deletePost(entry.post.post.id),
         onComment: () => navigate(`/p/${entry.post.post.id}`),
         onVote: (direction) => void voteOnPost(entry.post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,

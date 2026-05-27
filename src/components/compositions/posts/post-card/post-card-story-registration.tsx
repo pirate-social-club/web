@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CheckCircle, Clock, WarningCircle } from "@phosphor-icons/react";
+import { ArrowSquareOut, CheckCircle, Clock, WarningCircle } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
 import { postCardType } from "./post-card.styles";
@@ -53,6 +53,18 @@ export function StoryRegistrationBadge({
           <span className={cn("block", postCardType.meta, descriptionClassName[status.state])}>
             {status.description}
           </span>
+        ) : null}
+        {status.portalHref ? (
+          <a
+            className={cn("mt-1 inline-flex max-w-full items-center gap-1.5 font-medium hover:underline", postCardType.meta)}
+            data-post-card-interactive="true"
+            href={status.portalHref}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            <span className="truncate">View on Story</span>
+            <ArrowSquareOut aria-hidden="true" className="size-3.5 shrink-0" />
+          </a>
         ) : null}
       </span>
     </div>

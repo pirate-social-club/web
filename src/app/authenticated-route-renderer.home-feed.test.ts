@@ -118,6 +118,24 @@ describe("toHomeFeedItem", () => {
     expect(item.post.engagement?.score).toBe(9);
   });
 
+  test("renders author post actions on home feed cards", () => {
+    const entry = createEntry();
+    entry.post.viewer_is_author = true;
+    let deleted = false;
+
+    const item = toHomeFeedItem(entry, {}, undefined, {
+      onDelete: () => {
+        deleted = true;
+      },
+    });
+
+    expect(item.post.menuItems).toEqual([
+      { key: "delete", label: "Delete post", destructive: true },
+    ]);
+    item.post.onMenuAction?.("delete");
+    expect(deleted).toBe(true);
+  });
+
   test("links home feed community bylines directly to canonical punycode routes", () => {
     const entry = createEntry();
     entry.community.route_slug = "@xn--t77hga";
@@ -612,6 +630,24 @@ describe("toCommunityFeedItem", () => {
 
     expect(item.post.engagement?.commentCount).toBe(5);
     expect(item.post.onComment).toBe(onComment);
+  });
+
+  test("renders author post actions on community feed cards", () => {
+    const entry = createEntry();
+    entry.post.viewer_is_author = true;
+    let deleted = false;
+
+    const item = toCommunityFeedItem(entry.post, {}, undefined, {
+      onDelete: () => {
+        deleted = true;
+      },
+    });
+
+    expect(item.post.menuItems).toEqual([
+      { key: "delete", label: "Delete post", destructive: true },
+    ]);
+    item.post.onMenuAction?.("delete");
+    expect(deleted).toBe(true);
   });
 
   test("uses live comment_count for community cards when the snapshot lags", () => {

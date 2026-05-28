@@ -77,6 +77,29 @@ function FormattedParagraph({ lines, textKey }: { lines: string[]; textKey: stri
   );
 }
 
+function FormattedHeading({
+  depth,
+  text,
+  textKey,
+}: {
+  depth: 2 | 3 | 4;
+  text: string;
+  textKey: string;
+}) {
+  const headingClassName = cn(
+    "leading-tight text-foreground",
+    depth === 2 ? "text-[1.0625rem] font-semibold" : "text-base font-semibold",
+    depth === 4 ? "text-sm uppercase tracking-normal text-muted-foreground" : undefined,
+  );
+  const Tag = `h${depth}` as const;
+
+  return (
+    <Tag className={headingClassName}>
+      <FormattedInline keyPrefix={textKey} text={text} />
+    </Tag>
+  );
+}
+
 function nextFormattedTextKey(
   keyCounts: Map<string, number>,
   kind: string,
@@ -108,6 +131,18 @@ export function FormattedText({
     const trimmed = lines[index]?.trim() ?? "";
 
     if (!trimmed) {
+      index += 1;
+      continue;
+    }
+
+    const headingMatch = /^(#{2,4})\s+(.+)$/.exec(trimmed);
+    if (headingMatch) {
+      const depth = headingMatch[1].length as 2 | 3 | 4;
+      const text = headingMatch[2].trim();
+      const headingKey = nextFormattedTextKey(keyCounts, "heading", `${depth}:${text}`);
+      blocks.push(
+        <FormattedHeading depth={depth} key={headingKey} text={text} textKey={headingKey} />,
+      );
       index += 1;
       continue;
     }
@@ -180,7 +215,7 @@ export function FormattedText({
     while (index < lines.length) {
       const line = lines[index] ?? "";
       const lineTrimmed = line.trim();
-      if (!lineTrimmed || /^>\s?/.test(lineTrimmed) || /^[-*]\s+/.test(lineTrimmed) || /^\d+\.\s+/.test(lineTrimmed)) {
+      if (!lineTrimmed || /^(#{2,4})\s+(.+)$/.test(lineTrimmed) || /^>\s?/.test(lineTrimmed) || /^[-*]\s+/.test(lineTrimmed) || /^\d+\.\s+/.test(lineTrimmed)) {
         break;
       }
       paragraphLines.push(line);

@@ -7,10 +7,11 @@ EXPECTED_API_SHA=""
 EXPECTED_OPERATOR_SHA=""
 STRICT=1
 SCOPE="all"
+RETRY_FOR_SECONDS=0
 
 usage() {
   cat <<'EOF'
-Usage: scripts/check-deployments.sh [--scope all|prod|staging] [--expected-sha SHA] [--expected-web-sha SHA] [--expected-api-sha SHA] [--expected-operator-sha SHA] [--no-strict]
+Usage: scripts/check-deployments.sh [--scope all|prod|staging] [--expected-sha SHA] [--expected-web-sha SHA] [--expected-api-sha SHA] [--expected-operator-sha SHA] [--retry-for SECONDS] [--no-strict]
 
 Checks deployed web/API version metadata across production and staging.
 
@@ -21,6 +22,7 @@ Options:
   --expected-api-sha SHA  Require API targets to match SHA.
   --expected-operator-sha SHA
                           Require API targets' operator.git_sha to match SHA.
+  --retry-for SECONDS     Retry strict metadata checks for transient edge propagation.
   --no-strict             Print the table but do not fail on mismatches/null fields.
   -h, --help              Show this help.
 EOF
@@ -68,6 +70,14 @@ while [[ $# -gt 0 ]]; do
       fi
       shift 2
       ;;
+    --retry-for)
+      RETRY_FOR_SECONDS="${2:-}"
+      if ! [[ "$RETRY_FOR_SECONDS" =~ ^[0-9]+$ ]]; then
+        printf 'Invalid value for --retry-for: %s\n' "$RETRY_FOR_SECONDS" >&2
+        exit 2
+      fi
+      shift 2
+      ;;
     --no-strict)
       STRICT=0
       shift
@@ -84,10 +94,19 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-node - "$EXPECTED_SHA" "$EXPECTED_WEB_SHA" "$EXPECTED_API_SHA" "$EXPECTED_OPERATOR_SHA" "$STRICT" "$SCOPE" <<'NODE'
-const [expectedSha, expectedWebSha, expectedApiSha, expectedOperatorSha, strictRaw, scopeRaw] = process.argv.slice(2);
+node - "$EXPECTED_SHA" "$EXPECTED_WEB_SHA" "$EXPECTED_API_SHA" "$EXPECTED_OPERATOR_SHA" "$STRICT" "$SCOPE" "$RETRY_FOR_SECONDS" <<'NODE'
+const [
+  expectedSha,
+  expectedWebSha,
+  expectedApiSha,
+  expectedOperatorSha,
+  strictRaw,
+  scopeRaw,
+  retryForSecondsRaw,
+] = process.argv.slice(2);
 const strict = strictRaw !== "0";
 const scope = scopeRaw === "production" ? "prod" : scopeRaw;
+const retryForMs = Number(retryForSecondsRaw || 0) * 1000;
 
 const allTargets = [
   { id: "web-prod", service: "web", deployEnv: "production", url: "https://pirate.sc/__version" },
@@ -147,8 +166,8 @@ function nestedField(body, path) {
   }, body);
 }
 
-const results = await Promise.all(targets.map(fetchVersion));
-const rows = results.map((result) => ({
+function buildRows(results) {
+  return results.map((result) => ({
   target: result.target.id,
   expected_env: result.target.deployEnv,
   status: result.status,
@@ -160,41 +179,57 @@ const rows = results.map((result) => ({
   operator_git_sha: text(nestedField(result.body, "operator.git_sha")),
   url: result.target.url,
   error: result.error ?? "",
-}));
+  }));
+}
 
-console.table(rows);
+function collectFailures(results) {
+  const failures = [];
+  for (const result of results) {
+    const body = result.body;
+    const id = result.target.id;
+    const service = field(body, "service");
+    const environment = field(body, "environment");
+    const gitSha = field(body, "git_sha");
+    const gitRef = field(body, "git_ref");
+    const buildTimestamp = field(body, "build_timestamp");
+    const operatorSha = nestedField(body, "operator.git_sha");
 
-const failures = [];
-for (const result of results) {
-  const body = result.body;
-  const id = result.target.id;
-  const service = field(body, "service");
-  const environment = field(body, "environment");
-  const gitSha = field(body, "git_sha");
-  const gitRef = field(body, "git_ref");
-  const buildTimestamp = field(body, "build_timestamp");
-  const operatorSha = nestedField(body, "operator.git_sha");
+    if (!result.ok) failures.push(`${id}: ${result.error ?? "request failed"} (${result.status})`);
+    if (service !== result.target.service) failures.push(`${id}: expected service=${result.target.service}, got ${text(service)}`);
+    if (environment !== result.target.deployEnv) failures.push(`${id}: expected environment=${result.target.deployEnv}, got ${text(environment)}`);
+    if (!gitSha) failures.push(`${id}: git_sha is missing`);
+    if (!gitRef) failures.push(`${id}: git_ref is missing`);
+    if (!buildTimestamp) failures.push(`${id}: build_timestamp is missing`);
+    if (expectedSha && gitSha !== expectedSha) failures.push(`${id}: expected git_sha=${expectedSha}, got ${text(gitSha)}`);
+    if (expectedWebSha && result.target.service === "web" && gitSha !== expectedWebSha) {
+      failures.push(`${id}: expected web git_sha=${expectedWebSha}, got ${text(gitSha)}`);
+    }
+    if (expectedApiSha && result.target.service === "api" && gitSha !== expectedApiSha) {
+      failures.push(`${id}: expected api git_sha=${expectedApiSha}, got ${text(gitSha)}`);
+    }
+    if (result.target.service === "api" && !operatorSha) {
+      failures.push(`${id}: operator.git_sha is missing`);
+    }
+    if (expectedOperatorSha && result.target.service === "api" && operatorSha !== expectedOperatorSha) {
+      failures.push(`${id}: expected operator git_sha=${expectedOperatorSha}, got ${text(operatorSha)}`);
+    }
+  }
+  return failures;
+}
 
-  if (!result.ok) failures.push(`${id}: ${result.error ?? "request failed"} (${result.status})`);
-  if (service !== result.target.service) failures.push(`${id}: expected service=${result.target.service}, got ${text(service)}`);
-  if (environment !== result.target.deployEnv) failures.push(`${id}: expected environment=${result.target.deployEnv}, got ${text(environment)}`);
-  if (!gitSha) failures.push(`${id}: git_sha is missing`);
-  if (!gitRef) failures.push(`${id}: git_ref is missing`);
-  if (!buildTimestamp) failures.push(`${id}: build_timestamp is missing`);
-  if (expectedSha && gitSha !== expectedSha) failures.push(`${id}: expected git_sha=${expectedSha}, got ${text(gitSha)}`);
-  if (expectedWebSha && result.target.service === "web" && gitSha !== expectedWebSha) {
-    failures.push(`${id}: expected web git_sha=${expectedWebSha}, got ${text(gitSha)}`);
-  }
-  if (expectedApiSha && result.target.service === "api" && gitSha !== expectedApiSha) {
-    failures.push(`${id}: expected api git_sha=${expectedApiSha}, got ${text(gitSha)}`);
-  }
-  if (result.target.service === "api" && !operatorSha) {
-    failures.push(`${id}: operator.git_sha is missing`);
-  }
-  if (expectedOperatorSha && result.target.service === "api" && operatorSha !== expectedOperatorSha) {
-    failures.push(`${id}: expected operator git_sha=${expectedOperatorSha}, got ${text(operatorSha)}`);
+let results = await Promise.all(targets.map(fetchVersion));
+let failures = collectFailures(results);
+const retryDeadline = Date.now() + retryForMs;
+while (strict && failures.length > 0 && Date.now() < retryDeadline) {
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  results = await Promise.all(targets.map(fetchVersion));
+  failures = collectFailures(results);
+  if (failures.length === 0) {
+    break;
   }
 }
+
+console.table(buildRows(results));
 
 if (failures.length > 0) {
   console.error("\nDeployment check failures:");

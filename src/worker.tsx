@@ -59,7 +59,7 @@ import {
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
 
-const SEO_METADATA_TIMEOUT_MS = 1800;
+const SEO_METADATA_TIMEOUT_MS = 4000;
 const SEO_METADATA_USER_AGENT_PATTERN =
   /(bot|crawler|spider|facebookexternalhit|twitterbot|xbot|slackbot|discordbot|telegrambot|whatsapp|linkedinbot|embedly|pinterest|preview)/i;
 const SHARE_LOCALE_QUERY_KEYS = ["locale", "lang"] as const;

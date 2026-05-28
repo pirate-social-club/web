@@ -67,7 +67,7 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: scripts/check-deployments.sh --no-strict
+        run: scripts/check-deployments.sh --scope staging
       - name: Smoke staging
         working-directory: web
         run: scripts/smoke-test.sh staging

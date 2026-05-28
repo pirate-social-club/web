@@ -14,8 +14,16 @@ if [[ -z "${API_DIR:-}" ]]; then
     API_DIR="$ROOT_DIR/../api/services/api"
   fi
 fi
+if [[ -z "${OPERATOR_DIR:-}" ]]; then
+  if [[ -d "$ROOT_DIR/api/services/community-provision-operator" ]]; then
+    OPERATOR_DIR="$ROOT_DIR/api/services/community-provision-operator"
+  else
+    OPERATOR_DIR="$ROOT_DIR/../api/services/community-provision-operator"
+  fi
+fi
 WEB_WRANGLER="$WEB_DIR/node_modules/.bin/wrangler"
 API_WRANGLER="$API_DIR/node_modules/.bin/wrangler"
+OPERATOR_WRANGLER="$OPERATOR_DIR/node_modules/.bin/wrangler"
 API_PRODUCTION_WORKER_NAME="${API_PRODUCTION_WORKER_NAME:-api-core}"
 
 HOTFIX=0
@@ -165,29 +173,36 @@ require_command git
 require_command node
 require_file "$WEB_WRANGLER"
 require_file "$API_WRANGLER"
+require_file "$OPERATOR_WRANGLER"
 
 WEB_SHA="$(repo_sha "$WEB_DIR")"
 WEB_REF="$(repo_ref "$WEB_DIR")"
 API_SHA="$(repo_sha "$API_DIR")"
 API_REF="$(repo_ref "$API_DIR")"
+OPERATOR_SHA="$(repo_sha "$OPERATOR_DIR")"
+OPERATOR_REF="$(repo_ref "$OPERATOR_DIR")"
 BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 if [[ "$HOTFIX" != "1" ]]; then
   require_clean_main "$WEB_DIR" "web"
   require_clean_main "$API_DIR" "api"
+  require_clean_main "$OPERATOR_DIR" "community-provision-operator"
 else
   SAFE_SUFFIX="$(printf '%s' "$HOTFIX_REASON" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//' | cut -c1-40)"
   WEB_SHA="${WEB_SHA}-hotfix-${SAFE_SUFFIX:-manual}"
   API_SHA="${API_SHA}-hotfix-${SAFE_SUFFIX:-manual}"
+  OPERATOR_SHA="${OPERATOR_SHA}-hotfix-${SAFE_SUFFIX:-manual}"
   log "hotfix deploy"
   printf 'reason: %s\n' "$HOTFIX_REASON"
   printf 'web status:\n%s\n' "$(repo_status "$WEB_DIR")"
   printf 'api status:\n%s\n' "$(repo_status "$API_DIR")"
+  printf 'community-provision-operator status:\n%s\n' "$(repo_status "$OPERATOR_DIR")"
 fi
 
 log "release metadata"
 printf 'web: %s (%s)\n' "$WEB_SHA" "$WEB_REF"
 printf 'api: %s (%s)\n' "$API_SHA" "$API_REF"
+printf 'community-provision-operator: %s (%s)\n' "$OPERATOR_SHA" "$OPERATOR_REF"
 printf 'timestamp: %s\n' "$BUILD_TIMESTAMP"
 
 if [[ "$SKIP_TESTS" != "1" ]]; then
@@ -196,6 +211,9 @@ if [[ "$SKIP_TESTS" != "1" ]]; then
 
   log "focused api provisioning tests"
   (cd "$API_DIR" && bun test tests/routes/communities/community-provisioning-routes.test.ts tests/community-provision-operator-client.test.ts)
+
+  log "community provision operator tests"
+  (cd "$OPERATOR_DIR" && bun test)
 fi
 
 log "check api production Story royalty secrets"
@@ -205,6 +223,13 @@ if [[ "$SKIP_BUILD" != "1" ]]; then
   log "build web production bundle"
   (cd "$WEB_DIR" && bun run build:prod)
 fi
+
+log "deploy community provision operator production"
+(cd "$OPERATOR_DIR" && "$OPERATOR_WRANGLER" deploy \
+  --env production \
+  --var "BUILD_GIT_SHA:$OPERATOR_SHA" \
+  --var "BUILD_GIT_REF:$OPERATOR_REF" \
+  --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
 
 log "deploy api production"
 (cd "$API_DIR" && "$API_WRANGLER" deploy \
@@ -239,6 +264,7 @@ log "verify production"
 "$ROOT_DIR/scripts/check-deployments.sh" \
   --scope prod \
   --expected-web-sha "$WEB_SHA" \
-  --expected-api-sha "$API_SHA"
+  --expected-api-sha "$API_SHA" \
+  --expected-operator-sha "$OPERATOR_SHA"
 
 log "production deploy complete"

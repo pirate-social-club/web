@@ -14,8 +14,16 @@ if [[ -z "${API_DIR:-}" ]]; then
     API_DIR="$ROOT_DIR/../api/services/api"
   fi
 fi
+if [[ -z "${OPERATOR_DIR:-}" ]]; then
+  if [[ -d "$ROOT_DIR/api/services/community-provision-operator" ]]; then
+    OPERATOR_DIR="$ROOT_DIR/api/services/community-provision-operator"
+  else
+    OPERATOR_DIR="$ROOT_DIR/../api/services/community-provision-operator"
+  fi
+fi
 WEB_WRANGLER="$WEB_DIR/node_modules/.bin/wrangler"
 API_WRANGLER="$API_DIR/node_modules/.bin/wrangler"
+OPERATOR_WRANGLER="$OPERATOR_DIR/node_modules/.bin/wrangler"
 REQUIRED_API_STAGING_SECRETS=(
   OPENROUTER_API_KEY
   PRIVY_APP_ID
@@ -31,6 +39,8 @@ WEB_SHA="$(git -C "$WEB_DIR" rev-parse --short HEAD)"
 WEB_REF="$(git -C "$WEB_DIR" rev-parse --abbrev-ref HEAD)"
 API_SHA="$(git -C "$API_DIR" rev-parse --short HEAD)"
 API_REF="$(git -C "$API_DIR" rev-parse --abbrev-ref HEAD)"
+OPERATOR_SHA="$(git -C "$OPERATOR_DIR" rev-parse --short HEAD)"
+OPERATOR_REF="$(git -C "$OPERATOR_DIR" rev-parse --abbrev-ref HEAD)"
 BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 WEB_ORIGIN="${WEB_ORIGIN:-https://staging.pirate.sc}"
@@ -69,7 +79,7 @@ if (!response.ok) {
   throw new Error(`${url} returned HTTP ${response.status}`);
 }
 const body = await response.json();
-const actual = body[field];
+const actual = field.split(".").reduce((current, part) => current?.[part], body);
 if (actual !== expected) {
   throw new Error(`${url} expected ${field}=${expected}, got ${actual}`);
 }
@@ -124,6 +134,7 @@ require_command git
 require_command node
 require_file "$WEB_WRANGLER"
 require_file "$API_WRANGLER"
+require_file "$OPERATOR_WRANGLER"
 
 log "check API staging secrets"
 check_api_staging_secrets
@@ -131,6 +142,7 @@ check_api_staging_secrets
 log "staging build metadata"
 printf 'web: %s (%s)\n' "$WEB_SHA" "$WEB_REF"
 printf 'api: %s (%s)\n' "$API_SHA" "$API_REF"
+printf 'community-provision-operator: %s (%s)\n' "$OPERATOR_SHA" "$OPERATOR_REF"
 printf 'timestamp: %s\n' "$BUILD_TIMESTAMP"
 
 log "build web staging bundle"
@@ -156,6 +168,13 @@ log "deploy web public staging worker"
   --var "BUILD_GIT_REF:$WEB_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
 
+log "deploy community provision operator staging"
+(cd "$OPERATOR_DIR" && "$OPERATOR_WRANGLER" deploy \
+  --env staging \
+  --var "BUILD_GIT_SHA:$OPERATOR_SHA" \
+  --var "BUILD_GIT_REF:$OPERATOR_REF" \
+  --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
+
 log "deploy api staging worker"
 (cd "$API_DIR" && "$API_WRANGLER" deploy \
   --env staging \
@@ -171,5 +190,6 @@ check_status "$WEB_ORIGIN/" "200"
 check_status "$API_ORIGIN/health" "200"
 check_json_field "$WEB_ORIGIN/__version" "git_sha" "$WEB_SHA"
 check_json_field "$API_ORIGIN/__version" "git_sha" "$API_SHA"
+check_json_field "$API_ORIGIN/__version" "operator.git_sha" "$OPERATOR_SHA"
 
 log "staging deploy complete"

@@ -4,12 +4,13 @@ set -euo pipefail
 EXPECTED_SHA=""
 EXPECTED_WEB_SHA=""
 EXPECTED_API_SHA=""
+EXPECTED_OPERATOR_SHA=""
 STRICT=1
 SCOPE="all"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/check-deployments.sh [--scope all|prod|staging] [--expected-sha SHA] [--expected-web-sha SHA] [--expected-api-sha SHA] [--no-strict]
+Usage: scripts/check-deployments.sh [--scope all|prod|staging] [--expected-sha SHA] [--expected-web-sha SHA] [--expected-api-sha SHA] [--expected-operator-sha SHA] [--no-strict]
 
 Checks deployed web/API version metadata across production and staging.
 
@@ -18,6 +19,8 @@ Options:
   --expected-sha SHA      Require every target git_sha to match SHA. Useful for monorepos.
   --expected-web-sha SHA  Require web targets to match SHA.
   --expected-api-sha SHA  Require API targets to match SHA.
+  --expected-operator-sha SHA
+                          Require API targets' operator.git_sha to match SHA.
   --no-strict             Print the table but do not fail on mismatches/null fields.
   -h, --help              Show this help.
 EOF
@@ -57,6 +60,14 @@ while [[ $# -gt 0 ]]; do
       fi
       shift 2
       ;;
+    --expected-operator-sha)
+      EXPECTED_OPERATOR_SHA="${2:-}"
+      if [[ -z "$EXPECTED_OPERATOR_SHA" ]]; then
+        printf 'Missing value for --expected-operator-sha\n' >&2
+        exit 2
+      fi
+      shift 2
+      ;;
     --no-strict)
       STRICT=0
       shift
@@ -73,8 +84,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-node - "$EXPECTED_SHA" "$EXPECTED_WEB_SHA" "$EXPECTED_API_SHA" "$STRICT" "$SCOPE" <<'NODE'
-const [expectedSha, expectedWebSha, expectedApiSha, strictRaw, scopeRaw] = process.argv.slice(2);
+node - "$EXPECTED_SHA" "$EXPECTED_WEB_SHA" "$EXPECTED_API_SHA" "$EXPECTED_OPERATOR_SHA" "$STRICT" "$SCOPE" <<'NODE'
+const [expectedSha, expectedWebSha, expectedApiSha, expectedOperatorSha, strictRaw, scopeRaw] = process.argv.slice(2);
 const strict = strictRaw !== "0";
 const scope = scopeRaw === "production" ? "prod" : scopeRaw;
 
@@ -129,6 +140,13 @@ function field(body, name) {
   return body && typeof body === "object" && name in body ? body[name] : null;
 }
 
+function nestedField(body, path) {
+  return path.split(".").reduce((current, part) => {
+    if (!current || typeof current !== "object") return null;
+    return part in current ? current[part] : null;
+  }, body);
+}
+
 const results = await Promise.all(targets.map(fetchVersion));
 const rows = results.map((result) => ({
   target: result.target.id,
@@ -139,6 +157,7 @@ const rows = results.map((result) => ({
   git_sha: text(field(result.body, "git_sha")),
   git_ref: text(field(result.body, "git_ref")),
   build_timestamp: text(field(result.body, "build_timestamp")),
+  operator_git_sha: text(nestedField(result.body, "operator.git_sha")),
   url: result.target.url,
   error: result.error ?? "",
 }));
@@ -154,6 +173,7 @@ for (const result of results) {
   const gitSha = field(body, "git_sha");
   const gitRef = field(body, "git_ref");
   const buildTimestamp = field(body, "build_timestamp");
+  const operatorSha = nestedField(body, "operator.git_sha");
 
   if (!result.ok) failures.push(`${id}: ${result.error ?? "request failed"} (${result.status})`);
   if (service !== result.target.service) failures.push(`${id}: expected service=${result.target.service}, got ${text(service)}`);
@@ -167,6 +187,12 @@ for (const result of results) {
   }
   if (expectedApiSha && result.target.service === "api" && gitSha !== expectedApiSha) {
     failures.push(`${id}: expected api git_sha=${expectedApiSha}, got ${text(gitSha)}`);
+  }
+  if (result.target.service === "api" && !operatorSha) {
+    failures.push(`${id}: operator.git_sha is missing`);
+  }
+  if (expectedOperatorSha && result.target.service === "api" && operatorSha !== expectedOperatorSha) {
+    failures.push(`${id}: expected operator git_sha=${expectedOperatorSha}, got ${text(operatorSha)}`);
   }
 }
 

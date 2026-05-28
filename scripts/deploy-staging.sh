@@ -35,12 +35,87 @@ OPTIONAL_API_STAGING_SECRETS=(
   SWARM_BEE_API_URL
 )
 
-WEB_SHA="$(git -C "$WEB_DIR" rev-parse --short HEAD)"
-WEB_REF="$(git -C "$WEB_DIR" rev-parse --abbrev-ref HEAD)"
-API_SHA="$(git -C "$API_DIR" rev-parse --short HEAD)"
-API_REF="$(git -C "$API_DIR" rev-parse --abbrev-ref HEAD)"
-OPERATOR_SHA="$(git -C "$OPERATOR_DIR" rev-parse --short HEAD)"
-OPERATOR_REF="$(git -C "$OPERATOR_DIR" rev-parse --abbrev-ref HEAD)"
+ALLOW_NON_MAIN=0
+ALLOW_REASON=""
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/deploy-staging.sh [options]
+
+Deploys web + api + community provision operator staging as one release unit.
+
+Options:
+  --allow-non-main -m "reason"
+                          Allow dirty/non-main staging deploy with auditable metadata suffix.
+  -m, --message "reason"  Required with --allow-non-main.
+  -h, --help              Show this help.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --allow-non-main)
+      ALLOW_NON_MAIN=1
+      shift
+      ;;
+    -m|--message)
+      ALLOW_REASON="${2:-}"
+      if [[ -z "$ALLOW_REASON" ]]; then
+        printf 'Missing non-main deploy reason\n' >&2
+        exit 2
+      fi
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf 'Unknown argument: %s\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [[ "$ALLOW_NON_MAIN" == "1" && -z "$ALLOW_REASON" ]]; then
+  printf '--allow-non-main requires -m "reason"\n' >&2
+  exit 2
+fi
+
+repo_status() {
+  git -C "$1" status --short
+}
+
+repo_ref() {
+  git -C "$1" rev-parse --abbrev-ref HEAD
+}
+
+repo_sha() {
+  git -C "$1" rev-parse --short HEAD
+}
+
+require_clean_main() {
+  local dir="$1"
+  local name="$2"
+  local branch
+  branch="$(repo_ref "$dir")"
+  if [[ "$branch" != "main" ]]; then
+    printf '%s must be on main for staging deploys, got %s\n' "$name" "$branch" >&2
+    exit 1
+  fi
+  if [[ -n "$(repo_status "$dir")" ]]; then
+    printf '%s worktree is dirty:\n%s\n' "$name" "$(repo_status "$dir")" >&2
+    exit 1
+  fi
+}
+
+WEB_SHA="$(repo_sha "$WEB_DIR")"
+WEB_REF="$(repo_ref "$WEB_DIR")"
+API_SHA="$(repo_sha "$API_DIR")"
+API_REF="$(repo_ref "$API_DIR")"
+OPERATOR_SHA="$(repo_sha "$OPERATOR_DIR")"
+OPERATOR_REF="$(repo_ref "$OPERATOR_DIR")"
 BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 WEB_ORIGIN="${WEB_ORIGIN:-https://staging.pirate.sc}"
@@ -135,6 +210,22 @@ require_command node
 require_file "$WEB_WRANGLER"
 require_file "$API_WRANGLER"
 require_file "$OPERATOR_WRANGLER"
+
+if [[ "$ALLOW_NON_MAIN" != "1" ]]; then
+  require_clean_main "$WEB_DIR" "web"
+  require_clean_main "$API_DIR" "api"
+  require_clean_main "$OPERATOR_DIR" "community-provision-operator"
+else
+  SAFE_SUFFIX="$(printf '%s' "$ALLOW_REASON" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//' | cut -c1-40)"
+  WEB_SHA="${WEB_SHA}-non-main-${SAFE_SUFFIX:-manual}"
+  API_SHA="${API_SHA}-non-main-${SAFE_SUFFIX:-manual}"
+  OPERATOR_SHA="${OPERATOR_SHA}-non-main-${SAFE_SUFFIX:-manual}"
+  log "non-main staging deploy"
+  printf 'reason: %s\n' "$ALLOW_REASON"
+  printf 'web status:\n%s\n' "$(repo_status "$WEB_DIR")"
+  printf 'api status:\n%s\n' "$(repo_status "$API_DIR")"
+  printf 'community-provision-operator status:\n%s\n' "$(repo_status "$OPERATOR_DIR")"
+fi
 
 log "check API staging secrets"
 check_api_staging_secrets

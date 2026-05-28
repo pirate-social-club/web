@@ -89,7 +89,7 @@ function FormattedHeading({
   const headingClassName = cn(
     "leading-tight text-foreground",
     displayDepth === 2 ? "text-[1.0625rem] font-semibold" : "text-base font-semibold",
-    displayDepth === 4 ? "text-sm uppercase tracking-normal text-muted-foreground" : undefined,
+    displayDepth === 4 ? "text-base uppercase tracking-normal text-muted-foreground" : undefined,
   );
   const Tag = `h${displayDepth}` as const;
 

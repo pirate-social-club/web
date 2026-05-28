@@ -28,6 +28,7 @@ import {
 } from "./client-groups-system";
 import type {
   ApiRequest,
+  ApiRequestInit,
   JsonErrorResponse,
   RefreshAuthCallback,
 } from "./client-internal";
@@ -169,12 +170,7 @@ export class ApiClient {
 
   private async request<T>(
     path: string,
-    init?: RequestInit & {
-      tokenRequired?: boolean;
-      tokenOptional?: boolean;
-      replayedAfterRefresh?: boolean;
-      replayedWithoutOptionalToken?: boolean;
-    },
+    init?: ApiRequestInit,
   ): Promise<T> {
     const tokenOptional = init?.tokenOptional ?? false;
     const tokenRequired = init?.tokenRequired ?? !tokenOptional;

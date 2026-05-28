@@ -68,7 +68,7 @@ function checkNoDuplicateWebTrees() {
 function checkPrimitiveStoryCoverage() {
   const primitiveFiles = fs
     .readdirSync(primitivesDir)
-    .filter((name) => name.endsWith(".tsx") && !name.endsWith(".stories.tsx"));
+    .filter((name) => name.endsWith(".tsx") && !name.endsWith(".stories.tsx") && !name.endsWith(".test.tsx"));
 
   const missingStories = primitiveFiles
     .filter((name) => !fs.existsSync(path.join(primitivesDir, name.replace(/\.tsx$/, ".stories.tsx"))))

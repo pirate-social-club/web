@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Trash } from "@phosphor-icons/react";
+import { ArrowSquareOut, Trash } from "@phosphor-icons/react";
 import { Button } from "@/components/primitives/button";
 import {
   Combobox,
@@ -12,7 +12,9 @@ import {
 import { Input } from "@/components/primitives/input";
 import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
+import { getPirateNetworkConfig } from "@/lib/network-config";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
+import { buildStoryPortalAssetUrl } from "@/lib/story/story-portal";
 import { FieldLabel } from "./post-composer-fields";
 import type { ComposerReference, LiveSetlistItemInput } from "./post-composer.types";
 import { Type } from "@/components/primitives/type";
@@ -28,15 +30,20 @@ function isPublicHandle(value: string | undefined): value is string {
   return Boolean(value?.trim());
 }
 
+function storyPortalHref(item: ComposerReference): string | null {
+  return buildStoryPortalAssetUrl(item.parentIpId, getPirateNetworkConfig().story.network);
+}
+
 function ReferenceMeta({ item, linkSubtitle = true }: { item: ComposerReference; linkSubtitle?: boolean }) {
   const royaltyLabel = referenceLicenseLabel(item);
-  if (!item.subtitle && !royaltyLabel) return null;
+  const portalHref = storyPortalHref(item);
+  if (!item.subtitle && !royaltyLabel && !portalHref) return null;
 
   return (
-    <Type as="p" className="truncate text-muted-foreground" variant="caption">
+    <Type as="p" className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-muted-foreground" variant="caption">
       {linkSubtitle && isPublicHandle(item.subtitle) ? (
         <a
-          className="hover:text-foreground hover:underline"
+          className="max-w-full truncate hover:text-foreground hover:underline"
           href={buildPublicProfilePath(item.subtitle)}
           onClick={(event) => event.stopPropagation()}
           rel="noreferrer"
@@ -45,10 +52,23 @@ function ReferenceMeta({ item, linkSubtitle = true }: { item: ComposerReference;
           {item.subtitle}
         </a>
       ) : item.subtitle ? (
-        <span>{item.subtitle}</span>
+        <span className="max-w-full truncate">{item.subtitle}</span>
       ) : null}
-      {item.subtitle && royaltyLabel ? <span> · </span> : null}
+      {item.subtitle && royaltyLabel ? <span aria-hidden="true">·</span> : null}
       {royaltyLabel ? <span>{royaltyLabel}</span> : null}
+      {(item.subtitle || royaltyLabel) && portalHref ? <span aria-hidden="true">·</span> : null}
+      {portalHref ? (
+        <a
+          className="inline-flex max-w-full items-center gap-1 font-medium text-foreground hover:underline"
+          href={portalHref}
+          onClick={(event) => event.stopPropagation()}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          <span className="truncate">View on Story</span>
+          <ArrowSquareOut aria-hidden="true" className="size-3.5 shrink-0" />
+        </a>
+      ) : null}
     </Type>
   );
 }

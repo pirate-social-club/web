@@ -7,7 +7,7 @@ import { PostComposer } from "./post-composer";
 import { PostComposerAttachmentCard } from "./post-composer-attachment-card";
 import { defaultMonetizationState } from "./post-composer-config";
 import { LiveTabContent } from "./post-composer-live-tab";
-import { SearchReferencePicker } from "./post-composer-references";
+import { SearchReferencePicker, SelectedReferenceCard } from "./post-composer-references";
 import type { AssetLicenseState, MonetizationState, PostComposerProps } from "./post-composer.types";
 
 const { describe, expect, test } = BunTest;
@@ -96,6 +96,7 @@ function walkTree(node: React.ReactNode, visit: (element: TestElement) => void) 
       || elementTypeName === "PostComposerCommerceAccessSection"
       || elementTypeName === "PostComposerDerivativeSection"
       || elementTypeName === "PublishSummary"
+      || elementTypeName === "ReferenceMeta"
       || elementTypeName === "ReviewOption"
       || elementTypeName === "VisibilityReview"
     )
@@ -1459,5 +1460,25 @@ describe("SearchReferencePicker", () => {
     );
 
     expect(loadingEmpty).not.toBeNull();
+  });
+
+  test("shows Story portal links for selected remix sources", () => {
+    const tree = SelectedReferenceCard({
+      item: {
+        id: "story:asset:asset_ast_source_song",
+        title: "Story Source",
+        subtitle: "source.pirate",
+        upstreamRoyaltyPct: 10,
+        parentIpId: "0xbB0a33bd07e7c813963b569f1202047a92b38d48",
+      },
+      onClear: () => undefined,
+    });
+    const storyLink = findElement(
+      tree,
+      (element) => element.type === "a" && element.props.children
+        && String(element.props.href).includes("portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48"),
+    );
+
+    expect(storyLink).not.toBeNull();
   });
 });

@@ -89,7 +89,7 @@ describe("deriveSongUI", () => {
     expect(markup).toContain('rel="noreferrer"');
   });
 
-  test("renders Story registration status", () => {
+  test("does not render completed Story registration status", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -103,8 +103,8 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("Remix-eligible");
-    expect(markup).toContain("Story IP registration is complete.");
+    expect(markup).not.toContain("Remix-eligible");
+    expect(markup).not.toContain("Story IP registration is complete.");
   });
 
   test("renders Story license reuse notice", () => {

@@ -435,6 +435,22 @@ describe("post presentation songs", () => {
     expect(content.storyRegistration?.description).toContain("configuration is missing");
   });
 
+  test("does not surface completed Story registration as a song card badge", () => {
+    const content = toCommunityPostContent(
+      createSongPost({ asset: "asset_ast_song" }),
+      {
+        asset: createSongAsset({
+          story_ip: "0xbB0a33bd07e7c813963b569f1202047a92b38d48",
+          story_royalty_registration_status: "registered",
+        }),
+      },
+    );
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.storyRegistration).toBeUndefined();
+  });
+
   test("maps transient Story license reuse notices into song card content", () => {
     const content = toCommunityPostContent(
       createSongPost({ asset: "asset_ast_song" }),

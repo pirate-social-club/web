@@ -140,11 +140,6 @@ export const StoryLicenseReused: Story = {
       title="Reuploaded original"
       content={{
         ...baseSong,
-        storyRegistration: {
-          state: "registered",
-          label: "Remix-eligible",
-          description: "Story IP registration is complete.",
-        },
         storyLicenseNotice: {
           label: "Story license reused",
           description: "This upload reused an existing Story registration, so it keeps the original terms: Commercial remix, 10% royalty.",

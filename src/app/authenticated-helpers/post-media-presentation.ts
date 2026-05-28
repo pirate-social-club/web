@@ -30,11 +30,7 @@ function formatStoryRegistrationFailure(error: string | null | undefined): strin
 function toStoryRegistrationStatus(asset: StoryRoyaltyAsset | null | undefined): StoryRegistrationStatus | undefined {
   switch (asset?.story_royalty_registration_status) {
     case "registered":
-      return {
-        state: "registered",
-        label: "Remix-eligible",
-        description: "Story IP registration is complete.",
-      };
+      return undefined;
     case "pending":
       return {
         state: "pending",

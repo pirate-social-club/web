@@ -161,7 +161,7 @@ async function resolveRouteSeoMetadata(input: {
     if (input.route.kind === "community") {
       const preview = await fetchPublicJson<PublicCommunityPreviewResponse>(
         input.apiOrigin,
-        `/public-communities/${encodeURIComponent(input.route.communityId)}`,
+        `/public-communities/${encodeURIComponent(input.route.communityId)}?preview=seo`,
         input.locale,
         input.signal,
       );
@@ -185,7 +185,7 @@ async function resolveRouteSeoMetadata(input: {
         try {
           community = await fetchPublicJson<PublicCommunityPreviewResponse>(
             input.apiOrigin,
-            `/public-communities/${encodeURIComponent(communityId)}`,
+            `/public-communities/${encodeURIComponent(communityId)}?preview=seo`,
             input.locale,
             input.signal,
           );

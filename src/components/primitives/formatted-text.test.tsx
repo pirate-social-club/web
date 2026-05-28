@@ -5,16 +5,17 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { FormattedText } from "./formatted-text";
 
 describe("FormattedText", () => {
-  test("renders body section headings without promoting single hash lines", () => {
+  test("renders body section headings without document-level h1 elements", () => {
     const markup = renderToStaticMarkup(
-      <FormattedText value={"## Lineup\nBody\n\n### Los Refrescos -- live\nDetails\n\n# Literal"} />,
+      <FormattedText value={"# eZo Festival 2026\nIntro\n\n## Basic info\nBody\n\n### Los Refrescos -- live\nDetails"} />,
     );
 
     expect(markup).toContain("<h2");
-    expect(markup).toContain("Lineup</h2>");
+    expect(markup).toContain("eZo Festival 2026</h2>");
     expect(markup).toContain("<h3");
-    expect(markup).toContain("Los Refrescos -- live</h3>");
-    expect(markup).toContain("# Literal");
+    expect(markup).toContain("Basic info</h3>");
+    expect(markup).toContain("<h4");
+    expect(markup).toContain("Los Refrescos -- live</h4>");
     expect(markup).not.toContain("<h1");
   });
 
@@ -23,7 +24,7 @@ describe("FormattedText", () => {
       <FormattedText value={"### **Session Victim** -- [RA](https://ra.co)"} />,
     );
 
-    expect(markup).toContain("<h3");
+    expect(markup).toContain("<h4");
     expect(markup).toContain("<strong>Session Victim</strong>");
     expect(markup).toContain('href="https://ra.co"');
   });

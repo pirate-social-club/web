@@ -78,20 +78,20 @@ function FormattedParagraph({ lines, textKey }: { lines: string[]; textKey: stri
 }
 
 function FormattedHeading({
-  depth,
+  displayDepth,
   text,
   textKey,
 }: {
-  depth: 2 | 3 | 4;
+  displayDepth: 2 | 3 | 4;
   text: string;
   textKey: string;
 }) {
   const headingClassName = cn(
     "leading-tight text-foreground",
-    depth === 2 ? "text-[1.0625rem] font-semibold" : "text-base font-semibold",
-    depth === 4 ? "text-sm uppercase tracking-normal text-muted-foreground" : undefined,
+    displayDepth === 2 ? "text-[1.0625rem] font-semibold" : "text-base font-semibold",
+    displayDepth === 4 ? "text-sm uppercase tracking-normal text-muted-foreground" : undefined,
   );
-  const Tag = `h${depth}` as const;
+  const Tag = `h${displayDepth}` as const;
 
   return (
     <Tag className={headingClassName}>
@@ -135,13 +135,14 @@ export function FormattedText({
       continue;
     }
 
-    const headingMatch = /^(#{2,4})\s+(.+)$/.exec(trimmed);
+    const headingMatch = /^(#{1,4})\s+(.+)$/.exec(trimmed);
     if (headingMatch) {
-      const depth = headingMatch[1].length as 2 | 3 | 4;
+      const markdownDepth = headingMatch[1].length;
+      const displayDepth = Math.min(markdownDepth + 1, 4) as 2 | 3 | 4;
       const text = headingMatch[2].trim();
-      const headingKey = nextFormattedTextKey(keyCounts, "heading", `${depth}:${text}`);
+      const headingKey = nextFormattedTextKey(keyCounts, "heading", `${markdownDepth}:${text}`);
       blocks.push(
-        <FormattedHeading depth={depth} key={headingKey} text={text} textKey={headingKey} />,
+        <FormattedHeading displayDepth={displayDepth} key={headingKey} text={text} textKey={headingKey} />,
       );
       index += 1;
       continue;
@@ -215,7 +216,7 @@ export function FormattedText({
     while (index < lines.length) {
       const line = lines[index] ?? "";
       const lineTrimmed = line.trim();
-      if (!lineTrimmed || /^(#{2,4})\s+(.+)$/.test(lineTrimmed) || /^>\s?/.test(lineTrimmed) || /^[-*]\s+/.test(lineTrimmed) || /^\d+\.\s+/.test(lineTrimmed)) {
+      if (!lineTrimmed || /^(#{1,4})\s+(.+)$/.test(lineTrimmed) || /^>\s?/.test(lineTrimmed) || /^[-*]\s+/.test(lineTrimmed) || /^\d+\.\s+/.test(lineTrimmed)) {
         break;
       }
       paragraphLines.push(line);

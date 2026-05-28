@@ -1,0 +1,278 @@
+import { describe, expect, test } from "bun:test";
+import { renderToStaticMarkup } from "react-dom/server";
+
+import { Document } from "@/app/document";
+import {
+  buildCloudflareShareImageUrl,
+  buildCommunitySeoMetadata,
+  buildPostSeoMetadata,
+} from "@/lib/share-metadata";
+
+function basePost(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "pst_test",
+    object: "post",
+    community: "com_test",
+    post_type: "text",
+    title: "A proper preview",
+    body: "The body should become the share description.",
+    caption: null,
+    link_og_image_url: null,
+    link_og_title: null,
+    media_refs: [],
+    ...overrides,
+  };
+}
+
+function postResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    post: basePost(),
+    translated_body: null,
+    translated_caption: null,
+    translated_title: null,
+    song_presentation: null,
+    ...overrides,
+  } as never;
+}
+
+const community = {
+  id: "com_test",
+  object: "community_preview",
+  display_name: "Preview Club",
+  description: "A community with rich link previews.",
+  avatar_ref: "https://media.test/avatar.png",
+  banner_ref: "https://media.test/banner.jpg",
+} as never;
+
+describe("share metadata", () => {
+  test("uses a branded fallback image for communities without media", () => {
+    const metadata = buildCommunitySeoMetadata({
+      appOrigin: "https://pirate.sc",
+      locale: "en",
+      preview: {
+        ...community,
+        avatar_ref: null,
+        banner_ref: null,
+      },
+    });
+
+    expect(metadata.title).toBe("Preview Club • Pirate");
+    expect(metadata.description).toBe("A community with rich link previews.");
+    expect(metadata.imageUrl).toBe("https://pirate.sc/og/pirate-share-card.jpg");
+    expect(metadata.imageType).toBe("image/jpeg");
+    expect(metadata.imageWidth).toBe(1200);
+    expect(metadata.imageHeight).toBe(630);
+    expect(metadata.imageAlt).toBe("Preview Club on Pirate");
+  });
+
+  test("uses video poster metadata before community fallback", () => {
+    const metadata = buildPostSeoMetadata({
+      appOrigin: "https://pirate.sc",
+      community,
+      locale: "en",
+      postResponse: postResponse({
+        post: basePost({
+          media_refs: [{
+            storage_ref: "https://media.test/video.mp4",
+            mime_type: "video/mp4",
+            poster_ref: "https://media.test/poster.webp",
+            poster_mime_type: "image/webp",
+            poster_width: 1280,
+            poster_height: 720,
+          }],
+          post_type: "video",
+        }),
+      }),
+    });
+
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/poster.webp"));
+    expect(metadata.imageType).toBe("image/jpeg");
+    expect(metadata.imageWidth).toBe(1200);
+    expect(metadata.imageHeight).toBe(630);
+  });
+
+  test("uses image post media before other image sources", () => {
+    const metadata = buildPostSeoMetadata({
+      appOrigin: "https://pirate.sc",
+      community,
+      locale: "en",
+      postResponse: postResponse({
+        post: basePost({
+          link_og_image_url: "https://media.test/link.jpg",
+          media_refs: [{
+            storage_ref: "https://media.test/post-image.png",
+            mime_type: "image/png",
+          }],
+          post_type: "image",
+        }),
+      }),
+    });
+
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/post-image.png"));
+    expect(metadata.imageType).toBe("image/jpeg");
+  });
+
+  test("uses likely image media when MIME is missing", () => {
+    const metadata = buildPostSeoMetadata({
+      appOrigin: "https://pirate.sc",
+      community,
+      locale: "en",
+      postResponse: postResponse({
+        post: basePost({
+          media_refs: [{
+            storage_ref: "https://media.test/post-image.jpg?signature=test",
+            mime_type: null,
+          }],
+          post_type: "image",
+        }),
+      }),
+    });
+
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/post-image.jpg?signature=test"));
+  });
+
+  test("uses song cover art when a song has no image media", () => {
+    const metadata = buildPostSeoMetadata({
+      appOrigin: "https://pirate.sc",
+      community,
+      locale: "en",
+      postResponse: postResponse({
+        post: basePost({
+          media_refs: [{
+            storage_ref: "https://media.test/audio.mp3",
+            mime_type: "audio/mpeg",
+          }],
+          post_type: "song",
+          title: "Cover track",
+        }),
+        song_presentation: {
+          title: "Cover track",
+          cover_art_ref: "https://media.test/song-cover.jpg",
+          duration_ms: 180000,
+        },
+      }),
+    });
+
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/song-cover.jpg"));
+    expect(metadata.imageAlt).toBe("Cover track on Pirate");
+  });
+
+  test("uses link OG image before community fallback", () => {
+    const metadata = buildPostSeoMetadata({
+      appOrigin: "https://pirate.sc",
+      community,
+      locale: "en",
+      postResponse: postResponse({
+        post: basePost({
+          link_og_image_url: "https://link-preview.test/card.jpg",
+          post_type: "link",
+        }),
+      }),
+    });
+
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://link-preview.test/card.jpg"));
+  });
+
+  test("uses inline public post community fields without a separate community input", () => {
+    const metadata = buildPostSeoMetadata({
+      appOrigin: "https://pirate.sc",
+      community: null,
+      locale: "en",
+      postResponse: postResponse({
+        community,
+        post: basePost({
+          body: null,
+          media_refs: [],
+        }),
+      }),
+    });
+
+    expect(metadata.description).toBe("A community with rich link previews.");
+    expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/banner.jpg"));
+  });
+
+  test("renders structured Open Graph and X image tags", () => {
+    const markup = renderToStaticMarkup(
+      <Document
+        ctx={{
+          canonicalUrl: "https://pirate.sc/p/pst_test",
+          isIndexable: true,
+          locale: "en",
+          seoMetadata: {
+            description: "Description",
+            imageAlt: "Alt text",
+            imageHeight: 630,
+            imageType: "image/jpeg",
+            imageUrl: "https://pirate.sc/og/pirate-share-card.jpg",
+            imageWidth: 1200,
+            title: "Title",
+            type: "article",
+            url: "https://pirate.sc/p/pst_test",
+          },
+        }}
+        rw={{ nonce: "nonce" } as never}
+      >
+        <main />
+      </Document>,
+    );
+
+    expect(markup).toContain('property="og:image" content="https://pirate.sc/og/pirate-share-card.jpg"');
+    expect(markup).toContain('property="og:image:secure_url" content="https://pirate.sc/og/pirate-share-card.jpg"');
+    expect(markup).toContain('property="og:image:type" content="image/jpeg"');
+    expect(markup).toContain('property="og:image:width" content="1200"');
+    expect(markup).toContain('property="og:image:height" content="630"');
+    expect(markup).toContain('property="og:image:alt" content="Alt text"');
+    expect(markup).toContain('name="twitter:card" content="summary_large_image"');
+    expect(markup).toContain('name="twitter:image:alt" content="Alt text"');
+  });
+
+  test("renders the branded large-image card when route SEO is absent", () => {
+    const markup = renderToStaticMarkup(
+      <Document
+        ctx={{
+          appOrigin: "https://pirate.sc",
+          canonicalUrl: "https://pirate.sc/p/pst_timeout",
+          isIndexable: true,
+          locale: "en",
+          seoMetadata: null,
+        }}
+        rw={{ nonce: "nonce" } as never}
+      >
+        <main />
+      </Document>,
+    );
+
+    expect(markup).toContain('name="twitter:card" content="summary_large_image"');
+    expect(markup).toContain('property="og:image" content="https://pirate.sc/og/pirate-share-card.jpg"');
+    expect(markup).toContain('property="og:image:type" content="image/jpeg"');
+    expect(markup).toContain('property="og:image:width" content="1200"');
+    expect(markup).toContain('property="og:image:height" content="630"');
+  });
+
+  test("applies fallback dimensions when SEO returns the default image path", () => {
+    const markup = renderToStaticMarkup(
+      <Document
+        ctx={{
+          appOrigin: "https://pirate.sc",
+          canonicalUrl: "https://pirate.sc/p/pst_default_image",
+          isIndexable: true,
+          locale: "en",
+          seoMetadata: {
+            description: "Description",
+            imageUrl: "https://pirate.sc/og/pirate-share-card.jpg?cache=v1",
+            title: "Title",
+            type: "article",
+            url: "https://pirate.sc/p/pst_default_image",
+          },
+        }}
+        rw={{ nonce: "nonce" } as never}
+      >
+        <main />
+      </Document>,
+    );
+
+    expect(markup).toContain('property="og:image:type" content="image/jpeg"');
+    expect(markup).toContain('property="og:image:width" content="1200"');
+    expect(markup).toContain('property="og:image:height" content="630"');
+  });
+});

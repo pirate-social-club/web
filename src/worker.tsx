@@ -1,6 +1,5 @@
 import { except, render, route } from "rwsdk/router";
 import { defineApp, type RequestInfo } from "rwsdk/worker";
-import type { CommunityPreview, LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { PirateApp } from "@/app";
 import type { AppContext, SeoMetadata, ThemeMode } from "@/app/app-context";
@@ -49,20 +48,17 @@ import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getLocaleMessages } from "@/locales";
 import { applySecurityHeaders } from "@/lib/security/csp";
 import { buildVersionResponse, type BuildVersionEnv } from "@/lib/build-version";
+import {
+  buildAgentSeoMetadata,
+  buildCommunitySeoMetadata,
+  buildPostSeoMetadata,
+  buildProfileSeoMetadata,
+  type PublicCommunityPreviewResponse,
+  type PublicPostResponse,
+} from "@/lib/share-metadata";
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
 
-type PublicCommunityPreviewResponse = CommunityPreview & {
-  omitted_surfaces?: unknown;
-  links?: unknown;
-};
-
-type PublicPostResponse = LocalizedPostResponse & {
-  omitted_surfaces?: unknown;
-  links?: unknown;
-};
-
-const META_DESCRIPTION_MAX_LENGTH = 180;
 const SEO_METADATA_TIMEOUT_MS = 650;
 const SEO_METADATA_USER_AGENT_PATTERN =
   /(bot|crawler|spider|facebookexternalhit|twitterbot|xbot|slackbot|discordbot|telegrambot|whatsapp|linkedinbot|embedly|pinterest|preview)/i;
@@ -118,61 +114,6 @@ function buildOpenGraphUrl(canonicalUrl: string, locale: UiLocaleCode, hasLocale
   return url.toString();
 }
 
-function normalizeMetaText(value: string | null | undefined): string | null {
-  const normalized = value?.replace(/\s+/g, " ").trim();
-  return normalized ? normalized : null;
-}
-
-function truncateMetaDescription(value: string | null | undefined): string | null {
-  const normalized = normalizeMetaText(value);
-  if (!normalized) {
-    return null;
-  }
-
-  if (normalized.length <= META_DESCRIPTION_MAX_LENGTH) {
-    return normalized;
-  }
-
-  return `${normalized.slice(0, META_DESCRIPTION_MAX_LENGTH - 1).trimEnd()}...`;
-}
-
-function resolvePublicImageUrl(value: string | null | undefined, appOrigin: string): string | null {
-  const trimmed = value?.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  try {
-    const url = trimmed.startsWith("/") ? new URL(trimmed, appOrigin) : new URL(trimmed);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
-function firstPublicImageUrl(values: Array<string | null | undefined>, appOrigin: string): string | null {
-  for (const value of values) {
-    const imageUrl = resolvePublicImageUrl(value, appOrigin);
-    if (imageUrl) {
-      return imageUrl;
-    }
-  }
-  return null;
-}
-
-function firstPostMediaImageUrl(post: LocalizedPostResponse["post"], appOrigin: string): string | null {
-  for (const media of post.media_refs ?? []) {
-    if (media.mime_type && !media.mime_type.toLowerCase().startsWith("image/")) {
-      continue;
-    }
-    const imageUrl = resolvePublicImageUrl(media.storage_ref, appOrigin);
-    if (imageUrl) {
-      return imageUrl;
-    }
-  }
-  return null;
-}
-
 function buildPublicApiUrl(apiOrigin: string, path: string, locale: UiLocaleCode | null): string {
   const url = new URL(path, apiOrigin);
   if (locale && locale !== "pseudo") {
@@ -209,118 +150,6 @@ async function fetchPublicJson<T>(
   return await response.json() as T;
 }
 
-function buildCommunitySeoMetadata(input: {
-  appOrigin: string;
-  locale: UiLocaleCode;
-  preview: PublicCommunityPreviewResponse;
-}): SeoMetadata {
-  const copy = getLocaleMessages(input.locale, "routes");
-  const title = `${input.preview.display_name} • Pirate`;
-  const description = truncateMetaDescription(input.preview.description)
-    ?? copy.home.emptyHomeBody;
-  const imageUrl = firstPublicImageUrl([
-    input.preview.banner_ref,
-    input.preview.avatar_ref,
-  ], input.appOrigin);
-
-  return {
-    description,
-    imageUrl,
-    title,
-    type: "website",
-  };
-}
-
-function buildPostSeoMetadata(input: {
-  appOrigin: string;
-  community: PublicCommunityPreviewResponse | null;
-  locale: UiLocaleCode;
-  postResponse: PublicPostResponse;
-}): SeoMetadata {
-  const copy = getLocaleMessages(input.locale, "routes");
-  const post = input.postResponse.post;
-  const titleText = normalizeMetaText(input.postResponse.translated_title ?? post.title)
-    ?? normalizeMetaText(post.link_og_title)
-    ?? copy.post.fallbackTitle;
-  const description = truncateMetaDescription(
-    input.postResponse.translated_body
-      ?? input.postResponse.translated_caption
-      ?? post.body
-      ?? post.caption
-      ?? post.link_og_title
-      ?? input.community?.description
-      ?? null,
-  ) ?? copy.post.description;
-  const imageUrl = firstPostMediaImageUrl(post, input.appOrigin)
-    ?? firstPublicImageUrl([
-      post.link_og_image_url,
-      input.community?.banner_ref,
-      input.community?.avatar_ref,
-    ], input.appOrigin);
-
-  return {
-    description,
-    imageUrl,
-    title: `${titleText} • Pirate`,
-    type: "article",
-  };
-}
-
-function getPublicIdentityHandleLabel(input: {
-  global_handle: { label: string };
-  primary_public_handle?: { label: string } | null;
-}): string {
-  return input.primary_public_handle?.label ?? input.global_handle.label;
-}
-
-function buildProfileSeoMetadata(input: {
-  appOrigin: string;
-  locale: UiLocaleCode;
-  resolution: PublicProfileResolution;
-}): SeoMetadata {
-  const copy = getLocaleMessages(input.locale, "routes").publicProfile;
-  const handle = getPublicIdentityHandleLabel(input.resolution.profile);
-  const displayName = normalizeMetaText(input.resolution.profile.display_name) ?? handle;
-  const communityCount = input.resolution.created_communities.length;
-  const description = truncateMetaDescription(input.resolution.profile.bio)
-    ?? (communityCount > 0
-      ? communityCount === 1
-        ? copy.createdCommunityMeta.replace("{handle}", handle)
-        : copy.createdCommunitiesMeta
-            .replace("{handle}", handle)
-            .replace("{count}", String(communityCount))
-      : copy.defaultMeta.replace("{handle}", handle));
-  const imageUrl = firstPublicImageUrl([
-    input.resolution.profile.cover_ref,
-    input.resolution.profile.avatar_ref,
-  ], input.appOrigin);
-
-  return {
-    description,
-    imageUrl,
-    title: `${displayName} • Pirate`,
-    type: "profile",
-  };
-}
-
-function buildAgentSeoMetadata(input: {
-  locale: UiLocaleCode;
-  resolution: PublicAgentResolution;
-}): SeoMetadata {
-  const copy = getLocaleMessages(input.locale, "routes").publicAgent;
-  const handle = input.resolution.agent.handle.label_display;
-  const displayName = normalizeMetaText(input.resolution.agent.display_name) ?? handle;
-  const ownerHandle = getPublicIdentityHandleLabel(input.resolution.owner);
-  const description = `${handle} ${copy.ownerLabel.toLowerCase()} ${ownerHandle}.`;
-
-  return {
-    description,
-    imageUrl: null,
-    title: `${displayName} • Pirate Agent`,
-    type: "profile",
-  };
-}
-
 async function resolveRouteSeoMetadata(input: {
   apiOrigin: string;
   appOrigin: string;
@@ -350,9 +179,9 @@ async function resolveRouteSeoMetadata(input: {
         input.locale,
         input.signal,
       );
-      let community: PublicCommunityPreviewResponse | null = null;
+      let community: PublicCommunityPreviewResponse | null = postResponse.community ?? null;
       const communityId = postResponse.post.community;
-      if (communityId) {
+      if (!community && communityId) {
         try {
           community = await fetchPublicJson<PublicCommunityPreviewResponse>(
             input.apiOrigin,
@@ -394,6 +223,7 @@ async function resolveRouteSeoMetadata(input: {
         input.signal,
       );
       return buildAgentSeoMetadata({
+        appOrigin: input.appOrigin,
         locale: input.locale,
         resolution,
       });

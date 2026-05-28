@@ -4,7 +4,11 @@ export type ThemeMode = "dark" | "light" | "system";
 
 export type SeoMetadata = {
   description?: string | null;
+  imageAlt?: string | null;
+  imageHeight?: number | null;
+  imageType?: string | null;
   imageUrl?: string | null;
+  imageWidth?: number | null;
   title?: string | null;
   type?: "article" | "profile" | "website";
   url?: string | null;

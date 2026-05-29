@@ -140,12 +140,12 @@ jobs:
           INFISICAL_SECRET_PATH: /services/api
           SECRET_NAMES: CONTROL_PLANE_DATABASE_URL TURSO_COMMUNITY_DB_WRAP_KEY
         run: scripts/ci/fetch-infisical-secrets.sh
-      - name: Apply staging community migrations
+      - name: Repair staging community migrations
         working-directory: core
         run: |
           test -n "$CONTROL_PLANE_DATABASE_URL"
           test -n "$TURSO_COMMUNITY_DB_WRAP_KEY"
-          bun scripts/community/apply-remote-community-migrations.ts --execute
+          bun scripts/community/repair-community-migration-ledger.ts --execute
 
   production:
     name: Deploy production

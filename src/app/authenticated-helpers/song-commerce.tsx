@@ -77,6 +77,8 @@ export type SongPlaybackDescriptor = {
 
 export type SongPlaybackController = {
   getPlaybackState: (trackKey: string) => SongContentSpec["playbackState"];
+  getProgress: (trackKey: string) => number | undefined;
+  getDuration: (trackKey: string) => number | undefined;
   getAssetSourceState: (assetKey: string) => {
     playbackState: SongContentSpec["playbackState"];
     src?: string;
@@ -84,6 +86,7 @@ export type SongPlaybackController = {
   loadAssetSource: (descriptor: AssetSourceDescriptor) => Promise<string | null>;
   playTrack: (descriptor: SongPlaybackDescriptor) => Promise<void>;
   pauseTrack: (trackKey: string) => void;
+  seekTrack: (trackKey: string, positionMs: number) => void;
 };
 
 export type AssetSourceDescriptor = {
@@ -203,6 +206,10 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     playbackState: SongContentSpec["playbackState"];
     src?: string;
   }>>({});
+  const [progressByTrackKey, setProgressByTrackKey] = React.useState<Record<string, {
+    currentTimeMs?: number;
+    durationMs?: number;
+  }>>({});
 
   React.useEffect(() => {
     activeTrackKeyRef.current = activeTrackKey;
@@ -212,14 +219,47 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     const audio = new Audio();
     audioRef.current = audio;
 
+    const recordActiveProgress = () => {
+      const trackKey = activeTrackKeyRef.current;
+      if (!trackKey) return;
+
+      const currentTimeMs = Number.isFinite(audio.currentTime)
+        ? Math.max(0, Math.round(audio.currentTime * 1000))
+        : undefined;
+      const durationMs = Number.isFinite(audio.duration) && audio.duration > 0
+        ? Math.round(audio.duration * 1000)
+        : undefined;
+
+      setProgressByTrackKey((current) => {
+        const previous = current[trackKey];
+        if (
+          previous?.currentTimeMs === currentTimeMs
+          && previous?.durationMs === durationMs
+        ) {
+          return current;
+        }
+
+        return {
+          ...current,
+          [trackKey]: {
+            currentTimeMs,
+            durationMs,
+          },
+        };
+      });
+    };
+
     const handlePlay = () => {
       setBufferingTrackKey(null);
       setIsPlaying(true);
+      recordActiveProgress();
     };
     const handlePause = () => {
       setIsPlaying(false);
+      recordActiveProgress();
     };
     const handleEnded = () => {
+      recordActiveProgress();
       setIsPlaying(false);
       setActiveTrackKey(null);
     };
@@ -230,6 +270,7 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     };
     const handleCanPlay = () => {
       setBufferingTrackKey(null);
+      recordActiveProgress();
     };
 
     audio.addEventListener("play", handlePlay);
@@ -237,6 +278,9 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("waiting", handleWaiting);
     audio.addEventListener("canplay", handleCanPlay);
+    audio.addEventListener("durationchange", recordActiveProgress);
+    audio.addEventListener("loadedmetadata", recordActiveProgress);
+    audio.addEventListener("timeupdate", recordActiveProgress);
 
     return () => {
       audio.pause();
@@ -245,6 +289,9 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("waiting", handleWaiting);
       audio.removeEventListener("canplay", handleCanPlay);
+      audio.removeEventListener("durationchange", recordActiveProgress);
+      audio.removeEventListener("loadedmetadata", recordActiveProgress);
+      audio.removeEventListener("timeupdate", recordActiveProgress);
       for (const url of objectUrlsRef.current.values()) {
         URL.revokeObjectURL(url);
       }
@@ -380,6 +427,28 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     audioRef.current?.pause();
   }, [activeTrackKey]);
 
+  const seekTrack = React.useCallback((trackKey: string, positionMs: number) => {
+    const audio = audioRef.current;
+    if (!audio || activeTrackKeyRef.current !== trackKey) {
+      return;
+    }
+
+    const durationMs = Number.isFinite(audio.duration) && audio.duration > 0
+      ? audio.duration * 1000
+      : undefined;
+    const clampedPositionMs = Math.max(0, durationMs == null ? positionMs : Math.min(positionMs, durationMs));
+    audio.currentTime = clampedPositionMs / 1000;
+
+    setProgressByTrackKey((current) => ({
+      ...current,
+      [trackKey]: {
+        ...current[trackKey],
+        currentTimeMs: Math.round(clampedPositionMs),
+        durationMs: durationMs == null ? current[trackKey]?.durationMs : Math.round(durationMs),
+      },
+    }));
+  }, []);
+
   const getPlaybackState = React.useCallback((trackKey: string): SongContentSpec["playbackState"] => {
     if (bufferingTrackKey === trackKey) {
       return "buffering";
@@ -396,11 +465,22 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     assetSourceStates[assetKey] ?? { playbackState: "idle" as const }
   ), [assetSourceStates]);
 
+  const getProgress = React.useCallback((trackKey: string) => (
+    progressByTrackKey[trackKey]?.currentTimeMs
+  ), [progressByTrackKey]);
+
+  const getDuration = React.useCallback((trackKey: string) => (
+    progressByTrackKey[trackKey]?.durationMs
+  ), [progressByTrackKey]);
+
   return {
+    getDuration,
+    getProgress,
     getAssetSourceState,
     getPlaybackState,
     loadAssetSource,
     pauseTrack,
     playTrack,
+    seekTrack,
   };
 }

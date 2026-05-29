@@ -13,6 +13,10 @@ type StoryRoyaltyAsset = Pick<
   "story_error" | "story_ip" | "story_royalty_registration_status"
 >;
 
+type PostResponseWithAssetStory = ApiPost & {
+  asset_story?: StoryRoyaltyAsset | null;
+};
+
 function formatStoryRegistrationFailure(error: string | null | undefined): string {
   const normalized = error?.trim() ?? "";
   if (normalized.includes("story_royalty_config_missing")) {
@@ -52,6 +56,10 @@ function toStoryRegistrationStatus(
     default:
       return undefined;
   }
+}
+
+function getPostResponseAssetStory(postResponse: ApiPost): StoryRoyaltyAsset | null | undefined {
+  return (postResponse as PostResponseWithAssetStory).asset_story;
 }
 
 function toSongPlaybackDescriptor(
@@ -175,7 +183,7 @@ export function toVideoPostContent(
   const assetSourceState = assetSourceDescriptor && songOptions?.playback
     ? songOptions.playback.getAssetSourceState(assetSourceDescriptor.key)
     : undefined;
-  const storyAsset = songOptions?.asset ?? postResponse.asset_story;
+  const storyAsset = songOptions?.asset ?? getPostResponseAssetStory(postResponse);
   return {
     type: "video",
     accessMode,
@@ -233,13 +241,13 @@ export function toSongPostContent(
   const playbackState: SongContentSpec["playbackState"] = playbackDescriptor && playback
     ? playback.getPlaybackState(playbackDescriptor.key)
     : "idle";
-  const upstreamAttributions = post.upstream_asset_refs?.map((assetRef, index) => ({
-    assetId: assetRef,
-    relationshipType: "remix_of" as const,
-    title: `Source ${index + 1}`,
-  }));
-
-  const storyAsset = songOptions?.asset ?? postResponse.asset_story;
+  const playbackProgressMs = playbackDescriptor && playback
+    ? playback.getProgress(playbackDescriptor.key)
+    : undefined;
+  const playbackDurationMs = playbackDescriptor && playback
+    ? playback.getDuration(playbackDescriptor.key)
+    : undefined;
+  const storyAsset = songOptions?.asset ?? getPostResponseAssetStory(postResponse);
   return {
     type: "song",
     accessMode: post.access_mode ?? "public",
@@ -259,8 +267,10 @@ export function toSongPostContent(
     onBuy: songOptions?.onBuy,
     onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
     onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
+    onSeek: playbackDescriptor && playback ? (positionMs) => playback.seekTrack(playbackDescriptor.key, positionMs) : undefined,
     onVerifyAge: input.onVerifyAge,
     playbackState,
+    progressMs: playbackProgressMs,
     annotationsUrl: post.song_annotations_url ?? undefined,
     caption: input.resolvedCaption,
     captionDir: input.captionDir,
@@ -272,8 +282,8 @@ export function toSongPostContent(
     storyLicenseNotice: songOptions?.storyLicenseNotice,
     title: songPresentation?.title ?? post.song_title ?? input.title,
     artworkSrc: songPresentation?.cover_art_ref ?? undefined,
-    durationMs: songPresentation?.duration_ms ?? undefined,
-    upstreamAttributions: upstreamAttributions?.length ? upstreamAttributions : undefined,
+    durationMs: playbackDurationMs ?? songPresentation?.duration_ms ?? undefined,
+    upstreamAttributions: undefined,
     vinylRelease: toSongVinylRelease({ listing, purchase }),
   };
 }

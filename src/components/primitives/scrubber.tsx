@@ -7,6 +7,7 @@ interface ScrubberProps {
   value: number;
   max?: number;
   onChange?: (value: number) => void;
+  onCommit?: (value: number) => void;
   disabled?: boolean;
   className?: string;
   showThumb?: boolean;
@@ -16,6 +17,7 @@ export function Scrubber({
   value, 
   max = 100, 
   onChange, 
+  onCommit,
   disabled = false,
   className,
   showThumb = false,
@@ -23,7 +25,8 @@ export function Scrubber({
   return (
     <SliderPrimitive.Root
       className={cn(
-        "group relative flex w-full touch-none select-none items-center",
+        "group relative flex w-full touch-none select-none items-center py-2",
+        !disabled && "cursor-pointer",
         disabled && "pointer-events-none opacity-60",
         className
       )}
@@ -31,6 +34,7 @@ export function Scrubber({
       max={max}
       step={1}
       onValueChange={([v]) => onChange?.(v)}
+      onValueCommit={([v]) => (onCommit ?? onChange)?.(v)}
       disabled={disabled}
     >
       <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-muted">

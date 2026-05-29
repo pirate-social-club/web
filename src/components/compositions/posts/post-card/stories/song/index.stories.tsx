@@ -29,6 +29,106 @@ const baseSong: SongContentSpec = {
 
 const noop = () => {};
 
+function LocalFilePlaybackStory() {
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const objectUrlRef = React.useRef<string | null>(null);
+  const [fileUrl, setFileUrl] = React.useState<string | null>(null);
+  const [fileName, setFileName] = React.useState<string>("Choose an audio file");
+  const [playbackState, setPlaybackState] = React.useState<SongContentSpec["playbackState"]>("idle");
+  const [progressMs, setProgressMs] = React.useState(0);
+  const [durationMs, setDurationMs] = React.useState<number | undefined>(baseSong.durationMs);
+
+  React.useEffect(() => () => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+    }
+  }, []);
+
+  const syncProgress = React.useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    setProgressMs(Number.isFinite(audio.currentTime) ? Math.round(audio.currentTime * 1000) : 0);
+    setDurationMs(Number.isFinite(audio.duration) && audio.duration > 0 ? Math.round(audio.duration * 1000) : undefined);
+  }, []);
+
+  const handleFileChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+    }
+
+    const nextUrl = URL.createObjectURL(file);
+    objectUrlRef.current = nextUrl;
+    setFileUrl(nextUrl);
+    setFileName(file.name);
+    setPlaybackState("idle");
+    setProgressMs(0);
+    setDurationMs(undefined);
+  }, []);
+
+  const play = React.useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio || !fileUrl) return;
+
+    setPlaybackState("buffering");
+    void audio.play().catch(() => setPlaybackState("paused"));
+  }, [fileUrl]);
+
+  const pause = React.useCallback(() => {
+    audioRef.current?.pause();
+    setPlaybackState("paused");
+  }, []);
+
+  const seek = React.useCallback((positionMs: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.currentTime = positionMs / 1000;
+    setProgressMs(Math.round(positionMs));
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <label className="text-sm font-medium text-foreground">
+        Local audio file
+        <input className="mt-2 block w-full text-sm" type="file" accept="audio/*" onChange={handleFileChange} />
+      </label>
+      <audio
+        ref={audioRef}
+        src={fileUrl ?? undefined}
+        onDurationChange={syncProgress}
+        onEnded={() => {
+          syncProgress();
+          setPlaybackState("ended");
+        }}
+        onLoadedMetadata={syncProgress}
+        onPause={() => setPlaybackState("paused")}
+        onPlay={() => setPlaybackState("playing")}
+        onTimeUpdate={syncProgress}
+      />
+      <PostCard
+        {...basePost}
+        title="Local playback check"
+        content={{
+          ...baseSong,
+          title: fileName,
+          caption: "This story plays a local file through the song post controls.",
+          durationLabel: undefined,
+          durationMs,
+          onPause: pause,
+          onPlay: play,
+          onSeek: seek,
+          playbackState,
+          progressMs,
+        }}
+      />
+    </div>
+  );
+}
+
 const meta = {
   title: "Compositions/Posts/PostCard/Song",
   component: PostCard,
@@ -161,6 +261,11 @@ export const Buffering: Story = {
       }}
     />
   ),
+};
+
+export const LocalFilePlayback: Story = {
+  name: "Playback / Local file",
+  render: () => <LocalFilePlaybackStory />,
 };
 
 // ============================================================================

@@ -198,4 +198,40 @@ describe("deriveSongUI", () => {
     expect(markup).toContain('role="img"');
     expect(markup).toContain("Verify Age");
   });
+
+  test("renders scrubber and elapsed time when duration is available", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          durationMs: 227000,
+          onSeek: () => undefined,
+          progressMs: 65000,
+        },
+      }),
+    );
+
+    expect(markup).toContain("1:05");
+    expect(markup).toContain("3:47");
+    expect(markup).toContain('role="slider"');
+    expect(markup).toContain('aria-valuemax="227000"');
+    expect(markup).toContain("71.36563876651982%");
+  });
+
+  test("hides scrubber and duration label when duration is unavailable", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          durationLabel: undefined,
+          durationMs: undefined,
+          playbackState: "playing",
+          progressMs: 65000,
+        },
+      }),
+    );
+
+    expect(markup).not.toContain('role="slider"');
+    expect(markup).not.toContain("1:05");
+  });
 });

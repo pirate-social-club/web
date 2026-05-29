@@ -5,6 +5,7 @@ import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
 import { MediaControlButton } from "@/components/primitives/media-control-button";
+import { Scrubber } from "@/components/primitives/scrubber";
 import { postCardType } from "./post-card.styles";
 import { StoryLicenseNoticeBadge, StoryRegistrationBadge } from "./post-card-story-registration";
 import type { SongContentSpec, UpstreamAttribution } from "./post-card.types";
@@ -130,6 +131,13 @@ function getDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): str
   return `Derived from ${upstreamAttributions[0].title} +${upstreamAttributions.length - 1}`;
 }
 
+function formatPlaybackTime(durationMs: number): string {
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
 export function SongPostContent({ content, className }: SongPostContentProps) {
   const ui = deriveSongUI(content);
   const {
@@ -139,6 +147,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
     onPause,
     onVerifyAge,
   } = content;
+  const [seekPreviewMs, setSeekPreviewMs] = React.useState<number | null>(null);
 
   // Determine control button - smaller secondary style for preview, prominent for play
   const getControlButton = () => {
@@ -180,6 +189,15 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
 
   const derivativeSummary = ui.showAttribution ? getDerivativeSummary(upstreamAttributions) : null;
   const vinylReleaseUrl = content.vinylRelease?.url?.trim();
+  const durationMs = Number.isFinite(content.durationMs) && content.durationMs && content.durationMs > 0
+    ? content.durationMs
+    : undefined;
+  const progressMs = durationMs
+    ? Math.max(0, Math.min(seekPreviewMs ?? content.progressMs ?? 0, durationMs))
+    : 0;
+  const durationLabel = durationMs ? content.durationLabel ?? formatPlaybackTime(durationMs) : null;
+  const progressLabel = durationMs ? formatPlaybackTime(progressMs) : null;
+  const showScrubber = Boolean(durationMs && !ui.ageGateRequiresProof);
 
   return (
     <div className={cn("flex flex-col gap-2 text-start", className)}>
@@ -217,9 +235,9 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
             <p className={cn("min-w-0 truncate font-semibold text-foreground", postCardType.label)}>
               {content.title}
             </p>
-            {content.durationLabel && !ui.ageGateRequiresProof && (
+            {durationLabel && !ui.ageGateRequiresProof && (
               <span className={cn("shrink-0 font-normal text-muted-foreground", postCardType.label)}>
-                ({content.durationLabel})
+                ({durationLabel})
               </span>
             )}
           </div>
@@ -250,6 +268,29 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
           </div>
         ) : null}
       </div>
+
+      {showScrubber && durationMs ? (
+        <div className="flex items-center gap-2 pl-[5.75rem]">
+          <span className={cn("w-9 shrink-0 tabular-nums text-muted-foreground", postCardType.meta)}>
+            {progressLabel}
+          </span>
+          <Scrubber
+            className="min-w-0 flex-1"
+            disabled={!content.onSeek}
+            max={durationMs}
+            onChange={(nextProgressMs) => setSeekPreviewMs(nextProgressMs)}
+            onCommit={(nextProgressMs) => {
+              setSeekPreviewMs(null);
+              content.onSeek?.(nextProgressMs);
+            }}
+            showThumb
+            value={progressMs}
+          />
+          <span className={cn("w-9 shrink-0 text-end tabular-nums text-muted-foreground", postCardType.meta)}>
+            {durationLabel}
+          </span>
+        </div>
+      ) : null}
 
       <StoryRegistrationBadge status={content.storyRegistration} />
       <StoryLicenseNoticeBadge notice={content.storyLicenseNotice} />

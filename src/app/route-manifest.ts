@@ -36,9 +36,14 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { kind: "me", domain: "authenticated", testPaths: [{ pathname: "/me" }], serverRouteExpected: true },
   { kind: "onboarding", domain: "authenticated", testPaths: [{ pathname: "/onboarding" }], serverRouteExpected: true },
   { kind: "authorize-device", domain: "authenticated", testPaths: [{ pathname: "/authorize-device" }], serverRouteExpected: true },
+  { kind: "community-verification", domain: "authenticated", testPaths: [{ pathname: "/verify/community/com_test" }], serverRouteExpected: true },
   { kind: "telegram-mini-app", domain: "telegram", testPaths: [{ pathname: "/tg" }], serverRouteExpected: true },
   { kind: "telegram-exchange", domain: "telegram", testPaths: [{ pathname: "/tg/exchange" }], serverRouteExpected: true },
+  { kind: "telegram-self-return", domain: "telegram", testPaths: [{ pathname: "/tg/self-return" }, { pathname: "/tg/self-return/com_test" }], serverRouteExpected: true },
+  { kind: "telegram-join", domain: "telegram", testPaths: [{ pathname: "/tg/join/com_test" }], serverRouteExpected: true },
+  { kind: "telegram-verify", domain: "telegram", testPaths: [{ pathname: "/tg/verify/com_test" }], serverRouteExpected: true },
   { kind: "telegram-community", domain: "telegram", testPaths: [{ pathname: "/tg/c/com_test" }], serverRouteExpected: true },
+  { kind: "telegram-post", domain: "telegram", testPaths: [{ pathname: "/tg/p/pst_test" }], serverRouteExpected: true },
   { kind: "not-found", domain: "authenticated", testPaths: [{ pathname: "/nonexistent-manifest-test" }], serverRouteExpected: false },
 ];
 
@@ -69,9 +74,14 @@ const _KIND_COVERAGE: { [K in AppRoute["kind"]]: true } = {
   me: true,
   onboarding: true,
   "authorize-device": true,
+  "community-verification": true,
   "telegram-mini-app": true,
   "telegram-exchange": true,
+  "telegram-self-return": true,
+  "telegram-join": true,
+  "telegram-verify": true,
   "telegram-community": true,
+  "telegram-post": true,
   "not-found": true,
 };
 void _KIND_COVERAGE;

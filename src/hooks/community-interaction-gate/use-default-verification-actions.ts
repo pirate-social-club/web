@@ -10,6 +10,7 @@ import type {
 } from "@pirate/api-contracts";
 
 import { getErrorMessage } from "@/lib/error-utils";
+import { openExternalHref } from "@/lib/open-external-href";
 import {
   getVerificationCapabilitiesForProvider,
   getVerificationRequirementsForGates,
@@ -93,7 +94,7 @@ export function useDefaultVerificationActions({
       openHref(href);
       return;
     }
-    window.location.href = href;
+    openExternalHref(href);
   }, [openHref]);
 
   const startNonPassportVerification = React.useCallback(async ({
@@ -101,7 +102,7 @@ export function useDefaultVerificationActions({
     provider,
   }: {
     gate: CommunityGateData;
-    provider: "self" | "very";
+    provider: "self" | "very" | "zkpassport";
   }): StartVerificationResult => {
     if (provider === "very") {
       const result = await startVeryVerification();
@@ -109,6 +110,11 @@ export function useDefaultVerificationActions({
         closeModal();
       }
       return result;
+    }
+
+    if (provider === "zkpassport") {
+      showError("ZKPassport verification is available from the community join flow.");
+      return { started: false };
     }
 
     const requestedCapabilities = getVerificationCapabilitiesForProvider(gate.eligibility, "self");

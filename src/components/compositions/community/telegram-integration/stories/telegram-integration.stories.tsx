@@ -51,6 +51,15 @@ function connectedSettings(
   return {
     ...defaults,
     ...patch,
+    bot: {
+      ...defaults.bot,
+      status: "connected",
+      username: "InfinityMirrorBot",
+      displayName: "Infinity Mirror",
+      tokenLast4: "9abc",
+      webhookStatus: "active",
+      ...patch.bot,
+    },
     linkedChat: {
       ...defaults.linkedChat,
       status: "connected",
@@ -73,6 +82,7 @@ export const NotConnected: Story = {
 
 export const Connected: Story = {
   args: {
+    joinUrl: "https://pirate.sc/tg/join/com_cmt_infinity_mirror",
     settings: connectedSettings(),
     submitState: { kind: "idle" },
   },
@@ -81,6 +91,7 @@ export const Connected: Story = {
 export const PermissionIssue: Story = {
   name: "Permission issue",
   args: {
+    joinUrl: "https://pirate.sc/tg/join/com_cmt_infinity_mirror",
     settings: connectedSettings({
       linkedChat: {
         ...connectedSettings().linkedChat,
@@ -94,6 +105,7 @@ export const PermissionIssue: Story = {
 export const BotRemoved: Story = {
   name: "Bot removed",
   args: {
+    joinUrl: "https://pirate.sc/tg/join/com_cmt_infinity_mirror",
     settings: connectedSettings({
       linkedChat: {
         ...connectedSettings().linkedChat,
@@ -106,6 +118,7 @@ export const BotRemoved: Story = {
 
 export const Error: Story = {
   args: {
+    joinUrl: "https://pirate.sc/tg/join/com_cmt_infinity_mirror",
     settings: connectedSettings(),
     submitState: { kind: "error", message: "Could not save Telegram settings." },
   },
@@ -113,6 +126,7 @@ export const Error: Story = {
 
 export const Mobile: Story = {
   args: {
+    joinUrl: "https://pirate.sc/tg/join/com_cmt_infinity_mirror",
     settings: connectedSettings(),
     submitState: { kind: "idle" },
   },

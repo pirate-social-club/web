@@ -70,6 +70,7 @@
     "@vidstack/react": "^1.12.13",
     "@web3icons/react": "^4.1.17",
     "@xmtp/browser-sdk": "^7.0.0",
+    "@zkpassport/sdk": "^0.14.2",
     "agora-rtc-sdk-ng": "^4.24.3",
     "altcha": "^3.0.8",
     "class-variance-authority": "^0.7.1",

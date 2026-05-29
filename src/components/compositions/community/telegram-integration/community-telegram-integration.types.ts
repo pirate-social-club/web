@@ -37,6 +37,7 @@ export interface CommunityTelegramIntegrationPageProps {
   settings: CommunityTelegramIntegrationSettings;
   submitState: CommunityTelegramIntegrationSubmitState;
   className?: string;
+  joinUrl?: string | null;
   onConnectChat?: () => void;
   onRevokeBot?: () => void;
   onSave?: () => void;

@@ -16,6 +16,7 @@ import { buildCommunityPath } from "@/lib/community-routing";
 import { getCurrentHomeFeedSort, HOME_FEED_SORT_CHANGE_EVENT, setCurrentHomeFeedSort, type HomeFeedSort } from "@/lib/home-feed-sort";
 import { useSidebarCommunities } from "@/lib/owned-communities";
 import { useUiLocale } from "@/lib/ui-locale";
+import { toast } from "@/components/primitives/sonner";
 import { Button } from "@/components/primitives/button";
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
 import { PageContainer } from "@/components/primitives/layout-shell";

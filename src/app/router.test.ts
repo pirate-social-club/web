@@ -174,6 +174,14 @@ describe("public profile host routing", () => {
     });
   });
 
+  test("matches community verification launcher routes", () => {
+    expectJson(matchRoute("/verify/community/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c"), {
+      kind: "community-verification",
+      path: "/verify/community/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
+      communityId: "com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
+    });
+  });
+
   test("matches wallet as a primary route and keeps the old settings URL compatible", () => {
     expectJson(matchRoute("/wallet"), {
       kind: "wallet",
@@ -202,10 +210,34 @@ describe("public profile host routing", () => {
       kind: "telegram-exchange",
       path: "/tg/exchange",
     });
+    expectJson(matchRoute("/tg/self-return"), {
+      kind: "telegram-self-return",
+      path: "/tg/self-return",
+    });
+    expectJson(matchRoute("/tg/self-return/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c"), {
+      kind: "telegram-self-return",
+      path: "/tg/self-return/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
+      communityId: "com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
+    });
+    expectJson(matchRoute("/tg/join/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c"), {
+      kind: "telegram-join",
+      path: "/tg/join/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
+      communityId: "com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
+    });
+    expectJson(matchRoute("/tg/verify/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c"), {
+      kind: "telegram-verify",
+      path: "/tg/verify/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
+      communityId: "com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
+    });
     expectJson(matchRoute("/tg/c/captain-club"), {
       kind: "telegram-community",
       path: "/tg/c/captain-club",
       communityId: "captain-club",
+    });
+    expectJson(matchRoute("/tg/p/pst_cf89c73fe60641debd05c939252a870c"), {
+      kind: "telegram-post",
+      path: "/tg/p/pst_cf89c73fe60641debd05c939252a870c",
+      postId: "pst_cf89c73fe60641debd05c939252a870c",
     });
   });
 });

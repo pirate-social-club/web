@@ -1200,45 +1200,14 @@ export function TelegramMiniAppSelfReturnPage({
 }: {
   communityId?: string | null;
 }) {
-  const [showFallback, setShowFallback] = React.useState(!communityId);
-  const telegramHref = communityId
-    ? buildTelegramStartAppHref({
-        botUsername: resolveTelegramBotUsername(),
-        startParam: `v_${communityId}`,
-      })
-    : null;
+  const [showFallback, setShowFallback] = React.useState(false);
 
   React.useEffect(() => {
-    if (!communityId) {
-      setShowFallback(true);
-      return;
-    }
-    const initData = readTelegramMiniAppInitData({
-      hash: window.location.hash,
-      search: window.location.search,
-      webAppInitData: window.Telegram?.WebApp?.initData,
-    });
-    if (!initData) {
-      if (!telegramHref) {
-        setShowFallback(true);
-        return;
-      }
-      setShowFallback(false);
-      const fallbackTimeoutId = window.setTimeout(() => {
-        setShowFallback(true);
-      }, 1200);
-      try {
-        window.location.replace(telegramHref);
-      } catch {
-        window.clearTimeout(fallbackTimeoutId);
-        setShowFallback(true);
-      }
-      return () => window.clearTimeout(fallbackTimeoutId);
-    }
-    navigate(`/tg/verify/${encodeURIComponent(communityId)}`);
-  }, [communityId, telegramHref]);
+    const timeoutId = window.setTimeout(() => setShowFallback(true), 1200);
+    return () => window.clearTimeout(timeoutId);
+  }, [communityId]);
 
-  if (!showFallback && communityId) {
+  if (!showFallback) {
     return (
       <TelegramMiniAppShell>
         <div className="min-h-screen bg-background" aria-busy="true" />
@@ -1247,11 +1216,23 @@ export function TelegramMiniAppSelfReturnPage({
   }
 
   return (
-    <TelegramMiniAppSelfReturnView
-      hasCommunityId={Boolean(communityId)}
-      returnHref={telegramHref}
-      ShellComponent={TelegramMiniAppShell}
-    />
+    <TelegramMiniAppShell>
+      <div className="px-4 py-6">
+        <PageContainer size="narrow">
+          <section className="flex min-h-[calc(100svh-3rem)] flex-col items-center justify-center">
+            <div className="flex min-h-48 w-full max-w-md flex-col items-center justify-center text-center">
+              <Type
+                as="h1"
+                className="max-w-sm text-balance text-2xl leading-snug tracking-normal sm:text-3xl"
+                variant="h1"
+              >
+                Return to Telegram
+              </Type>
+            </div>
+          </section>
+        </PageContainer>
+      </div>
+    </TelegramMiniAppShell>
   );
 }
 

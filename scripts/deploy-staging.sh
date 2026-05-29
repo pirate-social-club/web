@@ -25,6 +25,7 @@ WEB_WRANGLER="$WEB_DIR/node_modules/.bin/wrangler"
 API_WRANGLER="$API_DIR/node_modules/.bin/wrangler"
 OPERATOR_WRANGLER="$OPERATOR_DIR/node_modules/.bin/wrangler"
 REQUIRED_API_STAGING_SECRETS=(
+  OPENAI_API_KEY
   OPENROUTER_API_KEY
   PRIVY_APP_ID
   PRIVY_APP_SECRET

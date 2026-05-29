@@ -25,6 +25,12 @@ WEB_WRANGLER="$WEB_DIR/node_modules/.bin/wrangler"
 API_WRANGLER="$API_DIR/node_modules/.bin/wrangler"
 OPERATOR_WRANGLER="$OPERATOR_DIR/node_modules/.bin/wrangler"
 API_PRODUCTION_WORKER_NAME="${API_PRODUCTION_WORKER_NAME:-api-core}"
+REQUIRED_API_PRODUCTION_SECRETS=(
+  OPENAI_API_KEY
+  OPENROUTER_API_KEY
+  STORY_OPERATOR_PRIVATE_KEY
+  STORY_ROYALTY_SPG_NFT_CONTRACT
+)
 
 HOTFIX=0
 HOTFIX_REASON=""
@@ -143,12 +149,13 @@ require_clean_main() {
   fi
 }
 
-check_api_story_royalty_secret() {
+check_api_production_secrets() {
   local secrets_json
   secrets_json="$(cd "$API_DIR" && "$API_WRANGLER" secret list --name "$API_PRODUCTION_WORKER_NAME" --env production --format json)"
 
-  node - "$secrets_json" <<'NODE'
-const [rawSecrets = "[]"] = process.argv.slice(2);
+  node - "$secrets_json" "${REQUIRED_API_PRODUCTION_SECRETS[*]}" <<'NODE'
+const [rawSecrets = "[]", requiredRaw = ""] = process.argv.slice(2);
+const required = requiredRaw.split(/\s+/).filter(Boolean);
 let listedSecrets;
 try {
   listedSecrets = JSON.parse(rawSecrets);
@@ -156,14 +163,13 @@ try {
   throw new Error(`Unable to parse API production secret list: ${error.message}`);
 }
 const available = new Set(listedSecrets.map((entry) => entry?.name).filter(Boolean));
-const required = ["STORY_OPERATOR_PRIVATE_KEY", "STORY_ROYALTY_SPG_NFT_CONTRACT"];
 const missing = required.filter((name) => !available.has(name));
 if (missing.length > 0) {
-  console.error(`Missing API production Story royalty secret(s): ${missing.join(", ")}`);
-  console.error("Sync /services/api commerce secrets to the production API worker before deploying.");
+  console.error(`Missing API production secrets: ${missing.join(", ")}`);
+  console.error("Sync /services/api secrets to the production API worker before deploying.");
   process.exit(1);
 }
-console.log(`API production Story royalty secrets present: ${required.join(", ")}`);
+console.log(`API production secrets present: ${required.join(", ")}`);
 NODE
 }
 
@@ -216,8 +222,8 @@ if [[ "$SKIP_TESTS" != "1" ]]; then
   (cd "$OPERATOR_DIR" && bun test)
 fi
 
-log "check api production Story royalty secrets"
-check_api_story_royalty_secret
+log "check api production secrets"
+check_api_production_secrets
 
 if [[ "$SKIP_BUILD" != "1" ]]; then
   log "build web production bundle"

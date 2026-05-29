@@ -965,6 +965,10 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           );
         }
       }
+      if (result?.status && result.status !== "published") {
+        setSubmitError("Post is pending moderator review and is not visible yet.");
+        return;
+      }
       const destinationPostId = publishedPostId ?? result?.id;
       if (!destinationPostId) {
         throw new Error("The post was created, but no destination post was returned.");

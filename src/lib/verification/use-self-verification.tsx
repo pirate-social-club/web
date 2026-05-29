@@ -11,8 +11,7 @@ import type { SelfApp } from "@selfxyz/sdk-common";
 import { useApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getVerificationPromptCopy } from "@/lib/identity-gates";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { isAndroidRuntime } from "@/lib/platform-detection";
+import { isMobileDeviceRuntime } from "@/lib/platform-detection";
 import {
   buildSelfVerificationLaunch,
   buildSelfVerificationCallbackHref,
@@ -116,15 +115,15 @@ export function useSelfVerification(input: {
     storageKey,
     verificationIntent,
   } = input;
-  const isMobile = useIsMobile();
   const [selfSession, setSelfSession] = React.useState<VerificationSession | null>(null);
   const [requestedCapabilities, setRequestedCapabilities] = React.useState<VerificationSession["requested_capabilities"]>([]);
   const [selfLoading, setSelfLoading] = React.useState(false);
   const [selfError, setSelfError] = React.useState<string | null>(null);
   const [selfModalOpen, setSelfModalOpen] = React.useState(false);
+  const [selfDeeplinkCallbackBaseHref, setSelfDeeplinkCallbackBaseHref] = React.useState<string | null>(null);
   const onVerifiedRef = React.useRef(onVerified);
   const completionInFlightRef = React.useRef(false);
-  const shouldUseSameDeviceLaunch = isMobile || isAndroidRuntime();
+  const shouldUseSameDeviceLaunch = isMobileDeviceRuntime();
 
   React.useEffect(() => {
     onVerifiedRef.current = onVerified;
@@ -132,6 +131,7 @@ export function useSelfVerification(input: {
 
   const startVerification = React.useCallback(async (options: {
     requestedCapabilities: VerificationSession["requested_capabilities"];
+    deeplinkCallbackBaseHref?: string | null;
     unavailableMessage: string;
     verificationRequirements?: VerificationRequirement[] | null;
     skipModal?: boolean;
@@ -143,11 +143,13 @@ export function useSelfVerification(input: {
 
     if (nextRequestedCapabilities.length === 0 && nextVerificationRequirements.length === 0) {
       setSelfError(options.unavailableMessage);
+      setSelfDeeplinkCallbackBaseHref(null);
       return { error: options.unavailableMessage, started: false };
     }
 
     setSelfLoading(true);
     setSelfError(null);
+    setSelfDeeplinkCallbackBaseHref(null);
     try {
       const result = await api.verification.startSession({
         provider: "self",
@@ -157,7 +159,7 @@ export function useSelfVerification(input: {
       });
       const launch = result.launch?.self_app;
       const deeplinkCallback = shouldUseSameDeviceLaunch && typeof window !== "undefined"
-        ? buildSelfVerificationCallbackHref(window.location.href, result.id)
+        ? buildSelfVerificationCallbackHref(options.deeplinkCallbackBaseHref ?? window.location.href, result.id)
         : null;
       const launchResult = buildSelfVerificationLaunch(launch, { deeplinkCallback });
       if ("error" in launchResult) {
@@ -165,6 +167,7 @@ export function useSelfVerification(input: {
         setSelfSession(null);
         setRequestedCapabilities([]);
         setSelfModalOpen(false);
+        setSelfDeeplinkCallbackBaseHref(null);
         clearPendingSelfVerificationSession(storageKey);
         setSelfError(message);
         return { error: message, started: false, href: null };
@@ -172,6 +175,7 @@ export function useSelfVerification(input: {
 
       setRequestedCapabilities(result.requested_capabilities);
       setSelfSession(result);
+      setSelfDeeplinkCallbackBaseHref(options.deeplinkCallbackBaseHref ?? null);
       const openedModal = !options.skipModal || !shouldUseSameDeviceLaunch;
       if (openedModal) {
         setSelfModalOpen(true);
@@ -183,6 +187,7 @@ export function useSelfVerification(input: {
       return { started: true, href: launchResult.href, openedModal };
     } catch (error: unknown) {
       const message = getErrorMessage(error, startErrorMessage);
+      setSelfDeeplinkCallbackBaseHref(null);
       setSelfError(message);
       return { error: message, started: false, href: null };
     } finally {
@@ -197,6 +202,7 @@ export function useSelfVerification(input: {
       setRequestedCapabilities([]);
       setSelfError(null);
       clearPendingSelfVerificationSession(storageKey);
+      setSelfDeeplinkCallbackBaseHref(null);
     }
   }, [storageKey]);
 
@@ -212,6 +218,7 @@ export function useSelfVerification(input: {
       setSelfSession(null);
       setRequestedCapabilities([]);
       setSelfModalOpen(false);
+      setSelfDeeplinkCallbackBaseHref(null);
       clearPendingSelfVerificationSession(storageKey);
       return;
     }
@@ -221,6 +228,7 @@ export function useSelfVerification(input: {
       setSelfSession(null);
       setRequestedCapabilities([]);
       setSelfModalOpen(false);
+      setSelfDeeplinkCallbackBaseHref(null);
       clearPendingSelfVerificationSession(storageKey);
       return;
     }
@@ -239,7 +247,7 @@ export function useSelfVerification(input: {
 
       if (session.status === "pending") {
         setSelfSession(session);
-        setSelfModalOpen(true);
+        setSelfModalOpen(!shouldUseSameDeviceLaunch);
         setSelfError(null);
         return;
       }
@@ -247,6 +255,7 @@ export function useSelfVerification(input: {
         setSelfSession(null);
         setRequestedCapabilities([]);
         setSelfModalOpen(false);
+        setSelfDeeplinkCallbackBaseHref(null);
         clearPendingSelfVerificationSession(storageKey);
         setSelfError("Verification session expired. Please try again.");
         return;
@@ -255,6 +264,7 @@ export function useSelfVerification(input: {
         setSelfSession(null);
         setRequestedCapabilities([]);
         setSelfModalOpen(false);
+        setSelfDeeplinkCallbackBaseHref(null);
         clearPendingSelfVerificationSession(storageKey);
         setSelfError(session.failure_reason || completeErrorMessage);
         return;
@@ -263,6 +273,7 @@ export function useSelfVerification(input: {
       setSelfSession(null);
       setRequestedCapabilities([]);
       setSelfModalOpen(false);
+      setSelfDeeplinkCallbackBaseHref(null);
       clearPendingSelfVerificationSession(storageKey);
       await onVerifiedRef.current?.({
         requestedCapabilities: input.pendingSession.requestedCapabilities,
@@ -274,7 +285,7 @@ export function useSelfVerification(input: {
       completionInFlightRef.current = false;
       setSelfLoading(false);
     }
-  }, [api.verification, completeErrorMessage, storageKey]);
+  }, [api.verification, completeErrorMessage, shouldUseSameDeviceLaunch, storageKey]);
 
   const handleSelfQrSuccess = React.useCallback(() => {
     const pendingSession = readPendingSelfVerificationSession(storageKey);
@@ -283,6 +294,7 @@ export function useSelfVerification(input: {
       setSelfSession(null);
       setRequestedCapabilities([]);
       setSelfModalOpen(false);
+      setSelfDeeplinkCallbackBaseHref(null);
       clearPendingSelfVerificationSession(storageKey);
       return;
     }
@@ -307,6 +319,7 @@ export function useSelfVerification(input: {
         setSelfSession(null);
         setRequestedCapabilities([]);
         setSelfModalOpen(false);
+        setSelfDeeplinkCallbackBaseHref(null);
         clearPendingSelfVerificationSession(storageKey);
         window.history.replaceState({}, "", getSelfCallbackCleanHref(url));
         return;
@@ -321,6 +334,7 @@ export function useSelfVerification(input: {
         setSelfSession(null);
         setRequestedCapabilities([]);
         setSelfModalOpen(false);
+        setSelfDeeplinkCallbackBaseHref(null);
         clearPendingSelfVerificationSession(storageKey);
         window.history.replaceState({}, "", getSelfCallbackCleanHref(url));
         return;
@@ -340,6 +354,34 @@ export function useSelfVerification(input: {
     return () => window.removeEventListener("popstate", handleSelfCallback);
   }, [completePendingSession, storageKey]);
 
+  React.useEffect(() => {
+    if (!shouldUseSameDeviceLaunch || typeof window === "undefined") {
+      return;
+    }
+
+    const checkPendingSession = () => {
+      const pendingSession = readPendingSelfVerificationSession(storageKey);
+      if (!pendingSession) {
+        return;
+      }
+      setRequestedCapabilities(pendingSession.requestedCapabilities);
+      void completePendingSession({ pendingSession });
+    };
+    const checkWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        checkPendingSession();
+      }
+    };
+
+    window.addEventListener("focus", checkPendingSession);
+    document.addEventListener("visibilitychange", checkWhenVisible);
+    checkPendingSession();
+    return () => {
+      window.removeEventListener("focus", checkPendingSession);
+      document.removeEventListener("visibilitychange", checkWhenVisible);
+    };
+  }, [completePendingSession, shouldUseSameDeviceLaunch, storageKey]);
+
   const selfPrompt = React.useMemo<SelfPrompt | null>(() => {
     if (!selfSession) {
       return null;
@@ -347,7 +389,7 @@ export function useSelfVerification(input: {
 
     const launch = selfSession.launch?.self_app;
     const deeplinkCallback = shouldUseSameDeviceLaunch && typeof window !== "undefined"
-      ? buildSelfVerificationCallbackHref(window.location.href, selfSession.id)
+      ? buildSelfVerificationCallbackHref(selfDeeplinkCallbackBaseHref ?? window.location.href, selfSession.id)
       : null;
     const launchResult = buildSelfVerificationLaunch(launch, { deeplinkCallback });
     if ("error" in launchResult) {
@@ -358,7 +400,7 @@ export function useSelfVerification(input: {
       href: launchResult.href,
       selfApp: launchResult.selfApp,
     };
-  }, [locale, requestedCapabilities, selfSession, shouldUseSameDeviceLaunch]);
+  }, [locale, requestedCapabilities, selfDeeplinkCallbackBaseHref, selfSession, shouldUseSameDeviceLaunch]);
 
   return {
     handleModalOpenChange,

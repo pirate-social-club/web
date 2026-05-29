@@ -48,6 +48,7 @@ import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getLocaleMessages } from "@/locales";
 import { applySecurityHeaders } from "@/lib/security/csp";
 import { buildVersionResponse, type BuildVersionEnv } from "@/lib/build-version";
+import { telegramCommunityJoinRedirect } from "@/lib/telegram-join-redirect";
 import {
   buildAgentSeoMetadata,
   buildCommunitySeoMetadata,
@@ -284,6 +285,44 @@ function AppRoutePage(requestInfo: AppRequestInfo) {
   );
 }
 
+async function proxyTelegramSessionRequest(request: Request, effectiveUrl: string): Promise<Response> {
+  const sourceUrl = new URL(effectiveUrl);
+  const discovery = getDiscoveryContext(sourceUrl);
+  const targetUrl = new URL(`${sourceUrl.pathname}${sourceUrl.search}`, discovery.apiOrigin);
+  const headers = new Headers();
+
+  for (const key of [
+    "accept",
+    "authorization",
+    "content-type",
+    "x-pirate-anonymous-id",
+    "x-pirate-session-id",
+  ]) {
+    const value = request.headers.get(key);
+    if (value) {
+      headers.set(key, value);
+    }
+  }
+
+  const body = request.method === "GET" || request.method === "HEAD"
+    ? undefined
+    : await request.clone().arrayBuffer();
+  const upstream = await fetch(targetUrl.toString(), {
+    body,
+    headers,
+    method: request.method,
+    redirect: "manual",
+  });
+  const responseHeaders = new Headers(upstream.headers);
+  responseHeaders.delete("content-encoding");
+  responseHeaders.delete("content-length");
+  return new Response(upstream.body, {
+    headers: responseHeaders,
+    status: upstream.status,
+    statusText: upstream.statusText,
+  });
+}
+
 function PrivacyRoutePage() {
   return <LegalDocumentPage source={PRIVACY_POLICY_SOURCE} />;
 }
@@ -439,12 +478,29 @@ const app = defineApp<AppRequestInfo>([
     route("/child-safety", ChildSafetyRoutePage),
     route("/privacy", PrivacyRoutePage),
     route("/terms", TermsRoutePage),
+    route("/telegram/session/exchange", ({ ctx, request }) =>
+      proxyTelegramSessionRequest(request, ctx.effectiveUrl ?? request.url)
+    ),
+    route("/telegram/session/auto-exchange", ({ ctx, request }) =>
+      proxyTelegramSessionRequest(request, ctx.effectiveUrl ?? request.url)
+    ),
     route("/", AppRoutePage),
     route("/popular", AppRoutePage),
     route("/advertise", AppRoutePage),
     route("/tg", AppRoutePage),
     route("/tg/exchange", AppRoutePage),
+    route("/tg/self-return", AppRoutePage),
+    route("/tg/self-return/:communityId", AppRoutePage),
+    route("/tg/join/:communityId", ({ ctx, params, request }) =>
+      telegramCommunityJoinRedirect({
+        apiOrigin: getDiscoveryContext(ctx.effectiveUrl ?? request.url).apiOrigin,
+        communityId: params.communityId,
+        effectiveUrl: ctx.effectiveUrl ?? request.url,
+      })
+    ),
+    route("/tg/verify/:communityId", AppRoutePage),
     route("/tg/c/:communityId", AppRoutePage),
+    route("/tg/p/:postId", AppRoutePage),
     route("/your-communities", AppRoutePage),
     route("/communities/new", AppRoutePage),
     route("/submit", AppRoutePage),

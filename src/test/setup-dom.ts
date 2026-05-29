@@ -51,6 +51,9 @@ export function installDomGlobals(html = DEFAULT_HTML) {
   Object.defineProperty(globalThis, "navigator", { configurable: true, value: window.navigator });
   Object.defineProperty(globalThis, "Element", { configurable: true, value: window.Element });
   Object.defineProperty(globalThis, "HTMLElement", { configurable: true, value: window.HTMLElement });
+  if (window.customElements) {
+    Object.defineProperty(globalThis, "customElements", { configurable: true, value: window.customElements });
+  }
 
   const storage = createMemoryStorage();
   Object.defineProperty(window, "localStorage", { configurable: true, value: storage });

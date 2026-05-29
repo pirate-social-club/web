@@ -212,10 +212,12 @@ export function resolvePublicCommunityJoinActionLabel(
 }
 
 export function PublicCommunityRoutePage({
+  buildPostPath,
   communityId,
   disableCanonicalRouteReplace = false,
   isImportedRoot = false,
 }: {
+  buildPostPath?: (postId: string) => string;
   communityId: string;
   disableCanonicalRouteReplace?: boolean;
   isImportedRoot?: boolean;
@@ -720,10 +722,11 @@ export function PublicCommunityRoutePage({
               }
             : undefined,
           {
-            onComment: () => navigate(`/p/${post.post.id}`),
+            onComment: () => navigate(buildPostPath?.(post.post.id) ?? `/p/${post.post.id}`),
             onCancelEvent: () => void cancelEvent(post.post.id),
             onVerifyAge: handleVerifyAge,
             onVote: (direction) => void voteOnPost(post.post.id, direction),
+            postHref: buildPostPath?.(post.post.id),
             showOriginalLabel: copy.common.showOriginal,
             showTranslationLabel: copy.common.showTranslation,
             viewerContentLocale: contentLocale,

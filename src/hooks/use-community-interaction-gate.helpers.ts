@@ -352,15 +352,16 @@ export function createDefaultBlockedModalState({
         getVerificationCapabilitiesForProvider(gate.eligibility, provider),
         { locale: interactionCopy.locale },
       );
+      const verificationIcon = provider === "zkpassport" ? "passport" : provider;
       return {
         description: verificationPrompt.description,
-        icon: provider,
+        icon: verificationIcon,
         primaryAction: {
           label: verificationPrompt.actionLabel || interactionCopy.taskVerify,
-          loading: defaultVerificationLoadingProvider === provider,
+            loading: defaultVerificationLoadingProvider === verificationIcon,
           onClick: async () => {
             if (startDefaultVerification) {
-              await startDefaultVerification({ gate, provider });
+              await startDefaultVerification({ gate, provider: verificationIcon });
               return;
             }
             closeModal();
@@ -527,10 +528,11 @@ export function createCommunityBlockedModalStateFactory(options: {
         getVerificationCapabilitiesForProvider(gate.eligibility, provider),
         { locale: options.interactionCopy.locale },
       );
+      const verificationIcon = provider === "zkpassport" ? "passport" : provider;
 
       return {
         description: verificationPrompt.description,
-        icon: provider,
+        icon: verificationIcon,
         primaryAction: {
           label:
             verificationPrompt.actionLabel || options.interactionCopy.taskVerify,

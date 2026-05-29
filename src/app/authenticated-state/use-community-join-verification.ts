@@ -12,6 +12,7 @@ import {
   getVerificationPromptCopy,
   getVerificationRequirementsForGates,
   getMissingCapabilitiesFromGateEvaluation,
+  hasZkPassportDocumentProviderOption,
   hasAltchaProofAction,
   hasOnlyWalletGateRequirements,
   resolveSuggestedVerificationProvider,
@@ -20,12 +21,21 @@ import { toast } from "@/components/primitives/sonner";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
+import { useZkPassportVerification } from "@/lib/verification/use-zkpassport-verification";
 
 type SelfVerificationOptions = {
+  deeplinkCallbackBaseHref?: string | null;
   showToastOnError?: boolean;
   missingCapabilities?: string[] | null;
   membershipGateSummaries?: ApiJoinEligibility["membership_gate_summaries"] | null;
   skipModal?: boolean;
+};
+
+type ZkPassportVerificationOptions = {
+  deferOpen?: boolean;
+  showToastOnError?: boolean;
+  missingCapabilities?: string[] | null;
+  membershipGateSummaries?: ApiJoinEligibility["membership_gate_summaries"] | null;
 };
 
 type SelfVerificationStartResult = {
@@ -36,6 +46,7 @@ type SelfVerificationStartResult = {
 };
 
 type UseCommunityJoinVerificationInput = {
+  autoJoinAfterVerification?: boolean;
   communityId: string;
   eligibility: ApiJoinEligibility | null;
   locale: string;
@@ -44,6 +55,7 @@ type UseCommunityJoinVerificationInput = {
 };
 
 type JoinAttemptOptions = {
+  altchaPayload?: string | null;
   note?: string | null;
 };
 
@@ -51,12 +63,25 @@ type JoinAttemptResult = "blocked" | "failed" | "joined" | "requested";
 
 const SELF_CAPABILITIES = ["unique_human", "age_over_18", "minimum_age", "nationality", "gender"] as const;
 type SelfCapability = typeof SELF_CAPABILITIES[number];
+const ZKPASSPORT_CAPABILITIES = ["minimum_age", "nationality", "gender"] as const;
+type ZkPassportCapability = typeof ZKPASSPORT_CAPABILITIES[number];
 
 function isSelfCapability(value: string): value is SelfCapability {
   return (SELF_CAPABILITIES as readonly string[]).includes(value);
 }
 
+function isZkPassportCapability(value: string): value is ZkPassportCapability {
+  return (ZKPASSPORT_CAPABILITIES as readonly string[]).includes(value);
+}
+
+function isTelegramMiniAppRuntime(): boolean {
+  return typeof window !== "undefined" && Boolean((window as Window & {
+    Telegram?: { WebApp?: unknown };
+  }).Telegram?.WebApp);
+}
+
 export function useCommunityJoinVerification({
+  autoJoinAfterVerification = true,
   communityId,
   eligibility,
   locale,
@@ -75,11 +100,15 @@ export function useCommunityJoinVerification({
     startVerification: startVeryVerification,
     verificationLoading: veryLoading,
     verificationError: veryError,
+    verificationHref: veryHref,
   } = useVeryVerification({
     verified: false,
     verificationIntent: "community_join",
     onVerified: async () => {
       const updatedEligibility = await refetchEligibility();
+      if (!autoJoinAfterVerification) {
+        return;
+      }
       if (updatedEligibility.status === "joinable") {
         const joinResult = await api.communities.join(communityId);
         if (joinResult.status === "requested") setJoinRequested(true);
@@ -103,6 +132,9 @@ export function useCommunityJoinVerification({
     locale,
     onVerified: async () => {
       const updatedEligibility = await refetchEligibility();
+      if (!autoJoinAfterVerification) {
+        return;
+      }
       if (updatedEligibility.status === "joinable") {
         const joinResult = await api.communities.join(communityId);
         if (joinResult.status === "requested") {
@@ -121,7 +153,35 @@ export function useCommunityJoinVerification({
     verificationIntent: "community_join",
   });
 
+  const {
+    startVerification: startZkPassportVerificationFlow,
+    verificationError: zkPassportError,
+    verificationHref: zkPassportHref,
+    verificationLoading: zkPassportLoading,
+  } = useZkPassportVerification({
+    verificationIntent: "community_join",
+    onVerified: async () => {
+      const updatedEligibility = await refetchEligibility();
+      if (!autoJoinAfterVerification) {
+        return;
+      }
+      if (updatedEligibility.status === "joinable") {
+        const joinResult = await api.communities.join(communityId);
+        if (joinResult.status === "requested") {
+          setJoinRequested(true);
+        }
+        if (joinResult.status === "joined") {
+          onJoined?.();
+        }
+        await refetchEligibility();
+      } else if (updatedEligibility.status === "gate_failed") {
+        setJoinError("Verification succeeded but you still do not meet this community's requirements.");
+      }
+    },
+  });
+
   const startSelfVerification = React.useCallback(async ({
+    deeplinkCallbackBaseHref,
     showToastOnError = false,
     missingCapabilities,
     membershipGateSummaries,
@@ -145,6 +205,7 @@ export function useCommunityJoinVerification({
     }
 
     const result = await startSelfVerificationFlow({
+      deeplinkCallbackBaseHref,
       requestedCapabilities,
       unavailableMessage: "This community is missing the Self verification details needed to continue.",
       verificationRequirements,
@@ -156,11 +217,51 @@ export function useCommunityJoinVerification({
     return result;
   }, [eligibility, startSelfVerificationFlow]);
 
+  const startZkPassportVerification = React.useCallback(async ({
+    deferOpen = false,
+    showToastOnError = false,
+    missingCapabilities,
+    membershipGateSummaries,
+  }: ZkPassportVerificationOptions = {}): Promise<{ error?: string; href?: string | null; started: boolean }> => {
+    const rawCapabilities = missingCapabilities ?? (eligibility ? getMissingCapabilitiesFromGateEvaluation(eligibility) : []);
+    const activeGateSummaries = membershipGateSummaries ?? eligibility?.membership_gate_summaries ?? [];
+    const verificationRequirements = getVerificationRequirementsForGates(activeGateSummaries);
+    const requestedCapabilities = ZKPASSPORT_CAPABILITIES.filter((capability) =>
+      rawCapabilities.some(isZkPassportCapability) && rawCapabilities.includes(capability)
+    );
+
+    if (requestedCapabilities.length === 0 && verificationRequirements.length === 0) {
+      const message = "This community is missing the ZKPassport verification details needed to continue.";
+      if (showToastOnError) {
+        toast.error(message);
+      }
+      setJoinError(message);
+      return { error: message, href: null, started: false };
+    }
+
+    const result = await startZkPassportVerificationFlow({
+      deferOpen,
+      requestedCapabilities,
+      unavailableMessage: "This community is missing the ZKPassport verification details needed to continue.",
+      verificationRequirements,
+    });
+    if (!result.started && showToastOnError && result.error) {
+      toast.error(result.error);
+    }
+    return result;
+  }, [eligibility, startZkPassportVerificationFlow]);
+
 	  React.useEffect(() => {
 	    if (veryError) {
 	      toast.error(veryError);
 	    }
 	  }, [veryError]);
+
+  React.useEffect(() => {
+    if (zkPassportError) {
+      toast.error(zkPassportError);
+    }
+  }, [zkPassportError]);
 
 	  const refreshPassportAndJoin = React.useCallback(async (
 	    details?: Pick<ApiJoinEligibility, "membership_gate_summaries" | "gate_evaluation" | "wallet_score_status" | "failure_reason"> | ApiGateFailureDetails | null,
@@ -199,6 +300,7 @@ export function useCommunityJoinVerification({
 	  }, [api, communityId, locale, onJoined, refetchEligibility]);
 
   const handleJoin = React.useCallback(async (options: JoinAttemptOptions = {}): Promise<JoinAttemptResult> => {
+    const resolvedAltchaPayload = options.altchaPayload ?? altchaPayload;
     setJoinLoading(true);
     setJoinError(null);
     trackAnalyticsEvent({
@@ -217,7 +319,7 @@ export function useCommunityJoinVerification({
         return "blocked";
       }
       if (altchaRequired) {
-        if (!altchaPayload) {
+        if (!resolvedAltchaPayload) {
           setJoinError("Complete the proof-of-work check first.");
           return "blocked";
         }
@@ -226,7 +328,7 @@ export function useCommunityJoinVerification({
           const result = await api.communities.join(
             communityId,
             { note: options.note ?? null },
-            { altchaPayload },
+            { altchaPayload: resolvedAltchaPayload },
           );
           setAltchaPayload(null);
           if (result.status === "requested") setJoinRequested(true);
@@ -243,10 +345,15 @@ export function useCommunityJoinVerification({
         }
       }
       const provider = resolveSuggestedVerificationProvider(eligibility);
-	      if (provider === "very") {
+      const resolvedProvider = provider === "self" && isTelegramMiniAppRuntime() && hasZkPassportDocumentProviderOption(eligibility)
+        ? "zkpassport"
+        : provider;
+	      if (resolvedProvider === "very") {
 	        await startVeryVerification();
-	      } else if (provider === "passport") {
+	      } else if (resolvedProvider === "passport") {
 	        return await refreshPassportAndJoin(eligibility);
+	      } else if (resolvedProvider === "zkpassport") {
+	        await startZkPassportVerification();
 	      } else {
 	        await startSelfVerification();
 	      }
@@ -266,10 +373,18 @@ export function useCommunityJoinVerification({
 	        if (details.failure_reason === "missing_verification" || details.failure_reason === "wallet_score_too_low") {
 	          setJoinLoading(false);
 	          const provider = resolveSuggestedVerificationProvider(details);
-	          if (provider === "very") {
+          const resolvedProvider = provider === "self" && isTelegramMiniAppRuntime() && hasZkPassportDocumentProviderOption(details)
+            ? "zkpassport"
+            : provider;
+	          if (resolvedProvider === "very") {
 	            await startVeryVerification();
-	          } else if (provider === "passport" || details.failure_reason === "wallet_score_too_low") {
+	          } else if (resolvedProvider === "passport" || details.failure_reason === "wallet_score_too_low") {
 	            return await refreshPassportAndJoin(details);
+	          } else if (resolvedProvider === "zkpassport") {
+	            await startZkPassportVerification({
+              missingCapabilities: getMissingCapabilitiesFromGateEvaluation(details),
+              membershipGateSummaries: details.membership_gate_summaries ?? null,
+            });
 	          } else {
 	            await startSelfVerification({
               missingCapabilities: getMissingCapabilitiesFromGateEvaluation(details),
@@ -292,7 +407,7 @@ export function useCommunityJoinVerification({
     } finally {
       setJoinLoading(false);
     }
-	  }, [altchaPayload, altchaRequired, api, communityId, eligibility, locale, onJoined, refetchEligibility, refreshPassportAndJoin, startSelfVerification, startVeryVerification]);
+	  }, [altchaPayload, altchaRequired, api, communityId, eligibility, locale, onJoined, refetchEligibility, refreshPassportAndJoin, startSelfVerification, startVeryVerification, startZkPassportVerification]);
 
   return {
     handleJoin,
@@ -314,7 +429,12 @@ export function useCommunityJoinVerification({
     selfModalOpen,
     selfPrompt,
     startSelfVerification,
+    startZkPassportVerification,
     startVeryVerification,
     veryLoading,
+    veryHref,
+    zkPassportError,
+    zkPassportHref,
+    zkPassportLoading,
   };
 }

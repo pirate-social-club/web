@@ -55,9 +55,24 @@ const LazyTelegramMiniAppExchangePage = React.lazy(async () => {
   return { default: mod.TelegramMiniAppExchangePage };
 });
 
+const LazyTelegramMiniAppSelfReturnPage = React.lazy(async () => {
+  const mod = await import("@/app/telegram-mini-app/telegram-mini-app-route");
+  return { default: mod.TelegramMiniAppSelfReturnPage };
+});
+
+const LazyTelegramMiniAppVerifyPage = React.lazy(async () => {
+  const mod = await import("@/app/telegram-mini-app/telegram-mini-app-route");
+  return { default: mod.TelegramMiniAppVerifyPage };
+});
+
 const LazyTelegramMiniAppCommunityPage = React.lazy(async () => {
   const mod = await import("@/app/telegram-mini-app/telegram-mini-app-route");
   return { default: mod.TelegramMiniAppCommunityPage };
+});
+
+const LazyTelegramMiniAppPostPage = React.lazy(async () => {
+  const mod = await import("@/app/telegram-mini-app/telegram-mini-app-route");
+  return { default: mod.TelegramMiniAppPostPage };
 });
 
 function SessionRevalidator({ children }: { children: React.ReactNode }) {
@@ -147,7 +162,7 @@ function NotificationShell({
     || route.kind === "chat-target"
     || route.kind === "chat-conversation"
     || route.kind === "chat-new"
-  );
+    );
   const isStandaloneViewerRoute = route.kind === "live-room";
   const isChatRoute = route.kind === "chat"
     || route.kind === "chat-target"
@@ -263,7 +278,7 @@ export function PirateAppShell({
   const copy = getLocaleMessages(effectiveLocale, "shell");
   const isCommunityModerationRoute = route.kind === "community-moderation" || route.kind === "community-moderation-index";
   const useStandalonePublicProfileShell = isNativePublicIdentityRoute(route);
-  const isTelegramMiniAppRoute = route.kind === "telegram-mini-app" || route.kind === "telegram-exchange" || route.kind === "telegram-community";
+  const isTelegramMiniAppRoute = route.kind === "telegram-mini-app" || route.kind === "telegram-exchange" || route.kind === "telegram-self-return" || route.kind === "telegram-join" || route.kind === "telegram-verify" || route.kind === "telegram-community" || route.kind === "telegram-post";
   const shouldDeferPrivyUntilConnect =
     route.kind === "create-community"
     || (!session && (
@@ -298,16 +313,22 @@ export function PirateAppShell({
               <Toaster />
             </>
           ) : isTelegramMiniAppRoute ? (
-            <>
+            <PirateAuthProvider>
               <React.Suspense fallback={<RouteContentFallback route={route} />}>
                 {route.kind === "telegram-community"
                   ? <LazyTelegramMiniAppCommunityPage communityId={route.communityId} />
+                  : route.kind === "telegram-verify"
+                    ? <LazyTelegramMiniAppVerifyPage communityId={route.communityId} />
+                  : route.kind === "telegram-post"
+                    ? <LazyTelegramMiniAppPostPage postId={route.postId} />
                   : route.kind === "telegram-exchange"
                     ? <LazyTelegramMiniAppExchangePage />
+                  : route.kind === "telegram-self-return"
+                    ? <LazyTelegramMiniAppSelfReturnPage communityId={route.communityId} />
                   : <LazyTelegramMiniAppHomePage />}
               </React.Suspense>
               <Toaster />
-            </>
+            </PirateAuthProvider>
           ) : (
             <PirateAuthProvider deferPrivyUntilConnect={shouldDeferPrivyUntilConnect}>
               <SessionRevalidator>

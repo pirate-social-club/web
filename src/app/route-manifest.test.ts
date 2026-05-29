@@ -42,7 +42,11 @@ const EXPECTED_DOMAIN_KINDS: Record<RouteRenderingDomain, readonly AppRoute["kin
   telegram: [
     "telegram-mini-app",
     "telegram-exchange",
+    "telegram-self-return",
+    "telegram-join",
+    "telegram-verify",
     "telegram-community",
+    "telegram-post",
   ],
 };
 
@@ -52,7 +56,7 @@ const DOCUMENTED_NO_SERVER_ROUTE_KINDS: readonly AppRoute["kind"][] = [
 
 function extractWorkerAppRoutePatterns(): string[] {
   const workerSource = readFileSync(join(import.meta.dir, "../worker.tsx"), "utf8");
-  const appRoutePattern = /route\(\s*(["`])([^"`]+)\1\s*,\s*AppRoutePage/g;
+  const appRoutePattern = /route\(\s*(["`])([^"`]+)\1\s*,/g;
   const patterns: string[] = [];
   let match: RegExpExecArray | null;
   while ((match = appRoutePattern.exec(workerSource)) !== null) {

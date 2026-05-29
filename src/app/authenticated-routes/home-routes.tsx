@@ -365,6 +365,22 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     });
   }, [api.posts.vote, feedEntries, runGatedCommunityAction]);
 
+  const cancelEvent = React.useCallback(async (postId: string) => {
+    const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);
+    if (!entry) return;
+    if (typeof window !== "undefined" && !window.confirm("Cancel this event?")) return;
+
+    const previousEntries = feedEntries;
+    try {
+      const updated = await api.posts.cancelEvent(entry.post.post.community, postId);
+      setFeedEntries((current) => current.map((candidate) => (
+        candidate.post.post.id === postId ? { ...candidate, post: updated } : candidate
+      )));
+    } catch (nextError) {
+      setFeedEntries(previousEntries);
+      toast.error(getErrorMessage(nextError, "Could not cancel this event."));
+    }
+  }, [api.posts, feedEntries, setFeedEntries]);
   const feedItems = feedEntries.map((entry) => {
     const assetId = entry.post.post.asset ?? undefined;
     const liveRoomId = entry.post.post.anchor_live_room ?? undefined;
@@ -422,6 +438,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
               : null,
           purchase: purchasesByLiveRoomId[liveRoomId],
         } : undefined,
+        onCancelEvent: () => void cancelEvent(entry.post.post.id),
         onComment: () => navigate(`/p/${entry.post.post.id}`),
         onVote: (direction) => void voteOnPost(entry.post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,

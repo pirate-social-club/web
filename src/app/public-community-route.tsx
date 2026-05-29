@@ -529,6 +529,21 @@ export function PublicCommunityRoutePage({
     vote: api.posts.vote,
   });
 
+  const cancelEvent = React.useCallback(async (postId: string) => {
+    if (typeof window !== "undefined" && !window.confirm("Cancel this event?")) return;
+
+    const previousPosts = posts;
+    const targetPost = posts.find((postResponse) => postResponse.post.id === postId);
+    try {
+      const updated = await api.posts.cancelEvent(targetPost?.post.community ?? communityId, postId);
+      setPosts((current) => current.map((postResponse) => (
+        postResponse.post.id === postId ? updated : postResponse
+      )));
+    } catch (nextError) {
+      setPosts(previousPosts);
+      toast.error(getErrorMessage(nextError, "Could not cancel this event."));
+    }
+  }, [api.posts, communityId, posts, setPosts]);
   if (previewLoading && !preview) {
     return <CommunityRouteLoadingState />;
   }
@@ -706,6 +721,7 @@ export function PublicCommunityRoutePage({
             : undefined,
           {
             onComment: () => navigate(`/p/${post.post.id}`),
+            onCancelEvent: () => void cancelEvent(post.post.id),
             onVerifyAge: handleVerifyAge,
             onVote: (direction) => void voteOnPost(post.post.id, direction),
             showOriginalLabel: copy.common.showOriginal,

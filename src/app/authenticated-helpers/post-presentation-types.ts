@@ -49,6 +49,8 @@ export type PostPresentationOptions = {
   onComment?: PostCardProps["onComment"];
   onDelete?: () => void;
   onRemove?: () => void;
+  onCancelEvent?: () => void;
+  postHref?: string;
   canModeratePost?: boolean;
   preferOriginalText?: boolean;
   showOriginalLabel?: string;

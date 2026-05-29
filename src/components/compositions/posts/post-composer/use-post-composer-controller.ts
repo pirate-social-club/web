@@ -10,6 +10,7 @@ import type {
   AuthorMode,
   CharityContributionState,
   ComposerAudienceState,
+  ComposerEventState,
   ComposerStep,
   ComposerTab,
   DerivativeStepState,
@@ -27,6 +28,7 @@ import {
   defaultAssetLicenseState,
   defaultAudienceState,
   defaultCharityContributionState,
+  defaultEventState,
   defaultLiveComposerState,
   defaultMonetizationState,
   defaultSongState,
@@ -55,6 +57,7 @@ export function usePostComposerController(props: PostComposerProps) {
     clubName,
     communityPickerEmptyLabel,
     communityPickerItems,
+    onSearchEventPlaces,
     onSelectCommunity,
   } = props;
   const { actions, draft, submit } = props;
@@ -81,6 +84,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const audience = draft?.audience ?? props.audience;
   const identity = draft?.identity ?? props.identity;
   const live = draft?.live ?? props.live;
+  const event = draft?.event ?? props.event;
   const onTitleValueChange = actions?.onTitleValueChange ?? props.onTitleValueChange;
   const onTextBodyValueChange = actions?.onTextBodyValueChange ?? props.onTextBodyValueChange;
   const onCaptionValueChange = actions?.onCaptionValueChange ?? props.onCaptionValueChange;
@@ -101,6 +105,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const onIdentityModeChange = actions?.onIdentityModeChange ?? props.onIdentityModeChange;
   const onSelectedQualifierIdsChange = actions?.onSelectedQualifierIdsChange ?? props.onSelectedQualifierIdsChange;
   const onLiveChange = actions?.onLiveChange ?? props.onLiveChange;
+  const onEventChange = actions?.onEventChange ?? props.onEventChange;
   const onSubmit = submit?.onSubmit ?? props.onSubmit;
   const baseSubmitDisabled = submit?.disabled ?? props.submitDisabled ?? false;
   const baseContinueDisabled = submit?.canContinue === undefined
@@ -168,6 +173,7 @@ export function usePostComposerController(props: PostComposerProps) {
   );
   const [derivativePickerKey, setDerivativePickerKey] = React.useState(0);
   const [liveState, setLiveState] = React.useState<LiveComposerState>(() => defaultLiveComposerState(live));
+  const [eventState, setEventState] = React.useState<ComposerEventState>(() => defaultEventState(event));
   const [prevRoomKind, setPrevRoomKind] = React.useState<LiveRoomKind>(liveState.roomKind);
   const titleValue = onTitleValueChange ? providedTitleValue : uncontrolledTitleValue;
   const textBodyValue = onTextBodyValueChange ? providedTextBodyValue : uncontrolledTextBodyValue;
@@ -364,6 +370,11 @@ export function usePostComposerController(props: PostComposerProps) {
     onLiveChange?.(next);
   }, [onLiveChange]);
 
+  const setEventStateWithCallback = React.useCallback((next: ComposerEventState) => {
+    setEventState(next);
+    onEventChange?.(next);
+  }, [onEventChange]);
+
   React.useEffect(() => {
     const nextLiveState = deriveLiveStateForRoomKindChange({
       current: liveState,
@@ -421,6 +432,12 @@ export function usePostComposerController(props: PostComposerProps) {
       setLiveState(live);
     }
   }, [live]);
+
+  React.useEffect(() => {
+    if (event) {
+      setEventState(defaultEventState(event));
+    }
+  }, [event]);
 
   React.useEffect(() => {
     if (!identity) {
@@ -551,6 +568,11 @@ export function usePostComposerController(props: PostComposerProps) {
       liveState,
       setLiveState: setLiveStateWithCallback,
       updateDerivativeState,
+    },
+    event: {
+      searchPlaces: onSearchEventPlaces,
+      state: eventState,
+      update: setEventStateWithCallback,
     },
     song: {
       state: songState,

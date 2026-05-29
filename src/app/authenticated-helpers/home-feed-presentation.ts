@@ -21,6 +21,8 @@ import {
   toViewerVote,
 } from "@/app/authenticated-helpers/post-identity-presentation";
 import { resolveLocalizedLinkTitle } from "@/app/authenticated-helpers/post-link-presentation";
+import { buildPostMenu } from "@/app/authenticated-helpers/post-menu-presentation";
+import { toPostCardEvent } from "@/app/authenticated-helpers/post-event-presentation";
 import type {
   PostPresentationOptions,
   SongPresentationOptions,
@@ -63,6 +65,16 @@ export function toHomeFeedItem(
   const communityId = resolveHomeFeedCommunityId(community);
   const postId = post.id ?? (post as typeof post & { post?: string }).post ?? "";
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
+  const event = toPostCardEvent(post);
+  const { hasPostMenu, postMenuItems } = buildPostMenu({
+    canModeratePost: opts?.canModeratePost,
+    eventStatus: event?.status ?? null,
+    onCancelEvent: opts?.onCancelEvent,
+    onDelete: opts?.onDelete,
+    onRemove: opts?.onRemove,
+    post,
+    viewerIsAuthor: postResponse.viewer_is_author,
+  });
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
   const content = toCommunityPostContent(postResponse, songOptions, { ...opts, embedMode: "official" });
   const titleProps = buildPostCardTitleProps({
@@ -108,13 +120,20 @@ export function toHomeFeedItem(
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
       authorCommunityRole: postResponse.author_community_role ?? undefined,
+      event,
       identityPresentation: "community_primary",
       authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
       authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
         ? buildNationalityBadgeLabel(authorProfile.nationality_badge_country)
         : undefined,
       onComment: opts?.onComment,
+      menuItems: hasPostMenu ? postMenuItems : undefined,
       shareActions: buildPostShareActions(post),
+      onMenuAction: hasPostMenu ? (key) => {
+        if (key === "delete") opts?.onDelete?.();
+        if (key === "remove") opts?.onRemove?.();
+        if (key === "cancel-event") opts?.onCancelEvent?.();
+      } : undefined,
       onVote: opts?.onVote,
       postHref: `/p/${postId}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),

@@ -262,6 +262,9 @@ export type PostCardContent =
       body?: string;
       bodyDir?: "ltr" | "rtl" | "auto";
       bodyLang?: string;
+      previewDescription?: string;
+      previewDescriptionDir?: "ltr" | "rtl" | "auto";
+      previewDescriptionLang?: string;
       previewTitle?: string;
       previewTitleDir?: "ltr" | "rtl" | "auto";
       previewTitleLang?: string;
@@ -385,6 +388,31 @@ export type PostCardEngagement = {
   };
 };
 
+export type PostCardEventStatus = "scheduled" | "canceled" | "postponed" | "ended";
+
+export interface PostCardEventPlace {
+  label: string;
+  address?: string;
+  lat: number;
+  lon: number;
+  source: "geoapify" | "manual";
+  providerPlaceId?: string;
+  countryCode?: string;
+  city?: string;
+}
+
+export interface PostCardEvent {
+  startsAt: string;
+  endsAt?: string;
+  timezone: string;
+  locationName?: string;
+  address?: string;
+  isOnline?: boolean;
+  eventUrl?: string;
+  place?: PostCardEventPlace;
+  status?: PostCardEventStatus;
+}
+
 export interface PostCardProps {
   viewContext?: PostCardViewContext;
   identityPresentation?: PostCardIdentityPresentation;
@@ -399,6 +427,7 @@ export interface PostCardProps {
   titleHref?: string;
   postHref?: string;
   content: PostCardContent;
+  event?: PostCardEvent;
   sourceLanguage?: string | null;
   isViewingOriginal?: boolean;
   showOriginalLabel?: string;

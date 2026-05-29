@@ -493,6 +493,21 @@ export function CommunityPage({
     }
   }, [api.posts, communityId, posts, setPosts]);
 
+  const cancelEvent = React.useCallback(async (postId: string) => {
+    if (typeof window !== "undefined" && !window.confirm("Cancel this event?")) return;
+
+    const previousPosts = posts;
+    const targetPost = posts.find((postResponse) => postResponse.post.id === postId);
+    try {
+      const updated = await api.posts.cancelEvent(targetPost?.post.community ?? communityId, postId);
+      setPosts((current) => current.map((postResponse) => (
+        postResponse.post.id === postId ? updated : postResponse
+      )));
+    } catch (nextError) {
+      setPosts(previousPosts);
+      toast.error(getErrorMessage(nextError, "Could not cancel this event."));
+    }
+  }, [api.posts, communityId, posts, setPosts]);
   const rememberedCommunityId = community?.id ?? preview?.id;
   const rememberedCommunityRouteSlug = community?.route_slug ?? preview?.route_slug;
   const rememberedCommunityTitle = community?.display_name ?? preview?.display_name;
@@ -629,6 +644,7 @@ export function CommunityPage({
         } : undefined,
         onVerifyAge: handleVerifyAge,
         onComment: () => navigate(`/p/${post.post.id}`),
+        onCancelEvent: () => void cancelEvent(post.post.id),
         onRemove: () => void removePost(post.post.id),
         canModeratePost: canModeratePosts,
         onVote: (direction) => void voteOnPost(post.post.id, direction),

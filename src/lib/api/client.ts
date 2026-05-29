@@ -1,6 +1,7 @@
 import {
   createAuthApi,
   createFeedApi,
+  createGeoApi,
   createOnboardingApi,
   createUsersApi,
   createVerificationApi,
@@ -81,6 +82,7 @@ export class ApiClient {
   readonly onboarding = createOnboardingApi(this.request.bind(this));
   readonly verification = createVerificationApi(this.request.bind(this));
   readonly feed = createFeedApi(this.request.bind(this));
+  readonly geo = createGeoApi(this.request.bind(this));
   readonly communities = {
     ...createCommunitiesApi(this.request.bind(this)),
     ...createCommunityContentApi(this.request.bind(this)),

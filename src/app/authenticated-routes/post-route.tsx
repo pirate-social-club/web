@@ -158,7 +158,7 @@ export function PostPage({ postId }: { postId: string }) {
     showTranslationLabel: copy.common.showTranslation,
   }), [copy.common]);
   const hasSession = Boolean(session?.accessToken);
-  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
+  const { post, community, authorProfile, authorProfilesByUserId, setAuthorProfilesByUserId, comments, commentCount, createTopLevelComment, cancelEvent, deletePost, removePost, error, gateModal, markAgeGateVerified, loading, threadPartial, voteOnPost, commentSort, setCommentSort } = usePost(postId, contentLocale, hasSession, translationLabels);
   const activeLiveRoomId = post?.post.anchor_live_room ?? null;
   const activeAssetId = post?.post.asset ?? null;
   const activeAssetPostType = post?.post.post_type ?? null;
@@ -856,6 +856,7 @@ export function PostPage({ postId }: { postId: string }) {
     canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
     commentCountOverride: commentCount,
     liveRoom: liveRoomOptions,
+    onCancelEvent: cancelEvent,
     onDelete: deletePost,
     onRemove: removePost,
     onVerifyAge: handleVerifyAge,
@@ -869,6 +870,7 @@ export function PostPage({ postId }: { postId: string }) {
       canModeratePost: viewerCanModerateCommunity(session?.user?.id, community),
       commentCountOverride: commentCount,
       liveRoom: liveRoomOptions,
+      onCancelEvent: cancelEvent,
       onDelete: deletePost,
       onRemove: removePost,
       onVerifyAge: handleVerifyAge,

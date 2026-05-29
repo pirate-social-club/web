@@ -36,6 +36,41 @@ const basePost: PostCardProps = {
   ],
 };
 
+const cityEventByline: PostCardProps["byline"] = {
+  community: { kind: "community", label: "c/tbilisi", href: "#", avatarSrc: "https://picsum.photos/seed/tbilisi-community/80/80" },
+  author: { kind: "user", label: "u/nino", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=32" },
+  timestampLabel: "18m",
+};
+
+const communityMeetupEvent = {
+  address: "14 Merab Kostava St",
+  endsAt: "2026-06-05T18:00:00+04:00",
+  locationName: "Auditorium Books",
+  startsAt: "2026-06-05T16:30:00+04:00",
+  status: "scheduled",
+  timezone: "Asia/Tbilisi",
+} satisfies NonNullable<PostCardProps["event"]>;
+
+const ticketedLinkEvent = {
+  eventUrl: "https://ra.co/events/example-tbilisi",
+  endsAt: "2026-06-12T23:30:00+04:00",
+  locationName: "Left Bank",
+  startsAt: "2026-06-12T20:00:00+04:00",
+  status: "scheduled",
+  timezone: "Asia/Tbilisi",
+} satisfies NonNullable<PostCardProps["event"]>;
+
+const fabrikaPlace = {
+  address: "8 Egnate Ninoshvili St, Tbilisi",
+  city: "Tbilisi",
+  countryCode: "ge",
+  label: "Fabrika",
+  lat: 41.70982,
+  lon: 44.80398,
+  providerPlaceId: "geoapify:fabrika-tbilisi-storybook",
+  source: "geoapify",
+} satisfies NonNullable<PostCardProps["event"]>["place"];
+
 const meta = {
   title: "Compositions/Posts/PostCard",
   component: PostCard,
@@ -472,11 +507,206 @@ export const LinkPost: Story = {
         type: "link",
         href: "https://blog.pirate.sc/feed-ranking",
         previewTitle: "How We Think About Ranking Music Communities",
+        previewDescription: "A product note on using member activity, post quality, and community context to make feeds more useful.",
         linkLabel: "blog.pirate.sc/feed-ranking",
         sourceLabel: "blog.pirate.sc",
         previewImageSrc: "https://picsum.photos/seed/pirate-link/240/240",
       }}
       engagement={{ ...basePost.engagement, score: 731, commentCount: 52 }}
+    />
+  ),
+};
+
+export const TextPostWithEvent: Story = {
+  name: "Event / Text Post",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={cityEventByline}
+      content={{
+        type: "text",
+        body: "Bring questions about paperwork, leases, banking, and neighborhood logistics. Locals and recent arrivals are both welcome.",
+      }}
+      engagement={{ score: 42, commentCount: 14 }}
+      event={communityMeetupEvent}
+      title="Newcomer meetup and practical Q&A"
+    />
+  ),
+};
+
+export const LinkPostWithEvent: Story = {
+  name: "Event / Link Post",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={cityEventByline}
+      content={{
+        type: "link",
+        body: "Good option for people who want to meet up after the night market closes.",
+        href: "https://ra.co/events/example-tbilisi",
+        linkLabel: "ra.co/events/example-tbilisi",
+        previewImageSrc: "https://picsum.photos/seed/tbilisi-event-link/240/240",
+        previewTitle: "Tbilisi night market afterparty",
+        previewDescription: "Local DJs and late entry after the market closes at Left Bank.",
+        sourceLabel: "ra.co",
+      }}
+      engagement={{ score: 88, commentCount: 21 }}
+      event={ticketedLinkEvent}
+      title="Afterparty for the night market next Friday"
+    />
+  ),
+};
+
+export const ImagePostWithEvent: Story = {
+  name: "Event / Image Post",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={cityEventByline}
+      content={{
+        type: "image",
+        alt: "Poster for a community film night",
+        caption: "Poster from the organizer.",
+        src: "https://picsum.photos/seed/tbilisi-film-night/600/400",
+      }}
+      engagement={{ score: 64, commentCount: 18 }}
+      event={{
+        eventUrl: "https://example.com/film-night",
+        locationName: "Fabrika courtyard",
+        startsAt: "2026-06-19T19:30:00+04:00",
+        status: "scheduled",
+        timezone: "Asia/Tbilisi",
+      }}
+      title="Outdoor film night: local shorts"
+    />
+  ),
+};
+
+export const GeocodedEvent: Story = {
+  name: "Event / Geocoded Place",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={cityEventByline}
+      content={{
+        type: "text",
+        body: "Bring a notebook. We will split into small groups after the first round of introductions.",
+      }}
+      engagement={{ score: 51, commentCount: 12 }}
+      event={{
+        eventUrl: "https://example.com/fabrika-writing-night",
+        locationName: fabrikaPlace.label,
+        place: fabrikaPlace,
+        startsAt: "2026-06-21T18:30:00+04:00",
+        status: "scheduled",
+        timezone: "Asia/Tbilisi",
+      }}
+      title="Writing night at Fabrika"
+    />
+  ),
+};
+
+export const AmbiguousManualEvent: Story = {
+  name: "Event / Ambiguous Manual Location",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={cityEventByline}
+      content={{
+        type: "text",
+        body: "Organizer will pin the exact entrance in the comments once the route is confirmed.",
+      }}
+      engagement={{ score: 36, commentCount: 16 }}
+      event={{
+        address: "near the main entrance",
+        locationName: "Old botanical garden gate",
+        startsAt: "2026-06-14T09:30:00+04:00",
+        status: "scheduled",
+        timezone: "Asia/Tbilisi",
+      }}
+      title="Morning photo walk"
+    />
+  ),
+};
+
+export const EventStatusVariants: Story = {
+  name: "Event / Status Variants",
+  render: () => (
+    <div className="flex flex-col">
+      <PostCard
+        {...basePost}
+        byline={{ ...cityEventByline, timestampLabel: "1h" }}
+        content={{ type: "text", body: "The organizer is finding a new venue. Keep the thread watched for updates." }}
+        engagement={{ score: 19, commentCount: 7 }}
+        event={{
+          eventUrl: "https://example.com/postponed-walk",
+          locationName: "Vake Park",
+          startsAt: "2026-06-07T10:00:00+04:00",
+          status: "postponed",
+          timezone: "Asia/Tbilisi",
+        }}
+        title="Architecture walk postponed"
+      />
+      <PostCard
+        {...basePost}
+        byline={{ ...cityEventByline, timestampLabel: "3h" }}
+        content={{ type: "text", body: "Cancelled due to venue repairs. Refunds are handled by the ticketing site." }}
+        engagement={{ score: 11, commentCount: 5 }}
+        event={{
+          eventUrl: "https://example.com/cancelled-workshop",
+          locationName: "Sololaki coworking room",
+          startsAt: "2026-06-09T18:00:00+04:00",
+          status: "canceled",
+          timezone: "Asia/Tbilisi",
+        }}
+        title="Contract translation workshop cancelled"
+      />
+    </div>
+  ),
+};
+
+export const PastEvent: Story = {
+  name: "Event / Past",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{ ...cityEventByline, timestampLabel: "3w" }}
+      content={{
+        type: "text",
+        body: "Drop photos, notes, and useful follow-up links here so people can catch up after the meetup.",
+      }}
+      engagement={{ score: 103, commentCount: 32 }}
+      event={{
+        endsAt: "2026-05-07T20:00:00+04:00",
+        locationName: "Dedaena Bar",
+        startsAt: "2026-05-07T18:00:00+04:00",
+        status: "ended",
+        timezone: "Asia/Tbilisi",
+      }}
+      title="Recap thread for last month's language exchange"
+    />
+  ),
+};
+
+export const MinimalEvent: Story = {
+  name: "Event / Minimal",
+  render: () => (
+    <PostCard
+      {...basePost}
+      byline={{
+        community: { kind: "community", label: "c/remote-workers", href: "#", avatarSrc: "https://picsum.photos/seed/remote-community/80/80" },
+        author: { kind: "user", label: "u/mira", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=44" },
+        timestampLabel: "44m",
+      }}
+      content={{ type: "text", body: "Agenda will be posted once speakers confirm." }}
+      engagement={{ score: 25, commentCount: 9 }}
+      event={{
+        isOnline: true,
+        startsAt: "2026-06-20T17:00:00Z",
+        status: "scheduled",
+        timezone: "UTC",
+      }}
+      title="Remote worker tax chat"
     />
   ),
 };

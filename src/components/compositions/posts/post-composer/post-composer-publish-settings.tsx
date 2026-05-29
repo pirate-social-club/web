@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 import { QualifierSection } from "./post-composer-identity-section";
 import { buildPostComposerPreviewContent } from "./post-composer-preview";
-import type { AttachmentState } from "./post-composer.types";
+import type { AttachmentState, ComposerEventState } from "./post-composer.types";
 import { extractVideoPosterFrameDataUrl } from "./video-poster-frame";
 import type { PostComposerController } from "./use-post-composer-controller";
 
@@ -248,6 +248,7 @@ function buildPreviewPost(
     content,
     title: fields.titleValue.trim(),
   });
+  const event = attachment?.kind === "live" ? undefined : buildPreviewEvent(controller.event.state);
 
   const previewPost: PostCardProps = {
     byline: {
@@ -268,6 +269,7 @@ function buildPreviewPost(
         : undefined,
     },
     identityPresentation: identity.identityMode === "anonymous" ? "anonymous_primary" : "author_primary",
+    event,
     ...titleProps,
     viewContext: attachment?.kind === "live" ? "post" : "community",
   };
@@ -286,6 +288,30 @@ function buildPreviewPost(
   }
 
   return previewPost;
+}
+
+function buildPreviewEvent(event: ComposerEventState): PostCardProps["event"] | undefined {
+  if (event.enabled !== true || !event.startsAt?.trim()) {
+    return undefined;
+  }
+  const timezone = event.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: timezone }).format(new Date());
+  } catch {
+    return undefined;
+  }
+
+  return {
+    address: event.isOnline ? undefined : event.address?.trim() || undefined,
+    endsAt: event.endsAt?.trim() || undefined,
+    eventUrl: event.eventUrl?.trim() || undefined,
+    isOnline: event.isOnline === true,
+    locationName: event.isOnline ? undefined : event.locationName?.trim() || undefined,
+    place: event.isOnline ? undefined : event.place,
+    startsAt: event.startsAt.trim(),
+    status: "scheduled",
+    timezone,
+  };
 }
 
 export function PostComposerPublishSettings({

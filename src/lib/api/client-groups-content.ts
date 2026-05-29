@@ -64,6 +64,11 @@ export function createPostsApi(request: ApiRequest) {
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/remove`,
         { method: "POST" },
       ),
+    cancelEvent: (communityId: string, postId: string): Promise<LocalizedPostResponse> =>
+      request<LocalizedPostResponse>(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/event-status`,
+        { method: "POST", body: JSON.stringify({ status: "canceled" }) },
+      ),
   };
 }
 
@@ -131,6 +136,25 @@ export function createCommunityContentApi(request: ApiRequest) {
         body: JSON.stringify(body),
         headers: altchaHeaders(options),
       }),
+    listEvents: (
+      communityId: string,
+      opts?: {
+        from?: number | null;
+        limit?: number | null;
+        locale?: string | null;
+        status?: "scheduled" | "canceled" | "postponed" | "ended" | "all" | null;
+        to?: number | null;
+      },
+    ): Promise<{ items: LocalizedPostResponse[]; next_cursor: string | null }> =>
+      request<{ items: LocalizedPostResponse[]; next_cursor: string | null }>(
+        buildQueryPath(`/communities/${encodeURIComponent(communityId)}/events`, {
+          from: opts?.from == null ? null : String(opts.from),
+          limit: opts?.limit == null ? null : String(opts.limit),
+          locale: opts?.locale,
+          status: opts?.status,
+          to: opts?.to == null ? null : String(opts.to),
+        }),
+      ),
     listComments: (
       communityId: string,
       postId: string,

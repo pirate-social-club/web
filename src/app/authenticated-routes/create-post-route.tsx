@@ -104,7 +104,15 @@ function CreatePostComposer({
   composerStep?: ComposerStep;
   onComposerStepChange?: (step: ComposerStep) => void;
 }) {
+  const api = useApi();
   const knownCommunities = useKnownCommunities();
+  const searchEventPlaces = React.useCallback(async (query: string) => {
+    const response = await api.geo.searchPlaces({
+      limit: 5,
+      text: query,
+    });
+    return response.places;
+  }, [api.geo]);
 
   const communityPickerItems: CommunityPickerItem[] = React.useMemo(
     () =>
@@ -129,6 +137,7 @@ function CreatePostComposer({
         communityPickerItems={communityPickerItems}
         composerStep={composerStep}
         onComposerStepChange={onComposerStepChange}
+        onSearchEventPlaces={searchEventPlaces}
         onSelectCommunity={(selectedCommunityId) => {
           navigate(`/c/${selectedCommunityId}/submit`);
         }}
@@ -138,6 +147,7 @@ function CreatePostComposer({
           charityContribution: state.charityContribution,
           charityPartner: state.charityPartner,
           derivativeStep: state.derivativeStep,
+          event: state.event,
           identity: {
             authorMode: state.authorMode,
             allowAnonymousIdentity: state.community.allow_anonymous_identity,
@@ -181,6 +191,7 @@ function CreatePostComposer({
           onCaptionValueChange: state.setCaption,
           onCharityContributionChange: state.setCharityContribution,
           onDerivativeStepChange: state.setDerivativeStep,
+          onEventChange: state.setEvent,
           onIdentityModeChange: state.setIdentityMode,
           onImageUploadChange: state.setImageUpload,
           onLinkUrlValueChange: state.setLinkUrl,

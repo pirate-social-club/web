@@ -1,4 +1,5 @@
 import type { AnonymousIdentityScope } from "@/lib/community-access-types";
+import type { PostCardEventPlace } from "@/components/compositions/posts/post-card/post-card.types";
 
 export type ComposerTab = "text" | "image" | "video" | "link" | "song" | "live";
 export type ComposerStep = "write" | "details" | "settings" | "publish";
@@ -111,6 +112,20 @@ export interface LiveComposerState {
   performerAllocations: LivePerformerAllocation[];
 }
 
+export type ComposerEventPlace = PostCardEventPlace;
+
+export interface ComposerEventState {
+  enabled?: boolean;
+  startsAt?: string;
+  endsAt?: string;
+  timezone?: string;
+  locationName?: string;
+  address?: string;
+  isOnline?: boolean;
+  eventUrl?: string;
+  place?: ComposerEventPlace;
+}
+
 export interface DerivativeLicenseSummary {
   sourceLicense?: string;
   upstreamRoyaltyPct?: number;
@@ -138,6 +153,7 @@ export interface MoreOptionsState {
 
 export interface LinkPreviewState {
   domain: string;
+  description?: string;
   title?: string;
   imageSrc?: string;
   provider?: "x" | "youtube" | "kalshi" | "polymarket" | null;
@@ -266,6 +282,7 @@ export interface PostComposerDraftState {
   audience?: ComposerAudienceState;
   identity?: ComposerIdentityState;
   live?: LiveComposerState;
+  event?: ComposerEventState;
   regionalPricingPreview?: RegionalPricingPreview | null;
 }
 
@@ -290,6 +307,7 @@ export interface PostComposerDraftActions {
   onIdentityModeChange?: (value: IdentityMode) => void;
   onSelectedQualifierIdsChange?: (value: string[]) => void;
   onLiveChange?: (value: LiveComposerState) => void;
+  onEventChange?: (value: ComposerEventState) => void;
 }
 
 export interface PostComposerSubmitState {
@@ -316,6 +334,7 @@ export interface PostComposerProps extends Partial<PostComposerDraftState>, Post
   submit?: PostComposerSubmitState;
   composerStep?: ComposerStep;
   regionalPricingPreview?: RegionalPricingPreview | null;
+  onSearchEventPlaces?: (query: string) => Promise<ComposerEventPlace[]>;
   onComposerStepChange?: (value: ComposerStep) => void;
   onSubmit?: () => void;
   submitDisabled?: boolean;

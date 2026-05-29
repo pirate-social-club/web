@@ -640,6 +640,19 @@ export function usePost(
     }
   }, [api.posts, post]);
 
+  const cancelEvent = React.useCallback(async () => {
+    if (!post) return;
+    if (typeof window !== "undefined" && !window.confirm("Cancel this event?")) return;
+
+    const previousPost = post;
+    try {
+      const updated = await api.posts.cancelEvent(post.post.community, post.post.id);
+      setPost(normalizePostResponse(updated));
+    } catch (nextError) {
+      setPost(previousPost);
+      toast.error(getErrorMessage(nextError, "Could not cancel this event."));
+    }
+  }, [api.posts, post]);
   const markAgeGateVerified = React.useCallback(() => {
     setPost((current) => current
       ? {
@@ -895,6 +908,7 @@ export function usePost(
     commentCount,
     availableAgent,
     createTopLevelComment,
+    cancelEvent,
     deletePost,
     removePost,
     error,

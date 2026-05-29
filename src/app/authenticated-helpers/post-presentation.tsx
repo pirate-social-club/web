@@ -14,6 +14,7 @@ import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-r
 import { buildPublicProfilePathForProfile } from "@/lib/profile-routing";
 import { formatRelativeTimestamp } from "@/lib/formatting/time";
 import { toCommunityPostContent } from "@/app/authenticated-helpers/post-content-presentation";
+import { toPostCardEvent } from "@/app/authenticated-helpers/post-event-presentation";
 import {
   getPostCommentCount,
   resolveAgentAuthor,
@@ -33,6 +34,7 @@ import {
   withTranslationToggleProps,
 } from "@/app/authenticated-helpers/post-translation-presentation";
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
+import { buildPostMenu } from "@/app/authenticated-helpers/post-menu-presentation";
 
 export type HomeFeedEntry = ApiHomeFeedItem;
 export { toHomeFeedItem } from "@/app/authenticated-helpers/home-feed-presentation";
@@ -68,29 +70,6 @@ export {
   withTranslationToggleProps,
 } from "@/app/authenticated-helpers/post-translation-presentation";
 
-function buildPostMenu(input: {
-  canModeratePost?: boolean;
-  onDelete?: () => void;
-  onRemove?: () => void;
-  post: Pick<ApiPost["post"], "status">;
-  viewerIsAuthor?: boolean | null;
-}) {
-  const canDeletePost = input.post.status !== "deleted" && Boolean(input.viewerIsAuthor && input.onDelete);
-  const canRemovePost = input.post.status !== "deleted"
-    && input.post.status !== "removed"
-    && !input.viewerIsAuthor
-    && Boolean(input.canModeratePost && input.onRemove);
-  const postMenuItems = [
-    ...(canDeletePost ? [{ key: "delete", label: "Delete post", destructive: true }] : []),
-    ...(canRemovePost ? [{ key: "remove", label: "Remove post", destructive: true }] : []),
-  ];
-
-  return {
-    hasPostMenu: postMenuItems.length > 0,
-    postMenuItems,
-  };
-}
-
 export function toCommunityFeedItem(
   postResponse: ApiPost,
   authorProfiles: Record<string, ApiProfile | null>,
@@ -101,6 +80,8 @@ export function toCommunityFeedItem(
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
   const { hasPostMenu, postMenuItems } = buildPostMenu({
     canModeratePost: opts?.canModeratePost,
+    eventStatus: toPostCardEvent(post)?.status ?? null,
+    onCancelEvent: opts?.onCancelEvent,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
     post,
@@ -144,6 +125,7 @@ export function toCommunityFeedItem(
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
       authorCommunityRole: postResponse.author_community_role ?? undefined,
+      event: toPostCardEvent(post),
       identityPresentation: post.identity_mode === "anonymous" ? "anonymous_primary" : "author_primary",
       authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
       authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
@@ -155,6 +137,7 @@ export function toCommunityFeedItem(
       onMenuAction: hasPostMenu ? (key) => {
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
+        if (key === "cancel-event") opts?.onCancelEvent?.();
       } : undefined,
       onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
       postHref: `/p/${post.id}`,
@@ -202,6 +185,8 @@ export function toThreadPostCard(
   const communityVerified = Boolean(community?.namespace_verification);
   const { hasPostMenu, postMenuItems } = buildPostMenu({
     canModeratePost: opts?.canModeratePost,
+    eventStatus: toPostCardEvent(post)?.status ?? null,
+    onCancelEvent: opts?.onCancelEvent,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
     post,
@@ -259,6 +244,7 @@ export function toThreadPostCard(
       viewerVote: toViewerVote(postResponse.viewer_vote),
     },
     authorCommunityRole: postResponse.author_community_role ?? undefined,
+    event: toPostCardEvent(post),
     identityPresentation: isDeleted || isRemoved ? "community_primary" : "community_with_author",
     authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
     authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
@@ -270,6 +256,7 @@ export function toThreadPostCard(
     onMenuAction: hasPostMenu ? (key) => {
       if (key === "delete") opts?.onDelete?.();
       if (key === "remove") opts?.onRemove?.();
+      if (key === "cancel-event") opts?.onCancelEvent?.();
     } : undefined,
     onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
     postHref: undefined,

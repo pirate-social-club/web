@@ -3,6 +3,15 @@ import * as React from "react";
 import { CalendarBlank, CheckCircle, MapPin, VideoCamera } from "@phosphor-icons/react";
 
 import { Checkbox } from "@/components/primitives/checkbox";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxTrigger,
+} from "@/components/primitives/combobox";
 import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
 import { FormNote } from "@/components/primitives/form-layout";
@@ -45,6 +54,58 @@ const mockPlaces: ComposerEventPlace[] = [
   },
 ];
 
+type TimeZoneOption = {
+  cityLabel: string;
+  id: string;
+  label: string;
+  offsetLabel: string;
+  searchLabel: string;
+  value: string;
+};
+
+const fallbackTimeZones = [
+  "Asia/Tbilisi",
+  "America/New_York",
+  "America/Los_Angeles",
+  "America/Chicago",
+  "America/Toronto",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Europe/Madrid",
+  "Europe/Rome",
+  "Europe/Amsterdam",
+  "Europe/Istanbul",
+  "Asia/Dubai",
+  "Asia/Tokyo",
+  "Asia/Seoul",
+  "Asia/Singapore",
+  "Asia/Kolkata",
+  "Australia/Sydney",
+  "UTC",
+] as const;
+
+const timeZoneCountryLabels: Record<string, string> = {
+  "America/Chicago": "United States",
+  "America/Los_Angeles": "United States",
+  "America/New_York": "United States",
+  "America/Toronto": "Canada",
+  "Asia/Dubai": "United Arab Emirates",
+  "Asia/Kolkata": "India",
+  "Asia/Seoul": "South Korea",
+  "Asia/Singapore": "Singapore",
+  "Asia/Tbilisi": "Georgia",
+  "Asia/Tokyo": "Japan",
+  "Australia/Sydney": "Australia",
+  "Europe/Amsterdam": "Netherlands",
+  "Europe/Berlin": "Germany",
+  "Europe/Istanbul": "Turkey",
+  "Europe/London": "United Kingdom",
+  "Europe/Madrid": "Spain",
+  "Europe/Paris": "France",
+  "Europe/Rome": "Italy",
+};
+
 function localDatetimeValue(value: string | undefined): string {
   return value?.slice(0, 16) ?? "";
 }
@@ -65,6 +126,17 @@ function defaultTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
+function supportedTimeZones(): string[] {
+  const supportedValuesOf = (Intl as typeof Intl & {
+    supportedValuesOf?: (key: "calendar" | "collation" | "currency" | "numberingSystem" | "timeZone" | "unit") => string[];
+  }).supportedValuesOf;
+
+  if (typeof supportedValuesOf === "function") {
+    return supportedValuesOf("timeZone");
+  }
+  return [...fallbackTimeZones];
+}
+
 function isValidTimeZone(value: string | undefined): boolean {
   const timezone = value?.trim();
   if (!timezone) return false;
@@ -75,6 +147,99 @@ function isValidTimeZone(value: string | undefined): boolean {
   } catch {
     return false;
   }
+}
+
+function timeZoneOffsetLabel(timezone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      timeZone: timezone,
+      timeZoneName: "shortOffset",
+    }).formatToParts(new Date());
+    return parts.find((part) => part.type === "timeZoneName")?.value ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function timeZoneCityLabel(timezone: string): string {
+  if (timezone === "UTC") return "UTC";
+  const city = timezone.split("/").pop() ?? timezone;
+  return city.replace(/_/gu, " ");
+}
+
+function makeTimeZoneOption(timezone: string): TimeZoneOption {
+  const cityLabel = timeZoneCityLabel(timezone);
+  const countryLabel = timeZoneCountryLabels[timezone];
+  const offsetLabel = timeZoneOffsetLabel(timezone);
+  const placeLabel = countryLabel ? `${cityLabel}, ${countryLabel}` : cityLabel;
+  const label = offsetLabel ? `${placeLabel} · ${offsetLabel}` : placeLabel;
+
+  return {
+    cityLabel,
+    id: timezone,
+    label,
+    offsetLabel,
+    searchLabel: `${label} ${timezone}`,
+    value: timezone,
+  };
+}
+
+function timeZoneOptions(): TimeZoneOption[] {
+  return supportedTimeZones().map(makeTimeZoneOption);
+}
+
+function TimeZonePicker({
+  id,
+  value,
+  onChange,
+}: {
+  id?: string;
+  value: string | undefined;
+  onChange: (value: string) => void;
+}) {
+  const options = React.useMemo(() => timeZoneOptions(), []);
+  const selected = React.useMemo(
+    () => options.find((option) => option.value === value) ?? makeTimeZoneOption(value || defaultTimeZone()),
+    [options, value],
+  );
+  const triggerLabel = selected.offsetLabel
+    ? `${selected.cityLabel} (${selected.offsetLabel})`
+    : selected.cityLabel;
+
+  return (
+    <Combobox<TimeZoneOption>
+      autoHighlight
+      items={options}
+      itemToStringLabel={(option) => option.searchLabel}
+      itemToStringValue={(option) => option.value}
+      onValueChange={(option) => {
+        if (option) {
+          onChange(option.value);
+        }
+      }}
+      value={options.find((option) => option.value === selected.value)}
+    >
+      <ComboboxTrigger className="h-10 rounded-[var(--radius-lg)]" id={id}>
+        {triggerLabel}
+      </ComboboxTrigger>
+      <ComboboxContent>
+        <ComboboxInput
+          aria-label="Search time zones"
+          className="h-10 rounded-none border-0 border-b border-border-soft shadow-none focus-visible:ring-0"
+          placeholder="Search time zones"
+        />
+        <ComboboxEmpty>No time zones found.</ComboboxEmpty>
+        <ComboboxList className="max-h-64 py-0">
+          {(option) => (
+            <ComboboxItem key={option.id} value={option}>
+              <Type as="p" variant="body-strong">{option.label}</Type>
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
 }
 
 export function PostComposerEventSection({
@@ -186,21 +351,18 @@ export function PostComposerEventSection({
 
           <div>
             <FieldLabel htmlFor="post-event-timezone" label="Timezone" />
-            <Input
-              aria-invalid={timezoneInvalid}
-              className="h-10"
+            <TimeZonePicker
               id="post-event-timezone"
-              onChange={(inputEvent) => update({ timezone: inputEvent.target.value })}
-              placeholder="Asia/Tbilisi"
-              value={event.timezone ?? ""}
+              onChange={(timezone) => update({ timezone })}
+              value={event.timezone ?? defaultTimeZone()}
             />
             {timezoneInvalid ? (
               <FormNote className="mt-1" tone="destructive">
-                Use an IANA timezone such as Asia/Tbilisi or America/New_York.
+                Choose a valid event timezone.
               </FormNote>
             ) : (
               <FormNote className="mt-1">
-                Defaults to {defaultTimeZone()}.
+                Uses your browser timezone by default.
               </FormNote>
             )}
           </div>

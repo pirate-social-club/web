@@ -6,6 +6,7 @@ import type { PostCardProps } from "@/components/compositions/posts/post-card/po
 import { PostComposer } from "./post-composer";
 import { PostComposerAttachmentCard } from "./post-composer-attachment-card";
 import { defaultMonetizationState } from "./post-composer-config";
+import { PostComposerEventSection } from "./post-composer-event-section";
 import { LiveTabContent } from "./post-composer-live-tab";
 import { SearchReferencePicker, SelectedReferenceCard } from "./post-composer-references";
 import type { AssetLicenseState, MonetizationState, PostComposerProps } from "./post-composer.types";
@@ -95,6 +96,7 @@ function walkTree(node: React.ReactNode, visit: (element: TestElement) => void) 
       || elementTypeName === "PostComposerAssetLicenseSection"
       || elementTypeName === "PostComposerCommerceAccessSection"
       || elementTypeName === "PostComposerDerivativeSection"
+      || elementTypeName === "TimeZonePicker"
       || elementTypeName === "PublishSummary"
       || elementTypeName === "ReferenceMeta"
       || elementTypeName === "ReviewOption"
@@ -1373,6 +1375,55 @@ describe("PostComposer monetization", () => {
 
     expect(songMode).toBe("original");
     expect(derivativeStep).toBeUndefined();
+  });
+});
+
+describe("PostComposer event details", () => {
+  beforeEach(() => {
+    installHookStubs();
+  });
+
+  afterEach(() => {
+    restoreHookStubs();
+  });
+
+  test("uses a timezone combobox instead of a free text timezone input", () => {
+    let eventState = {
+      enabled: true,
+      startsAt: "2026-06-12T20:00",
+      timezone: "Asia/Tbilisi",
+    };
+    const tree = PostComposerEventSection({
+      event: eventState,
+      onChange: (next) => {
+        eventState = next;
+      },
+    });
+    const timezoneCombobox = findElement(
+      tree,
+      (element) => typeof element.props.itemToStringValue === "function"
+        && typeof element.props.onValueChange === "function",
+    );
+    const timezoneTextInput = findElement(
+      tree,
+      (element) => element.props.id === "post-event-timezone"
+        && element.props.placeholder === "Asia/Tbilisi",
+    );
+
+    if (!timezoneCombobox) {
+      throw new Error("Timezone combobox not found");
+    }
+
+    const items = timezoneCombobox.props.items as Array<{ label: string; value: string }>;
+    const newYork = items.find((item) => item.value === "America/New_York");
+    if (!newYork) {
+      throw new Error("New York timezone option not found");
+    }
+    (timezoneCombobox.props.onValueChange as (value: typeof newYork) => void)(newYork);
+
+    expect(timezoneTextInput).toBeNull();
+    expect(newYork.label).toContain("New York");
+    expect(eventState.timezone).toBe("America/New_York");
   });
 });
 

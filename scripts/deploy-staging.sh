@@ -150,16 +150,31 @@ check_json_field() {
 
   node - "$url" "$field" "$expected" <<'NODE'
 const [url, field, expected] = process.argv.slice(2);
-const response = await fetch(url, { headers: { accept: "application/json" } });
-if (!response.ok) {
-  throw new Error(`${url} returned HTTP ${response.status}`);
+const attempts = 12;
+let lastError = "";
+for (let attempt = 1; attempt <= attempts; attempt += 1) {
+  const response = await fetch(url, {
+    headers: {
+      accept: "application/json",
+      "cache-control": "no-cache",
+    },
+  });
+  if (!response.ok) {
+    lastError = `${url} returned HTTP ${response.status}`;
+  } else {
+    const body = await response.json();
+    const actual = field.split(".").reduce((current, part) => current?.[part], body);
+    if (actual === expected) {
+      console.log(`${url} ${field}=${actual}`);
+      process.exit(0);
+    }
+    lastError = `${url} expected ${field}=${expected}, got ${actual}`;
+  }
+  if (attempt < attempts) {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+  }
 }
-const body = await response.json();
-const actual = field.split(".").reduce((current, part) => current?.[part], body);
-if (actual !== expected) {
-  throw new Error(`${url} expected ${field}=${expected}, got ${actual}`);
-}
-console.log(`${url} ${field}=${actual}`);
+throw new Error(lastError);
 NODE
 }
 

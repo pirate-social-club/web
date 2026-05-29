@@ -9,8 +9,11 @@ import { toast } from "@/components/primitives/sonner";
 import { getErrorMessage } from "@/lib/error-utils";
 
 export type PostVoteValue = -1 | 1;
+export type PostVoteOptions = {
+  altchaPayload?: string | null | undefined;
+};
 
-function toPostVoteValue(direction: "up" | "down"): PostVoteValue {
+export function toPostVoteValue(direction: "up" | "down"): PostVoteValue {
   return direction === "up" ? 1 : -1;
 }
 
@@ -85,6 +88,7 @@ export function updateCommunityPostVote(
 }
 
 export async function submitOptimisticPostVote({
+  altchaPayload,
   direction,
   onApply,
   onRollback,
@@ -93,11 +97,12 @@ export async function submitOptimisticPostVote({
   requestIdsRef,
   vote,
 }: {
+  altchaPayload?: string | null;
   postId: string;
   direction: "up" | "down" | null;
   previousPost: ApiPost | null;
   requestIdsRef: React.MutableRefObject<Record<string, number>>;
-  vote: (postId: string, value: PostVoteValue) => Promise<{ value: PostVoteValue }>;
+  vote: (postId: string, value: PostVoteValue, options?: PostVoteOptions) => Promise<{ value: PostVoteValue }>;
   onApply: (nextValue: PostVoteValue) => void;
   onRollback: (previousPost: ApiPost) => void;
 }) {
@@ -112,7 +117,11 @@ export async function submitOptimisticPostVote({
   onApply(nextValue);
 
   try {
-    const response = await vote(postId, nextValue);
+    const response = await vote(
+      postId,
+      nextValue,
+      altchaPayload ? { altchaPayload } : undefined,
+    );
     if (requestIdsRef.current[postId] !== requestId) {
       return;
     }

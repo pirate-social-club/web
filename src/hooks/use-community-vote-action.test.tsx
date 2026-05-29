@@ -53,21 +53,30 @@ function renderVoteHarness(options: {
   buildBlockedModalState?: RunGatedCommunityActionParams["buildBlockedModalState"];
   communityId?: string | null;
   gateData?: CommunityGateData | null;
+  allowedContext?: { altchaPayload?: string | null };
   posts?: ApiPost[];
   runGatedCommunityAction?: (
     params: RunGatedCommunityActionParams,
   ) => Promise<InteractionResult>;
-  vote?: (postId: string, value: 1 | -1) => Promise<{ value: 1 | -1 }>;
+  vote?: (
+    postId: string,
+    value: 1 | -1,
+    options?: { altchaPayload?: string | null | undefined },
+  ) => Promise<{ value: 1 | -1 }>;
 } = {}) {
   const gatedCalls: RunGatedCommunityActionParams[] = [];
-  const voteCalls: Array<{ postId: string; value: 1 | -1 }> = [];
+  const voteCalls: Array<{
+    postId: string;
+    value: 1 | -1;
+    options?: { altchaPayload?: string | null | undefined };
+  }> = [];
   const runGatedCommunityAction = options.runGatedCommunityAction ?? (async (params) => {
     gatedCalls.push(params);
-    await params.onAllowed();
+    await params.onAllowed(options.allowedContext);
     return "allowed";
   });
-  const vote = options.vote ?? (async (postId, value) => {
-    voteCalls.push({ postId, value });
+  const vote = options.vote ?? (async (postId, value, voteOptions) => {
+    voteCalls.push(voteOptions ? { postId, value, options: voteOptions } : { postId, value });
     return { value };
   });
 
@@ -109,6 +118,7 @@ describe("useCommunityVoteAction", () => {
     expect(gatedCalls[0]?.communityId).toBe("com_route");
     expect(gatedCalls[0]?.gateData).toBe(gateData);
     expect(gatedCalls[0]?.postId).toBe("pst_test");
+    expect(gatedCalls[0]?.voteValue).toBe(1);
     expect(voteCalls).toEqual([{ postId: "pst_test", value: 1 }]);
     expect(hook.result.current.posts[0]?.viewer_vote).toBe(1);
     expect(hook.result.current.posts[0]?.upvote_count).toBe(1);
@@ -122,6 +132,19 @@ describe("useCommunityVoteAction", () => {
     });
 
     expect(gatedCalls[0]?.communityId).toBe("com_post");
+    expect(gatedCalls[0]?.voteValue).toBe(-1);
+  });
+
+  test("does nothing for null vote direction", async () => {
+    const { gatedCalls, hook, voteCalls } = renderVoteHarness();
+
+    await act(async () => {
+      await hook.result.current.voteOnPost("pst_test", null);
+    });
+
+    expect(gatedCalls).toHaveLength(0);
+    expect(voteCalls).toHaveLength(0);
+    expect(hook.result.current.posts[0]?.viewer_vote).toBe(null);
   });
 
   test("does nothing when required gate data is explicitly unavailable", async () => {
@@ -147,6 +170,23 @@ describe("useCommunityVoteAction", () => {
 
     expect(gatedCalls).toHaveLength(0);
     expect(voteCalls).toHaveLength(0);
+  });
+
+  test("forwards Altcha payload from the gate to the vote request", async () => {
+    const { gatedCalls, hook, voteCalls } = renderVoteHarness({
+      allowedContext: { altchaPayload: "vote-proof" },
+    });
+
+    await act(async () => {
+      await hook.result.current.voteOnPost("pst_test", "up");
+    });
+
+    expect(gatedCalls[0]?.voteValue).toBe(1);
+    expect(voteCalls).toEqual([{
+      postId: "pst_test",
+      value: 1,
+      options: { altchaPayload: "vote-proof" },
+    }]);
   });
 
   test("rolls back the optimistic vote when the vote request fails", async () => {

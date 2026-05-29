@@ -5,7 +5,9 @@ import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
 import {
   submitOptimisticPostVote,
+  toPostVoteValue,
   updateCommunityPostVote,
+  type PostVoteOptions,
   type PostVoteValue,
 } from "@/app/authenticated-helpers/post-vote";
 import type {
@@ -23,6 +25,7 @@ type RunGatedCommunityAction = (
 type VotePost = (
   postId: string,
   value: PostVoteValue,
+  options?: PostVoteOptions,
 ) => Promise<{ value: PostVoteValue }>;
 
 export interface UseCommunityVoteActionOptions {
@@ -56,19 +59,24 @@ export function useCommunityVoteAction({
       if (!previousPost) {
         return;
       }
+      if (!direction) {
+        return;
+      }
 
       const resolvedCommunityId = communityId ?? previousPost.post.community;
       if (!resolvedCommunityId) {
         return;
       }
 
+      const voteValue = toPostVoteValue(direction);
       await runGatedCommunityAction({
         action: "vote_post",
         buildBlockedModalState,
         communityId: resolvedCommunityId,
         ...(gateData ? { gateData } : {}),
-        onAllowed: async () => {
+        onAllowed: async (context) => {
           await submitOptimisticPostVote({
+            altchaPayload: context?.altchaPayload,
             direction,
             onApply: (nextValue) =>
               setPosts((current) =>
@@ -87,6 +95,7 @@ export function useCommunityVoteAction({
           });
         },
         postId,
+        voteValue,
       });
     },
     [

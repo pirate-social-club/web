@@ -246,6 +246,19 @@ export function PublicCommunityRoutePage({
   const { authorProfiles, error, posts, postsLoading, preview, previewLoading, setPosts } = usePublicCommunityPageData(communityId, contentLocale, activeSort, hasSession);
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
+  const voteGateData = React.useMemo(
+    () => preview && eligibility
+      ? {
+          eligibility,
+          preview: {
+            id: preview.id,
+            display_name: preview.display_name,
+            membership_gate_summaries: preview.membership_gate_summaries,
+          },
+        }
+      : null,
+    [eligibility, preview],
+  );
   const [memberCount, setMemberCount] = React.useState<number | null>(null);
   const { gateModal, invalidateCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: contentLocale,
@@ -532,6 +545,8 @@ export function PublicCommunityRoutePage({
 
   const voteOnPost = useCommunityVoteAction({
     buildBlockedModalState: buildBlockedModalState ?? undefined,
+    communityId: preview?.id ?? communityId,
+    ...(voteGateData ? { gateData: voteGateData } : {}),
     posts,
     runGatedCommunityAction,
     setPosts,

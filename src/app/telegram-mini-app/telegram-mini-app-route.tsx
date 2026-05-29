@@ -73,7 +73,7 @@ type TelegramMiniAppAutoExchangeResponse = SessionExchangeResponse & {
   };
 };
 
-type TelegramVerifyStatus =
+export type TelegramVerifyStatus =
   | "blocked"
   | "error"
   | "joining"
@@ -83,9 +83,9 @@ type TelegramVerifyStatus =
   | "waiting";
 
 type TelegramVerifyJoinResult = "blocked" | "joined" | "requested";
-type TelegramVerifyLaunchProvider = "self" | "very" | "zkpassport";
+export type TelegramVerifyLaunchProvider = "self" | "very" | "zkpassport";
 
-type PendingTelegramVerificationLaunch = {
+export type PendingTelegramVerificationLaunch = {
   href: string;
   provider: TelegramVerifyLaunchProvider;
 };
@@ -605,6 +605,92 @@ export function telegramVerifyLaunchButtonLabel(provider: TelegramVerifyLaunchPr
   }
 }
 
+export function TelegramMiniAppVerifyView({
+  busy = false,
+  canRetry = false,
+  externalLaunchOpened = false,
+  message,
+  onCheckStatus,
+  onClose,
+  onOpenBoard,
+  onOpenPendingLaunch,
+  onRetry,
+  pendingLaunch,
+  status,
+  title,
+}: {
+  busy?: boolean;
+  canRetry?: boolean;
+  externalLaunchOpened?: boolean;
+  message: string;
+  onCheckStatus?: () => void | Promise<void>;
+  onClose?: () => void;
+  onOpenBoard?: () => void;
+  onOpenPendingLaunch?: () => void;
+  onRetry?: () => void;
+  pendingLaunch?: PendingTelegramVerificationLaunch | null;
+  status: TelegramVerifyStatus;
+  title: string;
+}) {
+  return (
+    <TelegramMiniAppShell>
+      <div className="px-4 py-6">
+        <PageContainer size="narrow">
+          <section className="flex min-h-[70svh] flex-col justify-center gap-6">
+            <div className="space-y-3">
+              <Type as="p" variant="overline">Telegram Mini App</Type>
+              <Type as="h1" variant="h1">{title}</Type>
+              <Type as="p" variant="body">{message}</Type>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {status === "waiting" ? (
+                <>
+                  {pendingLaunch ? (
+                    <Button onClick={onOpenPendingLaunch}>
+                      {telegramVerifyLaunchButtonLabel(pendingLaunch.provider)}
+                    </Button>
+                  ) : null}
+                  {!pendingLaunch || externalLaunchOpened ? (
+                    <Button
+                      loading={busy}
+                      onClick={() => {
+                        void onCheckStatus?.();
+                      }}
+                      variant={pendingLaunch ? "secondary" : "default"}
+                    >
+                      Check status
+                    </Button>
+                  ) : null}
+                </>
+              ) : null}
+              {(status === "error" || status === "blocked") && canRetry ? (
+                <Button loading={busy} onClick={onRetry}>
+                  Try again
+                </Button>
+              ) : null}
+              {status === "success" ? (
+                <Button onClick={onOpenBoard}>
+                  Open board
+                </Button>
+              ) : null}
+              {status === "success" ? (
+                <Button onClick={onClose} variant="secondary">
+                  Close
+                </Button>
+              ) : null}
+              {status === "error" || status === "blocked" ? (
+                <Button onClick={onOpenBoard} variant="ghost">
+                  Open board
+                </Button>
+              ) : null}
+            </div>
+          </section>
+        </PageContainer>
+      </div>
+    </TelegramMiniAppShell>
+  );
+}
+
 export function TelegramMiniAppVerifyPage({
   communityId,
 }: {
@@ -979,78 +1065,37 @@ export function TelegramMiniAppVerifyPage({
           : "Verify to join";
 
   return (
-    <TelegramMiniAppShell>
-      <div className="px-4 py-6">
-        <PageContainer size="narrow">
-          <section className="flex min-h-[70svh] flex-col justify-center gap-6">
-            <div className="space-y-3">
-              <Type as="p" variant="overline">Telegram Mini App</Type>
-              <Type as="h1" variant="h1">{title}</Type>
-              <Type as="p" variant="body">{message}</Type>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {status === "waiting" ? (
-                <>
-                  {pendingLaunch ? (
-                    <Button
-                      onClick={() => {
-                        verificationStartedInThisBrowserRef.current = true;
-                        writeTelegramVerifyFlowStarted(resolvedCommunityId);
-                        openExternalHref(pendingLaunch.href);
-                        setExternalLaunchOpened(true);
-                        setMessage(telegramVerifyWaitingMessage(pendingLaunch.provider));
-                      }}
-                    >
-                      {telegramVerifyLaunchButtonLabel(pendingLaunch.provider)}
-                    </Button>
-                  ) : null}
-                  {!pendingLaunch || externalLaunchOpened ? (
-                    <Button
-                      loading={busy}
-                      onClick={async () => {
-                        await refreshVerificationStatus({ showCheckingMessage: true });
-                      }}
-                      variant={pendingLaunch ? "secondary" : "default"}
-                    >
-                      Check status
-                    </Button>
-                  ) : null}
-                </>
-              ) : null}
-              {(status === "error" || status === "blocked") && eligibility ? (
-                <Button
-                  loading={busy}
-                  onClick={() => {
-                    autoActionKeyRef.current = null;
-                    void runAutoAction(eligibility);
-                  }}
-                >
-                  Try again
-                </Button>
-              ) : null}
-              {status === "success" ? (
-                <Button onClick={() => navigate(`/tg/c/${encodeURIComponent(resolvedCommunityId)}`)}>
-                  Open board
-                </Button>
-              ) : null}
-              {status === "success" ? (
-                <Button onClick={() => window.Telegram?.WebApp?.close?.()} variant="secondary">
-                  Close
-                </Button>
-              ) : null}
-              {status === "error" || status === "blocked" ? (
-                <Button
-                  onClick={() => navigate(`/tg/c/${encodeURIComponent(resolvedCommunityId)}`)}
-                  variant="ghost"
-                >
-                  Open board
-                </Button>
-              ) : null}
-            </div>
-          </section>
-        </PageContainer>
-      </div>
-    </TelegramMiniAppShell>
+    <TelegramMiniAppVerifyView
+      busy={busy}
+      canRetry={Boolean((status === "error" || status === "blocked") && eligibility)}
+      externalLaunchOpened={externalLaunchOpened}
+      message={message}
+      onCheckStatus={async () => {
+        await refreshVerificationStatus({ showCheckingMessage: true });
+      }}
+      onClose={() => window.Telegram?.WebApp?.close?.()}
+      onOpenBoard={() => navigate(`/tg/c/${encodeURIComponent(resolvedCommunityId)}`)}
+      onOpenPendingLaunch={() => {
+        if (!pendingLaunch) {
+          return;
+        }
+        verificationStartedInThisBrowserRef.current = true;
+        writeTelegramVerifyFlowStarted(resolvedCommunityId);
+        openExternalHref(pendingLaunch.href);
+        setExternalLaunchOpened(true);
+        setMessage(telegramVerifyWaitingMessage(pendingLaunch.provider));
+      }}
+      onRetry={() => {
+        if (!eligibility) {
+          return;
+        }
+        autoActionKeyRef.current = null;
+        void runAutoAction(eligibility);
+      }}
+      pendingLaunch={pendingLaunch}
+      status={status}
+      title={title}
+    />
   );
 }
 

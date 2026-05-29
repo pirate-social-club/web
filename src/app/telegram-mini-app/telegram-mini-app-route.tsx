@@ -1055,17 +1055,10 @@ export function TelegramMiniAppVerifyPage({
 }
 
 export function TelegramMiniAppSelfReturnPage({
-  communityId,
+  communityId: _communityId,
 }: {
   communityId?: string | null;
 }) {
-  const telegramReturnHref = communityId
-    ? buildTelegramStartAppHref({
-      botUsername: resolveTelegramBotUsername(),
-      startParam: `v_${communityId}`,
-    })
-    : null;
-
   return (
     <TelegramMiniAppShell>
       <div className="px-4 py-6">
@@ -1075,17 +1068,8 @@ export function TelegramMiniAppSelfReturnPage({
               <Type as="p" variant="overline">Telegram verification</Type>
               <Type as="h1" variant="h1">Self verification received</Type>
               <Type as="p" variant="body">
-                {telegramReturnHref
-                  ? "Return to Telegram to finish joining."
-                  : "Return to Telegram and tap Verify to join again."}
+                Return to Telegram and tap Verify to join again.
               </Type>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {telegramReturnHref ? (
-                <Button asChild>
-                  <a href={telegramReturnHref}>Return to Telegram</a>
-                </Button>
-              ) : null}
             </div>
           </section>
         </PageContainer>

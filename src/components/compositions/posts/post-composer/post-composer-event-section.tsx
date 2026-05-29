@@ -85,27 +85,6 @@ const fallbackTimeZones = [
   "UTC",
 ] as const;
 
-const timeZoneCountryLabels: Record<string, string> = {
-  "America/Chicago": "United States",
-  "America/Los_Angeles": "United States",
-  "America/New_York": "United States",
-  "America/Toronto": "Canada",
-  "Asia/Dubai": "United Arab Emirates",
-  "Asia/Kolkata": "India",
-  "Asia/Seoul": "South Korea",
-  "Asia/Singapore": "Singapore",
-  "Asia/Tbilisi": "Georgia",
-  "Asia/Tokyo": "Japan",
-  "Australia/Sydney": "Australia",
-  "Europe/Amsterdam": "Netherlands",
-  "Europe/Berlin": "Germany",
-  "Europe/Istanbul": "Turkey",
-  "Europe/London": "United Kingdom",
-  "Europe/Madrid": "Spain",
-  "Europe/Paris": "France",
-  "Europe/Rome": "Italy",
-};
-
 function localDatetimeValue(value: string | undefined): string {
   return value?.slice(0, 16) ?? "";
 }
@@ -170,10 +149,8 @@ function timeZoneCityLabel(timezone: string): string {
 
 function makeTimeZoneOption(timezone: string): TimeZoneOption {
   const cityLabel = timeZoneCityLabel(timezone);
-  const countryLabel = timeZoneCountryLabels[timezone];
   const offsetLabel = timeZoneOffsetLabel(timezone);
-  const placeLabel = countryLabel ? `${cityLabel}, ${countryLabel}` : cityLabel;
-  const label = offsetLabel ? `${placeLabel} · ${offsetLabel}` : placeLabel;
+  const label = offsetLabel ? `${cityLabel} · ${offsetLabel}` : cityLabel;
 
   return {
     cityLabel,

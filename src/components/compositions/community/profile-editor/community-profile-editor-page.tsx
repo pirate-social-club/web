@@ -8,9 +8,29 @@ import { Card } from "@/components/primitives/card";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Type } from "@/components/primitives/type";
 import { Input } from "@/components/primitives/input";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/primitives/combobox";
 import { Textarea } from "@/components/primitives/textarea";
+import { COUNTRIES, countryCodeToFlag, getCountryName } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
+
+function formatCountryOption(code: string): string {
+  const flag = countryCodeToFlag(code);
+  const name = getCountryName(code) ?? code;
+  return flag ? `${flag} ${name}` : name;
+}
+
+const COUNTRY_OPTIONS = COUNTRIES.map((country) => ({
+  code: country.code.toLowerCase(),
+  label: formatCountryOption(country.code),
+}));
 
 function useObjectUrl(file: File | null): string | null {
   const [objectUrl, setObjectUrl] = React.useState<string | null>(null);
@@ -124,6 +144,7 @@ export interface CommunityProfileEditorPageProps {
   avatarSrc?: string;
   bannerSrc?: string;
   className?: string;
+  countryCode?: string;
   description: string;
   displayName: string;
   displayNameError?: string;
@@ -132,6 +153,7 @@ export interface CommunityProfileEditorPageProps {
   onBackClick?: () => void;
   onBannerRemove?: () => void;
   onBannerSelect?: (file: File | null) => void;
+  onCountryCodeChange?: (value: string) => void;
   onDescriptionChange?: (value: string) => void;
   onDisplayNameChange?: (value: string) => void;
   onSave?: () => void;
@@ -149,6 +171,7 @@ export function CommunityProfileEditorPage({
   avatarSrc,
   bannerSrc,
   className,
+  countryCode = "",
   description,
   displayName,
   displayNameError,
@@ -157,6 +180,7 @@ export function CommunityProfileEditorPage({
   onBackClick,
   onBannerRemove,
   onBannerSelect,
+  onCountryCodeChange,
   onDescriptionChange,
   onDisplayNameChange,
   onSave,
@@ -184,6 +208,7 @@ export function CommunityProfileEditorPage({
 
   const avatarPreview = useObjectUrl(pendingAvatarFile);
   const bannerPreview = useObjectUrl(pendingBannerFile);
+  const selectedCountryOption = COUNTRY_OPTIONS.find((option) => option.code === countryCode)?.label ?? "";
 
   return (
     <section className={cn("mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8", className)}>
@@ -284,6 +309,32 @@ export function CommunityProfileEditorPage({
                 value={storeLabel}
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-base font-medium text-foreground" htmlFor="community-profile-country">
+              Country
+            </label>
+            <Combobox
+              items={COUNTRY_OPTIONS.map((option) => option.label)}
+              onValueChange={(value) => {
+                const selectedOption = COUNTRY_OPTIONS.find((option) => option.label === value);
+                onCountryCodeChange?.(selectedOption?.code ?? "");
+              }}
+              value={selectedCountryOption}
+            >
+              <ComboboxInput id="community-profile-country" placeholder="Search countries" />
+              <ComboboxContent>
+                <ComboboxEmpty>No countries found.</ComboboxEmpty>
+                <ComboboxList>
+                  {(countryLabel) => (
+                    <ComboboxItem key={countryLabel} value={countryLabel}>
+                      {countryLabel}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+            <FormNote>Used to bias place search for event posts in this community.</FormNote>
           </div>
           <div className="community-moderation-inline-save-action flex items-center justify-end gap-3 border-t border-border pt-5">
             {onBackClick ? (

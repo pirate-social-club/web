@@ -7,6 +7,7 @@ import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 
 import { getErrorMessage } from "@/lib/error-utils";
+import { normalizeCommunityCountryCode } from "@/lib/geo-country";
 
 export function useCommunityProfileState({
   community,
@@ -20,6 +21,7 @@ export function useCommunityProfileState({
   const [profileDescription, setProfileDescription] = React.useState("");
   const [profileStoreUrl, setProfileStoreUrl] = React.useState("");
   const [profileStoreLabel, setProfileStoreLabel] = React.useState("");
+  const [profileCountryCode, setProfileCountryCode] = React.useState("");
   const [profileAvatarFile, setProfileAvatarFile] = React.useState<File | null>(null);
   const [profileBannerFile, setProfileBannerFile] = React.useState<File | null>(null);
   const [profileAvatarRemoved, setProfileAvatarRemoved] = React.useState(false);
@@ -36,6 +38,7 @@ export function useCommunityProfileState({
     setProfileDescription(community.description ?? "");
     setProfileStoreUrl(community.store_url ?? "");
     setProfileStoreLabel(community.store_label ?? "");
+    setProfileCountryCode(normalizeCommunityCountryCode(community.country_code));
     setProfileAvatarFile(null);
     setProfileBannerFile(null);
     setProfileAvatarRemoved(community.avatar_ref == null);
@@ -48,6 +51,7 @@ export function useCommunityProfileState({
     || profileDescription !== (community.description ?? "")
     || profileStoreUrl.trim() !== (community.store_url ?? "")
     || profileStoreLabel.trim() !== (community.store_label ?? "")
+    || normalizeCommunityCountryCode(profileCountryCode) !== normalizeCommunityCountryCode(community.country_code)
     || profileAvatarFile !== null
     || profileBannerFile !== null
     || (profileAvatarRemoved && community.avatar_ref != null)
@@ -82,6 +86,7 @@ export function useCommunityProfileState({
         banner_ref: bannerRef,
         store_url: profileStoreUrl.trim() || null,
         store_label: profileStoreLabel.trim() || null,
+        country_code: normalizeCommunityCountryCode(profileCountryCode) || null,
       });
       setCommunity(updatedCommunity);
       setProfileAvatarFile(null);
@@ -103,6 +108,7 @@ export function useCommunityProfileState({
     profileBannerRemoved,
     profileDescription,
     profileDisplayName,
+    profileCountryCode,
     profileStoreLabel,
     profileStoreUrl,
     savingProfile,
@@ -115,6 +121,7 @@ export function useCommunityProfileState({
     profileAvatarRemoved,
     profileBannerFile,
     profileBannerRemoved,
+    profileCountryCode,
     profileDescription,
     profileDisplayName,
     profileDisplayNameError,
@@ -126,6 +133,7 @@ export function useCommunityProfileState({
     setProfileAvatarRemoved,
     setProfileBannerFile,
     setProfileBannerRemoved,
+    setProfileCountryCode,
     setProfileDescription,
     setProfileDisplayName,
     setProfileDisplayNameError,

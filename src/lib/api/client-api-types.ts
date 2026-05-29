@@ -88,6 +88,7 @@ export type ApiUpdateCommunityRequest = {
   banner_ref?: string | null;
   store_url?: string | null;
   store_label?: string | null;
+  country_code?: string | null;
   agent_posting_policy?: Community["agent_posting_policy"] | null;
   agent_posting_scope?: Community["agent_posting_scope"] | null;
   guest_comment_policy?: Community["guest_comment_policy"] | null;

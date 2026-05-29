@@ -530,6 +530,7 @@ export function CommunityModerationPage({
         <CommunityProfileEditorPage
           avatarSrc={state.profileAvatarRemoved ? undefined : (state.community.avatar_ref ?? undefined)}
           bannerSrc={state.profileBannerRemoved ? undefined : (state.community.banner_ref ?? undefined)}
+          countryCode={state.profileCountryCode}
           description={state.profileDescription}
           displayName={state.profileDisplayName}
           displayNameError={state.profileDisplayNameError}
@@ -554,6 +555,7 @@ export function CommunityModerationPage({
               state.setProfileBannerRemoved(false);
             }
           }}
+          onCountryCodeChange={state.setProfileCountryCode}
           onDescriptionChange={state.setProfileDescription}
           onDisplayNameChange={state.setProfileDisplayName}
           onSave={state.handleSaveProfile}

@@ -48,6 +48,7 @@ import { resolveViewerContentLocale } from "@/lib/content-locale";
 import { getLocaleMessages } from "@/locales";
 import { applySecurityHeaders } from "@/lib/security/csp";
 import { buildVersionResponse, type BuildVersionEnv } from "@/lib/build-version";
+import { telegramCommunityJoinRedirect } from "@/lib/telegram-join-redirect";
 import {
   buildAgentSeoMetadata,
   buildCommunitySeoMetadata,
@@ -490,6 +491,13 @@ const app = defineApp<AppRequestInfo>([
     route("/tg/exchange", AppRoutePage),
     route("/tg/self-return", AppRoutePage),
     route("/tg/self-return/:communityId", AppRoutePage),
+    route("/tg/join/:communityId", ({ ctx, params, request }) =>
+      telegramCommunityJoinRedirect({
+        apiOrigin: getDiscoveryContext(ctx.effectiveUrl ?? request.url).apiOrigin,
+        communityId: params.communityId,
+        effectiveUrl: ctx.effectiveUrl ?? request.url,
+      })
+    ),
     route("/tg/verify/:communityId", AppRoutePage),
     route("/tg/c/:communityId", AppRoutePage),
     route("/tg/p/:postId", AppRoutePage),

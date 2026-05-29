@@ -9,6 +9,7 @@ import type {
   ApiCommunityTelegramChatSettingsUpdate,
 } from "@/lib/api/client-api-types";
 import { useApi } from "@/lib/api";
+import { buildTelegramCommunityJoinUrl } from "@/lib/telegram-community-join";
 import { getErrorMessage } from "@/lib/error-utils";
 import { toast } from "@/components/primitives/sonner";
 import type {
@@ -190,6 +191,10 @@ export function useCommunityTelegramState({
     () => comparableTelegramSettings(telegramSettings) !== comparableTelegramSettings(savedTelegramSettings),
     [savedTelegramSettings, telegramSettings],
   );
+  const telegramJoinUrl = React.useMemo(
+    () => buildTelegramCommunityJoinUrl({ communityId: community?.id }),
+    [community?.id],
+  );
 
   const handleConnectTelegramChat = React.useCallback(() => {
     if (!community) {
@@ -312,6 +317,7 @@ export function useCommunityTelegramState({
     savingTelegram,
     setTelegramSettings,
     telegramDirty,
+    telegramJoinUrl,
     telegramLoadError,
     telegramSettings,
     telegramSubmitState,

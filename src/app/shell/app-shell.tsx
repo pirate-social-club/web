@@ -279,7 +279,7 @@ export function PirateAppShell({
   const copy = getLocaleMessages(effectiveLocale, "shell");
   const isCommunityModerationRoute = route.kind === "community-moderation" || route.kind === "community-moderation-index";
   const useStandalonePublicProfileShell = isNativePublicIdentityRoute(route);
-  const isTelegramMiniAppRoute = route.kind === "telegram-mini-app" || route.kind === "telegram-exchange" || route.kind === "telegram-self-return" || route.kind === "telegram-verify" || route.kind === "telegram-community" || route.kind === "telegram-post";
+  const isTelegramMiniAppRoute = route.kind === "telegram-mini-app" || route.kind === "telegram-exchange" || route.kind === "telegram-self-return" || route.kind === "telegram-join" || route.kind === "telegram-verify" || route.kind === "telegram-community" || route.kind === "telegram-post";
   const shouldDeferPrivyUntilConnect =
     route.kind === "create-community"
     || (!session && (

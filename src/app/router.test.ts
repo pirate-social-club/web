@@ -219,6 +219,11 @@ describe("public profile host routing", () => {
       path: "/tg/self-return/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
       communityId: "com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
     });
+    expectJson(matchRoute("/tg/join/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c"), {
+      kind: "telegram-join",
+      path: "/tg/join/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
+      communityId: "com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",
+    });
     expectJson(matchRoute("/tg/verify/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c"), {
       kind: "telegram-verify",
       path: "/tg/verify/com_cmt_58a12a18213c4bf4a1e6b9343dc3702c",

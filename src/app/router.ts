@@ -43,6 +43,7 @@ export type AppRoute =
   | { kind: "telegram-mini-app"; path: "/tg" }
   | { kind: "telegram-exchange"; path: "/tg/exchange" }
   | { kind: "telegram-self-return"; path: string; communityId?: string | null }
+  | { kind: "telegram-join"; path: string; communityId: string }
   | { kind: "telegram-verify"; path: string; communityId: string }
   | { kind: "telegram-community"; path: string; communityId: string }
   | { kind: "telegram-post"; path: string; postId: string }
@@ -165,6 +166,14 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   if (segments.length === 3 && segments[0] === "tg" && segments[1] === "self-return") {
     return {
       kind: "telegram-self-return",
+      path: normalized,
+      communityId: decodeURIComponent(segments[2]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "tg" && segments[1] === "join") {
+    return {
+      kind: "telegram-join",
       path: normalized,
       communityId: decodeURIComponent(segments[2]),
     };

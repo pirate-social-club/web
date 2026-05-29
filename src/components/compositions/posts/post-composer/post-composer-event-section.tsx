@@ -3,6 +3,14 @@ import * as React from "react";
 import { CalendarBlank, CheckCircle, MapPin, VideoCamera } from "@phosphor-icons/react";
 
 import { Checkbox } from "@/components/primitives/checkbox";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/primitives/combobox";
 import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
 import { FormNote } from "@/components/primitives/form-layout";
@@ -45,6 +53,39 @@ const mockPlaces: ComposerEventPlace[] = [
   },
 ];
 
+const PLACE_SEARCH_MIN_QUERY_LENGTH = 4;
+
+type TimeZoneOption = {
+  cityLabel: string;
+  id: string;
+  label: string;
+  offsetLabel: string;
+  searchLabel: string;
+  value: string;
+};
+
+const fallbackTimeZones = [
+  "Asia/Tbilisi",
+  "America/New_York",
+  "America/Los_Angeles",
+  "America/Chicago",
+  "America/Toronto",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Europe/Madrid",
+  "Europe/Rome",
+  "Europe/Amsterdam",
+  "Europe/Istanbul",
+  "Asia/Dubai",
+  "Asia/Tokyo",
+  "Asia/Seoul",
+  "Asia/Singapore",
+  "Asia/Kolkata",
+  "Australia/Sydney",
+  "UTC",
+] as const;
+
 function localDatetimeValue(value: string | undefined): string {
   return value?.slice(0, 16) ?? "";
 }
@@ -65,6 +106,17 @@ function defaultTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
+function supportedTimeZones(): string[] {
+  const supportedValuesOf = (Intl as typeof Intl & {
+    supportedValuesOf?: (key: "calendar" | "collation" | "currency" | "numberingSystem" | "timeZone" | "unit") => string[];
+  }).supportedValuesOf;
+
+  if (typeof supportedValuesOf === "function") {
+    return supportedValuesOf("timeZone");
+  }
+  return [...fallbackTimeZones];
+}
+
 function isValidTimeZone(value: string | undefined): boolean {
   const timezone = value?.trim();
   if (!timezone) return false;
@@ -75,6 +127,92 @@ function isValidTimeZone(value: string | undefined): boolean {
   } catch {
     return false;
   }
+}
+
+function timeZoneOffsetLabel(timezone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      timeZone: timezone,
+      timeZoneName: "shortOffset",
+    }).formatToParts(new Date());
+    return parts.find((part) => part.type === "timeZoneName")?.value ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function timeZoneCityLabel(timezone: string): string {
+  if (timezone === "UTC") return "UTC";
+  const city = timezone.split("/").pop() ?? timezone;
+  return city.replace(/_/gu, " ");
+}
+
+function makeTimeZoneOption(timezone: string): TimeZoneOption {
+  const cityLabel = timeZoneCityLabel(timezone);
+  const offsetLabel = timeZoneOffsetLabel(timezone);
+  const label = offsetLabel ? `${cityLabel} · ${offsetLabel}` : cityLabel;
+
+  return {
+    cityLabel,
+    id: timezone,
+    label,
+    offsetLabel,
+    searchLabel: `${label} ${timezone}`,
+    value: timezone,
+  };
+}
+
+function timeZoneOptions(): TimeZoneOption[] {
+  return supportedTimeZones().map(makeTimeZoneOption);
+}
+
+function TimeZonePicker({
+  id,
+  value,
+  onChange,
+}: {
+  id?: string;
+  value: string | undefined;
+  onChange: (value: string) => void;
+}) {
+  const options = React.useMemo(() => timeZoneOptions(), []);
+  const selected = React.useMemo(
+    () => options.find((option) => option.value === value) ?? makeTimeZoneOption(value || defaultTimeZone()),
+    [options, value],
+  );
+
+  return (
+    <Combobox<TimeZoneOption>
+      autoHighlight
+      items={options}
+      itemToStringLabel={(option) => option.label}
+      itemToStringValue={(option) => option.value}
+      onValueChange={(option) => {
+        if (option) {
+          onChange(option.value);
+        }
+      }}
+      value={options.find((option) => option.value === selected.value)}
+    >
+      <ComboboxInput
+        aria-label="Timezone"
+        className="h-10 rounded-[var(--radius-lg)]"
+        id={id}
+        placeholder="Search time zones"
+      />
+      <ComboboxContent>
+        <ComboboxEmpty>No time zones found.</ComboboxEmpty>
+        <ComboboxList className="max-h-64 py-0">
+          {(option) => (
+            <ComboboxItem key={option.id} value={option}>
+              <Type as="p" variant="body-strong">{option.label}</Type>
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
 }
 
 export function PostComposerEventSection({
@@ -91,17 +229,25 @@ export function PostComposerEventSection({
   const enabled = event.enabled === true;
   const isOnline = event.isOnline === true;
   const locationQuery = event.locationName ?? "";
+  const trimmedLocationQuery = locationQuery.trim();
   const [suggestions, setSuggestions] = React.useState<ComposerEventPlace[]>([]);
   const [searchLoading, setSearchLoading] = React.useState(false);
   const searchRequestId = React.useRef(0);
   const timezoneInvalid = Boolean(enabled && event.timezone?.trim() && !isValidTimeZone(event.timezone));
+  const showKeepTyping = Boolean(
+    enabled
+    && !isOnline
+    && !event.place
+    && trimmedLocationQuery.length > 0
+    && trimmedLocationQuery.length < PLACE_SEARCH_MIN_QUERY_LENGTH,
+  );
 
   React.useEffect(() => {
-    const query = locationQuery.trim();
+    const query = trimmedLocationQuery;
     searchRequestId.current += 1;
     const requestId = searchRequestId.current;
 
-    if (!enabled || isOnline || query.length < 2 || event.place?.label === locationQuery) {
+    if (!enabled || isOnline || query.length < PLACE_SEARCH_MIN_QUERY_LENGTH || event.place?.label === locationQuery) {
       setSuggestions([]);
       setSearchLoading(false);
       return;
@@ -125,7 +271,7 @@ export function PostComposerEventSection({
     }, 300);
 
     return () => globalThis.clearTimeout(timeoutId);
-  }, [enabled, event.place?.label, isOnline, locationQuery, onSearchPlaces]);
+  }, [enabled, event.place?.label, isOnline, locationQuery, onSearchPlaces, trimmedLocationQuery]);
 
   function update(patch: Partial<ComposerEventState>) {
     onChange({ ...event, ...patch });
@@ -186,21 +332,18 @@ export function PostComposerEventSection({
 
           <div>
             <FieldLabel htmlFor="post-event-timezone" label="Timezone" />
-            <Input
-              aria-invalid={timezoneInvalid}
-              className="h-10"
+            <TimeZonePicker
               id="post-event-timezone"
-              onChange={(inputEvent) => update({ timezone: inputEvent.target.value })}
-              placeholder="Asia/Tbilisi"
-              value={event.timezone ?? ""}
+              onChange={(timezone) => update({ timezone })}
+              value={event.timezone ?? defaultTimeZone()}
             />
             {timezoneInvalid ? (
               <FormNote className="mt-1" tone="destructive">
-                Use an IANA timezone such as Asia/Tbilisi or America/New_York.
+                Choose a valid event timezone.
               </FormNote>
             ) : (
               <FormNote className="mt-1">
-                Defaults to {defaultTimeZone()}.
+                Uses your browser timezone by default.
               </FormNote>
             )}
           </div>
@@ -240,6 +383,10 @@ export function PostComposerEventSection({
                   <FormNote className="mt-1 flex items-center gap-1 text-success">
                     <CheckCircle className="size-4" />
                     Matched to Geoapify place data
+                  </FormNote>
+                ) : showKeepTyping ? (
+                  <FormNote className="mt-1">
+                    Keep typing to search places.
                   </FormNote>
                 ) : null}
               </div>

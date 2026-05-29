@@ -6,6 +6,7 @@ import type { PostCardProps } from "@/components/compositions/posts/post-card/po
 import { PostComposer } from "./post-composer";
 import { PostComposerAttachmentCard } from "./post-composer-attachment-card";
 import { defaultMonetizationState } from "./post-composer-config";
+import { PostComposerEventSection } from "./post-composer-event-section";
 import { LiveTabContent } from "./post-composer-live-tab";
 import { SearchReferencePicker } from "./post-composer-references";
 import type { AssetLicenseState, MonetizationState, PostComposerProps } from "./post-composer.types";
@@ -97,6 +98,7 @@ function walkTree(node: React.ReactNode, visit: (element: TestElement) => void) 
       || elementTypeName === "PostComposerDerivativeSection"
       || elementTypeName === "PublishSummary"
       || elementTypeName === "ReviewOption"
+      || elementTypeName === "TimeZonePicker"
       || elementTypeName === "VisibilityReview"
     )
   ) {
@@ -789,6 +791,52 @@ describe("PostComposer monetization", () => {
     expect(geniusAnnotationsUrl).toBe("https://genius.com/34172986");
   });
 
+  test("allows optional stem uploads to be removed from song details", () => {
+    const instrumental = new File(["stem"], "instrumental.wav", { type: "audio/wav" });
+    const vocal = new File(["stem"], "vocal.wav", { type: "audio/wav" });
+    let songState: PostComposerProps["song"] = {
+      instrumentalAudioUpload: instrumental,
+      title: "Midnight Waves",
+      vocalAudioUpload: vocal,
+    };
+    const tree = renderComposer({
+      availableTabs: ["song"],
+      canCreateSongPost: true,
+      clubName: "Lane1",
+      composerStep: "details",
+      lyricsValue: "",
+      mode: "song",
+      onSongChange: (next) => {
+        songState = next;
+      },
+      song: songState,
+    });
+
+    const instrumentalUpload = findElement(
+      tree,
+      (element) => typeof element.type === "function" && element.type.name === "UploadField" && element.props.label === "Instrumental stem",
+    );
+    if (!instrumentalUpload) {
+      throw new Error("Missing instrumental stem upload");
+    }
+    expect(instrumentalUpload.props.selectedLabel).toBe("instrumental.wav");
+    (instrumentalUpload.props.onClear as (() => void) | undefined)?.();
+    expect(songState?.instrumentalAudioUpload).toBeNull();
+    expect(songState?.instrumentalAudioLabel).toBeUndefined();
+
+    const vocalUpload = findElement(
+      tree,
+      (element) => typeof element.type === "function" && element.type.name === "UploadField" && element.props.label === "Vocal stem",
+    );
+    if (!vocalUpload) {
+      throw new Error("Missing vocal stem upload");
+    }
+    expect(vocalUpload.props.selectedLabel).toBe("vocal.wav");
+    (vocalUpload.props.onClear as (() => void) | undefined)?.();
+    expect(songState?.vocalAudioUpload).toBeNull();
+    expect(songState?.vocalAudioLabel).toBeUndefined();
+  });
+
   test("desktop write step blocks live until the setlist is ready and only requires time when scheduling", () => {
     let step: PostComposerProps["composerStep"] = "write";
     const blockedTree = renderComposer({
@@ -1326,6 +1374,55 @@ describe("PostComposer monetization", () => {
 
     expect(songMode).toBe("original");
     expect(derivativeStep).toBeUndefined();
+  });
+});
+
+describe("PostComposer event details", () => {
+  beforeEach(() => {
+    installHookStubs();
+  });
+
+  afterEach(() => {
+    restoreHookStubs();
+  });
+
+  test("uses a timezone combobox instead of a free text timezone input", () => {
+    let eventState = {
+      enabled: true,
+      startsAt: "2026-06-12T20:00",
+      timezone: "Asia/Tbilisi",
+    };
+    const tree = PostComposerEventSection({
+      event: eventState,
+      onChange: (next) => {
+        eventState = next;
+      },
+    });
+    const timezoneCombobox = findElement(
+      tree,
+      (element) => typeof element.props.itemToStringValue === "function"
+        && typeof element.props.onValueChange === "function",
+    );
+    const timezoneTextInput = findElement(
+      tree,
+      (element) => element.props.id === "post-event-timezone"
+        && element.props.placeholder === "Asia/Tbilisi",
+    );
+
+    if (!timezoneCombobox) {
+      throw new Error("Timezone combobox not found");
+    }
+
+    const items = timezoneCombobox.props.items as Array<{ label: string; value: string }>;
+    const newYork = items.find((item) => item.value === "America/New_York");
+    if (!newYork) {
+      throw new Error("New York timezone option not found");
+    }
+    (timezoneCombobox.props.onValueChange as (value: typeof newYork) => void)(newYork);
+
+    expect(timezoneTextInput).toBeNull();
+    expect(newYork.label).toContain("New York");
+    expect(eventState.timezone).toBe("America/New_York");
   });
 });
 

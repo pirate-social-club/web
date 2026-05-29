@@ -292,6 +292,7 @@ export function CommunityModerationIndexPage({
     copy.moderation,
     state.community?.route_slug,
   );
+  const communityPath = buildCommunityPath(communityId, state.community?.route_slug);
   const blocked = CommunityModerationGuard({
     community: state.community,
     error: state.error,
@@ -308,7 +309,7 @@ export function CommunityModerationIndexPage({
   const content = blocked ?? (
     <CommunityModerationIndexPageView
       mobileLayout={isMobile}
-      onBackClick={isMobile ? undefined : () => navigate(`/c/${communityId}`)}
+      onBackClick={isMobile ? undefined : () => navigate(communityPath)}
       sections={sections}
       showTitle={!isMobile}
     />
@@ -317,7 +318,7 @@ export function CommunityModerationIndexPage({
   if (isMobile) {
     return (
       <div className="min-h-screen w-full bg-background text-foreground">
-        <MobilePageHeader onBackClick={() => navigate(`/c/${communityId}`)} title={copy.moderation.index.title} />
+        <MobilePageHeader onBackClick={() => navigate(communityPath)} title={copy.moderation.index.title} />
         <section className="flex min-w-0 flex-1 flex-col py-4 pt-[calc(env(safe-area-inset-top)+5rem)]">
           <div className="min-w-0">
             {content}
@@ -331,7 +332,7 @@ export function CommunityModerationIndexPage({
     <CommunityModerationShell
       communityAvatarSrc={state.community?.avatar_ref ?? undefined}
       communityLabel={state.community ? formatModerationCommunityLabel(state.community) : copy.moderation.shell.communityLabelFallback}
-      onExitClick={() => navigate(`/c/${communityId}`)}
+      onExitClick={() => navigate(communityPath)}
       sections={sections}
     >
       {content}
@@ -365,7 +366,7 @@ export function CommunityModerationPage({
     state.applyStarterPricingTemplate({ localCountryCodes: pricingLocalCountryCodes });
   };
   const title = getCommunityModerationTitle(section, copy.moderation);
-  const moderationIndexPath = buildCommunityModerationIndexPath(communityId);
+  const moderationIndexPath = buildCommunityModerationIndexPath(communityId, state.community?.route_slug);
   const blocked = CommunityModerationGuard({
     community: state.community,
     error: state.error,

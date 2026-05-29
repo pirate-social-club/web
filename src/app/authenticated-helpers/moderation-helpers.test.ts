@@ -21,6 +21,19 @@ describe("pricing policy moderation helpers", () => {
     expect(buildCommunityModerationPath("@🇵🇸", "links")).toBe("/c/@xn--t77hga/mod/links");
   });
 
+  test("prefers verified route slugs in moderation paths", () => {
+    expect(buildCommunityModerationEntryPath(
+      "com_cmt_be13447e169a49209b2dc207fc4574c0",
+      true,
+      "@xn--t77hga",
+    )).toBe("/c/@xn--t77hga/mod");
+    expect(buildCommunityModerationPath(
+      "com_cmt_be13447e169a49209b2dc207fc4574c0",
+      "links",
+      "@xn--t77hga",
+    )).toBe("/c/@xn--t77hga/mod/links");
+  });
+
   test("rejects duplicate country assignments across price groups", () => {
     expect(validatePricingPolicyDraft({
       countryAssignments: [

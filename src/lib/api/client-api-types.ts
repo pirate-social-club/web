@@ -154,6 +154,7 @@ export type CommunityListPostsOptions = {
   cursor?: string | null;
   locale?: string | null;
   flair_id?: string | null;
+  has_event?: boolean | string | null;
   sort?: "best" | "new" | "top" | null;
 };
 

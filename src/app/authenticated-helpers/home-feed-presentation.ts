@@ -67,6 +67,8 @@ export function toHomeFeedItem(
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
   const { hasPostMenu, postMenuItems } = buildPostMenu({
     canModeratePost: opts?.canModeratePost,
+    eventStatus: post.event?.status ?? null,
+    onCancelEvent: opts?.onCancelEvent,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
     onSetLabel: opts?.onSetLabel,
@@ -129,6 +131,7 @@ export function toHomeFeedItem(
       onMenuAction: hasPostMenu ? (key) => {
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
+        if (key === "cancel-event") opts?.onCancelEvent?.();
         if (key === "set-label") opts?.onSetLabel?.();
       } : undefined,
       onVote: opts?.onVote,

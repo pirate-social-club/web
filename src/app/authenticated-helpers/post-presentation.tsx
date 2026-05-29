@@ -9,6 +9,7 @@ import type { Profile as ApiProfile } from "@pirate/api-contracts";
 import type { FeedItem } from "@/components/compositions/posts/feed/feed";
 import { buildPostCardTitleProps } from "@/components/compositions/posts/post-card/post-card-content-rules";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
+import type { PostCardEvent } from "@/components/compositions/posts/post-card/post-card.types";
 import { buildNationalityBadgeLabel } from "@/components/compositions/posts/post-card/post-card-nationality";
 import { buildCommunityPath, formatCommunityRouteLabel } from "@/lib/community-routing";
 import { buildPublicProfilePathForProfile } from "@/lib/profile-routing";
@@ -70,6 +71,36 @@ export {
   withTranslationToggleProps,
 } from "@/app/authenticated-helpers/post-translation-presentation";
 
+type ApiPostWithEvent = ApiPost["post"] & {
+  event?: {
+    starts_at?: number | null;
+    ends_at?: number | null;
+    timezone?: string | null;
+    location_name?: string | null;
+    address?: string | null;
+    is_online?: boolean | null;
+    event_url?: string | null;
+    status?: PostCardEvent["status"] | null;
+    place?: PostCardEvent["place"] | null;
+  } | null;
+};
+
+function toPostCardEvent(post: ApiPost["post"]): PostCardEvent | undefined {
+  const event = (post as ApiPostWithEvent).event;
+  if (!event?.starts_at || !event.timezone?.trim()) return undefined;
+  return {
+    startsAt: new Date(event.starts_at * 1000).toISOString(),
+    endsAt: event.ends_at ? new Date(event.ends_at * 1000).toISOString() : undefined,
+    timezone: event.timezone,
+    locationName: event.location_name ?? undefined,
+    address: event.address ?? undefined,
+    isOnline: event.is_online === true,
+    eventUrl: event.event_url ?? undefined,
+    status: event.status ?? undefined,
+    place: event.place ?? undefined,
+  };
+}
+
 export function toCommunityFeedItem(
   postResponse: ApiPost,
   authorProfiles: Record<string, ApiProfile | null>,
@@ -80,6 +111,8 @@ export function toCommunityFeedItem(
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
   const { hasPostMenu, postMenuItems } = buildPostMenu({
     canModeratePost: opts?.canModeratePost,
+    eventStatus: toPostCardEvent(post)?.status ?? null,
+    onCancelEvent: opts?.onCancelEvent,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
     onSetLabel: opts?.onSetLabel,
@@ -125,6 +158,7 @@ export function toCommunityFeedItem(
         viewerVote: toViewerVote(postResponse.viewer_vote),
       },
       authorCommunityRole: postResponse.author_community_role ?? undefined,
+      event: toPostCardEvent(post),
       identityPresentation: post.identity_mode === "anonymous" ? "anonymous_primary" : "author_primary",
       authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
       authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
@@ -136,6 +170,7 @@ export function toCommunityFeedItem(
       onMenuAction: hasPostMenu ? (key) => {
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
+        if (key === "cancel-event") opts?.onCancelEvent?.();
         if (key === "set-label") opts?.onSetLabel?.();
       } : undefined,
       onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
@@ -185,6 +220,8 @@ export function toThreadPostCard(
   const communityVerified = Boolean(community?.namespace_verification);
   const { hasPostMenu, postMenuItems } = buildPostMenu({
     canModeratePost: opts?.canModeratePost,
+    eventStatus: toPostCardEvent(post)?.status ?? null,
+    onCancelEvent: opts?.onCancelEvent,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
     onSetLabel: opts?.onSetLabel,
@@ -243,6 +280,7 @@ export function toThreadPostCard(
       viewerVote: toViewerVote(postResponse.viewer_vote),
     },
     authorCommunityRole: postResponse.author_community_role ?? undefined,
+    event: toPostCardEvent(post),
     identityPresentation: isDeleted || isRemoved ? "community_primary" : "community_with_author",
     authorNationalityBadgeCountry: post.identity_mode === "public" ? authorProfile?.nationality_badge_country ?? undefined : undefined,
     authorNationalityBadgeLabel: post.identity_mode === "public" && authorProfile?.nationality_badge_country
@@ -254,6 +292,7 @@ export function toThreadPostCard(
     onMenuAction: hasPostMenu ? (key) => {
       if (key === "delete") opts?.onDelete?.();
       if (key === "remove") opts?.onRemove?.();
+      if (key === "cancel-event") opts?.onCancelEvent?.();
       if (key === "set-label") opts?.onSetLabel?.();
     } : undefined,
     onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,

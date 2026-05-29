@@ -34,7 +34,7 @@ import { formatQualifierLabel } from "@/app/authenticated-helpers/post-identity-
 import { parseUsdInput } from "@/lib/formatting/currency";
 import { getFreedomBrowserDetectionSnapshot, prefersNativeRadicleLinks } from "@/lib/resource-links";
 import { resolveComposerSubmitState } from "@/app/authenticated-helpers/asset-submit";
-import { buildBasePostRequest } from "@/app/authenticated-helpers/create-post-submit/base";
+import { buildBasePostRequest, buildCreatePostEventRequest } from "@/app/authenticated-helpers/create-post-submit/base";
 import { buildStoryRegistrationCreationWarning } from "@/app/authenticated-helpers/story-registration-warning";
 import { buildStoryLicenseReuseNotice, rememberStoryLicenseReuseNotice } from "@/app/authenticated-helpers/story-license-reuse-notice";
 import { submitImagePost } from "@/app/authenticated-helpers/create-post-submit/image";
@@ -219,6 +219,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     charityContribution,
     composerMode,
     derivativeStep,
+    event,
     imageUpload,
     imageUploadLabel,
     identityMode,
@@ -245,6 +246,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setCharityContribution,
     setComposerMode,
     setDerivativeStep,
+    setEvent,
     setImageUpload,
     setImageUploadLabel,
     setIdentityMode,
@@ -745,6 +747,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         : identityMode;
       const anonymousScope = resolvedIdentityMode === "anonymous" ? (community.anonymous_identity_scope ?? "community_stable") : undefined;
       const disclosedQualifierIds = resolvedIdentityMode === "anonymous" && selectedQualifierIds.length > 0 ? selectedQualifierIds : undefined;
+      const eventRequest = composerMode === "song" || composerMode === "live"
+        ? undefined
+        : buildCreatePostEventRequest(event);
 
       if (composerMode === "song") {
         logger.info("[create-post] delegating to song submit", {
@@ -856,6 +861,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           caption,
           communityId,
           createPost: api.communities.createPost,
+          event: eventRequest,
           file: imageUpload,
           signAgentAuthoredBody,
           title,
@@ -884,6 +890,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           createArtifactUpload: api.communities.createArtifactUpload,
           createListing: api.communities.createListing,
           createPost: api.communities.createPost,
+          event: eventRequest,
           extractPosterFrameFile: extractVideoPosterFrameFile,
           license,
           monetized: monetizationState.visible,
@@ -916,6 +923,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           body,
           communityId,
           createPost: api.communities.createPost,
+          event: eventRequest,
           linkUrl,
           signAgentAuthoredBody,
           title,
@@ -935,6 +943,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           body,
           communityId,
           createPost: api.communities.createPost,
+          event: eventRequest,
           signAgentAuthoredBody,
           title,
         });
@@ -993,7 +1002,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       setPageState((current) => ({ ...current, submitting: false }));
     }
   }, [
-    api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, hasCommunityPostingRole,
+    api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, event, hasCommunityPostingRole,
     identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, postAltchaPayload, postAltchaRequired, pricingPolicy?.regional_pricing_enabled,
     selectedQualifierIds, session?.user.id, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     videoState,
@@ -1015,6 +1024,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     composerMode,
     derivativeStep,
     eligibility,
+    event,
     isCommunityOwner: hasCommunityPostingRole,
     authorMode,
     identityMode,
@@ -1051,6 +1061,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setCharityContribution,
     setComposerMode,
     setDerivativeStep,
+    setEvent,
     setAuthorMode,
     setImageUpload: setImageUploadWithLabel,
     setIdentityMode,

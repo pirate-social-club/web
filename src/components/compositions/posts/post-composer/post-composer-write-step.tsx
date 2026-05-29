@@ -17,6 +17,7 @@ import {
   PostComposerMobileAttachmentBar,
 } from "./post-composer-attachment-bar";
 import { attachmentActions } from "./post-composer-config";
+import { PostComposerEventSection } from "./post-composer-event-section";
 import { LiveTabContent } from "./post-composer-live-tab";
 import type { AttachmentKind, AttachmentState } from "./post-composer.types";
 import { extractVideoPosterFrameDataUrl } from "./video-poster-frame";
@@ -426,7 +427,13 @@ export function PostComposerWriteStep({
             live={controller.primary.liveState}
             onLiveChange={controller.primary.setLiveState}
           />
-        ) : null}
+        ) : controller.tabs.activeTab === "song" ? null : (
+          <PostComposerEventSection
+            event={controller.event.state}
+            onChange={controller.event.update}
+            onSearchPlaces={controller.event.searchPlaces}
+          />
+        )}
         <PostComposerDesktopAttachmentToolbar
           actions={attachmentActions}
           activeKind={write.attachment?.kind ?? null}
@@ -471,7 +478,13 @@ export function PostComposerWriteStep({
             live={controller.primary.liveState}
             onLiveChange={controller.primary.setLiveState}
           />
-        ) : null}
+        ) : controller.tabs.activeTab === "song" ? null : (
+          <PostComposerEventSection
+            event={controller.event.state}
+            onChange={controller.event.update}
+            onSearchPlaces={controller.event.searchPlaces}
+          />
+        )}
       </div>
       <PostComposerMobileAttachmentBar
         actions={attachmentActions}

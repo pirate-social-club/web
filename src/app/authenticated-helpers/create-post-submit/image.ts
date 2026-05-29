@@ -1,12 +1,14 @@
 "use client";
 
-import type { CreatePostRequest, Post as ApiCreatedPost } from "@pirate/api-contracts";
+import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
 
 import type { AuthorMode } from "@/components/compositions/posts/post-composer/post-composer.types";
 
 import {
   signIfAgent,
   type BasePostRequestFields,
+  type CreatePostEventRequest,
+  type CreatePostRequestWithEvent,
   type SignAgentAuthoredBody,
 } from "./base";
 
@@ -16,7 +18,7 @@ type AltchaRequestOptions = {
 
 type CreatePost = (
   communityId: string,
-  request: CreatePostRequest,
+  request: CreatePostRequestWithEvent,
   options?: AltchaRequestOptions,
 ) => Promise<ApiCreatedPost>;
 
@@ -33,16 +35,19 @@ type UploadImageMedia = (
 export function buildImagePostRequest({
   baseRequest,
   caption,
+  event,
   title,
   uploadedImage,
 }: {
   baseRequest: BasePostRequestFields;
   caption: string;
+  event?: CreatePostEventRequest;
   title: string;
   uploadedImage: UploadedImageMedia;
-}): CreatePostRequest {
+}): CreatePostRequestWithEvent {
   return {
     ...baseRequest,
+    event,
     post_type: "image",
     title: title.trim(),
     caption: caption.trim() || undefined,
@@ -61,6 +66,7 @@ export async function submitImagePost({
   caption,
   communityId,
   createPost,
+  event,
   file,
   signAgentAuthoredBody,
   title,
@@ -72,6 +78,7 @@ export async function submitImagePost({
   caption: string;
   communityId: string;
   createPost: CreatePost;
+  event?: CreatePostEventRequest;
   file: File | null;
   signAgentAuthoredBody: SignAgentAuthoredBody;
   title: string;
@@ -88,6 +95,7 @@ export async function submitImagePost({
   const request = buildImagePostRequest({
     baseRequest,
     caption,
+    event,
     title,
     uploadedImage,
   });

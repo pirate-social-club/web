@@ -3,7 +3,6 @@
 import type {
   CommunityListing,
   CreateCommunityListingRequest,
-  CreatePostRequest,
   CreateSongArtifactUploadRequest,
   Post as ApiCreatedPost,
   SongArtifactUpload,
@@ -20,6 +19,8 @@ import { buildAssetListingRequest } from "@/app/authenticated-helpers/asset-subm
 import {
   signIfAgent,
   type BasePostRequestFields,
+  type CreatePostEventRequest,
+  type CreatePostRequestWithEvent,
   type SignAgentAuthoredBody,
 } from "./base";
 
@@ -29,7 +30,7 @@ type AltchaRequestOptions = {
 
 type CreatePost = (
   communityId: string,
-  request: CreatePostRequest,
+  request: CreatePostRequestWithEvent,
   options?: AltchaRequestOptions,
 ) => Promise<ApiCreatedPost>;
 
@@ -76,6 +77,7 @@ function requirePrimaryVideoFile(videoState: VideoComposerState): File {
 export function buildVideoPostRequest({
   baseRequest,
   caption,
+  event,
   license,
   monetized,
   posterFrame,
@@ -85,15 +87,17 @@ export function buildVideoPostRequest({
 }: {
   baseRequest: BasePostRequestFields;
   caption: string;
+  event?: CreatePostEventRequest;
   license?: AssetLicenseState;
   monetized: boolean;
   posterFrame: Pick<ExtractedVideoPosterFrame, "frameMs" | "height" | "width">;
   title: string;
   uploadedPoster: UploadedPosterMedia;
   uploadedVideo: Pick<SongArtifactUpload, "content_hash" | "mime_type" | "size_bytes" | "storage_ref">;
-}): CreatePostRequest {
+}): CreatePostRequestWithEvent {
   return {
     ...baseRequest,
+    event,
     post_type: "video",
     title: title.trim(),
     caption: caption.trim() || undefined,
@@ -149,6 +153,7 @@ export async function submitVideoPost({
   createArtifactUpload,
   createListing,
   createPost,
+  event,
   extractPosterFrameFile,
   license,
   monetized,
@@ -172,6 +177,7 @@ export async function submitVideoPost({
   createArtifactUpload: CreateArtifactUpload;
   createListing: CreateListing;
   createPost: CreatePost;
+  event?: CreatePostEventRequest;
   extractPosterFrameFile: ExtractPosterFrameFile;
   license?: AssetLicenseState;
   monetized: boolean;
@@ -204,6 +210,7 @@ export async function submitVideoPost({
   const request = buildVideoPostRequest({
     baseRequest,
     caption,
+    event,
     license,
     monetized,
     posterFrame,

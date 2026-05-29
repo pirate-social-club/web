@@ -5,10 +5,13 @@ import type { CreatePostRequest } from "@pirate/api-contracts";
 import type {
   AnonymousIdentityScope,
   AuthorMode,
+  ComposerEventPlace,
+  ComposerEventState,
   ComposerTab,
   IdentityMode,
   PostAudience,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
+import { normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
 
 export type BasePostRequestFields = Pick<
   CreatePostRequest,
@@ -20,6 +23,22 @@ export type BasePostRequestFields = Pick<
   | "visibility"
 >;
 
+export type CreatePostEventRequest = {
+  starts_at: number;
+  ends_at?: number | null;
+  timezone: string;
+  location_name?: string | null;
+  address?: string | null;
+  is_online?: boolean | null;
+  event_url?: string | null;
+  status?: "scheduled" | "canceled" | "postponed" | "ended" | null;
+  place?: ComposerEventPlace | null;
+};
+
+export type CreatePostRequestWithEvent = CreatePostRequest & {
+  event?: CreatePostEventRequest | null;
+};
+
 export type SignAgentAuthoredBody = <T extends Record<string, unknown>>(
   path: string,
   body: T,
@@ -29,6 +48,146 @@ export interface ResolvedCreatePostIdentity {
   anonymousScope?: AnonymousIdentityScope;
   disclosedQualifierIds?: string[];
   identityMode: IdentityMode;
+}
+
+function assertValidTimeZone(timezone: string): void {
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: timezone }).format(new Date());
+  } catch {
+    throw new Error("Choose a valid event timezone.");
+  }
+}
+
+function parseDatetimeLocal(value: string): {
+  day: number;
+  hour: number;
+  minute: number;
+  month: number;
+  year: number;
+} | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+
+  const [, year, month, day, hour, minute] = match;
+  const parts = {
+    year: Number(year),
+    month: Number(month),
+    day: Number(day),
+    hour: Number(hour),
+    minute: Number(minute),
+  };
+  if (
+    !Number.isInteger(parts.year)
+    || parts.month < 1
+    || parts.month > 12
+    || parts.day < 1
+    || parts.day > 31
+    || parts.hour < 0
+    || parts.hour > 23
+    || parts.minute < 0
+    || parts.minute > 59
+  ) {
+    return null;
+  }
+  return parts;
+}
+
+function timeZoneOffsetMs(date: Date, timezone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+    minute: "2-digit",
+    month: "2-digit",
+    second: "2-digit",
+    timeZone: timezone,
+    year: "numeric",
+  }).formatToParts(date);
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, Number(part.value)]),
+  );
+  const localAsUtcMs = Date.UTC(
+    values.year,
+    values.month - 1,
+    values.day,
+    values.hour,
+    values.minute,
+    values.second,
+  );
+  return localAsUtcMs - date.getTime();
+}
+
+function datetimeLocalToUnixSeconds(value: string, timezone: string): number | null {
+  const parts = parseDatetimeLocal(value);
+  if (!parts) return null;
+
+  const wallTimeUtcMs = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    0,
+  );
+  let resolvedUtcMs = wallTimeUtcMs;
+  for (let iteration = 0; iteration < 2; iteration += 1) {
+    resolvedUtcMs = wallTimeUtcMs - timeZoneOffsetMs(new Date(resolvedUtcMs), timezone);
+  }
+  const unixSeconds = Math.floor(resolvedUtcMs / 1000);
+  return Number.isFinite(unixSeconds) && unixSeconds > 0 ? unixSeconds : null;
+}
+
+export function buildCreatePostEventRequest(event: ComposerEventState): CreatePostEventRequest | undefined {
+  if (event.enabled !== true) {
+    return undefined;
+  }
+
+  const timezone = event.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  assertValidTimeZone(timezone);
+
+  const startsAt = event.startsAt?.trim()
+    ? datetimeLocalToUnixSeconds(event.startsAt, timezone)
+    : null;
+  if (startsAt == null) {
+    throw new Error("Add an event date or turn off event details.");
+  }
+
+  const endsAt = event.endsAt?.trim()
+    ? datetimeLocalToUnixSeconds(event.endsAt, timezone)
+    : null;
+  if (event.endsAt?.trim() && endsAt == null) {
+    throw new Error("Choose a valid event end time.");
+  }
+  if (endsAt != null && endsAt < startsAt) {
+    throw new Error("Event end time must be after the start time.");
+  }
+
+  const isOnline = event.isOnline === true;
+  const locationName = isOnline ? undefined : event.locationName?.trim() || undefined;
+  const address = isOnline ? undefined : event.address?.trim() || undefined;
+  if (!isOnline && !locationName && !address) {
+    throw new Error("Add an event location or mark the event online.");
+  }
+
+  const rawEventUrl = event.eventUrl?.trim();
+  const eventUrl = rawEventUrl ? normalizeHttpUrl(rawEventUrl) : undefined;
+  if (rawEventUrl && !eventUrl) {
+    throw new Error("Enter a valid http or https event link.");
+  }
+
+  return {
+    starts_at: startsAt,
+    ends_at: endsAt,
+    timezone,
+    location_name: locationName,
+    address,
+    is_online: isOnline,
+    event_url: eventUrl,
+    status: "scheduled",
+    place: isOnline ? undefined : event.place,
+  };
 }
 
 export function resolveCreatePostIdentity({

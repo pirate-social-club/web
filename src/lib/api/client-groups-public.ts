@@ -163,6 +163,7 @@ export function createPublicCommunitiesApi(request: ApiRequest) {
         {
           cursor: opts?.cursor,
           flair_id: opts?.flair_id,
+          has_event: opts?.has_event == null ? null : String(opts.has_event),
           limit: opts?.limit,
           locale: opts?.locale,
           sort: opts?.sort,

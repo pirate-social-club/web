@@ -1,6 +1,6 @@
 "use client";
 
-import type { CreatePostRequest, Post as ApiCreatedPost } from "@pirate/api-contracts";
+import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
 
 import type { AuthorMode } from "@/components/compositions/posts/post-composer/post-composer.types";
 import { normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
@@ -8,6 +8,8 @@ import { normalizeHttpUrl } from "@/components/compositions/posts/post-composer/
 import {
   signIfAgent,
   type BasePostRequestFields,
+  type CreatePostEventRequest,
+  type CreatePostRequestWithEvent,
   type SignAgentAuthoredBody,
 } from "./base";
 
@@ -17,23 +19,26 @@ type AltchaRequestOptions = {
 
 type CreatePost = (
   communityId: string,
-  request: CreatePostRequest,
+  request: CreatePostRequestWithEvent,
   options?: AltchaRequestOptions,
 ) => Promise<ApiCreatedPost>;
 
 export function buildLinkPostRequest({
   baseRequest,
   body,
+  event,
   linkUrl,
   title,
 }: {
   baseRequest: BasePostRequestFields;
   body: string;
+  event?: CreatePostEventRequest;
   linkUrl: string;
   title: string;
-}): CreatePostRequest {
+}): CreatePostRequestWithEvent {
   return {
     ...baseRequest,
+    event,
     post_type: "link",
     title: title.trim() || undefined,
     body: body.trim() || undefined,
@@ -48,6 +53,7 @@ export async function submitLinkPost({
   body,
   communityId,
   createPost,
+  event,
   linkUrl,
   signAgentAuthoredBody,
   title,
@@ -58,6 +64,7 @@ export async function submitLinkPost({
   body: string;
   communityId: string;
   createPost: CreatePost;
+  event?: CreatePostEventRequest;
   linkUrl: string;
   signAgentAuthoredBody: SignAgentAuthoredBody;
   title: string;
@@ -70,6 +77,7 @@ export async function submitLinkPost({
   const request = buildLinkPostRequest({
     baseRequest,
     body,
+    event,
     linkUrl: normalizedLinkUrl,
     title,
   });

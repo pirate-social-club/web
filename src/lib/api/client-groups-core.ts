@@ -16,6 +16,7 @@ import type {
   VerificationSession,
   Job,
 } from "@pirate/api-contracts";
+import type { PostCardEventPlace } from "@/components/compositions/posts/post-card/post-card.types";
 
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
@@ -54,6 +55,27 @@ export function createAuthApi(request: ApiRequest) {
 export function createUsersApi(request: ApiRequest) {
   return {
     getMe: (): Promise<User> => request<User>("/users/me"),
+  };
+}
+
+export type GeoPlace = Extract<PostCardEventPlace, { source: "geoapify" }>;
+
+export function createGeoApi(request: ApiRequest) {
+  return {
+    searchPlaces: (input: {
+      biasLat?: number;
+      biasLon?: number;
+      country?: string;
+      limit?: number;
+      text: string;
+    }): Promise<{ places: GeoPlace[] }> =>
+      request<{ places: GeoPlace[] }>(buildQueryPath("/geo/search", {
+        biasLat: input.biasLat,
+        biasLon: input.biasLon,
+        country: input.country,
+        limit: input.limit,
+        text: input.text,
+      })),
   };
 }
 

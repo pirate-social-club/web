@@ -811,6 +811,7 @@ describe("ApiClient media uploads", () => {
       });
 
       await client.communities.listPosts("cmt_test", {
+        has_event: true,
         limit: "100",
         locale: "nl",
         sort: "top",
@@ -818,8 +819,38 @@ describe("ApiClient media uploads", () => {
 
       const capturedRequest = requireRequest(request);
       expect(capturedRequest.method).toBe("GET");
-      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/posts?limit=100&locale=nl&sort=top");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/posts?has_event=true&limit=100&locale=nl&sort=top");
       expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("cancels community event posts", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({
+        post: {
+          id: "post_pst_event",
+          event: { status: "canceled" },
+        },
+      });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.posts.cancelEvent("cmt_test", "post_pst_event");
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("POST");
+      expect(capturedRequest.url).toBe("http://pirate.test/communities/cmt_test/posts/post_pst_event/event-status");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+      expect(await capturedRequest.json()).toEqual({ status: "canceled" });
     } finally {
       globalThis.fetch = originalFetch;
     }

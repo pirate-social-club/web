@@ -1,12 +1,14 @@
 "use client";
 
-import type { CreatePostRequest, Post as ApiCreatedPost } from "@pirate/api-contracts";
+import type { Post as ApiCreatedPost } from "@pirate/api-contracts";
 
 import type { AuthorMode } from "@/components/compositions/posts/post-composer/post-composer.types";
 
 import {
   signIfAgent,
   type BasePostRequestFields,
+  type CreatePostEventRequest,
+  type CreatePostRequestWithEvent,
   type SignAgentAuthoredBody,
 } from "./base";
 
@@ -16,21 +18,24 @@ type AltchaRequestOptions = {
 
 type CreatePost = (
   communityId: string,
-  request: CreatePostRequest,
+  request: CreatePostRequestWithEvent,
   options?: AltchaRequestOptions,
 ) => Promise<ApiCreatedPost>;
 
 export function buildTextPostRequest({
   baseRequest,
   body,
+  event,
   title,
 }: {
   baseRequest: BasePostRequestFields;
   body: string;
+  event?: CreatePostEventRequest;
   title: string;
-}): CreatePostRequest {
+}): CreatePostRequestWithEvent {
   return {
     ...baseRequest,
+    event,
     post_type: "text",
     title: title.trim(),
     body: body.trim() || undefined,
@@ -44,6 +49,7 @@ export async function submitTextPost({
   body,
   communityId,
   createPost,
+  event,
   signAgentAuthoredBody,
   title,
 }: {
@@ -53,10 +59,11 @@ export async function submitTextPost({
   body: string;
   communityId: string;
   createPost: CreatePost;
+  event?: CreatePostEventRequest;
   signAgentAuthoredBody: SignAgentAuthoredBody;
   title: string;
 }): Promise<ApiCreatedPost> {
-  const request = buildTextPostRequest({ baseRequest, body, title });
+  const request = buildTextPostRequest({ baseRequest, body, event, title });
   return await createPost(
     communityId,
     await signIfAgent({

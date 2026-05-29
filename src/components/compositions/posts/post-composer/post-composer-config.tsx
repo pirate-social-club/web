@@ -12,6 +12,7 @@ import type {
   AttachmentState,
   CharityContributionState,
   ComposerAudienceState,
+  ComposerEventState,
   ComposerTab,
   LiveAccessMode,
   LiveComposerState,
@@ -161,6 +162,20 @@ export function defaultAudienceState(audience?: ComposerAudienceState): Composer
 export function defaultCharityContributionState(contribution?: CharityContributionState): CharityContributionState {
   return {
     percentagePct: contribution?.percentagePct ?? 0,
+  };
+}
+
+export function defaultEventState(event?: ComposerEventState): ComposerEventState {
+  return {
+    enabled: event?.enabled ?? Boolean(event?.startsAt),
+    startsAt: event?.startsAt,
+    endsAt: event?.endsAt,
+    timezone: event?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+    locationName: event?.locationName,
+    address: event?.address,
+    isOnline: event?.isOnline ?? false,
+    eventUrl: event?.eventUrl,
+    place: event?.place,
   };
 }
 

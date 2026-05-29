@@ -526,6 +526,22 @@ export function CommunityPage({
     }
   }, [api.posts, communityId, posts, setPosts]);
 
+  const cancelEvent = React.useCallback(async (postId: string) => {
+    if (typeof window !== "undefined" && !window.confirm("Cancel this event?")) return;
+
+    const previousPosts = posts;
+    const targetPost = posts.find((postResponse) => postResponse.post.id === postId);
+    try {
+      const updated = await api.posts.cancelEvent(targetPost?.post.community ?? communityId, postId);
+      setPosts((current) => current.map((postResponse) => (
+        postResponse.post.id === postId ? updated : postResponse
+      )));
+    } catch (nextError) {
+      setPosts(previousPosts);
+      toast.error(getErrorMessage(nextError, "Could not cancel this event."));
+    }
+  }, [api.posts, communityId, posts, setPosts]);
+
   const activeLabels = React.useMemo(() => getActiveCommunityLabels(community ?? preview), [community, preview]);
 
   const setPostLabel = React.useCallback(async (labelId: string | null) => {
@@ -686,6 +702,7 @@ export function CommunityPage({
         } : undefined,
         onVerifyAge: handleVerifyAge,
         onComment: () => navigate(`/p/${post.post.id}`),
+        onCancelEvent: () => void cancelEvent(post.post.id),
         onDelete: () => void deletePost(post.post.id),
         onRemove: () => void removePost(post.post.id),
         onSetLabel: canSetPostLabel ? () => setLabelTargetPost(post) : undefined,

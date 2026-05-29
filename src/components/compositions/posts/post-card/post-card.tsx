@@ -8,6 +8,7 @@ import { FormattedText } from "@/components/primitives/formatted-text";
 import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { PostCardEventBlock } from "./post-card-event-block";
 import { PostCardHeader } from "./post-card-header";
 import { PostCardMedia } from "./post-card-media";
 import { PostCardEngagementBar } from "./post-card-engagement-bar";
@@ -122,6 +123,18 @@ function PostLabelPill({ postLabel }: { postLabel?: PostCardProps["postLabel"] }
   );
 }
 
+function normalizeUrlForComparison(url: string | undefined): string | null {
+  if (!url) return null;
+
+  try {
+    const parsed = new URL(url);
+    parsed.hash = "";
+    return parsed.toString().replace(/\/$/u, "");
+  } catch {
+    return url.trim().replace(/\/$/u, "") || null;
+  }
+}
+
 export function PostCard({
   viewContext = "home",
   identityPresentation,
@@ -137,6 +150,7 @@ export function PostCard({
   titleHref,
   postHref,
   content,
+  event,
   sourceLanguage,
   isViewingOriginal = false,
   showOriginalLabel,
@@ -191,6 +205,9 @@ export function PostCard({
   const unlockFromContent = deriveUnlockFromContent(content);
   const unlock = engagement.unlock ?? unlockFromContent;
   const isClickable = Boolean(postHref);
+  const shouldShowEventUrl = event
+    ? normalizeUrlForComparison(event.eventUrl) !== normalizeUrlForComparison(content.type === "link" ? content.href : undefined)
+    : true;
 
   return (
     <article
@@ -237,6 +254,7 @@ export function PostCard({
 
         {titleElement}
         <PostLabelPill postLabel={postLabel} />
+        {event ? <PostCardEventBlock event={event} showEventUrl={shouldShowEventUrl} /> : null}
         <SongCaptionBeforeMedia content={content} />
         <PostCardMedia content={content} viewContext={viewContext} />
         {canToggleOriginal ? (

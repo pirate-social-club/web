@@ -5,6 +5,7 @@ import * as React from "react";
 import {
   defaultAudienceState,
   defaultCharityContributionState,
+  defaultEventState,
   defaultLiveComposerState,
   defaultMonetizationState,
   defaultAssetLicenseState,
@@ -15,6 +16,7 @@ import type {
   AuthorMode,
   CharityContributionState,
   ComposerAudienceState,
+  ComposerEventState,
   ComposerTab,
   DerivativeStepState,
   LinkPreviewState,
@@ -34,6 +36,7 @@ export type CreatePostDraftState = {
   charityContribution: CharityContributionState;
   composerMode: ComposerTab;
   derivativeStep: DerivativeStepState | undefined;
+  event: ComposerEventState;
   identityMode: "public" | "anonymous";
   imageUpload: File | null;
   imageUploadLabel: string | undefined;
@@ -60,6 +63,7 @@ type DraftAction =
   | { type: "setCharityContribution"; value: React.SetStateAction<CharityContributionState> }
   | { type: "setComposerMode"; value: React.SetStateAction<ComposerTab> }
   | { type: "setDerivativeStep"; value: React.SetStateAction<DerivativeStepState | undefined> }
+  | { type: "setEvent"; value: React.SetStateAction<ComposerEventState> }
   | { type: "setIdentityMode"; value: React.SetStateAction<"public" | "anonymous"> }
   | { type: "setImageUpload"; value: React.SetStateAction<File | null> }
   | { type: "setImageUploadLabel"; value: React.SetStateAction<string | undefined> }
@@ -86,6 +90,7 @@ type CreatePostDraftActions = {
   setCharityContribution: React.Dispatch<React.SetStateAction<CharityContributionState>>;
   setComposerMode: React.Dispatch<React.SetStateAction<ComposerTab>>;
   setDerivativeStep: React.Dispatch<React.SetStateAction<DerivativeStepState | undefined>>;
+  setEvent: React.Dispatch<React.SetStateAction<ComposerEventState>>;
   setIdentityMode: React.Dispatch<React.SetStateAction<"public" | "anonymous">>;
   setImageUpload: React.Dispatch<React.SetStateAction<File | null>>;
   setImageUploadLabel: React.Dispatch<React.SetStateAction<string | undefined>>;
@@ -117,6 +122,7 @@ function createInitialDraftState(): CreatePostDraftState {
     charityContribution: defaultCharityContributionState(),
     composerMode: "text",
     derivativeStep: undefined,
+    event: defaultEventState(),
     identityMode: "public",
     imageUpload: null,
     imageUploadLabel: undefined,
@@ -152,6 +158,8 @@ function createPostDraftReducer(state: CreatePostDraftState, action: DraftAction
       return { ...state, composerMode: resolveSetState(state.composerMode, action.value) };
     case "setDerivativeStep":
       return { ...state, derivativeStep: resolveSetState(state.derivativeStep, action.value) };
+    case "setEvent":
+      return { ...state, event: resolveSetState(state.event, action.value) };
     case "setIdentityMode":
       return { ...state, identityMode: resolveSetState(state.identityMode, action.value) };
     case "setImageUpload":
@@ -206,6 +214,7 @@ export function useCreatePostDraftState(initial?: Partial<CreatePostDraftState>)
     setCharityContribution: (value) => dispatch({ type: "setCharityContribution", value }),
     setComposerMode: (value) => dispatch({ type: "setComposerMode", value }),
     setDerivativeStep: (value) => dispatch({ type: "setDerivativeStep", value }),
+    setEvent: (value) => dispatch({ type: "setEvent", value }),
     setIdentityMode: (value) => dispatch({ type: "setIdentityMode", value }),
     setImageUpload: (value) => dispatch({ type: "setImageUpload", value }),
     setImageUploadLabel: (value) => dispatch({ type: "setImageUploadLabel", value }),

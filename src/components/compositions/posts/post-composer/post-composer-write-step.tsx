@@ -133,6 +133,9 @@ function updateBody(controller: PostComposerController, value: string) {
   fields.onTextBodyValueChange?.(value);
 }
 
+const MAX_BODY_LENGTH = 10_000;
+const MAX_CAPTION_LENGTH = 1_000;
+
 const imageExtensions = new Set([
   "jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "heic", "heif", "avif",
 ]);
@@ -417,6 +420,7 @@ export function PostComposerWriteStep({
             "min-h-36 resize-none text-xl leading-relaxed",
             write.attachment?.kind === "link" && "min-h-32",
           )}
+          maxLength={write.attachment?.kind === "image" || write.attachment?.kind === "video" ? MAX_CAPTION_LENGTH : MAX_BODY_LENGTH}
           onChange={(event) => updateBody(controller, event.target.value)}
           placeholder={write.attachment ? "Optional" : "Body text (optional)"}
           value={bodyValue(controller)}
@@ -468,6 +472,7 @@ export function PostComposerWriteStep({
             "min-h-[38dvh] resize-none rounded-none border-0 bg-transparent p-0 text-xl leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0",
             write.attachment?.kind === "link" && "min-h-[28dvh]",
           )}
+          maxLength={write.attachment?.kind === "image" || write.attachment?.kind === "video" ? MAX_CAPTION_LENGTH : MAX_BODY_LENGTH}
           onChange={(event) => updateBody(controller, event.target.value)}
           placeholder={write.attachment ? controller.copy.placeholders.optional : controller.copy.placeholders.body}
           value={bodyValue(controller)}

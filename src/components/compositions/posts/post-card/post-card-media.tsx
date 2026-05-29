@@ -15,6 +15,28 @@ import { SongPostContent } from "./post-card-song-content";
 import { postCardType } from "./post-card.styles";
 import type { PostCardContent, PostCardViewContext } from "./post-card.types";
 
+const FEED_TEXT_BODY_LIMIT = 600;
+const FEED_LINK_BODY_LIMIT = 400;
+const FEED_CAPTION_LIMIT = 300;
+
+function truncateFeedText(text: string, limit: number): string | null {
+  if (text.length <= limit) return null;
+  const markTruncated = (value: string) => `${value.trimEnd()}\n\n...`;
+  const paragraphBreak = text.lastIndexOf("\n\n", limit);
+  if (paragraphBreak > limit * 0.3) {
+    return markTruncated(text.slice(0, paragraphBreak));
+  }
+  const lineBreak = text.lastIndexOf("\n", limit);
+  if (lineBreak > limit * 0.3) {
+    return markTruncated(text.slice(0, lineBreak));
+  }
+  return markTruncated(text.slice(0, limit));
+}
+
+function isFeedContext(viewContext?: PostCardViewContext): boolean {
+  return viewContext === "home" || viewContext === "community" || viewContext === "profile";
+}
+
 const LazyVideoPostContent = React.lazy(async () => {
   const module = await import("./post-card-video-content");
   return { default: module.VideoPostContent };
@@ -98,18 +120,13 @@ function LinkPreviewCard({ content }: { content: LinkContent }) {
         target="_blank"
         data-post-card-interactive="true"
       />
-      <div className={cn("pointer-events-none relative z-10 flex min-w-0 items-center gap-2 text-muted-foreground", postCardType.meta)}>
-        <Globe className="size-4 shrink-0" />
-        <span className="truncate">{metaLabel}</span>
-      </div>
-
       <div
         className={cn(
-          "pointer-events-none relative z-10 mt-3 grid min-w-0 gap-3",
+          "pointer-events-none relative z-10 grid min-w-0 items-center gap-3",
           content.previewImageSrc ? "grid-cols-[minmax(0,1fr)_5.75rem] sm:grid-cols-[minmax(0,1fr)_7rem]" : "grid-cols-1",
         )}
       >
-        <div className="min-w-0 self-center">
+        <div className="min-w-0">
           {content.previewTitle ? (
             <p
               className={cn(postCardType.title, "line-clamp-3 font-semibold text-foreground")}
@@ -123,6 +140,19 @@ function LinkPreviewCard({ content }: { content: LinkContent }) {
               {content.href}
             </p>
           )}
+          {content.previewDescription ? (
+            <p
+              className={cn(postCardType.caption, "mt-1.5 line-clamp-2 text-muted-foreground")}
+              dir={content.previewDescriptionDir ?? "auto"}
+              lang={content.previewDescriptionLang}
+            >
+              {content.previewDescription}
+            </p>
+          ) : null}
+          <div className={cn("mt-2 flex min-w-0 items-center gap-2 text-muted-foreground", postCardType.meta)}>
+            <Globe className="size-4 shrink-0" />
+            <span className="truncate">{metaLabel}</span>
+          </div>
           {summaryBullets.length > 0 ? (
             <ul className="mt-2 space-y-1 ps-4 text-foreground/85">
               {summaryBullets.map((point) => (
@@ -191,7 +221,8 @@ export function PostCardMedia({ content, className, viewContext }: PostCardMedia
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
   switch (content.type) {
-    case "text":
+    case "text": {
+      const feedTruncated = isFeedContext(viewContext) ? truncateFeedText(content.body, FEED_TEXT_BODY_LIMIT) : null;
       return (
         <FormattedText
           className={cn(
@@ -201,9 +232,10 @@ export function PostCardMedia({ content, className, viewContext }: PostCardMedia
           )}
           dir={content.bodyDir ?? "auto"}
           lang={content.bodyLang}
-          value={content.body}
+          value={feedTruncated ?? content.body}
         />
       );
+    }
     case "image": {
       const isAgeGated = content.ageGatePolicy === "18_plus" && content.contentSafetyState === "adult";
       const ageGateRequiresProof = isAgeGated && content.ageGateViewerState !== "verified_allowed";
@@ -244,7 +276,7 @@ export function PostCardMedia({ content, className, viewContext }: PostCardMedia
               className={cn("mt-1.5 text-start text-muted-foreground", postCardType.caption)}
               dir={content.captionDir ?? "auto"}
               lang={content.captionLang}
-              value={content.caption}
+              value={isFeedContext(viewContext) ? (truncateFeedText(content.caption, FEED_CAPTION_LIMIT) ?? content.caption) : content.caption}
             />
           )}
         </figure>
@@ -261,31 +293,42 @@ export function PostCardMedia({ content, className, viewContext }: PostCardMedia
           </React.Suspense>
         </LazyPostMediaErrorBoundary>
       );
-    case "link":
+    case "link": {
+      const linkBody = content.body
+        ? isFeedContext(viewContext)
+          ? truncateFeedText(content.body, FEED_LINK_BODY_LIMIT) ?? content.body
+          : content.body
+        : undefined;
       return (
         <div className={cn("w-full space-y-2 text-start", className)}>
-          {content.body ? (
+          {linkBody ? (
             <FormattedText
               className={cn(postCardType.body, "max-w-[72ch] text-foreground")}
               dir={content.bodyDir ?? "auto"}
               lang={content.bodyLang}
-              value={content.body}
+              value={linkBody}
             />
           ) : null}
           <LinkPreviewCard content={content} />
         </div>
       );
+    }
     case "crosspost":
       return <CrosspostPreviewCard content={content} />;
-    case "embed":
+    case "embed": {
+      const embedBody = content.body
+        ? isFeedContext(viewContext)
+          ? truncateFeedText(content.body, FEED_LINK_BODY_LIMIT) ?? content.body
+          : content.body
+        : undefined;
       return (
         <div className={cn("w-full space-y-2 text-start", className)}>
-          {content.body ? (
+          {embedBody ? (
             <FormattedText
               className={cn(postCardType.body, "max-w-[72ch] text-foreground")}
               dir={content.bodyDir ?? "auto"}
               lang={content.bodyLang}
-              value={content.body}
+              value={embedBody}
             />
           ) : null}
           {content.renderMode === "official"
@@ -295,6 +338,7 @@ export function PostCardMedia({ content, className, viewContext }: PostCardMedia
             : <PostEmbedPreview content={content} />}
         </div>
       );
+    }
     case "song":
       return <SongPostContent content={content} className={className} />;
     case "live_room":

@@ -75,6 +75,153 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
   const [freedomDetection, setFreedomDetection] = React.useState(() => getFreedomBrowserDetectionSnapshot());
   const [error, setError] = React.useState<unknown>(null);
   const [loading, setLoading] = React.useState(true);
+  const [nextCursor, setNextCursor] = React.useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [loadMoreError, setLoadMoreError] = React.useState<unknown>(null);
+  const [authPageSettled, setAuthPageSettled] = React.useState(false);
+  const feedEntriesRef = React.useRef<ApiHomeFeedItem[]>(feedEntries);
+  const activeFeedKeyRef = React.useRef("");
+  const feedReplacementVersionRef = React.useRef(0);
+  const loadingMoreRef = React.useRef(false);
+
+  React.useEffect(() => {
+    feedEntriesRef.current = feedEntries;
+  }, [feedEntries]);
+
+  React.useEffect(() => {
+    loadingMoreRef.current = loadingMore;
+  }, [loadingMore]);
+
+  const enrichFeedEntries = React.useCallback((input: {
+    entries: ApiHomeFeedItem[];
+    cancelled: () => boolean;
+    mode: "replace" | "merge";
+  }) => {
+    const { entries, cancelled, mode } = input;
+
+    void loadProfilesByUserId(
+      api,
+      entries.reduce<string[]>((result, entry) => {
+        const userId = entry.post.post.identity_mode === "public" ? entry.post.post.author_user : null;
+        if (userId) {
+          result.push(userId);
+        }
+        return result;
+      }, []),
+      sessionProfile && sessionUserId ? { [sessionUserId]: sessionProfile } : {},
+    )
+      .then((profiles) => {
+        if (cancelled()) return;
+        if (mode === "replace") {
+          setAuthorProfiles(profiles);
+        } else {
+          setAuthorProfiles((current) => ({ ...current, ...profiles }));
+        }
+      })
+      .catch(() => {
+        if (!cancelled() && mode === "replace") setAuthorProfiles({});
+      });
+
+    const commerceCommunityIds = sessionUserId
+      ? [...new Set(entries.reduce<string[]>((result, entry) => {
+        if (entry.post.post.post_type === "song" || entry.post.post.post_type === "video" || entry.post.post.anchor_live_room) {
+          result.push(entry.community.id);
+        }
+        return result;
+      }, []))]
+      : [];
+    const liveRoomRefs = entries.reduce<Array<{ communityId: string; liveRoomId: string }>>((result, entry) => {
+      const liveRoomId = entry.post.post.anchor_live_room;
+      if (liveRoomId) {
+        result.push({ communityId: entry.community.id, liveRoomId });
+      }
+      return result;
+    }, []);
+
+    if (commerceCommunityIds.length > 0) {
+      void Promise.all(commerceCommunityIds.map(async (communityId) => {
+        const [listings, purchases] = await Promise.all([
+          api.communities.listListings(communityId).then((response) => response.items).catch(() => []),
+          api.communities.listPurchases(communityId).then((response) => response.items).catch(() => []),
+        ]);
+        return { communityId, listings, purchases };
+      }))
+        .then((commerceByCommunity) => {
+          if (cancelled()) return;
+          const nextListingsByAssetId = Object.fromEntries(commerceByCommunity.flatMap((result) => result.listings.flatMap((listing) => (
+            typeof listing.asset === "string" && listing.asset.length > 0 ? [[listing.asset, listing] as const] : []
+          ))));
+          const nextListingsByLiveRoomId = Object.fromEntries(commerceByCommunity.flatMap((result) => result.listings.flatMap((listing) => (
+            typeof listing.live_room === "string" && listing.live_room.length > 0 ? [[listing.live_room, listing] as const] : []
+          ))));
+          const nextPurchasesByAssetId = Object.fromEntries(commerceByCommunity.flatMap((result) => result.purchases.flatMap((purchase) => (
+            typeof purchase.asset === "string" && purchase.asset.length > 0 ? [[purchase.asset, purchase] as const] : []
+          ))));
+          const nextPurchasesByLiveRoomId = Object.fromEntries(commerceByCommunity.flatMap((result) => result.purchases.flatMap((purchase) => (
+            typeof purchase.live_room === "string" && purchase.live_room.length > 0 ? [[purchase.live_room, purchase] as const] : []
+          ))));
+
+          if (mode === "replace") {
+            setListingsByAssetId(nextListingsByAssetId);
+            setListingsByLiveRoomId(nextListingsByLiveRoomId);
+            setPurchasesByAssetId(nextPurchasesByAssetId);
+            setPurchasesByLiveRoomId(nextPurchasesByLiveRoomId);
+          } else {
+            setListingsByAssetId((current) => ({ ...current, ...nextListingsByAssetId }));
+            setListingsByLiveRoomId((current) => ({ ...current, ...nextListingsByLiveRoomId }));
+            setPurchasesByAssetId((current) => ({ ...current, ...nextPurchasesByAssetId }));
+            setPurchasesByLiveRoomId((current) => ({ ...current, ...nextPurchasesByLiveRoomId }));
+          }
+        })
+        .catch(() => {
+          // ignore commerce enrichment errors
+        });
+    }
+
+    if (liveRoomRefs.length > 0) {
+      void Promise.all(liveRoomRefs.map(async ({ communityId, liveRoomId }) => {
+        const access = await (async () => {
+          if (!sessionAccessToken) {
+            return api.publicCommunities.getLiveRoomAccess(communityId, liveRoomId);
+          }
+          try {
+            return await api.communities.getLiveRoomAccess(communityId, liveRoomId);
+          } catch {
+            return api.publicCommunities.getLiveRoomAccess(communityId, liveRoomId);
+          }
+        })().catch(() => null);
+        return access ? [liveRoomId, access] as const : null;
+      }))
+        .then((entries) => {
+          if (cancelled()) return;
+          const accessById = Object.fromEntries(entries.filter((entry): entry is [string, ApiLiveRoomAccessResponse] => entry !== null));
+          if (mode === "replace") {
+            setLiveRoomAccessById(accessById);
+          } else {
+            setLiveRoomAccessById((current) => ({ ...current, ...accessById }));
+          }
+
+          const participantIds = [...new Set(
+            Object.values(accessById).flatMap((access) => [
+              access.room.host_user,
+              access.room.guest_user,
+            ]).filter((userId): userId is string => Boolean(userId)),
+          )];
+          if (participantIds.length > 0) {
+            void loadProfilesByUserId(api, participantIds, {})
+              .then((profiles) => {
+                if (!cancelled()) setAuthorProfiles((current) => ({ ...current, ...profiles }));
+              })
+              .catch(() => {
+                // Participant profiles are enrichment only.
+              });
+          }
+        })
+        .catch(() => {
+          // ignore live-room enrichment errors
+        });
+    }
+  }, [api, sessionAccessToken, sessionProfile, sessionUserId]);
 
   React.useEffect(() => {
     if (!hydrated) return undefined;
@@ -112,12 +259,19 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     setPurchasesByAssetId({});
     setPurchasesByLiveRoomId({});
     setLiveRoomAccessById({});
+    setNextCursor(null);
+    setLoadMoreError(null);
+    loadingMoreRef.current = false;
+    setLoadingMore(false);
+    setAuthPageSettled(false);
 
     const feedRequest = {
       locale: contentLocale,
       sort: activeSort,
       timeRange: activeSort === "top" ? topTimeRange : null,
     };
+    const feedKey = JSON.stringify({ ...feedRequest, sessionUserId: sessionUserId ?? null });
+    activeFeedKeyRef.current = feedKey;
 
     const applyFeedResult = (result: Awaited<ReturnType<typeof api.feed.home>>) => {
         if (cancelled) return;
@@ -130,116 +284,30 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
           sort: "best",
         });
         setFeedEntries(nextFeedEntries);
+        feedEntriesRef.current = nextFeedEntries;
         setTopCommunities(result.top_communities);
+        setNextCursor(result.next_cursor ?? null);
         setLoading(false);
 
-        void loadProfilesByUserId(
-          api,
-          nextFeedEntries.reduce<string[]>((result, entry) => {
-            const userId = entry.post.post.identity_mode === "public" ? entry.post.post.author_user : null;
-            if (userId) {
-              result.push(userId);
-            }
-            return result;
-          }, []),
-          sessionProfile && sessionUserId ? { [sessionUserId]: sessionProfile } : {},
-        )
-          .then((profiles) => {
-            if (!cancelled) setAuthorProfiles(profiles);
-          })
-          .catch(() => {
-            if (!cancelled) setAuthorProfiles({});
-          });
-
-        const commerceCommunityIds = sessionUserId
-          ? [...new Set(nextFeedEntries.reduce<string[]>((result, entry) => {
-            if (entry.post.post.post_type === "song" || entry.post.post.post_type === "video" || entry.post.post.anchor_live_room) {
-              result.push(entry.community.id);
-            }
-            return result;
-          }, []))]
-          : [];
-        const liveRoomRefs = nextFeedEntries.reduce<Array<{ communityId: string; liveRoomId: string }>>((result, entry) => {
-          const liveRoomId = entry.post.post.anchor_live_room;
-          if (liveRoomId) {
-            result.push({ communityId: entry.community.id, liveRoomId });
-          }
-          return result;
-        }, []);
-
-        if (commerceCommunityIds.length > 0) {
-          void Promise.all(commerceCommunityIds.map(async (communityId) => {
-            const [listings, purchases] = await Promise.all([
-              api.communities.listListings(communityId).then((response) => response.items).catch(() => []),
-              api.communities.listPurchases(communityId).then((response) => response.items).catch(() => []),
-            ]);
-            return { communityId, listings, purchases };
-          }))
-            .then((commerceByCommunity) => {
-              if (cancelled) return;
-              setListingsByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.listings.flatMap((listing) => (
-                typeof listing.asset === "string" && listing.asset.length > 0 ? [[listing.asset, listing] as const] : []
-              )))));
-              setListingsByLiveRoomId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.listings.flatMap((listing) => (
-                typeof listing.live_room === "string" && listing.live_room.length > 0 ? [[listing.live_room, listing] as const] : []
-              )))));
-              setPurchasesByAssetId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.purchases.flatMap((purchase) => (
-                typeof purchase.asset === "string" && purchase.asset.length > 0 ? [[purchase.asset, purchase] as const] : []
-              )))));
-              setPurchasesByLiveRoomId(Object.fromEntries(commerceByCommunity.flatMap((result) => result.purchases.flatMap((purchase) => (
-                typeof purchase.live_room === "string" && purchase.live_room.length > 0 ? [[purchase.live_room, purchase] as const] : []
-              )))));
-            })
-            .catch(() => {
-              // ignore commerce enrichment errors
-            });
-        }
-
-        if (liveRoomRefs.length > 0) {
-          void Promise.all(liveRoomRefs.map(async ({ communityId, liveRoomId }) => {
-            const access = await (async () => {
-              if (!sessionAccessToken) {
-                return api.publicCommunities.getLiveRoomAccess(communityId, liveRoomId);
-              }
-              try {
-                return await api.communities.getLiveRoomAccess(communityId, liveRoomId);
-              } catch {
-                return api.publicCommunities.getLiveRoomAccess(communityId, liveRoomId);
-              }
-            })().catch(() => null);
-            return access ? [liveRoomId, access] as const : null;
-          }))
-            .then((entries) => {
-              if (cancelled) return;
-              const accessById = Object.fromEntries(entries.filter((entry): entry is [string, ApiLiveRoomAccessResponse] => entry !== null));
-              setLiveRoomAccessById(accessById);
-
-              const participantIds = [...new Set(
-                Object.values(accessById).flatMap((access) => [
-                  access.room.host_user,
-                  access.room.guest_user,
-                ]).filter((userId): userId is string => Boolean(userId)),
-              )];
-              if (participantIds.length > 0) {
-                void loadProfilesByUserId(api, participantIds, authorProfiles)
-                  .then((profiles) => {
-                    if (!cancelled) setAuthorProfiles((current) => ({ ...current, ...profiles }));
-                  })
-                  .catch(() => {
-                    // Participant profiles are enrichment only.
-                  });
-              }
-            })
-            .catch(() => {
-              // ignore live-room enrichment errors
-            });
-        }
+        const replacementVersion = feedReplacementVersionRef.current + 1;
+        feedReplacementVersionRef.current = replacementVersion;
+        enrichFeedEntries({
+          entries: nextFeedEntries,
+          cancelled: () => cancelled || activeFeedKeyRef.current !== feedKey || feedReplacementVersionRef.current !== replacementVersion,
+          mode: "replace",
+        });
     };
 
     const loadAuthenticatedFeed = () => api.feed.home(feedRequest)
-      .then(applyFeedResult)
+      .then((result) => {
+        if (!cancelled) {
+          applyFeedResult(result);
+          setAuthPageSettled(true);
+        }
+      })
       .catch((nextError: unknown) => {
         if (cancelled) return;
+        setAuthPageSettled(true);
         if ((nextError as { status?: number; code?: string }).status === 401 || (nextError as { code?: string }).code === "auth_error") {
           clearSession();
           return;
@@ -253,6 +321,8 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
         applyFeedResult(result);
         if (sessionUserId) {
           void loadAuthenticatedFeed();
+        } else {
+          setAuthPageSettled(true);
         }
       })
       .catch((nextError: unknown) => {
@@ -260,6 +330,7 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
           void loadAuthenticatedFeed();
           return;
         }
+        setAuthPageSettled(true);
         if (cancelled) return;
         setError(nextError);
         setLoading(false);
@@ -268,7 +339,61 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     return () => {
       cancelled = true;
     };
-  }, [activeSort, api, contentLocale, hydrated, queryClient, sessionAccessToken, sessionProfile, sessionUserId, topTimeRange]);
+  }, [activeSort, api, contentLocale, enrichFeedEntries, hydrated, queryClient, sessionAccessToken, sessionProfile, sessionUserId, topTimeRange]);
+
+  const loadMore = React.useCallback(() => {
+    if (!nextCursor || loadingMoreRef.current || !authPageSettled) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    const feedRequest = {
+      cursor: nextCursor,
+      locale: contentLocale,
+      sort: activeSort,
+      timeRange: activeSort === "top" ? topTimeRange : null,
+    };
+    const feedKey = JSON.stringify({
+      locale: contentLocale,
+      sort: activeSort,
+      timeRange: activeSort === "top" ? topTimeRange : null,
+      sessionUserId: sessionUserId ?? null,
+    });
+    const feedFn = sessionUserId ? api.feed.home : api.feed.publicHome;
+    void feedFn(feedRequest)
+      .then((result) => {
+        if (activeFeedKeyRef.current !== feedKey) return;
+        const newItems = result.items.filter(
+          (item) => !feedEntriesRef.current.some((existing) => existing.post.post.id === item.post.post.id),
+        );
+        if (newItems.length > 0) {
+          const combined = [...feedEntriesRef.current, ...newItems];
+          seedPublicThreadQueriesFromFeed({
+            items: newItems,
+            locale: contentLocale,
+            queryClient,
+            sort: "best",
+          });
+          setFeedEntries(combined);
+          feedEntriesRef.current = combined;
+          enrichFeedEntries({
+            entries: newItems,
+            cancelled: () => activeFeedKeyRef.current !== feedKey,
+            mode: "merge",
+          });
+        }
+        setNextCursor(result.next_cursor ?? null);
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      })
+      .catch((nextError: unknown) => {
+        if (activeFeedKeyRef.current !== feedKey) return;
+        setLoadMoreError(nextError);
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      });
+  }, [activeSort, api.feed.home, api.feed.publicHome, authPageSettled, contentLocale, enrichFeedEntries, nextCursor, queryClient, sessionUserId, topTimeRange]);
+
+  const hasMore = nextCursor !== null && authPageSettled;
 
   return {
     feedEntries,
@@ -283,6 +408,10 @@ export function useHomeFeed({ activeSort, contentLocale, hydrated, session, topT
     freedomDetected: freedomDetection.detected,
     error,
     loading,
+    hasMore,
+    loadingMore,
+    loadMore,
+    loadMoreError,
   };
 }
 
@@ -315,6 +444,9 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     freedomDetected,
     error,
     loading,
+    hasMore,
+    loadingMore,
+    loadMore,
   } = useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
@@ -520,6 +652,9 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
           hideMobileHeaderControls
           items={feedItems}
           fullBleedMobile
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          onLoadMore={loadMore}
           listClassName="border-t-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
           loading={loading}
           onSortChange={setActiveSort}

@@ -1278,6 +1278,81 @@ export const LongTitle: Story = {
   ),
 };
 
+const longFeedMarkdownBody = [
+  "# Field notes from the listening room",
+  "We spent the weekend comparing four tiny venues, two home listening rooms, and a stack of rough mixes from community members. The goal was not to crown a winner; it was to understand why some spaces make unfinished songs feel alive while others flatten every detail into the same polite mush.",
+  "The clearest pattern was that people reacted less to expensive gear than to rooms where the low end stayed readable. A kick that lands cleanly at conversation volume changes the whole social mood. People lean forward, talk less over the chorus, and remember the hook after the room empties.",
+  "- Rugs helped more than new monitors.\n- Chair placement changed the stereo image more than expected.\n- A small sub was useful only after it was turned down.\n- Bright rooms made every rough vocal feel harsher than it really was.",
+  "> The best test was playing the same demo twice: once before everyone arrived, then again when the room had coats, bodies, drinks, and noise. The second pass told us what the mix actually needed.",
+].join("\n\n");
+
+const longFeedLinkBody = [
+  "I pulled together a longer reading list for everyone who asked about independent venue acoustics. The most useful pieces were not the product reviews; they were the practical notes from small-room engineers who have to make a crowded room sound good without rebuilding it from scratch.",
+  "The article also makes a good point about documentation. If you change speaker position, wall treatment, limiter settings, or even the default playback level, write it down before the next event. Otherwise every listening night becomes a new experiment with no memory.",
+].join("\n\n");
+
+const longFeedImageCaption = [
+  "This was the exact corner that changed the mix once the room filled up. The curtains look decorative, but they killed a brittle reflection that had been making every vocal feel too sharp. We moved the left speaker inward by a hand width, pulled the couch off the wall, and suddenly the bass stopped smearing over the first verse.",
+  "Posting the setup here so people can compare notes before the next meetup.",
+].join("\n\n");
+
+const longFeedWallBody = "This is a deliberately dense single-paragraph post with no paragraph breaks, no list structure, and no easy boundary for the feed renderer to prefer. It repeats the same kind of practical detail someone might paste from a long note, including room setup, mix impressions, audience reactions, gear observations, follow-up tasks, and several small conclusions that should not be allowed to occupy the entire homepage when a reader is just scanning the main feed. ".repeat(4).trim();
+
+export const LongFeedPost: Story = {
+  name: "Layout: Long Feed Post",
+  render: () => (
+    <div className="flex flex-col">
+      <PostCard
+        {...basePost}
+        title="Multi-paragraph markdown should be minimized in the feed"
+        content={{
+          type: "text",
+          body: longFeedMarkdownBody,
+        }}
+        engagement={{ ...basePost.engagement, score: 1842, commentCount: 96 }}
+      />
+      <PostCard
+        {...basePost}
+        byline={{ ...basePost.byline, timestampLabel: "2h" }}
+        title="Useful notes on small-room acoustics"
+        content={{
+          type: "link",
+          body: longFeedLinkBody,
+          href: "https://example.com/small-room-acoustics",
+          linkLabel: "example.com/small-room-acoustics",
+          previewDescription: "Practical advice for listening rooms, tiny venues, and community events.",
+          previewImageSrc: "https://picsum.photos/seed/long-feed-link/240/240",
+          previewTitle: "How small rooms change what people hear",
+          sourceLabel: "example.com",
+        }}
+        engagement={{ ...basePost.engagement, score: 612, commentCount: 42 }}
+      />
+      <PostCard
+        {...basePost}
+        byline={{ ...basePost.byline, timestampLabel: "3h" }}
+        title="Before everyone arrived"
+        content={{
+          type: "image",
+          alt: "Small listening room setup",
+          caption: longFeedImageCaption,
+          src: "https://picsum.photos/seed/long-feed-caption/600/400",
+        }}
+        engagement={{ ...basePost.engagement, score: 938, commentCount: 57 }}
+      />
+      <PostCard
+        {...basePost}
+        byline={{ ...basePost.byline, timestampLabel: "4h" }}
+        title="Single-wall text should still be hard-capped"
+        content={{
+          type: "text",
+          body: longFeedWallBody,
+        }}
+        engagement={{ ...basePost.engagement, score: 377, commentCount: 18 }}
+      />
+    </div>
+  ),
+};
+
 export const NoClubContext: Story = {
   name: "Layout: No Community",
   render: () => (

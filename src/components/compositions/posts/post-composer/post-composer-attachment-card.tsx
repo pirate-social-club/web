@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { isValidHttpUrl } from "./post-composer-utils";
 import type { AttachmentKind, AttachmentState } from "./post-composer.types";
 
+const MAX_LINK_URL_LENGTH = 2_048;
+
 function VideoAttachmentPreview({
   attachment,
   onRemove,
@@ -149,6 +151,7 @@ export function PostComposerAttachmentCard({
               isInvalid && "text-destructive",
             )}
             inputMode="url"
+            maxLength={MAX_LINK_URL_LENGTH}
             onChange={(event) => onChange({ ...attachment, url: event.target.value })}
             placeholder="https://"
             ref={linkInputRef}

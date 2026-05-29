@@ -57,6 +57,9 @@ export interface FeedProps {
   className?: string;
   listClassName?: string;
   fullBleedMobile?: boolean;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 export interface TopTimeRangeOption {
@@ -157,6 +160,53 @@ function FeedLoadingState() {
   );
 }
 
+function FeedLoadMoreSentinel({
+  hasMore,
+  loadingMore,
+  onLoadMore,
+}: {
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore?: () => void;
+}) {
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!hasMore || !onLoadMore) return undefined;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return undefined;
+    if (typeof IntersectionObserver === "undefined") return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !loadingMore) {
+          onLoadMore();
+        }
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, onLoadMore]);
+
+  if (!hasMore) return null;
+
+  return (
+    <div ref={sentinelRef} className="flex items-center justify-center py-4">
+      {loadingMore ? (
+        <Spinner className="size-5" />
+      ) : onLoadMore ? (
+        <button
+          className="font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          onClick={onLoadMore}
+          type="button"
+        >
+          Load more
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function Feed({
   eyebrow,
   title,
@@ -175,6 +225,9 @@ export function Feed({
   className,
   listClassName,
   fullBleedMobile = false,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
 }: FeedProps) {
   const hasItems = items.length > 0;
   const ListWrapper = fullBleedMobile ? FullBleedMobileListSection : React.Fragment;
@@ -298,6 +351,9 @@ export function Feed({
                 );
               })}
                 {showLoadingTail ? <FeedLoadingRows count={loadingCount} /> : null}
+                {hasMore && !showLoadingTail ? (
+                  <FeedLoadMoreSentinel hasMore={hasMore} loadingMore={loadingMore} onLoadMore={onLoadMore} />
+                ) : null}
               </div>
             </ListWrapper>
           ) : null}

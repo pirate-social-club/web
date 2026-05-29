@@ -3,6 +3,30 @@ import { describe, expect, test } from "bun:test";
 import { buildPostMenu } from "./post-menu-presentation";
 
 describe("buildPostMenu", () => {
+  test("shows report post when reporting is available", () => {
+    const menu = buildPostMenu({
+      onReport: () => undefined,
+      post: { status: "published" },
+      viewerIsAuthor: false,
+    });
+
+    expect(menu.postMenuItems).toContainEqual({
+      key: "report",
+      label: "Report post",
+      destructive: true,
+    });
+  });
+
+  test("does not show report post for unavailable posts", () => {
+    const menu = buildPostMenu({
+      onReport: () => undefined,
+      post: { status: "removed" },
+      viewerIsAuthor: false,
+    });
+
+    expect(menu.postMenuItems.some((item) => item.key === "report")).toBe(false);
+  });
+
   test("shows cancel event for an event author", () => {
     const menu = buildPostMenu({
       eventStatus: "scheduled",

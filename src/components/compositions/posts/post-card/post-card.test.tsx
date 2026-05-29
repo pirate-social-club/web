@@ -10,6 +10,30 @@ import { UiLocaleProvider } from "@/lib/ui-locale";
 import { PostCard } from "./post-card";
 
 describe("PostCard", () => {
+  test("renders post actions in the byline row before the title", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{ type: "text", body: "Body" }}
+          engagement={{ commentCount: 0, score: 0 }}
+          menuItems={[{ key: "delete", label: "Delete post", destructive: true }]}
+          title="Song post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    const titleIndex = markup.indexOf("Song post");
+    const menuIndex = markup.indexOf("aria-label=\"Post options\"");
+
+    expect(titleIndex).toBeGreaterThan(-1);
+    expect(menuIndex).toBeGreaterThan(-1);
+    expect(menuIndex).toBeLessThan(titleIndex);
+  });
+
   test("renders live-room feed cards with watch and ticket states", () => {
     const liveMarkup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

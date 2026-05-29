@@ -52,6 +52,7 @@ export type PostPresentationOptions = {
   onDelete?: () => void;
   onRemove?: () => void;
   onCancelEvent?: () => void;
+  onReport?: () => void;
   onSetLabel?: () => void;
   postHref?: string;
   canModeratePost?: boolean;

@@ -115,6 +115,7 @@ export function toCommunityFeedItem(
     onCancelEvent: opts?.onCancelEvent,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
+    onReport: opts?.onReport,
     onSetLabel: opts?.onSetLabel,
     post,
     viewerIsAuthor: postResponse.viewer_is_author,
@@ -170,6 +171,7 @@ export function toCommunityFeedItem(
       onMenuAction: hasPostMenu ? (key) => {
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
+        if (key === "report") opts?.onReport?.();
         if (key === "cancel-event") opts?.onCancelEvent?.();
         if (key === "set-label") opts?.onSetLabel?.();
       } : undefined,
@@ -227,6 +229,7 @@ export function toThreadPostCard(
     onCancelEvent: opts?.onCancelEvent,
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
+    onReport: opts?.onReport,
     onSetLabel: opts?.onSetLabel,
     post,
     viewerIsAuthor: postResponse.viewer_is_author,
@@ -295,6 +298,7 @@ export function toThreadPostCard(
     onMenuAction: hasPostMenu ? (key) => {
       if (key === "delete") opts?.onDelete?.();
       if (key === "remove") opts?.onRemove?.();
+      if (key === "report") opts?.onReport?.();
       if (key === "cancel-event") opts?.onCancelEvent?.();
       if (key === "set-label") opts?.onSetLabel?.();
     } : undefined,

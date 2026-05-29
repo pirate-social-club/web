@@ -226,6 +226,24 @@ export function PostPage({ postId }: { postId: string }) {
     toast.error(authRuntime.loadError ?? fallbackMessage);
   }, [authRuntime.connect, authRuntime.loadError, postId, copy.publicProfile.openInPirate]);
 
+  const reportPost = React.useCallback(async () => {
+    if (!session) {
+      requestAuth("Connect your wallet to report this post.");
+      return;
+    }
+    if (typeof window !== "undefined" && !window.confirm("Report this post?")) return;
+
+    const communityId = post?.post.community ?? community?.id;
+    if (!communityId) return;
+
+    try {
+      await api.posts.report(communityId, postId, { reason_code: "other" });
+      toast.success("Post reported.");
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not report this post."));
+    }
+  }, [api.posts, community?.id, post?.post.community, postId, requestAuth, session]);
+
   const handleVerifyAge = React.useCallback(() => {
     if (!session) {
       requestAuth("Connect your wallet to verify your age and view 18+ content.");
@@ -865,6 +883,7 @@ export function PostPage({ postId }: { postId: string }) {
     onCancelEvent: cancelEvent,
     onDelete: deletePost,
     onRemove: removePost,
+    onReport: reportPost,
     onVerifyAge: handleVerifyAge,
     onVote: voteOnPost,
     showOriginalLabel: copy.common.showOriginal,
@@ -879,6 +898,7 @@ export function PostPage({ postId }: { postId: string }) {
       onCancelEvent: cancelEvent,
       onDelete: deletePost,
       onRemove: removePost,
+      onReport: reportPost,
       onVerifyAge: handleVerifyAge,
       onVote: voteOnPost,
       preferOriginalText: true,

@@ -583,6 +583,22 @@ export function PublicCommunityRoutePage({
     }
   }, [api.posts, communityId, posts, setPosts]);
 
+  const reportPost = React.useCallback(async (postId: string) => {
+    if (!session) {
+      requestAuth("Sign in to report this post.");
+      return;
+    }
+    if (typeof window !== "undefined" && !window.confirm("Report this post?")) return;
+
+    const targetPost = posts.find((postResponse) => postResponse.post.id === postId);
+    try {
+      await api.posts.report(targetPost?.post.community ?? communityId, postId, { reason_code: "other" });
+      toast.success("Post reported.");
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not report this post."));
+    }
+  }, [api.posts, communityId, posts, requestAuth, session]);
+
   if (previewLoading && !preview) {
     return <CommunityRouteLoadingState />;
   }
@@ -762,6 +778,7 @@ export function PublicCommunityRoutePage({
             onComment: () => navigate(buildPostPath?.(post.post.id) ?? `/p/${post.post.id}`),
             onCancelEvent: () => void cancelEvent(post.post.id),
             onDelete: () => void deletePost(post.post.id),
+            onReport: () => void reportPost(post.post.id),
             onVerifyAge: handleVerifyAge,
             onVote: (direction) => void voteOnPost(post.post.id, direction),
             postHref: buildPostPath?.(post.post.id),

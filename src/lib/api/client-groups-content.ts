@@ -5,6 +5,7 @@ import type {
   CommentVoteResponse,
   CreateCommentRequest,
   CreatePostRequest,
+  CreateUserReportRequest,
   CreateSongArtifactBundleRequest,
   CreateSongArtifactUploadRequest,
   DeletedPostResponse,
@@ -14,6 +15,7 @@ import type {
   SongArtifactBundle,
   SongArtifactBundleListResponse,
   SongArtifactUpload,
+  UserReport,
 } from "@pirate/api-contracts";
 
 import type {
@@ -73,6 +75,11 @@ export function createPostsApi(request: ApiRequest) {
       request<LocalizedPostResponse>(
         `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/label`,
         { method: "POST", body: JSON.stringify({ label_id: labelId }) },
+      ),
+    report: (communityId: string, postId: string, body: CreateUserReportRequest): Promise<UserReport> =>
+      request<UserReport>(
+        `/communities/${encodeURIComponent(communityId)}/posts/${encodeURIComponent(postId)}/reports`,
+        { method: "POST", body: JSON.stringify(body) },
       ),
   };
 }

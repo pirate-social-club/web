@@ -542,6 +542,21 @@ export function CommunityPage({
     }
   }, [api.posts, communityId, posts, setPosts]);
 
+  const reportPost = React.useCallback(async (postId: string) => {
+    if (!session?.accessToken) {
+      toast.error("Sign in to report this post.");
+      return;
+    }
+    if (typeof window !== "undefined" && !window.confirm("Report this post?")) return;
+
+    try {
+      await api.posts.report(communityId, postId, { reason_code: "other" });
+      toast.success("Post reported.");
+    } catch (nextError) {
+      toast.error(getErrorMessage(nextError, "Could not report this post."));
+    }
+  }, [api.posts, communityId, session?.accessToken]);
+
   const activeLabels = React.useMemo(() => getActiveCommunityLabels(community ?? preview), [community, preview]);
 
   const setPostLabel = React.useCallback(async (labelId: string | null) => {
@@ -705,6 +720,7 @@ export function CommunityPage({
         onCancelEvent: () => void cancelEvent(post.post.id),
         onDelete: () => void deletePost(post.post.id),
         onRemove: () => void removePost(post.post.id),
+        onReport: () => void reportPost(post.post.id),
         onSetLabel: canSetPostLabel ? () => setLabelTargetPost(post) : undefined,
         canModeratePost: canModeratePosts,
         onVote: (direction) => void voteOnPost(post.post.id, direction),

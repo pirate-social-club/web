@@ -6,6 +6,7 @@ export function buildPostMenu(input: {
   onCancelEvent?: () => void;
   onDelete?: () => void;
   onRemove?: () => void;
+  onReport?: () => void;
   onSetLabel?: () => void;
   post: Pick<ApiPost["post"], "status">;
   viewerIsAuthor?: boolean | null;
@@ -22,7 +23,11 @@ export function buildPostMenu(input: {
     && input.post.status !== "removed"
     && !input.viewerIsAuthor
     && Boolean(input.canModeratePost && input.onRemove);
+  const canReportPost = input.post.status !== "deleted"
+    && input.post.status !== "removed"
+    && Boolean(input.onReport);
   const postMenuItems = [
+    ...(canReportPost ? [{ key: "report", label: "Report post", destructive: true }] : []),
     ...(canCancelEvent ? [{ key: "cancel-event", label: "Cancel event", destructive: true }] : []),
     ...(canDeletePost ? [{ key: "delete", label: "Delete post", destructive: true }] : []),
     ...(canSetLabel ? [{ key: "set-label", label: "Set tag" }] : []),

@@ -9,6 +9,7 @@ import type {
 import {
   resolveLocalizedLinkTitle,
   toCommunityPostContent,
+  toThreadPostCard,
 } from "@/app/authenticated-helpers/post-presentation";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 
@@ -114,6 +115,16 @@ function createLinkPost(overrides: Partial<LocalizedPostResponse["post"]> = {}):
     viewer_reaction_kinds: [],
     viewer_vote: null,
   } as unknown as LocalizedPostResponse;
+}
+
+function createTextPost(overrides: Partial<LocalizedPostResponse["post"]> = {}): LocalizedPostResponse {
+  return createLinkPost({
+    body: "A text post.",
+    link_url: null,
+    post_type: "text",
+    title: "Text post",
+    ...overrides,
+  });
 }
 
 function createSongPost(overrides: Partial<LocalizedPostResponse["post"]> = {}): LocalizedPostResponse {
@@ -407,6 +418,40 @@ describe("post presentation links", () => {
     });
 
     expect(title.title).toBe("English fallback");
+  });
+});
+
+describe("post presentation community verification", () => {
+  test("marks explicitly unverified communities as unverified", () => {
+    const card = toThreadPostCard(createTextPost(), {
+      id: "com_cmt_links",
+      display_name: "Links",
+      namespace_verification: null,
+      route_slug: "@links",
+    });
+
+    expect(card.byline.community?.verificationStatus).toBe("unverified");
+  });
+
+  test("does not mark verified communities as unverified", () => {
+    const card = toThreadPostCard(createTextPost(), {
+      id: "com_cmt_links",
+      display_name: "Links",
+      namespace_verification: "nv_links",
+      route_slug: "@links",
+    });
+
+    expect(card.byline.community?.verificationStatus).toBeUndefined();
+  });
+
+  test("does not mark partial communities with unknown verification as unverified", () => {
+    const card = toThreadPostCard(createTextPost(), {
+      id: "com_cmt_links",
+      display_name: "Links",
+      route_slug: "@links",
+    } as Parameters<typeof toThreadPostCard>[1]);
+
+    expect(card.byline.community?.verificationStatus).toBeUndefined();
   });
 });
 

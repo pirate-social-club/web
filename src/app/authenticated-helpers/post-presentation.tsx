@@ -217,6 +217,9 @@ export function toThreadPostCard(
   opts?: PostPresentationOptions,
 ): PostCardProps {
   const { post } = postResponse;
+  const communityVerificationKnown = Boolean(
+    community && Object.prototype.hasOwnProperty.call(community, "namespace_verification"),
+  );
   const communityVerified = Boolean(community?.namespace_verification);
   const { hasPostMenu, postMenuItems } = buildPostMenu({
     canModeratePost: opts?.canModeratePost,
@@ -268,7 +271,7 @@ export function toThreadPostCard(
           kind: "community",
           label: communityLabel ?? community.id,
           href: buildCommunityPath(community.id, community.route_slug),
-          verificationStatus: communityVerified ? undefined : "unverified",
+          verificationStatus: communityVerificationKnown && !communityVerified ? "unverified" : undefined,
         }
         : undefined,
       timestampLabel: formatRelativeTimestamp(post.created),

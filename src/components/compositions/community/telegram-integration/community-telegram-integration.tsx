@@ -2,9 +2,11 @@
 
 import * as React from "react";
 import { ChatCircle, LinkSimple } from "@phosphor-icons/react";
+import { QRCodeSVG } from "qrcode.react";
 
 import { CommunityModerationSaveFooter } from "@/components/compositions/community/moderation-shell/community-moderation-save-footer";
 import { Button } from "@/components/primitives/button";
+import { CopyField } from "@/components/primitives/copy-field";
 import { FormNote } from "@/components/primitives/form-layout";
 import { Input } from "@/components/primitives/input";
 import {
@@ -131,6 +133,28 @@ function botStatusRemediation(status: TelegramBotAdminStatus): string | null {
   return null;
 }
 
+function TelegramJoinLinkPanel({ joinUrl }: { joinUrl: string }) {
+  return (
+    <div className="grid gap-4 rounded-md border border-border-soft bg-card p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+      <div className="min-w-0 space-y-2">
+        <Type as="div" variant="caption">Join link</Type>
+        <CopyField value={joinUrl} />
+      </div>
+      <div className="grid size-44 place-items-center justify-self-start rounded-md border border-border-soft bg-white p-3 md:justify-self-end">
+        <QRCodeSVG
+          aria-label="Telegram join QR code"
+          bgColor="#ffffff"
+          fgColor="#000000"
+          level="M"
+          role="img"
+          size={144}
+          value={joinUrl}
+        />
+      </div>
+    </div>
+  );
+}
+
 function updateSettings(
   settings: CommunityTelegramIntegrationSettings,
   patch: Partial<CommunityTelegramIntegrationSettings>,
@@ -140,6 +164,7 @@ function updateSettings(
 
 export function CommunityTelegramIntegrationPage({
   className,
+  joinUrl,
   onConnectChat,
   onRevokeBot,
   onSave,
@@ -247,6 +272,7 @@ export function CommunityTelegramIntegrationPage({
           </section>
 
           <Section title="Discovery">
+            {joinUrl ? <TelegramJoinLinkPanel joinUrl={joinUrl} /> : null}
             <ToggleRow
               checked={settings.directoryVisible}
               label="Show in Telegram directory"

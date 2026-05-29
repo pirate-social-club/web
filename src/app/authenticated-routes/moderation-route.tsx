@@ -879,6 +879,7 @@ export function CommunityModerationPage({
           )
           : (
             <CommunityTelegramIntegrationPage
+              joinUrl={state.telegramJoinUrl}
               onConnectChat={state.handleConnectTelegramChat}
               onRevokeBot={state.handleRevokeTelegramBot}
               onSave={state.handleSaveTelegramChat}

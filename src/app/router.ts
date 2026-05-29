@@ -39,9 +39,13 @@ export type AppRoute =
   | { kind: "me"; path: "/me" }
   | { kind: "onboarding"; path: "/onboarding" }
   | { kind: "authorize-device"; path: "/authorize-device" }
+  | { kind: "community-verification"; path: string; communityId: string }
   | { kind: "telegram-mini-app"; path: "/tg" }
   | { kind: "telegram-exchange"; path: "/tg/exchange" }
+  | { kind: "telegram-self-return"; path: string; communityId?: string | null }
+  | { kind: "telegram-verify"; path: string; communityId: string }
   | { kind: "telegram-community"; path: string; communityId: string }
+  | { kind: "telegram-post"; path: string; postId: string }
   | { kind: "not-found"; path: string };
 
 const NAVIGATION_EVENT = "pirate:navigate";
@@ -136,6 +140,10 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
     return { kind: "telegram-exchange", path: "/tg/exchange" };
   }
 
+  if (normalized === "/tg/self-return") {
+    return { kind: "telegram-self-return", path: "/tg/self-return" };
+  }
+
   if (normalized === "/submit") {
     return { kind: "create-post-global", path: normalized };
   }
@@ -149,6 +157,38 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   if (segments.length === 3 && segments[0] === "tg" && segments[1] === "c") {
     return {
       kind: "telegram-community",
+      path: normalized,
+      communityId: decodeURIComponent(segments[2]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "tg" && segments[1] === "self-return") {
+    return {
+      kind: "telegram-self-return",
+      path: normalized,
+      communityId: decodeURIComponent(segments[2]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "tg" && segments[1] === "verify") {
+    return {
+      kind: "telegram-verify",
+      path: normalized,
+      communityId: decodeURIComponent(segments[2]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "tg" && segments[1] === "p") {
+    return {
+      kind: "telegram-post",
+      path: normalized,
+      postId: decodeURIComponent(segments[2]),
+    };
+  }
+
+  if (segments.length === 3 && segments[0] === "verify" && segments[1] === "community") {
+    return {
+      kind: "community-verification",
       path: normalized,
       communityId: decodeURIComponent(segments[2]),
     };

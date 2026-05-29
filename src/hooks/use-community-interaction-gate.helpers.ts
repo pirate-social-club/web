@@ -66,10 +66,10 @@ export type BuildBlockedModalStateArgs = {
   invalidateCommunityGate: (communityId: string) => void;
   interactionCopy: InteractionGateCopy;
   openCommunity: () => void;
-  defaultVerificationLoadingProvider?: "self" | "very" | "passport" | null;
+  defaultVerificationLoadingProvider?: "self" | "very" | "passport" | "zkpassport" | null;
   startDefaultVerification?: (input: {
     gate: CommunityGateData;
-    provider: "self" | "very" | "passport";
+    provider: "self" | "very" | "passport" | "zkpassport";
   }) => Promise<{ started: boolean }>;
 };
 

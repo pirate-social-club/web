@@ -108,6 +108,10 @@ const LazyAuthorizeDevicePage = lazyRouteModule(
   () => import("./authenticated-routes/authorize-device-route"),
   "AuthorizeDevicePage",
 );
+const LazyCommunityVerificationPage = lazyRouteModule(
+  () => import("./authenticated-routes/community-verification-route"),
+  "CommunityVerificationPage",
+);
 const LazyNotFoundPage = lazyRouteModule(
   () => import("./authenticated-routes/misc-routes"),
   "NotFoundPage",
@@ -182,12 +186,18 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
       return <LazyOnboardingPage />;
     case "authorize-device":
       return <LazyAuthorizeDevicePage />;
+    case "community-verification":
+      return <LazyCommunityVerificationPage communityId={route.communityId} />;
     case "not-found":
       return <LazyNotFoundPage path={route.path} />;
     case "public-profile":
     case "public-agent":
     case "telegram-mini-app":
+    case "telegram-exchange":
+    case "telegram-self-return":
     case "telegram-community":
+    case "telegram-verify":
+    case "telegram-post":
       return null;
   }
 }

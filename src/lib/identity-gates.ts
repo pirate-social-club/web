@@ -11,7 +11,7 @@ import { isUiLocaleCode, type UiLocaleCode } from "@/lib/ui-locale-core";
 import { getLocaleMessages } from "@/locales";
 
 type IdentityGateAudience = "public" | "admin";
-type VerificationProvider = "self" | "very" | "passport";
+type VerificationProvider = "self" | "very" | "passport" | "zkpassport";
 type RequirementProviderContext = VerificationProvider | null;
 type MissingCapability = "unique_human" | "age_over_18" | "minimum_age" | "nationality" | "gender" | "wallet_score" | "altcha_pow";
 type RequiredActionNode = Omit<NonNullable<NonNullable<JoinEligibility["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
@@ -89,6 +89,30 @@ function isSelfRequestedCapability(capability: MissingCapability): capability is
   return SELF_REQUESTED_CAPABILITY_ORDER.some((candidate) => candidate === capability);
 }
 
+function resolveUniqueHumanRequirementProvider(
+  gate: MembershipGateSummary,
+  provider: RequirementProviderContext,
+): "self" | "very" | null {
+  if (provider === "self" || provider === "very") {
+    return provider;
+  }
+  const acceptedProviders = gate.accepted_providers ?? [];
+  if (acceptedProviders.length === 1) {
+    const [acceptedProvider] = acceptedProviders;
+    if (acceptedProvider === "self" || acceptedProvider === "very") {
+      return acceptedProvider;
+    }
+  }
+  return null;
+}
+
+export function getProofOfWorkGateRequirements(
+  gates: MembershipGateSummary[] | null | undefined,
+): MembershipGateSummary[] {
+  const proofOfWorkGates = (gates ?? []).filter((gate) => gate.gate_type === "altcha_pow");
+  return proofOfWorkGates.length > 0 ? proofOfWorkGates : [{ gate_type: "altcha_pow" }];
+}
+
 export function formatGateRequirement(
   gate: MembershipGateSummary,
   options?: { audience?: IdentityGateAudience; locale?: string | null; provider?: RequirementProviderContext },
@@ -118,7 +142,9 @@ export function formatGateRequirement(
       return copy.gender.public;
     }
     case "unique_human":
-      return provider === "very" ? copy.uniqueHuman.very : copy.uniqueHuman.self;
+      return resolveUniqueHumanRequirementProvider(gate, provider) === "very"
+        ? copy.uniqueHuman.very
+        : copy.uniqueHuman.self;
     case "age_over_18":
       return copy.ageOver18;
     case "minimum_age": {
@@ -208,6 +234,10 @@ export function getVerificationCapabilitiesForProvider(
       }
     } else if (provider === "passport") {
       continue;
+    } else if (provider === "zkpassport") {
+      if (capability === "minimum_age" || capability === "nationality" || capability === "gender") {
+        uniqueCapabilities.add(capability);
+      }
     } else if (isSelfRequestedCapability(capability)) {
       uniqueCapabilities.add(capability);
     }
@@ -217,6 +247,13 @@ export function getVerificationCapabilitiesForProvider(
   }
   if (provider === "passport") {
     return [];
+  }
+  if (provider === "zkpassport") {
+    return SELF_CAPABILITY_ORDER.filter((capability) =>
+      capability === "minimum_age" || capability === "nationality" || capability === "gender"
+        ? uniqueCapabilities.has(capability)
+        : false
+    );
   }
   return Array.from(uniqueCapabilities);
 }
@@ -559,6 +596,27 @@ export function resolveSuggestedVerificationProvider(
   return "very";
 }
 
+export function hasZkPassportDocumentProviderOption(
+  eligibility: {
+    membership_gate_summaries?: MembershipGateSummary[] | null;
+    gate_evaluation?: JoinEligibility["gate_evaluation"] | GateFailureDetails["gate_evaluation"] | null;
+  },
+): boolean {
+  const missingCapabilities = getMissingCapabilitiesFromGateEvaluation(eligibility);
+  const hasMissingDocumentCapability = missingCapabilities.some((capability) =>
+    capability === "minimum_age"
+    || capability === "nationality"
+    || capability === "gender"
+  );
+  if (!hasMissingDocumentCapability) {
+    return false;
+  }
+  return (eligibility.membership_gate_summaries ?? []).some((gate) =>
+    (gate.gate_type === "minimum_age" || gate.gate_type === "nationality" || gate.gate_type === "gender")
+    && (gate.accepted_providers?.includes("zkpassport") ?? false)
+  );
+}
+
 export function getVerificationPromptCopy(
   provider: VerificationProvider,
   capabilities: MissingCapability[],
@@ -577,6 +635,14 @@ export function getVerificationPromptCopy(
 
   if (provider === "passport") {
     return gates.verificationPrompt.passport;
+  }
+
+  if (provider === "zkpassport") {
+    return {
+      title: "Verify with ZKPassport",
+      description: "ZKPassport lets you prove document facts for this community without sharing your name, photo, or document details with Pirate.",
+      actionLabel: "Verify with ZKPassport",
+    };
   }
 
   const visibleCapabilities = getVisibleSelfCapabilities(capabilities);

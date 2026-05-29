@@ -59,7 +59,7 @@ import {
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
 
-const SEO_METADATA_TIMEOUT_MS = 4000;
+const SEO_METADATA_TIMEOUT_MS = 1800;
 const SEO_METADATA_USER_AGENT_PATTERN =
   /(bot|crawler|spider|facebookexternalhit|twitterbot|xbot|slackbot|discordbot|telegrambot|whatsapp|linkedinbot|embedly|pinterest|preview)/i;
 const SHARE_LOCALE_QUERY_KEYS = ["locale", "lang"] as const;
@@ -161,7 +161,7 @@ async function resolveRouteSeoMetadata(input: {
     if (input.route.kind === "community") {
       const preview = await fetchPublicJson<PublicCommunityPreviewResponse>(
         input.apiOrigin,
-        `/public-communities/${encodeURIComponent(input.route.communityId)}?preview=seo`,
+        `/public-communities/${encodeURIComponent(input.route.communityId)}`,
         input.locale,
         input.signal,
       );
@@ -185,7 +185,7 @@ async function resolveRouteSeoMetadata(input: {
         try {
           community = await fetchPublicJson<PublicCommunityPreviewResponse>(
             input.apiOrigin,
-            `/public-communities/${encodeURIComponent(communityId)}?preview=seo`,
+            `/public-communities/${encodeURIComponent(communityId)}`,
             input.locale,
             input.signal,
           );
@@ -282,6 +282,44 @@ function AppRoutePage(requestInfo: AppRequestInfo) {
       initialPath={url.pathname}
     />
   );
+}
+
+async function proxyTelegramSessionRequest(request: Request, effectiveUrl: string): Promise<Response> {
+  const sourceUrl = new URL(effectiveUrl);
+  const discovery = getDiscoveryContext(sourceUrl);
+  const targetUrl = new URL(`${sourceUrl.pathname}${sourceUrl.search}`, discovery.apiOrigin);
+  const headers = new Headers();
+
+  for (const key of [
+    "accept",
+    "authorization",
+    "content-type",
+    "x-pirate-anonymous-id",
+    "x-pirate-session-id",
+  ]) {
+    const value = request.headers.get(key);
+    if (value) {
+      headers.set(key, value);
+    }
+  }
+
+  const body = request.method === "GET" || request.method === "HEAD"
+    ? undefined
+    : await request.clone().arrayBuffer();
+  const upstream = await fetch(targetUrl.toString(), {
+    body,
+    headers,
+    method: request.method,
+    redirect: "manual",
+  });
+  const responseHeaders = new Headers(upstream.headers);
+  responseHeaders.delete("content-encoding");
+  responseHeaders.delete("content-length");
+  return new Response(upstream.body, {
+    headers: responseHeaders,
+    status: upstream.status,
+    statusText: upstream.statusText,
+  });
 }
 
 function PrivacyRoutePage() {
@@ -439,12 +477,23 @@ const app = defineApp<AppRequestInfo>([
     route("/child-safety", ChildSafetyRoutePage),
     route("/privacy", PrivacyRoutePage),
     route("/terms", TermsRoutePage),
+    route("/telegram/session/exchange", ({ ctx, request }) =>
+      proxyTelegramSessionRequest(request, ctx.effectiveUrl ?? request.url)
+    ),
+    route("/telegram/session/auto-exchange", ({ ctx, request }) =>
+      proxyTelegramSessionRequest(request, ctx.effectiveUrl ?? request.url)
+    ),
     route("/", AppRoutePage),
     route("/popular", AppRoutePage),
     route("/advertise", AppRoutePage),
     route("/tg", AppRoutePage),
     route("/tg/exchange", AppRoutePage),
+    route("/tg/self-return", AppRoutePage),
+    route("/tg/self-return/:communityId", AppRoutePage),
+    route("/tg/verify/:communityId", AppRoutePage),
     route("/tg/c/:communityId", AppRoutePage),
+    route("/tg/p/:postId", AppRoutePage),
+    route("/verify/community/:communityId", AppRoutePage),
     route("/your-communities", AppRoutePage),
     route("/communities/new", AppRoutePage),
     route("/submit", AppRoutePage),

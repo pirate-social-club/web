@@ -28,6 +28,7 @@ const EXPECTED_DOMAIN_KINDS: Record<RouteRenderingDomain, readonly AppRoute["kin
     "me",
     "onboarding",
     "authorize-device",
+    "community-verification",
     "not-found",
   ],
   public: [
@@ -42,7 +43,10 @@ const EXPECTED_DOMAIN_KINDS: Record<RouteRenderingDomain, readonly AppRoute["kin
   telegram: [
     "telegram-mini-app",
     "telegram-exchange",
+    "telegram-self-return",
+    "telegram-verify",
     "telegram-community",
+    "telegram-post",
   ],
 };
 

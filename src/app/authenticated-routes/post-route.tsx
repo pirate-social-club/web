@@ -138,7 +138,13 @@ function MobileThreadShell({
   );
 }
 
-export function PostPage({ postId }: { postId: string }) {
+export function PostPage({
+  postId,
+  telegramMiniApp = false,
+}: {
+  postId: string;
+  telegramMiniApp?: boolean;
+}) {
   const api = useApi();
   const session = useSession();
   const isMobile = useIsMobile();
@@ -881,7 +887,13 @@ export function PostPage({ postId }: { postId: string }) {
       viewerContentLocale: contentLocale,
     })
     : undefined;
-  const communityPath = community?.id ? buildCommunityPath(community.id, community.route_slug) : "/";
+  const communityPath = community?.id
+    ? telegramMiniApp
+      ? `/tg/c/${encodeURIComponent(community.route_slug ?? community.id)}`
+      : buildCommunityPath(community.id, community.route_slug)
+    : telegramMiniApp
+      ? "/tg"
+      : "/";
   const threadSidebarProps = community ? buildCommunityPreviewSidebar(community, locale) : null;
   const commentSortOptions = [
     { label: copy.common.bestTab, value: "best" as const },

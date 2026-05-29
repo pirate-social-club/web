@@ -140,7 +140,7 @@ export function toCommunityFeedItem(
         if (key === "cancel-event") opts?.onCancelEvent?.();
       } : undefined,
       onVote: post.status === "deleted" || post.status === "removed" ? undefined : opts?.onVote,
-      postHref: `/p/${post.id}`,
+      postHref: opts?.postHref ?? `/p/${post.id}`,
       qualifierLabels: resolvePostQualifierLabels(postResponse),
       ...titleProps,
       viewContext: "community",

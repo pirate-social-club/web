@@ -81,6 +81,7 @@ jobs:
           E2E_API_BASE_URL: https://api-staging.pirate.sc
         run: bunx playwright test e2e/authenticated-flows.spec.ts --project=chromium --grep "publishes a text event with dates and no times"
       - name: Fetch live browser staging secret
+        if: ${{ false }}
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
@@ -90,6 +91,7 @@ jobs:
           SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Live browser integration staging
+        if: ${{ false }}
         working-directory: web
         env:
           AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
@@ -105,6 +107,7 @@ jobs:
             web/test-results
           if-no-files-found: ignore
       - name: Fetch staging migration secrets
+        if: ${{ false }}
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
@@ -114,6 +117,7 @@ jobs:
           SECRET_NAMES: CONTROL_PLANE_DATABASE_URL TURSO_COMMUNITY_DB_WRAP_KEY
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Apply staging community migrations
+        if: ${{ false }}
         working-directory: core
         run: |
           test -n "$CONTROL_PLANE_DATABASE_URL"

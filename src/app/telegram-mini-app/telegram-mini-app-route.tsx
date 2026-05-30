@@ -1183,8 +1183,8 @@ export function TelegramMiniAppVerifyPage({
           return;
         }
         writeTelegramVerifyFlowStarted(resolvedCommunityId);
-        openExternalHref(pendingLaunch.href, { preferBrowserWindow: pendingLaunch.provider === "self" });
         applyFlowAction({ type: "externalOpened" });
+        openExternalHref(pendingLaunch.href, { preferBrowserWindow: pendingLaunch.provider === "self" });
       }}
       onRetry={() => {
         const currentEligibility = flowStateRef.current.eligibility;

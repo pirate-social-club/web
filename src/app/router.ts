@@ -42,6 +42,7 @@ export type AppRoute =
   | { kind: "telegram-mini-app"; path: "/tg" }
   | { kind: "telegram-exchange"; path: "/tg/exchange" }
   | { kind: "telegram-community"; path: string; communityId: string }
+  | { kind: "telegram-community-create-post"; path: string; communityId: string }
   | { kind: "not-found"; path: string };
 
 const NAVIGATION_EVENT = "pirate:navigate";
@@ -149,6 +150,14 @@ export function matchRoute(pathname: string, hostname?: string): AppRoute {
   if (segments.length === 3 && segments[0] === "tg" && segments[1] === "c") {
     return {
       kind: "telegram-community",
+      path: normalized,
+      communityId: decodeURIComponent(segments[2]),
+    };
+  }
+
+  if (segments.length === 4 && segments[0] === "tg" && segments[1] === "c" && segments[3] === "submit") {
+    return {
+      kind: "telegram-community-create-post",
       path: normalized,
       communityId: decodeURIComponent(segments[2]),
     };

@@ -224,11 +224,13 @@ export function resolvePublicCommunityJoinActionLabel(
 
 export function PublicCommunityRoutePage({
   communityId,
+  buildCreatePostPath,
   buildPostPath,
   disableCanonicalRouteReplace = false,
   isImportedRoot = false,
 }: {
   communityId: string;
+  buildCreatePostPath?: (community: ApiCommunityPreview) => string;
   buildPostPath?: (postId: string) => string;
   disableCanonicalRouteReplace?: boolean;
   isImportedRoot?: boolean;
@@ -650,7 +652,9 @@ export function PublicCommunityRoutePage({
   const communityHandleLabel = communityHandleFromRouteLabel(routeLabel);
   const viewerIsMember = viewerIsKnownMember;
   const canCreatePost = Boolean(session?.user?.id) && viewerIsMember;
-  const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
+  const communityCreatePostPath = buildCreatePostPath
+    ? buildCreatePostPath(preview)
+    : `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">

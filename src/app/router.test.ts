@@ -207,6 +207,11 @@ describe("public profile host routing", () => {
       path: "/tg/c/captain-club",
       communityId: "captain-club",
     });
+    expectJson(matchRoute("/tg/c/captain-club/submit"), {
+      kind: "telegram-community-create-post",
+      path: "/tg/c/captain-club/submit",
+      communityId: "captain-club",
+    });
   });
 });
 

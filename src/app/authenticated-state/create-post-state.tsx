@@ -69,6 +69,10 @@ type AvailableSigningAgent = {
   privateKeyPem: string;
 };
 
+type CreatePostStateOptions = {
+  buildPostPath?: (postId: string) => string;
+};
+
 const MAX_VIDEO_POSTER_FRAME_WIDTH = 1920;
 
 function viewerHasCommunityPostingRole(
@@ -197,11 +201,16 @@ async function resolveAvailableSigningAgent(agents: ApiUserAgent[]): Promise<Ava
   return null;
 }
 
-export function useCreatePostState(communityId: string, initialDraft?: Partial<CreatePostDraftState>) {
+export function useCreatePostState(
+  communityId: string,
+  initialDraft?: Partial<CreatePostDraftState>,
+  options: CreatePostStateOptions = {},
+) {
   const api = useApi();
   const session = useSession();
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").createPost;
+  const buildPostPath = options.buildPostPath;
   const [pageState, setPageState] = React.useState(() => {
     const cachedSnapshot = readCreatePostCommunitySnapshot(communityId, session?.user.id);
     const cachedCommunity = cachedSnapshot?.preview ?? null;
@@ -1036,7 +1045,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           postId: destinationPostId,
         });
       }
-      navigate(`/p/${destinationPostId}`);
+      navigate(buildPostPath ? buildPostPath(destinationPostId) : `/p/${destinationPostId}`);
     } catch (error: unknown) {
       logger.error("[create-post] publish failed", {
         error,
@@ -1062,7 +1071,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, postAltchaPayload, postAltchaRequired, pricingPolicy?.regional_pricing_enabled,
     selectedQualifierIds, session?.user.id, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     videoState,
-    warnIfStoryRegistrationIncomplete,
+    buildPostPath, warnIfStoryRegistrationIncomplete,
   ]);
 
   const setImageUploadWithLabel = React.useCallback((file: File | null) => {

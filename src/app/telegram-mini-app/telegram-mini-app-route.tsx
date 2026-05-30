@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { CreatePostPage } from "@/app/authenticated-routes/create-post-route";
 import { PublicCommunityRoutePage } from "@/app/public-community-route";
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
@@ -160,7 +161,29 @@ export function TelegramMiniAppCommunityPage({
 }) {
   return (
     <main className="min-h-screen bg-background px-3 pb-8 pt-[calc(env(safe-area-inset-top)+1rem)]">
-      <PublicCommunityRoutePage communityId={communityId} disableCanonicalRouteReplace />
+      <PublicCommunityRoutePage
+        buildCreatePostPath={(community) => `/tg/c/${encodeURIComponent(community.route_slug ?? community.id)}/submit`}
+        communityId={communityId}
+        disableCanonicalRouteReplace
+      />
+    </main>
+  );
+}
+
+export function TelegramMiniAppCreatePostPage({
+  communityId,
+}: {
+  communityId: string;
+}) {
+  const communityPath = `/tg/c/${encodeURIComponent(communityId)}`;
+
+  return (
+    <main className="min-h-screen bg-background px-3 pb-8 pt-[calc(env(safe-area-inset-top)+1rem)]">
+      <CreatePostPage
+        buildPostPath={(postId) => `/tg/p/${encodeURIComponent(postId)}`}
+        communityId={communityId}
+        communityPath={communityPath}
+      />
     </main>
   );
 }

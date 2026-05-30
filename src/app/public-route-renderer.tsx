@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import type { AppRoute } from "@/app/router";
-import { PostPage } from "@/app/authenticated-routes";
+import { PostPage } from "@/app/authenticated-routes/post-route";
 import { PublicAgentRoutePage } from "@/app/public-agent-route";
 import { PublicCommunityRoutePage } from "@/app/public-community-route";
 import { PublicProfileRoutePage } from "@/app/public-profile-route";

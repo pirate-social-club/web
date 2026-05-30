@@ -445,6 +445,7 @@ const app = defineApp<AppRequestInfo>([
     route("/tg", AppRoutePage),
     route("/tg/exchange", AppRoutePage),
     route("/tg/c/:communityId", AppRoutePage),
+    route("/tg/c/:communityId/submit", AppRoutePage),
     route("/your-communities", AppRoutePage),
     route("/communities/new", AppRoutePage),
     route("/submit", AppRoutePage),

@@ -188,6 +188,7 @@ export function renderAuthenticatedRoute(route: AppRoute): React.ReactNode {
     case "public-agent":
     case "telegram-mini-app":
     case "telegram-community":
+    case "telegram-community-create-post":
       return null;
   }
 }

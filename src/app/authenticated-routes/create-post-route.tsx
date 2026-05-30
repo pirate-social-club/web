@@ -220,17 +220,21 @@ function CreatePostComposer({
 }
 
 export function CreatePostPage({
+  buildPostPath,
   communityId,
+  communityPath,
   initialDraft,
   onCommunityNotFound,
 }: {
+  buildPostPath?: (postId: string) => string;
   communityId: string;
+  communityPath?: string;
   initialDraft?: Partial<
     import("@/app/authenticated-state/create-post-draft-state").CreatePostDraftState
   >;
   onCommunityNotFound?: () => void;
 }) {
-  const state = useCreatePostState(communityId, initialDraft);
+  const state = useCreatePostState(communityId, initialDraft, { buildPostPath });
   const isMobile = useIsMobile();
   const { locale } = useUiLocale();
   const { copy } = useRouteMessages();
@@ -238,6 +242,11 @@ export function CreatePostPage({
   const pageTitle = copy.createPost.title;
   const backToCommunityLabel = copy.createPost.backToCommunity;
   const verifyRequiredDescription = copy.createPost.verifyRequiredDescription;
+  const resolvedCommunityPath = communityPath ?? `/c/${communityId}`;
+  const resolvedCreatePostPath = `${resolvedCommunityPath}/submit`;
+  const navigateToCommunity = React.useCallback(() => {
+    navigate(resolvedCommunityPath);
+  }, [resolvedCommunityPath]);
 
   const pendingSubmitRef = React.useRef(false);
   const latestHandleSubmitRef = React.useRef(state.handleSubmit);
@@ -474,7 +483,7 @@ export function CreatePostPage({
       return (
         <MobileRouteShell
           className="items-center justify-center"
-          onCloseClick={() => navigate(`/c/${communityId}`)}
+          onCloseClick={navigateToCommunity}
           title={pageTitle}
         >
           <FullPageSpinner />
@@ -489,7 +498,7 @@ export function CreatePostPage({
       if (isMobile) {
         return (
           <MobileRouteShell
-            onCloseClick={() => navigate(`/c/${communityId}`)}
+            onCloseClick={navigateToCommunity}
             title={pageTitle}
           >
             <AuthRequiredRouteState
@@ -514,19 +523,19 @@ export function CreatePostPage({
       if (isMobile) {
         return (
           <MobileRouteShell
-            onCloseClick={() => navigate(`/c/${communityId}`)}
+            onCloseClick={navigateToCommunity}
             title={pageTitle}
           >
-            <NotFoundPage path={`/c/${communityId}/submit`} />
+            <NotFoundPage path={resolvedCreatePostPath} />
           </MobileRouteShell>
         );
       }
-      return <NotFoundPage path={`/c/${communityId}/submit`} />;
+      return <NotFoundPage path={resolvedCreatePostPath} />;
     }
     if (isMobile) {
       return (
         <MobileRouteShell
-          onCloseClick={() => navigate(`/c/${communityId}`)}
+          onCloseClick={navigateToCommunity}
           title={pageTitle}
         >
           <RouteLoadFailureState
@@ -554,7 +563,7 @@ export function CreatePostPage({
     if (isMobile) {
       return (
         <MobileRouteShell
-          onCloseClick={() => navigate(`/c/${communityId}`)}
+          onCloseClick={navigateToCommunity}
           title={pageTitle}
         >
           <RouteLoadFailureState
@@ -650,7 +659,7 @@ export function CreatePostPage({
               {joinProofOfWorkModal}
             </>
           )}
-          onCloseClick={() => navigate(`/c/${communityId}`)}
+          onCloseClick={navigateToCommunity}
           title={pageTitle}
         >
           <OnboardingVerificationGate
@@ -677,7 +686,7 @@ export function CreatePostPage({
               {joinProofOfWorkModal}
             </>
           }
-          onCloseClick={() => navigate(`/c/${communityId}`)}
+          onCloseClick={navigateToCommunity}
           title={pageTitle}
         >
           {joinPanel}
@@ -698,7 +707,7 @@ export function CreatePostPage({
             title={pageTitle}
             actions={
               <Button
-                onClick={() => navigate(`/c/${communityId}`)}
+                onClick={navigateToCommunity}
                 variant="secondary"
               >
                 {backToCommunityLabel}
@@ -752,7 +761,7 @@ export function CreatePostPage({
       return (
         <MobileRouteShell
           className="justify-start pb-32"
-          onCloseClick={() => navigate(`/c/${communityId}`)}
+          onCloseClick={navigateToCommunity}
           title={pageTitle}
         >
           <OnboardingVerificationGate
@@ -786,7 +795,7 @@ export function CreatePostPage({
         onBackClick={getPreviousComposerStep(mobileComposerStep, state.composerMode)
           ? () => setMobileComposerStep(getPreviousComposerStep(mobileComposerStep, state.composerMode) ?? "write")
           : undefined}
-        onCloseClick={mobileComposerStep === "write" ? () => navigate(`/c/${communityId}`) : undefined}
+        onCloseClick={mobileComposerStep === "write" ? navigateToCommunity : undefined}
         title={mobileComposerTitle(mobileComposerStep)}
         trailingAction={
           mobileComposerStep !== "publish" && state.composerMode !== "live" ? (

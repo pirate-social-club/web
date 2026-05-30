@@ -39,6 +39,7 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { kind: "telegram-mini-app", domain: "telegram", testPaths: [{ pathname: "/tg" }], serverRouteExpected: true },
   { kind: "telegram-exchange", domain: "telegram", testPaths: [{ pathname: "/tg/exchange" }], serverRouteExpected: true },
   { kind: "telegram-community", domain: "telegram", testPaths: [{ pathname: "/tg/c/com_test" }], serverRouteExpected: true },
+  { kind: "telegram-community-create-post", domain: "telegram", testPaths: [{ pathname: "/tg/c/com_test/submit" }], serverRouteExpected: true },
   { kind: "not-found", domain: "authenticated", testPaths: [{ pathname: "/nonexistent-manifest-test" }], serverRouteExpected: false },
 ];
 
@@ -72,6 +73,7 @@ const _KIND_COVERAGE: { [K in AppRoute["kind"]]: true } = {
   "telegram-mini-app": true,
   "telegram-exchange": true,
   "telegram-community": true,
+  "telegram-community-create-post": true,
   "not-found": true,
 };
 void _KIND_COVERAGE;

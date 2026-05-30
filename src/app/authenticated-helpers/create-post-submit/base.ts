@@ -58,14 +58,15 @@ function assertValidTimeZone(timezone: string): void {
   }
 }
 
-function parseDatetimeLocal(value: string): {
+function parseLocalDateTime(value: string): {
   day: number;
+  hasTime: boolean;
   hour: number;
   minute: number;
   month: number;
   year: number;
 } | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(value.trim());
   if (!match) return null;
 
   const [, year, month, day, hour, minute] = match;
@@ -73,15 +74,20 @@ function parseDatetimeLocal(value: string): {
     year: Number(year),
     month: Number(month),
     day: Number(day),
-    hour: Number(hour),
-    minute: Number(minute),
+    hour: hour == null ? 0 : Number(hour),
+    minute: minute == null ? 0 : Number(minute),
+    hasTime: hour != null && minute != null,
   };
+  const normalizedDate = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
   if (
     !Number.isInteger(parts.year)
     || parts.month < 1
     || parts.month > 12
     || parts.day < 1
     || parts.day > 31
+    || normalizedDate.getUTCFullYear() !== parts.year
+    || normalizedDate.getUTCMonth() !== parts.month - 1
+    || normalizedDate.getUTCDate() !== parts.day
     || parts.hour < 0
     || parts.hour > 23
     || parts.minute < 0
@@ -119,16 +125,18 @@ function timeZoneOffsetMs(date: Date, timezone: string): number {
   return localAsUtcMs - date.getTime();
 }
 
-function datetimeLocalToUnixSeconds(value: string, timezone: string): number | null {
-  const parts = parseDatetimeLocal(value);
+function localDateTimeToUnixSeconds(value: string, timezone: string, options: { endOfDate?: boolean } = {}): number | null {
+  const parts = parseLocalDateTime(value);
   if (!parts) return null;
+  const hour = options.endOfDate === true && !parts.hasTime ? 23 : parts.hour;
+  const minute = options.endOfDate === true && !parts.hasTime ? 59 : parts.minute;
 
   const wallTimeUtcMs = Date.UTC(
     parts.year,
     parts.month - 1,
     parts.day,
-    parts.hour,
-    parts.minute,
+    hour,
+    minute,
     0,
   );
   let resolvedUtcMs = wallTimeUtcMs;
@@ -148,14 +156,14 @@ export function buildCreatePostEventRequest(event: ComposerEventState): CreatePo
   assertValidTimeZone(timezone);
 
   const startsAt = event.startsAt?.trim()
-    ? datetimeLocalToUnixSeconds(event.startsAt, timezone)
+    ? localDateTimeToUnixSeconds(event.startsAt, timezone)
     : null;
   if (startsAt == null) {
     throw new Error("Add an event date or turn off event details.");
   }
 
   const endsAt = event.endsAt?.trim()
-    ? datetimeLocalToUnixSeconds(event.endsAt, timezone)
+    ? localDateTimeToUnixSeconds(event.endsAt, timezone, { endOfDate: true })
     : null;
   if (event.endsAt?.trim() && endsAt == null) {
     throw new Error("Choose a valid event end time.");

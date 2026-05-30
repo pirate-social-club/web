@@ -103,6 +103,26 @@ describe("create post submit base helpers", () => {
     });
   });
 
+  test("buildCreatePostEventRequest accepts date-only events without requiring a time", () => {
+    expect(buildCreatePostEventRequest({
+      enabled: true,
+      startsAt: "2026-06-12",
+      endsAt: "2026-06-12",
+      timezone: "Asia/Tbilisi",
+      isOnline: true,
+    })).toEqual({
+      starts_at: 1_781_208_000,
+      ends_at: 1_781_294_340,
+      timezone: "Asia/Tbilisi",
+      location_name: undefined,
+      address: undefined,
+      is_online: true,
+      event_url: undefined,
+      status: "scheduled",
+      place: undefined,
+    });
+  });
+
   test("buildCreatePostEventRequest rejects incomplete enabled events", () => {
     expect(() => buildCreatePostEventRequest({
       enabled: true,

@@ -9,7 +9,7 @@ import { defaultMonetizationState } from "./post-composer-config";
 import { PostComposerEventSection } from "./post-composer-event-section";
 import { LiveTabContent } from "./post-composer-live-tab";
 import { SearchReferencePicker, SelectedReferenceCard } from "./post-composer-references";
-import type { AssetLicenseState, MonetizationState, PostComposerProps } from "./post-composer.types";
+import type { AssetLicenseState, ComposerEventState, MonetizationState, PostComposerProps } from "./post-composer.types";
 
 const { describe, expect, test } = BunTest;
 const { afterEach, beforeEach } = BunTest as unknown as {
@@ -1388,7 +1388,7 @@ describe("PostComposer event details", () => {
   });
 
   test("uses a timezone combobox instead of a free text timezone input", () => {
-    let eventState = {
+    let eventState: ComposerEventState = {
       enabled: true,
       startsAt: "2026-06-12T20:00",
       timezone: "Asia/Tbilisi",
@@ -1424,6 +1424,53 @@ describe("PostComposer event details", () => {
     expect(timezoneTextInput).toBeNull();
     expect(newYork.label).toContain("New York");
     expect(eventState.timezone).toBe("America/New_York");
+  });
+
+  test("stores a date without requiring a time", () => {
+    let eventState: ComposerEventState = {
+      enabled: true,
+      isOnline: true,
+      timezone: "Asia/Tbilisi",
+    };
+    let tree = PostComposerEventSection({
+      event: eventState,
+      onChange: (next) => {
+        eventState = next;
+      },
+    });
+    const startDateInput = findElement(
+      tree,
+      (element) => element.props.id === "post-event-start-date",
+    );
+
+    if (!startDateInput) {
+      throw new Error("Start date input not found");
+    }
+    (startDateInput.props.onChange as (event: { target: { value: string } }) => void)({
+      target: { value: "2026-06-12" },
+    });
+
+    expect(eventState.startsAt).toBe("2026-06-12");
+
+    tree = PostComposerEventSection({
+      event: eventState,
+      onChange: (next) => {
+        eventState = next;
+      },
+    });
+    const startTimeInput = findElement(
+      tree,
+      (element) => element.props.id === "post-event-start-time",
+    );
+
+    if (!startTimeInput) {
+      throw new Error("Start time input not found");
+    }
+    (startTimeInput.props.onChange as (event: { target: { value: string } }) => void)({
+      target: { value: "20:30" },
+    });
+
+    expect(eventState.startsAt).toBe("2026-06-12T20:30");
   });
 });
 

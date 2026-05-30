@@ -85,8 +85,21 @@ const fallbackTimeZones = [
   "UTC",
 ] as const;
 
-function localDatetimeValue(value: string | undefined): string {
-  return value?.slice(0, 16) ?? "";
+function localDateValue(value: string | undefined): string {
+  const match = /^(\d{4}-\d{2}-\d{2})(?:T\d{2}:\d{2})?$/.exec(value?.trim() ?? "");
+  return match?.[1] ?? "";
+}
+
+function localTimeValue(value: string | undefined): string {
+  const match = /^\d{4}-\d{2}-\d{2}T(\d{2}:\d{2})$/.exec(value?.trim() ?? "");
+  return match?.[1] ?? "";
+}
+
+function composeLocalDateTime(date: string, time: string): string | undefined {
+  const trimmedDate = date.trim();
+  if (!trimmedDate) return undefined;
+  const trimmedTime = time.trim();
+  return trimmedTime ? `${trimmedDate}T${trimmedTime}` : trimmedDate;
 }
 
 function matchingMockPlaces(query: string): ComposerEventPlace[] {
@@ -273,6 +286,13 @@ export function PostComposerEventSection({
     onChange({ ...event, ...patch });
   }
 
+  function updateDateTime(field: "startsAt" | "endsAt", patch: { date?: string; time?: string }) {
+    const current = event[field];
+    const date = patch.date ?? localDateValue(current);
+    const time = patch.time ?? localTimeValue(current);
+    update({ [field]: composeLocalDateTime(date, time) });
+  }
+
   function selectPlace(place: ComposerEventPlace) {
     onChange({
       ...event,
@@ -305,23 +325,45 @@ export function PostComposerEventSection({
         <div className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <FieldLabel htmlFor="post-event-start" label="Starts" required />
+              <FieldLabel htmlFor="post-event-start-date" label="Start date" required />
               <Input
                 className="h-10"
-                id="post-event-start"
-                onChange={(inputEvent) => update({ startsAt: inputEvent.target.value })}
-                type="datetime-local"
-                value={localDatetimeValue(event.startsAt)}
+                id="post-event-start-date"
+                onChange={(inputEvent) => updateDateTime("startsAt", { date: inputEvent.target.value })}
+                type="date"
+                value={localDateValue(event.startsAt)}
               />
             </div>
             <div>
-              <FieldLabel htmlFor="post-event-end" label="Ends" />
+              <FieldLabel htmlFor="post-event-start-time" label="Start time" />
               <Input
                 className="h-10"
-                id="post-event-end"
-                onChange={(inputEvent) => update({ endsAt: inputEvent.target.value })}
-                type="datetime-local"
-                value={localDatetimeValue(event.endsAt)}
+                disabled={!localDateValue(event.startsAt)}
+                id="post-event-start-time"
+                onChange={(inputEvent) => updateDateTime("startsAt", { time: inputEvent.target.value })}
+                type="time"
+                value={localTimeValue(event.startsAt)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="post-event-end-date" label="End date" />
+              <Input
+                className="h-10"
+                id="post-event-end-date"
+                onChange={(inputEvent) => updateDateTime("endsAt", { date: inputEvent.target.value })}
+                type="date"
+                value={localDateValue(event.endsAt)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="post-event-end-time" label="End time" />
+              <Input
+                className="h-10"
+                disabled={!localDateValue(event.endsAt)}
+                id="post-event-end-time"
+                onChange={(inputEvent) => updateDateTime("endsAt", { time: inputEvent.target.value })}
+                type="time"
+                value={localTimeValue(event.endsAt)}
               />
             </div>
           </div>

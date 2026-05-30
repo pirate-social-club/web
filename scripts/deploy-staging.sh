@@ -162,6 +162,26 @@ console.log(`${url} ${field}=${actual}`);
 NODE
 }
 
+check_json_field_with_retry() {
+  local url="$1"
+  local field="$2"
+  local expected="$3"
+  local retry_for_seconds="${4:-30}"
+  local deadline=$((SECONDS + retry_for_seconds))
+  local last_status=1
+
+  while true; do
+    if check_json_field "$url" "$field" "$expected"; then
+      return 0
+    fi
+    last_status=$?
+    if (( SECONDS >= deadline )); then
+      return "$last_status"
+    fi
+    sleep 2
+  done
+}
+
 check_status() {
   local url="$1"
   local expected="$2"
@@ -279,8 +299,8 @@ log "deploy api staging worker"
 log "smoke checks"
 check_status "$WEB_ORIGIN/" "200"
 check_status "$API_ORIGIN/health" "200"
-check_json_field "$WEB_ORIGIN/__version" "git_sha" "$WEB_SHA"
-check_json_field "$API_ORIGIN/__version" "git_sha" "$API_SHA"
-check_json_field "$API_ORIGIN/__version" "operator.git_sha" "$OPERATOR_SHA"
+check_json_field_with_retry "$WEB_ORIGIN/__version" "git_sha" "$WEB_SHA"
+check_json_field_with_retry "$API_ORIGIN/__version" "git_sha" "$API_SHA"
+check_json_field_with_retry "$API_ORIGIN/__version" "operator.git_sha" "$OPERATOR_SHA"
 
 log "staging deploy complete"

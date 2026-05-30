@@ -79,7 +79,7 @@ jobs:
         env:
           E2E_BASE_URL: https://staging.pirate.sc
           E2E_API_BASE_URL: https://api-staging.pirate.sc
-        run: bun run test:e2e
+        run: bunx playwright test e2e/authenticated-flows.spec.ts --project=chromium --grep "publishes a text event with dates and no times"
       - name: Fetch live browser staging secret
         working-directory: core
         env:

@@ -15,6 +15,17 @@ async function installAuthenticatedFixture(page: Page): Promise<void> {
   await installMockSession(page);
 }
 
+async function enableEventDetails(page: Page) {
+  const checkbox = page.getByRole("checkbox", { name: /add date and place/i });
+  const venue = page.getByRole("textbox", { name: /venue or place/i });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await checkbox.click();
+    if (await venue.isVisible().catch(() => false)) return;
+    await page.waitForTimeout(250);
+  }
+  await expect(venue).toBeVisible();
+}
+
 test.describe("authenticated browser flows with mocked API", () => {
   test.beforeEach(async ({ page }) => {
     await installAuthenticatedFixture(page);
@@ -58,6 +69,38 @@ test.describe("authenticated browser flows with mocked API", () => {
     await page.getByRole("button", { name: /^publish$/i }).click();
 
     await expect(page).toHaveURL(new RegExp(`/p/${mockCreatedPostId}$`, "u"));
+    await expectNoBrowserError(page);
+  });
+
+  test("publishes a text event with dates and no times", async ({ page }) => {
+    const createPostBodies: Array<{ event?: { ends_at?: number | null; is_online?: boolean | null; starts_at?: number; timezone?: string } | null }> = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (request.method().toUpperCase() === "POST" && url.pathname === `/communities/${mockCommunityId}/posts`) {
+        createPostBodies.push(request.postDataJSON());
+      }
+    });
+
+    await page.goto(`/c/${mockCommunityId}/submit`);
+
+    await expect(page.getByPlaceholder("Title*")).toBeVisible({ timeout: 30_000 });
+    await page.getByPlaceholder("Title*").fill("Date-only E2E event");
+    await page.getByPlaceholder(/body text/i).fill("Created from a mocked browser flow.");
+    await enableEventDetails(page);
+    await page.getByLabel(/start date/i).fill("2026-06-12");
+    await page.getByLabel(/end date/i).fill("2026-06-12");
+    await page.getByRole("checkbox", { name: /online event/i }).check();
+
+    await page.getByRole("button", { name: /^continue$/i }).click();
+    await page.getByRole("button", { name: /^continue$/i }).click();
+    await page.getByRole("button", { name: /^publish$/i }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/p/${mockCreatedPostId}$`, "u"));
+    expect(createPostBodies).toHaveLength(1);
+    expect(createPostBodies[0]?.event?.starts_at).toEqual(expect.any(Number));
+    expect(createPostBodies[0]?.event?.ends_at).toEqual(expect.any(Number));
+    expect(createPostBodies[0]?.event?.is_online).toBe(true);
+    expect(createPostBodies[0]?.event?.timezone).toEqual(expect.any(String));
     await expectNoBrowserError(page);
   });
 

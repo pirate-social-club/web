@@ -1,9 +1,6 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 env:
@@ -11,217 +8,65 @@ env:
 
 jobs:
   staging:
-    name: Deploy staging
+    name: Deploy staging API preview CTA
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
-          path: web
-      - uses: actions/checkout@v4
-        with:
           repository: pirate-social-club/api
+          ref: deploy/telegram-private-preview-cta
           path: api
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-      - uses: actions/checkout@v4
-        with:
-          repository: pirate-social-club/core
-          path: core
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
       - uses: oven-sh/setup-bun@v2
-      - name: Install web dependencies
-        working-directory: web
-        run: bun install --frozen-lockfile
-      - name: Audit web dependencies
-        working-directory: web
-        run: bun audit --audit-level=high
       - name: Install API dependencies
         working-directory: api/services/api
         run: bun install --frozen-lockfile
       - name: Audit API dependencies
         working-directory: api/services/api
         run: bun audit --audit-level=high
-      - name: Install community provision operator dependencies
-        working-directory: api/services/community-provision-operator
-        run: bun install --frozen-lockfile
-      - name: Audit community provision operator dependencies
-        working-directory: api/services/community-provision-operator
-        run: bun audit --audit-level=high
-      - name: Install core dependencies
-        working-directory: core
-        run: npm ci
-      - name: Audit core dependencies
-        working-directory: core
-        run: npm audit --audit-level=high
-      - name: Deploy staging
-        working-directory: web
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          VITE_BASE_NETWORK: base-sepolia
-          VITE_EFP_ENVIRONMENT: testnet
-          VITE_PIRATE_APP_ENV: staging
-          VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
-        run: scripts/deploy-staging.sh
-      - name: Verify staging/prod metadata
-        working-directory: web
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: scripts/check-deployments.sh --scope staging --retry-for 30
-      - name: Smoke staging
-        working-directory: web
-        run: scripts/smoke-test.sh staging
-      - name: Fetch staging control-plane migration secret
-        continue-on-error: true
-        working-directory: core
-        env:
-          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
-          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
-          INFISICAL_ENV: staging
-          INFISICAL_SECRET_PATH: /services/control-plane
-          SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
-        run: scripts/ci/fetch-infisical-secrets.sh
-      - name: Apply staging control-plane migrations
-        working-directory: core
-        run: |
-          if [ -z "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}" ]; then
-            echo "::notice::Skipping staging control-plane migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable to this workflow identity."
-            exit 0
-          fi
-          bun scripts/control-plane/apply-postgres-migrations.ts \
-            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL \
-            --migrations db/control-plane/migrations \
-            --label control-plane
-      - name: Install Playwright browser
-        working-directory: web
-        run: bunx playwright install --with-deps chromium
-      - name: Browser smoke staging
-        working-directory: web
-        env:
-          E2E_BASE_URL: https://staging.pirate.sc
-          E2E_API_BASE_URL: https://api-staging.pirate.sc
-        run: bun run test:e2e
-      - name: Fetch live browser staging secret
-        working-directory: core
-        env:
-          INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
-          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
-          INFISICAL_ENV: staging
-          INFISICAL_SECRET_PATH: /services/api
-          SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET
-        run: scripts/ci/fetch-infisical-secrets.sh
-      - name: Live browser integration staging
-        working-directory: web
-        env:
-          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
-          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
-        run: bun run test:e2e:live-staging
-      - name: Upload Playwright report
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: |
-            web/playwright-report
-            web/test-results
-          if-no-files-found: ignore
-      - name: Fetch staging migration secrets
-        working-directory: core
-        env:
-          INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458
-          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
-          INFISICAL_ENV: staging
-          INFISICAL_SECRET_PATH: /services/api
-          SECRET_NAMES: CONTROL_PLANE_DATABASE_URL TURSO_COMMUNITY_DB_WRAP_KEY
-        run: scripts/ci/fetch-infisical-secrets.sh
-      - name: Repair staging community migrations
-        working-directory: core
-        run: |
-          test -n "$CONTROL_PLANE_DATABASE_URL"
-          test -n "$TURSO_COMMUNITY_DB_WRAP_KEY"
-          bun scripts/community/repair-community-migration-ledger.ts --execute
-
-  production:
-    name: Deploy production
-    needs: staging
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          path: web
-      - uses: actions/checkout@v4
-        with:
-          repository: pirate-social-club/api
-          path: api
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-      - uses: actions/checkout@v4
-        with:
-          repository: pirate-social-club/core
-          path: core
-          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - uses: oven-sh/setup-bun@v2
-      - name: Install web dependencies
-        working-directory: web
-        run: bun install --frozen-lockfile
-      - name: Audit web dependencies
-        working-directory: web
-        run: bun audit --audit-level=high
-      - name: Install API dependencies
+      - name: Deploy staging API
         working-directory: api/services/api
-        run: bun install --frozen-lockfile
-      - name: Audit API dependencies
-        working-directory: api/services/api
-        run: bun audit --audit-level=high
-      - name: Install community provision operator dependencies
-        working-directory: api/services/community-provision-operator
-        run: bun install --frozen-lockfile
-      - name: Audit community provision operator dependencies
-        working-directory: api/services/community-provision-operator
-        run: bun audit --audit-level=high
-      - name: Install core dependencies
-        working-directory: core
-        run: npm ci
-      - name: Audit core dependencies
-        working-directory: core
-        run: npm audit --audit-level=high
-      - name: Fetch production control-plane migration secret
-        continue-on-error: true
-        working-directory: core
-        env:
-          INFISICAL_IDENTITY_ID: ec0ad659-af1c-4009-a845-9e6092cc062b
-          INFISICAL_PROJECT_ID: 5acea78e-7813-4d8a-b29c-9b862a0b1c71
-          INFISICAL_ENV: prod
-          INFISICAL_SECRET_PATH: /services/control-plane
-          SECRET_NAMES: CONTROL_PLANE_MIGRATOR_DATABASE_URL
-        run: scripts/ci/fetch-infisical-secrets.sh
-      - name: Apply production control-plane migrations
-        working-directory: core
-        run: |
-          if [ -z "${CONTROL_PLANE_MIGRATOR_DATABASE_URL:-}" ]; then
-            echo "::notice::Skipping production control-plane migrations because CONTROL_PLANE_MIGRATOR_DATABASE_URL is unavailable to this workflow identity."
-            exit 0
-          fi
-          bun scripts/control-plane/apply-postgres-migrations.ts \
-            --database-url-env CONTROL_PLANE_MIGRATOR_DATABASE_URL \
-            --migrations db/control-plane/migrations \
-            --label control-plane
-      - name: Deploy production
-        working-directory: web
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          VITE_BASE_NETWORK: ${{ vars.VITE_BASE_NETWORK }}
-          VITE_EFP_ENVIRONMENT: ${{ vars.VITE_EFP_ENVIRONMENT }}
-          VITE_PIRATE_APP_ENV: ${{ vars.VITE_PIRATE_APP_ENV || 'prod' }}
-          VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
-          VITE_PRIVY_CLIENT_ID: ${{ vars.VITE_PRIVY_CLIENT_ID }}
-        run: scripts/deploy-production.sh --confirm-production --skip-tests
+        run: |
+          API_SHA="$(git -C ../.. rev-parse --short HEAD)-non-main-private-preview-cta"
+          API_REF="$(git -C ../.. rev-parse --abbrev-ref HEAD)"
+          BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          bun run deploy -- \
+            --env staging \
+            --var "BUILD_GIT_SHA:$API_SHA" \
+            --var "BUILD_GIT_REF:$API_REF" \
+            --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
+            --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA\"" \
+            --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
+            --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\""
+      - name: Smoke staging API metadata
+        run: |
+          curl -fsS https://api-staging.pirate.sc/health
+          node - <<'NODE'
+          const expectedSha = "d7578d5-non-main-private-preview-cta";
+          const attempts = 12;
+          for (let attempt = 1; attempt <= attempts; attempt += 1) {
+            const response = await fetch("https://api-staging.pirate.sc/__version", {
+              headers: { accept: "application/json", "cache-control": "no-cache" },
+            });
+            if (response.ok) {
+              const body = await response.json();
+              if (body.git_sha === expectedSha) {
+                console.log(`api-staging git_sha=${body.git_sha}`);
+                process.exit(0);
+              }
+              console.log(`attempt ${attempt}: git_sha=${body.git_sha}`);
+            } else {
+              console.log(`attempt ${attempt}: HTTP ${response.status}`);
+            }
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+          }
+          throw new Error(`api-staging did not report ${expectedSha}`);
+          NODE

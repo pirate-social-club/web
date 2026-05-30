@@ -44,7 +44,7 @@ mock.module("@/hooks/use-community-interaction-gate", () => ({
     gateModal: null,
     runGatedCommunityAction: async (params: RunGatedCommunityActionParams) => {
       gateCalls.push(params);
-      await params.onAllowed({ altchaPayload: "vote-proof" });
+      await params.onAllowed();
       return "allowed";
     },
   }),
@@ -208,8 +208,8 @@ beforeEach(() => {
   } as Parameters<typeof setSession>[0]);
 });
 
-describe("usePost vote ALTCHA plumbing", () => {
-  test("passes vote value, comment target, and solved proof through post and comment votes", async () => {
+describe("usePost vote gating", () => {
+  test("votes without repeated proof after PoW-gated membership is already joined", async () => {
     const calls = {
       postVote: null as null | {
         postId: string;
@@ -282,7 +282,7 @@ describe("usePost vote ALTCHA plumbing", () => {
     expect(calls.postVote).toEqual({
       postId: "pst_test",
       value: 1,
-      options: { altchaPayload: "vote-proof" },
+      options: undefined,
     });
 
     await act(async () => {
@@ -299,7 +299,7 @@ describe("usePost vote ALTCHA plumbing", () => {
     expect(calls.commentVote).toEqual({
       commentId: "cmt_parent",
       value: -1,
-      options: { altchaPayload: "vote-proof" },
+      options: { altchaPayload: undefined },
     });
   });
 });

@@ -19,7 +19,6 @@ import {
   resolveCommunityInteractionState,
   type BuildBlockedModalStateArgs,
   type CommunityGateData,
-  type InteractionAction,
   type InteractionGateCopy,
   type InteractionResult,
   type ModalState,
@@ -39,43 +38,10 @@ type GatedActionRunnerCopy = InteractionGateCopy & {
   openInPirate: string;
 };
 
-function requiresActionAltchaProof(gate: CommunityGateData): boolean {
-  const requirements = gate.preview.membership_gate_summaries;
-  // Joined-member eligibility does not carry action-level requirements, so only
-  // preflight the action challenge when the published policy is unambiguously PoW.
-  return requirements.length > 0 && requirements.every((summary) => summary.gate_type === "altcha_pow");
-}
-
-function getAltchaActionConfig(input: {
-  action: InteractionAction;
-  commentId?: string;
-  gate: CommunityGateData;
-  postId?: string;
-  voteValue?: -1 | 1;
-}): { actionRef: string; scope: AltchaScope } | null {
-  if (!requiresActionAltchaProof(input.gate)) {
-    return null;
-  }
-  if (input.action === "vote_post" && input.postId && input.voteValue) {
-    return { actionRef: `post:${input.postId}:vote:${input.voteValue}`, scope: "vote" };
-  }
-  if (input.action === "vote_comment" && input.commentId && input.voteValue) {
-    return { actionRef: `comment:${input.commentId}:vote:${input.voteValue}`, scope: "vote" };
-  }
-  if (input.action === "reply_post" && input.postId) {
-    return { actionRef: `post:${input.postId}`, scope: "comment_create" };
-  }
-  if (input.action === "reply_comment" && input.commentId) {
-    return { actionRef: `comment:${input.commentId}`, scope: "comment_create" };
-  }
-  return null;
-}
-
 export function useGatedActionRunner({
   altchaLoading,
   buildAltchaBody,
   closeModal,
-  completeAltchaAction,
   completeAltchaJoin,
   connect,
   defaultVerificationLoadingProvider,
@@ -103,7 +69,6 @@ export function useGatedActionRunner({
     verifiedSubtitle?: string;
   }) => React.ReactNode;
   closeModal: () => void;
-  completeAltchaAction: (payloadOverride?: string | null) => Promise<void>;
   completeAltchaJoin: (payloadOverride?: string | null) => Promise<void>;
   connect?: (() => void) | null;
   defaultVerificationLoadingProvider: "self" | "very" | "passport" | null;
@@ -189,39 +154,6 @@ export function useGatedActionRunner({
       eligibility: gate.eligibility,
       hasSession,
     });
-
-    const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId, voteValue });
-    if (state === "allowed" && actionAltchaConfig) {
-      const requirements = getProofOfWorkGateRequirements(gate.preview.membership_gate_summaries);
-      setPendingInteraction({
-        action,
-        commentId,
-        communityId,
-        gate,
-        onAllowed,
-        postId,
-        voteValue,
-      });
-      setModalState({
-        body: buildAltchaBody({
-          action: actionAltchaConfig.actionRef,
-          onVerified: completeAltchaAction,
-          scope: actionAltchaConfig.scope,
-          verifiedSubtitle: "Finishing this action automatically.",
-        }),
-        description: "This usually takes a few seconds and runs only on this device.",
-        icon: "blocked",
-        primaryAction: null,
-        requirements,
-        requirementStatuses: getRequirementStatuses(gate, requirements),
-        secondaryAction: {
-          label: "Cancel",
-          onClick: closeModal,
-        },
-        title: "Checking browser",
-      });
-      return "blocked";
-    }
 
     if (state === "allowed") {
       logger.info("[interaction-gate] allowed", {
@@ -310,7 +242,6 @@ export function useGatedActionRunner({
     buildAuthUrl,
     buildAltchaBody,
     closeModal,
-    completeAltchaAction,
     completeAltchaJoin,
     connect,
     defaultVerificationLoadingProvider,

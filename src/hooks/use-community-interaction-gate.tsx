@@ -15,7 +15,6 @@ import { useSelfVerification } from "@/lib/verification/use-self-verification";
 import { useVeryVerification } from "@/lib/verification/use-very-verification";
 import { getLocaleMessages } from "@/locales";
 import {
-  completeAltchaAction as completeAltchaActionFlow,
   completeAltchaJoin as completeAltchaJoinFlow,
 } from "./community-interaction-gate/altcha-completion";
 import { useCommunityGateData } from "./community-interaction-gate/use-community-gate-data";
@@ -94,7 +93,6 @@ export function useCommunityInteractionGate({
   const {
     altchaLoading,
     buildAltchaBody,
-    completeAltchaAction: completeAltchaActionWithPayload,
     completeAltchaJoin: completeAltchaJoinWithPayload,
   } = useInteractionAltcha({
     locale: interactionCopy.locale,
@@ -160,26 +158,6 @@ export function useCommunityInteractionGate({
     }, payloadOverride);
   }, [api.communities, buildAltchaBody, closeModal, completeAltchaJoinWithPayload, gatesPanel, interactionCopy, invalidateCommunityGate, updateCachedGate]);
 
-  const completeAltchaAction = React.useCallback(async (payloadOverride?: string | null) => {
-    const pendingInteraction = pendingInteractionRef.current;
-    if (!pendingInteraction) {
-      return;
-    }
-
-    await completeAltchaActionWithPayload(async (context) => {
-      await completeAltchaActionFlow({
-        clearPendingInteraction: () => {
-          pendingInteractionRef.current = null;
-        },
-        closeModal,
-        context,
-        pendingInteraction,
-      });
-    }, (error) => {
-      toast.error(getErrorMessage(error, "Proof-of-work check failed."));
-    }, payloadOverride);
-  }, [closeModal, completeAltchaActionWithPayload]);
-
   const {
     startVerification: startVeryVerification,
     verificationError: veryError,
@@ -243,7 +221,6 @@ export function useCommunityInteractionGate({
     altchaLoading,
     buildAltchaBody,
     closeModal,
-    completeAltchaAction,
     completeAltchaJoin,
     connect,
     defaultVerificationLoadingProvider: passportLoading

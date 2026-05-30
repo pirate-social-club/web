@@ -756,8 +756,8 @@ export function useCreatePostState(
   }, [availableAgent]);
   const submitSongPost = useSongSubmit({ communityId, signAgentAuthoredBody });
   const hasCommunityPostingRole = viewerHasCommunityPostingRole(session?.user.id, community, communityOwnerUserId);
-  const postAltchaRequired = !hasCommunityPostingRole
-    && (community?.membership_gate_summaries ?? []).some((gate) => gate.gate_type === "altcha_pow");
+  // Membership gates are satisfied by joining; normal member posts should not re-run PoW.
+  const postAltchaRequired = false;
   const handleSubmit = React.useCallback(async (options: { altchaPayload?: string | null } = {}) => {
     const resolvedPostAltchaPayload = options.altchaPayload ?? postAltchaPayload;
     const resolvedPostAltchaRequestOptions = resolvedPostAltchaPayload ? { altchaPayload: resolvedPostAltchaPayload } : undefined;

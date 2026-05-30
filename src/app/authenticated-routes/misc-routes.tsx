@@ -387,7 +387,8 @@ export function CrosspostPage({ postId }: { postId: string }) {
     ? source?.song_presentation?.cover_art_ref ?? undefined
     : undefined;
   const selectedCommunityGateLoading = Boolean(selectedCommunity && selectedCommunityGateSummaries === null && !selectedCommunityGateError);
-  const postAltchaRequired = (selectedCommunityGateSummaries ?? []).some((gate) => gate.gate_type === "altcha_pow");
+  // Membership gates are satisfied by joining; normal member crossposts should not re-run PoW.
+  const postAltchaRequired = false;
   const canSubmit = Boolean(sourcePost && selectedCommunity && title.trim())
     && !sourceIsCrosspost
     && !selectedCommunityGateLoading

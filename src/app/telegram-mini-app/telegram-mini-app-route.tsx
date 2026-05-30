@@ -12,6 +12,7 @@ import { PublicCommunityRoutePage } from "@/app/public-community-route";
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
 import { PageContainer } from "@/components/primitives/layout-shell";
+import { Spinner } from "@/components/primitives/spinner";
 import { Type } from "@/components/primitives/type";
 import { useApi } from "@/lib/api";
 import { resolveApiUrl } from "@/lib/api/base-url";
@@ -72,6 +73,11 @@ type TelegramMiniAppAutoExchangeResponse = SessionExchangeResponse & {
     status?: string;
   };
 };
+
+type TelegramMiniAppSessionExchangeState =
+  | { kind: "checking" }
+  | { kind: "error"; message: string }
+  | { kind: "ready" };
 
 export type TelegramVerifyStatus =
   | "blocked"
@@ -1123,11 +1129,93 @@ export function TelegramMiniAppSelfReturnPage({
   );
 }
 
+function useTelegramMiniAppSessionExchange(communityId: string): TelegramMiniAppSessionExchangeState {
+  const [state, setState] = React.useState<TelegramMiniAppSessionExchangeState>({ kind: "checking" });
+
+  React.useEffect(() => {
+    const webApp = window.Telegram?.WebApp;
+    webApp?.ready?.();
+    webApp?.expand?.();
+
+    const initData = readTelegramMiniAppInitData({
+      hash: window.location.hash,
+      search: window.location.search,
+      webAppInitData: webApp?.initData,
+    });
+    if (!initData) {
+      setState({ kind: "ready" });
+      return;
+    }
+
+    const controller = new AbortController();
+    setState({ kind: "checking" });
+    void fetch(resolveApiUrl("/telegram/session/auto-exchange"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ community_id: communityId, init_data: initData }),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const body = await response.json().catch(() => null) as TelegramMiniAppAutoExchangeResponse | { message?: string } | null;
+        if (!response.ok) {
+          throw new Error(body && "message" in body && typeof body.message === "string"
+            ? body.message
+            : "Could not verify Telegram identity.");
+        }
+        setSession(body as TelegramMiniAppAutoExchangeResponse);
+        setState({ kind: "ready" });
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        setState({
+          kind: "error",
+          message: getErrorMessage(error, "Could not verify Telegram identity."),
+        });
+      });
+
+    return () => controller.abort();
+  }, [communityId]);
+
+  return state;
+}
+
 export function TelegramMiniAppCommunityPage({
   communityId,
 }: {
   communityId: string;
 }) {
+  const sessionExchange = useTelegramMiniAppSessionExchange(communityId);
+
+  if (sessionExchange.kind === "checking") {
+    return (
+      <TelegramMiniAppShell showBackButton>
+        <div className="flex min-h-[70svh] items-center justify-center px-4">
+          <Spinner className="size-9 text-muted-foreground" />
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
+
+  if (sessionExchange.kind === "error") {
+    return (
+      <TelegramMiniAppShell showBackButton>
+        <div className="px-4 py-6">
+          <PageContainer size="narrow">
+            <section className="flex min-h-[70svh] flex-col justify-center gap-6 text-center">
+              <div className="space-y-3">
+                <Type as="h1" variant="h2">Could not open this community</Type>
+                <Type as="p" className="text-muted-foreground" variant="body">
+                  {sessionExchange.message}
+                </Type>
+              </div>
+              <Button onClick={() => window.location.reload()} variant="secondary">Try again</Button>
+            </section>
+          </PageContainer>
+        </div>
+      </TelegramMiniAppShell>
+    );
+  }
+
   return (
     <TelegramMiniAppShell showBackButton>
       <div className="px-3 pb-8 pt-[calc(env(safe-area-inset-top)+1rem)]">

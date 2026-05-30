@@ -180,6 +180,17 @@ async function createLiveSession(subject = liveSubject, walletAddress?: string |
   return createStoredSessionFromExchange(response);
 }
 
+async function enableEventDetails(page: Page): Promise<void> {
+  const checkbox = page.getByRole("checkbox", { name: /add date and place/i });
+  const venue = page.getByRole("textbox", { name: /venue or place/i });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await checkbox.click();
+    if (await venue.isVisible().catch(() => false)) return;
+    await page.waitForTimeout(250);
+  }
+  await expect(venue).toBeVisible();
+}
+
 async function completeSelfVerification(session: StoredSession): Promise<void> {
   const started = await requestJson<{ id?: string; verification_session_id?: string }>("/verification-sessions", {
     body: JSON.stringify({ provider: "self" }),
@@ -249,6 +260,43 @@ async function createSmokeCommunity(runId: string, host: StoredSession): Promise
     await waitForJob(jobId, host.accessToken);
   }
   return rawPublicId(createdCommunity.community.id, "com");
+}
+
+async function createGeorgiaPlaceSmokeCommunity(runId: string, host: StoredSession): Promise<LiveCommunity> {
+  const createdCommunity = await requestJson<{
+    community: { display_name?: string | null; id: string; route_slug?: string | null };
+    job?: { id?: string; status?: string };
+  }>("/communities", {
+    body: JSON.stringify({
+      country_code: "ge",
+      display_name: `Georgia Place Smoke ${runId}`,
+      handle_policy: { policy_template: "standard" },
+      membership_mode: "request",
+    }),
+    headers: { authorization: `Bearer ${host.accessToken}` },
+    method: "POST",
+  });
+  if (createdCommunity.job?.status && createdCommunity.job.status !== "succeeded") {
+    const jobId = firstString(createdCommunity.job.id);
+    if (!jobId) throw new Error("community creation job id is missing");
+    await waitForJob(jobId, host.accessToken);
+  }
+
+  const id = rawPublicId(createdCommunity.community.id, "com");
+  await requestJson(`/communities/${encodeURIComponent(id)}`, {
+    body: JSON.stringify({
+      country_code: "ge",
+      display_name: firstString(createdCommunity.community.display_name) ?? `Georgia Place Smoke ${runId}`,
+    }),
+    headers: { authorization: `Bearer ${host.accessToken}` },
+    method: "POST",
+  });
+
+  return {
+    id,
+    label: firstString(createdCommunity.community.display_name) ?? `Georgia Place Smoke ${runId}`,
+    routeSegment: firstString(createdCommunity.community.route_slug, id) ?? id,
+  };
 }
 
 async function joinCommunityAsViewer(communityId: string, host: StoredSession, viewer: StoredSession): Promise<void> {
@@ -647,6 +695,59 @@ async function discoverSeedCommunity(): Promise<LiveCommunity> {
 test.describe("live staging integration", () => {
   test.skip(process.env.E2E_LIVE_STAGING !== "true", "Set E2E_LIVE_STAGING=true to run real staging mutations.");
   test.skip(!liveSecretsPresent, "Live staging JWT secrets are not available.");
+
+  test("searches real Georgia event places through Geoapify", async ({ page }, testInfo) => {
+    testInfo.setTimeout(90_000);
+
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const session = await createLiveSession(`georgia-place-smoke-${runId}`);
+    const community = await createGeorgiaPlaceSmokeCommunity(runId, session);
+    await installStoredSession(page, session);
+
+    const geoResponses: Array<{ ok: boolean; placesLength?: number; status: number; url: URL }> = [];
+    page.on("response", async (response) => {
+      const url = new URL(response.url());
+      if (url.pathname !== "/geo/search") return;
+      let placesLength: number | undefined;
+      try {
+        const body = await response.json() as { places?: unknown[] };
+        placesLength = Array.isArray(body.places) ? body.places.length : undefined;
+      } catch {
+        placesLength = undefined;
+      }
+      geoResponses.push({
+        ok: response.ok(),
+        placesLength,
+        status: response.status(),
+        url,
+      });
+    });
+
+    await page.goto(`/c/${pathSegment(community.routeSegment)}/submit`);
+    await expect(page.getByPlaceholder("Title*")).toBeVisible({ timeout: 30_000 });
+    await enableEventDetails(page);
+
+    const venue = page.getByRole("textbox", { name: /venue or place/i });
+    await venue.fill("Fabrika Tbilisi");
+
+    const firstSuggestion = page.locator("button").filter({ hasText: /Fabrika/i }).first();
+    await expect(firstSuggestion).toBeVisible({ timeout: 15_000 });
+    await expect.poll(() => geoResponses.length, { timeout: 15_000 }).toBeGreaterThan(0);
+
+    const search = geoResponses.at(-1);
+    expect(search?.status).toBe(200);
+    expect(search?.ok).toBe(true);
+    expect(search?.placesLength).toBeGreaterThan(0);
+    expect(search?.url.searchParams.get("text")).toBe("Fabrika Tbilisi");
+    expect(search?.url.searchParams.get("limit")).toBe("5");
+    expect(search?.url.searchParams.get("country")).toBe("ge");
+
+    await firstSuggestion.click();
+    await expect(venue).toHaveValue(/Fabrika/i);
+    await expect(page.getByRole("textbox", { name: /^address$/i })).not.toHaveValue("");
+    await expect(page.getByText("Matched to Geoapify place data")).toBeVisible();
+    await expectNoBrowserError(page);
+  });
 
   test("creates a real post and comment with a real staging session", async ({ page }) => {
     const session = await createLiveSession();

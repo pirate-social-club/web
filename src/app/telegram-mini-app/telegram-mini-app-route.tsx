@@ -113,6 +113,7 @@ type TelegramMiniAppAutoExchangeResponse = SessionExchangeResponse & {
 type TelegramVerifyJoinResult = "blocked" | "joined" | "requested";
 
 const TELEGRAM_VERIFY_FLOW_STARTED_STORAGE_PREFIX = "pirate_tg_verify_started:";
+const TELEGRAM_VERIFY_DELAYED_SCREEN_MS = 500;
 const TELEGRAM_VERIFY_LAUNCH_WATCHDOG_MS = 15_000;
 const DEFAULT_STAGING_TELEGRAM_BOT_USERNAME = "Pirate_dev_bot";
 
@@ -715,7 +716,7 @@ export function TelegramMiniAppVerifyPage({
       pendingScreenCommitRef.current = window.setTimeout(() => {
         pendingScreenCommitRef.current = null;
         setDisplayedScreen(screen);
-      }, 300);
+      }, TELEGRAM_VERIFY_DELAYED_SCREEN_MS);
       return;
     }
     setDisplayedScreen(screen);

@@ -51,6 +51,7 @@ import {
   communityHandleFromRouteLabel,
   useCommunityHandleClaimDismissal,
 } from "@/lib/community-handle-claim-dismissal";
+import { rememberCreatePostCommunitySnapshot } from "./authenticated-state/create-post-community-cache";
 
 function usePublicCommunityPageData(communityId: string, localeTag: string, activeSort: FeedSort, hasSession: boolean) {
   const api = useApi();
@@ -210,6 +211,10 @@ function PublicCommunityErrorState({ description }: { description: string }) {
 
 const FOLLOW_BUTTON_CLASS_NAME = "min-w-32";
 
+function preloadCreatePostRoute() {
+  void import("@/app/authenticated-routes/create-post-route");
+}
+
 export function resolvePublicCommunityJoinActionLabel(
   eligibility: ApiJoinEligibility | null,
   locale: string,
@@ -246,6 +251,19 @@ export function PublicCommunityRoutePage({
   const { authorProfiles, error, posts, postsLoading, preview, previewLoading, setPosts } = usePublicCommunityPageData(communityId, contentLocale, activeSort, hasSession);
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const [eligibility, setEligibility] = React.useState<ApiJoinEligibility | null>(null);
+  const viewerIsKnownMember = preview?.viewer_membership_status === "member" || eligibility?.status === "already_joined";
+  React.useEffect(() => {
+    if (!preview) return;
+    rememberCreatePostCommunitySnapshot(
+      [communityId, preview.id, preview.route_slug],
+      { eligibility, preview },
+      session?.user.id,
+    );
+  }, [communityId, eligibility, preview, session?.user.id]);
+  React.useEffect(() => {
+    if (!session?.user?.id || !viewerIsKnownMember) return;
+    preloadCreatePostRoute();
+  }, [session?.user?.id, viewerIsKnownMember]);
   const voteGateData = React.useMemo(
     () => preview && eligibility
       ? {
@@ -630,7 +648,7 @@ export function PublicCommunityRoutePage({
     preview.route_slug ?? communityId,
   );
   const communityHandleLabel = communityHandleFromRouteLabel(routeLabel);
-  const viewerIsMember = preview.viewer_membership_status === "member" || eligibility?.status === "already_joined";
+  const viewerIsMember = viewerIsKnownMember;
   const canCreatePost = Boolean(session?.user?.id) && viewerIsMember;
   const communityCreatePostPath = `${buildCommunityPath(preview.id, preview.route_slug ?? communityId)}/submit`;
 

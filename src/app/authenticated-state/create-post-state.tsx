@@ -49,6 +49,10 @@ import {
   getPricingTierDrafts,
 } from "@/app/authenticated-helpers/moderation-helpers";
 import { sameUserId } from "@/app/authenticated-helpers/user-id";
+import {
+  readCreatePostCommunitySnapshot,
+  rememberCreatePostCommunitySnapshot,
+} from "./create-post-community-cache";
 
 export function isPublicAudienceAllowed(community: ApiCommunity | ApiCommunityPreview | null): boolean {
   if (!community) {
@@ -198,17 +202,23 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   const session = useSession();
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").createPost;
-  const [pageState, setPageState] = React.useState({
-    community: null as ApiCommunityPreview | null,
-    communityOwnerUserId: null as string | null,
-    eligibility: null as ApiJoinEligibility | null,
-    pricingPolicy: null as ApiCommunityPricingPolicy | null,
-    loadError: null as unknown,
-    availableAgent: null as AvailableSigningAgent | null,
-    submitting: false,
-    postAltchaPayload: null as string | null,
-    postAltchaResetKey: 0,
-    loading: true,
+  const [pageState, setPageState] = React.useState(() => {
+    const cachedSnapshot = readCreatePostCommunitySnapshot(communityId, session?.user.id);
+    const cachedCommunity = cachedSnapshot?.preview ?? null;
+    const cachedEligibility = cachedSnapshot?.eligibility ?? null;
+
+    return {
+      community: cachedCommunity as ApiCommunityPreview | null,
+      communityOwnerUserId: null as string | null,
+      eligibility: cachedEligibility as ApiJoinEligibility | null,
+      pricingPolicy: null as ApiCommunityPricingPolicy | null,
+      loadError: null as unknown,
+      availableAgent: null as AvailableSigningAgent | null,
+      submitting: false,
+      postAltchaPayload: null as string | null,
+      postAltchaResetKey: 0,
+      loading: !(cachedCommunity && cachedEligibility),
+    };
   });
   const { actions: draftActions, state: draft } = useCreatePostDraftState(initialDraft);
   const {
@@ -268,9 +278,18 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
 
   const refetchEligibility = React.useCallback(async () => {
     const nextEligibility = await api.communities.getJoinEligibility(communityId);
-    setPageState((current) => ({ ...current, eligibility: nextEligibility }));
+    setPageState((current) => {
+      if (current.community) {
+        rememberCreatePostCommunitySnapshot(
+          [communityId, current.community.id, current.community.route_slug],
+          { eligibility: nextEligibility, preview: current.community },
+          session?.user.id,
+        );
+      }
+      return { ...current, eligibility: nextEligibility };
+    });
     return nextEligibility;
-  }, [api, communityId]);
+  }, [api, communityId, session?.user.id]);
 
   const clearPendingSongBundle = React.useCallback(() => {
     setPendingSongBundleId(null);
@@ -287,36 +306,73 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     vocal: songState.vocalAudioUpload ? { name: songState.vocalAudioUpload.name, size: songState.vocalAudioUpload.size, lastModified: songState.vocalAudioUpload.lastModified } : null,
   }), [lyrics, songState.canvasVideoUpload, songState.coverUpload, songState.instrumentalAudioUpload, songState.previewStartSeconds, songState.primaryAudioUpload, songState.title, songState.vocalAudioUpload]);
   const previousSongBundleInputFingerprint = React.useRef(songBundleInputFingerprint);
+  const previousCommunityId = React.useRef(communityId);
 
   React.useEffect(() => {
     let cancelled = false;
-    setPageState((current) => ({ ...current, loading: true, loadError: null }));
+    const cachedSnapshot = readCreatePostCommunitySnapshot(communityId, session?.user.id);
+    const hasCachedComposerData = Boolean(cachedSnapshot?.preview && cachedSnapshot?.eligibility);
+    const isCommunityChange = previousCommunityId.current !== communityId;
+    previousCommunityId.current = communityId;
+
+    setPageState((current) => {
+      const fallbackCommunity = isCommunityChange ? null : current.community;
+      const fallbackEligibility = isCommunityChange ? null : current.eligibility;
+      const nextCommunity = cachedSnapshot?.preview ?? fallbackCommunity;
+      const nextEligibility = cachedSnapshot?.eligibility ?? fallbackEligibility;
+
+      return {
+        ...current,
+        community: nextCommunity,
+        eligibility: nextEligibility,
+        loading: !(nextCommunity && nextEligibility),
+        loadError: null,
+      };
+    });
     setSubmitError(null);
 
-    const fullCommunityPromise = api.communities.get(communityId).catch((error: unknown) => {
-      logger.warn("[create-post-route] could not load owner-only community metadata", {
-        communityId,
-        error,
-      });
-      return null;
-    });
-
-    void Promise.all([
-      api.communities.preview(communityId),
-      fullCommunityPromise,
-      api.communities.getJoinEligibility(communityId),
-    ])
-      .then(([communityResult, fullCommunityResult, eligibilityResult]) => {
+    void api.communities.get(communityId)
+      .then((fullCommunityResult) => {
         if (cancelled) return;
         setPageState((current) => ({
           ...current,
+          communityOwnerUserId: fullCommunityResult.created_by_user ?? null,
+        }));
+      })
+      .catch((error: unknown) => {
+        logger.warn("[create-post-route] could not load owner-only community metadata", {
+          communityId,
+          error,
+        });
+        if (!cancelled) setPageState((current) => ({ ...current, communityOwnerUserId: null }));
+      });
+
+    void Promise.all([
+      api.communities.preview(communityId),
+      api.communities.getJoinEligibility(communityId),
+    ])
+      .then(([communityResult, eligibilityResult]) => {
+        if (cancelled) return;
+        rememberCreatePostCommunitySnapshot(
+          [communityId, communityResult.id, communityResult.route_slug],
+          { eligibility: eligibilityResult, preview: communityResult },
+          session?.user.id,
+        );
+        setPageState((current) => ({
+          ...current,
           community: communityResult,
-          communityOwnerUserId: fullCommunityResult?.created_by_user ?? null,
           eligibility: eligibilityResult,
         }));
       })
       .catch((error: unknown) => {
         if (cancelled) return;
+        if (hasCachedComposerData) {
+          logger.warn("[create-post-route] could not refresh cached composer community data", {
+            communityId,
+            error,
+          });
+          return;
+        }
         setPageState((current) => ({ ...current, loadError: error }));
       })
       .finally(() => {
@@ -324,7 +380,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       });
 
     return () => { cancelled = true; };
-  }, [api, communityId, session?.accessToken]);
+  }, [api, communityId, session?.accessToken, session?.user.id]);
 
   React.useEffect(() => {
     let cancelled = false;

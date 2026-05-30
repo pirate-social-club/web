@@ -11,6 +11,7 @@ import { useSession } from "@/lib/api/session-store";
 import { rememberKnownCommunity } from "@/lib/known-communities-store";
 import { logger } from "@/lib/logger";
 import type { FeedSort } from "@/components/compositions/posts/feed/feed";
+import { rememberCreatePostCommunitySnapshot } from "@/app/authenticated-state/create-post-community-cache";
 
 import { useCommunityFeedPosts } from "./community-feed-data";
 
@@ -172,6 +173,16 @@ export function useCommunityPageData(communityId: string, contentLocale: string,
       routeSlug: community.route_slug ?? preview?.route_slug ?? null,
     });
   }, [community, preview?.route_slug]);
+
+  React.useEffect(() => {
+    if (!preview) return;
+
+    rememberCreatePostCommunitySnapshot(
+      [communityId, preview.id, preview.route_slug, community?.route_slug],
+      { eligibility, preview },
+      session?.user.id,
+    );
+  }, [community?.route_slug, communityId, eligibility, preview, session?.user.id]);
 
   const refetchEligibility = React.useCallback(async () => {
     const e = await api.communities.getJoinEligibility(communityId);

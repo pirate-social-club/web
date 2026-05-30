@@ -19,7 +19,9 @@ import { resolveApiUrl } from "@/lib/api/base-url";
 import { setSession } from "@/lib/api/session-store";
 import { getErrorMessage } from "@/lib/error-utils";
 import {
+  formatGateRequirement,
   getGateFailureMessage,
+  getMissingCapabilitiesFromGateEvaluation,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { openExternalHref } from "@/lib/open-external-href";
@@ -540,11 +542,11 @@ export function telegramVerifyTerminalMessage(
 export function telegramVerifyPreparingMessage(provider: TelegramVerifyLaunchProvider): string {
   switch (provider) {
     case "zkpassport":
-      return "Preparing ZKPassport...";
+      return "Opening ZKPassport";
     case "very":
-      return "Preparing verification...";
+      return "Opening verification";
     case "self":
-      return "Preparing Self...";
+      return "Opening Self.xyz";
   }
 }
 
@@ -553,7 +555,7 @@ export function telegramVerifyReadyTitle(provider?: TelegramVerifyLaunchProvider
     case "zkpassport":
       return "Verify with ZKPassport";
     case "self":
-      return "Verify with Self";
+      return "Verify to join";
     case "very":
       return "Verify identity";
     default:
@@ -564,9 +566,9 @@ export function telegramVerifyReadyTitle(provider?: TelegramVerifyLaunchProvider
 export function telegramVerifyWaitingTitle(provider?: TelegramVerifyLaunchProvider | null): string {
   switch (provider) {
     case "zkpassport":
-      return "Finish in ZKPassport";
+      return "Waiting for verification";
     case "self":
-      return "Finish in Self";
+      return "Waiting for verification";
     case "very":
       return "Finish verification";
     default:
@@ -577,9 +579,9 @@ export function telegramVerifyWaitingTitle(provider?: TelegramVerifyLaunchProvid
 export function telegramVerifyReadyMessage(provider?: TelegramVerifyLaunchProvider | null): string {
   switch (provider) {
     case "zkpassport":
-      return "Open ZKPassport to verify your eligibility.";
+      return "Use the ZKPassport App to continue.";
     case "self":
-      return "Open Self to verify your eligibility.";
+      return "Use the Self.xyz App to continue.";
     case "very":
       return "Open verification to continue.";
     default:
@@ -590,13 +592,13 @@ export function telegramVerifyReadyMessage(provider?: TelegramVerifyLaunchProvid
 export function telegramVerifyWaitingMessage(provider?: TelegramVerifyLaunchProvider | null): string {
   switch (provider) {
     case "zkpassport":
-      return "Finish in ZKPassport, then return here.";
+      return "Complete verification in the ZKPassport App. Pirate will update automatically.";
     case "self":
-      return "Finish in Self, then return here.";
+      return "Complete verification in the Self.xyz App. Pirate will update automatically.";
     case "very":
-      return "Finish verification, then return here.";
+      return "Complete verification. Pirate will update automatically.";
     default:
-      return "Finish verification, then return here.";
+      return "Complete verification. Pirate will update automatically.";
   }
 }
 
@@ -607,17 +609,70 @@ export function telegramVerifyLaunchButtonLabel(provider: TelegramVerifyLaunchPr
     case "very":
       return "Open verification";
     case "self":
-      return "Open Self";
+      return "Open Self.xyz";
   }
+}
+
+function telegramVerifyShortRequirementMessage(
+  eligibility: Pick<ApiJoinEligibility, "membership_gate_summaries" | "missing_capabilities" | "gate_evaluation">,
+  locale: string,
+): string {
+  const gates = eligibility.membership_gate_summaries ?? [];
+  const capabilities = getMissingCapabilitiesFromGateEvaluation(eligibility);
+  const relevantGates = gates.filter((gate) => {
+    switch (gate.gate_type) {
+      case "age_over_18":
+        return capabilities.includes("age_over_18");
+      case "minimum_age":
+        return capabilities.includes("minimum_age");
+      case "nationality":
+        return capabilities.includes("nationality");
+      case "gender":
+        return capabilities.includes("gender");
+      case "unique_human":
+        return capabilities.includes("unique_human");
+      case "wallet_score":
+        return capabilities.includes("wallet_score");
+      case "altcha_pow":
+        return capabilities.includes("altcha_pow");
+      default:
+        return false;
+    }
+  });
+  const formattedRequirements = (relevantGates.length > 0 ? relevantGates : gates)
+    .slice(0, 2)
+    .map((gate) => formatGateRequirement(gate, { locale }))
+    .filter((requirement, index, all) => requirement.trim() && all.indexOf(requirement) === index);
+  if (formattedRequirements.length > 0) {
+    return `Required: ${formattedRequirements.join(" + ")}`;
+  }
+  if (capabilities.includes("unique_human")) {
+    return "Required: Real person check";
+  }
+  if (capabilities.includes("wallet_score")) {
+    return "Required: Passport Score";
+  }
+  return "Required: Account verification";
+}
+
+function telegramVerifySelfReadyMessage(
+  eligibility: Pick<ApiJoinEligibility, "membership_gate_summaries" | "missing_capabilities" | "gate_evaluation">,
+  locale: string,
+): string {
+  const requirement = telegramVerifyShortRequirementMessage(eligibility, locale)
+    .replace(/^Required:\s*/u, "")
+    .trim();
+  if (requirement && requirement !== "Account verification" && requirement !== "Real person check") {
+    return `Prove ${requirement} anonymously with Self.xyz.`;
+  }
+  return "Verify anonymously with Self.xyz.";
 }
 
 export function TelegramMiniAppVerifyView({
   busy = false,
   canRetry = false,
   externalLaunchOpened = false,
-  message,
   onCheckStatus,
-  onClose,
   onOpenBoard,
   onOpenPendingLaunch,
   onRetry,
@@ -628,9 +683,7 @@ export function TelegramMiniAppVerifyView({
   busy?: boolean;
   canRetry?: boolean;
   externalLaunchOpened?: boolean;
-  message: string;
   onCheckStatus?: () => void | Promise<void>;
-  onClose?: () => void;
   onOpenBoard?: () => void;
   onOpenPendingLaunch?: () => void;
   onRetry?: () => void;
@@ -638,57 +691,61 @@ export function TelegramMiniAppVerifyView({
   status: TelegramVerifyStatus;
   title: string;
 }) {
+  const showSpinner = busy || (status === "waiting" && externalLaunchOpened);
   return (
     <TelegramMiniAppShell>
       <div className="px-4 py-6">
         <PageContainer size="narrow">
-          <section className="flex min-h-[70svh] flex-col justify-center gap-6">
-            <div className="space-y-3">
-              <Type as="p" variant="overline">Telegram Mini App</Type>
-              <Type as="h1" variant="h1">{title}</Type>
-              <Type as="p" variant="body">{message}</Type>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {status === "waiting" ? (
-                <>
-                  {pendingLaunch ? (
-                    <Button onClick={onOpenPendingLaunch}>
-                      {telegramVerifyLaunchButtonLabel(pendingLaunch.provider)}
-                    </Button>
-                  ) : null}
-                  {!pendingLaunch || externalLaunchOpened ? (
-                    <Button
-                      loading={busy}
-                      onClick={() => {
-                        void onCheckStatus?.();
-                      }}
-                      variant={pendingLaunch ? "secondary" : "default"}
-                    >
-                      Check status
-                    </Button>
-                  ) : null}
-                </>
-              ) : null}
-              {(status === "error" || status === "blocked") && canRetry ? (
-                <Button loading={busy} onClick={onRetry}>
-                  Try again
-                </Button>
-              ) : null}
-              {status === "success" ? (
-                <Button onClick={onOpenBoard}>
-                  Open board
-                </Button>
-              ) : null}
-              {status === "success" ? (
-                <Button onClick={onClose} variant="secondary">
-                  Close
-                </Button>
-              ) : null}
-              {status === "error" || status === "blocked" ? (
-                <Button onClick={onOpenBoard} variant="ghost">
-                  Open board
-                </Button>
-              ) : null}
+          <section className="flex min-h-[calc(100svh-3rem)] flex-col items-center justify-center">
+            <div className="flex min-h-48 w-full max-w-md flex-col items-center justify-center text-center">
+              <Type
+                as="h1"
+                className="max-w-sm text-balance text-2xl leading-snug tracking-normal sm:text-3xl"
+                variant="h1"
+              >
+                {title}
+              </Type>
+              <div className="mt-5 flex h-12 items-center justify-center">
+                {showSpinner ? (
+                  <Spinner className="size-10 text-muted-foreground" />
+                ) : null}
+              </div>
+              <div className="mt-5 flex min-h-11 flex-wrap items-center justify-center gap-3">
+                {status === "waiting" ? (
+                  <>
+                    {pendingLaunch && !externalLaunchOpened ? (
+                      <Button onClick={onOpenPendingLaunch}>
+                        {telegramVerifyLaunchButtonLabel(pendingLaunch.provider)}
+                      </Button>
+                    ) : null}
+                    {!pendingLaunch ? (
+                      <Button
+                        loading={busy}
+                        onClick={() => {
+                          void onCheckStatus?.();
+                        }}
+                      >
+                        Check status
+                      </Button>
+                    ) : null}
+                  </>
+                ) : null}
+                {(status === "error" || status === "blocked") && canRetry ? (
+                  <Button loading={busy} onClick={onRetry}>
+                    Try again
+                  </Button>
+                ) : null}
+                {status === "success" ? (
+                  <Button onClick={onOpenBoard}>
+                    Open community
+                  </Button>
+                ) : null}
+                {status === "error" || status === "blocked" ? (
+                  <Button onClick={onOpenBoard} variant="ghost">
+                    Open community
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </section>
         </PageContainer>
@@ -937,7 +994,7 @@ export function TelegramMiniAppVerifyPage({
     setPendingLaunch({ href: result.href, provider: "self" });
     setExternalLaunchOpened(false);
     setStatus("waiting");
-    setMessage(telegramVerifyReadyMessage("self"));
+    setMessage(telegramVerifySelfReadyMessage(nextEligibility, locale));
   }, [
     handleJoin,
     joinVerifiedCommunity,
@@ -1055,31 +1112,29 @@ export function TelegramMiniAppVerifyPage({
 
   const busy = status === "loading" || status === "joining" || status === "launching" || joinLoading || selfLoading || veryLoading || zkPassportLoading;
   const title = status === "success"
-    ? "Done"
+    ? message
     : status === "error"
-      ? "Verification failed"
+      ? message
       : status === "blocked"
-        ? "Not eligible yet"
+        ? message
         : status === "waiting"
-          ? externalLaunchOpened
-            ? telegramVerifyWaitingTitle(pendingLaunch?.provider)
-            : telegramVerifyReadyTitle(pendingLaunch?.provider)
+          ? message
           : status === "loading"
-            ? "Checking..."
+            ? "Checking account"
           : status === "launching"
-            ? "Preparing verification"
-          : "Verify to join";
+            ? message
+            : status === "joining"
+              ? message
+              : "Verify to join";
 
   return (
     <TelegramMiniAppVerifyView
       busy={busy}
       canRetry={Boolean((status === "error" || status === "blocked") && eligibility)}
       externalLaunchOpened={externalLaunchOpened}
-      message={message}
       onCheckStatus={async () => {
         await refreshVerificationStatus({ showCheckingMessage: true });
       }}
-      onClose={() => window.Telegram?.WebApp?.close?.()}
       onOpenBoard={() => navigate(`/tg/c/${encodeURIComponent(resolvedCommunityId)}`)}
       onOpenPendingLaunch={() => {
         if (!pendingLaunch) {
@@ -1087,9 +1142,9 @@ export function TelegramMiniAppVerifyPage({
         }
         verificationStartedInThisBrowserRef.current = true;
         writeTelegramVerifyFlowStarted(resolvedCommunityId);
-        openExternalHref(pendingLaunch.href);
         setExternalLaunchOpened(true);
         setMessage(telegramVerifyWaitingMessage(pendingLaunch.provider));
+        openExternalHref(pendingLaunch.href);
       }}
       onRetry={() => {
         if (!eligibility) {
@@ -1106,20 +1161,37 @@ export function TelegramMiniAppVerifyPage({
 }
 
 export function TelegramMiniAppSelfReturnPage({
-  communityId: _communityId,
+  communityId,
 }: {
   communityId?: string | null;
 }) {
+  const [showFallback, setShowFallback] = React.useState(false);
+
+  React.useEffect(() => {
+    const timeoutId = window.setTimeout(() => setShowFallback(true), 1200);
+    return () => window.clearTimeout(timeoutId);
+  }, [communityId]);
+
+  if (!showFallback) {
+    return (
+      <TelegramMiniAppShell>
+        <div className="min-h-screen bg-background" aria-busy="true" />
+      </TelegramMiniAppShell>
+    );
+  }
+
   return (
     <TelegramMiniAppShell>
       <div className="px-4 py-6">
         <PageContainer size="narrow">
-          <section className="flex min-h-[70svh] flex-col justify-center gap-6">
-            <div className="space-y-3">
-              <Type as="p" variant="overline">Telegram verification</Type>
-              <Type as="h1" variant="h1">Self verification received</Type>
-              <Type as="p" variant="body">
-                Return to Telegram and tap Verify to join again.
+          <section className="flex min-h-[calc(100svh-3rem)] flex-col items-center justify-center">
+            <div className="flex min-h-48 w-full max-w-md flex-col items-center justify-center text-center">
+              <Type
+                as="h1"
+                className="max-w-sm text-balance text-2xl leading-snug tracking-normal sm:text-3xl"
+                variant="h1"
+              >
+                Return to Telegram
               </Type>
             </div>
           </section>

@@ -101,23 +101,23 @@ describe("telegramVerifyTerminalMessage", () => {
 
 describe("telegram verification launch copy", () => {
   test("distinguishes ready-to-launch and external-in-progress titles", () => {
-    expect(telegramVerifyReadyTitle("self")).toBe("Verify with Self");
-    expect(telegramVerifyWaitingTitle("self")).toBe("Finish in Self");
+    expect(telegramVerifyReadyTitle("self")).toBe("Verify to join");
+    expect(telegramVerifyWaitingTitle("self")).toBe("Waiting for verification");
   });
 
   test("uses stable provider-specific ready messages", () => {
-    expect(telegramVerifyReadyMessage("self")).toBe("Open Self to verify your eligibility.");
-    expect(telegramVerifyReadyMessage("zkpassport")).toBe("Open ZKPassport to verify your eligibility.");
+    expect(telegramVerifyReadyMessage("self")).toBe("Use the Self.xyz App to continue.");
+    expect(telegramVerifyReadyMessage("zkpassport")).toBe("Use the ZKPassport App to continue.");
   });
 
   test("uses stable provider-specific waiting messages", () => {
-    expect(telegramVerifyWaitingMessage("self")).toBe("Finish in Self, then return here.");
-    expect(telegramVerifyWaitingMessage("zkpassport")).toBe("Finish in ZKPassport, then return here.");
-    expect(telegramVerifyWaitingMessage(null)).toBe("Finish verification, then return here.");
+    expect(telegramVerifyWaitingMessage("self")).toBe("Complete verification in the Self.xyz App. Pirate will update automatically.");
+    expect(telegramVerifyWaitingMessage("zkpassport")).toBe("Complete verification in the ZKPassport App. Pirate will update automatically.");
+    expect(telegramVerifyWaitingMessage(null)).toBe("Complete verification. Pirate will update automatically.");
   });
 
   test("labels explicit launch buttons by provider", () => {
-    expect(telegramVerifyLaunchButtonLabel("self")).toBe("Open Self");
+    expect(telegramVerifyLaunchButtonLabel("self")).toBe("Open Self.xyz");
     expect(telegramVerifyLaunchButtonLabel("zkpassport")).toBe("Open ZKPassport");
   });
 });

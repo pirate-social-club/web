@@ -39,6 +39,7 @@ type ZkPassportVerificationOptions = {
 };
 
 type SelfVerificationStartResult = {
+  error?: string;
   href?: string | null;
   launched?: false;
   openedModal?: boolean;

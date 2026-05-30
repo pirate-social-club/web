@@ -881,6 +881,8 @@ export function TelegramMiniAppVerifyPage({
       recordDebug("zkpassport:start");
       const result = await startZkPassportVerification({
         deferOpen: true,
+        membershipGateSummaries: nextEligibility.membership_gate_summaries,
+        missingCapabilities: nextEligibility.missing_capabilities,
         showToastOnError: false,
       });
       recordDebug("zkpassport:result", {
@@ -924,10 +926,13 @@ export function TelegramMiniAppVerifyPage({
     recordDebug("self:start", { communityId: targetCommunityId });
     const result = await startSelfVerification({
       deeplinkCallbackBaseHref: buildTelegramSelfReturnHref(targetCommunityId),
+      membershipGateSummaries: nextEligibility.membership_gate_summaries,
+      missingCapabilities: nextEligibility.missing_capabilities,
       showToastOnError: false,
       skipModal: true,
     });
     recordDebug("self:result", {
+      error: result.error ?? null,
       hasHref: Boolean(result.href),
       hrefLength: result.href?.length ?? 0,
       openedModal: Boolean(result.openedModal),
@@ -936,7 +941,7 @@ export function TelegramMiniAppVerifyPage({
     if (!result.started || !result.href) {
       applyFlowAction({
         canRetry: true,
-        message: "Could not start Self verification.",
+        message: result.error ?? "Could not start Self verification.",
         type: "error",
       });
       return;

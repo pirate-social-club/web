@@ -567,7 +567,7 @@ export function PublicCommunityRoutePage({
   }
 
   const joinActionLabel = resolvePublicCommunityJoinActionLabel(eligibility, locale);
-  const joinedActionLabel = getJoinCtaLabel({ status: "already_joined" } as ApiJoinEligibility, { locale });
+  const membershipLoading = Boolean(session) && !eligibility;
   const joinActionDisabled = Boolean(session) && (
     !eligibility
       || !isJoinCtaActionable(eligibility)
@@ -583,7 +583,7 @@ export function PublicCommunityRoutePage({
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
-      {!viewerIsMember ? (
+      {!viewerIsMember && !membershipLoading ? (
         <Button
           className={FOLLOW_BUTTON_CLASS_NAME}
           loading={followLoading || (!session && authRuntime.busy)}
@@ -593,11 +593,7 @@ export function PublicCommunityRoutePage({
           {viewerFollowing ? copy.community.followingLabel : copy.community.followLabel}
         </Button>
       ) : null}
-      {viewerIsMember ? (
-        <Button disabled variant="secondary">
-          {joinedActionLabel}
-        </Button>
-      ) : (
+      {!viewerIsMember && !membershipLoading ? (
         <Button
           disabled={joinActionDisabled}
           loading={joinLoading || joinVeryLoading || joinSelfLoading || passportLoading || (!session && authRuntime.busy)}
@@ -606,7 +602,7 @@ export function PublicCommunityRoutePage({
         >
           {joinActionLabel}
         </Button>
-      )}
+      ) : null}
       {canCreatePost ? (
         <Button
           leadingIcon={<Plus className="size-5" />}

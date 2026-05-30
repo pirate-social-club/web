@@ -34,8 +34,8 @@ import {
 } from "./telegram-mini-app-verify-view";
 import {
   initialTelegramVerifyFlowState,
-  isDelayedTelegramVerifyScreen,
   telegramVerifyReducer,
+  telegramVerifyScreenCommitDelayMs,
   type TelegramVerifyFlowAction,
   type TelegramVerifyFlowState,
   type TelegramVerifyLaunchProvider,
@@ -113,7 +113,6 @@ type TelegramMiniAppAutoExchangeResponse = SessionExchangeResponse & {
 type TelegramVerifyJoinResult = "blocked" | "joined" | "requested";
 
 const TELEGRAM_VERIFY_FLOW_STARTED_STORAGE_PREFIX = "pirate_tg_verify_started:";
-const TELEGRAM_VERIFY_DELAYED_SCREEN_MS = 500;
 const TELEGRAM_VERIFY_LAUNCH_WATCHDOG_MS = 15_000;
 const DEFAULT_STAGING_TELEGRAM_BOT_USERNAME = "Pirate_dev_bot";
 
@@ -712,11 +711,12 @@ export function TelegramMiniAppVerifyPage({
       window.clearTimeout(pendingScreenCommitRef.current);
       pendingScreenCommitRef.current = null;
     }
-    if (isDelayedTelegramVerifyScreen(screen)) {
+    const commitDelayMs = telegramVerifyScreenCommitDelayMs(screen);
+    if (commitDelayMs !== null) {
       pendingScreenCommitRef.current = window.setTimeout(() => {
         pendingScreenCommitRef.current = null;
         setDisplayedScreen(screen);
-      }, TELEGRAM_VERIFY_DELAYED_SCREEN_MS);
+      }, commitDelayMs);
       return;
     }
     setDisplayedScreen(screen);
@@ -1200,6 +1200,7 @@ export function TelegramMiniAppSelfReturnPage({
 }: {
   communityId?: string | null;
 }) {
+  const [showFallback, setShowFallback] = React.useState(!communityId);
   const telegramHref = communityId
     ? buildTelegramStartAppHref({
         botUsername: resolveTelegramBotUsername(),
@@ -1209,6 +1210,7 @@ export function TelegramMiniAppSelfReturnPage({
 
   React.useEffect(() => {
     if (!communityId) {
+      setShowFallback(true);
       return;
     }
     const initData = readTelegramMiniAppInitData({
@@ -1217,10 +1219,32 @@ export function TelegramMiniAppSelfReturnPage({
       webAppInitData: window.Telegram?.WebApp?.initData,
     });
     if (!initData) {
-      return;
+      if (!telegramHref) {
+        setShowFallback(true);
+        return;
+      }
+      setShowFallback(false);
+      const fallbackTimeoutId = window.setTimeout(() => {
+        setShowFallback(true);
+      }, 1200);
+      try {
+        window.location.replace(telegramHref);
+      } catch {
+        window.clearTimeout(fallbackTimeoutId);
+        setShowFallback(true);
+      }
+      return () => window.clearTimeout(fallbackTimeoutId);
     }
     navigate(`/tg/verify/${encodeURIComponent(communityId)}`);
-  }, [communityId]);
+  }, [communityId, telegramHref]);
+
+  if (!showFallback && communityId) {
+    return (
+      <TelegramMiniAppShell>
+        <div className="min-h-screen bg-background" aria-busy="true" />
+      </TelegramMiniAppShell>
+    );
+  }
 
   return (
     <TelegramMiniAppSelfReturnView

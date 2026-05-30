@@ -45,7 +45,7 @@ export function telegramVerifyReadyTitle(provider?: TelegramVerifyLaunchProvider
 }
 
 export function telegramVerifyWaitingTitle(provider?: TelegramVerifyLaunchProvider | null): string {
-  return "Almost done";
+  return "Waiting for verification";
 }
 
 export function telegramVerifyReadyMessage(provider?: TelegramVerifyLaunchProvider | null): string {
@@ -108,7 +108,7 @@ export function resolveTelegramVerifyViewModel({
     case "booting":
       return {
         busy,
-        message: "Confirming Telegram with Pirate.",
+        message: null,
         showSpinner,
         title: "Checking account",
       };
@@ -122,7 +122,7 @@ export function resolveTelegramVerifyViewModel({
     case "checking":
       return {
         busy,
-        message: "Looking for completed verification.",
+        message: null,
         showSpinner,
         title: "Checking verification",
       };
@@ -136,14 +136,14 @@ export function resolveTelegramVerifyViewModel({
     case "ready":
       return {
         busy,
-        message: screen.message || telegramVerifyReadyMessage(screen.provider),
+        message: null,
         showSpinner,
-        title: telegramVerifyReadyTitle(screen.provider),
+        title: screen.message || telegramVerifyReadyTitle(screen.provider),
       };
     case "external_started":
       return {
         busy,
-        message: telegramVerifyWaitingMessage(screen.provider),
+        message: null,
         showSpinner,
         title: telegramVerifyWaitingTitle(screen.provider),
       };
@@ -161,16 +161,16 @@ export function resolveTelegramVerifyViewModel({
     case "blocked":
       return {
         busy,
-        message: screen.message || "This account is not eligible to join yet.",
+        message: null,
         showSpinner,
-        title: "Not eligible",
+        title: screen.message || "Not eligible",
       };
     case "error":
       return {
         busy,
-        message: screen.message || "Try again from Telegram.",
+        message: null,
         showSpinner,
-        title: "Could not verify",
+        title: screen.message || "Could not verify",
       };
   }
 }
@@ -225,15 +225,15 @@ export function TelegramMiniAppVerifyView({
     <ShellComponent>
       <div className="px-4 py-6">
         <PageContainer size="narrow">
-          <section className="flex min-h-[70svh] flex-col items-center justify-center">
-            <div className="flex min-h-44 w-full max-w-sm flex-col items-center justify-center text-center">
-              <div className="space-y-2">
-                <Type as="h1" variant="h1">{viewModel.title}</Type>
+          <section className="flex min-h-[calc(100svh-3rem)] flex-col items-center justify-center">
+            <div className="flex min-h-52 w-full max-w-md flex-col items-center justify-center text-center">
+              <div>
+                <Type as="h1" className="text-balance leading-tight" variant="h1">{viewModel.title}</Type>
                 {viewModel.message ? <Type as="p" variant="body">{viewModel.message}</Type> : null}
               </div>
-              <div className="mt-3 flex h-5 items-center justify-center">
+              <div className="mt-5 flex h-9 items-center justify-center">
                 {viewModel.showSpinner ? (
-                  <Spinner className="size-5 text-muted-foreground" />
+                  <Spinner className="size-8 text-muted-foreground" />
                 ) : null}
               </div>
               <div className="mt-5 flex min-h-11 flex-wrap items-center justify-center gap-3">
@@ -287,13 +287,10 @@ export function TelegramMiniAppSelfReturnView({
     <ShellComponent>
       <div className="px-4 py-6">
         <PageContainer size="narrow">
-          <section className="flex min-h-[70svh] flex-col items-center justify-center">
+          <section className="flex min-h-[calc(100svh-3rem)] flex-col items-center justify-center">
             {hasCommunityId ? (
-              <div className="flex w-full max-w-80 flex-col items-center justify-center gap-4 text-center">
-                <div className="space-y-2">
-                  <Type as="h1" variant="h1">Verification received</Type>
-                  <Type as="p" variant="body">Return to Telegram to finish joining.</Type>
-                </div>
+              <div className="flex w-full max-w-80 flex-col items-center justify-center gap-5 text-center">
+                <Type as="h1" className="text-balance leading-tight" variant="h1">Return to Telegram</Type>
                 {returnHref ? (
                   <Button asChild>
                     <a href={returnHref} rel="noreferrer">
@@ -303,9 +300,8 @@ export function TelegramMiniAppSelfReturnView({
                 ) : null}
               </div>
             ) : (
-              <div className="w-full max-w-80 space-y-2 text-center">
-                <Type as="h1" variant="h1">Return to Telegram</Type>
-                <Type as="p" variant="body">Open Pirate from Telegram to finish joining.</Type>
+              <div className="w-full max-w-80 text-center">
+                <Type as="h1" className="text-balance leading-tight" variant="h1">Open from Telegram</Type>
               </div>
             )}
           </section>

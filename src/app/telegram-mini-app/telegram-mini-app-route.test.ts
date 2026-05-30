@@ -125,7 +125,7 @@ describe("telegramVerifyTerminalMessage", () => {
 describe("telegram verification launch copy", () => {
   test("distinguishes ready-to-launch and external-in-progress titles", () => {
     expect(telegramVerifyReadyTitle("self")).toBe("Verify to join");
-    expect(telegramVerifyWaitingTitle("self")).toBe("Almost done");
+    expect(telegramVerifyWaitingTitle("self")).toBe("Waiting for verification");
   });
 
   test("uses stable provider-specific ready messages", () => {
@@ -159,9 +159,23 @@ describe("telegram verification view model", () => {
       screen: { kind: "checking" },
     })).toMatchObject({
       busy: true,
-      message: "Looking for completed verification.",
+      message: null,
       showSpinner: true,
       title: "Checking verification",
+    });
+  });
+
+  test("uses the verification requirement as the ready title", () => {
+    expect(resolveTelegramVerifyViewModel({
+      screen: {
+        href: "https://self.xyz/verify",
+        kind: "ready",
+        message: "Prove United States nationality anonymously with Self.xyz.",
+        provider: "self",
+      },
+    })).toMatchObject({
+      message: null,
+      title: "Prove United States nationality anonymously with Self.xyz.",
     });
   });
 

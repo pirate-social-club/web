@@ -57,7 +57,20 @@ export function initialTelegramVerifyFlowState(): TelegramVerifyFlowState {
 }
 
 export function isDelayedTelegramVerifyScreen(screen: TelegramVerifyScreenState): boolean {
-  return screen.kind === "booting" || screen.kind === "preparing";
+  return telegramVerifyScreenCommitDelayMs(screen) !== null;
+}
+
+export function telegramVerifyScreenCommitDelayMs(screen: TelegramVerifyScreenState): number | null {
+  switch (screen.kind) {
+    case "booting":
+      return 300;
+    case "preparing":
+      return 700;
+    case "external_started":
+      return 1200;
+    default:
+      return null;
+  }
 }
 
 export function telegramVerifyReducer(

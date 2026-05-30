@@ -79,6 +79,7 @@ describe("telegramVerifyReducer", () => {
       kind: "external_started",
       provider: "self",
     });
+    expect(isDelayedTelegramVerifyScreen(external.screen)).toBe(true);
   });
 
   test("externalOpened is a no-op outside ready screens", () => {

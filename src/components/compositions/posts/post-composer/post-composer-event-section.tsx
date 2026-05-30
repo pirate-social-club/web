@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { CalendarBlank, CheckCircle, MapPin, VideoCamera } from "@phosphor-icons/react";
+import { CalendarBlank, MapPin, VideoCamera } from "@phosphor-icons/react";
 
 import { Checkbox } from "@/components/primitives/checkbox";
 import {
@@ -417,12 +417,6 @@ export function PostComposerEventSection({
                   placeholder="Search a venue or enter a place"
                   value={locationQuery}
                 />
-                {event.place ? (
-                  <FormNote className="mt-1 flex items-center gap-1 text-success">
-                    <CheckCircle className="size-4" />
-                    Matched to Geoapify place data
-                  </FormNote>
-                ) : null}
               </div>
 
               {suggestions.length > 0 ? (

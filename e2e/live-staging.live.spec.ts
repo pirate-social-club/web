@@ -745,7 +745,6 @@ test.describe("live staging integration", () => {
     await firstSuggestion.click();
     await expect(venue).toHaveValue(/Fabrika/i);
     await expect(page.getByRole("textbox", { name: /^address$/i })).not.toHaveValue("");
-    await expect(page.getByText("Matched to Geoapify place data")).toBeVisible();
     await expectNoBrowserError(page);
   });
 

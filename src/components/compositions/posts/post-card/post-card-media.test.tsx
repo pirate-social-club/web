@@ -103,4 +103,95 @@ describe("PostCardMedia", () => {
     expect(markup).toContain("<li>one</li>");
     expect(markup).toContain("<li>two</li>");
   });
+
+  test("truncates long multi-paragraph text before rendering feed markup", () => {
+    const markup = renderToStaticMarkup(
+      <PostCardMedia
+        content={{
+          type: "text",
+          body: [
+            "First paragraph stays visible.",
+            "Second paragraph also stays visible before the feed limit is reached.",
+            "x".repeat(700),
+          ].join("\n\n"),
+        }}
+        viewContext="home"
+      />,
+    );
+
+    expect(markup).toContain("First paragraph stays visible.");
+    expect(markup).toContain("Second paragraph also stays visible");
+    expect(markup).toContain("...");
+    expect(markup).not.toContain("x".repeat(700));
+  });
+
+  test("keeps long text untruncated on post detail surfaces", () => {
+    const fullBody = [
+      "First paragraph stays visible.",
+      "Second paragraph stays visible.",
+      "x".repeat(700),
+    ].join("\n\n");
+    const markup = renderToStaticMarkup(
+      <PostCardMedia
+        content={{
+          type: "text",
+          body: fullBody,
+        }}
+        viewContext="post"
+      />,
+    );
+
+    expect(markup).toContain("x".repeat(700));
+    expect(markup).not.toContain("...");
+  });
+
+  test("hard-caps single-wall feed text without a paragraph boundary", () => {
+    const trailingText = "tail should be removed";
+    const markup = renderToStaticMarkup(
+      <PostCardMedia
+        content={{
+          type: "text",
+          body: `${"x".repeat(700)} ${trailingText}`,
+        }}
+        viewContext="home"
+      />,
+    );
+
+    expect(markup).toContain("...");
+    expect(markup).not.toContain(trailingText);
+  });
+
+  test("truncates long link bodies and image captions in feed contexts", () => {
+    const longLinkTail = "link tail should be removed";
+    const longCaptionTail = "caption tail should be removed";
+    const linkMarkup = renderToStaticMarkup(
+      <PostCardMedia
+        content={{
+          type: "link",
+          body: `Link intro.\n\n${"x".repeat(500)} ${longLinkTail}`,
+          href: "https://example.test/story",
+          previewTitle: "Story preview",
+        }}
+        viewContext="home"
+      />,
+    );
+    const imageMarkup = renderToStaticMarkup(
+      <PostCardMedia
+        content={{
+          type: "image",
+          alt: "image",
+          caption: `Caption intro.\n\n${"x".repeat(400)} ${longCaptionTail}`,
+          src: "https://example.test/image.jpg",
+        }}
+        viewContext="home"
+      />,
+    );
+
+    expect(linkMarkup).toContain("Link intro.");
+    expect(linkMarkup).toContain("...");
+    expect(linkMarkup).not.toContain(longLinkTail);
+    expect(imageMarkup).toContain("Caption intro.");
+    expect(imageMarkup).toContain("...");
+    expect(imageMarkup).not.toContain(longCaptionTail);
+  });
 });

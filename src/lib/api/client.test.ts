@@ -15,6 +15,43 @@ function makeTestFile(name: string, type: string): File {
   return new File([new Uint8Array([1, 2, 3, 4])], name, { type });
 }
 
+describe("ApiClient geo", () => {
+  test("sends authenticated place searches with country and bias params", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({ places: [] });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.geo.searchPlaces({
+        biasLat: 41.708,
+        biasLon: 44.798,
+        country: "ge",
+        limit: 5,
+        text: "Fabrika Tbilisi",
+      });
+
+      const capturedRequest = requireRequest(request);
+      const url = new URL(capturedRequest.url);
+      expect(url.pathname).toBe("/geo/search");
+      expect(url.searchParams.get("text")).toBe("Fabrika Tbilisi");
+      expect(url.searchParams.get("limit")).toBe("5");
+      expect(url.searchParams.get("country")).toBe("ge");
+      expect(url.searchParams.get("biasLat")).toBe("41.708");
+      expect(url.searchParams.get("biasLon")).toBe("44.798");
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 describe("ApiClient media uploads", () => {
   test("sends FormData without forcing a JSON content type", async () => {
     let request: Request | null = null;

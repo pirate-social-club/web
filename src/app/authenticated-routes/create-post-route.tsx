@@ -55,6 +55,7 @@ import {
 } from "@/app/authenticated-helpers/route-shell";
 import { useCreatePostState } from "@/app/authenticated-state/create-post-state";
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
+import { normalizeGeoCountryFilter } from "@/lib/geo-country";
 import { useKnownCommunities } from "@/lib/known-communities-store";
 import type { CommunityPickerItem } from "@/components/compositions/posts/post-composer/post-composer.types";
 
@@ -107,12 +108,16 @@ function CreatePostComposer({
   const api = useApi();
   const knownCommunities = useKnownCommunities();
   const searchEventPlaces = React.useCallback(async (query: string) => {
+    const knownPlace = state.event.place;
     const response = await api.geo.searchPlaces({
+      biasLat: knownPlace?.lat,
+      biasLon: knownPlace?.lon,
+      country: normalizeGeoCountryFilter(knownPlace?.countryCode ?? state.community?.country_code),
       limit: 5,
       text: query,
     });
     return response.places;
-  }, [api.geo]);
+  }, [api.geo, state.community?.country_code, state.event.place]);
 
   const communityPickerItems: CommunityPickerItem[] = React.useMemo(
     () =>

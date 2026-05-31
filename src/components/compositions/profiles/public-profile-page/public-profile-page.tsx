@@ -119,28 +119,9 @@ function SongsPanel({ songs }: { songs: PublicProfileProps["songs"] }) {
   return (
     <Card className="overflow-hidden">
       {songs.map((s, i) => {
-        const { scrobbleId: _id, ...songProps } = s;
+        const { songId: _id, ...songProps } = s;
         return (
-          <div key={s.scrobbleId}>
-            {i > 0 ? <Separator /> : null}
-            <SongItem {...songProps} />
-          </div>
-        );
-      })}
-    </Card>
-  );
-}
-
-function ScrobblesPanel({ scrobbles }: { scrobbles: PublicProfileProps["scrobbles"] }) {
-  const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").publicProfile;
-  if (!scrobbles?.length) return <EmptyState copy={copy.emptyScrobbles} />;
-  return (
-    <Card className="overflow-hidden">
-      {scrobbles.map((s, i) => {
-        const { scrobbleId: _id, ...songProps } = s;
-        return (
-          <div key={s.scrobbleId}>
+          <div key={s.songId}>
             {i > 0 ? <Separator /> : null}
             <SongItem {...songProps} />
           </div>
@@ -226,7 +207,6 @@ export function PublicProfilePage({
   openInPirateHref,
   posts,
   songs,
-  scrobbles,
   videos,
   ...profile
 }: PublicProfileProps) {
@@ -235,7 +215,6 @@ export function PublicProfilePage({
   const tabs: Array<{ value: PublicProfileTab; label: string }> = [
     ...(posts?.length ? [{ value: "posts" as const, label: copy.postsTab }] : []),
     ...(songs?.length ? [{ value: "songs" as const, label: copy.songsTab }] : []),
-    ...(scrobbles?.length ? [{ value: "scrobbles" as const, label: copy.scrobblesTab }] : []),
     ...(videos?.length ? [{ value: "videos" as const, label: copy.videosTab }] : []),
     { value: "about", label: copy.aboutTab },
   ];
@@ -272,11 +251,6 @@ export function PublicProfilePage({
           {songs?.length ? (
             <TabsContent className="mt-0" value="songs">
               <SongsPanel songs={songs} />
-            </TabsContent>
-          ) : null}
-          {scrobbles?.length ? (
-            <TabsContent className="mt-0" value="scrobbles">
-              <ScrobblesPanel scrobbles={scrobbles} />
             </TabsContent>
           ) : null}
           {videos?.length ? (

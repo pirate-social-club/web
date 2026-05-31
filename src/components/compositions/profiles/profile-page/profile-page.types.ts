@@ -1,5 +1,4 @@
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
-import type { SongItemData } from "@/components/compositions/profiles/song-item/song-item.types";
 import type { WalletHubChainId, WalletHubChainSection } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
 
 export type ProfilePageTab = "overview" | "posts" | "comments" | "wallet";
@@ -54,14 +53,9 @@ export interface ProfilePostItem {
   post: PostCardProps;
 }
 
-export type ProfileScrobbleItem = SongItemData & {
-  scrobbleId: string;
-};
-
 export type ProfileActivityItem =
   | { kind: "post"; id: string; post: ProfilePostItem }
-  | { kind: "comment"; id: string; comment: ProfileCommentItem }
-  | { kind: "scrobble"; id: string; scrobble: ProfileScrobbleItem };
+  | { kind: "comment"; id: string; comment: ProfileCommentItem };
 
 export interface ProfileData {
   displayName: string;
@@ -96,7 +90,6 @@ export interface ProfilePageProps {
   overviewItems?: ProfileActivityItem[];
   posts?: ProfilePostItem[];
   comments?: ProfileCommentItem[];
-  scrobbles?: ProfileScrobbleItem[];
   defaultTab?: ProfilePageTab;
   className?: string;
   onEditProfile?: () => void;

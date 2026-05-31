@@ -82,7 +82,7 @@ Some purchase-related records may also be represented by restricted on-chain ent
 
 We may collect information about how you use the Services, including:
 
-- scrobbles and listening activity
+- music listening activity
 - watch history and watch-progress state
 - study progress, attempts, streaks, and related learning activity
 - room participation, join/leave activity, replay access, and live-session state
@@ -209,7 +209,7 @@ be updated with concrete retention periods or criteria for at least:
 - chat/call transcripts and memory
 - uploads and user content
 - transaction/receipt/ticket records
-- scrobble, watch-history, and learning records
+- music-listening, watch-history, and learning records
 
 Where deletion is requested, we may retain information as required by law, for legitimate security
 or fraud-prevention needs, for accounting and dispute purposes, or because the information has

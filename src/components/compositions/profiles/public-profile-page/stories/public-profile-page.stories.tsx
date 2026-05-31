@@ -4,7 +4,6 @@ import * as React from "react";
 import { PublicProfilePage } from "../public-profile-page";
 import {
   publicProfilePosts,
-  publicProfileScrobbles,
   publicProfileSongs,
   publicProfileVideos,
 } from "../../stories/profile-fixtures";
@@ -23,7 +22,7 @@ const baseArgs = {
   meta: [
     { label: "Posts", value: "126" },
     { label: "Comments", value: "894" },
-    { label: "Scrobbles", value: "14.8K" },
+    { label: "Songs", value: "14.8K" },
   ],
   communities: [
     { label: "c/argentina", href: "#" },
@@ -33,7 +32,6 @@ const baseArgs = {
   ],
   posts: publicProfilePosts,
   songs: publicProfileSongs,
-  scrobbles: publicProfileScrobbles,
   videos: publicProfileVideos,
   openInPirateHref: "#",
 };
@@ -71,10 +69,6 @@ export const Songs: Story = {
   args: { defaultTab: "songs" },
 };
 
-export const Scrobbles: Story = {
-  args: { defaultTab: "scrobbles" },
-};
-
 export const Videos: Story = {
   args: { defaultTab: "videos" },
 };
@@ -95,7 +89,6 @@ export const Minimal: Story = {
     communities: undefined,
     posts: undefined,
     songs: undefined,
-    scrobbles: undefined,
     videos: undefined,
   },
 };

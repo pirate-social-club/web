@@ -2,11 +2,10 @@ import type {
   ProfileActivityItem,
   ProfileCommentItem,
   ProfilePostItem,
-  ProfileScrobbleItem,
 } from "../profile-page/profile-page.types";
 import type {
   PublicProfilePostItem,
-  PublicProfileScrobbleItem,
+  PublicProfileSongItem,
   PublicProfileVideoItem,
 } from "../public-profile-page/public-profile-page.types";
 import type { WalletHubChainSection } from "@/components/compositions/wallet/wallet-hub/wallet-hub.types";
@@ -49,7 +48,7 @@ export const profilePosts: ProfilePostItem[] = [
       content: {
         type: "text",
         body:
-          "This month has been all Charly, Sumo, and a lot more post-punk than usual. I want a profile view that makes scrobbles feel first-class, not bolted on below posts.",
+          "This month has been all Charly, Sumo, and a lot more post-punk than usual. I want a profile view that makes music feel first-class, not bolted on below posts.",
       },
       engagement: { score: 392, commentCount: 41 },
     },
@@ -97,10 +96,10 @@ export const profileComments: ProfileCommentItem[] = [
     authorLabel: "u/Pampa_of_Argentina",
     authorHref: "#",
     body:
-      "If scrobbles matter to Pirate, they should sit beside posts and comments in the profile IA, not inside a buried integrations tab.",
+      "If music taste matters to Pirate, it should sit beside posts and comments in the profile IA, not inside a buried integrations tab.",
     communityLabel: "c/lastfm",
     communityHref: "#",
-    postTitle: "Should scrobbles have their own tab?",
+    postTitle: "Should music have its own tab?",
     postHref: "#",
     scoreLabel: "74 score",
     timestampLabel: "4h",
@@ -124,46 +123,9 @@ export const profileComments: ProfileCommentItem[] = [
   },
 ];
 
-export const profileScrobbles: ProfileScrobbleItem[] = [
-  {
-    scrobbleId: "scrobble_1",
-    title: "Cancion Animal",
-    artistName: "Soda Stereo",
-    artworkSrc: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=400&q=80",
-    metaItems: [
-      { label: "Scrobbled 6m ago" },
-      { label: "c/argentina", href: "#" },
-      { label: "418 plays" },
-    ],
-  },
-  {
-    scrobbleId: "scrobble_2",
-    title: "Viernes 3 AM",
-    artistName: "Seru Giran",
-    artworkSrc: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=400&q=80",
-    metaItems: [
-      { label: "Scrobbled 2h ago" },
-      { label: "c/classicrock", href: "#" },
-      { label: "302 plays" },
-    ],
-  },
-  {
-    scrobbleId: "scrobble_3",
-    title: "Post-Crucifixion",
-    artistName: "Pescado Rabioso",
-    artworkSrc: "https://images.unsplash.com/photo-1501612780327-45045538702b?auto=format&fit=crop&w=400&q=80",
-    metaItems: [
-      { label: "Scrobbled yesterday" },
-      { label: "c/lastfm", href: "#" },
-      { label: "221 plays" },
-    ],
-  },
-];
-
 export const overviewItems: ProfileActivityItem[] = [
   { kind: "post", id: "overview_post_1", post: profilePosts[0] },
   { kind: "comment", id: "overview_comment_1", comment: profileComments[0] },
-  { kind: "scrobble", id: "overview_scrobble_1", scrobble: profileScrobbles[0] },
   { kind: "post", id: "overview_post_2", post: profilePosts[1] },
 ];
 
@@ -252,29 +214,25 @@ export const publicProfileVideos: PublicProfileVideoItem[] = [
   },
 ];
 
-export const publicProfileSongs: PublicProfileScrobbleItem[] = [
+export const publicProfileSongs: PublicProfileSongItem[] = [
   {
-    ...profileScrobbles[0],
-    scrobbleId: "song_1",
+    songId: "song_1",
+    title: "Cancion Animal",
+    artistName: "Soda Stereo",
+    artworkSrc: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=400&q=80",
     metaItems: [
       { label: "c/argentina", href: "#" },
       { label: "418 plays" },
     ],
   },
   {
-    ...profileScrobbles[1],
-    scrobbleId: "song_2",
+    songId: "song_2",
+    title: "Viernes 3 AM",
+    artistName: "Seru Giran",
+    artworkSrc: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=400&q=80",
     metaItems: [
       { label: "c/classicrock", href: "#" },
       { label: "302 plays" },
     ],
-  },
-];
-
-export const publicProfileScrobbles: PublicProfileScrobbleItem[] = [
-  profileScrobbles[0],
-  {
-    ...profileScrobbles[2],
-    scrobbleId: "scrobble_2",
   },
 ];

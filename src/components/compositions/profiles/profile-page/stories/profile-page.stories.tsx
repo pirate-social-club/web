@@ -7,7 +7,6 @@ import {
   overviewItems,
   profileComments,
   profilePosts,
-  profileScrobbles,
   walletChainSections,
 } from "../../stories/profile-fixtures";
 
@@ -52,7 +51,6 @@ const baseArgs: ProfilePageProps = {
   overviewItems,
   posts: profilePosts,
   comments: profileComments,
-  scrobbles: profileScrobbles,
 };
 
 const meta = {

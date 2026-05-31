@@ -1,5 +1,5 @@
 import { COMMUNITY_RECORDS } from "./community-fixtures";
-import { createProfileComment, createProfileScrobble, createTextPost } from "./post-factories";
+import { createProfileComment, createTextPost } from "./post-factories";
 import type { ProfileSummary } from "./types";
 import { COMMUNITY_IDS, USER_IDS } from "./types";
 
@@ -56,30 +56,6 @@ export const PROFILES: Record<string, ProfileSummary> = {
         timestampLabel: "3h",
       }),
     ],
-    scrobbles: [
-      createProfileScrobble({
-        scrobbleId: "scr_01_suspicious_code_1",
-        title: "Windowlicker",
-        artistName: "Aphex Twin",
-        artworkSrc: "https://picsum.photos/seed/scrobble-windowlicker/400/400",
-        metaItems: [
-          { label: "Scrobbled 12m ago" },
-          { label: "c/builders", href: `/c/${COMMUNITY_IDS.builders}` },
-          { label: "214 plays" },
-        ],
-      }),
-      createProfileScrobble({
-        scrobbleId: "scr_01_suspicious_code_2",
-        title: "Midnight in a Perfect World",
-        artistName: "DJ Shadow",
-        artworkSrc: "https://picsum.photos/seed/scrobble-dj-shadow/400/400",
-        metaItems: [
-          { label: "Scrobbled yesterday" },
-          { label: "c/producers-only", href: `/c/${COMMUNITY_IDS.producersOnly}` },
-          { label: "97 plays" },
-        ],
-      }),
-    ],
   },
   [USER_IDS.kevin]: {
     userId: USER_IDS.kevin,
@@ -107,30 +83,6 @@ export const PROFILES: Record<string, ProfileSummary> = {
         timestampLabel: "5h",
       }),
     ],
-    scrobbles: [
-      createProfileScrobble({
-        scrobbleId: "scr_01_kevin_1",
-        title: "Music To Walk Home By",
-        artistName: "Tame Impala",
-        artworkSrc: "https://picsum.photos/seed/scrobble-tame-1/400/400",
-        metaItems: [
-          { label: "Scrobbled 48m ago" },
-          { label: "c/tameimpala", href: `/c/${COMMUNITY_IDS.tameImpala}` },
-          { label: "8.1K plays" },
-        ],
-      }),
-      createProfileScrobble({
-        scrobbleId: "scr_01_kevin_2",
-        title: "Open Eye Signal",
-        artistName: "Jon Hopkins",
-        artworkSrc: "https://picsum.photos/seed/scrobble-hopkins/400/400",
-        metaItems: [
-          { label: "Scrobbled 9h ago" },
-          { label: "c/producers-only", href: `/c/${COMMUNITY_IDS.producersOnly}` },
-          { label: "1.3K plays" },
-        ],
-      }),
-    ],
   },
   [USER_IDS.shipit]: {
     userId: USER_IDS.shipit,
@@ -156,19 +108,6 @@ export const PROFILES: Record<string, ProfileSummary> = {
         postHref: "/p/pst_01_route_contracts",
         scoreLabel: "88 score",
         timestampLabel: "1d",
-      }),
-    ],
-    scrobbles: [
-      createProfileScrobble({
-        scrobbleId: "scr_01_shipit_1",
-        title: "The Robots",
-        artistName: "Kraftwerk",
-        artworkSrc: "https://picsum.photos/seed/scrobble-kraftwerk/400/400",
-        metaItems: [
-          { label: "Scrobbled 2h ago" },
-          { label: "c/builders", href: `/c/${COMMUNITY_IDS.builders}` },
-          { label: "640 plays" },
-        ],
       }),
     ],
   },

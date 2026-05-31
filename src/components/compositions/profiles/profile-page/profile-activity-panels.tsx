@@ -11,14 +11,11 @@ import { getLocaleMessages } from "@/locales";
 import { cn } from "@/lib/utils";
 import { CommentCard } from "../../posts/post-thread/comment-card";
 import { PostCard } from "../../posts/post-card/post-card";
-import { SongItem } from "../song-item/song-item";
-import { ProfilePanelFrame } from "./profile-panel-frame";
 export { WalletPanel } from "./profile-wallet-panel";
 import type {
   ProfileActivityItem,
   ProfileCommentItem,
   ProfilePageProps,
-  ProfileScrobbleItem,
   ProfileVerificationItem,
 } from "./profile-page.types";
 
@@ -71,11 +68,6 @@ function isInteractiveTarget(target: EventTarget | null, currentTarget: HTMLElem
   );
 
   return interactiveElement != null && currentTarget.contains(interactiveElement);
-}
-
-function toSongItemProps(scrobble: ProfileScrobbleItem) {
-  const { scrobbleId: _scrobbleId, ...songItem } = scrobble;
-  return songItem;
 }
 
 function CommentRow({
@@ -199,12 +191,6 @@ function ActivityRows({
         if (item.kind === "comment") {
           return <CommentRow isLast={isLast} key={item.id} comment={item.comment} onNavigate={onNavigate} />;
         }
-
-        return (
-          <MobileFlatCard isLast={isLast} key={item.id}>
-            <SongItem {...toSongItemProps(item.scrobble)} />
-          </MobileFlatCard>
-        );
       })}
     </FeedStack>
   );
@@ -273,33 +259,5 @@ export function CommentsPanel({
         />
       ))}
     </FeedStack>
-  );
-}
-
-export function ScrobblesPanel({
-  scrobbles,
-}: {
-  scrobbles: NonNullable<ProfilePageProps["scrobbles"]>;
-}) {
-  const { locale } = useUiLocale();
-  const copy = getLocaleMessages(locale, "routes").profile;
-  const isMobile = useIsMobile();
-  return (
-    <ProfilePanelFrame emptyCopy={copy.emptyState} hasContent={scrobbles.length > 0} title={copy.scrobblesTab}>
-      <FeedStack>
-        {scrobbles.map((scrobble, index) => (
-          <Card
-            className={cn(
-              "overflow-hidden",
-              isMobile && "rounded-none border-x-0 border-t-0 bg-transparent shadow-none",
-              isMobile && index === scrobbles.length - 1 && "border-b-0",
-            )}
-            key={scrobble.scrobbleId}
-          >
-            <SongItem {...toSongItemProps(scrobble)} />
-          </Card>
-        ))}
-      </FeedStack>
-    </ProfilePanelFrame>
   );
 }

@@ -1,8 +1,5 @@
 import { toast } from "@/components/primitives/sonner";
-import type {
-  ProfileCommentItem,
-  ProfileScrobbleItem,
-} from "@/components/compositions/profiles/profile-page/profile-page.types";
+import type { ProfileCommentItem } from "@/components/compositions/profiles/profile-page/profile-page.types";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 
 import type { RoutePost } from "./types";
@@ -198,8 +195,4 @@ export function createLinkPost(frame: {
 
 export function createProfileComment(comment: ProfileCommentItem): ProfileCommentItem {
   return comment;
-}
-
-export function createProfileScrobble(scrobble: ProfileScrobbleItem): ProfileScrobbleItem {
-  return scrobble;
 }

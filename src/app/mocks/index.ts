@@ -1,5 +1,5 @@
 export { COMMUNITY_RECORDS, HOME_POSTS, YOUR_COMMUNITIES_POSTS } from "./community-fixtures";
-export { createImagePost, createLinkPost, createProfileComment, createProfileScrobble, createSongPost, createTextPost, createVideoPost } from "./post-factories";
+export { createImagePost, createLinkPost, createProfileComment, createSongPost, createTextPost, createVideoPost } from "./post-factories";
 export { PROFILES } from "./profile-fixtures";
 export { buildPostsById, CREATE_COMMUNITY_SAMPLE } from "./scenario-fixtures";
 export type { CommunitySummary, CreateCommunitySample, ProfileSummary, RoutePost } from "./types";

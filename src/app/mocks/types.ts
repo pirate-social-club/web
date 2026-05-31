@@ -1,9 +1,6 @@
 import type { CreateCommunityComposerProps } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
-import type {
-  ProfileCommentItem,
-  ProfileScrobbleItem,
-} from "@/components/compositions/profiles/profile-page/profile-page.types";
+import type { ProfileCommentItem } from "@/components/compositions/profiles/profile-page/profile-page.types";
 import type {
   CommunitySidebarFlairPolicy,
   CommunitySidebarRoleHolder,
@@ -42,7 +39,6 @@ export interface ProfileSummary {
   stats: Array<{ label: string; value: string }>;
   posts: RoutePost[];
   comments: ProfileCommentItem[];
-  scrobbles: ProfileScrobbleItem[];
 }
 
 export type CreateCommunitySample = CreateCommunityComposerProps;

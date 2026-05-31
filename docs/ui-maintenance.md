@@ -19,8 +19,9 @@ Use this checklist when touching `src/components/`.
 1. Move files to the correct ownership boundary first.
 2. Update imports in the same change.
 3. Delete dead story-only surface instead of preserving it.
-4. Run `rtk bun test`.
-5. Run `rtk bun run types:safe`.
+4. Run the smallest relevant test file with `rtk bun test path/to/file.test.tsx`.
+5. Run `rtk bun run ui:audit` when component structure, stories, typography, color, or spacing changed.
+6. Run `rtk bun run types:safe`.
 
 ## Ongoing Hygiene
 
@@ -28,3 +29,4 @@ Use this checklist when touching `src/components/`.
 - keep stories aligned with actual public APIs
 - avoid oversized primitive files
 - prefer one clear source of truth for layout ownership
+- keep route copy loaded at route/controller boundaries; compositions should receive copy as props

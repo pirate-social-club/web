@@ -19,6 +19,7 @@ This repo optimizes for clear, restrained UI.
 - do not keep dead exports
 - do not keep primitive wrappers that are only used by stories
 - if a component needs product-specific data or layout assumptions, treat it as a composition
+- compositions should not import route-message hooks directly; pass localized copy in from routes or controllers
 
 ## Stories
 
@@ -34,3 +35,4 @@ This repo optimizes for clear, restrained UI.
 - add smoke tests for key compositions when new flows land
 - keep tests lightweight by default
 - use broader interaction coverage only when the component actually owns behavior that can regress
+- prefer targeted `rtk bun test path/to/file.test.tsx` runs before broader checks

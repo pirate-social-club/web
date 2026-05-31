@@ -7,19 +7,17 @@ React 19 + Vite + Cloudflare Workers (rwsdk). Tailwind CSS v4 + Radix UI. Bun fo
 ## Commands
 
 ```bash
-bun install
-bun run types:safe     # preferred local typecheck on weak machines (TS7 tsgo)
-bun run types          # uncapped typecheck, use when CI parity matters
-bun run ui:audit       # component hygiene and stale-marker checks
-bun run locales:generate
-bun run dev            # dev server on :5173
-bun run test
-bun run test:e2e              # Playwright browser suite, defaults to local base URL
-bun run test:e2e:staging      # Playwright browser suite against staging
-bun run test:e2e:live-staging # real staging JWT session + post/comment flow
-bun run storybook      # component workspace on :6006
-bun run build          # full production build (heavy, avoid by default)
-bun run validate       # canonical pre-deploy validation (broad/heavy)
+rtk bun install
+rtk bun run types:safe     # preferred local typecheck on weak machines (TS7 tsgo)
+rtk bun run ui:audit       # component hygiene, layout rules, and stale-marker checks
+rtk bun run locales:generate
+rtk bun test path/to/file.test.tsx
+rtk bun run test:e2e              # Playwright browser suite, defaults to local base URL
+rtk bun run test:e2e:staging      # Playwright browser suite against staging
+rtk bun run test:e2e:live-staging # real staging JWT session + post/comment flow
+rtk bun run types                 # uncapped typecheck; use only when CI parity matters
+rtk bun run build                 # full production build; heavy, avoid by default
+rtk bun run validate              # broad pre-deploy validation; heavy
 ```
 
 See [AGENTS.md](./AGENTS.md) for validation escalation order and style rules.
@@ -31,6 +29,8 @@ See [docs/deploy.md](./docs/deploy.md) for the canonical main/public worker depl
 The Playwright suite lives in [`e2e/`](./e2e). The default project is deterministic and safe for CI: it checks public staging routes, authenticated app shells, mocked authenticated mutation flows, thread comments, and mobile layout without mutating real backend data.
 
 `bun run test:e2e:live-staging` is the Tier 3 staging integration check. It exchanges a real staging JWT session, opens the deployed browser app, creates a real post, and adds a real comment in the seeded staging smoke community. CI reads its JWT values from GitHub Actions secrets; `AUTH_UPSTREAM_JWT_SHARED_SECRET` should be copied from Infisical staging `/services/api` whenever that secret is rotated.
+
+Do not start `rtk bun run dev`, `rtk bun run storybook`, or worker dev servers from an agent session unless the user explicitly asks for that exact server. If visual verification is needed, use an already-running server.
 
 ## Source Layout
 

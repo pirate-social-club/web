@@ -7,6 +7,7 @@
 Authentication (Privy connect / wallet login / session refresh) is attempted **only** on these origins:
 
 - `https://pirate.sc`
+- `https://www.pirate.sc`
 - `https://app.pirate` — if Privy supports it and it is whitelisted
 - `https://staging.pirate.sc` and subdomains — for staging/testing
 - `localhost`, `127.0.0.1`, `*.localhost` — for local development
@@ -21,7 +22,7 @@ The following origins are **public-readable by default**. The full app SPA may l
 
 ### HNS root routing note
 
-The namespace verification UI advertises `https://{routeSlug}/` as a Handshake URL, but the main SPA worker (`worker.tsx`) does **not** currently perform host-based community routing. Visiting an HNS root loads the SPA at `/` (home feed), not the community. Host-to-community routing or a redirect rule is required for HNS roots to land on the correct community page.
+The namespace verification UI advertises `https://{routeSlug}/` as a Handshake URL. The worker can receive a forwarded HNS community route via `x-pirate-hns-community-route`; when that header is absent, a bare HNS root still loads the SPA at `/` and cannot infer the target community from the browser URL alone.
 
 ## 3. Auth-required actions on non-canonical origins
 
@@ -67,10 +68,11 @@ Only **root-style** `@space` handles are supported today. `name@space` (subspace
 Routes/surfaces that should apply the guard:
 
 - [x] `public-community-route.tsx` — follow, join CTAs
-- [x] `use-community-interaction-gate.tsx` — unauthenticated vote/comment-style gated actions
+- [x] `post-route.tsx` — auth-required 18+ and live-room actions
+- [x] `use-community-interaction-gate.tsx` — unauthenticated join, vote, comment, and home/community feed gated actions
 
 Open items moved to [`TODO-auth-origin-guards.md`](./TODO-auth-origin-guards.md).
 
 ---
 
-*Last updated: 2026-05-01*
+*Last reviewed: 2026-05-31*

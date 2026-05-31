@@ -57,7 +57,7 @@ Routes should import the appropriate shell from `compositions/app/page-shell/`:
 - `<StandardRoutePage size="rail">` — default sidebar route with header + bottom nav
 - `<StandaloneMobilePage title="..." onBack={...}>` — mobile standalone page with its own header
 - `<ChatRoutePage>` — constrained chat layout with overflow control
-- `<PublicRoutePage size="default">` — public profile/agent routes
+- `<PublicRoutePage size="default">` — standalone public routes that do not render inside the authenticated app shell
 
 ### Rules
 
@@ -77,3 +77,14 @@ Legacy routes (still receive legacy padding from AppShell `<main>`):
 - All other routes. These will be converted incrementally.
 
 Some legacy routes and stories still contain local gutter workarounds. When a route migrates to `StandardRoutePage` or another page shell, those workarounds should be replaced with `PageContainer gutter` and `FullBleedMobileListSection`.
+
+### Audit Enforcement
+
+`rtk bun run ui:audit` enforces the highest-signal structural rules:
+
+- every exported primitive file has a same-name story
+- no `text-xs` or `text-sm` in app UI
+- no hardcoded Tailwind palette text/background/border/ring colors in components
+- no direct `useRouteMessages` imports from `src/components/compositions/`
+- no root-level `.tsx` composition files outside composition folders
+- no expired dated removal TODOs or known stale repo markers

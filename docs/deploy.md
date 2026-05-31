@@ -43,9 +43,17 @@ AUTH_UPSTREAM_JWT_ISSUER=pirate-staging-upstream
 AUTH_UPSTREAM_JWT_AUDIENCE=pirate-api-staging
 ```
 
-## Canonical Validation
+## Validation
 
-Run this before any deploy:
+Production deploys normally rely on the release workflow validation. For local preflight, prefer focused checks first:
+
+```bash
+rtk bun run types:safe
+rtk bun run ui:audit
+rtk bun test path/to/touched.test.tsx
+```
+
+The broad validation script remains available when CI-parity is explicitly needed:
 
 ```bash
 rtk bun run validate
@@ -56,7 +64,7 @@ rtk bun run validate
 The main worker must be deployed from the built artifact, not from the generated
 `dist/worker/wrangler.json`.
 
-Use:
+For manual operator deploys only, use:
 
 ```bash
 rtk bun run deploy:main:staging
@@ -124,7 +132,7 @@ wrong routes.
 
 ## Public Worker
 
-Use:
+For manual operator deploys only, use:
 
 ```bash
 rtk bun run deploy:public:staging

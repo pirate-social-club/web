@@ -6,5 +6,8 @@ This directory is for files that must be served from stable root URLs by Vite/RW
 - `apple-touch-icon.png`: iOS home screen icon.
 - `web-app-manifest-192x192.png`, `web-app-manifest-512x512.png`: PWA manifest icons.
 - `site.webmanifest`: PWA manifest referenced by the document head.
+- `sw.js`: service worker served from the web root.
+- `og/`: social share images that need stable public URLs.
+- `mascots/`: shared public mascot images used by app empty, error, and celebration states.
 
 Component-only images should live under `src/assets/` instead.

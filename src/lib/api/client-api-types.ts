@@ -484,6 +484,9 @@ export type ApiCommunityAssistantPolicy = {
   actionMode: ApiAssistantActionMode;
   requireModeratorApprovalForWrites: boolean;
   perUserDailyMessageCap: number | null;
+  telegramPrivateAssistantEnabled: boolean;
+  telegramPreviewEnabled: boolean;
+  telegramPreviewDailyCap: number;
   voiceMode: ApiAssistantVoiceMode;
   sttProvider: ApiAssistantSttProvider;
   sttModel: string;
@@ -536,6 +539,9 @@ export type ApiCommunityAssistantPolicyUpdate = Partial<{
   actionMode: ApiAssistantActionMode;
   requireModeratorApprovalForWrites: boolean;
   perUserDailyMessageCap: number | null;
+  telegramPrivateAssistantEnabled: boolean;
+  telegramPreviewEnabled: boolean;
+  telegramPreviewDailyCap: number;
   voiceMode: ApiAssistantVoiceMode;
   sttProvider: ApiAssistantSttProvider;
   sttModel: string;

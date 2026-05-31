@@ -394,6 +394,7 @@ function ModelBillingSection({
 function NumberRow({
   description,
   label,
+  max,
   min = 0,
   onChange,
   suffix,
@@ -401,6 +402,7 @@ function NumberRow({
 }: {
   description?: string;
   label: string;
+  max?: number;
   min?: number;
   onChange: (value: number | null) => void;
   suffix?: string;
@@ -411,6 +413,7 @@ function NumberRow({
       <div className="flex items-center gap-2">
         <Input
           className="h-11 max-w-32 rounded-md text-center"
+          max={max}
           min={min}
           onChange={(event) => {
             const raw = event.target.value.trim();
@@ -419,8 +422,10 @@ function NumberRow({
               return;
             }
             const parsed = Number(raw);
-            onChange(Number.isFinite(parsed) && parsed >= min ? parsed : value);
+            const withinMax = max == null || parsed <= max;
+            onChange(Number.isInteger(parsed) && parsed >= min && withinMax ? parsed : value);
           }}
+          step={1}
           type="number"
           value={value ?? ""}
         />
@@ -520,6 +525,48 @@ function VoiceSection({
             </FieldRow>
           </>
         ) : null}
+      </div>
+    </Section>
+  );
+}
+
+function TelegramSection({
+  onChange,
+  settings,
+}: {
+  onChange: (partial: Partial<CommunityAssistantPolicySettings>) => void;
+  settings: CommunityAssistantPolicySettings;
+}) {
+  return (
+    <Section
+      className="border-t border-border-soft pt-6 md:pt-8"
+      subtitle="Private bot DMs use public preview context for non-members and private assistant context for joined members."
+      title="Telegram"
+    >
+      <div className="border-y border-border-soft">
+        <ToggleRow
+          checked={settings.telegramPrivateAssistantEnabled}
+          description="Allow this community bot to answer private Telegram messages."
+          label="Private bot DMs"
+          onCheckedChange={(telegramPrivateAssistantEnabled) => onChange({ telegramPrivateAssistantEnabled })}
+        />
+        <ToggleRow
+          checked={settings.telegramPreviewEnabled}
+          description="Let unlinked or non-member Telegram users ask limited preview questions before joining."
+          label="Preview before join"
+          onCheckedChange={(telegramPreviewEnabled) => onChange({ telegramPreviewEnabled })}
+        />
+        <NumberRow
+          description="Per Telegram user, per community. Set to 0 to disable preview answers."
+          label="Preview daily cap"
+          max={50}
+          min={0}
+          onChange={(telegramPreviewDailyCap) => onChange({
+            telegramPreviewDailyCap: telegramPreviewDailyCap ?? settings.telegramPreviewDailyCap,
+          })}
+          suffix="messages"
+          value={settings.telegramPreviewDailyCap}
+        />
       </div>
     </Section>
   );
@@ -796,6 +843,11 @@ export function CommunityAssistantPolicyPage({
         settings={settings}
       />
 
+      <TelegramSection
+        onChange={update}
+        settings={settings}
+      />
+
       <Section
         className="border-t border-border-soft pt-6 md:pt-8"
         subtitle="Moderator instructions sit below the platform safety prompt and above retrieved board context."
@@ -873,12 +925,14 @@ export function CommunityAssistantPolicyPage({
           </div>
           <NumberRow
             label="Thread limit"
+            max={50}
             min={1}
             onChange={(maxContextThreads) => update({ maxContextThreads: maxContextThreads ?? settings.maxContextThreads })}
             value={settings.maxContextThreads}
           />
           <NumberRow
             label="Lookback window"
+            max={365}
             min={1}
             onChange={(maxLookbackDays) => update({ maxLookbackDays })}
             suffix="days"
@@ -891,6 +945,7 @@ export function CommunityAssistantPolicyPage({
         <div className="border-y border-border-soft">
           <NumberRow
             label="Per-user daily cap"
+            max={10000}
             min={1}
             onChange={(perUserDailyMessageCap) => update({ perUserDailyMessageCap })}
             suffix="messages"
@@ -898,6 +953,7 @@ export function CommunityAssistantPolicyPage({
           />
           <NumberRow
             label="Retention"
+            max={3650}
             min={1}
             onChange={(retentionDays) => update({ retentionDays: retentionDays ?? settings.retentionDays })}
             suffix="days"

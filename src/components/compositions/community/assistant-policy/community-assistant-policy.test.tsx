@@ -439,6 +439,26 @@ describe("CommunityAssistantPolicyPage", () => {
     view.unmount();
   });
 
+  test("renders Telegram controls with the preview cap bounds", () => {
+    const view = renderPolicy();
+
+    expect(view.getByText("Telegram")).not.toBeNull();
+    fireEvent.click(view.getByRole("switch", { name: "Private bot DMs" }));
+    expect(view.getLatestSettings().telegramPrivateAssistantEnabled).toBe(true);
+
+    const previewCapInput = Array.from(view.container.querySelectorAll<HTMLInputElement>('input[type="number"]'))
+      .find((input) => input.getAttribute("min") === "0");
+    expect(previewCapInput).not.toBeNull();
+    expect(previewCapInput?.getAttribute("max")).toBe("50");
+
+    editTextInput(previewCapInput!, "51");
+    expect(view.getLatestSettings().telegramPreviewDailyCap).toBe(5);
+
+    editTextInput(previewCapInput!, "50");
+    expect(view.getLatestSettings().telegramPreviewDailyCap).toBe(50);
+    view.unmount();
+  });
+
   test("updates TTS voice", () => {
     const view = renderPolicy({
       initialSettings: {

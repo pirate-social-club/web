@@ -69,6 +69,9 @@ export type CommunityAssistantPolicySettings = {
   actionMode: AssistantActionMode;
   requireModeratorApprovalForWrites: boolean;
   perUserDailyMessageCap: number | null;
+  telegramPrivateAssistantEnabled: boolean;
+  telegramPreviewEnabled: boolean;
+  telegramPreviewDailyCap: number;
   voiceMode: AssistantVoiceMode;
   sttProvider: AssistantSttProvider;
   sttModel: string;
@@ -156,6 +159,9 @@ export function createDefaultCommunityAssistantPolicySettings(): CommunityAssist
     actionMode: "answer_only",
     requireModeratorApprovalForWrites: true,
     perUserDailyMessageCap: 40,
+    telegramPrivateAssistantEnabled: false,
+    telegramPreviewEnabled: true,
+    telegramPreviewDailyCap: 5,
     voiceMode: "off",
     sttProvider: "elevenlabs",
     sttModel: "scribe_v2",

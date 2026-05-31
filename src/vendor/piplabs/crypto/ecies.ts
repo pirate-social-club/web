@@ -1,4 +1,4 @@
-import { secp256k1 } from "@noble/curves/secp256k1";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { gcm } from "@noble/ciphers/aes.js";
@@ -47,7 +47,7 @@ export function generateEphemeralKeyPair(): {
   privateKey: Uint8Array;
   publicKey: Uint8Array;
 } {
-  const privateKey = secp256k1.utils.randomPrivateKey();
+  const privateKey = secp256k1.utils.randomSecretKey();
   const publicKey = secp256k1.getPublicKey(privateKey, false); // uncompressed 65 bytes
   return { privateKey, publicKey };
 }
@@ -63,7 +63,7 @@ export async function encryptForTest(
   recipientPubKey: Uint8Array,
 ): Promise<{ ciphertext: Uint8Array; ephemeralPubKey: Uint8Array }> {
   // Generate ephemeral keypair
-  const ephPriv = secp256k1.utils.randomPrivateKey();
+  const ephPriv = secp256k1.utils.randomSecretKey();
   const ephPub = secp256k1.getPublicKey(ephPriv, false);
 
   // ECDH

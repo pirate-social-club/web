@@ -1,5 +1,5 @@
 import { RLP } from "@ethereumjs/rlp";
-import { secp256k1 } from "@noble/curves/secp256k1";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 as keccak256Noble } from "@noble/hashes/sha3.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
 
@@ -50,7 +50,7 @@ export function verifyPartialSignature(params: {
       BigInt("0x" + bytesToHex(s)),
     ).addRecoveryBit(recoveryId);
 
-    const recoveredPubKey = sig.recoverPublicKey(respHash).toRawBytes(false);
+    const recoveredPubKey = sig.recoverPublicKey(respHash).toBytes(false);
     // recoveredPubKey is 65 bytes (0x04 || x || y), drop prefix to get 64 bytes
     const recoveredRaw = recoveredPubKey.slice(1);
 

@@ -18,7 +18,7 @@ import {
   interactionCopy,
   refreshResponse,
   uniqueHumanRequirement,
-} from "./test-fixtures";
+} from "./test-fixtures.test";
 import type {
   ModalState,
   PendingInteraction,

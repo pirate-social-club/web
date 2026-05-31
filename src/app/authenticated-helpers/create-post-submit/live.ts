@@ -67,7 +67,7 @@ function isPirateUserId(value: string): boolean {
   return value.startsWith("usr_");
 }
 
-export function normalizeLiveRoomGuestHandle(value: string): string {
+function normalizeLiveRoomGuestHandle(value: string): string {
   return value.trim().replace(/^@+/, "").replace(/^\/?u\//, "");
 }
 

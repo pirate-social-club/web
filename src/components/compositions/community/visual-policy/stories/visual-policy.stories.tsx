@@ -6,7 +6,7 @@ import {
   CommunityVisualPolicyPage,
   sampleVisualFacts,
 } from "../community-visual-policy";
-import type { VisualClassifierFacts, VisualPolicySettings } from "../community-visual-policy.types";
+import type { VisualClassifierFacts, VisualPolicySettings } from "../visual-policy-model";
 
 function InteractiveStory({
   sampleFacts,

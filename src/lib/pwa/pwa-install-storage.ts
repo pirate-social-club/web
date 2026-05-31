@@ -74,7 +74,7 @@ function snoozeDurationFor(reason: DismissReason): number {
   }
 }
 
-export function isPromoSnoozed(record: PwaInstallRecord): boolean {
+function isPromoSnoozed(record: PwaInstallRecord): boolean {
   if (record.permanentlyDismissed || record.installed) return true;
   if (!record.lastDismissedAt || !record.lastDismissReason) return false;
   const duration = snoozeDurationFor(record.lastDismissReason);

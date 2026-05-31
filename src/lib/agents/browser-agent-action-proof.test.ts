@@ -1,12 +1,47 @@
 import { describe, expect, test } from "bun:test";
 
-import { createSignedAgentChallenge } from "./browser-agent-crypto";
 import {
   buildAgentActionProof,
   canonicalizeAgentActionProofRequest,
   canonicalizeAgentActionProofSignaturePayload,
   computeAgentActionProofHash,
 } from "./browser-agent-action-proof";
+
+function arrayBufferToBase64(value: ArrayBuffer): string {
+  const bytes = new Uint8Array(value);
+  let binary = "";
+
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    const chunk = bytes.subarray(index, index + 0x8000);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
+
+function encodePem(label: string, value: ArrayBuffer): string {
+  const base64 = arrayBufferToBase64(value);
+  const lines = base64.match(/.{1,64}/g) ?? [base64];
+  return `-----BEGIN ${label}-----\n${lines.join("\n")}\n-----END ${label}-----`;
+}
+
+async function createTestSigningKey() {
+  const keyPair = await globalThis.crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+
+  if (!("privateKey" in keyPair) || !("publicKey" in keyPair)) {
+    throw new Error("Could not create an agent signing key.");
+  }
+
+  const [publicKeySpki, privateKeyPkcs8] = await Promise.all([
+    globalThis.crypto.subtle.exportKey("spki", keyPair.publicKey),
+    globalThis.crypto.subtle.exportKey("pkcs8", keyPair.privateKey),
+  ]);
+
+  return {
+    privateKeyPem: encodePem("PRIVATE KEY", privateKeyPkcs8),
+    publicKeyPem: encodePem("PUBLIC KEY", publicKeySpki),
+  };
+}
 
 function decodePemBase64(pem: string): ArrayBuffer {
   const body = pem
@@ -51,10 +86,7 @@ describe("browser agent action proof", () => {
   });
 
   test("builds a verifiable Ed25519 proof from a stored private key", async () => {
-    const challenge = await createSignedAgentChallenge({
-      message: "Pirate test agent",
-      timestamp: Date.parse("2026-04-19T12:00:00.000Z"),
-    });
+    const signingKey = await createTestSigningKey();
     const proof = await buildAgentActionProof({
       method: "POST",
       url: "https://pirate.test/communities/cmt_test/posts",
@@ -63,7 +95,7 @@ describe("browser agent action proof", () => {
         post_type: "text",
         title: "Ship log",
       },
-      privateKeyPem: challenge.privateKeyPem,
+      privateKeyPem: signingKey.privateKeyPem,
     });
     const expectedHash = await computeAgentActionProofHash({
       method: "POST",
@@ -76,7 +108,7 @@ describe("browser agent action proof", () => {
     });
     const publicKey = await globalThis.crypto.subtle.importKey(
       "spki",
-      decodePemBase64(challenge.publicKeyPem),
+      decodePemBase64(signingKey.publicKeyPem),
       { name: "Ed25519" },
       false,
       ["verify"],

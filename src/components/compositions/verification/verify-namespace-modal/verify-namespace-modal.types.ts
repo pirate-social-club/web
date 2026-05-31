@@ -77,16 +77,3 @@ export interface NamespaceVerificationCallbacks {
     namespaceVerificationSessionId: string;
   }) => Promise<NamespaceVerificationStartResult>;
 }
-
-export interface VerifyNamespaceModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onVerified?: (namespaceVerificationId: string) => void;
-  callbacks: NamespaceVerificationCallbacks;
-  initialRootLabel?: string;
-  initialFamily?: NamespaceFamily;
-  forceMobile?: boolean;
-  activeSessionId?: string | null;
-  onSessionStarted?: (sessionId: string) => void;
-  onSessionCleared?: () => void;
-}

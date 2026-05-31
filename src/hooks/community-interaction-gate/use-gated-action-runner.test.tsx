@@ -9,7 +9,7 @@ import {
   gate,
   interactionCopy,
   uniqueHumanRequirement,
-} from "./test-fixtures";
+} from "./test-fixtures.test";
 import type {
   CommunityGateData,
   ModalState,

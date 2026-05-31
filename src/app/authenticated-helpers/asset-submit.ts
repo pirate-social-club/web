@@ -14,7 +14,7 @@ export type AssetDerivativeInput = Pick<DerivativeStepState, "required" | "sourc
   references?: AssetDerivativeReference[];
 };
 
-export function isResolvedDerivativeReference(reference: AssetDerivativeReference): boolean {
+function isResolvedDerivativeReference(reference: AssetDerivativeReference): boolean {
   return !reference.id.startsWith("acr:custom-file:") && !reference.id.startsWith("acr:unresolved-bundle:");
 }
 

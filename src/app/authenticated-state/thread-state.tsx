@@ -26,7 +26,7 @@ export type ThreadCommentNode = {
 };
 
 export const THREAD_COMMENT_PAGE_LIMIT = "100";
-export const AUTO_REPLY_PREVIEW_LIMIT = "5";
+const AUTO_REPLY_PREVIEW_LIMIT = "5";
 const AUTO_REPLY_PREVIEW_CONCURRENCY = 6;
 
 type CommentPage = {

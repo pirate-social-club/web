@@ -7,7 +7,7 @@ import {
   createDeferred,
   createPreview,
   eligibility,
-} from "./test-fixtures";
+} from "./test-fixtures.test";
 
 import {
   COMMUNITY_GATE_CACHE_TTL_MS,

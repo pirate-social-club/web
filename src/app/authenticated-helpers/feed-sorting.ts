@@ -115,16 +115,6 @@ function compareFeedEntries(
   return right.postId.localeCompare(left.postId);
 }
 
-export function getFeedOrderSignature(
-  items: ReadonlyArray<{ post: { id?: string; post?: string } } | { post: { post: { id?: string; post?: string } } }>,
-): string {
-  return items.map((item) => {
-    const outerPost = item.post as { id?: string; post?: string | { id?: string; post?: string } };
-    const post = typeof outerPost.post === "object" && outerPost.post !== null ? outerPost.post : outerPost;
-    return post.id ?? post.post ?? "";
-  }).join(",");
-}
-
 export function sortCommunityFeedPosts(
   posts: readonly ApiPost[],
   sort: FeedSort,

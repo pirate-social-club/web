@@ -116,7 +116,6 @@ export function apiProfileToProps(
     overviewItems: [],
     posts: [],
     comments: [],
-    scrobbles: [],
   };
 }
 
@@ -150,18 +149,7 @@ export function buildSettingsPath(tab: SettingsTab): string {
   return `/settings/${tab}`;
 }
 
-export function formatWalletChainLabel(chainNamespace: string): string {
-  switch (chainNamespace) {
-    case "eip155:1":
-      return "Ethereum";
-    case "eip155:8453":
-      return "Base";
-    default:
-      return chainNamespace;
-  }
-}
-
-export function normalizeAgentHandleInput(value: string): string {
+function normalizeAgentHandleInput(value: string): string {
   return value.trim().toLowerCase().replace(/\.clawitzer$/i, "");
 }
 

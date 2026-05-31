@@ -8,7 +8,7 @@ import {
   gate,
   gatesPanel,
   interactionCopy,
-} from "./test-fixtures";
+} from "./test-fixtures.test";
 import type {
   InteractionAllowedContext,
 } from "@/hooks/use-community-interaction-gate.helpers";

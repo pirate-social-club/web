@@ -1,0 +1,52 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    ".storybook/main.ts",
+    ".storybook/preview.ts",
+    "vite.config.ts",
+    "vite.desktop.config.ts",
+    "src/worker.tsx",
+    "src/worker-public.ts",
+    "src/client.tsx",
+    "src/desktop-standalone.tsx",
+    "src/worker-seo.test.tsx",
+    "e2e/**/*.spec.ts",
+    "scripts/**/*.{mjs,ts}"
+  ],
+  "project": [
+    ".storybook/**/*.{ts,tsx}",
+    "e2e/**/*.{ts,tsx}",
+    "scripts/**/*.{mjs,ts}",
+    "src/**/*.{ts,tsx,js,jsx}"
+  ],
+  "ignore": [
+    "dist/**",
+    "storybook-static/**",
+    "src/lib/auth/privy-react-auth.ssr.tsx",
+    "src/lib/dotenv-browser-shim.ts",
+    "src/lib/rwsdk-router.client.ts",
+    "src/lib/rwsdk-worker.client.ts",
+    "src/locales/generated.ts",
+    "src/vendor/**",
+    "worker-configuration.d.ts"
+  ],
+  "ignoreBinaries": [
+    "rw-scripts",
+    "scripts/community/repair-community-migration-ledger.ts",
+    "scripts/control-plane/apply-postgres-migrations.ts",
+    "scripts/deploy-production.sh",
+    "scripts/deploy-public.sh",
+    "scripts/deploy-staging.sh",
+    "wrangler2"
+  ],
+  "ignoreDependencies": [
+    "@fontsource/anton",
+    "@cloudflare/workers-types",
+    "@types/node",
+    "@types/react",
+    "@types/react-dom",
+    "tailwindcss",
+    "tw-animate-css",
+    "typescript"
+  ]
+}

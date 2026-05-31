@@ -5,7 +5,7 @@ import pirateBrandMarkUrl from "@/assets/logo_ghost_sm.png";
 import { getStoredSession, type StoredSession } from "@/lib/api/session-store";
 import type { ChatConversation, ChatMessageRecord } from "./chat-types";
 
-export const ASSISTANT_CONVERSATION_ID = "bedsheet";
+const ASSISTANT_CONVERSATION_ID = "bedsheet";
 const ASSISTANT_CACHE_KEY = "pirate.web.chat.assistant.v1";
 const ASSISTANT_CACHE_EVENT = "pirate:web:chat-assistant-cache";
 const ASSISTANT_AVAILABILITY_TTL_MS = 30_000;
@@ -248,10 +248,6 @@ async function fetchAssistantHealth(): Promise<boolean> {
 
 export function isBedsheetAssistantConversationId(conversationId: string): boolean {
   return conversationId === ASSISTANT_CONVERSATION_ID;
-}
-
-export function isAssistantConversationId(conversationId: string): boolean {
-  return isBedsheetAssistantConversationId(conversationId);
 }
 
 export async function probeAssistantAvailability(options?: { force?: boolean }): Promise<boolean> {

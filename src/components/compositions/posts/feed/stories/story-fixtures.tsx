@@ -2,7 +2,6 @@ import * as React from "react";
 
 import { COMMUNITY_RECORDS, HOME_POSTS, YOUR_COMMUNITIES_POSTS } from "@/app/mocks";
 import { PillButton } from "@/components/primitives/pill-button";
-import type { RecentPostRailItem } from "../recent-post-rail";
 import type { FeedItem, FeedSortOption } from "../feed";
 import { Type } from "@/components/primitives/type";
 import { Avatar } from "@/components/primitives/avatar";
@@ -82,47 +81,6 @@ export const homeFeedItems = toFeedItems(HOME_POSTS);
 export const yourCommunitiesFeedItems = toFeedItems(YOUR_COMMUNITIES_POSTS);
 export const tameImpalaCommunity = COMMUNITY_RECORDS.gld_01_tame_impala;
 export const tameImpalaFeedItems = toFeedItems(tameImpalaCommunity.posts);
-
-export const recentPostRailItems = [
-  {
-    commentCount: 115,
-    communityAvatarSrc: null,
-    communityHref: "#",
-    communityId: "c/gadgets",
-    communityLabel: "r/gadgets",
-    postHref: "#",
-    postId: "recent-gadgets-launch",
-    postTitle: "Clicks confirms launch plans for compact...",
-    score: 614,
-    thumbnailSrc: "https://picsum.photos/seed/compact-keyboard/240/240",
-    timestampLabel: "15h ago",
-  },
-  {
-    commentCount: 648,
-    communityAvatarSrc: null,
-    communityHref: "#",
-    communityId: "c/no-stupid-questions",
-    communityLabel: "r/NoStupidQuestions",
-    postHref: "#",
-    postId: "recent-space-survival",
-    postTitle: "How long can a human survive in space without a space suit?",
-    score: 1600,
-    timestampLabel: "14h ago",
-  },
-  {
-    commentCount: 2100,
-    communityAvatarSrc: null,
-    communityHref: "#",
-    communityId: "c/okbuddycinephile",
-    communityLabel: "r/okbuddycinephile",
-    postHref: "#",
-    postId: "recent-transformations",
-    postTitle: "Actors who've underwent incredible transformations?",
-    score: 8900,
-    thumbnailSrc: "https://picsum.photos/seed/celebrity-transformations/240/240",
-    timestampLabel: "6h ago",
-  },
-] satisfies readonly RecentPostRailItem[];
 
 export const yourSpacesRailItems = Object.values(COMMUNITY_RECORDS).map((community) => ({
   id: community.id,

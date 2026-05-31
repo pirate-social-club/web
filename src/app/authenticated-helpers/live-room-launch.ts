@@ -1,7 +1,4 @@
 import { resolveApiBaseUrl } from "@/lib/api/base-url";
-import { sameUserId } from "@/app/authenticated-helpers/user-id";
-
-export const sameLiveRoomUserId = sameUserId;
 
 export function buildLiveRoomFreedomHref(input: {
   communityId?: string | null;

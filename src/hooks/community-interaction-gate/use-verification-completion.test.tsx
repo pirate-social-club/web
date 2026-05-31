@@ -11,7 +11,7 @@ import {
   gatesPanel,
   interactionCopy,
   uniqueHumanRequirement,
-} from "./test-fixtures";
+} from "./test-fixtures.test";
 import type {
   PendingInteraction,
 } from "@/hooks/use-community-interaction-gate.helpers";

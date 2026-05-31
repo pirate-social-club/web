@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { StandardRoutePage } from "@/components/compositions/app/page-shell";
-import { StorybookMobileDefaultRoute } from "@/components/compositions/app/page-shell/storybook-helpers";
 import { fiveChainSections, sharedWalletAddress } from "../../stories/wallet-flow-fixtures";
 import { WalletReceiveSheet } from "../../wallet-receive-sheet/wallet-receive-sheet";
 import { WalletSendSheet } from "../../wallet-send-sheet/wallet-send-sheet";
@@ -115,9 +114,9 @@ export const Mobile: Story = {
     viewport: { defaultViewport: "mobile1" },
   },
   render: (args) => (
-    <StorybookMobileDefaultRoute size="rail">
+    <StandardRoutePage size="rail">
       <WalletHub {...args} />
-    </StorybookMobileDefaultRoute>
+    </StandardRoutePage>
   ),
 };
 
@@ -154,7 +153,7 @@ function WalletHubWithSheetsMobile({ forceMobile = false }: { forceMobile?: bool
   const [walletAction, setWalletAction] = React.useState<"send" | "receive" | null>(null);
 
   return (
-    <StorybookMobileDefaultRoute size="rail">
+    <StandardRoutePage size="rail">
       <WalletHub
         {...baseArgs}
         onReceive={() => setWalletAction("receive")}
@@ -175,7 +174,7 @@ function WalletHubWithSheetsMobile({ forceMobile = false }: { forceMobile?: bool
         onOpenChange={(open) => setWalletAction(open ? "send" : null)}
         open={walletAction === "send"}
       />
-    </StorybookMobileDefaultRoute>
+    </StandardRoutePage>
   );
 }
 

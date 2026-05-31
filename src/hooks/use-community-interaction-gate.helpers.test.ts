@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   gate,
   interactionCopy,
-} from "./community-interaction-gate/test-fixtures";
+} from "./community-interaction-gate/test-fixtures.test";
 import {
   createCommunityBlockedModalStateFactory,
   type BuildBlockedModalStateArgs,

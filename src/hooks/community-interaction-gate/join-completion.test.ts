@@ -6,7 +6,7 @@ import {
   gate,
   gatesPanel,
   interactionCopy,
-} from "./test-fixtures";
+} from "./test-fixtures.test";
 import { completeCommunityJoinFromEligibility } from "./join-completion";
 
 describe("completeCommunityJoinFromEligibility", () => {

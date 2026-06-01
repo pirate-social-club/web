@@ -149,7 +149,6 @@ jobs:
 
   production:
     name: Deploy production
-    if: false
     needs: staging
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:

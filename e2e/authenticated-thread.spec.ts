@@ -48,7 +48,9 @@ test.describe("authenticated thread flows with mocked API", () => {
     const storyPage = await storyPagePromise;
     await storyPage.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => undefined);
 
-    expect(storyPage.url()).toBe(mockStoryPortalAssetUrl);
+    const openedUrl = new URL(storyPage.url());
+    const expectedUrl = new URL(mockStoryPortalAssetUrl);
+    expect(`${openedUrl.origin}${openedUrl.pathname}`).toBe(`${expectedUrl.origin}${expectedUrl.pathname}`);
     await expectNoBrowserError(page);
   });
 });

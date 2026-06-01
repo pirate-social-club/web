@@ -67,7 +67,7 @@ jobs:
           VITE_EFP_ENVIRONMENT: testnet
           VITE_PIRATE_APP_ENV: staging
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
-        run: scripts/deploy-staging.sh
+        run: scripts/deploy-staging.sh --allow-non-main -m "gate action session refresh staging validation"
       - name: Verify staging/prod metadata
         working-directory: web
         env:
@@ -151,6 +151,7 @@ jobs:
   production:
     name: Deploy production
     needs: staging
+    if: github.ref == 'refs/heads/main'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4

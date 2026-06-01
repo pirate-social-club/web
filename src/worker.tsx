@@ -51,9 +51,12 @@ import { buildVersionResponse, type BuildVersionEnv } from "@/lib/build-version"
 import { telegramCommunityJoinRedirect } from "@/lib/telegram-join-redirect";
 import {
   buildAgentSeoMetadata,
+  buildOpenGraphUrl,
   buildCommunitySeoMetadata,
   buildPostSeoMetadata,
   buildProfileSeoMetadata,
+  resolveSharePreviewQueryValue,
+  shouldAlwaysResolveEntitySeo,
   type PublicCommunityPreviewResponse,
   type PublicPostResponse,
 } from "@/lib/share-metadata";
@@ -100,19 +103,13 @@ function resolveRequestUiLocale(
   return resolveLocaleQueryOverride(url) ?? resolveRequestLocale(acceptLanguageHeader);
 }
 
-function shouldResolveSeoMetadata(request: Request): boolean {
-  const userAgent = request.headers.get("user-agent") ?? "";
-  return SEO_METADATA_USER_AGENT_PATTERN.test(userAgent);
-}
-
-function buildOpenGraphUrl(canonicalUrl: string, locale: UiLocaleCode, hasLocaleOverride: boolean): string {
-  if (!hasLocaleOverride) {
-    return canonicalUrl;
+function shouldResolveSeoMetadata(request: Request, route: ReturnType<typeof matchRoute>): boolean {
+  if (shouldAlwaysResolveEntitySeo(route)) {
+    return true;
   }
 
-  const url = new URL(canonicalUrl);
-  url.searchParams.set("locale", resolveLocaleLanguageTag(locale));
-  return url.toString();
+  const userAgent = request.headers.get("user-agent") ?? "";
+  return SEO_METADATA_USER_AGENT_PATTERN.test(userAgent);
 }
 
 function buildPublicApiUrl(apiOrigin: string, path: string, locale: UiLocaleCode | null): string {
@@ -159,7 +156,7 @@ async function resolveRouteSeoMetadata(input: {
   signal?: AbortSignal;
 }): Promise<SeoMetadata | null> {
   try {
-    if (input.route.kind === "community") {
+    if (input.route.kind === "community" || input.route.kind === "telegram-community") {
       const preview = await fetchPublicJson<PublicCommunityPreviewResponse>(
         input.apiOrigin,
         `/public-communities/${encodeURIComponent(input.route.communityId)}?preview=seo`,
@@ -173,7 +170,12 @@ async function resolveRouteSeoMetadata(input: {
       });
     }
 
-    if (input.route.kind === "post") {
+    if (
+      input.route.kind === "post"
+      || input.route.kind === "telegram-post"
+      || input.route.kind === "live-room"
+      || input.route.kind === "crosspost"
+    ) {
       const postResponse = await fetchPublicJson<PublicPostResponse>(
         input.apiOrigin,
         `/public-posts/${encodeURIComponent(input.route.postId)}`,
@@ -441,7 +443,7 @@ const app = defineApp<AppRequestInfo>([
       )
       : undefined;
     ctx.isIndexable = discovery.isIndexable;
-    const seoMetadata = shouldResolveSeoMetadata(request)
+    const seoMetadata = shouldResolveSeoMetadata(request, route)
       ? await resolveRouteSeoMetadataWithinBudget({
         apiOrigin: discovery.apiOrigin,
         appOrigin: discovery.appOrigin,
@@ -452,7 +454,12 @@ const app = defineApp<AppRequestInfo>([
     ctx.seoMetadata = seoMetadata
       ? {
           ...seoMetadata,
-          url: buildOpenGraphUrl(discovery.canonicalUrl, locale, hasLocaleOverride),
+          url: buildOpenGraphUrl(
+            discovery.canonicalUrl,
+            locale,
+            hasLocaleOverride,
+            resolveSharePreviewQueryValue(url),
+          ),
         }
       : null;
     ctx.theme = parseThemeCookie(request.headers.get("cookie"));

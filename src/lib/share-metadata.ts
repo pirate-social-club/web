@@ -2,7 +2,7 @@ import type { CommunityPreview, LocalizedPostResponse } from "@pirate/api-contra
 
 import type { SeoMetadata } from "@/app/app-context";
 import { getLocaleMessages } from "@/locales";
-import type { UiLocaleCode } from "@/lib/ui-locale-core";
+import { resolveLocaleLanguageTag, type UiLocaleCode } from "@/lib/ui-locale-core";
 import type { PublicAgentResolution, PublicProfileResolution } from "@/worker-public.types";
 
 export type PublicCommunityPreviewResponse = CommunityPreview & {
@@ -16,6 +16,18 @@ export type PublicPostResponse = LocalizedPostResponse & {
   links?: unknown;
 };
 
+const ROUTE_KINDS_WITH_ENTITY_SEO = new Set([
+  "community",
+  "crosspost",
+  "live-room",
+  "post",
+  "public-agent",
+  "public-profile",
+  "telegram-community",
+  "telegram-post",
+]);
+
+const SHARE_PREVIEW_QUERY_KEY = "share";
 const META_DESCRIPTION_MAX_LENGTH = 180;
 export const DEFAULT_SHARE_IMAGE_PATH = "/og/pirate-share-card.jpg";
 export const DEFAULT_SHARE_IMAGE_TYPE = "image/jpeg";
@@ -139,6 +151,34 @@ function shouldUseCloudflareImageTransform(appOrigin: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function shouldAlwaysResolveEntitySeo(route: { kind: string }): boolean {
+  return ROUTE_KINDS_WITH_ENTITY_SEO.has(route.kind);
+}
+
+export function resolveSharePreviewQueryValue(url: URL): string | null {
+  return url.searchParams.has(SHARE_PREVIEW_QUERY_KEY) ? "1" : null;
+}
+
+export function buildOpenGraphUrl(
+  canonicalUrl: string,
+  locale: UiLocaleCode,
+  hasLocaleOverride: boolean,
+  sharePreviewValue: string | null,
+): string {
+  if (!hasLocaleOverride && !sharePreviewValue) {
+    return canonicalUrl;
+  }
+
+  const url = new URL(canonicalUrl);
+  if (sharePreviewValue) {
+    url.searchParams.set(SHARE_PREVIEW_QUERY_KEY, sharePreviewValue);
+  }
+  if (hasLocaleOverride) {
+    url.searchParams.set("locale", resolveLocaleLanguageTag(locale));
+  }
+  return url.toString();
 }
 
 export function buildCloudflareShareImageUrl(appOrigin: string, sourceUrl: string): string {

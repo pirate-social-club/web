@@ -5,6 +5,7 @@ import { ArrowSquareOut, CalendarBlank, MapPin, VideoCamera } from "@phosphor-ic
 import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
+import { postCardReadableWidth, postCardTextWrap } from "./post-card.styles";
 import type { PostCardEvent } from "./post-card.types";
 
 function parseEventDate(value: string): Date | null {
@@ -143,7 +144,7 @@ export function PostCardEventBlock({
   return (
     <section
       aria-label="Event details"
-      className="flex w-full max-w-[72ch] flex-col gap-1 text-start"
+      className={cn("flex flex-col gap-1 text-start", postCardReadableWidth)}
     >
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         <CalendarBlank className="size-4 shrink-0 text-muted-foreground" weight="bold" />
@@ -160,7 +161,7 @@ export function PostCardEventBlock({
       </div>
 
       {locationLabel ? (
-        <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
+        <div className="flex min-w-0 items-start gap-2 text-muted-foreground">
           {event.isOnline ? (
             <VideoCamera className="size-4 shrink-0" weight="bold" />
           ) : (
@@ -168,18 +169,18 @@ export function PostCardEventBlock({
           )}
           {mapHref ? (
             <a
-              className="min-w-0 truncate text-inherit hover:text-primary hover:underline"
+              className={cn("min-w-0 flex-1 text-inherit hover:text-primary hover:underline", postCardTextWrap, "[word-break:break-word]")}
               data-post-card-interactive="true"
               href={mapHref}
               rel="noopener noreferrer"
               target="_blank"
             >
-              <Type as="span" variant="caption" className="text-inherit">
+              <Type as="span" variant="caption" className={cn("text-inherit", postCardTextWrap, "[word-break:break-word]")}>
                 {locationLabel}
               </Type>
             </a>
           ) : (
-            <Type as="span" variant="caption" className="min-w-0 truncate">
+            <Type as="span" variant="caption" className={cn("min-w-0 flex-1", postCardTextWrap, "[word-break:break-word]")}>
               {locationLabel}
             </Type>
           )}
@@ -195,7 +196,7 @@ export function PostCardEventBlock({
           target="_blank"
         >
           <ArrowSquareOut className="size-4 shrink-0" />
-          <Type as="span" variant="label" className="truncate text-inherit">
+          <Type as="span" variant="label" className="min-w-0 break-all text-inherit [word-break:break-all]">
             {host ?? event.eventUrl}
           </Type>
         </a>

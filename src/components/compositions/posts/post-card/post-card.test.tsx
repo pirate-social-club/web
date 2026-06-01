@@ -10,6 +10,45 @@ import { UiLocaleProvider } from "@/lib/ui-locale";
 import { PostCard } from "./post-card";
 
 describe("PostCard", () => {
+  test("constrains event details to the mobile card width", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "text",
+            body: "Lineup links incoming.",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          event={{
+            startsAt: "2026-07-04T20:00:00.000Z",
+            timezone: "Asia/Tbilisi",
+            locationName: "Lisi Wonderland",
+            address: "Leo Kvachadze Street, 0017 Tbilisi, Georgia",
+            eventUrl: "https://tbilisiopenair.ge/events/tbilisi-open-air-2026-with-an-extra-long-event-slug",
+            place: {
+              label: "Lisi Wonderland",
+              address: "Leo Kvachadze Street, 0017 Tbilisi, Georgia",
+              lat: 41.75,
+              lon: 44.74,
+              source: "manual",
+            },
+          }}
+          title="Tbilisi Open Air 2026"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("w-full max-w-full sm:max-w-[72ch]");
+    expect(markup).not.toContain("w-full max-w-[72ch]");
+    expect(markup).not.toContain("min-w-0 truncate text-inherit");
+    expect(markup).toContain("[word-break:break-word]");
+    expect(markup).toContain("[word-break:break-all]");
+  });
+
   test("renders live-room feed cards with watch and ticket states", () => {
     const liveMarkup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

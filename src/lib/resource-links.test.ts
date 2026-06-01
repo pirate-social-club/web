@@ -29,7 +29,9 @@ describe("resolveResourceHref", () => {
   });
 
   test("resolves source links", () => {
-    expect(resolveResourceHref("source-github")).toBe("https://github.com/pirate");
+    expect(resolveResourceHref("source-github")).toBe(
+      "https://github.com/orgs/pirate-social-club/",
+    );
     expect(resolveResourceHref("source-freedom-browser")).toBe(
       "https://github.com/pirate-social-club/freedom-browser/releases",
     );

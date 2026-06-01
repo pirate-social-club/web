@@ -142,7 +142,7 @@ export function resolveResourceHref(
     case "child-safety":
       return "/child-safety";
     case "source-github":
-      return "https://github.com/pirate";
+      return "https://github.com/orgs/pirate-social-club/";
     case "source-freedom-browser":
       return "https://github.com/pirate-social-club/freedom-browser/releases";
     case "source-radicle-api":

@@ -58,6 +58,11 @@ mock.module("@/lib/api", () => ({
 }));
 
 mock.module("@/lib/api/session-store", () => ({
+  revalidateSession: async (getUsersMe: () => Promise<unknown>) => {
+    await getUsersMe();
+    return true;
+  },
+  updateSessionUser: () => undefined,
   useSession: () => fakeSession,
 }));
 

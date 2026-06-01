@@ -135,6 +135,24 @@ describe("useCommunityVoteAction", () => {
     expect(gatedCalls[0]?.voteValue).toBe(-1);
   });
 
+  test("uses the route community id when public post data omits a post community", async () => {
+    const { gatedCalls, hook } = renderVoteHarness({
+      communityId: "com_public_route",
+      posts: [createPost({
+        post: {
+          id: "pst_test",
+        } as ApiPost["post"],
+      })],
+    });
+
+    await act(async () => {
+      await hook.result.current.voteOnPost("pst_test", "up");
+    });
+
+    expect(gatedCalls[0]?.communityId).toBe("com_public_route");
+    expect(gatedCalls[0]?.voteValue).toBe(1);
+  });
+
   test("does nothing for null vote direction", async () => {
     const { gatedCalls, hook, voteCalls } = renderVoteHarness();
 

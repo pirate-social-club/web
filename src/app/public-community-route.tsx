@@ -525,6 +525,17 @@ export function PublicCommunityRoutePage({
 
   const voteOnPost = useCommunityVoteAction({
     buildBlockedModalState: buildBlockedModalState ?? undefined,
+    communityId: preview?.id ?? communityId,
+    gateData: preview && eligibility
+      ? {
+          eligibility,
+          preview: {
+            id: preview.id,
+            display_name: preview.display_name,
+            membership_gate_summaries: preview.membership_gate_summaries,
+          },
+        }
+      : null,
     posts,
     runGatedCommunityAction,
     setPosts,

@@ -109,16 +109,38 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   };
 }
 
+function relationshipLabel(source: UpstreamAttribution): string {
+  switch (source.relationshipType) {
+    case "remix_of":
+      return "Remix of";
+    case "samples":
+      return "Samples";
+    case "references_video":
+      return "References";
+    case "references_song":
+      return "References";
+    case "inspired_by":
+      return "Inspired by";
+    default:
+      return "Derived from";
+  }
+}
+
+function sourceTitle(source: UpstreamAttribution): string {
+  return source.artist ? `${source.title} by ${source.artist}` : source.title;
+}
+
 function getDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): string | null {
   if (!upstreamAttributions || upstreamAttributions.length === 0) {
     return null;
   }
 
   if (upstreamAttributions.length === 1) {
-    return `Derived from ${upstreamAttributions[0].title}`;
+    const source = upstreamAttributions[0];
+    return `${relationshipLabel(source)} ${sourceTitle(source)}`;
   }
 
-  return `Derived from ${upstreamAttributions[0].title} +${upstreamAttributions.length - 1}`;
+  return `${relationshipLabel(upstreamAttributions[0])} ${sourceTitle(upstreamAttributions[0])} +${upstreamAttributions.length - 1}`;
 }
 
 export function SongPostContent({ content, className }: SongPostContentProps) {
@@ -170,6 +192,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
   };
 
   const derivativeSummary = ui.showAttribution ? getDerivativeSummary(upstreamAttributions) : null;
+  const derivativeHref = upstreamAttributions?.find((source) => source.href)?.href;
 
   return (
     <div className={cn("flex flex-col gap-2 text-start", className)}>
@@ -213,11 +236,18 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
               </span>
             )}
           </div>
-          {derivativeSummary && (
+          {derivativeSummary && derivativeHref ? (
+            <a
+              className={cn("block truncate text-muted-foreground transition-colors hover:text-foreground", postCardType.meta)}
+              href={derivativeHref}
+            >
+              {derivativeSummary}
+            </a>
+          ) : derivativeSummary ? (
             <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
               {derivativeSummary}
             </p>
-          )}
+          ) : null}
           {content.annotationsUrl && (
             <a
               className={cn(

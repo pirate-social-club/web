@@ -31,6 +31,7 @@ export interface UpstreamAttribution {
   relationshipType: "remix_of" | "references_song" | "references_video" | "inspired_by" | "samples";
   title: string;
   artist?: string;
+  href?: string;
 }
 
 export type StoryRegistrationState = "registered" | "pending" | "failed";

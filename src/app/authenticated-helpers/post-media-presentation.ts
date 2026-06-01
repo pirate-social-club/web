@@ -1,12 +1,13 @@
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
-import type { PostCardProps, SongContentSpec, StoryRegistrationStatus } from "@/components/compositions/posts/post-card/post-card.types";
+import type { PostCardProps, SongContentSpec, StoryRegistrationStatus, UpstreamAttribution } from "@/components/compositions/posts/post-card/post-card.types";
 import type {
   AssetSourceDescriptor,
   SongPlaybackDescriptor,
 } from "@/app/authenticated-helpers/song-commerce";
 import type { SongPresentationOptions } from "@/app/authenticated-helpers/post-presentation-types";
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
+import { buildStoryPortalAssetUrl } from "@/lib/story/story-portal";
 
 type StoryRoyaltyAsset = NonNullable<SongPresentationOptions["asset"]>;
 
@@ -94,6 +95,26 @@ function toSongPlaybackDescriptor(
   }
 
   return null;
+}
+
+function toUpstreamAttributions(
+  postResponse: ApiPost,
+  songOptions: SongPresentationOptions | undefined,
+): UpstreamAttribution[] | undefined {
+  const sources = postResponse.derivative_sources;
+  if (!sources || sources.length === 0) {
+    return undefined;
+  }
+
+  return sources.map((source) => ({
+    assetId: source.asset ?? source.source_ref,
+    relationshipType: source.relationship_type,
+    title: source.title,
+    artist: source.creator_handle ?? source.creator_display_name ?? undefined,
+    href: source.source_post
+      ? `/p/${source.source_post}`
+      : buildStoryPortalAssetUrl(source.story_ip, songOptions?.storyNetwork) ?? undefined,
+  }));
 }
 
 function toVideoAssetSourceDescriptor(
@@ -233,6 +254,6 @@ export function toSongPostContent(
     title: songPresentation?.title ?? post.song_title ?? input.title,
     artworkSrc: songPresentation?.cover_art_ref ?? undefined,
     durationMs: songPresentation?.duration_ms ?? undefined,
-    upstreamAttributions: undefined,
+    upstreamAttributions: toUpstreamAttributions(postResponse, songOptions),
   };
 }

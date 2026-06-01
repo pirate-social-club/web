@@ -396,6 +396,43 @@ describe("post presentation songs", () => {
     expect(content.durationMs).toBe(123456);
   });
 
+  test("maps derivative source summaries into song card content", () => {
+    const post = createSongPost({
+      rights_basis: "derivative",
+      song_mode: "remix",
+      upstream_asset_refs: ["story:ip:0x01C0D038e1BA42959b83A56e5A1c459594719297#licenseTermsId=1894"],
+    });
+    post.derivative_sources = [
+      {
+        source_ref: "story:ip:0x01C0D038e1BA42959b83A56e5A1c459594719297#licenseTermsId=1894",
+        title: "Travel Guide",
+        kind: "song",
+        relationship_type: "remix_of",
+        community: "com_cmt_songs",
+        asset: "asset_ast_original",
+        source_post: "post_pst_original",
+        story_ip: "0x01C0D038e1BA42959b83A56e5A1c459594719297",
+        story_license_terms: "1894",
+        creator_user: "usr_artist",
+        creator_handle: "4dmonsterlobsters.pirate",
+      },
+    ];
+
+    const content = toCommunityPostContent(post);
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.upstreamAttributions).toEqual([
+      {
+        assetId: "asset_ast_original",
+        relationshipType: "remix_of",
+        title: "Travel Guide",
+        artist: "4dmonsterlobsters.pirate",
+        href: "/p/post_pst_original",
+      },
+    ]);
+  });
+
   test("maps song age gate state and verification callback into song card content", () => {
     const onVerifyAge = () => undefined;
     const content = toCommunityPostContent(

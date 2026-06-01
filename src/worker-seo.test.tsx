@@ -280,6 +280,30 @@ describe("share metadata", () => {
     expect(markup).toContain('property="og:image:height" content="630"');
   });
 
+  test("does not render a generic social card for entity routes when SEO lookup misses", () => {
+    const markup = renderToStaticMarkup(
+      <Document
+        ctx={{
+          appOrigin: "https://pirate.sc",
+          canonicalUrl: "https://pirate.sc/p/pst_timeout",
+          expectsEntitySeoMetadata: true,
+          isIndexable: true,
+          locale: "en",
+          seoMetadata: null,
+        }}
+        rw={{ nonce: "nonce" } as never}
+      >
+        <main />
+      </Document>,
+    );
+
+    expect(markup).toContain("<title>Pirate</title>");
+    expect(markup).toContain('rel="canonical" href="https://pirate.sc/p/pst_timeout"');
+    expect(markup).not.toContain('property="og:title" content="Pirate"');
+    expect(markup).not.toContain('property="og:image" content="https://pirate.sc/og/pirate-share-card.jpg"');
+    expect(markup).not.toContain('name="twitter:image" content="https://pirate.sc/og/pirate-share-card.jpg"');
+  });
+
   test("applies fallback dimensions when SEO returns the default image path", () => {
     const markup = renderToStaticMarkup(
       <Document

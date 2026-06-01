@@ -12,7 +12,7 @@ import { PostCardEventBlock } from "./post-card-event-block";
 import { PostCardHeader } from "./post-card-header";
 import { PostCardMedia } from "./post-card-media";
 import { PostCardEngagementBar } from "./post-card-engagement-bar";
-import { postCardTextWrap, postCardType } from "./post-card.styles";
+import { postCardReadableWidth, postCardTextWrap, postCardType } from "./post-card.styles";
 import type { PostCardProps } from "./post-card.types";
 
 function deriveUnlockFromContent(
@@ -86,7 +86,7 @@ function SongCaptionBeforeMedia({ content }: { content: PostCardProps["content"]
 
   return (
     <FormattedText
-      className={cn(postCardType.caption, "-mt-1 mb-1 max-w-[72ch] self-start text-start text-muted-foreground")}
+      className={cn(postCardType.caption, postCardReadableWidth, "-mt-1 mb-1 self-start text-start text-muted-foreground")}
       dir={content.captionDir ?? "auto"}
       lang={content.captionLang}
       value={content.caption}
@@ -149,7 +149,8 @@ export function PostCard({
         className={cn(
           postCardType.title,
           postCardTextWrap,
-          "max-w-[72ch] self-start text-start font-semibold text-foreground hover:underline",
+          postCardReadableWidth,
+          "self-start text-start font-semibold text-foreground hover:underline",
         )}
         dir={titleDir ?? "auto"}
         href={effectiveTitleHref}
@@ -162,7 +163,8 @@ export function PostCard({
         className={cn(
           postCardType.title,
           postCardTextWrap,
-          "max-w-[72ch] self-start text-start font-semibold text-foreground",
+          postCardReadableWidth,
+          "self-start text-start font-semibold text-foreground",
         )}
         dir={titleDir ?? "auto"}
         lang={titleLang}

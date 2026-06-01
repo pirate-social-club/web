@@ -53,6 +53,8 @@ describe("FormattedText", () => {
 
     expect(markup.match(/break-words/g)?.length).toBeGreaterThanOrEqual(5);
     expect(markup.match(/\[overflow-wrap:anywhere\]/g)?.length).toBeGreaterThanOrEqual(5);
+    expect(markup).toContain("[word-break:break-word]");
+    expect(markup).toContain("[word-break:break-all]");
     expect(markup).toContain("<a");
     expect(markup).toContain("<blockquote");
   });

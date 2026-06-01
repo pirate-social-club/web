@@ -124,4 +124,25 @@ describe("PostCardMedia", () => {
     expect(markup).toContain(longUrl);
     expect(markup.match(/\[overflow-wrap:anywhere\]/g)?.length).toBeGreaterThanOrEqual(3);
   });
+
+  test("constrains long text posts to the mobile card width before applying the readable cap", () => {
+    const longUrl = "https://open.spotify.com/track/0oxYB9GoOIDrdzniNdKC44";
+    const markup = renderToStaticMarkup(
+      <PostCardMedia
+        content={{
+          type: "text",
+          body: [
+            "Tbilisi Open Air 2026 is shaping up so beautifully, with a very long paragraph that should not size the flex item wider than the card.",
+            "",
+            longUrl,
+          ].join("\n")}
+        }
+      />,
+    );
+
+    expect(markup).toContain("w-full");
+    expect(markup).toContain("max-w-full");
+    expect(markup).toContain("sm:max-w-[72ch]");
+    expect(markup).toContain("[word-break:break-all]");
+  });
 });

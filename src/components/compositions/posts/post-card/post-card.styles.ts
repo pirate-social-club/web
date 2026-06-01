@@ -8,3 +8,4 @@ export const postCardType = {
 } as const;
 
 export const postCardTextWrap = "break-words [overflow-wrap:anywhere]" as const;
+export const postCardReadableWidth = "w-full max-w-full sm:max-w-[72ch]" as const;

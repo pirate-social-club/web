@@ -12,7 +12,7 @@ import { getLocaleMessages } from "@/locales";
 import { OfficialOEmbed, OfficialYouTubeEmbed, PostEmbedPreview } from "./post-card-embed";
 import { LiveRoomPostContent } from "./post-card-live-room-content";
 import { SongPostContent } from "./post-card-song-content";
-import { postCardTextWrap, postCardType } from "./post-card.styles";
+import { postCardReadableWidth, postCardTextWrap, postCardType } from "./post-card.styles";
 import type { PostCardContent, PostCardViewContext } from "./post-card.types";
 
 const LazyVideoPostContent = React.lazy(async () => {
@@ -206,7 +206,8 @@ export function PostCardMedia({ content, className, viewContext }: PostCardMedia
         <FormattedText
           className={cn(
             postCardType.body,
-            "max-w-[72ch] self-start text-start text-foreground",
+            postCardReadableWidth,
+            "self-start text-start text-foreground",
             className,
           )}
           dir={content.bodyDir ?? "auto"}
@@ -276,7 +277,7 @@ export function PostCardMedia({ content, className, viewContext }: PostCardMedia
         <div className={cn("w-full space-y-2 text-start", className)}>
           {content.body ? (
             <FormattedText
-              className={cn(postCardType.body, "max-w-[72ch] text-foreground")}
+              className={cn(postCardType.body, postCardReadableWidth, "text-foreground")}
               dir={content.bodyDir ?? "auto"}
               lang={content.bodyLang}
               value={content.body}
@@ -292,7 +293,7 @@ export function PostCardMedia({ content, className, viewContext }: PostCardMedia
         <div className={cn("w-full space-y-2 text-start", className)}>
           {content.body ? (
             <FormattedText
-              className={cn(postCardType.body, "max-w-[72ch] text-foreground")}
+              className={cn(postCardType.body, postCardReadableWidth, "text-foreground")}
               dir={content.bodyDir ?? "auto"}
               lang={content.bodyLang}
               value={content.body}

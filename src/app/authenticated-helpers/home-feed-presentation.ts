@@ -75,6 +75,7 @@ export function toHomeFeedItem(
     asset: postResponse.asset_story ?? (post as typeof post & { asset_story?: NonNullable<ApiPost["asset_story"]> | null }).asset_story,
     fallbackAsset: songOptions?.asset,
     storyNetwork: songOptions?.storyNetwork,
+    upstreamAssetRefs: post.upstream_asset_refs,
   });
   const { hasPostMenu, postMenuItems } = buildPostMenu({
     canModeratePost: opts?.canModeratePost,

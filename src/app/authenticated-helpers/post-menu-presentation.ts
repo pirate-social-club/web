@@ -8,16 +8,31 @@ type StoryAssetSummary = {
   story_royalty_registration_status?: "none" | "pending" | "registered" | "failed" | null;
 } | null | undefined;
 
+const STORY_UPSTREAM_REF_PATTERN = /^story:ip:(0x[0-9a-f]{40})(?:#.*)?$/i;
+
+function resolveStoryIpFromUpstreamAssetRefs(upstreamAssetRefs: readonly string[] | null | undefined): string | null {
+  for (const ref of upstreamAssetRefs ?? []) {
+    const match = ref.trim().match(STORY_UPSTREAM_REF_PATTERN);
+    if (match) return match[1] ?? null;
+  }
+  return null;
+}
+
 export function resolvePostStoryPortalHref(input: {
   asset?: StoryAssetSummary;
   fallbackAsset?: StoryAssetSummary;
   storyNetwork?: PirateStoryNetwork | null;
+  upstreamAssetRefs?: readonly string[] | null;
 }): string | null {
   const storyAsset = input.asset ?? input.fallbackAsset;
-  if (storyAsset?.story_royalty_registration_status !== "registered") {
-    return null;
+  if (storyAsset?.story_royalty_registration_status === "registered") {
+    return buildStoryPortalAssetUrl(storyAsset.story_ip, input.storyNetwork ?? getPirateNetworkConfig().story.network);
   }
-  return buildStoryPortalAssetUrl(storyAsset.story_ip, input.storyNetwork ?? getPirateNetworkConfig().story.network);
+
+  return buildStoryPortalAssetUrl(
+    resolveStoryIpFromUpstreamAssetRefs(input.upstreamAssetRefs),
+    input.storyNetwork ?? getPirateNetworkConfig().story.network,
+  );
 }
 
 export function buildPostMenu(input: {

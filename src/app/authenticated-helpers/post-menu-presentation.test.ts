@@ -87,4 +87,11 @@ describe("buildPostMenu", () => {
       storyNetwork: "story-aeneid",
     })).toBe("https://aeneid.portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48");
   });
+
+  test("builds Aeneid Story portal links from upstream Story refs", () => {
+    expect(resolvePostStoryPortalHref({
+      storyNetwork: "story-aeneid",
+      upstreamAssetRefs: ["story:ip:0x01C0D038e1BA42959b83A56e5A1c459594719297#licenseTermsId=1894"],
+    })).toBe("https://aeneid.portal.story.foundation/asset/0x01C0D038e1BA42959b83A56e5A1c459594719297");
+  });
 });

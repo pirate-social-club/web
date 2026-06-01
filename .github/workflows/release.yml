@@ -132,6 +132,7 @@ jobs:
           E2E_API_BASE_URL: https://api-staging.pirate.sc
         run: bun run test:e2e
       - name: Fetch live browser staging secret
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
@@ -141,6 +142,7 @@ jobs:
           SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Live browser integration staging
+        if: github.event_name == 'push'
         working-directory: web
         env:
           AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
@@ -165,6 +167,7 @@ jobs:
           SECRET_NAMES: CONTROL_PLANE_DATABASE_URL TURSO_COMMUNITY_DB_WRAP_KEY
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Repair staging community migrations
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
         working-directory: core
         run: |
           test -n "$CONTROL_PLANE_DATABASE_URL"
@@ -184,11 +187,13 @@ jobs:
         with:
           repository: pirate-social-club/api
           path: api
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.api_ref || 'main' }}
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/checkout@v4
         with:
           repository: pirate-social-club/core
           path: core
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.core_ref || 'main' }}
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/setup-node@v4
         with:
@@ -249,4 +254,9 @@ jobs:
           VITE_PIRATE_APP_ENV: ${{ vars.VITE_PIRATE_APP_ENV || 'prod' }}
           VITE_PRIVY_APP_ID: ${{ vars.VITE_PRIVY_APP_ID }}
           VITE_PRIVY_CLIENT_ID: ${{ vars.VITE_PRIVY_CLIENT_ID }}
-        run: scripts/deploy-production.sh --confirm-production --skip-tests
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            scripts/deploy-production.sh --confirm-production --skip-tests --hotfix -m "source-language-detection-production"
+          else
+            scripts/deploy-production.sh --confirm-production --skip-tests
+          fi

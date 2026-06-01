@@ -2,7 +2,8 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const formattedTextWrap = "min-w-0 max-w-full break-words [overflow-wrap:anywhere]" as const;
+const formattedTextWrap = "min-w-0 max-w-full break-words [overflow-wrap:anywhere] [word-break:break-word]" as const;
+const formattedTextLinkWrap = "break-all [word-break:break-all]" as const;
 
 function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
   const inlinePattern =
@@ -31,7 +32,7 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
     if (linkLabel && linkHref) {
       nodes.push(
         <a
-          className={cn(formattedTextWrap, "text-primary underline underline-offset-4")}
+          className={cn(formattedTextWrap, formattedTextLinkWrap, "text-primary underline underline-offset-4")}
           href={linkHref}
           key={key}
           rel="noreferrer"
@@ -72,9 +73,12 @@ function FormattedInline({ text, keyPrefix }: { text: string; keyPrefix: string 
 }
 
 function FormattedParagraph({ lines, textKey }: { lines: string[]; textKey: string }) {
+  const text = lines.join(" ");
+  const isBareUrl = /^https?:\/\/\S+$/u.test(text.trim());
+
   return (
-    <p className={cn(formattedTextWrap, "leading-snug text-inherit")}>
-      <FormattedInline keyPrefix={textKey} text={lines.join(" ")} />
+    <p className={cn(formattedTextWrap, isBareUrl && formattedTextLinkWrap, "leading-snug text-inherit")}>
+      <FormattedInline keyPrefix={textKey} text={text} />
     </p>
   );
 }

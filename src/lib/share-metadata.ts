@@ -1,7 +1,7 @@
 import type { CommunityPreview, LocalizedPostResponse } from "@pirate/api-contracts";
 
 import type { SeoMetadata } from "@/app/app-context";
-import { getLocaleMessages } from "@/locales";
+import { getLocaleMessages, type RoutesMessages } from "@/locales";
 import { resolveLocaleLanguageTag, type UiLocaleCode } from "@/lib/ui-locale-core";
 import type { PublicAgentResolution, PublicProfileResolution } from "@/worker-public.types";
 
@@ -249,7 +249,7 @@ function joinMetaParts(parts: Array<string | null | undefined>): string | null {
 
 function resolvePostMediaLabel(
   postType: string | null | undefined,
-  copy: ReturnType<typeof getLocaleMessages>["post"],
+  copy: RoutesMessages["post"],
 ): string | null {
   if (postType === "image") return copy.imagePost;
   if (postType === "video") return copy.videoPost;

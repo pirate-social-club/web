@@ -7,7 +7,7 @@ import type {
 } from "@/app/authenticated-helpers/song-commerce";
 import type { SongPresentationOptions } from "@/app/authenticated-helpers/post-presentation-types";
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
-import { buildStoryPortalAssetUrl } from "@/lib/story/story-portal";
+import { buildStoryExplorerIpAssetUrl } from "@/lib/story/story-portal";
 
 type StoryRoyaltyAsset = NonNullable<SongPresentationOptions["asset"]>;
 
@@ -113,7 +113,7 @@ function toUpstreamAttributions(
     artist: source.creator_handle ?? source.creator_display_name ?? undefined,
     href: source.source_post
       ? `/p/${source.source_post}`
-      : buildStoryPortalAssetUrl(source.story_ip, songOptions?.storyNetwork) ?? undefined,
+      : buildStoryExplorerIpAssetUrl(source.story_ip, songOptions?.storyNetwork) ?? undefined,
   }));
 }
 

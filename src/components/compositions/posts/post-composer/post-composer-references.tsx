@@ -14,7 +14,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { getPirateNetworkConfig } from "@/lib/network-config";
 import { buildPublicProfilePath } from "@/lib/profile-routing";
-import { buildStoryPortalAssetUrl } from "@/lib/story/story-portal";
+import { buildStoryExplorerIpAssetUrl } from "@/lib/story/story-portal";
 import { FieldLabel } from "./post-composer-fields";
 import type { ComposerReference, LiveSetlistItemInput } from "./post-composer.types";
 import { Type } from "@/components/primitives/type";
@@ -31,7 +31,7 @@ function isPublicHandle(value: string | undefined): value is string {
 }
 
 function storyPortalHref(item: ComposerReference): string | null {
-  return buildStoryPortalAssetUrl(item.parentIpId, getPirateNetworkConfig().story.network);
+  return buildStoryExplorerIpAssetUrl(item.parentIpId, getPirateNetworkConfig().story.network);
 }
 
 function ReferenceMeta({ item, linkSubtitle = true }: { item: ComposerReference; linkSubtitle?: boolean }) {

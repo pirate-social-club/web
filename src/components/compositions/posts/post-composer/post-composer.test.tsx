@@ -1560,7 +1560,7 @@ describe("SearchReferencePicker", () => {
     expect(loadingEmpty).not.toBeNull();
   });
 
-  test("shows Story portal links for selected remix sources", () => {
+  test("shows Story IP Explorer links for selected remix sources", () => {
     const tree = SelectedReferenceCard({
       item: {
         id: "story:asset:asset_ast_source_song",
@@ -1574,7 +1574,7 @@ describe("SearchReferencePicker", () => {
     const storyLink = findElement(
       tree,
       (element) => element.type === "a" && element.props.children
-        && String(element.props.href).includes("portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48"),
+        && String(element.props.href).includes("explorer.story.foundation/ipa/0xbB0a33bd07e7c813963b569f1202047a92b38d48"),
     );
 
     expect(storyLink).not.toBeNull();

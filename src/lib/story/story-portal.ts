@@ -2,12 +2,12 @@ import type { PirateStoryNetwork } from "@/lib/network-config";
 
 const STORY_IP_ID_PATTERN = /^0x[0-9a-f]{40}$/i;
 
-const STORY_PORTAL_BASE_URL: Record<PirateStoryNetwork, string> = {
-  "story-aeneid": "https://aeneid.portal.story.foundation",
-  "story-mainnet": "https://portal.story.foundation",
+const STORY_IP_EXPLORER_BASE_URL: Record<PirateStoryNetwork, string> = {
+  "story-aeneid": "https://aeneid.explorer.story.foundation",
+  "story-mainnet": "https://explorer.story.foundation",
 };
 
-export function buildStoryPortalAssetUrl(
+export function buildStoryExplorerIpAssetUrl(
   storyIpId: string | null | undefined,
   storyNetwork: PirateStoryNetwork | null | undefined,
 ): string | null {
@@ -16,5 +16,12 @@ export function buildStoryPortalAssetUrl(
     return null;
   }
 
-  return `${STORY_PORTAL_BASE_URL[storyNetwork]}/asset/${normalizedIpId}`;
+  return `${STORY_IP_EXPLORER_BASE_URL[storyNetwork]}/ipa/${normalizedIpId}`;
+}
+
+export function buildStoryPortalAssetUrl(
+  storyIpId: string | null | undefined,
+  storyNetwork: PirateStoryNetwork | null | undefined,
+): string | null {
+  return buildStoryExplorerIpAssetUrl(storyIpId, storyNetwork);
 }

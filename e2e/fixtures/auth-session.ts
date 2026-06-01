@@ -78,7 +78,7 @@ export const mockFeedPostId = "pst_e2e_feed";
 export const mockCommentId = "cmt_e2e_new";
 export const mockCommentBody = "E2E browser comment";
 export const mockStoryIpId = "0xbB0a33bd07e7c813963b569f1202047a92b38d48";
-export const mockStoryPortalAssetUrl = `https://aeneid.portal.story.foundation/asset/${mockStoryIpId}`;
+export const mockStoryPortalAssetUrl = `https://aeneid.explorer.story.foundation/ipa/${mockStoryIpId}`;
 export const mockDerivativeSourceRef = "story:ip:0x1111111111111111111111111111111111111111#licenseTermsId=17";
 export const mockDerivativeSources = [
   {

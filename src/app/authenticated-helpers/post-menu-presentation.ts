@@ -1,7 +1,7 @@
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
 import { getPirateNetworkConfig, type PirateStoryNetwork } from "@/lib/network-config";
-import { buildStoryPortalAssetUrl } from "@/lib/story/story-portal";
+import { buildStoryExplorerIpAssetUrl } from "@/lib/story/story-portal";
 
 type StoryAssetSummary = {
   story_ip?: string | null;
@@ -26,10 +26,10 @@ export function resolvePostStoryPortalHref(input: {
 }): string | null {
   const storyAsset = input.asset ?? input.fallbackAsset;
   if (storyAsset?.story_royalty_registration_status === "registered") {
-    return buildStoryPortalAssetUrl(storyAsset.story_ip, input.storyNetwork ?? getPirateNetworkConfig().story.network);
+    return buildStoryExplorerIpAssetUrl(storyAsset.story_ip, input.storyNetwork ?? getPirateNetworkConfig().story.network);
   }
 
-  return buildStoryPortalAssetUrl(
+  return buildStoryExplorerIpAssetUrl(
     resolveStoryIpFromUpstreamAssetRefs(input.upstreamAssetRefs),
     input.storyNetwork ?? getPirateNetworkConfig().story.network,
   );

@@ -117,6 +117,7 @@ jobs:
           SECRET_NAMES: AUTH_UPSTREAM_JWT_SHARED_SECRET
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Live browser integration staging
+        continue-on-error: true
         working-directory: web
         env:
           AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}

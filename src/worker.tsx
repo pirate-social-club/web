@@ -63,7 +63,7 @@ import {
 
 type AppRequestInfo = RequestInfo<any, AppContext>;
 
-const SEO_METADATA_TIMEOUT_MS = 4000;
+const SEO_METADATA_TIMEOUT_MS = 9000;
 const SEO_METADATA_USER_AGENT_PATTERN =
   /(bot|crawler|spider|facebookexternalhit|twitterbot|xbot|slackbot|discordbot|telegrambot|whatsapp|linkedinbot|embedly|pinterest|preview)/i;
 const SHARE_LOCALE_QUERY_KEYS = ["locale", "lang"] as const;
@@ -427,10 +427,12 @@ const app = defineApp<AppRequestInfo>([
           isImportedRoot: true,
         }
       : matchRoute(url.pathname, url.hostname);
+    const expectsEntitySeoMetadata = shouldAlwaysResolveEntitySeo(route);
 
     ctx.effectiveUrl = effectiveUrl;
     ctx.appOrigin = discovery.appOrigin;
     ctx.canonicalUrl = discovery.canonicalUrl;
+    ctx.expectsEntitySeoMetadata = expectsEntitySeoMetadata;
     ctx.locale = locale;
     ctx.dir = resolveLocaleDirection(locale);
     ctx.homeFeedPreloadUrl = route.kind === "home"
@@ -462,6 +464,9 @@ const app = defineApp<AppRequestInfo>([
           ),
         }
       : null;
+    if (expectsEntitySeoMetadata && !ctx.seoMetadata) {
+      response.headers.set("cache-control", "no-store");
+    }
     ctx.theme = parseThemeCookie(request.headers.get("cookie"));
     applyDiscoveryHeaders(response.headers, discovery);
     applySecurityHeaders(response.headers, rw.nonce, {

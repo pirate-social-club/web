@@ -50,9 +50,12 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
   const nonce = rw.nonce;
   const canonicalUrl = ctx.canonicalUrl ?? null;
   const seo = ctx.seoMetadata ?? null;
+  const expectsEntitySeoMetadata = ctx.expectsEntitySeoMetadata === true;
+  const shouldRenderSocialMetadata = seo !== null || !expectsEntitySeoMetadata;
   const pageTitle = seo?.title?.trim() || "Pirate";
-  const pageDescription = seo?.description?.trim() || "Human-first communities. From book clubs to aspiring space colonies";
-  const defaultImageUrl = resolveDefaultShareImageUrl(ctx);
+  const pageDescription = seo?.description?.trim()
+    || (expectsEntitySeoMetadata ? null : "Human-first communities. From book clubs to aspiring space colonies");
+  const defaultImageUrl = expectsEntitySeoMetadata ? null : resolveDefaultShareImageUrl(ctx);
   const pageImageUrl = seo?.imageUrl?.trim() || defaultImageUrl;
   const usesDefaultImage = isDefaultShareImageUrl(pageImageUrl);
   const pageImageAlt = seo?.imageAlt?.trim() || pageTitle;
@@ -88,28 +91,28 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
         <link rel="manifest" href="/site.webmanifest" />
         <title>{pageTitle}</title>
         {pageDescription ? <meta name="description" content={pageDescription} /> : null}
-        <meta property="og:type" content={ogType} />
-        <meta property="og:locale" content={ogLocale} />
-        <meta property="og:title" content={pageTitle} />
-        {pageDescription ? <meta property="og:description" content={pageDescription} /> : null}
-        {pageUrl ? <meta property="og:url" content={pageUrl} /> : null}
-        <meta property="og:site_name" content="Pirate" />
-        {pageImageUrl ? <meta property="og:image" content={pageImageUrl} /> : null}
-        {pageImageUrl ? <meta property="og:image:url" content={pageImageUrl} /> : null}
-        {pageImageUrl ? <meta property="og:image:secure_url" content={pageImageUrl} /> : null}
-        {pageImageUrl && pageImageType ? <meta property="og:image:type" content={pageImageType} /> : null}
-        {pageImageUrl && pageImageWidth ? <meta property="og:image:width" content={String(pageImageWidth)} /> : null}
-        {pageImageUrl && pageImageHeight ? <meta property="og:image:height" content={String(pageImageHeight)} /> : null}
-        {pageImageUrl ? <meta property="og:image:alt" content={pageImageAlt} /> : null}
-        {pageImageUrl ? <meta itemProp="image" content={pageImageUrl} /> : null}
-        <meta name="twitter:card" content={twitterCard} />
-        <meta name="twitter:title" content={pageTitle} />
-        {pageDescription ? <meta name="twitter:description" content={pageDescription} /> : null}
-        {pageImageUrl ? <meta name="twitter:image" content={pageImageUrl} /> : null}
-        {pageImageUrl ? <meta name="twitter:image:src" content={pageImageUrl} /> : null}
-        {pageImageUrl ? <meta name="twitter:image:alt" content={pageImageAlt} /> : null}
+        {shouldRenderSocialMetadata ? <meta property="og:type" content={ogType} /> : null}
+        {shouldRenderSocialMetadata ? <meta property="og:locale" content={ogLocale} /> : null}
+        {shouldRenderSocialMetadata ? <meta property="og:title" content={pageTitle} /> : null}
+        {shouldRenderSocialMetadata && pageDescription ? <meta property="og:description" content={pageDescription} /> : null}
+        {shouldRenderSocialMetadata && pageUrl ? <meta property="og:url" content={pageUrl} /> : null}
+        {shouldRenderSocialMetadata ? <meta property="og:site_name" content="Pirate" /> : null}
+        {shouldRenderSocialMetadata && pageImageUrl ? <meta property="og:image" content={pageImageUrl} /> : null}
+        {shouldRenderSocialMetadata && pageImageUrl ? <meta property="og:image:url" content={pageImageUrl} /> : null}
+        {shouldRenderSocialMetadata && pageImageUrl ? <meta property="og:image:secure_url" content={pageImageUrl} /> : null}
+        {shouldRenderSocialMetadata && pageImageUrl && pageImageType ? <meta property="og:image:type" content={pageImageType} /> : null}
+        {shouldRenderSocialMetadata && pageImageUrl && pageImageWidth ? <meta property="og:image:width" content={String(pageImageWidth)} /> : null}
+        {shouldRenderSocialMetadata && pageImageUrl && pageImageHeight ? <meta property="og:image:height" content={String(pageImageHeight)} /> : null}
+        {shouldRenderSocialMetadata && pageImageUrl ? <meta property="og:image:alt" content={pageImageAlt} /> : null}
+        {shouldRenderSocialMetadata && pageImageUrl ? <meta itemProp="image" content={pageImageUrl} /> : null}
+        {shouldRenderSocialMetadata ? <meta name="twitter:card" content={twitterCard} /> : null}
+        {shouldRenderSocialMetadata ? <meta name="twitter:title" content={pageTitle} /> : null}
+        {shouldRenderSocialMetadata && pageDescription ? <meta name="twitter:description" content={pageDescription} /> : null}
+        {shouldRenderSocialMetadata && pageImageUrl ? <meta name="twitter:image" content={pageImageUrl} /> : null}
+        {shouldRenderSocialMetadata && pageImageUrl ? <meta name="twitter:image:src" content={pageImageUrl} /> : null}
+        {shouldRenderSocialMetadata && pageImageUrl ? <meta name="twitter:image:alt" content={pageImageAlt} /> : null}
         {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
-        {pageImageUrl ? <link rel="image_src" href={pageImageUrl} /> : null}
+        {shouldRenderSocialMetadata && pageImageUrl ? <link rel="image_src" href={pageImageUrl} /> : null}
         {!ctx.isIndexable ? <meta name="robots" content="noindex, nofollow" /> : null}
         <link rel="stylesheet" href={stylesUrl} />
         {homeFeedPreloadUrl ? (

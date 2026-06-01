@@ -8,6 +8,7 @@ import { expectNoBrowserError } from "./fixtures/e2e-helpers";
 import {
   mockCommentBody,
   mockFeedPostId,
+  mockStoryPortalAssetUrl,
 } from "./fixtures/auth-session";
 
 async function installAuthenticatedFixture(page: Page): Promise<void> {
@@ -30,6 +31,24 @@ test.describe("authenticated thread flows with mocked API", () => {
     await page.getByRole("button", { name: /post reply/i }).click();
 
     await expect(page.locator("body")).toContainText(mockCommentBody, { timeout: 15_000 });
+    await expectNoBrowserError(page);
+  });
+
+  test("opens the post asset on Story from the post menu", async ({ page }) => {
+    await page.goto(`/p/${mockFeedPostId}`);
+
+    const post = page.locator("article").filter({ hasText: "E2E feed post" });
+    await expect(post).toBeVisible({ timeout: 30_000 });
+
+    await post.getByRole("button", { name: /post options/i }).click();
+    await expect(page.getByRole("menu")).toBeVisible();
+
+    const storyPagePromise = page.waitForEvent("popup");
+    await page.getByRole("menuitem", { name: /^view on story$/i }).click();
+    const storyPage = await storyPagePromise;
+    await storyPage.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => undefined);
+
+    expect(storyPage.url()).toBe(mockStoryPortalAssetUrl);
     await expectNoBrowserError(page);
   });
 });

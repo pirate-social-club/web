@@ -119,7 +119,7 @@ async function fulfillPirateApiRoute(route: Route, state: { commentCreated: bool
   }
 
   if (method === "GET" && path === `/posts/${encodeURIComponent(mockFeedPostId)}`) {
-    await route.fulfill(jsonResponse(createMockPostResponse()));
+    await route.fulfill(jsonResponse(createMockPostResponse({ storyAsset: true })));
     return;
   }
 

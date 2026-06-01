@@ -34,7 +34,7 @@ import {
   withTranslationToggleProps,
 } from "@/app/authenticated-helpers/post-translation-presentation";
 import { buildPostShareActions } from "@/app/authenticated-helpers/post-share-actions";
-import { buildPostMenu } from "@/app/authenticated-helpers/post-menu-presentation";
+import { buildPostMenu, resolvePostStoryPortalHref } from "@/app/authenticated-helpers/post-menu-presentation";
 
 export type HomeFeedEntry = ApiHomeFeedItem;
 export { toHomeFeedItem } from "@/app/authenticated-helpers/home-feed-presentation";
@@ -70,6 +70,11 @@ export {
   withTranslationToggleProps,
 } from "@/app/authenticated-helpers/post-translation-presentation";
 
+function openExternalUrl(url: string) {
+  if (typeof window === "undefined") return;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 export function toCommunityFeedItem(
   postResponse: ApiPost,
   authorProfiles: Record<string, ApiProfile | null>,
@@ -78,6 +83,11 @@ export function toCommunityFeedItem(
 ): FeedItem {
   const { post } = postResponse;
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
+  const storyPortalHref = resolvePostStoryPortalHref({
+    asset: postResponse.asset_story ?? (post as typeof post & { asset_story?: NonNullable<ApiPost["asset_story"]> | null }).asset_story,
+    fallbackAsset: songOptions?.asset,
+    storyNetwork: songOptions?.storyNetwork,
+  });
   const { hasPostMenu, postMenuItems } = buildPostMenu({
     canModeratePost: opts?.canModeratePost,
     eventStatus: toPostCardEvent(post)?.status ?? null,
@@ -85,6 +95,7 @@ export function toCommunityFeedItem(
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
     post,
+    storyPortalHref,
     viewerIsAuthor: postResponse.viewer_is_author,
   });
   const isDeleted = post.status === "deleted";
@@ -135,6 +146,7 @@ export function toCommunityFeedItem(
       menuItems: hasPostMenu ? postMenuItems : undefined,
       shareActions: buildPostShareActions(post),
       onMenuAction: hasPostMenu ? (key) => {
+        if (key === "view-story" && storyPortalHref) openExternalUrl(storyPortalHref);
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
         if (key === "cancel-event") opts?.onCancelEvent?.();
@@ -183,6 +195,11 @@ export function toThreadPostCard(
 ): PostCardProps {
   const { post } = postResponse;
   const communityVerified = Boolean(community?.namespace_verification);
+  const storyPortalHref = resolvePostStoryPortalHref({
+    asset: postResponse.asset_story ?? (post as typeof post & { asset_story?: NonNullable<ApiPost["asset_story"]> | null }).asset_story,
+    fallbackAsset: songOptions?.asset,
+    storyNetwork: songOptions?.storyNetwork,
+  });
   const { hasPostMenu, postMenuItems } = buildPostMenu({
     canModeratePost: opts?.canModeratePost,
     eventStatus: toPostCardEvent(post)?.status ?? null,
@@ -190,6 +207,7 @@ export function toThreadPostCard(
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
     post,
+    storyPortalHref,
     viewerIsAuthor: postResponse.viewer_is_author,
   });
   const isDeleted = post.status === "deleted";
@@ -254,6 +272,7 @@ export function toThreadPostCard(
     menuItems: hasPostMenu ? postMenuItems : undefined,
     shareActions: buildPostShareActions(post),
     onMenuAction: hasPostMenu ? (key) => {
+      if (key === "view-story" && storyPortalHref) openExternalUrl(storyPortalHref);
       if (key === "delete") opts?.onDelete?.();
       if (key === "remove") opts?.onRemove?.();
       if (key === "cancel-event") opts?.onCancelEvent?.();

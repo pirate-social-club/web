@@ -4,6 +4,7 @@ import type { Asset, LocalizedPostResponse } from "@pirate/api-contracts";
 import {
   resolveLocalizedLinkTitle,
   toCommunityPostContent,
+  toThreadPostCard,
 } from "@/app/authenticated-helpers/post-presentation";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 
@@ -449,6 +450,26 @@ describe("post presentation songs", () => {
     expect(content.type).toBe("song");
     if (content.type !== "song") return;
     expect(content.storyRegistration).toBeUndefined();
+  });
+
+  test("maps registered post asset Story summaries into the post menu", () => {
+    const post = createSongPost({ asset: "asset_ast_song" });
+    post.asset_story = {
+      story_ip: "0xbB0a33bd07e7c813963b569f1202047a92b38d48",
+      story_royalty_registration_status: "registered",
+    };
+
+    const card = toThreadPostCard(post, {
+      id: "com_cmt_songs",
+      display_name: "Songs",
+      namespace_verification: null,
+      route_slug: null,
+    });
+
+    expect(card.menuItems).toContainEqual({
+      key: "view-story",
+      label: "View on Story",
+    });
   });
 
   test("maps transient Story license reuse notices into song card content", () => {

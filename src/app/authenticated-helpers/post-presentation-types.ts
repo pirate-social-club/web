@@ -11,6 +11,7 @@ import type {
 } from "@/components/compositions/posts/post-card/post-card.types";
 import type { ApiLiveRoomAccessResponse, ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 import type { SongPlaybackController } from "@/app/authenticated-helpers/song-commerce";
+import type { PirateStoryNetwork } from "@/lib/network-config";
 
 export type SongPresentationOptions = {
   asset?: ApiAsset | null;
@@ -20,6 +21,7 @@ export type SongPresentationOptions = {
   purchase?: ApiCommunityPurchase;
   playback?: SongPlaybackController;
   storyLicenseNotice?: Extract<PostCardProps["content"], { type: "song" }>["storyLicenseNotice"];
+  storyNetwork?: PirateStoryNetwork;
   onBuy?: () => void;
 };
 

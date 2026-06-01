@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildPostMenu } from "./post-menu-presentation";
+import { buildPostMenu, resolvePostStoryPortalHref } from "./post-menu-presentation";
 
 describe("buildPostMenu", () => {
   test("shows cancel event for an event author", () => {
@@ -64,5 +64,27 @@ describe("buildPostMenu", () => {
     });
 
     expect(menu.postMenuItems.some((item) => item.key === "cancel-event")).toBe(false);
+  });
+
+  test("shows Story asset link when a portal href is available", () => {
+    const menu = buildPostMenu({
+      post: { status: "published" },
+      storyPortalHref: "https://aeneid.portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48",
+    });
+
+    expect(menu.postMenuItems).toContainEqual({
+      key: "view-story",
+      label: "View on Story",
+    });
+  });
+
+  test("builds Aeneid Story portal links for registered assets", () => {
+    expect(resolvePostStoryPortalHref({
+      asset: {
+        story_ip: "0xbB0a33bd07e7c813963b569f1202047a92b38d48",
+        story_royalty_registration_status: "registered",
+      },
+      storyNetwork: "story-aeneid",
+    })).toBe("https://aeneid.portal.story.foundation/asset/0xbB0a33bd07e7c813963b569f1202047a92b38d48");
   });
 });

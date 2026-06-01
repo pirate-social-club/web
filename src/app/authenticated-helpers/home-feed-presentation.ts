@@ -21,7 +21,7 @@ import {
   toViewerVote,
 } from "@/app/authenticated-helpers/post-identity-presentation";
 import { resolveLocalizedLinkTitle } from "@/app/authenticated-helpers/post-link-presentation";
-import { buildPostMenu } from "@/app/authenticated-helpers/post-menu-presentation";
+import { buildPostMenu, resolvePostStoryPortalHref } from "@/app/authenticated-helpers/post-menu-presentation";
 import { toPostCardEvent } from "@/app/authenticated-helpers/post-event-presentation";
 import type {
   PostPresentationOptions,
@@ -45,6 +45,11 @@ function getPostScore(post: ApiPost): number {
   return post.upvote_count - post.downvote_count;
 }
 
+function openExternalUrl(url: string) {
+  if (typeof window === "undefined") return;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 export function resolveHomeFeedCommunityId(community: HomeFeedEntry["community"]): string {
   const rawCommunityId =
     (community as typeof community & { community?: string }).community
@@ -66,6 +71,11 @@ export function toHomeFeedItem(
   const postId = post.id ?? (post as typeof post & { post?: string }).post ?? "";
   const authorProfile = post.author_user ? authorProfiles[post.author_user] ?? undefined : undefined;
   const event = toPostCardEvent(post);
+  const storyPortalHref = resolvePostStoryPortalHref({
+    asset: postResponse.asset_story ?? (post as typeof post & { asset_story?: NonNullable<ApiPost["asset_story"]> | null }).asset_story,
+    fallbackAsset: songOptions?.asset,
+    storyNetwork: songOptions?.storyNetwork,
+  });
   const { hasPostMenu, postMenuItems } = buildPostMenu({
     canModeratePost: opts?.canModeratePost,
     eventStatus: event?.status ?? null,
@@ -73,6 +83,7 @@ export function toHomeFeedItem(
     onDelete: opts?.onDelete,
     onRemove: opts?.onRemove,
     post,
+    storyPortalHref,
     viewerIsAuthor: postResponse.viewer_is_author,
   });
   const localizedLinkTitle = resolveLocalizedLinkTitle(postResponse, opts);
@@ -130,6 +141,7 @@ export function toHomeFeedItem(
       menuItems: hasPostMenu ? postMenuItems : undefined,
       shareActions: buildPostShareActions(post),
       onMenuAction: hasPostMenu ? (key) => {
+        if (key === "view-story" && storyPortalHref) openExternalUrl(storyPortalHref);
         if (key === "delete") opts?.onDelete?.();
         if (key === "remove") opts?.onRemove?.();
         if (key === "cancel-event") opts?.onCancelEvent?.();

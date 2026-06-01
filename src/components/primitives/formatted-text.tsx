@@ -229,7 +229,11 @@ export function FormattedText({
   }
 
   return (
-    <div className={cn("space-y-3 text-base", className)} dir={dir} lang={lang}>
+    <div
+      className={cn("min-w-0 space-y-3 text-base break-words [overflow-wrap:anywhere]", className)}
+      dir={dir}
+      lang={lang}
+    >
       {blocks}
     </div>
   );

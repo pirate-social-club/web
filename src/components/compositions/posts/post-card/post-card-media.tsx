@@ -12,7 +12,7 @@ import { getLocaleMessages } from "@/locales";
 import { OfficialOEmbed, OfficialYouTubeEmbed, PostEmbedPreview } from "./post-card-embed";
 import { LiveRoomPostContent } from "./post-card-live-room-content";
 import { SongPostContent } from "./post-card-song-content";
-import { postCardType } from "./post-card.styles";
+import { postCardTextWrap, postCardType } from "./post-card.styles";
 import type { PostCardContent, PostCardViewContext } from "./post-card.types";
 
 const LazyVideoPostContent = React.lazy(async () => {
@@ -112,14 +112,24 @@ function LinkPreviewCard({ content }: { content: LinkContent }) {
         <div className="min-w-0 self-center">
           {content.previewTitle ? (
             <p
-              className={cn(postCardType.title, "line-clamp-3 font-semibold text-foreground")}
+              className={cn(
+                postCardType.title,
+                postCardTextWrap,
+                "line-clamp-3 font-semibold text-foreground",
+              )}
               dir={content.previewTitleDir ?? "auto"}
               lang={content.previewTitleLang}
             >
               {content.previewTitle}
             </p>
           ) : (
-            <p className={cn(postCardType.title, "line-clamp-2 font-semibold text-primary underline decoration-primary/40 underline-offset-2")}>
+            <p
+              className={cn(
+                postCardType.title,
+                postCardTextWrap,
+                "line-clamp-2 font-semibold text-primary underline decoration-primary/40 underline-offset-2",
+              )}
+            >
               {content.href}
             </p>
           )}
@@ -127,7 +137,7 @@ function LinkPreviewCard({ content }: { content: LinkContent }) {
             <ul className="mt-2 space-y-1 ps-4 text-foreground/85">
               {summaryBullets.map((point) => (
                 <li
-                  className={cn(postCardType.caption, "list-disc")}
+                  className={cn(postCardType.caption, postCardTextWrap, "list-disc")}
                   dir={content.summaryDir ?? "auto"}
                   key={point}
                   lang={content.summaryLang}

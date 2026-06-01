@@ -634,7 +634,7 @@ describe("PostCard", () => {
     );
 
     const captionIndex = markup.indexOf("First line");
-    const songPreviewIndex = markup.indexOf("rounded-lg border border-border-soft bg-muted/30 p-3");
+    const songPreviewIndex = markup.indexOf("Public track");
 
     expect(captionIndex).toBeGreaterThan(-1);
     expect(markup).toContain("<ul");

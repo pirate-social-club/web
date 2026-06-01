@@ -239,6 +239,25 @@ function getPublicIdentityHandleLabel(input: {
   return input.primary_public_handle?.label ?? input.global_handle.label;
 }
 
+function joinMetaParts(parts: Array<string | null | undefined>): string | null {
+  const normalized = parts.flatMap((part) => {
+    const value = normalizeMetaText(part);
+    return value ? [value] : [];
+  });
+  return normalized.length > 0 ? normalized.join(" · ") : null;
+}
+
+function resolvePostMediaLabel(
+  postType: string | null | undefined,
+  copy: ReturnType<typeof getLocaleMessages>["post"],
+): string | null {
+  if (postType === "image") return copy.imagePost;
+  if (postType === "video") return copy.videoPost;
+  if (postType === "song") return copy.song;
+  if (postType === "link") return copy.linkPost;
+  return null;
+}
+
 export function buildCommunitySeoMetadata(input: {
   appOrigin: string;
   locale: UiLocaleCode;
@@ -272,19 +291,31 @@ export function buildPostSeoMetadata(input: {
   const copy = getLocaleMessages(input.locale, "routes");
   const post = input.postResponse.post;
   const community = input.community ?? input.postResponse.community ?? null;
-  const titleText = normalizeMetaText(input.postResponse.translated_title ?? post.title)
-    ?? normalizeMetaText(post.link_og_title)
-    ?? copy.post.fallbackTitle;
-  const imageAlt = `${titleText} on Pirate`;
-  const description = truncateMetaDescription(
+  const postTitleText = normalizeMetaText(input.postResponse.translated_title ?? post.title);
+  const linkTitleText = normalizeMetaText(post.link_og_title);
+  const mediaLabel = resolvePostMediaLabel(post.post_type, copy.post);
+  const contentText = normalizeMetaText(
     input.postResponse.translated_body
       ?? input.postResponse.translated_caption
       ?? post.body
-      ?? post.caption
-      ?? post.link_og_title
-      ?? community?.description
-      ?? null,
-  ) ?? copy.post.description;
+      ?? post.caption,
+  );
+  const titleText = postTitleText ?? linkTitleText ?? copy.post.fallbackTitle;
+  const communityName = normalizeMetaText(community?.display_name);
+  const contextTitle = communityName
+    ? copy.post.titleInCommunity.replace("{name}", communityName)
+    : copy.post.postOnPirate;
+  const imageAlt = `${titleText} on Pirate`;
+  const description = truncateMetaDescription(
+    contentText
+      ?? joinMetaParts([
+        postTitleText,
+        mediaLabel,
+      ])
+      ?? linkTitleText
+      ?? mediaLabel
+      ?? copy.post.postOnPirate,
+  ) ?? copy.post.postOnPirate;
   const image = firstPostMediaImageCandidate(post, input.appOrigin, imageAlt)
     ?? resolvePublicShareImageCandidate(input.postResponse.song_presentation?.cover_art_ref, input.appOrigin, {
       alt: imageAlt,
@@ -299,7 +330,7 @@ export function buildPostSeoMetadata(input: {
   return {
     description,
     ...shareMetadataFromImageCandidate(input.appOrigin, image),
-    title: `${titleText} • Pirate`,
+    title: contextTitle,
     type: "article",
   };
 }

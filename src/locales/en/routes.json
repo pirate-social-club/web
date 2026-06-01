@@ -104,7 +104,13 @@
   "post": {
     "commentsBody": "Thread replies are not scaffolded yet. This route exists to pin the URL contract and page chrome for `post_id` reads.",
     "description": "Single-thread route shell for the future `GET /posts/{post_id}` read.",
-    "fallbackTitle": "Post"
+    "fallbackTitle": "Post",
+    "imagePost": "Image post",
+    "linkPost": "Link post",
+    "postOnPirate": "Post on Pirate",
+    "titleInCommunity": "{name} on Pirate",
+    "videoPost": "Video post",
+    "song": "Song"
   },
   "community": {
     "aboutTab": "About",

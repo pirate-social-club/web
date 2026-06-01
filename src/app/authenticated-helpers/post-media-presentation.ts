@@ -221,6 +221,9 @@ export function toSongPostContent(
   const playbackState: SongContentSpec["playbackState"] = playbackDescriptor && playback
     ? playback.getPlaybackState(playbackDescriptor.key)
     : "idle";
+  const playbackProgress = playbackDescriptor && playback
+    ? playback.getPlaybackProgress(playbackDescriptor.key)
+    : undefined;
   return {
     type: "song",
     accessMode: post.access_mode ?? "public",
@@ -240,8 +243,10 @@ export function toSongPostContent(
     onBuy: songOptions?.onBuy,
     onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
     onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
+    onSeek: playbackDescriptor && playback ? (progressMs) => void playback.seekTrack(playbackDescriptor, progressMs) : undefined,
     onVerifyAge: input.onVerifyAge,
     playbackState,
+    progressMs: playbackProgress?.progressMs,
     annotationsUrl: post.song_annotations_url ?? undefined,
     caption: input.resolvedCaption,
     captionDir: input.captionDir,
@@ -253,7 +258,7 @@ export function toSongPostContent(
     storyLicenseNotice: songOptions?.storyLicenseNotice,
     title: songPresentation?.title ?? post.song_title ?? input.title,
     artworkSrc: songPresentation?.cover_art_ref ?? undefined,
-    durationMs: songPresentation?.duration_ms ?? undefined,
+    durationMs: songPresentation?.duration_ms ?? playbackProgress?.durationMs ?? undefined,
     upstreamAttributions: toUpstreamAttributions(postResponse, songOptions),
   };
 }

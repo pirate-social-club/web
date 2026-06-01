@@ -5,6 +5,7 @@ import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
 import { MediaControlButton } from "@/components/primitives/media-control-button";
+import { Scrubber } from "@/components/primitives/scrubber";
 import { postCardType } from "./post-card.styles";
 import { StoryLicenseNoticeBadge, StoryRegistrationBadge } from "./post-card-story-registration";
 import type { SongContentSpec, UpstreamAttribution } from "./post-card.types";
@@ -143,13 +144,38 @@ function getDerivativeSummary(upstreamAttributions?: UpstreamAttribution[]): str
   return `${relationshipLabel(upstreamAttributions[0])} ${sourceTitle(upstreamAttributions[0])} +${upstreamAttributions.length - 1}`;
 }
 
+function clampProgressMs(progressMs: number | undefined, durationMs: number | undefined): number {
+  const progress = Number.isFinite(progressMs) ? Math.max(0, progressMs ?? 0) : 0;
+  if (!durationMs || !Number.isFinite(durationMs) || durationMs <= 0) {
+    return progress;
+  }
+  return Math.min(progress, durationMs);
+}
+
+function formatTime(ms: number | undefined): string {
+  const totalSeconds = Math.max(0, Math.floor((ms ?? 0) / 1000));
+  const seconds = totalSeconds % 60;
+  const minutes = Math.floor(totalSeconds / 60) % 60;
+  const hours = Math.floor(totalSeconds / 3600);
+  const paddedSeconds = String(seconds).padStart(2, "0");
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${paddedSeconds}`;
+  }
+
+  return `${minutes}:${paddedSeconds}`;
+}
+
 export function SongPostContent({ content, className }: SongPostContentProps) {
   const ui = deriveSongUI(content);
   const {
     playbackState = "idle",
+    durationMs,
+    progressMs,
     upstreamAttributions,
     onPlay,
     onPause,
+    onSeek,
     onVerifyAge,
   } = content;
 
@@ -193,6 +219,9 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
 
   const derivativeSummary = ui.showAttribution ? getDerivativeSummary(upstreamAttributions) : null;
   const derivativeHref = upstreamAttributions?.find((source) => source.href)?.href;
+  const scrubberDurationMs = durationMs && durationMs > 0 ? durationMs : 100;
+  const scrubberProgressMs = clampProgressMs(progressMs, durationMs);
+  const canSeek = Boolean(onSeek && durationMs && durationMs > 0 && !ui.ageGateRequiresProof);
 
   return (
     <div className={cn("flex flex-col gap-2 text-start", className)}>
@@ -270,6 +299,26 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
           </div>
         ) : null}
       </div>
+
+      {!ui.ageGateRequiresProof ? (
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+          <span className={cn("w-14 tabular-nums text-muted-foreground", postCardType.meta)}>
+            {formatTime(scrubberProgressMs)}
+          </span>
+          <Scrubber
+            ariaLabel="Track position"
+            className={!canSeek ? "opacity-100" : undefined}
+            disabled={!canSeek}
+            max={scrubberDurationMs}
+            onChange={(next) => onSeek?.(next)}
+            showThumb={playbackState === "playing" || playbackState === "paused"}
+            value={scrubberProgressMs}
+          />
+          <span className={cn("w-14 text-end tabular-nums text-muted-foreground", postCardType.meta)}>
+            {durationMs && durationMs > 0 ? formatTime(durationMs) : "--:--"}
+          </span>
+        </div>
+      ) : null}
 
       <StoryRegistrationBadge status={content.storyRegistration} />
       <StoryLicenseNoticeBadge notice={content.storyLicenseNotice} />

@@ -45,6 +45,10 @@ export type SongPlaybackDescriptor = {
 
 export type SongPlaybackController = {
   getPlaybackState: (trackKey: string) => SongContentSpec["playbackState"];
+  getPlaybackProgress: (trackKey: string) => {
+    durationMs?: number;
+    progressMs: number;
+  };
   getAssetSourceState: (assetKey: string) => {
     playbackState: SongContentSpec["playbackState"];
     src?: string;
@@ -52,6 +56,7 @@ export type SongPlaybackController = {
   loadAssetSource: (descriptor: AssetSourceDescriptor) => Promise<string | null>;
   playTrack: (descriptor: SongPlaybackDescriptor) => Promise<void>;
   pauseTrack: (trackKey: string) => void;
+  seekTrack: (descriptor: SongPlaybackDescriptor, progressMs: number) => Promise<void>;
 };
 
 export type AssetSourceDescriptor = {
@@ -154,6 +159,10 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     playbackState: SongContentSpec["playbackState"];
     src?: string;
   }>>({});
+  const [trackProgress, setTrackProgress] = React.useState<Record<string, {
+    durationMs?: number;
+    progressMs: number;
+  }>>({});
 
   React.useEffect(() => {
     activeTrackKeyRef.current = activeTrackKey;
@@ -182,12 +191,30 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     const handleCanPlay = () => {
       setBufferingTrackKey(null);
     };
+    const updateProgress = () => {
+      const activeTrackKey = activeTrackKeyRef.current;
+      if (!activeTrackKey) return;
+      const durationMs = Number.isFinite(audio.duration) && audio.duration > 0
+        ? Math.round(audio.duration * 1000)
+        : undefined;
+      setTrackProgress((current) => ({
+        ...current,
+        [activeTrackKey]: {
+          durationMs,
+          progressMs: Math.round(audio.currentTime * 1000),
+        },
+      }));
+    };
 
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("pause", handlePause);
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("waiting", handleWaiting);
     audio.addEventListener("canplay", handleCanPlay);
+    audio.addEventListener("durationchange", updateProgress);
+    audio.addEventListener("loadedmetadata", updateProgress);
+    audio.addEventListener("seeked", updateProgress);
+    audio.addEventListener("timeupdate", updateProgress);
 
     return () => {
       audio.pause();
@@ -196,6 +223,10 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("waiting", handleWaiting);
       audio.removeEventListener("canplay", handleCanPlay);
+      audio.removeEventListener("durationchange", updateProgress);
+      audio.removeEventListener("loadedmetadata", updateProgress);
+      audio.removeEventListener("seeked", updateProgress);
+      audio.removeEventListener("timeupdate", updateProgress);
       for (const url of objectUrlsRef.current.values()) {
         URL.revokeObjectURL(url);
       }
@@ -277,6 +308,10 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
       if (audio.src !== sourceUrl) {
         audio.src = sourceUrl;
       }
+      setTrackProgress((current) => ({
+        ...current,
+        [descriptor.key]: current[descriptor.key] ?? { progressMs: 0 },
+      }));
       await audio.play();
     } catch (error) {
       setBufferingTrackKey(null);
@@ -343,15 +378,53 @@ export function useSongPlayback(accessToken: string | null): SongPlaybackControl
     return "idle";
   }, [activeTrackKey, bufferingTrackKey, isPlaying]);
 
+  const getPlaybackProgress = React.useCallback((trackKey: string) => (
+    trackProgress[trackKey] ?? { progressMs: 0 }
+  ), [trackProgress]);
+
   const getAssetSourceState = React.useCallback((assetKey: string) => (
     assetSourceStates[assetKey] ?? { playbackState: "idle" as const }
   ), [assetSourceStates]);
 
+  const seekTrack = React.useCallback(async (descriptor: SongPlaybackDescriptor, progressMs: number) => {
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+
+    try {
+      setActiveTrackKey(descriptor.key);
+      const sourceUrl = await loadTrackUrl(descriptor);
+      if (audio.src !== sourceUrl) {
+        audio.src = sourceUrl;
+      }
+      const nextSeconds = Math.max(0, progressMs / 1000);
+      if (audio.readyState > HTMLMediaElement.HAVE_NOTHING) {
+        audio.currentTime = nextSeconds;
+      } else {
+        audio.addEventListener("loadedmetadata", () => {
+          audio.currentTime = nextSeconds;
+        }, { once: true });
+      }
+      setTrackProgress((current) => ({
+        ...current,
+        [descriptor.key]: {
+          durationMs: current[descriptor.key]?.durationMs,
+          progressMs: Math.max(0, Math.round(progressMs)),
+        },
+      }));
+    } catch (error) {
+      toast.error(getErrorMessage(error, `Could not seek ${descriptor.title}.`));
+    }
+  }, [loadTrackUrl]);
+
   return {
     getAssetSourceState,
+    getPlaybackProgress,
     getPlaybackState,
     loadAssetSource,
     pauseTrack,
     playTrack,
+    seekTrack,
   };
 }

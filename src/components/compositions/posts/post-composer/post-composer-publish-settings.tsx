@@ -42,12 +42,17 @@ function useObjectUrl(file: File | null | undefined) {
 }
 
 function useLocalAudioPreview(src: string | undefined): {
+  durationMs?: number;
   onPause: () => void;
   onPlay: () => Promise<void>;
+  onSeek: (progressMs: number) => void;
+  progressMs: number;
   state: PlaybackState;
 } {
   const audioRef = useState(() => typeof Audio === "undefined" ? null : new Audio())[0];
   const [state, setState] = useState<PlaybackState>("idle");
+  const [progressMs, setProgressMs] = useState(0);
+  const [durationMs, setDurationMs] = useState<number | undefined>();
 
   useEffect(() => {
     if (!audioRef) return undefined;
@@ -59,12 +64,24 @@ function useLocalAudioPreview(src: string | undefined): {
     const handleCanPlay = () => {
       if (!audioRef.paused) setState("playing");
     };
+    const updateProgress = () => {
+      setProgressMs(Math.round(audioRef.currentTime * 1000));
+      setDurationMs(
+        Number.isFinite(audioRef.duration) && audioRef.duration > 0
+          ? Math.round(audioRef.duration * 1000)
+          : undefined,
+      );
+    };
 
     audioRef.addEventListener("play", handlePlay);
     audioRef.addEventListener("pause", handlePause);
     audioRef.addEventListener("ended", handleEnded);
     audioRef.addEventListener("waiting", handleWaiting);
     audioRef.addEventListener("canplay", handleCanPlay);
+    audioRef.addEventListener("durationchange", updateProgress);
+    audioRef.addEventListener("loadedmetadata", updateProgress);
+    audioRef.addEventListener("seeked", updateProgress);
+    audioRef.addEventListener("timeupdate", updateProgress);
 
     return () => {
       audioRef.pause();
@@ -73,6 +90,10 @@ function useLocalAudioPreview(src: string | undefined): {
       audioRef.removeEventListener("ended", handleEnded);
       audioRef.removeEventListener("waiting", handleWaiting);
       audioRef.removeEventListener("canplay", handleCanPlay);
+      audioRef.removeEventListener("durationchange", updateProgress);
+      audioRef.removeEventListener("loadedmetadata", updateProgress);
+      audioRef.removeEventListener("seeked", updateProgress);
+      audioRef.removeEventListener("timeupdate", updateProgress);
     };
   }, [audioRef]);
 
@@ -82,6 +103,8 @@ function useLocalAudioPreview(src: string | undefined): {
     audioRef.removeAttribute("src");
     audioRef.load();
     setState("idle");
+    setProgressMs(0);
+    setDurationMs(undefined);
   }, [audioRef, src]);
 
   async function onPlay() {
@@ -101,7 +124,26 @@ function useLocalAudioPreview(src: string | undefined): {
     audioRef?.pause();
   }
 
-  return { onPause, onPlay, state };
+  function onSeek(nextProgressMs: number) {
+    if (!audioRef || !src) return;
+    if (audioRef.src !== src) {
+      audioRef.src = src;
+    }
+    const nextSeconds = Math.max(0, nextProgressMs / 1000);
+    const seekTo = () => {
+      audioRef.currentTime = Number.isFinite(audioRef.duration)
+        ? Math.min(nextSeconds, audioRef.duration)
+        : nextSeconds;
+    };
+    if (audioRef.readyState > HTMLMediaElement.HAVE_NOTHING) {
+      seekTo();
+    } else {
+      audioRef.addEventListener("loadedmetadata", seekTo, { once: true });
+    }
+    setProgressMs(Math.max(0, Math.round(nextProgressMs)));
+  }
+
+  return { durationMs, onPause, onPlay, onSeek, progressMs, state };
 }
 
 function useVideoPosterFrameUrl(file: File | null | undefined, frameSeconds: string | undefined) {
@@ -206,8 +248,11 @@ function buildPreviewPost(
   videoPosterPreviewUrl?: string,
   liveCoverPreviewUrl?: string,
   songPlayback?: {
+    durationMs?: number;
     onPause?: () => void;
     onPlay?: () => void;
+    onSeek?: (progressMs: number) => void;
+    progressMs?: number;
     state: PlaybackState;
   },
 ): PostCardProps {

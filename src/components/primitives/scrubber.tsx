@@ -10,6 +10,7 @@ interface ScrubberProps {
   disabled?: boolean;
   className?: string;
   showThumb?: boolean;
+  ariaLabel?: string;
 }
 
 export function Scrubber({ 
@@ -19,9 +20,11 @@ export function Scrubber({
   disabled = false,
   className,
   showThumb = false,
+  ariaLabel,
 }: ScrubberProps) {
   return (
     <SliderPrimitive.Root
+      aria-label={ariaLabel}
       className={cn(
         "group relative flex w-full touch-none select-none items-center",
         disabled && "pointer-events-none opacity-60",
@@ -33,7 +36,7 @@ export function Scrubber({
       onValueChange={([v]) => onChange?.(v)}
       disabled={disabled}
     >
-      <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-muted">
+      <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-border">
         <SliderPrimitive.Range className="absolute h-full rounded-full bg-primary" />
       </SliderPrimitive.Track>
       <SliderPrimitive.Thumb

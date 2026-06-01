@@ -72,6 +72,22 @@ describe("deriveSongUI", () => {
     expect(markup).not.toContain("<li>one</li>");
   });
 
+  test("renders the song scrubber for playable songs", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          durationMs: 180000,
+          progressMs: 45000,
+        },
+      }),
+    );
+
+    expect(markup).toContain("Track position");
+    expect(markup).toContain("0:45");
+    expect(markup).toContain("3:00");
+  });
+
   test("renders Genius link as an external pill", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {

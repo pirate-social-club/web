@@ -48,8 +48,11 @@ export function buildPostComposerPreviewContent({
   videoDetails?: VideoDetailsState;
   videoPosterSrc?: string;
   songPlayback?: {
+    durationMs?: number;
     onPause?: () => void;
     onPlay?: () => void;
+    onSeek?: (progressMs: number) => void;
+    progressMs?: number;
     state: PlaybackState;
   };
 }): PostCardContent {
@@ -153,7 +156,10 @@ export function buildPostComposerPreviewContent({
       priceLabel: access === "paid" ? priceLabel : undefined,
       onPause: songPlayback?.onPause,
       onPlay: attachment.previewUrl ? songPlayback?.onPlay : undefined,
+      onSeek: attachment.previewUrl ? songPlayback?.onSeek : undefined,
       playbackState: songPlayback?.state ?? "idle",
+      progressMs: songPlayback?.progressMs,
+      durationMs: songPlayback?.durationMs,
     };
   }
 

@@ -158,6 +158,7 @@ jobs:
             web/test-results
           if-no-files-found: ignore
       - name: Fetch staging migration secrets
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: a7b5d0b2-0891-4b63-b0e6-946a8c513458

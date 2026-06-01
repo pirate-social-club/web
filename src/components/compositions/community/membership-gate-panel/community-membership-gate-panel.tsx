@@ -172,8 +172,14 @@ export function CommunityMembershipGatePanel({
 }: CommunityMembershipGatePanelProps) {
   const resolvedLocale = locale && isUiLocaleCode(locale) ? locale : "en";
   const panelCopy = getLocaleMessages(resolvedLocale, "gates").panel;
+  const suggestedVerificationProvider = eligibility
+    ? resolveSuggestedVerificationProvider(eligibility)
+    : null;
   const requirementLabels = Array.from(new Set(
-    gates.map((gate) => formatGateRequirement(gate, { locale: resolvedLocale })),
+    gates.map((gate) => formatGateRequirement(gate, {
+      locale: resolvedLocale,
+      provider: suggestedVerificationProvider,
+    })),
   ));
   const passportPrompt: VerificationPrompt | null = !verificationPrompt
     ? getPassportPrompt(eligibility, panelCopy)
@@ -184,7 +190,7 @@ export function CommunityMembershipGatePanel({
     !activePrompt &&
     !isProofOfWorkRequired &&
     eligibility?.status === "verification_required" &&
-    resolveSuggestedVerificationProvider(eligibility) === "very";
+    suggestedVerificationProvider === "very";
   const eligibilityText = getEligibilityText(eligibility, gates, resolvedLocale, panelCopy);
   const isInlineVerificationRequired =
     !activePrompt &&

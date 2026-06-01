@@ -92,6 +92,20 @@ describe("share metadata", () => {
     expect(metadata.imageAlt).toBe("Preview Club on Pirate");
   });
 
+  test("uses community-specific fallback copy when a community has no description", () => {
+    const metadata = buildCommunitySeoMetadata({
+      appOrigin: "https://pirate.sc",
+      locale: "en",
+      preview: {
+        ...community,
+        description: null,
+      },
+    });
+
+    expect(metadata.title).toBe("Preview Club • Pirate");
+    expect(metadata.description).toBe("A community on Pirate");
+  });
+
   test("uses video poster metadata before community fallback", () => {
     const metadata = buildPostSeoMetadata({
       appOrigin: "https://pirate.sc",

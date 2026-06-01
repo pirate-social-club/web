@@ -104,7 +104,13 @@
   "post": {
     "commentsBody": "帖子串回复还未完整搭建。这个路由当前主要用于固定 `post_id` 读取的 URL 合约和页面框架。",
     "description": "为未来的 `GET /posts/{post_id}` 读取准备的单帖路由外壳。",
-    "fallbackTitle": "帖子"
+    "fallbackTitle": "帖子",
+    "imagePost": "图片帖子",
+    "linkPost": "链接帖子",
+    "postOnPirate": "Pirate 上的帖子",
+    "titleInCommunity": "{name} 在 Pirate",
+    "videoPost": "视频帖子",
+    "song": "歌曲"
   },
   "community": {
     "aboutTab": "关于",

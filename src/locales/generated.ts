@@ -230,7 +230,13 @@ export const GENERATED_LOCALE_CATALOGS = {
       "post": {
         "commentsBody": "Thread replies are not scaffolded yet. This route exists to pin the URL contract and page chrome for `post_id` reads.",
         "description": "Single-thread route shell for the future `GET /posts/{post_id}` read.",
-        "fallbackTitle": "Post"
+        "fallbackTitle": "Post",
+        "imagePost": "Image post",
+        "linkPost": "Link post",
+        "postOnPirate": "Post on Pirate",
+        "titleInCommunity": "{name} on Pirate",
+        "videoPost": "Video post",
+        "song": "Song"
       },
       "community": {
         "aboutTab": "About",
@@ -1870,7 +1876,13 @@ export const GENERATED_LOCALE_CATALOGS = {
       "post": {
         "commentsBody": "ردود السلسلة غير مهيأة بعد. هذا المسار موجود لتثبيت عقد عنوان URL وهيكل الصفحة لقراءات `post_id`.",
         "description": "هيكل مسار لسلسلة مفردة لقراءة `GET /posts/{post_id}` مستقبلًا.",
-        "fallbackTitle": "منشور"
+        "fallbackTitle": "منشور",
+        "imagePost": "منشور صورة",
+        "linkPost": "منشور رابط",
+        "postOnPirate": "منشور على Pirate",
+        "titleInCommunity": "{name} على Pirate",
+        "videoPost": "منشور فيديو",
+        "song": "أغنية"
       },
       "community": {
         "aboutTab": "حول",
@@ -3510,7 +3522,13 @@ export const GENERATED_LOCALE_CATALOGS = {
       "post": {
         "commentsBody": "帖子串回复还未完整搭建。这个路由当前主要用于固定 `post_id` 读取的 URL 合约和页面框架。",
         "description": "为未来的 `GET /posts/{post_id}` 读取准备的单帖路由外壳。",
-        "fallbackTitle": "帖子"
+        "fallbackTitle": "帖子",
+        "imagePost": "图片帖子",
+        "linkPost": "链接帖子",
+        "postOnPirate": "Pirate 上的帖子",
+        "titleInCommunity": "{name} 在 Pirate",
+        "videoPost": "视频帖子",
+        "song": "歌曲"
       },
       "community": {
         "aboutTab": "关于",

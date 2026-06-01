@@ -112,6 +112,8 @@ describe("share metadata", () => {
       }),
     });
 
+    expect(metadata.title).toBe("Preview Club on Pirate");
+    expect(metadata.description).toBe("The body should become the share description.");
     expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/poster.webp"));
     expect(metadata.imageType).toBe("image/jpeg");
     expect(metadata.imageWidth).toBe(1200);
@@ -135,6 +137,8 @@ describe("share metadata", () => {
       }),
     });
 
+    expect(metadata.title).toBe("Preview Club on Pirate");
+    expect(metadata.description).toBe("The body should become the share description.");
     expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/post-image.png"));
     expect(metadata.imageType).toBe("image/jpeg");
   });
@@ -155,6 +159,7 @@ describe("share metadata", () => {
       }),
     });
 
+    expect(metadata.description).toBe("The body should become the share description.");
     expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/post-image.jpg?signature=test"));
   });
 
@@ -181,6 +186,7 @@ describe("share metadata", () => {
     });
 
     expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/song-cover.jpg"));
+    expect(metadata.description).toBe("The body should become the share description.");
     expect(metadata.imageAlt).toBe("Cover track on Pirate");
   });
 
@@ -197,6 +203,7 @@ describe("share metadata", () => {
       }),
     });
 
+    expect(metadata.description).toBe("The body should become the share description.");
     expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://link-preview.test/card.jpg"));
   });
 
@@ -214,8 +221,32 @@ describe("share metadata", () => {
       }),
     });
 
-    expect(metadata.description).toBe("A community with rich link previews.");
+    expect(metadata.title).toBe("Preview Club on Pirate");
+    expect(metadata.description).toBe("A proper preview");
     expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/banner.jpg"));
+  });
+
+  test("uses social context title and media description when a media post has no body", () => {
+    const metadata = buildPostSeoMetadata({
+      appOrigin: "https://pirate.sc",
+      community,
+      locale: "en",
+      postResponse: postResponse({
+        post: basePost({
+          body: null,
+          caption: null,
+          media_refs: [{
+            storage_ref: "https://media.test/post-image.png",
+            mime_type: "image/png",
+          }],
+          post_type: "image",
+          title: "test",
+        }),
+      }),
+    });
+
+    expect(metadata.title).toBe("Preview Club on Pirate");
+    expect(metadata.description).toBe("test · Image post");
   });
 
   test("renders structured Open Graph and X image tags", () => {

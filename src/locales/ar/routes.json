@@ -104,7 +104,13 @@
   "post": {
     "commentsBody": "ردود السلسلة غير مهيأة بعد. هذا المسار موجود لتثبيت عقد عنوان URL وهيكل الصفحة لقراءات `post_id`.",
     "description": "هيكل مسار لسلسلة مفردة لقراءة `GET /posts/{post_id}` مستقبلًا.",
-    "fallbackTitle": "منشور"
+    "fallbackTitle": "منشور",
+    "imagePost": "منشور صورة",
+    "linkPost": "منشور رابط",
+    "postOnPirate": "منشور على Pirate",
+    "titleInCommunity": "{name} على Pirate",
+    "videoPost": "منشور فيديو",
+    "song": "أغنية"
   },
   "community": {
     "aboutTab": "حول",

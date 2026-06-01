@@ -258,6 +258,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "ownerLabel": "Owner",
         "requirementsLabel": "Requirements",
         "rulesLabel": "Rules",
+        "shareFallbackDescription": "A community on Pirate",
         "storeLabel": "Store",
         "tagsLabel": "Tags",
         "title": "Community"
@@ -1904,6 +1905,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "ownerLabel": "المالك",
         "requirementsLabel": "المتطلبات",
         "rulesLabel": "القواعد",
+        "shareFallbackDescription": "مجتمع على Pirate",
         "storeLabel": "المتجر",
         "tagsLabel": "الوسوم",
         "title": "المجتمع"
@@ -3550,6 +3552,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "ownerLabel": "所有者",
         "requirementsLabel": "要求",
         "rulesLabel": "规则",
+        "shareFallbackDescription": "Pirate 上的社区",
         "storeLabel": "商店",
         "tagsLabel": "标签",
         "title": "社区"

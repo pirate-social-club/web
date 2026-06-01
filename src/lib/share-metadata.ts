@@ -266,7 +266,7 @@ export function buildCommunitySeoMetadata(input: {
   const copy = getLocaleMessages(input.locale, "routes");
   const title = `${input.preview.display_name} • Pirate`;
   const description = truncateMetaDescription(input.preview.description)
-    ?? copy.home.emptyHomeBody;
+    ?? copy.community.shareFallbackDescription;
   const imageAlt = `${input.preview.display_name} on Pirate`;
   const image = firstPublicImageCandidate([
     input.preview.banner_ref,

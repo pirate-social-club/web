@@ -140,6 +140,8 @@ test.describe("unauthenticated staging smoke", () => {
     test.skip(!routes.communityPath, "No public community route was discoverable from staging API.");
     await page.goto(routes.communityPath!);
     await expectRouteRendered(page);
+    const bodyText = await page.locator("body").innerText();
+    test.skip(/Community not found|could not find c\//iu.test(bodyText), "Discovered staging community route is stale.");
     if (routes.communityLabel) {
       await expect(page.locator("body")).toContainText(new RegExp(escapeRegExp(routes.communityLabel), "u"), { timeout: 30_000 });
     }

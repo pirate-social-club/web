@@ -148,7 +148,6 @@ jobs:
           bun scripts/community/repair-community-migration-ledger.ts --execute
 
   production:
-    if: false
     name: Deploy production
     needs: staging
     runs-on: blacksmith-4vcpu-ubuntu-2404

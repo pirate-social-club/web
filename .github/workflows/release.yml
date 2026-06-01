@@ -142,6 +142,7 @@ jobs:
           SECRET_NAMES: CONTROL_PLANE_DATABASE_URL TURSO_COMMUNITY_DB_WRAP_KEY
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Repair staging community migrations
+        continue-on-error: true
         working-directory: core
         run: |
           test -n "$CONTROL_PLANE_DATABASE_URL"

@@ -117,6 +117,7 @@ export function usePostComposerController(props: PostComposerProps) {
   const submitError = submit?.error ?? props.submitError ?? null;
   const submitLabel = submit?.label ?? props.submitLabel;
   const submitLoading = submit?.loading ?? props.submitLoading ?? false;
+  const submitProgress = submit?.progress ?? null;
   const { isRtl, locale } = useUiLocale();
   const isMobile = useIsMobile();
   const routesCopy = getLocaleMessages(locale, "routes");
@@ -589,6 +590,7 @@ export function usePostComposerController(props: PostComposerProps) {
       mobileEnabled: Boolean(submit),
       onSubmit,
       postDisabled,
+      progress: composerStep !== "write" ? submitProgress : null,
     },
     step: {
       current: composerStep,

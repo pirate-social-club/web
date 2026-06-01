@@ -24,6 +24,7 @@ import type {
   ComposerAudienceState,
   LiveComposerState,
   RegionalPricingPreview,
+  SubmitProgress,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import type { ApiDerivativeSource } from "@/lib/api/client-api-types";
 import { canSubmitLiveRoomDraft, isValidHttpUrl, normalizeHttpUrl } from "@/components/compositions/posts/post-composer/post-composer-utils";
@@ -42,6 +43,10 @@ import { submitLinkPost } from "@/app/authenticated-helpers/create-post-submit/l
 import { submitLiveRoom } from "@/app/authenticated-helpers/create-post-submit/live";
 import { submitTextPost } from "@/app/authenticated-helpers/create-post-submit/text";
 import { submitVideoPost } from "@/app/authenticated-helpers/create-post-submit/video";
+import {
+  createSubmitProgressReporter,
+  type SubmitProgressStep,
+} from "@/app/authenticated-helpers/create-post-submit/progress";
 import { useSongSubmit } from "./use-song-submit";
 import { buildAnonymousLabel } from "@/lib/anonymous-label";
 import {
@@ -66,6 +71,90 @@ type AvailableSigningAgent = {
 };
 
 const MAX_VIDEO_POSTER_FRAME_WIDTH = 1920;
+
+function hasSongExtraArtifact(songState: Pick<CreatePostDraftState["songState"], "canvasVideoUpload" | "coverUpload" | "instrumentalAudioUpload" | "vocalAudioUpload">): boolean {
+  return Boolean(
+    songState.coverUpload
+    || songState.canvasVideoUpload
+    || songState.instrumentalAudioUpload
+    || songState.vocalAudioUpload
+  );
+}
+
+function songSubmitProgressSteps(input: {
+  hasPendingBundle: boolean;
+  hasExtraArtifacts: boolean;
+  isLocked: boolean;
+}): SubmitProgressStep[] {
+  const steps: SubmitProgressStep[] = [
+    { key: "validating", phase: "validating", label: "Checking details" },
+  ];
+  if (!input.hasPendingBundle) {
+    steps.push({ key: "upload_primary_audio", phase: "uploading_media", label: "Uploading audio" });
+    if (input.hasExtraArtifacts) {
+      steps.push({ key: "upload_artifacts", phase: "uploading_media", label: "Uploading files" });
+    }
+    steps.push(
+      { key: "create_bundle", phase: "processing_media", label: "Analyzing song" },
+      { key: "check_rights", phase: "checking_rights", label: "Checking rights" },
+    );
+  }
+  if (input.isLocked) {
+    steps.push({ key: "generate_preview", phase: "processing_media", label: "Generating preview" });
+  }
+  steps.push({ key: "publish_post", phase: "publishing_post", label: "Publishing" });
+  if (input.isLocked) {
+    steps.push({ key: "create_listing", phase: "creating_listing", label: "Creating listing" });
+  }
+  steps.push(
+    { key: "check_registration", phase: "checking_registration", label: "Checking registration" },
+    { key: "done", phase: "done", label: "Post published" },
+  );
+  return steps;
+}
+
+function videoSubmitProgressSteps(input: { monetized: boolean }): SubmitProgressStep[] {
+  const steps: SubmitProgressStep[] = [
+    { key: "validating", phase: "validating", label: "Checking details" },
+    { key: "upload_video", phase: "uploading_media", label: "Uploading video" },
+    { key: "extract_poster", phase: "preparing_media", label: "Preparing poster" },
+    { key: "upload_poster", phase: "uploading_media", label: "Uploading poster" },
+    { key: "publish_post", phase: "publishing_post", label: "Publishing" },
+  ];
+  if (input.monetized) {
+    steps.push({ key: "create_listing", phase: "creating_listing", label: "Creating listing" });
+  }
+  steps.push(
+    { key: "check_registration", phase: "checking_registration", label: "Checking registration" },
+    { key: "done", phase: "done", label: "Post published" },
+  );
+  return steps;
+}
+
+function simpleSubmitProgressSteps(input: {
+  mode: "text" | "image" | "link" | "live";
+  monetized?: boolean;
+  hasMedia?: boolean;
+}): SubmitProgressStep[] {
+  const steps: SubmitProgressStep[] = [
+    { key: "validating", phase: "validating", label: "Checking details" },
+  ];
+  if (input.hasMedia) {
+    steps.push({
+      key: "prepare_media",
+      phase: input.mode === "image" ? "uploading_media" : "preparing_media",
+      label: input.mode === "live" ? "Preparing media" : "Uploading image",
+    });
+  }
+  if (input.monetized) {
+    steps.push({ key: "create_listing", phase: "creating_listing", label: "Creating listing" });
+  }
+  steps.push(
+    { key: "publish_post", phase: "publishing_post", label: input.mode === "live" ? "Publishing live room" : "Publishing" },
+    { key: "done", phase: "done", label: input.mode === "live" ? "Live room published" : "Post published" },
+  );
+  return steps;
+}
 
 function viewerHasCommunityPostingRole(
   viewerUserId: string | null | undefined,
@@ -220,6 +309,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     submitting: false,
     postAltchaPayload: null as string | null,
     postAltchaResetKey: 0,
+    submitFailure: null as string | null,
+    submitProgress: null as SubmitProgress | null,
     loading: true,
   });
   const { actions: draftActions, state: draft } = useCreatePostDraftState(initialDraft);
@@ -276,7 +367,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     setTitle,
     setVideoState,
   } = draftActions;
-  const { community, communityOwnerUserId, eligibility, pricingPolicy, loadError, availableAgent, submitting, postAltchaPayload, postAltchaResetKey, loading } = pageState;
+  const { community, communityOwnerUserId, eligibility, pricingPolicy, loadError, availableAgent, submitting, postAltchaPayload, postAltchaResetKey, submitFailure, submitProgress, loading } = pageState;
 
   const refetchEligibility = React.useCallback(async () => {
     const nextEligibility = await api.communities.getJoinEligibility(communityId);
@@ -730,13 +821,47 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       return;
     }
 
+    setPageState((current) => ({
+      ...current,
+      submitFailure: null,
+      submitProgress: null,
+    }));
+    setSubmitError(null);
+
     if (postAltchaRequired && !postAltchaPayload) {
       setSubmitError("Complete the proof-of-work check first.");
       return;
     }
 
-    setPageState((current) => ({ ...current, submitting: true }));
-    setSubmitError(null);
+    const progressSteps = composerMode === "song"
+      ? songSubmitProgressSteps({
+          hasExtraArtifacts: hasSongExtraArtifact(songState),
+          hasPendingBundle: Boolean(pendingSongBundleId),
+          isLocked: paidAssetPriceUsd != null,
+        })
+      : composerMode === "video"
+        ? videoSubmitProgressSteps({ monetized: monetizationState.visible })
+        : composerMode === "live"
+          ? simpleSubmitProgressSteps({
+              hasMedia: Boolean(liveState.coverUpload),
+              mode: "live",
+              monetized: paidLiveRoomMode,
+            })
+          : composerMode === "image"
+            ? simpleSubmitProgressSteps({ hasMedia: Boolean(imageUpload), mode: "image" })
+            : composerMode === "link"
+              ? simpleSubmitProgressSteps({ mode: "link" })
+              : simpleSubmitProgressSteps({ mode: "text" });
+    const reportProgress = createSubmitProgressReporter(progressSteps, (progress) => {
+      setPageState((current) => ({ ...current, submitProgress: progress }));
+    });
+    reportProgress("validating");
+
+    setPageState((current) => ({
+      ...current,
+      submitting: true,
+      submitFailure: null,
+    }));
     logger.info("[create-post] submit started", {
       authorMode,
       communityId,
@@ -782,6 +907,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           paidSongPriceUsd: paidAssetPriceUsd,
           pendingSongBundleId,
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
+          reportProgress,
+          setPendingSongBundleId,
           setSubmitError,
           songMode,
           songState,
@@ -802,6 +929,9 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           scheduleForLater: liveState.scheduleForLater === true,
           setlistItems: liveState.setlistItems.length,
         });
+        if (liveState.coverUpload) reportProgress("prepare_media");
+        if (paidLiveRoomMode) reportProgress("create_listing");
+        reportProgress("publish_post");
         const liveRoom = await submitLiveRoom({
           communityId,
           createLiveRoom: api.communities.createLiveRoom,
@@ -855,6 +985,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           });
         }
       } else if (composerMode === "image") {
+        reportProgress("prepare_media");
         logger.info("[create-post] creating image post", {
           filename: imageUpload?.name,
           sizeBytes: imageUpload?.size,
@@ -878,6 +1009,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           title,
           uploadMedia: api.communities.uploadMedia,
         });
+        reportProgress("publish_post");
       } else if (composerMode === "video") {
         logger.info("[create-post] creating video post", {
           filename: videoState.primaryVideoUpload?.name,
@@ -908,6 +1040,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           paidAssetPriceUsd,
           posterFrameMaxWidth: MAX_VIDEO_POSTER_FRAME_WIDTH,
           pricingPolicyRegionalPricingEnabled: pricingPolicy?.regional_pricing_enabled === true,
+          reportProgress,
           regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
           signAgentAuthoredBody,
           title,
@@ -920,6 +1053,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           postId: result.id,
         });
       } else if (composerMode === "link") {
+        reportProgress("publish_post");
         logger.info("[create-post] creating link post", { linkUrl });
         result = await submitLinkPost({
           altchaOptions: postAltchaRequestOptions,
@@ -940,6 +1074,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           title,
         });
       } else {
+        reportProgress("publish_post");
         logger.info("[create-post] creating text post");
         result = await submitTextPost({
           altchaOptions: postAltchaRequestOptions,
@@ -966,6 +1101,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         postType: publishedPostType,
       });
       if (publishedPostType === "song" || publishedPostType === "video") {
+        reportProgress("check_registration");
         const asset = await warnIfStoryRegistrationIncomplete(result, publishedPostType);
         if (result?.id && publishedPostType === "song") {
           rememberStoryLicenseReuseNotice(
@@ -985,6 +1121,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       if (!destinationPostId) {
         throw new Error("The post was created, but no destination post was returned.");
       }
+      reportProgress("done");
       if (liveRoomFreedomHref) {
         logger.info("[create-post] opening immediate live room in Freedom", {
           postId: destinationPostId,
@@ -1008,7 +1145,10 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           postAltchaResetKey: current.postAltchaResetKey + 1,
         }));
       }
-      setSubmitError(getErrorMessage(error, "Could not create post"));
+      setPageState((current) => ({
+        ...current,
+        submitFailure: getErrorMessage(error, "Could not create post"),
+      }));
     } finally {
       logger.info("[create-post] submit finished", {
         communityId,
@@ -1018,8 +1158,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     }
   }, [
     api, audience, authorMode, body, caption, charityContribution, charityPartner, community, communityId, composerMode, derivativeStep, eligibility?.status, event, hasCommunityPostingRole,
-    identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled,
-    selectedQualifierIds, session?.user.id, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
+    identityMode, imageUpload, license, linkUrl, liveState, lyrics, monetizationState, paidAssetPriceUsd, paidLiveRoomMode, pendingSongBundleId, postAltchaPayload, postAltchaRequestOptions, postAltchaRequired, pricingPolicy?.regional_pricing_enabled,
+    selectedQualifierIds, session?.user.id, setPendingSongBundleId, setSubmitError, signAgentAuthoredBody, songMode, songState, submitSongPost, submitState.canPost, title,
     videoState,
     warnIfStoryRegistrationIncomplete,
   ]);
@@ -1067,6 +1207,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     songMode,
     songState,
     videoState,
+    submitFailure,
+    submitProgress,
     submitState,
     submitting,
     title,

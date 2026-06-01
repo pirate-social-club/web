@@ -15,6 +15,7 @@ import type {
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import type { ExtractedVideoPosterFrame } from "@/components/compositions/posts/post-composer/video-poster-frame";
 import { buildAssetListingRequest } from "@/app/authenticated-helpers/asset-submit";
+import type { SubmitProgressReporter } from "./progress";
 
 import {
   signIfAgent,
@@ -160,6 +161,7 @@ export async function submitVideoPost({
   paidAssetPriceUsd,
   posterFrameMaxWidth,
   pricingPolicyRegionalPricingEnabled,
+  reportProgress,
   regionalPricingEnabled,
   signAgentAuthoredBody,
   title,
@@ -184,6 +186,7 @@ export async function submitVideoPost({
   paidAssetPriceUsd: number | null;
   posterFrameMaxWidth?: number;
   pricingPolicyRegionalPricingEnabled: boolean;
+  reportProgress?: SubmitProgressReporter;
   regionalPricingEnabled: boolean;
   signAgentAuthoredBody: SignAgentAuthoredBody;
   title: string;
@@ -191,18 +194,22 @@ export async function submitVideoPost({
   uploadMedia: UploadPosterMedia;
   videoState: VideoComposerState;
 }): Promise<ApiCreatedPost> {
+  reportProgress?.("validating");
   const file = requirePrimaryVideoFile(videoState);
+  reportProgress?.("upload_video");
   const uploadedVideo = await uploadVideoArtifact({
     communityId,
     createArtifactUpload,
     uploadArtifactContent,
     videoState,
   });
+  reportProgress?.("extract_poster");
   const posterFrame = await extractPosterFrameFile(
     file,
     videoState.posterFrameSeconds,
     { maxWidth: posterFrameMaxWidth },
   );
+  reportProgress?.("upload_poster");
   const uploadedPoster = await uploadMedia({
     kind: "post_image",
     file: posterFrame.file,
@@ -218,6 +225,7 @@ export async function submitVideoPost({
     uploadedPoster,
     uploadedVideo,
   });
+  reportProgress?.("publish_post");
   const post = await createPost(
     communityId,
     await signIfAgent({
@@ -247,6 +255,7 @@ export async function submitVideoPost({
   if (!listingRequest) {
     throw new Error("The video published, but the paid listing payload was not created.");
   }
+  reportProgress?.("create_listing");
   await createListing(communityId, listingRequest);
   return post;
 }

@@ -318,7 +318,27 @@ export interface PostComposerSubmitState {
   label?: string;
   loading?: boolean;
   onSubmit?: () => void;
+  progress?: SubmitProgress | null;
 }
+
+export type SubmitProgressPhase =
+  | "validating"
+  | "preparing_media"
+  | "uploading_media"
+  | "processing_media"
+  | "checking_rights"
+  | "publishing_post"
+  | "creating_listing"
+  | "checking_registration"
+  | "done";
+
+export type SubmitProgress = {
+  phase: SubmitProgressPhase;
+  label: string;
+  detail?: string;
+  currentIndex: number;
+  totalSteps: number;
+};
 
 export interface PostComposerProps extends Partial<PostComposerDraftState>, PostComposerDraftActions {
   clubName: string;

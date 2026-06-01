@@ -218,13 +218,14 @@ function CreatePostComposer({
         submit={{
           canContinue: state.submitState.canContinue,
           canPost: state.submitState.canPost,
-          error: state.submitState.submitError,
+          error: state.submitFailure ?? state.submitState.submitError,
           label:
             state.composerMode === "song" && state.derivativeStep?.required
               ? copy.createPost.actions.publishRemix
               : copy.createPost.actions.post,
           loading: state.submitting || submitLoading,
           onSubmit: () => void onSubmit(),
+          progress: state.submitProgress,
         }}
       />
   );

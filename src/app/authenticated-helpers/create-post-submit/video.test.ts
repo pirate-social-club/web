@@ -226,6 +226,7 @@ describe("video create-post submit helpers", () => {
       frameSeconds: string | undefined;
       maxWidth: number | undefined;
     }> = [];
+    const progressEvents: string[] = [];
 
     const result = await submitVideoPost({
       altchaOptions: { altchaPayload: "altcha_video" },
@@ -260,6 +261,7 @@ describe("video create-post submit helpers", () => {
       paidAssetPriceUsd: null,
       posterFrameMaxWidth: 1920,
       pricingPolicyRegionalPricingEnabled: false,
+      reportProgress: (key) => progressEvents.push(key),
       regionalPricingEnabled: false,
       signAgentAuthoredBody: async (_path, request) => request,
       title: "Video post",
@@ -279,6 +281,13 @@ describe("video create-post submit helpers", () => {
     });
 
     expect(result.id).toBe("pst_uploaded_video");
+    expect(progressEvents).toEqual([
+      "validating",
+      "upload_video",
+      "extract_poster",
+      "upload_poster",
+      "publish_post",
+    ]);
     expect(posterExtractCalls).toEqual([{
       file,
       frameSeconds: "1.3",
@@ -323,6 +332,7 @@ describe("video create-post submit helpers", () => {
       communityId: string;
       request: CreateCommunityListingRequest;
     }> = [];
+    const progressEvents: string[] = [];
 
     await submitVideoPost({
       authorMode: "human",
@@ -350,6 +360,7 @@ describe("video create-post submit helpers", () => {
       monetized: true,
       paidAssetPriceUsd: 5,
       pricingPolicyRegionalPricingEnabled: true,
+      reportProgress: (key) => progressEvents.push(key),
       regionalPricingEnabled: true,
       signAgentAuthoredBody: async (_path, request) => request,
       title: "Paid video",
@@ -364,6 +375,14 @@ describe("video create-post submit helpers", () => {
       },
     });
 
+    expect(progressEvents).toEqual([
+      "validating",
+      "upload_video",
+      "extract_poster",
+      "upload_poster",
+      "publish_post",
+      "create_listing",
+    ]);
     expect(createListingCalls).toEqual([{
       communityId: "com_test",
       request: {

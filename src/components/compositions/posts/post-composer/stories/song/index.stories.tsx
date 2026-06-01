@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { buildStarterPricingPolicyDraft } from "@/app/authenticated-helpers/moderation-helpers";
 import { PostComposer } from "../../post-composer";
 import { baseComposer, composerDecorator, composerParameters, InteractivePostComposer } from "../story-helpers";
+import type { SubmitProgress } from "../../post-composer.types";
 
 const meta = {
   title: "Compositions/Posts/PostComposer/Composer/Song",
@@ -91,6 +92,22 @@ function svgCoverFile(name: string, label: string): File {
 const midnightCoverFile = svgCoverFile("midnight-waves-cover.svg", "Midnight Waves");
 const benefitCoverFile = svgCoverFile("benefit-single-cover.svg", "Benefit Single");
 const demoAudioFile = new File([new Uint8Array([1, 2, 3, 4])], "demo-song.mp3", { type: "audio/mpeg" });
+
+function progress(input: {
+  currentIndex: number;
+  detail?: string;
+  label: string;
+  phase: SubmitProgress["phase"];
+  totalSteps?: number;
+}): SubmitProgress {
+  return {
+    currentIndex: input.currentIndex,
+    detail: input.detail,
+    label: input.label,
+    phase: input.phase,
+    totalSteps: input.totalSteps ?? 9,
+  };
+}
 
 export const Original: Story = {
   name: "Original",
@@ -350,6 +367,231 @@ export const AnalysisMatch: Story = {
         canPost: false,
         error: analysisMatchMessage,
         label: "Post",
+      }}
+    />
+  ),
+};
+
+export const SubmittingUploadingAudio: Story = {
+  name: "Publish step / Submitting / Uploading audio",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="publish"
+      mode="song"
+      canCreateSongPost
+      titleValue="Midnight Waves"
+      titleCountLabel="14/300"
+      lyricsValue="Meet me in the red light / carry the chorus through the floor..."
+      song={{
+        genre: "Electronic",
+        primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
+        coverLabel: "midnight-waves-cover.png",
+      }}
+      license={{
+        presetId: "non-commercial",
+      }}
+      submit={{
+        canContinue: true,
+        canPost: true,
+        label: "Post",
+        loading: true,
+        progress: progress({
+          currentIndex: 2,
+          label: "Uploading audio",
+          phase: "uploading_media",
+        }),
+      }}
+    />
+  ),
+};
+
+export const SubmittingAnalyzingRights: Story = {
+  name: "Publish step / Submitting / Analyzing rights",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="publish"
+      mode="song"
+      canCreateSongPost
+      titleValue="Midnight Waves"
+      titleCountLabel="14/300"
+      lyricsValue="Meet me in the red light / carry the chorus through the floor..."
+      song={{
+        genre: "Electronic",
+        primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: midnightCoverFile,
+        coverLabel: "midnight-waves-cover.png",
+      }}
+      license={{
+        presetId: "non-commercial",
+      }}
+      submit={{
+        canContinue: true,
+        canPost: true,
+        label: "Post",
+        loading: true,
+        progress: progress({
+          currentIndex: 5,
+          label: "Checking rights",
+          phase: "checking_rights",
+        }),
+      }}
+    />
+  ),
+};
+
+export const SubmittingGeneratingPreview: Story = {
+  name: "Publish step / Submitting / Generating preview",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="publish"
+      mode="song"
+      canCreateSongPost
+      titleValue="Benefit single for the club drop"
+      titleCountLabel="36/300"
+      lyricsValue="Raise the room up / hold the line / send the chorus over..."
+      song={{
+        genre: "R&B",
+        primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: benefitCoverFile,
+        coverLabel: "benefit-single-cover.png",
+        previewStartSeconds: "42",
+      }}
+      monetization={{
+        visible: true,
+        priceUsd: "3.99",
+      }}
+      submit={{
+        canContinue: true,
+        canPost: true,
+        label: "Post",
+        loading: true,
+        progress: progress({
+          currentIndex: 6,
+          detail: "Attempt 4 of 31",
+          label: "Generating preview",
+          phase: "processing_media",
+        }),
+      }}
+    />
+  ),
+};
+
+export const SubmittingCreatingListing: Story = {
+  name: "Publish step / Submitting / Creating listing",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="publish"
+      mode="song"
+      canCreateSongPost
+      titleValue="Benefit single for the club drop"
+      titleCountLabel="36/300"
+      lyricsValue="Raise the room up / hold the line / send the chorus over..."
+      song={{
+        genre: "R&B",
+        primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: benefitCoverFile,
+        coverLabel: "benefit-single-cover.png",
+        previewStartSeconds: "42",
+      }}
+      monetization={{
+        visible: true,
+        priceUsd: "3.99",
+      }}
+      submit={{
+        canContinue: true,
+        canPost: true,
+        label: "Post",
+        loading: true,
+        progress: progress({
+          currentIndex: 8,
+          label: "Creating listing",
+          phase: "creating_listing",
+        }),
+      }}
+    />
+  ),
+};
+
+export const RetryableFailure: Story = {
+  name: "Publish step / Retryable failure",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="publish"
+      mode="song"
+      canCreateSongPost
+      titleValue="Benefit single for the club drop"
+      titleCountLabel="36/300"
+      lyricsValue="Raise the room up / hold the line / send the chorus over..."
+      song={{
+        genre: "R&B",
+        primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: benefitCoverFile,
+        coverLabel: "benefit-single-cover.png",
+        previewStartSeconds: "42",
+      }}
+      monetization={{
+        visible: true,
+        priceUsd: "3.99",
+      }}
+      submit={{
+        canContinue: true,
+        canPost: true,
+        error: "Song preview is still processing. Try again in a moment.",
+        label: "Post",
+        progress: progress({
+          currentIndex: 6,
+          label: "Generating preview",
+          phase: "processing_media",
+        }),
+      }}
+    />
+  ),
+};
+
+export const PostPublished: Story = {
+  name: "Publish step / Post published",
+  render: () => (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep="publish"
+      mode="song"
+      canCreateSongPost
+      titleValue="Benefit single for the club drop"
+      titleCountLabel="36/300"
+      lyricsValue="Raise the room up / hold the line / send the chorus over..."
+      song={{
+        genre: "R&B",
+        primaryLanguage: "English",
+        primaryAudioUpload: demoAudioFile,
+        coverUpload: benefitCoverFile,
+        coverLabel: "benefit-single-cover.png",
+        previewStartSeconds: "42",
+      }}
+      monetization={{
+        visible: true,
+        priceUsd: "3.99",
+      }}
+      submit={{
+        canContinue: true,
+        canPost: true,
+        label: "Post",
+        loading: true,
+        progress: progress({
+          currentIndex: 9,
+          label: "Post published",
+          phase: "done",
+        }),
       }}
     />
   ),

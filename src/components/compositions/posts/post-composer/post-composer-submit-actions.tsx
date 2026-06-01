@@ -8,6 +8,7 @@ import { Button } from "@/components/primitives/button";
 import { CardFooter } from "@/components/primitives/card";
 import { FormNote } from "@/components/primitives/form-layout";
 import { logger } from "@/lib/logger";
+import type { SubmitProgress } from "./post-composer.types";
 
 import { anonymousEligibleTabs } from "./post-composer-config";
 import {
@@ -16,6 +17,28 @@ import {
   getPreviousComposerStep,
 } from "./post-composer-utils";
 import type { PostComposerController } from "./use-post-composer-controller";
+
+function submitButtonContent(
+  progress: SubmitProgress | null | undefined,
+  fallback: string,
+): React.ReactNode {
+  if (!progress) return fallback;
+
+  const totalSteps = Math.max(progress.totalSteps, 1);
+  const currentIndex = Math.min(Math.max(progress.currentIndex, 0), totalSteps);
+  const label = progress.phase === "done"
+    ? progress.label
+    : `${progress.label}...`;
+
+  return (
+    <>
+      <span className="min-w-0 truncate">{label}</span>
+      {progress.phase !== "done" ? (
+        <span className="shrink-0 tabular-nums opacity-80">{currentIndex}/{totalSteps}</span>
+      ) : null}
+    </>
+  );
+}
 
 export function shouldShowIdentity(controller: PostComposerController) {
   const { commerce, identity, tabs } = controller;
@@ -131,12 +154,12 @@ export function PostComposerDesktopFooter({
           {copy.actions.back}
         </Button>
       ) : <span />}
-      <div className="flex items-center justify-end gap-3 lg:ms-auto">
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:ms-auto">
         {submit.error ? <FormNote tone="warning">{submit.error}</FormNote> : null}
         <Button
-          disabled={submit.disabled}
+          disabled={submit.disabled || submit.progress?.phase === "done"}
           key="publish"
-          loading={submit.loading}
+          loading={submit.loading && submit.progress?.phase !== "done"}
           onClick={() => {
             logger.info("[post-composer] desktop publish button clicked", {
               activeTab: tabs.activeTab,
@@ -148,7 +171,7 @@ export function PostComposerDesktopFooter({
           }}
           size="lg"
         >
-          {publishLabel}
+          {submitButtonContent(submit.progress, publishLabel)}
         </Button>
       </div>
     </CardFooter>
@@ -204,8 +227,8 @@ export function PostComposerMobileSubmitBar({
           <div>
             <Button
               className="w-full"
-              disabled={submit.disabled}
-              loading={submit.loading}
+              disabled={submit.disabled || submit.progress?.phase === "done"}
+              loading={submit.loading && submit.progress?.phase !== "done"}
               onClick={() => {
                 logger.info("[post-composer] mobile publish button clicked", {
                   activeTab: tabs.activeTab,
@@ -217,7 +240,7 @@ export function PostComposerMobileSubmitBar({
               }}
               size="lg"
             >
-              {publishLabel}
+              {submitButtonContent(submit.progress, publishLabel)}
             </Button>
           </div>
         </div>

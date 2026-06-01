@@ -18,6 +18,7 @@ import type {
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 
 import { buildAssetListingRequest, resolvedDerivativeReferences } from "@/app/authenticated-helpers/asset-submit";
+import type { SubmitProgressReporter } from "@/app/authenticated-helpers/create-post-submit/progress";
 import { buildSongPostRequest } from "@/app/authenticated-helpers/song-submit";
 
 const SONG_PREVIEW_DURATION_MS = 30_000;
@@ -58,6 +59,8 @@ type SongSubmitInput = {
   paidSongPriceUsd: number | null;
   pendingSongBundleId: string | null;
   pricingPolicyRegionalPricingEnabled: boolean;
+  reportProgress?: SubmitProgressReporter;
+  setPendingSongBundleId: (bundleId: string | null) => void;
   setSubmitError: (error: string | null) => void;
   songMode: SongMode;
   songState: SongComposerState;
@@ -180,9 +183,13 @@ export function useSongSubmit({
 }: UseSongSubmitInput) {
   const api = useApi();
 
-  const waitForSongPreview = React.useCallback(async (bundle: ApiSongArtifactBundle): Promise<ApiSongArtifactBundle> => {
+  const waitForSongPreview = React.useCallback(async (
+    bundle: ApiSongArtifactBundle,
+    reportProgress?: SubmitProgressReporter,
+  ): Promise<ApiSongArtifactBundle> => {
     let current = bundle;
     for (let attempt = 0; attempt <= SONG_PREVIEW_POLL_ATTEMPTS; attempt += 1) {
+      reportProgress?.("generate_preview", `Attempt ${attempt + 1} of ${SONG_PREVIEW_POLL_ATTEMPTS + 1}`);
       logger.info("[song-submit] preview poll", {
         attempt,
         bundleId: current.id,
@@ -279,6 +286,8 @@ export function useSongSubmit({
     paidSongPriceUsd,
     pendingSongBundleId,
     pricingPolicyRegionalPricingEnabled,
+    reportProgress,
+    setPendingSongBundleId,
     setSubmitError,
     songMode,
     songState,
@@ -296,6 +305,7 @@ export function useSongSubmit({
       title: title.trim(),
       visibility: audience.visibility,
     });
+    reportProgress?.("validating");
     if (!songTitle.trim()) throw new Error("Enter a song title before publishing this song.");
     if (monetizationState.visible && paidSongPriceUsd == null) throw new Error("Enter a valid unlock price before publishing this song.");
     const previewStartMs = isLockedSong ? parsePreviewStartMs(songState.previewStartSeconds) : null;
@@ -318,8 +328,12 @@ export function useSongSubmit({
     let bundleForPublish: ApiSongArtifactBundle | null = null;
     if (!bundleId) {
       logger.info("[song-submit] uploading song artifacts");
+      reportProgress?.("upload_primary_audio");
       const primaryAudio = await uploadSongArtifact("primary_audio", songState.primaryAudioUpload);
       if (!primaryAudio) throw new Error("Primary audio is required");
+      if (songState.coverUpload || songState.canvasVideoUpload || songState.instrumentalAudioUpload || songState.vocalAudioUpload) {
+        reportProgress?.("upload_artifacts");
+      }
       const [coverArt, canvasVideo, instrumentalAudio, vocalAudio] = await Promise.all([
         uploadSongArtifact("cover_art", songState.coverUpload),
         uploadSongArtifact("canvas_video", songState.canvasVideoUpload),
@@ -333,6 +347,7 @@ export function useSongSubmit({
         hasPreviewWindow: isLockedSong,
         hasVocalAudio: Boolean(vocalAudio),
       });
+      reportProgress?.("create_bundle");
       const bundleRequest = {
         primary_audio: { song_artifact_upload: primaryAudio.id },
         title: songTitle.trim(),
@@ -355,12 +370,14 @@ export function useSongSubmit({
       }, () => api.communities.createSongArtifactBundle(communityId, bundleRequest));
       bundleId = bundle.id;
       bundleForPublish = bundle;
+      setPendingSongBundleId(bundle.id);
       logger.info("[song-submit] song artifact bundle created", {
         analysisState: resolveBundleAnalysisState(bundle),
         bundleId: bundle.id,
         previewStatus: bundle.preview_status,
       });
 
+      reportProgress?.("check_rights");
       if (resolveBundleAnalysisState(bundle) === "allow_with_required_reference") {
         logger.info("[song-submit] source reference required; blocking original upload", {
           bundleId: bundle.id,
@@ -378,10 +395,12 @@ export function useSongSubmit({
     if (isLockedSong) {
       const previewBundleId = bundleId;
       logger.info("[song-submit] waiting for locked song preview", { bundleId });
+      reportProgress?.("generate_preview");
       bundleForPublish = await waitForSongPreview(
         bundleForPublish ?? await withSongSubmitStep("load song artifact bundle before preview wait", {
           bundleId: previewBundleId,
         }, () => api.communities.getSongArtifactBundle(communityId, previewBundleId)),
+        reportProgress,
       );
       bundleId = bundleForPublish.id;
     }
@@ -403,6 +422,7 @@ export function useSongSubmit({
       isLockedSong,
       mode: songMode,
     });
+    reportProgress?.("publish_post");
     const signedSongRequest = authorMode === "agent"
       ? await withSongSubmitStep("sign agent-authored song post", {
         bundleId,
@@ -433,6 +453,7 @@ export function useSongSubmit({
         assetId: result.asset,
         regionalPricingEnabled: monetizationState.regionalPricingEnabled === true,
       });
+      reportProgress?.("create_listing");
       await withSongSubmitStep("create paid song listing", {
         assetId: result.asset,
       }, () => api.communities.createListing(communityId, listingRequest));

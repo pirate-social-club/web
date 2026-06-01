@@ -6,3 +6,5 @@ export const postCardType = {
   caption: "text-base leading-snug",
   stat: "text-base leading-tight",
 } as const;
+
+export const postCardTextWrap = "break-words [overflow-wrap:anywhere]" as const;

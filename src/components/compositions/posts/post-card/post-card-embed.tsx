@@ -6,7 +6,7 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
 import { defaultRouteCopy } from "../../system/route-copy-defaults";
 import type { RoutesMessages } from "@/locales";
-import { postCardType } from "./post-card.styles";
+import { postCardTextWrap, postCardType } from "./post-card.styles";
 import type { PostCardContent } from "./post-card.types";
 
 type EmbedContent = Extract<PostCardContent, { type: "embed" }>;
@@ -421,7 +421,11 @@ function PredictionMarketEmbed({
           ) : null}
           <div className="min-w-0">
             <p
-              className={cn(postCardType.title, "line-clamp-2 font-semibold text-foreground")}
+              className={cn(
+                postCardType.title,
+                postCardTextWrap,
+                "line-clamp-2 font-semibold text-foreground",
+              )}
               dir={preview?.questionDir ?? "auto"}
               lang={preview?.questionLang ?? undefined}
             >
@@ -553,7 +557,14 @@ export function PostEmbedPreview({ content, className }: { content: EmbedContent
       >
         <div className="flex min-h-20 min-w-0 items-center rounded-lg border border-border-soft bg-muted/30 px-3 py-2.5">
           <div className="min-w-0 space-y-1">
-            <p className={cn(postCardType.title, "line-clamp-2 font-semibold text-foreground")} dir="auto">
+            <p
+              className={cn(
+                postCardType.title,
+                postCardTextWrap,
+                "line-clamp-2 font-semibold text-foreground",
+              )}
+              dir="auto"
+            >
               {text}
             </p>
             <div className={cn("flex min-w-0 items-center gap-1.5 text-muted-foreground", postCardType.meta)}>

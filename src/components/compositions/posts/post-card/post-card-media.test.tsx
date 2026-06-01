@@ -103,4 +103,24 @@ describe("PostCardMedia", () => {
     expect(markup).toContain("<li>one</li>");
     expect(markup).toContain("<li>two</li>");
   });
+
+  test("wraps long link preview text without widening mobile cards", () => {
+    const longUrl = "https://example.test/really/long/unbroken/path/that/should/not-expand-mobile-layout";
+    const markup = renderToStaticMarkup(
+      <PostCardMedia
+        content={{
+          type: "link",
+          href: longUrl,
+          body: longUrl,
+          previewTitle: longUrl,
+          summary: {
+            keyPoints: [longUrl],
+          },
+        }}
+      />,
+    );
+
+    expect(markup).toContain(longUrl);
+    expect(markup.match(/\[overflow-wrap:anywhere\]/g)?.length).toBeGreaterThanOrEqual(3);
+  });
 });

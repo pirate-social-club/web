@@ -28,4 +28,13 @@ describe("FormattedText", () => {
     expect(markup).toContain("<strong>Session Victim</strong>");
     expect(markup).toContain('href="https://ra.co"');
   });
+
+  test("allows long unbroken links to wrap inside narrow containers", () => {
+    const markup = renderToStaticMarkup(
+      <FormattedText value={"https://example.test/really/long/unbroken/path/that/should/not-expand-mobile-layout"} />,
+    );
+
+    expect(markup).toContain("break-words");
+    expect(markup).toContain("[overflow-wrap:anywhere]");
+  });
 });

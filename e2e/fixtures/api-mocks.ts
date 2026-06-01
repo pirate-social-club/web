@@ -20,7 +20,7 @@ import { installStoredSession } from "./session";
 
 const pirateApiPattern = /https?:\/\/(?:api-staging\.pirate\.sc|api\.pirate\.sc|127\.0\.0\.1:8787)\/.*/u;
 
-function jsonResponse(body: unknown, status = 200) {
+export function jsonResponse(body: unknown, status = 200) {
   return {
     body: JSON.stringify(body),
     contentType: "application/json",
@@ -119,7 +119,7 @@ async function fulfillPirateApiRoute(route: Route, state: { commentCreated: bool
   }
 
   if (method === "GET" && path === `/posts/${encodeURIComponent(mockFeedPostId)}`) {
-    await route.fulfill(jsonResponse(createMockPostResponse()));
+    await route.fulfill(jsonResponse(createMockPostResponse({ storyAsset: true })));
     return;
   }
 

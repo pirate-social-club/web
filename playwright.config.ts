@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:5173";
 const liveStagingEnabled = process.env.E2E_LIVE_STAGING === "true";
+const liveProjectEnabled = liveStagingEnabled || process.env.E2E_LIVE_DEV_GATES === "true";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -31,7 +32,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
       },
     },
-    ...(liveStagingEnabled
+    ...(liveProjectEnabled
       ? [{
           name: "live-staging",
           testMatch: /.*\.live\.spec\.ts/u,

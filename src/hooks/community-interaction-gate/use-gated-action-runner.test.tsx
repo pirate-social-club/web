@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { act, renderHook } from "@testing-library/react";
 import * as React from "react";
+import type { MembershipGateSummary, User } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
 import {
@@ -9,7 +10,7 @@ import {
   gate,
   interactionCopy,
   uniqueHumanRequirement,
-} from "./test-fixtures";
+} from "./test-fixtures.test";
 import type {
   CommunityGateData,
   ModalState,
@@ -20,18 +21,70 @@ import { useGatedActionRunner } from "./use-gated-action-runner";
 
 installDomGlobals();
 
+const veryRequirement: MembershipGateSummary = {
+  accepted_providers: ["very"],
+  gate_type: "unique_human",
+};
+
+const walletScoreRequirement: MembershipGateSummary = {
+  gate_type: "wallet_score",
+  minimum_score: 20,
+};
+
+const verifiedVeryUser = {
+  verification_capabilities: {
+    age_over_18: { state: "unverified" },
+    gender: { state: "unverified" },
+    minimum_age: { state: "unverified" },
+    nationality: { state: "unverified" },
+    unique_human: { provider: "very", state: "verified" },
+    wallet_score: { state: "unverified" },
+  },
+} as Pick<User, "verification_capabilities">;
+
+const unverifiedUser = {
+  verification_capabilities: {
+    age_over_18: { state: "unverified" },
+    gender: { state: "unverified" },
+    minimum_age: { state: "unverified" },
+    nationality: { state: "unverified" },
+    unique_human: { state: "unverified" },
+    wallet_score: { state: "unverified" },
+  },
+} as Pick<User, "verification_capabilities">;
+
+const passingWalletScoreUser = {
+  verification_capabilities: {
+    age_over_18: { state: "unverified" },
+    gender: { state: "unverified" },
+    minimum_age: { state: "unverified" },
+    nationality: { state: "unverified" },
+    unique_human: { state: "unverified" },
+    wallet_score: {
+      passing_score: true,
+      provider: "passport",
+      score_decimal: "25",
+      state: "verified",
+    },
+  },
+} as Pick<User, "verification_capabilities">;
+
 function renderRunner({
   connect,
   gateData = gate("already_joined"),
   isAuthOrigin = () => true,
   loadCommunityGate,
+  refreshSessionUser,
   sessionAccessToken = "token",
+  sessionUser = null,
 }: {
   connect?: (() => void) | null;
   gateData?: CommunityGateData;
   isAuthOrigin?: () => boolean;
   loadCommunityGate?: (communityId: string) => Promise<CommunityGateData>;
+  refreshSessionUser?: (() => Promise<Pick<User, "verification_capabilities"> | null>) | null;
   sessionAccessToken?: string | null;
+  sessionUser?: Pick<User, "verification_capabilities"> | null;
 } = {}) {
   const calls: string[] = [];
   const errors: string[] = [];
@@ -74,8 +127,10 @@ function renderRunner({
       openCommunity: (communityId) => {
         calls.push(`open:${communityId}`);
       },
+      refreshSessionUser,
       routeKind: "post",
       sessionAccessToken,
+      sessionUser,
       setModalState,
       setPendingInteraction: (nextPendingInteraction) => {
         pendingInteraction = nextPendingInteraction;
@@ -194,7 +249,7 @@ describe("useGatedActionRunner", () => {
     expect(allowedCalls).toEqual([]);
     expect(runner.pendingInteraction?.action).toBe("vote_post");
     expect(runner.pendingInteraction?.voteValue).toBe(1);
-    expect(runner.hook.result.current.modalState?.title).toBe("Checking browser");
+    expect(runner.hook.result.current.modalState?.title).toBe("Browser check required");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
   });
 
@@ -218,6 +273,134 @@ describe("useGatedActionRunner", () => {
     expect(runner.pendingInteraction?.commentId).toBe("cmt-1");
     expect(runner.pendingInteraction?.voteValue).toBe(-1);
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:comment:cmt-1:-1:vote");
+  });
+
+  test("runs mixed Very-or-PoW post votes immediately for a Very-verified user", async () => {
+    const runner = renderRunner({
+      gateData: gate("already_joined", {}, [veryRequirement, altchaRequirement]),
+      sessionUser: verifiedVeryUser,
+    });
+    const allowedCalls: string[] = [];
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => {
+          allowedCalls.push("allowed");
+        },
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("allowed");
+    });
+
+    expect(allowedCalls).toEqual(["allowed"]);
+    expect(runner.pendingInteraction).toBe(null);
+    expect(runner.hook.result.current.modalState).toBe(null);
+  });
+
+  test("keeps PoW available as the fallback action for mixed Very-or-PoW gates when Very is not satisfied", async () => {
+    const runner = renderRunner({
+      gateData: gate("already_joined", {}, [veryRequirement, altchaRequirement]),
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("blocked");
+    });
+
+    expect(runner.pendingInteraction?.action).toBe("vote_post");
+    expect(runner.hook.result.current.modalState?.title).toBe("Use proof-of-work fallback");
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
+  });
+
+  test("refreshes stale capabilities once before showing mixed Very-or-PoW post vote fallback", async () => {
+    const runner = renderRunner({
+      gateData: gate("already_joined", {}, [veryRequirement, altchaRequirement]),
+      refreshSessionUser: async () => {
+        runner.calls.push("refresh-user");
+        return verifiedVeryUser;
+      },
+      sessionUser: unverifiedUser,
+    });
+    const allowedCalls: string[] = [];
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => {
+          allowedCalls.push("allowed");
+        },
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("allowed");
+    });
+
+    expect(runner.calls).toEqual(["load:community-1", "refresh-user"]);
+    expect(allowedCalls).toEqual(["allowed"]);
+    expect(runner.pendingInteraction).toBe(null);
+    expect(runner.hook.result.current.modalState).toBe(null);
+  });
+
+  test("shows mixed Very-or-PoW post vote fallback when refreshed capabilities are still unverified", async () => {
+    const runner = renderRunner({
+      gateData: gate("already_joined", {}, [veryRequirement, altchaRequirement]),
+      refreshSessionUser: async () => {
+        runner.calls.push("refresh-user");
+        return unverifiedUser;
+      },
+      sessionUser: unverifiedUser,
+    });
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => undefined,
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("blocked");
+    });
+
+    expect(runner.calls).toEqual(["load:community-1", "refresh-user"]);
+    expect(runner.pendingInteraction?.action).toBe("vote_post");
+    expect(runner.hook.result.current.modalState?.title).toBe("Use proof-of-work fallback");
+    expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
+  });
+
+  test("runs mixed wallet-score-or-PoW post votes immediately for a passing Passport score", async () => {
+    const runner = renderRunner({
+      gateData: gate("already_joined", {}, [walletScoreRequirement, altchaRequirement]),
+      sessionUser: passingWalletScoreUser,
+    });
+    const allowedCalls: string[] = [];
+
+    await act(async () => {
+      const result = await runner.hook.result.current.run({
+        action: "vote_post",
+        communityId: "community-1",
+        onAllowed: () => {
+          allowedCalls.push("allowed");
+        },
+        postId: "post-1",
+        voteValue: 1,
+      });
+      expect(result).toBe("allowed");
+    });
+
+    expect(allowedCalls).toEqual(["allowed"]);
+    expect(runner.pendingInteraction).toBe(null);
+    expect(runner.hook.result.current.modalState).toBe(null);
   });
 
   test("does not build an invalid vote Altcha challenge when vote value is missing", async () => {
@@ -259,7 +442,7 @@ describe("useGatedActionRunner", () => {
     });
 
     expect(runner.pendingInteraction?.action).toBe("reply_post");
-    expect(runner.hook.result.current.modalState?.title).toBe("Checking browser");
+    expect(runner.hook.result.current.modalState?.title).toBe("Browser check required");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:comment_create");
   });
 
@@ -282,7 +465,7 @@ describe("useGatedActionRunner", () => {
     });
 
     expect(runner.pendingInteraction?.action).toBe("reply_post");
-    expect(runner.hook.result.current.modalState?.title).toBe("Checking browser");
+    expect(runner.hook.result.current.modalState?.title).toBe("Browser check required");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:community:community-1:community_join");
   });
 

@@ -35,11 +35,12 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { NumericStepper } from "@/components/compositions/community/create-composer/create-community-composer.sections";
 import { Type } from "@/components/primitives/type";
-
-
-
-
-
+import {
+  normalizeGateDraftsForMatchMode,
+  removeGateDraft,
+  shouldResetMatchModeAfterRemovingPowFallback,
+  upsertGateDraftForMatchMode,
+} from "./gate-draft-match-mode";
 
 
 function Section({
@@ -91,14 +92,6 @@ function CheckboxRow({
     </div>
   );
 }
-
-const POW_EXCLUSIVE_GATE_TYPES: IdentityGateDraft["gateType"][] = [
-  "unique_human",
-  "nationality",
-  "minimum_age",
-  "wallet_score",
-  "gender",
-];
 
 type DocumentGateDraft = Extract<IdentityGateDraft, { gateType: "nationality" | "minimum_age" | "gender" }>;
 
@@ -167,68 +160,6 @@ function DocumentProofProviderRows({
       </div>
     </div>
   );
-}
-
-export function normalizeGateDraftsForMatchMode(
-  drafts: IdentityGateDraft[],
-  gateMatchMode: "all" | "any",
-): IdentityGateDraft[] {
-  if (gateMatchMode === "any") {
-    return drafts;
-  }
-  const hasPow = drafts.some((draft) => draft.gateType === "altcha_pow");
-  const hasPowExclusiveGate = drafts.some((draft) => POW_EXCLUSIVE_GATE_TYPES.includes(draft.gateType));
-  if (!hasPow || !hasPowExclusiveGate) {
-    return drafts;
-  }
-  return drafts.filter((draft) => draft.gateType !== "altcha_pow");
-}
-
-export function upsertGateDraftForMatchMode(
-  drafts: IdentityGateDraft[],
-  nextDraft: IdentityGateDraft,
-  gateMatchMode: "all" | "any",
-): IdentityGateDraft[] {
-  const existing = drafts.find((draft) => draft.gateType === nextDraft.gateType);
-  const preserved = existing?.gateRuleId && !nextDraft.gateRuleId
-    ? { ...nextDraft, gateRuleId: existing.gateRuleId }
-    : nextDraft;
-  if (gateMatchMode === "any") {
-    return [
-      ...drafts.filter((draft) => draft.gateType !== nextDraft.gateType),
-      preserved,
-    ];
-  }
-  if (nextDraft.gateType === "altcha_pow") {
-    return [
-      ...drafts.filter((draft) => !POW_EXCLUSIVE_GATE_TYPES.includes(draft.gateType) && draft.gateType !== "altcha_pow"),
-      preserved,
-    ];
-  }
-  const withoutConflicts = POW_EXCLUSIVE_GATE_TYPES.includes(nextDraft.gateType)
-    ? drafts.filter((draft) => draft.gateType !== "altcha_pow")
-    : drafts;
-  return [
-    ...withoutConflicts.filter((draft) => draft.gateType !== nextDraft.gateType),
-    preserved,
-  ];
-}
-
-function removeGateDraft(
-  drafts: IdentityGateDraft[],
-  gateType: IdentityGateDraft["gateType"],
-): IdentityGateDraft[] {
-  return drafts.filter((draft) => draft.gateType !== gateType);
-}
-
-function shouldResetMatchModeAfterRemovingPowFallback(
-  drafts: IdentityGateDraft[],
-  gateMatchMode: "all" | "any",
-): boolean {
-  if (gateMatchMode !== "any") {
-    return false;
-  }
-  return removeGateDraft(drafts, "altcha_pow").length <= 1;
 }
 
 export interface CommunityGatesEditorPageProps {

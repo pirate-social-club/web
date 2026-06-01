@@ -3,10 +3,12 @@ import { describe, expect, test } from "bun:test";
 import type { IdentityGateDraft } from "@/components/compositions/community/create-composer/create-community-composer.types";
 import {
   normalizeDocumentProofProviders,
-  normalizeGateDraftsForMatchMode,
   toggleDocumentProofProvider,
-  upsertGateDraftForMatchMode,
 } from "./community-gates-editor-page";
+import {
+  normalizeGateDraftsForMatchMode,
+  upsertGateDraftForMatchMode,
+} from "./gate-draft-match-mode";
 
 describe("CommunityGatesEditorPage gate draft helpers", () => {
   test("keeps proof-of-work and palm scan together in any mode", () => {

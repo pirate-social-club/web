@@ -6,7 +6,7 @@ import {
   createPreview,
   eligibility,
   uniqueHumanRequirement,
-} from "./community-interaction-gate/test-fixtures";
+} from "./community-interaction-gate/test-fixtures.test";
 
 installDomGlobals();
 
@@ -58,6 +58,7 @@ mock.module("@/lib/api", () => ({
 }));
 
 mock.module("@/lib/api/session-store", () => ({
+  getStoredSession: () => fakeSession,
   revalidateSession: async (getUsersMe: () => Promise<unknown>) => {
     await getUsersMe();
     return true;

@@ -212,10 +212,12 @@ export function resolvePublicCommunityJoinActionLabel(
 }
 
 export function PublicCommunityRoutePage({
+  buildPostPath,
   communityId,
   disableCanonicalRouteReplace = false,
   isImportedRoot = false,
 }: {
+  buildPostPath?: (postId: string) => string;
   communityId: string;
   disableCanonicalRouteReplace?: boolean;
   isImportedRoot?: boolean;
@@ -576,7 +578,7 @@ export function PublicCommunityRoutePage({
   }
 
   const joinActionLabel = resolvePublicCommunityJoinActionLabel(eligibility, locale);
-  const joinedActionLabel = getJoinCtaLabel({ status: "already_joined" } as ApiJoinEligibility, { locale });
+  const membershipLoading = Boolean(session) && !eligibility;
   const joinActionDisabled = Boolean(session) && (
     !eligibility
       || !isJoinCtaActionable(eligibility)
@@ -592,7 +594,7 @@ export function PublicCommunityRoutePage({
 
   const headerAction = (
     <div className="flex flex-wrap items-center justify-end gap-3">
-      {!viewerIsMember ? (
+      {!viewerIsMember && !membershipLoading ? (
         <Button
           className={FOLLOW_BUTTON_CLASS_NAME}
           loading={followLoading || (!session && authRuntime.busy)}
@@ -602,11 +604,7 @@ export function PublicCommunityRoutePage({
           {viewerFollowing ? copy.community.followingLabel : copy.community.followLabel}
         </Button>
       ) : null}
-      {viewerIsMember ? (
-        <Button disabled variant="secondary">
-          {joinedActionLabel}
-        </Button>
-      ) : (
+      {!viewerIsMember && !membershipLoading ? (
         <Button
           disabled={joinActionDisabled}
           loading={joinLoading || joinVeryLoading || joinSelfLoading || passportLoading || (!session && authRuntime.busy)}
@@ -615,7 +613,7 @@ export function PublicCommunityRoutePage({
         >
           {joinActionLabel}
         </Button>
-      )}
+      ) : null}
       {canCreatePost ? (
         <Button
           leadingIcon={<Plus className="size-5" />}
@@ -731,10 +729,11 @@ export function PublicCommunityRoutePage({
               }
             : undefined,
           {
-            onComment: () => navigate(`/p/${post.post.id}`),
+            onComment: () => navigate(buildPostPath?.(post.post.id) ?? `/p/${post.post.id}`),
             onCancelEvent: () => void cancelEvent(post.post.id),
             onVerifyAge: handleVerifyAge,
             onVote: (direction) => void voteOnPost(post.post.id, direction),
+            postHref: buildPostPath?.(post.post.id),
             showOriginalLabel: copy.common.showOriginal,
             showTranslationLabel: copy.common.showTranslation,
             viewerContentLocale: contentLocale,

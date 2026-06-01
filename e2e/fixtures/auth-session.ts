@@ -1,3 +1,5 @@
+import type { JoinEligibility } from "@pirate/api-contracts";
+
 import type { StoredSession } from "./session";
 
 type JsonValue = boolean | number | string | null | JsonValue[] | { [key: string]: JsonValue };
@@ -77,6 +79,8 @@ export const mockCreatedPostId = "pst_e2e_created";
 export const mockFeedPostId = "pst_e2e_feed";
 export const mockCommentId = "cmt_e2e_new";
 export const mockCommentBody = "E2E browser comment";
+export const mockStoryIpId = "0xbB0a33bd07e7c813963b569f1202047a92b38d48";
+export const mockStoryIpExplorerAssetUrl = `https://aeneid.explorer.story.foundation/ipa/${mockStoryIpId}`;
 export const mockDerivativeSourceRef = "story:ip:0x1111111111111111111111111111111111111111#licenseTermsId=17";
 export const mockDerivativeSources = [
   {
@@ -148,6 +152,15 @@ export const mockJoinEligibility = {
   gate_evaluation: null,
 };
 
+export function createMockJoinEligibility(
+  overrides: Partial<JoinEligibility> = {},
+): JoinEligibility {
+  return {
+    ...mockJoinEligibility,
+    ...overrides,
+  } as JoinEligibility;
+}
+
 export function createMockPostResponse(input?: {
   body?: string | null;
   commentCount?: number;
@@ -155,6 +168,7 @@ export function createMockPostResponse(input?: {
   downvoteCount?: number;
   id?: string;
   likeCount?: number;
+  storyAsset?: boolean;
   title?: string;
   upvoteCount?: number;
   viewerVote?: -1 | 1 | null;
@@ -199,6 +213,12 @@ export function createMockPostResponse(input?: {
       song_artifact_bundle: null,
       song_mode: null,
     },
+    asset_story: input?.storyAsset
+      ? {
+          story_ip: mockStoryIpId,
+          story_royalty_registration_status: "registered",
+        }
+      : null,
     thread_snapshot: {
       thread_root_post: postId,
       thread_root_post_id: postId,

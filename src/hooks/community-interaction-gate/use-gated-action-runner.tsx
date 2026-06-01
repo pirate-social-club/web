@@ -42,6 +42,36 @@ type GatedActionRunnerCopy = InteractionGateCopy & {
 
 type VerificationCapabilities = User["verification_capabilities"];
 
+const PRE_POW_SESSION_REFRESH_TIMEOUT_MS = 2_000;
+
+function proofOfWorkModalCopy(gate: CommunityGateData): {
+  description: string;
+  title: string;
+} {
+  if (hasRefreshablePowFallback(gate)) {
+    return {
+      description: "You can continue with a browser proof-of-work fallback. It runs on this device and usually takes a few seconds.",
+      title: "Use proof-of-work fallback",
+    };
+  }
+
+  return {
+    description: "This community requires a local browser proof-of-work check before this action. It does not require identity verification.",
+    title: "Browser check required",
+  };
+}
+
+async function refreshSessionUserWithTimeout(
+  refreshSessionUser: () => Promise<Pick<User, "verification_capabilities"> | null>,
+): Promise<Pick<User, "verification_capabilities"> | null> {
+  return await Promise.race([
+    refreshSessionUser(),
+    new Promise<null>((resolve) => {
+      window.setTimeout(() => resolve(null), PRE_POW_SESSION_REFRESH_TIMEOUT_MS);
+    }),
+  ]);
+}
+
 function providerMatches(
   summary: MembershipGateSummary,
   provider: string | null | undefined,
@@ -314,7 +344,7 @@ export function useGatedActionRunner({
     let actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId, sessionUser, voteValue });
     if (state === "allowed" && actionAltchaConfig && refreshSessionUser && hasRefreshablePowFallback(gate)) {
       try {
-        const refreshedUser = await refreshSessionUser();
+        const refreshedUser = await refreshSessionUserWithTimeout(refreshSessionUser);
         const refreshedAltchaConfig = getAltchaActionConfig({
           action,
           commentId,
@@ -341,6 +371,7 @@ export function useGatedActionRunner({
       }
     }
     if (state === "allowed" && actionAltchaConfig) {
+      const copy = proofOfWorkModalCopy(gate);
       setPendingInteraction({
         action,
         commentId,
@@ -355,7 +386,7 @@ export function useGatedActionRunner({
           action: actionAltchaConfig.actionRef,
           scope: actionAltchaConfig.scope,
         }),
-        description: "This usually takes a few seconds and runs only on this device.",
+        description: copy.description,
         icon: "blocked",
         primaryAction: {
           label: "Continue",
@@ -368,7 +399,7 @@ export function useGatedActionRunner({
           label: "Cancel",
           onClick: closeModal,
         },
-        title: "Checking browser",
+        title: copy.title,
       });
       return "blocked";
     }
@@ -411,26 +442,29 @@ export function useGatedActionRunner({
       customModalState === undefined &&
       gate.eligibility.status === "verification_required" &&
       hasAltchaProofAction(gate.eligibility)
-        ? {
-            body: buildAltchaBody({
-              action: `community:${communityId}`,
-              scope: "community_join",
-            }),
-            description: "This usually takes a few seconds and runs only on this device.",
-            icon: "blocked",
-            primaryAction: {
-              label: "Continue",
-              loading: altchaLoading,
-              onClick: completeAltchaJoin,
-            },
-            requirements: gate.preview.membership_gate_summaries,
-            requirementStatuses: getRequirementStatuses(gate),
-            secondaryAction: {
-              label: "Cancel",
-              onClick: closeModal,
-            },
-            title: "Checking browser",
-          }
+        ? (() => {
+            const copy = proofOfWorkModalCopy(gate);
+            return {
+              body: buildAltchaBody({
+                action: `community:${communityId}`,
+                scope: "community_join",
+              }),
+              description: copy.description,
+              icon: "blocked" as const,
+              primaryAction: {
+                label: "Continue",
+                loading: altchaLoading,
+                onClick: completeAltchaJoin,
+              },
+              requirements: gate.preview.membership_gate_summaries,
+              requirementStatuses: getRequirementStatuses(gate),
+              secondaryAction: {
+                label: "Cancel",
+                onClick: closeModal,
+              },
+              title: copy.title,
+            };
+          })()
         : undefined;
     const builtModalState = customModalState === undefined
       ? (altchaModalState ?? createDefaultBlockedModalState({

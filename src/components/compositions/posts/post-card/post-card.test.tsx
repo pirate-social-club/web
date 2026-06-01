@@ -638,8 +638,9 @@ describe("PostCard", () => {
 
     expect(captionIndex).toBeGreaterThan(-1);
     expect(markup).toContain("<ul");
-    expect(markup).toContain("<li>one</li>");
-    expect(markup).toContain("<li>two</li>");
+    expect(markup).toContain(">one</li>");
+    expect(markup).toContain(">two</li>");
+    expect(markup).toContain("break-words");
     expect(songPreviewIndex).toBeGreaterThan(-1);
     expect(captionIndex).toBeLessThan(songPreviewIndex);
   });

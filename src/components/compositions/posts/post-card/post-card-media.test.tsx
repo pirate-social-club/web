@@ -100,8 +100,9 @@ describe("PostCardMedia", () => {
 
     expect(markup).toContain("First line");
     expect(markup).toContain("<ul");
-    expect(markup).toContain("<li>one</li>");
-    expect(markup).toContain("<li>two</li>");
+    expect(markup).toContain(">one</li>");
+    expect(markup).toContain(">two</li>");
+    expect(markup).toContain("break-words");
   });
 
   test("wraps long link preview text without widening mobile cards", () => {

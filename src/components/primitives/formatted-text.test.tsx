@@ -37,4 +37,23 @@ describe("FormattedText", () => {
     expect(markup).toContain("break-words");
     expect(markup).toContain("[overflow-wrap:anywhere]");
   });
+
+  test("applies wrapping directly to formatted blocks and markdown links", () => {
+    const markup = renderToStaticMarkup(
+      <FormattedText
+        value={[
+          "# A very long heading that should never widen the post card",
+          "",
+          "- [A long linked label that should wrap](https://example.test/really/long/unbroken/path)",
+          "",
+          "> https://example.test/really/long/unbroken/quote/path",
+        ].join("\n")}
+      />,
+    );
+
+    expect(markup.match(/break-words/g)?.length).toBeGreaterThanOrEqual(5);
+    expect(markup.match(/\[overflow-wrap:anywhere\]/g)?.length).toBeGreaterThanOrEqual(5);
+    expect(markup).toContain("<a");
+    expect(markup).toContain("<blockquote");
+  });
 });

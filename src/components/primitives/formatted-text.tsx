@@ -2,6 +2,8 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+const formattedTextWrap = "min-w-0 max-w-full break-words [overflow-wrap:anywhere]" as const;
+
 function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
   const inlinePattern =
     /(\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|\*\*\*([\s\S]+?)\*\*\*|\*\*([\s\S]+?)\*\*|\*([\s\S]+?)\*|~~([\s\S]+?)~~)/g;
@@ -29,7 +31,7 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
     if (linkLabel && linkHref) {
       nodes.push(
         <a
-          className="text-primary underline underline-offset-4"
+          className={cn(formattedTextWrap, "text-primary underline underline-offset-4")}
           href={linkHref}
           key={key}
           rel="noreferrer"
@@ -71,7 +73,7 @@ function FormattedInline({ text, keyPrefix }: { text: string; keyPrefix: string 
 
 function FormattedParagraph({ lines, textKey }: { lines: string[]; textKey: string }) {
   return (
-    <p className="leading-snug text-inherit">
+    <p className={cn(formattedTextWrap, "leading-snug text-inherit")}>
       <FormattedInline keyPrefix={textKey} text={lines.join(" ")} />
     </p>
   );
@@ -87,6 +89,7 @@ function FormattedHeading({
   textKey: string;
 }) {
   const headingClassName = cn(
+    formattedTextWrap,
     "leading-tight text-foreground",
     displayDepth === 2 ? "text-[1.0625rem] font-semibold" : "text-base font-semibold",
     displayDepth === 4 ? "text-base uppercase tracking-normal text-muted-foreground" : undefined,
@@ -157,7 +160,7 @@ export function FormattedText({
       const quoteKey = nextFormattedTextKey(keyCounts, "quote", quoteLines.join("\n"));
       blocks.push(
         <blockquote
-          className="border-s-2 border-border-soft ps-4 italic text-muted-foreground"
+          className={cn(formattedTextWrap, "border-s-2 border-border-soft ps-4 italic text-muted-foreground")}
           key={quoteKey}
         >
           <FormattedParagraph lines={quoteLines} textKey={quoteKey} />
@@ -174,7 +177,7 @@ export function FormattedText({
         const itemKey = nextFormattedTextKey(keyCounts, "ul-item", itemLine);
         itemLines.push(itemLine);
         items.push(
-          <li key={itemKey}>
+          <li className={formattedTextWrap} key={itemKey}>
             <FormattedInline keyPrefix={itemKey} text={itemLine} />
           </li>,
         );
@@ -182,7 +185,7 @@ export function FormattedText({
       }
       const listKey = nextFormattedTextKey(keyCounts, "ul-block", itemLines.join("\n"));
       blocks.push(
-        <ul className="list-disc space-y-1 ps-6 leading-snug text-inherit" key={listKey}>
+        <ul className={cn(formattedTextWrap, "list-disc space-y-1 ps-6 leading-snug text-inherit")} key={listKey}>
           {items}
         </ul>,
       );
@@ -197,7 +200,7 @@ export function FormattedText({
         const itemKey = nextFormattedTextKey(keyCounts, "ol-item", itemLine);
         itemLines.push(itemLine);
         items.push(
-          <li key={itemKey}>
+          <li className={formattedTextWrap} key={itemKey}>
             <FormattedInline keyPrefix={itemKey} text={itemLine} />
           </li>,
         );
@@ -205,7 +208,7 @@ export function FormattedText({
       }
       const listKey = nextFormattedTextKey(keyCounts, "ol-block", itemLines.join("\n"));
       blocks.push(
-        <ol className="list-decimal space-y-1 ps-6 leading-snug text-inherit" key={listKey}>
+        <ol className={cn(formattedTextWrap, "list-decimal space-y-1 ps-6 leading-snug text-inherit")} key={listKey}>
           {items}
         </ol>,
       );
@@ -230,7 +233,7 @@ export function FormattedText({
 
   return (
     <div
-      className={cn("min-w-0 space-y-3 text-base break-words [overflow-wrap:anywhere]", className)}
+      className={cn(formattedTextWrap, "space-y-3 text-base", className)}
       dir={dir}
       lang={lang}
     >

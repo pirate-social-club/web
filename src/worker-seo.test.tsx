@@ -5,7 +5,10 @@ import { Document } from "@/app/document";
 import {
   buildCloudflareShareImageUrl,
   buildCommunitySeoMetadata,
+  buildOpenGraphUrl,
   buildPostSeoMetadata,
+  resolveSharePreviewQueryValue,
+  shouldAlwaysResolveEntitySeo,
 } from "@/lib/share-metadata";
 
 function basePost(overrides: Record<string, unknown> = {}) {
@@ -45,6 +48,30 @@ const community = {
 } as never;
 
 describe("share metadata", () => {
+  test("resolves entity SEO even without a recognizable bot user agent", () => {
+    expect(shouldAlwaysResolveEntitySeo({ kind: "post" })).toBe(true);
+    expect(shouldAlwaysResolveEntitySeo({ kind: "telegram-post" })).toBe(true);
+    expect(shouldAlwaysResolveEntitySeo({ kind: "live-room" })).toBe(true);
+    expect(shouldAlwaysResolveEntitySeo({ kind: "community" })).toBe(true);
+    expect(shouldAlwaysResolveEntitySeo({ kind: "home" })).toBe(false);
+  });
+
+  test("preserves share and locale signals in the Open Graph URL", () => {
+    const shareUrl = new URL("https://pirate.sc/p/pst_test?share=1");
+    expect(resolveSharePreviewQueryValue(shareUrl)).toBe("1");
+    expect(resolveSharePreviewQueryValue(new URL("https://pirate.sc/p/pst_test"))).toBe(null);
+
+    expect(buildOpenGraphUrl("https://pirate.sc/p/pst_test", "en", false, null)).toBe(
+      "https://pirate.sc/p/pst_test",
+    );
+    expect(buildOpenGraphUrl("https://pirate.sc/p/pst_test", "en", false, "1")).toBe(
+      "https://pirate.sc/p/pst_test?share=1",
+    );
+    expect(buildOpenGraphUrl("https://pirate.sc/p/pst_test", "zh", true, "1")).toBe(
+      "https://pirate.sc/p/pst_test?share=1&locale=zh-CN",
+    );
+  });
+
   test("uses a branded fallback image for communities without media", () => {
     const metadata = buildCommunitySeoMetadata({
       appOrigin: "https://pirate.sc",
@@ -217,13 +244,17 @@ describe("share metadata", () => {
     );
 
     expect(markup).toContain('property="og:image" content="https://pirate.sc/og/pirate-share-card.jpg"');
+    expect(markup).toContain('property="og:image:url" content="https://pirate.sc/og/pirate-share-card.jpg"');
     expect(markup).toContain('property="og:image:secure_url" content="https://pirate.sc/og/pirate-share-card.jpg"');
     expect(markup).toContain('property="og:image:type" content="image/jpeg"');
     expect(markup).toContain('property="og:image:width" content="1200"');
     expect(markup).toContain('property="og:image:height" content="630"');
     expect(markup).toContain('property="og:image:alt" content="Alt text"');
+    expect(markup).toContain('itemProp="image" content="https://pirate.sc/og/pirate-share-card.jpg"');
     expect(markup).toContain('name="twitter:card" content="summary_large_image"');
+    expect(markup).toContain('name="twitter:image:src" content="https://pirate.sc/og/pirate-share-card.jpg"');
     expect(markup).toContain('name="twitter:image:alt" content="Alt text"');
+    expect(markup).toContain('rel="image_src" href="https://pirate.sc/og/pirate-share-card.jpg"');
   });
 
   test("renders the branded large-image card when route SEO is absent", () => {

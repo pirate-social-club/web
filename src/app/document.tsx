@@ -95,17 +95,21 @@ export const Document: React.FC<DocumentProps<RequestInfo<any, AppContext>>> = (
         {pageUrl ? <meta property="og:url" content={pageUrl} /> : null}
         <meta property="og:site_name" content="Pirate" />
         {pageImageUrl ? <meta property="og:image" content={pageImageUrl} /> : null}
+        {pageImageUrl ? <meta property="og:image:url" content={pageImageUrl} /> : null}
         {pageImageUrl ? <meta property="og:image:secure_url" content={pageImageUrl} /> : null}
         {pageImageUrl && pageImageType ? <meta property="og:image:type" content={pageImageType} /> : null}
         {pageImageUrl && pageImageWidth ? <meta property="og:image:width" content={String(pageImageWidth)} /> : null}
         {pageImageUrl && pageImageHeight ? <meta property="og:image:height" content={String(pageImageHeight)} /> : null}
         {pageImageUrl ? <meta property="og:image:alt" content={pageImageAlt} /> : null}
+        {pageImageUrl ? <meta itemProp="image" content={pageImageUrl} /> : null}
         <meta name="twitter:card" content={twitterCard} />
         <meta name="twitter:title" content={pageTitle} />
         {pageDescription ? <meta name="twitter:description" content={pageDescription} /> : null}
         {pageImageUrl ? <meta name="twitter:image" content={pageImageUrl} /> : null}
+        {pageImageUrl ? <meta name="twitter:image:src" content={pageImageUrl} /> : null}
         {pageImageUrl ? <meta name="twitter:image:alt" content={pageImageAlt} /> : null}
         {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
+        {pageImageUrl ? <link rel="image_src" href={pageImageUrl} /> : null}
         {!ctx.isIndexable ? <meta name="robots" content="noindex, nofollow" /> : null}
         <link rel="stylesheet" href={stylesUrl} />
         {homeFeedPreloadUrl ? (

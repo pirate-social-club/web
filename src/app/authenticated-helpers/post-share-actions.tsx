@@ -7,10 +7,12 @@ import { navigate } from "@/app/router";
 import type { PostCardShareAction } from "@/components/compositions/posts/post-card/post-card.types";
 import { toast } from "@/components/primitives/sonner";
 
-function buildPostUrl(postId: string): string {
+export function buildPostUrl(postId: string): string {
   const path = `/p/${encodeURIComponent(postId)}`;
   const origin = typeof window === "undefined" ? null : window.location?.origin;
-  return origin ? new URL(path, origin).toString() : path;
+  const url = origin ? new URL(path, origin) : new URL(path, "https://pirate.sc");
+  url.searchParams.set("share", "1");
+  return origin ? url.toString() : `${url.pathname}${url.search}`;
 }
 
 function canCrosspostPost(post: ApiPost["post"]): boolean {

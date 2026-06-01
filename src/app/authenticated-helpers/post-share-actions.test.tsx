@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildPostShareActions } from "./post-share-actions";
+import { buildPostShareActions, buildPostUrl } from "./post-share-actions";
 
 const basePost = {
   id: "post_pst_test",
@@ -17,6 +17,10 @@ function actionKeys(overrides: Record<string, unknown> = {}): string[] {
 }
 
 describe("buildPostShareActions", () => {
+  test("adds a stable share query to post URLs for preview cache isolation", () => {
+    expect(buildPostUrl("post_pst_test")).toBe("/p/post_pst_test?share=1");
+  });
+
   test("adds crosspost before link sharing for eligible posts", () => {
     expect(actionKeys().slice(0, 2)).toEqual(["crosspost", "copy-link"]);
   });

@@ -12,7 +12,7 @@ import { PostCardEventBlock } from "./post-card-event-block";
 import { PostCardHeader } from "./post-card-header";
 import { PostCardMedia } from "./post-card-media";
 import { PostCardEngagementBar } from "./post-card-engagement-bar";
-import { postCardTextWrap, postCardType } from "./post-card.styles";
+import { postCardType } from "./post-card.styles";
 import type { PostCardProps } from "./post-card.types";
 
 function deriveUnlockFromContent(
@@ -148,7 +148,6 @@ export function PostCard({
       <a
         className={cn(
           postCardType.title,
-          postCardTextWrap,
           "max-w-[72ch] self-start text-start font-semibold text-foreground hover:underline",
         )}
         dir={titleDir ?? "auto"}
@@ -161,7 +160,6 @@ export function PostCard({
       <h3
         className={cn(
           postCardType.title,
-          postCardTextWrap,
           "max-w-[72ch] self-start text-start font-semibold text-foreground",
         )}
         dir={titleDir ?? "auto"}

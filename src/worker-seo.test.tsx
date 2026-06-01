@@ -112,7 +112,7 @@ describe("share metadata", () => {
       }),
     });
 
-    expect(metadata.title).toBe("Preview Club on Pirate");
+    expect(metadata.title).toBe("Preview Club, a community on Pirate");
     expect(metadata.description).toBe("The body should become the share description.");
     expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/poster.webp"));
     expect(metadata.imageType).toBe("image/jpeg");
@@ -137,7 +137,7 @@ describe("share metadata", () => {
       }),
     });
 
-    expect(metadata.title).toBe("Preview Club on Pirate");
+    expect(metadata.title).toBe("Preview Club, a community on Pirate");
     expect(metadata.description).toBe("The body should become the share description.");
     expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/post-image.png"));
     expect(metadata.imageType).toBe("image/jpeg");
@@ -221,7 +221,7 @@ describe("share metadata", () => {
       }),
     });
 
-    expect(metadata.title).toBe("Preview Club on Pirate");
+    expect(metadata.title).toBe("Preview Club, a community on Pirate");
     expect(metadata.description).toBe("A proper preview");
     expect(metadata.imageUrl).toBe(buildCloudflareShareImageUrl("https://pirate.sc", "https://media.test/banner.jpg"));
   });
@@ -245,7 +245,7 @@ describe("share metadata", () => {
       }),
     });
 
-    expect(metadata.title).toBe("Preview Club on Pirate");
+    expect(metadata.title).toBe("Preview Club, a community on Pirate");
     expect(metadata.description).toBe("test · Image post");
   });
 

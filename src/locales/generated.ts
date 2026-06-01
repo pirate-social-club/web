@@ -234,7 +234,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "imagePost": "Image post",
         "linkPost": "Link post",
         "postOnPirate": "Post on Pirate",
-        "titleInCommunity": "{name} on Pirate",
+        "titleInCommunity": "{name}, a community on Pirate",
         "videoPost": "Video post",
         "song": "Song"
       },

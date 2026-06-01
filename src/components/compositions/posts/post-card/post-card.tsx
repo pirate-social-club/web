@@ -12,7 +12,7 @@ import { PostCardEventBlock } from "./post-card-event-block";
 import { PostCardHeader } from "./post-card-header";
 import { PostCardMedia } from "./post-card-media";
 import { PostCardEngagementBar } from "./post-card-engagement-bar";
-import { postCardType } from "./post-card.styles";
+import { postCardTextWrap, postCardType } from "./post-card.styles";
 import type { PostCardProps } from "./post-card.types";
 
 function deriveUnlockFromContent(
@@ -138,8 +138,7 @@ export function PostCard({
   const effectiveTitleHref = titleHref ?? postHref;
   const sourceLanguageLabel = formatSourceLanguage(sourceLanguage, locale);
   const canToggleOriginal = Boolean(
-    sourceLanguageLabel
-    && onToggleOriginal
+    onToggleOriginal
     && showOriginalLabel
     && showTranslationLabel,
   );
@@ -149,6 +148,7 @@ export function PostCard({
       <a
         className={cn(
           postCardType.title,
+          postCardTextWrap,
           "max-w-[72ch] self-start text-start font-semibold text-foreground hover:underline",
         )}
         dir={titleDir ?? "auto"}
@@ -161,6 +161,7 @@ export function PostCard({
       <h3
         className={cn(
           postCardType.title,
+          postCardTextWrap,
           "max-w-[72ch] self-start text-start font-semibold text-foreground",
         )}
         dir={titleDir ?? "auto"}
@@ -228,7 +229,7 @@ export function PostCard({
         {canToggleOriginal ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-start">
             <Type as="span" variant="caption" className="text-muted-foreground">
-              {isViewingOriginal ? "Original text" : `Translated from ${sourceLanguageLabel}`}
+              {isViewingOriginal ? "Original text" : sourceLanguageLabel ? `Translated from ${sourceLanguageLabel}` : "Translated"}
             </Type>
             <Button
               className="h-auto px-2 py-1"

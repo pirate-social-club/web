@@ -5,6 +5,23 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      api_ref:
+        description: API ref to deploy with staging
+        required: false
+        default: main
+      core_ref:
+        description: Core ref to deploy with staging
+        required: false
+        default: main
+      deploy_target:
+        description: Deploy target
+        required: false
+        default: staging
+        type: choice
+        options:
+          - staging
+          - all
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -24,11 +41,13 @@ jobs:
         with:
           repository: pirate-social-club/api
           path: api
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.api_ref || 'main' }}
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/checkout@v4
         with:
           repository: pirate-social-club/core
           path: core
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.core_ref || 'main' }}
           token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
       - uses: actions/setup-node@v4
         with:
@@ -150,6 +169,7 @@ jobs:
   production:
     name: Deploy production
     needs: staging
+    if: github.event_name == 'push' || inputs.deploy_target == 'all'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4

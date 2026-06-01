@@ -79,7 +79,6 @@ export function shouldShowOriginalPost(postResponse: ApiPost): boolean {
 
 export function canShowOriginalToggle(postResponse: ApiPost, opts?: Pick<PostPresentationOptions, "showOriginalLabel" | "showTranslationLabel">): boolean {
   return shouldShowOriginalPost(postResponse)
-    && Boolean(postResponse.post.source_language)
     && Boolean(opts?.showOriginalLabel)
     && Boolean(opts?.showTranslationLabel);
 }
@@ -97,6 +96,6 @@ export function withTranslationToggleProps(
     ...card,
     showOriginalLabel: opts?.showOriginalLabel,
     showTranslationLabel: opts?.showTranslationLabel,
-    sourceLanguage: postResponse.post.source_language,
+    sourceLanguage: postResponse.post.source_language_reliable ? postResponse.post.source_language : null,
   };
 }

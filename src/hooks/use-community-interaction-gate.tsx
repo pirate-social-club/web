@@ -8,7 +8,12 @@ import type { SelfVerificationModal } from "@/components/compositions/verificati
 import { toast } from "@/components/primitives/sonner";
 import { useApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error-utils";
-import { useSession } from "@/lib/api/session-store";
+import {
+  revalidateSession,
+  updateSessionUser,
+  useSession,
+  type StoredSession,
+} from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { useSelfVerification } from "@/lib/verification/use-self-verification";
@@ -239,6 +244,19 @@ export function useCommunityInteractionGate({
     updateCachedGate,
   });
 
+  const refreshSessionUser = React.useCallback(async () => {
+    let refreshedUser: StoredSession["user"] | null = null;
+    const ok = await revalidateSession(async () => {
+      refreshedUser = await api.users.getMe();
+      return refreshedUser;
+    });
+    if (!ok || !refreshedUser) {
+      return null;
+    }
+    updateSessionUser(refreshedUser);
+    return refreshedUser;
+  }, [api.users]);
+
   const runGatedCommunityAction = useGatedActionRunner({
     altchaLoading,
     buildAltchaBody,
@@ -256,8 +274,10 @@ export function useCommunityInteractionGate({
     interactionCopy,
     invalidateCommunityGate,
     loadCommunityGate,
+    refreshSessionUser,
     routeKind,
     sessionAccessToken: session?.accessToken,
+    sessionUser: session?.user ?? null,
     setModalState,
     setPendingInteraction: (pendingInteraction) => {
       pendingInteractionRef.current = pendingInteraction;

@@ -149,6 +149,26 @@ export const StoryLicenseReused: Story = {
   ),
 };
 
+export const StoryRegisteredAssetMenu: Story = {
+  name: "Story / Registered asset menu",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Registered Story asset"
+      content={{
+        ...baseSong,
+        title: "Travel Guide (Tech House Remix)",
+        artist: "4D Monster Lobsters",
+        artworkSrc: "https://picsum.photos/seed/pirate-story-registered/240/240",
+      }}
+      menuItems={[
+        { key: "view-story", label: "View on Story" },
+      ]}
+      onMenuAction={() => undefined}
+    />
+  ),
+};
+
 export const Buffering: Story = {
   name: "Playback / Buffering",
   render: () => (

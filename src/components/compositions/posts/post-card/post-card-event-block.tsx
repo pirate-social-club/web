@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowSquareOut, CalendarBlank, MapPin, VideoCamera } from "@phosphor-icons/react";
+import * as React from "react";
+import { ArrowSquareOut, CalendarBlank, Check, Copy, MapPin, VideoCamera } from "@phosphor-icons/react";
 
 import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
@@ -31,6 +32,77 @@ function sameDay(start: Date, end: Date, locale: string, timezone: string): bool
     === formatDatePart(end, locale, timezone, { day: "numeric", month: "numeric", year: "numeric" });
 }
 
+function localDateParts(date: Date, locale: string, timezone: string): Record<string, string> {
+  try {
+    return Object.fromEntries(
+      new Intl.DateTimeFormat(locale, {
+        day: "2-digit",
+        hour: "2-digit",
+        hour12: false,
+        minute: "2-digit",
+        month: "2-digit",
+        second: "2-digit",
+        timeZone: timezone,
+        year: "numeric",
+      }).formatToParts(date).map((part) => [part.type, part.value]),
+    );
+  } catch {
+    return Object.fromEntries(
+      new Intl.DateTimeFormat(locale, {
+        day: "2-digit",
+        hour: "2-digit",
+        hour12: false,
+        minute: "2-digit",
+        month: "2-digit",
+        second: "2-digit",
+        year: "numeric",
+      }).formatToParts(date).map((part) => [part.type, part.value]),
+    );
+  }
+}
+
+function isStartOfDay(date: Date, locale: string, timezone: string): boolean {
+  const parts = localDateParts(date, locale, timezone);
+  return (parts.hour === "00" || parts.hour === "24") && parts.minute === "00" && parts.second === "00";
+}
+
+function isEndOfDay(date: Date, locale: string, timezone: string): boolean {
+  const parts = localDateParts(date, locale, timezone);
+  return (parts.hour === "23" || parts.hour === "24") && parts.minute === "59";
+}
+
+function sameYear(start: Date, end: Date, locale: string, timezone: string): boolean {
+  return formatDatePart(start, locale, timezone, { year: "numeric" })
+    === formatDatePart(end, locale, timezone, { year: "numeric" });
+}
+
+function sameMonth(start: Date, end: Date, locale: string, timezone: string): boolean {
+  return formatDatePart(start, locale, timezone, { month: "numeric", year: "numeric" })
+    === formatDatePart(end, locale, timezone, { month: "numeric", year: "numeric" });
+}
+
+function formatAllDayEventTime(start: Date, end: Date | null, locale: string, timezone: string): string {
+  if (!end || sameDay(start, end, locale, timezone)) {
+    return formatDatePart(start, locale, timezone, {
+      day: "numeric",
+      month: "short",
+      weekday: "short",
+    });
+  }
+
+  if (sameMonth(start, end, locale, timezone)) {
+    const startLabel = formatDatePart(start, locale, timezone, { month: "short" });
+    const startDay = formatDatePart(start, locale, timezone, { day: "numeric" });
+    const endDay = formatDatePart(end, locale, timezone, { day: "numeric" });
+    return `${startLabel} ${startDay}-${endDay}`;
+  }
+
+  const options: Intl.DateTimeFormatOptions = sameYear(start, end, locale, timezone)
+    ? { day: "numeric", month: "short" }
+    : { day: "numeric", month: "short", year: "numeric" };
+  return `${formatDatePart(start, locale, timezone, options)} - ${formatDatePart(end, locale, timezone, options)}`;
+}
+
 function formatTimezoneLabel(date: Date, locale: string, timezone: string): string | null {
   try {
     const parts = new Intl.DateTimeFormat(locale, {
@@ -49,6 +121,10 @@ function formatEventTime(event: PostCardEvent, locale: string): string {
   if (!start) return event.startsAt;
 
   const end = event.endsAt ? parseEventDate(event.endsAt) : null;
+  if (isStartOfDay(start, locale, event.timezone) && (!end || isEndOfDay(end, locale, event.timezone))) {
+    return formatAllDayEventTime(start, end, locale, event.timezone);
+  }
+
   const startLabel = formatDatePart(start, locale, event.timezone, {
     day: "numeric",
     hour: "numeric",
@@ -112,17 +188,31 @@ function eventHost(url: string | undefined): string | null {
   }
 }
 
-function osmMapHref(place: PostCardEvent["place"]): string | null {
-  if (!place) return null;
-  const lat = Number.isFinite(place.lat) ? place.lat : null;
-  const lon = Number.isFinite(place.lon) ? place.lon : null;
-  if (lat === null || lon === null) return null;
-  const params = new URLSearchParams({
-    mlat: String(lat),
-    mlon: String(lon),
-    zoom: "17",
-  });
-  return `https://www.openstreetmap.org/?${params.toString()}#map=17/${lat}/${lon}`;
+function CopyLocationButton({ value }: { value: string }) {
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = React.useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  }, [value]);
+
+  return (
+    <button
+      aria-label={copied ? "Location copied" : "Copy location"}
+      className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      data-post-card-interactive="true"
+      onClick={handleCopy}
+      title={copied ? "Location copied" : "Copy location"}
+      type="button"
+    >
+      {copied ? <Check className="size-4" weight="bold" /> : <Copy className="size-4" weight="bold" />}
+    </button>
+  );
 }
 
 export function PostCardEventBlock({
@@ -139,7 +229,6 @@ export function PostCardEventBlock({
     ? "Online"
     : [event.locationName ?? event.place?.label, event.address ?? event.place?.address].filter(Boolean).join(" - ");
   const host = showEventUrl ? eventHost(event.eventUrl) : null;
-  const mapHref = event.isOnline ? null : osmMapHref(event.place);
 
   return (
     <section
@@ -167,23 +256,10 @@ export function PostCardEventBlock({
           ) : (
             <MapPin className="size-4 shrink-0" weight="bold" />
           )}
-          {mapHref ? (
-            <a
-              className={cn("min-w-0 flex-1 text-inherit hover:text-primary hover:underline", postCardTextWrap, "[word-break:break-word]")}
-              data-post-card-interactive="true"
-              href={mapHref}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              <Type as="span" variant="caption" className={cn("text-inherit", postCardTextWrap, "[word-break:break-word]")}>
-                {locationLabel}
-              </Type>
-            </a>
-          ) : (
-            <Type as="span" variant="caption" className={cn("min-w-0 flex-1", postCardTextWrap, "[word-break:break-word]")}>
-              {locationLabel}
-            </Type>
-          )}
+          <Type as="span" variant="caption" className={cn("min-w-0 flex-1", postCardTextWrap, "[word-break:break-word]")}>
+            {locationLabel}
+          </Type>
+          <CopyLocationButton value={locationLabel} />
         </div>
       ) : null}
 

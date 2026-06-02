@@ -10,6 +10,46 @@ import { UiLocaleProvider } from "@/lib/ui-locale";
 import { PostCard } from "./post-card";
 
 describe("PostCard", () => {
+  test("renders date-only event metadata compactly without fake midnight times", () => {
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "text",
+            body: "No time, just the dates.",
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          event={{
+            endsAt: "2026-07-05T19:59:00.000Z",
+            locationName: "Dedaena Park",
+            place: {
+              address: "Tbilisi",
+              label: "Dedaena Park",
+              lat: 41.704,
+              lon: 44.802,
+              source: "geoapify",
+            },
+            startsAt: "2026-07-03T20:00:00.000Z",
+            status: "scheduled",
+            timezone: "Asia/Tbilisi",
+          }}
+          title="Tbilisi Open Air 2026"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("Jul 4-5");
+    expect(markup).not.toContain("12:00");
+    expect(markup).not.toContain("11:59");
+    expect(markup).not.toContain("GMT");
+    expect(markup).not.toContain("openstreetmap");
+    expect(markup).toContain("Copy location");
+  });
+
   test("constrains event details to the mobile card width", () => {
     const markup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

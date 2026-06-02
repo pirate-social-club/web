@@ -79,7 +79,14 @@ function GateRow({ item, mode }: { item: CommunitySidebarGateItem; mode?: "all" 
   );
 
   return (
-    <div className="flex min-h-11 items-center gap-3 border-b border-border-soft/70 py-2.5 last:border-b-0">
+    <div
+      className={cn(
+        "flex min-h-11 items-center gap-3",
+        mode === "any"
+          ? "py-2"
+          : "border-b border-border-soft/70 py-2.5 last:border-b-0",
+      )}
+    >
       <div className="grid size-9 shrink-0 place-items-center">
         <IconComponent
           className="size-5 text-muted-foreground"
@@ -108,12 +115,10 @@ function GateRow({ item, mode }: { item: CommunitySidebarGateItem; mode?: "all" 
 
 function OrDivider({ label }: { label: string }) {
   return (
-    <div className="relative flex items-center py-1">
-      <div className="flex-1 border-t border-border-soft" />
-      <Type as="span" className="mx-3 text-muted-foreground" variant="overline">
+    <div className="pl-12">
+      <Type as="span" className="text-muted-foreground/70" variant="overline">
         {label}
       </Type>
-      <div className="flex-1 border-t border-border-soft" />
     </div>
   );
 }

@@ -112,7 +112,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "allTitle": "Requirements to join",
         "anyTitle": "Ways to join",
         "orDivider": "OR",
-        "anyModeSubtext": "Complete any 1 of the following",
+        "anyModeSubtext": "Complete one of the following",
         "allModeSubtext": "Complete all of the following"
       },
       "capabilityLabels": {
@@ -1772,7 +1772,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "allTitle": "متطلبات الانضمام",
         "anyTitle": "طرق الانضمام",
         "orDivider": "أو",
-        "anyModeSubtext": "أكمل أي 1 مما يلي",
+        "anyModeSubtext": "أكمل واحدًا مما يلي",
         "allModeSubtext": "أكمل كل ما يلي"
       },
       "capabilityLabels": {
@@ -3432,7 +3432,7 @@ export const GENERATED_LOCALE_CATALOGS = {
         "allTitle": "加入要求",
         "anyTitle": "加入方式",
         "orDivider": "或",
-        "anyModeSubtext": "完成以下任意 1 项",
+        "anyModeSubtext": "完成以下任意一项",
         "allModeSubtext": "完成以下所有项"
       },
       "capabilityLabels": {

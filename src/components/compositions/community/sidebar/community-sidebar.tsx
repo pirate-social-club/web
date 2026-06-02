@@ -205,7 +205,9 @@ function CommunitySidebarSections({
       >
         {gates && gates.length > 0 && (
           <AccordionItem className="border-b-0" value="gates">
-            <AccordionTrigger className={SECTION_LABEL}>{gatesCopy.accessGatesTitle}</AccordionTrigger>
+            <AccordionTrigger className={SECTION_LABEL}>
+              {requirementsMode === "any" ? gatesCopy.anyTitle : gatesCopy.allTitle}
+            </AccordionTrigger>
             <AccordionContent className="pb-0">
               <CommunitySidebarGates items={gates} mode={requirementsMode} />
             </AccordionContent>
@@ -214,7 +216,9 @@ function CommunitySidebarSections({
 
         {!gates && activeRequirements.length > 0 && (
           <AccordionItem className="border-b-0" value="gates">
-            <AccordionTrigger className={SECTION_LABEL}>{copy.requirementsLabel}</AccordionTrigger>
+            <AccordionTrigger className={SECTION_LABEL}>
+              {requirementsMode === "any" ? gatesCopy.anyTitle : gatesCopy.allTitle}
+            </AccordionTrigger>
             <AccordionContent className="pb-0">
               <CommunitySidebarRequirements
                 items={activeRequirements}

@@ -72,7 +72,7 @@ function getGateIconConfig(
   }
 }
 
-function GateRow({ item }: { item: CommunitySidebarGateItem }) {
+function GateRow({ item, mode }: { item: CommunitySidebarGateItem; mode?: "all" | "any" }) {
   const { icon: IconComponent } = getGateIconConfig(
     item.gateType,
     item.provider,
@@ -96,6 +96,8 @@ function GateRow({ item }: { item: CommunitySidebarGateItem }) {
       <div className="grid size-6 shrink-0 place-items-center">
         {item.status === "met" ? (
           <CheckCircle className="size-5 text-success" weight="fill" />
+        ) : mode === "any" ? (
+          <span aria-hidden="true" className="size-5" />
         ) : (
           <Circle className="size-5 text-muted-foreground" weight="regular" />
         )}
@@ -155,7 +157,7 @@ export function CommunitySidebarGates({
       <div className="flex flex-col">
         {items.map((item, index) => (
           <React.Fragment key={`${item.gateType}-${item.label}-${index}`}>
-            <GateRow item={item} />
+            <GateRow item={item} mode={mode} />
             {showOrDividers && index < items.length - 1 && (
               <OrDivider label={copy.orDivider} />
             )}

@@ -19,12 +19,14 @@ import {
   getGateFailureMessage,
   getJoinCtaLabel,
   hasOnlyWalletGateRequirements,
+  isJoinSurfaceGate,
   isJoinCtaActionable,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 import { Type } from "@/components/primitives/type";
 import { getLocaleMessages } from "@/locales";
 import { isUiLocaleCode } from "@/lib/ui-locale-core";
+import type { CommunityGateRequirementGroup } from "@/components/compositions/community/gate-requirements.types";
 
 type VerificationPrompt = {
   title: string;
@@ -40,12 +42,62 @@ export interface CommunityMembershipGatePanelProps {
   joinDisabled?: boolean;
   joinRequested?: boolean;
   joinError?: string | null;
+  mode?: "all" | "any" | null;
+  requirementGroups?: CommunityGateRequirementGroup[];
   verificationPrompt?: VerificationPrompt | null;
   verificationLoading?: boolean;
   verificationError?: string | null;
   locale?: string | null;
   onJoin?: () => void;
   onCancelVerification?: () => void;
+}
+
+type RequirementGroupSummary = {
+  mode: "all" | "any";
+  text: string;
+};
+
+function formatRequirementGroupSummaries(input: {
+  groups?: CommunityGateRequirementGroup[];
+  listFormatLocale: Intl.LocalesArgument;
+  locale: string;
+}): RequirementGroupSummary[] {
+  return (input.groups ?? []).flatMap((group) => {
+    const labels = Array.from(new Set(
+      group.requirements.filter(isJoinSurfaceGate).flatMap((gate) => {
+        const label = formatGateRequirement(gate, { locale: input.locale });
+        return label ? [label] : [];
+      }),
+    ));
+    if (labels.length === 0) return [];
+    return [{
+      mode: group.mode,
+      text: labels.length === 1
+        ? labels[0]
+        : new Intl.ListFormat(input.listFormatLocale, {
+            style: "long",
+            type: group.mode === "any" ? "disjunction" : "conjunction",
+          }).format(labels),
+    }];
+  });
+}
+
+function formatRequirementSummarySentence(groups: RequirementGroupSummary[]): string | null {
+  if (groups.length === 0) return null;
+  const requiredText = groups.filter((group) => group.mode === "all").map((group) => group.text).join(", ");
+  const alternativeText = groups.filter((group) => group.mode === "any").map((group) => group.text).join(" or ");
+
+  if (alternativeText) {
+    return `Either ${alternativeText} is accepted.`;
+  }
+  return requiredText ? `Complete ${requiredText}.` : null;
+}
+
+function formatRequirementLabel(
+  gate: MembershipGateSummary,
+  locale: string,
+): string {
+  return formatGateRequirement(gate, { locale });
 }
 
 function getEligibilityText(
@@ -163,6 +215,8 @@ export function CommunityMembershipGatePanel({
   joinDisabled,
   joinRequested,
   joinError,
+  mode,
+  requirementGroups,
   verificationPrompt,
   verificationLoading,
   verificationError,
@@ -171,38 +225,46 @@ export function CommunityMembershipGatePanel({
   onCancelVerification,
 }: CommunityMembershipGatePanelProps) {
   const resolvedLocale = locale && isUiLocaleCode(locale) ? locale : "en";
-  const panelCopy = getLocaleMessages(resolvedLocale, "gates").panel;
+  const gatesCopy = getLocaleMessages(resolvedLocale, "gates");
+  const panelCopy = gatesCopy.panel;
+  const joinSurfaceGates = gates.filter(isJoinSurfaceGate);
   const requirementLabels = Array.from(new Set(
-    gates.map((gate) => formatGateRequirement(gate, { locale: resolvedLocale })),
+    joinSurfaceGates.map((gate) => formatRequirementLabel(gate, resolvedLocale)),
   ));
+  const listFormatLocale = resolvedLocale === "pseudo" ? "en" : resolvedLocale;
+  const groupedRequirementSummaries = formatRequirementGroupSummaries({
+    groups: requirementGroups,
+    listFormatLocale,
+    locale: resolvedLocale,
+  });
+  const groupedRequirementSentence = formatRequirementSummarySentence(groupedRequirementSummaries);
+  const requirementSummary = requirementLabels.length > 1 && requirementLabels.length <= 3
+    ? new Intl.ListFormat(listFormatLocale, {
+        style: "long",
+        type: mode === "any" ? "disjunction" : "conjunction",
+      }).format(requirementLabels)
+    : null;
   const passportPrompt: VerificationPrompt | null = !verificationPrompt
     ? getPassportPrompt(eligibility, panelCopy)
     : null;
   const activePrompt = verificationPrompt ?? passportPrompt;
-  const isProofOfWorkRequired = gates.some((gate) => gate.gate_type === "altcha_pow");
   const isVeryVerificationRequired =
     !activePrompt &&
-    !isProofOfWorkRequired &&
     eligibility?.status === "verification_required" &&
     resolveSuggestedVerificationProvider(eligibility) === "very";
-  const eligibilityText = getEligibilityText(eligibility, gates, resolvedLocale, panelCopy);
+  const eligibilityText = getEligibilityText(eligibility, joinSurfaceGates, resolvedLocale, panelCopy);
   const isInlineVerificationRequired =
     !activePrompt &&
-    !isProofOfWorkRequired &&
     eligibility?.status === "verification_required" &&
     !isVeryVerificationRequired;
   const title = isVeryVerificationRequired
     ? panelCopy.veryTitle
-    : isProofOfWorkRequired
-      ? "Proof-of-work required"
     : isInlineVerificationRequired
       ? panelCopy.selfTitle
       : (activePrompt?.title ??
         (joinRequested ? panelCopy.pendingRequestTitle : eligibilityText.title));
   const description = isVeryVerificationRequired
     ? null
-    : isProofOfWorkRequired
-      ? "A quick local proof-of-work check runs when you join."
     : isInlineVerificationRequired
       ? panelCopy.selfDescription
       : (activePrompt?.description ??
@@ -220,7 +282,7 @@ export function CommunityMembershipGatePanel({
   const panelIcon = getPanelIcon({
     eligibility,
     isInlineVerificationRequired,
-    isProofOfWorkRequired,
+    isProofOfWorkRequired: false,
     isVeryVerificationRequired,
     passportPrompt,
   });
@@ -268,7 +330,23 @@ export function CommunityMembershipGatePanel({
         />
       ) : null}
 
-      {requirementLabels.length > 0 ? (
+      {groupedRequirementSentence ? (
+        <Type
+          as="p"
+          className="mt-4 text-muted-foreground"
+          variant="caption"
+        >
+          {groupedRequirementSentence}
+        </Type>
+      ) : requirementSummary ? (
+        <Type
+          as="p"
+          className="mt-4 text-muted-foreground"
+          variant="caption"
+        >
+          {requirementSummary}
+        </Type>
+      ) : requirementLabels.length > 0 ? (
         <ul aria-label="Membership requirements" className="mt-4 space-y-2">
           {requirementLabels.map((label) => (
             <Type

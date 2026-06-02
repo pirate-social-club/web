@@ -529,10 +529,12 @@ export function PublicCommunityRoutePage({
     gateData: preview && eligibility
       ? {
           eligibility,
+          gateMatchMode: preview.gate_match_mode ?? null,
           preview: {
             id: preview.id,
             display_name: preview.display_name,
             membership_gate_summaries: preview.membership_gate_summaries,
+            viewer_community_role: preview.viewer_community_role ?? null,
           },
         }
       : null,
@@ -657,7 +659,6 @@ export function PublicCommunityRoutePage({
           action={altchaAction}
           continueDisabled={!altchaPayload}
           continueLoading={joinLoading}
-          description="This usually takes a few seconds and runs only on this device."
           locale={locale}
           onContinue={async () => {
             setProofOfWorkModalOpen(false);
@@ -667,6 +668,7 @@ export function PublicCommunityRoutePage({
           onPayloadChange={setAltchaPayload}
           open={proofOfWorkModalOpen}
           requirements={preview.membership_gate_summaries}
+          requirementsMode={preview.gate_match_mode ?? null}
           scope={altchaScope}
         />
       ) : null}

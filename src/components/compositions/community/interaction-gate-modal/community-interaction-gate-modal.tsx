@@ -2,7 +2,6 @@
 
 import type * as React from "react";
 import type { MembershipGateSummary } from "@pirate/api-contracts";
-import { CheckCircle, Circle } from "@phosphor-icons/react";
 
 import {
   Modal,
@@ -20,6 +19,11 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { formatGateRequirement } from "@/lib/identity-gates";
 import { useUiLocale } from "@/lib/ui-locale";
+import { getLocaleMessages } from "@/locales";
+import type {
+  CommunityGateRequirementGroup,
+  CommunityGateRequirementStatus,
+} from "@/components/compositions/community/gate-requirements.types";
 
 export interface CommunityInteractionGateAction {
   label: string;
@@ -31,8 +35,6 @@ export interface CommunityInteractionGateAction {
   target?: string;
 }
 
-export type CommunityInteractionGateRequirementStatus = "met" | "unmet" | "unknown";
-
 export interface CommunityInteractionGateModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -43,9 +45,49 @@ export interface CommunityInteractionGateModalProps {
   hideCloseButtonOnMobile?: boolean;
   hideSecondaryActionOnMobile?: boolean;
   requirements?: MembershipGateSummary[];
-  requirementStatuses?: CommunityInteractionGateRequirementStatus[];
+  requirementGroups?: CommunityGateRequirementGroup[];
+  requirementsMode?: "all" | "any";
+  requirementStatuses?: CommunityGateRequirementStatus[];
   primaryAction?: CommunityInteractionGateAction | null;
   secondaryAction?: CommunityInteractionGateAction | null;
+}
+
+type FormattedRequirementItem = {
+  label: string;
+  status: "met" | "unmet" | "unknown";
+};
+
+type FormattedRequirementGroup = {
+  mode: "all" | "any";
+  items: FormattedRequirementItem[];
+};
+
+function formatRequirementSentence(groups: FormattedRequirementGroup[], locale: string): string | null {
+  if (groups.length === 0) return null;
+
+  const listLocale = locale === "pseudo" ? "en" : locale;
+  const formatList = (items: FormattedRequirementItem[], mode: "all" | "any") => {
+    const labels = items.map((item) => item.label);
+    if (labels.length === 0) return null;
+    if (labels.length === 1) return labels[0];
+    return new Intl.ListFormat(listLocale, {
+      style: "long",
+      type: mode === "any" ? "disjunction" : "conjunction",
+    }).format(labels);
+  };
+
+  const allParts = groups.filter((group) => group.mode === "all").flatMap((group) => group.items);
+  const anyGroups = groups.filter((group) => group.mode === "any");
+  const requiredText = formatList(allParts, "all");
+  const alternativeTexts = anyGroups.flatMap((group) => {
+    const text = formatList(group.items, "any");
+    return text ? [text] : [];
+  });
+
+  if (alternativeTexts.length > 0) {
+    return `Either ${alternativeTexts.join(" or ")} is accepted.`;
+  }
+  return requiredText ? `Complete ${requiredText}.` : null;
 }
 
 export function CommunityInteractionGateModal({
@@ -58,24 +100,47 @@ export function CommunityInteractionGateModal({
   hideCloseButtonOnMobile = false,
   hideSecondaryActionOnMobile = false,
   requirements,
+  requirementGroups,
+  requirementsMode,
   requirementStatuses,
   primaryAction,
   secondaryAction,
 }: CommunityInteractionGateModalProps) {
   const { locale } = useUiLocale();
   const isMobile = useIsMobile();
+  const copy = getLocaleMessages(locale, "gates").modal;
   const visibleSecondaryAction = hideSecondaryActionOnMobile && isMobile ? null : secondaryAction;
   const requirementProvider = icon === "self" || icon === "very" || icon === "passport" ? icon : null;
-  const items = (requirements ?? []).reduce<Array<{ label: string; status: "met" | "unmet" | "unknown" }>>((result, gate, index) => {
-    const label = formatGateRequirement(gate, { locale, provider: requirementProvider });
+  const formatItems = (
+    nextRequirements: MembershipGateSummary[],
+    nextStatuses?: CommunityGateRequirementStatus[],
+  ): FormattedRequirementItem[] => nextRequirements.reduce<FormattedRequirementItem[]>((result, gate, index) => {
+    const provider = gate.gate_type === "unique_human" && !gate.accepted_providers?.length
+      ? requirementProvider
+      : null;
+    const label = formatGateRequirement(gate, { locale, provider });
     if (label) {
       result.push({
         label,
-        status: requirementStatuses?.[index] ?? "unknown",
+        status: nextStatuses?.[index] ?? "unknown",
       });
     }
     return result;
   }, []);
+  const fallbackItems = formatItems(requirements ?? [], requirementStatuses);
+  const groups: FormattedRequirementGroup[] = requirementGroups?.length
+    ? requirementGroups.map((group) => ({
+        mode: group.mode,
+        items: formatItems(group.requirements, group.requirementStatuses),
+      })).filter((group) => group.items.length > 0)
+    : fallbackItems.length > 0
+      ? [{ mode: requirementsMode ?? "all", items: fallbackItems }]
+      : [];
+  const hasAnyAlternatives = groups.some((group) => group.mode === "any" && group.items.length > 1);
+  const resolvedTitle = hasAnyAlternatives ? copy.anyTitle : title;
+  const requirementSentence = groups.some((group) => group.items.length > 1)
+    ? formatRequirementSentence(groups, locale)
+    : null;
   const actionCount = Number(Boolean(primaryAction)) + Number(Boolean(visibleSecondaryAction));
   const hasActions = actionCount > 0;
   const hasTwoActions = actionCount === 2;
@@ -122,22 +187,17 @@ export function CommunityInteractionGateModal({
         <StandardModalHeader
           description={description}
           icon={icon ? <VerificationIconBadge className="size-16" icon={icon} iconClassName="size-8" /> : null}
-          title={title}
+          title={resolvedTitle}
         />
 
-        {items.length > 1 ? (
-          <div className="mt-5 space-y-2 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4 sm:mt-6" role="list">
-            {items.map((item) => (
-              <div className="flex items-start gap-2 text-base leading-6 text-foreground" dir="auto" key={`${item.status}:${item.label}`} role="listitem">
-                {item.status === "met" ? (
-                  <CheckCircle aria-label="Met" className="mt-0.5 size-5 shrink-0 text-success" weight="fill" />
-                ) : (
-                  <Circle aria-label={item.status === "unmet" ? "Not met" : "Required"} className="mt-0.5 size-5 shrink-0 text-muted-foreground" weight="regular" />
-                )}
-                <span className="min-w-0">{item.label}</span>
-              </div>
-            ))}
-          </div>
+        {requirementSentence ? (
+          <Type
+            as="p"
+            className="mt-5 rounded-[var(--radius-lg)] border border-border-soft bg-muted/20 p-4 text-base leading-6 text-foreground sm:mt-6"
+            dir="auto"
+          >
+            {requirementSentence}
+          </Type>
         ) : null}
 
         {body ? (

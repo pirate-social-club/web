@@ -27,8 +27,8 @@ import { CommunityProofOfWorkModal } from "@/components/compositions/community/p
 import { Button } from "@/components/primitives/button";
 import { IconButton } from "@/components/primitives/icon-button";
 import { toast } from "@/components/primitives/sonner";
-import { getGateFailureMessage, getJoinCtaLabel, getMissingCapabilitiesFromGateEvaluation, isJoinCtaActionable } from "@/lib/identity-gates";
-import { createCommunityBlockedModalStateFactory } from "@/hooks/use-community-interaction-gate.helpers";
+import { getGateFailureMessage, getJoinCtaLabel, getMissingCapabilitiesFromGateEvaluation, isJoinCtaActionable, isJoinSurfaceGate } from "@/lib/identity-gates";
+import { createCommunityBlockedModalStateFactory, getRequirementGroups } from "@/hooks/use-community-interaction-gate.helpers";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUiLocale } from "@/lib/ui-locale";
 
@@ -457,10 +457,12 @@ export function CommunityPage({
     () => preview && eligibility
       ? {
           eligibility,
+          gateMatchMode: preview.gate_match_mode ?? null,
           preview: {
             id: preview.id,
             display_name: preview.display_name,
             membership_gate_summaries: preview.membership_gate_summaries,
+            viewer_community_role: preview.viewer_community_role ?? null,
           },
         }
       : null,
@@ -469,6 +471,11 @@ export function CommunityPage({
       preview,
     ],
   );
+  const membershipRequirementGroups = React.useMemo(
+    () => voteGateData ? getRequirementGroups(voteGateData) : undefined,
+    [voteGateData],
+  );
+  const hasJoinSurfaceGates = preview?.membership_gate_summaries.some(isJoinSurfaceGate) ?? false;
   const voteOnPost = useCommunityVoteAction({
     buildBlockedModalState,
     communityId,
@@ -755,7 +762,6 @@ export function CommunityPage({
           action={altchaAction}
           continueDisabled={!altchaPayload}
           continueLoading={joinLoading}
-          description="This usually takes a few seconds and runs only on this device."
           locale={locale}
           onContinue={async () => {
             setProofOfWorkModalOpen(false);
@@ -765,6 +771,7 @@ export function CommunityPage({
           onPayloadChange={setAltchaPayload}
           open={proofOfWorkModalOpen}
           requirements={preview?.membership_gate_summaries}
+          requirementsMode={preview?.gate_match_mode ?? null}
           scope={altchaScope}
         />
       ) : null}
@@ -797,7 +804,7 @@ export function CommunityPage({
         />
       ) : null}
       <section className="flex min-w-0 flex-1 flex-col gap-6">
-        {preview.membership_gate_summaries.length > 0 && !canCreatePost ? (
+        {hasJoinSurfaceGates && !canCreatePost ? (
           <CommunityMembershipGatePanel
             eligibility={eligibility}
             gates={preview.membership_gate_summaries}
@@ -811,6 +818,8 @@ export function CommunityPage({
             joinLoading={joinLoading}
             joinRequested={joinRequested}
             locale={locale}
+            mode={preview.gate_match_mode ?? null}
+            requirementGroups={membershipRequirementGroups}
             verificationError={selfError}
             verificationLoading={selfLoading}
             onJoin={handlePrimaryJoinAction}

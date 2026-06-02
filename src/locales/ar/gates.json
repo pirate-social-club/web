@@ -83,7 +83,18 @@
     "cancel": "إلغاء",
     "passportPromptTitle": "درجة أعلى مطلوبة",
     "passportPromptDescription": "هل أنت إنسان؟ ارفع درجة محفظتك وحاول مرة أخرى.",
-    "passportPromptActionLabel": "زيارة Passport.xyz"
+    "passportPromptActionLabel": "زيارة Passport.xyz",
+    "powOnlyTitle": "مطلوب فحص المتصفح",
+    "powOnlyDescription": "أكمل فحص إثبات عمل سريعًا للمتابعة.",
+    "powSkipNote": "يمكن للمستخدمين الموثقين تخطي هذا الفحص."
+  },
+  "modal": {
+    "anyTitle": "اختر طريقة للمتابعة",
+    "chooseOne": "اختر واحدًا",
+    "completeAll": "أكمل الكل",
+    "metLabel": "مستوفى",
+    "notMetLabel": "غير مستوفى",
+    "requiredLabel": "مطلوب"
   },
   "matchModeHeader": {
     "allRequired": "كلها مطلوبة",
@@ -91,6 +102,8 @@
   },
   "sidebar": {
     "accessGatesTitle": "بوابات الوصول",
+    "allTitle": "متطلبات الانضمام",
+    "anyTitle": "طرق الانضمام",
     "orDivider": "أو",
     "anyModeSubtext": "أكمل أي 1 مما يلي",
     "allModeSubtext": "أكمل كل ما يلي"

@@ -83,7 +83,18 @@
     "cancel": "取消",
     "passportPromptTitle": "需要更高分数",
     "passportPromptDescription": "你是真人吗？提高你的钱包分数后再试。",
-    "passportPromptActionLabel": "访问 Passport.xyz"
+    "passportPromptActionLabel": "访问 Passport.xyz",
+    "powOnlyTitle": "需要浏览器检查",
+    "powOnlyDescription": "完成快速工作量证明检查以继续。",
+    "powSkipNote": "已验证用户可以跳过此检查。"
+  },
+  "modal": {
+    "anyTitle": "选择一种方式继续",
+    "chooseOne": "选择一项",
+    "completeAll": "完成全部",
+    "metLabel": "已满足",
+    "notMetLabel": "未满足",
+    "requiredLabel": "必需"
   },
   "matchModeHeader": {
     "allRequired": "全部需要",
@@ -91,6 +102,8 @@
   },
   "sidebar": {
     "accessGatesTitle": "访问门槛",
+    "allTitle": "加入要求",
+    "anyTitle": "加入方式",
     "orDivider": "或",
     "anyModeSubtext": "完成以下任意 1 项",
     "allModeSubtext": "完成以下所有项"

@@ -170,6 +170,10 @@ export function getProofOfWorkGateRequirements(
   return proofOfWorkGates.length > 0 ? proofOfWorkGates : [{ gate_type: "altcha_pow" }];
 }
 
+export function isJoinSurfaceGate(gate: Pick<MembershipGateSummary, "gate_type">): boolean {
+  return gate.gate_type !== "altcha_pow";
+}
+
 export function formatGateRequirement(
   gate: MembershipGateSummary,
   options?: { audience?: IdentityGateAudience; locale?: string | null; provider?: RequirementProviderContext },

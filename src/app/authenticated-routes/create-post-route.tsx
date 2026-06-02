@@ -31,6 +31,7 @@ import {
   getGateFailureMessage,
   getSelfVerificationRequestForGates,
   hasSelfDocumentFactVerificationRequest,
+  isJoinSurfaceGate,
   resolveSuggestedVerificationProvider,
 } from "@/lib/identity-gates";
 
@@ -55,6 +56,7 @@ import {
 } from "@/app/authenticated-helpers/route-shell";
 import { useCreatePostState } from "@/app/authenticated-state/create-post-state";
 import { useCommunityJoinVerification } from "@/app/authenticated-state/use-community-join-verification";
+import { getRequirementGroups } from "@/hooks/use-community-interaction-gate.helpers";
 import { normalizeGeoCountryFilter } from "@/lib/geo-country";
 import { useKnownCommunities } from "@/lib/known-communities-store";
 import type { CommunityPickerItem } from "@/components/compositions/posts/post-composer/post-composer.types";
@@ -430,6 +432,24 @@ export function CreatePostPage({
   );
   const needsSelfDocumentFactVerification =
     hasSelfDocumentFactVerificationRequest(selfVerificationRequest);
+  const membershipRequirementGroups = React.useMemo(
+    () => state.community && state.eligibility
+      ? getRequirementGroups({
+          eligibility: state.eligibility,
+          gateMatchMode: state.community.gate_match_mode ?? null,
+          preview: {
+            id: state.community.id,
+            display_name: state.community.display_name,
+            membership_gate_summaries: state.eligibility.membership_gate_summaries,
+          },
+        })
+      : undefined,
+    [
+      state.community,
+      state.eligibility,
+    ],
+  );
+  const hasJoinSurfaceGates = state.eligibility?.membership_gate_summaries.some(isJoinSurfaceGate) ?? false;
 
   const handleSubmit = React.useCallback(async () => {
     if (state.postAltchaRequired && !state.postAltchaPayload) {
@@ -604,12 +624,15 @@ export function CreatePostPage({
 
   if (
     state.eligibility.status !== "already_joined" &&
-    !state.isCommunityOwner
+    !state.isCommunityOwner &&
+    hasJoinSurfaceGates
   ) {
     const joinPanel = (
       <CommunityMembershipGatePanel
         eligibility={state.eligibility}
         gates={state.eligibility.membership_gate_summaries}
+        mode={state.community?.gate_match_mode ?? null}
+        requirementGroups={membershipRequirementGroups}
         joinError={
           joinError ??
           (state.eligibility.status === "gate_failed" &&
@@ -654,7 +677,6 @@ export function CreatePostPage({
         action={altchaAction}
         continueDisabled={!altchaPayload}
         continueLoading={joinLoading}
-        description="This usually takes a few seconds and runs only on this device."
         locale={locale}
         onContinue={async () => {
           setJoinProofOfWorkModalOpen(false);
@@ -664,6 +686,7 @@ export function CreatePostPage({
         onPayloadChange={setAltchaPayload}
         open={joinProofOfWorkModalOpen}
         requirements={state.eligibility.membership_gate_summaries}
+        requirementsMode={state.community?.gate_match_mode ?? null}
         scope={altchaScope}
       />
     ) : null;
@@ -768,7 +791,6 @@ export function CreatePostPage({
       action={state.postAltchaAction}
       continueDisabled={!state.postAltchaPayload}
       continueLoading={state.submitting}
-      description="This usually takes a few seconds and runs only on this device."
       locale={locale}
       onContinue={async () => {
         setPostProofOfWorkModalOpen(false);
@@ -778,6 +800,7 @@ export function CreatePostPage({
       onPayloadChange={state.setPostAltchaPayload}
       open={postProofOfWorkModalOpen}
       requirements={postProofOfWorkRequirements}
+      requirementsMode={state.community?.gate_match_mode ?? null}
       requirementStatuses={postProofOfWorkRequirementStatuses}
       scope={state.postAltchaScope}
     />

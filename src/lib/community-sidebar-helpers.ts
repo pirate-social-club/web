@@ -10,7 +10,7 @@ import type { CommunitySidebarGateItem, CommunitySidebarRoleHolder, CommunitySid
 import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
-import { getRequiredActionCapabilities } from "@/lib/identity-gates";
+import { getRequiredActionCapabilities, isJoinSurfaceGate } from "@/lib/identity-gates";
 import { flattenGatePolicyAtoms, getGatePolicyMatchMode } from "@/lib/gate-policy-utils";
 
 type SidebarGateSummary = Pick<
@@ -170,7 +170,7 @@ export function buildCommunitySidebarRequirements(input: {
     requirements.push("18+");
   }
 
-  for (const gate of input.gateSummaries ?? []) {
+  for (const gate of (input.gateSummaries ?? []).filter(isJoinSurfaceGate)) {
       const label = formatSidebarRequirement({
         acceptedProviders: gate.accepted_providers ?? null,
         assetCategory: gate.asset_category ?? null,
@@ -267,7 +267,7 @@ export function buildCommunitySidebarGateItems(input: {
     }
   }
 
-  for (const gate of input.gateSummaries ?? []) {
+  for (const gate of (input.gateSummaries ?? []).filter(isJoinSurfaceGate)) {
     const label = formatSidebarRequirement({
       acceptedProviders: gate.accepted_providers ?? null,
       assetCategory: gate.asset_category ?? null,
@@ -462,6 +462,7 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       locale,
       eligibility,
     }),
+    requirementsMode: preview.gate_match_mode ?? undefined,
     referenceLinks: preview.reference_links?.map((link) => ({
       communityReferenceLinkId: link.community_reference_link,
       label: resolveCommunityLocalizedText(

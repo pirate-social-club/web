@@ -79,10 +79,12 @@ export function useCommunityGateData({
     ]).then(([preview, eligibility]) => {
       const value: CommunityGateData = {
         eligibility,
+        gateMatchMode: preview.gate_match_mode ?? null,
         preview: {
           id: preview.id,
           display_name: preview.display_name,
           membership_gate_summaries: preview.membership_gate_summaries,
+          viewer_community_role: preview.viewer_community_role ?? null,
         },
       };
       communityGateCache.set(cacheKey, {

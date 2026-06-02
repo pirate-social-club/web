@@ -44,7 +44,16 @@ describe("buildCommunitySidebarRequirements", () => {
   test("renders ethereum nft requirement labels", () => {
     expect(buildCommunitySidebarRequirements({
       gateSummaries: [{ gate_type: "erc721_holding", contract_address: "0x1111111111111111111111111111111111111111" }],
-    })).toEqual(["Ethereum NFT holder"]);
+    })).toEqual(["Ethereum NFT from 0x1111...1111"]);
+  });
+
+  test("omits proof-of-work from join requirement labels", () => {
+    expect(buildCommunitySidebarRequirements({
+      gateSummaries: [
+        { gate_type: "unique_human", accepted_providers: ["very"] },
+        { gate_type: "altcha_pow" },
+      ],
+    })).toEqual(["Palm scan"]);
   });
 });
 
@@ -102,6 +111,7 @@ describe("buildCommunityPreviewSidebar", () => {
         position: 0,
       }],
       membership_gate_summaries: [],
+      gate_match_mode: null,
       rules: [],
       viewer_membership_status: "member",
       viewer_following: true,
@@ -113,6 +123,37 @@ describe("buildCommunityPreviewSidebar", () => {
     expect(sidebar.memberCount).toBe(12);
     expect(sidebar.owner?.handle).toBe("owner.pirate");
     expect(sidebar.referenceLinks?.[0]?.metadata.displayName).toBe("Centro traducido");
+  });
+
+  test("passes preview gate match mode through to sidebar props", () => {
+    const sidebar = buildCommunityPreviewSidebar({
+      id: "cmt_test",
+      object: "community_preview",
+      display_name: "Pirate Club",
+      description: null,
+      avatar_ref: null,
+      banner_ref: null,
+      membership_mode: "gated",
+      human_verification_lane: "self",
+      member_count: 12,
+      follower_count: 20,
+      donation_policy_mode: "none",
+      donation_partner: null,
+      owner: null,
+      moderators: [],
+      reference_links: [],
+      membership_gate_summaries: [
+        { gate_type: "unique_human", accepted_providers: ["very"] },
+        { gate_type: "altcha_pow" },
+      ],
+      gate_match_mode: "any",
+      rules: [],
+      viewer_membership_status: "not_member",
+      viewer_following: false,
+      created: Date.parse("2026-04-24T00:00:00.000Z"),
+    });
+
+    expect(sidebar.requirementsMode).toBe("any");
   });
 });
 

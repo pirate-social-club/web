@@ -161,12 +161,11 @@ export const RequirementsManyOr: Story = {
 export const GateTypes: Story = {
   name: "Gates / Type variants",
   args: {
-    description: "Visual coverage for every supported gate type.",
+    description: "Visual coverage for join-surface gate types.",
     followerCount: 840,
     memberCount: 210,
     requirementsMode: "all",
     gates: [
-      { gateType: "altcha_pow", label: "Proof-of-work check", provider: null, status: "unknown" },
       { gateType: "unique_human", label: "Private ID proof", provider: "self", status: "unknown" },
       { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unknown" },
       { gateType: "nationality", label: "US nationality", provider: null, status: "unknown" },

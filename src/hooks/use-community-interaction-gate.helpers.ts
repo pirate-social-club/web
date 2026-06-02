@@ -1,11 +1,14 @@
-import type { CommunityPreview, JoinEligibility } from "@pirate/api-contracts";
+import type { CommunityPreview, JoinEligibility, LocalizedPostResponse } from "@pirate/api-contracts";
 import type * as React from "react";
 
 import type {
   CommunityInteractionGateAction,
   CommunityInteractionGateModalProps,
-  CommunityInteractionGateRequirementStatus,
 } from "@/components/compositions/community/interaction-gate-modal/community-interaction-gate-modal";
+import type {
+  CommunityGateRequirementGroup,
+  CommunityGateRequirementStatus,
+} from "@/components/compositions/community/gate-requirements.types";
 import {
   getJoinCtaLabel,
   getGateFailureMessage,
@@ -33,9 +36,10 @@ export type InteractionAllowedContext = {
 
 export type CommunityGateData = {
   eligibility: JoinEligibility;
+  gateMatchMode?: "all" | "any" | null;
   preview: Pick<
     CommunityPreview,
-    "id" | "display_name" | "membership_gate_summaries"
+    "id" | "display_name" | "membership_gate_summaries" | "viewer_community_role"
   >;
 };
 
@@ -53,8 +57,10 @@ export type ModalState = {
   hideSecondaryActionOnMobile?: boolean;
   icon?: CommunityInteractionGateModalProps["icon"];
   primaryAction?: CommunityInteractionGateAction | null;
+  requirementGroups?: CommunityGateRequirementGroup[];
   requirements: CommunityGateData["preview"]["membership_gate_summaries"];
-  requirementStatuses?: CommunityInteractionGateRequirementStatus[];
+  requirementsMode?: "all" | "any";
+  requirementStatuses?: CommunityGateRequirementStatus[];
   secondaryAction?: CommunityInteractionGateAction | null;
   title: string;
 };
@@ -101,6 +107,57 @@ export type RunGatedCommunityActionParams = {
   resolveGateData?: () => Promise<CommunityGateData>;
   voteValue?: -1 | 1;
 };
+
+function buildPrewarmedJoinEligibility(
+  post: LocalizedPostResponse,
+  status: Extract<JoinEligibility["status"], "already_joined" | "banned">,
+): JoinEligibility {
+  const community = post.community;
+  return {
+    community: community?.id ?? post.post.community,
+    membership_mode: community?.membership_mode ?? "gated",
+    human_verification_lane: community?.human_verification_lane ?? "self",
+    joinable_now: false,
+    status,
+    membership_gate_summaries: [],
+    missing_capabilities: [],
+    suggested_verification_provider: null,
+    suggested_verification_intent: null,
+    failure_reason: status === "banned" ? "banned" : null,
+    gate_evaluation: null,
+  } as JoinEligibility;
+}
+
+export function selectPostVoteGateData(
+  post: LocalizedPostResponse,
+): CommunityGateData | null {
+  const community = post.community;
+  if (!community) {
+    return null;
+  }
+
+  const status =
+    community.viewer_community_role != null || community.viewer_membership_status === "member"
+      ? "already_joined"
+      : community.viewer_membership_status === "banned"
+        ? "banned"
+        : null;
+
+  if (!status) {
+    return null;
+  }
+
+  return {
+    eligibility: buildPrewarmedJoinEligibility(post, status),
+    gateMatchMode: community.gate_match_mode ?? null,
+    preview: {
+      id: community.id,
+      display_name: community.display_name,
+      membership_gate_summaries: community.membership_gate_summaries,
+      viewer_community_role: community.viewer_community_role ?? null,
+    },
+  };
+}
 
 export const SELF_INTERACTION_GATE_STORAGE_KEY =
   "pirate_pending_self_interaction_gate_session";
@@ -259,26 +316,197 @@ function gateMatchesMissingCapability(
   }
 }
 
-export function getRequirementStatuses(
+type RequiredActionNode = Omit<NonNullable<NonNullable<JoinEligibility["gate_evaluation"]>["required_action_set"]>["items"][number], "items"> & {
+  items?: RequiredActionNode[];
+};
+
+function gateMatchesRequiredAction(
+  gate: CommunityGateData["preview"]["membership_gate_summaries"][number],
+  action: RequiredActionNode,
+): boolean {
+  if (action.kind !== "action") return false;
+  switch (action.capability) {
+    case "minimum_age":
+      return gate.gate_type === "minimum_age" || gate.gate_type === "age_over_18";
+    case "nationality":
+      return gate.gate_type === "nationality";
+    case "gender":
+      return gate.gate_type === "gender";
+    case "unique_human":
+      return gate.gate_type === "unique_human";
+    case "wallet_score":
+      return gate.gate_type === "wallet_score";
+    case "altcha_pow":
+      return gate.gate_type === "altcha_pow";
+    case "erc721_holding":
+      return gate.gate_type === "erc721_holding";
+    case "erc721_inventory_match":
+      return gate.gate_type === "erc721_inventory_match";
+    default:
+      return false;
+  }
+}
+
+function findGateForRequiredAction(
+  requirements: CommunityGateData["preview"]["membership_gate_summaries"],
+  action: RequiredActionNode,
+): CommunityGateData["preview"]["membership_gate_summaries"][number] | null {
+  return requirements.find((gate) => gateMatchesRequiredAction(gate, action)) ?? null;
+}
+
+function buildRequirementGroupsFromActionSet(
+  requirements: CommunityGateData["preview"]["membership_gate_summaries"],
+  set: RequiredActionNode,
+): CommunityGateRequirementGroup[] {
+  if (set.kind !== "set") return [];
+  const nestedGroups: CommunityGateRequirementGroup[] = [];
+  const directRequirements: CommunityGateData["preview"]["membership_gate_summaries"] = [];
+
+  for (const item of set.items ?? []) {
+    if (item.kind === "set") {
+      if (item.mode === "any") {
+        const alternatives = (item.items ?? [])
+          .flatMap((nested) => nested.kind === "action" ? [findGateForRequiredAction(requirements, nested)] : [])
+          .filter((gate): gate is CommunityGateData["preview"]["membership_gate_summaries"][number] => gate != null);
+        if (alternatives.length > 0) {
+          nestedGroups.push({
+            mode: "any",
+            requirements: alternatives,
+          });
+        }
+      } else {
+        nestedGroups.push(...buildRequirementGroupsFromActionSet(requirements, item));
+      }
+      continue;
+    }
+
+    const gate = findGateForRequiredAction(requirements, item);
+    if (gate) {
+      directRequirements.push(gate);
+    }
+  }
+
+  if (set.mode === "any") {
+    const alternatives = [
+      ...directRequirements,
+      ...nestedGroups.flatMap((group) => group.requirements),
+    ];
+    return alternatives.length > 0
+      ? [{
+          mode: "any",
+          requirements: alternatives,
+        }]
+      : [];
+  }
+
+  const groups = [...nestedGroups];
+  if (directRequirements.length > 0) {
+    groups.unshift({
+      mode: "all",
+      requirements: directRequirements,
+    });
+  }
+  return groups;
+}
+
+function getGroupRequirementStatuses(
   gate: CommunityGateData,
-  requirements = gate.preview.membership_gate_summaries,
-): CommunityInteractionGateRequirementStatus[] {
+  group: CommunityGateRequirementGroup,
+): CommunityGateRequirementStatus[] {
   switch (gate.eligibility.status) {
     case "already_joined":
     case "joinable":
     case "requestable":
-      return requirements.map(() => "met");
+      return group.requirements.map(() => group.mode === "any" ? "unknown" : "met");
     case "gate_failed":
-      return requirements.map(() => "unmet");
+      if (group.mode === "any" && !gate.eligibility.gate_evaluation) {
+        return group.requirements.map(() => "unknown");
+      }
+      return group.requirements.map(() => "unmet");
     case "verification_required":
-      return requirements.map((requirement) =>
+      if (group.mode === "any") {
+        return group.requirements.map(() => "unknown");
+      }
+      return group.requirements.map((requirement) =>
         gateMatchesMissingCapability(requirement, gate.eligibility)
           ? "unmet"
           : "met",
       );
     default:
+      return group.requirements.map(() => "unknown");
+  }
+}
+
+function withGroupRequirementStatuses(
+  gate: CommunityGateData,
+  groups: CommunityGateRequirementGroup[],
+): CommunityGateRequirementGroup[] {
+  return groups.map((group) => ({
+    ...group,
+    requirementStatuses: getGroupRequirementStatuses(gate, group),
+  }));
+}
+
+export function getRequirementGroups(
+  gate: CommunityGateData,
+  requirements = gate.preview.membership_gate_summaries,
+): CommunityGateRequirementGroup[] | undefined {
+  const actionSet = gate.eligibility.gate_evaluation?.required_action_set as RequiredActionNode | null | undefined;
+  if (actionSet?.kind === "set") {
+    const groups = buildRequirementGroupsFromActionSet(requirements, actionSet);
+    if (groups.length > 0) {
+      return withGroupRequirementStatuses(gate, groups);
+    }
+  }
+
+  if (gate.gateMatchMode === "any" && requirements.length > 1) {
+    return withGroupRequirementStatuses(gate, [{
+      mode: "any",
+      requirements,
+    }]);
+  }
+
+  return undefined;
+}
+
+export function getRequirementStatuses(
+  gate: CommunityGateData,
+  requirements = gate.preview.membership_gate_summaries,
+): CommunityGateRequirementStatus[] {
+  switch (gate.eligibility.status) {
+    case "already_joined":
+    case "joinable":
+    case "requestable":
+      if (gate.gateMatchMode === "any") {
+        return requirements.map(() => "unknown");
+      }
+      return requirements.map(() => "met");
+    case "gate_failed":
+      if (gate.gateMatchMode === "any" && !gate.eligibility.gate_evaluation) {
+        return requirements.map(() => "unknown");
+      }
+      return requirements.map(() => "unmet");
+    case "verification_required":
+      return requirements.map((requirement) =>
+        gateMatchesMissingCapability(requirement, gate.eligibility)
+          ? gate.gateMatchMode === "any" ? "unknown" : "unmet"
+          : "met",
+      );
+    default:
       return requirements.map(() => "unknown");
   }
+}
+
+export function getRequirementDisplayState(
+  gate: CommunityGateData,
+  requirements = gate.preview.membership_gate_summaries,
+): Pick<ModalState, "requirementGroups" | "requirements" | "requirementsMode" | "requirementStatuses"> {
+  return {
+    requirementGroups: getRequirementGroups(gate, requirements),
+    requirements,
+    requirementsMode: gate.gateMatchMode ?? undefined,
+    requirementStatuses: getRequirementStatuses(gate, requirements),
+  };
 }
 
 function getJoinableDescription(
@@ -342,8 +570,7 @@ export function createDefaultBlockedModalState({
             target: "_blank",
           },
           secondaryAction: null,
-          requirements: gate.preview.membership_gate_summaries,
-          requirementStatuses: getRequirementStatuses(gate),
+          ...getRequirementDisplayState(gate),
           title: gatesPanel.passportPromptTitle,
         };
       }
@@ -368,8 +595,7 @@ export function createDefaultBlockedModalState({
             openCommunity();
           },
         },
-        requirements: gate.preview.membership_gate_summaries,
-        requirementStatuses: getRequirementStatuses(gate),
+        ...getRequirementDisplayState(gate),
         title: isVoteAction
           ? interactionCopy.verifyToVoteTitle
           : interactionCopy.verifyToReplyTitle,
@@ -408,8 +634,7 @@ export function createDefaultBlockedModalState({
             openCommunity();
           },
         },
-        requirements: gate.preview.membership_gate_summaries,
-        requirementStatuses: getRequirementStatuses(gate),
+        ...getRequirementDisplayState(gate),
         title:
           getJoinGateTitle(action, { locale: interactionCopy.locale }) ??
           interpolateMessage(
@@ -424,8 +649,7 @@ export function createDefaultBlockedModalState({
       return {
         description: gatesPanel.pendingRequestDescription,
         icon: "pending",
-        requirements: gate.preview.membership_gate_summaries,
-        requirementStatuses: getRequirementStatuses(gate),
+        ...getRequirementDisplayState(gate),
         title: gatesPanel.pendingRequestTitle,
       };
     case "gate_failed":
@@ -444,11 +668,7 @@ export function createDefaultBlockedModalState({
               : isVoteAction
                 ? interactionCopy.blockedVoteDescription
                 : interactionCopy.blockedReplyDescription,
-        requirements:
-          gate.eligibility.status === "gate_failed"
-            ? getFailedGateRequirements(gate)
-            : gate.preview.membership_gate_summaries,
-        requirementStatuses: getRequirementStatuses(
+        ...getRequirementDisplayState(
           gate,
           gate.eligibility.status === "gate_failed"
             ? getFailedGateRequirements(gate)
@@ -463,8 +683,7 @@ export function createDefaultBlockedModalState({
       return {
         description: interactionCopy.readyDescription,
         icon: "ready",
-        requirements: gate.preview.membership_gate_summaries,
-        requirementStatuses: getRequirementStatuses(gate),
+        ...getRequirementDisplayState(gate),
         title: interactionCopy.readyTitle,
       };
   }
@@ -569,8 +788,7 @@ export function createCommunityBlockedModalStateFactory(options: {
               },
             }
           : {}),
-        requirements: gate.preview.membership_gate_summaries,
-        requirementStatuses: getRequirementStatuses(gate),
+        ...getRequirementDisplayState(gate),
         title: isVoteAction
           ? options.interactionCopy.verifyToVoteTitle
           : options.interactionCopy.verifyToReplyTitle,
@@ -609,8 +827,7 @@ export function createCommunityBlockedModalStateFactory(options: {
             closeModal();
           },
         },
-        requirements: gate.preview.membership_gate_summaries,
-        requirementStatuses: getRequirementStatuses(gate),
+        ...getRequirementDisplayState(gate),
         title: (isVoteAction
           ? options.interactionCopy.joinToVoteTitle
           : options.interactionCopy.joinToReplyTitle

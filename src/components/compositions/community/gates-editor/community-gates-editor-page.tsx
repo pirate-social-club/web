@@ -381,7 +381,7 @@ export function CommunityGatesEditorPage({
                           className={gateMatchMode === "all" ? "border-border bg-muted/30" : undefined}
                           description="Members must pass every selected gate."
                           selected={gateMatchMode === "all"}
-                          title="All selected gates"
+                          title="Require all"
                           onClick={() => {
                             onGateMatchModeChange?.("all");
                             onGateDraftsChange?.(normalizeGateDraftsForMatchMode(gateDrafts, "all"));
@@ -391,7 +391,7 @@ export function CommunityGatesEditorPage({
                           className={gateMatchMode === "any" ? "border-border bg-muted/30" : undefined}
                           description="Members can pass any one selected gate."
                           selected={gateMatchMode === "any"}
-                          title="Any selected gate"
+                          title="Allow any one"
                           onClick={() => onGateMatchModeChange?.("any")}
                         />
                       </div>

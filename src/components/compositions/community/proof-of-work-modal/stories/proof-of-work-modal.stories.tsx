@@ -18,7 +18,6 @@ const meta = {
     action: "community:local-transit",
     challengeLoader: () => new Promise(() => {}),
     continueDisabled: true,
-    description: "This runs locally and usually takes a few seconds.",
     locale: "en",
     onContinue: () => {},
     onOpenChange: () => {},
@@ -27,7 +26,6 @@ const meta = {
     requirements: [{ gate_type: "altcha_pow" }],
     requirementStatuses: ["unmet"],
     scope: "community_join",
-    title: "Checking browser",
   },
   decorators: [
     (Story: () => React.ReactNode) => (
@@ -76,8 +74,23 @@ function AutoVerifiedProofOfWorkModalStory(args: React.ComponentProps<typeof Com
   );
 }
 
-export const CheckingBrowser: Story = {
-  name: "States / Checking browser",
+export const BrowserCheckRequired: Story = {
+  name: "States / Browser check required",
+  render: (args) => {
+    return <ProofOfWorkModalStory {...args} />;
+  },
+};
+
+export const FallbackAccepted: Story = {
+  name: "States / Fallback accepted",
+  args: {
+    requirements: [
+      { accepted_providers: ["very"], gate_type: "unique_human" },
+      { gate_type: "altcha_pow" },
+    ],
+    requirementsMode: "any",
+    requirementStatuses: ["unknown", "unknown"],
+  },
   render: (args) => {
     return <ProofOfWorkModalStory {...args} />;
   },

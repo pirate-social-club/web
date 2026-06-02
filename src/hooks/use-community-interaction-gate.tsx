@@ -297,7 +297,9 @@ export function useCommunityInteractionGate({
       }}
       open
       primaryAction={modalState.primaryAction}
+      requirementGroups={modalState.requirementGroups}
       requirements={modalState.requirements}
+      requirementsMode={modalState.requirementsMode}
       requirementStatuses={modalState.requirementStatuses}
       secondaryAction={modalState.secondaryAction}
       title={modalState.title}
@@ -332,6 +334,7 @@ export function useCommunityInteractionGate({
     closeInteractionGate: closeModal,
     gateModal,
     invalidateCommunityGate,
+    prewarmCommunityGate: updateCachedGate,
     runGatedCommunityAction,
   };
 }

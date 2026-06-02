@@ -61,27 +61,6 @@ export const DocumentMarkerVerificationRequired: Story = {
   ),
 };
 
-export const ProofOfWorkRequired: Story = {
-  name: "States / Proof-of-work Required",
-  args: { gates: [] },
-  render: () => (
-    <CommunityMembershipGatePanel
-      gates={[{ gate_type: "altcha_pow" }]}
-      eligibility={{
-        community: "community_pow",
-        membership_mode: "gated",
-        human_verification_lane: "self",
-        joinable_now: false,
-        status: "verification_required",
-        membership_gate_summaries: [{ gate_type: "altcha_pow" }],
-        gate_evaluation: gateEvaluation(["altcha_pow"], "altcha"),
-        suggested_verification_intent: "community_join",
-      }}
-      onJoin={() => {}}
-    />
-  ),
-};
-
 export const DocumentMarkerMismatch: Story = {
   name: "States / Document Marker Mismatch",
   args: { gates: [] },
@@ -204,14 +183,14 @@ export const VeryVerificationRequired: Story = {
   args: { gates: [] },
   render: () => (
     <CommunityMembershipGatePanel
-      gates={[{ gate_type: "unique_human" }]}
+      gates={[{ accepted_providers: ["very"], gate_type: "unique_human" }]}
       eligibility={{
         community: "community_very",
         membership_mode: "gated",
         human_verification_lane: "very",
         joinable_now: false,
         status: "verification_required",
-        membership_gate_summaries: [{ gate_type: "unique_human" }],
+        membership_gate_summaries: [{ accepted_providers: ["very"], gate_type: "unique_human" }],
         gate_evaluation: gateEvaluation(["unique_human"], "very"),
         suggested_verification_intent: "community_join",
       }}
@@ -323,14 +302,14 @@ export const MobileVeryVerificationRequired: Story = {
   },
   render: () => (
     <CommunityMembershipGatePanel
-      gates={[{ gate_type: "unique_human" }]}
+      gates={[{ accepted_providers: ["very"], gate_type: "unique_human" }]}
       eligibility={{
         community: "community_mobile_very",
         membership_mode: "gated",
         human_verification_lane: "very",
         joinable_now: false,
         status: "verification_required",
-        membership_gate_summaries: [{ gate_type: "unique_human" }],
+        membership_gate_summaries: [{ accepted_providers: ["very"], gate_type: "unique_human" }],
         gate_evaluation: gateEvaluation(["unique_human"], "very"),
         suggested_verification_intent: "community_join",
       }}

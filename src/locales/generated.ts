@@ -90,7 +90,18 @@ export const GENERATED_LOCALE_CATALOGS = {
         "cancel": "Cancel",
         "passportPromptTitle": "Higher Score Required",
         "passportPromptDescription": "Are you human? Improve your wallet score and try again.",
-        "passportPromptActionLabel": "Visit Passport.xyz"
+        "passportPromptActionLabel": "Visit Passport.xyz",
+        "powOnlyTitle": "Browser check required",
+        "powOnlyDescription": "Complete a quick proof-of-work check to continue.",
+        "powSkipNote": "Verified users can skip this check."
+      },
+      "modal": {
+        "anyTitle": "Choose a way to continue",
+        "chooseOne": "Choose one",
+        "completeAll": "Complete all",
+        "metLabel": "Met",
+        "notMetLabel": "Not met",
+        "requiredLabel": "Required"
       },
       "matchModeHeader": {
         "allRequired": "All required",
@@ -98,6 +109,8 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "sidebar": {
         "accessGatesTitle": "Access Gates",
+        "allTitle": "Requirements to join",
+        "anyTitle": "Ways to join",
         "orDivider": "OR",
         "anyModeSubtext": "Complete any 1 of the following",
         "allModeSubtext": "Complete all of the following"
@@ -1737,7 +1750,18 @@ export const GENERATED_LOCALE_CATALOGS = {
         "cancel": "إلغاء",
         "passportPromptTitle": "درجة أعلى مطلوبة",
         "passportPromptDescription": "هل أنت إنسان؟ ارفع درجة محفظتك وحاول مرة أخرى.",
-        "passportPromptActionLabel": "زيارة Passport.xyz"
+        "passportPromptActionLabel": "زيارة Passport.xyz",
+        "powOnlyTitle": "مطلوب فحص المتصفح",
+        "powOnlyDescription": "أكمل فحص إثبات عمل سريعًا للمتابعة.",
+        "powSkipNote": "يمكن للمستخدمين الموثقين تخطي هذا الفحص."
+      },
+      "modal": {
+        "anyTitle": "اختر طريقة للمتابعة",
+        "chooseOne": "اختر واحدًا",
+        "completeAll": "أكمل الكل",
+        "metLabel": "مستوفى",
+        "notMetLabel": "غير مستوفى",
+        "requiredLabel": "مطلوب"
       },
       "matchModeHeader": {
         "allRequired": "كلها مطلوبة",
@@ -1745,6 +1769,8 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "sidebar": {
         "accessGatesTitle": "بوابات الوصول",
+        "allTitle": "متطلبات الانضمام",
+        "anyTitle": "طرق الانضمام",
         "orDivider": "أو",
         "anyModeSubtext": "أكمل أي 1 مما يلي",
         "allModeSubtext": "أكمل كل ما يلي"
@@ -3384,7 +3410,18 @@ export const GENERATED_LOCALE_CATALOGS = {
         "cancel": "取消",
         "passportPromptTitle": "需要更高分数",
         "passportPromptDescription": "你是真人吗？提高你的钱包分数后再试。",
-        "passportPromptActionLabel": "访问 Passport.xyz"
+        "passportPromptActionLabel": "访问 Passport.xyz",
+        "powOnlyTitle": "需要浏览器检查",
+        "powOnlyDescription": "完成快速工作量证明检查以继续。",
+        "powSkipNote": "已验证用户可以跳过此检查。"
+      },
+      "modal": {
+        "anyTitle": "选择一种方式继续",
+        "chooseOne": "选择一项",
+        "completeAll": "完成全部",
+        "metLabel": "已满足",
+        "notMetLabel": "未满足",
+        "requiredLabel": "必需"
       },
       "matchModeHeader": {
         "allRequired": "全部需要",
@@ -3392,6 +3429,8 @@ export const GENERATED_LOCALE_CATALOGS = {
       },
       "sidebar": {
         "accessGatesTitle": "访问门槛",
+        "allTitle": "加入要求",
+        "anyTitle": "加入方式",
         "orDivider": "或",
         "anyModeSubtext": "完成以下任意 1 项",
         "allModeSubtext": "完成以下所有项"

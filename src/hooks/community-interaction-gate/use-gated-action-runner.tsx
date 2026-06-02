@@ -16,7 +16,7 @@ import {
 import { logger } from "@/lib/logger";
 import {
   createDefaultBlockedModalState,
-  getRequirementStatuses,
+  getRequirementDisplayState,
   resolveCommunityInteractionState,
   type BuildBlockedModalStateArgs,
   type CommunityGateData,
@@ -28,6 +28,7 @@ import {
   type RouteKind,
   type RunGatedCommunityActionParams,
 } from "@/hooks/use-community-interaction-gate.helpers";
+import { getLocaleMessages } from "@/locales";
 
 type ToastInfoOptions = {
   action?: {
@@ -41,6 +42,38 @@ type GatedActionRunnerCopy = InteractionGateCopy & {
 };
 
 type VerificationCapabilities = User["verification_capabilities"];
+
+const PRE_POW_SESSION_REFRESH_TIMEOUT_MS = 2_000;
+
+function resolveGateMessagesLocale(locale: string): "ar" | "en" | "pseudo" | "zh" {
+  if (locale === "pseudo") return "pseudo";
+  if (locale.toLowerCase().startsWith("ar")) return "ar";
+  if (locale.toLowerCase().startsWith("zh")) return "zh";
+  return "en";
+}
+
+function proofOfWorkModalCopy(gate: CommunityGateData, locale: string): {
+  description: string;
+  title: string;
+} {
+  const copy = getLocaleMessages(resolveGateMessagesLocale(locale), "gates").panel;
+  const hasSkipNote = hasRefreshablePowFallback(gate);
+  return {
+    description: hasSkipNote ? `${copy.powOnlyDescription} ${copy.powSkipNote}` : copy.powOnlyDescription,
+    title: copy.powOnlyTitle,
+  };
+}
+
+async function refreshSessionUserWithTimeout(
+  refreshSessionUser: () => Promise<Pick<User, "verification_capabilities"> | null>,
+): Promise<Pick<User, "verification_capabilities"> | null> {
+  return await Promise.race([
+    refreshSessionUser(),
+    new Promise<null>((resolve) => {
+      window.setTimeout(() => resolve(null), PRE_POW_SESSION_REFRESH_TIMEOUT_MS);
+    }),
+  ]);
+}
 
 function providerMatches(
   summary: MembershipGateSummary,
@@ -162,6 +195,10 @@ function hasRefreshablePowFallback(gate: CommunityGateData): boolean {
   const requirements = gate.preview.membership_gate_summaries;
   return requirements.some((summary) => summary.gate_type === "altcha_pow")
     && requirements.some(isRefreshableNonPowGate);
+}
+
+function hasViewerCommunityRoleBypass(gate: CommunityGateData): boolean {
+  return gate.preview.viewer_community_role != null;
 }
 
 function getAltchaActionConfig(input: {
@@ -306,66 +343,91 @@ export function useGatedActionRunner({
       return "blocked";
     }
 
+    if (hasViewerCommunityRoleBypass(gate)) {
+      logger.info("[interaction-gate] allowed", {
+        ...logBase,
+        eligibilityStatus: gate.eligibility.status,
+        reason: "viewer_community_role",
+        viewerCommunityRole: gate.preview.viewer_community_role,
+      });
+      await onAllowed();
+      return "allowed";
+    }
+
     const state = resolveCommunityInteractionState({
       eligibility: gate.eligibility,
       hasSession,
     });
 
-    let actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId, sessionUser, voteValue });
-    if (state === "allowed" && actionAltchaConfig && refreshSessionUser && hasRefreshablePowFallback(gate)) {
-      try {
-        const refreshedUser = await refreshSessionUser();
-        const refreshedAltchaConfig = getAltchaActionConfig({
-          action,
-          commentId,
-          gate,
-          postId,
-          sessionUser: refreshedUser,
-          voteValue,
-        });
-        if (!refreshedAltchaConfig) {
-          logger.info("[interaction-gate] allowed", {
-            ...logBase,
-            eligibilityStatus: gate.eligibility.status,
-            reason: "refreshed_verification_capabilities",
-          });
-          await onAllowed();
-          return "allowed";
-        }
-        actionAltchaConfig = refreshedAltchaConfig;
-      } catch (error) {
-        logger.warn("[interaction-gate] session refresh before action proof failed", {
-          ...logBase,
-          message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
+    const actionAltchaConfig = getAltchaActionConfig({ action, commentId, gate, postId, sessionUser, voteValue });
     if (state === "allowed" && actionAltchaConfig) {
+      let allowedCompleted = false;
+      const guardedOnAllowed: PendingInteraction["onAllowed"] = async (context) => {
+        if (allowedCompleted) {
+          return;
+        }
+        allowedCompleted = true;
+        await onAllowed(context);
+      };
+      const copy = proofOfWorkModalCopy(gate, interactionCopy.locale);
       setPendingInteraction({
         action,
         commentId,
         communityId,
         gate,
-        onAllowed,
+        onAllowed: guardedOnAllowed,
         postId,
         voteValue,
       });
+      const body = buildAltchaBody({
+        action: actionAltchaConfig.actionRef,
+        scope: actionAltchaConfig.scope,
+      });
+      const hasPowFallback = hasRefreshablePowFallback(gate);
       setModalState({
-        body: buildAltchaBody({
-          action: actionAltchaConfig.actionRef,
-          scope: actionAltchaConfig.scope,
-        }),
-        description: "This runs locally and usually takes a few seconds.",
+        body,
+        description: copy.description,
         icon: "blocked",
         primaryAction: {
           label: "Continue",
           loading: altchaLoading,
           onClick: completeAltchaAction,
         },
-        requirements: gate.preview.membership_gate_summaries,
-        requirementStatuses: getRequirementStatuses(gate),
-        title: "Checking browser",
+        ...(hasPowFallback
+          ? { requirements: [], requirementStatuses: [] }
+          : getRequirementDisplayState(gate)),
+        title: copy.title,
       });
+      if (refreshSessionUser && hasPowFallback) {
+        void refreshSessionUserWithTimeout(refreshSessionUser)
+          .then(async (refreshedUser) => {
+            const refreshedAltchaConfig = getAltchaActionConfig({
+              action,
+              commentId,
+              gate,
+              postId,
+              sessionUser: refreshedUser,
+              voteValue,
+            });
+            if (refreshedAltchaConfig) {
+              return;
+            }
+            logger.info("[interaction-gate] allowed", {
+              ...logBase,
+              eligibilityStatus: gate.eligibility.status,
+              reason: "refreshed_verification_capabilities",
+            });
+            setPendingInteraction(null);
+            closeModal();
+            await guardedOnAllowed();
+          })
+          .catch((error) => {
+            logger.warn("[interaction-gate] session refresh before action proof failed", {
+              ...logBase,
+              message: error instanceof Error ? error.message : String(error),
+            });
+          });
+      }
       return "blocked";
     }
 
@@ -407,22 +469,28 @@ export function useGatedActionRunner({
       customModalState === undefined &&
       gate.eligibility.status === "verification_required" &&
       hasAltchaProofAction(gate.eligibility)
-        ? {
-            body: buildAltchaBody({
+        ? (() => {
+            const copy = proofOfWorkModalCopy(gate, interactionCopy.locale);
+            const body = buildAltchaBody({
               action: `community:${communityId}`,
               scope: "community_join",
-            }),
-            description: "This runs locally and usually takes a few seconds.",
-            icon: "blocked",
-            primaryAction: {
-              label: "Continue",
-              loading: altchaLoading,
-              onClick: completeAltchaJoin,
-            },
-            requirements: gate.preview.membership_gate_summaries,
-            requirementStatuses: getRequirementStatuses(gate),
-            title: "Checking browser",
-          }
+            });
+            const hasPowFallback = hasRefreshablePowFallback(gate);
+            return {
+              body,
+              description: copy.description,
+              icon: "blocked" as const,
+              primaryAction: {
+                label: "Continue",
+                loading: altchaLoading,
+                onClick: completeAltchaJoin,
+              },
+              ...(hasPowFallback
+                ? { requirements: [], requirementStatuses: [] }
+                : getRequirementDisplayState(gate)),
+              title: copy.title,
+            };
+          })()
         : undefined;
     const builtModalState = customModalState === undefined
       ? (altchaModalState ?? createDefaultBlockedModalState({

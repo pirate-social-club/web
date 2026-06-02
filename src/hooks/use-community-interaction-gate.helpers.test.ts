@@ -46,6 +46,23 @@ function postWithViewerState(input: {
   } as LocalizedPostResponse;
 }
 
+function postWithViewerGateState(input: {
+  role?: "owner" | "admin" | "moderator" | null;
+  membership?: "member" | "not_member" | "banned" | null;
+}): LocalizedPostResponse {
+  return {
+    post: { community: "com_test" },
+    viewer_gate_state: {
+      community_id: "com_test",
+      community_display_name: "Test Community",
+      gate_match_mode: "any",
+      membership_gate_summaries: [{ gate_type: "altcha_pow" }],
+      viewer_community_role: input.role ?? null,
+      viewer_membership_status: input.membership ?? null,
+    },
+  } as LocalizedPostResponse;
+}
+
 describe("selectPostVoteGateData", () => {
   test("returns an already-joined gate for community staff", () => {
     const gateData = selectPostVoteGateData(postWithViewerState({
@@ -84,6 +101,27 @@ describe("selectPostVoteGateData", () => {
       role: null,
     }))).toBe(null);
     expect(selectPostVoteGateData({ post: { community: "com_test" } } as LocalizedPostResponse)).toBe(null);
+  });
+
+  test("reads compact viewer gate state before full community preview", () => {
+    const gateData = selectPostVoteGateData(postWithViewerGateState({
+      membership: "not_member",
+      role: "owner",
+    }));
+
+    expect(gateData?.eligibility.status).toBe("already_joined");
+    expect(gateData?.preview.id).toBe("com_test");
+    expect(gateData?.preview.display_name).toBe("Test Community");
+    expect(gateData?.preview.viewer_community_role).toBe("owner");
+    expect(gateData?.preview.membership_gate_summaries).toEqual([{ gate_type: "altcha_pow" }]);
+    expect(gateData?.gateMatchMode).toBe("any");
+  });
+
+  test("returns null for compact non-member state", () => {
+    expect(selectPostVoteGateData(postWithViewerGateState({
+      membership: "not_member",
+      role: null,
+    }))).toBe(null);
   });
 });
 

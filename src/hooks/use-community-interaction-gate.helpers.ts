@@ -43,6 +43,19 @@ export type CommunityGateData = {
   >;
 };
 
+type PostViewerGateState = {
+  community_id: string;
+  community_display_name: string;
+  viewer_community_role: "owner" | "admin" | "moderator" | null;
+  viewer_membership_status: "member" | "not_member" | "banned" | null;
+  membership_gate_summaries: CommunityPreview["membership_gate_summaries"];
+  gate_match_mode?: "all" | "any" | null;
+};
+
+type LocalizedPostResponseWithViewerGateState = LocalizedPostResponse & {
+  viewer_gate_state?: PostViewerGateState | null;
+};
+
 export type InteractionGateCopy = ReturnType<
   typeof getLocaleMessages<"routes">
 >["interactionGate"] & {
@@ -112,9 +125,10 @@ function buildPrewarmedJoinEligibility(
   post: LocalizedPostResponse,
   status: Extract<JoinEligibility["status"], "already_joined" | "banned">,
 ): JoinEligibility {
+  const gateState = (post as LocalizedPostResponseWithViewerGateState).viewer_gate_state;
   const community = post.community;
   return {
-    community: community?.id ?? post.post.community,
+    community: gateState?.community_id ?? community?.id ?? post.post.community,
     membership_mode: community?.membership_mode ?? "gated",
     human_verification_lane: community?.human_verification_lane ?? "self",
     joinable_now: false,
@@ -131,6 +145,31 @@ function buildPrewarmedJoinEligibility(
 export function selectPostVoteGateData(
   post: LocalizedPostResponse,
 ): CommunityGateData | null {
+  const gateState = (post as LocalizedPostResponseWithViewerGateState).viewer_gate_state;
+  if (gateState) {
+    const status =
+      gateState.viewer_community_role != null || gateState.viewer_membership_status === "member"
+        ? "already_joined"
+        : gateState.viewer_membership_status === "banned"
+          ? "banned"
+          : null;
+
+    if (!status) {
+      return null;
+    }
+
+    return {
+      eligibility: buildPrewarmedJoinEligibility(post, status),
+      gateMatchMode: gateState.gate_match_mode ?? null,
+      preview: {
+        id: gateState.community_id,
+        display_name: gateState.community_display_name,
+        membership_gate_summaries: gateState.membership_gate_summaries,
+        viewer_community_role: gateState.viewer_community_role,
+      },
+    };
+  }
+
   const community = post.community;
   if (!community) {
     return null;

@@ -155,6 +155,29 @@ describe("feed sorting", () => {
     ]);
   });
 
+  test("best ranks active discussion above stale long-form richness", () => {
+    const staleLongPost = createPost({
+      body: "x".repeat(12_251),
+      createdAt: "2026-04-14T00:00:00.000Z",
+      id: "pst_stale_long",
+      title: "Long",
+    });
+    const activePost = createPost({
+      commentCount: 4,
+      createdAt: "2026-04-19T00:00:00.000Z",
+      id: "pst_active",
+      title: "Active",
+      upvotes: 1,
+    });
+
+    const sorted = sortCommunityFeedPosts([staleLongPost, activePost], "best", now);
+
+    expect(sorted.map((post) => post.post.id)).toEqual([
+      "pst_active",
+      "pst_stale_long",
+    ]);
+  });
+
   test("best keeps fresh zero-engagement posts ahead of week-old modestly upvoted posts", () => {
     const fresh = createPost({
       body: "fresh",

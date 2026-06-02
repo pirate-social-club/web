@@ -35,9 +35,18 @@ function getRichnessScore(input: {
   return input.titleLength * 2 + input.bodyLength + input.captionLength + input.mediaCount * 120;
 }
 
+function getBestRichnessBonus(input: {
+  bodyLength: number;
+  captionLength: number;
+  mediaCount: number;
+  titleLength: number;
+}): number {
+  return Math.min(getRichnessScore(input) * 0.05, 6);
+}
+
 function getBestRank(score: number, createdAt: string | number, now: number): number {
   const ageHours = Math.max(0, (now - getCreatedAtMs(createdAt)) / 3_600_000);
-  return (score + 1) / Math.pow(ageHours + 2, 1.5);
+  return score / Math.pow(ageHours + 2, 1.5);
 }
 
 function getTimeRangeCutoffMs(timeRange: TopTimeRange, now: number): number | null {
@@ -96,11 +105,11 @@ function compareFeedEntries(
     if (richnessDiff !== 0) return richnessDiff;
   } else {
     const rankDiff = getBestRank(
-      getEngagementScore(right) + getRichnessScore(right) * 0.05,
+      getEngagementScore(right) + getBestRichnessBonus(right),
       right.createdAt,
       now,
     ) - getBestRank(
-      getEngagementScore(left) + getRichnessScore(left) * 0.05,
+      getEngagementScore(left) + getBestRichnessBonus(left),
       left.createdAt,
       now,
     );

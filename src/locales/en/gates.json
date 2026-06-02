@@ -111,8 +111,8 @@
     "joinAnyNote": "To join this community, one of the following is required:",
     "joinAllNote": "To join this community, all of the following are required:",
     "participationTitle": "Participation",
-    "participationMayNote": "Browser check may be required.",
-    "participationRequireNote": "Browser check required.",
+    "participationMayNote": "A quick browser check may be required for some actions.",
+    "participationRequireNote": "A quick browser check is required for some actions.",
     "participationSkipNote": "Verified users can skip this check.",
     "anyModeSubtext": "Complete one of the following",
     "allModeSubtext": "Complete all of the following"

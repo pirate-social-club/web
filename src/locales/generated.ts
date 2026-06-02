@@ -118,8 +118,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "joinAnyNote": "To join this community, one of the following is required:",
         "joinAllNote": "To join this community, all of the following are required:",
         "participationTitle": "Participation",
-        "participationMayNote": "Browser check may be required.",
-        "participationRequireNote": "Browser check required.",
+        "participationMayNote": "A quick browser check may be required for some actions.",
+        "participationRequireNote": "A quick browser check is required for some actions.",
         "participationSkipNote": "Verified users can skip this check.",
         "anyModeSubtext": "Complete one of the following",
         "allModeSubtext": "Complete all of the following"
@@ -1787,8 +1787,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "joinAnyNote": "للانضمام إلى هذا المجتمع، يلزم واحد مما يلي:",
         "joinAllNote": "للانضمام إلى هذا المجتمع، يلزم كل ما يلي:",
         "participationTitle": "المشاركة",
-        "participationMayNote": "قد يلزم فحص المتصفح.",
-        "participationRequireNote": "يلزم فحص المتصفح.",
+        "participationMayNote": "قد يُطلب فحص سريع للمتصفح لتنفيذ بعض الإجراءات.",
+        "participationRequireNote": "يُطلب فحص سريع للمتصفح لتنفيذ بعض الإجراءات.",
         "participationSkipNote": "يمكن للمستخدمين الموثقين تخطي هذا الفحص.",
         "anyModeSubtext": "أكمل واحدًا مما يلي",
         "allModeSubtext": "أكمل كل ما يلي"
@@ -3456,8 +3456,8 @@ export const GENERATED_LOCALE_CATALOGS = {
         "joinAnyNote": "加入此社区需要满足以下任意一项：",
         "joinAllNote": "加入此社区需要满足以下所有要求：",
         "participationTitle": "参与",
-        "participationMayNote": "可能需要浏览器检查。",
-        "participationRequireNote": "需要浏览器检查。",
+        "participationMayNote": "部分操作可能需要进行快速浏览器检查。",
+        "participationRequireNote": "部分操作需要进行快速浏览器检查。",
         "participationSkipNote": "已验证用户可以跳过此检查。",
         "anyModeSubtext": "完成以下任意一项",
         "allModeSubtext": "完成以下所有项"

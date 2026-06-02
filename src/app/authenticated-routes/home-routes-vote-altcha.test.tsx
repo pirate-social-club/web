@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import type * as React from "react";
 import { act, fireEvent, render, waitFor } from "@testing-library/react";
-import type { HomeFeedItem, LocalizedPostResponse } from "@pirate/api-contracts";
+import type { CommunityPreview, HomeFeedItem, LocalizedPostResponse } from "@pirate/api-contracts";
 
 import { installDomGlobals } from "@/test/setup-dom";
 import type { RunGatedCommunityActionParams } from "@/hooks/use-community-interaction-gate.helpers";
@@ -23,6 +23,7 @@ const { mock } = await import("bun:test") as unknown as {
 };
 
 const gateCalls: RunGatedCommunityActionParams[] = [];
+const prewarmCalls: Array<{ communityId: string; gateData: NonNullable<RunGatedCommunityActionParams["gateData"]> }> = [];
 
 mock.module("@/hooks/use-client-hydrated", () => ({
   useClientHydrated: () => true,
@@ -31,8 +32,14 @@ mock.module("@/hooks/use-client-hydrated", () => ({
 mock.module("@/hooks/use-community-interaction-gate", () => ({
   useCommunityInteractionGate: () => ({
     gateModal: null,
+    prewarmCommunityGate: (communityId: string, gateData: NonNullable<RunGatedCommunityActionParams["gateData"]>) => {
+      prewarmCalls.push({ communityId, gateData });
+    },
     runGatedCommunityAction: async (params: RunGatedCommunityActionParams) => {
       gateCalls.push(params);
+      if (params.gateData?.eligibility.status === "banned") {
+        return "blocked";
+      }
       await params.onAllowed({ altchaPayload: "home-proof" });
       return "allowed";
     },
@@ -73,7 +80,7 @@ const { __resetSessionStoreForTests, setSession } = await import("@/lib/api/sess
 const { PirateQueryProvider } = await import("@/lib/query/query-client");
 const { HomePage } = await import("./home-routes");
 
-function createPostResponse(postId = "post_pst_home"): LocalizedPostResponse {
+function createPostResponse(postId = "post_pst_home", community: CommunityPreview | null = null): LocalizedPostResponse {
   return {
     post: {
       id: postId,
@@ -127,10 +134,28 @@ function createPostResponse(postId = "post_pst_home"): LocalizedPostResponse {
     translation_state: "same_language",
     machine_translated: false,
     source_hash: "hash",
+    community,
   };
 }
 
-function createFeedItem(postId = "post_pst_home"): HomeFeedItem {
+function createPreview(overrides: Partial<CommunityPreview> = {}): CommunityPreview {
+  return {
+    id: "cmt_test",
+    object: "community_preview",
+    display_name: "Test Community",
+    membership_mode: "gated",
+    human_verification_lane: "self",
+    moderators: [],
+    membership_gate_summaries: [{ gate_type: "altcha_pow" }],
+    rules: [],
+    viewer_community_role: null,
+    viewer_membership_status: "member",
+    created: Date.parse("2026-04-24T00:00:00.000Z"),
+    ...overrides,
+  } as CommunityPreview;
+}
+
+function createFeedItem(postId = "post_pst_home", community: CommunityPreview | null = null): HomeFeedItem {
   return {
     community: {
       id: "cmt_test",
@@ -142,7 +167,7 @@ function createFeedItem(postId = "post_pst_home"): HomeFeedItem {
       member_count: 1,
       follower_count: 1,
     },
-    post: createPostResponse(postId),
+    post: createPostResponse(postId, community),
   } as unknown as HomeFeedItem;
 }
 
@@ -152,6 +177,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 beforeEach(() => {
   gateCalls.length = 0;
+  prewarmCalls.length = 0;
   __resetSessionStoreForTests();
   setSession({
     access_token: "test-token",
@@ -211,5 +237,144 @@ describe("HomePage vote ALTCHA plumbing", () => {
       postId: "post_pst_home",
       value: 1,
     }]);
+  });
+
+  test("prewarms and passes home vote gate data for community staff", async () => {
+    const preview = createPreview({
+      viewer_community_role: "owner",
+      viewer_membership_status: "not_member",
+    });
+    const voteCalls: string[] = [];
+    const feedApi = api.feed as unknown as {
+      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+    };
+    const postsApi = api.posts as unknown as {
+      vote: (postId: string, value: -1 | 1) => Promise<{ value: -1 | 1 }>;
+    };
+    const feedResponse = {
+      items: [createFeedItem("post_pst_home", preview)],
+      top_communities: [],
+    };
+
+    feedApi.home = async () => feedResponse;
+    feedApi.publicHome = async () => feedResponse;
+    postsApi.vote = async (postId, value) => {
+      voteCalls.push(`${postId}:${value}`);
+      return { value };
+    };
+
+    const view = render(<HomePage initialSort="best" />, { wrapper });
+
+    await waitFor(() => expect(view.getByTestId("home-vote-0")).toBeTruthy());
+    await waitFor(() => expect(prewarmCalls).toHaveLength(1));
+    await act(async () => {
+      fireEvent.click(view.getByTestId("home-vote-0"));
+    });
+
+    expect(prewarmCalls[0]?.gateData.preview.viewer_community_role).toBe("owner");
+    expect(gateCalls[0]?.gateData?.preview.viewer_community_role).toBe("owner");
+    expect(gateCalls[0]?.communityId).toBe("cmt_test");
+    expect(voteCalls).toEqual(["post_pst_home:1"]);
+  });
+
+  test("prewarms and passes home vote gate data for community members", async () => {
+    const preview = createPreview({
+      viewer_community_role: null,
+      viewer_membership_status: "member",
+    });
+    const feedApi = api.feed as unknown as {
+      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+    };
+    const postsApi = api.posts as unknown as {
+      vote: (postId: string, value: -1 | 1) => Promise<{ value: -1 | 1 }>;
+    };
+    const feedResponse = {
+      items: [createFeedItem("post_pst_home", preview)],
+      top_communities: [],
+    };
+
+    feedApi.home = async () => feedResponse;
+    feedApi.publicHome = async () => feedResponse;
+    postsApi.vote = async (_postId, value) => ({ value });
+
+    const view = render(<HomePage initialSort="best" />, { wrapper });
+
+    await waitFor(() => expect(view.getByTestId("home-vote-0")).toBeTruthy());
+    await act(async () => {
+      fireEvent.click(view.getByTestId("home-vote-0"));
+    });
+
+    expect(prewarmCalls[0]?.gateData.eligibility.status).toBe("already_joined");
+    expect(gateCalls[0]?.gateData?.eligibility.status).toBe("already_joined");
+  });
+
+  test("falls back to gate loading when home post preview cannot prove membership", async () => {
+    const preview = createPreview({
+      viewer_community_role: null,
+      viewer_membership_status: "not_member",
+    });
+    const feedApi = api.feed as unknown as {
+      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+    };
+    const postsApi = api.posts as unknown as {
+      vote: (postId: string, value: -1 | 1) => Promise<{ value: -1 | 1 }>;
+    };
+    const feedResponse = {
+      items: [createFeedItem("post_pst_home", preview)],
+      top_communities: [],
+    };
+
+    feedApi.home = async () => feedResponse;
+    feedApi.publicHome = async () => feedResponse;
+    postsApi.vote = async (_postId, value) => ({ value });
+
+    const view = render(<HomePage initialSort="best" />, { wrapper });
+
+    await waitFor(() => expect(view.getByTestId("home-vote-0")).toBeTruthy());
+    await act(async () => {
+      fireEvent.click(view.getByTestId("home-vote-0"));
+    });
+
+    expect(prewarmCalls).toHaveLength(0);
+    expect(gateCalls[0]?.gateData).toBeUndefined();
+  });
+
+  test("does not call the home post vote API for a prewarmed banned viewer", async () => {
+    const preview = createPreview({
+      viewer_community_role: null,
+      viewer_membership_status: "banned",
+    });
+    const feedApi = api.feed as unknown as {
+      home: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+      publicHome: (opts: unknown) => Promise<{ items: HomeFeedItem[]; top_communities: [] }>;
+    };
+    const postsApi = api.posts as unknown as {
+      vote: () => Promise<{ value: -1 | 1 }>;
+    };
+    let voteCalled = false;
+    const feedResponse = {
+      items: [createFeedItem("post_pst_home", preview)],
+      top_communities: [],
+    };
+
+    feedApi.home = async () => feedResponse;
+    feedApi.publicHome = async () => feedResponse;
+    postsApi.vote = async () => {
+      voteCalled = true;
+      return { value: 1 };
+    };
+
+    const view = render(<HomePage initialSort="best" />, { wrapper });
+
+    await waitFor(() => expect(view.getByTestId("home-vote-0")).toBeTruthy());
+    await act(async () => {
+      fireEvent.click(view.getByTestId("home-vote-0"));
+    });
+
+    expect(gateCalls[0]?.gateData?.eligibility.status).toBe("banned");
+    expect(voteCalled).toBe(false);
   });
 });

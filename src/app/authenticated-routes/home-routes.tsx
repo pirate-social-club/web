@@ -42,6 +42,7 @@ import { EmptyFeedState, RouteLoadFailureState } from "@/app/authenticated-helpe
 import { useSongPlayback } from "@/app/authenticated-helpers/song-commerce";
 import { seedPublicThreadQueriesFromFeed } from "@/lib/query/public-thread-cache";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
+import { selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
 
@@ -316,11 +317,27 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   } = useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
-  const { gateModal, runGatedCommunityAction } = useCommunityInteractionGate({
+  const { gateModal, prewarmCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: contentLocale,
     routeKind: "home",
     uiLocale: locale,
   });
+  const voteGateDataByPostId = React.useMemo(() => {
+    const next = new Map<string, NonNullable<ReturnType<typeof selectPostVoteGateData>>>();
+    for (const entry of feedEntries) {
+      const gateData = selectPostVoteGateData(entry.post);
+      if (gateData) {
+        next.set(entry.post.post.id, gateData);
+      }
+    }
+    return next;
+  }, [feedEntries]);
+
+  React.useEffect(() => {
+    for (const gateData of voteGateDataByPostId.values()) {
+      prewarmCommunityGate(gateData.preview.id, gateData);
+    }
+  }, [prewarmCommunityGate, voteGateDataByPostId]);
 
   React.useEffect(() => {
     setCurrentHomeFeedSort(activeSort);
@@ -345,9 +362,11 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
     if (!entry) return;
     if (!direction) return;
     const voteValue = toPostVoteValue(direction);
+    const voteGateData = voteGateDataByPostId.get(postId) ?? null;
     await runGatedCommunityAction({
       action: "vote_post",
-      communityId: entry.community.id,
+      communityId: voteGateData?.preview.id ?? entry.community.id,
+      ...(voteGateData ? { gateData: voteGateData } : {}),
       onAllowed: async (context) => {
         const previousPost = entry.post;
         await submitOptimisticPostVote({
@@ -364,7 +383,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
       postId,
       voteValue,
     });
-  }, [api.posts.vote, feedEntries, runGatedCommunityAction]);
+  }, [api.posts.vote, feedEntries, runGatedCommunityAction, voteGateDataByPostId]);
 
   const cancelEvent = React.useCallback(async (postId: string) => {
     const entry = feedEntries.find((candidate) => candidate.post.post.id === postId);

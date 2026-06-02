@@ -22,6 +22,7 @@ import type { PostThreadReplyInput, PostThreadSubmitResult } from "@/components/
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
 import { applyPostVote, submitOptimisticPostVote, toPostVoteValue } from "@/app/authenticated-helpers/post-vote";
 import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-gate";
+import { selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
 import { getErrorMessage } from "@/lib/error-utils";
 import {
   buildThreadCommentTreeFromItems,
@@ -247,11 +248,21 @@ export function usePost(
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
   const loadedCommentSortKeyRef = React.useRef<string | null>(null);
   const loadedTargetCommentRef = React.useRef<string | null>(null);
-  const { gateModal, runGatedCommunityAction } = useCommunityInteractionGate({
+  const { gateModal, prewarmCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: locale,
     routeKind: "post",
     uiLocale,
   });
+  const voteGateData = React.useMemo(
+    () => post ? selectPostVoteGateData(post) : null,
+    [post],
+  );
+
+  React.useEffect(() => {
+    if (!hasSession) return;
+    if (!voteGateData) return;
+    prewarmCommunityGate(voteGateData.preview.id, voteGateData);
+  }, [hasSession, prewarmCommunityGate, voteGateData]);
 
   const publicThreadQuery = useQuery({
     queryKey: postKeys.publicThread({ postId, locale, sort: commentSort }),
@@ -505,6 +516,7 @@ export function usePost(
       action: "vote_comment",
       commentId,
       communityId: post.post.community,
+      ...(voteGateData ? { gateData: voteGateData } : {}),
       onAllowed: async (context) => {
         const currentNode = findThreadCommentNode(commentNodes, commentId);
         const previousVote = currentNode?.item.viewer_vote ?? null;
@@ -535,7 +547,7 @@ export function usePost(
       postId: post.post.id,
       voteValue: nextValue,
     });
-  }, [api, commentNodes, post, runGatedCommunityAction]);
+  }, [api, commentNodes, post, runGatedCommunityAction, voteGateData]);
 
   const deleteComment = React.useCallback(async (commentId: string) => {
     if (!post) return;
@@ -581,6 +593,7 @@ export function usePost(
     await runGatedCommunityAction({
       action: "vote_post",
       communityId: post.post.community,
+      ...(voteGateData ? { gateData: voteGateData } : {}),
       onAllowed: async (context) => {
         const nextPostId = post.post.id;
         await submitOptimisticPostVote({
@@ -597,7 +610,7 @@ export function usePost(
       postId: post.post.id,
       voteValue,
     });
-  }, [api.posts.vote, post, runGatedCommunityAction]);
+  }, [api.posts.vote, post, runGatedCommunityAction, voteGateData]);
 
   const deletePost = React.useCallback(async () => {
     if (!post) return;

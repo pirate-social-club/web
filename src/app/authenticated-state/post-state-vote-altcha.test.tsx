@@ -38,12 +38,19 @@ const { mock } = await import("bun:test") as unknown as {
 };
 
 const gateCalls: RunGatedCommunityActionParams[] = [];
+const prewarmCalls: Array<{ communityId: string; gateData: NonNullable<RunGatedCommunityActionParams["gateData"]> }> = [];
 
 mock.module("@/hooks/use-community-interaction-gate", () => ({
   useCommunityInteractionGate: () => ({
     gateModal: null,
+    prewarmCommunityGate: (communityId: string, gateData: NonNullable<RunGatedCommunityActionParams["gateData"]>) => {
+      prewarmCalls.push({ communityId, gateData });
+    },
     runGatedCommunityAction: async (params: RunGatedCommunityActionParams) => {
       gateCalls.push(params);
+      if (params.gateData?.eligibility.status === "banned") {
+        return "blocked";
+      }
       await params.onAllowed({ altchaPayload: "vote-proof" });
       return "allowed";
     },
@@ -72,7 +79,7 @@ function wrapperWithClient(queryClient: QueryClient) {
   };
 }
 
-function createPostResponse(): LocalizedPostResponse {
+function createPostResponse(community: CommunityPreview | null = null): LocalizedPostResponse {
   return {
     post: {
       id: "pst_test",
@@ -126,6 +133,7 @@ function createPostResponse(): LocalizedPostResponse {
     translated_body: null,
     translated_caption: null,
     source_hash: "hash",
+    community,
   };
 }
 
@@ -198,6 +206,7 @@ function createCommentItem(): CommentListItem {
 
 beforeEach(() => {
   gateCalls.length = 0;
+  prewarmCalls.length = 0;
   __resetSessionStoreForTests();
   setSession({
     access_token: "test-token",
@@ -301,5 +310,157 @@ describe("usePost vote ALTCHA plumbing", () => {
       value: -1,
       options: { altchaPayload: "vote-proof" },
     });
+  });
+
+  test("prewarms and passes post vote gate data for community staff", async () => {
+    const preview = createPreview();
+    preview.viewer_community_role = "admin";
+    preview.viewer_membership_status = "not_member";
+    const posts = api.posts as unknown as {
+      get: () => Promise<LocalizedPostResponse>;
+      vote: (postId: string, value: -1 | 1) => Promise<{ post: string; value: -1 | 1 }>;
+    };
+    const communities = api.communities as unknown as {
+      preview: () => Promise<CommunityPreview>;
+      listComments: () => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+    };
+    const agents = api.agents as unknown as { list: () => Promise<{ items: [] }> };
+    const voteCalls: string[] = [];
+
+    posts.get = async () => createPostResponse(preview);
+    posts.vote = async (postId, value) => {
+      voteCalls.push(`${postId}:${value}`);
+      return { post: postId, value };
+    };
+    communities.preview = async () => preview;
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    agents.list = async () => ({ items: [] });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), {
+      wrapper: wrapperWithClient(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(prewarmCalls).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.voteOnPost("up");
+    });
+
+    expect(prewarmCalls[0]?.communityId).toBe("cmt_test");
+    expect(prewarmCalls[0]?.gateData.preview.viewer_community_role).toBe("admin");
+    expect(gateCalls[0]?.gateData?.preview.viewer_community_role).toBe("admin");
+    expect(gateCalls[0]?.gateData?.eligibility.status).toBe("already_joined");
+    expect(voteCalls).toEqual(["pst_test:1"]);
+  });
+
+  test("prewarms and passes post vote gate data for community members", async () => {
+    const preview = createPreview();
+    preview.viewer_community_role = null;
+    preview.viewer_membership_status = "member";
+    const posts = api.posts as unknown as {
+      get: () => Promise<LocalizedPostResponse>;
+      vote: (postId: string, value: -1 | 1) => Promise<{ post: string; value: -1 | 1 }>;
+    };
+    const communities = api.communities as unknown as {
+      preview: () => Promise<CommunityPreview>;
+      listComments: () => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+    };
+    const agents = api.agents as unknown as { list: () => Promise<{ items: [] }> };
+
+    posts.get = async () => createPostResponse(preview);
+    posts.vote = async (postId, value) => ({ post: postId, value });
+    communities.preview = async () => preview;
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    agents.list = async () => ({ items: [] });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), {
+      wrapper: wrapperWithClient(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.voteOnPost("up");
+    });
+
+    expect(prewarmCalls[0]?.gateData.eligibility.status).toBe("already_joined");
+    expect(gateCalls[0]?.gateData?.eligibility.status).toBe("already_joined");
+  });
+
+  test("falls back to gate loading when embedded post community cannot prove membership", async () => {
+    const preview = createPreview();
+    preview.viewer_community_role = null;
+    preview.viewer_membership_status = "not_member";
+    const posts = api.posts as unknown as {
+      get: () => Promise<LocalizedPostResponse>;
+      vote: (postId: string, value: -1 | 1) => Promise<{ post: string; value: -1 | 1 }>;
+    };
+    const communities = api.communities as unknown as {
+      preview: () => Promise<CommunityPreview>;
+      listComments: () => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+    };
+    const agents = api.agents as unknown as { list: () => Promise<{ items: [] }> };
+
+    posts.get = async () => createPostResponse(preview);
+    posts.vote = async (postId, value) => ({ post: postId, value });
+    communities.preview = async () => preview;
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    agents.list = async () => ({ items: [] });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), {
+      wrapper: wrapperWithClient(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.voteOnPost("up");
+    });
+
+    expect(prewarmCalls).toHaveLength(0);
+    expect(gateCalls[0]?.gateData).toBeUndefined();
+  });
+
+  test("does not call the post vote API for a prewarmed banned viewer", async () => {
+    const preview = createPreview();
+    preview.viewer_community_role = null;
+    preview.viewer_membership_status = "banned";
+    const posts = api.posts as unknown as {
+      get: () => Promise<LocalizedPostResponse>;
+      vote: () => Promise<{ post: string; value: -1 | 1 }>;
+    };
+    const communities = api.communities as unknown as {
+      preview: () => Promise<CommunityPreview>;
+      listComments: () => Promise<{ items: CommentListItem[]; next_cursor: null }>;
+    };
+    const agents = api.agents as unknown as { list: () => Promise<{ items: [] }> };
+    let voteCalled = false;
+
+    posts.get = async () => createPostResponse(preview);
+    posts.vote = async () => {
+      voteCalled = true;
+      return { post: "pst_test", value: 1 };
+    };
+    communities.preview = async () => preview;
+    communities.listComments = async () => ({ items: [], next_cursor: null });
+    agents.list = async () => ({ items: [] });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => usePost("pst_test", "en", true, labels), {
+      wrapper: wrapperWithClient(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.voteOnPost("up");
+    });
+
+    expect(gateCalls[0]?.gateData?.eligibility.status).toBe("banned");
+    expect(voteCalled).toBe(false);
   });
 });

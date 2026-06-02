@@ -386,45 +386,6 @@ export const StemsInstrumentalAndVocals: Story = {
   ),
 };
 
-export const StemsBundleAvailable: Story = {
-  name: "Stems / Bundle available",
-  render: () => (
-    <PostCard
-      {...basePost}
-      title="Purchased track with stems bundle"
-      content={{
-        ...baseSong,
-        accessMode: "locked",
-        hasEntitlement: true,
-        listingMode: "listed",
-        listingStatus: "active",
-        onDownload: noop,
-        entitledStems: ["instrumental", "vocals"],
-        stems: [
-          {
-            kind: "instrumental",
-            durationLabel: "3:47",
-            durationMs: 227000,
-            accessPolicy: "inherit",
-            onDownload: noop,
-          },
-          {
-            kind: "vocals",
-            durationLabel: "3:45",
-            durationMs: 225000,
-            accessPolicy: "inherit",
-            onDownload: noop,
-          },
-        ],
-        stemsBundle: {
-          available: true,
-          onDownload: noop,
-        },
-      }}
-    />
-  ),
-};
-
 export const CommerceHeaderMenuDownloadsStems: Story = {
   name: "Commerce / Header menu / Downloads + stems",
   render: () => (
@@ -452,10 +413,6 @@ export const CommerceHeaderMenuDownloadsStems: Story = {
             onDownload: noop,
           },
         ],
-        stemsBundle: {
-          available: true,
-          onDownload: noop,
-        },
       }}
     />
   ),

@@ -51,6 +51,7 @@ function deriveVideoUnlock(
 }
 
 export interface DerivedSongMenuAction {
+  category: "metadata" | "download";
   item: PostCardMenuItem;
   onAction: () => void;
 }
@@ -215,14 +216,21 @@ export function mergePostCardMenuItems(
   menuItems: PostCardMenuItem[] | undefined,
   derivedActions: DerivedSongMenuAction[],
 ): PostCardMenuItem[] {
-  const derivedMenuItems = derivedActions.map((action, index) => ({
+  const metadataItems = derivedActions
+    .filter((action) => action.category === "metadata")
+    .map((action) => action.item);
+  const downloadActions = derivedActions.filter((action) => action.category === "download");
+  const firstDownloadNeedsSeparator = downloadActions.length > 0
+    && (Boolean(menuItems?.length) || metadataItems.length > 0);
+  const downloadItems = downloadActions.map((action, index) => ({
     ...action.item,
-    separatorBefore: action.item.separatorBefore || (index === 0 && Boolean(menuItems?.length)),
+    separatorBefore: action.item.separatorBefore || (index === 0 && firstDownloadNeedsSeparator),
   }));
 
   return [
     ...(menuItems ?? []),
-    ...derivedMenuItems,
+    ...metadataItems,
+    ...downloadItems,
   ];
 }
 
@@ -233,6 +241,7 @@ export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): 
   if (content.annotationsUrl) {
     const url = content.annotationsUrl;
     actions.push({
+      category: "metadata",
       item: {
         key: "song-annotations:genius",
         label: "View on Genius",
@@ -250,21 +259,20 @@ export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): 
       || (songPolicy === "purchased_download" && content.hasEntitlement)
     ),
   );
-  let hasDownloadAction = false;
   const pushDownloadAction = (item: PostCardMenuItem, onAction: () => void) => {
     actions.push({
+      category: "download",
       item: {
         ...item,
-        separatorBefore: item.separatorBefore || (!hasDownloadAction && actions.length > 0),
+        separatorBefore: item.separatorBefore || false,
       },
       onAction,
     });
-    hasDownloadAction = true;
   };
 
   if (canDownloadOriginal && content.onDownload) {
     pushDownloadAction(
-      { key: "song-download:original", label: "Download audio" },
+      { key: "song-download:original", label: "Download original" },
       content.onDownload,
     );
   }
@@ -278,13 +286,6 @@ export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): 
         label: `Download ${stemLabel(stem)}`,
       },
       stem.onDownload,
-    );
-  }
-
-  if (content.stemsBundle?.available) {
-    pushDownloadAction(
-      { key: "song-download:bundle", label: "Download stems bundle" },
-      content.stemsBundle.onDownload,
     );
   }
 

@@ -35,11 +35,6 @@ export interface StemSpec {
   onDownload?: () => void;
 }
 
-export interface StemsBundleSpec {
-  available: boolean;
-  onDownload: () => void;
-}
-
 // Playback axis - purely UI state
 export type PlaybackState = "idle" | "playing" | "paused" | "buffering" | "ended";
 
@@ -185,7 +180,6 @@ export interface SongContentSpec {
   onDownload?: () => void;
   stems?: StemSpec[];
   entitledStems?: StemKind[];
-  stemsBundle?: StemsBundleSpec;
 
   // Callbacks
   onPlay?: () => void;

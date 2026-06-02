@@ -78,10 +78,6 @@ describe("PostCard", () => {
         { accessPolicy: "free", kind: "instrumental", onDownload: () => undefined },
         { accessPolicy: "free", kind: "vocals", onDownload: () => undefined },
       ],
-      stemsBundle: {
-        available: true,
-        onDownload: () => undefined,
-      },
       title: "Midnight Waves",
     };
 
@@ -91,17 +87,15 @@ describe("PostCard", () => {
       "Copy link",
       "Report",
       "View on Genius",
-      "Download audio",
+      "Download original",
       "Download Instrumental",
       "Download Vocals",
-      "Download stems bundle",
     ]);
     expect(mergedItems.map((item) => Boolean(item.separatorBefore))).toEqual([
       false,
       true,
-      true,
-      true,
       false,
+      true,
       false,
       false,
     ]);

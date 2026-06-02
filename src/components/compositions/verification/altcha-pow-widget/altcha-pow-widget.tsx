@@ -160,7 +160,7 @@ export function AltchaPowWidget({
     return (
       <Type as="div" className={cn("flex items-center gap-3 text-muted-foreground", className)} variant="body">
         <Spinner className="size-5" />
-        <span>Preparing proof-of-work check&hellip;</span>
+        <span>Checking your browser&hellip;</span>
       </Type>
     );
   }
@@ -209,7 +209,7 @@ export function AltchaPowWidget({
       <altcha-widget auto="off" display="invisible" ref={widgetRef} />
       <Type as="div" className="flex items-center gap-3 text-muted-foreground" variant="body">
         <Spinner className="size-5" />
-        <span>Running proof-of-work check&hellip;</span>
+        <span>Checking your browser&hellip;</span>
       </Type>
     </div>
   );

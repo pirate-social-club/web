@@ -196,6 +196,8 @@ describe("useGatedActionRunner", () => {
     expect(runner.pendingInteraction?.voteValue).toBe(1);
     expect(runner.hook.result.current.modalState?.title).toBe("Checking browser");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:1:vote");
+    expect(runner.hook.result.current.modalState?.description).toBe("This runs locally and usually takes a few seconds.");
+    expect(runner.hook.result.current.modalState?.secondaryAction).toBeUndefined();
   });
 
   test("blocks Altcha-gated comment votes for a vote-bound proof", async () => {
@@ -261,6 +263,7 @@ describe("useGatedActionRunner", () => {
     expect(runner.pendingInteraction?.action).toBe("reply_post");
     expect(runner.hook.result.current.modalState?.title).toBe("Checking browser");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:post:post-1:comment_create");
+    expect(runner.hook.result.current.modalState?.secondaryAction).toBeUndefined();
   });
 
   test("builds the join Altcha modal for verification-required Altcha gates", async () => {
@@ -284,6 +287,8 @@ describe("useGatedActionRunner", () => {
     expect(runner.pendingInteraction?.action).toBe("reply_post");
     expect(runner.hook.result.current.modalState?.title).toBe("Checking browser");
     expect(runner.hook.result.current.modalState?.body).toBe("altcha:community:community-1:community_join");
+    expect(runner.hook.result.current.modalState?.description).toBe("This runs locally and usually takes a few seconds.");
+    expect(runner.hook.result.current.modalState?.secondaryAction).toBeUndefined();
   });
 
   test("routes verification-required non-Altcha gates through the default modal", async () => {

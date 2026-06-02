@@ -355,7 +355,7 @@ export function useGatedActionRunner({
           action: actionAltchaConfig.actionRef,
           scope: actionAltchaConfig.scope,
         }),
-        description: "This usually takes a few seconds and runs only on this device.",
+        description: "This runs locally and usually takes a few seconds.",
         icon: "blocked",
         primaryAction: {
           label: "Continue",
@@ -364,10 +364,6 @@ export function useGatedActionRunner({
         },
         requirements: gate.preview.membership_gate_summaries,
         requirementStatuses: getRequirementStatuses(gate),
-        secondaryAction: {
-          label: "Cancel",
-          onClick: closeModal,
-        },
         title: "Checking browser",
       });
       return "blocked";
@@ -416,7 +412,7 @@ export function useGatedActionRunner({
               action: `community:${communityId}`,
               scope: "community_join",
             }),
-            description: "This usually takes a few seconds and runs only on this device.",
+            description: "This runs locally and usually takes a few seconds.",
             icon: "blocked",
             primaryAction: {
               label: "Continue",
@@ -425,10 +421,6 @@ export function useGatedActionRunner({
             },
             requirements: gate.preview.membership_gate_summaries,
             requirementStatuses: getRequirementStatuses(gate),
-            secondaryAction: {
-              label: "Cancel",
-              onClick: closeModal,
-            },
             title: "Checking browser",
           }
         : undefined;

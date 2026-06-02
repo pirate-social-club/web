@@ -22,7 +22,7 @@ describe("AltchaPowWidget", () => {
       />,
     );
 
-    expect(getByText("Preparing proof-of-work check\u2026")).toBeTruthy();
+    expect(getByText("Checking your browser\u2026")).toBeTruthy();
     expect(container.innerHTML).not.toContain("rounded");
     expect(container.innerHTML).not.toContain("border");
     expect(container.innerHTML).not.toContain("shadow");
@@ -46,7 +46,7 @@ describe("AltchaPowWidget", () => {
       />,
     );
 
-    await waitFor(() => expect(getByText("Running proof-of-work check\u2026")).toBeTruthy());
+    await waitFor(() => expect(getByText("Checking your browser\u2026")).toBeTruthy());
 
     const widget = container.querySelector("altcha-widget");
     expect(widget?.getAttribute("display")).toBe("invisible");

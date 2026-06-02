@@ -28,7 +28,7 @@ export function CommunityProofOfWorkModal({
   challengeLoader,
   continueDisabled,
   continueLoading,
-  description = "This usually takes a few seconds and runs only on this device.",
+  description = "This runs locally and usually takes a few seconds.",
   locale,
   onContinue,
   onOpenChange,
@@ -63,10 +63,6 @@ export function CommunityProofOfWorkModal({
       }}
       requirements={requirements}
       requirementStatuses={requirementStatuses}
-      secondaryAction={{
-        label: "Cancel",
-        onClick: () => onOpenChange(false),
-      }}
       title={title}
     />
   );

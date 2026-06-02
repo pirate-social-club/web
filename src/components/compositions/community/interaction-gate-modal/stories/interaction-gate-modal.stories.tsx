@@ -177,7 +177,7 @@ export const ProofOfWorkRequired: Story = {
           scope="community_join"
         />
       )}
-      description="This usually takes a few seconds and runs only on this device."
+      description="This runs locally and usually takes a few seconds."
       icon="blocked"
       primaryAction={{
         disabled: true,
@@ -186,10 +186,6 @@ export const ProofOfWorkRequired: Story = {
       }}
       requirements={proofOfWorkRequirements}
       requirementStatuses={["unmet"]}
-      secondaryAction={{
-        label: "Cancel",
-        onClick: () => {},
-      }}
       title="Checking browser"
     />
   ),

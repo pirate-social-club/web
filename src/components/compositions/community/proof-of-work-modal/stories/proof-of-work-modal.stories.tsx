@@ -18,7 +18,7 @@ const meta = {
     action: "community:local-transit",
     challengeLoader: () => new Promise(() => {}),
     continueDisabled: true,
-    description: "This usually takes a few seconds and runs only on this device.",
+    description: "This runs locally and usually takes a few seconds.",
     locale: "en",
     onContinue: () => {},
     onOpenChange: () => {},
@@ -76,8 +76,8 @@ function AutoVerifiedProofOfWorkModalStory(args: React.ComponentProps<typeof Com
   );
 }
 
-export const Preparing: Story = {
-  name: "States / Preparing",
+export const CheckingBrowser: Story = {
+  name: "States / Checking browser",
   render: (args) => {
     return <ProofOfWorkModalStory {...args} />;
   },

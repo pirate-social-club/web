@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ArrowSquareOut, DownloadSimple, Lock, ShoppingCart } from "@phosphor-icons/react";
 
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
@@ -13,38 +14,281 @@ import { PostCardHeader } from "./post-card-header";
 import { PostCardMedia } from "./post-card-media";
 import { PostCardEngagementBar } from "./post-card-engagement-bar";
 import { postCardReadableWidth, postCardTextWrap, postCardType } from "./post-card.styles";
-import type { PostCardProps } from "./post-card.types";
+import type { DownloadPolicy, PostCardMenuItem, PostCardProps, StemAccessPolicy, StemKind, StemSpec } from "./post-card.types";
 
-function deriveUnlockFromContent(
+type SongContent = Extract<PostCardProps["content"], { type: "song" }>;
+
+function deriveVideoUnlock(
   content: PostCardProps["content"],
 ): PostCardProps["engagement"]["unlock"] {
-  if (content.type === "song" || content.type === "video") {
-    const {
-      accessMode,
-      listingMode,
-      listingStatus,
-      hasEntitlement,
-      priceLabel,
-      regionalPriceLabel,
-      onBuy,
-      onUnlock,
-    } = content;
+  if (content.type !== "video") return undefined;
 
-    if (accessMode !== "locked" || hasEntitlement) return undefined;
+  const {
+    accessMode,
+    listingMode,
+    listingStatus,
+    hasEntitlement,
+    priceLabel,
+    regionalPriceLabel,
+    onBuy,
+    onUnlock,
+  } = content;
 
-    const isListed = listingMode === "listed" && listingStatus === "active";
-    const effectivePrice = regionalPriceLabel ?? priceLabel;
+  if (accessMode !== "locked" || hasEntitlement) return undefined;
 
-    if (isListed && effectivePrice && onBuy) {
-      return { label: effectivePrice, onBuy };
-    }
+  const isListed = listingMode === "listed" && listingStatus === "active";
+  const effectivePrice = regionalPriceLabel ?? priceLabel;
 
-    if (onUnlock) {
-      return { label: "Unlock", onBuy: onUnlock };
-    }
+  if (isListed && effectivePrice && onBuy) {
+    return { label: effectivePrice, onBuy };
+  }
+
+  if (onUnlock) {
+    return { label: "Unlock", onBuy: onUnlock };
   }
 
   return undefined;
+}
+
+export interface DerivedSongMenuAction {
+  item: PostCardMenuItem;
+  onAction: () => void;
+}
+
+type SongCommerce =
+  | { kind: "buy"; priceLabel?: string; onSelect: () => void }
+  | { kind: "download"; onSelect: () => void }
+  | { kind: "unlock"; onSelect: () => void };
+
+function getEffectiveDownloadPolicy(content: SongContent): DownloadPolicy {
+  if (content.downloadPolicy) return content.downloadPolicy;
+
+  if (content.accessMode === "public") {
+    return "stream_only";
+  }
+
+  if (content.listingMode === "listed" && content.listingStatus === "active") {
+    return "purchased_download";
+  }
+
+  return "stream_only";
+}
+
+function stemKindLabel(kind: StemKind): string {
+  switch (kind) {
+    case "instrumental":
+      return "Instrumental";
+    case "vocals":
+      return "Vocals";
+    case "drums":
+      return "Drums";
+    case "bass":
+      return "Bass";
+    case "other":
+      return "Stem";
+    default:
+      return "Stem";
+  }
+}
+
+function stemLabel(stem: StemSpec): string {
+  return stem.label ?? stemKindLabel(stem.kind);
+}
+
+function resolveStemAccessPolicy(stem: StemSpec, songPolicy: DownloadPolicy): StemAccessPolicy {
+  if (stem.accessPolicy !== "inherit") {
+    return stem.accessPolicy;
+  }
+
+  if (songPolicy === "free_download") {
+    return "free";
+  }
+
+  if (songPolicy === "purchased_download") {
+    return "purchasers_only";
+  }
+
+  return "unavailable";
+}
+
+function canDownloadStem(
+  stem: StemSpec,
+  content: SongContent,
+  songPolicy: DownloadPolicy,
+): boolean {
+  if (!stem.onDownload) return false;
+
+  const resolvedPolicy = resolveStemAccessPolicy(stem, songPolicy);
+  if (resolvedPolicy === "unavailable") return false;
+  if (resolvedPolicy === "free") return true;
+
+  return stem.accessPolicy === "inherit" && songPolicy === "purchased_download"
+    ? content.hasEntitlement === true || content.entitledStems?.includes(stem.kind) === true
+    : content.entitledStems?.includes(stem.kind) === true;
+}
+
+export function openExternalUrl(url: string) {
+  if (typeof window === "undefined") return;
+
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  if (opened) {
+    opened.opener = null;
+  }
+}
+
+function deriveSongCommerce(content: PostCardProps["content"]): SongCommerce | undefined {
+  if (content.type !== "song") return undefined;
+
+  const ageGateRequiresProof = content.ageGatePolicy === "18_plus"
+    && content.contentSafetyState === "adult"
+    && content.ageGateViewerState !== "verified_allowed";
+  if (ageGateRequiresProof) return undefined;
+
+  const isLocked = content.accessMode === "locked";
+  const isOwned = content.hasEntitlement === true;
+  const isListedActive = content.listingMode === "listed" && content.listingStatus === "active";
+  const effectivePrice = content.regionalPriceLabel ?? content.priceLabel;
+
+  if (isLocked && !isOwned && isListedActive && content.onBuy) {
+    return { kind: "buy", priceLabel: effectivePrice, onSelect: content.onBuy };
+  }
+
+  if (isLocked && !isOwned && !isListedActive && content.onUnlock) {
+    return { kind: "unlock", onSelect: content.onUnlock };
+  }
+
+  const songPolicy = getEffectiveDownloadPolicy(content);
+  const canDownloadOriginal = Boolean(
+    content.onDownload
+    && (
+      songPolicy === "free_download"
+      || (songPolicy === "purchased_download" && isOwned)
+    ),
+  );
+
+  if (canDownloadOriginal && content.onDownload) {
+    return { kind: "download", onSelect: content.onDownload };
+  }
+
+  return undefined;
+}
+
+function FooterCommerce({ commerce }: { commerce: SongCommerce }) {
+  switch (commerce.kind) {
+    case "buy":
+      return (
+        <Button
+          className="h-11 w-full px-5 text-base sm:w-auto"
+          data-post-card-interactive="true"
+          leadingIcon={<ShoppingCart className="size-5" />}
+          onClick={commerce.onSelect}
+        >
+          {commerce.priceLabel ? `Buy track · ${commerce.priceLabel}` : "Buy track"}
+        </Button>
+      );
+    case "download":
+      return (
+        <Button
+          className="h-11 w-full px-5 text-base sm:w-auto"
+          data-post-card-interactive="true"
+          leadingIcon={<DownloadSimple className="size-5" />}
+          onClick={commerce.onSelect}
+        >
+          Download
+        </Button>
+      );
+    case "unlock":
+      return (
+        <Button
+          className="h-11 w-full px-5 text-base sm:w-auto"
+          data-post-card-interactive="true"
+          leadingIcon={<Lock className="size-5" />}
+          onClick={commerce.onSelect}
+        >
+          Unlock
+        </Button>
+      );
+  }
+}
+
+export function mergePostCardMenuItems(
+  menuItems: PostCardMenuItem[] | undefined,
+  derivedActions: DerivedSongMenuAction[],
+): PostCardMenuItem[] {
+  const derivedMenuItems = derivedActions.map((action, index) => ({
+    ...action.item,
+    separatorBefore: action.item.separatorBefore || (index === 0 && Boolean(menuItems?.length)),
+  }));
+
+  return [
+    ...(menuItems ?? []),
+    ...derivedMenuItems,
+  ];
+}
+
+export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): DerivedSongMenuAction[] {
+  if (content.type !== "song") return [];
+
+  const actions: DerivedSongMenuAction[] = [];
+  if (content.annotationsUrl) {
+    const url = content.annotationsUrl;
+    actions.push({
+      item: {
+        key: "song-annotations:genius",
+        label: "View on Genius",
+        icon: <ArrowSquareOut className="size-4" />,
+      },
+      onAction: () => openExternalUrl(url),
+    });
+  }
+
+  const songPolicy = getEffectiveDownloadPolicy(content);
+  const canDownloadOriginal = Boolean(
+    content.onDownload
+    && (
+      songPolicy === "free_download"
+      || (songPolicy === "purchased_download" && content.hasEntitlement)
+    ),
+  );
+  let hasDownloadAction = false;
+  const pushDownloadAction = (item: PostCardMenuItem, onAction: () => void) => {
+    actions.push({
+      item: {
+        ...item,
+        separatorBefore: item.separatorBefore || (!hasDownloadAction && actions.length > 0),
+      },
+      onAction,
+    });
+    hasDownloadAction = true;
+  };
+
+  if (canDownloadOriginal && content.onDownload) {
+    pushDownloadAction(
+      { key: "song-download:original", label: "Download audio" },
+      content.onDownload,
+    );
+  }
+
+  for (const [index, stem] of (content.stems ?? []).entries()) {
+    if (!canDownloadStem(stem, content, songPolicy) || !stem.onDownload) continue;
+
+    pushDownloadAction(
+      {
+        key: `song-download:stem:${index}:${stem.kind}`,
+        label: `Download ${stemLabel(stem)}`,
+      },
+      stem.onDownload,
+    );
+  }
+
+  if (content.stemsBundle?.available) {
+    pushDownloadAction(
+      { key: "song-download:bundle", label: "Download stems bundle" },
+      content.stemsBundle.onDownload,
+    );
+  }
+
+  return actions;
 }
 
 function formatSourceLanguage(sourceLanguage: string | null | undefined, locale: string): string | null {
@@ -175,8 +419,20 @@ export function PostCard({
     )
   ) : null;
 
-  const unlockFromContent = deriveUnlockFromContent(content);
-  const unlock = engagement.unlock ?? unlockFromContent;
+  const videoUnlock = deriveVideoUnlock(content);
+  const unlock = content.type === "song" ? undefined : engagement.unlock ?? videoUnlock;
+  const songCommerce = deriveSongCommerce(content);
+  const songHeaderMenuActions = deriveSongHeaderMenuActions(content);
+  const effectiveMenuItems = mergePostCardMenuItems(menuItems, songHeaderMenuActions);
+  const handleMenuAction = (key: string) => {
+    const derivedAction = songHeaderMenuActions.find((action) => action.item.key === key);
+    if (derivedAction) {
+      derivedAction.onAction();
+      return;
+    }
+
+    onMenuAction?.(key);
+  };
   const isClickable = Boolean(postHref);
   const shouldShowEventUrl = event
     ? normalizeUrlForComparison(event.eventUrl) !== normalizeUrlForComparison(content.type === "link" ? content.href : undefined)
@@ -218,8 +474,8 @@ export function PostCard({
           authorNationalityBadgeLabel={authorNationalityBadgeLabel}
           byline={byline}
           identityPresentation={identityPresentation}
-          menuItems={menuItems}
-          onMenuAction={onMenuAction}
+          menuItems={effectiveMenuItems}
+          onMenuAction={handleMenuAction}
           qualifierLabels={qualifierLabels}
           saved={engagement.saved}
           viewContext={viewContext}
@@ -245,14 +501,30 @@ export function PostCard({
           </div>
         ) : null}
 
-        <PostCardEngagementBar
-          engagement={engagement}
-          unlock={unlock ? { label: unlock.label, onClick: unlock.onBuy } : undefined}
-          shareActions={shareActions}
-          onVote={onVote}
-          onComment={onComment}
-          onShare={onShare}
-        />
+        {songCommerce ? (
+          <div className="flex flex-col gap-2 pt-0.5 sm:flex-row sm:items-center sm:gap-1.5">
+            <PostCardEngagementBar
+              compact
+              className="pt-0"
+              engagement={engagement}
+              shareActions={shareActions}
+              onVote={onVote}
+              onComment={onComment}
+              onShare={onShare}
+            />
+            <div className="hidden flex-1 sm:block" />
+            <FooterCommerce commerce={songCommerce} />
+          </div>
+        ) : (
+          <PostCardEngagementBar
+            engagement={engagement}
+            unlock={unlock ? { label: unlock.label, onClick: unlock.onBuy } : undefined}
+            shareActions={shareActions}
+            onVote={onVote}
+            onComment={onComment}
+            onShare={onShare}
+          />
+        )}
       </div>
     </article>
   );

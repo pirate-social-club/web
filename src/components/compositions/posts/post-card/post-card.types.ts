@@ -16,10 +16,28 @@ export type ListingMode = "not_listed" | "listed";
 export type ListingStatus = "active" | "paused" | "sold_out" | "removed";
 export type VinylReleaseProvider = "elasticstage";
 
+export type DownloadPolicy = "stream_only" | "free_download" | "purchased_download";
+export type StemKind = "instrumental" | "vocals" | "drums" | "bass" | "other";
+export type StemAccessPolicy = "inherit" | "free" | "purchasers_only" | "unavailable";
+
 export interface VinylReleaseSpec {
   available: boolean;
   provider: VinylReleaseProvider;
   url?: string | null;
+}
+
+export interface StemSpec {
+  kind: StemKind;
+  label?: string;
+  durationLabel?: string;
+  durationMs?: number;
+  accessPolicy: StemAccessPolicy;
+  onDownload?: () => void;
+}
+
+export interface StemsBundleSpec {
+  available: boolean;
+  onDownload: () => void;
 }
 
 // Playback axis - purely UI state
@@ -136,6 +154,7 @@ export interface SongContentSpec {
   artworkSrc?: string;
   durationLabel?: string;
   durationMs?: number;
+  previewDurationMs?: number;
 
   // Playback axis
   playbackState?: PlaybackState;
@@ -162,6 +181,11 @@ export interface SongContentSpec {
   regionalPriceLabel?: string;
   hasEntitlement?: boolean; // Derived from purchase/ownership state
   vinylRelease?: VinylReleaseSpec;
+  downloadPolicy?: DownloadPolicy;
+  onDownload?: () => void;
+  stems?: StemSpec[];
+  entitledStems?: StemKind[];
+  stemsBundle?: StemsBundleSpec;
 
   // Callbacks
   onPlay?: () => void;

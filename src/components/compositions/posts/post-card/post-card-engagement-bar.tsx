@@ -20,6 +20,7 @@ export interface PostCardEngagementBarProps {
   onVote?: (direction: "up" | "down" | null) => void;
   onComment?: () => void;
   onShare?: () => void;
+  compact?: boolean;
   className?: string;
 }
 
@@ -107,6 +108,7 @@ export function PostCardEngagementBar({
   onVote,
   onComment,
   onShare,
+  compact = false,
   className,
 }: PostCardEngagementBarProps) {
   const { score, viewerVote, commentCount } = engagement;
@@ -116,12 +118,23 @@ export function PostCardEngagementBar({
     triggerNavigationTapHaptic();
     unlock.onClick();
   }, [unlock]);
+  const unlockButton = unlock ? (
+    <button
+      className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-border-soft bg-background px-4 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground"
+      onClick={handleUnlock}
+      type="button"
+      data-post-card-interactive="true"
+    >
+      <Lock className="size-[20px]" />
+      <span className="tabular-nums">{unlock.label}</span>
+    </button>
+  ) : null;
 
   return (
     <div
       className={cn(
         "flex items-center gap-1.5 pt-0.5",
-        unlock ? "w-full" : "self-start",
+        compact ? "flex-wrap self-start" : "w-full",
         className,
       )}
     >
@@ -136,21 +149,10 @@ export function PostCardEngagementBar({
         count={commentCount}
         onComment={onComment}
       />
+      {compact ? unlockButton : null}
       <SharePillMenu actions={shareActions} onFallbackShare={onShare} />
-      <div className="flex-1" />
-      {unlock && (
-        <button
-          className={cn(
-            "inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-border-soft bg-background px-4 text-base font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground",
-          )}
-          onClick={handleUnlock}
-          type="button"
-          data-post-card-interactive="true"
-        >
-          <Lock className="size-[20px]" />
-          <span className="tabular-nums">{unlock.label}</span>
-        </button>
-      )}
+      {!compact ? <div className="flex-1" /> : null}
+      {!compact ? unlockButton : null}
     </div>
   );
 }

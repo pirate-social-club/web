@@ -1,8 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Flag, Link } from "@phosphor-icons/react";
 import * as React from "react";
 
 import { PostCard } from "../../post-card";
-import type { PostCardProps, SongContentSpec } from "../../post-card.types";
+import type { PostCardMenuItem, PostCardProps, SongContentSpec } from "../../post-card.types";
+
+const basePostActions: PostCardMenuItem[] = [
+  { key: "copy-link", label: "Copy link", icon: <Link className="size-4" /> },
+  {
+    key: "report",
+    label: "Report",
+    icon: <Flag className="size-4" />,
+    destructive: true,
+    separatorBefore: true,
+  },
+];
 
 const basePost: Omit<PostCardProps, "content"> = {
   viewContext: "community",
@@ -11,8 +23,10 @@ const basePost: Omit<PostCardProps, "content"> = {
     author: { kind: "user", label: "u/kevin.tameimpala", href: "#" },
     timestampLabel: "5h",
   },
-  title: "New single - check this out",
+  title: "Just dropped this track - let me know what you think",
   engagement: { score: 891, commentCount: 63 },
+  menuItems: basePostActions,
+  onMenuAction: () => undefined,
 };
 
 const baseSong: SongContentSpec = {
@@ -84,7 +98,7 @@ export const Paused: Story = {
 };
 
 export const WithGeniusAnnotations: Story = {
-  name: "Metadata / Genius annotations",
+  name: "Metadata / Genius annotations in menu",
   render: () => (
     <PostCard
       {...basePost}
@@ -162,9 +176,9 @@ export const StoryRegisteredAssetMenu: Story = {
         artworkSrc: "https://picsum.photos/seed/pirate-story-registered/240/240",
       }}
       menuItems={[
-        { key: "view-story", label: "View on Story" },
+        ...basePostActions,
+        { key: "view-story", label: "View on Story", separatorBefore: true },
       ]}
-      onMenuAction={() => undefined}
     />
   ),
 };
@@ -187,8 +201,39 @@ export const Buffering: Story = {
 // ACCESS STATES
 // ============================================================================
 
+export const PublicStreamOnly: Story = {
+  name: "Access / Public stream-only",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Public stream, no download"
+      content={{
+        ...baseSong,
+        accessMode: "public",
+        downloadPolicy: "stream_only",
+      }}
+    />
+  ),
+};
+
+export const PublicFreeDownload: Story = {
+  name: "Access / Public free download",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Free download enabled"
+      content={{
+        ...baseSong,
+        accessMode: "public",
+        downloadPolicy: "free_download",
+        onDownload: noop,
+      }}
+    />
+  ),
+};
+
 export const LockedPreview: Story = {
-  name: "Access / Locked (30s Preview)",
+  name: "Access / Locked listed Buy",
   render: () => (
     <PostCard
       {...basePost}
@@ -196,6 +241,7 @@ export const LockedPreview: Story = {
       content={{
         ...baseSong,
         accessMode: "locked",
+        previewDurationMs: 30000,
         playbackState: "idle",
         listingMode: "listed",
         listingStatus: "active",
@@ -207,7 +253,7 @@ export const LockedPreview: Story = {
 };
 
 export const LockedOwned: Story = {
-  name: "Access / Owned",
+  name: "Access / Owned with download",
   render: () => (
     <PostCard
       {...basePost}
@@ -218,6 +264,251 @@ export const LockedOwned: Story = {
         hasEntitlement: true,
         listingMode: "listed",
         listingStatus: "active",
+        onDownload: noop,
+      }}
+    />
+  ),
+};
+
+export const LockedOwnedNoDownload: Story = {
+  name: "Access / Owned no download",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Purchased stream-only track"
+      content={{
+        ...baseSong,
+        accessMode: "locked",
+        downloadPolicy: "stream_only",
+        hasEntitlement: true,
+        listingMode: "listed",
+        listingStatus: "active",
+      }}
+    />
+  ),
+};
+
+export const LockedUnlistedUnlock: Story = {
+  name: "Access / Locked unlisted Unlock",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Private unlock fallback"
+      content={{
+        ...baseSong,
+        accessMode: "locked",
+        listingMode: "not_listed",
+        onUnlock: noop,
+      }}
+    />
+  ),
+};
+
+export const InlineBuy: Story = {
+  name: "Regression / Song commerce footer",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Locked song keeps commerce in the footer"
+      content={{
+        ...baseSong,
+        accessMode: "locked",
+        listingMode: "listed",
+        listingStatus: "active",
+        priceLabel: "$3.99",
+        onBuy: noop,
+      }}
+    />
+  ),
+};
+
+// ============================================================================
+// STEMS
+// ============================================================================
+
+export const StemsInstrumentalOnly: Story = {
+  name: "Stems / Instrumental only",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Instrumental available for download"
+      content={{
+        ...baseSong,
+        downloadPolicy: "free_download",
+        onDownload: noop,
+        stems: [
+          {
+            kind: "instrumental",
+            durationLabel: "3:47",
+            durationMs: 227000,
+            accessPolicy: "free",
+            onDownload: noop,
+          },
+        ],
+      }}
+    />
+  ),
+};
+
+export const StemsInstrumentalAndVocals: Story = {
+  name: "Stems / Instrumental + Vocals",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Purchased track with mixed stem entitlements"
+      content={{
+        ...baseSong,
+        accessMode: "locked",
+        hasEntitlement: true,
+        listingMode: "listed",
+        listingStatus: "active",
+        onDownload: noop,
+        entitledStems: ["vocals"],
+        stems: [
+          {
+            kind: "instrumental",
+            durationLabel: "3:47",
+            durationMs: 227000,
+            accessPolicy: "purchasers_only",
+            onDownload: noop,
+          },
+          {
+            kind: "vocals",
+            label: "Acapella",
+            durationLabel: "3:45",
+            durationMs: 225000,
+            accessPolicy: "purchasers_only",
+            onDownload: noop,
+          },
+        ],
+      }}
+    />
+  ),
+};
+
+export const StemsBundleAvailable: Story = {
+  name: "Stems / Bundle available",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Purchased track with stems bundle"
+      content={{
+        ...baseSong,
+        accessMode: "locked",
+        hasEntitlement: true,
+        listingMode: "listed",
+        listingStatus: "active",
+        onDownload: noop,
+        entitledStems: ["instrumental", "vocals"],
+        stems: [
+          {
+            kind: "instrumental",
+            durationLabel: "3:47",
+            durationMs: 227000,
+            accessPolicy: "inherit",
+            onDownload: noop,
+          },
+          {
+            kind: "vocals",
+            durationLabel: "3:45",
+            durationMs: 225000,
+            accessPolicy: "inherit",
+            onDownload: noop,
+          },
+        ],
+        stemsBundle: {
+          available: true,
+          onDownload: noop,
+        },
+      }}
+    />
+  ),
+};
+
+export const CommerceHeaderMenuDownloadsStems: Story = {
+  name: "Commerce / Header menu / Downloads + stems",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Owned track with downloadable versions"
+      content={{
+        ...baseSong,
+        accessMode: "locked",
+        hasEntitlement: true,
+        listingMode: "listed",
+        listingStatus: "active",
+        onDownload: noop,
+        entitledStems: ["instrumental", "vocals"],
+        stems: [
+          {
+            kind: "instrumental",
+            accessPolicy: "inherit",
+            onDownload: noop,
+          },
+          {
+            kind: "vocals",
+            label: "Acapella",
+            accessPolicy: "inherit",
+            onDownload: noop,
+          },
+        ],
+        stemsBundle: {
+          available: true,
+          onDownload: noop,
+        },
+      }}
+    />
+  ),
+};
+
+// ============================================================================
+// LAYOUT
+// ============================================================================
+
+export const LayoutCardBaseline: Story = {
+  name: "Layout / Card baseline",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseSong,
+        playbackState: "playing",
+        progressMs: 62000,
+      }}
+    />
+  ),
+};
+
+export const LayoutMobileFooterWrap: Story = {
+  name: "Layout / Mobile footer wrap",
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{
+        ...baseSong,
+        accessMode: "locked",
+        listingMode: "listed",
+        listingStatus: "active",
+        priceLabel: "$3.99",
+        onBuy: noop,
+      }}
+    />
+  ),
+};
+
+export const WaveformSeededVisual: Story = {
+  name: "Waveform / Seeded visual",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Waveform progress state"
+      content={{
+        ...baseSong,
+        playbackState: "playing",
+        progressMs: 91000,
       }}
     />
   ),

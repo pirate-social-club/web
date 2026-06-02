@@ -1,14 +1,28 @@
 import * as React from "react";
-import { ArrowSquareOut, Check, MusicNote } from "@phosphor-icons/react";
-import { Lock as FilledLockIcon, Pause as PauseIcon, Play as PlayIcon } from "@phosphor-icons/react";
+import {
+  CheckCircle,
+  Lock as FilledLockIcon,
+  MusicNote,
+  Pause as PauseIcon,
+  Play as PlayIcon,
+} from "@phosphor-icons/react";
 import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
 import { MediaControlButton } from "@/components/primitives/media-control-button";
 import { Scrubber } from "@/components/primitives/scrubber";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/primitives/tooltip";
+import { Type } from "@/components/primitives/type";
+import { Waveform } from "@/components/primitives/waveform";
 import { postCardType } from "./post-card.styles";
 import { StoryLicenseNoticeBadge, StoryRegistrationBadge } from "./post-card-story-registration";
-import type { SongContentSpec, UpstreamAttribution } from "./post-card.types";
+import type {
+  DownloadPolicy,
+  SongContentSpec,
+  UpstreamAttribution,
+} from "./post-card.types";
+
+const defaultPreviewDurationMs = 30000;
 
 export interface SongPostContentProps {
   content: SongContentSpec;
@@ -20,6 +34,7 @@ interface DerivedSongUI {
   // Core playback
   isPlayable: boolean;
   canShowPreview: boolean;
+  previewMaxMs: number | undefined;
   
   // Viewer states that affect UI
   isAgeGated: boolean;
@@ -32,6 +47,10 @@ interface DerivedSongUI {
   showPrice: boolean;
   showUnlock: boolean;
   showOwned: boolean;
+  showBuy: boolean;
+  showDownload: boolean;
+  effectiveDownloadPolicy: DownloadPolicy;
+  primaryCommerceAction: "buy" | "download" | "unlock" | "verify_age" | null;
   
   // Attributions
   showAttribution: boolean;
@@ -52,6 +71,9 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     hasEntitlement,
     songMode,
     upstreamAttributions,
+    onBuy,
+    onDownload,
+    onUnlock,
   } = content;
 
   const isAgeGated = ageGatePolicy === "18_plus" && contentSafetyState === "adult";
@@ -63,18 +85,26 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   // Commerce checks
   const isListed = listingMode === "listed";
   const isListingActive = listingStatus === "active";
+  const isListedActive = isListed && isListingActive;
   const isOwned = hasEntitlement === true;
+  const effectiveDownloadPolicy = getEffectiveDownloadPolicy(content);
   
   // Playback availability
   const isPlayable = !ageGateRequiresProof;
   const canShowPreview = isLocked && !isOwned && !ageGateRequiresProof;
+  const previewMaxMs = getPlaybackDurationMs(content, canShowPreview);
   
   const showAgeGatedArtwork = ageGateRequiresProof;
   
   // Commerce UI
   const showPrice = isListed && isListingActive && !isOwned && isLocked;
-  const showUnlock = isLocked && !isOwned && (!isListed || !isListingActive);
+  const showBuy = showPrice && Boolean(onBuy);
+  const showUnlock = isLocked && !isOwned && !isListedActive && Boolean(onUnlock);
   const showOwned = isLocked && isOwned;
+  const showDownload = Boolean(onDownload) && (
+    effectiveDownloadPolicy === "free_download"
+    || (effectiveDownloadPolicy === "purchased_download" && isOwned)
+  );
   
   // Attribution
   const showAttribution = !!(songMode === "remix" && upstreamAttributions && upstreamAttributions.length > 0);
@@ -96,18 +126,48 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     primaryAction = "play";
   }
 
+  let primaryCommerceAction: DerivedSongUI["primaryCommerceAction"] = null;
+  if (ageGateRequiresProof) {
+    primaryCommerceAction = "verify_age";
+  } else if (isLocked && !isOwned && isListedActive && onBuy) {
+    primaryCommerceAction = "buy";
+  } else if (showUnlock) {
+    primaryCommerceAction = "unlock";
+  } else if (showDownload) {
+    primaryCommerceAction = "download";
+  }
+
   return {
     isPlayable,
     canShowPreview,
+    previewMaxMs,
     isAgeGated,
     ageGateRequiresProof,
     showAgeGatedArtwork,
     showPrice,
     showUnlock,
     showOwned,
+    showBuy,
+    showDownload,
+    effectiveDownloadPolicy,
+    primaryCommerceAction,
     showAttribution,
     primaryAction,
   };
+}
+
+function getEffectiveDownloadPolicy(content: SongContentSpec): DownloadPolicy {
+  if (content.downloadPolicy) return content.downloadPolicy;
+
+  if (content.accessMode === "public") {
+    return "stream_only";
+  }
+
+  if (content.listingMode === "listed" && content.listingStatus === "active") {
+    return "purchased_download";
+  }
+
+  return "stream_only";
 }
 
 function relationshipLabel(source: UpstreamAttribution): string {
@@ -166,11 +226,26 @@ function formatTime(ms: number | undefined): string {
   return `${minutes}:${paddedSeconds}`;
 }
 
+function getPlaybackDurationMs(content: SongContentSpec, canShowPreview: boolean): number | undefined {
+  if (!canShowPreview) {
+    return content.durationMs;
+  }
+
+  if (content.previewDurationMs && content.previewDurationMs > 0) {
+    return content.previewDurationMs;
+  }
+
+  if (content.durationMs && content.durationMs > 0) {
+    return Math.min(content.durationMs, defaultPreviewDurationMs);
+  }
+
+  return defaultPreviewDurationMs;
+}
+
 export function SongPostContent({ content, className }: SongPostContentProps) {
   const ui = deriveSongUI(content);
   const {
     playbackState = "idle",
-    durationMs,
     progressMs,
     upstreamAttributions,
     onPlay,
@@ -179,39 +254,50 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
     onVerifyAge,
   } = content;
 
-  // Determine control button - smaller secondary style for preview, prominent for play
+  const previewSeconds = Math.max(1, Math.round((ui.previewMaxMs ?? defaultPreviewDurationMs) / 1000));
+  const controlButtonClassName = "size-12 border-transparent shadow-sm sm:size-16";
+  const controlIconClassName = "size-6 sm:size-7";
+
+  // Determine control button - the player owns listening only; commerce lives in the post footer.
   const getControlButton = () => {
     switch (ui.primaryAction) {
       case "pause":
         return (
-          <MediaControlButton aria-label="Pause" onClick={onPause} size="md">
-            <PauseIcon className="size-[18px]" weight="fill" />
+          <MediaControlButton aria-label="Pause" className={controlButtonClassName} onClick={onPause} size="md">
+            <PauseIcon className={controlIconClassName} weight="fill" />
           </MediaControlButton>
         );
       case "play":
         return (
-          <MediaControlButton aria-label="Play" onClick={onPlay} size="md">
-            <PlayIcon className="size-[18px]" weight="fill" />
+          <MediaControlButton aria-label="Play" className={controlButtonClassName} onClick={() => onPlay?.()} size="md">
+            <PlayIcon className={controlIconClassName} weight="fill" />
           </MediaControlButton>
         );
       case "buffering":
         return (
-          <MediaControlButton aria-label="Loading" size="md" disabled>
-            <Spinner className="size-[18px]" />
+          <MediaControlButton aria-label="Loading" className={controlButtonClassName} size="md" disabled>
+            <Spinner className="size-6" />
           </MediaControlButton>
         );
       case "preview":
         return (
-          <MediaControlButton aria-label="Play preview" onClick={onPlay} title="Preview (30s)" size="md">
-            <PlayIcon className="size-[18px]" weight="fill" />
-          </MediaControlButton>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <MediaControlButton aria-label="Play preview" className={controlButtonClassName} onClick={() => onPlay?.()} size="md">
+                  <PlayIcon className={controlIconClassName} weight="fill" />
+                </MediaControlButton>
+              </TooltipTrigger>
+              <TooltipContent>Preview ({previewSeconds}s)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         );
       case "locked":
         return null;
       default:
         return (
-          <MediaControlButton aria-label="Play" onClick={onPlay} size="md">
-            <PlayIcon className="size-[18px]" weight="fill" />
+          <MediaControlButton aria-label="Play" className={controlButtonClassName} onClick={() => onPlay?.()} size="md">
+            <PlayIcon className={controlIconClassName} weight="fill" />
           </MediaControlButton>
         );
     }
@@ -219,140 +305,129 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
 
   const derivativeSummary = ui.showAttribution ? getDerivativeSummary(upstreamAttributions) : null;
   const derivativeHref = upstreamAttributions?.find((source) => source.href)?.href;
-  const scrubberDurationMs = durationMs && durationMs > 0 ? durationMs : 100;
-  const scrubberProgressMs = clampProgressMs(progressMs, durationMs);
-  const canSeek = Boolean(onSeek && durationMs && durationMs > 0 && !ui.ageGateRequiresProof);
+  const playbackDurationMs = ui.previewMaxMs;
+  const scrubberDurationMs = playbackDurationMs && playbackDurationMs > 0 ? playbackDurationMs : 100;
+  const scrubberProgressMs = clampProgressMs(progressMs, playbackDurationMs);
+  const canSeek = Boolean(onSeek && playbackDurationMs && playbackDurationMs > 0 && !ui.ageGateRequiresProof);
+  const waveformProgressFraction = scrubberDurationMs > 0 ? scrubberProgressMs / scrubberDurationMs : 0;
+  const waveformSeed = [
+    content.title,
+    content.artist ?? "",
+    content.artworkSrc ?? "",
+    String(content.durationMs ?? content.durationLabel ?? ""),
+  ].join(":");
+  const playButton = ui.primaryAction !== "locked" ? getControlButton() : null;
+  const verifyAgeButton = ui.ageGateRequiresProof ? (
+    <Button
+      className="h-9 px-4 font-medium"
+      disabled={!onVerifyAge}
+      onClick={onVerifyAge}
+      size="sm"
+    >
+      Verify Age
+    </Button>
+  ) : null;
 
   return (
     <div className={cn("flex flex-col gap-2 text-start", className)}>
-      {/* Main song row */}
-      <div className="flex items-center gap-3">
-        {/* Artwork */}
-        <div className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted">
-          {ui.showAgeGatedArtwork ? (
-            <>
-              <div
-                aria-label={content.title}
-                className="size-full bg-muted"
-                role="img"
-              />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                <FilledLockIcon className="size-6 text-white" weight="fill" />
-              </div>
-            </>
-          ) : content.artworkSrc ? (
-            <>
+      <div className="rounded-lg border border-border-soft bg-card p-3">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+          <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted sm:size-28">
+            {ui.showAgeGatedArtwork ? (
+              <>
+                <div
+                  aria-label={content.title}
+                  className="size-full bg-muted"
+                  role="img"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                  <FilledLockIcon className="size-7 text-white" weight="fill" />
+                </div>
+              </>
+            ) : content.artworkSrc ? (
               <img
-                alt={content.title}
+                alt=""
+                aria-hidden="true"
                 className="size-full object-cover"
                 src={content.artworkSrc}
               />
-            </>
-          ) : (
-            <MusicNote className="size-5 text-muted-foreground" />
-          )}
-        </div>
-
-        {/* Info */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className={cn("min-w-0 truncate font-semibold text-foreground", postCardType.label)}>
-              {content.title}
-            </p>
-            {content.durationLabel && !ui.ageGateRequiresProof && (
-              <span className={cn("shrink-0 font-normal text-muted-foreground", postCardType.label)}>
-                ({content.durationLabel})
-              </span>
+            ) : (
+              <MusicNote className="size-7 text-muted-foreground" />
             )}
           </div>
-          {derivativeSummary && derivativeHref ? (
-            <a
-              className={cn("block truncate text-muted-foreground transition-colors hover:text-foreground", postCardType.meta)}
-              href={derivativeHref}
-            >
-              {derivativeSummary}
-            </a>
-          ) : derivativeSummary ? (
-            <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
-              {derivativeSummary}
-            </p>
+
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <div className="min-w-0">
+              <Type as="p" className="truncate font-semibold leading-tight text-foreground sm:text-lg" variant="body-strong">
+                {content.title}
+              </Type>
+              {content.artist ? (
+                <Type as="p" className="mt-1 truncate text-muted-foreground" variant="caption">
+                  {content.artist}
+                </Type>
+              ) : null}
+              {derivativeSummary && derivativeHref ? (
+                <a
+                  className={cn("mt-1 block truncate text-muted-foreground transition-colors hover:text-foreground", postCardType.meta)}
+                  href={derivativeHref}
+                >
+                  {derivativeSummary}
+                </a>
+              ) : derivativeSummary ? (
+                <p className={cn("mt-1 truncate text-muted-foreground", postCardType.meta)}>
+                  {derivativeSummary}
+                </p>
+              ) : null}
+            </div>
+
+            {!ui.ageGateRequiresProof ? (
+              <>
+                <Waveform
+                  className="mt-0.5"
+                  height={28}
+                  progressFraction={waveformProgressFraction}
+                  seed={waveformSeed}
+                />
+                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+                  <span className={cn("w-12 tabular-nums text-muted-foreground", postCardType.meta)}>
+                    {formatTime(scrubberProgressMs)}
+                  </span>
+                  <Scrubber
+                    ariaLabel="Track position"
+                    className={!canSeek ? "opacity-100" : undefined}
+                    disabled={!canSeek}
+                    max={scrubberDurationMs}
+                    onChange={(next) => onSeek?.(Math.min(next, scrubberDurationMs))}
+                    showThumb={playbackState === "playing" || playbackState === "paused"}
+                    value={scrubberProgressMs}
+                  />
+                  <span className={cn("w-12 text-end tabular-nums text-muted-foreground", postCardType.meta)}>
+                    {playbackDurationMs && playbackDurationMs > 0 ? formatTime(playbackDurationMs) : "--:--"}
+                  </span>
+                </div>
+              </>
+            ) : null}
+          </div>
+
+          {playButton || verifyAgeButton ? (
+            <div className="flex shrink-0 items-center justify-end">
+              {playButton ?? verifyAgeButton}
+            </div>
           ) : null}
-          {content.annotationsUrl && (
-            <a
-              className={cn(
-                "mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-background/40 px-3 py-1 font-medium text-foreground transition-colors hover:border-foreground/40 hover:bg-foreground/5",
-                postCardType.meta,
-              )}
-              href={content.annotationsUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              <span className="truncate">View on Genius</span>
-              <ArrowSquareOut className="size-3.5 shrink-0" />
-            </a>
-          )}
         </div>
 
-        {ui.primaryAction !== "locked" ? (
-          <div className="flex shrink-0 items-center">
-            {getControlButton()}
+        {ui.showOwned ? (
+          <div className="mt-2 flex justify-end">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-background px-2.5 py-1 text-base font-medium text-muted-foreground">
+              <CheckCircle className="size-4 text-primary" weight="fill" />
+              Owned
+            </span>
           </div>
         ) : null}
       </div>
 
-      {!ui.ageGateRequiresProof ? (
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-          <span className={cn("w-14 tabular-nums text-muted-foreground", postCardType.meta)}>
-            {formatTime(scrubberProgressMs)}
-          </span>
-          <Scrubber
-            ariaLabel="Track position"
-            className={!canSeek ? "opacity-100" : undefined}
-            disabled={!canSeek}
-            max={scrubberDurationMs}
-            onChange={(next) => onSeek?.(next)}
-            showThumb={playbackState === "playing" || playbackState === "paused"}
-            value={scrubberProgressMs}
-          />
-          <span className={cn("w-14 text-end tabular-nums text-muted-foreground", postCardType.meta)}>
-            {durationMs && durationMs > 0 ? formatTime(durationMs) : "--:--"}
-          </span>
-        </div>
-      ) : null}
-
       <StoryRegistrationBadge status={content.storyRegistration} />
       <StoryLicenseNoticeBadge notice={content.storyLicenseNotice} />
-
-      {ui.showOwned && (
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 font-medium text-success",
-            postCardType.label,
-          )}
-        >
-          <Check className="size-4" weight="bold" />
-          <span>Unlocked</span>
-        </span>
-      )}
-      {ui.isAgeGated && ui.ageGateRequiresProof && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
-          <div className="flex min-w-0 flex-1 items-center text-muted-foreground">
-            <span className={cn("truncate", postCardType.label)}>
-              Prove you're 18+ to listen
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center">
-            <Button
-              size="sm"
-              className="h-8 px-4 font-medium"
-              onClick={onVerifyAge}
-              disabled={!onVerifyAge}
-            >
-              Verify Age
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

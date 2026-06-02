@@ -1,15 +1,112 @@
 import "@/test/setup-runtime";
 
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import type { ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types";
 import { UiLocaleProvider } from "@/lib/ui-locale";
 
-import { PostCard } from "./post-card";
+import { deriveSongHeaderMenuActions, mergePostCardMenuItems, openExternalUrl, PostCard } from "./post-card";
+import type { PostCardMenuItem, SongContentSpec } from "./post-card.types";
+
+function withWindow(value: unknown, callback: () => void) {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value,
+  });
+
+  try {
+    callback();
+  } finally {
+    if (descriptor) {
+      Object.defineProperty(globalThis, "window", descriptor);
+    } else {
+      Reflect.deleteProperty(globalThis, "window");
+    }
+  }
+}
 
 describe("PostCard", () => {
+  test("opens external URLs with noopener noreferrer and clears opener", () => {
+    const opened = { opener: {} };
+    const open = mock(() => opened);
+
+    withWindow({ open }, () => {
+      openExternalUrl("https://genius.com/34172986");
+    });
+
+    expect(open).toHaveBeenCalledWith("https://genius.com/34172986", "_blank", "noopener,noreferrer");
+    expect(opened.opener).toBeNull();
+  });
+
+  test("openExternalUrl tolerates missing window and blocked popups", () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+    Reflect.deleteProperty(globalThis, "window");
+
+    try {
+      expect(() => openExternalUrl("https://genius.com/34172986")).not.toThrow();
+    } finally {
+      if (descriptor) {
+        Object.defineProperty(globalThis, "window", descriptor);
+      }
+    }
+
+    const open = mock(() => null);
+    withWindow({ open }, () => {
+      expect(() => openExternalUrl("https://genius.com/34172986")).not.toThrow();
+    });
+
+    expect(open).toHaveBeenCalledWith("https://genius.com/34172986", "_blank", "noopener,noreferrer");
+  });
+
+  test("merges song annotations and download actions into post options in order", () => {
+    const baseItems: PostCardMenuItem[] = [
+      { key: "copy-link", label: "Copy link" },
+      { key: "report", label: "Report", separatorBefore: true },
+    ];
+    const song: SongContentSpec = {
+      type: "song",
+      accessMode: "public",
+      annotationsUrl: "https://genius.com/34172986",
+      downloadPolicy: "free_download",
+      entitledStems: ["instrumental", "vocals"],
+      hasEntitlement: true,
+      onDownload: () => undefined,
+      stems: [
+        { accessPolicy: "free", kind: "instrumental", onDownload: () => undefined },
+        { accessPolicy: "free", kind: "vocals", onDownload: () => undefined },
+      ],
+      stemsBundle: {
+        available: true,
+        onDownload: () => undefined,
+      },
+      title: "Midnight Waves",
+    };
+
+    const mergedItems = mergePostCardMenuItems(baseItems, deriveSongHeaderMenuActions(song));
+
+    expect(mergedItems.map((item) => item.label)).toEqual([
+      "Copy link",
+      "Report",
+      "View on Genius",
+      "Download audio",
+      "Download Instrumental",
+      "Download Vocals",
+      "Download stems bundle",
+    ]);
+    expect(mergedItems.map((item) => Boolean(item.separatorBefore))).toEqual([
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+    ]);
+  });
+
   test("renders date-only event metadata compactly without fake midnight times", () => {
     const markup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

@@ -34,6 +34,45 @@ describe("deriveSongUI", () => {
     expect(ui.showUnlock).toBe(false);
   });
 
+  test("defaults public songs to stream-only unless free download is explicit", () => {
+    const publicUi = deriveSongUI(baseSong);
+    const downloadableUi = deriveSongUI({
+      ...baseSong,
+      downloadPolicy: "free_download",
+      onDownload: () => {},
+    });
+
+    expect(publicUi.effectiveDownloadPolicy).toBe("stream_only");
+    expect(publicUi.showDownload).toBe(false);
+    expect(downloadableUi.effectiveDownloadPolicy).toBe("free_download");
+    expect(downloadableUi.showDownload).toBe(true);
+    expect(downloadableUi.showOwned).toBe(false);
+  });
+
+  test("derives buy for listed locked songs and download for owned songs", () => {
+    const listedUi = deriveSongUI({
+      ...baseSong,
+      accessMode: "locked",
+      listingMode: "listed",
+      listingStatus: "active",
+      onBuy: () => {},
+      priceLabel: "$3.99",
+    });
+    const ownedUi = deriveSongUI({
+      ...baseSong,
+      accessMode: "locked",
+      hasEntitlement: true,
+      listingMode: "listed",
+      listingStatus: "active",
+      onDownload: () => {},
+    });
+
+    expect(listedUi.effectiveDownloadPolicy).toBe("purchased_download");
+    expect(listedUi.primaryCommerceAction).toBe("buy");
+    expect(ownedUi.primaryCommerceAction).toBe("download");
+    expect(ownedUi.showOwned).toBe(true);
+  });
+
   test("requires age proof until the viewer is verified allowed", () => {
     const lockedUi = deriveSongUI({
       ...baseSong,
@@ -86,9 +125,29 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("Track position");
     expect(markup).toContain("0:45");
     expect(markup).toContain("3:00");
+    expect(markup).not.toContain("(3:00)");
   });
 
-  test("renders Genius link as an external pill", () => {
+  test("uses preview duration for locked unowned songs", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          accessMode: "locked",
+          durationMs: 227000,
+          listingMode: "listed",
+          listingStatus: "active",
+          onBuy: () => {},
+          previewDurationMs: 30000,
+        },
+      }),
+    );
+
+    expect(markup).toContain("0:30");
+    expect(markup).not.toContain("3:47");
+  });
+
+  test("keeps Genius annotations out of the compact song player", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -98,11 +157,41 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("View on Genius");
-    expect(markup).toContain("rounded-full");
-    expect(markup).toContain('href="https://genius.com/34172986"');
-    expect(markup).toContain('target="_blank"');
-    expect(markup).toContain('rel="noreferrer"');
+    expect(markup).not.toContain("View on Genius");
+    expect(markup).not.toContain('href="https://genius.com/34172986"');
+  });
+
+  test("keeps download actions out of the compact song player", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          downloadPolicy: "free_download",
+          onDownload: () => {},
+        },
+      }),
+    );
+
+    expect(markup).not.toContain("Download");
+    expect(markup).not.toContain("Unlocked");
+  });
+
+  test("keeps owned download state out of the compact song player", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          accessMode: "locked",
+          hasEntitlement: true,
+          listingMode: "listed",
+          listingStatus: "active",
+          onDownload: () => {},
+        },
+      }),
+    );
+
+    expect(markup).not.toContain("Download");
+    expect(markup).not.toContain("Unlocked");
   });
 
   test("does not render completed Story registration status", () => {

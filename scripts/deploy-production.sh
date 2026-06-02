@@ -271,6 +271,7 @@ log "verify production"
   --scope prod \
   --expected-web-sha "$WEB_SHA" \
   --expected-api-sha "$API_SHA" \
-  --expected-operator-sha "$OPERATOR_SHA"
+  --expected-operator-sha "$OPERATOR_SHA" \
+  --retry-for 120
 
 log "production deploy complete"

@@ -7,9 +7,50 @@ import type {
 } from "@/app/authenticated-helpers/song-commerce";
 import type { SongPresentationOptions } from "@/app/authenticated-helpers/post-presentation-types";
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
+import { resolveApiUrl } from "@/lib/api/base-url";
 import { buildStoryExplorerIpAssetUrl } from "@/lib/story/story-portal";
 
 type StoryRoyaltyAsset = NonNullable<SongPresentationOptions["asset"]>;
+type DownloadableAudioKind = "original" | "instrumental" | "vocals";
+type DownloadableAudio = {
+  kind?: string | null;
+  storage_ref?: string | null;
+  mime_type?: string | null;
+  size_bytes?: number | null;
+  duration_ms?: number | null;
+  filename?: string | null;
+};
+
+function openDownloadUrl(path: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const opened = window.open(resolveApiUrl(path), "_blank", "noopener,noreferrer");
+  if (opened) {
+    opened.opener = null;
+  }
+}
+
+function normalizeDownloadableAudio(postResponse: ApiPost): Map<DownloadableAudioKind, DownloadableAudio> {
+  const items = (postResponse.song_presentation as { downloadable_audio?: DownloadableAudio[] | null } | null | undefined)
+    ?.downloadable_audio;
+  const normalized = new Map<DownloadableAudioKind, DownloadableAudio>();
+  if (!Array.isArray(items)) {
+    return normalized;
+  }
+
+  for (const item of items) {
+    if (
+      (item.kind === "original" || item.kind === "instrumental" || item.kind === "vocals")
+      && typeof item.storage_ref === "string"
+      && item.storage_ref.trim()
+    ) {
+      normalized.set(item.kind, item);
+    }
+  }
+
+  return normalized;
+}
 
 function formatStoryRegistrationFailure(error: string | null | undefined): string {
   const normalized = error?.trim() ?? "";
@@ -224,6 +265,27 @@ export function toSongPostContent(
   const playbackProgress = playbackDescriptor && playback
     ? playback.getPlaybackProgress(playbackDescriptor.key)
     : undefined;
+  const downloadableAudio = normalizeDownloadableAudio(postResponse);
+  const downloadableOriginal = downloadableAudio.get("original");
+  const downloadableStems: SongContentSpec["stems"] = [];
+  const instrumental = downloadableAudio.get("instrumental");
+  if (instrumental?.storage_ref) {
+    downloadableStems.push({
+      kind: "instrumental",
+      accessPolicy: "free",
+      durationMs: instrumental.duration_ms ?? undefined,
+      onDownload: () => openDownloadUrl(instrumental.storage_ref ?? ""),
+    });
+  }
+  const vocals = downloadableAudio.get("vocals");
+  if (vocals?.storage_ref) {
+    downloadableStems.push({
+      kind: "vocals",
+      accessPolicy: "free",
+      durationMs: vocals.duration_ms ?? undefined,
+      onDownload: () => openDownloadUrl(vocals.storage_ref ?? ""),
+    });
+  }
   return {
     type: "song",
     accessMode: post.access_mode ?? "public",
@@ -241,6 +303,10 @@ export function toSongPostContent(
       ? "paused"
       : undefined,
     onBuy: songOptions?.onBuy,
+    downloadPolicy: downloadableOriginal ? "free_download" : undefined,
+    onDownload: downloadableOriginal?.storage_ref ? () => openDownloadUrl(downloadableOriginal.storage_ref ?? "") : undefined,
+    stems: downloadableStems.length ? downloadableStems : undefined,
+    entitledStems: downloadableStems.map((stem) => stem.kind),
     onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,
     onPlay: playbackDescriptor && playback ? () => void playback.playTrack(playbackDescriptor) : undefined,
     onSeek: playbackDescriptor && playback ? (progressMs) => void playback.seekTrack(playbackDescriptor, progressMs) : undefined,

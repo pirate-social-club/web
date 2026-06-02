@@ -77,6 +77,7 @@ export function gate(
       membership_gate_summaries: requirements,
       ...overrides,
     }, requirements),
+    gateMatchMode: options.gateMatchMode ?? null,
     preview: {
       id: "community-1",
       display_name: "Test Community",

@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildDerivativeSourceSearchOptions, derivativeSourceToComposerReference } from "./create-post-state";
+import {
+  buildDerivativeSourceSearchOptions,
+  buildLiveDerivativeSourceSearchOptions,
+  derivativeSourceToComposerReference,
+} from "./create-post-state";
 import type { ApiDerivativeSource } from "@/lib/api/client-api-types";
 
 describe("create post derivative source search", () => {
@@ -18,6 +22,14 @@ describe("create post derivative source search", () => {
       kind: "song",
       scope: "global",
       q: null,
+      limit: 25,
+    });
+  });
+
+  test("requests global derivative sources for live room setlists", () => {
+    expect(buildLiveDerivativeSourceSearchOptions()).toEqual({
+      kind: "live",
+      scope: "global",
       limit: 25,
     });
   });

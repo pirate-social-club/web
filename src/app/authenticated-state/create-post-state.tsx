@@ -118,6 +118,18 @@ export function buildDerivativeSourceSearchOptions(query: string | null | undefi
   };
 }
 
+export function buildLiveDerivativeSourceSearchOptions(): {
+  kind: "live";
+  scope: "global";
+  limit: 25;
+} {
+  return {
+    kind: "live",
+    scope: "global",
+    limit: 25,
+  };
+}
+
 export { buildLiveRoomRequest } from "@/app/authenticated-helpers/create-post-submit/live";
 
 export function buildLiveRoomFreedomLaunchHref(input: {
@@ -386,7 +398,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       return () => { cancelled = true; };
     }
 
-    void api.communities.listDerivativeSources(communityId, { kind: "live", limit: 25 })
+    void api.communities.listDerivativeSources(communityId, buildLiveDerivativeSourceSearchOptions())
       .then((result) => {
         if (cancelled) return;
         const trackOptions = result.items.map((source) => derivativeSourceToComposerReference(source));

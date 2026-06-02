@@ -396,6 +396,61 @@ describe("post presentation songs", () => {
     expect(content.durationMs).toBe(123456);
   });
 
+  test("maps public downloadable song audio into direct download actions", () => {
+    const post = createSongPost();
+    post.song_presentation = {
+      title: "Canonical track title",
+      cover_art_ref: "https://media.test/cover.jpg",
+      duration_ms: 123456,
+      downloadable_audio: [
+        {
+          kind: "original",
+          storage_ref: "/media/song-original.mp3",
+          mime_type: "audio/mpeg",
+        },
+        {
+          kind: "instrumental",
+          storage_ref: "/media/song-instrumental.mp3",
+          mime_type: "audio/mpeg",
+          duration_ms: 123456,
+        },
+        {
+          kind: "vocals",
+          storage_ref: "/media/song-vocals.mp3",
+          mime_type: "audio/mpeg",
+          duration_ms: 120000,
+        },
+      ],
+    } as NonNullable<LocalizedPostResponse["song_presentation"]>;
+
+    const content = toCommunityPostContent(post);
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.downloadPolicy).toBe("free_download");
+    expect(typeof content.onDownload).toBe("function");
+    expect(content.stems?.map((stem) => ({
+      kind: stem.kind,
+      accessPolicy: stem.accessPolicy,
+      durationMs: stem.durationMs,
+      hasDownload: Boolean(stem.onDownload),
+    }))).toEqual([
+      {
+        kind: "instrumental",
+        accessPolicy: "free",
+        durationMs: 123456,
+        hasDownload: true,
+      },
+      {
+        kind: "vocals",
+        accessPolicy: "free",
+        durationMs: 120000,
+        hasDownload: true,
+      },
+    ]);
+    expect(content.entitledStems).toEqual(["instrumental", "vocals"]);
+  });
+
   test("maps derivative source summaries into song card content", () => {
     const post = createSongPost({
       rights_basis: "derivative",

@@ -107,6 +107,7 @@ export interface CommunitySidebarProps {
   requirements?: string[];
   requirementsMode?: "all" | "any";
   gates?: CommunitySidebarGateItem[];
+  hasActionTimeCheck?: boolean;
   referenceLinks?: CommunitySidebarReferenceLink[];
   rules?: CommunitySidebarRule[];
 }

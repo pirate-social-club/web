@@ -113,16 +113,6 @@ function GateRow({ item, mode }: { item: CommunitySidebarGateItem; mode?: "all" 
   );
 }
 
-function OrDivider({ label }: { label: string }) {
-  return (
-    <div className="pl-12">
-      <Type as="span" className="text-muted-foreground/70" variant="overline">
-        {label}
-      </Type>
-    </div>
-  );
-}
-
 export interface CommunitySidebarGatesProps {
   className?: string;
   items: CommunitySidebarGateItem[];
@@ -139,33 +129,23 @@ export function CommunitySidebarGates({
 
   if (items.length === 0) return null;
 
-  const showOrDividers = mode === "any" && items.length > 1;
-
   const subtext =
-    mode === "any"
-      ? copy.anyModeSubtext
-      : mode === "all"
-        ? copy.allModeSubtext
-        : null;
+    items.length === 1
+      ? copy.joinSingleNote
+      : mode === "any"
+        ? copy.joinAnyNote
+        : copy.joinAllNote;
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      {subtext && items.length > 1 && (
-        <Type
-          as="p"
-          variant="caption"
-        >
-          {subtext}
-        </Type>
-      )}
+      <Type as="p" variant="caption">
+        {subtext}
+      </Type>
 
       <div className="flex flex-col">
         {items.map((item, index) => (
           <React.Fragment key={`${item.gateType}-${item.label}-${index}`}>
             <GateRow item={item} mode={mode} />
-            {showOrDividers && index < items.length - 1 && (
-              <OrDivider label={copy.orDivider} />
-            )}
           </React.Fragment>
         ))}
       </div>

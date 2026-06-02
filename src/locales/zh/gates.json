@@ -102,9 +102,18 @@
   },
   "sidebar": {
     "accessGatesTitle": "访问门槛",
+    "gateTitle": "门槛",
+    "gatesTitle": "门槛",
     "allTitle": "加入要求",
     "anyTitle": "加入方式",
     "orDivider": "或",
+    "joinSingleNote": "加入此社区需要满足以下要求：",
+    "joinAnyNote": "加入此社区需要满足以下任意一项：",
+    "joinAllNote": "加入此社区需要满足以下所有要求：",
+    "participationTitle": "参与",
+    "participationMayNote": "可能需要浏览器检查。",
+    "participationRequireNote": "需要浏览器检查。",
+    "participationSkipNote": "已验证用户可以跳过此检查。",
     "anyModeSubtext": "完成以下任意一项",
     "allModeSubtext": "完成以下所有项"
   },

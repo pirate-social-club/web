@@ -114,6 +114,32 @@ export const RequirementsOr: Story = {
   },
 };
 
+export const RequirementsOrWithPowFallback: Story = {
+  name: "Gates / OR mode with browser check",
+  args: {
+    description: "A community with durable verification and an action-time fallback.",
+    followerCount: 5400,
+    memberCount: 890,
+    requirementsMode: "any",
+    hasActionTimeCheck: true,
+    gates: [
+      { gateType: "nationality", label: "Georgia nationality", provider: null, status: "unknown" },
+      { gateType: "unique_human", label: "Palm scan", provider: "very", status: "unknown" },
+    ],
+  },
+};
+
+export const ProofOfWorkOnly: Story = {
+  name: "Gates / Browser check only",
+  args: {
+    description: "A community that uses action-time browser checks.",
+    followerCount: 5400,
+    memberCount: 890,
+    hasActionTimeCheck: true,
+    gates: [],
+  },
+};
+
 export const RequirementsSingle: Story = {
   name: "Gates / Single requirement",
   args: {

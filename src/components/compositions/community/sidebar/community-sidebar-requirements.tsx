@@ -20,20 +20,21 @@ export function CommunitySidebarRequirements({
 }: CommunitySidebarRequirementsProps) {
   const { locale } = useUiLocale();
   const gateCopy = getLocaleMessages(locale, "gates");
-  const header =
-    mode === "any"
-      ? gateCopy.matchModeHeader.anyRequired
-      : gateCopy.matchModeHeader.allRequired;
+  const copy = gateCopy.sidebar;
+  const note =
+    items.length === 1
+      ? copy.joinSingleNote
+      : mode === "any"
+        ? copy.joinAnyNote
+        : copy.joinAllNote;
 
   if (items.length === 0) return null;
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      {mode && items.length > 1 && (
-        <Type as="p" className="uppercase text-muted-foreground/70" variant="overline">
-          {header}
-        </Type>
-      )}
+      <Type as="p" variant="caption">
+        {note}
+      </Type>
       <ul className="list-disc space-y-1.5 ps-5 text-base leading-snug text-muted-foreground">
         {items.map((item) => (
           <li key={item}>{item}</li>

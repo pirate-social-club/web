@@ -175,6 +175,10 @@ export function isJoinSurfaceGate(gate: Pick<MembershipGateSummary, "gate_type">
   return gate.gate_type !== "altcha_pow";
 }
 
+export function hasActionTimeCheck(gates: Array<Pick<MembershipGateSummary, "gate_type">> | null | undefined): boolean {
+  return (gates ?? []).some((gate) => gate.gate_type === "altcha_pow");
+}
+
 export function formatGateRequirement(
   gate: MembershipGateSummary,
   options?: { audience?: IdentityGateAudience; locale?: string | null; provider?: RequirementProviderContext },

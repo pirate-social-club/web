@@ -10,7 +10,7 @@ import type { CommunitySidebarGateItem, CommunitySidebarRoleHolder, CommunitySid
 import type { CommunityDefaultAgeGatePolicy } from "@/lib/community-access-types";
 import { resolveCommunityLocalizedText } from "@/lib/community-localization";
 import { getCountryDisplayName as getLocalizedCountryDisplayName } from "@/lib/countries";
-import { getRequiredActionCapabilities, isJoinSurfaceGate } from "@/lib/identity-gates";
+import { getRequiredActionCapabilities, hasActionTimeCheck, isJoinSurfaceGate } from "@/lib/identity-gates";
 import { flattenGatePolicyAtoms, getGatePolicyMatchMode } from "@/lib/gate-policy-utils";
 
 type SidebarGateSummary = Pick<
@@ -352,6 +352,7 @@ export function buildCommunitySidebar(community: ApiCommunity, locale?: string |
       locale,
       eligibility,
     }),
+    hasActionTimeCheck: hasActionTimeCheck(gateSummaries),
     requirementsMode: getGatePolicyMatchMode(community.gate_policy),
     referenceLinks: community.reference_links?.map((link) => ({
       communityReferenceLinkId: link.community_reference_link,
@@ -462,6 +463,7 @@ export function buildCommunityPreviewSidebar(preview: ApiCommunityPreview, local
       locale,
       eligibility,
     }),
+    hasActionTimeCheck: hasActionTimeCheck(preview.membership_gate_summaries),
     requirementsMode: preview.gate_match_mode ?? undefined,
     referenceLinks: preview.reference_links?.map((link) => ({
       communityReferenceLinkId: link.community_reference_link,

@@ -154,6 +154,7 @@ describe("buildCommunityPreviewSidebar", () => {
     });
 
     expect(sidebar.requirementsMode).toBe("any");
+    expect(sidebar.hasActionTimeCheck).toBe(true);
   });
 });
 

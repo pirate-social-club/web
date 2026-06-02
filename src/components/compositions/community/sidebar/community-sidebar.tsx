@@ -20,6 +20,7 @@ import { CommunitySidebarFlairs } from "./community-sidebar-flairs";
 import { CommunitySidebarLinks } from "./community-sidebar-links";
 import { CommunitySidebarRoleHolderComponent } from "./community-sidebar-role-holder";
 import { CommunitySidebarGates } from "./community-sidebar-gates";
+import { CommunitySidebarParticipation } from "./community-sidebar-participation";
 import { CommunitySidebarRequirements } from "./community-sidebar-requirements";
 import { CommunitySidebarRules } from "./community-sidebar-rules";
 import type { CommunitySidebarProps } from "./community-sidebar.types";
@@ -90,6 +91,7 @@ function CommunitySidebarSections({
   requirements,
   requirementsMode,
   gates,
+  hasActionTimeCheck,
   referenceLinks,
   rules,
   showDescriptionSection = false,
@@ -107,6 +109,7 @@ function CommunitySidebarSections({
   | "requirements"
   | "requirementsMode"
   | "gates"
+  | "hasActionTimeCheck"
   | "referenceLinks"
   | "rules"
   | "store"
@@ -125,6 +128,9 @@ function CommunitySidebarSections({
     .filter((l) => l.linkStatus === "active")
     .sort((a, b) => a.position - b.position);
   const activeRequirements = (requirements ?? []).filter((requirement) => requirement.trim().length > 0);
+  const visibleGateCount = gates ? gates.length : activeRequirements.length;
+  const hasDurableGates = visibleGateCount > 0;
+  const gateTitle = visibleGateCount === 1 ? gatesCopy.gateTitle : gatesCopy.gatesTitle;
 
   const hasFlairs =
     flairPolicy?.flairEnabled === true &&
@@ -200,13 +206,13 @@ function CommunitySidebarSections({
 
       <Accordion
         className="border-b-0"
-        defaultValue={["gates", "links", "rules", "tags"]}
+        defaultValue={["gates", "participation", "links", "rules", "tags"]}
         type="multiple"
       >
         {gates && gates.length > 0 && (
           <AccordionItem className="border-b-0" value="gates">
             <AccordionTrigger className={SECTION_LABEL}>
-              {requirementsMode === "any" ? gatesCopy.anyTitle : gatesCopy.allTitle}
+              {gateTitle}
             </AccordionTrigger>
             <AccordionContent className="pb-0">
               <CommunitySidebarGates items={gates} mode={requirementsMode} />
@@ -217,7 +223,7 @@ function CommunitySidebarSections({
         {!gates && activeRequirements.length > 0 && (
           <AccordionItem className="border-b-0" value="gates">
             <AccordionTrigger className={SECTION_LABEL}>
-              {requirementsMode === "any" ? gatesCopy.anyTitle : gatesCopy.allTitle}
+              {gateTitle}
             </AccordionTrigger>
             <AccordionContent className="pb-0">
               <CommunitySidebarRequirements
@@ -227,6 +233,17 @@ function CommunitySidebarSections({
             </AccordionContent>
           </AccordionItem>
         )}
+
+        {hasActionTimeCheck ? (
+          <AccordionItem className="border-b-0" value="participation">
+            <AccordionTrigger className={SECTION_LABEL}>
+              {gatesCopy.participationTitle}
+            </AccordionTrigger>
+            <AccordionContent className="pb-0">
+              <CommunitySidebarParticipation hasDurableGates={hasDurableGates} />
+            </AccordionContent>
+          </AccordionItem>
+        ) : null}
 
         {activeLinks.length > 0 && (
           <AccordionItem className="border-b-0" value="links">
@@ -274,6 +291,7 @@ export function CommunitySidebarDetails({
   requirements,
   requirementsMode,
   gates,
+  hasActionTimeCheck,
   referenceLinks,
   rules,
   store,
@@ -291,6 +309,7 @@ export function CommunitySidebarDetails({
   | "requirements"
   | "requirementsMode"
   | "gates"
+  | "hasActionTimeCheck"
   | "referenceLinks"
   | "rules"
   | "store"
@@ -311,6 +330,7 @@ export function CommunitySidebarDetails({
           requirements={requirements}
           requirementsMode={requirementsMode}
           gates={gates}
+          hasActionTimeCheck={hasActionTimeCheck}
           rules={rules}
           store={store}
           showDescriptionSection
@@ -335,6 +355,7 @@ export function CommunitySidebar({
   requirements,
   requirementsMode,
   gates,
+  hasActionTimeCheck,
   referenceLinks,
   rules,
   store,
@@ -371,6 +392,7 @@ export function CommunitySidebar({
         requirements={requirements}
         requirementsMode={requirementsMode}
         gates={gates}
+        hasActionTimeCheck={hasActionTimeCheck}
         rules={rules}
         store={store}
       />

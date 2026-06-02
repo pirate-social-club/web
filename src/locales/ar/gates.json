@@ -102,9 +102,18 @@
   },
   "sidebar": {
     "accessGatesTitle": "بوابات الوصول",
+    "gateTitle": "بوابة",
+    "gatesTitle": "بوابات",
     "allTitle": "متطلبات الانضمام",
     "anyTitle": "طرق الانضمام",
     "orDivider": "أو",
+    "joinSingleNote": "للانضمام إلى هذا المجتمع، يلزم ما يلي:",
+    "joinAnyNote": "للانضمام إلى هذا المجتمع، يلزم واحد مما يلي:",
+    "joinAllNote": "للانضمام إلى هذا المجتمع، يلزم كل ما يلي:",
+    "participationTitle": "المشاركة",
+    "participationMayNote": "قد يلزم فحص المتصفح.",
+    "participationRequireNote": "يلزم فحص المتصفح.",
+    "participationSkipNote": "يمكن للمستخدمين الموثقين تخطي هذا الفحص.",
     "anyModeSubtext": "أكمل واحدًا مما يلي",
     "allModeSubtext": "أكمل كل ما يلي"
   },

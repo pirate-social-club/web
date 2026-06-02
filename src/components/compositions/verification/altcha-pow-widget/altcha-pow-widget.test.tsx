@@ -12,6 +12,50 @@ afterEach(() => {
 });
 
 describe("AltchaPowWidget", () => {
+  test("renders loading state inline without card framing", () => {
+    const { container, getByText } = render(
+      <AltchaPowWidget
+        action="community:com_test"
+        challengeLoader={() => new Promise(() => undefined)}
+        onPayloadChange={() => undefined}
+        scope="post_create"
+      />,
+    );
+
+    expect(getByText("Preparing proof-of-work check\u2026")).toBeTruthy();
+    expect(container.innerHTML).not.toContain("rounded");
+    expect(container.innerHTML).not.toContain("border");
+    expect(container.innerHTML).not.toContain("shadow");
+  });
+
+  test("runs the challenge as an invisible widget with inline progress", async () => {
+    const challengeLoader = mock(async () => ({
+      algorithm: "SHA-256",
+      challenge: "challenge",
+      maxnumber: 100,
+      salt: "salt",
+      signature: "signature",
+    }));
+
+    const { container, getByText } = render(
+      <AltchaPowWidget
+        action="community:com_test"
+        challengeLoader={challengeLoader}
+        onPayloadChange={() => undefined}
+        scope="post_create"
+      />,
+    );
+
+    await waitFor(() => expect(getByText("Running proof-of-work check\u2026")).toBeTruthy());
+
+    const widget = container.querySelector("altcha-widget");
+    expect(widget?.getAttribute("display")).toBe("invisible");
+    expect(widget?.getAttribute("auto")).toBe("off");
+    expect(container.innerHTML).not.toContain("rounded");
+    expect(container.innerHTML).not.toContain("border");
+    expect(container.innerHTML).not.toContain("shadow");
+  });
+
   test("does not request a new challenge when the payload callback identity changes", async () => {
     const challengeLoader = mock(async () => ({
       algorithm: "SHA-256",

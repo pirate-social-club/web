@@ -103,7 +103,12 @@ function VideoAttachmentPreview({
         />
       ) : null}
 
-      <div className="absolute inset-0 grid place-items-center bg-black/10 transition-colors group-hover:bg-black/20">
+      <div
+        className={cn(
+          "absolute inset-0 grid place-items-center bg-black/10 transition-[background-color,opacity] group-hover:bg-black/20 group-hover:opacity-100 group-focus-visible:opacity-100",
+          isPlaying ? "opacity-0" : "opacity-100",
+        )}
+      >
         <span className="grid size-14 place-items-center rounded-full bg-background/85 text-foreground shadow-sm backdrop-blur">
           {isPlaying ? (
             <Pause className="size-7" weight="fill" />

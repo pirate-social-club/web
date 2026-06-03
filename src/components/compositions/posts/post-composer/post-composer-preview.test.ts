@@ -26,6 +26,30 @@ describe("buildPostComposerPreviewContent", () => {
     });
   });
 
+  test("treats paid video publish previews as creator-owned and playable", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "paid",
+      attachment: {
+        kind: "video",
+        label: "locked-clip.mp4",
+        previewUrl: "blob:https://app.test/video",
+      },
+      body: "",
+      price: "4.99",
+      title: "Locked clip",
+    });
+
+    expect(content).toMatchObject({
+      type: "video",
+      accessMode: "locked",
+      hasEntitlement: true,
+      listingMode: "listed",
+      listingStatus: "active",
+      priceLabel: "$4.99",
+      src: "blob:https://app.test/video",
+    });
+  });
+
   test("maps song body text into a caption for the publish preview", () => {
     const content = buildPostComposerPreviewContent({
       access: "free",

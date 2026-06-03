@@ -99,6 +99,7 @@ export function buildPostComposerPreviewContent({
       listingMode: access === "paid" ? "listed" : "not_listed",
       listingStatus: access === "paid" ? "active" : undefined,
       priceLabel: access === "paid" ? priceLabel : undefined,
+      hasEntitlement: true,
       playbackState: "idle",
     };
   }

@@ -12,6 +12,14 @@ const { mock } = await import("bun:test") as unknown as {
 };
 
 const apiCalls: string[] = [];
+let createdSongArtifactBundleResult = songBundle({
+  id: "sab_created",
+  previewStatus: "completed",
+});
+let readSongArtifactBundleResult = songBundle({
+  id: "sab_existing",
+  previewStatus: "completed",
+});
 
 const fakeApi = {
   communities: {
@@ -33,17 +41,11 @@ const fakeApi = {
     },
     createSongArtifactBundle: async () => {
       apiCalls.push("createSongArtifactBundle");
-      return songBundle({
-        id: "sab_created",
-        previewStatus: "completed",
-      });
+      return createdSongArtifactBundleResult;
     },
     getSongArtifactBundle: async () => {
       apiCalls.push("getSongArtifactBundle");
-      return songBundle({
-        id: "sab_existing",
-        previewStatus: "completed",
-      });
+      return readSongArtifactBundleResult;
     },
     createPost: async () => {
       apiCalls.push("createPost");
@@ -71,6 +73,7 @@ const { useSongSubmit } = await import("./use-song-submit");
 function songBundle(input: {
   id: string;
   previewStatus: "completed" | "pending" | "failed";
+  previewError?: string | null;
 }) {
   return {
     id: input.id,
@@ -83,6 +86,7 @@ function songBundle(input: {
           storage_ref: "filebase://songs/preview.mp3",
         }
       : null,
+    preview_error: input.previewError ?? null,
     preview_status: input.previewStatus,
   };
 }
@@ -132,6 +136,14 @@ function renderSubmitHook() {
 
 beforeEach(() => {
   apiCalls.length = 0;
+  createdSongArtifactBundleResult = songBundle({
+    id: "sab_created",
+    previewStatus: "completed",
+  });
+  readSongArtifactBundleResult = songBundle({
+    id: "sab_existing",
+    previewStatus: "completed",
+  });
 });
 
 describe("useSongSubmit", () => {
@@ -191,6 +203,52 @@ describe("useSongSubmit", () => {
     ]);
     expect(progressEvents).toEqual([
       "validating",
+      "generate_preview",
+      "generate_preview",
+      "publish_post",
+      "create_listing",
+    ]);
+  });
+
+  test("rebuilds a locked song bundle after the legacy preview worker failure", async () => {
+    readSongArtifactBundleResult = songBundle({
+      id: "sab_existing",
+      previewStatus: "failed",
+      previewError: "Song preview cropping requires a Node-only ffmpeg worker",
+    });
+    const pendingBundleIds: Array<string | null> = [];
+    const progressEvents: string[] = [];
+    const { result } = renderSubmitHook();
+
+    await act(async () => {
+      await result.current(submitInput({
+        monetizationState: {
+          priceUsd: "3.99",
+          regionalPricingEnabled: false,
+          visible: true,
+        },
+        paidSongPriceUsd: 3.99,
+        pendingSongBundleId: "sab_existing",
+        pricingPolicyRegionalPricingEnabled: true,
+        reportProgress: (key) => progressEvents.push(key),
+        setPendingSongBundleId: (bundleId) => pendingBundleIds.push(bundleId),
+      }));
+    });
+
+    expect(pendingBundleIds).toEqual([null, "sab_created"]);
+    expect(apiCalls).toEqual([
+      "getSongArtifactBundle",
+      "createArtifactUpload",
+      "uploadArtifactContent",
+      "createSongArtifactBundle",
+      "createPost",
+      "createListing",
+    ]);
+    expect(progressEvents).toEqual([
+      "validating",
+      "upload_primary_audio",
+      "create_bundle",
+      "check_rights",
       "generate_preview",
       "generate_preview",
       "publish_post",

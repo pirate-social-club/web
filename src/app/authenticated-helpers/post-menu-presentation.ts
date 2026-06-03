@@ -1,3 +1,5 @@
+import * as React from "react";
+import { ArrowSquareOut } from "@phosphor-icons/react";
 import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
 
 import { getPirateNetworkConfig, type PirateStoryNetwork } from "@/lib/network-config";
@@ -56,7 +58,11 @@ export function buildPostMenu(input: {
     && Boolean(input.canModeratePost && input.onRemove);
   const canViewStoryAsset = input.post.status === "published" && Boolean(input.storyPortalHref);
   const postMenuItems = [
-    ...(canViewStoryAsset ? [{ key: "view-story", label: "View on Story" }] : []),
+    ...(canViewStoryAsset ? [{
+      key: "view-story",
+      label: "View on Story",
+      icon: React.createElement(ArrowSquareOut, { className: "size-4" }),
+    }] : []),
     ...(canCancelEvent ? [{ key: "cancel-event", label: "Cancel event", destructive: true }] : []),
     ...(canDeletePost ? [{ key: "delete", label: "Delete post", destructive: true }] : []),
     ...(canRemovePost ? [{ key: "remove", label: "Remove post", destructive: true }] : []),

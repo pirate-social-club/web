@@ -72,10 +72,11 @@ describe("buildPostMenu", () => {
       storyPortalHref: "https://aeneid.explorer.story.foundation/ipa/0xbB0a33bd07e7c813963b569f1202047a92b38d48",
     });
 
-    expect(menu.postMenuItems).toContainEqual({
+    expect(menu.postMenuItems).toContainEqual(expect.objectContaining({
       key: "view-story",
       label: "View on Story",
-    });
+    }));
+    expect(menu.postMenuItems.find((item) => item.key === "view-story")?.icon).toBeTruthy();
   });
 
   test("builds Aeneid Story IP Explorer links for registered assets", () => {

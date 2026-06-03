@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowSquareOut, Copy, DownloadSimple, Globe, Lock, ShoppingCart } from "@phosphor-icons/react";
+import { ArrowSquareOut, Copy, DownloadSimple, Lock, ShoppingCart } from "@phosphor-icons/react";
 
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
@@ -234,7 +234,7 @@ export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): 
       item: {
         key: "song-ipfs:view:original",
         label: "View on IPFS",
-        icon: <Globe className="size-4" />,
+        icon: <ArrowSquareOut className="size-4" />,
       },
       onAction: () => openExternalUrl(gatewayUrl),
     });
@@ -247,7 +247,7 @@ export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): 
       item: {
         key: "song-ipfs:view:preview",
         label: "View on IPFS",
-        icon: <Globe className="size-4" />,
+        icon: <ArrowSquareOut className="size-4" />,
       },
       onAction: () => openExternalUrl(gatewayUrl),
     });
@@ -260,7 +260,7 @@ export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): 
       item: {
         key: "song-ipfs:view:encrypted-original",
         label: "View encrypted file on IPFS",
-        icon: <Globe className="size-4" />,
+        icon: <ArrowSquareOut className="size-4" />,
       },
       onAction: () => openExternalUrl(gatewayUrl),
     });

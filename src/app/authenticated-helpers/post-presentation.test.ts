@@ -419,6 +419,24 @@ describe("post presentation songs", () => {
     expect(content.storageProofs?.preview).toBeUndefined();
   });
 
+  test("derives public song IPFS proof from gateway refs when nested proof metadata is absent", () => {
+    const content = toCommunityPostContent(createSongPost({
+      media_refs: [{
+        storage_ref: "https://dweb.link/ipfs/bafygateway/song.mp3",
+        mime_type: "audio/mpeg",
+        ipfs_cid: "bafygateway",
+      }],
+    } as unknown as Partial<LocalizedPostResponse["post"]>));
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.storageProofs?.original).toEqual({
+      cid: "bafygateway",
+      gatewayUrl: "https://dweb.link/ipfs/bafygateway/song.mp3",
+      encrypted: undefined,
+    });
+  });
+
   test("maps locked song media proof into preview storage proof for non-entitled viewers", () => {
     const content = toCommunityPostContent(createSongPost({
       access_mode: "locked",
@@ -446,29 +464,39 @@ describe("post presentation songs", () => {
 
   test("maps public downloadable song audio into direct download actions", () => {
     const post = createSongPost();
+    post.post.media_refs = [{
+      storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_original/content",
+      mime_type: "audio/mpeg",
+      decentralized_storage: {
+        provider: "filebase_ipfs",
+        cid: "bafyoriginal",
+        gateway_url: "https://dweb.link/ipfs/bafyoriginal",
+      },
+    }];
     post.song_presentation = {
       title: "Canonical track title",
       cover_art_ref: "https://media.test/cover.jpg",
       duration_ms: 123456,
-      downloadable_audio: [
-        {
-          kind: "original",
-          storage_ref: "/media/song-original.mp3",
-          mime_type: "audio/mpeg",
+      instrumental_audio: {
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_instrumental/content",
+        mime_type: "audio/mpeg",
+        duration_ms: 123456,
+        decentralized_storage: {
+          provider: "filebase_ipfs",
+          cid: "bafyinstrumental",
+          gateway_url: "https://dweb.link/ipfs/bafyinstrumental",
         },
-        {
-          kind: "instrumental",
-          storage_ref: "/media/song-instrumental.mp3",
-          mime_type: "audio/mpeg",
-          duration_ms: 123456,
+      },
+      vocal_audio: {
+        storage_ref: "/public-communities/cmt_songs/song-artifact-uploads/sau_vocals/content",
+        mime_type: "audio/mpeg",
+        duration_ms: 120000,
+        decentralized_storage: {
+          provider: "filebase_ipfs",
+          cid: "bafyvocals",
+          gateway_url: "https://dweb.link/ipfs/bafyvocals",
         },
-        {
-          kind: "vocals",
-          storage_ref: "/media/song-vocals.mp3",
-          mime_type: "audio/mpeg",
-          duration_ms: 120000,
-        },
-      ],
+      },
     } as NonNullable<LocalizedPostResponse["song_presentation"]>;
 
     const content = toCommunityPostContent(post);
@@ -477,6 +505,11 @@ describe("post presentation songs", () => {
     if (content.type !== "song") return;
     expect(content.downloadPolicy).toBe("free_download");
     expect(typeof content.onDownload).toBe("function");
+    expect(content.storageProofs?.original).toEqual({
+      cid: "bafyoriginal",
+      gatewayUrl: "https://dweb.link/ipfs/bafyoriginal",
+      encrypted: undefined,
+    });
     expect(content.stems?.map((stem) => ({
       kind: stem.kind,
       accessPolicy: stem.accessPolicy,
@@ -606,10 +639,11 @@ describe("post presentation songs", () => {
       route_slug: null,
     });
 
-    expect(card.menuItems).toContainEqual({
+    expect(card.menuItems).toContainEqual(expect.objectContaining({
       key: "view-story",
       label: "View on Story",
-    });
+    }));
+    expect(card.menuItems?.find((item) => item.key === "view-story")?.icon).toBeTruthy();
   });
 
   test("surfaces ElasticStage vinyl release metadata from listings and purchases", () => {

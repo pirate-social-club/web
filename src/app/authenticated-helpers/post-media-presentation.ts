@@ -12,7 +12,9 @@ import type {
 import type { SongPresentationOptions } from "@/app/authenticated-helpers/post-presentation-types";
 import { centsToUsd, formatUsdLabel } from "@/lib/formatting/currency";
 import { resolveApiUrl } from "@/lib/api/base-url";
+import { getAccessToken } from "@/lib/api/session-store";
 import { buildStoryExplorerIpAssetUrl } from "@/lib/story/story-portal";
+import { toast } from "@/components/primitives/sonner";
 
 type StoryRoyaltyAsset = NonNullable<SongPresentationOptions["asset"]>;
 type VinylReleaseCarrier = Pick<ApiCommunityListing | ApiCommunityPurchase, "vinyl_release_provider" | "vinyl_release_url">;
@@ -26,6 +28,9 @@ type DownloadableAudio = {
   filename?: string | null;
   decentralized_storage?: unknown;
 };
+type SongPresentationWithDownloads = NonNullable<ApiPost["song_presentation"]> & {
+  downloadable_audio?: DownloadableAudio[] | null;
+};
 
 function stringField(input: unknown, key: string): string | undefined {
   if (!input || typeof input !== "object") return undefined;
@@ -34,12 +39,37 @@ function stringField(input: unknown, key: string): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
 }
 
+function ipfsGatewayUrl(cid: string): string {
+  return `https://dweb.link/ipfs/${encodeURIComponent(cid)}`;
+}
+
+function cidFromStorageRef(storageRef: string | undefined): string | undefined {
+  if (!storageRef) return undefined;
+
+  if (storageRef.startsWith("ipfs://")) {
+    return storageRef.slice("ipfs://".length).split(/[/?#]/u)[0] || undefined;
+  }
+
+  try {
+    const parsed = new URL(storageRef);
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    const ipfsIndex = parts.findIndex((part) => part.toLowerCase() === "ipfs");
+    return ipfsIndex >= 0 ? parts[ipfsIndex + 1] : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function toSongStorageProof(input: unknown): SongStorageProof | undefined {
   if (!input || typeof input !== "object") return undefined;
 
   const proof = (input as Record<string, unknown>).decentralized_storage;
-  const cid = stringField(proof, "cid");
-  const gatewayUrl = stringField(proof, "gateway_url");
+  const storageRef = stringField(input, "storage_ref");
+  const cid = stringField(proof, "cid") ?? stringField(input, "ipfs_cid") ?? cidFromStorageRef(storageRef);
+  const gatewayUrl = stringField(proof, "gateway_url")
+    ?? stringField(input, "gateway_url")
+    ?? (storageRef?.startsWith("http") && cid ? storageRef : undefined)
+    ?? (cid ? ipfsGatewayUrl(cid) : undefined);
   if (!cid || !gatewayUrl) return undefined;
 
   return {
@@ -49,32 +79,152 @@ function toSongStorageProof(input: unknown): SongStorageProof | undefined {
   };
 }
 
-function openDownloadUrl(path: string): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  const opened = window.open(resolveApiUrl(path), "_blank", "noopener,noreferrer");
-  if (opened) {
-    opened.opener = null;
+function audioKindLabel(kind: DownloadableAudioKind): string {
+  switch (kind) {
+    case "instrumental":
+      return "instrumental";
+    case "vocals":
+      return "vocals";
+    case "original":
+    default:
+      return "original";
   }
 }
 
-function normalizeDownloadableAudio(postResponse: ApiPost): Map<DownloadableAudioKind, DownloadableAudio> {
-  const items = (postResponse.song_presentation as { downloadable_audio?: DownloadableAudio[] | null } | null | undefined)
-    ?.downloadable_audio;
-  const normalized = new Map<DownloadableAudioKind, DownloadableAudio>();
-  if (!Array.isArray(items)) {
-    return normalized;
+function extensionFromMimeType(mimeType: string | null | undefined): string | null {
+  switch (mimeType?.toLowerCase()) {
+    case "audio/aac":
+      return "aac";
+    case "audio/flac":
+      return "flac";
+    case "audio/m4a":
+    case "audio/x-m4a":
+      return "m4a";
+    case "audio/mp4":
+      return "mp4";
+    case "audio/ogg":
+      return "ogg";
+    case "audio/wav":
+    case "audio/x-wav":
+      return "wav";
+    case "audio/webm":
+      return "webm";
+    case "audio/mp3":
+    case "audio/mpeg":
+      return "mp3";
+    default:
+      return null;
+  }
+}
+
+function extensionFromPath(path: string | null | undefined): string | null {
+  const match = path?.split(/[?#]/u)[0]?.match(/\.([a-z0-9]{2,5})$/iu);
+  return match?.[1]?.toLowerCase() ?? null;
+}
+
+function slugForFilename(value: string): string {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, "-")
+    .replace(/^-+|-+$/gu, "");
+  return slug || "song";
+}
+
+function filenameFromContentDisposition(header: string | null): string | null {
+  if (!header) return null;
+
+  const encoded = header.match(/filename\*=UTF-8''([^;]+)/iu)?.[1];
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded);
+    } catch {
+      return encoded;
+    }
   }
 
-  for (const item of items) {
-    if (
-      (item.kind === "original" || item.kind === "instrumental" || item.kind === "vocals")
-      && typeof item.storage_ref === "string"
-      && item.storage_ref.trim()
-    ) {
-      normalized.set(item.kind, item);
+  return header.match(/filename="?([^";]+)"?/iu)?.[1] ?? null;
+}
+
+function audioDownloadFilename(input: {
+  item: DownloadableAudio;
+  kind: DownloadableAudioKind;
+  title: string;
+}): string {
+  const explicit = input.item.filename?.trim();
+  if (explicit) return explicit;
+
+  const extension = extensionFromMimeType(input.item.mime_type) ?? extensionFromPath(input.item.storage_ref);
+  const base = `${slugForFilename(input.title)}-${audioKindLabel(input.kind)}`;
+  return extension ? `${base}.${extension}` : base;
+}
+
+function triggerBrowserDownload(blob: Blob, filename: string): void {
+  if (typeof document === "undefined" || typeof URL === "undefined") return;
+
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  anchor.style.display = "none";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
+}
+
+async function downloadAudioFile(input: {
+  filename: string;
+  path: string;
+}): Promise<void> {
+  try {
+    const token = getAccessToken();
+    const response = await fetch(resolveApiUrl(input.path), {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Download failed with status ${response.status}`);
     }
+
+    const blob = await response.blob();
+    triggerBrowserDownload(
+      blob,
+      filenameFromContentDisposition(response.headers.get("content-disposition")) ?? input.filename,
+    );
+  } catch {
+    toast.error("Could not download this audio.");
+  }
+}
+
+function isDownloadableAudioKind(value: unknown): value is DownloadableAudioKind {
+  return value === "original" || value === "instrumental" || value === "vocals";
+}
+
+function addDownloadableAudio(
+  normalized: Map<DownloadableAudioKind, DownloadableAudio>,
+  kind: DownloadableAudioKind,
+  item: DownloadableAudio | null | undefined,
+): void {
+  if (normalized.has(kind) || !item?.storage_ref?.trim()) return;
+  normalized.set(kind, item);
+}
+
+function normalizeDownloadableAudio(postResponse: ApiPost): Map<DownloadableAudioKind, DownloadableAudio> {
+  const presentation = postResponse.song_presentation as SongPresentationWithDownloads | null | undefined;
+  const normalized = new Map<DownloadableAudioKind, DownloadableAudio>();
+
+  for (const item of presentation?.downloadable_audio ?? []) {
+    if (isDownloadableAudioKind(item.kind)) {
+      addDownloadableAudio(normalized, item.kind, item);
+    }
+  }
+
+  addDownloadableAudio(normalized, "instrumental", presentation?.instrumental_audio);
+  addDownloadableAudio(normalized, "vocals", presentation?.vocal_audio);
+
+  if ((postResponse.post.access_mode ?? "public") === "public") {
+    addDownloadableAudio(normalized, "original", postResponse.post.media_refs?.[0] as DownloadableAudio | undefined);
   }
 
   return normalized;
@@ -312,6 +462,10 @@ export function toSongPostContent(
   const playbackProgress = playbackDescriptor && playback
     ? playback.getPlaybackProgress(playbackDescriptor.key)
     : undefined;
+  const accessMode = post.access_mode ?? "public";
+  const hasEntitlement = accessMode === "public"
+    || Boolean(purchase)
+    || Boolean(songOptions?.currentUserId && post.author_user === songOptions.currentUserId);
   const downloadableAudio = normalizeDownloadableAudio(postResponse);
   const downloadableOriginal = downloadableAudio.get("original");
   const downloadableStems: SongContentSpec["stems"] = [];
@@ -321,7 +475,14 @@ export function toSongPostContent(
       kind: "instrumental",
       accessPolicy: "free",
       durationMs: instrumental.duration_ms ?? undefined,
-      onDownload: () => openDownloadUrl(instrumental.storage_ref ?? ""),
+      onDownload: () => void downloadAudioFile({
+        filename: audioDownloadFilename({
+          item: instrumental,
+          kind: "instrumental",
+          title: songPresentation?.title ?? post.song_title ?? input.title,
+        }),
+        path: instrumental.storage_ref ?? "",
+      }),
     });
   }
   const vocals = downloadableAudio.get("vocals");
@@ -330,21 +491,24 @@ export function toSongPostContent(
       kind: "vocals",
       accessPolicy: "free",
       durationMs: vocals.duration_ms ?? undefined,
-      onDownload: () => openDownloadUrl(vocals.storage_ref ?? ""),
+      onDownload: () => void downloadAudioFile({
+        filename: audioDownloadFilename({
+          item: vocals,
+          kind: "vocals",
+          title: songPresentation?.title ?? post.song_title ?? input.title,
+        }),
+        path: vocals.storage_ref ?? "",
+      }),
     });
   }
-  const accessMode = post.access_mode ?? "public";
-  const hasEntitlement = accessMode === "public"
-    || Boolean(purchase)
-    || Boolean(songOptions?.currentUserId && post.author_user === songOptions.currentUserId);
   const primaryProof = toSongStorageProof(post.media_refs?.[0]);
+  const originalProof = toSongStorageProof(downloadableOriginal) ?? (accessMode === "public" ? primaryProof : undefined);
   const storageProofs: SongContentSpec["storageProofs"] = {};
-  if (primaryProof) {
-    if (accessMode === "locked" && !hasEntitlement) {
-      storageProofs.preview = primaryProof;
-    } else {
-      storageProofs.original = primaryProof;
-    }
+  if (originalProof && (accessMode === "public" || hasEntitlement)) {
+    storageProofs.original = originalProof;
+  }
+  if (primaryProof && accessMode === "locked" && !hasEntitlement) {
+    storageProofs.preview = primaryProof;
   }
   return {
     type: "song",
@@ -362,7 +526,14 @@ export function toSongPostContent(
       : undefined,
     onBuy: songOptions?.onBuy,
     downloadPolicy: downloadableOriginal ? "free_download" : undefined,
-    onDownload: downloadableOriginal?.storage_ref ? () => openDownloadUrl(downloadableOriginal.storage_ref ?? "") : undefined,
+    onDownload: downloadableOriginal?.storage_ref ? () => void downloadAudioFile({
+      filename: audioDownloadFilename({
+        item: downloadableOriginal,
+        kind: "original",
+        title: songPresentation?.title ?? post.song_title ?? input.title,
+      }),
+      path: downloadableOriginal.storage_ref ?? "",
+    }) : undefined,
     stems: downloadableStems.length ? downloadableStems : undefined,
     entitledStems: downloadableStems.map((stem) => stem.kind),
     onPause: playbackDescriptor && playback ? () => playback.pauseTrack(playbackDescriptor.key) : undefined,

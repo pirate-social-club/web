@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ArrowsClockwise, Copy, Flag, Link, ShareNetwork } from "@phosphor-icons/react";
+import { ArrowSquareOut, ArrowsClockwise, Copy, Flag, Link, ShareNetwork } from "@phosphor-icons/react";
 import * as React from "react";
 
 import { PostCard } from "../../post-card";
@@ -184,7 +184,7 @@ export const StoryRegisteredAssetMenu: Story = {
       }}
       menuItems={[
         ...basePostActions,
-        { key: "view-story", label: "View on Story", separatorBefore: true },
+        { key: "view-story", label: "View on Story", icon: <ArrowSquareOut className="size-4" />, separatorBefore: true },
       ]}
     />
   ),

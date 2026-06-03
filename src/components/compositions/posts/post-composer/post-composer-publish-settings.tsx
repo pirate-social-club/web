@@ -284,6 +284,7 @@ function buildPreviewPost(
     },
     liveState: controller.primary.liveState,
     price: commerce.monetizationState.priceUsd ?? "",
+    vinylReleaseUrl: commerce.monetizationState.vinylReleaseUrl,
     songTitle: controller.song.state.title,
     songPlayback,
     title: fields.titleValue,

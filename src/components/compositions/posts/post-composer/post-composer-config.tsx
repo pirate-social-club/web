@@ -147,6 +147,7 @@ export function defaultMonetizationState(monetization?: MonetizationState): Mone
       "0",
     regionalPricingAvailable: monetization?.regionalPricingAvailable ?? false,
     regionalPricingEnabled: monetization?.regionalPricingEnabled ?? false,
+    vinylReleaseUrl: monetization?.vinylReleaseUrl ?? "",
   };
 }
 

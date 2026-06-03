@@ -252,6 +252,30 @@ export const LockedPreview: Story = {
   ),
 };
 
+export const LockedWithVinyl: Story = {
+  name: "Access / Locked listed vinyl",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Vinyl pre-order unlock"
+      content={{
+        ...baseSong,
+        accessMode: "locked",
+        previewDurationMs: 30000,
+        playbackState: "idle",
+        listingMode: "listed",
+        listingStatus: "active",
+        priceLabel: "$3.99",
+        vinylRelease: {
+          available: true,
+          provider: "elasticstage",
+        },
+        onBuy: noop,
+      }}
+    />
+  ),
+};
+
 export const LockedOwned: Story = {
   name: "Access / Owned with download",
   render: () => (
@@ -265,6 +289,28 @@ export const LockedOwned: Story = {
         listingMode: "listed",
         listingStatus: "active",
         onDownload: noop,
+      }}
+    />
+  ),
+};
+
+export const LockedOwnedWithVinyl: Story = {
+  name: "Access / Owned with vinyl",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Purchased track with vinyl"
+      content={{
+        ...baseSong,
+        accessMode: "locked",
+        hasEntitlement: true,
+        listingMode: "listed",
+        listingStatus: "active",
+        vinylRelease: {
+          available: true,
+          provider: "elasticstage",
+          url: "https://elasticstage.com/kevin-tameimpala/releases/midnight-waves",
+        },
       }}
     />
   ),

@@ -74,6 +74,41 @@ describe("deriveSongUI", () => {
     expect(ownedUi.showOwned).toBe(true);
   });
 
+  test("surfaces vinyl release availability before unlock and link after ownership", () => {
+    const lockedUi = deriveSongUI({
+      ...baseSong,
+      accessMode: "locked",
+      listingMode: "listed",
+      listingStatus: "active",
+      priceLabel: "$3.99",
+      vinylRelease: {
+        available: true,
+        provider: "elasticstage",
+      },
+    });
+    const ownedMarkup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          accessMode: "locked",
+          hasEntitlement: true,
+          listingMode: "listed",
+          listingStatus: "active",
+          vinylRelease: {
+            available: true,
+            provider: "elasticstage",
+            url: "https://elasticstage.com/kevin-tameimpala/releases/midnight-waves",
+          },
+        },
+      }),
+    );
+
+    expect(lockedUi.showVinylAvailable).toBe(true);
+    expect(lockedUi.showVinylLink).toBe(false);
+    expect(ownedMarkup).toContain("Buy vinyl on ElasticStage");
+    expect(ownedMarkup).toContain("https://elasticstage.com/kevin-tameimpala/releases/midnight-waves");
+  });
+
   test("requires age proof until the viewer is verified allowed", () => {
     const lockedUi = deriveSongUI({
       ...baseSong,

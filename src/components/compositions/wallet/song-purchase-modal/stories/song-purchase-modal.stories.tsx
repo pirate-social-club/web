@@ -39,6 +39,7 @@ function ModalStory({
   priceLabel = "$3.99",
   processing = false,
   showSelfVerificationNudge = true,
+  vinylReleaseAvailable = false,
 }: {
   confirmedDiscountPercent?: number | null;
   error?: string | null;
@@ -46,6 +47,7 @@ function ModalStory({
   priceLabel?: string;
   processing?: boolean;
   showSelfVerificationNudge?: boolean;
+  vinylReleaseAvailable?: boolean;
 }) {
   const [open, setOpen] = React.useState(true);
 
@@ -65,6 +67,7 @@ function ModalStory({
         processing={processing}
         selfVerificationSavingsPercent={showSelfVerificationNudge && !confirmedDiscountPercent ? 20 : null}
         songTitle="Midnight Waves"
+        vinylReleaseAvailable={vinylReleaseAvailable}
       />
     </>
   );
@@ -100,6 +103,14 @@ export const Verified: Story = {
     viewport: { defaultViewport: "desktop" },
   },
   render: () => <ModalStory confirmedDiscountPercent={20} priceLabel="$3.19" showSelfVerificationNudge={false} />,
+};
+
+export const VinylAvailable: Story = {
+  name: "Desktop / Vinyl available",
+  parameters: {
+    viewport: { defaultViewport: "desktop" },
+  },
+  render: () => <ModalStory vinylReleaseAvailable />,
 };
 
 export const Error: Story = {

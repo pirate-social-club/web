@@ -143,6 +143,10 @@ type QuotedSongPurchase = PendingSongPurchase & {
   quote: CommunityPurchaseQuote;
 };
 
+function listingHasVinylRelease(listing: ApiCommunityListing): boolean {
+  return listing.vinyl_release_provider === "elasticstage";
+}
+
 export function resolveQuoteDiscountPercent(quote: Pick<CommunityPurchaseQuote, "base_price_cents" | "final_price_cents">): number | null {
   if (
     typeof quote.base_price_cents !== "number"
@@ -358,6 +362,7 @@ export function useSongPurchaseFlow({
         assetLabel: pendingPurchase.assetLabel ?? "song",
         assetTitle: pendingPurchase.titleText,
         songTitle: pendingPurchase.titleText,
+        vinylReleaseAvailable: pendingPurchase.assetLabel !== "video" && listingHasVinylRelease(pendingPurchase.listing),
       }),
       selfPrompt
         ? React.createElement(SelfVerificationModal, {

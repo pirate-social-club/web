@@ -1,4 +1,8 @@
-import type { LocalizedPostResponse as ApiPost } from "@pirate/api-contracts";
+import type {
+  CommunityListing as ApiCommunityListing,
+  CommunityPurchase as ApiCommunityPurchase,
+  LocalizedPostResponse as ApiPost,
+} from "@pirate/api-contracts";
 
 import type { PostCardProps, SongContentSpec, StoryRegistrationStatus, UpstreamAttribution } from "@/components/compositions/posts/post-card/post-card.types";
 import type {
@@ -11,6 +15,7 @@ import { resolveApiUrl } from "@/lib/api/base-url";
 import { buildStoryExplorerIpAssetUrl } from "@/lib/story/story-portal";
 
 type StoryRoyaltyAsset = NonNullable<SongPresentationOptions["asset"]>;
+type VinylReleaseCarrier = Pick<ApiCommunityListing | ApiCommunityPurchase, "vinyl_release_provider" | "vinyl_release_url">;
 type DownloadableAudioKind = "original" | "instrumental" | "vocals";
 type DownloadableAudio = {
   kind?: string | null;
@@ -89,6 +94,25 @@ function toStoryRegistrationStatus(asset: StoryRoyaltyAsset | null | undefined):
     default:
       return undefined;
   }
+}
+
+function toVinylReleaseSpec(input: {
+  listing?: VinylReleaseCarrier | null;
+  purchase?: VinylReleaseCarrier | null;
+}): SongContentSpec["vinylRelease"] | undefined {
+  const provider = input.purchase?.vinyl_release_provider ?? input.listing?.vinyl_release_provider ?? null;
+  const url = input.purchase?.vinyl_release_url ?? input.listing?.vinyl_release_url ?? null;
+
+  if (provider !== "elasticstage") {
+    return undefined;
+  }
+
+  const normalizedUrl = url?.trim();
+  return {
+    available: true,
+    provider,
+    url: normalizedUrl || undefined,
+  };
 }
 
 function toSongPlaybackDescriptor(
@@ -323,6 +347,7 @@ export function toSongPostContent(
     storyRegistration: toStoryRegistrationStatus(songOptions?.asset),
     storyLicenseNotice: songOptions?.storyLicenseNotice,
     title: songPresentation?.title ?? post.song_title ?? input.title,
+    vinylRelease: toVinylReleaseSpec({ listing, purchase }),
     artworkSrc: songPresentation?.cover_art_ref ?? undefined,
     durationMs: songPresentation?.duration_ms ?? playbackProgress?.durationMs ?? undefined,
     upstreamAttributions: toUpstreamAttributions(postResponse, songOptions),

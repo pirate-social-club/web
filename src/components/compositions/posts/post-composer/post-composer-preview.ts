@@ -24,6 +24,7 @@ export function buildPostComposerPreviewContent({
   body,
   linkPreview,
   price,
+  vinylReleaseUrl,
   songTitle,
   title,
   videoDetails,
@@ -43,6 +44,7 @@ export function buildPostComposerPreviewContent({
   liveHostIdentity?: { label: string; href?: string; avatarSrc?: string };
   liveGuestLabel?: string;
   price: string;
+  vinylReleaseUrl?: string;
   songTitle?: string;
   title: string;
   videoDetails?: VideoDetailsState;
@@ -144,6 +146,7 @@ export function buildPostComposerPreviewContent({
 
   if (attachment.kind === "song") {
     const trackTitle = songTitle?.trim() || attachment.label || "Untitled track";
+    const normalizedVinylReleaseUrl = vinylReleaseUrl?.trim() || null;
 
     return {
       type: "song",
@@ -154,6 +157,13 @@ export function buildPostComposerPreviewContent({
       listingMode: access === "paid" ? "listed" : "not_listed",
       listingStatus: access === "paid" ? "active" : undefined,
       priceLabel: access === "paid" ? priceLabel : undefined,
+      vinylRelease: normalizedVinylReleaseUrl
+        ? {
+            available: true,
+            provider: "elasticstage",
+            url: normalizedVinylReleaseUrl,
+          }
+        : undefined,
       onPause: songPlayback?.onPause,
       onPlay: attachment.previewUrl ? songPlayback?.onPlay : undefined,
       onSeek: attachment.previewUrl ? songPlayback?.onSeek : undefined,

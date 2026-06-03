@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  ArrowSquareOut,
   CheckCircle,
   Lock as FilledLockIcon,
   MusicNote,
@@ -47,6 +48,8 @@ interface DerivedSongUI {
   showPrice: boolean;
   showUnlock: boolean;
   showOwned: boolean;
+  showVinylAvailable: boolean;
+  showVinylLink: boolean;
   showBuy: boolean;
   showDownload: boolean;
   effectiveDownloadPolicy: DownloadPolicy;
@@ -69,6 +72,7 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     listingMode,
     listingStatus,
     hasEntitlement,
+    vinylRelease,
     songMode,
     upstreamAttributions,
     onBuy,
@@ -88,6 +92,8 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   const isListedActive = isListed && isListingActive;
   const isOwned = hasEntitlement === true;
   const effectiveDownloadPolicy = getEffectiveDownloadPolicy(content);
+  const hasVinylRelease = vinylRelease?.available === true;
+  const hasVinylReleaseUrl = Boolean(vinylRelease?.url?.trim());
   
   // Playback availability
   const isPlayable = !ageGateRequiresProof;
@@ -101,6 +107,8 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   const showBuy = showPrice && Boolean(onBuy);
   const showUnlock = isLocked && !isOwned && !isListedActive && Boolean(onUnlock);
   const showOwned = isLocked && isOwned;
+  const showVinylAvailable = hasVinylRelease && isLocked && !isOwned && isListedActive && !ageGateRequiresProof;
+  const showVinylLink = showOwned && hasVinylReleaseUrl;
   const showDownload = Boolean(onDownload) && (
     effectiveDownloadPolicy === "free_download"
     || (effectiveDownloadPolicy === "purchased_download" && isOwned)
@@ -145,6 +153,8 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     showPrice,
     showUnlock,
     showOwned,
+    showVinylAvailable,
+    showVinylLink,
     showBuy,
     showDownload,
     effectiveDownloadPolicy,
@@ -250,6 +260,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
     onSeek,
     onVerifyAge,
   } = content;
+  const vinylReleaseUrl = content.vinylRelease?.url?.trim();
 
   const previewSeconds = Math.max(1, Math.round((ui.previewMaxMs ?? defaultPreviewDurationMs) / 1000));
   const controlButtonClassName = "size-12 border-transparent shadow-sm sm:size-16";
@@ -413,12 +424,31 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
           ) : null}
         </div>
 
-        {ui.showOwned ? (
-          <div className="mt-2 flex justify-end">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-background px-2.5 py-1 text-base font-medium text-muted-foreground">
-              <CheckCircle className="size-4 text-primary" weight="fill" />
-              Owned
-            </span>
+        {ui.showOwned || ui.showVinylAvailable || ui.showVinylLink ? (
+          <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
+            {ui.showVinylAvailable ? (
+              <span className="font-medium text-muted-foreground">
+                Vinyl available after unlock
+              </span>
+            ) : null}
+            {ui.showOwned ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-background px-2.5 py-1 text-base font-medium text-muted-foreground">
+                <CheckCircle className="size-4 text-primary" weight="fill" />
+                Owned
+              </span>
+            ) : null}
+            {ui.showVinylLink && vinylReleaseUrl ? (
+              <a
+                className="inline-flex min-w-0 items-center gap-1.5 font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+                data-post-card-interactive="true"
+                href={vinylReleaseUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <span className="truncate">Buy vinyl on ElasticStage</span>
+                <ArrowSquareOut className="size-4 shrink-0" />
+              </a>
+            ) : null}
           </div>
         ) : null}
       </div>

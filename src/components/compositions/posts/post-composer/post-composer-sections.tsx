@@ -321,6 +321,9 @@ export function PostComposerCommerceAccessSection({
   const priceLabel = contentKind === "text" || contentKind === "image"
     ? copy.fields.price ?? copy.fields.unlockPriceUsd
     : copy.fields.unlockPriceUsd;
+  const vinylReleaseUrlLabel = copy.fields.vinylReleaseUrl ?? "ElasticStage vinyl URL";
+  const vinylReleaseUrlPlaceholder = copy.placeholders.vinylReleaseUrl ?? "https://elasticstage.com/artist/releases/release-singleep";
+
   if (isMobile) {
     return (
       <section className="space-y-3">
@@ -339,6 +342,7 @@ export function PostComposerCommerceAccessSection({
                 ...current,
                 visible: false,
                 regionalPricingEnabled: false,
+                vinylReleaseUrl: "",
               }))
             }
             type="button"
@@ -398,6 +402,24 @@ export function PostComposerCommerceAccessSection({
               </div>
             ) : null}
 
+            {contentKind === "song" ? (
+              <div className="grid gap-2">
+                <FieldLabel label={vinylReleaseUrlLabel} />
+                <Input
+                  className="h-11"
+                  inputMode="url"
+                  onChange={(event) =>
+                    updateMonetizationState((current) => ({
+                      ...current,
+                      vinylReleaseUrl: event.target.value,
+                    }))
+                  }
+                  placeholder={vinylReleaseUrlPlaceholder}
+                  value={monetizationState.vinylReleaseUrl ?? ""}
+                />
+              </div>
+            ) : null}
+
             {monetizationState.regionalPricingAvailable ? (
               <div className="flex items-start gap-3">
                 <Checkbox
@@ -431,6 +453,7 @@ export function PostComposerCommerceAccessSection({
               ...current,
               visible: false,
               regionalPricingEnabled: false,
+              vinylReleaseUrl: "",
             }))
           }
           selected={!monetizationState.visible}
@@ -481,6 +504,24 @@ export function PostComposerCommerceAccessSection({
                 value={previewStartSeconds ?? ""}
               />
             </div>
+            ) : null}
+
+            {contentKind === "song" ? (
+              <div className="md:col-span-2">
+                <FieldLabel label={vinylReleaseUrlLabel} />
+                <Input
+                  className="h-12"
+                  inputMode="url"
+                  onChange={(event) =>
+                    updateMonetizationState((current) => ({
+                      ...current,
+                      vinylReleaseUrl: event.target.value,
+                    }))
+                  }
+                  placeholder={vinylReleaseUrlPlaceholder}
+                  value={monetizationState.vinylReleaseUrl ?? ""}
+                />
+              </div>
             ) : null}
 
             {monetizationState.regionalPricingAvailable ? (

@@ -564,6 +564,89 @@ describe("post presentation songs", () => {
     });
   });
 
+  test("surfaces ElasticStage vinyl release metadata from listings and purchases", () => {
+    const listingVinylUrl = "https://elasticstage.com/saint-pablo/releases/benefit-single";
+    const purchaseVinylUrl = "https://elasticstage.com/saint-pablo/releases/benefit-single-owned";
+    const listedContent = toCommunityPostContent(
+      createSongPost({
+        access_mode: "locked",
+        asset: "asset_ast_song",
+      }),
+      {
+        listing: {
+          id: "lst_vinyl",
+          object: "community_listing",
+          community: "com_cmt_songs",
+          asset: "asset_ast_song",
+          listing_mode: "fixed_price",
+          status: "active",
+          price_cents: 399,
+          regional_pricing_enabled: false,
+          vinyl_release_provider: "elasticstage",
+          vinyl_release_url: listingVinylUrl,
+          created_by_user: "usr_artist",
+          created: unixTimestamp("2026-05-16T09:00:00.000Z"),
+        },
+      },
+    );
+
+    expect(listedContent.type).toBe("song");
+    if (listedContent.type !== "song") return;
+    expect(listedContent.vinylRelease).toEqual({
+      available: true,
+      provider: "elasticstage",
+      url: listingVinylUrl,
+    });
+
+    const ownedContent = toCommunityPostContent(
+      createSongPost({
+        access_mode: "locked",
+        asset: "asset_ast_song",
+      }),
+      {
+        listing: {
+          id: "lst_vinyl",
+          object: "community_listing",
+          community: "com_cmt_songs",
+          asset: "asset_ast_song",
+          listing_mode: "fixed_price",
+          status: "active",
+          price_cents: 399,
+          regional_pricing_enabled: false,
+          vinyl_release_provider: "elasticstage",
+          vinyl_release_url: listingVinylUrl,
+          created_by_user: "usr_artist",
+          created: unixTimestamp("2026-05-16T09:00:00.000Z"),
+        },
+        purchase: {
+          id: "pur_vinyl",
+          object: "community_purchase",
+          community: "com_cmt_songs",
+          listing: "lst_vinyl",
+          asset: "asset_ast_song",
+          buyer_user: "usr_listener",
+          settlement_wallet_attachment: "uwa_primary",
+          purchase_price_cents: 399,
+          settlement_mode: "royalty_native_story_payment",
+          settlement_chain: { chain_namespace: "eip155", chain_id: 1315, display_name: "Story Aeneid" },
+          settlement_token: "WIP",
+          settlement_tx_ref: "0xsettled",
+          allocations: [],
+          vinyl_release_provider: "elasticstage",
+          vinyl_release_url: purchaseVinylUrl,
+          purchase_entitlement: "pe_vinyl",
+          entitlement_kind: "asset_access",
+          entitlement_target_ref: "asset_ast_song",
+          created: unixTimestamp("2026-05-16T09:00:00.000Z"),
+        },
+      },
+    );
+
+    expect(ownedContent.type).toBe("song");
+    if (ownedContent.type !== "song") return;
+    expect(ownedContent.vinylRelease?.url).toBe(purchaseVinylUrl);
+  });
+
   test("maps transient Story license reuse notices into song card content", () => {
     const content = toCommunityPostContent(
       createSongPost({ asset: "asset_ast_song" }),

@@ -62,6 +62,7 @@ export function buildAssetListingRequest(input: {
   regionalPricingEnabled: boolean;
   charityContributionPct?: number | null;
   charityPartnerId?: string | null;
+  vinylReleaseUrl?: string | null;
 }) {
   if (input.paidSongPriceUsd == null) {
     return null;
@@ -73,12 +74,20 @@ export function buildAssetListingRequest(input: {
     ? input.charityContributionPct ?? null
     : null;
 
+  const vinylReleaseUrl = input.vinylReleaseUrl?.trim() || null;
+
   return {
     asset: input.assetId,
     price_cents: usdToCents(input.paidSongPriceUsd) ?? 0,
     regional_pricing_enabled: input.pricingPolicyRegionalPricingEnabled && input.regionalPricingEnabled,
     donation_partner: donationSharePct && input.charityPartnerId ? input.charityPartnerId : null,
     donation_share_bps: donationSharePct == null ? null : donationSharePct * 100,
+    ...(vinylReleaseUrl
+      ? {
+          vinyl_release_provider: "elasticstage" as const,
+          vinyl_release_url: vinylReleaseUrl,
+        }
+      : {}),
     status: "active" as const,
   };
 }
@@ -113,13 +122,26 @@ export function resolveComposerSubmitState(input: {
 }) {
   const contentError = (() => {
     if (!input.canSubmit) return null;
+    const selectedSourceCount = resolvedDerivativeReferences(input.derivativeStep).length;
 
-    if (input.composerMode === "song" && input.derivativeStep?.required && resolvedDerivativeReferences(input.derivativeStep).length === 0) {
+    if (input.composerMode === "song" && input.derivativeStep?.required && selectedSourceCount === 0) {
       return "Attach a source track before publishing this remix.";
     }
 
     if (input.composerMode === "song" && input.derivativeStep?.required && input.derivativeStep.sourceTermsAccepted !== true) {
       return "Accept the source license terms before publishing this remix.";
+    }
+
+    if (input.composerMode === "video" && input.derivativeStep?.required && selectedSourceCount === 0) {
+      return "Attach a source song before publishing this video.";
+    }
+
+    if (
+      input.composerMode === "video"
+      && selectedSourceCount > 0
+      && input.derivativeStep?.sourceTermsAccepted !== true
+    ) {
+      return "Accept the source song terms before publishing this video.";
     }
 
     return null;

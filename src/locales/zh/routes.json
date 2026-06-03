@@ -13,6 +13,16 @@
     "downvoteComment": "给评论点踩",
     "expandReplies": "展开回复",
     "expandThread": "展开讨论串",
+    "identityPublicDescription": "使用公开身份发布和回复",
+    "identityAnonymousDefaultDescription": "匿名身份",
+    "identityPublicOptionLabel": "公开: {handle}",
+    "identityAnonymousOptionLabel": "匿名: {label}",
+    "identitySelectorAriaLabel": "选择身份",
+    "identitySelectorDrawerTitle": "回复身份",
+    "publicIdentityFallback": "公开",
+    "anonymousIdentityFallback": "匿名",
+    "replyingAsPublicLabel": "以 {handle} 身份回复",
+    "replyingAsAnonymousLabel": "以 {label} 身份回复",
     "joinedStatLabel": "加入时间",
     "loadMore": "加载更多",
     "loadMoreReplies": "加载更多回复",
@@ -32,6 +42,9 @@
     "showOriginal": "显示原文",
     "showRepliesCount": "显示 {count} 条回复",
     "showTranslation": "显示翻译",
+    "readFullPost": "阅读全文",
+    "showFullPost": "显示全文",
+    "hideFullPost": "收起",
     "readSummary": "阅读摘要",
     "hideSummary": "隐藏摘要",
     "readFullPost": "阅读全文",
@@ -251,6 +264,7 @@
       "vocalStem": "人声分轨",
       "previewClip": "预览片段",
       "previewStartSeconds": "30 秒预览开始于",
+      "vinylReleaseUrl": "ElasticStage 黑胶链接",
       "charity": "慈善机构"
     },
     "identity": {
@@ -309,6 +323,7 @@
       "title": "标题",
       "unlockPrice": "0",
       "previewStartSeconds": "0",
+      "vinylReleaseUrl": "https://elasticstage.com/artist/releases/release-singleep",
       "url": "https://"
     },
     "sections": {

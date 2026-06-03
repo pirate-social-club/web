@@ -13,6 +13,16 @@
     "downvoteComment": "تصويت سلبي على التعليق",
     "expandReplies": "وسّع الردود",
     "expandThread": "وسّع النقاش",
+    "identityPublicDescription": "انشر وردّ باسمك العلني",
+    "identityAnonymousDefaultDescription": "هوية مستعارة",
+    "identityPublicOptionLabel": "علني: {handle}",
+    "identityAnonymousOptionLabel": "مجهول: {label}",
+    "identitySelectorAriaLabel": "اختر الهوية",
+    "identitySelectorDrawerTitle": "الرد باسم",
+    "publicIdentityFallback": "علني",
+    "anonymousIdentityFallback": "مجهول",
+    "replyingAsPublicLabel": "الردّ باسم {handle}",
+    "replyingAsAnonymousLabel": "الردّ باسم {label}",
     "joinedStatLabel": "انضم",
     "loadMore": "حمّل المزيد",
     "loadMoreReplies": "حمّل المزيد من الردود",
@@ -32,6 +42,9 @@
     "showOriginal": "أظهر الأصل",
     "showRepliesCount": "أظهر {count} من الردود",
     "showTranslation": "أظهر الترجمة",
+    "readFullPost": "اقرأ المنشور كاملًا",
+    "showFullPost": "أظهر المنشور كاملًا",
+    "hideFullPost": "أظهر أقل",
     "readSummary": "اقرأ الملخص",
     "hideSummary": "أخفِ الملخص",
     "readFullPost": "اقرأ المنشور كاملًا",
@@ -251,6 +264,7 @@
       "vocalStem": "المسار الصوتي",
       "previewClip": "مقطع المعاينة",
       "previewStartSeconds": "تبدأ معاينة 30 ثانية عند",
+      "vinylReleaseUrl": "رابط فينيل ElasticStage",
       "charity": "الجهة الخيرية"
     },
     "identity": {
@@ -309,6 +323,7 @@
       "title": "العنوان",
       "unlockPrice": "0",
       "previewStartSeconds": "0",
+      "vinylReleaseUrl": "https://elasticstage.com/artist/releases/release-singleep",
       "url": "https://"
     },
     "sections": {

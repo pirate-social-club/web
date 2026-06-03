@@ -102,20 +102,23 @@ export function PostComposerDerivativeSection({
     return null;
   }
 
-  const searchLoading = derivativeState.searchLoading === true
-    || derivativeState.searchResults === undefined;
+  const searchError = derivativeState.searchError?.trim() || null;
+  const searchLoading = !searchError && (
+    derivativeState.searchLoading === true
+    || derivativeState.searchResults === undefined
+  );
 
   return (
     <section className={cn("space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4", isMobile && "rounded-none border-0 bg-transparent p-0")}>
       <FormSectionHeading title={labels?.sectionTitle ?? copy.sections.sourceTrack} />
       <SearchReferencePicker
         ariaLabel={labels?.searchAriaLabel ?? copy.derivative.searchSourceTracks}
-        emptyLabel={labels?.emptyLabel ?? copy.empty.noSourceTracks}
+        emptyLabel={searchError ?? labels?.emptyLabel ?? copy.empty.noSourceTracks}
         items={derivativeSearchResults}
         loading={searchLoading}
         onQueryChange={(query) => {
           updateDerivativeState((current) => current
-            ? { ...current, query, searchLoading: true }
+            ? { ...current, query, searchError: undefined, searchLoading: true }
             : current);
         }}
         onSelect={(reference) => {
@@ -126,6 +129,7 @@ export function PostComposerDerivativeSection({
             requirementLabel: current?.requirementLabel,
             required: current?.required,
             searchResults: current?.searchResults,
+            searchError: undefined,
             searchLoading: false,
             references: dedupeReferences([...(current?.references ?? []), reference]),
             licenseSummary: current?.licenseSummary,

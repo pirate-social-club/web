@@ -310,6 +310,7 @@ export function usePostComposerController(props: PostComposerProps) {
           required: true,
           trigger: "remix",
           searchResults: current?.searchResults ?? [],
+          searchError: undefined,
           references: current?.references ?? [],
           sourceTermsAccepted: current?.sourceTermsAccepted === true,
         };
@@ -333,6 +334,7 @@ export function usePostComposerController(props: PostComposerProps) {
         trigger: "uses_song",
         requirementLabel: current?.requirementLabel,
         searchResults: current?.searchResults ?? [],
+        searchError: undefined,
         references: current?.references ?? [],
         licenseSummary: current?.licenseSummary,
         sourceTermsAccepted: current?.sourceTermsAccepted === true,

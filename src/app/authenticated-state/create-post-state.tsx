@@ -554,7 +554,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
     const fallbackTrigger = composerMode === "video" ? "uses_song" : "remix";
     const required = composerMode === "song";
     setDerivativeStep((current) => current
-      ? { ...current, searchLoading: true }
+      ? { ...current, searchError: undefined, searchLoading: true }
       : current);
     const timeout = setTimeout(() => {
       void withTimeout(
@@ -575,6 +575,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
               query: current?.query,
               requirementLabel: current?.requirementLabel,
               searchResults,
+              searchError: undefined,
               searchLoading: false,
               references: current?.references ?? [],
               licenseSummary: current?.licenseSummary,
@@ -585,12 +586,21 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
         .catch((error: unknown) => {
           if (cancelled) return;
           setDerivativeStep((current) => current
-            ? { ...current, searchResults: [], searchLoading: false }
+            ? {
+                ...current,
+                searchError: composerMode === "video"
+                  ? "Couldn’t load songs. Try again."
+                  : "Couldn’t load source tracks. Try again.",
+                searchLoading: false,
+                searchResults: current.searchResults ?? [],
+              }
             : current);
           logger.warn("[create-post] could not load derivative song sources", {
             communityId,
             error,
+            kind: searchOptions.kind,
             query,
+            scope: searchOptions.scope,
           });
         });
     }, query ? 200 : 0);

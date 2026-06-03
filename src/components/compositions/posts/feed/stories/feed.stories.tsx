@@ -9,6 +9,8 @@ import {
   TopTimeRangeControl,
   communityRailItems,
   homeFeedItems,
+  longTextHomeFeedItems,
+  longTextCommunityFeedItems,
   sortOptions,
   tameImpalaCommunity,
   tameImpalaFeedItems,
@@ -82,6 +84,31 @@ export const HomeRecentPostsRail: Story = {
           ) : undefined
         }
         items={homeFeedItems}
+        onSortChange={setActiveSort}
+      />
+    );
+  },
+};
+
+export const HomeLongTextPreview: Story = {
+  name: "Home / Long Text Preview",
+  args: {},
+  render: function StoryRender() {
+    const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
+    const [topRange, setTopRange] = React.useState("day");
+
+    return (
+      <Feed
+        activeSort={activeSort}
+        availableSorts={sortOptions}
+        controls={
+          activeSort === "top" ? (
+            <TopTimeRangeControl onValueChange={setTopRange} value={topRange} />
+          ) : undefined
+        }
+        fullBleedMobile
+        items={longTextHomeFeedItems}
+        listClassName="border-t-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
         onSortChange={setActiveSort}
       />
     );
@@ -187,6 +214,35 @@ export const CommunityWithFlairFilter: Story = {
           </>
         }
         items={tameImpalaFeedItems}
+        fullBleedMobile
+        listClassName="border-t-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
+        onSortChange={setActiveSort}
+      />
+    );
+  },
+};
+
+export const CommunityLongTextPreview: Story = {
+  name: "Community / Long Text Preview",
+  args: {},
+  render: function StoryRender() {
+    const [activeSort, setActiveSort] = React.useState<"best" | "new" | "top">("best");
+    const [topRange, setTopRange] = React.useState("day");
+
+    return (
+      <Feed
+        activeSort={activeSort}
+        aside={<StoryRail items={communityRailItems} title="Community" />}
+        availableSorts={sortOptions}
+        controls={
+          <>
+            {activeSort === "top" ? (
+              <TopTimeRangeControl onValueChange={setTopRange} value={topRange} />
+            ) : null}
+            <CommunityFlairControls />
+          </>
+        }
+        items={longTextCommunityFeedItems}
         fullBleedMobile
         listClassName="border-t-0 md:rounded-none md:border-x-0 md:border-t md:bg-transparent"
         onSortChange={setActiveSort}

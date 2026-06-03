@@ -36,6 +36,10 @@ const basePost: PostCardProps = {
   ],
 };
 
+const longTextPostBody = Array.from({ length: 26 }, (_, index) => (
+  `Paragraph ${index + 1}: this field report is intentionally long so feed cards prove they do not occupy the entire viewport. It should preview enough text to be useful, then hand off to the full post page.`
+)).join("\n\n");
+
 const cityEventByline: PostCardProps["byline"] = {
   community: { kind: "community", label: "c/tbilisi", href: "#", avatarSrc: "https://picsum.photos/seed/tbilisi-community/80/80" },
   author: { kind: "user", label: "u/nino", href: "#", avatarSrc: "https://i.pravatar.cc/100?img=32" },
@@ -1221,6 +1225,20 @@ export const LongTitle: Story = {
         body: "This is a long read. TL;DR: it's all about the weight matrix. The full writeup covers the dataset preparation, the cold start problem, and how I evaluated against existing solutions. I also open-sourced the training pipeline.",
       }}
       engagement={{ ...basePost.engagement, score: 4521, commentCount: 312 }}
+    />
+  ),
+};
+
+export const LongTextFeedPreview: Story = {
+  name: "Layout: Long Text Feed Preview",
+  render: () => (
+    <PostCard
+      {...basePost}
+      content={{ type: "text", body: longTextPostBody }}
+      engagement={{ ...basePost.engagement, score: 214, commentCount: 38 }}
+      postHref="/p/post_long_text_story"
+      title="Long text post should not consume the feed"
+      viewContext="community"
     />
   ),
 };

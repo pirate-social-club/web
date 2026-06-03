@@ -180,6 +180,62 @@ describe("PostCard", () => {
     expect(markup).toContain("[word-break:break-all]");
   });
 
+  test("collapses long text feed cards behind a full-post link", () => {
+    const longBody = Array.from(
+      { length: 24 },
+      (_, index) => `Section ${index + 1}: This is enough post body text to make a feed preview clamp useful.`,
+    ).join("\n\n");
+
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/guide" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "text",
+            body: longBody,
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          postHref="/p/post_long"
+          viewContext="community"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).toContain("max-h-96");
+    expect(markup).toContain("Read full post");
+    expect(markup).toContain('href="/p/post_long"');
+  });
+
+  test("does not collapse long text on the post page", () => {
+    const longBody = Array.from(
+      { length: 24 },
+      (_, index) => `Section ${index + 1}: Thread pages should keep the whole post visible.`,
+    ).join("\n\n");
+
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/guide" },
+            timestampLabel: "1h",
+          }}
+          content={{
+            type: "text",
+            body: longBody,
+          }}
+          engagement={{ commentCount: 0, score: 0 }}
+          viewContext="post"
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(markup).not.toContain("max-h-96");
+    expect(markup).not.toContain("Read full post");
+  });
+
   test("renders live-room feed cards with watch and ticket states", () => {
     const liveMarkup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

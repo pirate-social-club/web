@@ -51,6 +51,24 @@ class LazyPostMediaErrorBoundary extends React.Component<
 
 type LinkContent = Extract<PostCardContent, { type: "link" }>;
 type CrosspostContent = Extract<PostCardContent, { type: "crosspost" }>;
+type TextContent = Extract<PostCardContent, { type: "text" }>;
+
+const TEXT_PREVIEW_CHARACTER_LIMIT = 1_200;
+const TEXT_PREVIEW_LINE_LIMIT = 18;
+
+function shouldCollapseTextPreview(content: TextContent, viewContext: PostCardViewContext | undefined): boolean {
+  if (viewContext === "post") {
+    return false;
+  }
+
+  const body = content.body.trim();
+  if (!body) {
+    return false;
+  }
+
+  return body.length > TEXT_PREVIEW_CHARACTER_LIMIT
+    || body.split("\n").length > TEXT_PREVIEW_LINE_LIMIT;
+}
 
 function getLinkSummaryBullets(summary: LinkContent["summary"]): string[] {
   const shortSummary = summary?.shortSummary?.trim() ?? "";
@@ -194,27 +212,82 @@ function CrosspostPreviewCard({ content }: { content: CrosspostContent }) {
 export interface PostCardMediaProps {
   content: PostCardContent;
   className?: string;
+  postHref?: string;
   viewContext?: PostCardViewContext;
 }
 
-export function PostCardMedia({ content, className, viewContext }: PostCardMediaProps) {
+function TextPostContent({
+  className,
+  content,
+  postHref,
+  viewContext,
+}: {
+  className?: string;
+  content: TextContent;
+  postHref?: string;
+  viewContext?: PostCardViewContext;
+}) {
+  const { locale } = useUiLocale();
+  const copy = getLocaleMessages(locale, "routes").common;
+  const [expanded, setExpanded] = React.useState(false);
+  const shouldCollapse = shouldCollapseTextPreview(content, viewContext);
+  const isCollapsed = shouldCollapse && !expanded;
+  const formattedText = (
+    <FormattedText
+      className={cn(
+        postCardType.body,
+        postCardReadableWidth,
+        "self-start text-start text-foreground",
+        className,
+      )}
+      dir={content.bodyDir ?? "auto"}
+      lang={content.bodyLang}
+      value={content.body}
+    />
+  );
+
+  if (!shouldCollapse) {
+    return formattedText;
+  }
+
+  return (
+    <div className={cn(postCardReadableWidth, "self-start text-start")}>
+      <div className={cn(isCollapsed && "max-h-96 overflow-hidden")}>
+        {formattedText}
+      </div>
+      {postHref ? (
+        <a
+          className={cn(postCardType.label, "mt-2 inline-flex font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2")}
+          data-post-card-interactive="true"
+          href={postHref}
+        >
+          {copy.readFullPost}
+        </a>
+      ) : (
+        <button
+          aria-expanded={expanded}
+          className={cn(postCardType.label, "mt-2 inline-flex font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2")}
+          data-post-card-interactive="true"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setExpanded((value) => !value);
+          }}
+          type="button"
+        >
+          {expanded ? copy.hideFullPost : copy.showFullPost}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function PostCardMedia({ content, className, postHref, viewContext }: PostCardMediaProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
   switch (content.type) {
     case "text":
-      return (
-        <FormattedText
-          className={cn(
-            postCardType.body,
-            postCardReadableWidth,
-            "self-start text-start text-foreground",
-            className,
-          )}
-          dir={content.bodyDir ?? "auto"}
-          lang={content.bodyLang}
-          value={content.body}
-        />
-      );
+      return <TextPostContent className={className} content={content} postHref={postHref} viewContext={viewContext} />;
     case "image": {
       const isAgeGated = content.ageGatePolicy === "18_plus" && content.contentSafetyState === "adult";
       const ageGateRequiresProof = isAgeGated && content.ageGateViewerState !== "verified_allowed";

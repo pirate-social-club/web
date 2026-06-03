@@ -82,6 +82,44 @@ export const yourCommunitiesFeedItems = toFeedItems(YOUR_COMMUNITIES_POSTS);
 export const tameImpalaCommunity = COMMUNITY_RECORDS.gld_01_tame_impala;
 export const tameImpalaFeedItems = toFeedItems(tameImpalaCommunity.posts);
 
+const longTextPostBody = Array.from({ length: 26 }, (_, index) => (
+  `Paragraph ${index + 1}: this field report is intentionally long so feed cards prove they do not occupy the entire viewport. It should preview enough text to be useful, then hand off to the full post page.`
+)).join("\n\n");
+
+export const longTextHomeFeedItems: FeedItem[] = [
+  {
+    ...homeFeedItems[0],
+    id: "post_long_text_home_story",
+    post: {
+      ...homeFeedItems[0].post,
+      content: { type: "text", body: longTextPostBody },
+      engagement: { score: 214, commentCount: 38 },
+      postHref: "/p/post_long_text_home_story",
+      title: "Long text post should not consume the home feed",
+      titleHref: "/p/post_long_text_home_story",
+      viewContext: "home",
+    },
+  },
+  ...homeFeedItems.slice(1, 4),
+];
+
+export const longTextCommunityFeedItems: FeedItem[] = [
+  {
+    ...tameImpalaFeedItems[0],
+    id: "post_long_text_story",
+    post: {
+      ...tameImpalaFeedItems[0].post,
+      content: { type: "text", body: longTextPostBody },
+      engagement: { score: 214, commentCount: 38 },
+      postHref: "/p/post_long_text_story",
+      title: "Long text post should not consume the feed",
+      titleHref: "/p/post_long_text_story",
+      viewContext: "community",
+    },
+  },
+  ...tameImpalaFeedItems.slice(1, 4),
+];
+
 export const yourSpacesRailItems = Object.values(COMMUNITY_RECORDS).map((community) => ({
   id: community.id,
   label: community.label,

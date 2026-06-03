@@ -46,6 +46,16 @@ jobs:
             --define "__PIRATE_BUILD_GIT_SHA__:\"$API_SHA-video-uses-song-e2e\"" \
             --define "__PIRATE_BUILD_GIT_REF__:\"$API_REF\"" \
             --define "__PIRATE_BUILD_TIMESTAMP__:\"$BUILD_TIMESTAMP\""
+      - name: Sync staging API Story contract owner secret
+        working-directory: api/services/api
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          STORY_CONTRACT_OWNER_PRIVATE_KEY: ${{ secrets.STORY_CONTRACT_OWNER_PRIVATE_KEY }}
+        run: |
+          test -n "$STORY_CONTRACT_OWNER_PRIVATE_KEY"
+          printf '%s' "$STORY_CONTRACT_OWNER_PRIVATE_KEY" \
+            | ./node_modules/.bin/wrangler secret put STORY_CONTRACT_OWNER_PRIVATE_KEY --env staging
       - name: Verify staging API metadata
         run: |
           expected="$(cd api && git rev-parse --short HEAD)-video-uses-song-e2e"

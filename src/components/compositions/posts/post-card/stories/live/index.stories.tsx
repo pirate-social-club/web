@@ -1,8 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { ArrowsClockwise, Copy, ShareNetwork } from "@phosphor-icons/react";
 import * as React from "react";
 
 import { PostCard } from "../../post-card";
 import type { LiveRoomContentSpec, PostCardProps } from "../../post-card.types";
+
+const shareActions: NonNullable<PostCardProps["shareActions"]> = [
+  { key: "crosspost", label: "Crosspost", icon: <ArrowsClockwise className="size-5" /> },
+  { key: "copy-link", label: "Copy link", icon: <Copy className="size-5" /> },
+  { key: "native-share", label: "Share...", icon: <ShareNetwork className="size-5" /> },
+];
 
 const basePost: Omit<PostCardProps, "content"> = {
   viewContext: "community",
@@ -12,6 +19,7 @@ const basePost: Omit<PostCardProps, "content"> = {
     timestampLabel: "5h",
   },
   engagement: { score: 891, commentCount: 63 },
+  shareActions,
 };
 
 const baseLiveRoom: LiveRoomContentSpec = {

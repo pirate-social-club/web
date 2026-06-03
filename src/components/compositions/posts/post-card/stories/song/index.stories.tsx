@@ -1,9 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Flag, Link } from "@phosphor-icons/react";
+import { ArrowsClockwise, Copy, Flag, Link, ShareNetwork } from "@phosphor-icons/react";
 import * as React from "react";
 
 import { PostCard } from "../../post-card";
 import type { PostCardMenuItem, PostCardProps, SongContentSpec } from "../../post-card.types";
+
+const shareActions: NonNullable<PostCardProps["shareActions"]> = [
+  { key: "crosspost", label: "Crosspost", icon: <ArrowsClockwise className="size-5" /> },
+  { key: "copy-link", label: "Copy link", icon: <Copy className="size-5" /> },
+  { key: "native-share", label: "Share...", icon: <ShareNetwork className="size-5" /> },
+];
 
 const basePostActions: PostCardMenuItem[] = [
   { key: "copy-link", label: "Copy link", icon: <Link className="size-4" /> },
@@ -25,6 +31,7 @@ const basePost: Omit<PostCardProps, "content"> = {
   },
   title: "Just dropped this track - let me know what you think",
   engagement: { score: 891, commentCount: 63 },
+  shareActions,
   menuItems: basePostActions,
   onMenuAction: () => undefined,
 };

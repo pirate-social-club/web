@@ -93,13 +93,11 @@ describe("PostCard", () => {
       "Copy link",
       "Report",
       "View on Genius",
-      "Copy IPFS CID",
       "View on IPFS",
     ]);
     expect(mergedItems.map((item) => Boolean(item.separatorBefore))).toEqual([
       false,
       true,
-      false,
       false,
       false,
     ]);

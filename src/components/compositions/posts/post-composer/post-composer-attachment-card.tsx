@@ -10,6 +10,11 @@ import * as React from "react";
 
 import { Input } from "@/components/primitives/input";
 import { Type } from "@/components/primitives/type";
+import {
+  getMediaAspectRatioStyle,
+  getVideoPreviewFrameClassName,
+  getVideoPreviewObjectFitClassName,
+} from "@/components/compositions/posts/video-preview-layout";
 import { cn } from "@/lib/utils";
 
 import { isValidHttpUrl } from "./post-composer-utils";
@@ -25,6 +30,9 @@ function VideoAttachmentPreview({
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [posterVisible, setPosterVisible] = React.useState(Boolean(attachment.posterUrl));
+  const aspectRatioStyle = getMediaAspectRatioStyle(attachment.aspectRatio);
+  const frameClassName = getVideoPreviewFrameClassName(attachment.aspectRatio);
+  const objectFitClassName = getVideoPreviewObjectFitClassName(attachment.aspectRatio);
 
   React.useEffect(() => {
     setIsPlaying(false);
@@ -48,7 +56,10 @@ function VideoAttachmentPreview({
 
   return (
     <div
-      className="group relative aspect-video w-full cursor-pointer overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-card"
+      className={cn(
+        "group relative cursor-pointer overflow-hidden rounded-[var(--radius-xl)] border border-border-soft bg-black",
+        aspectRatioStyle ? frameClassName : "aspect-video w-full",
+      )}
       onClick={() => void togglePlayback()}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -57,12 +68,13 @@ function VideoAttachmentPreview({
         }
       }}
       role="button"
+      style={aspectRatioStyle}
       tabIndex={0}
     >
       {attachment.previewUrl ? (
         <video
           ref={videoRef}
-          className="size-full object-cover"
+          className={cn("size-full", objectFitClassName)}
           muted
           onEnded={() => setIsPlaying(false)}
           onPause={() => setIsPlaying(false)}
@@ -74,7 +86,7 @@ function VideoAttachmentPreview({
       ) : attachment.posterUrl ? (
         <img
           alt=""
-          className="size-full object-cover"
+          className={cn("size-full", objectFitClassName)}
           src={attachment.posterUrl}
         />
       ) : (
@@ -86,7 +98,7 @@ function VideoAttachmentPreview({
       {attachment.posterUrl && posterVisible ? (
         <img
           alt=""
-          className="absolute inset-0 size-full object-cover"
+          className={cn("absolute inset-0 size-full", objectFitClassName)}
           src={attachment.posterUrl}
         />
       ) : null}

@@ -5,6 +5,7 @@ import { Copy, Flag, Link, ShareNetwork } from "@phosphor-icons/react";
 
 import { PostCard } from "@/components/compositions/posts/post-card/post-card";
 import { buildPostCardTitleProps } from "@/components/compositions/posts/post-card/post-card-content-rules";
+import { useVideoSourceAspectRatio } from "@/components/compositions/posts/video-preview-layout";
 import { postCardReadableWidth } from "@/components/compositions/posts/post-card/post-card.styles";
 import type { PlaybackState, PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { cn } from "@/lib/utils";
@@ -216,6 +217,7 @@ function attachmentFromController(
   controller: PostComposerController,
   imagePreviewUrl?: string,
   videoPreviewUrl?: string,
+  videoAspectRatio?: number,
   songAudioPreviewUrl?: string,
   songArtworkPreviewUrl?: string,
 ): AttachmentState {
@@ -235,6 +237,7 @@ function attachmentFromController(
     return {
       kind: "video",
       label: media.videoState.primaryVideoUpload?.name ?? media.videoState.primaryVideoLabel ?? "Video",
+      aspectRatio: videoAspectRatio,
       previewUrl: videoPreviewUrl,
     };
   }
@@ -407,6 +410,7 @@ export function PostComposerPublishSettings({
 }: PostComposerPublishSettingsProps) {
   const imagePreviewUrl = useObjectUrl(controller.media.activeImageUpload);
   const videoPreviewUrl = useObjectUrl(controller.media.videoState.primaryVideoUpload);
+  const videoAspectRatio = useVideoSourceAspectRatio(videoPreviewUrl);
   const songAudioPreviewUrl = useObjectUrl(controller.song.state.primaryAudioUpload);
   const songArtworkPreviewUrl = useObjectUrl(controller.song.state.coverUpload);
   const instrumentalAudioPreviewUrl = useObjectUrl(controller.song.state.instrumentalAudioUpload);
@@ -421,6 +425,7 @@ export function PostComposerPublishSettings({
     controller,
     imagePreviewUrl,
     videoPreviewUrl,
+    videoAspectRatio,
     songAudioPreviewUrl,
     songArtworkPreviewUrl,
   );

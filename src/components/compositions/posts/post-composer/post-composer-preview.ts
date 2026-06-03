@@ -91,6 +91,7 @@ export function buildPostComposerPreviewContent({
     return {
       type: "video",
       src: attachment.previewUrl ?? fallbackVideoSrc,
+      aspectRatio: attachment.aspectRatio,
       posterSrc: videoPosterSrc ?? videoDetails?.thumbnail?.previewUrl,
       title: title || "Video",
       caption: bodyText || undefined,

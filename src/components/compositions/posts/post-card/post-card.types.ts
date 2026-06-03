@@ -208,6 +208,7 @@ export interface VideoContentSpec {
 
   src: string;
   posterSrc?: string;
+  aspectRatio?: number;
   title?: string;
   caption?: string;
   captionDir?: "ltr" | "rtl" | "auto";

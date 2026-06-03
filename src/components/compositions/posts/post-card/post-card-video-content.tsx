@@ -9,6 +9,11 @@ import { useUiLocale } from "@/lib/ui-locale";
 import { getLocaleMessages } from "@/locales";
 import { mediaControlButtonVariants } from "@/components/primitives/media-control-button";
 import { extractVideoPosterFrameSourceDataUrl } from "@/components/compositions/posts/post-composer/video-poster-frame";
+import {
+  getMediaAspectRatioStyle,
+  getVideoPreviewFrameClassName,
+  getVideoPreviewObjectFitClassName,
+} from "@/components/compositions/posts/video-preview-layout";
 import { postCardType } from "./post-card.styles";
 import { StoryRegistrationBadge } from "./post-card-story-registration";
 import type { UpstreamAttribution, VideoContentSpec } from "./post-card.types";
@@ -22,8 +27,23 @@ function isBlobUrl(src: string): boolean {
   return src.startsWith("blob:");
 }
 
-function BlobVideoPlayer({ autoPlay, src, poster, title, className }: { autoPlay?: boolean; src: string; poster?: string; title?: string; className?: string }) {
+function BlobVideoPlayer({
+  aspectRatio,
+  autoPlay,
+  src,
+  poster,
+  title,
+  className,
+}: {
+  aspectRatio?: number;
+  autoPlay?: boolean;
+  src: string;
+  poster?: string;
+  title?: string;
+  className?: string;
+}) {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
+  const aspectRatioStyle = getMediaAspectRatioStyle(aspectRatio);
 
   function togglePlayback() {
     const video = videoRef.current;
@@ -38,7 +58,12 @@ function BlobVideoPlayer({ autoPlay, src, poster, title, className }: { autoPlay
   return (
     <video
       ref={videoRef}
-      className={cn("aspect-video w-full rounded-lg bg-black object-contain", className)}
+      className={cn(
+        "rounded-lg bg-black object-contain",
+        aspectRatioStyle ? getVideoPreviewFrameClassName(aspectRatio) : "aspect-video w-full",
+        className,
+      )}
+      style={aspectRatioStyle}
       autoPlay={autoPlay}
       controls
       muted
@@ -237,6 +262,9 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
   const derivativeSummary = ui.showAttribution ? getDerivativeSummary(upstreamAttributions) : null;
   const hasPlayableSource = content.src.trim().length > 0;
   const isBuffering = content.playbackState === "buffering";
+  const aspectRatioStyle = getMediaAspectRatioStyle(content.aspectRatio);
+  const frameClassName = getVideoPreviewFrameClassName(content.aspectRatio);
+  const objectFitClassName = getVideoPreviewObjectFitClassName(content.aspectRatio);
 
   React.useEffect(() => {
     if (playRequestedRef.current && hasPlayableSource) {
@@ -261,6 +289,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
       return (
         <div className={cn("flex flex-col gap-2 text-start", className)}>
           <BlobVideoPlayer
+            aspectRatio={content.aspectRatio}
             autoPlay
             src={content.src}
             poster={content.posterSrc}
@@ -307,10 +336,12 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
     <div className={cn("flex flex-col gap-2 text-start", className)}>
       <button
         className={cn(
-          "relative block w-full overflow-hidden rounded-lg bg-muted",
+          "relative block overflow-hidden rounded-lg bg-muted",
+          aspectRatioStyle ? frameClassName : "w-full",
           ui.canPlay && "cursor-pointer",
         )}
         type="button"
+        style={aspectRatioStyle}
         onClick={handlePlay}
         disabled={!ui.canPlay}
         aria-label={content.title ? `Play ${content.title}` : copy.playVideo}
@@ -318,13 +349,15 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
         {ui.ageGateRequiresProof ? (
           <div
             aria-label={content.title ?? copy.videoThumbnail}
-            className="aspect-video w-full bg-muted"
+            className={cn("bg-muted", aspectRatioStyle ? "size-full" : "aspect-video w-full")}
             role="img"
           />
         ) : content.posterSrc || content.src.trim() ? (
           <VideoThumbnail
             className={cn(
-              "aspect-video w-full object-cover transition-[filter,transform]",
+              aspectRatioStyle ? "size-full" : "aspect-video w-full",
+              objectFitClassName,
+              "transition-[filter,transform]",
               ui.showLockedThumbnail && "scale-[1.02] blur-[3px]",
             )}
             posterSrc={content.posterSrc}

@@ -1586,6 +1586,42 @@ describe("PostComposer monetization", () => {
     expect(squareContainer).toBe(null);
   });
 
+  test("keeps portrait video attachment previews narrow", () => {
+    const wrapper = PostComposerAttachmentCard({
+      attachment: {
+        aspectRatio: 9 / 16,
+        kind: "video",
+        label: "portrait.mp4",
+        posterUrl: "blob:https://app.test/portrait-poster",
+        previewUrl: "blob:https://app.test/portrait-video",
+      },
+      onChange: () => undefined,
+      onRemove: () => undefined,
+    });
+    if (!React.isValidElement(wrapper) || typeof wrapper.type !== "function") {
+      throw new Error("Missing video preview wrapper");
+    }
+
+    const tree = (wrapper.type as (props: typeof wrapper.props) => React.ReactNode)(wrapper.props);
+
+    const previewContainer = findElement(
+      tree,
+      (element) => element.props.role === "button" && typeof element.props.className === "string",
+    );
+    const previewVideo = findElement(
+      tree,
+      (element) => element.type === "video" && element.props.src === "blob:https://app.test/portrait-video",
+    );
+
+    const previewContainerClassName = String(previewContainer?.props.className ?? "");
+    const previewVideoClassName = String(previewVideo?.props.className ?? "");
+
+    expect(previewContainerClassName).toContain("max-w-[22rem]");
+    expect(previewContainerClassName).not.toContain("aspect-video");
+    expect(previewContainer?.props.style).toEqual({ aspectRatio: 9 / 16 });
+    expect(previewVideoClassName).toContain("object-contain");
+  });
+
   test("clears the remix derivative step when switching back to original", () => {
     let derivativeStep: PostComposerProps["derivativeStep"] = {
       visible: true,

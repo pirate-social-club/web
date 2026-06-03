@@ -8,6 +8,7 @@ import { CardContent } from "@/components/primitives/card";
 import { Input } from "@/components/primitives/input";
 import { Textarea } from "@/components/primitives/textarea";
 import { Type } from "@/components/primitives/type";
+import { useVideoSourceAspectRatio } from "@/components/compositions/posts/video-preview-layout";
 import { cn } from "@/lib/utils";
 
 import { PostComposerAttachmentCard } from "./post-composer-attachment-card";
@@ -82,6 +83,7 @@ function attachmentFromController(
   imagePreviewUrl?: string,
   videoPosterUrl?: string,
   videoPreviewUrl?: string,
+  videoAspectRatio?: number,
   songArtworkUrl?: string,
 ): AttachmentState {
   const { fields, media, song, tabs } = controller;
@@ -100,6 +102,7 @@ function attachmentFromController(
     return {
       kind: "video",
       label: media.videoState.primaryVideoUpload?.name ?? media.videoState.primaryVideoLabel ?? "Video",
+      aspectRatio: videoAspectRatio,
       posterUrl: videoPosterUrl,
       previewUrl: videoPreviewUrl,
     };
@@ -175,9 +178,10 @@ function useWriteStepController(controller: PostComposerController) {
   const audioInputRef = React.useRef<HTMLInputElement | null>(null);
   const imagePreviewUrl = useObjectUrl(controller.media.activeImageUpload);
   const videoPreviewUrl = useObjectUrl(controller.media.videoState.primaryVideoUpload);
+  const videoAspectRatio = useVideoSourceAspectRatio(videoPreviewUrl);
   const videoPosterUrl = useVideoPosterUrl(controller.media.videoState.primaryVideoUpload);
   const songArtworkUrl = useObjectUrl(controller.song.state.coverUpload);
-  const attachment = attachmentFromController(controller, imagePreviewUrl, videoPosterUrl, videoPreviewUrl, songArtworkUrl);
+  const attachment = attachmentFromController(controller, imagePreviewUrl, videoPosterUrl, videoPreviewUrl, videoAspectRatio, songArtworkUrl);
   const [isDragging, setIsDragging] = React.useState(false);
   const dragCounter = React.useRef(0);
 

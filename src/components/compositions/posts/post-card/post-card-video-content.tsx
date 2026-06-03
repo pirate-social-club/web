@@ -1,6 +1,5 @@
 import * as React from "react";
-import { Check } from "@phosphor-icons/react";
-import { Lock as FilledLockIcon, Play as PlayIcon } from "@phosphor-icons/react";
+import { Check, Lock as FilledLockIcon, Play as PlayIcon, VideoCamera } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/primitives/button";
 import { Type } from "@/components/primitives/type";
@@ -172,6 +171,8 @@ export interface DerivedVideoUI {
   showLockedThumbnail: boolean;
   showAgeGatedThumbnail: boolean;
   showOwned: boolean;
+  showBuy: boolean;
+  showUnlock: boolean;
   showAttribution: boolean;
   canPlay: boolean;
 }
@@ -183,6 +184,10 @@ export function deriveVideoUI(content: VideoContentSpec): DerivedVideoUI {
     ageGatePolicy,
     ageGateViewerState,
     hasEntitlement,
+    listingMode,
+    listingStatus,
+    onBuy,
+    onUnlock,
     videoMode,
     upstreamAttributions,
   } = content;
@@ -190,10 +195,14 @@ export function deriveVideoUI(content: VideoContentSpec): DerivedVideoUI {
   const isAgeGated = ageGatePolicy === "18_plus" && contentSafetyState === "adult";
   const ageGateRequiresProof = isAgeGated && ageGateViewerState !== "verified_allowed";
   const isLocked = accessMode === "locked";
+  const isOwned = hasEntitlement === true;
+  const isListedActive = listingMode === "listed" && listingStatus === "active";
 
-  const showLockedThumbnail = isLocked && !hasEntitlement;
+  const showLockedThumbnail = isLocked && !isOwned;
   const showAgeGatedThumbnail = ageGateRequiresProof;
-  const showOwned = isLocked && hasEntitlement === true;
+  const showOwned = isLocked && isOwned;
+  const showBuy = isLocked && !isOwned && isListedActive && Boolean(onBuy);
+  const showUnlock = isLocked && !isOwned && !isListedActive && Boolean(onUnlock);
 
   const showAttribution = !!(
     videoMode &&
@@ -204,7 +213,7 @@ export function deriveVideoUI(content: VideoContentSpec): DerivedVideoUI {
 
   const hasPlayableSource = content.src.trim().length > 0;
   const hasResolvableSource = hasPlayableSource || !!content.onPlay;
-  const hasLockedAccess = !isLocked || hasEntitlement === true;
+  const hasLockedAccess = !isLocked || isOwned;
   const canPlay = hasResolvableSource && hasLockedAccess && !ageGateRequiresProof;
 
   return {
@@ -213,6 +222,8 @@ export function deriveVideoUI(content: VideoContentSpec): DerivedVideoUI {
     showLockedThumbnail,
     showAgeGatedThumbnail,
     showOwned,
+    showBuy,
+    showUnlock,
     showAttribution,
     canPlay,
   };
@@ -246,6 +257,101 @@ function VideoCaption({ content }: { content: VideoContentSpec }) {
   );
 }
 
+interface VideoOfferRowProps {
+  action: React.ReactNode;
+  icon: React.ReactNode;
+  label: string;
+  priceLabel?: string;
+}
+
+function VideoOfferRow({ action, icon, label, priceLabel }: VideoOfferRowProps) {
+  return (
+    <div className="grid min-h-16 grid-cols-[auto_minmax(0,1fr)_4rem_8.5rem] items-center gap-3 border-t border-border-soft px-4 py-3">
+      <div className="grid size-8 shrink-0 place-items-center text-muted-foreground">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <Type as="p" className="truncate font-semibold text-foreground" variant="body-strong">
+          {label}
+        </Type>
+      </div>
+      {priceLabel ? (
+        <Type as="p" className="text-end font-semibold text-foreground" variant="body-strong">
+          {priceLabel}
+        </Type>
+      ) : <div aria-hidden="true" />}
+      <div className="flex justify-end">
+        {action}
+      </div>
+    </div>
+  );
+}
+
+function VideoOfferRows({ content, ui }: { content: VideoContentSpec; ui: DerivedVideoUI }) {
+  if (ui.ageGateRequiresProof) return null;
+
+  const effectivePrice = content.regionalPriceLabel ?? content.priceLabel;
+  const icon = <VideoCamera className="size-5" />;
+
+  if (ui.showBuy && content.onBuy) {
+    return (
+      <VideoOfferRow
+        action={(
+          <Button
+            aria-label="Buy Full video"
+            className="h-10 w-32 px-5"
+            data-post-card-interactive="true"
+            onClick={content.onBuy}
+            size="sm"
+          >
+            Buy
+          </Button>
+        )}
+        icon={icon}
+        label="Full video"
+        priceLabel={effectivePrice}
+      />
+    );
+  }
+
+  if (ui.showUnlock && content.onUnlock) {
+    return (
+      <VideoOfferRow
+        action={(
+          <Button
+            aria-label="Unlock Full video"
+            className="h-10 w-32 px-5"
+            data-post-card-interactive="true"
+            onClick={content.onUnlock}
+            size="sm"
+          >
+            Unlock
+          </Button>
+        )}
+        icon={icon}
+        label="Full video"
+      />
+    );
+  }
+
+  if (ui.showOwned) {
+    return (
+      <VideoOfferRow
+        action={(
+          <span className="inline-flex h-10 w-32 items-center justify-center gap-1.5 rounded-full px-3 font-semibold text-success">
+            <span>Unlocked</span>
+            <Check className="size-4" weight="bold" />
+          </span>
+        )}
+        icon={icon}
+        label="Full video"
+      />
+    );
+  }
+
+  return null;
+}
+
 export function VideoPostContent({ content, className }: VideoPostContentProps) {
   const { locale } = useUiLocale();
   const copy = getLocaleMessages(locale, "routes").common;
@@ -265,6 +371,8 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
   const aspectRatioStyle = getMediaAspectRatioStyle(content.aspectRatio);
   const frameClassName = getVideoPreviewFrameClassName(content.aspectRatio);
   const objectFitClassName = getVideoPreviewObjectFitClassName(content.aspectRatio);
+  const videoFrameClassName = aspectRatioStyle ? "w-full" : "aspect-video w-full";
+  const offerRows = <VideoOfferRows content={content} ui={ui} />;
 
   React.useEffect(() => {
     if (playRequestedRef.current && hasPlayableSource) {
@@ -288,13 +396,17 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
     if (isBlobUrl(content.src)) {
       return (
         <div className={cn("flex flex-col gap-2 text-start", className)}>
-          <BlobVideoPlayer
-            aspectRatio={content.aspectRatio}
-            autoPlay
-            src={content.src}
-            poster={content.posterSrc}
-            title={content.title}
-          />
+          <div className={cn("overflow-hidden rounded-lg border border-border-soft bg-card", frameClassName)}>
+            <BlobVideoPlayer
+              aspectRatio={content.aspectRatio}
+              autoPlay
+              className="rounded-none"
+              src={content.src}
+              poster={content.posterSrc}
+              title={content.title}
+            />
+            {offerRows}
+          </div>
           {derivativeSummary && (
             <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
               {derivativeSummary}
@@ -308,19 +420,22 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
 
     return (
       <div className={cn("flex flex-col gap-2 text-start", className)}>
-        <React.Suspense
-          fallback={
-            <div className="aspect-video w-full rounded-lg bg-black/90" aria-busy="true" />
-          }
-        >
-          <LazyVideoPlayer
-            autoPlay
-            src={content.src}
-            poster={content.posterSrc}
-            title={content.title}
-            playsinline
-          />
-        </React.Suspense>
+        <div className={cn("overflow-hidden rounded-lg border border-border-soft bg-card", frameClassName)}>
+          <React.Suspense
+            fallback={
+              <div className="aspect-video w-full bg-black/90" aria-busy="true" />
+            }
+          >
+            <LazyVideoPlayer
+              autoPlay
+              src={content.src}
+              poster={content.posterSrc}
+              title={content.title}
+              playsinline
+            />
+          </React.Suspense>
+          {offerRows}
+        </div>
         {derivativeSummary && (
           <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
             {derivativeSummary}
@@ -334,93 +449,96 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
 
   return (
     <div className={cn("flex flex-col gap-2 text-start", className)}>
-      <button
-        className={cn(
-          "relative block overflow-hidden rounded-lg bg-muted",
-          aspectRatioStyle ? frameClassName : "w-full",
-          ui.canPlay && "cursor-pointer",
-        )}
-        type="button"
-        style={aspectRatioStyle}
-        onClick={handlePlay}
-        disabled={!ui.canPlay}
-        aria-label={content.title ? `Play ${content.title}` : copy.playVideo}
-      >
-        {ui.ageGateRequiresProof ? (
-          <div
-            aria-label={content.title ?? copy.videoThumbnail}
-            className={cn("bg-muted", aspectRatioStyle ? "size-full" : "aspect-video w-full")}
-            role="img"
-          />
-        ) : content.posterSrc || content.src.trim() ? (
-          <VideoThumbnail
-            className={cn(
-              aspectRatioStyle ? "size-full" : "aspect-video w-full",
-              objectFitClassName,
-              "transition-[filter,transform]",
-              ui.showLockedThumbnail && "scale-[1.02] blur-[3px]",
-            )}
-            posterSrc={content.posterSrc}
-            src={content.src}
-            title={content.title ?? copy.videoThumbnail}
-          />
-        ) : (
-          <div className="flex aspect-video w-full items-center justify-center bg-muted">
-            <PlayIcon className="size-8 text-muted-foreground" weight="fill" />
-          </div>
-        )}
-
-        {ui.showLockedThumbnail && (
-          <div className="absolute inset-0 bg-black/22" />
-        )}
-
-        {ui.showAgeGatedThumbnail && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-            <Button
-              size="lg"
-              className="gap-2 font-semibold shadow-lg"
-              onClick={onVerifyAge}
-              disabled={!onVerifyAge}
-            >
-              <FilledLockIcon className="size-4" weight="fill" />
-              <Type variant="body-strong">{copy.ageGateVerify}</Type>
-            </Button>
-          </div>
-        )}
-
-        {ui.canPlay && !isBuffering && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span
-              aria-hidden="true"
-              className={mediaControlButtonVariants({ size: "md" })}
-            >
-              <PlayIcon className="size-[18px]" weight="fill" />
-            </span>
-          </div>
-        )}
-
-        {isBuffering && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span
-              aria-hidden="true"
-              className="size-10 animate-spin rounded-full border-2 border-white/35 border-t-white"
+      <div className={cn("overflow-hidden rounded-lg border border-border-soft bg-card", frameClassName)}>
+        <button
+          className={cn(
+            "relative block overflow-hidden bg-muted",
+            videoFrameClassName,
+            ui.canPlay && "cursor-pointer",
+          )}
+          type="button"
+          style={aspectRatioStyle}
+          onClick={handlePlay}
+          disabled={!ui.canPlay}
+          aria-label={content.title ? `Play ${content.title}` : copy.playVideo}
+        >
+          {ui.ageGateRequiresProof ? (
+            <div
+              aria-label={content.title ?? copy.videoThumbnail}
+              className="size-full bg-muted"
+              role="img"
             />
-          </div>
-        )}
-
-        {durationLabel && !ui.ageGateRequiresProof && (
-          <div className="absolute bottom-2 end-2">
-            <span
+          ) : content.posterSrc || content.src.trim() ? (
+            <VideoThumbnail
               className={cn(
-                "rounded bg-black/70 px-1.5 py-0.5 text-white",
-                postCardType.caption,
+                "size-full",
+                objectFitClassName,
+                "transition-[filter,transform]",
+                ui.showLockedThumbnail && "scale-[1.02] blur-[3px]",
               )}
-            >
-              {durationLabel}
-            </span>
-          </div>
-        )}
-      </button>
+              posterSrc={content.posterSrc}
+              src={content.src}
+              title={content.title ?? copy.videoThumbnail}
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center bg-muted">
+              <PlayIcon className="size-8 text-muted-foreground" weight="fill" />
+            </div>
+          )}
+
+          {ui.showLockedThumbnail && (
+            <div className="absolute inset-0 bg-black/22" />
+          )}
+
+          {ui.showAgeGatedThumbnail && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+              <Button
+                size="lg"
+                className="gap-2 font-semibold shadow-lg"
+                onClick={onVerifyAge}
+                disabled={!onVerifyAge}
+              >
+                <FilledLockIcon className="size-4" weight="fill" />
+                <Type variant="body-strong">{copy.ageGateVerify}</Type>
+              </Button>
+            </div>
+          )}
+
+          {ui.canPlay && !isBuffering && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span
+                aria-hidden="true"
+                className={mediaControlButtonVariants({ size: "md" })}
+              >
+                <PlayIcon className="size-[18px]" weight="fill" />
+              </span>
+            </div>
+          )}
+
+          {isBuffering && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span
+                aria-hidden="true"
+                className="size-10 animate-spin rounded-full border-2 border-white/35 border-t-white"
+              />
+            </div>
+          )}
+
+          {durationLabel && !ui.ageGateRequiresProof && (
+            <div className="absolute bottom-2 end-2">
+              <span
+                className={cn(
+                  "rounded bg-black/70 px-1.5 py-0.5 text-white",
+                  postCardType.caption,
+                )}
+              >
+                {durationLabel}
+              </span>
+            </div>
+          )}
+        </button>
+        {offerRows}
+      </div>
 
       {derivativeSummary && (
         <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
@@ -432,17 +550,6 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
 
       <StoryRegistrationBadge status={content.storyRegistration} />
 
-      {ui.showOwned && (
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 font-medium text-success",
-            postCardType.label,
-          )}
-        >
-          <Check className="size-4" weight="bold" />
-          <span>Unlocked</span>
-        </span>
-      )}
     </div>
   );
 }

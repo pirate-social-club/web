@@ -8,7 +8,7 @@ import type { ApiLiveRoomViewerAttachResponse } from "@/lib/api/client-api-types
 import { UiLocaleProvider } from "@/lib/ui-locale";
 
 import { deriveSongHeaderMenuActions, mergePostCardMenuItems, openExternalUrl, PostCard } from "./post-card";
-import type { PostCardMenuItem, SongContentSpec } from "./post-card.types";
+import type { PostCardMenuItem, SongContentSpec, VideoContentSpec } from "./post-card.types";
 
 function withWindow(value: unknown, callback: () => void) {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
@@ -59,6 +59,32 @@ describe("PostCard", () => {
     });
 
     expect(open).toHaveBeenCalledWith("https://genius.com/34172986", "_blank", "noopener,noreferrer");
+  });
+
+  test("does not render locked video commerce in the engagement bar", () => {
+    const video: VideoContentSpec = {
+      type: "video",
+      accessMode: "locked",
+      listingMode: "listed",
+      listingStatus: "active",
+      onBuy: () => undefined,
+      posterSrc: "https://example.test/poster.jpg",
+      priceLabel: "$4.99",
+      src: "https://example.test/video.mp4",
+      title: "Behind the scenes",
+    };
+
+    const markup = renderToStaticMarkup(
+      <PostCard
+        byline={{ author: { kind: "user", label: "u/artist" }, timestampLabel: "now" }}
+        content={video}
+        engagement={{ commentCount: 2, score: 5 }}
+        title="Behind the scenes"
+      />,
+    );
+
+    expect(markup).not.toContain("$4.99");
+    expect(markup).not.toContain(">Buy<");
   });
 
   test("keeps song annotations in post options without duplicating visible download rows", () => {

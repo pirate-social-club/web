@@ -18,38 +18,6 @@ import type { DownloadPolicy, PostCardMenuItem, PostCardProps, StemAccessPolicy,
 
 type SongContent = Extract<PostCardProps["content"], { type: "song" }>;
 
-function deriveVideoUnlock(
-  content: PostCardProps["content"],
-): PostCardProps["engagement"]["unlock"] {
-  if (content.type !== "video") return undefined;
-
-  const {
-    accessMode,
-    listingMode,
-    listingStatus,
-    hasEntitlement,
-    priceLabel,
-    regionalPriceLabel,
-    onBuy,
-    onUnlock,
-  } = content;
-
-  if (accessMode !== "locked" || hasEntitlement) return undefined;
-
-  const isListed = listingMode === "listed" && listingStatus === "active";
-  const effectivePrice = regionalPriceLabel ?? priceLabel;
-
-  if (isListed && effectivePrice && onBuy) {
-    return { label: effectivePrice, onBuy };
-  }
-
-  if (onUnlock) {
-    return { label: "Unlock", onBuy: onUnlock };
-  }
-
-  return undefined;
-}
-
 export interface DerivedSongMenuAction {
   category: "metadata" | "download";
   item: PostCardMenuItem;
@@ -380,8 +348,7 @@ export function PostCard({
     )
   ) : null;
 
-  const videoUnlock = deriveVideoUnlock(content);
-  const unlock = content.type === "song" ? undefined : engagement.unlock ?? videoUnlock;
+  const unlock = content.type === "song" || content.type === "video" ? undefined : engagement.unlock;
   const songCommerce = deriveSongCommerce(content);
   const songHeaderMenuActions = deriveSongHeaderMenuActions(content);
   const effectiveMenuItems = mergePostCardMenuItems(menuItems, songHeaderMenuActions);

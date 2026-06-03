@@ -107,8 +107,8 @@ export const Buffering: Story = {
 // ACCESS STATES
 // ============================================================================
 
-export const LockedPreview: Story = {
-  name: "Access / Locked (30s Preview)",
+export const LockedBuy: Story = {
+  name: "Access / Locked Buy",
   render: () => (
     <PostCard
       {...basePost}
@@ -121,6 +121,23 @@ export const LockedPreview: Story = {
         listingStatus: "active",
         priceLabel: "$4.99",
         onBuy: noop,
+      }}
+    />
+  ),
+};
+
+export const LockedUnlock: Story = {
+  name: "Access / Locked Unlock",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Private studio footage - unlock required"
+      content={{
+        ...baseVideo,
+        accessMode: "locked",
+        playbackState: "idle",
+        listingMode: "not_listed",
+        onUnlock: noop,
       }}
     />
   ),

@@ -77,17 +77,17 @@ function getEffectiveDownloadPolicy(content: SongContent): DownloadPolicy {
 function stemKindLabel(kind: StemKind): string {
   switch (kind) {
     case "instrumental":
-      return "Instrumental";
+      return "instrumental";
     case "vocals":
-      return "Vocals";
+      return "vocals";
     case "drums":
-      return "Drums";
+      return "drums";
     case "bass":
-      return "Bass";
+      return "bass";
     case "other":
-      return "Stem";
+      return "stem";
     default:
-      return "Stem";
+      return "stem";
   }
 }
 

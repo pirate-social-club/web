@@ -88,8 +88,8 @@ describe("PostCard", () => {
       "Report",
       "View on Genius",
       "Download original",
-      "Download Instrumental",
-      "Download Vocals",
+      "Download instrumental",
+      "Download vocals",
     ]);
     expect(mergedItems.map((item) => Boolean(item.separatorBefore))).toEqual([
       false,

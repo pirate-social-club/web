@@ -101,6 +101,32 @@ describe("PostCard", () => {
     ]);
   });
 
+  test("keeps song downloads in the header menu instead of the footer action slot", () => {
+    const content: SongContentSpec = {
+      type: "song",
+      accessMode: "public",
+      downloadPolicy: "free_download",
+      onDownload: () => undefined,
+      title: "Downloadable single",
+    };
+    const markup = renderToStaticMarkup(
+      <UiLocaleProvider dir="ltr" locale="en">
+        <PostCard
+          byline={{
+            author: { kind: "user", label: "u/artist" },
+            timestampLabel: "1h",
+          }}
+          content={content}
+          engagement={{ commentCount: 0, score: 0 }}
+          menuItems={[{ key: "copy-link", label: "Copy link" }]}
+        />
+      </UiLocaleProvider>,
+    );
+
+    expect(deriveSongHeaderMenuActions(content).map((action) => action.item.label)).toContain("Download original");
+    expect(markup).not.toContain(">Download</button>");
+  });
+
   test("renders date-only event metadata compactly without fake midnight times", () => {
     const markup = renderToStaticMarkup(
       <UiLocaleProvider dir="ltr" locale="en">

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowSquareOut, DownloadSimple, Lock, ShoppingCart } from "@phosphor-icons/react";
+import { ArrowSquareOut, Lock, ShoppingCart } from "@phosphor-icons/react";
 
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
@@ -58,7 +58,6 @@ export interface DerivedSongMenuAction {
 
 type SongCommerce =
   | { kind: "buy"; priceLabel?: string; onSelect: () => void }
-  | { kind: "download"; onSelect: () => void }
   | { kind: "unlock"; onSelect: () => void };
 
 function getEffectiveDownloadPolicy(content: SongContent): DownloadPolicy {
@@ -158,19 +157,6 @@ function deriveSongCommerce(content: PostCardProps["content"]): SongCommerce | u
     return { kind: "unlock", onSelect: content.onUnlock };
   }
 
-  const songPolicy = getEffectiveDownloadPolicy(content);
-  const canDownloadOriginal = Boolean(
-    content.onDownload
-    && (
-      songPolicy === "free_download"
-      || (songPolicy === "purchased_download" && isOwned)
-    ),
-  );
-
-  if (canDownloadOriginal && content.onDownload) {
-    return { kind: "download", onSelect: content.onDownload };
-  }
-
   return undefined;
 }
 
@@ -185,17 +171,6 @@ function FooterCommerce({ commerce }: { commerce: SongCommerce }) {
           onClick={commerce.onSelect}
         >
           {commerce.priceLabel ? `Buy track · ${commerce.priceLabel}` : "Buy track"}
-        </Button>
-      );
-    case "download":
-      return (
-        <Button
-          className="h-11 w-full px-5 text-base sm:w-auto"
-          data-post-card-interactive="true"
-          leadingIcon={<DownloadSimple className="size-5" />}
-          onClick={commerce.onSelect}
-        >
-          Download
         </Button>
       );
     case "unlock":

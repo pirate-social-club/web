@@ -50,7 +50,7 @@ interface DerivedSongUI {
   showBuy: boolean;
   showDownload: boolean;
   effectiveDownloadPolicy: DownloadPolicy;
-  primaryCommerceAction: "buy" | "download" | "unlock" | "verify_age" | null;
+  primaryCommerceAction: "buy" | "unlock" | "verify_age" | null;
   
   // Attributions
   showAttribution: boolean;
@@ -133,8 +133,6 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     primaryCommerceAction = "buy";
   } else if (showUnlock) {
     primaryCommerceAction = "unlock";
-  } else if (showDownload) {
-    primaryCommerceAction = "download";
   }
 
   return {

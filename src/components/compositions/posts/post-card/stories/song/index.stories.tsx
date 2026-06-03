@@ -217,7 +217,7 @@ export const PublicStreamOnly: Story = {
 };
 
 export const PublicFreeDownload: Story = {
-  name: "Access / Public free download",
+  name: "Access / Public free download menu",
   render: () => (
     <PostCard
       {...basePost}

@@ -49,7 +49,7 @@ describe("deriveSongUI", () => {
     expect(downloadableUi.showOwned).toBe(false);
   });
 
-  test("derives buy for listed locked songs and download for owned songs", () => {
+  test("derives buy for listed locked songs without promoting owned downloads", () => {
     const listedUi = deriveSongUI({
       ...baseSong,
       accessMode: "locked",
@@ -69,7 +69,8 @@ describe("deriveSongUI", () => {
 
     expect(listedUi.effectiveDownloadPolicy).toBe("purchased_download");
     expect(listedUi.primaryCommerceAction).toBe("buy");
-    expect(ownedUi.primaryCommerceAction).toBe("download");
+    expect(ownedUi.primaryCommerceAction).toBeNull();
+    expect(ownedUi.showDownload).toBe(true);
     expect(ownedUi.showOwned).toBe(true);
   });
 

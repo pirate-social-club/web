@@ -28,7 +28,7 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Build API worker
         working-directory: api/services/api
-        run: bun build src/index.ts --target=bun --outfile=/tmp/pirate-api-worker.js
+        run: bun build src/index.ts --target=bun --outdir=/tmp/pirate-api-worker-build
       - name: Deploy staging API worker
         working-directory: api/services/api
         env:

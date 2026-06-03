@@ -26,8 +26,8 @@ export function Scrubber({
     <SliderPrimitive.Root
       aria-label={ariaLabel}
       className={cn(
-        "group relative flex w-full touch-none select-none items-center",
-        disabled && "pointer-events-none opacity-60",
+        "group relative flex w-full cursor-pointer touch-none select-none items-center",
+        disabled && "pointer-events-none cursor-default opacity-60",
         className
       )}
       value={[value]}
@@ -41,7 +41,7 @@ export function Scrubber({
       </SliderPrimitive.Track>
       <SliderPrimitive.Thumb
         className={cn(
-          "block size-3.5 rounded-full border-2 border-primary bg-background shadow-sm",
+          "block size-3.5 rounded-full border border-background bg-primary shadow-sm",
           "transition-all duration-150",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           "hover:scale-110",

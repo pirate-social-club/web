@@ -245,7 +245,6 @@ function getPlaybackDurationMs(content: SongContentSpec, canShowPreview: boolean
 export function SongPostContent({ content, className }: SongPostContentProps) {
   const ui = deriveSongUI(content);
   const {
-    playbackState = "idle",
     progressMs,
     upstreamAttributions,
     onPlay,
@@ -310,6 +309,9 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
   const scrubberProgressMs = clampProgressMs(progressMs, playbackDurationMs);
   const canSeek = Boolean(onSeek && playbackDurationMs && playbackDurationMs > 0 && !ui.ageGateRequiresProof);
   const waveformProgressFraction = scrubberDurationMs > 0 ? scrubberProgressMs / scrubberDurationMs : 0;
+  const durationDisplayLabel = playbackDurationMs && playbackDurationMs > 0
+    ? formatTime(playbackDurationMs)
+    : content.durationLabel ?? "--:--";
   const waveformSeed = [
     content.title,
     content.artist ?? "",
@@ -381,31 +383,28 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
             </div>
 
             {!ui.ageGateRequiresProof ? (
-              <>
+              <div className="flex flex-col gap-1.5">
                 <Waveform
-                  className="mt-0.5"
                   height={28}
                   progressFraction={waveformProgressFraction}
                   seed={waveformSeed}
                 />
-                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-                  <span className={cn("w-12 tabular-nums text-muted-foreground", postCardType.meta)}>
-                    {formatTime(scrubberProgressMs)}
-                  </span>
+                <div className="flex flex-col gap-1">
                   <Scrubber
                     ariaLabel="Track position"
                     className={!canSeek ? "opacity-100" : undefined}
                     disabled={!canSeek}
                     max={scrubberDurationMs}
                     onChange={(next) => onSeek?.(Math.min(next, scrubberDurationMs))}
-                    showThumb={playbackState === "playing" || playbackState === "paused"}
+                    showThumb
                     value={scrubberProgressMs}
                   />
-                  <span className={cn("w-12 text-end tabular-nums text-muted-foreground", postCardType.meta)}>
-                    {playbackDurationMs && playbackDurationMs > 0 ? formatTime(playbackDurationMs) : "--:--"}
-                  </span>
+                  <div className={cn("flex items-center justify-between tabular-nums text-muted-foreground", postCardType.meta)}>
+                    <span>{formatTime(scrubberProgressMs)}</span>
+                    <span>{durationDisplayLabel}</span>
+                  </div>
                 </div>
-              </>
+              </div>
             ) : null}
           </div>
 

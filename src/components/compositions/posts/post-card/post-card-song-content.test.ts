@@ -147,6 +147,21 @@ describe("deriveSongUI", () => {
     expect(markup).not.toContain("3:47");
   });
 
+  test("uses duration label before numeric duration metadata is available", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          durationLabel: "3:47",
+        },
+      }),
+    );
+
+    expect(markup).toContain("0:00");
+    expect(markup).toContain("3:47");
+    expect(markup).not.toContain("--:--");
+  });
+
   test("keeps Genius annotations out of the compact song player", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {

@@ -70,19 +70,23 @@ export function Waveform({
   return (
     <div
       aria-hidden="true"
-      className={cn("flex w-full items-center overflow-hidden", className)}
-      style={{ gap, height }}
+      className={cn("grid w-full items-center overflow-hidden", className)}
+      style={{
+        gap,
+        gridTemplateColumns: `repeat(${resolvedPeaks.length}, minmax(1px, 1fr))`,
+        height,
+      }}
     >
       {resolvedPeaks.map((peak, index) => (
         <span
           className={cn(
-            "shrink-0 rounded-full bg-current",
+            "w-full justify-self-center rounded-full bg-current",
             index < playedCount ? "text-primary" : "text-muted-foreground/30",
           )}
           key={`${index}-${peak.toFixed(3)}`}
           style={{
             height: Math.max(2, Math.round(peak * height)),
-            width: barWidth,
+            maxWidth: barWidth,
           }}
         />
       ))}

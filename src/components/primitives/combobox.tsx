@@ -106,7 +106,7 @@ function ComboboxEmpty({ className, ref, ...props }: React.ComponentProps<typeof
   return (
     <ComboboxPrimitive.Empty
       ref={ref}
-      className={cn("px-4 py-3 text-base text-muted-foreground", className)}
+      className={cn("px-4 py-3 text-base text-muted-foreground empty:hidden", className)}
       {...props}
     />
   );
@@ -116,7 +116,7 @@ function ComboboxList({ className, ref, ...props }: React.ComponentProps<typeof 
   return (
     <ComboboxPrimitive.List
       ref={ref}
-      className={cn("max-h-80 overflow-y-auto py-1", className)}
+      className={cn("max-h-80 overflow-y-auto py-0", className)}
       {...props}
     />
   );

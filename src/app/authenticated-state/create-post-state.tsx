@@ -71,6 +71,7 @@ type AvailableSigningAgent = {
 };
 
 const MAX_VIDEO_POSTER_FRAME_WIDTH = 1920;
+const DERIVATIVE_SOURCE_SEARCH_TIMEOUT_MS = 15_000;
 
 function hasSongExtraArtifact(songState: Pick<CreatePostDraftState["songState"], "canvasVideoUpload" | "coverUpload" | "instrumentalAudioUpload" | "vocalAudioUpload">): boolean {
   return Boolean(
@@ -205,6 +206,40 @@ export function buildDerivativeSourceSearchOptions(query: string | null | undefi
     q: query?.trim() || null,
     limit: 25,
   };
+}
+
+export function shouldSearchDerivativeSongSources(input: {
+  composerMode: CreatePostDraftState["composerMode"];
+  derivativeStep: CreatePostDraftState["derivativeStep"];
+  songMode: CreatePostDraftState["songMode"];
+}): boolean {
+  if (input.composerMode === "song" && input.songMode === "remix") {
+    return true;
+  }
+
+  return input.composerMode === "video"
+    && input.derivativeStep?.visible === true
+    && input.derivativeStep.trigger === "uses_song";
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        timeoutId = globalThis.setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) {
+      globalThis.clearTimeout(timeoutId);
+    }
+  }
 }
 
 export function buildLiveDerivativeSourceSearchOptions(): {
@@ -510,17 +545,23 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
   React.useEffect(() => {
     let cancelled = false;
 
-    if (composerMode !== "song" || songMode !== "remix") {
+    if (!shouldSearchDerivativeSongSources({ composerMode, derivativeStep, songMode })) {
       return () => { cancelled = true; };
     }
 
     const query = derivativeStep?.query?.trim() || null;
     const searchOptions = buildDerivativeSourceSearchOptions(query);
+    const fallbackTrigger = composerMode === "video" ? "uses_song" : "remix";
+    const required = composerMode === "song";
     setDerivativeStep((current) => current
       ? { ...current, searchLoading: true }
       : current);
     const timeout = setTimeout(() => {
-      void api.communities.listDerivativeSources(communityId, searchOptions)
+      void withTimeout(
+        api.communities.listDerivativeSources(communityId, searchOptions),
+        DERIVATIVE_SOURCE_SEARCH_TIMEOUT_MS,
+        "Derivative source search timed out.",
+      )
         .then((result) => {
           if (cancelled) return;
           const searchResults = result.items.map((source) => derivativeSourceToComposerReference(source, {
@@ -529,8 +570,8 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           setDerivativeStep((current) => {
             return {
               visible: true,
-              required: true,
-              trigger: "remix",
+              required: current?.required ?? required,
+              trigger: current?.trigger ?? fallbackTrigger,
               query: current?.query,
               requirementLabel: current?.requirementLabel,
               searchResults,
@@ -558,7 +599,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [api, communityId, composerMode, derivativeStep?.query, setDerivativeStep, songMode]);
+  }, [api, communityId, composerMode, derivativeStep?.query, derivativeStep?.trigger, derivativeStep?.visible, setDerivativeStep, songMode]);
 
   React.useEffect(() => {
     resetCharityContribution();

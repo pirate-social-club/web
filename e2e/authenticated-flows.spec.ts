@@ -128,4 +128,45 @@ test.describe("authenticated browser flows with mocked API", () => {
     await expect(page.getByRole("button", { name: /^continue$/i })).toBeEnabled();
     await expectNoBrowserError(page);
   });
+
+  test("loads Story song sources for a video uses-song declaration", async ({ page }) => {
+    const sourceLookupUrls: string[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (
+        request.method().toUpperCase() === "GET"
+        && url.pathname === `/communities/${mockCommunityId}/derivative-sources`
+      ) {
+        sourceLookupUrls.push(request.url());
+      }
+    });
+
+    await page.goto(`/c/${mockCommunityId}/submit`);
+    await page.getByRole("button", { name: /^video$/i }).click();
+    await page.locator('input[type="file"][accept="video/*"]').setInputFiles({
+      name: "e2e-uses-song.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.from("e2e-video"),
+    });
+
+    await expect(page.getByLabel("Remove video")).toBeVisible({ timeout: 30_000 });
+    await page.getByPlaceholder("Title*").fill("E2E video uses song");
+    await page.getByRole("button", { name: /^continue$/i }).click();
+    await page.getByRole("tab", { name: /^uses song$/i }).click();
+
+    await expect.poll(() => sourceLookupUrls.some((href) => {
+      const url = new URL(href);
+      return url.searchParams.get("scope") === "global"
+        && url.searchParams.get("kind") === "song"
+        && url.searchParams.get("limit") === "25";
+    })).toBe(true);
+
+    const sourceSearch = page.getByRole("combobox", { name: /search songs this video uses/i });
+    await sourceSearch.click();
+    await page.getByRole("option", { name: /E2E Story Remix Source/i }).click();
+
+    await expect(page.getByText("E2E Story Remix Source")).toBeVisible();
+    await expect(page.getByText("10% royalty")).toBeVisible();
+    await expectNoBrowserError(page);
+  });
 });

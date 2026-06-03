@@ -4,6 +4,7 @@ import {
   buildDerivativeSourceSearchOptions,
   buildLiveDerivativeSourceSearchOptions,
   derivativeSourceToComposerReference,
+  shouldSearchDerivativeSongSources,
 } from "./create-post-state";
 import type { ApiDerivativeSource } from "@/lib/api/client-api-types";
 
@@ -53,5 +54,31 @@ describe("create post derivative source search", () => {
     expect(derivativeSourceToComposerReference(source, { preferDirectStoryRef: true }).id)
       .toBe("story:ip:0x1111111111111111111111111111111111111111#licenseTermsId=17");
     expect(derivativeSourceToComposerReference(source).id).toBe("story:asset:asset_ast_source_song");
+  });
+
+  test("searches song sources for remixes and video uses-song declarations", () => {
+    expect(shouldSearchDerivativeSongSources({
+      composerMode: "song",
+      derivativeStep: undefined,
+      songMode: "remix",
+    })).toBe(true);
+
+    expect(shouldSearchDerivativeSongSources({
+      composerMode: "video",
+      derivativeStep: {
+        visible: true,
+        trigger: "uses_song",
+      },
+      songMode: "original",
+    })).toBe(true);
+
+    expect(shouldSearchDerivativeSongSources({
+      composerMode: "video",
+      derivativeStep: {
+        visible: true,
+        trigger: "remix",
+      },
+      songMode: "original",
+    })).toBe(false);
   });
 });

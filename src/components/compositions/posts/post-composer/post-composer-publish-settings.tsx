@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Copy, Flag, Link, ShareNetwork } from "@phosphor-icons/react";
 
-import { CardContent } from "@/components/primitives/card";
 import { PostCard } from "@/components/compositions/posts/post-card/post-card";
 import { buildPostCardTitleProps } from "@/components/compositions/posts/post-card/post-card-content-rules";
+import { postCardReadableWidth } from "@/components/compositions/posts/post-card/post-card.styles";
 import type { PlaybackState, PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,22 @@ import type { PostComposerController } from "./use-post-composer-controller";
 type PostComposerPublishSettingsProps = {
   controller: PostComposerController;
 };
+
+const previewMenuItems: NonNullable<PostCardProps["menuItems"]> = [
+  { key: "copy-link", label: "Copy link", icon: <Link className="size-4" /> },
+  {
+    key: "report",
+    label: "Report",
+    icon: <Flag className="size-4" />,
+    destructive: true,
+    separatorBefore: true,
+  },
+];
+
+const previewShareActions: NonNullable<PostCardProps["shareActions"]> = [
+  { key: "copy-link", label: "Copy link", icon: <Copy className="size-5" /> },
+  { key: "native-share", label: "Share...", icon: <ShareNetwork className="size-5" /> },
+];
 
 function formatPrice(value?: string) {
   const normalized = value?.trim();
@@ -276,7 +293,7 @@ function buildPreviewPost(
     }>;
   },
 ): PostCardProps {
-  const { audience, commerce, fields, identity } = controller;
+  const { commerce, fields, identity } = controller;
   const priceLabel = commerce.monetizationState.priceUsd
     ? formatPrice(commerce.monetizationState.priceUsd)
     : undefined;
@@ -327,7 +344,7 @@ function buildPreviewPost(
         avatarSrc: authorAvatarSrc,
         avatarSeed: authorAvatarSeed,
       },
-      timestampLabel: audience.state.visibility === "public" ? "Public" : "Community",
+      timestampLabel: "now",
     },
     content,
     engagement: {
@@ -339,8 +356,10 @@ function buildPreviewPost(
     },
     identityPresentation: identity.identityMode === "anonymous" ? "anonymous_primary" : "author_primary",
     event,
+    menuItems: previewMenuItems,
+    shareActions: previewShareActions,
     ...titleProps,
-    viewContext: attachment?.kind === "live" ? "post" : "community",
+    viewContext: "post",
   };
 
   if (attachment?.kind === "video") {
@@ -445,9 +464,15 @@ export function PostComposerPublishSettings({
   );
 
   return (
-    <CardContent className={cn("space-y-6 p-5", controller.isMobile && "px-0 pb-4 pt-3")}>
-      <section className={cn("overflow-hidden border border-border-soft bg-background", controller.isMobile ? "-mx-4 border-x-0" : "rounded-[var(--radius-lg)]")}>
-        <PostCard {...previewPost} />
+    <div className={cn("space-y-6 pb-5", controller.isMobile && "pb-4 pt-3")}>
+      <section
+        className={cn(
+          postCardReadableWidth,
+          "overflow-hidden border-t border-border bg-background",
+          controller.isMobile && "-mx-4 border-y",
+        )}
+      >
+        <PostCard {...previewPost} className="border-b-0" />
       </section>
 
       {shouldShowQualifiers(controller) && controller.identity.identity ? (
@@ -457,6 +482,6 @@ export function PostComposerPublishSettings({
           selectedQualifierIds={controller.identity.selectedQualifierIds}
         />
       ) : null}
-    </CardContent>
+    </div>
   );
 }

@@ -78,18 +78,23 @@ export function PostComposer(props: PostComposerProps) {
         ) : null}
       </div>
 
-      <Card className="overflow-hidden bg-card shadow-none">
-        {step.isWriteStep ? (
-          <PostComposerWriteStep controller={controller} />
-        ) : step.isDetailsStep ? (
-          <PostComposerDetailsStep controller={controller} />
-        ) : step.isSettingsStep ? (
-          <PostComposerSettingsHub controller={controller} />
-        ) : (
+      {step.isPublishStep ? (
+        <div className="overflow-hidden">
           <PostComposerPublishSettings controller={controller} />
-        )}
-        <PostComposerDesktopFooter controller={controller} />
-      </Card>
+          <PostComposerDesktopFooter controller={controller} />
+        </div>
+      ) : (
+        <Card className="overflow-hidden bg-card shadow-none">
+          {step.isWriteStep ? (
+            <PostComposerWriteStep controller={controller} />
+          ) : step.isDetailsStep ? (
+            <PostComposerDetailsStep controller={controller} />
+          ) : (
+            <PostComposerSettingsHub controller={controller} />
+          )}
+          <PostComposerDesktopFooter controller={controller} />
+        </Card>
+      )}
     </div>
   );
 }

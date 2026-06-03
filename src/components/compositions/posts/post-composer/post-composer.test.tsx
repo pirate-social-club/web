@@ -1196,6 +1196,10 @@ describe("PostComposer monetization", () => {
     const content = previewCard.props.content as PostCardProps["content"];
     expect(content.type).toBe("song");
     expect(content.type === "song" ? content.caption : undefined).toBeUndefined();
+    expect(previewCard.props.viewContext).toBe("post");
+    expect((previewCard.props.byline as PostCardProps["byline"]).timestampLabel).toBe("now");
+    expect((previewCard.props.menuItems as NonNullable<PostCardProps["menuItems"]>).length).toBeGreaterThan(0);
+    expect((previewCard.props.shareActions as NonNullable<PostCardProps["shareActions"]>).length).toBeGreaterThan(0);
   });
 
   test("renders live publish preview as the live post page surface", () => {

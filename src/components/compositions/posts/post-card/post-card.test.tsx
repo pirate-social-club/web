@@ -99,6 +99,7 @@ describe("PostCard", () => {
       false,
       false,
     ]);
+    expect(mergedItems.filter((item) => item.key.startsWith("song-download:")).every((item) => item.icon)).toBe(true);
   });
 
   test("keeps song downloads in the header menu instead of the footer action slot", () => {

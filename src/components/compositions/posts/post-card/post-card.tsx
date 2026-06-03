@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowSquareOut, Lock, ShoppingCart } from "@phosphor-icons/react";
+import { ArrowSquareOut, DownloadSimple, Lock, ShoppingCart } from "@phosphor-icons/react";
 
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
@@ -199,6 +199,7 @@ export function mergePostCardMenuItems(
     && (Boolean(menuItems?.length) || metadataItems.length > 0);
   const downloadItems = downloadActions.map((action, index) => ({
     ...action.item,
+    icon: action.item.icon ?? <DownloadSimple className="size-4" />,
     separatorBefore: action.item.separatorBefore || (index === 0 && firstDownloadNeedsSeparator),
   }));
 

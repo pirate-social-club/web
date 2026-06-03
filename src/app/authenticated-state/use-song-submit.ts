@@ -177,6 +177,11 @@ function resolveBundleAnalysisState(bundle: ApiSongArtifactBundle): string | nul
   return moderationResult?.analysis_state ?? null;
 }
 
+function isLegacyPreviewWorkerFailure(bundle: ApiSongArtifactBundle): boolean {
+  return bundle.preview_status === "failed"
+    && String(bundle.preview_error ?? "").includes("Node-only ffmpeg worker");
+}
+
 export function useSongSubmit({
   communityId,
   signAgentAuthoredBody,
@@ -326,6 +331,23 @@ export function useSongSubmit({
 
     let bundleId = pendingSongBundleId;
     let bundleForPublish: ApiSongArtifactBundle | null = null;
+    if (bundleId && isLockedSong) {
+      const pendingBundleIdForRetry = bundleId;
+      const existingBundle = await withSongSubmitStep("load pending song artifact bundle", {
+        bundleId: pendingBundleIdForRetry,
+      }, () => api.communities.getSongArtifactBundle(communityId, pendingBundleIdForRetry));
+      if (isLegacyPreviewWorkerFailure(existingBundle)) {
+        logger.warn("[song-submit] discarding legacy failed preview bundle", {
+          bundleId: pendingBundleIdForRetry,
+          previewError: existingBundle.preview_error,
+        });
+        setPendingSongBundleId(null);
+        bundleId = null;
+      } else {
+        bundleForPublish = existingBundle;
+      }
+    }
+
     if (!bundleId) {
       logger.info("[song-submit] uploading song artifacts");
       reportProgress?.("upload_primary_audio");

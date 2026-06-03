@@ -31,6 +31,7 @@ const liveSecretsPresent = Boolean(
 type LiveCommunity = {
   id: string;
   label: string;
+  ownerUserId?: string | null;
   routeSegment: string;
 };
 
@@ -67,6 +68,10 @@ function signHs256Jwt(payload: Record<string, unknown>, secret: string): string 
 
 function rawPublicId(value: string, prefix: string): string {
   return value.startsWith(`${prefix}_`) ? value.slice(prefix.length + 1) : value;
+}
+
+function rawPublicUserId(value: string): string {
+  return value.startsWith("usr_usr_") ? value.slice("usr_".length) : value;
 }
 
 function walletAddressForSubject(subject: string): string {
@@ -130,6 +135,29 @@ async function requestOctetJson<T>(
   return parsed;
 }
 
+async function requestArrayBuffer(
+  urlOrPath: string,
+  init: RequestInit = {},
+  okStatuses = [200, 206],
+): Promise<{ body: ArrayBuffer; contentType: string | null; status: number }> {
+  const url = /^https?:\/\//iu.test(urlOrPath) ? urlOrPath : new URL(urlOrPath, apiBaseURL);
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      ...init.headers,
+    },
+  });
+  if (!okStatuses.includes(response.status)) {
+    const text = await response.text();
+    throw new Error(`${init.method ?? "GET"} ${urlOrPath} failed with ${response.status}: ${text}`);
+  }
+  return {
+    body: await response.arrayBuffer(),
+    contentType: response.headers.get("content-type"),
+    status: response.status,
+  };
+}
+
 function createSineWaveWav(): ArrayBuffer {
   const sampleRate = 8_000;
   const durationSeconds = 1;
@@ -166,6 +194,53 @@ function createSineWaveWav(): ArrayBuffer {
   return buffer;
 }
 
+async function waitForSongPreview(input: {
+  authHeaders: Record<string, string>;
+  bundleId: string;
+  communityId: string;
+}): Promise<{
+  preview_audio?: {
+    duration_ms?: number | null;
+    mime_type?: string | null;
+    size_bytes?: number | null;
+    storage_ref?: string | null;
+  } | null;
+  preview_error?: string | null;
+  preview_status: string;
+}> {
+  const deadline = Date.now() + 180_000;
+  let lastStatus = "unknown";
+  let lastError: string | null | undefined;
+
+  while (Date.now() < deadline) {
+    const bundle = await requestJson<{
+      preview_audio?: {
+        duration_ms?: number | null;
+        mime_type?: string | null;
+        size_bytes?: number | null;
+        storage_ref?: string | null;
+      } | null;
+      preview_error?: string | null;
+      preview_status: string;
+    }>(
+      `/communities/${encodeURIComponent(input.communityId)}/song-artifacts/${encodeURIComponent(input.bundleId)}`,
+      { headers: input.authHeaders },
+    );
+
+    lastStatus = bundle.preview_status;
+    lastError = bundle.preview_error;
+    if (bundle.preview_status === "completed" && bundle.preview_audio?.storage_ref) {
+      return bundle;
+    }
+    if (bundle.preview_status === "failed") {
+      throw new Error(`song preview failed: ${bundle.preview_error ?? "unknown"}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+  }
+
+  throw new Error(`song preview did not complete; last status ${lastStatus}${lastError ? ` (${lastError})` : ""}`);
+}
+
 async function createLiveSession(subject = liveSubject, walletAddress?: string | null): Promise<StoredSession> {
   const response = await requestJson<SessionExchangeResponse>("/auth/session/exchange", {
     body: JSON.stringify({
@@ -178,6 +253,16 @@ async function createLiveSession(subject = liveSubject, walletAddress?: string |
   });
 
   return createStoredSessionFromExchange(response);
+}
+
+function seedOwnerAdminHeaders(community: LiveCommunity): Record<string, string> | null {
+  const adminToken = process.env.PIRATE_ADMIN_TOKEN?.trim();
+  const ownerUserId = community.ownerUserId?.trim();
+  if (!adminToken || !ownerUserId) return null;
+  return {
+    "x-admin-as-user-id": ownerUserId,
+    "x-admin-token": adminToken,
+  };
 }
 
 async function enableEventDetails(page: Page): Promise<void> {
@@ -659,21 +744,36 @@ function communityFromFeedItem(item: any): LiveCommunity | null {
   return { id, label, routeSegment };
 }
 
+async function hydrateLiveCommunityOwner(community: LiveCommunity): Promise<LiveCommunity> {
+  const detail = await requestJson<any>(`/public-communities/${encodeURIComponent(community.id)}`).catch(() => null);
+  const ownerUser = firstString(detail?.owner?.user);
+  return {
+    id: firstString(detail?.id, community.id) ?? community.id,
+    label: firstString(detail?.display_name, community.label) ?? community.label,
+    ownerUserId: ownerUser ? rawPublicUserId(ownerUser) : community.ownerUserId ?? null,
+    routeSegment: firstString(detail?.route_slug, community.routeSegment, detail?.id, community.id) ?? community.routeSegment,
+  };
+}
+
 async function discoverSeedCommunity(): Promise<LiveCommunity> {
-  const feed = await requestJson<any>("/feed/home/public?sort=best&locale=en");
-  const feedItems = Array.isArray(feed?.items) ? feed.items : [];
-  for (const item of feedItems) {
-    const post = item?.post?.post ?? item?.post;
-    const community = communityFromFeedItem(item);
-    if (!community) continue;
-    const title = firstString(post?.title, item?.post?.title);
-    if (
-      title === seedPostTitle
-      || community.label.toLowerCase() === seedCommunityLabel.toLowerCase()
-      || community.routeSegment.toLowerCase().includes(seedCommunityLabel.replace(/^@/u, "").toLowerCase())
-    ) {
-      return community;
+  try {
+    const feed = await requestJson<any>("/feed/home/public?sort=best&locale=en");
+    const feedItems = Array.isArray(feed?.items) ? feed.items : [];
+    for (const item of feedItems) {
+      const post = item?.post?.post ?? item?.post;
+      const community = communityFromFeedItem(item);
+      if (!community) continue;
+      const title = firstString(post?.title, item?.post?.title);
+      if (
+        title === seedPostTitle
+        || community.label.toLowerCase() === seedCommunityLabel.toLowerCase()
+        || community.routeSegment.toLowerCase().includes(seedCommunityLabel.replace(/^@/u, "").toLowerCase())
+      ) {
+        return await hydrateLiveCommunityOwner(community);
+      }
     }
+  } catch {
+    // Fall through to search; live staging feed can be blocked by unrelated data migrations.
   }
 
   const search = await requestJson<any>(`/public-communities?query=${encodeURIComponent(seedCommunityLabel)}&limit=10`);
@@ -681,12 +781,14 @@ async function discoverSeedCommunity(): Promise<LiveCommunity> {
     ? search.items
     : Array.isArray(search?.results)
       ? search.results
-      : [];
+      : Array.isArray(search?.communities)
+        ? search.communities
+        : [];
   for (const item of searchItems) {
     const id = firstString(item?.id, item?.community_id, item?.community);
     const routeSegment = firstString(item?.route_slug, item?.routeSlug, id);
     const label = firstString(item?.display_name, item?.name, routeSegment);
-    if (id && routeSegment && label) return { id, label, routeSegment };
+    if (id && routeSegment && label) return await hydrateLiveCommunityOwner({ id, label, routeSegment });
   }
 
   throw new Error(`Could not discover seeded staging community ${seedCommunityLabel}`);
@@ -863,6 +965,128 @@ test.describe("live staging integration", () => {
 
     const publicPost = await requestJson<{ post?: { title?: string | null } }>(`/public-posts/${encodeURIComponent(post.id)}`);
     expect(publicPost.post?.title).toBe(title);
+  });
+
+  test("publishes a locked paid song after generating an ffmpeg preview", async ({}, testInfo) => {
+    testInfo.setTimeout(240_000);
+
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const community = await discoverSeedCommunity();
+    const seedOwnerHeaders = seedOwnerAdminHeaders(community);
+    const session = seedOwnerHeaders ? null : await createLiveSession(`song-preview-smoke-${runId}`);
+    if (session) {
+      await completeSelfVerification(session);
+    }
+    const authHeaders = seedOwnerHeaders ?? { authorization: `Bearer ${session?.accessToken ?? ""}` };
+    const communityId = community.id;
+    const title = `Paid preview song smoke ${runId}`;
+    const audio = createSineWaveWav();
+
+    const upload = await requestJson<{ id: string }>(`/communities/${encodeURIComponent(communityId)}/song-artifact-uploads`, {
+      body: JSON.stringify({
+        artifact_kind: "primary_audio",
+        filename: `paid-preview-smoke-${runId}.wav`,
+        mime_type: "audio/wav",
+        size_bytes: audio.byteLength,
+      }),
+      headers: authHeaders,
+      method: "POST",
+    });
+    expect(upload.id, "song artifact upload id").toMatch(/^sau_/u);
+
+    await requestOctetJson(
+      `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads/${encodeURIComponent(upload.id)}/content`,
+      audio,
+      {
+        headers: authHeaders,
+        method: "PUT",
+      },
+    );
+
+    const bundle = await requestJson<{ id: string; preview_status?: string | null }>(
+      `/communities/${encodeURIComponent(communityId)}/song-artifacts`,
+      {
+        body: JSON.stringify({
+          canvas_video: null,
+          cover_art: null,
+          genius_annotations_url: null,
+          instrumental_audio: null,
+          lyrics: "E2E paid preview smoke lyrics",
+          preview_window: {
+            duration_ms: 1_000,
+            start_ms: 0,
+          },
+          primary_audio: { song_artifact_upload: upload.id },
+          title,
+          vocal_audio: null,
+        }),
+        headers: authHeaders,
+        method: "POST",
+      },
+    );
+    expect(bundle.id, "song artifact bundle id").toMatch(/^sab_/u);
+    expect(bundle.preview_status).toBe("pending");
+
+    const previewBundle = await waitForSongPreview({
+      authHeaders,
+      bundleId: bundle.id,
+      communityId,
+    });
+    expect(previewBundle.preview_status).toBe("completed");
+    expect(previewBundle.preview_audio?.mime_type).toBe("audio/mpeg");
+    expect(previewBundle.preview_audio?.storage_ref, "preview storage ref").toBeTruthy();
+    expect(previewBundle.preview_audio?.size_bytes ?? 0, "preview size").toBeGreaterThan(0);
+
+    const previewContent = await requestArrayBuffer(previewBundle.preview_audio?.storage_ref ?? "", {
+      headers: authHeaders,
+    });
+    expect(previewContent.contentType).toContain("audio/mpeg");
+    expect(previewContent.body.byteLength).toBe(previewBundle.preview_audio?.size_bytes);
+
+    const post = await requestJson<{
+      asset?: string | null;
+      id: string;
+      media_refs?: Array<{ mime_type?: string | null; storage_ref?: string | null }> | null;
+    }>(`/communities/${encodeURIComponent(communityId)}/posts`, {
+      body: JSON.stringify({
+        access_mode: "locked",
+        commercial_rev_share_pct: 10,
+        identity_mode: "public",
+        idempotency_key: `paid-preview-song-smoke-${runId}`,
+        license_preset: "commercial-remix",
+        post_type: "song",
+        rights_basis: "original",
+        song_artifact_bundle: bundle.id,
+        song_mode: "original",
+        title,
+        translation_policy: "machine_allowed",
+        visibility: "public",
+      }),
+      headers: authHeaders,
+      method: "POST",
+    });
+    expect(post.asset, "locked song post asset").toBeTruthy();
+    expect(post.media_refs?.[0]?.storage_ref).toBe(previewBundle.preview_audio?.storage_ref);
+    expect(post.media_refs?.[0]?.mime_type).toBe("audio/mpeg");
+
+    const listing = await requestJson<{
+      asset?: string | null;
+      id: string;
+      price_cents?: number | null;
+      status?: string | null;
+    }>(`/communities/${encodeURIComponent(communityId)}/listings`, {
+      body: JSON.stringify({
+        asset: post.asset,
+        price_cents: 100,
+        regional_pricing_enabled: false,
+        status: "active",
+      }),
+      headers: authHeaders,
+      method: "POST",
+    });
+    expect(listing.asset).toBe(post.asset);
+    expect(listing.price_cents).toBe(100);
+    expect(listing.status).toBe("active");
   });
 
   test("publishes and subscribes to a real Agora live-room channel", async ({ page }, testInfo) => {

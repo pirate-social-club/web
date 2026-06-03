@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 
 import { PostComposerSettingsSections } from "./post-composer-settings-sections";
 import { PostComposerCharitySection } from "./post-composer-sections";
+import { shouldForcePublicIdentityForTab } from "./post-composer-invariants";
 import type { AssetLicensePresetId, AttachmentState } from "./post-composer.types";
 import type { PostComposerController } from "./use-post-composer-controller";
 
@@ -139,6 +140,12 @@ export function PostComposerSettingsHub({
   const publicHandle = identity.identity?.publicHandle ?? "name.pirate";
   const anonymousLabel = identity.identity?.anonymousLabel ?? "Pseudonym";
   const access = accessFromController(controller);
+  const showAnonymousIdentity = identity.identity?.allowAnonymousIdentity === true
+    && !shouldForcePublicIdentityForTab({
+      activeTab: controller.tabs.activeTab,
+      identityMode: "anonymous",
+      monetizationVisible: commerce.monetizationState.visible,
+    });
 
   return (
     <CardContent className={cn("space-y-8 p-5", isMobile && "px-0 pb-4 pt-1")}>
@@ -227,7 +234,7 @@ export function PostComposerSettingsHub({
               ? commerce.monetizationState.visible
               : attachment?.kind === "song"
         }
-        showAnonymousIdentity={identity.identity?.allowAnonymousIdentity === true}
+        showAnonymousIdentity={showAnonymousIdentity}
         visibility={visibilityFromController(controller)}
         vinylReleaseUrl={commerce.monetizationState.vinylReleaseUrl ?? ""}
       />

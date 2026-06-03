@@ -546,6 +546,66 @@ describe("PostComposer monetization", () => {
     expect(findElement(publishTree, (element) => element.props.title === "Public")).toBeNull();
   });
 
+  test("renders anonymous identity in settings for eligible post types", () => {
+    let identityMode: NonNullable<PostComposerProps["identity"]>["identityMode"] = "public";
+
+    const tree = renderComposer({
+      availableTabs: ["video"],
+      clubName: "Lane1",
+      composerStep: "settings",
+      identity: {
+        allowAnonymousIdentity: true,
+        anonymousLabel: "anon_amber-anchor-00",
+        identityMode,
+        publicHandle: "saint-pablo.pirate",
+      },
+      mode: "video",
+      monetization: defaultMonetizationState({
+        visible: false,
+      } as MonetizationState),
+      onIdentityModeChange: (next) => {
+        identityMode = next;
+      },
+    });
+
+    const anonymousOption = findElement(
+      tree,
+      (element) => element.props.title === "anon_amber-anchor-00" && typeof element.props.onClick === "function",
+    );
+
+    if (!anonymousOption) {
+      throw new Error("Missing anonymous settings option");
+    }
+
+    (anonymousOption.props.onClick as (() => void) | undefined)?.();
+
+    expect(identityMode).toBe("anonymous");
+  });
+
+  test("hides anonymous identity in settings for song posts", () => {
+    const tree = renderComposer({
+      availableTabs: ["song"],
+      canCreateSongPost: true,
+      clubName: "Lane1",
+      composerStep: "settings",
+      identity: {
+        allowAnonymousIdentity: true,
+        anonymousLabel: "anon_amber-anchor-00",
+        identityMode: "public",
+        publicHandle: "saint-pablo.pirate",
+      },
+      mode: "song",
+      monetization: defaultMonetizationState({
+        visible: true,
+      } as MonetizationState),
+    });
+
+    expect(findElement(
+      tree,
+      (element) => element.props.title === "anon_amber-anchor-00" && typeof element.props.onClick === "function",
+    )).toBeNull();
+  });
+
   test("renders inline settings controls and updates controlled settings state", () => {
     let monetization = defaultMonetizationState({
       visible: true,
@@ -584,10 +644,6 @@ describe("PostComposer monetization", () => {
       },
     });
 
-    const anonymousOption = findElement(
-      tree,
-      (element) => element.props.title === "anon_amber-anchor-00" && typeof element.props.onClick === "function",
-    );
     const communityOption = findElement(
       tree,
       (element) => element.props.title === "Community" && typeof element.props.onClick === "function",
@@ -601,18 +657,21 @@ describe("PostComposer monetization", () => {
       (element) => element.props.title === "Commercial derivatives" && typeof element.props.onClick === "function",
     );
 
-    if (!anonymousOption || !communityOption || !priceInput || !commercialRemix) {
+    if (!communityOption || !priceInput || !commercialRemix) {
       throw new Error("Missing inline settings option");
     }
 
-    (anonymousOption.props.onClick as (() => void) | undefined)?.();
     (communityOption.props.onClick as (() => void) | undefined)?.();
     (priceInput.props.onChange as ((event: { target: { value: string } }) => void) | undefined)?.({
       target: { value: "6.66" },
     });
     (commercialRemix.props.onClick as (() => void) | undefined)?.();
 
-    expect(identityMode).toBe("anonymous");
+    expect(findElement(
+      tree,
+      (element) => element.props.title === "anon_amber-anchor-00" && typeof element.props.onClick === "function",
+    )).toBeNull();
+    expect(identityMode).toBe("public");
     expect(audience.visibility).toBe("members_only");
     expect(monetization.visible).toBe(true);
     expect(monetization.priceUsd).toBe("6.66");

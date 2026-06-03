@@ -760,6 +760,68 @@ describe("PostComposer monetization", () => {
     expect(videoStep).toBe("details");
   });
 
+  test("desktop video details back preserves uploaded video for write-step continue", () => {
+    const uploadedVideo = new File(["video"], "dance-cut.mp4", { type: "video/mp4" });
+    let step: PostComposerProps["composerStep"] = "details";
+    const detailsTree = renderComposer({
+      availableTabs: ["video"],
+      clubName: "Lane1",
+      composerStep: step,
+      derivativeStep: {
+        visible: true,
+        required: false,
+        trigger: "uses_song",
+        references: [],
+        sourceTermsAccepted: false,
+      },
+      mode: "video",
+      onComposerStepChange: (next) => {
+        step = next;
+      },
+      titleValue: "Dance cut",
+      video: {
+        primaryVideoLabel: uploadedVideo.name,
+        primaryVideoUpload: uploadedVideo,
+      },
+    });
+    const back = findElement(
+      detailsTree,
+      (element) => element.props.children === "Back" && typeof element.props.onClick === "function",
+    );
+    if (!back) {
+      throw new Error("Missing video details back button");
+    }
+    (back.props.onClick as (() => void) | undefined)?.();
+    expect(step).toBe("write");
+
+    const writeTree = renderComposer({
+      availableTabs: ["video"],
+      clubName: "Lane1",
+      composerStep: step,
+      derivativeStep: {
+        visible: true,
+        required: false,
+        trigger: "uses_song",
+        references: [],
+        sourceTermsAccepted: false,
+      },
+      mode: "video",
+      titleValue: "Dance cut",
+      video: {
+        primaryVideoLabel: uploadedVideo.name,
+        primaryVideoUpload: uploadedVideo,
+      },
+    });
+    const continueButton = findElement(
+      writeTree,
+      (element) => element.props.children === "Continue" && "disabled" in element.props,
+    );
+    if (!continueButton) {
+      throw new Error("Missing video write continue button");
+    }
+    expect(continueButton.props.disabled).toBe(false);
+  });
+
   test("renders optional Genius annotations URL in song details and updates song state", () => {
     let geniusAnnotationsUrl = "";
     const tree = renderComposer({
@@ -1206,6 +1268,125 @@ describe("PostComposer monetization", () => {
 
     expect(blockedContinue?.props.disabled).toBe(true);
     expect(acceptedContinue?.props.disabled).toBe(false);
+  });
+
+  test("blocks continue when optional video source terms are not accepted after selection", () => {
+    const blockedTree = renderComposer({
+      availableTabs: ["video"],
+      clubName: "Lane1",
+      composerStep: "details",
+      derivativeStep: {
+        visible: true,
+        required: false,
+        trigger: "uses_song",
+        references: [{ id: "song-1", title: "Source Song" }],
+        sourceTermsAccepted: false,
+      },
+      mode: "video",
+      submitDisabled: false,
+      video: {
+        primaryVideoLabel: "dance.mp4",
+      },
+    });
+    const acceptedTree = renderComposer({
+      availableTabs: ["video"],
+      clubName: "Lane1",
+      composerStep: "details",
+      derivativeStep: {
+        visible: true,
+        required: false,
+        trigger: "uses_song",
+        references: [{ id: "song-1", title: "Source Song" }],
+        sourceTermsAccepted: true,
+      },
+      mode: "video",
+      submitDisabled: false,
+      video: {
+        primaryVideoLabel: "dance.mp4",
+      },
+    });
+
+    const blockedContinue = findElement(
+      blockedTree,
+      (element) => element.props.children === "Continue" && "disabled" in element.props,
+    );
+    const acceptedContinue = findElement(
+      acceptedTree,
+      (element) => element.props.children === "Continue" && "disabled" in element.props,
+    );
+
+    expect(blockedContinue?.props.disabled).toBe(true);
+    expect(acceptedContinue?.props.disabled).toBe(false);
+  });
+
+  test("creates a video source reference step when switching original video to uses song", () => {
+    let derivativeStep: PostComposerProps["derivativeStep"];
+    const tree = renderComposer({
+      availableTabs: ["video"],
+      clubName: "Lane1",
+      composerStep: "details",
+      mode: "video",
+      onDerivativeStepChange: (next) => {
+        derivativeStep = next;
+      },
+      video: {
+        primaryVideoLabel: "dance.mp4",
+      },
+    });
+
+    const videoModeTabs = findElement(
+      tree,
+      (element) => element.props.value === "original" && typeof element.props.onValueChange === "function",
+    );
+    if (!videoModeTabs) {
+      throw new Error("Missing video mode tabs");
+    }
+
+    (videoModeTabs.props.onValueChange as ((value: string) => void) | undefined)?.("uses_song");
+
+    expect(derivativeStep).toMatchObject({
+      visible: true,
+      required: false,
+      trigger: "uses_song",
+      searchResults: [],
+      references: [],
+      sourceTermsAccepted: false,
+    });
+  });
+
+  test("clears the video source reference step when switching back to original video", () => {
+    let derivativeStep: PostComposerProps["derivativeStep"] = {
+      visible: true,
+      required: false,
+      trigger: "uses_song",
+      references: [{ id: "song-1", title: "Source Song" }],
+      sourceTermsAccepted: false,
+    };
+    const tree = renderComposer({
+      availableTabs: ["video"],
+      clubName: "Lane1",
+      composerStep: "details",
+      derivativeStep,
+      mode: "video",
+      onDerivativeStepChange: (next) => {
+        derivativeStep = next;
+      },
+      video: {
+        primaryVideoLabel: "dance.mp4",
+      },
+    });
+
+    const videoModeTabs = findElement(
+      tree,
+      (element) => element.props.value === "uses_song" && typeof element.props.onValueChange === "function",
+    );
+    if (!videoModeTabs) {
+      throw new Error("Missing video mode tabs");
+    }
+
+    (videoModeTabs.props.onValueChange as ((value: string) => void) | undefined)?.("original");
+
+    expect(derivativeStep).toBeUndefined();
   });
 
   test("creates a required derivative step when switching an original song to remix", () => {

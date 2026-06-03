@@ -8,6 +8,7 @@ import { Input } from "@/components/primitives/input";
 import { Label } from "@/components/primitives/label";
 import { OptionCard } from "@/components/primitives/option-card";
 import { Scrubber } from "@/components/primitives/scrubber";
+import { Tabs, TabsList, TabsTrigger } from "@/components/primitives/tabs";
 import { Type } from "@/components/primitives/type";
 import { AudienceSelect } from "./post-composer-audience-select";
 import { Avatar } from "@/components/primitives/avatar";
@@ -41,6 +42,19 @@ type LicenseStateUpdater = (updater: (current: AssetLicenseState) => AssetLicens
 type AudienceStateUpdater = (updater: (current: ComposerAudienceState) => ComposerAudienceState) => void;
 type CharityContributionUpdater = (updater: (current: CharityContributionState) => CharityContributionState) => void;
 
+type DerivativeSectionLabels = {
+  acceptTermsLabel?: string;
+  emptyLabel?: string;
+  placeholder?: string;
+  searchAriaLabel?: string;
+  sectionTitle?: string;
+};
+
+type SourceModeOption = {
+  label: string;
+  value: string;
+};
+
 function buildAvatarFallback(name: string): string {
   const tokens = name.trim().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return "?";
@@ -65,6 +79,7 @@ export function PostComposerDerivativeSection({
   derivativePickerKey,
   derivativeSearchResults,
   derivativeState,
+  labels,
   onAdvancePicker,
   updateDerivativeState,
 }: {
@@ -77,10 +92,12 @@ export function PostComposerDerivativeSection({
   derivativePickerKey: number;
   derivativeSearchResults: ComposerReference[];
   derivativeState?: DerivativeStepState;
+  labels?: DerivativeSectionLabels;
   onAdvancePicker: () => void;
   updateDerivativeState: DerivativeStateUpdater;
 }) {
   const isMobile = useIsMobile();
+  const sourceTermsAcceptedId = React.useId();
   if (!derivativeState?.visible) {
     return null;
   }
@@ -90,10 +107,10 @@ export function PostComposerDerivativeSection({
 
   return (
     <section className={cn("space-y-3 rounded-[var(--radius-lg)] border border-border-soft bg-card p-4", isMobile && "rounded-none border-0 bg-transparent p-0")}>
-      <FormSectionHeading title={copy.sections.sourceTrack} />
+      <FormSectionHeading title={labels?.sectionTitle ?? copy.sections.sourceTrack} />
       <SearchReferencePicker
-        ariaLabel={copy.derivative.searchSourceTracks}
-        emptyLabel={copy.empty.noSourceTracks}
+        ariaLabel={labels?.searchAriaLabel ?? copy.derivative.searchSourceTracks}
+        emptyLabel={labels?.emptyLabel ?? copy.empty.noSourceTracks}
         items={derivativeSearchResults}
         loading={searchLoading}
         onQueryChange={(query) => {
@@ -116,7 +133,7 @@ export function PostComposerDerivativeSection({
           }));
           onAdvancePicker();
         }}
-        placeholder={copy.placeholders.sourceTrackSearch}
+        placeholder={labels?.placeholder ?? copy.placeholders.sourceTrackSearch}
         resetKey={derivativePickerKey}
       />
       {derivativeState.requirementLabel ? (
@@ -153,19 +170,49 @@ export function PostComposerDerivativeSection({
           <Checkbox
             checked={derivativeState.sourceTermsAccepted === true}
             className="mt-0.5"
-            id="source-terms-accepted"
+            id={sourceTermsAcceptedId}
             onCheckedChange={(next) =>
               updateDerivativeState((current) => current
                 ? { ...current, sourceTermsAccepted: next === true }
                 : current)
             }
           />
-          <Label className="text-muted-foreground" htmlFor="source-terms-accepted">
-            {copy.derivative.acceptSourceTerms}
+          <Label className="text-muted-foreground" htmlFor={sourceTermsAcceptedId}>
+            {labels?.acceptTermsLabel ?? copy.derivative.acceptSourceTerms}
           </Label>
         </div>
       ) : null}
     </section>
+  );
+}
+
+export function PostComposerSourceModeTabs({
+  modes,
+  onValueChange,
+  value,
+}: {
+  modes: SourceModeOption[];
+  onValueChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <Tabs
+      className="w-full"
+      onValueChange={onValueChange}
+      value={value}
+    >
+      <TabsList className="grid h-auto w-full rounded-full border border-border-soft" style={{ gridTemplateColumns: `repeat(${modes.length}, minmax(0, 1fr))` }}>
+        {modes.map((mode) => (
+          <TabsTrigger
+            className="h-10 min-w-0 px-3 font-semibold"
+            key={mode.value}
+            value={mode.value}
+          >
+            {mode.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 
@@ -274,7 +321,6 @@ export function PostComposerCommerceAccessSection({
   const priceLabel = contentKind === "text" || contentKind === "image"
     ? copy.fields.price ?? copy.fields.unlockPriceUsd
     : copy.fields.unlockPriceUsd;
-
   if (isMobile) {
     return (
       <section className="space-y-3">

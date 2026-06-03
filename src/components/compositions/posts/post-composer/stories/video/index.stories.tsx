@@ -2,7 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import * as React from "react";
 
 import { PostComposer } from "../../post-composer";
-import type { VideoComposerState } from "../../post-composer.types";
+import type {
+  ComposerReference,
+  DerivativeStepState,
+  VideoComposerState,
+} from "../../post-composer.types";
 import { baseComposer, composerDecorator, composerParameters, InteractivePostComposer } from "../story-helpers";
 
 const meta = {
@@ -18,6 +22,34 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const syntheticVideoMimeType = "video/webm";
+const sourceSongSearchResults: ComposerReference[] = [
+  {
+    id: "story:asset:asset_ast_source_song_1",
+    title: "Sunset Driver",
+    subtitle: "lena-wave.pirate",
+    upstreamRoyaltyPct: 10,
+    parentIpId: "0x01C0D038e1BA42959b83A56e5A1c459594719297",
+    licenseTermsId: "1894",
+  },
+  {
+    id: "story:asset:asset_ast_source_song_2",
+    title: "Warehouse Lights",
+    subtitle: "nightshift.pirate",
+    upstreamRoyaltyPct: 12,
+    parentIpId: "0x2121212121212121212121212121212121212121",
+    licenseTermsId: "1902",
+  },
+  {
+    id: "story:asset:asset_ast_source_song_3",
+    title: "Hold the Floor",
+    subtitle: "cassette-club.pirate",
+    upstreamRoyaltyPct: 15,
+    parentIpId: "0x3434343434343434343434343434343434343434",
+    licenseTermsId: "1911",
+  },
+];
+const sunsetDriverSource = sourceSongSearchResults[0]!;
+const warehouseLightsSource = sourceSongSearchResults[1]!;
 const regionalPricingPreview = {
   defaultTierKey: "high_income",
   tiers: [
@@ -44,6 +76,89 @@ const regionalPricingPreview = {
     },
   ],
 };
+
+function videoUsesSongStep(overrides: Partial<DerivativeStepState> = {}): DerivativeStepState {
+  return {
+    visible: true,
+    required: false,
+    trigger: "uses_song",
+    searchResults: sourceSongSearchResults,
+    references: [],
+    sourceTermsAccepted: false,
+    ...overrides,
+  };
+}
+
+function VideoUsesSongComposer({
+  composerStep = "details",
+  derivativeStep,
+  locked = false,
+  title = "Dance cut from the floor",
+}: {
+  composerStep?: "details" | "settings" | "publish";
+  derivativeStep: DerivativeStepState;
+  locked?: boolean;
+  title?: string;
+}) {
+  const videoName = locked ? "locked-dance-cut.webm" : "dance-cut.webm";
+  const [video, setVideo] = React.useState<VideoComposerState>({
+    primaryVideoLabel: "Generating sample video...",
+    posterFrameSeconds: "0",
+  });
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    void createSyntheticVideoFile({
+      height: 360,
+      label: locked ? "Locked dance cut" : "Dance cut",
+      name: videoName,
+      width: 640,
+    })
+      .then((file) => {
+        if (cancelled) return;
+        setVideo({
+          primaryVideoUpload: file,
+          primaryVideoLabel: file.name,
+          posterFrameSeconds: "1.5",
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setVideo({
+          primaryVideoUpload: new File([new Uint8Array([0])], videoName, { type: syntheticVideoMimeType }),
+          primaryVideoLabel: videoName,
+          posterFrameSeconds: "0",
+        });
+      });
+
+    return () => { cancelled = true; };
+  }, [locked, videoName]);
+
+  return (
+    <InteractivePostComposer
+      {...baseComposer}
+      composerStep={composerStep}
+      mode="video"
+      titleValue={title}
+      titleCountLabel="24/300"
+      captionValue="Danced to Sunset Driver at the warehouse show."
+      derivativeStep={derivativeStep}
+      license={{
+        presetId: locked ? "commercial-use" : "non-commercial",
+      }}
+      monetization={{
+        visible: locked,
+        priceUsd: locked ? "4.99" : "0",
+        regionalPricingAvailable: locked,
+        regionalPricingEnabled: locked,
+      }}
+      regionalPricingPreview={locked ? regionalPricingPreview : undefined}
+      onVideoChange={setVideo}
+      video={video}
+    />
+  );
+}
 
 async function createSyntheticVideoFile({
   height,
@@ -323,29 +438,75 @@ export const FramePickerVertical: Story = {
   ),
 };
 
-export const Reference: Story = {
-  name: "With Reference Required",
+export const UsesSongEmpty: Story = {
+  name: "Uses Song / Empty",
   render: () => (
-    <PostComposer
-      {...baseComposer}
-      mode="video"
-      titleValue="Fan edit from the encore"
-      titleCountLabel="24/300"
-      captionValue="Posting the cut now. Attribution can stay tucked away unless needed."
-      derivativeStep={{
-        visible: true,
+    <VideoUsesSongComposer
+      derivativeStep={videoUsesSongStep()}
+    />
+  ),
+};
+
+export const UsesSongSearchLoading: Story = {
+  name: "Uses Song / Search Loading",
+  render: () => (
+    <VideoUsesSongComposer
+      derivativeStep={videoUsesSongStep({
+        query: "sunset",
+        searchLoading: true,
+        searchResults: undefined,
+      })}
+    />
+  ),
+};
+
+export const UsesSongSelected: Story = {
+  name: "Uses Song / Terms Required",
+  render: () => (
+    <VideoUsesSongComposer
+      derivativeStep={videoUsesSongStep({
+        references: [sunsetDriverSource],
+      })}
+    />
+  ),
+};
+
+export const UsesSongTermsAccepted: Story = {
+  name: "Uses Song / Terms Accepted",
+  render: () => (
+    <VideoUsesSongComposer
+      derivativeStep={videoUsesSongStep({
+        references: [sunsetDriverSource],
+        sourceTermsAccepted: true,
+      })}
+    />
+  ),
+};
+
+export const UsesSongRequiredByAnalysis: Story = {
+  name: "Uses Song / ACR Required",
+  render: () => (
+    <VideoUsesSongComposer
+      derivativeStep={videoUsesSongStep({
+        query: "warehouse lights",
         required: true,
-        trigger: "declaration",
-        query: "encore live original",
-        references: [
-          {
-            id: "ast_02def",
-            title: "Encore performance",
-            subtitle: "Likely matched source video",
-          },
-        ],
-        requirementLabel: "Attach the source video before posting.",
-      }}
+        references: [],
+        requirementLabel: "Audio analysis matched a registered song. Attach the source song before posting.",
+      })}
+    />
+  ),
+};
+
+export const LockedUsesSong: Story = {
+  name: "Locked Video / Uses Song",
+  render: () => (
+    <VideoUsesSongComposer
+      locked
+      derivativeStep={videoUsesSongStep({
+        references: [warehouseLightsSource],
+        sourceTermsAccepted: true,
+      })}
+      title="Members-only dance cut"
     />
   ),
 };

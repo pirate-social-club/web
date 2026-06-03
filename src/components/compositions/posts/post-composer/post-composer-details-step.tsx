@@ -11,7 +11,6 @@ import {
 } from "@/components/primitives/select";
 import { CardContent } from "@/components/primitives/card";
 import { Input } from "@/components/primitives/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/primitives/tabs";
 import { Type } from "@/components/primitives/type";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +20,7 @@ import {
   songLanguageOptions,
 } from "./post-composer-config";
 import { FieldLabel, LabeledTextarea, UploadField } from "./post-composer-fields";
-import { PostComposerDerivativeSection } from "./post-composer-sections";
+import { PostComposerDerivativeSection, PostComposerSourceModeTabs } from "./post-composer-sections";
 import { VideoFramePicker } from "./post-composer-content";
 import type { PostComposerController } from "./use-post-composer-controller";
 
@@ -71,6 +70,16 @@ export function PostComposerDetailsStep({
         <Type as="h2" variant="h3" className="text-muted-foreground">
           Video details
         </Type>
+        <PostComposerSourceModeTabs
+          modes={[
+            { label: "Original video", value: "original" },
+            { label: "Uses song", value: "uses_song" },
+          ]}
+          onValueChange={(value) =>
+            primary.handleVideoSourceModeChange(value === "uses_song" ? "uses_song" : "original")
+          }
+          value={primary.activeVideoSourceMode}
+        />
         {media.videoState.primaryVideoUpload ? (
           <VideoFramePicker
             copy={copy}
@@ -82,6 +91,23 @@ export function PostComposerDetailsStep({
                 posterFrameSeconds: value,
               }))
             }
+          />
+        ) : null}
+        {primary.derivativeState?.visible ? (
+          <PostComposerDerivativeSection
+            copy={copy}
+            derivativePickerKey={primary.derivativePickerKey}
+            derivativeSearchResults={primary.derivativeSearchResults}
+            derivativeState={primary.derivativeState}
+            labels={{
+              acceptTermsLabel: "I accept the source song terms.",
+              emptyLabel: "No songs found.",
+              placeholder: "Search songs",
+              searchAriaLabel: "Search songs this video uses",
+              sectionTitle: "Uses song",
+            }}
+            onAdvancePicker={advanceDerivativePicker}
+            updateDerivativeState={primary.updateDerivativeState}
           />
         ) : null}
       </CardContent>
@@ -103,23 +129,14 @@ export function PostComposerDetailsStep({
         </Type>
       </div>
 
-      <Tabs
-        className="w-full"
+      <PostComposerSourceModeTabs
+        modes={(["original", "remix"] as const).map((value) => ({
+          label: copy.songModes[value],
+          value,
+        }))}
         onValueChange={(value) => primary.handleSongModeChange(value === "remix" ? "remix" : "original")}
         value={primary.activeSongMode}
-      >
-        <TabsList className="grid h-auto w-full grid-cols-2 rounded-full border border-border-soft">
-          {(["original", "remix"] as const).map((value) => (
-            <TabsTrigger
-              className="h-10 min-w-0 px-3 font-semibold capitalize"
-              key={value}
-              value={value}
-            >
-              {copy.songModes[value]}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      />
 
       {primary.derivativeState?.visible ? (
         <PostComposerDerivativeSection

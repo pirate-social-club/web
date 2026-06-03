@@ -322,13 +322,38 @@ export function usePostComposerController(props: PostComposerProps) {
     }
   }, [setSongModeWithCallback, updateDerivativeState]);
 
+  const activeVideoSourceMode = activeTab === "video" && derivativeState?.visible
+    ? "uses_song" as const
+    : "original" as const;
+  const handleVideoSourceModeChange = React.useCallback((next: "original" | "uses_song") => {
+    if (next === "uses_song") {
+      updateDerivativeState((current) => ({
+        visible: true,
+        required: current?.required ?? false,
+        trigger: "uses_song",
+        requirementLabel: current?.requirementLabel,
+        searchResults: current?.searchResults ?? [],
+        references: current?.references ?? [],
+        licenseSummary: current?.licenseSummary,
+        sourceTermsAccepted: current?.sourceTermsAccepted === true,
+      }));
+      return;
+    }
+
+    updateDerivativeState((current) => {
+      if (current?.trigger === "uses_song") return undefined;
+      return current?.visible ? undefined : current;
+    });
+  }, [updateDerivativeState]);
+
   const derivativeMissingRefs = Boolean(
     derivativeState?.visible && derivativeState.required && !(derivativeState.references?.length),
   );
+  const derivativeHasReferences = (derivativeState?.references?.length ?? 0) > 0;
   const derivativeMissingSourceTermsAcceptance = Boolean(
     derivativeState?.visible
-    && derivativeState.required
-    && (derivativeState.references?.length ?? 0) > 0
+    && (derivativeState.required || derivativeHasReferences)
+    && derivativeHasReferences
     && derivativeState.sourceTermsAccepted !== true,
   );
   const contentBlocked = derivativeMissingRefs || derivativeMissingSourceTermsAcceptance;
@@ -562,10 +587,12 @@ export function usePostComposerController(props: PostComposerProps) {
     },
     primary: {
       activeSongMode,
+      activeVideoSourceMode,
       derivativePickerKey,
       derivativeSearchResults,
       derivativeState,
       handleSongModeChange,
+      handleVideoSourceModeChange,
       liveState,
       setLiveState: setLiveStateWithCallback,
       updateDerivativeState,

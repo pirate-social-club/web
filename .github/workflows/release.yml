@@ -29,27 +29,6 @@ jobs:
       - name: Build API worker
         working-directory: api/services/api
         run: bun build src/index.ts --target=bun --outfile=/tmp/pirate-api-worker.js
-      - name: Sync staging CDR writer secrets
-        working-directory: api/services/api
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          STORY_CDR_WRITER_PRIVATE_KEY: ${{ secrets.STORY_CDR_WRITER_PRIVATE_KEY }}
-          STORY_CDR_WRITER_PKP_ADDRESS: ${{ secrets.STORY_CDR_WRITER_PKP_ADDRESS }}
-          STORY_CDR_WRITER_PKP_PUBLIC_KEY: ${{ secrets.STORY_CDR_WRITER_PKP_PUBLIC_KEY }}
-          STORY_CDR_WRITER_ACTION_CID_ALLOCATE_WRITE: ${{ secrets.STORY_CDR_WRITER_ACTION_CID_ALLOCATE_WRITE }}
-          LIT_CHIPOTLE_CDR_WRITER_API_KEY: ${{ secrets.LIT_CHIPOTLE_CDR_WRITER_API_KEY }}
-        run: |
-          for name in \
-            STORY_CDR_WRITER_PRIVATE_KEY \
-            STORY_CDR_WRITER_PKP_ADDRESS \
-            STORY_CDR_WRITER_PKP_PUBLIC_KEY \
-            STORY_CDR_WRITER_ACTION_CID_ALLOCATE_WRITE \
-            LIT_CHIPOTLE_CDR_WRITER_API_KEY
-          do
-            test -n "${!name}"
-            printf '%s' "${!name}" | ./node_modules/.bin/wrangler secret put "$name" --env staging
-          done
       - name: Deploy staging API worker
         working-directory: api/services/api
         env:

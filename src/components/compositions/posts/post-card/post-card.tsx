@@ -146,25 +146,7 @@ async function copyTextToClipboard(value: string, successMessage: string) {
 
 function deriveSongCommerce(content: PostCardProps["content"]): SongCommerce | undefined {
   if (content.type !== "song") return undefined;
-
-  const ageGateRequiresProof = content.ageGatePolicy === "18_plus"
-    && content.contentSafetyState === "adult"
-    && content.ageGateViewerState !== "verified_allowed";
-  if (ageGateRequiresProof) return undefined;
-
-  const isLocked = content.accessMode === "locked";
-  const isOwned = content.hasEntitlement === true;
-  const isListedActive = content.listingMode === "listed" && content.listingStatus === "active";
-  const effectivePrice = content.regionalPriceLabel ?? content.priceLabel;
-
-  if (isLocked && !isOwned && isListedActive && content.onBuy) {
-    return { kind: "buy", priceLabel: effectivePrice, onSelect: content.onBuy };
-  }
-
-  if (isLocked && !isOwned && !isListedActive && content.onUnlock) {
-    return { kind: "unlock", onSelect: content.onUnlock };
-  }
-
+  // Song acquisition actions are rendered as offer rows inside the song card.
   return undefined;
 }
 
@@ -291,44 +273,6 @@ export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): 
       },
       onAction: () => void copyTextToClipboard(cid, "Encrypted IPFS CID copied."),
     });
-  }
-
-  const songPolicy = getEffectiveDownloadPolicy(content);
-  const canDownloadOriginal = Boolean(
-    content.onDownload
-    && (
-      songPolicy === "free_download"
-      || (songPolicy === "purchased_download" && content.hasEntitlement)
-    ),
-  );
-  const pushDownloadAction = (item: PostCardMenuItem, onAction: () => void) => {
-    actions.push({
-      category: "download",
-      item: {
-        ...item,
-        separatorBefore: item.separatorBefore || false,
-      },
-      onAction,
-    });
-  };
-
-  if (canDownloadOriginal && content.onDownload) {
-    pushDownloadAction(
-      { key: "song-download:original", label: "Download original" },
-      content.onDownload,
-    );
-  }
-
-  for (const [index, stem] of (content.stems ?? []).entries()) {
-    if (!canDownloadStem(stem, content, songPolicy) || !stem.onDownload) continue;
-
-    pushDownloadAction(
-      {
-        key: `song-download:stem:${index}:${stem.kind}`,
-        label: `Download ${stemLabel(stem)}`,
-      },
-      stem.onDownload,
-    );
   }
 
   return actions;

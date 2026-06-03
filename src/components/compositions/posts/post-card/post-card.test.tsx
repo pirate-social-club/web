@@ -61,7 +61,7 @@ describe("PostCard", () => {
     expect(open).toHaveBeenCalledWith("https://genius.com/34172986", "_blank", "noopener,noreferrer");
   });
 
-  test("merges song annotations and download actions into post options in order", () => {
+  test("keeps song annotations in post options without duplicating visible download rows", () => {
     const baseItems: PostCardMenuItem[] = [
       { key: "copy-link", label: "Copy link" },
       { key: "report", label: "Report", separatorBefore: true },
@@ -95,9 +95,6 @@ describe("PostCard", () => {
       "View on Genius",
       "Copy IPFS CID",
       "View on IPFS",
-      "Download original",
-      "Download instrumental",
-      "Download vocals",
     ]);
     expect(mergedItems.map((item) => Boolean(item.separatorBefore))).toEqual([
       false,
@@ -105,11 +102,8 @@ describe("PostCard", () => {
       false,
       false,
       false,
-      true,
-      false,
-      false,
     ]);
-    expect(mergedItems.filter((item) => item.key.startsWith("song-download:")).every((item) => item.icon)).toBe(true);
+    expect(mergedItems.some((item) => item.key.startsWith("song-download:"))).toBe(false);
   });
 
   test("shows IPFS action for locked songs without entitlement", () => {
@@ -139,7 +133,7 @@ describe("PostCard", () => {
     expect(mergedItems[1]?.icon).toBeTruthy();
   });
 
-  test("keeps song downloads in the header menu instead of the footer action slot", () => {
+  test("renders song downloads as visible offer rows instead of header menu actions", () => {
     const content: SongContentSpec = {
       type: "song",
       accessMode: "public",
@@ -161,8 +155,9 @@ describe("PostCard", () => {
       </UiLocaleProvider>,
     );
 
-    expect(deriveSongHeaderMenuActions(content).map((action) => action.item.label)).toContain("Download original");
-    expect(markup).not.toContain(">Download</button>");
+    expect(deriveSongHeaderMenuActions(content).map((action) => action.item.label)).not.toContain("Download original");
+    expect(markup).toContain("Original");
+    expect(markup).toContain("Download");
   });
 
   test("renders date-only event metadata compactly without fake midnight times", () => {

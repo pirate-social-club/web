@@ -269,9 +269,10 @@ export const LockedWithVinyl: Story = {
   render: () => (
     <PostCard
       {...basePost}
-      title="Vinyl pre-order unlock"
+      title="Vinyl now available"
       content={{
         ...baseSong,
+        caption: "Full track is streaming below. Vinyl is available offsite.",
         accessMode: "locked",
         previewDurationMs: 30000,
         playbackState: "idle",
@@ -281,6 +282,7 @@ export const LockedWithVinyl: Story = {
         vinylRelease: {
           available: true,
           provider: "elasticstage",
+          url: "https://elasticstage.com/kevin-tameimpala/releases/midnight-waves",
         },
         onBuy: noop,
       }}
@@ -328,19 +330,105 @@ export const LockedOwnedWithVinyl: Story = {
   ),
 };
 
-export const LockedOwnedNoDownload: Story = {
-  name: "Access / Owned no download",
+export const FreeOriginalDownload: Story = {
+  name: "Downloads / Original",
   render: () => (
     <PostCard
       {...basePost}
-      title="Purchased stream-only track"
+      title="Original download"
       content={{
         ...baseSong,
-        accessMode: "locked",
-        downloadPolicy: "stream_only",
-        hasEntitlement: true,
-        listingMode: "listed",
-        listingStatus: "active",
+        caption: "Original file is available directly from the post.",
+        accessMode: "public",
+        downloadPolicy: "free_download",
+        onDownload: noop,
+      }}
+    />
+  ),
+};
+
+export const FreeOriginalInstrumentalDownload: Story = {
+  name: "Downloads / Original + Instrumental",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Original and instrumental downloads"
+      content={{
+        ...baseSong,
+        caption: "Original file and instrumental are available directly from the post.",
+        accessMode: "public",
+        downloadPolicy: "free_download",
+        onDownload: noop,
+        stems: [
+          {
+            kind: "instrumental",
+            durationLabel: "3:47",
+            durationMs: 227000,
+            accessPolicy: "free",
+            onDownload: noop,
+          },
+        ],
+      }}
+    />
+  ),
+};
+
+export const FreeOriginalVocalsDownload: Story = {
+  name: "Downloads / Original + Vocals",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Original and vocal downloads"
+      content={{
+        ...baseSong,
+        caption: "Original file and vocal stem are available directly from the post.",
+        accessMode: "public",
+        downloadPolicy: "free_download",
+        onDownload: noop,
+        stems: [
+          {
+            kind: "vocals",
+            label: "Vocals",
+            durationLabel: "3:45",
+            durationMs: 225000,
+            accessPolicy: "free",
+            onDownload: noop,
+          },
+        ],
+      }}
+    />
+  ),
+};
+
+export const FreeDownloadWithStems: Story = {
+  name: "Downloads / Original + Instrumental + Vocals",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Free download pack"
+      content={{
+        ...baseSong,
+        caption: "Grab the original, instrumental, and vocal stem directly from the post.",
+        accessMode: "public",
+        downloadPolicy: "free_download",
+        onDownload: noop,
+        stems: [
+          {
+            kind: "instrumental",
+            durationLabel: "3:47",
+            durationMs: 227000,
+            accessPolicy: "free",
+            onDownload: noop,
+          },
+          {
+            kind: "vocals",
+            label: "Vocals",
+            durationLabel: "3:45",
+            durationMs: 225000,
+            accessPolicy: "free",
+            onDownload: noop,
+          },
+        ],
       }}
     />
   ),

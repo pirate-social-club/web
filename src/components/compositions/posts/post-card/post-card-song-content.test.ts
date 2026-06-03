@@ -74,39 +74,29 @@ describe("deriveSongUI", () => {
     expect(ownedUi.showOwned).toBe(true);
   });
 
-  test("surfaces vinyl release availability before unlock and link after ownership", () => {
-    const lockedUi = deriveSongUI({
-      ...baseSong,
-      accessMode: "locked",
-      listingMode: "listed",
-      listingStatus: "active",
-      priceLabel: "$3.99",
-      vinylRelease: {
-        available: true,
-        provider: "elasticstage",
-      },
-    });
-    const ownedMarkup = renderToStaticMarkup(
+  test("surfaces vinyl release as a direct offer row", () => {
+    const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
           ...baseSong,
           accessMode: "locked",
-          hasEntitlement: true,
           listingMode: "listed",
           listingStatus: "active",
+          onBuy: () => {},
+          priceLabel: "$3.99",
           vinylRelease: {
             available: true,
             provider: "elasticstage",
-            url: "https://elasticstage.com/kevin-tameimpala/releases/midnight-waves",
+            url: "https://elasticstage.com/kevin-tameimpala/releases/midnight-waves"
           },
         },
       }),
     );
 
-    expect(lockedUi.showVinylAvailable).toBe(true);
-    expect(lockedUi.showVinylLink).toBe(false);
-    expect(ownedMarkup).toContain("Buy vinyl on ElasticStage");
-    expect(ownedMarkup).toContain("https://elasticstage.com/kevin-tameimpala/releases/midnight-waves");
+    expect(markup).toContain("Digital MP3");
+    expect(markup).toContain("$3.99");
+    expect(markup).toContain("Vinyl");
+    expect(markup).toContain("https://elasticstage.com/kevin-tameimpala/releases/midnight-waves");
   });
 
   test("requires age proof until the viewer is verified allowed", () => {
@@ -212,7 +202,7 @@ describe("deriveSongUI", () => {
     expect(markup).not.toContain('href="https://genius.com/34172986"');
   });
 
-  test("keeps download actions out of the compact song player", () => {
+  test("surfaces free original downloads as offer rows without redundant free pricing", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -223,11 +213,12 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).not.toContain("Download");
-    expect(markup).not.toContain("Unlocked");
+    expect(markup).toContain("Original");
+    expect(markup).not.toContain("Free");
+    expect(markup).toContain("Download");
   });
 
-  test("keeps owned download state out of the compact song player", () => {
+  test("surfaces owned original downloads as offer rows", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -241,8 +232,8 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).not.toContain("Download");
-    expect(markup).not.toContain("Unlocked");
+    expect(markup).toContain("Original");
+    expect(markup).toContain("Download");
   });
 
   test("does not render completed Story registration status", () => {

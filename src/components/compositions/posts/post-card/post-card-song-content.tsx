@@ -1,11 +1,15 @@
 import * as React from "react";
 import {
   ArrowSquareOut,
-  CheckCircle,
+  DownloadSimple,
   Lock as FilledLockIcon,
+  MicrophoneStage,
   MusicNote,
   Pause as PauseIcon,
+  PianoKeys,
   Play as PlayIcon,
+  SlidersHorizontal,
+  VinylRecord,
 } from "@phosphor-icons/react";
 import { Spinner } from "@/components/primitives/spinner";
 import { cn } from "@/lib/utils";
@@ -20,6 +24,8 @@ import { StoryLicenseNoticeBadge, StoryRegistrationBadge } from "./post-card-sto
 import type {
   DownloadPolicy,
   SongContentSpec,
+  StemKind,
+  StemSpec,
   UpstreamAttribution,
 } from "./post-card.types";
 
@@ -48,7 +54,6 @@ interface DerivedSongUI {
   showPrice: boolean;
   showUnlock: boolean;
   showOwned: boolean;
-  showVinylAvailable: boolean;
   showVinylLink: boolean;
   showBuy: boolean;
   showDownload: boolean;
@@ -92,7 +97,6 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   const isListedActive = isListed && isListingActive;
   const isOwned = hasEntitlement === true;
   const effectiveDownloadPolicy = getEffectiveDownloadPolicy(content);
-  const hasVinylRelease = vinylRelease?.available === true;
   const hasVinylReleaseUrl = Boolean(vinylRelease?.url?.trim());
   
   // Playback availability
@@ -107,8 +111,7 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
   const showBuy = showPrice && Boolean(onBuy);
   const showUnlock = isLocked && !isOwned && !isListedActive && Boolean(onUnlock);
   const showOwned = isLocked && isOwned;
-  const showVinylAvailable = hasVinylRelease && isLocked && !isOwned && isListedActive && !ageGateRequiresProof;
-  const showVinylLink = showOwned && hasVinylReleaseUrl;
+  const showVinylLink = hasVinylReleaseUrl && !ageGateRequiresProof;
   const showDownload = Boolean(onDownload) && (
     effectiveDownloadPolicy === "free_download"
     || (effectiveDownloadPolicy === "purchased_download" && isOwned)
@@ -153,7 +156,6 @@ export function deriveSongUI(content: SongContentSpec): DerivedSongUI {
     showPrice,
     showUnlock,
     showOwned,
-    showVinylAvailable,
     showVinylLink,
     showBuy,
     showDownload,
@@ -250,6 +252,234 @@ function getPlaybackDurationMs(content: SongContentSpec, canShowPreview: boolean
   return defaultPreviewDurationMs;
 }
 
+function stemKindLabel(kind: StemKind): string {
+  switch (kind) {
+    case "instrumental":
+      return "Instrumental";
+    case "vocals":
+      return "Vocals";
+    case "drums":
+      return "Drums";
+    case "bass":
+      return "Bass";
+    case "other":
+      return "Stem";
+    default:
+      return "Stem";
+  }
+}
+
+function stemLabel(stem: StemSpec): string {
+  return stem.label ?? stemKindLabel(stem.kind);
+}
+
+function stemIcon(stem: StemSpec) {
+  switch (stem.kind) {
+    case "instrumental":
+      return <PianoKeys className="size-5" />;
+    case "vocals":
+      return <MicrophoneStage className="size-5" />;
+    default:
+      return <SlidersHorizontal className="size-5" />;
+  }
+}
+
+function resolveStemAccessPolicy(stem: StemSpec, songPolicy: DownloadPolicy) {
+  if (stem.accessPolicy !== "inherit") {
+    return stem.accessPolicy;
+  }
+
+  if (songPolicy === "free_download") {
+    return "free";
+  }
+
+  if (songPolicy === "purchased_download") {
+    return "purchasers_only";
+  }
+
+  return "unavailable";
+}
+
+function canDownloadStem(stem: StemSpec, content: SongContentSpec, songPolicy: DownloadPolicy): boolean {
+  if (!stem.onDownload) return false;
+
+  const resolvedPolicy = resolveStemAccessPolicy(stem, songPolicy);
+  if (resolvedPolicy === "unavailable") return false;
+  if (resolvedPolicy === "free") return true;
+
+  return stem.accessPolicy === "inherit" && songPolicy === "purchased_download"
+    ? content.hasEntitlement === true || content.entitledStems?.includes(stem.kind) === true
+    : content.entitledStems?.includes(stem.kind) === true;
+}
+
+interface SongOfferRowProps {
+  action: React.ReactNode;
+  icon: React.ReactNode;
+  label: string;
+  priceLabel?: string;
+}
+
+function SongOfferRow({ action, icon, label, priceLabel }: SongOfferRowProps) {
+  return (
+    <div className="grid min-h-16 grid-cols-[auto_minmax(0,1fr)_4rem_8.5rem] items-center gap-3 border-t border-border-soft px-4 py-3">
+      <div className="grid size-8 shrink-0 place-items-center text-muted-foreground">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <Type as="p" className="truncate font-semibold text-foreground" variant="body-strong">
+          {label}
+        </Type>
+      </div>
+      {priceLabel ? (
+        <Type as="p" className="text-end font-semibold text-foreground" variant="body-strong">
+          {priceLabel}
+        </Type>
+      ) : <div aria-hidden="true" />}
+      <div className="flex justify-end">
+        {action}
+      </div>
+    </div>
+  );
+}
+
+function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedSongUI }) {
+  if (ui.ageGateRequiresProof) return null;
+
+  const rows: React.ReactNode[] = [];
+  const isOwned = content.hasEntitlement === true;
+  const isLocked = content.accessMode === "locked";
+  const isListedActive = content.listingMode === "listed" && content.listingStatus === "active";
+  const effectivePrice = content.regionalPriceLabel ?? content.priceLabel;
+  const songPolicy = ui.effectiveDownloadPolicy;
+  const vinylReleaseUrl = content.vinylRelease?.url?.trim();
+  const canDownloadOriginal = Boolean(
+    content.onDownload
+    && (
+      songPolicy === "free_download"
+      || (songPolicy === "purchased_download" && isOwned)
+    ),
+  );
+
+  if (isLocked && !isOwned && isListedActive && content.onBuy) {
+    rows.push(
+      <SongOfferRow
+        action={(
+          <Button
+            aria-label="Buy Digital MP3"
+            className="h-10 w-32 px-5"
+            data-post-card-interactive="true"
+            onClick={content.onBuy}
+            size="sm"
+          >
+            Buy
+          </Button>
+        )}
+        icon={<MusicNote className="size-5" />}
+        key="digital-buy"
+        label="Digital MP3"
+        priceLabel={effectivePrice}
+      />,
+    );
+  } else if (isLocked && !isOwned && !isListedActive && content.onUnlock) {
+    rows.push(
+      <SongOfferRow
+        action={(
+          <Button
+            aria-label="Unlock Digital MP3"
+            className="h-10 w-32 px-5"
+            data-post-card-interactive="true"
+            onClick={content.onUnlock}
+            size="sm"
+          >
+            Unlock
+          </Button>
+        )}
+        icon={<MusicNote className="size-5" />}
+        key="digital-unlock"
+        label="Digital MP3"
+      />,
+    );
+  } else if (canDownloadOriginal && content.onDownload) {
+    rows.push(
+      <SongOfferRow
+        action={(
+          <Button
+            aria-label="Download Original"
+            className="h-10 w-32 px-5"
+            data-post-card-interactive="true"
+            leadingIcon={<DownloadSimple className="size-4" />}
+            onClick={content.onDownload}
+            size="sm"
+            variant="secondary"
+          >
+            Download
+          </Button>
+        )}
+        icon={<MusicNote className="size-5" />}
+        key="original-download"
+        label="Original"
+      />,
+    );
+  }
+
+  for (const [index, stem] of (content.stems ?? []).entries()) {
+    if (!canDownloadStem(stem, content, songPolicy) || !stem.onDownload) continue;
+
+    rows.push(
+      <SongOfferRow
+        action={(
+          <Button
+            aria-label={`Download ${stemLabel(stem)}`}
+            className="h-10 w-32 px-5"
+            data-post-card-interactive="true"
+            leadingIcon={<DownloadSimple className="size-4" />}
+            onClick={stem.onDownload}
+            size="sm"
+            variant="secondary"
+          >
+            Download
+          </Button>
+        )}
+        icon={stemIcon(stem)}
+        key={`stem-${index}-${stem.kind}`}
+        label={stemLabel(stem)}
+      />,
+    );
+  }
+
+  if (vinylReleaseUrl) {
+    rows.push(
+      <SongOfferRow
+        action={(
+          <Button
+            asChild
+            className="h-10 w-32 px-5"
+            data-post-card-interactive="true"
+            size="sm"
+            variant="secondary"
+          >
+            <a aria-label="Buy vinyl on ElasticStage" href={vinylReleaseUrl} rel="noreferrer" target="_blank">
+              <span>Buy</span>
+              <ArrowSquareOut className="size-4" />
+            </a>
+          </Button>
+        )}
+        icon={<VinylRecord className="size-5" />}
+        key="vinyl"
+        label="Vinyl"
+      />,
+    );
+  }
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div>
+      {rows}
+    </div>
+  );
+}
+
 export function SongPostContent({ content, className }: SongPostContentProps) {
   const ui = deriveSongUI(content);
   const {
@@ -260,7 +490,6 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
     onSeek,
     onVerifyAge,
   } = content;
-  const vinylReleaseUrl = content.vinylRelease?.url?.trim();
 
   const previewSeconds = Math.max(1, Math.round((ui.previewMaxMs ?? defaultPreviewDurationMs) / 1000));
   const controlButtonClassName = "size-12 border-transparent shadow-sm sm:size-16";
@@ -341,8 +570,8 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
 
   return (
     <div className={cn("flex flex-col gap-2 text-start", className)}>
-      <div className="rounded-lg border border-border-soft bg-card p-3">
-        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+      <div className="overflow-hidden rounded-lg border border-border-soft bg-card">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 p-3">
           <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted sm:size-28">
             {ui.showAgeGatedArtwork ? (
               <>
@@ -424,33 +653,7 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
           ) : null}
         </div>
 
-        {ui.showOwned || ui.showVinylAvailable || ui.showVinylLink ? (
-          <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
-            {ui.showVinylAvailable ? (
-              <span className="font-medium text-muted-foreground">
-                Vinyl available after unlock
-              </span>
-            ) : null}
-            {ui.showOwned ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-background px-2.5 py-1 text-base font-medium text-muted-foreground">
-                <CheckCircle className="size-4 text-primary" weight="fill" />
-                Owned
-              </span>
-            ) : null}
-            {ui.showVinylLink && vinylReleaseUrl ? (
-              <a
-                className="inline-flex min-w-0 items-center gap-1.5 font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
-                data-post-card-interactive="true"
-                href={vinylReleaseUrl}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <span className="truncate">Buy vinyl on ElasticStage</span>
-                <ArrowSquareOut className="size-4 shrink-0" />
-              </a>
-            ) : null}
-          </div>
-        ) : null}
+        <SongOfferRows content={content} ui={ui} />
       </div>
 
       <StoryRegistrationBadge status={content.storyRegistration} />

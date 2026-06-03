@@ -408,7 +408,6 @@ export const CommerceHeaderMenuDownloadsStems: Story = {
           },
           {
             kind: "vocals",
-            label: "Acapella",
             accessPolicy: "inherit",
             onDownload: noop,
           },

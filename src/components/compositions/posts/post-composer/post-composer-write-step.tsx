@@ -178,12 +178,30 @@ function useWriteStepController(controller: PostComposerController) {
   const audioInputRef = React.useRef<HTMLInputElement | null>(null);
   const imagePreviewUrl = useObjectUrl(controller.media.activeImageUpload);
   const videoPreviewUrl = useObjectUrl(controller.media.videoState.primaryVideoUpload);
-  const videoAspectRatio = useVideoSourceAspectRatio(videoPreviewUrl);
+  const detectedVideoAspectRatio = useVideoSourceAspectRatio(videoPreviewUrl);
+  const videoAspectRatio = detectedVideoAspectRatio ?? controller.media.videoState.primaryVideoAspectRatio;
   const videoPosterUrl = useVideoPosterUrl(controller.media.videoState.primaryVideoUpload);
   const songArtworkUrl = useObjectUrl(controller.song.state.coverUpload);
   const attachment = attachmentFromController(controller, imagePreviewUrl, videoPosterUrl, videoPreviewUrl, videoAspectRatio, songArtworkUrl);
   const [isDragging, setIsDragging] = React.useState(false);
   const dragCounter = React.useRef(0);
+
+  React.useEffect(() => {
+    if (typeof detectedVideoAspectRatio !== "number") {
+      return;
+    }
+    if (controller.media.videoState.primaryVideoAspectRatio === detectedVideoAspectRatio) {
+      return;
+    }
+
+    controller.media.updateVideoState((current) => current.primaryVideoAspectRatio === detectedVideoAspectRatio
+      ? current
+      : { ...current, primaryVideoAspectRatio: detectedVideoAspectRatio });
+  }, [
+    controller.media.updateVideoState,
+    controller.media.videoState.primaryVideoAspectRatio,
+    detectedVideoAspectRatio,
+  ]);
 
   function selectAttachment(kind: AttachmentKind) {
     if (kind === "image") {
@@ -218,6 +236,7 @@ function useWriteStepController(controller: PostComposerController) {
     } else if (attachment?.kind === "video") {
       controller.media.updateVideoState((current) => ({
         ...current,
+        primaryVideoAspectRatio: undefined,
         primaryVideoLabel: undefined,
         primaryVideoUpload: null,
         posterFrameSeconds: "0",
@@ -245,6 +264,7 @@ function useWriteStepController(controller: PostComposerController) {
   function handleVideoFile(file: File) {
     controller.media.updateVideoState((current) => ({
       ...current,
+      primaryVideoAspectRatio: undefined,
       primaryVideoLabel: file.name,
       primaryVideoUpload: file,
       posterFrameSeconds: "0",

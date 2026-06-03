@@ -410,7 +410,8 @@ export function PostComposerPublishSettings({
 }: PostComposerPublishSettingsProps) {
   const imagePreviewUrl = useObjectUrl(controller.media.activeImageUpload);
   const videoPreviewUrl = useObjectUrl(controller.media.videoState.primaryVideoUpload);
-  const videoAspectRatio = useVideoSourceAspectRatio(videoPreviewUrl);
+  const detectedVideoAspectRatio = useVideoSourceAspectRatio(videoPreviewUrl);
+  const videoAspectRatio = detectedVideoAspectRatio ?? controller.media.videoState.primaryVideoAspectRatio;
   const songAudioPreviewUrl = useObjectUrl(controller.song.state.primaryAudioUpload);
   const songArtworkPreviewUrl = useObjectUrl(controller.song.state.coverUpload);
   const instrumentalAudioPreviewUrl = useObjectUrl(controller.song.state.instrumentalAudioUpload);
@@ -429,6 +430,23 @@ export function PostComposerPublishSettings({
     songAudioPreviewUrl,
     songArtworkPreviewUrl,
   );
+
+  useEffect(() => {
+    if (typeof detectedVideoAspectRatio !== "number") {
+      return;
+    }
+    if (controller.media.videoState.primaryVideoAspectRatio === detectedVideoAspectRatio) {
+      return;
+    }
+
+    controller.media.updateVideoState((current) => current.primaryVideoAspectRatio === detectedVideoAspectRatio
+      ? current
+      : { ...current, primaryVideoAspectRatio: detectedVideoAspectRatio });
+  }, [
+    controller.media.updateVideoState,
+    controller.media.videoState.primaryVideoAspectRatio,
+    detectedVideoAspectRatio,
+  ]);
   const songDownloads = {
     onOriginalDownload: songAudioPreviewUrl
       ? () => downloadLocalPreviewFile(

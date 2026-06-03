@@ -199,6 +199,7 @@ export interface AssetLicenseState {
 }
 
 export interface VideoComposerState {
+  primaryVideoAspectRatio?: number;
   primaryVideoUpload?: File | null;
   primaryVideoLabel?: string;
   posterFrameSeconds?: string;

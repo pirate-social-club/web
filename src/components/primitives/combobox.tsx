@@ -92,7 +92,7 @@ function ComboboxContent({
         <ComboboxPrimitive.Popup
           ref={ref}
           className={cn(
-            "z-50 max-h-96 w-[var(--anchor-width)] overflow-hidden rounded-[var(--radius-lg)] border border-border bg-popover text-popover-foreground shadow-md outline-none data-[ending-style]:opacity-0 data-[starting-style]:opacity-0",
+            "z-50 w-[var(--anchor-width)] overflow-hidden rounded-[var(--radius-lg)] border border-border bg-popover text-popover-foreground shadow-md outline-none data-[ending-style]:opacity-0 data-[starting-style]:opacity-0",
             className,
           )}
           {...props}

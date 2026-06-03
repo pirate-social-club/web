@@ -1560,6 +1560,43 @@ describe("SearchReferencePicker", () => {
     expect(loadingEmpty).not.toBeNull();
   });
 
+  test("keeps Story explorer links out of source picker rows", () => {
+    const source = {
+      id: "story:asset:asset_ast_source_song",
+      title: "Story Source",
+      subtitle: "source.pirate",
+      parentIpId: "0xbB0a33bd07e7c813963b569f1202047a92b38d48",
+    };
+    const tree = SearchReferencePicker({
+      ariaLabel: "Search remix-eligible source tracks",
+      emptyLabel: "No source tracks",
+      items: [source],
+      onSelect: () => undefined,
+      placeholder: "Search songs",
+    });
+    const list = findElement(
+      tree,
+      (element) => typeof element.type === "function" && element.type.name === "ComboboxList",
+    );
+
+    if (!list || typeof list.props.children !== "function") {
+      throw new Error("Combobox list renderer not found");
+    }
+
+    const row = (list.props.children as (item: typeof source) => React.ReactNode)(source);
+    const storyLink = findElement(
+      row,
+      (element) => element.type === "a" && String(element.props.href).includes("explorer.story.foundation/ipa/"),
+    );
+    const storyStatus = findElement(
+      row,
+      (element) => element.props.children === "Story registered",
+    );
+
+    expect(storyLink).toBeNull();
+    expect(storyStatus).not.toBeNull();
+  });
+
   test("shows Story IP Explorer links for selected remix sources", () => {
     const tree = SelectedReferenceCard({
       item: {

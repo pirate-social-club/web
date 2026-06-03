@@ -30,14 +30,26 @@ function isPublicHandle(value: string | undefined): value is string {
   return Boolean(value?.trim());
 }
 
-function storyPortalHref(item: ComposerReference): string | null {
+function storyExplorerHref(item: ComposerReference): string | null {
   return buildStoryExplorerIpAssetUrl(item.parentIpId, getPirateNetworkConfig().story.network);
 }
 
-function ReferenceMeta({ item, linkSubtitle = true }: { item: ComposerReference; linkSubtitle?: boolean }) {
+function ReferenceMeta({
+  item,
+  linkSubtitle = true,
+  showStoryLink = true,
+  showStoryStatus = false,
+}: {
+  item: ComposerReference;
+  linkSubtitle?: boolean;
+  showStoryLink?: boolean;
+  showStoryStatus?: boolean;
+}) {
   const royaltyLabel = referenceLicenseLabel(item);
-  const portalHref = storyPortalHref(item);
-  if (!item.subtitle && !royaltyLabel && !portalHref) return null;
+  const explorerHref = storyExplorerHref(item);
+  const storyLinkHref = showStoryLink ? explorerHref : null;
+  const storyStatusLabel = explorerHref && showStoryStatus ? "Story registered" : null;
+  if (!item.subtitle && !royaltyLabel && !storyLinkHref && !storyStatusLabel) return null;
 
   return (
     <Type as="p" className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-muted-foreground" variant="caption">
@@ -56,11 +68,12 @@ function ReferenceMeta({ item, linkSubtitle = true }: { item: ComposerReference;
       ) : null}
       {item.subtitle && royaltyLabel ? <span aria-hidden="true">·</span> : null}
       {royaltyLabel ? <span>{royaltyLabel}</span> : null}
-      {(item.subtitle || royaltyLabel) && portalHref ? <span aria-hidden="true">·</span> : null}
-      {portalHref ? (
+      {(item.subtitle || royaltyLabel) && (storyStatusLabel || storyLinkHref) ? <span aria-hidden="true">·</span> : null}
+      {storyStatusLabel ? <span>{storyStatusLabel}</span> : null}
+      {storyLinkHref ? (
         <a
           className="inline-flex max-w-full items-center gap-1 font-medium text-foreground hover:underline"
-          href={portalHref}
+          href={storyLinkHref}
           onClick={(event) => event.stopPropagation()}
           rel="noopener noreferrer"
           target="_blank"
@@ -189,7 +202,7 @@ export function SearchReferencePicker({
           {(item) => (
             <ComboboxItem className="py-2" key={item.id} value={item}>
               <Type as="p" variant="body-strong" className="truncate ">{item.title}</Type>
-              <ReferenceMeta item={item} linkSubtitle={false} />
+              <ReferenceMeta item={item} linkSubtitle={false} showStoryLink={false} showStoryStatus />
             </ComboboxItem>
           )}
         </ComboboxList>

@@ -146,6 +146,18 @@ function useLocalAudioPreview(src: string | undefined): {
   return { durationMs, onPause, onPlay, onSeek, progressMs, state };
 }
 
+function downloadLocalPreviewFile(url: string, filename: string | undefined) {
+  if (typeof document === "undefined") return;
+
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename?.trim() || "song";
+  anchor.style.display = "none";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
 function useVideoPosterFrameUrl(file: File | null | undefined, frameSeconds: string | undefined) {
   const [posterUrl, setPosterUrl] = useState<string | undefined>();
 
@@ -255,6 +267,14 @@ function buildPreviewPost(
     progressMs?: number;
     state: PlaybackState;
   },
+  songDownloads?: {
+    onOriginalDownload?: () => void;
+    stems?: Array<{
+      kind: "instrumental" | "vocals";
+      label?: string;
+      onDownload?: () => void;
+    }>;
+  },
 ): PostCardProps {
   const { audience, commerce, fields, identity } = controller;
   const priceLabel = commerce.monetizationState.priceUsd
@@ -285,6 +305,9 @@ function buildPreviewPost(
     liveState: controller.primary.liveState,
     price: commerce.monetizationState.priceUsd ?? "",
     vinylReleaseUrl: commerce.monetizationState.vinylReleaseUrl,
+    onSongBuy: commerce.monetizationState.visible ? () => undefined : undefined,
+    onSongDownload: songDownloads?.onOriginalDownload,
+    songStems: songDownloads?.stems,
     songTitle: controller.song.state.title,
     songPlayback,
     title: fields.titleValue,
@@ -367,6 +390,8 @@ export function PostComposerPublishSettings({
   const videoPreviewUrl = useObjectUrl(controller.media.videoState.primaryVideoUpload);
   const songAudioPreviewUrl = useObjectUrl(controller.song.state.primaryAudioUpload);
   const songArtworkPreviewUrl = useObjectUrl(controller.song.state.coverUpload);
+  const instrumentalAudioPreviewUrl = useObjectUrl(controller.song.state.instrumentalAudioUpload);
+  const vocalAudioPreviewUrl = useObjectUrl(controller.song.state.vocalAudioUpload);
   const liveCoverPreviewUrl = useObjectUrl(controller.primary.liveState.coverUpload);
   const songPlayback = useLocalAudioPreview(songAudioPreviewUrl);
   const videoPosterPreviewUrl = useVideoPosterFrameUrl(
@@ -380,7 +405,44 @@ export function PostComposerPublishSettings({
     songAudioPreviewUrl,
     songArtworkPreviewUrl,
   );
-  const previewPost = buildPreviewPost(controller, attachment, videoPosterPreviewUrl, liveCoverPreviewUrl, songPlayback);
+  const songDownloads = {
+    onOriginalDownload: songAudioPreviewUrl
+      ? () => downloadLocalPreviewFile(
+        songAudioPreviewUrl,
+        controller.song.state.primaryAudioUpload?.name ?? controller.song.state.primaryAudioLabel ?? "original",
+      )
+      : undefined,
+    stems: [
+      {
+        kind: "instrumental" as const,
+        label: "Instrumental",
+        onDownload: instrumentalAudioPreviewUrl
+          ? () => downloadLocalPreviewFile(
+            instrumentalAudioPreviewUrl,
+            controller.song.state.instrumentalAudioUpload?.name ?? controller.song.state.instrumentalAudioLabel ?? "instrumental",
+          )
+          : undefined,
+      },
+      {
+        kind: "vocals" as const,
+        label: "Vocals",
+        onDownload: vocalAudioPreviewUrl
+          ? () => downloadLocalPreviewFile(
+            vocalAudioPreviewUrl,
+            controller.song.state.vocalAudioUpload?.name ?? controller.song.state.vocalAudioLabel ?? "vocals",
+          )
+          : undefined,
+      },
+    ],
+  };
+  const previewPost = buildPreviewPost(
+    controller,
+    attachment,
+    videoPosterPreviewUrl,
+    liveCoverPreviewUrl,
+    songPlayback,
+    attachment?.kind === "song" ? songDownloads : undefined,
+  );
 
   return (
     <CardContent className={cn("space-y-6 p-5", controller.isMobile && "px-0 pb-4 pt-3")}>

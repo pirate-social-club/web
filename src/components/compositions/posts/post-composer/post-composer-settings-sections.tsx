@@ -349,21 +349,21 @@ export function PostComposerSettingsSections({
                     </div>
                   </label>
                 ) : null}
-                {attachment?.kind === "song" && onVinylReleaseUrlChange ? (
-                  <label className="block space-y-2">
-                    <Type as="span" variant="body-strong">
-                      {copy.vinylReleaseUrlLabel}
-                    </Type>
-                    <Input
-                      className="h-14 rounded-[var(--radius-lg)] border-border-soft bg-background text-base"
-                      inputMode="url"
-                      onChange={(event) => onVinylReleaseUrlChange(event.target.value)}
-                      placeholder={copy.vinylReleaseUrlPlaceholder}
-                      value={vinylReleaseUrl ?? ""}
-                    />
-                  </label>
-                ) : null}
               </div>
+            ) : null}
+            {attachment?.kind === "song" && onVinylReleaseUrlChange ? (
+              <label className="block space-y-2">
+                <Type as="span" variant="body-strong">
+                  {copy.vinylReleaseUrlLabel}
+                </Type>
+                <Input
+                  className="h-14 rounded-[var(--radius-lg)] border-border-soft bg-background text-base"
+                  inputMode="url"
+                  onChange={(event) => onVinylReleaseUrlChange(event.target.value)}
+                  placeholder={copy.vinylReleaseUrlPlaceholder}
+                  value={vinylReleaseUrl ?? ""}
+                />
+              </label>
             ) : null}
             {showPaidFields && regionalPricingAvailable && onRegionalPricingChange ? (
               <div className="space-y-2">

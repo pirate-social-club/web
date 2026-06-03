@@ -1,10 +1,16 @@
-import type { PlaybackState, PostCardContent } from "@/components/compositions/posts/post-card/post-card.types";
+import type { PlaybackState, PostCardContent, StemKind } from "@/components/compositions/posts/post-card/post-card.types";
 
 import type { AttachmentState, LinkPreviewState, LiveComposerState, VideoDetailsState } from "./post-composer.types";
 import type { LiveRoomParticipant } from "@/components/compositions/posts/post-card/post-card.types";
 
 const fallbackImageSrc = "https://picsum.photos/seed/post-composer-image-preview/720/720";
 const fallbackVideoSrc = "https://www.w3schools.com/html/mov_bbb.mp4";
+
+type SongPreviewStem = {
+  kind: StemKind;
+  label?: string;
+  onDownload?: () => void;
+};
 
 function formatLiveStartsAtLabel(scheduleAt: string | undefined): string | undefined {
   const value = scheduleAt?.trim();
@@ -30,6 +36,9 @@ export function buildPostComposerPreviewContent({
   videoDetails,
   videoPosterSrc,
   songPlayback,
+  songStems,
+  onSongBuy,
+  onSongDownload,
   liveCoverSrc,
   liveState,
   liveHostIdentity,
@@ -57,6 +66,9 @@ export function buildPostComposerPreviewContent({
     progressMs?: number;
     state: PlaybackState;
   };
+  songStems?: SongPreviewStem[];
+  onSongBuy?: () => void;
+  onSongDownload?: () => void;
 }): PostCardContent {
   const bodyText = body.trim();
   const accessMode = access === "paid" ? "locked" : "public";
@@ -147,6 +159,15 @@ export function buildPostComposerPreviewContent({
   if (attachment.kind === "song") {
     const trackTitle = songTitle?.trim() || attachment.label || "Untitled track";
     const normalizedVinylReleaseUrl = vinylReleaseUrl?.trim() || null;
+    const isPaid = access === "paid";
+    const previewStems = songStems
+      ?.filter((stem) => stem.onDownload)
+      .map((stem) => ({
+        accessPolicy: isPaid ? "purchasers_only" as const : "free" as const,
+        kind: stem.kind,
+        label: stem.label,
+        onDownload: stem.onDownload,
+      }));
 
     return {
       type: "song",
@@ -157,6 +178,16 @@ export function buildPostComposerPreviewContent({
       listingMode: access === "paid" ? "listed" : "not_listed",
       listingStatus: access === "paid" ? "active" : undefined,
       priceLabel: access === "paid" ? priceLabel : undefined,
+      hasEntitlement: access === "free",
+      downloadPolicy: onSongDownload
+        ? access === "paid" ? "purchased_download" : "free_download"
+        : undefined,
+      onBuy: access === "paid" ? onSongBuy : undefined,
+      onDownload: access === "free" ? onSongDownload : undefined,
+      stems: previewStems?.length ? previewStems : undefined,
+      entitledStems: access === "free" && previewStems?.length
+        ? previewStems.map((stem) => stem.kind)
+        : undefined,
       vinylRelease: normalizedVinylReleaseUrl
         ? {
             available: true,

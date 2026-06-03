@@ -177,7 +177,6 @@ export function PostComposerSettingsHub({
             ...current,
             priceUsd,
             regionalPricingEnabled: nextAccess === "free" ? false : current.regionalPricingEnabled,
-            vinylReleaseUrl: nextAccess === "free" ? "" : current.vinylReleaseUrl,
             visible: nextAccess === undefined ? current.visible : nextAccess === "paid",
           }));
           if (controller.tabs.activeTab === "live" && nextAccess !== undefined) {

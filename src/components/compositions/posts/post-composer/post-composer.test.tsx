@@ -164,6 +164,7 @@ describe("PostComposer monetization", () => {
   test("keeps controlled monetization state in sync across paid-song edits", () => {
     let monetization = defaultMonetizationState({
       visible: false,
+      vinylReleaseUrl: "https://elasticstage.com/saint-pablo/releases/free-single",
       regionalPricingAvailable: true,
     } as MonetizationState);
     let previewStartSeconds = "0";
@@ -193,6 +194,9 @@ describe("PostComposer monetization", () => {
     expect(findElement(tree, (element) => element.props.children === "Pay to access") === null).toBe(false);
     expect(findElement(tree, (element) => element.props.children === "Price")).toBe(null);
     expect(findElement(tree, (element) => element.props.children === "30-second preview starts at")).toBe(null);
+    expect(
+      findElement(tree, (element) => element.props.placeholder === "https://elasticstage.com/artist/releases/release-singleep") === null,
+    ).toBe(false);
 
     const paidAccessCheckbox = findElement(
       tree,
@@ -267,6 +271,7 @@ describe("PostComposer monetization", () => {
     }
     (updatedPaidAccessCheckbox.props.onCheckedChange as ((checked: boolean) => void) | undefined)?.(false);
     expect(monetization.visible).toBe(false);
+    expect(monetization.vinylReleaseUrl).toBe("https://elasticstage.com/saint-pablo/releases/free-single");
   });
 
   test("hides regional pricing controls when the community policy does not support them", () => {

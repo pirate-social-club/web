@@ -198,6 +198,79 @@ describe("buildPostComposerPreviewContent", () => {
     expect(typeof (content.type === "song" ? content.onPlay : undefined)).toBe("function");
   });
 
+  test("builds free song download rows for original and local stems", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "free",
+      attachment: {
+        kind: "song",
+        label: "track.wav",
+        previewUrl: "blob:https://app.test/song",
+      },
+      body: "",
+      onSongDownload: () => undefined,
+      price: "",
+      songStems: [
+        { kind: "instrumental", label: "Instrumental", onDownload: () => undefined },
+        { kind: "vocals", label: "Vocals", onDownload: () => undefined },
+      ],
+      title: "Track",
+      vinylReleaseUrl: "https://elasticstage.com/artist/releases/free-single",
+    });
+
+    expect(content).toMatchObject({
+      type: "song",
+      accessMode: "public",
+      downloadPolicy: "free_download",
+      hasEntitlement: true,
+      vinylRelease: {
+        available: true,
+        provider: "elasticstage",
+        url: "https://elasticstage.com/artist/releases/free-single",
+      },
+    });
+    expect(typeof (content.type === "song" ? content.onDownload : undefined)).toBe("function");
+    expect(content.type === "song" ? content.stems : undefined).toMatchObject([
+      { accessPolicy: "free", kind: "instrumental", label: "Instrumental" },
+      { accessPolicy: "free", kind: "vocals", label: "Vocals" },
+    ]);
+    expect(content.type === "song" ? content.entitledStems : undefined).toEqual(["instrumental", "vocals"]);
+  });
+
+  test("builds paid song purchase rows on the song content itself", () => {
+    const content = buildPostComposerPreviewContent({
+      access: "paid",
+      attachment: {
+        kind: "song",
+        label: "track.wav",
+        previewUrl: "blob:https://app.test/song",
+      },
+      body: "",
+      onSongBuy: () => undefined,
+      onSongDownload: () => undefined,
+      price: "4.99",
+      songStems: [
+        { kind: "instrumental", label: "Instrumental", onDownload: () => undefined },
+      ],
+      title: "Track",
+    });
+
+    expect(content).toMatchObject({
+      type: "song",
+      accessMode: "locked",
+      downloadPolicy: "purchased_download",
+      hasEntitlement: false,
+      listingMode: "listed",
+      listingStatus: "active",
+      priceLabel: "$4.99",
+      stems: [
+        { accessPolicy: "purchasers_only", kind: "instrumental", label: "Instrumental" },
+      ],
+    });
+    expect(typeof (content.type === "song" ? content.onBuy : undefined)).toBe("function");
+    expect(content.type === "song" ? content.onDownload : undefined).toBeUndefined();
+    expect(content.type === "song" ? content.entitledStems : undefined).toBeUndefined();
+  });
+
   test("uses canonical song title instead of upload label for the publish preview", () => {
     const content = buildPostComposerPreviewContent({
       access: "free",

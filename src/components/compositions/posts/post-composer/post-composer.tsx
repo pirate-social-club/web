@@ -2,7 +2,9 @@
 
 import { Card } from "@/components/primitives/card";
 import { Type } from "@/components/primitives/type";
+import { cn } from "@/lib/utils";
 
+import { postCardReadableWidth } from "../post-card/post-card.styles";
 import type { PostComposerProps } from "./post-composer.types";
 import { ShellPill } from "./post-composer-fields";
 import { PostComposerDetailsStep } from "./post-composer-details-step";
@@ -79,7 +81,7 @@ export function PostComposer(props: PostComposerProps) {
       </div>
 
       {step.isPublishStep ? (
-        <div className="overflow-hidden">
+        <div className={cn(postCardReadableWidth, "overflow-hidden")}>
           <PostComposerPublishSettings controller={controller} />
           <PostComposerDesktopFooter controller={controller} />
         </div>

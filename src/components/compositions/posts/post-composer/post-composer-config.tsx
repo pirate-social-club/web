@@ -131,6 +131,7 @@ export function defaultAssetLicenseState(license?: AssetLicenseState): AssetLice
 
 export function defaultVideoState(video?: VideoComposerState): VideoComposerState {
   return {
+    primaryVideoAspectRatio: video?.primaryVideoAspectRatio,
     primaryVideoUpload: video?.primaryVideoUpload ?? null,
     primaryVideoLabel: video?.primaryVideoLabel,
     posterFrameSeconds: video?.posterFrameSeconds ?? "0",

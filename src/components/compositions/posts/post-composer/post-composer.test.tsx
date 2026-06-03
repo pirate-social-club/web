@@ -2,6 +2,7 @@ import * as BunTest from "bun:test";
 import * as React from "react";
 
 import type { PostCardProps } from "@/components/compositions/posts/post-card/post-card.types";
+import { postCardReadableWidth } from "@/components/compositions/posts/post-card/post-card.styles";
 
 import { PostComposer } from "./post-composer";
 import { PostComposerAttachmentCard } from "./post-composer-attachment-card";
@@ -1142,6 +1143,32 @@ describe("PostComposer monetization", () => {
     expect(submitButton.props.disabled).toBe(false);
   });
 
+  test("constrains the desktop publish preview shell to the post card width", () => {
+    const tree = renderComposer({
+      availableTabs: ["song"],
+      canCreateSongPost: true,
+      clubName: "Lane1",
+      composerStep: "publish",
+      mode: "song",
+      song: {
+        primaryAudioLabel: "demo-song.mp3",
+        title: "Benefit single",
+      },
+      titleValue: "Benefit single for the club drop",
+    });
+
+    const publishShell = findElement(
+      tree,
+      (element) =>
+        element.type === "div"
+        && typeof element.props.className === "string"
+        && element.props.className.includes(postCardReadableWidth)
+        && element.props.className.includes("overflow-hidden"),
+    );
+
+    expect(publishShell).not.toBeNull();
+  });
+
   test("uses the anonymous DiceBear fallback in the publish preview", () => {
     const tree = renderComposer({
       ...baseComposerProps(),
@@ -1200,6 +1227,33 @@ describe("PostComposer monetization", () => {
     expect((previewCard.props.byline as PostCardProps["byline"]).timestampLabel).toBe("now");
     expect((previewCard.props.menuItems as NonNullable<PostCardProps["menuItems"]>).length).toBeGreaterThan(0);
     expect((previewCard.props.shareActions as NonNullable<PostCardProps["shareActions"]>).length).toBeGreaterThan(0);
+  });
+
+  test("uses the stored video aspect ratio in the publish preview", () => {
+    const tree = renderComposer({
+      availableTabs: ["video"],
+      clubName: "Lane1",
+      composerStep: "publish",
+      mode: "video",
+      titleValue: "Portrait video",
+      video: {
+        primaryVideoAspectRatio: 9 / 16,
+        primaryVideoLabel: "portrait.mp4",
+        primaryVideoUpload: new File(["video"], "portrait.mp4", { type: "video/mp4" }),
+      },
+    });
+
+    const previewCard = findElement(
+      tree,
+      (element) => typeof element.type !== "string" && element.type.name === "PostCard",
+    );
+    if (!previewCard) {
+      throw new Error("Missing preview post card");
+    }
+
+    const content = previewCard.props.content as PostCardProps["content"];
+    expect(content.type).toBe("video");
+    expect(content.type === "video" ? content.aspectRatio : undefined).toBe(9 / 16);
   });
 
   test("renders live publish preview as the live post page surface", () => {

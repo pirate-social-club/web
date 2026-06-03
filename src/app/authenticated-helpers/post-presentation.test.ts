@@ -396,6 +396,54 @@ describe("post presentation songs", () => {
     expect(content.durationMs).toBe(123456);
   });
 
+  test("maps public song media proof into original storage proof", () => {
+    const content = toCommunityPostContent(createSongPost({
+      media_refs: [{
+        storage_ref: "https://media.test/song.mp3",
+        mime_type: "audio/mpeg",
+        decentralized_storage: {
+          provider: "filebase_ipfs",
+          cid: "bafyoriginal",
+          gateway_url: "https://dweb.link/ipfs/bafyoriginal",
+        },
+      }],
+    } as unknown as Partial<LocalizedPostResponse["post"]>));
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.storageProofs?.original).toEqual({
+      cid: "bafyoriginal",
+      gatewayUrl: "https://dweb.link/ipfs/bafyoriginal",
+      encrypted: undefined,
+    });
+    expect(content.storageProofs?.preview).toBeUndefined();
+  });
+
+  test("maps locked song media proof into preview storage proof for non-entitled viewers", () => {
+    const content = toCommunityPostContent(createSongPost({
+      access_mode: "locked",
+      media_refs: [{
+        storage_ref: "https://media.test/song-preview.mp3",
+        mime_type: "audio/mpeg",
+        decentralized_storage: {
+          provider: "filebase_ipfs",
+          cid: "bafypreview",
+          gateway_url: "https://dweb.link/ipfs/bafypreview",
+        },
+      }],
+    } as unknown as Partial<LocalizedPostResponse["post"]>));
+
+    expect(content.type).toBe("song");
+    if (content.type !== "song") return;
+    expect(content.hasEntitlement).toBe(false);
+    expect(content.storageProofs?.preview).toEqual({
+      cid: "bafypreview",
+      gatewayUrl: "https://dweb.link/ipfs/bafypreview",
+      encrypted: undefined,
+    });
+    expect(content.storageProofs?.original).toBeUndefined();
+  });
+
   test("maps public downloadable song audio into direct download actions", () => {
     const post = createSongPost();
     post.song_presentation = {

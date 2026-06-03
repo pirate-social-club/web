@@ -227,6 +227,12 @@ export const PublicFreeDownload: Story = {
         accessMode: "public",
         downloadPolicy: "free_download",
         onDownload: noop,
+        storageProofs: {
+          original: {
+            cid: "bafyoriginalsongproof",
+            gatewayUrl: "https://dweb.link/ipfs/bafyoriginalsongproof",
+          },
+        },
       }}
     />
   ),
@@ -247,6 +253,12 @@ export const LockedPreview: Story = {
         listingStatus: "active",
         priceLabel: "$3.99",
         onBuy: noop,
+        storageProofs: {
+          preview: {
+            cid: "bafypreviewsongproof",
+            gatewayUrl: "https://dweb.link/ipfs/bafypreviewsongproof",
+          },
+        },
       }}
     />
   ),

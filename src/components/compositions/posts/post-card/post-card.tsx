@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { ArrowSquareOut, DownloadSimple, Lock, ShoppingCart } from "@phosphor-icons/react";
+import { ArrowSquareOut, Copy, DownloadSimple, Globe, Lock, ShoppingCart } from "@phosphor-icons/react";
 
 import { navigate } from "@/app/router";
 import { Button } from "@/components/primitives/button";
 import { FormattedText } from "@/components/primitives/formatted-text";
+import { toast } from "@/components/primitives/sonner";
 import { Type } from "@/components/primitives/type";
 import { useUiLocale } from "@/lib/ui-locale";
 import { cn } from "@/lib/utils";
@@ -136,6 +137,13 @@ export function openExternalUrl(url: string) {
   }
 }
 
+async function copyTextToClipboard(value: string, successMessage: string) {
+  if (typeof navigator === "undefined" || !navigator.clipboard) return;
+
+  await navigator.clipboard.writeText(value);
+  toast.success(successMessage);
+}
+
 function deriveSongCommerce(content: PostCardProps["content"]): SongCommerce | undefined {
   if (content.type !== "song") return undefined;
 
@@ -224,6 +232,64 @@ export function deriveSongHeaderMenuActions(content: PostCardProps["content"]): 
         icon: <ArrowSquareOut className="size-4" />,
       },
       onAction: () => openExternalUrl(url),
+    });
+  }
+
+  const proofs = content.storageProofs;
+  if (proofs?.original && (content.accessMode === "public" || content.hasEntitlement)) {
+    const { cid, gatewayUrl } = proofs.original;
+    actions.push({
+      category: "metadata",
+      item: {
+        key: "song-ipfs:copy:original",
+        label: "Copy IPFS CID",
+        icon: <Copy className="size-4" />,
+      },
+      onAction: () => void copyTextToClipboard(cid, "IPFS CID copied."),
+    });
+    actions.push({
+      category: "metadata",
+      item: {
+        key: "song-ipfs:view:original",
+        label: "View on IPFS",
+        icon: <Globe className="size-4" />,
+      },
+      onAction: () => openExternalUrl(gatewayUrl),
+    });
+  }
+
+  if (proofs?.preview && content.accessMode === "locked" && !content.hasEntitlement) {
+    const { gatewayUrl } = proofs.preview;
+    actions.push({
+      category: "metadata",
+      item: {
+        key: "song-ipfs:view:preview",
+        label: "View on IPFS",
+        icon: <Globe className="size-4" />,
+      },
+      onAction: () => openExternalUrl(gatewayUrl),
+    });
+  }
+
+  if (proofs?.encryptedOriginal) {
+    const { cid, gatewayUrl } = proofs.encryptedOriginal;
+    actions.push({
+      category: "metadata",
+      item: {
+        key: "song-ipfs:view:encrypted-original",
+        label: "View encrypted file on IPFS",
+        icon: <Globe className="size-4" />,
+      },
+      onAction: () => openExternalUrl(gatewayUrl),
+    });
+    actions.push({
+      category: "metadata",
+      item: {
+        key: "song-ipfs:copy:encrypted-original",
+        label: "Copy encrypted CID",
+        icon: <Copy className="size-4" />,
+      },
+      onAction: () => void copyTextToClipboard(cid, "Encrypted IPFS CID copied."),
     });
   }
 

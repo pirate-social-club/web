@@ -78,6 +78,12 @@ describe("PostCard", () => {
         { accessPolicy: "free", kind: "instrumental", onDownload: () => undefined },
         { accessPolicy: "free", kind: "vocals", onDownload: () => undefined },
       ],
+      storageProofs: {
+        original: {
+          cid: "bafyoriginal",
+          gatewayUrl: "https://dweb.link/ipfs/bafyoriginal",
+        },
+      },
       title: "Midnight Waves",
     };
 
@@ -87,6 +93,8 @@ describe("PostCard", () => {
       "Copy link",
       "Report",
       "View on Genius",
+      "Copy IPFS CID",
+      "View on IPFS",
       "Download original",
       "Download instrumental",
       "Download vocals",
@@ -95,11 +103,40 @@ describe("PostCard", () => {
       false,
       true,
       false,
+      false,
+      false,
       true,
       false,
       false,
     ]);
     expect(mergedItems.filter((item) => item.key.startsWith("song-download:")).every((item) => item.icon)).toBe(true);
+  });
+
+  test("shows IPFS action for locked songs without entitlement", () => {
+    const baseItems: PostCardMenuItem[] = [
+      { key: "copy-link", label: "Copy link" },
+    ];
+    const song: SongContentSpec = {
+      type: "song",
+      accessMode: "locked",
+      hasEntitlement: false,
+      storageProofs: {
+        preview: {
+          cid: "bafypreview",
+          gatewayUrl: "https://dweb.link/ipfs/bafypreview",
+        },
+      },
+      title: "Locked preview",
+    };
+
+    const mergedItems = mergePostCardMenuItems(baseItems, deriveSongHeaderMenuActions(song));
+
+    expect(mergedItems.map((item) => item.label)).toEqual([
+      "Copy link",
+      "View on IPFS",
+    ]);
+    expect(mergedItems[1]?.key).toBe("song-ipfs:view:preview");
+    expect(mergedItems[1]?.icon).toBeTruthy();
   });
 
   test("keeps song downloads in the header menu instead of the footer action slot", () => {

@@ -4,7 +4,7 @@ import type {
   LocalizedPostResponse as ApiPost,
 } from "@pirate/api-contracts";
 
-import type { PostCardProps, SongContentSpec, StoryRegistrationStatus, UpstreamAttribution } from "@/components/compositions/posts/post-card/post-card.types";
+import type { PostCardProps, SongContentSpec, SongStorageProof, StoryRegistrationStatus, UpstreamAttribution } from "@/components/compositions/posts/post-card/post-card.types";
 import type {
   AssetSourceDescriptor,
   SongPlaybackDescriptor,
@@ -24,7 +24,30 @@ type DownloadableAudio = {
   size_bytes?: number | null;
   duration_ms?: number | null;
   filename?: string | null;
+  decentralized_storage?: unknown;
 };
+
+function stringField(input: unknown, key: string): string | undefined {
+  if (!input || typeof input !== "object") return undefined;
+
+  const value = (input as Record<string, unknown>)[key];
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function toSongStorageProof(input: unknown): SongStorageProof | undefined {
+  if (!input || typeof input !== "object") return undefined;
+
+  const proof = (input as Record<string, unknown>).decentralized_storage;
+  const cid = stringField(proof, "cid");
+  const gatewayUrl = stringField(proof, "gateway_url");
+  if (!cid || !gatewayUrl) return undefined;
+
+  return {
+    cid,
+    gatewayUrl,
+    encrypted: proof && typeof proof === "object" && (proof as Record<string, unknown>).encrypted === true ? true : undefined,
+  };
+}
 
 function openDownloadUrl(path: string): void {
   if (typeof window === "undefined") {
@@ -310,16 +333,27 @@ export function toSongPostContent(
       onDownload: () => openDownloadUrl(vocals.storage_ref ?? ""),
     });
   }
+  const accessMode = post.access_mode ?? "public";
+  const hasEntitlement = accessMode === "public"
+    || Boolean(purchase)
+    || Boolean(songOptions?.currentUserId && post.author_user === songOptions.currentUserId);
+  const primaryProof = toSongStorageProof(post.media_refs?.[0]);
+  const storageProofs: SongContentSpec["storageProofs"] = {};
+  if (primaryProof) {
+    if (accessMode === "locked" && !hasEntitlement) {
+      storageProofs.preview = primaryProof;
+    } else {
+      storageProofs.original = primaryProof;
+    }
+  }
   return {
     type: "song",
-    accessMode: post.access_mode ?? "public",
+    accessMode,
     ageGatePolicy: post.age_gate_policy,
     ageGateViewerState: postResponse.age_gate_viewer_state ?? undefined,
     analysisState: post.analysis_state,
     contentSafetyState: post.content_safety_state,
-    hasEntitlement: (post.access_mode ?? "public") === "public"
-      || Boolean(purchase)
-      || Boolean(songOptions?.currentUserId && post.author_user === songOptions.currentUserId),
+    hasEntitlement,
     listingMode: listing ? "listed" : "not_listed",
     listingStatus: listing?.status === "active"
       ? "active"
@@ -350,6 +384,7 @@ export function toSongPostContent(
     vinylRelease: toVinylReleaseSpec({ listing, purchase }),
     artworkSrc: songPresentation?.cover_art_ref ?? undefined,
     durationMs: songPresentation?.duration_ms ?? playbackProgress?.durationMs ?? undefined,
+    storageProofs: Object.keys(storageProofs).length > 0 ? storageProofs : undefined,
     upstreamAttributions: toUpstreamAttributions(postResponse, songOptions),
   };
 }

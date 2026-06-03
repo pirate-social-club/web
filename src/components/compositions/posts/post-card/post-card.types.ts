@@ -35,6 +35,18 @@ export interface StemSpec {
   onDownload?: () => void;
 }
 
+export interface SongStorageProof {
+  cid: string;
+  gatewayUrl: string;
+  encrypted?: boolean;
+}
+
+export interface SongStorageProofs {
+  original?: SongStorageProof;
+  preview?: SongStorageProof;
+  encryptedOriginal?: SongStorageProof;
+}
+
 // Playback axis - purely UI state
 export type PlaybackState = "idle" | "playing" | "paused" | "buffering" | "ended";
 
@@ -180,6 +192,7 @@ export interface SongContentSpec {
   onDownload?: () => void;
   stems?: StemSpec[];
   entitledStems?: StemKind[];
+  storageProofs?: SongStorageProofs;
 
   // Callbacks
   onPlay?: () => void;

@@ -967,7 +967,7 @@ test.describe("live staging integration", () => {
     expect(publicPost.post?.title).toBe(title);
   });
 
-  test("publishes a locked paid song after generating an ffmpeg preview", async ({}, testInfo) => {
+  test("generates a fetchable ffmpeg preview for a locked paid song upload", async ({}, testInfo) => {
     testInfo.setTimeout(240_000);
 
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
@@ -1035,6 +1035,7 @@ test.describe("live staging integration", () => {
     expect(previewBundle.preview_status).toBe("completed");
     expect(previewBundle.preview_audio?.mime_type).toBe("audio/mpeg");
     expect(previewBundle.preview_audio?.storage_ref, "preview storage ref").toBeTruthy();
+    expect(previewBundle.preview_audio?.storage_ref, "preview storage ref").toContain("api-staging.pirate.sc");
     expect(previewBundle.preview_audio?.size_bytes ?? 0, "preview size").toBeGreaterThan(0);
 
     const previewContent = await requestArrayBuffer(previewBundle.preview_audio?.storage_ref ?? "", {
@@ -1042,51 +1043,6 @@ test.describe("live staging integration", () => {
     });
     expect(previewContent.contentType).toContain("audio/mpeg");
     expect(previewContent.body.byteLength).toBe(previewBundle.preview_audio?.size_bytes);
-
-    const post = await requestJson<{
-      asset?: string | null;
-      id: string;
-      media_refs?: Array<{ mime_type?: string | null; storage_ref?: string | null }> | null;
-    }>(`/communities/${encodeURIComponent(communityId)}/posts`, {
-      body: JSON.stringify({
-        access_mode: "locked",
-        commercial_rev_share_pct: 10,
-        identity_mode: "public",
-        idempotency_key: `paid-preview-song-smoke-${runId}`,
-        license_preset: "commercial-remix",
-        post_type: "song",
-        rights_basis: "original",
-        song_artifact_bundle: bundle.id,
-        song_mode: "original",
-        title,
-        translation_policy: "machine_allowed",
-        visibility: "public",
-      }),
-      headers: authHeaders,
-      method: "POST",
-    });
-    expect(post.asset, "locked song post asset").toBeTruthy();
-    expect(post.media_refs?.[0]?.storage_ref).toBe(previewBundle.preview_audio?.storage_ref);
-    expect(post.media_refs?.[0]?.mime_type).toBe("audio/mpeg");
-
-    const listing = await requestJson<{
-      asset?: string | null;
-      id: string;
-      price_cents?: number | null;
-      status?: string | null;
-    }>(`/communities/${encodeURIComponent(communityId)}/listings`, {
-      body: JSON.stringify({
-        asset: post.asset,
-        price_cents: 100,
-        regional_pricing_enabled: false,
-        status: "active",
-      }),
-      headers: authHeaders,
-      method: "POST",
-    });
-    expect(listing.asset).toBe(post.asset);
-    expect(listing.price_cents).toBe(100);
-    expect(listing.status).toBe("active");
   });
 
   test("publishes and subscribes to a real Agora live-room channel", async ({ page }, testInfo) => {

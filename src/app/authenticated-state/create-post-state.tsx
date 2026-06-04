@@ -1084,6 +1084,7 @@ export function useCreatePostState(communityId: string, initialDraft?: Partial<C
           createArtifactUpload: api.communities.createArtifactUpload,
           createListing: api.communities.createListing,
           createPost: api.communities.createPost,
+          derivativeStep,
           event: eventRequest,
           extractPosterFrameFile: extractVideoPosterFrameFile,
           license,

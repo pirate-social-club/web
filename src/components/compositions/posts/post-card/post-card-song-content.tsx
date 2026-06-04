@@ -575,11 +575,20 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
           <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted sm:size-28">
             {ui.showAgeGatedArtwork ? (
               <>
-                <div
-                  aria-label={content.title}
-                  className="size-full bg-muted"
-                  role="img"
-                />
+                {content.artworkSrc ? (
+                  <img
+                    alt=""
+                    aria-hidden="true"
+                    className="size-full object-cover"
+                    src={content.artworkSrc}
+                  />
+                ) : (
+                  <div
+                    aria-label={content.title}
+                    className="size-full bg-muted"
+                    role="img"
+                  />
+                )}
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                   <FilledLockIcon className="size-7 text-white" weight="fill" />
                 </div>

@@ -30,6 +30,8 @@ type DownloadableAudio = {
 };
 type SongPresentationWithDownloads = NonNullable<ApiPost["song_presentation"]> & {
   downloadable_audio?: DownloadableAudio[] | null;
+  instrumental_audio?: DownloadableAudio | null;
+  vocal_audio?: DownloadableAudio | null;
 };
 
 function stringField(input: unknown, key: string): string | undefined {

@@ -123,6 +123,24 @@ describe("deriveSongUI", () => {
     expect(verifiedUi.showAgeGatedArtwork).toBe(false);
   });
 
+  test("keeps cover artwork visible behind the age proof lock", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SongPostContent, {
+        content: {
+          ...baseSong,
+          ageGatePolicy: "18_plus",
+          ageGateViewerState: "proof_required",
+          artworkSrc: "https://media.test/explicit-cover.jpg",
+          contentSafetyState: "adult",
+        },
+      }),
+    );
+
+    expect(markup).toContain('src="https://media.test/explicit-cover.jpg"');
+    expect(markup).toContain("Verify Age");
+    expect(markup).not.toContain('role="img" aria-label="Public track"');
+  });
+
   test("keeps post captions outside the song player", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
@@ -272,7 +290,7 @@ describe("deriveSongUI", () => {
     expect(markup).toContain("Commercial remix, 10% royalty");
   });
 
-  test("does not render age-gated artwork source before proof", () => {
+  test("renders age-gated artwork source before proof", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SongPostContent, {
         content: {
@@ -285,8 +303,8 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).not.toContain("https://example.test/adult-cover.jpg");
-    expect(markup).toContain('role="img"');
+    expect(markup).toContain("https://example.test/adult-cover.jpg");
+    expect(markup).toContain("Public track");
     expect(markup).toContain("Verify Age");
   });
 });

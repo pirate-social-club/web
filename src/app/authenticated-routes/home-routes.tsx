@@ -10,7 +10,7 @@ import type { Profile as ApiProfile } from "@pirate/api-contracts";
 
 import { navigate } from "@/app/router";
 import { useApi } from "@/lib/api";
-import { clearSession, useSession } from "@/lib/api/session-store";
+import { clearSession, updateSessionUser, useSession } from "@/lib/api/session-store";
 import { usePiratePrivyRuntime } from "@/components/auth/privy-provider";
 import { buildCommunityPath } from "@/lib/community-routing";
 import { getCurrentHomeFeedSort, HOME_FEED_SORT_CHANGE_EVENT, setCurrentHomeFeedSort, type HomeFeedSort } from "@/lib/home-feed-sort";
@@ -24,6 +24,7 @@ import { Spinner } from "@/components/primitives/spinner";
 import { YourCommunitiesPageView } from "@/components/compositions/community/your-communities-page/your-communities-page";
 import { Feed, type FeedSort, TopTimeRangeControl } from "@/components/compositions/posts/feed/feed";
 import { PopularCommunitiesRail, type PopularCommunityItem } from "@/components/compositions/community/popular-communities-rail/popular-communities-rail";
+import { SelfVerificationModal } from "@/components/compositions/verification/self-verification-modal/self-verification-modal";
 import { Type } from "@/components/primitives/type";
 
 import { loadProfilesByUserId } from "@/app/authenticated-data/community-data";
@@ -45,6 +46,8 @@ import { useCommunityInteractionGate } from "@/hooks/use-community-interaction-g
 import { selectPostVoteGateData } from "@/hooks/use-community-interaction-gate.helpers";
 import type { ApiLiveRoomAccessResponse } from "@/lib/api/client-api-types";
 import { getFreedomBrowserDetectionSnapshot } from "@/lib/resource-links";
+import { isCanonicalAuthOrigin, buildCanonicalAuthUrl } from "@/lib/auth-origin";
+import { useSelfVerification } from "@/lib/verification/use-self-verification";
 
 function unixOrIsoMs(value: string | number): number {
   return typeof value === "number" ? value * 1000 : Date.parse(value);
@@ -317,6 +320,35 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   } = useHomeFeed({ activeSort, contentLocale, hydrated, session, topTimeRange });
   const songPlayback = useSongPlayback(session?.accessToken ?? null);
   const voteRequestIdsRef = React.useRef<Record<string, number>>({});
+  const authRuntime = usePiratePrivyRuntime();
+  const {
+    handleModalOpenChange: handleAgeSelfModalOpenChange,
+    handleSelfQrError: handleAgeSelfQrError,
+    handleSelfQrSuccess: handleAgeSelfQrSuccess,
+    selfError: ageSelfError,
+    selfModalOpen: ageSelfModalOpen,
+    selfPrompt: ageSelfPrompt,
+    startVerification: startAgeSelfVerification,
+  } = useSelfVerification({
+    completeErrorMessage: "Could not complete age verification.",
+    locale,
+    onVerified: async () => {
+      if (session) {
+        const refreshedUser = await api.users.getMe();
+        updateSessionUser(refreshedUser);
+      }
+      setFeedEntries((current) => current.map((entry) => ({
+        ...entry,
+        post: {
+          ...entry.post,
+          age_gate_viewer_state: "verified_allowed",
+        },
+      })));
+    },
+    startErrorMessage: "Could not start age verification.",
+    storageKey: "pirate_pending_self_age_gate:home",
+    verificationIntent: "community_join",
+  });
   const { gateModal, prewarmCommunityGate, runGatedCommunityAction } = useCommunityInteractionGate({
     previewLocale: contentLocale,
     routeKind: "home",
@@ -342,6 +374,39 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   React.useEffect(() => {
     setCurrentHomeFeedSort(activeSort);
   }, [activeSort]);
+
+  const requestAuth = React.useCallback((fallbackMessage: string) => {
+    if (!isCanonicalAuthOrigin()) {
+      const canonicalUrl = buildCanonicalAuthUrl("/");
+      toast.error(fallbackMessage, {
+        action: {
+          label: copy.publicProfile.openInPirate,
+          onClick: () => {
+            window.location.href = canonicalUrl;
+          },
+        },
+      });
+      return;
+    }
+
+    if (authRuntime.connect) {
+      authRuntime.connect();
+      return;
+    }
+
+    toast.error(authRuntime.loadError ?? fallbackMessage);
+  }, [authRuntime.connect, authRuntime.loadError, copy.publicProfile.openInPirate]);
+
+  const handleVerifyAge = React.useCallback(() => {
+    if (!session) {
+      requestAuth("Connect your wallet to verify your age and view 18+ content.");
+      return;
+    }
+    void startAgeSelfVerification({
+      requestedCapabilities: ["age_over_18"],
+      unavailableMessage: "Age verification is required to view 18+ content.",
+    });
+  }, [session, requestAuth, startAgeSelfVerification]);
 
   React.useEffect(() => {
     const handleSortChange = (event: Event) => {
@@ -460,6 +525,7 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
         } : undefined,
         onCancelEvent: () => void cancelEvent(entry.post.post.id),
         onComment: () => navigate(`/p/${entry.post.post.id}`),
+        onVerifyAge: handleVerifyAge,
         onVote: (direction) => void voteOnPost(entry.post.post.id, direction),
         showOriginalLabel: copy.common.showOriginal,
         showTranslationLabel: copy.common.showTranslation,
@@ -491,6 +557,20 @@ export function HomePage({ initialSort }: { initialSort?: FeedSort } = {}) {
   return (
     <>
       {gateModal}
+      {ageSelfPrompt ? (
+        <SelfVerificationModal
+          actionLabel={ageSelfPrompt.actionLabel}
+          description={ageSelfPrompt.description}
+          error={ageSelfError}
+          href={ageSelfPrompt.href}
+          onOpenChange={handleAgeSelfModalOpenChange}
+          onQrError={handleAgeSelfQrError}
+          onQrSuccess={handleAgeSelfQrSuccess}
+          open={ageSelfModalOpen}
+          selfApp={ageSelfPrompt.selfApp}
+          title={ageSelfPrompt.title}
+        />
+      ) : null}
       <StandardRoutePage size="rail" className="gap-6" frameClassName="md:pb-0">
         <Feed
           activeSort={activeSort}

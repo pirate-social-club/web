@@ -11,6 +11,7 @@ import type {
 import type {
   AssetLicenseState,
   AuthorMode,
+  DerivativeStepState,
   VideoComposerState,
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import type { ExtractedVideoPosterFrame } from "@/components/compositions/posts/post-composer/video-poster-frame";
@@ -75,9 +76,22 @@ function requirePrimaryVideoFile(videoState: VideoComposerState): File {
   return file;
 }
 
+function deriveVideoUpstreamAssetRefs(derivativeStep?: DerivativeStepState): string[] | undefined {
+  if (derivativeStep?.visible !== true || derivativeStep.trigger !== "uses_song") {
+    return undefined;
+  }
+  const refs = Array.from(new Set(
+    (derivativeStep.references ?? [])
+      .map((reference) => reference.id.trim())
+      .filter(Boolean),
+  ));
+  return refs.length ? refs : undefined;
+}
+
 export function buildVideoPostRequest({
   baseRequest,
   caption,
+  derivativeStep,
   event,
   license,
   monetized,
@@ -88,6 +102,7 @@ export function buildVideoPostRequest({
 }: {
   baseRequest: BasePostRequestFields;
   caption: string;
+  derivativeStep?: DerivativeStepState;
   event?: CreatePostEventRequest;
   license?: AssetLicenseState;
   monetized: boolean;
@@ -96,6 +111,7 @@ export function buildVideoPostRequest({
   uploadedPoster: UploadedPosterMedia;
   uploadedVideo: Pick<SongArtifactUpload, "content_hash" | "mime_type" | "size_bytes" | "storage_ref">;
 }): CreatePostRequestWithEvent {
+  const upstreamAssetRefs = deriveVideoUpstreamAssetRefs(derivativeStep);
   return {
     ...baseRequest,
     event,
@@ -107,6 +123,8 @@ export function buildVideoPostRequest({
       ? license.commercialRevSharePct
       : undefined,
     license_preset: monetized ? license?.presetId : undefined,
+    rights_basis: upstreamAssetRefs?.length ? "derivative" : undefined,
+    upstream_asset_refs: upstreamAssetRefs,
     media_refs: [{
       storage_ref: uploadedVideo.storage_ref,
       mime_type: uploadedVideo.mime_type,
@@ -154,6 +172,7 @@ export async function submitVideoPost({
   createArtifactUpload,
   createListing,
   createPost,
+  derivativeStep,
   event,
   extractPosterFrameFile,
   license,
@@ -179,6 +198,7 @@ export async function submitVideoPost({
   createArtifactUpload: CreateArtifactUpload;
   createListing: CreateListing;
   createPost: CreatePost;
+  derivativeStep?: DerivativeStepState;
   event?: CreatePostEventRequest;
   extractPosterFrameFile: ExtractPosterFrameFile;
   license?: AssetLicenseState;
@@ -217,6 +237,7 @@ export async function submitVideoPost({
   const request = buildVideoPostRequest({
     baseRequest,
     caption,
+    derivativeStep,
     event,
     license,
     monetized,

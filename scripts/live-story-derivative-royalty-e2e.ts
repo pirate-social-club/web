@@ -102,7 +102,6 @@ const TRANSFER_ABI = [{
 
 const CDR_READ_GAS_MARGIN_WEI = parseEther("0.01");
 const DEFAULT_API_BASE_URL = "https://api-staging.pirate.sc";
-const DEFAULT_STORY_AENEID_COMET_RPC_URL = "https://story-aeneid-rpc.krews.xyz";
 
 const artifact: AuditArtifact = {
   status: "running",
@@ -138,8 +137,8 @@ function usage(): string {
     "Optional env:",
     `  E2E_API_BASE_URL or PIRATE_STORY_E2E_API_BASE_URL (default ${DEFAULT_API_BASE_URL})`,
     "  PIRATE_STORY_E2E_ARTIFACT_DIR (default tmp/e2e-artifacts)",
-    "  PIRATE_STORY_E2E_CDR_TIMEOUT_MS (default 180000 with Cosmos/ABCI DKG, otherwise 90000)",
-    `  PIRATE_STORY_E2E_COMET_RPC_URL or STORY_COMET_RPC_URL (default ${DEFAULT_STORY_AENEID_COMET_RPC_URL} on Story Aeneid)`,
+    "  PIRATE_STORY_E2E_CDR_TIMEOUT_MS (default 90000)",
+    "  PIRATE_STORY_E2E_COMET_RPC_URL or STORY_COMET_RPC_URL (optional; enables Cosmos/ABCI DKG partial collection)",
     "  PIRATE_STORY_E2E_PRICE_CENTS (default 1)",
     "  PIRATE_CHECKOUT_SOURCE_CHAIN_ID (default 84532)",
     "  STORY_RUNTIME_FUNDER_PRIVATE_KEY, STORY_RUNTIME_PRIVATE_KEY, or STORY_CONTRACT_OWNER_PRIVATE_KEY",
@@ -195,10 +194,9 @@ function apiBaseUrl(): string {
   ).replace(/\/+$/u, "");
 }
 
-function storyCometRpcUrl(chainId: number): string | null {
+function storyCometRpcUrl(): string | null {
   return optionalEnv("PIRATE_STORY_E2E_COMET_RPC_URL")
-    ?? optionalEnv("STORY_COMET_RPC_URL")
-    ?? (chainId === 1315 ? DEFAULT_STORY_AENEID_COMET_RPC_URL : null);
+    ?? optionalEnv("STORY_COMET_RPC_URL");
 }
 
 function base64Url(input: string | Buffer): string {
@@ -823,9 +821,9 @@ async function decryptCdrAsset(input: {
     targetBalanceWei: readFeeWei + CDR_READ_GAS_MARGIN_WEI,
   });
 
-  const cometRpcUrl = storyCometRpcUrl(input.access.chain_id);
+  const cometRpcUrl = storyCometRpcUrl();
   const dkgSource = cometRpcUrl ? "cosmos-abci" : "evm-events";
-  const cdrTimeoutMs = Number(optionalEnv("PIRATE_STORY_E2E_CDR_TIMEOUT_MS") ?? (cometRpcUrl ? "180000" : "90000"));
+  const cdrTimeoutMs = Number(optionalEnv("PIRATE_STORY_E2E_CDR_TIMEOUT_MS") ?? "90000");
   const cdrClient = new CDRClient({
     network: input.access.chain_id === 1514 ? "mainnet" : "testnet",
     publicClient,
@@ -847,6 +845,16 @@ async function decryptCdrAsset(input: {
     requesterPubKey,
   });
   await waitForStoryTx(publicClient, readResult.txHash, "cdr_read_tx_hash");
+  artifact.cdr = {
+    cdr_dkg_source: dkgSource,
+    cdr_read_tx_hash: readResult.txHash,
+    cdr_timeout_ms: cdrTimeoutMs,
+    comet_rpc_url: cometRpcUrl,
+    from_block: fromBlock.toString(),
+    requester: account.address,
+    requester_pub_key: requesterPubKey,
+    vault_uuid: input.access.vault_uuid,
+  };
   const [globalPubKey, threshold, vault] = await Promise.all([
     cdrClient.observer.getGlobalPubKey(),
     cdrClient.observer.getThreshold(),
@@ -857,12 +865,21 @@ async function decryptCdrAsset(input: {
       args: [input.access.vault_uuid],
     }),
   ]);
+  const invalidPartials: Array<{ error: string; pid: number; round: number; validator: Hex }> = [];
   const partials = await cdrClient.consumer.collectPartials({
     uuid: input.access.vault_uuid,
     minPartials: threshold,
     fromBlock,
     requesterPubKey,
     timeoutMs: cdrTimeoutMs,
+    onInvalidPartial: (event, error) => {
+      invalidPartials.push({
+        error: error.message,
+        pid: event.pid,
+        round: event.round,
+        validator: event.validator,
+      });
+    },
   });
   let partialTxHashes: Hex[] = [];
   let partialTxHashScanError: string | null = null;
@@ -910,6 +927,7 @@ async function decryptCdrAsset(input: {
     cdr_dkg_source: dkgSource,
     cdr_read_fee_wei: readFeeWei.toString(),
     cdr_read_partial_count: partials.length,
+    cdr_read_partial_invalid: invalidPartials,
     cdr_read_partial_source: dkgSource,
     cdr_read_partial_tx_hashes: partialTxHashes,
     cdr_read_partial_tx_hash_scan_error: partialTxHashScanError,

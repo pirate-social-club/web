@@ -494,7 +494,7 @@ async function waitForSongPreview(input: {
   session: Session;
   title: string;
 }): Promise<void> {
-  const timeoutMs = Number(optionalEnv("PIRATE_STORY_E2E_PREVIEW_TIMEOUT_MS") ?? "180000");
+  const timeoutMs = Number(optionalEnv("PIRATE_STORY_E2E_PREVIEW_TIMEOUT_MS") ?? "360000");
   const intervalMs = Number(optionalEnv("PIRATE_STORY_E2E_PREVIEW_INTERVAL_MS") ?? "5000");
   const startedAt = Date.now();
   let last: unknown = null;

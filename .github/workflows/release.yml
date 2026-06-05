@@ -142,7 +142,7 @@ jobs:
           SECRET_NAMES: PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY PIRATE_CHECKOUT_RPC_URL PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS STORY_RUNTIME_FUNDER_PRIVATE_KEY
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Story derivative royalty E2E staging
-        timeout-minutes: 20
+        timeout-minutes: 30
         working-directory: web
         env:
           AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}

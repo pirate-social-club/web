@@ -203,6 +203,37 @@ describe("video create-post submit helpers", () => {
     expect(request.upstream_asset_refs).toEqual(["story:asset:ast_source_song"]);
   });
 
+  test("buildVideoPostRequest rejects active derivative video mode without source refs", () => {
+    expect(() => buildVideoPostRequest({
+      baseRequest: createBaseRequest(),
+      caption: "Video using a song",
+      derivativeStep: {
+        visible: true,
+        trigger: "uses_song",
+        references: [],
+        sourceTermsAccepted: true,
+      },
+      monetized: true,
+      posterFrame: {
+        frameMs: 0,
+        height: 720,
+        width: 1280,
+      },
+      title: "Derivative video",
+      uploadedPoster: {
+        media_ref: "poster_media",
+        mime_type: "image/jpeg",
+        size_bytes: 123,
+      },
+      uploadedVideo: {
+        storage_ref: "artifact_video",
+        mime_type: "video/mp4",
+        size_bytes: 456,
+        content_hash: "hash_video",
+      },
+    })).toThrow("Attach a source song before publishing this video.");
+  });
+
   test("uploadVideoArtifact creates an artifact upload and uploads file content", async () => {
     const file = createVideoFile();
     const createArtifactUploadCalls: Array<{

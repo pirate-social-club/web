@@ -1469,7 +1469,7 @@ describe("PostComposer monetization", () => {
 
     expect(derivativeStep).toMatchObject({
       visible: true,
-      required: false,
+      required: true,
       trigger: "uses_song",
       searchResults: [],
       references: [],

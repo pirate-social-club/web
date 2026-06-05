@@ -324,13 +324,14 @@ export function usePostComposerController(props: PostComposerProps) {
   }, [setSongModeWithCallback, updateDerivativeState]);
 
   const activeVideoSourceMode = activeTab === "video" && derivativeState?.visible
+    && derivativeState.trigger === "uses_song"
     ? "uses_song" as const
     : "original" as const;
   const handleVideoSourceModeChange = React.useCallback((next: "original" | "uses_song") => {
     if (next === "uses_song") {
       updateDerivativeState((current) => ({
         visible: true,
-        required: current?.required ?? false,
+        required: true,
         trigger: "uses_song",
         requirementLabel: current?.requirementLabel,
         searchResults: current?.searchResults ?? [],
@@ -348,13 +349,20 @@ export function usePostComposerController(props: PostComposerProps) {
     });
   }, [updateDerivativeState]);
 
+  const derivativeRequiresRefs = Boolean(
+    derivativeState?.visible
+    && (
+      derivativeState.required
+      || (activeTab === "video" && derivativeState.trigger === "uses_song")
+    ),
+  );
   const derivativeMissingRefs = Boolean(
-    derivativeState?.visible && derivativeState.required && !(derivativeState.references?.length),
+    derivativeRequiresRefs && !(derivativeState?.references?.length),
   );
   const derivativeHasReferences = (derivativeState?.references?.length ?? 0) > 0;
   const derivativeMissingSourceTermsAcceptance = Boolean(
     derivativeState?.visible
-    && (derivativeState.required || derivativeHasReferences)
+    && (derivativeRequiresRefs || derivativeHasReferences)
     && derivativeHasReferences
     && derivativeState.sourceTermsAccepted !== true,
   );

@@ -85,7 +85,10 @@ function deriveVideoUpstreamAssetRefs(derivativeStep?: DerivativeStepState): str
       .map((reference) => reference.id.trim())
       .filter(Boolean),
   ));
-  return refs.length ? refs : undefined;
+  if (!refs.length) {
+    throw new Error("Attach a source song before publishing this video.");
+  }
+  return refs;
 }
 
 export function buildVideoPostRequest({

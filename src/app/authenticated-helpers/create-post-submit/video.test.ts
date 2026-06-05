@@ -298,7 +298,7 @@ describe("video create-post submit helpers", () => {
       },
       monetized: false,
       paidAssetPriceUsd: null,
-      posterFrameMaxWidth: 1920,
+      posterFrameMaxWidth: 1280,
       pricingPolicyRegionalPricingEnabled: false,
       reportProgress: (key) => progressEvents.push(key),
       regionalPricingEnabled: false,
@@ -330,7 +330,7 @@ describe("video create-post submit helpers", () => {
     expect(posterExtractCalls).toEqual([{
       file,
       frameSeconds: "1.3",
-      maxWidth: 1920,
+      maxWidth: 1280,
     }]);
     expect(createPostCalls).toEqual([{
       communityId: "com_test",

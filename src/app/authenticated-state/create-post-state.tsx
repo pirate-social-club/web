@@ -70,7 +70,7 @@ type AvailableSigningAgent = {
   privateKeyPem: string;
 };
 
-const MAX_VIDEO_POSTER_FRAME_WIDTH = 1920;
+const MAX_VIDEO_POSTER_FRAME_WIDTH = 1280;
 const DERIVATIVE_SOURCE_SEARCH_TIMEOUT_MS = 15_000;
 
 function hasSongExtraArtifact(songState: Pick<CreatePostDraftState["songState"], "canvasVideoUpload" | "coverUpload" | "instrumentalAudioUpload" | "vocalAudioUpload">): boolean {

@@ -599,6 +599,8 @@ export function PublicCommunityRoutePage({
       {!viewerIsMember && !membershipLoading ? (
         <Button
           className={FOLLOW_BUTTON_CLASS_NAME}
+          data-state={viewerFollowing ? "following" : "follow"}
+          data-testid="community-follow-button"
           loading={followLoading || (!session && authRuntime.busy)}
           onClick={() => void handleToggleFollow()}
           variant={viewerFollowing ? "secondary" : "default"}

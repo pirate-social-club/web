@@ -1,7 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import { createRequire } from "node:module";
 import { expect, test, type Page } from "@playwright/test";
-import type { SessionExchangeResponse } from "@pirate/api-contracts";
+import type { CommunityFollowResponse, SessionExchangeResponse } from "@pirate/api-contracts";
 
 import {
   expectNoBrowserError,
@@ -28,6 +28,15 @@ const liveSecretsPresent = Boolean(
   && process.env.AUTH_UPSTREAM_JWT_SHARED_SECRET?.trim(),
 );
 
+// Contract-drift gate for community follow. This catches response shape regressions,
+// hook silent rollback, and persistence across reload; it is not a broad follow suite.
+// Run locally against staging:
+//   AUTH_UPSTREAM_JWT_AUDIENCE=... AUTH_UPSTREAM_JWT_ISSUER=... \
+//   AUTH_UPSTREAM_JWT_SHARED_SECRET=... E2E_BASE_URL=https://staging.pirate.sc \
+//   E2E_API_BASE_URL=https://api-staging.pirate.sc E2E_LIVE_STAGING=true \
+//   bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging \
+//     --grep "follows a real staging community"
+
 type LiveCommunity = {
   id: string;
   label: string;
@@ -42,6 +51,13 @@ type AgoraBlock = {
   token: string | null;
   token_expires_at: number | null;
   configured: boolean;
+};
+
+type CommunityPreview = {
+  follower_count: number | null;
+  id: string;
+  route_slug?: string | null;
+  viewer_following: boolean | null;
 };
 
 function requiredEnv(name: string): string {
@@ -345,6 +361,60 @@ async function createSmokeCommunity(runId: string, host: StoredSession): Promise
     await waitForJob(jobId, host.accessToken);
   }
   return rawPublicId(createdCommunity.community.id, "com");
+}
+
+async function createFollowContractCommunity(runId: string, host: StoredSession): Promise<LiveCommunity> {
+  const label = `e2e-follow-contract-${runId}`;
+  const createdCommunity = await requestJson<{
+    community: { display_name?: string | null; id: string; route_slug?: string | null };
+    job?: { id?: string; status?: string };
+  }>("/communities", {
+    body: JSON.stringify({
+      display_name: label,
+      handle_policy: { policy_template: "standard" },
+      membership_mode: "request",
+    }),
+    headers: { authorization: `Bearer ${host.accessToken}` },
+    method: "POST",
+  });
+  if (createdCommunity.job?.status && createdCommunity.job.status !== "succeeded") {
+    const jobId = firstString(createdCommunity.job.id);
+    if (!jobId) throw new Error("community creation job id is missing");
+    await waitForJob(jobId, host.accessToken);
+  }
+
+  const id = rawPublicId(createdCommunity.community.id, "com");
+  return {
+    id,
+    label: firstString(createdCommunity.community.display_name, label) ?? label,
+    routeSegment: firstString(createdCommunity.community.route_slug, createdCommunity.community.id, id) ?? id,
+  };
+}
+
+async function waitForCommunityPreview(
+  communityId: string,
+  headers: Record<string, string> = {},
+): Promise<CommunityPreview> {
+  const deadline = Date.now() + 30_000;
+  let lastStatus = 0;
+  let lastBody = "";
+
+  while (Date.now() < deadline) {
+    const response = await fetch(new URL(`/communities/${encodeURIComponent(communityId)}/preview`, apiBaseURL), {
+      headers: {
+        accept: "application/json",
+        ...headers,
+      },
+    });
+    lastStatus = response.status;
+    lastBody = await response.text();
+    if (response.status === 200) {
+      return (lastBody.trim() ? JSON.parse(lastBody) : null) as CommunityPreview;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+
+  throw new Error(`community preview did not become available; last status ${lastStatus}: ${lastBody}`);
 }
 
 async function createGeorgiaPlaceSmokeCommunity(runId: string, host: StoredSession): Promise<LiveCommunity> {
@@ -795,8 +865,84 @@ async function discoverSeedCommunity(): Promise<LiveCommunity> {
 }
 
 test.describe("live staging integration", () => {
+  test.describe.configure({ mode: "serial" });
+
   test.skip(process.env.E2E_LIVE_STAGING !== "true", "Set E2E_LIVE_STAGING=true to run real staging mutations.");
   test.skip(!liveSecretsPresent, "Live staging JWT secrets are not available.");
+
+  test("follows a real staging community and persists after reload", async ({ page }, testInfo) => {
+    testInfo.setTimeout(90_000);
+
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const ownerSubject = `follow-contract-owner-${runId}`;
+    const followerSubject = `follow-contract-follower-${runId}`;
+    const owner = await createLiveSession(ownerSubject, walletAddressForSubject(ownerSubject));
+    const follower = await createLiveSession(followerSubject, walletAddressForSubject(followerSubject));
+    const community = await createFollowContractCommunity(runId, owner);
+    const publicCommunityId = `com_${community.id}`;
+    const followerHeaders = { authorization: `Bearer ${follower.accessToken}` };
+
+    try {
+      await waitForCommunityPreview(publicCommunityId, followerHeaders);
+      await requestJson<CommunityFollowResponse>(`/communities/${encodeURIComponent(publicCommunityId)}/unfollow`, {
+        body: JSON.stringify({}),
+        headers: followerHeaders,
+        method: "POST",
+      }, [200, 404, 409]);
+
+      const previewBefore = await waitForCommunityPreview(publicCommunityId, followerHeaders);
+      expect(previewBefore.viewer_following).toBe(false);
+      const followerCountBefore = previewBefore.follower_count ?? 0;
+
+      await installStoredSession(page, follower);
+      await page.goto(`/c/${pathSegment(community.routeSegment)}`);
+      await expect(page.locator("body")).toContainText(community.label, { timeout: 30_000 });
+
+      const followButton = page.getByTestId("community-follow-button").first();
+      await expect(followButton).toBeVisible({ timeout: 30_000 });
+      await expect(followButton).toHaveAttribute("data-state", "follow");
+
+      const followResponsePromise = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return response.request().method() === "POST"
+          && url.pathname === `/communities/${publicCommunityId}/follow`;
+      });
+      await followButton.click();
+      const followResponse = await followResponsePromise;
+      expect(followResponse.status()).toBe(200);
+      const followBody = await followResponse.json() as CommunityFollowResponse & { community_id?: unknown };
+      expect(followBody).toEqual({
+        community: publicCommunityId,
+        follower_count: followerCountBefore + 1,
+        following: true,
+      });
+      expect("community_id" in followBody).toBe(false);
+      expect(followBody.community).toMatch(/^com_cmt_/u);
+
+      await expect(followButton).toHaveAttribute("data-state", "following");
+      const previewAfter = await waitForCommunityPreview(publicCommunityId, followerHeaders);
+      expect(previewAfter.viewer_following).toBe(true);
+      expect(previewAfter.follower_count).toBe(followerCountBefore + 1);
+
+      await page.reload();
+      await expect(page.locator("body")).toContainText(community.label, { timeout: 30_000 });
+      await expect(followButton).toHaveAttribute("data-state", "following");
+      const previewAfterReload = await waitForCommunityPreview(publicCommunityId, followerHeaders);
+      expect(previewAfterReload.viewer_following).toBe(true);
+      expect(previewAfterReload.follower_count).toBe(followerCountBefore + 1);
+      await expectNoBrowserError(page);
+    } finally {
+      await requestJson(
+        `/communities/${encodeURIComponent(publicCommunityId)}/unfollow`,
+        {
+          body: JSON.stringify({}),
+          headers: followerHeaders,
+          method: "POST",
+        },
+        [200, 404, 409],
+      ).catch(() => undefined);
+    }
+  });
 
   test("searches real Georgia event places through Geoapify", async ({ page }, testInfo) => {
     testInfo.setTimeout(90_000);

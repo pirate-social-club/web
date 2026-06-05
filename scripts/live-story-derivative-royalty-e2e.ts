@@ -314,28 +314,6 @@ async function createSession(input: {
   };
 }
 
-async function completeVerification(apiBase: string, session: Session): Promise<void> {
-  const created = await api<{ id?: string; verification_session_id?: string }>({
-    apiBase,
-    method: "POST",
-    path: "/verification-sessions",
-    token: session.accessToken,
-    body: {
-      provider: "self",
-      requested_capabilities: ["unique_human", "age_over_18"],
-    },
-  });
-  const id = created.id ?? created.verification_session_id;
-  if (!id) throw new Error("verification session id is missing");
-  await api({
-    apiBase,
-    method: "POST",
-    path: `/verification-sessions/${encodeURIComponent(id)}/complete`,
-    token: session.accessToken,
-    body: {},
-  });
-}
-
 async function waitForJob(apiBase: string, jobId: string, token: string): Promise<void> {
   const deadline = Date.now() + 180_000;
   let lastStatus = "unknown";
@@ -983,13 +961,6 @@ async function main(): Promise<void> {
   const remixer = await createSession({ apiBase, privateKey: remixerPrivateKey, subject: `story-e2e-remixer-${runId}` });
   const buyer = await createSession({ apiBase, privateKey: buyerPrivateKey, subject: `story-e2e-buyer-${runId}` });
 
-  step("complete verification");
-  await Promise.all([
-    completeVerification(apiBase, author),
-    completeVerification(apiBase, remixer),
-    completeVerification(apiBase, buyer),
-  ]);
-
   step("create community");
   const communityId = await createCommunity(apiBase, author, runId);
   artifact.community = { id: `com_${communityId}` };
@@ -1096,7 +1067,9 @@ async function main(): Promise<void> {
     apiBase,
     method: "POST",
     path: `/communities/${encodeURIComponent(communityId)}/listings`,
-    token: remixer.accessToken,
+    // CI cannot complete real Self verification; owner/admin listing preserves
+    // the derivative asset purchase path while settlement still pays asset.creator_user_id.
+    token: author.accessToken,
     body: {
       asset: derivativePost.asset,
       price_cents: priceCents,

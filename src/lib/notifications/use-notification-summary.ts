@@ -13,9 +13,12 @@ const DEFAULT_SUMMARY: NotificationSummary = {
 };
 
 const POLL_INTERVAL_MS = 30_000;
+const FAILURE_BACKOFF_MS = [60_000, 120_000, 300_000];
 
 const summaryListeners = new Set<(summary: NotificationSummary) => void>();
 let cachedSummary: NotificationSummary = DEFAULT_SUMMARY;
+let summaryRequestInFlight: { key: string; promise: Promise<NotificationSummary> } | null = null;
+let consecutiveSummaryFailures = 0;
 
 function emitSummary(nextSummary: NotificationSummary) {
   cachedSummary = nextSummary;
@@ -26,6 +29,17 @@ function emitSummary(nextSummary: NotificationSummary) {
 
 function updateSummary(updater: (current: NotificationSummary) => NotificationSummary) {
   emitSummary(updater(cachedSummary));
+}
+
+function nextSummaryPollDelayMs(success: boolean): number {
+  if (success) {
+    consecutiveSummaryFailures = 0;
+    return POLL_INTERVAL_MS;
+  }
+
+  consecutiveSummaryFailures += 1;
+  const index = Math.min(consecutiveSummaryFailures - 1, FAILURE_BACKOFF_MS.length - 1);
+  return FAILURE_BACKOFF_MS[index] ?? POLL_INTERVAL_MS;
 }
 
 export function clearUnreadNotificationActivityCount() {
@@ -71,27 +85,51 @@ export function useNotificationSummary(): NotificationSummary {
     }
 
     let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const sessionKey = session.accessToken;
 
     summaryListeners.add(setSummary);
 
+    function scheduleNextFetch(delayMs: number) {
+      if (cancelled) return;
+      timeoutId = setTimeout(fetchSummary, delayMs);
+    }
+
     async function fetchSummary() {
+      let success = false;
+      let request = summaryRequestInFlight;
       try {
-        const result = await api.notifications.getSummary();
+        if (!request || request.key !== sessionKey) {
+          request = {
+            key: sessionKey,
+            promise: api.notifications.getSummary(),
+          };
+          summaryRequestInFlight = request;
+        }
+
+        const result = await request.promise;
+        success = true;
         if (!cancelled) {
           emitSummary(result);
         }
       } catch (error) {
         logger.debug("[notifications] failed to load summary", error);
+      } finally {
+        if (summaryRequestInFlight === request) {
+          summaryRequestInFlight = null;
+        }
       }
+
+      scheduleNextFetch(nextSummaryPollDelayMs(success));
     }
 
     fetchSummary();
 
-    const interval = setInterval(fetchSummary, POLL_INTERVAL_MS);
-
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       summaryListeners.delete(setSummary);
     };
   }, [api, session]);

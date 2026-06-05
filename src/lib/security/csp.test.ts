@@ -35,6 +35,7 @@ describe("Content Security Policy", () => {
     expect(csp).toContain("https://*.sd-rtn.com");
     expect(csp).toContain("wss://*.sd-rtn.com");
     expect(csp).toContain("https://api.coingecko.com");
+    expect(csp).toContain("https://s3.filebase.com");
     expect(csp).toContain("frame-src");
   });
 

@@ -11,6 +11,7 @@ export type AnalyticsEventName =
   | "handle_claim_failed"
   | "home_feed_viewed"
   | "community_viewed"
+  | "community_follow_contract_drift"
   | "community_join_requested"
   | "post_composer_opened"
   | "thread_viewed"

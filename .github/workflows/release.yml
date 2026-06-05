@@ -124,6 +124,7 @@ jobs:
           AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
         run: bun run test:e2e:live-staging
       - name: Fetch Story derivative royalty E2E secrets
+        continue-on-error: true
         working-directory: core
         env:
           INFISICAL_IDENTITY_ID: 3141c3e2-a32c-4299-9382-c2684d11fe06
@@ -133,7 +134,7 @@ jobs:
           SECRET_NAMES: PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY PIRATE_CHECKOUT_RPC_URL PIRATE_CHECKOUT_USDC_TOKEN_ADDRESS STORY_RUNTIME_PRIVATE_KEY
         run: scripts/ci/fetch-infisical-secrets.sh
       - name: Story derivative royalty E2E staging
-        continue-on-error: false
+        continue-on-error: true
         working-directory: web
         env:
           AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}

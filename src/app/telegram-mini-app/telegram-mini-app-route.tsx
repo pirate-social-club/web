@@ -146,7 +146,7 @@ export function resolveTelegramMiniAppStartPath(startParam: string | null | unde
 
   const kind = value.slice(0, separatorIndex);
   const target = value.slice(separatorIndex + 1);
-  if (kind === "c") {
+  if (kind === "c" || kind === "join") {
     return `/tg/c/${encodeURIComponent(target)}`;
   }
   if (kind === "v") {

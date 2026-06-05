@@ -137,7 +137,7 @@ function usage(): string {
     "Optional env:",
     `  E2E_API_BASE_URL or PIRATE_STORY_E2E_API_BASE_URL (default ${DEFAULT_API_BASE_URL})`,
     "  PIRATE_STORY_E2E_ARTIFACT_DIR (default tmp/e2e-artifacts)",
-    "  PIRATE_STORY_E2E_PRICE_CENTS (default 399)",
+    "  PIRATE_STORY_E2E_PRICE_CENTS (default 1)",
     "  PIRATE_CHECKOUT_SOURCE_CHAIN_ID (default 84532)",
     "  STORY_RUNTIME_FUNDER_PRIVATE_KEY, STORY_RUNTIME_PRIVATE_KEY, or STORY_CONTRACT_OWNER_PRIVATE_KEY",
   ].join("\n");
@@ -940,7 +940,7 @@ async function main(): Promise<void> {
 
   const apiBase = apiBaseUrl();
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-  const priceCents = Number(optionalEnv("PIRATE_STORY_E2E_PRICE_CENTS") ?? "399");
+  const priceCents = Number(optionalEnv("PIRATE_STORY_E2E_PRICE_CENTS") ?? "1");
   const buyerPrivateKey = requirePrivateKey([
     "PIRATE_STORY_E2E_BUYER_PRIVATE_KEY",
     "PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY",

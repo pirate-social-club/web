@@ -192,6 +192,12 @@
     --altcha-max-width: 100%;
     --altcha-spinner-color: var(--primary);
   }
+
+  .pirate-altcha-widget altcha-widget {
+    display: block;
+    inline-size: 100%;
+    max-inline-size: 100%;
+  }
 }
 
 @layer components {

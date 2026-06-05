@@ -35,6 +35,7 @@ export function AltchaPowWidget({
   challengeLoader,
   locale,
   onPayloadChange,
+  onVerified,
   scope,
 }: {
   action: string;
@@ -42,11 +43,14 @@ export function AltchaPowWidget({
   challengeLoader?: (input: { action: string; scope: AltchaScope }) => Promise<Record<string, unknown>>;
   locale?: string | null;
   onPayloadChange: (payload: string | null) => void;
+  onVerified?: (payload: string) => void | Promise<void>;
   scope: AltchaScope;
 }) {
   const api = useApi();
   const widgetRef = React.useRef<AltchaWidgetElement | null>(null);
   const onPayloadChangeRef = React.useRef(onPayloadChange);
+  const onVerifiedRef = React.useRef(onVerified);
+  const verifiedPayloadRef = React.useRef<string | null>(null);
   const [challenge, setChallenge] = React.useState<Record<string, unknown> | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -58,11 +62,16 @@ export function AltchaPowWidget({
   }, [onPayloadChange]);
 
   React.useEffect(() => {
+    onVerifiedRef.current = onVerified;
+  }, [onVerified]);
+
+  React.useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
     setChallenge(null);
     setVerified(false);
+    verifiedPayloadRef.current = null;
     onPayloadChangeRef.current(null);
 
     const loadChallenge = challengeLoader ?? api.verification.createAltchaChallenge;
@@ -94,19 +103,36 @@ export function AltchaPowWidget({
       return;
     }
 
+    const acceptVerifiedPayload = (rawPayload: string | null | undefined) => {
+      const payload = rawPayload?.trim() ?? "";
+      if (!payload) {
+        verifiedPayloadRef.current = null;
+        onPayloadChangeRef.current(null);
+        setVerified(false);
+        return;
+      }
+
+      if (verifiedPayloadRef.current === payload) {
+        return;
+      }
+
+      verifiedPayloadRef.current = payload;
+      onPayloadChangeRef.current(payload);
+      setVerified(true);
+      void onVerifiedRef.current?.(payload);
+    };
+
     const handleVerified = (event: Event) => {
-      const payload = (event as AltchaVerifiedEvent).detail?.payload;
-      onPayloadChangeRef.current(payload?.trim() ? payload : null);
-      setVerified(Boolean(payload?.trim()));
+      acceptVerifiedPayload((event as AltchaVerifiedEvent).detail?.payload);
     };
     const handleStateChange = (event: Event) => {
       const detail = (event as AltchaStateChangeEvent).detail;
       if (detail?.state === "verified" && detail.payload?.trim()) {
-        onPayloadChangeRef.current(detail.payload);
-        setVerified(true);
+        acceptVerifiedPayload(detail.payload);
         return;
       }
       if (detail?.state === "expired" || detail?.state === "error" || detail?.state === "unverified") {
+        verifiedPayloadRef.current = null;
         onPayloadChangeRef.current(null);
         setVerified(false);
       }
@@ -139,14 +165,14 @@ export function AltchaPowWidget({
       widget.configure({
         auto: "off",
         challenge,
-        display: "invisible",
+        display: "standard",
         hideFooter: true,
         hideLogo: true,
         language,
+        type: "checkbox",
         workers: 1,
       });
       widget.reset?.();
-      widget.verify?.();
     };
 
     configureWidget();
@@ -199,18 +225,19 @@ export function AltchaPowWidget({
             Proof-of-work complete
           </span>
         )}
-        subtitle="Continue to finish this action."
+        subtitle={onVerified ? "Finishing this action..." : "Proof accepted."}
       />
     );
   }
 
   return (
     <div className={cn("pirate-altcha-widget", className)}>
-      <altcha-widget auto="off" display="invisible" ref={widgetRef} />
-      <Type as="div" className="flex items-center gap-3 text-muted-foreground" variant="body">
-        <Spinner className="size-5" />
-        <span>Checking your browser&hellip;</span>
-      </Type>
+      <altcha-widget
+        auto="off"
+        display="standard"
+        ref={widgetRef}
+        type="checkbox"
+      />
     </div>
   );
 }

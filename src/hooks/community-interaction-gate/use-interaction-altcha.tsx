@@ -38,10 +38,12 @@ export function useInteractionAltcha({
 
   const buildAltchaBody = React.useCallback(({
     action,
+    onVerified,
     resetKey,
     scope,
   }: {
     action: string;
+    onVerified?: () => Promise<void> | void;
     resetKey?: React.Key;
     scope: AltchaScope;
   }) => (
@@ -51,6 +53,7 @@ export function useInteractionAltcha({
         action={action}
         locale={locale}
         onPayloadChange={setAltchaPayload}
+        onVerified={onVerified}
         scope={scope}
       />
     </React.Suspense>

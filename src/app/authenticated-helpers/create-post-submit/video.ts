@@ -16,6 +16,7 @@ import type {
 } from "@/components/compositions/posts/post-composer/post-composer.types";
 import type { ExtractedVideoPosterFrame } from "@/components/compositions/posts/post-composer/video-poster-frame";
 import { buildAssetListingRequest } from "@/app/authenticated-helpers/asset-submit";
+import { logger } from "@/lib/logger";
 import type { SubmitProgressReporter } from "./progress";
 
 import {
@@ -30,10 +31,14 @@ type AltchaRequestOptions = {
   altchaPayload?: string | null;
 };
 
+type SubmitTraceRequestOptions = {
+  submitTraceId?: string;
+};
+
 type CreatePost = (
   communityId: string,
   request: CreatePostRequestWithEvent,
-  options?: AltchaRequestOptions,
+  options?: AltchaRequestOptions & SubmitTraceRequestOptions,
 ) => Promise<ApiCreatedPost>;
 
 type CreateListing = (
@@ -44,12 +49,14 @@ type CreateListing = (
 type CreateArtifactUpload = (
   communityId: string,
   request: CreateSongArtifactUploadRequest,
+  options?: SubmitTraceRequestOptions,
 ) => Promise<SongArtifactUpload>;
 
 type UploadArtifactContent = (
   communityId: string,
   artifactUploadId: string,
   body: ArrayBuffer,
+  options?: SubmitTraceRequestOptions,
 ) => Promise<SongArtifactUpload>;
 
 type UploadedPosterMedia = {
@@ -60,13 +67,83 @@ type UploadedPosterMedia = {
 
 type UploadPosterMedia = (
   input: { kind: "post_image"; file: File },
+  options?: SubmitTraceRequestOptions,
 ) => Promise<UploadedPosterMedia>;
 
 type ExtractPosterFrameFile = (
   file: File,
   frameSeconds: string | undefined,
-  options?: { maxWidth?: number },
+  options?: { maxWidth?: number; traceId?: string },
 ) => Promise<ExtractedVideoPosterFrame & { file: File }>;
+
+type VideoSubmitTrace = {
+  readonly startedAtMs: number;
+  readonly traceId: string;
+};
+
+function nowMs(): number {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
+function elapsedMs(sinceMs: number): number {
+  return Math.round(nowMs() - sinceMs);
+}
+
+function createVideoSubmitTrace(): VideoSubmitTrace {
+  const id = typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return {
+    startedAtMs: nowMs(),
+    traceId: `video_submit_${id.replace(/[^a-z0-9]/giu, "").slice(0, 12)}`,
+  };
+}
+
+function logVideoSubmitTrace(
+  trace: VideoSubmitTrace,
+  event: string,
+  fields: Record<string, unknown> = {},
+): void {
+  logger.info("[create-post:video-submit]", {
+    trace_id: trace.traceId,
+    event,
+    elapsed_ms: elapsedMs(trace.startedAtMs),
+    ...fields,
+  });
+}
+
+function summarizeFileForTrace(file: File): Record<string, unknown> {
+  return {
+    mime_type: file.type || "application/octet-stream",
+    size_bytes: file.size,
+    size_mb: Math.round((file.size / 1024 / 1024) * 10) / 10,
+  };
+}
+
+async function withVideoSubmitTiming<T>(
+  trace: VideoSubmitTrace,
+  event: string,
+  fields: Record<string, unknown>,
+  run: () => Promise<T>,
+): Promise<T> {
+  const startedAtMs = nowMs();
+  logVideoSubmitTrace(trace, `${event}:start`, fields);
+  try {
+    const result = await run();
+    logVideoSubmitTrace(trace, `${event}:done`, {
+      ...fields,
+      duration_ms: elapsedMs(startedAtMs),
+    });
+    return result;
+  } catch (error) {
+    logVideoSubmitTrace(trace, `${event}:failed`, {
+      ...fields,
+      duration_ms: elapsedMs(startedAtMs),
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+}
 
 function requirePrimaryVideoFile(videoState: VideoComposerState): File {
   const file = videoState.primaryVideoUpload;
@@ -143,22 +220,38 @@ export function buildVideoPostRequest({
 export async function uploadVideoArtifact({
   communityId,
   createArtifactUpload,
+  trace,
   uploadArtifactContent,
   videoState,
 }: {
   communityId: string;
   createArtifactUpload: CreateArtifactUpload;
+  trace?: VideoSubmitTrace;
   uploadArtifactContent: UploadArtifactContent;
   videoState: VideoComposerState;
 }): Promise<SongArtifactUpload> {
   const file = requirePrimaryVideoFile(videoState);
-  const intent = await createArtifactUpload(communityId, {
-    artifact_kind: "primary_video",
-    mime_type: file.type,
-    filename: file.name,
-    size_bytes: file.size,
-  });
-  return await uploadArtifactContent(communityId, intent.id, await file.arrayBuffer());
+  const uploadFields = summarizeFileForTrace(file);
+  const intent = trace
+    ? await withVideoSubmitTiming(trace, "video_upload_intent", uploadFields, () => createArtifactUpload(communityId, {
+        artifact_kind: "primary_video",
+        mime_type: file.type,
+        filename: file.name,
+        size_bytes: file.size,
+      }, { submitTraceId: trace.traceId }))
+    : await createArtifactUpload(communityId, {
+        artifact_kind: "primary_video",
+        mime_type: file.type,
+        filename: file.name,
+        size_bytes: file.size,
+      });
+  const content = trace
+    ? await withVideoSubmitTiming(trace, "video_file_read", uploadFields, () => file.arrayBuffer())
+    : await file.arrayBuffer();
+  const contentFields = { ...uploadFields, artifact_upload_id: intent.id };
+  return trace
+    ? await withVideoSubmitTiming(trace, "video_content_upload", contentFields, () => uploadArtifactContent(communityId, intent.id, content, { submitTraceId: trace.traceId }))
+    : await uploadArtifactContent(communityId, intent.id, content);
 }
 
 export async function submitVideoPost({
@@ -214,26 +307,47 @@ export async function submitVideoPost({
   uploadMedia: UploadPosterMedia;
   videoState: VideoComposerState;
 }): Promise<ApiCreatedPost> {
+  const trace = createVideoSubmitTrace();
   reportProgress?.("validating");
   const file = requirePrimaryVideoFile(videoState);
+  const upstreamAssetRefs = deriveVideoUpstreamAssetRefs(derivativeStep);
+  logVideoSubmitTrace(trace, "start", {
+    ...summarizeFileForTrace(file),
+    access_mode: monetized ? "locked" : "public",
+    derivative_source_count: upstreamAssetRefs?.length ?? 0,
+    poster_frame_seconds: videoState.posterFrameSeconds ?? null,
+  });
   reportProgress?.("upload_video");
   const uploadedVideo = await uploadVideoArtifact({
     communityId,
     createArtifactUpload,
+    trace,
     uploadArtifactContent,
     videoState,
   });
   reportProgress?.("extract_poster");
-  const posterFrame = await extractPosterFrameFile(
+  const posterFrame = await withVideoSubmitTiming(trace, "poster_extract", {
+    poster_frame_seconds: videoState.posterFrameSeconds ?? null,
+    poster_frame_max_width: posterFrameMaxWidth ?? null,
+  }, () => extractPosterFrameFile(
     file,
     videoState.posterFrameSeconds,
-    { maxWidth: posterFrameMaxWidth },
-  );
+    { maxWidth: posterFrameMaxWidth, traceId: trace.traceId },
+  ));
+  logVideoSubmitTrace(trace, "poster_extract:frame", {
+    frame_ms: posterFrame.frameMs,
+    poster_height: posterFrame.height,
+    poster_width: posterFrame.width,
+    poster_size_bytes: posterFrame.file.size,
+  });
   reportProgress?.("upload_poster");
-  const uploadedPoster = await uploadMedia({
+  const uploadedPoster = await withVideoSubmitTiming(trace, "poster_upload", {
+    poster_mime_type: posterFrame.file.type,
+    poster_size_bytes: posterFrame.file.size,
+  }, () => uploadMedia({
     kind: "post_image",
     file: posterFrame.file,
-  });
+  }, { submitTraceId: trace.traceId }));
   const request = buildVideoPostRequest({
     baseRequest,
     caption,
@@ -247,18 +361,36 @@ export async function submitVideoPost({
     uploadedVideo,
   });
   reportProgress?.("publish_post");
-  const post = await createPost(
+  const post = await withVideoSubmitTiming(trace, "post_publish", {
+    access_mode: request.access_mode ?? "public",
+    rights_basis: request.rights_basis ?? null,
+    upstream_asset_ref_count: request.upstream_asset_refs?.length ?? 0,
+  }, async () => createPost(
     communityId,
-    await signIfAgent({
+    await withVideoSubmitTiming(trace, "post_sign", {
+      author_mode: authorMode,
+    }, () => signIfAgent({
       authorMode,
       path: `/communities/${communityId}/posts`,
       request,
       signAgentAuthoredBody,
-    }),
-    altchaOptions,
-  );
+    })),
+    {
+      ...altchaOptions,
+      submitTraceId: trace.traceId,
+    },
+  ));
+  logVideoSubmitTrace(trace, "post_publish:result", {
+    post_id: post.id,
+    asset_id: post.asset ?? null,
+    status: post.status,
+  });
 
   if (!monetized) {
+    logVideoSubmitTrace(trace, "done", {
+      post_id: post.id,
+      duration_ms: elapsedMs(trace.startedAtMs),
+    });
     return post;
   }
 
@@ -277,6 +409,13 @@ export async function submitVideoPost({
     throw new Error("The video published, but the paid listing payload was not created.");
   }
   reportProgress?.("create_listing");
-  await createListing(communityId, listingRequest);
+  await withVideoSubmitTiming(trace, "listing_create", {
+    asset_id: post.asset,
+  }, () => createListing(communityId, listingRequest));
+  logVideoSubmitTrace(trace, "done", {
+    post_id: post.id,
+    asset_id: post.asset,
+    duration_ms: elapsedMs(trace.startedAtMs),
+  });
   return post;
 }

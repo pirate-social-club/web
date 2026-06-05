@@ -988,6 +988,59 @@ describe("ApiClient media uploads", () => {
     }
   });
 
+  test("sends submit trace headers on video submit requests", async () => {
+    const requests: Request[] = [];
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      requests.push(request);
+      if (request.url.endsWith("/community-media")) {
+        return Response.json({
+          kind: "post_image",
+          media_ref: "http://pirate.test/community-media/post_image/poster.jpg",
+          mime_type: "image/jpeg",
+          size_bytes: 4,
+          storage_bucket: "pirate-media",
+          storage_object_key: "community-media/post_image/poster.jpg",
+        });
+      }
+      return Response.json({});
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+      const submitTraceId = "video_submit_abcdef123456";
+
+      await client.communities.createArtifactUpload("cmt_test", {
+        artifact_kind: "primary_video",
+        filename: "clip.mp4",
+        mime_type: "video/mp4",
+        size_bytes: 12,
+      }, { submitTraceId });
+      await client.communities.uploadArtifactContent("cmt_test", "sau_test", new ArrayBuffer(2), { submitTraceId });
+      await client.communities.uploadMedia({
+        kind: "post_image",
+        file: makeTestFile("poster.jpg", "image/jpeg"),
+      }, { submitTraceId });
+      await client.communities.createPost("cmt_test", {
+        idempotency_key: "trace-post-test",
+        post_type: "video",
+        title: "Trace test",
+      }, { submitTraceId });
+
+      expect(requests.map((request) => request.headers.get("x-pirate-submit-trace-id"))).toEqual([
+        submitTraceId,
+        submitTraceId,
+        submitTraceId,
+        submitTraceId,
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("loads public thread routes without auth headers", async () => {
     const requests: Request[] = [];
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

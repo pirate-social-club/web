@@ -298,7 +298,7 @@ describe("video create-post submit helpers", () => {
       },
       monetized: false,
       paidAssetPriceUsd: null,
-      posterFrameMaxWidth: 1920,
+      posterFrameMaxWidth: 1280,
       pricingPolicyRegionalPricingEnabled: false,
       reportProgress: (key) => progressEvents.push(key),
       regionalPricingEnabled: false,
@@ -330,14 +330,18 @@ describe("video create-post submit helpers", () => {
     expect(posterExtractCalls).toEqual([{
       file,
       frameSeconds: "1.3",
-      maxWidth: 1920,
+      maxWidth: 1280,
     }]);
     expect(createPostCalls).toEqual([{
       communityId: "com_test",
-      options: { altchaPayload: "altcha_video" },
+      options: {
+        altchaPayload: "altcha_video",
+        submitTraceId: expect.stringMatching(/^video_submit_[a-f0-9]{12}$/),
+      },
       request: {
         anonymous_scope: "community_stable",
         disclosed_qualifier_ids: ["qual_video"],
+        event: undefined,
         identity_mode: "anonymous",
         idempotency_key: "idem_video",
         translation_policy: "machine_allowed",

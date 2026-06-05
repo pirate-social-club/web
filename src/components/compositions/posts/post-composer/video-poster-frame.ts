@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 export type ExtractedVideoPosterFrame = {
   dataUrl: string;
   frameMs: number;
@@ -7,7 +9,28 @@ export type ExtractedVideoPosterFrame = {
 
 type VideoPosterFrameOptions = {
   maxWidth?: number;
+  traceId?: string;
 };
+
+const VIDEO_POSTER_EVENT_TIMEOUT_MS = 8_000;
+const VIDEO_POSTER_LOADED_DATA_TIMEOUT_MS = 3_000;
+
+function nowMs(): number {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
+function elapsedMs(sinceMs: number): number {
+  return Math.round(nowMs() - sinceMs);
+}
+
+function logPosterTrace(traceId: string | undefined, event: string, fields: Record<string, unknown> = {}): void {
+  if (!traceId) return;
+  logger.info("[video-poster-frame]", {
+    trace_id: traceId,
+    event,
+    ...fields,
+  });
+}
 
 function parsePosterFrameSeconds(value: string | undefined): number {
   const parsed = Number.parseFloat(String(value ?? "0"));
@@ -17,22 +40,54 @@ function parsePosterFrameSeconds(value: string | undefined): number {
 function waitForVideoEvent(
   video: HTMLVideoElement,
   eventName: "loadeddata" | "loadedmetadata" | "seeked",
+  traceId?: string,
+  timeoutMs = VIDEO_POSTER_EVENT_TIMEOUT_MS,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    const startedAtMs = nowMs();
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    logPosterTrace(traceId, `${eventName}:wait`, {
+      ready_state: video.readyState,
+      timeout_ms: timeoutMs,
+    });
     const handleEvent = () => {
       cleanup();
+      logPosterTrace(traceId, `${eventName}:done`, {
+        duration_ms: elapsedMs(startedAtMs),
+        ready_state: video.readyState,
+        video_height: video.videoHeight,
+        video_width: video.videoWidth,
+      });
       resolve();
     };
     const handleError = () => {
       cleanup();
+      logPosterTrace(traceId, `${eventName}:failed`, {
+        duration_ms: elapsedMs(startedAtMs),
+        ready_state: video.readyState,
+      });
       reject(new Error("Could not read the selected video frame."));
     };
+    const handleTimeout = () => {
+      cleanup();
+      logPosterTrace(traceId, `${eventName}:timeout`, {
+        duration_ms: elapsedMs(startedAtMs),
+        ready_state: video.readyState,
+        video_height: video.videoHeight,
+        video_width: video.videoWidth,
+      });
+      reject(new Error(`Timed out while reading the selected video frame (${eventName}).`));
+    };
     const cleanup = () => {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
       video.removeEventListener(eventName, handleEvent);
       video.removeEventListener("error", handleError);
     };
     video.addEventListener(eventName, handleEvent, { once: true });
     video.addEventListener("error", handleError, { once: true });
+    timeoutId = setTimeout(handleTimeout, timeoutMs);
   });
 }
 
@@ -58,17 +113,33 @@ function isBlankFrame(canvas: HTMLCanvasElement): boolean {
   return totalLuma / pixelCount < 10 && brightPixels / pixelCount < 0.01;
 }
 
-async function seekTo(video: HTMLVideoElement, seconds: number): Promise<void> {
+async function seekTo(video: HTMLVideoElement, seconds: number, traceId?: string): Promise<void> {
   const target = Math.max(0, seconds);
-  if (Math.abs(video.currentTime - target) < 0.01) return;
+  if (Math.abs(video.currentTime - target) < 0.01) {
+    logPosterTrace(traceId, "seek:skipped", {
+      current_time_seconds: Math.round(video.currentTime * 10) / 10,
+      target_seconds: target,
+    });
+    return;
+  }
+  const startedAtMs = nowMs();
+  logPosterTrace(traceId, "seek:start", {
+    current_time_seconds: Math.round(video.currentTime * 10) / 10,
+    target_seconds: target,
+  });
   video.currentTime = target;
-  await waitForVideoEvent(video, "seeked");
+  await waitForVideoEvent(video, "seeked", traceId);
+  logPosterTrace(traceId, "seek:done", {
+    duration_ms: elapsedMs(startedAtMs),
+    current_time_seconds: Math.round(video.currentTime * 10) / 10,
+    target_seconds: target,
+  });
 }
 
 function candidateSeconds(duration: number, selectedSeconds: number): number[] {
   const rawCandidates = selectedSeconds > 0
     ? [selectedSeconds]
-    : [0, 0.5, 1, 2, duration * 0.1, duration * 0.25];
+    : [0, 0.5, 1, duration * 0.1];
 
   return Array.from(new Set(rawCandidates.reduce<number[]>((result, candidate) => {
     if (Number.isFinite(candidate) && candidate >= 0) {
@@ -138,31 +209,85 @@ async function extractVideoPosterFrameFromObjectUrl(
 
   try {
     video.src = objectUrl;
-    await waitForVideoEvent(video, "loadedmetadata");
+    logPosterTrace(options.traceId, "start", {
+      frame_seconds: frameSeconds ?? null,
+      max_width: options.maxWidth ?? null,
+    });
+    video.load();
+    await waitForVideoEvent(video, "loadedmetadata", options.traceId);
     if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-      await waitForVideoEvent(video, "loadeddata");
+      try {
+        await waitForVideoEvent(video, "loadeddata", options.traceId, VIDEO_POSTER_LOADED_DATA_TIMEOUT_MS);
+      } catch (error) {
+        logPosterTrace(options.traceId, "loadeddata:continue_after_timeout", {
+          error: error instanceof Error ? error.message : String(error),
+          ready_state: video.readyState,
+          video_height: video.videoHeight,
+          video_width: video.videoWidth,
+        });
+      }
     }
 
     const duration = Number.isFinite(video.duration) ? video.duration : 0;
     const selectedSeconds = Math.min(Math.max(0, duration), parsePosterFrameSeconds(frameSeconds));
+    const candidates = candidateSeconds(duration, selectedSeconds);
+    logPosterTrace(options.traceId, "candidates", {
+      candidate_seconds: candidates,
+      duration_seconds: Math.round(duration * 10) / 10,
+      selected_seconds: selectedSeconds,
+      video_height: video.videoHeight,
+      video_width: video.videoWidth,
+    });
     let fallback: ExtractedVideoPosterFrame | null = null;
+    let lastError: unknown = null;
 
-    for (const seconds of candidateSeconds(duration, selectedSeconds)) {
-      await seekTo(video, seconds);
-      const { canvas, height, width } = drawPosterFrame(video, options.maxWidth);
-      const frame: ExtractedVideoPosterFrame = {
-        dataUrl: canvas.toDataURL("image/jpeg", 0.9),
-        frameMs: Math.round(seconds * 1000),
-        height,
-        width,
-      };
+    for (const seconds of candidates) {
+      try {
+        logPosterTrace(options.traceId, "candidate:start", { seconds });
+        await seekTo(video, seconds, options.traceId);
+        const drawStartedAtMs = nowMs();
+        const { canvas, height, width } = drawPosterFrame(video, options.maxWidth);
+        logPosterTrace(options.traceId, "draw:done", {
+          duration_ms: elapsedMs(drawStartedAtMs),
+          height,
+          seconds,
+          width,
+        });
+        const encodeStartedAtMs = nowMs();
+        const frame: ExtractedVideoPosterFrame = {
+          dataUrl: canvas.toDataURL("image/jpeg", 0.86),
+          frameMs: Math.round(seconds * 1000),
+          height,
+          width,
+        };
+        logPosterTrace(options.traceId, "encode:done", {
+          data_url_bytes: frame.dataUrl.length,
+          duration_ms: elapsedMs(encodeStartedAtMs),
+          seconds,
+        });
 
-      if (!fallback) fallback = frame;
-      if (!isBlankFrame(canvas)) return frame;
-      if (selectedSeconds > 0) return frame;
+        if (!fallback) fallback = frame;
+        const blankCheckStartedAtMs = nowMs();
+        const blankFrame = isBlankFrame(canvas);
+        logPosterTrace(options.traceId, "blank_check:done", {
+          blank_frame: blankFrame,
+          duration_ms: elapsedMs(blankCheckStartedAtMs),
+          seconds,
+        });
+        if (!blankFrame) return frame;
+        if (selectedSeconds > 0) return frame;
+      } catch (error) {
+        lastError = error;
+        logPosterTrace(options.traceId, "candidate:failed", {
+          error: error instanceof Error ? error.message : String(error),
+          seconds,
+        });
+        if (selectedSeconds > 0) break;
+      }
     }
 
     if (fallback) return fallback;
+    if (lastError instanceof Error) throw lastError;
     throw new Error("Could not save the selected video frame.");
   } finally {
     video.removeAttribute("src");
@@ -205,3 +330,9 @@ export async function extractVideoPosterFrameFile(
     }),
   };
 }
+
+export const __videoPosterFrameTestHooks = {
+  candidateSeconds,
+  VIDEO_POSTER_EVENT_TIMEOUT_MS,
+  VIDEO_POSTER_LOADED_DATA_TIMEOUT_MS,
+};

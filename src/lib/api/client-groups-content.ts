@@ -26,14 +26,31 @@ import type {
 import { buildQueryPath, type ApiRequest } from "./client-internal";
 
 const ALTCHA_HEADER = "x-pirate-altcha";
+const SUBMIT_TRACE_HEADER = "x-pirate-submit-trace-id";
 
 type AltchaRequestOptions = {
   altchaPayload?: string | null | undefined;
 };
 
-function altchaHeaders(options?: AltchaRequestOptions): HeadersInit | undefined {
+type SubmitTraceRequestOptions = {
+  submitTraceId?: string | null | undefined;
+};
+
+function requestHeaders(options?: AltchaRequestOptions & SubmitTraceRequestOptions): HeadersInit | undefined {
+  const headers: Record<string, string> = {};
   const payload = options?.altchaPayload?.trim();
-  return payload ? { [ALTCHA_HEADER]: payload } : undefined;
+  if (payload) {
+    headers[ALTCHA_HEADER] = payload;
+  }
+  const submitTraceId = options?.submitTraceId?.trim();
+  if (submitTraceId) {
+    headers[SUBMIT_TRACE_HEADER] = submitTraceId;
+  }
+  return Object.keys(headers).length ? headers : undefined;
+}
+
+function altchaHeaders(options?: AltchaRequestOptions): HeadersInit | undefined {
+  return requestHeaders(options);
 }
 
 export function createPostsApi(request: ApiRequest) {
@@ -129,12 +146,12 @@ export function createCommunityContentApi(request: ApiRequest) {
     createPost: (
       communityId: string,
       body: CreatePostRequest,
-      options?: AltchaRequestOptions,
+      options?: AltchaRequestOptions & SubmitTraceRequestOptions,
     ): Promise<Post> =>
       request<Post>(`/communities/${encodeURIComponent(communityId)}/posts`, {
         method: "POST",
         body: JSON.stringify(body),
-        headers: altchaHeaders(options),
+        headers: requestHeaders(options),
       }),
     listEvents: (
       communityId: string,
@@ -183,15 +200,17 @@ export function createCommunityContentApi(request: ApiRequest) {
     createArtifactUpload: (
       communityId: string,
       body: CreateSongArtifactUploadRequest,
+      options?: SubmitTraceRequestOptions,
     ): Promise<SongArtifactUpload> =>
       request<SongArtifactUpload>(
         `/communities/${encodeURIComponent(communityId)}/song-artifact-uploads`,
-        { method: "POST", body: JSON.stringify(body) },
+        { method: "POST", body: JSON.stringify(body), headers: requestHeaders(options) },
       ),
     uploadArtifactContent: (
       communityId: string,
       songArtifactUploadId: string,
       body: ArrayBuffer | ApiSongArtifactUploadContentRequest,
+      options?: SubmitTraceRequestOptions,
     ): Promise<SongArtifactUpload> => {
       const isBinary = body instanceof ArrayBuffer;
       return request<SongArtifactUpload>(
@@ -199,7 +218,9 @@ export function createCommunityContentApi(request: ApiRequest) {
         {
           method: "PUT",
           body: isBinary ? body : JSON.stringify(body),
-          headers: isBinary ? { "Content-Type": "application/octet-stream" } : undefined,
+          headers: isBinary
+            ? { "Content-Type": "application/octet-stream", ...requestHeaders(options) }
+            : requestHeaders(options),
         },
       );
     },

@@ -64,6 +64,7 @@ export function buildContentSecurityPolicy(nonce: string): string {
       "https://explorer-api.walletconnect.com",
       "https://api.ethfollow.xyz",
       "https://api.coingecko.com",
+      "https://s3.filebase.com",
       "https://mainnet.base.org",
       "https://sepolia.base.org",
       "https://eth.merkle.io",

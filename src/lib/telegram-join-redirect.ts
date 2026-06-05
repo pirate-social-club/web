@@ -1,11 +1,16 @@
 const DEFAULT_STAGING_TELEGRAM_BOT_USERNAME = "Pirate_dev_bot";
 const TELEGRAM_START_PARAMETER_PATTERN = /^[A-Za-z0-9_-]{1,512}$/u;
+const TELEGRAM_JOIN_IDENTIFIER_MAX_LENGTH = 512;
 const TELEGRAM_JOIN_REDIRECT_HEADERS = {
   "cache-control": "no-store",
 } as const;
 
 type CommunityTelegramBotUsernameResponse = {
   active_telegram_bot_username?: unknown;
+};
+
+type PublicCommunityLookupResponse = {
+  id?: unknown;
 };
 
 type CommunityTelegramBotUsernameLookup =
@@ -57,6 +62,12 @@ function buildTelegramBotStartHref(input: {
   return url.toString();
 }
 
+function validJoinIdentifier(value: string): boolean {
+  return value.length > 0
+    && value.length <= TELEGRAM_JOIN_IDENTIFIER_MAX_LENGTH
+    && !/[\/\\\u0000-\u001F\u007F]/u.test(value);
+}
+
 async function fetchCommunityTelegramBotUsername(input: {
   apiOrigin: string;
   communityId: string;
@@ -98,6 +109,36 @@ async function fetchCommunityTelegramBotUsername(input: {
   return username ? { kind: "ok", username } : { kind: "error" };
 }
 
+async function fetchCanonicalCommunityId(input: {
+  apiOrigin: string;
+  communityId: string;
+}): Promise<string | null> {
+  if (TELEGRAM_START_PARAMETER_PATTERN.test(input.communityId)) {
+    return input.communityId;
+  }
+
+  const url = new URL(
+    `/public-communities/${encodeURIComponent(input.communityId)}`,
+    input.apiOrigin,
+  );
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      headers: { accept: "application/json" },
+      redirect: "manual",
+    });
+  } catch {
+    return null;
+  }
+  if (!response.ok) {
+    return null;
+  }
+
+  const body = await response.json().catch(() => null) as PublicCommunityLookupResponse | null;
+  const communityId = typeof body?.id === "string" ? body.id.trim() : "";
+  return TELEGRAM_START_PARAMETER_PATTERN.test(communityId) ? communityId : null;
+}
+
 function telegramJoinStatusResponse(input: {
   description: string;
   status: number;
@@ -120,7 +161,8 @@ export async function telegramCommunityJoinRedirect(input: {
   communityId: string;
   effectiveUrl: string;
 }): Promise<Response> {
-  if (!TELEGRAM_START_PARAMETER_PATTERN.test(input.communityId)) {
+  const communityIdentifier = input.communityId.trim();
+  if (!validJoinIdentifier(communityIdentifier)) {
     return telegramJoinStatusResponse({
       description: "This Telegram join link is not valid.",
       status: 400,
@@ -130,7 +172,7 @@ export async function telegramCommunityJoinRedirect(input: {
 
   const lookup = await fetchCommunityTelegramBotUsername({
     apiOrigin: input.apiOrigin,
-    communityId: input.communityId,
+    communityId: communityIdentifier,
   });
   if (lookup.kind === "not_found") {
     return telegramJoinStatusResponse({
@@ -147,10 +189,22 @@ export async function telegramCommunityJoinRedirect(input: {
     });
   }
 
+  const canonicalCommunityId = await fetchCanonicalCommunityId({
+    apiOrigin: input.apiOrigin,
+    communityId: communityIdentifier,
+  });
+  if (!canonicalCommunityId) {
+    return telegramJoinStatusResponse({
+      description: "Telegram join links are temporarily unavailable.",
+      status: 502,
+      title: "Telegram unavailable",
+    });
+  }
+
   const botUsername = lookup.username ?? resolveTelegramPlatformBotUsername({
     effectiveUrl: input.effectiveUrl,
   });
-  const startParam = lookup.username ? `join_${input.communityId}` : `c_${input.communityId}`;
+  const startParam = lookup.username ? `join_${canonicalCommunityId}` : `c_${canonicalCommunityId}`;
   const targetHref = buildTelegramBotStartHref({ botUsername, startParam });
   if (!targetHref) {
     return telegramJoinStatusResponse({

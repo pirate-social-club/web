@@ -22,6 +22,12 @@ describe("resolveTelegramMiniAppStartPath", () => {
     );
   });
 
+  test("routes community join payloads from Telegram start params", () => {
+    expect(resolveTelegramMiniAppStartPath("join_com_58a12a18213c4bf4a1e6b9343dc3702c")).toBe(
+      "/tg/c/com_58a12a18213c4bf4a1e6b9343dc3702c",
+    );
+  });
+
   test("routes verify public IDs from Telegram start params", () => {
     expect(resolveTelegramMiniAppStartPath("v_com_58a12a18213c4bf4a1e6b9343dc3702c")).toBe(
       "/tg/verify/com_58a12a18213c4bf4a1e6b9343dc3702c",

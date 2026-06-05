@@ -50,6 +50,32 @@ describe("ApiClient geo", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  test("does not send JSON content type for bodyless GET requests", async () => {
+    let request: Request | null = null;
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      request = input instanceof Request ? input : new Request(input, init);
+      return Response.json({ places: [] });
+    };
+
+    try {
+      const client = new ApiClient({
+        baseUrl: "http://pirate.test",
+        getToken: () => "session-token",
+      });
+
+      await client.geo.searchPlaces({
+        text: "Tbilisi",
+      });
+
+      const capturedRequest = requireRequest(request);
+      expect(capturedRequest.method).toBe("GET");
+      expect(capturedRequest.headers.get("content-type")).toBeNull();
+      expect(capturedRequest.headers.get("authorization")).toBe("Bearer session-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
 
 describe("ApiClient media uploads", () => {

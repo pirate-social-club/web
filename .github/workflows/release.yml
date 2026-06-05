@@ -132,15 +132,6 @@ jobs:
           E2E_BASE_URL: https://staging.pirate.sc
           E2E_LIVE_STAGING: "true"
         run: bunx playwright test e2e/live-staging.live.spec.ts --project=live-staging --grep "follows a real staging community and persists after reload"
-      # This broader live-staging suite is intentionally soft; unrelated staging
-      # integrations should not block prod when the focused contract gate above passes.
-      - name: Live browser integration staging
-        continue-on-error: true
-        working-directory: web
-        env:
-          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
-          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
-        run: bun run test:e2e:live-staging
       - name: Fetch Story derivative royalty E2E secrets
         working-directory: core
         env:
@@ -165,6 +156,16 @@ jobs:
           name: story-derivative-royalty-${{ github.run_id }}
           path: web/tmp/e2e-artifacts/*.json
           if-no-files-found: ignore
+      # This broader live-staging suite is intentionally soft; unrelated staging
+      # integrations should not block prod when the focused gates above pass.
+      - name: Live browser integration staging
+        continue-on-error: true
+        timeout-minutes: 5
+        working-directory: web
+        env:
+          AUTH_UPSTREAM_JWT_AUDIENCE: ${{ vars.AUTH_UPSTREAM_JWT_AUDIENCE }}
+          AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
+        run: bun run test:e2e:live-staging
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4

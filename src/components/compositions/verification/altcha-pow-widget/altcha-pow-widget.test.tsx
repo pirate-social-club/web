@@ -4,7 +4,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test";
 
 mock.module("altcha", () => ({}));
 
-const { cleanup, render, waitFor } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, waitFor } = await import("@testing-library/react");
 const { AltchaPowWidget } = await import("./altcha-pow-widget");
 
 afterEach(() => {
@@ -28,7 +28,7 @@ describe("AltchaPowWidget", () => {
     expect(container.innerHTML).not.toContain("shadow");
   });
 
-  test("runs the challenge as an invisible widget with inline progress", async () => {
+  test("runs the challenge as a standard checkbox widget", async () => {
     const challengeLoader = mock(async () => ({
       algorithm: "SHA-256",
       challenge: "challenge",
@@ -46,11 +46,16 @@ describe("AltchaPowWidget", () => {
       />,
     );
 
-    await waitFor(() => expect(getByText("Checking your browser\u2026")).toBeTruthy());
+    await waitFor(() => expect(challengeLoader).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(container.querySelector("altcha-widget")).toBeTruthy());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
 
     const widget = container.querySelector("altcha-widget");
-    expect(widget?.getAttribute("display")).toBe("invisible");
+    expect(widget?.getAttribute("display")).toBe("standard");
     expect(widget?.getAttribute("auto")).toBe("off");
+    expect(widget?.getAttribute("type")).toBe("checkbox");
     expect(container.innerHTML).not.toContain("rounded");
     expect(container.innerHTML).not.toContain("border");
     expect(container.innerHTML).not.toContain("shadow");
@@ -89,5 +94,50 @@ describe("AltchaPowWidget", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(challengeLoader).toHaveBeenCalledTimes(1);
+  });
+
+  test("reports a solved proof once when ALTCHA emits verified events", async () => {
+    const challengeLoader = mock(async () => ({
+      algorithm: "SHA-256",
+      challenge: "challenge",
+      maxnumber: 100,
+      salt: "salt",
+      signature: "signature",
+    }));
+    const payloads: Array<string | null> = [];
+    const verifiedPayloads: string[] = [];
+
+    const { container } = render(
+      <AltchaPowWidget
+        action="post:pst_test:1"
+        challengeLoader={challengeLoader}
+        onPayloadChange={(payload) => payloads.push(payload)}
+        onVerified={(payload) => verifiedPayloads.push(payload)}
+        scope="vote"
+      />,
+    );
+
+    await waitFor(() => expect(challengeLoader).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(container.querySelector("altcha-widget")).toBeTruthy());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const widget = container.querySelector("altcha-widget");
+    await act(async () => {
+      if (!widget) {
+        throw new Error("ALTCHA widget did not render");
+      }
+      fireEvent(widget, new window.CustomEvent("verified", {
+        detail: { payload: " proof " },
+      }));
+      fireEvent(widget, new window.CustomEvent("statechange", {
+        detail: { payload: "proof", state: "verified" },
+      }));
+      await Promise.resolve();
+    });
+
+    expect(payloads).toEqual([null, "proof"]);
+    expect(verifiedPayloads).toEqual(["proof"]);
   });
 });

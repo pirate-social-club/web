@@ -27,8 +27,10 @@ export interface ActionMenuItem {
 export interface ActionMenuProps {
   items: ActionMenuItem[];
   label?: string;
+  title?: string;
   align?: React.ComponentProps<typeof DropdownMenuPrimitive.Content>["align"];
   contentClassName?: string;
+  trigger?: React.ReactElement;
   triggerClassName?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -38,8 +40,10 @@ export interface ActionMenuProps {
 export function ActionMenu({
   items,
   label = "Open menu",
+  title = "Actions",
   align = "end",
   contentClassName,
+  trigger,
   triggerClassName,
   open,
   onOpenChange,
@@ -59,34 +63,38 @@ export function ActionMenu({
 
   if (items.length === 0) return null;
 
+  const triggerElement = trigger ?? (
+    <IconButton
+      aria-label={label}
+      size="sm"
+      variant="ghost"
+      className={triggerClassName}
+    >
+      <DotsThree className="size-5" />
+    </IconButton>
+  );
+
   if (isMobile) {
     return (
       <Sheet open={resolvedOpen} onOpenChange={handleOpenChange}>
         <SheetTrigger asChild>
-          <IconButton
-            aria-label={label}
-            size="sm"
-            variant="ghost"
-            className={triggerClassName}
-          >
-            <DotsThree className="size-5" />
-          </IconButton>
-      </SheetTrigger>
-      <SheetContent side="bottom" className="rounded-t-[var(--radius-xl)] px-0 pb-6 pt-4">
-        <SheetHeader className="px-4 text-start">
-          <SheetTitle className="text-base leading-snug">Actions</SheetTitle>
-        </SheetHeader>
-        <div className="mt-4">
-          {items.map((item, index) => (
-            <React.Fragment key={item.key}>
-              {item.separatorBefore && index > 0 ? <div className="my-2 h-px bg-border" /> : null}
-              <button
-                className={cn(
-                  "grid w-full grid-cols-[1.25rem_1fr] items-center gap-3 px-4 py-3 text-start text-base leading-snug text-foreground",
-                  !item.icon && "grid-cols-[1fr]",
-                  item.destructive && "text-destructive",
-                  item.disabled && "pointer-events-none opacity-50",
-                )}
+          {triggerElement}
+        </SheetTrigger>
+        <SheetContent side="bottom" className="rounded-t-[var(--radius-xl)] px-0 pb-6 pt-4">
+          <SheetHeader className="px-4 text-start">
+            <SheetTitle className="text-base leading-snug">{title}</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">
+            {items.map((item, index) => (
+              <React.Fragment key={item.key}>
+                {item.separatorBefore && index > 0 ? <div className="my-2 h-px bg-border" /> : null}
+                <button
+                  className={cn(
+                    "grid w-full grid-cols-[1.25rem_1fr] items-center gap-3 px-4 py-3 text-start text-base leading-snug text-foreground",
+                    !item.icon && "grid-cols-[1fr]",
+                    item.destructive && "text-destructive",
+                    item.disabled && "pointer-events-none opacity-50",
+                  )}
                   disabled={item.disabled}
                   onClick={() => {
                     onAction?.(item.key);
@@ -112,14 +120,7 @@ export function ActionMenu({
   return (
     <DropdownMenuPrimitive.Root open={resolvedOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuPrimitive.Trigger asChild>
-        <IconButton
-          aria-label={label}
-          size="sm"
-          variant="ghost"
-          className={triggerClassName}
-        >
-          <DotsThree className="size-5" />
-        </IconButton>
+        {triggerElement}
       </DropdownMenuPrimitive.Trigger>
       <DropdownMenuPrimitive.Portal>
         <DropdownMenuPrimitive.Content

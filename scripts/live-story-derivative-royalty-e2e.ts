@@ -565,7 +565,7 @@ async function createSongPost(input: {
     token: input.session.accessToken,
     body: {
       access_mode: input.accessMode,
-      commercial_rev_share_pct: input.rightsBasis === "derivative" ? 10 : undefined,
+      commercial_rev_share_pct: 10,
       identity_mode: "public",
       idempotency_key: `story-royalty-e2e-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       license_preset: "commercial-remix",

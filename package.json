@@ -34,6 +34,7 @@
     "test:e2e:assistant:local": "playwright test e2e/community-assistant.local.spec.ts",
     "test:e2e:staging": "E2E_BASE_URL=https://staging.pirate.sc playwright test",
     "test:e2e:live-staging": "E2E_LIVE_STAGING=true E2E_BASE_URL=https://staging.pirate.sc E2E_API_BASE_URL=https://api-staging.pirate.sc playwright test --project=live-staging",
+    "test:e2e:story-derivative-royalty": "bun run scripts/live-story-derivative-royalty-e2e.ts",
     "boundary:audit": "node ./scripts/boundary-audit.mjs",
     "deadcode:audit": "knip --no-progress",
     "deps:audit": "knip --dependencies --no-progress",

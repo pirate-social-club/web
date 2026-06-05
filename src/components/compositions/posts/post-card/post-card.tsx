@@ -13,7 +13,7 @@ import { PostCardEventBlock } from "./post-card-event-block";
 import { PostCardHeader } from "./post-card-header";
 import { PostCardMedia } from "./post-card-media";
 import { PostCardEngagementBar } from "./post-card-engagement-bar";
-import { postCardReadableWidth, postCardTextWrap, postCardType } from "./post-card.styles";
+import { postCardCaptionTextColor, postCardReadableWidth, postCardTextWrap, postCardType } from "./post-card.styles";
 import type { DownloadPolicy, PostCardMenuItem, PostCardProps, StemAccessPolicy, StemKind, StemSpec } from "./post-card.types";
 
 type SongContent = Extract<PostCardProps["content"], { type: "song" }>;
@@ -259,7 +259,7 @@ function SongCaptionBeforeMedia({ content }: { content: PostCardProps["content"]
 
   return (
     <FormattedText
-      className={cn(postCardType.caption, postCardReadableWidth, "-mt-1 mb-1 self-start text-start text-muted-foreground")}
+      className={cn(postCardType.caption, postCardReadableWidth, postCardCaptionTextColor, "-mt-1 mb-1 self-start text-start")}
       dir={content.captionDir ?? "auto"}
       lang={content.captionLang}
       value={content.caption}

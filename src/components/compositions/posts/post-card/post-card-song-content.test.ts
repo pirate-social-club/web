@@ -93,8 +93,8 @@ describe("deriveSongUI", () => {
       }),
     );
 
-    expect(markup).toContain("Digital MP3");
-    expect(markup).toContain("$3.99");
+    expect(markup).toContain("MP3");
+    expect(markup).toContain("Buy $3.99");
     expect(markup).toContain("Vinyl");
     expect(markup).toContain("https://elasticstage.com/kevin-tameimpala/releases/midnight-waves");
   });

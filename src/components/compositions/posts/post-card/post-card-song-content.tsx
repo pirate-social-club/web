@@ -19,7 +19,7 @@ import { Scrubber } from "@/components/primitives/scrubber";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/primitives/tooltip";
 import { Type } from "@/components/primitives/type";
 import { Waveform } from "@/components/primitives/waveform";
-import { postCardType } from "./post-card.styles";
+import { postCardCaptionTextColor, postCardTextWrap, postCardType } from "./post-card.styles";
 import { StoryLicenseNoticeBadge, StoryRegistrationBadge } from "./post-card-story-registration";
 import type {
   DownloadPolicy,
@@ -316,33 +316,20 @@ interface SongOfferRowProps {
   action: React.ReactNode;
   icon: React.ReactNode;
   label: string;
-  priceLabel?: string;
 }
 
-function SongOfferRow({ action, icon, label, priceLabel }: SongOfferRowProps) {
+function SongOfferRow({ action, icon, label }: SongOfferRowProps) {
   return (
-    <div
-      className={cn(
-        "grid min-h-16 items-center gap-x-3 gap-y-2 border-t border-border-soft px-4 py-3",
-        priceLabel
-          ? "grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_4rem_8.5rem]"
-          : "grid-cols-[auto_minmax(0,1fr)_auto]",
-      )}
-    >
+    <div className="grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-t border-border-soft px-4 py-3">
       <div className="grid size-8 shrink-0 place-items-center text-muted-foreground">
         {icon}
       </div>
       <div className="min-w-0">
-        <Type as="p" className="truncate font-semibold text-foreground" variant="body-strong">
+        <Type as="p" className={cn(postCardTextWrap, "font-semibold text-foreground")} variant="body-strong">
           {label}
         </Type>
       </div>
-      {priceLabel ? (
-        <Type as="p" className="text-end font-semibold text-foreground" variant="body-strong">
-          {priceLabel}
-        </Type>
-      ) : null}
-      <div className={cn("flex justify-end", priceLabel ? "col-span-3 sm:col-span-1" : undefined)}>
+      <div className="flex justify-end">
         {action}
       </div>
     </div>
@@ -372,19 +359,18 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
       <SongOfferRow
         action={(
           <Button
-            aria-label="Buy Digital MP3"
+            aria-label={effectivePrice ? `Buy MP3 for ${effectivePrice}` : "Buy MP3"}
             className="h-10 w-32 px-5"
             data-post-card-interactive="true"
             onClick={content.onBuy}
             size="sm"
           >
-            Buy
+            {effectivePrice ? `Buy ${effectivePrice}` : "Buy"}
           </Button>
         )}
         icon={<MusicNote className="size-5" />}
         key="digital-buy"
-        label="Digital MP3"
-        priceLabel={effectivePrice}
+        label="MP3"
       />,
     );
   } else if (isLocked && !isOwned && !isListedActive && content.onUnlock) {
@@ -624,19 +610,19 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
                 {content.title}
               </Type>
               {content.artist ? (
-                <Type as="p" className="mt-1 truncate text-muted-foreground" variant="caption">
+                <Type as="p" className={cn("mt-1 truncate", postCardCaptionTextColor)} variant="caption">
                   {content.artist}
                 </Type>
               ) : null}
               {derivativeSummary && derivativeHref ? (
                 <a
-                  className={cn("mt-1 block truncate text-muted-foreground transition-colors hover:text-foreground", postCardType.meta)}
+                  className={cn("mt-1 block truncate transition-colors hover:text-foreground", postCardCaptionTextColor, postCardType.meta)}
                   href={derivativeHref}
                 >
                   {derivativeSummary}
                 </a>
               ) : derivativeSummary ? (
-                <p className={cn("mt-1 truncate text-muted-foreground", postCardType.meta)}>
+                <p className={cn("mt-1 truncate", postCardCaptionTextColor, postCardType.meta)}>
                   {derivativeSummary}
                 </p>
               ) : null}

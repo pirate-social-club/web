@@ -13,7 +13,7 @@ import {
   getVideoPreviewFrameClassName,
   getVideoPreviewObjectFitClassName,
 } from "@/components/compositions/posts/video-preview-layout";
-import { postCardType } from "./post-card.styles";
+import { postCardCaptionTextColor, postCardTextWrap, postCardType } from "./post-card.styles";
 import { StoryRegistrationBadge } from "./post-card-story-registration";
 import type { UpstreamAttribution, VideoContentSpec } from "./post-card.types";
 
@@ -249,7 +249,7 @@ function VideoCaption({ content }: { content: VideoContentSpec }) {
 
   return (
     <FormattedText
-      className={cn("text-muted-foreground", postCardType.caption)}
+      className={cn(postCardCaptionTextColor, postCardType.caption)}
       dir={content.captionDir ?? "auto"}
       lang={content.captionLang}
       value={content.caption}
@@ -261,25 +261,19 @@ interface VideoOfferRowProps {
   action: React.ReactNode;
   icon: React.ReactNode;
   label: string;
-  priceLabel?: string;
 }
 
-function VideoOfferRow({ action, icon, label, priceLabel }: VideoOfferRowProps) {
+function VideoOfferRow({ action, icon, label }: VideoOfferRowProps) {
   return (
-    <div className="grid min-h-16 grid-cols-[auto_minmax(0,1fr)_4rem_8.5rem] items-center gap-3 border-t border-border-soft px-4 py-3">
+    <div className="grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-t border-border-soft px-4 py-3">
       <div className="grid size-8 shrink-0 place-items-center text-muted-foreground">
         {icon}
       </div>
       <div className="min-w-0">
-        <Type as="p" className="truncate font-semibold text-foreground" variant="body-strong">
+        <Type as="p" className={cn(postCardTextWrap, "font-semibold text-foreground")} variant="body-strong">
           {label}
         </Type>
       </div>
-      {priceLabel ? (
-        <Type as="p" className="text-end font-semibold text-foreground" variant="body-strong">
-          {priceLabel}
-        </Type>
-      ) : <div aria-hidden="true" />}
       <div className="flex justify-end">
         {action}
       </div>
@@ -298,18 +292,17 @@ function VideoOfferRows({ content, ui }: { content: VideoContentSpec; ui: Derive
       <VideoOfferRow
         action={(
           <Button
-            aria-label="Buy Full video"
+            aria-label={effectivePrice ? `Buy Full video for ${effectivePrice}` : "Buy Full video"}
             className="h-10 w-32 px-5"
             data-post-card-interactive="true"
             onClick={content.onBuy}
             size="sm"
           >
-            Buy
+            {effectivePrice ? `Buy ${effectivePrice}` : "Buy"}
           </Button>
         )}
         icon={icon}
         label="Full video"
-        priceLabel={effectivePrice}
       />
     );
   }
@@ -396,19 +389,21 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
     if (isBlobUrl(content.src)) {
       return (
         <div className={cn("flex flex-col gap-2 text-start", className)}>
-          <div className={cn("overflow-hidden rounded-lg border border-border-soft bg-card", frameClassName)}>
-            <BlobVideoPlayer
-              aspectRatio={content.aspectRatio}
-              autoPlay
-              className="rounded-none"
-              src={content.src}
-              poster={content.posterSrc}
-              title={content.title}
-            />
+          <div className="overflow-hidden rounded-lg border border-border-soft bg-card">
+            <div className={frameClassName}>
+              <BlobVideoPlayer
+                aspectRatio={content.aspectRatio}
+                autoPlay
+                className="rounded-none"
+                src={content.src}
+                poster={content.posterSrc}
+                title={content.title}
+              />
+            </div>
             {offerRows}
           </div>
           {derivativeSummary && (
-            <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
+            <p className={cn("truncate", postCardCaptionTextColor, postCardType.meta)}>
               {derivativeSummary}
             </p>
           )}
@@ -420,25 +415,31 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
 
     return (
       <div className={cn("flex flex-col gap-2 text-start", className)}>
-        <div className={cn("overflow-hidden rounded-lg border border-border-soft bg-card", frameClassName)}>
-          <React.Suspense
-            fallback={
-              <div className="aspect-video w-full bg-black/90" aria-busy="true" />
-            }
-          >
-            <LazyVideoPlayer
-              autoPlay
-              aspectRatio={content.aspectRatio}
-              src={content.src}
-              poster={content.posterSrc}
-              title={content.title}
-              playsinline
-            />
-          </React.Suspense>
+        <div className="overflow-hidden rounded-lg border border-border-soft bg-card">
+          <div className={frameClassName}>
+            <React.Suspense
+              fallback={
+                <div
+                  className={cn("w-full bg-black/90", aspectRatioStyle ? undefined : "aspect-video")}
+                  style={aspectRatioStyle}
+                  aria-busy="true"
+                />
+              }
+            >
+              <LazyVideoPlayer
+                autoPlay
+                aspectRatio={content.aspectRatio}
+                src={content.src}
+                poster={content.posterSrc}
+                title={content.title}
+                playsinline
+              />
+            </React.Suspense>
+          </div>
           {offerRows}
         </div>
         {derivativeSummary && (
-          <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
+          <p className={cn("truncate", postCardCaptionTextColor, postCardType.meta)}>
             {derivativeSummary}
           </p>
         )}
@@ -450,99 +451,101 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
 
   return (
     <div className={cn("flex flex-col gap-2 text-start", className)}>
-      <div className={cn("overflow-hidden rounded-lg border border-border-soft bg-card", frameClassName)}>
-        <button
-          className={cn(
-            "relative block overflow-hidden bg-muted",
-            videoFrameClassName,
-            ui.canPlay && "cursor-pointer",
-          )}
-          type="button"
-          style={aspectRatioStyle}
-          onClick={handlePlay}
-          disabled={!ui.canPlay}
-          aria-label={content.title ? `Play ${content.title}` : copy.playVideo}
-        >
-          {ui.ageGateRequiresProof ? (
-            <div
-              aria-label={content.title ?? copy.videoThumbnail}
-              className="size-full bg-muted"
-              role="img"
-            />
-          ) : content.posterSrc || content.src.trim() ? (
-            <VideoThumbnail
-              className={cn(
-                "size-full",
-                objectFitClassName,
-                "transition-[filter,transform]",
-                ui.showLockedThumbnail && "scale-[1.02] blur-[3px]",
-              )}
-              posterSrc={content.posterSrc}
-              src={content.src}
-              title={content.title ?? copy.videoThumbnail}
-            />
-          ) : (
-            <div className="flex size-full items-center justify-center bg-muted">
-              <PlayIcon className="size-8 text-muted-foreground" weight="fill" />
-            </div>
-          )}
-
-          {ui.showLockedThumbnail && (
-            <div className="absolute inset-0 bg-black/22" />
-          )}
-
-          {ui.showAgeGatedThumbnail && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <Button
-                size="lg"
-                className="gap-2 font-semibold shadow-lg"
-                onClick={onVerifyAge}
-                disabled={!onVerifyAge}
-              >
-                <FilledLockIcon className="size-4" weight="fill" />
-                <Type variant="body-strong">{copy.ageGateVerify}</Type>
-              </Button>
-            </div>
-          )}
-
-          {ui.canPlay && !isBuffering && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span
-                aria-hidden="true"
-                className={mediaControlButtonVariants({ size: "md" })}
-              >
-                <PlayIcon className="size-[18px]" weight="fill" />
-              </span>
-            </div>
-          )}
-
-          {isBuffering && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span
-                aria-hidden="true"
-                className="size-10 animate-spin rounded-full border-2 border-white/35 border-t-white"
+      <div className="overflow-hidden rounded-lg border border-border-soft bg-card">
+        <div className={frameClassName}>
+          <button
+            className={cn(
+              "relative block overflow-hidden bg-muted",
+              videoFrameClassName,
+              ui.canPlay && "cursor-pointer",
+            )}
+            type="button"
+            style={aspectRatioStyle}
+            onClick={handlePlay}
+            disabled={!ui.canPlay}
+            aria-label={content.title ? `Play ${content.title}` : copy.playVideo}
+          >
+            {ui.ageGateRequiresProof ? (
+              <div
+                aria-label={content.title ?? copy.videoThumbnail}
+                className="size-full bg-muted"
+                role="img"
               />
-            </div>
-          )}
-
-          {durationLabel && !ui.ageGateRequiresProof && (
-            <div className="absolute bottom-2 end-2">
-              <span
+            ) : content.posterSrc || content.src.trim() ? (
+              <VideoThumbnail
                 className={cn(
-                  "rounded bg-black/70 px-1.5 py-0.5 text-white",
-                  postCardType.caption,
+                  "size-full",
+                  objectFitClassName,
+                  "transition-[filter,transform]",
+                  ui.showLockedThumbnail && "scale-[1.02] blur-[3px]",
                 )}
-              >
-                {durationLabel}
-              </span>
-            </div>
-          )}
-        </button>
+                posterSrc={content.posterSrc}
+                src={content.src}
+                title={content.title ?? copy.videoThumbnail}
+              />
+            ) : (
+              <div className="flex size-full items-center justify-center bg-muted">
+                <PlayIcon className="size-8 text-muted-foreground" weight="fill" />
+              </div>
+            )}
+
+            {ui.showLockedThumbnail && (
+              <div className="absolute inset-0 bg-black/22" />
+            )}
+
+            {ui.showAgeGatedThumbnail && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <Button
+                  size="lg"
+                  className="gap-2 font-semibold shadow-lg"
+                  onClick={onVerifyAge}
+                  disabled={!onVerifyAge}
+                >
+                  <FilledLockIcon className="size-4" weight="fill" />
+                  <Type variant="body-strong">{copy.ageGateVerify}</Type>
+                </Button>
+              </div>
+            )}
+
+            {ui.canPlay && !isBuffering && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span
+                  aria-hidden="true"
+                  className={mediaControlButtonVariants({ size: "md" })}
+                >
+                  <PlayIcon className="size-[18px]" weight="fill" />
+                </span>
+              </div>
+            )}
+
+            {isBuffering && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span
+                  aria-hidden="true"
+                  className="size-10 animate-spin rounded-full border-2 border-white/35 border-t-white"
+                />
+              </div>
+            )}
+
+            {durationLabel && !ui.ageGateRequiresProof && (
+              <div className="absolute bottom-2 end-2">
+                <span
+                  className={cn(
+                    "rounded bg-black/70 px-1.5 py-0.5 text-white",
+                    postCardType.caption,
+                  )}
+                >
+                  {durationLabel}
+                </span>
+              </div>
+            )}
+          </button>
+        </div>
         {offerRows}
       </div>
 
       {derivativeSummary && (
-        <p className={cn("truncate text-muted-foreground", postCardType.meta)}>
+        <p className={cn("truncate", postCardCaptionTextColor, postCardType.meta)}>
           {derivativeSummary}
         </p>
       )}

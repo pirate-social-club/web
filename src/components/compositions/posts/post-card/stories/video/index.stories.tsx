@@ -33,6 +33,28 @@ const baseVideo: VideoContentSpec = {
   playbackState: "idle",
 };
 
+const portraitDerivativeVideo: VideoContentSpec = {
+  ...baseVideo,
+  aspectRatio: 9 / 16,
+  posterSrc: "https://picsum.photos/seed/pirate-portrait-video/720/1280",
+  videoMode: "remix",
+  rightsBasis: "derivative",
+  upstreamAttributions: [
+    {
+      assetId: "story:ip:0xE8b3f18fBd1cC005BA187426bc2Dd0d307640605#licenseTermsId=1894",
+      relationshipType: "references_song",
+      title: "Story IP 0xE8b3...0605",
+      href: "#",
+    },
+  ],
+};
+
+const squareDerivativeVideo: VideoContentSpec = {
+  ...portraitDerivativeVideo,
+  aspectRatio: 1,
+  posterSrc: "https://picsum.photos/seed/pirate-square-video/900/900",
+};
+
 const noop = () => {};
 
 const meta = {
@@ -108,13 +130,13 @@ export const Buffering: Story = {
 // ============================================================================
 
 export const LockedBuy: Story = {
-  name: "Access / Locked Buy",
+  name: "Access / Locked listed Buy",
   render: () => (
     <PostCard
       {...basePost}
-      title="Behind-the-scenes studio footage - pay to unlock"
+      title="Locked derivative dance video"
       content={{
-        ...baseVideo,
+        ...portraitDerivativeVideo,
         accessMode: "locked",
         playbackState: "idle",
         listingMode: "listed",
@@ -126,8 +148,45 @@ export const LockedBuy: Story = {
   ),
 };
 
+export const LockedConnectToBuy: Story = {
+  name: "Access / Locked listed Connect to buy",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Logged-out buyer sees the purchase CTA"
+      content={{
+        ...portraitDerivativeVideo,
+        accessMode: "locked",
+        playbackState: "idle",
+        listingMode: "listed",
+        listingStatus: "active",
+        priceLabel: "$4.99",
+        onBuy: noop,
+      }}
+    />
+  ),
+};
+
+export const LockedListedMissingHandler: Story = {
+  name: "Regression / Locked listed missing buy handler",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="Locked listed video without a route buy handler"
+      content={{
+        ...portraitDerivativeVideo,
+        accessMode: "locked",
+        playbackState: "idle",
+        listingMode: "listed",
+        listingStatus: "active",
+        priceLabel: "$4.99",
+      }}
+    />
+  ),
+};
+
 export const LockedUnlock: Story = {
-  name: "Access / Locked Unlock",
+  name: "Access / Locked unlisted Unlock",
   render: () => (
     <PostCard
       {...basePost}
@@ -144,17 +203,53 @@ export const LockedUnlock: Story = {
 };
 
 export const LockedOwned: Story = {
-  name: "Access / Owned",
+  name: "Access / Owned unlocked",
   render: () => (
     <PostCard
       {...basePost}
       title="Full session unlocked"
       content={{
-        ...baseVideo,
+        ...portraitDerivativeVideo,
         accessMode: "locked",
         hasEntitlement: true,
         listingMode: "listed",
         listingStatus: "active",
+      }}
+    />
+  ),
+};
+
+export const PortraitDerivativeBuyFooter: Story = {
+  name: "Regression / Portrait derivative commerce footer",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="9:16 derivative video keeps commerce below the frame"
+      content={{
+        ...portraitDerivativeVideo,
+        accessMode: "locked",
+        listingMode: "listed",
+        listingStatus: "active",
+        priceLabel: "$4.99",
+        onBuy: noop,
+      }}
+    />
+  ),
+};
+
+export const SquareDerivativeBuyFooter: Story = {
+  name: "Regression / Square derivative commerce footer",
+  render: () => (
+    <PostCard
+      {...basePost}
+      title="1:1 derivative video keeps commerce full width"
+      content={{
+        ...squareDerivativeVideo,
+        accessMode: "locked",
+        listingMode: "listed",
+        listingStatus: "active",
+        priceLabel: "$4.99",
+        onBuy: noop,
       }}
     />
   ),

@@ -428,6 +428,7 @@ export function VideoPostContent({ content, className }: VideoPostContentProps) 
           >
             <LazyVideoPlayer
               autoPlay
+              aspectRatio={content.aspectRatio}
               src={content.src}
               poster={content.posterSrc}
               title={content.title}

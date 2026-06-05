@@ -321,7 +321,14 @@ interface SongOfferRowProps {
 
 function SongOfferRow({ action, icon, label, priceLabel }: SongOfferRowProps) {
   return (
-    <div className="grid min-h-16 grid-cols-[auto_minmax(0,1fr)_4rem_8.5rem] items-center gap-3 border-t border-border-soft px-4 py-3">
+    <div
+      className={cn(
+        "grid min-h-16 items-center gap-x-3 gap-y-2 border-t border-border-soft px-4 py-3",
+        priceLabel
+          ? "grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_4rem_8.5rem]"
+          : "grid-cols-[auto_minmax(0,1fr)_auto]",
+      )}
+    >
       <div className="grid size-8 shrink-0 place-items-center text-muted-foreground">
         {icon}
       </div>
@@ -334,8 +341,8 @@ function SongOfferRow({ action, icon, label, priceLabel }: SongOfferRowProps) {
         <Type as="p" className="text-end font-semibold text-foreground" variant="body-strong">
           {priceLabel}
         </Type>
-      ) : <div aria-hidden="true" />}
-      <div className="flex justify-end">
+      ) : null}
+      <div className={cn("flex justify-end", priceLabel ? "col-span-3 sm:col-span-1" : undefined)}>
         {action}
       </div>
     </div>
@@ -405,15 +412,13 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
         action={(
           <Button
             aria-label="Download Original"
-            className="h-10 w-32 px-5"
+            className="size-10 px-0"
             data-post-card-interactive="true"
             leadingIcon={<DownloadSimple className="size-4" />}
             onClick={content.onDownload}
             size="sm"
             variant="secondary"
-          >
-            Download
-          </Button>
+          />
         )}
         icon={<MusicNote className="size-5" />}
         key="original-download"
@@ -430,15 +435,13 @@ function SongOfferRows({ content, ui }: { content: SongContentSpec; ui: DerivedS
         action={(
           <Button
             aria-label={`Download ${stemLabel(stem)}`}
-            className="h-10 w-32 px-5"
+            className="size-10 px-0"
             data-post-card-interactive="true"
             leadingIcon={<DownloadSimple className="size-4" />}
             onClick={stem.onDownload}
             size="sm"
             variant="secondary"
-          >
-            Download
-          </Button>
+          />
         )}
         icon={stemIcon(stem)}
         key={`stem-${index}-${stem.kind}`}
@@ -492,8 +495,8 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
   } = content;
 
   const previewSeconds = Math.max(1, Math.round((ui.previewMaxMs ?? defaultPreviewDurationMs) / 1000));
-  const controlButtonClassName = "size-12 border-transparent shadow-sm sm:size-16";
-  const controlIconClassName = "size-6 sm:size-7";
+  const controlButtonClassName = "size-10 border-transparent shadow-lg";
+  const controlIconClassName = "size-5";
 
   // Determine control button - the player owns listening only; commerce lives in the post footer.
   const getControlButton = () => {
@@ -571,7 +574,12 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
   return (
     <div className={cn("flex flex-col gap-2 text-start", className)}>
       <div className="overflow-hidden rounded-lg border border-border-soft bg-card">
-        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 p-3">
+        <div
+          className={cn(
+            "grid items-center gap-3 p-3",
+            verifyAgeButton ? "grid-cols-[auto_minmax(0,1fr)_auto]" : "grid-cols-[auto_minmax(0,1fr)]",
+          )}
+        >
           <div className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted sm:size-28">
             {ui.showAgeGatedArtwork ? (
               <>
@@ -603,6 +611,11 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
             ) : (
               <MusicNote className="size-7 text-muted-foreground" />
             )}
+            {playButton ? (
+              <div className="absolute inset-0 z-10 grid place-items-center bg-black/20">
+                {playButton}
+              </div>
+            ) : null}
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -655,9 +668,9 @@ export function SongPostContent({ content, className }: SongPostContentProps) {
             ) : null}
           </div>
 
-          {playButton || verifyAgeButton ? (
+          {verifyAgeButton ? (
             <div className="flex shrink-0 items-center justify-end">
-              {playButton ?? verifyAgeButton}
+              {verifyAgeButton}
             </div>
           ) : null}
         </div>

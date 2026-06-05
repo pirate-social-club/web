@@ -188,7 +188,8 @@ export class ApiClient {
     } = init ?? {};
     const body = fetchInit.body;
     const usesFormData = typeof FormData !== "undefined" && body instanceof FormData;
-    const headers = new Headers(usesFormData ? undefined : { "Content-Type": "application/json" });
+    const hasBody = body !== undefined && body !== null;
+    const headers = new Headers(usesFormData || !hasBody ? undefined : { "Content-Type": "application/json" });
     if (typeof window !== "undefined") {
       const identity = getAnalyticsIdentity();
       headers.set("x-pirate-anonymous-id", identity.anonymousId);

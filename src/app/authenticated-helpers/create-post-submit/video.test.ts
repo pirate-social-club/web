@@ -334,10 +334,14 @@ describe("video create-post submit helpers", () => {
     }]);
     expect(createPostCalls).toEqual([{
       communityId: "com_test",
-      options: { altchaPayload: "altcha_video" },
+      options: {
+        altchaPayload: "altcha_video",
+        submitTraceId: expect.stringMatching(/^video_submit_[a-f0-9]{12}$/),
+      },
       request: {
         anonymous_scope: "community_stable",
         disclosed_qualifier_ids: ["qual_video"],
+        event: undefined,
         identity_mode: "anonymous",
         idempotency_key: "idem_video",
         translation_policy: "machine_allowed",

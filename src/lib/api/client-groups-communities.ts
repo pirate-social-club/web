@@ -23,6 +23,17 @@ import { createCommunityMembershipApi } from "./client-groups-community-membersh
 import { createCommunityModerationApi } from "./client-groups-community-moderation";
 import { createCommunitySettingsApi } from "./client-groups-community-settings";
 
+const SUBMIT_TRACE_HEADER = "x-pirate-submit-trace-id";
+
+type SubmitTraceRequestOptions = {
+  submitTraceId?: string | null | undefined;
+};
+
+function submitTraceHeaders(options?: SubmitTraceRequestOptions): HeadersInit | undefined {
+  const submitTraceId = options?.submitTraceId?.trim();
+  return submitTraceId ? { [SUBMIT_TRACE_HEADER]: submitTraceId } : undefined;
+}
+
 export function createCommunitiesApi(request: ApiRequest) {
   return {
     create: (body: ApiCreateCommunityRequest): Promise<CommunityCreateAcceptedResponse> =>
@@ -32,11 +43,16 @@ export function createCommunitiesApi(request: ApiRequest) {
       }),
     uploadMedia: (
       input: { kind: "avatar" | "banner" | "post_image" | "comment_image"; file: File },
+      options?: SubmitTraceRequestOptions,
     ): Promise<ApiCommunityMediaUploadResponse> => {
       const body = new FormData();
       body.set("kind", input.kind);
       body.set("file", input.file);
-      return request<ApiCommunityMediaUploadResponse>("/community-media", { method: "POST", body });
+      return request<ApiCommunityMediaUploadResponse>("/community-media", {
+        method: "POST",
+        body,
+        headers: submitTraceHeaders(options),
+      });
     },
     get: (communityId: string, opts?: { locale?: string | null }): Promise<Community> => {
       return request<Community>(buildQueryPath(

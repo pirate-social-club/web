@@ -48,6 +48,29 @@ describe("telegramCommunityJoinRedirect", () => {
     ]);
   });
 
+  test("resolves handle links before building active community bot payloads", async () => {
+    const calls: string[] = [];
+    mockFetch(async (input) => {
+      calls.push(String(input));
+      if (String(input).includes("/telegram-bot-username")) {
+        return Response.json({ active_telegram_bot_username: "CommunityPirateBot" });
+      }
+      return Response.json({ id: "com_cmt_georgia" });
+    });
+
+    const response = await redirectResponse({
+      communityId: "@xn--i77hd",
+      effectiveUrl: "https://pirate.sc/tg/join/%40xn--i77hd",
+    });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("https://t.me/CommunityPirateBot?start=join_com_cmt_georgia");
+    expect(calls).toEqual([
+      "https://api.pirate.sc/communities/%40xn--i77hd/telegram-bot-username",
+      "https://api.pirate.sc/public-communities/%40xn--i77hd",
+    ]);
+  });
+
   test("falls back to the staging platform bot when no community bot exists", async () => {
     mockFetch(async () => Response.json({ active_telegram_bot_username: null }));
 
@@ -58,6 +81,24 @@ describe("telegramCommunityJoinRedirect", () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("https://t.me/Pirate_dev_bot?start=c_com_cmt_test");
+  });
+
+  test("resolves handle links before building platform bot fallback payloads", async () => {
+    mockFetch(async (input) => {
+      if (String(input).includes("/telegram-bot-username")) {
+        return Response.json({ active_telegram_bot_username: null });
+      }
+      return Response.json({ id: "com_cmt_georgia" });
+    });
+
+    const response = await redirectResponse({
+      apiOrigin: "https://api-staging.pirate.sc",
+      communityId: "@xn--i77hd",
+      effectiveUrl: "https://staging.pirate.sc/tg/join/%40xn--i77hd",
+    });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("https://t.me/Pirate_dev_bot?start=c_com_cmt_georgia");
   });
 
   test("rejects invalid Telegram start payload characters", async () => {

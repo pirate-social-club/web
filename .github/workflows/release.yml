@@ -149,6 +149,9 @@ jobs:
           AUTH_UPSTREAM_JWT_ISSUER: ${{ vars.AUTH_UPSTREAM_JWT_ISSUER }}
           E2E_API_BASE_URL: https://api-staging.pirate.sc
           PIRATE_STORY_E2E_ARTIFACT_DIR: tmp/e2e-artifacts
+          # Preview generation is queued through the API scheduled job runner.
+          # Keep this long enough to span several staging cron cycles.
+          PIRATE_STORY_E2E_PREVIEW_TIMEOUT_MS: "420000"
         run: bun run test:e2e:story-derivative-royalty
       - name: Upload Story derivative royalty E2E artifact
         if: always()

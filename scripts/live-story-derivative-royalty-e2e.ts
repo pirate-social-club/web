@@ -368,7 +368,7 @@ async function createCommunity(apiBase: string, host: Session, runId: string): P
     body: {
       display_name: `Story Royalty E2E ${runId}`,
       handle_policy: { policy_template: "standard" },
-      membership_mode: "open",
+      membership_mode: "request",
     },
   });
   if (created.job?.id && created.job.status !== "succeeded") {
@@ -379,12 +379,33 @@ async function createCommunity(apiBase: string, host: Session, runId: string): P
   return id.replace(/^com_/u, "");
 }
 
-async function joinCommunity(apiBase: string, communityId: string, session: Session): Promise<void> {
-  await api({
+async function joinCommunity(apiBase: string, communityId: string, host: Session, session: Session): Promise<void> {
+  const joined = await api<{ status?: "joined" | "requested" }>({
     apiBase,
     method: "POST",
     path: `/communities/${encodeURIComponent(communityId)}/join`,
     token: session.accessToken,
+    body: {},
+  });
+  if (joined.status === "joined") return;
+
+  const requests = await api<{ items: Array<{ applicant_user?: string | null; id: string }> }>({
+    apiBase,
+    method: "GET",
+    path: `/communities/${encodeURIComponent(communityId)}/membership-requests?limit=50`,
+    token: host.accessToken,
+  });
+  const request = session.userId
+    ? requests.items.find((item) => item.applicant_user === session.userId)
+    : requests.items.length === 1 ? requests.items[0] : null;
+  if (!request) {
+    throw new Error(`membership request was not created for ${session.userId || session.walletAddress}`);
+  }
+  await api({
+    apiBase,
+    method: "POST",
+    path: `/communities/${encodeURIComponent(communityId)}/membership-requests/${encodeURIComponent(request.id)}/approve`,
+    token: host.accessToken,
     body: {},
   });
 }
@@ -972,10 +993,8 @@ async function main(): Promise<void> {
   step("create community");
   const communityId = await createCommunity(apiBase, author, runId);
   artifact.community = { id: `com_${communityId}` };
-  await Promise.all([
-    joinCommunity(apiBase, communityId, remixer),
-    joinCommunity(apiBase, communityId, buyer),
-  ]);
+  await joinCommunity(apiBase, communityId, author, remixer);
+  await joinCommunity(apiBase, communityId, author, buyer);
 
   const originalBytes = makeSilentWavBytes();
   const derivativeBytes = makeSilentWavBytes();

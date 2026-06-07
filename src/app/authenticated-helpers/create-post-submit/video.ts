@@ -94,6 +94,7 @@ type ExtractPosterFrameFile = (
 
 const PROXY_PRIMARY_VIDEO_MAX_BYTES = 64 * 1024 * 1024;
 const LOCKED_PRIMARY_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+const PUBLIC_PRIMARY_VIDEO_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 const MULTIPART_UPLOAD_CONCURRENCY = 3;
 
 class PermanentPartUploadError extends Error {}
@@ -208,6 +209,9 @@ export async function uploadVideoArtifact({
   const file = requirePrimaryVideoFile(videoState);
   if (monetized && file.size > LOCKED_PRIMARY_VIDEO_MAX_BYTES) {
     throw new Error("Paid videos are currently capped at 50 MB while encrypted delivery is being upgraded.");
+  }
+  if (!monetized && file.size > PUBLIC_PRIMARY_VIDEO_MAX_BYTES) {
+    throw new Error("Public videos are currently capped at 2 GB.");
   }
   const useMultipart = !monetized && file.size > PROXY_PRIMARY_VIDEO_MAX_BYTES;
   if (!useMultipart) {

@@ -282,6 +282,24 @@ describe("video create-post submit helpers", () => {
     }]);
   });
 
+  test("uploadVideoArtifact rejects public videos above the product cap before upload", async () => {
+    const file = createVideoFile();
+    Object.defineProperty(file, "size", { value: (2 * 1024 * 1024 * 1024) + 1 });
+
+    await expect(uploadVideoArtifact({
+      communityId: "com_test",
+      createArtifactUpload: async () => {
+        throw new Error("createArtifactUpload should not be called");
+      },
+      uploadArtifactContent: async () => {
+        throw new Error("uploadArtifactContent should not be called");
+      },
+      videoState: {
+        primaryVideoUpload: file,
+      },
+    })).rejects.toThrow("Public videos are currently capped at 2 GB");
+  });
+
   test("submitVideoPost uploads video and poster before creating the post", async () => {
     const file = createVideoFile();
     const posterFile = createPosterFile();

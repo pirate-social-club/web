@@ -21,9 +21,17 @@ if [[ -z "${OPERATOR_DIR:-}" ]]; then
     OPERATOR_DIR="$ROOT_DIR/../api/services/community-provision-operator"
   fi
 fi
+if [[ -z "${SONG_PREVIEW_DIR:-}" ]]; then
+  if [[ -d "$ROOT_DIR/api/services/song-preview-container" ]]; then
+    SONG_PREVIEW_DIR="$ROOT_DIR/api/services/song-preview-container"
+  else
+    SONG_PREVIEW_DIR="$ROOT_DIR/../api/services/song-preview-container"
+  fi
+fi
 WEB_WRANGLER="$WEB_DIR/node_modules/.bin/wrangler"
 API_WRANGLER="$API_DIR/node_modules/.bin/wrangler"
 OPERATOR_WRANGLER="$OPERATOR_DIR/node_modules/.bin/wrangler"
+SONG_PREVIEW_WRANGLER="$SONG_PREVIEW_DIR/node_modules/.bin/wrangler"
 API_PRODUCTION_WORKER_NAME="${API_PRODUCTION_WORKER_NAME:-api-core}"
 REQUIRED_API_PRODUCTION_SECRETS=(
   OPENAI_API_KEY
@@ -32,6 +40,12 @@ REQUIRED_API_PRODUCTION_SECRETS=(
   STORY_OPERATOR_PRIVATE_KEY
   MUSIC_PURCHASE_STORY_SETTLEMENT_PRIVATE_KEY
   STORY_ROYALTY_SPG_NFT_CONTRACT
+)
+REQUIRED_SONG_PREVIEW_PRODUCTION_SECRETS=(
+  SONG_PREVIEW_SHARED_SECRET
+  CONTROL_PLANE_DATABASE_URL
+  FILEBASE_S3_ACCESS_KEY
+  FILEBASE_S3_SECRET_KEY
 )
 
 HOTFIX=0
@@ -175,6 +189,30 @@ console.log(`API production secrets present: ${required.join(", ")}`);
 NODE
 }
 
+check_song_preview_production_secrets() {
+  local secrets_json
+  secrets_json="$(cd "$SONG_PREVIEW_DIR" && "$SONG_PREVIEW_WRANGLER" secret list --env production --format json)"
+
+  node - "$secrets_json" "${REQUIRED_SONG_PREVIEW_PRODUCTION_SECRETS[*]}" <<'NODE'
+const [rawSecrets = "[]", requiredRaw = ""] = process.argv.slice(2);
+const required = requiredRaw.split(/\s+/).filter(Boolean);
+let listedSecrets;
+try {
+  listedSecrets = JSON.parse(rawSecrets);
+} catch (error) {
+  throw new Error(`Unable to parse song preview production secret list: ${error.message}`);
+}
+const available = new Set(listedSecrets.map((entry) => entry?.name).filter(Boolean));
+const missing = required.filter((name) => !available.has(name));
+if (missing.length > 0) {
+  console.error(`Missing song preview production secrets: ${missing.join(", ")}`);
+  console.error("Sync /services/api secrets to the production song preview container before deploying.");
+  process.exit(1);
+}
+console.log(`Song preview production secrets present: ${required.join(", ")}`);
+NODE
+}
+
 require_command bun
 require_command curl
 require_command git
@@ -182,6 +220,7 @@ require_command node
 require_file "$WEB_WRANGLER"
 require_file "$API_WRANGLER"
 require_file "$OPERATOR_WRANGLER"
+require_file "$SONG_PREVIEW_WRANGLER"
 
 WEB_SHA="$(repo_sha "$WEB_DIR")"
 WEB_REF="$(repo_ref "$WEB_DIR")"
@@ -189,28 +228,34 @@ API_SHA="$(repo_sha "$API_DIR")"
 API_REF="$(repo_ref "$API_DIR")"
 OPERATOR_SHA="$(repo_sha "$OPERATOR_DIR")"
 OPERATOR_REF="$(repo_ref "$OPERATOR_DIR")"
+SONG_PREVIEW_SHA="$(repo_sha "$SONG_PREVIEW_DIR")"
+SONG_PREVIEW_REF="$(repo_ref "$SONG_PREVIEW_DIR")"
 BUILD_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 if [[ "$HOTFIX" != "1" ]]; then
   require_clean_main "$WEB_DIR" "web"
   require_clean_main "$API_DIR" "api"
   require_clean_main "$OPERATOR_DIR" "community-provision-operator"
+  require_clean_main "$SONG_PREVIEW_DIR" "song-preview-container"
 else
   SAFE_SUFFIX="$(printf '%s' "$HOTFIX_REASON" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//' | cut -c1-40)"
   WEB_SHA="${WEB_SHA}-hotfix-${SAFE_SUFFIX:-manual}"
   API_SHA="${API_SHA}-hotfix-${SAFE_SUFFIX:-manual}"
   OPERATOR_SHA="${OPERATOR_SHA}-hotfix-${SAFE_SUFFIX:-manual}"
+  SONG_PREVIEW_SHA="${SONG_PREVIEW_SHA}-hotfix-${SAFE_SUFFIX:-manual}"
   log "hotfix deploy"
   printf 'reason: %s\n' "$HOTFIX_REASON"
   printf 'web status:\n%s\n' "$(repo_status "$WEB_DIR")"
   printf 'api status:\n%s\n' "$(repo_status "$API_DIR")"
   printf 'community-provision-operator status:\n%s\n' "$(repo_status "$OPERATOR_DIR")"
+  printf 'song-preview-container status:\n%s\n' "$(repo_status "$SONG_PREVIEW_DIR")"
 fi
 
 log "release metadata"
 printf 'web: %s (%s)\n' "$WEB_SHA" "$WEB_REF"
 printf 'api: %s (%s)\n' "$API_SHA" "$API_REF"
 printf 'community-provision-operator: %s (%s)\n' "$OPERATOR_SHA" "$OPERATOR_REF"
+printf 'song-preview-container: %s (%s)\n' "$SONG_PREVIEW_SHA" "$SONG_PREVIEW_REF"
 printf 'timestamp: %s\n' "$BUILD_TIMESTAMP"
 
 if [[ "$SKIP_TESTS" != "1" ]]; then
@@ -227,6 +272,9 @@ fi
 log "check api production secrets"
 check_api_production_secrets
 
+log "check song preview production secrets"
+check_song_preview_production_secrets
+
 if [[ "$SKIP_BUILD" != "1" ]]; then
   log "build web production bundle"
   (cd "$WEB_DIR" && bun run build:prod)
@@ -237,6 +285,13 @@ log "deploy community provision operator production"
   --env production \
   --var "BUILD_GIT_SHA:$OPERATOR_SHA" \
   --var "BUILD_GIT_REF:$OPERATOR_REF" \
+  --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
+
+log "deploy song preview container production"
+(cd "$SONG_PREVIEW_DIR" && "$SONG_PREVIEW_WRANGLER" deploy \
+  --env production \
+  --var "BUILD_GIT_SHA:$SONG_PREVIEW_SHA" \
+  --var "BUILD_GIT_REF:$SONG_PREVIEW_REF" \
   --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP")
 
 log "deploy api production"

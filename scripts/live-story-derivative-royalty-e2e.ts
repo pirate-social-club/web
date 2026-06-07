@@ -102,8 +102,10 @@ const TRANSFER_ABI = [{
 
 const CDR_READ_GAS_MARGIN_WEI = parseEther("0.01");
 const DEFAULT_API_BASE_URL = "https://api-staging.pirate.sc";
-const DEFAULT_STAGING_SEED_COMMUNITY_ID = "cmt_b53f3e232a4048278f0accb09cddf0a5";
-const DEFAULT_STAGING_SEED_HOST_SUBJECT = "seed-staging-mcp-smoke-staff";
+// Reuse a Story-proven staging community from a green E2E run. Creating a fresh
+// community per release consumes a Turso database and staging is capped.
+const DEFAULT_STORY_E2E_COMMUNITY_ID = "cmt_4d0d77c2ec07423e99a293238ba6b7a8";
+const DEFAULT_STORY_E2E_HOST_SUBJECT = "story-e2e-author-1780678999641-65820e";
 
 const artifact: AuditArtifact = {
   status: "running",
@@ -141,8 +143,8 @@ function usage(): string {
     "  PIRATE_STORY_E2E_ARTIFACT_DIR (default tmp/e2e-artifacts)",
     "  PIRATE_STORY_E2E_CDR_TIMEOUT_MS (default 90000)",
     "  PIRATE_STORY_E2E_COMET_RPC_URL or STORY_COMET_RPC_URL (optional; enables Cosmos/ABCI DKG partial collection)",
-    `  PIRATE_STORY_E2E_COMMUNITY_ID (default ${DEFAULT_STAGING_SEED_COMMUNITY_ID})`,
-    `  PIRATE_STORY_E2E_HOST_SUBJECT (default ${DEFAULT_STAGING_SEED_HOST_SUBJECT})`,
+    `  PIRATE_STORY_E2E_COMMUNITY_ID (default ${DEFAULT_STORY_E2E_COMMUNITY_ID})`,
+    `  PIRATE_STORY_E2E_HOST_SUBJECT (default ${DEFAULT_STORY_E2E_HOST_SUBJECT})`,
     "  PIRATE_STORY_E2E_CREATE_COMMUNITY=true (optional; provisions a fresh community)",
     "  PIRATE_STORY_E2E_PRICE_CENTS (default 1)",
     "  PIRATE_CHECKOUT_SOURCE_CHAIN_ID (default 84532)",
@@ -370,7 +372,7 @@ async function createCommunity(apiBase: string, host: Session, runId: string): P
 }
 
 function configuredCommunityId(): string {
-  return (optionalEnv("PIRATE_STORY_E2E_COMMUNITY_ID") ?? DEFAULT_STAGING_SEED_COMMUNITY_ID).replace(/^com_/u, "");
+  return (optionalEnv("PIRATE_STORY_E2E_COMMUNITY_ID") ?? DEFAULT_STORY_E2E_COMMUNITY_ID).replace(/^com_/u, "");
 }
 
 async function joinCommunity(apiBase: string, communityId: string, host: Session, session: Session): Promise<void> {
@@ -1018,7 +1020,7 @@ async function main(): Promise<void> {
     privateKey: createFreshCommunity ? authorPrivateKey : hostPrivateKey,
     subject: createFreshCommunity
       ? `story-e2e-author-${runId}`
-      : optionalEnv("PIRATE_STORY_E2E_HOST_SUBJECT") ?? DEFAULT_STAGING_SEED_HOST_SUBJECT,
+      : optionalEnv("PIRATE_STORY_E2E_HOST_SUBJECT") ?? DEFAULT_STORY_E2E_HOST_SUBJECT,
   });
   const author = await createSession({ apiBase, privateKey: authorPrivateKey, subject: `story-e2e-author-${runId}` });
   const remixer = await createSession({ apiBase, privateKey: remixerPrivateKey, subject: `story-e2e-remixer-${runId}` });

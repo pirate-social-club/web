@@ -102,6 +102,8 @@ const TRANSFER_ABI = [{
 
 const CDR_READ_GAS_MARGIN_WEI = parseEther("0.01");
 const DEFAULT_API_BASE_URL = "https://api-staging.pirate.sc";
+const DEFAULT_STAGING_SEED_COMMUNITY_ID = "cmt_b53f3e232a4048278f0accb09cddf0a5";
+const DEFAULT_STAGING_SEED_HOST_SUBJECT = "seed-staging-mcp-smoke-staff";
 
 const artifact: AuditArtifact = {
   status: "running",
@@ -139,6 +141,9 @@ function usage(): string {
     "  PIRATE_STORY_E2E_ARTIFACT_DIR (default tmp/e2e-artifacts)",
     "  PIRATE_STORY_E2E_CDR_TIMEOUT_MS (default 90000)",
     "  PIRATE_STORY_E2E_COMET_RPC_URL or STORY_COMET_RPC_URL (optional; enables Cosmos/ABCI DKG partial collection)",
+    `  PIRATE_STORY_E2E_COMMUNITY_ID (default ${DEFAULT_STAGING_SEED_COMMUNITY_ID})`,
+    `  PIRATE_STORY_E2E_HOST_SUBJECT (default ${DEFAULT_STAGING_SEED_HOST_SUBJECT})`,
+    "  PIRATE_STORY_E2E_CREATE_COMMUNITY=true (optional; provisions a fresh community)",
     "  PIRATE_STORY_E2E_PRICE_CENTS (default 1)",
     "  PIRATE_CHECKOUT_SOURCE_CHAIN_ID (default 84532)",
     "  STORY_RUNTIME_FUNDER_PRIVATE_KEY, STORY_RUNTIME_PRIVATE_KEY, or STORY_CONTRACT_OWNER_PRIVATE_KEY",
@@ -362,6 +367,10 @@ async function createCommunity(apiBase: string, host: Session, runId: string): P
   const id = created.community.id ?? created.community.community_id;
   if (!id) throw new Error("created community id is missing");
   return id.replace(/^com_/u, "");
+}
+
+function configuredCommunityId(): string {
+  return (optionalEnv("PIRATE_STORY_E2E_COMMUNITY_ID") ?? DEFAULT_STAGING_SEED_COMMUNITY_ID).replace(/^com_/u, "");
 }
 
 async function joinCommunity(apiBase: string, communityId: string, host: Session, session: Session): Promise<void> {
@@ -986,12 +995,14 @@ async function main(): Promise<void> {
   const apiBase = apiBaseUrl();
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   const priceCents = Number(optionalEnv("PIRATE_STORY_E2E_PRICE_CENTS") ?? "1");
+  const createFreshCommunity = optionalEnv("PIRATE_STORY_E2E_CREATE_COMMUNITY") === "true";
   const buyerPrivateKey = requirePrivateKey([
     "PIRATE_STORY_E2E_BUYER_PRIVATE_KEY",
     "PIRATE_CHECKOUT_SMOKE_BUYER_PRIVATE_KEY",
     "PIRATE_SMOKE_BUYER_PRIVATE_KEY",
     "PIRATE_CHECKOUT_OPERATOR_PRIVATE_KEY",
   ]);
+  const hostPrivateKey = normalizePrivateKey(process.env.PIRATE_STORY_E2E_HOST_PRIVATE_KEY) ?? generatePrivateKey();
   const authorPrivateKey = normalizePrivateKey(process.env.PIRATE_STORY_E2E_AUTHOR_PRIVATE_KEY) ?? generatePrivateKey();
   const remixerPrivateKey = normalizePrivateKey(process.env.PIRATE_STORY_E2E_REMIXER_PRIVATE_KEY) ?? generatePrivateKey();
   artifact.staging_env_fingerprint = {
@@ -1002,15 +1013,28 @@ async function main(): Promise<void> {
   };
 
   step("create sessions");
+  const host = await createSession({
+    apiBase,
+    privateKey: createFreshCommunity ? authorPrivateKey : hostPrivateKey,
+    subject: createFreshCommunity
+      ? `story-e2e-author-${runId}`
+      : optionalEnv("PIRATE_STORY_E2E_HOST_SUBJECT") ?? DEFAULT_STAGING_SEED_HOST_SUBJECT,
+  });
   const author = await createSession({ apiBase, privateKey: authorPrivateKey, subject: `story-e2e-author-${runId}` });
   const remixer = await createSession({ apiBase, privateKey: remixerPrivateKey, subject: `story-e2e-remixer-${runId}` });
   const buyer = await createSession({ apiBase, privateKey: buyerPrivateKey, subject: `story-e2e-buyer-${runId}` });
 
-  step("create community");
-  const communityId = await createCommunity(apiBase, author, runId);
-  artifact.community = { id: `com_${communityId}` };
-  await joinCommunity(apiBase, communityId, author, remixer);
-  await joinCommunity(apiBase, communityId, author, buyer);
+  step(createFreshCommunity ? "create community" : "use seeded community");
+  const communityId = createFreshCommunity
+    ? await createCommunity(apiBase, author, runId)
+    : configuredCommunityId();
+  artifact.community = {
+    id: `com_${communityId}`,
+    mode: createFreshCommunity ? "fresh" : "seeded",
+  };
+  await joinCommunity(apiBase, communityId, createFreshCommunity ? author : host, author);
+  await joinCommunity(apiBase, communityId, createFreshCommunity ? author : host, remixer);
+  await joinCommunity(apiBase, communityId, createFreshCommunity ? author : host, buyer);
 
   const originalBytes = makeSilentWavBytes();
   const derivativeBytes = makeSilentWavBytes();

@@ -1140,7 +1140,7 @@ async function main(): Promise<void> {
     path: `/communities/${encodeURIComponent(communityId)}/listings`,
     // CI cannot complete real Self verification; owner/admin listing preserves
     // the derivative asset purchase path while settlement still pays asset.creator_user_id.
-    token: author.accessToken,
+    token: host.accessToken,
     body: {
       asset: derivativePost.asset,
       price_cents: priceCents,
